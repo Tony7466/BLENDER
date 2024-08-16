@@ -1263,8 +1263,10 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
     return false;
   }
 
-  bActionGroup *group = this->channel_group_containing_index(fcurve_index);
-  if (group) {
+  const int group_index = this->channel_group_containing_index(fcurve_index);
+  if (group_index != -1) {
+    bActionGroup *group = this->channel_groups()[group_index];
+
     group->fcurve_range_length -= 1;
     if (group->fcurve_range_length <= 0) {
       const int group_index = this->channel_groups().as_span().first_index_try(group);
@@ -1440,17 +1442,19 @@ bActionGroup *ChannelBag::channel_group_find(const StringRef name)
   return nullptr;
 }
 
-bActionGroup *ChannelBag::channel_group_containing_index(int fcurve_array_index)
+int ChannelBag::channel_group_containing_index(const int fcurve_array_index)
 {
+  int i = 0;
   for (bActionGroup *group : this->channel_groups()) {
     if (fcurve_array_index >= group->fcurve_range_start &&
         fcurve_array_index < (group->fcurve_range_start + group->fcurve_range_length))
     {
-      return group;
+      return i;
     }
+    i++;
   }
 
-  return nullptr;
+  return -1;
 }
 
 bActionGroup &ChannelBag::channel_group_create(StringRefNull name)
@@ -1849,10 +1853,10 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
   return false;
 }
 
-bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group)
+bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group)
 {
 
-  if (this->channel_groups().as_span().first_index_try(&group) == -1) {
+  if (this->channel_groups().as_span().first_index_try(&to_group) == -1) {
     return false;
   }
 
@@ -1861,14 +1865,15 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &gr
     return false;
   }
 
-  bActionGroup *from_group = this->channel_group_containing_index(fcurve_index);
-  if (from_group == &group) {
-    return true;
-  }
-  if (from_group != nullptr) {
+  const int from_group_index = this->channel_group_containing_index(fcurve_index);
+  if (from_group_index != -1) {
+    bActionGroup *from_group = this->channel_groups()[from_group_index];
+    if (from_group == &to_group) {
+      return true;
+    }
+
     from_group->fcurve_range_length--;
     if (from_group->fcurve_range_length == 0) {
-      const int from_group_index = this->channel_groups().as_span().first_index_try(from_group);
       this->channel_group_remove_raw(from_group_index);
     }
   }
@@ -1877,8 +1882,8 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &gr
                     this->fcurve_array_num,
                     fcurve_index,
                     fcurve_index + 1,
-                    group.fcurve_range_start + group.fcurve_range_length);
-  group.fcurve_range_length++;
+                    to_group.fcurve_range_start + to_group.fcurve_range_length);
+  to_group.fcurve_range_length++;
 
   this->collapse_channel_group_gaps();
   this->update_fcurve_channel_group_pointers();
