@@ -14,8 +14,6 @@ namespace blender::draw::overlay {
 
 class Wireframe {
  private:
-  const SelectionType selection_type_;
-
   PassMain wireframe_ps_ = {"Wireframe"};
   struct ColoringPass {
     /* TODO(fclem): Not yet implemented. */
@@ -31,8 +29,6 @@ class Wireframe {
   bool enabled = false;
 
  public:
-  Wireframe(const SelectionType selection_type) : selection_type_(selection_type){};
-
   void begin_sync(Resources &res, const State &state)
   {
     enabled = state.is_wireframe_mode || (state.overlay.flag & V3D_OVERLAY_WIREFRAMES);
@@ -40,6 +36,7 @@ class Wireframe {
       return;
     }
 
+    const bool do_smooth_lines = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0;
     const bool is_transform = (G.moving & G_TRANSFORM_OBJ) != 0;
     const float wire_threshold = wire_discard_threshold_get(state.overlay.wireframe_threshold);
 
@@ -55,6 +52,7 @@ class Wireframe {
       auto shader_pass =
           [&](GPUShader *shader, const char *name, bool use_coloring, float wire_threshold) {
             auto &sub = pass.sub(name);
+            sub.specialize_constant(shader, "use_custom_depth_bias", do_smooth_lines);
             sub.shader_set(shader);
             sub.bind_ubo("globalsBlock", &res.globals_buf);
             sub.bind_texture("depthTex", depth_tex);
@@ -100,7 +98,7 @@ class Wireframe {
     /* TODO(fclem): Non-mandatory handle creation and reuse with other overlays. */
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
-    ColoringPass &coloring = use_coloring ? non_colored : colored;
+    ColoringPass &coloring = use_coloring ? colored : non_colored;
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
       case OB_CURVES:

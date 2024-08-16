@@ -281,6 +281,8 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   wireframe_mesh = selectable_shader("overlay_wireframe", [](gpu::shader::ShaderCreateInfo &info) {
     info.additional_infos_.clear();
+    info.define("CUSTOM_DEPTH_BIAS_CONST");
+    info.specialization_constant(gpu::shader::Type::BOOL, "use_custom_depth_bias", true);
     info.additional_info("draw_view",
                          "draw_modelmat_new",
                          "draw_resource_handle_new",

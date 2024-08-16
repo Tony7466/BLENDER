@@ -107,18 +107,29 @@ void main()
 
   gl_Position = point_world_to_ndc(wpos);
 
-#if !defined(CUSTOM_DEPTH_BIAS) && !defined(POINTS)
-  float facing_ratio = clamp(1.0 - facing * facing, 0.0, 1.0);
-  float flip = sign(facing);           /* Flip when not facing the normal (i.e.: back-facing). */
-  float curvature = (1.0 - wd * 0.75); /* Avoid making things worse for curvy areas. */
-  vec3 wofs = wnor * (facing_ratio * curvature * flip);
-  wofs = normal_world_to_view(wofs);
+#ifndef CUSTOM_DEPTH_BIAS_CONST
+/* TODO(fclem): Cleanup after overlay next. */
+#  ifdef CUSTOM_DEPTH_BIAS
+  const bool use_custom_depth_bias = true;
+#  else
+  const bool use_custom_depth_bias = false;
+#  endif
+#endif
 
-  /* Push vertex half a pixel (maximum) in normal direction. */
-  gl_Position.xy += wofs.xy * sizeViewportInv * gl_Position.w;
+#if !defined(POINTS)
+  if (!use_custom_depth_bias) {
+    float facing_ratio = clamp(1.0 - facing * facing, 0.0, 1.0);
+    float flip = sign(facing);           /* Flip when not facing the normal (i.e.: back-facing). */
+    float curvature = (1.0 - wd * 0.75); /* Avoid making things worse for curvy areas. */
+    vec3 wofs = wnor * (facing_ratio * curvature * flip);
+    wofs = normal_world_to_view(wofs);
 
-  /* Push the vertex towards the camera. Helps a bit. */
-  gl_Position.z -= facing_ratio * curvature * 1.0e-6 * gl_Position.w;
+    /* Push vertex half a pixel (maximum) in normal direction. */
+    gl_Position.xy += wofs.xy * sizeViewportInv * gl_Position.w;
+
+    /* Push the vertex towards the camera. Helps a bit. */
+    gl_Position.z -= facing_ratio * curvature * 1.0e-6 * gl_Position.w;
+  }
 #endif
 
   vec3 rim_col, wire_col;

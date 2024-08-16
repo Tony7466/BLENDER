@@ -70,7 +70,7 @@ class Instance {
     Prepass prepass = {selection_type_};
     Relations relations;
     Speakers speakers = {selection_type_};
-    Wireframe wireframe = {selection_type_};
+    Wireframe wireframe;
   } regular{selection_type_}, infront{selection_type_};
 
   Grid grid;
