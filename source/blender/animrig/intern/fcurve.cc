@@ -369,42 +369,42 @@ static bool new_key_needed(const FCurve &fcu, const float frame, const float val
  * Move the point where a key is about to be inserted to be inside the main cycle range.
  * Returns the type of the cycle if it is enabled and valid.
  */
-static eFCU_Cycle_Type remap_cyclic_keyframe_location(FCurve *fcu, float *px, float *py)
+static float2 remap_cyclic_keyframe_location(const FCurve &fcu,
+                                             const eFCU_Cycle_Type type,
+                                             float2 position)
 {
-  if (fcu->totvert < 2 || !fcu->bezt) {
-    return FCU_CYCLE_NONE;
+  if (fcu.totvert < 2 || !fcu.bezt) {
+    return position;
   }
-
-  eFCU_Cycle_Type type = BKE_fcurve_get_cycle_type(fcu);
 
   if (type == FCU_CYCLE_NONE) {
-    return FCU_CYCLE_NONE;
+    return position;
   }
 
-  BezTriple *first = &fcu->bezt[0], *last = &fcu->bezt[fcu->totvert - 1];
+  BezTriple *first = &fcu.bezt[0], *last = &fcu.bezt[fcu.totvert - 1];
   const float start = first->vec[1][0], end = last->vec[1][0];
 
   if (start >= end) {
-    return FCU_CYCLE_NONE;
+    return position;
   }
 
-  if (*px < start || *px > end) {
-    float period = end - start;
-    float step = floorf((*px - start) / period);
-    *px -= step * period;
+  if (position.x < start || position.x > end) {
+    const float period = end - start;
+    const float step = floorf((position.x - start) / period);
+    position.x -= step * period;
 
     if (type == FCU_CYCLE_OFFSET) {
       /* Nasty check to handle the case when the modes are different better. */
-      FMod_Cycles *data = static_cast<FMod_Cycles *>(((FModifier *)fcu->modifiers.first)->data);
+      FMod_Cycles *data = static_cast<FMod_Cycles *>(((FModifier *)fcu.modifiers.first)->data);
       short mode = (step >= 0) ? data->after_mode : data->before_mode;
 
       if (mode == FCM_EXTRAPOLATE_CYCLIC_OFFSET) {
-        *py -= step * (last->vec[1][1] - first->vec[1][1]);
+        position.y -= step * (last->vec[1][1] - first->vec[1][1]);
       }
     }
   }
 
-  return type;
+  return position;
 }
 
 SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
@@ -413,12 +413,13 @@ SingleKeyingResult insert_vert_fcurve(FCurve *fcu,
                                       eInsertKeyFlags flag)
 {
   BLI_assert(fcu != nullptr);
+
   float2 remapped_position = position;
   /* Adjust coordinates for cycle aware insertion. */
   if (flag & INSERTKEY_CYCLE_AWARE) {
-    if (remap_cyclic_keyframe_location(fcu, &remapped_position.x, &remapped_position.y) !=
-        FCU_CYCLE_PERFECT)
-    {
+    eFCU_Cycle_Type type = BKE_fcurve_get_cycle_type(fcu);
+    remapped_position = remap_cyclic_keyframe_location(*fcu, type, position);
+    if (type != FCU_CYCLE_PERFECT) {
       /* Inhibit action from insert_bezt_fcurve unless it's a perfect cycle. */
       flag &= ~INSERTKEY_CYCLE_AWARE;
     }
