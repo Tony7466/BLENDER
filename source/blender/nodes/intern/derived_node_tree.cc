@@ -309,7 +309,7 @@ void DOutputSocket::foreach_target_socket(ForeachTargetSocketFn target_fn,
 
 /* Find the active context from the given context and its descendants contexts. The active context
  * is the one whose node instance key matches the active_viewer_key stored in the root node tree.
- * The instance key of each context is computed by calling BKE_node_instance_key given the key of
+ * The instance key of each context is computed by calling node_instance_key given the key of
  * the parent as well as the group node making the context. */
 static const DTreeContext *find_active_context_recursive(const DTreeContext *context)
 {

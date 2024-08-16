@@ -217,7 +217,7 @@ static void search_link_ops_for_asset_metadata(const bNodeTree &node_tree,
            bNodeSocket *new_node_socket = bke::node_find_enabled_socket(
                node, in_out, socket_property->name);
            if (new_node_socket != nullptr) {
-             /* Rely on the way #nodeAddLink switches in/out if necessary. */
+             /* Rely on the way #node_add_link switches in/out if necessary. */
              bke::node_add_link(
                  &params.node_tree, &params.node, &params.socket, &node, new_node_socket);
            }

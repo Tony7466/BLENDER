@@ -524,8 +524,8 @@ void node_tree_set_type(const bContext *C, bNodeTree *ntree);
 bNodeTree *node_tree_add_tree(Main *bmain, const char *name, const char *idname);
 
 /**
- * Add a new (non-embedded) node tree, like #ntreeAddTree, but allows to create it inside a given
- * library. Used mainly by readfile code when versioning linked data.
+ * Add a new (non-embedded) node tree, like #node_tree_add_tree, but allows to create it inside a
+ * given library. Used mainly by readfile code when versioning linked data.
  */
 bNodeTree *node_tree_add_in_lib(Main *bmain,
                                 Library *owner_library,
@@ -698,7 +698,7 @@ void node_detach_node(bNodeTree *ntree, bNode *node);
 bool node_find_node_try(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_sockindex);
 
 /**
- * Same as #nodeFindNodeTry but expects that the socket definitely is in the node tree.
+ * Same as #node_find_node_try but expects that the socket definitely is in the node tree.
  */
 void node_find_node(bNodeTree *ntree, bNodeSocket *sock, bNode **r_node, int *r_sockindex);
 /**
@@ -1570,8 +1570,8 @@ void node_chain_iterator(const bNodeTree *ntree,
  * Iterate over a chain of nodes, starting with \a node_start, executing
  * \a callback for each node (which can return false to end iterator).
  *
- * Faster than nodeChainIter. Iter only once per node.
- * Can be called recursively (using another nodeChainIterBackwards) by
+ * Faster than node_chain_iterator. Iter only once per node.
+ * Can be called recursively (using another node_chain_iteratorBackwards) by
  * setting the recursion_lvl accordingly.
  *
  * WARN: No node is guaranteed to be iterated as a to_node,

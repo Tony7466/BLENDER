@@ -1069,7 +1069,7 @@ static bNodeSocket *version_make_socket_stub(const char *idname,
   return socket;
 }
 
-/* Same as nodeAddStaticNode but does not rely on node typeinfo. */
+/* Same as node_add_static_node but does not rely on node typeinfo. */
 static bNode *version_add_group_in_out_node(bNodeTree *ntree, const int type)
 {
   ListBase *ntree_socket_list = nullptr;

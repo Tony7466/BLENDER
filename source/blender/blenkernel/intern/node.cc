@@ -1098,7 +1098,7 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
     }
     else {
       /* FIXME Avoid using low-level untyped read function here. Most likely by just mirroring
-       * the matching logic in #ntreeBlendWrite ? */
+       * the matching logic in #node_tree_blend_write ? */
       BLO_read_data_address(reader, &node->storage);
     }
 
@@ -3168,12 +3168,12 @@ void node_position_propagate(bNode *node)
   }
 }
 
-static bNodeTree *ntreeAddTree_do(Main *bmain,
-                                  std::optional<Library *> owner_library,
-                                  ID *owner_id,
-                                  const bool is_embedded,
-                                  const char *name,
-                                  const char *idname)
+static bNodeTree *node_tree_add_tree_do(Main *bmain,
+                                        std::optional<Library *> owner_library,
+                                        ID *owner_id,
+                                        const bool is_embedded,
+                                        const char *name,
+                                        const char *idname)
 {
   /* trees are created as local trees for compositor, material or texture nodes,
    * node groups and other tree types are created as library data.
@@ -3207,7 +3207,7 @@ static bNodeTree *ntreeAddTree_do(Main *bmain,
 
 bNodeTree *node_tree_add_tree(Main *bmain, const char *name, const char *idname)
 {
-  return ntreeAddTree_do(bmain, std::nullopt, nullptr, false, name, idname);
+  return node_tree_add_tree_do(bmain, std::nullopt, nullptr, false, name, idname);
 }
 
 bNodeTree *node_tree_add_in_lib(Main *bmain,
@@ -3215,7 +3215,7 @@ bNodeTree *node_tree_add_in_lib(Main *bmain,
                                 const char *name,
                                 const char *idname)
 {
-  return ntreeAddTree_do(bmain, owner_library, nullptr, false, name, idname);
+  return node_tree_add_tree_do(bmain, owner_library, nullptr, false, name, idname);
 }
 
 bNodeTree *node_tree_add_tree_embedded(Main * /*bmain*/,
@@ -3223,7 +3223,7 @@ bNodeTree *node_tree_add_tree_embedded(Main * /*bmain*/,
                                        const char *name,
                                        const char *idname)
 {
-  return ntreeAddTree_do(nullptr, std::nullopt, owner_id, true, name, idname);
+  return node_tree_add_tree_do(nullptr, std::nullopt, owner_id, true, name, idname);
 }
 
 bNodeTree *node_tree_copy_tree_ex(const bNodeTree *ntree, Main *bmain, const bool do_id_user)
