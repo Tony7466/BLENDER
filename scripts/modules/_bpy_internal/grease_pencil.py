@@ -42,15 +42,15 @@ class SliceHelper:
     """
     Helper class to handle custom slicing.
     """
-    
+
     def __init__(self, start: int, stop: int):
         self._start = start
         self._stop = stop
         self._size = stop - start
-    
+
     def __len__(self):
         return self._size
-    
+
     def _is_valid_index(self, key: int):
         if self._size <= 0:
             return False
@@ -58,7 +58,7 @@ class SliceHelper:
             # Support indexing from the end.
             return abs(key) <= self._size
         return abs(key) < self._size
-    
+
     def _getitem_helper(self, key):
         if isinstance(key, int):
             if not self._is_valid_index(key):
@@ -80,7 +80,6 @@ class SliceHelper:
             return (self._start + start, self._start + stop)
         else:
             raise TypeError("Unexpected index of type {!r}".format(type(key)))
-    
 
 
 def def_prop_for_attribute(attr_name, type, default, doc):
