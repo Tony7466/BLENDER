@@ -28,7 +28,7 @@ namespace blender::bke::volume_grid {
 
 struct LazyLoadedGrid {
   std::shared_ptr<openvdb::GridBase> grid;
-  ImplicitSharingPtr<ImplicitSharingInfo> tree_sharing_info;
+  ImplicitSharingPtr<> tree_sharing_info;
 };
 
 /**
@@ -91,7 +91,7 @@ class VolumeGridData : public ImplicitSharingMixin {
   /**
    * Keeps track of whether the tree in `grid_` is current mutable or shared.
    */
-  mutable ImplicitSharingPtr<ImplicitSharingInfo> tree_sharing_info_;
+  mutable ImplicitSharingPtr<> tree_sharing_info_;
 
   /** The tree stored in the grid is valid. */
   mutable bool tree_loaded_ = false;

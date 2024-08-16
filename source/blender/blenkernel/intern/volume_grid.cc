@@ -67,7 +67,7 @@ VolumeGridData::VolumeGridData(std::shared_ptr<openvdb::GridBase> grid)
   BLI_assert(grid_.use_count() == 1);
   BLI_assert(grid_->isTreeUnique());
 
-  tree_sharing_info_ = ImplicitSharingPtr<ImplicitSharingInfo>(
+  tree_sharing_info_ = ImplicitSharingPtr<>(
       MEM_new<OpenvdbTreeSharingInfo>(__func__, grid_->baseTreePtr()));
   tree_access_token_ = std::make_shared<AccessToken>(*this);
 }
@@ -122,7 +122,7 @@ std::shared_ptr<openvdb::GridBase> VolumeGridData::grid_ptr_for_write(
   else {
     auto tree_copy = grid_->baseTree().copy();
     grid_->setTree(tree_copy);
-    tree_sharing_info_ = ImplicitSharingPtr<ImplicitSharingInfo>(
+    tree_sharing_info_ = ImplicitSharingPtr<>(
         MEM_new<OpenvdbTreeSharingInfo>(__func__, std::move(tree_copy)));
   }
   /* Can't reload the grid anymore if it has been changed. */
@@ -301,7 +301,7 @@ void VolumeGridData::ensure_grid_loaded() const
 
   if (!loaded_grid.tree_sharing_info) {
     BLI_assert(loaded_grid.grid->isTreeUnique());
-    loaded_grid.tree_sharing_info = ImplicitSharingPtr<ImplicitSharingInfo>(
+    loaded_grid.tree_sharing_info = ImplicitSharingPtr<>(
         MEM_new<OpenvdbTreeSharingInfo>(__func__, loaded_grid.grid->baseTreePtr()));
   }
 
