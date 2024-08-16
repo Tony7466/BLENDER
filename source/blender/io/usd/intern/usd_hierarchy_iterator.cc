@@ -65,7 +65,7 @@ bool USDHierarchyIterator::mark_as_weak_export(const Object *object) const
     case OB_ARMATURE:
       return !params_.export_armatures;
     case OB_POINTCLOUD:
-      return false;
+      return !params_.export_points;
 
     default:
       /* Assume weak for all other types. */
@@ -185,12 +185,12 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
       }
       break;
     case OB_POINTCLOUD:
-      // if (usd_export_context.export_params.export_points) {
-      data_writer = new USDPointsWriter(usd_export_context);
-      //}
-      // else {
-      //  return nullptr;
-      //}
+      if (usd_export_context.export_params.export_points) {
+        data_writer = new USDPointsWriter(usd_export_context);
+      }
+      else {
+        return nullptr;
+      }
       break;
 
     case OB_EMPTY:
