@@ -84,6 +84,18 @@ static void xform_nearest(bool use_float)
   IMB_freeImBuf(img);
 }
 
+static void xform_boxfilt(bool use_float)
+{
+  ImBuf *img = create_src_image(use_float);
+  {
+    SCOPED_TIMER("xform_boxfilt");
+    imb_scale_via_transform(img, DST_LARGER_X, DST_LARGER_Y, IMB_FILTER_BOX);
+    imb_scale_via_transform(img, SRC_X, SRC_Y, IMB_FILTER_BOX);
+    imb_scale_via_transform(img, DST_SMALLER_X, DST_SMALLER_Y, IMB_FILTER_BOX);
+  }
+  IMB_freeImBuf(img);
+}
+
 static void scale_bilinear_st(bool use_float)
 {
   ImBuf *img = create_src_image(use_float);
@@ -124,6 +136,7 @@ static void test_scaling_perf(bool use_float)
 {
   scale_nearest(use_float);
   xform_nearest(use_float);
+  xform_boxfilt(use_float);
   scale_bilinear_st(use_float);
   scale_bilinear(use_float);
   xform_bilinear(use_float);

@@ -69,6 +69,23 @@ static ImBuf *scale_2x_smaller(bool nearest, bool threaded, int float_channels =
   return img;
 }
 
+static ImBuf *scale_to_1x1(bool nearest, bool threaded, int float_channels = 0)
+{
+  ImBuf *img = float_channels > 0 ? create_6x2_test_image_fl(float_channels) :
+                                    create_6x2_test_image();
+  int ww = 1, hh = 1;
+  if (threaded) {
+    IMB_scaleImBuf_threaded(img, ww, hh);
+  }
+  else if (nearest) {
+    IMB_scalefastImBuf(img, ww, hh);
+  }
+  else {
+    IMB_scaleImBuf(img, ww, hh);
+  }
+  return img;
+}
+
 static ImBuf *scale_fractional_larger(bool nearest, bool threaded, int float_channels = 0)
 {
   ImBuf *img = float_channels > 0 ? create_6x2_test_image_fl(float_channels) :
@@ -119,6 +136,30 @@ TEST(imbuf_scaling, bilinear_2x_smaller)
   EXPECT_EQ(uint4(got[0]), uint4(191, 127, 63, 255));
   EXPECT_EQ(uint4(got[1]), uint4(133, 55, 31, 16));
   EXPECT_EQ(uint4(got[2]), uint4(55, 50, 48, 253));
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_scaling, nearest_to_1x1)
+{
+  ImBuf *res = scale_to_1x1(true, false);
+  const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
+  EXPECT_EQ(uint4(got[0]), uint4(0, 0, 0, 255));
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_scaling, threaded_to_1x1)
+{
+  ImBuf *res = scale_to_1x1(false, true);
+  const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
+  EXPECT_EQ(uint4(got[0]), uint4(0, 0, 0, 255));
+  IMB_freeImBuf(res);
+}
+
+TEST(imbuf_scaling, bilinear_to_1x1)
+{
+  ImBuf *res = scale_to_1x1(false, false);
+  const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
+  EXPECT_EQ(uint4(got[0]), uint4(126, 78, 47, 174));
   IMB_freeImBuf(res);
 }
 
