@@ -119,7 +119,6 @@ static void eyedropper_grease_pencil_status_indicators(bContext *C,
   ED_workspace_status_text(C, header.c_str());
 }
 
-/* Initialize. */
 static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
 {
   EyedropperGreasePencil *eye = MEM_cnew<EyedropperGreasePencil>(__func__);
@@ -137,7 +136,6 @@ static bool eyedropper_grease_pencil_init(bContext *C, wmOperator *op)
   return true;
 }
 
-/* Exit and free memory. */
 static void eyedropper_grease_pencil_exit(bContext *C, wmOperator *op)
 {
   /* Clear status message area. */
@@ -356,7 +354,6 @@ static void eyedropper_grease_pencil_color_sample(bContext *C,
   }
 }
 
-/* Cancel operator. */
 static void eyedropper_grease_pencil_cancel(bContext *C, wmOperator *op)
 {
   eyedropper_grease_pencil_exit(C, op);
@@ -418,10 +415,8 @@ static int eyedropper_grease_pencil_modal(bContext *C, wmOperator *op, const wmE
   return OPERATOR_RUNNING_MODAL;
 }
 
-/* Modal Operator init */
 static int eyedropper_grease_pencil_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  /* Init. */
   if (eyedropper_grease_pencil_init(C, op)) {
     /* Add modal temp handler. */
     WM_event_add_modal_handler(C, op);
@@ -436,7 +431,6 @@ static int eyedropper_grease_pencil_invoke(bContext *C, wmOperator *op, const wm
 /* Repeat operator */
 static int eyedropper_grease_pencil_exec(bContext *C, wmOperator *op)
 {
-  /* init */
   if (eyedropper_grease_pencil_init(C, op)) {
 
     /* cleanup */
