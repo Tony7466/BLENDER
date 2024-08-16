@@ -13,6 +13,7 @@
 #include "BKE_physics_geometry.hh"
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_rotation.hh"
 #include "BLI_memory_utils.hh"
 #include "BLI_utildefines.h"
 
@@ -511,6 +512,15 @@ TEST_F(PhysicsGeometryTest, join_geometry)
 
   AllShapesData all_shapes_data;
 
+  const Array<float4x4> frame1 = Array<float4x4>(
+      {math::from_rotation<float4x4>(math::EulerXYZ(0, 30, -10)),
+       float4x4::identity(),
+       math::from_location<float4x4>(float3(-3, 1, 1))});
+  const Array<float4x4> frame2 = Array<float4x4>(
+      {math::from_location<float4x4>(float3(2, 1, 0)),
+       math::from_scale<float4x4>(float3(1.5f, 1.0f, 2.0f)),
+       float4x4::identity()});
+
   bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(5, 2, 3);
   add_value_attribute(*geo1, bke::AttrDomain::Point, 1);
   /* Set actual shape pointers. */
@@ -527,16 +537,22 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_types = geo1->constraint_types_for_write();
     AttributeWriter<int> constraint_body1 = geo1->constraint_body1_for_write();
     AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
+    AttributeWriter<float4x4> constraint_frame1 = geo1->constraint_frame1_for_write();
+    AttributeWriter<float4x4> constraint_frame2 = geo1->constraint_frame2_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
     masses.varray.set_all({5, 15, 25, 35, 45});
     constraint_types.varray.set_all({int(ConstraintType::Point), int(ConstraintType::Slider)});
     constraint_body1.varray.set_all({2, 0});
     constraint_body2.varray.set_all({1, 2});
+    constraint_frame1.varray.set_all(frame1.as_span().slice(0, 2));
+    constraint_frame2.varray.set_all(frame2.as_span().slice(0, 2));
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
     constraint_body1.finish();
     constraint_body2.finish();
+    constraint_frame1.finish();
+    constraint_frame2.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
   }
   test_data(*geo1, false, 5, 2, 3);
@@ -560,16 +576,22 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_types = geo3->constraint_types_for_write();
     AttributeWriter<int> constraint_body1 = geo3->constraint_body1_for_write();
     AttributeWriter<int> constraint_body2 = geo3->constraint_body2_for_write();
+    AttributeWriter<float4x4> constraint_frame1 = geo3->constraint_frame1_for_write();
+    AttributeWriter<float4x4> constraint_frame2 = geo3->constraint_frame2_for_write();
     body_shapes.varray.set_all({0, 100});
     masses.varray.set_all({3, 33});
     constraint_types.varray.set_all({int(ConstraintType::Fixed)});
     constraint_body1.varray.set_all({-1});
     constraint_body2.varray.set_all({1});
+    constraint_frame1.varray.set_all(frame1.as_span().slice(2, 1));
+    constraint_frame2.varray.set_all(frame2.as_span().slice(2, 1));
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
     constraint_body1.finish();
     constraint_body2.finish();
+    constraint_frame1.finish();
+    constraint_frame2.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
@@ -606,6 +628,8 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   const VArraySpan<int> constraint_types = geo_result.constraint_types();
   const VArraySpan<int> constraint_body1 = geo_result.constraint_body1();
   const VArraySpan<int> constraint_body2 = geo_result.constraint_body2();
+  const VArraySpan<float4x4> constraint_frame1 = geo_result.constraint_frame1();
+  const VArraySpan<float4x4> constraint_frame2 = geo_result.constraint_frame2();
   EXPECT_EQ_ARRAY(Span<int>{int(ConstraintType::Point),
                             int(ConstraintType::Slider),
                             int(ConstraintType::Fixed)}
@@ -614,6 +638,8 @@ TEST_F(PhysicsGeometryTest, join_geometry)
                   constraint_types.size());
   EXPECT_EQ_ARRAY(Span<int>{2, 0, -1}.data(), constraint_body1.data(), constraint_body1.size());
   EXPECT_EQ_ARRAY(Span<int>{1, 2, 1}.data(), constraint_body2.data(), constraint_body2.size());
+  EXPECT_EQ_ARRAY(frame1.data(), constraint_frame1.data(), constraint_frame1.size());
+  EXPECT_EQ_ARRAY(frame2.data(), constraint_frame2.data(), constraint_frame2.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
