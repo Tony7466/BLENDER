@@ -1270,10 +1270,11 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   else {
     sseq->flag |= SPACE_SEQ_DESELECT_STRIP_HANDLE;
   }
+  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (already_selected && wait_to_deselect_others && !toggle) {
+  if (already_selected && wait_to_deselect_others && !toggle && !ignore_connections) {
     return OPERATOR_RUNNING_MODAL;
   }
 
@@ -1303,7 +1304,6 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     sequencer_select_strip_impl(ed, selection.seq2, seq2_handle_clicked, extend, deselect, toggle);
   }
 
-  const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
   if (!ignore_connections) {
     sequencer_select_connected_strips(selection);
   }
