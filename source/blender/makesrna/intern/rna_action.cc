@@ -643,9 +643,7 @@ static int rna_iterator_ChannelBag_groups_length(PointerRNA *ptr)
   return bag.channel_groups().size();
 }
 
-static bActionGroup *rna_ChannelBag_group_new(ActionChannelBag *dna_channelbag,
-                                              ReportList *reports,
-                                              const char *name)
+static bActionGroup *rna_ChannelBag_group_new(ActionChannelBag *dna_channelbag, const char *name)
 {
   BLI_assert(name != nullptr);
 
@@ -2075,7 +2073,7 @@ static void rna_def_channelbag_groups(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_ui_text(srna, "F-Curve Groups", "Collection of f-curve groups");
 
   func = RNA_def_function(srna, "new", "rna_ChannelBag_group_new");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FunctionFlag(0));
   RNA_def_function_ui_description(func, "Create a new action group and add it to the action");
   parm = RNA_def_string(func, "name", "Group", 0, "", "New name for the action group");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
