@@ -46,12 +46,28 @@ int64_t MemoryCounter::counted_bytes() const
   return compute_total_bytes(top_level_, memory_by_shared_data_);
 }
 
+static void gather_all_nested_sharing_info(const ImplicitSharingInfo &sharing_info,
+                                           const MemoryBySharedData &memory_by_shared_data,
+                                           Set<const ImplicitSharingInfo *> &r_all)
+{
+  if (r_all.add(&sharing_info)) {
+    for (const WeakImplicitSharingPtr &child_sharing_info : memory_by_shared_data.map.keys()) {
+      gather_all_nested_sharing_info(*child_sharing_info, memory_by_shared_data, r_all);
+    }
+  }
+}
+
 int64_t compute_total_bytes(const OwnedMemory &memory,
                             const MemoryBySharedData &memory_by_shared_data)
 {
-  int64_t count = memory.uniquely_owned_bytes;
+  Set<const ImplicitSharingInfo *> all;
   for (const WeakImplicitSharingPtr &sharing_info : memory.used_shared_data) {
-    count += memory_by_shared_data.map.lookup_as(&*sharing_info).uniquely_owned_bytes;
+    gather_all_nested_sharing_info(*sharing_info, memory_by_shared_data, all);
+  }
+
+  int64_t count = memory.uniquely_owned_bytes;
+  for (const ImplicitSharingInfo *sharing_info : all) {
+    count += memory_by_shared_data.map.lookup_as(sharing_info).uniquely_owned_bytes;
   }
   return count;
 }
