@@ -263,7 +263,7 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   Volume *volume = (Volume *)id;
   volume->runtime = MEM_new<blender::bke::VolumeRuntime>(__func__);
 
-  BKE_packedfile_blend_read(reader, &volume->packedfile);
+  BKE_packedfile_blend_read(reader, &volume->packedfile, volume->filepath);
   volume->runtime->frame = 0;
 
   /* materials */
@@ -597,6 +597,19 @@ bool BKE_volume_save(const Volume *volume,
 #else
   UNUSED_VARS(volume, bmain, reports, filepath);
   return false;
+#endif
+}
+
+void BKE_volume_count_memory(const Volume &volume, blender::MemoryCounter &memory)
+{
+#ifdef WITH_OPENVDB
+  if (const VolumeGridVector *grids = volume.runtime->grids) {
+    for (const GVolumeGrid &grid : *grids) {
+      grid->count_memory(memory);
+    }
+  }
+#else
+  UNUSED_VARS(volume, memory);
 #endif
 }
 
