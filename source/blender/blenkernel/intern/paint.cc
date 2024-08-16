@@ -1648,7 +1648,6 @@ void BKE_sculptsession_free_pbvh(SculptSession *ss)
   if (!ss) {
     return;
   }
-  printf("SCULPTSESSION_FREE_PBVH\n");
 
   blender::bke::pbvh::free(ss->pbvh);
   ss->vert_to_face_map = {};
@@ -1925,7 +1924,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
                                  Object *ob_eval,
                                  bool is_paint_tool)
 {
-  printf("SCULPT_UPDATE_OBJECT\n");
   Scene *scene = DEG_get_input_scene(depsgraph);
   Sculpt *sd = scene->toolsettings->sculpt;
   SculptSession &ss = *ob->sculpt;
@@ -1957,8 +1955,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
   /* NOTE: Weight pPaint require mesh info for loop lookup, but it never uses multires code path,
    * so no extra checks is needed here. */
-  const bool was_active = ss.multires.active;
-  const int previous_level = ss.multires.level;
   if (mmd) {
     ss.multires.active = true;
     ss.multires.modifier = mmd;
@@ -1981,10 +1977,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.multires.active = false;
     ss.multires.modifier = nullptr;
     ss.multires.level = 0;
-  }
-
-  if (was_active != ss.multires.active || previous_level != ss.multires.level) {
-    ss.clear_active_vert();
   }
 
   /* Sculpt Face Sets. */

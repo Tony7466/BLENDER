@@ -227,8 +227,6 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
      * surely there is a better way of solving this. */
     if (ctx->object->sculpt != nullptr) {
       SculptSession *sculpt_session = ctx->object->sculpt;
-      const bool was_active = sculpt_session->multires.active;
-      const int previous_level = sculpt_session->multires.level;
 
       sculpt_session->subdiv_ccg = result->runtime->subdiv_ccg.get();
       sculpt_session->multires.active = true;
@@ -238,12 +236,6 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
       sculpt_session->faces_num = mesh->faces_num;
       sculpt_session->faces = {};
       sculpt_session->corner_verts = {};
-
-      if (was_active != sculpt_session->multires.active ||
-          previous_level != sculpt_session->multires.level)
-      {
-        sculpt_session->clear_active_vert();
-      }
     }
     // blender::bke::subdiv::stats_print(&subdiv->stats);
   }
