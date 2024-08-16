@@ -19,7 +19,7 @@
 
 #include "BLT_translation.hh"
 
-#include "DNA_gpencil_legacy_types.h"
+#include "DNA_brush_types.h"
 #include "DNA_material_types.h"
 #include "DNA_space_types.h"
 
