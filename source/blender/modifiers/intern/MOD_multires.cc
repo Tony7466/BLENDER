@@ -227,7 +227,6 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
      * surely there is a better way of solving this. */
     if (ctx->object->sculpt != nullptr) {
       SculptSession *sculpt_session = ctx->object->sculpt;
-
       sculpt_session->subdiv_ccg = result->runtime->subdiv_ccg.get();
       sculpt_session->multires.active = true;
       sculpt_session->multires.modifier = mmd;
