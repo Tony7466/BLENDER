@@ -959,6 +959,7 @@ void PhysicsGeometryImpl::ensure_read_cache() const
 
     /* Some attributes require other updates before valid world data can be read. */
     dst.ensure_motion_type_no_lock();
+    dst.ensure_constraints_no_lock();
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
@@ -1471,6 +1472,7 @@ void PhysicsGeometryImpl::step_simulation(float delta_time)
   }
 
   this->ensure_motion_type_no_lock();
+  this->ensure_constraints_no_lock();
   world_data->step_simulation(delta_time);
 
   this->tag_read_cache_changed();
@@ -1641,6 +1643,7 @@ bool PhysicsGeometryImpl::validate_world_data()
   }
 
   this->ensure_motion_type();
+  this->ensure_constraints();
   this->world_data->ensure_body_indices();
   this->world_data->ensure_constraint_indices();
   this->world_data->ensure_bodies_in_world();
