@@ -17,28 +17,12 @@
 
 namespace blender::memory_counter {
 
-struct SharedDataInfo {
-  WeakImplicitSharingPtr sharing_info;
-  int64_t uniquely_owned_bytes = 0;
-  VectorSet<const ImplicitSharingInfo *> parents;
-  VectorSet<const ImplicitSharingInfo *> children;
-};
+class MemoryCount {
+ public:
+  int64_t total_bytes = 0;
+  Set<WeakImplicitSharingPtr> handled_shared_data;
 
-struct MemoryBySharedData {
-  Map<const ImplicitSharingInfo *, SharedDataInfo> map;
-
-  bool ensure(const ImplicitSharingInfo *sharing_info)
-  {
-    bool newly_added = false;
-    map.lookup_or_add_cb(sharing_info, [&]() {
-      newly_added = true;
-      if (sharing_info) {
-        sharing_info->add_weak_user();
-      }
-      return SharedDataInfo{WeakImplicitSharingPtr{sharing_info}};
-    });
-    return newly_added;
-  }
+  void reset();
 };
 
 /**
@@ -48,13 +32,10 @@ struct MemoryBySharedData {
  */
 class MemoryCounter : NonCopyable, NonMovable {
  private:
-  MemoryBySharedData &memory_by_shared_data_;
-  const ImplicitSharingInfo *current_sharing_info_ = nullptr;
-  int64_t newly_added_bytes_ = 0;
+  MemoryCount &count_;
 
  public:
-  MemoryCounter(MemoryBySharedData &memory_by_shared_data,
-                const ImplicitSharingInfo *current_sharing_info = nullptr);
+  MemoryCounter(MemoryCount &count);
 
   /**
    * Add bytes that are uniquely owned, i.e. not shared.
@@ -78,23 +59,6 @@ class MemoryCounter : NonCopyable, NonMovable {
    * to use in cases where computing the number of bytes is very cheap.
    */
   void add_shared(const ImplicitSharingInfo *sharing_info, const int64_t bytes);
-
-  /**
-   * Get the total number of counted bytes.
-   *
-   * \note This is only a rough estimate of the actual used memory. Often, not every little bit of
-   * memory is counted, so this is generally a lower bound. The actual memory usage should not be
-   * significantly higher though.
-   */
-  int64_t counted_bytes() const;
-
-  int64_t newly_added_bytes() const
-  {
-    return newly_added_bytes_;
-  }
 };
-
-int64_t compute_total_bytes(const SharedDataInfo &data,
-                            const MemoryBySharedData &memory_by_shared_data);
 
 }  // namespace blender::memory_counter

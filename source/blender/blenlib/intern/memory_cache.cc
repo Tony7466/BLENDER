@@ -13,7 +13,7 @@
 #include "BLI_memory_cache.hh"
 #include "BLI_memory_counter.hh"
 
-namespace blender::memory_cache2 {
+namespace blender::memory_cache {
 
 struct StoredValue {
   std::unique_ptr<const GenericKey> key;
@@ -38,11 +38,11 @@ using ConcurrentMap =
 
 struct Cache {
   std::atomic<int64_t> logical_time = 0;
+  std::atomic<int64_t> size_in_bytes = 0;
   ConcurrentMap map;
 
   std::mutex global_mutex;
-  memory_counter::MemoryBySharedData memory_by_shared_data;
-  std::atomic<int64_t> cache_size = 0;
+  MemoryCount memory;
   Vector<const GenericKey *> keys;
 };
 
@@ -70,11 +70,10 @@ std::shared_ptr<CachedValue> get(const GenericKey &key,
 
       {
         std::lock_guard lock{cache.global_mutex};
-        memory_counter::MemoryCounter memory_counter{cache.memory_by_shared_data, nullptr};
+        memory_counter::MemoryCounter memory_counter{cache.memory};
         accessor->second.value->count_memory(memory_counter);
-        cache.cache_size += memory_counter.newly_added_bytes();
-        cache.memory_by_shared_data.map.remove(nullptr);
         cache.keys.append(&accessor->first.get());
+        cache.size_in_bytes = cache.memory.total_bytes;
       }
     }
 
@@ -89,7 +88,7 @@ std::shared_ptr<CachedValue> get(const GenericKey &key,
 void free_to_fit(const int64_t capacity)
 {
   Cache &cache = get_cache();
-  if (cache.cache_size < capacity) {
+  if (cache.size_in_bytes < capacity) {
     return;
   }
   std::lock_guard lock{cache.global_mutex};
@@ -104,23 +103,19 @@ void free_to_fit(const int64_t capacity)
   std::sort(keys_with_time.begin(), keys_with_time.end());
   std::reverse(keys_with_time.begin(), keys_with_time.end());
 
-  memory_counter::MemoryBySharedData local_memory_by_shared_data;
-  MemoryCounter memory{local_memory_by_shared_data, nullptr};
+  /* Count used memory starting at the most recently cached element. Stop at the element when the
+   * amount became larger than the capacity. */
+  cache.memory.reset();
+  MemoryCounter memory_counter{cache.memory};
   std::optional<int> first_bad_index;
-  int64_t last_valid_size = 0;
-
-  Vector<const GenericKey *> new_keys;
   for (const int i : keys_with_time.index_range()) {
     const GenericKey &key = *keys_with_time[i].second;
     ConcurrentMap::const_accessor accessor;
     if (!cache.map.find(accessor, key)) {
       continue;
     }
-    accessor->second.value->count_memory(memory);
-    const int64_t size_up_to_now = memory.newly_added_bytes();
-    if (size_up_to_now <= capacity) {
-      last_valid_size = size_up_to_now;
-      new_keys.append(&key);
+    accessor->second.value->count_memory(memory_counter);
+    if (cache.memory.total_bytes <= capacity) {
       continue;
     }
     first_bad_index = i;
@@ -129,25 +124,43 @@ void free_to_fit(const int64_t capacity)
   if (!first_bad_index) {
     return;
   }
+
+  /* Avoid recounting memory if the last item is not way too large and the overshoot is still ok.
+   * The alternative would be to subtract the last item from the counted memory again, but that is
+   * not implemented yet. */
+  bool need_memory_recount = false;
+  if (cache.memory.total_bytes < capacity * 1.25) {
+    *first_bad_index += 1;
+    if (*first_bad_index == keys_with_time.size()) {
+      return;
+    }
+  }
+  else {
+    need_memory_recount = true;
+  }
+
+  /* Remove elements that don't fit anymore. */
   for (const int i : keys_with_time.index_range().drop_front(*first_bad_index)) {
     const GenericKey &key = *keys_with_time[i].second;
     cache.map.erase(key);
   }
-  cache.cache_size = last_valid_size;
-  cache.keys = std::move(new_keys);
+  cache.keys.clear();
+  for (const int i : keys_with_time.index_range().take_front(*first_bad_index)) {
+    cache.keys.append(keys_with_time[i].second);
+  }
 
-  {
-    cache.memory_by_shared_data.map.clear();
-    MemoryCounter memory{cache.memory_by_shared_data, nullptr};
+  if (need_memory_recount) {
+    cache.memory.reset();
+    MemoryCounter memory_counter{cache.memory};
     for (const int i : keys_with_time.index_range().take_front(*first_bad_index)) {
       const GenericKey &key = *keys_with_time[i].second;
       ConcurrentMap::const_accessor accessor;
       if (!cache.map.find(accessor, key)) {
         continue;
       }
-      accessor->second.value->count_memory(memory);
+      accessor->second.value->count_memory(memory_counter);
     }
   }
 }
 
-}  // namespace blender::memory_cache2
+}  // namespace blender::memory_cache

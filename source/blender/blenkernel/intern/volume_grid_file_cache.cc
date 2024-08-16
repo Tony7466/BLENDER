@@ -170,7 +170,7 @@ class TreeSharingInfo : public ImplicitSharingInfo {
   }
 };
 
-class GridReadValue : public memory_cache2::CachedValue {
+class GridReadValue : public memory_cache::CachedValue {
  public:
   ImplicitSharingPtr<ImplicitSharingInfo> tree_sharing_info;
   openvdb::GridBase::Ptr grid;
@@ -209,7 +209,7 @@ static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_pat
   key.file_path = file_path;
   key.grid_name = grid_name;
 
-  std::shared_ptr<const GridReadValue> value = memory_cache2::get_typed<GridReadValue>(
+  std::shared_ptr<const GridReadValue> value = memory_cache::get_typed<GridReadValue>(
       std::move(key), [&key]() {
         openvdb::GridBase::Ptr grid = load_single_grid_from_disk(key.file_path, key.grid_name);
         auto value = std::make_unique<GridReadValue>();

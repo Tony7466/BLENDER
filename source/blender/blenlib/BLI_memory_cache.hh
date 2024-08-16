@@ -8,7 +8,7 @@
 #include "BLI_generic_key.hh"
 #include "BLI_memory_counter_fwd.hh"
 
-namespace blender::memory_cache2 {
+namespace blender::memory_cache {
 
 class CachedValue {
  public:
@@ -29,4 +29,4 @@ inline std::shared_ptr<const T> get_typed(const GenericKey &key,
 
 void free_to_fit(int64_t capacity);
 
-}  // namespace blender::memory_cache2
+}  // namespace blender::memory_cache
