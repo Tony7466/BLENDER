@@ -52,35 +52,29 @@ class Wireframe {
       pass.state_set(DRW_STATE_FIRST_VERTEX_CONVENTION | DRW_STATE_WRITE_COLOR |
                      DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state);
 
-      auto shader_pass = [&](GPUShader *shader, const char *name) {
-        auto &sub = pass.sub(name);
-        sub.shader_set(shader);
-        sub.bind_ubo("globalsBlock", &res.globals_buf);
-        sub.bind_texture("depthTex", depth_tex);
-        sub.push_constant("wireOpacity", state.overlay.wireframe_opacity);
-        sub.push_constant("isTransform", is_transform);
-        sub.push_constant("colorType", state.v3d->shading.wire_color_type);
-        sub.push_constant("useColoring", false);
-        sub.push_constant("isHair", false);
-        return &sub;
+      auto shader_pass =
+          [&](GPUShader *shader, const char *name, bool use_coloring, float wire_threshold) {
+            auto &sub = pass.sub(name);
+            sub.shader_set(shader);
+            sub.bind_ubo("globalsBlock", &res.globals_buf);
+            sub.bind_texture("depthTex", depth_tex);
+            sub.push_constant("wireOpacity", state.overlay.wireframe_opacity);
+            sub.push_constant("isTransform", is_transform);
+            sub.push_constant("colorType", state.v3d->shading.wire_color_type);
+            sub.push_constant("useColoring", use_coloring);
+            sub.push_constant("wireStepParam", wire_threshold);
+            sub.push_constant("isHair", false);
+            return &sub;
+          };
+
+      auto coloring_pass = [&](ColoringPass &ps, bool use_color) {
+        overlay::ShaderModule &sh = res.shaders;
+        ps.mesh_ps_ = shader_pass(sh.wireframe_mesh.get(), "Mesh", use_color, wire_threshold);
+        ps.mesh_all_edges_ps_ = shader_pass(sh.wireframe_mesh.get(), "Wire", use_color, 1.0f);
       };
 
-      {
-        non_colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Mesh");
-        non_colored.mesh_ps_->push_constant("useColoring", false);
-        non_colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
-        colored.mesh_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "MeshColored");
-        colored.mesh_ps_->push_constant("useColoring", true);
-        colored.mesh_ps_->push_constant("wireStepParam", wire_threshold);
-      }
-      {
-        non_colored.mesh_all_edges_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "Wires");
-        non_colored.mesh_all_edges_ps_->push_constant("useColoring", false);
-        non_colored.mesh_all_edges_ps_->push_constant("wireStepParam", 1.0f);
-        colored.mesh_all_edges_ps_ = shader_pass(res.shaders.wireframe_mesh.get(), "WiresColored");
-        colored.mesh_all_edges_ps_->push_constant("useColoring", true);
-        colored.mesh_all_edges_ps_->push_constant("wireStepParam", 1.0f);
-      }
+      coloring_pass(non_colored, false);
+      coloring_pass(colored, false);
     }
   }
 
