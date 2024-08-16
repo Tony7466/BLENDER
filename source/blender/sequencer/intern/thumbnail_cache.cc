@@ -43,6 +43,7 @@ static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 struct ThumbnailCache {
   struct FrameEntry {
     int frame_index = 0;
+    int stream_index = 0;
     ImBuf *thumb = nullptr;
     double used_at = 0;
   };
@@ -55,6 +56,7 @@ struct ThumbnailCache {
   struct Request {
     explicit Request(const std::string &path,
                      int frame,
+                     int stream,
                      SequenceType type,
                      double time,
                      float time_frame,
@@ -63,6 +65,7 @@ struct ThumbnailCache {
                      int height)
         : file_path(path),
           frame_index(frame),
+          stream_index(stream),
           seq_type(type),
           requested_at(time),
           timeline_frame(time_frame),
@@ -73,6 +76,7 @@ struct ThumbnailCache {
     }
     std::string file_path;
     int frame_index = 0;
+    int stream_index = 0;
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
     double requested_at = 0;
@@ -83,11 +87,12 @@ struct ThumbnailCache {
 
     uint64_t hash() const
     {
-      return get_default_hash(file_path, frame_index, seq_type);
+      return get_default_hash(file_path, frame_index, stream_index, seq_type);
     }
     bool operator==(const Request &o) const
     {
-      return frame_index == o.frame_index && seq_type == o.seq_type && file_path == o.file_path;
+      return frame_index == o.frame_index && stream_index == o.stream_index &&
+             seq_type == o.seq_type && file_path == o.file_path;
     }
   };
 
@@ -292,12 +297,15 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
       break;
     }
 
-    /* Sort requests by file and increasing frame number. */
+    /* Sort requests by file, stream and increasing frame number. */
     std::sort(requests.begin(),
               requests.end(),
               [](const ThumbnailCache::Request &a, const ThumbnailCache::Request &b) {
                 if (a.file_path != b.file_path) {
                   return a.file_path < b.file_path;
+                }
+                if (a.stream_index != b.stream_index) {
+                  return a.stream_index < b.stream_index;
                 }
                 return a.frame_index < b.frame_index;
               });
@@ -310,6 +318,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
     threading::parallel_for(requests.index_range(), grain_size, [&](IndexRange range) {
       ImBufAnim *cur_anim = nullptr;
       std::string cur_anim_path;
+      int cur_stream = 0;
       for (const int i : range) {
         const ThumbnailCache::Request &request = requests[i];
         if (worker_status->stop) {
@@ -325,26 +334,25 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         else if (request.seq_type == SEQ_TYPE_MOVIE) {
           ++total_movies;
 
-          /* Are we swiching to a different movie file? */
-          if (request.file_path != cur_anim_path) {
+          /* Are we swiching to a different movie file / stream? */
+          if (request.file_path != cur_anim_path || request.stream_index != cur_stream) {
             if (cur_anim != nullptr) {
               IMB_free_anim(cur_anim);
               cur_anim = nullptr;
             }
 
             cur_anim_path = request.file_path;
+            cur_stream = request.stream_index;
             int flag = IB_rect;
             // if (seq->flag & SEQ_FILTERY) {
             //   flag |= IB_animdeinterlace; //@TODO
             // }
-            int stream_index = 0;  //@TODO: seq->streamindex
-            cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, stream_index, nullptr);
+            cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, cur_stream, nullptr);
           }
 
           /* Decode the movie frame. */
           if (cur_anim != nullptr) {
-            int frame_index = request.frame_index;
-            thumb = IMB_anim_absolute(cur_anim, frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
+            thumb = IMB_anim_absolute(cur_anim, request.frame_index, IMB_TC_NONE, IMB_PROXY_NONE);
             if (thumb != nullptr) {
               seq_imbuf_assign_spaces(job->scene_, thumb);
             }
@@ -360,7 +368,8 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         ThumbnailCache::FileEntry *val = job->cache_->map_.lookup_ptr(request.file_path);
         if (val != nullptr) {
           val->used_at = math::max(val->used_at, request.requested_at);
-          val->frames.append({request.frame_index, thumb, request.requested_at});
+          val->frames.append(
+              {request.frame_index, request.stream_index, thumb, request.requested_at});
         }
         else {
           IMB_freeImBuf(thumb);
@@ -420,7 +429,8 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
   int64_t best_index = -1;
   int best_score = INT_MAX;
   for (int64_t index = 0; index < val->frames.size(); index++) {
-    int score = math::abs(frame_index - val->frames[index].frame_index);
+    int score = math::abs(frame_index - val->frames[index].frame_index) +
+                math::abs(seq->streamindex - val->frames[index].stream_index) * 1024;
     if (score < best_score) {
       best_score = score;
       best_index = index;
@@ -437,6 +447,7 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     int img_height = se->orig_height;
     ThumbnailCache::Request request(key,
                                     frame_index,
+                                    seq->streamindex,
                                     SequenceType(seq->type),
                                     cur_time,
                                     timeline_frame,
