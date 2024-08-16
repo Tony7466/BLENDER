@@ -201,9 +201,8 @@ static void image_size_to_thumb_size(int &r_width, int &r_height)
 
 static ImBuf *make_thumb_for_image(Scene *scene, const ThumbnailCache::Request &request)
 {
-  //@TODO: IMB_thumb_load_image skips files larger than 100MB if they don't have a dedicated
-  // thumbnail code path. Need to add flags to stop checking that.
-  ImBuf *ibuf = IMB_thumb_load_image(request.file_path.c_str(), THUMB_SIZE, nullptr);
+  ImBuf *ibuf = IMB_thumb_load_image(
+      request.file_path.c_str(), THUMB_SIZE, nullptr, IMBThumbLoadFlags::LoadLargeFiles);
   if (ibuf == nullptr) {
     return nullptr;
   }
