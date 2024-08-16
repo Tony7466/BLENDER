@@ -259,7 +259,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
     rtc_options.append(" -x hip");
     rtc_options.append(" -D HIPRT_BITCODE_LINKING ");
 
-    string source_path = path_join(hiprt_include_path, "//hiprt//impl//hiprt_kernels_bitcode.h");
+    string source_path = path_join(hiprt_include_path, "/hiprt/impl/hiprt_kernels_bitcode.h");
 
     string command = string_printf("%s %s -I %s %s -o \"%s\"",
                                    hipcc,
