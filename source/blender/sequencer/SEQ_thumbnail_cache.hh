@@ -20,10 +20,9 @@ struct Scene;
 
 namespace blender::seq {
 
-ImBuf *thumbnail_cache_get(const bContext *C,
-                           Scene *scene,
-                           const Sequence *seq,
-                           float timeline_frame);
+ImBuf *thumbnail_cache_get(
+    const bContext *C, Scene *scene, const Sequence *seq, float timeline_frame, double cur_time);
+void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time);
 void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq);
 void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect);
 void thumbnail_cache_clear(Scene *scene);

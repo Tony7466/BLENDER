@@ -10,6 +10,7 @@
 #include "BLI_ghash.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_time.h"
 
 #include "BKE_context.hh"
 #include "BKE_global.hh"
@@ -535,7 +536,9 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   Editing *ed = SEQ_editing_get(scene);
   ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
 
-  const bool new_thumbs = (sseq->timeline_overlay.flag & SEQ_TIMELINE_NEW_THUMBS) != 0; //@TODO: remove flag after finished
+  const bool new_thumbs = (sseq->timeline_overlay.flag & SEQ_TIMELINE_NEW_THUMBS) !=
+                          0;  //@TODO: remove flag after finished
+  const double cur_time = BLI_time_now_seconds();
 
   float thumb_width, image_width, image_height;
   const float thumb_height = y2 - y1;
@@ -602,7 +605,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     /* Get the image. */
     ImBuf *ibuf = nullptr;
     if (new_thumbs) {
-      ibuf = seq::thumbnail_cache_get(C, context.scene, seq, timeline_frame);
+      ibuf = seq::thumbnail_cache_get(C, context.scene, seq, timeline_frame, cur_time);
       if (ibuf && clipped) {
         ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);
         if (crop.xmin < 0 || crop.ymin < 0) {

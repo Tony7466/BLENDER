@@ -14,6 +14,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_string_utils.hh"
 #include "BLI_threads.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_scene_types.h"
@@ -1597,6 +1598,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx, StripsDrawBatch &
     rect.ymin -= 2;
     rect.ymax += 2;
     seq::thumbnail_cache_discard_requests_outside(timeline_ctx->scene, rect);
+    seq::thumbnail_cache_maintain_capacity(timeline_ctx->scene, BLI_time_now_seconds());
   }
 
   Vector<StripDrawContext> bottom_layer, top_layer;

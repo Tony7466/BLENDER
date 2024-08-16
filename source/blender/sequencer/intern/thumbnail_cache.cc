@@ -40,20 +40,23 @@ constexpr int THUMB_SIZE = 256;  //@TODO: use SEQ_RENDER_THUMB_SIZE and/or remov
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
-//@TODO: cache cleanup when full
 struct ThumbnailCache {
   struct FrameEntry {
     int frame_index = 0;
     ImBuf *thumb = nullptr;
+    double used_at = 0;
   };
-
-  typedef Vector<FrameEntry> Value;
+  struct FileEntry {
+    Vector<FrameEntry> frames;
+    double used_at = 0;
+  };
 
   //@TODO: add timestamp, when processing order by timestamps (starting from most recent)
   struct Request {
     explicit Request(const std::string &path,
                      int frame,
                      SequenceType type,
+                     double time,
                      float time_frame,
                      int ch,
                      int width,
@@ -61,6 +64,7 @@ struct ThumbnailCache {
         : file_path(path),
           frame_index(frame),
           seq_type(type),
+          requested_at(time),
           timeline_frame(time_frame),
           channel(ch),
           full_width(width),
@@ -71,6 +75,7 @@ struct ThumbnailCache {
     int frame_index = 0;
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
+    double requested_at = 0;
     float timeline_frame = 0;
     int channel = 0;
     int full_width = 0;
@@ -87,7 +92,7 @@ struct ThumbnailCache {
   };
 
   //@TODO: do we need something for multi-view/stereo?
-  Map<std::string, Value> map_;
+  Map<std::string, FileEntry> map_;
 
   Set<Request> requests_;
 
@@ -99,12 +104,24 @@ struct ThumbnailCache {
   void clear()
   {
     for (const auto &kvp : map_.items()) {
-      for (const auto &thumb : kvp.value) {
+      for (const auto &thumb : kvp.value.frames) {
         IMB_freeImBuf(thumb.thumb);
       }
     }
     map_.clear_and_shrink();
     requests_.clear_and_shrink();
+  }
+
+  void remove_entry(const std::string &path)
+  {
+    FileEntry *entry = map_.lookup_ptr(path);
+    if (entry == nullptr) {
+      return;
+    }
+    for (const auto &thumb : entry->frames) {
+      IMB_freeImBuf(thumb.thumb);
+    }
+    map_.remove_contained(path);
   }
 };
 
@@ -340,9 +357,10 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
 
         /* Add result into the cache (under cache mutex lock). */
         BLI_mutex_lock(&thumb_cache_lock);
-        ThumbnailCache::Value *val = job->cache_->map_.lookup_ptr(request.file_path);
+        ThumbnailCache::FileEntry *val = job->cache_->map_.lookup_ptr(request.file_path);
         if (val != nullptr) {
-          val->append({request.frame_index, thumb});
+          val->used_at = math::max(val->used_at, request.requested_at);
+          val->frames.append({request.frame_index, thumb, request.requested_at});
         }
         else {
           IMB_freeImBuf(thumb);
@@ -379,15 +397,17 @@ void ThumbGenerationJob::end_fn(void *customdata)
 static ImBuf *query_thumbnail(ThumbnailCache &cache,
                               const std::string &key,
                               int frame_index,
+                              double cur_time,
                               float timeline_frame,
                               const bContext *C,
                               const Sequence *seq)
 {
-  ThumbnailCache::Value *val = cache.map_.lookup_ptr(key);
+  ThumbnailCache::FileEntry *val = cache.map_.lookup_ptr(key);
 
   if (val == nullptr) {
     /* Nothing in cache for this path yet. */
-    ThumbnailCache::Value value;
+    ThumbnailCache::FileEntry value;
+    value.used_at = cur_time;
     cache.map_.add_new(key, value);
     val = cache.map_.lookup_ptr(key);
   }
@@ -399,8 +419,8 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
   /* Search thumbnail entries of this file for closest match to the frame we want. */
   int64_t best_index = -1;
   int best_score = INT_MAX;
-  for (int64_t index = 0; index < val->size(); index++) {
-    int score = math::abs(frame_index - (*val)[index].frame_index);
+  for (int64_t index = 0; index < val->frames.size(); index++) {
+    int score = math::abs(frame_index - val->frames[index].frame_index);
     if (score < best_score) {
       best_score = score;
       best_index = index;
@@ -418,6 +438,7 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     ThumbnailCache::Request request(key,
                                     frame_index,
                                     SequenceType(seq->type),
+                                    cur_time,
                                     timeline_frame,
                                     seq->machine,
                                     img_width,
@@ -426,14 +447,18 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     ThumbGenerationJob::ensure_job(C, &cache);
   }
 
+  if (best_index < 0) {
+    return nullptr;
+  }
+
   /* Return the closest thumbnail fit we have so far. */
-  return best_index >= 0 ? (*val)[best_index].thumb : nullptr;
+  val->used_at = math::max(val->used_at, cur_time);
+  val->frames[best_index].used_at = math::max(val->frames[best_index].used_at, cur_time);
+  return val->frames[best_index].thumb;
 }
 
-ImBuf *thumbnail_cache_get(const bContext *C,
-                           Scene *scene,
-                           const Sequence *seq,
-                           float timeline_frame)
+ImBuf *thumbnail_cache_get(
+    const bContext *C, Scene *scene, const Sequence *seq, float timeline_frame, double cur_time)
 {
   if (!can_have_thumbnail(scene, seq)) {
     return nullptr;
@@ -449,7 +474,7 @@ ImBuf *thumbnail_cache_get(const bContext *C,
 
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = ensure_thumbnail_cache(scene);
-  ImBuf *res = query_thumbnail(*cache, key, frame_index, timeline_frame, C, seq);
+  ImBuf *res = query_thumbnail(*cache, key, frame_index, cur_time, timeline_frame, C, seq);
   BLI_mutex_unlock(&thumb_cache_lock);
 
   if (res) {
@@ -464,6 +489,45 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
     return;
   }
   //@TODO implement, and call this when reloading strips
+}
+
+void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
+{
+  BLI_mutex_lock(&thumb_cache_lock);
+  ThumbnailCache *cache = query_thumbnail_cache(scene);
+  if (cache != nullptr) {
+    constexpr int MAX_THUMBNAILS =
+        5000;  //@TODO THUMB_CACHE_LIMIT reuse or remove that one (or configurable?)
+    int64_t entries = 0;
+    std::string oldest_file;
+    double oldest_time = cur_time - 1.0;
+    int64_t oldest_entries = 0;
+    for (const auto &kvp : cache->map_.items()) {
+      entries += kvp.value.frames.size();
+      if (kvp.value.used_at < oldest_time) {
+        oldest_file = kvp.key;
+        oldest_time = kvp.value.used_at;
+        oldest_entries = kvp.value.frames.size();
+      }
+    }
+
+    if (entries > MAX_THUMBNAILS && !oldest_file.empty()) {
+      cache->remove_entry(oldest_file);
+      entries -= oldest_entries;
+    }
+
+    if (entries > MAX_THUMBNAILS) {
+      for (const auto &kvp : cache->map_.items()) {
+        for (int64_t i = 0; i < kvp.value.frames.size(); i++) {
+          if (kvp.value.frames[i].used_at < cur_time - 10.0) {
+            IMB_freeImBuf(kvp.value.frames[i].thumb);
+            kvp.value.frames.remove_and_reorder(i);
+          }
+        }
+      }
+    }
+  }
+  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect)
@@ -509,8 +573,8 @@ std::string thumbnail_cache_get_stats(Scene *scene)
   if (cache != nullptr) {
     int64_t entries = 0, bytes = 0;
     for (const auto &kvp : cache->map_.items()) {
-      entries += kvp.value.size();
-      for (const auto &thumb : kvp.value) {
+      entries += kvp.value.frames.size();
+      for (const auto &thumb : kvp.value.frames) {
         if (thumb.thumb) {
           bytes += thumb.thumb->x * thumb.thumb->y * 4;
         }
