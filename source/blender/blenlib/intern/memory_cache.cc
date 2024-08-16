@@ -67,7 +67,21 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
 
     if (newly_inserted) {
       accessor->second.key = key.to_storable();
-      threading::isolate_task([&]() { accessor->second.value = compute_fn(); });
+      std::exception_ptr exception;
+      threading::isolate_task([&]() {
+        try {
+          accessor->second.value = compute_fn();
+        }
+        catch (...) {
+          exception = std::current_exception();
+        }
+      });
+      if (exception) {
+        /* There was an error while computing the value. */
+        cache.map.erase(accessor);
+        std::rethrow_exception(exception);
+      }
+
       /* Modifying the key should be fine because the new key is equal to the original key. */
       const_cast<std::reference_wrapper<const GenericKey> &>(accessor->first) = std::ref(
           *accessor->second.key);

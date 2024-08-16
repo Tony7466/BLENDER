@@ -223,9 +223,14 @@ static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_pat
         value->tree_sharing_info = OpenvdbTreeSharingInfo::make(value->grid->baseTreePtr());
         return value;
       });
+  if (!value) {
+    return {};
+  }
 
-  openvdb::GridBase &grid = *value->grid;
-  return {grid.copyGrid(), value->tree_sharing_info};
+  /* Copy the grid so that it has a single owner. Note that the tree is still shared. */
+  openvdb::GridBase::Ptr grid = value->grid->copyGrid();
+  grid->setTransform(grid->transform().copy());
+  return {grid, value->tree_sharing_info};
 }
 
 /**
