@@ -103,6 +103,8 @@ void main()
   vec3 V = (is_persp) ? normalize(drw_view.viewinv[3].xyz - wpos) : drw_view.viewinv[2].xyz;
 
   float facing = dot(wnor, V);
+#else
+  gl_PointSize = sizeVertex * 2.0;
 #endif
 
   gl_Position = point_world_to_ndc(wpos);

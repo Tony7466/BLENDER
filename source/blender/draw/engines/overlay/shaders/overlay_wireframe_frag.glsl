@@ -27,7 +27,7 @@ void main()
   /* Non linear blend. */
   vec4 col1 = sqrt(finalColorInner);
   vec4 col2 = sqrt(finalColor);
-  fragColor = mix(col1, col2, 0.45 + fac * 0.65);
+  fragColor = mix(col2, col1, 0.45 + fac * 0.65);
   fragColor *= fragColor;
 
 #elif !defined(SELECT_EDGES)
