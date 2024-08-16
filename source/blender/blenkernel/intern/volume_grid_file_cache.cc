@@ -185,31 +185,40 @@ class GridReadValue : public disk_read_cache::ReadValue {
  * Load a single grid by name from a file. This loads the full grid including meta-data, transforms
  * and the tree.
  */
-static LazyLoadedGrid load_single_grid_from_disk(const StringRef file_path,
-                                                 const StringRef grid_name)
+static openvdb::GridBase::Ptr load_single_grid_from_disk(const StringRef file_path,
+                                                         const StringRef grid_name)
+{
+  /* Disable delay loading and file copying, this has poor performance
+   * on network drivers. */
+  const bool delay_load = false;
+
+  openvdb::io::File file(file_path);
+  file.setCopyMaxBytes(0);
+  file.open(delay_load);
+  return file.readGrid(grid_name);
+}
+
+/**
+ * Load a single grid by name from a file. This loads the full grid including meta-data, transforms
+ * and the tree.
+ */
+static LazyLoadedGrid load_single_grid_from_disk_cached(const StringRef file_path,
+                                                        const StringRef grid_name)
 {
   GridReadKey key;
   key.file_path = file_path;
   key.grid_name = grid_name;
 
-  std::shared_ptr<const GridReadValue> value = std::static_pointer_cast<const GridReadValue>(
-      disk_read_cache::read(std::move(key),
-                            [&key]() -> std::unique_ptr<disk_read_cache::ReadValue> {
-                              /* Disable delay loading and file copying, this has poor performance
-                               * on network drivers. */
-                              const bool delay_load = false;
+  std::shared_ptr<const GridReadValue> value = disk_read_cache::read<GridReadValue>(
+      std::move(key), [&key]() {
+        openvdb::GridBase::Ptr grid = load_single_grid_from_disk(key.file_path, key.grid_name);
+        auto value = std::make_unique<GridReadValue>();
+        value->grid = std::move(grid);
+        value->tree_sharing_info = ImplicitSharingPtr{
+            MEM_new<TreeSharingInfo>(__func__, value->grid->baseTreePtr())};
+        return value;
+      });
 
-                              openvdb::io::File file(key.file_path);
-                              file.setCopyMaxBytes(0);
-                              file.open(delay_load);
-                              openvdb::GridBase::Ptr grid = file.readGrid(key.grid_name);
-
-                              auto value = std::make_unique<GridReadValue>();
-                              value->grid = std::move(grid);
-                              value->tree_sharing_info = ImplicitSharingPtr{
-                                  MEM_new<TreeSharingInfo>(__func__, value->grid->baseTreePtr())};
-                              return value;
-                            }));
   value->tree_sharing_info->add_user();
   openvdb::GridBase &grid = *value->grid;
   return {grid.copyGrid(), value->tree_sharing_info.get()};
@@ -231,7 +240,7 @@ static GVolumeGrid get_cached_grid(const StringRef file_path,
                        grid_name = std::string(grid_cache.meta_data_grid->getName()),
                        simplify_level]() -> LazyLoadedGrid {
     if (simplify_level == 0) {
-      return load_single_grid_from_disk(file_path, grid_name);
+      return load_single_grid_from_disk_cached(file_path, grid_name);
     }
     /* Build the simplified grid from the main grid. */
     const GVolumeGrid main_grid = get_grid_from_file(file_path, grid_name, 0);

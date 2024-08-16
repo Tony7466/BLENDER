@@ -21,8 +21,8 @@ static Cache &get_cache()
   return cache;
 }
 
-std::shared_ptr<const ReadValue> read(const GenericKey &key,
-                                      const FunctionRef<std::unique_ptr<ReadValue>()> read_fn)
+std::shared_ptr<const ReadValue> read_base(const GenericKey &key,
+                                           const FunctionRef<std::unique_ptr<ReadValue>()> read_fn)
 {
   Cache &cache = get_cache();
   std::shared_ptr<const ReadValue> result;

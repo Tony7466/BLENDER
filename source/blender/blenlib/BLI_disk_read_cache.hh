@@ -23,6 +23,14 @@ class ReadValue {
   virtual void count_memory(MemoryCounter &memory) const = 0;
 };
 
-std::shared_ptr< const ReadValue> read(const GenericKey &key, FunctionRef<std::unique_ptr<ReadValue>()> read_fn);
+std::shared_ptr<const ReadValue> read_base(const GenericKey &key,
+                                           FunctionRef<std::unique_ptr<ReadValue>()> read_fn);
+
+template<typename T>
+inline std::shared_ptr<const T> read(const GenericKey &key,
+                                     FunctionRef<std::unique_ptr<T>()> read_fn)
+{
+  return std::static_pointer_cast<const T>(read_base(key, read_fn));
+}
 
 }  // namespace blender::disk_read_cache
