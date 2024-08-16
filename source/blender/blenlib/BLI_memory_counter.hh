@@ -9,11 +9,21 @@
  */
 
 #include "BLI_function_ref.hh"
-#include "BLI_implicit_sharing.hh"
+#include "BLI_implicit_sharing_ptr.hh"
+#include "BLI_map.hh"
 #include "BLI_memory_counter_fwd.hh"
 #include "BLI_set.hh"
 
-namespace blender {
+namespace blender::memory_counter {
+
+struct OwnedMemory {
+  int64_t uniquely_owned_bytes = 0;
+  Set<WeakImplicitSharingPtr> used_shared_data;
+};
+
+struct MemoryBySharedData {
+  Map<WeakImplicitSharingPtr, OwnedMemory> map;
+};
 
 /**
  * #MemoryCounter helps counting the amount of memory used in cases where data is shared and should
@@ -22,19 +32,18 @@ namespace blender {
  */
 class MemoryCounter : NonCopyable, NonMovable {
  private:
-  int64_t owned_bytes_ = 0;
-  Set<const ImplicitSharingInfo *> counted_shared_data_;
+  OwnedMemory &top_level_;
+  MemoryBySharedData &memory_by_shared_data_;
 
  public:
-  MemoryCounter() = default;
-  ~MemoryCounter();
+  MemoryCounter(OwnedMemory &top_level, MemoryBySharedData &memory_by_shared_data);
 
   /**
    * Add bytes that are uniquely owned, i.e. not shared.
    */
   void add(const int64_t bytes)
   {
-    owned_bytes_ += bytes;
+    top_level_.uniquely_owned_bytes += bytes;
   }
 
   /**
@@ -62,10 +71,10 @@ class MemoryCounter : NonCopyable, NonMovable {
    * memory is counted, so this is generally a lower bound. The actual memory usage should not be
    * significantly higher though.
    */
-  int64_t counted_bytes() const
-  {
-    return owned_bytes_;
-  }
+  int64_t counted_bytes() const;
 };
 
-}  // namespace blender
+int64_t compute_total_bytes(const OwnedMemory &memory,
+                            const MemoryBySharedData &memory_by_shared_data);
+
+}  // namespace blender::memory_counter

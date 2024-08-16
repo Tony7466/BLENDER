@@ -8,8 +8,12 @@
  * \ingroup bli
  */
 
-namespace blender {
+namespace blender::memory_counter {
 
 class MemoryCounter;
 
+}
+
+namespace blender {
+using memory_counter::MemoryCounter;
 }

@@ -13,7 +13,10 @@ namespace blender::tests {
 
 TEST(memory_counter, Simple)
 {
-  MemoryCounter memory;
+  memory_counter::OwnedMemory owned_memory;
+  memory_counter::MemoryBySharedData memory_by_shared_data;
+
+  MemoryCounter memory{owned_memory, memory_by_shared_data};
   EXPECT_EQ(memory.counted_bytes(), 0);
   memory.add(10);
   EXPECT_EQ(memory.counted_bytes(), 10);
