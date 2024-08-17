@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "draw_common.hh"
-
 #include "DNA_volume_types.h"
+
+#include "draw_common.hh"
 
 namespace blender::draw::overlay {
 
@@ -112,6 +112,7 @@ class Wireframe {
         /* TODO(fclem): Not yet implemented. */
         break;
       case OB_GREASE_PENCIL:
+        /* TODO(fclem): Not yet implemented. */
         break;
       case OB_MESH:
         geom = DRW_cache_mesh_face_wireframe_get(ob_ref.object);
