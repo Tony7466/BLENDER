@@ -272,9 +272,7 @@ void BKE_preferences_extension_repo_module_set(UserDef *userdef,
                  offsetof(bUserExtensionRepo, module),
                  sizeof(repo->module));
 
-  if (BLI_exists(old_module_dir) && !BLI_exists(new_module_dir)) {
-    BLI_rename(old_module_dir, new_module_dir);
-  }
+  BLI_rename(old_module_dir, new_module_dir);
 }
 
 bool BKE_preferences_extension_repo_module_is_valid(const bUserExtensionRepo *repo)
