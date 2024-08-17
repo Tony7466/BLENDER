@@ -118,6 +118,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool in_paint_mode = object_is_paint_mode(ob_ref.object);
   const bool in_sculpt_mode = object_is_sculpt_mode(ob_ref);
+  const bool in_edit_paint_mode = object_is_edit_paint_mode(
+      ob_ref, in_edit_mode, in_paint_mode, in_sculpt_mode);
   const bool needs_prepass = !state.xray_enabled; /* TODO */
 
   OverlayLayer &layer = (state.use_in_front && ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront :
@@ -195,22 +197,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
-    layer.wireframe.object_sync(manager, ob_ref, resources);
+    layer.wireframe.object_sync(manager, ob_ref, resources, !in_edit_paint_mode);
 
-    if (object_is_selected(ob_ref)) {
-      if (in_edit_mode || in_paint_mode || in_sculpt_mode) {
-        /* Disable outlines for objects in sculpt, paint or edit mode. */
-      }
-      else if ((ob_ref.object->base_flag & BASE_FROM_DUPLI) &&
-               (object_is_edit_mode(ob_ref.dupli_parent) ||
-                object_is_sculpt_mode(ob_ref.dupli_parent) ||
-                object_is_paint_mode(ob_ref.dupli_parent)))
-      {
-        /* Disable outlines for objects instanced by an object in sculpt, paint or edit mode. */
-      }
-      else {
-        outline.object_sync(manager, ob_ref, state);
-      }
+    if (object_is_selected(ob_ref) && !in_edit_paint_mode) {
+      outline.object_sync(manager, ob_ref, state);
     }
   }
 }
@@ -401,6 +391,21 @@ bool Instance::object_is_sculpt_mode(const Object *object)
     return object == state.active_base->object;
   }
   return false;
+}
+
+bool Instance::object_is_edit_paint_mode(const ObjectRef &ob_ref,
+                                         bool in_edit_mode,
+                                         bool in_paint_mode,
+                                         bool in_sculpt_mode)
+{
+  bool in_edit_paint_mode = in_edit_mode || in_paint_mode || in_sculpt_mode;
+  if (ob_ref.object->base_flag & BASE_FROM_DUPLI) {
+    /* Disable outlines for objects instanced by an object in sculpt, paint or edit mode. */
+    in_edit_paint_mode |= object_is_edit_mode(ob_ref.dupli_parent) ||
+                          object_is_sculpt_mode(ob_ref.dupli_parent) ||
+                          object_is_paint_mode(ob_ref.dupli_parent);
+  }
+  return in_edit_paint_mode;
 }
 
 bool Instance::object_is_edit_mode(const Object *object)

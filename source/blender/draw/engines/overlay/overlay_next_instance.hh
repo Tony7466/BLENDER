@@ -98,6 +98,11 @@ class Instance {
   bool object_is_sculpt_mode(const ObjectRef &ob_ref);
   /* Checks only for sculpt mode. */
   bool object_is_sculpt_mode(const Object *object);
+  /* Any mode that requires to view the object without distraction. */
+  bool object_is_edit_paint_mode(const ObjectRef &ob_ref,
+                                 bool in_edit_mode,
+                                 bool in_paint_mode,
+                                 bool in_sculpt_mode);
 };
 
 }  // namespace blender::draw::overlay

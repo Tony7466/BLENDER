@@ -80,15 +80,16 @@ class Wireframe {
     }
   }
 
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res)
+  void object_sync(Manager &manager,
+                   const ObjectRef &ob_ref,
+                   Resources &res,
+                   const bool use_coloring)
   {
     if (!enabled) {
       return;
     }
 
     const bool all_edges = (ob_ref.object->dtx & OB_DRAW_ALL_EDGES) != 0;
-    const bool use_coloring =
-        true;  // !is_edit_mode && !instance_parent_in_edit_mode && !is_sculpt_mode;
 
     /* TODO(fclem): Non-mandatory handle creation and reuse with other overlays. */
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
@@ -146,6 +147,8 @@ class Wireframe {
         }
         break;
       default:
+        /* Would be good to have. */
+        // BLI_assert_unreachable();
         break;
     }
   }
