@@ -11,7 +11,8 @@
 namespace blender::memory_cache {
 
 /**
- * A value that is stored in the cache. It may be freed automatically when the cache is full.
+ * A value that is stored in the cache. It may be freed automatically when the cache is full. This
+ * is expected to be subclassed by users of the memory cache.
  */
 class CachedValue {
  public:
@@ -30,12 +31,25 @@ class CachedValue {
  *
  * If the cache is full, older values may be freed.
  */
+template<typename T>
+std::shared_ptr<const T> get(const GenericKey &key, FunctionRef<std::unique_ptr<T>()> compute_fn);
+
+/**
+ * A non-templated version of the main entry point above.
+ */
 std::shared_ptr<CachedValue> get_base(const GenericKey &key,
                                       FunctionRef<std::unique_ptr<CachedValue>()> compute_fn);
 
 /**
- * Same as above, but with an additional type-cast to simplify the caller code.
+ * Set how much memory the cache is allowed to use. This is only an approximation because counting
+ * the memory is not 100% accurate, and for some types the memory usage may even change over time.
  */
+void set_approximate_size_limit(int64_t limit_in_bytes);
+
+/* -------------------------------------------------------------------- */
+/** \name Inline Functions
+ * \{ */
+
 template<typename T>
 inline std::shared_ptr<const T> get(const GenericKey &key,
                                     FunctionRef<std::unique_ptr<T>()> compute_fn)
@@ -43,10 +57,6 @@ inline std::shared_ptr<const T> get(const GenericKey &key,
   return std::dynamic_pointer_cast<const T>(get_base(key, compute_fn));
 }
 
-/**
- * Set how much memory the cache is allows to use. This is only an approximation because counting
- * the memory is not 100% accurate, and for some types the memory usage may even change over time.
- */
-void set_approximate_size_limit(int64_t limit_in_bytes);
+/** \} */
 
 }  // namespace blender::memory_cache
