@@ -247,7 +247,7 @@ TEST(imbuf_scaling, bilinear_to_1x1_fl3)
 {
   ImBuf *res = scale_to_1x1(false, false, 3);
   const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
-  EXPECT_V3_NEAR(got[0], float3(2.45269f, 2.76539f, 2.49159f), EPS);
+  EXPECT_V3_NEAR(got[0], float3(3.36853f, 3.49353f, 3.61853f), EPS);
   IMB_freeImBuf(res);
 }
 
@@ -255,9 +255,9 @@ TEST(imbuf_scaling, bilinear_2x_smaller_fl3)
 {
   ImBuf *res = scale_2x_smaller(false, false, 3);
   const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
-  EXPECT_V3_NEAR(got[0], float3(2.17881f, 2.30381f, 2.86558f), EPS);
-  EXPECT_V3_NEAR(got[1], float3(3.42881f, 3.37955f, 3.91184f), EPS);
-  EXPECT_V3_NEAR(got[2], float3(4.00737f, 4.32018f, 1.79969f), EPS);
+  EXPECT_V3_NEAR(got[0], float3(0.87270f, 0.99770f, 1.12270f), EPS);
+  EXPECT_V3_NEAR(got[1], float3(3.36853f, 3.49353f, 3.61853f), EPS);
+  EXPECT_V3_NEAR(got[2], float3(5.86435f, 5.98935f, 6.11435f), EPS);
   IMB_freeImBuf(res);
 }
 
