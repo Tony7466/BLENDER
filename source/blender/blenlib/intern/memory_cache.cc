@@ -8,8 +8,8 @@
 
 #include <atomic>
 #include <mutex>
-#include <tbb/concurrent_hash_map.h>
 
+#include "BLI_concurrent_map.hh"
 #include "BLI_memory_cache.hh"
 #include "BLI_memory_counter.hh"
 #include "BLI_task.hh"
@@ -28,23 +28,10 @@ struct StoredValue {
   int64_t last_use_time = 0;
 };
 
-struct Hasher {
-  size_t hash(const GenericKey &key) const
-  {
-    return key.hash();
-  }
-
-  bool equal(const GenericKey &a, const GenericKey &b) const
-  {
-    return a == b;
-  }
-};
-
-using ConcurrentMap =
-    tbb::concurrent_hash_map<std::reference_wrapper<const GenericKey>, StoredValue, Hasher>;
+using CacheMap = ConcurrentMap<std::reference_wrapper<const GenericKey>, StoredValue>;
 
 struct Cache {
-  ConcurrentMap map;
+  CacheMap map;
 
   std::atomic<int64_t> logical_time = 0;
   std::atomic<int64_t> approximate_limit = 1024 * 1024 * 1024;
@@ -90,8 +77,8 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
   const int64_t new_time = cache.logical_time.fetch_add(1, std::memory_order_relaxed);
   {
     /* Fast path when the value is already cached. */
-    ConcurrentMap::const_accessor accessor;
-    if (cache.map.find(accessor, std::ref(key))) {
+    CacheMap::ConstAccessor accessor;
+    if (cache.map.lookup(accessor, std::ref(key))) {
       set_new_logical_time(accessor->second, new_time);
       return accessor->second.value;
     }
@@ -105,8 +92,8 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
   BLI_assert(result);
 
   {
-    ConcurrentMap::accessor accessor;
-    const bool newly_inserted = cache.map.insert(accessor, std::ref(key));
+    CacheMap::MutableAccessor accessor;
+    const bool newly_inserted = cache.map.add(accessor, std::ref(key));
     if (!newly_inserted) {
       /* The value is available already. The we unfortunately computed the value unnecessarily.
        * Use the value created by the other thread instead. */
@@ -161,8 +148,8 @@ static void try_enforce_limit()
   /* Gather all the keys with their latest usage times. */
   Vector<std::pair<int64_t, const GenericKey *>> keys_with_time;
   for (const GenericKey *key : cache.keys) {
-    ConcurrentMap::const_accessor accessor;
-    if (!cache.map.find(accessor, *key)) {
+    CacheMap::ConstAccessor accessor;
+    if (!cache.map.lookup(accessor, *key)) {
       continue;
     }
     keys_with_time.append({accessor->second.last_use_time, key});
@@ -178,8 +165,8 @@ static void try_enforce_limit()
   std::optional<int> first_bad_index;
   for (const int i : keys_with_time.index_range()) {
     const GenericKey &key = *keys_with_time[i].second;
-    ConcurrentMap::const_accessor accessor;
-    if (!cache.map.find(accessor, key)) {
+    CacheMap::ConstAccessor accessor;
+    if (!cache.map.lookup(accessor, key)) {
       continue;
     }
     accessor->second.value->count_memory(memory_counter);
@@ -213,7 +200,7 @@ static void try_enforce_limit()
   /* Remove elements that don't fit anymore. */
   for (const int i : keys_with_time.index_range().drop_front(*first_bad_index)) {
     const GenericKey &key = *keys_with_time[i].second;
-    cache.map.erase(key);
+    cache.map.remove(key);
   }
 
   /* Update keys vector. */
@@ -229,8 +216,8 @@ static void try_enforce_limit()
     MemoryCounter memory_counter{cache.memory};
     for (const int i : keys_with_time.index_range().take_front(*first_bad_index)) {
       const GenericKey &key = *keys_with_time[i].second;
-      ConcurrentMap::const_accessor accessor;
-      if (!cache.map.find(accessor, key)) {
+      CacheMap::ConstAccessor accessor;
+      if (!cache.map.lookup(accessor, key)) {
         continue;
       }
       accessor->second.value->count_memory(memory_counter);
