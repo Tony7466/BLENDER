@@ -113,7 +113,7 @@ static boolean fill_input_buffer(j_decompress_ptr cinfo)
   src->terminal[0] = (JOCTET)0xFF;
   src->terminal[1] = (JOCTET)JPEG_EOI;
 
-  return true;
+  return TRUE;
 }
 
 static void skip_input_data(j_decompress_ptr cinfo, long num_bytes)
@@ -221,12 +221,12 @@ static boolean handle_app1(j_decompress_ptr cinfo)
 
   INPUT_VARS(cinfo);
 
-  INPUT_2BYTES(cinfo, length, return false);
+  INPUT_2BYTES(cinfo, length, return FALSE);
   length -= 2;
 
   if (length < 16) {
     for (i = 0; i < length; i++) {
-      INPUT_BYTE(cinfo, neogeo[i], return false);
+      INPUT_BYTE(cinfo, neogeo[i], return FALSE);
     }
     length = 0;
     if (STRPREFIX(neogeo, "NeoGeo")) {
@@ -238,7 +238,7 @@ static boolean handle_app1(j_decompress_ptr cinfo)
   if (length > 0) {
     (*cinfo->src->skip_input_data)(cinfo, length);
   }
-  return true;
+  return TRUE;
 }
 
 static ImBuf *ibJpegImageFromCinfo(
@@ -259,7 +259,7 @@ static ImBuf *ibJpegImageFromCinfo(
   cinfo->dct_method = JDCT_FLOAT;
   jpeg_save_markers(cinfo, JPEG_COM, 0xffff);
 
-  if (jpeg_read_header(cinfo, false) == JPEG_HEADER_OK) {
+  if (jpeg_read_header(cinfo, FALSE) == JPEG_HEADER_OK) {
     depth = cinfo->num_components;
 
     if (cinfo->jpeg_color_space == JCS_YCCK) {
@@ -562,7 +562,7 @@ static void write_jpeg(jpeg_compress_struct *cinfo, ImBuf *ibuf)
   char neogeo[128];
   NeoGeo_Word *neogeo_word;
 
-  jpeg_start_compress(cinfo, true);
+  jpeg_start_compress(cinfo, TRUE);
 
   STRNCPY(neogeo, "NeoGeo");
   neogeo_word = (NeoGeo_Word *)(neogeo + 6);
@@ -704,7 +704,7 @@ static int init_jpeg(FILE *outfile, jpeg_compress_struct *cinfo, ImBuf *ibuf)
   /* own settings */
 
   cinfo->dct_method = JDCT_FLOAT;
-  jpeg_set_quality(cinfo, quality, true);
+  jpeg_set_quality(cinfo, quality, TRUE);
 
   return 0;
 }
