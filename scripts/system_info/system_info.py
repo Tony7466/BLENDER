@@ -9,8 +9,9 @@ def main():
     import re
     import struct
     import platform
-    import urllib.parse
     import subprocess
+    import webbrowser
+    import urllib.parse
     from pathlib import Path
 
     query_params = {"type": "bug_report"}
@@ -65,7 +66,7 @@ def main():
     )
 
     query_str = urllib.parse.urlencode(query_params)
-    print(f"https://redirect.blender.org/?{query_str}")
+    webbrowser.open(f"https://redirect.blender.org/?{query_str}")
 
 if __name__ == "__main__":
     main()
