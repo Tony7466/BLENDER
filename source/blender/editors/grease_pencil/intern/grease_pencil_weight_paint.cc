@@ -361,7 +361,7 @@ static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_weight_invert_exec(bContext *C, wmOperator *op)
 {
   const Scene &scene = *CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -376,6 +376,11 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
   const bDeformGroup *active_defgroup = static_cast<const bDeformGroup *>(
       BLI_findlink(BKE_object_defgroup_list(object), active_index));
 
+  if (active_defgroup->flag & DG_LOCK_WEIGHT) {
+    BKE_report(op->reports, RPT_WARNING, "Active Vertex Group is locked");
+    return OPERATOR_CANCELLED;
+  }
+
   Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
 
   threading::parallel_for_each(drawings, [&](MutableDrawingInfo info) {
@@ -383,17 +388,18 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
     /* Active vgroup index of drawing. */
     const int drawing_vgroup_index = BLI_findstringindex(
         &curves.vertex_group_names, active_defgroup->name, offsetof(bDeformGroup, name));
-    BLI_assert(drawing_vgroup_index != -1);
+    if (drawing_vgroup_index == -1) {
+      return;
+    }
 
     VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(
         curves.deform_verts_for_write(), drawing_vgroup_index);
-
     if (weights.size() == 0) {
       return;
     }
 
     for (const int i : weights.index_range()) {
-      const float invert_weight = 1 - weights[i];
+      const float invert_weight = 1.0f - weights[i];
       weights.set(i, invert_weight);
     }
   });
@@ -401,6 +407,16 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator * /*op*/)
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
   return OPERATOR_FINISHED;
+}
+
+static bool grease_pencil_vertex_group_weight_poll(bContext *C)
+{
+  const Object *ob = CTX_data_active_object(C);
+  if (ob == nullptr || BLI_listbase_is_empty(BKE_object_defgroup_list(ob))) {
+    return false;
+  }
+
+  return grease_pencil_weight_painting_poll(C);
 }
 
 static void GREASE_PENCIL_OT_weight_invert(wmOperatorType *ot)
@@ -412,7 +428,7 @@ static void GREASE_PENCIL_OT_weight_invert(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = grease_pencil_weight_invert_exec;
-  ot->poll = grease_pencil_weight_painting_poll;
+  ot->poll = grease_pencil_vertex_group_weight_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
