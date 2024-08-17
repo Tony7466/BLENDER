@@ -65,6 +65,9 @@
 #include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_cloth.hh"
 #include "ED_view3d.hh"
 
 /* For IMB_BlendMode only. */

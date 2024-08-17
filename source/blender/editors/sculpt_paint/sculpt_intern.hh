@@ -374,7 +374,6 @@ struct StrokeCache {
 
   int stroke_id;
 
-  StrokeCache();
   ~StrokeCache();
 };
 
