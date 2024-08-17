@@ -7,10 +7,10 @@
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(select_lib.glsl)
 
-#ifndef POINTS
-bool is_edge_sharpness_visible(float wd)
+#if !defined(POINTS) && !defined(CURVES)
+bool is_edge_sharpness_visible(float wire_data)
 {
-  return wd <= wireStepParam;
+  return wire_data <= wireStepParam;
 }
 #endif
 
@@ -89,7 +89,11 @@ void main()
   select_id_set(drw_CustomID);
 
   vec3 wpos = point_object_to_world(pos);
-#ifndef POINTS
+#if defined(POINTS)
+  gl_PointSize = sizeVertex * 2.0;
+#elif defined(CURVES)
+  /* Noop */
+#else
   bool no_attr = all(equal(nor, vec3(0)));
   vec3 wnor = no_attr ? drw_view.viewinv[2].xyz : normalize(normal_object_to_world(nor));
 
@@ -103,8 +107,6 @@ void main()
   vec3 V = (is_persp) ? normalize(drw_view.viewinv[3].xyz - wpos) : drw_view.viewinv[2].xyz;
 
   float facing = dot(wnor, V);
-#else
-  gl_PointSize = sizeVertex * 2.0;
 #endif
 
   gl_Position = point_world_to_ndc(wpos);
@@ -118,7 +120,7 @@ void main()
 #  endif
 #endif
 
-#if !defined(POINTS)
+#if !defined(POINTS) && !defined(CURVES)
   if (!use_custom_depth_bias) {
     float facing_ratio = clamp(1.0 - facing * facing, 0.0, 1.0);
     float flip = sign(facing);           /* Flip when not facing the normal (i.e.: back-facing). */
@@ -142,32 +144,36 @@ void main()
     wire_color_get(rim_col, wire_col);
   }
 
-#ifdef POINTS
+#if defined(POINTS)
   finalColor = wire_col.rgbb;
   finalColorInner = rim_col.rgbb;
+
 #else
   /* Convert to screen position [0..sizeVp]. */
   edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;
-
-#  ifndef SELECT_EDGES
   edgePos = edgeStart;
 
+#  if defined(CURVES)
+  finalColor.rgb = rim_col;
+#  elif !defined(SELECT_EDGES)
   facing = clamp(abs(facing), 0.0, 1.0);
-
   /* Do interpolation in a non-linear space to have a better visual result. */
   rim_col = pow(rim_col, vec3(1.0 / 2.2));
   wire_col = pow(wire_col, vec3(1.0 / 2.2));
   vec3 final_front_col = mix(rim_col, wire_col, 0.35);
   finalColor.rgb = mix(rim_col, final_front_col, facing);
   finalColor.rgb = pow(finalColor.rgb, vec3(2.2));
-  finalColor.a = wireOpacity;
-  finalColor.rgb *= wireOpacity;
 #  endif
 
+  finalColor.a = wireOpacity;
+  finalColor.rgb *= wireOpacity;
+
+#  if !defined(CURVES)
   /* Cull flat edges below threshold. */
   if (!no_attr && !is_edge_sharpness_visible(wd)) {
     edgeStart = vec2(-1.0);
   }
+#  endif
 
 #  ifdef SELECT_EDGES
   /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the

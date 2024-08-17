@@ -201,6 +201,7 @@ class ShaderModule {
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
   ShaderPtr wireframe_mesh;
+  ShaderPtr wireframe_curve;
   ShaderPtr wireframe_points; /* Draw objects without edges for the wireframe overlay. */
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);

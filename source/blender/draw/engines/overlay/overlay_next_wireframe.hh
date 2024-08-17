@@ -18,8 +18,7 @@ class Wireframe {
  private:
   PassMain wireframe_ps_ = {"Wireframe"};
   struct ColoringPass {
-    /* TODO(fclem): Not yet implemented. */
-    // PassMain::Sub *curves_ps_ = nullptr;
+    PassMain::Sub *curves_ps_ = nullptr;
     PassMain::Sub *gpencil_ps_ = nullptr;
     PassMain::Sub *mesh_ps_ = nullptr;
     PassMain::Sub *pointcloud_ps_ = nullptr;
@@ -73,6 +72,7 @@ class Wireframe {
         ps.mesh_ps_ = shader_pass(sh.wireframe_mesh.get(), "Mesh", use_color, wire_threshold);
         ps.mesh_all_edges_ps_ = shader_pass(sh.wireframe_mesh.get(), "Wire", use_color, 1.0f);
         ps.pointcloud_ps_ = shader_pass(sh.wireframe_points.get(), "PtCloud", use_color, 1.0f);
+        ps.curves_ps_ = shader_pass(sh.wireframe_curve.get(), "Curve", use_color, 1.0f);
       };
 
       coloring_pass(non_colored, false);
@@ -96,6 +96,18 @@ class Wireframe {
     ColoringPass &coloring = use_coloring ? colored : non_colored;
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
+      case OB_CURVES_LEGACY:
+        geom = DRW_cache_curve_edge_wire_get(ob_ref.object);
+        coloring.curves_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        break;
+      case OB_FONT:
+        geom = DRW_cache_text_edge_wire_get(ob_ref.object);
+        coloring.curves_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        break;
+      case OB_SURF:
+        geom = DRW_cache_surf_edge_wire_get(ob_ref.object);
+        coloring.curves_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        break;
       case OB_CURVES:
         /* TODO(fclem): Not yet implemented. */
         break;

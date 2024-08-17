@@ -7,7 +7,7 @@
 
 void main()
 {
-#ifndef POINTS
+#if !defined(POINTS) && !defined(CURVES)
   /* Needed only because of wireframe slider.
    * If we could get rid of it would be nice because of performance drain of discard. */
   if (edgeStart.r == -1.0) {
@@ -44,6 +44,7 @@ void main()
 #    endif
 #  endif
 
+#  if !defined(CURVES)
   if (use_custom_depth_bias) {
     vec2 dir = lineOutput.xy * 2.0 - 1.0;
     bool dir_horiz = abs(dir.x) > abs(dir.y);
@@ -64,15 +65,16 @@ void main()
 
     float delta = abs(depth_occluder - depth_min);
 
-#  ifndef SELECT_ENABLE
+#    ifndef SELECT_ENABLE
     if (gl_FragCoord.z < (depth_occluder + delta) && gl_FragCoord.z > depth_occluder) {
       gl_FragDepth = depth_occluder;
     }
     else {
       gl_FragDepth = gl_FragCoord.z;
     }
-#  endif
+#    endif
   }
+#  endif
 #endif
 
   select_id_output(select_id);
