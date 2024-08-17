@@ -11,6 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_vector.hh"
 
 #include "DNA_vec_types.h"
 #include "DNA_scene_enums.h"

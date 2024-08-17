@@ -41,10 +41,12 @@
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_pose.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
+#include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_cloth.hh"
+#include "ED_sculpt_expand.hh"
+#include "ED_sculpt_pose.hh"
 #include "ED_view3d.hh"
 
 #include "GPU_immediate.hh"

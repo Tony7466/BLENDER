@@ -43,6 +43,7 @@
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
 #include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_color.hh"
 #include "ED_sculpt_face_set.hh"
 #include "ED_sculpt_flood_fill.hh"
 #include "ED_sculpt_geodesic.hh"
@@ -859,7 +860,7 @@ static Array<float> boundary_topology_falloff_create(const Depsgraph &depsgraph,
 
     const PBVHVertRef symm_vertex = BKE_pbvh_index_to_vertex(*ss.pbvh, vert);
 
-    std::unique_ptr<SculptBoundary> boundary = boundary::data_init(
+    std::unique_ptr<boundary::SculptBoundary> boundary = boundary::data_init(
         depsgraph, ob, nullptr, symm_vertex, FLT_MAX);
     if (!boundary) {
       continue;

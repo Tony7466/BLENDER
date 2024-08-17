@@ -26,6 +26,12 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
+#include "ED_sculpt_cloth.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_flood_fill.hh"
+#include "ED_sculpt_hide.hh"
+#include "ED_sculpt_smooth.hh"
+
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"

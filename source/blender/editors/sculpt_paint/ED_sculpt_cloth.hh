@@ -103,12 +103,6 @@ struct SimulationData {
   ~SimulationData();
 };
 
-/* Main cloth brush function */
-void do_cloth_brush(const Depsgraph &depsgraph,
-                    const Sculpt &sd,
-                    Object &ob,
-                    Span<blender::bke::pbvh::Node *> nodes);
-
 /* Public functions. */
 
 std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgraph,

@@ -31,6 +31,7 @@
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
+#include "ED_sculpt_filter.hh"
 #include "ED_view3d.hh"
 
 #include "mesh_brush_common.hh"

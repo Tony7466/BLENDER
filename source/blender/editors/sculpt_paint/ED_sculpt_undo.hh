@@ -8,7 +8,21 @@
 
 #pragma once
 
+#include "BLI_array.hh"
+#include "BLI_vector.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_bit_vector.hh"
+#include "BLI_bit_group_vector.hh"
+
+struct BMLogEntry;
+struct Depsgraph;
+struct Mesh;
+struct Object;
 struct StepData;
+struct wmOperator;
+namespace blender::bke::pbvh {
+class Node;
+}
 
 namespace blender::ed::sculpt_paint::undo {
 

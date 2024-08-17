@@ -39,6 +39,11 @@
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_cloth.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_smooth.hh"
 #include "ED_view3d.hh"
 
 #include "mesh_brush_common.hh"

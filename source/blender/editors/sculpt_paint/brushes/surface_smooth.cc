@@ -17,9 +17,10 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
+
+#include "editors/sculpt_paint/ED_sculpt_smooth.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"

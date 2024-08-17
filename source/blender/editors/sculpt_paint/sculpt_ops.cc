@@ -20,7 +20,6 @@
 #include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
-#include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
@@ -55,6 +54,13 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_color.hh"
+#include "ED_sculpt_dyntopo.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_flood_fill.hh"
+#include "ED_sculpt_islands.hh"
+#include "ED_sculpt_undo.hh"
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"

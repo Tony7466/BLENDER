@@ -17,7 +17,6 @@
 
 #include "ED_view3d.hh"
 
-enum class TransformDisplacementMode;
 struct wmOperatorType;
 
 namespace blender {
@@ -25,6 +24,7 @@ namespace bke::pbvh {
 class Node;
 }
 namespace ed::sculpt_paint {
+enum class TransformDisplacementMode;
 namespace auto_mask {
 struct Cache;
 }

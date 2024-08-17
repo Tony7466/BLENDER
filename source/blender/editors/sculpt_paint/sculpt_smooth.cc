@@ -5,6 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
+#include "ED_sculpt_smooth.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -15,8 +16,6 @@
 #include "BLI_math_vector.hh"
 #include "BLI_task.h"
 
-#include "DNA_brush_types.h"
-
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
@@ -25,9 +24,12 @@
 #include "mesh_brush_common.hh"
 #include "sculpt_intern.hh"
 
+#include "ED_sculpt_color.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_hide.hh"
+
 #include "bmesh.hh"
 
-#include <cmath>
 #include <cstdlib>
 
 namespace blender::ed::sculpt_paint::smooth {

@@ -24,6 +24,10 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_hide.hh"
+#include "ED_sculpt_islands.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -34,9 +38,6 @@
 #include "sculpt_intern.hh"
 
 #include "bmesh.hh"
-
-#include <cmath>
-#include <cstdlib>
 
 namespace blender::ed::sculpt_paint::mask {
 

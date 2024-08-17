@@ -5,8 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-
-#include "MEM_guardedalloc.h"
+#include "ED_sculpt_boundary.hh"
 
 #include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -28,10 +27,12 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
+#include "ED_sculpt_flood_fill.hh"
+#include "ED_sculpt_cloth.hh"
+
 #include "GPU_immediate.hh"
 #include "GPU_state.hh"
 
-#include <cmath>
 #include <cstdlib>
 
 namespace blender::ed::sculpt_paint::boundary {

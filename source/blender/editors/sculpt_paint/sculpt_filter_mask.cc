@@ -21,6 +21,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_sculpt_hide.hh"
+#include "ED_sculpt_smooth.hh"
+
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
@@ -29,9 +32,6 @@
 #include "RNA_define.hh"
 
 #include "bmesh.hh"
-
-#include <cmath>
-#include <cstdlib>
 
 namespace blender::ed::sculpt_paint::mask {
 

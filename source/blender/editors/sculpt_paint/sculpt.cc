@@ -51,10 +51,7 @@
 #include "BKE_image.h"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
-#include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node_runtime.hh"
@@ -63,7 +60,6 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.hh"
-#include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 #include "BLI_math_vector.hh"
@@ -80,6 +76,15 @@
 #include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_cloth.hh"
+#include "ED_sculpt_color.hh"
+#include "ED_sculpt_dyntopo.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_filter.hh"
+#include "ED_sculpt_islands.hh"
+#include "ED_sculpt_pose.hh"
 #include "ED_view3d.hh"
 
 #include "paint_intern.hh"
@@ -4019,6 +4024,9 @@ static const char *sculpt_tool_name(const Sculpt &sd)
 }
 
 namespace blender::ed::sculpt_paint {
+StrokeCache::StrokeCache()
+{
+}
 
 StrokeCache::~StrokeCache()
 {

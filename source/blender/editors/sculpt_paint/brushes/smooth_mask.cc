@@ -12,7 +12,9 @@
 
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_base.hh"
-#include "BLI_task.h"
+
+#include "editors/sculpt_paint/ED_sculpt_boundary.hh"
+#include "editors/sculpt_paint/ED_sculpt_smooth.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/paint_intern.hh"

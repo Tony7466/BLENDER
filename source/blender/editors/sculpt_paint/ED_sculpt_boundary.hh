@@ -9,9 +9,13 @@
 
 #include <memory>
 
+#include "BLI_array.hh"
 #include "BLI_bit_span.hh"
+#include "BLI_map.hh"
 #include "BLI_span.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_vector.hh"
+#include "BLI_math_vector.hh"
 
 struct Brush;
 struct BMVert;
@@ -19,7 +23,6 @@ struct Depsgraph;
 struct Object;
 struct PBVHVertRef;
 struct Sculpt;
-struct SculptBoundary;
 struct SculptBoundaryPreview;
 struct SculptSession;
 struct SubdivCCG;
@@ -29,6 +32,65 @@ class Node;
 }
 
 namespace blender::ed::sculpt_paint::boundary {
+
+struct SculptBoundary {
+  /* Vertex indices of the active boundary. */
+  Vector<int> verts;
+
+  /* Distance from a vertex in the boundary to initial vertex indexed by vertex index, taking into
+   * account the length of all edges between them. Any vertex that is not in the boundary will have
+   * a distance of 0. */
+  Map<int, float> distance;
+
+  /* Data for drawing the preview. */
+  Vector<std::pair<float3, float3>> edges;
+
+  /* Initial vertex index in the boundary which is closest to the current sculpt active vertex. */
+  int initial_vert_i;
+
+  /* Vertex that at max_propagation_steps from the boundary and closest to the original active
+   * vertex that was used to initialize the boundary. This is used as a reference to check how much
+   * the deformation will go into the mesh and to calculate the strength of the brushes. */
+  float3 pivot_position;
+
+  /* Stores the initial positions of the pivot and boundary initial vertex as they may be deformed
+   * during the brush action. This allows to use them as a reference positions and vectors for some
+   * brush effects. */
+  float3 initial_vert_position;
+
+  /* Maximum number of topology steps that were calculated from the boundary. */
+  int max_propagation_steps;
+
+  /* Indexed by vertex index, contains the topology information needed for boundary deformations.
+   */
+  struct {
+    /* Vertex index from where the topology propagation reached this vertex. */
+    Array<int> original_vertex_i;
+
+    /* How many steps were needed to reach this vertex from the boundary. */
+    Array<int> propagation_steps_num;
+
+    /* Strength that is used to deform this vertex. */
+    Array<float> strength_factor;
+  } edit_info;
+
+  /* Bend Deform type. */
+  struct {
+    Array<float3> pivot_rotation_axis;
+    Array<float3> pivot_positions;
+  } bend;
+
+  /* Slide Deform type. */
+  struct {
+    Array<float3> directions;
+  } slide;
+
+  /* Twist Deform type. */
+  struct {
+    float3 rotation_axis;
+    float3 pivot_position;
+  } twist;
+};
 
 /**
  * Populates boundary information for a mesh.
@@ -81,12 +143,6 @@ std::unique_ptr<SculptBoundaryPreview> preview_data_init(const Depsgraph &depsgr
                                                          Object &object,
                                                          const Brush *brush,
                                                          float radius);
-
-/* Main Brush Function. */
-void do_boundary_brush(const Depsgraph &depsgraph,
-                       const Sculpt &sd,
-                       Object &ob,
-                       Span<bke::pbvh::Node *> nodes);
 
 void edges_preview_draw(uint gpuattr,
                         SculptSession &ss,
