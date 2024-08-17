@@ -557,8 +557,8 @@ PyDoc_STRVAR(
     "\n"
     "   Check whether a job of the given type is running.\n"
     "\n"
-    "   :arg job_type: job type in :ref:`rna_enum_wm_job_type_items`.\n"
-    "   :type job_type: str\n"
+    "   :arg job_type: job type.\n"
+    "   :type job_type: enum in :ref:`rna_enum_wm_job_type_items`\n"
     "   :return: Whether a job of the given type is currently running.\n"
     "   :rtype: bool.\n");
 static PyObject *bpy_app_is_job_running(PyObject * /*self*/, PyObject *args, PyObject *kwds)

@@ -52,32 +52,25 @@ using blender::Array;
  * \{ */
 
 #define BPY_PROPDEF_OPTIONS_DOC \
-  "   :arg options: Enumerator in :ref:`rna_enum_property_flag_items`.\n" \
-  "   :type options: set\n"
+  "   :type options: enum set in :ref:`rna_enum_property_flag_items`\n"
 
 #define BPY_PROPDEF_OPTIONS_ENUM_DOC \
-  "   :arg options: Enumerator in :ref:`rna_enum_property_flag_enum_items`.\n" \
-  "   :type options: set\n"
+  "   :type options: enum set in :ref:`rna_enum_property_flag_enum_items`\n"
 
 #define BPY_PROPDEF_OPTIONS_OVERRIDE_DOC \
-  "   :arg override: Enumerator in :ref:`rna_enum_property_override_flag_items`.\n" \
-  "   :type override: set\n"
+  "   :type override: enum set in :ref:`rna_enum_property_override_flag_items`\n"
 
 #define BPY_PROPDEF_OPTIONS_OVERRIDE_COLLECTION_DOC \
-  "   :arg override: Enumerator in :ref:`rna_enum_property_override_flag_collection_items`.\n" \
-  "   :type override: set\n"
+  "   :type override: enum set in :ref:`rna_enum_property_override_flag_collection_items`\n"
 
 #define BPY_PROPDEF_SUBTYPE_STRING_DOC \
-  "   :arg subtype: Enumerator in :ref:`rna_enum_property_subtype_string_items`.\n" \
-  "   :type subtype: string\n"
+  "   :type subtype: enum in :ref:`rna_enum_property_subtype_string_items`\n"
 
 #define BPY_PROPDEF_SUBTYPE_NUMBER_DOC \
-  "   :arg subtype: Enumerator in :ref:`rna_enum_property_subtype_number_items`.\n" \
-  "   :type subtype: string\n"
+  "   :type subtype: enum in :ref:`rna_enum_property_subtype_number_items`\n"
 
 #define BPY_PROPDEF_SUBTYPE_NUMBER_ARRAY_DOC \
-  "   :arg subtype: Enumerator in :ref:`rna_enum_property_subtype_number_array_items`.\n" \
-  "   :type subtype: string\n"
+  "   :type subtype: enum in :ref:`rna_enum_property_subtype_number_array_items`\n"
 
 /** \} */
 
@@ -2659,8 +2652,7 @@ static int bpy_prop_arg_parse_tag_defines(PyObject *o, void *p)
   "   :type translation_context: string\n"
 
 #define BPY_PROPDEF_UNIT_DOC \
-  "   :arg unit: Enumerator in :ref:`rna_enum_property_unit_items`.\n" \
-  "   :type unit: string\n"
+  "   :type unit: enum in :ref:`rna_enum_property_unit_items`\n"
 
 #define BPY_PROPDEF_NUM_MIN_DOC \
   "   :arg min: Hard minimum, trying to assign a value below will silently assign this minimum " \
