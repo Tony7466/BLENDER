@@ -42,13 +42,17 @@ def main():
     output = subprocess.run(command, stdout=subprocess.PIPE)
     text = output.stdout.decode("utf-8")
     # Gather version number and type (Alpha, Beta, etc)
-    version_match = re.search(r"Blender (\d+\.\d+\.\d+\s[A-Za-z]+)", text)
+    version_match = re.search(r"Blender (.*)", text)
+    """
+    # Old search. Left here if we want to switch back to it because "Blender ANYTHING" is too general
+    version_match = re.search(r"Blender (\d+(\.\d+)+\s[A-Za-z]+)", text)
     if not version_match:
         # Gather just version number (Previous version_match doesn't work on final
         # release builds that don't have text after the version number)
-        version_match = re.search(r"Blender (\d+\.\d+\.\d+)", text)
+        version_match = re.search(r"Blender (\d+(\.\d+)+)", text)
         # TODO: We could just do re.search(r"Blender (.*)", text)
         # It handles both cases.
+    """
     branch_match = re.search(r"build branch: (.*)", text)
     commit_date_match = re.search(r"build commit date: (\d+-\d+-\d+)", text)
     commit_time_match = re.search(r"build commit time: (\d+:\d+)", text)
