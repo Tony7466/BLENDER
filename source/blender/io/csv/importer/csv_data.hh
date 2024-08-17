@@ -27,7 +27,7 @@ class CsvData {
   int64_t column_count;
 
  public:
-  CsvData(int64_t row_count, Array<std::pair<std::string, CsvColumnType>> columns);
+  CsvData(int64_t row_count, Vector<std::string> columns, Vector<CsvColumnType> column_types);
 
   template<typename T> void set_data(int64_t row_index, std::string &name, T value);
 

@@ -11,13 +11,15 @@
 #include "csv_data.hh"
 
 namespace blender::io::csv {
-CsvData::CsvData(int64_t row_count, Array<std::pair<std::string, CsvColumnType>> columns)
+CsvData::CsvData(int64_t row_count,
+                 Vector<std::string> columns,
+                 Vector<CsvColumnType> column_types)
 {
   this->row_count = row_count;
   this->column_count = columns.size();
 
-  for (std::pair<std::string, CsvColumnType> item : columns) {
-    data.add(item.first, create_garray_for_type(item.second));
+  for (int i = 0; i < this->column_count; i++) {
+    data.add(columns[i], create_garray_for_type(column_types[i]));
   }
 }
 
@@ -28,7 +30,9 @@ template<typename T> void CsvData::set_data(int64_t row_index, std::string &name
 
 PointCloud *CsvData::to_point_cloud() const
 {
-  return nullptr;
+  PointCloud *point_cloud = BKE_pointcloud_new_nomain(row_count);
+  // fill the attributes
+  return point_cloud;
 }
 
 GArray<> CsvData::create_garray_for_type(CsvColumnType &type)
