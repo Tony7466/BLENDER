@@ -22,10 +22,10 @@ def main():
         struct.calcsize("P") * 8,
     )
 
-    # There is no easy way to collect GPU information in Python
+    # There doesn't appear to be a no easy way to collect GPU information in Python
     # if Blender isn't opening and we can't import the GPU module.
-    # TODO: Investigate how to work around this
-    query_params["gpu"] = "Unsure"
+    # TODO: Investigate a better method
+    query_params["gpu"] = "Follow [our guide](https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/collect_system_information/) to manually collect this information"
 
     os_type = platform.system()
     script_directory = Path(__file__).parent.resolve()
@@ -64,8 +64,6 @@ def main():
         build_hash_match.group(1) if build_hash_match else failed,
     )
 
-    # TODO: Since we can't collect GPU info, do we open the URL? Or just print system information
-    # and a guide on how to manually collect GPU info?
     query_str = urllib.parse.urlencode(query_params)
     print(f"https://redirect.blender.org/?{query_str}")
 
