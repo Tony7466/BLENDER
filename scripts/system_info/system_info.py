@@ -25,8 +25,8 @@ def main():
 
     # There doesn't appear to be a no easy way to collect GPU information in Python
     # if Blender isn't opening and we can't import the GPU module.
-    # TODO: Investigate a better method
-    query_params["gpu"] = "Follow [our guide](https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/collect_system_information/) to manually collect this information"
+    query_params["gpu"] = """Follow our guide to collect this information:
+https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/collect_system_information/"""
 
     os_type = platform.system()
     script_directory = Path(__file__).parent.resolve()
