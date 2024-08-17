@@ -557,18 +557,6 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool vertex_group_exists_poll(bContext *C)
-{
-  if (!active_grease_pencil_poll(C)) {
-    return false;
-  }
-  const Object *object = CTX_data_active_object(C);
-  if ((object->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) {
-    return false;
-  }
-  return !BLI_listbase_is_empty(BKE_object_defgroup_list(object));
-}
-
 static void GREASE_PENCIL_OT_vertex_group_smooth(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -577,7 +565,7 @@ static void GREASE_PENCIL_OT_vertex_group_smooth(wmOperatorType *ot)
   ot->description = "Smooth the weights of the active vertex group";
 
   /* Callbacks. */
-  ot->poll = vertex_group_exists_poll;
+  ot->poll = grease_pencil_vertex_group_weight_poll;
   ot->exec = vertex_group_smooth_exec;
 
   /* Flags. */
