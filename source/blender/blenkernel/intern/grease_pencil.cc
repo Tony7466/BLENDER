@@ -1959,6 +1959,102 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
 /** \} */
 
 /* ------------------------------------------------------------------- */
+/** \name Grease Pencil origin functions
+ *  \note Used for "move only origins" in object_data_transform.cc.
+ * \{ */
+
+int BKE_grease_pencil_stroke_point_count(const GreasePencil &grease_pencil)
+{
+  using namespace blender;
+
+  int total_points = 0;
+
+  for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    const bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+    const bke::CurvesGeometry &curves = drawing.strokes();
+    total_points += curves.points_num();
+  }
+
+  return total_points;
+}
+
+void BKE_grease_pencil_point_coords_get(const GreasePencil &grease_pencil,
+                                        GreasePencilPointCoordinates *elem_data)
+{
+  using namespace blender;
+
+  for (const GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    const bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+    const bke::CurvesGeometry &curves = drawing.strokes();
+    const Span<float3> positions = curves.positions();
+    const VArray<float> radii = drawing.radii();
+
+    for (const int i : curves.points_range()) {
+      copy_v3_v3(elem_data->co, positions[i]);
+      elem_data->radius = radii[i];
+      elem_data++;
+    }
+  }
+}
+
+void BKE_grease_pencil_point_coords_apply(GreasePencil &grease_pencil,
+                                          GreasePencilPointCoordinates *elem_data)
+{
+  using namespace blender;
+
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+    MutableSpan<float3> positions = curves.positions_for_write();
+    MutableSpan<float> radii = drawing.radii_for_write();
+
+    for (const int i : curves.points_range()) {
+      positions[i] = float3(elem_data->co);
+      radii[i] = elem_data->radius;
+      elem_data++;
+    }
+  }
+}
+
+void BKE_grease_pencil_point_coords_apply_with_mat4(GreasePencil &grease_pencil,
+                                                    GreasePencilPointCoordinates *elem_data,
+                                                    const blender::float4x4 &mat)
+{
+  using namespace blender;
+
+  const float scalef = mat4_to_scale(mat.ptr());
+
+  for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
+    if (base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+    bke::CurvesGeometry &curves = drawing.strokes_for_write();
+    MutableSpan<float3> positions = curves.positions_for_write();
+    MutableSpan<float> radii = drawing.radii_for_write();
+
+    for (const int i : curves.points_range()) {
+      positions[i] = math::transform_point(mat, float3(elem_data->co));
+      radii[i] = elem_data->radius * scalef;
+      elem_data++;
+    }
+  }
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
 /** \name Grease Pencil material functions
  * \{ */
 
