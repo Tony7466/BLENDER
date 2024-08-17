@@ -10,29 +10,30 @@
 
 #include <string>
 
+#include "BLI_array.hh"
+#include "BLI_generic_array.hh"
 #include "BLI_map.hh"
-#include "BLI_vector.hh"
+
+struct PointCloud;
 
 namespace blender::io::csv {
 enum class CsvColumnType { INT, FLOAT };
 
-struct CsvColumn {
-  std::string name;
-  CsvColumnType type;
-  void *vector;  // Use array, GArray
-};
-
 class CsvData {
  private:
-  blender::Map<std::string, CsvColumn> data;
+  blender::Map<std::string, GArray<>> data;
+
+  int64_t row_count;
+  int64_t column_count;
 
  public:
-  // CsvData();
+  CsvData(int64_t row_count, Array<std::pair<std::string, CsvColumnType>> columns);
 
-  void add_column(std::string &name, CsvColumnType &type);
-  void add_data_to_column(std::string &name, void *data);  // use GMutableSpan
+  template<typename T> void set_data(int64_t row_index, std::string &name, T value);
+
+  PointCloud *to_point_cloud() const;
 
  private:
-  void *create_vector_for_type(CsvColumnType &type);
+  GArray<> create_garray_for_type(CsvColumnType &type);
 };
 }  // namespace blender::io::csv

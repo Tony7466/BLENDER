@@ -6,50 +6,39 @@
  * \ingroup csv
  */
 
+#include "BKE_pointcloud.hh"
+
 #include "csv_data.hh"
 
 namespace blender::io::csv {
-void CsvData::add_column(std::string &name, CsvColumnType &type)
+CsvData::CsvData(int64_t row_count, Array<std::pair<std::string, CsvColumnType>> columns)
 {
-  CsvColumn column{};
+  this->row_count = row_count;
+  this->column_count = columns.size();
 
-  column.name = name;
-  column.type = type;
-  column.vector = create_vector_for_type(type);
-
-  this->data.add(name, column);
-}
-
-void CsvData::add_data_to_column(std::string &name, void *data)
-{
-  CsvColumn column = this->data.lookup(name);
-
-  switch (column.type) {
-    case CsvColumnType::INT: {
-      blender::Vector<int> *vector = reinterpret_cast<blender::Vector<int> *>(column.vector);
-      vector->append(*reinterpret_cast<int *>(data));
-      break;
-    }
-    case CsvColumnType::FLOAT: {
-      blender::Vector<float> *vector = reinterpret_cast<blender::Vector<float> *>(column.vector);
-      vector->append(*reinterpret_cast<float *>(data));
-      break;
-    }
-    case CsvColumnType::STRING: {
-      blender::Vector<std::string> *vector = reinterpret_cast<blender::Vector<std::string> *>(
-          column.vector);
-      vector->append(*reinterpret_cast<std::string *>(data));
-      break;
-    }
+  for (std::pair<std::string, CsvColumnType> item : columns) {
+    data.add(item.first, create_garray_for_type(item.second));
   }
 }
 
-void *CsvData::create_vector_for_type(CsvColumnType &type)
+template<typename T> void CsvData::set_data(int64_t row_index, std::string &name, T value)
+{
+  data.lookup(name)[row_index] = value;
+}
+
+PointCloud *CsvData::to_point_cloud() const
+{
+  return nullptr;
+}
+
+GArray<> CsvData::create_garray_for_type(CsvColumnType &type)
 {
   switch (type) {
     case CsvColumnType::INT: {
+      return GArray(CPPType::get<int>(), row_count);
     }
     case CsvColumnType::FLOAT: {
+      return GArray(CPPType::get<float>(), row_count);
     }
   }
 }
