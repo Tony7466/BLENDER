@@ -2021,6 +2021,13 @@ static void rna_def_userdef_theme_ui(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "File Folders", "Color of folders in the file browser");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  prop = RNA_def_property(srna, "icon_autokey", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "icon_autokey");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(
+      prop, "Auto Keying Indicator", "Color of Auto Keying indicator when enabled");
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
+
   prop = RNA_def_property(srna, "icon_border_intensity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "icon_border_intensity");
   RNA_def_property_ui_text(
@@ -4432,6 +4439,7 @@ static void rna_def_userdef_themes(BlenderRNA *brna)
       prop, "File Path", "The path to the preset loaded into this theme (if any)");
   /* Don't store in presets. */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 
   prop = RNA_def_property(srna, "theme_area", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "active_theme_area");
@@ -7427,6 +7435,10 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "enable_overlay_next", 1);
   RNA_def_property_ui_text(
       prop, "Overlay Next", "Enable the new Overlay codebase, requires restart");
+
+  prop = RNA_def_property(srna, "enable_new_cpu_compositor", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "enable_new_cpu_compositor", 1);
+  RNA_def_property_ui_text(prop, "CPU Compositor", "Enable the new CPU compositor");
 
   prop = RNA_def_property(srna, "use_all_linked_data_direct", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
