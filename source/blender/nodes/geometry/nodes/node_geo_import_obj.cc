@@ -39,39 +39,50 @@ static void node_geo_exec(GeoNodeExecParams params)
   OBJImportParams import_params;
   STRNCPY(import_params.filepath, path.c_str());
 
-  ReportList reports;
-  BKE_reports_init(&reports, RPT_STORE);
-  BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
-  import_params.reports = &reports;
+  GeometrySet output;
 
-  Vector<bke::GeometrySet> geometries;
-  OBJ_import_geometries(&import_params, geometries);
+  if (geo_cache_contains(path)) {
+    output = geo_cache_get(path);
+  }
+  else {
+    ReportList reports;
+    BKE_reports_init(&reports, RPT_STORE);
+    BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
+    import_params.reports = &reports;
 
-  LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-    NodeWarningType type;
-    switch (report->type) {
-      case RPT_ERROR:
-        type = NodeWarningType::Error;
-        break;
-      default:
-        type = NodeWarningType::Info;
-        break;
+    Vector<bke::GeometrySet> geometries;
+    OBJ_import_geometries(&import_params, geometries);
+
+    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
+      NodeWarningType type;
+      switch (report->type) {
+        case RPT_ERROR:
+          type = NodeWarningType::Error;
+          break;
+        default:
+          type = NodeWarningType::Info;
+          break;
+      }
+      params.error_message_add(type, TIP_(report->message));
     }
-    params.error_message_add(type, TIP_(report->message));
+
+    if (geometries.is_empty()) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+
+    bke::Instances *instances = new bke::Instances();
+    for (GeometrySet geometry : geometries) {
+      const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
+      instances->add_instance(handle, float4x4::identity());
+    }
+
+    output = GeometrySet::from_instances(instances);
+
+    geo_cache_set(path, output);
   }
 
-  if (geometries.is_empty()) {
-    params.set_default_remaining_outputs();
-    return;
-  }
-
-  bke::Instances *instances = new bke::Instances();
-  for (GeometrySet geometry : geometries) {
-    const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
-    instances->add_instance(handle, float4x4::identity());
-  }
-
-  params.set_output("Instances", GeometrySet::from_instances(instances));
+  params.set_output("Instances", output);
 #else
   params.error_message_add(NodeWarningType::Error,
                            TIP_("Disabled, Blender was compiled without OBJ I/O"));
