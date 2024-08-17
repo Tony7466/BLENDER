@@ -12,6 +12,8 @@
 
 #include "IO_ply.hh"
 
+#include "node_geometry_cache.hh"
+
 namespace blender::nodes::nodes_geo_import_ply {
 
 static void node_declare(NodeDeclarationBuilder &b)
@@ -33,31 +35,42 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  PLYImportParams import_params{};
-  STRNCPY(import_params.filepath, path.c_str());
-  import_params.import_attributes = true;
+  GeometrySet output;
 
-  ReportList reports;
-  BKE_reports_init(&reports, RPT_STORE);
-  BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
-  import_params.reports = &reports;
+  if (geo_cache_contains(path)) {
+    output = geo_cache_get(path);
+  }
+  else {
+    PLYImportParams import_params{};
+    STRNCPY(import_params.filepath, path.c_str());
+    import_params.import_attributes = true;
 
-  Mesh *mesh = PLY_import_mesh(&import_params);
+    ReportList reports;
+    BKE_reports_init(&reports, RPT_STORE);
+    BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
+    import_params.reports = &reports;
 
-  LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-    NodeWarningType type;
-    switch (report->type) {
-      case RPT_ERROR:
-        type = NodeWarningType::Error;
-        break;
-      default:
-        type = NodeWarningType::Info;
-        break;
+    Mesh *mesh = PLY_import_mesh(&import_params);
+
+    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
+      NodeWarningType type;
+      switch (report->type) {
+        case RPT_ERROR:
+          type = NodeWarningType::Error;
+          break;
+        default:
+          type = NodeWarningType::Info;
+          break;
+      }
+      params.error_message_add(type, TIP_(report->message));
     }
-    params.error_message_add(type, TIP_(report->message));
+
+    output = GeometrySet::from_mesh(mesh);
+
+    geo_cache_set(path, output);
   }
 
-  params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+  params.set_output("Mesh", output);
 
 #else
   params.error_message_add(NodeWarningType::Error,

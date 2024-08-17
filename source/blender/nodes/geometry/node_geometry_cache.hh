@@ -4,10 +4,13 @@
 
 #pragma once
 
+#include <list>
 #include <string>
 
 #include "BKE_geometry_set.hh"
+
 #include "BLI_map.hh"
+#include "BLI_memory_counter.hh"
 
 // namespace blender::bke {
 // struct GeometrySet;
@@ -16,44 +19,34 @@
 namespace blender::nodes {
 
 /**
- * Based on DNA_listBase.h
- */
-struct GeometryCacheNode {
-  GeometryCacheNode *next;
-  GeometryCacheNode *prev;
-  std::string key;
-};
-
-/**
  * LRU based geoemetry cache
  */
 class GeometryCache {
  private:
+  typedef std::pair<std::string, bke::GeometrySet> cache_entry;
+  typedef std::list<cache_entry>::iterator cache_node;
+
+  uint64_t capacity;
   uint64_t size;
 
-  blender::Map<std::string, std::pair<GeometryCacheNode, bke::GeometrySet>> cache_map;
-  struct {
-    GeometryCacheNode *first;
-    GeometryCacheNode *last;
-  } cache_list;
+  std::list<cache_entry> cache_list;
+  blender::Map<std::string, cache_node> cache_map;
+
+  MemoryCount memory_count;
 
  public:
-  GeometryCache(uint64_t size);
+  GeometryCache(uint64_t capacity);
 
   void add(std::string key, bke::GeometrySet geometry);
   bool contains(std::string key);
   void remove(std::string key);
   void clear();
   bke::GeometrySet get(std::string key);
-  void resize(uint64_t size);
+  void resize(uint64_t capacity);
 
  private:
   void balance();
-
-  void list_push_first(GeometryCacheNode &node);
-  void list_move_to_first(std::string key);
-  GeometryCacheNode list_pop_last();
-  void list_pop(GeometryCacheNode &node);
+  uint64_t get_geometry_size_in_bytes(bke::GeometrySet &geometry);
 };
 
 void geo_cache_set(std::string key, bke::GeometrySet geometry);

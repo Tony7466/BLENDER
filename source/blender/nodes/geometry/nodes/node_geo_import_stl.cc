@@ -11,6 +11,7 @@
 
 #include "IO_stl.hh"
 
+#include "node_geometry_cache.hh"
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_import_stl {
@@ -34,37 +35,48 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  STLImportParams import_params;
-  STRNCPY(import_params.filepath, path.c_str());
+  GeometrySet output;
 
-  import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
-  import_params.up_axis = IO_AXIS_Y;
-  import_params.use_facet_normal = false;
-  import_params.use_scene_unit = false;
-  import_params.global_scale = 1.0f;
-  import_params.use_mesh_validate = true;
+  if (geo_cache_contains(path)) {
+    output = geo_cache_get(path);
+  }
+  else {
+    STLImportParams import_params;
+    STRNCPY(import_params.filepath, path.c_str());
 
-  ReportList reports;
-  BKE_reports_init(&reports, RPT_STORE);
-  BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
-  import_params.reports = &reports;
+    import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
+    import_params.up_axis = IO_AXIS_Y;
+    import_params.use_facet_normal = false;
+    import_params.use_scene_unit = false;
+    import_params.global_scale = 1.0f;
+    import_params.use_mesh_validate = true;
 
-  Mesh *mesh = STL_import_mesh(&import_params);
+    ReportList reports;
+    BKE_reports_init(&reports, RPT_STORE);
+    BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
+    import_params.reports = &reports;
 
-  LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-    NodeWarningType type;
-    switch (report->type) {
-      case RPT_ERROR:
-        type = NodeWarningType::Error;
-        break;
-      default:
-        type = NodeWarningType::Info;
-        break;
+    Mesh *mesh = STL_import_mesh(&import_params);
+
+    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
+      NodeWarningType type;
+      switch (report->type) {
+        case RPT_ERROR:
+          type = NodeWarningType::Error;
+          break;
+        default:
+          type = NodeWarningType::Info;
+          break;
+      }
+      params.error_message_add(type, TIP_(report->message));
     }
-    params.error_message_add(type, TIP_(report->message));
+
+    output = GeometrySet::from_mesh(mesh);
+
+    geo_cache_set(path, output);
   }
 
-  params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+  params.set_output("Mesh", output);
 
 #else
   params.error_message_add(NodeWarningType::Error,
