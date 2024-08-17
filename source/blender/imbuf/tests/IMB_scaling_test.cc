@@ -107,11 +107,9 @@ TEST(imbuf_scaling, nearest_2x_smaller)
 {
   ImBuf *res = scale_2x_smaller(true, false);
   const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
-  /* Note: IMB_transform results in (255, 255, 255, 255), (133, 55, 31, 19),
-   * (57, 0, 96, 252) i.e. consistently (1,1) pixel of 2x2 quad. */
   EXPECT_EQ(uint4(got[0]), uint4(0, 0, 0, 255));
-  EXPECT_EQ(uint4(got[1]), uint4(133, 55, 31, 15));
-  EXPECT_EQ(uint4(got[2]), uint4(55, 0, 32, 254));
+  EXPECT_EQ(uint4(got[1]), uint4(133, 55, 31, 13));
+  EXPECT_EQ(uint4(got[2]), uint4(50, 200, 0, 255));
   IMB_freeImBuf(res);
 }
 
@@ -166,7 +164,7 @@ TEST(imbuf_scaling, nearest_fractional_larger)
   ImBuf *res = scale_fractional_larger(true, false);
   const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
   EXPECT_EQ(uint4(got[0 + 0 * res->x]), uint4(0, 0, 0, 255));
-  EXPECT_EQ(uint4(got[1 + 0 * res->x]), uint4(255, 0, 0, 255));
+  EXPECT_EQ(uint4(got[1 + 0 * res->x]), uint4(0, 0, 0, 255));
   EXPECT_EQ(uint4(got[7 + 0 * res->x]), uint4(50, 200, 0, 255));
   EXPECT_EQ(uint4(got[2 + 2 * res->x]), uint4(255, 0, 0, 255));
   EXPECT_EQ(uint4(got[3 + 2 * res->x]), uint4(133, 55, 31, 13));
@@ -193,9 +191,9 @@ TEST(imbuf_scaling, nearest_2x_smaller_fl1)
 {
   ImBuf *res = scale_2x_smaller(true, false, 1);
   const float *got = res->float_buffer.data;
-  EXPECT_NEAR(got[0], 0.00f, EPS);
-  EXPECT_NEAR(got[1], 3.75f, EPS);
-  EXPECT_NEAR(got[2], 6.25f, EPS);
+  EXPECT_NEAR(got[0], 0.0f, EPS);
+  EXPECT_NEAR(got[1], 2.5f, EPS);
+  EXPECT_NEAR(got[2], 5.0f, EPS);
   IMB_freeImBuf(res);
 }
 
@@ -203,9 +201,9 @@ TEST(imbuf_scaling, nearest_2x_smaller_fl2)
 {
   ImBuf *res = scale_2x_smaller(true, false, 2);
   const float2 *got = reinterpret_cast<float2 *>(res->float_buffer.data);
-  EXPECT_V2_NEAR(got[0], float2(0.00f, 0.125f), EPS);
-  EXPECT_V2_NEAR(got[1], float2(3.75f, 3.875f), EPS);
-  EXPECT_V2_NEAR(got[2], float2(6.25f, 6.375f), EPS);
+  EXPECT_V2_NEAR(got[0], float2(0.0f, 0.125f), EPS);
+  EXPECT_V2_NEAR(got[1], float2(2.5f, 2.625f), EPS);
+  EXPECT_V2_NEAR(got[2], float2(5.0f, 5.125f), EPS);
   IMB_freeImBuf(res);
 }
 
@@ -213,9 +211,9 @@ TEST(imbuf_scaling, nearest_2x_smaller_fl3)
 {
   ImBuf *res = scale_2x_smaller(true, false, 3);
   const float3 *got = reinterpret_cast<float3 *>(res->float_buffer.data);
-  EXPECT_V3_NEAR(got[0], float3(0.00f, 0.125f, 0.25f), EPS);
-  EXPECT_V3_NEAR(got[1], float3(3.75f, 3.875f, 4.00f), EPS);
-  EXPECT_V3_NEAR(got[2], float3(6.25f, 6.375f, 6.50f), EPS);
+  EXPECT_V3_NEAR(got[0], float3(0.0f, 0.125f, 0.25f), EPS);
+  EXPECT_V3_NEAR(got[1], float3(2.5f, 2.625f, 2.75f), EPS);
+  EXPECT_V3_NEAR(got[2], float3(5.0f, 5.125f, 5.25f), EPS);
   IMB_freeImBuf(res);
 }
 
@@ -223,9 +221,9 @@ TEST(imbuf_scaling, nearest_2x_smaller_fl4)
 {
   ImBuf *res = scale_2x_smaller(true, false, 4);
   const float4 *got = reinterpret_cast<float4 *>(res->float_buffer.data);
-  EXPECT_V4_NEAR(got[0], float4(0.00f, 0.125f, 0.25f, 0.375f), EPS);
-  EXPECT_V4_NEAR(got[1], float4(3.75f, 3.875f, 4.00f, 4.125f), EPS);
-  EXPECT_V4_NEAR(got[2], float4(6.25f, 6.375f, 6.50f, 6.625f), EPS);
+  EXPECT_V4_NEAR(got[0], float4(0.0f, 0.125f, 0.25f, 0.375f), EPS);
+  EXPECT_V4_NEAR(got[1], float4(2.5f, 2.625f, 2.75f, 2.875f), EPS);
+  EXPECT_V4_NEAR(got[2], float4(5.0f, 5.125f, 5.25f, 5.375f), EPS);
   IMB_freeImBuf(res);
 }
 

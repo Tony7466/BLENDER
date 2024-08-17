@@ -1,4 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1054,98 +1055,74 @@ bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
 bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
-
-  uint *rect, *_newrect, *newrect;
-  float *rectf, *_newrectf, *newrectf;
-  int x, y;
-  bool do_float = false, do_rect = false;
-  size_t ofsx, ofsy, stepx, stepy;
-
-  rect = nullptr;
-  _newrect = nullptr;
-  newrect = nullptr;
-  rectf = nullptr;
-  _newrectf = nullptr;
-  newrectf = nullptr;
-
   if (ibuf == nullptr) {
     return false;
   }
-  if (ibuf->byte_buffer.data) {
-    do_rect = true;
-  }
-  if (ibuf->float_buffer.data) {
-    do_float = true;
-  }
-  if (do_rect == false && do_float == false) {
-    return false;
-  }
-
   if (newx == ibuf->x && newy == ibuf->y) {
     return false;
   }
 
-  if (do_rect) {
-    _newrect = static_cast<uint *>(MEM_mallocN(newx * newy * sizeof(int), "scalefastimbuf"));
-    if (_newrect == nullptr) {
-      return false;
-    }
-    newrect = _newrect;
+  /* Create destination buffers. */
+  uint *dst_byte_buffer = nullptr;
+  if (ibuf->byte_buffer.data) {
+    dst_byte_buffer = static_cast<uint *>(
+        MEM_mallocN(sizeof(uint) * newx * newy, "scale byte buffer"));
+  }
+  float *dst_float_buffer = nullptr;
+  const int channels = ibuf->channels;
+  if (ibuf->float_buffer.data) {
+    dst_float_buffer = static_cast<float *>(
+        MEM_mallocN(sizeof(float) * channels * newx * newy, "scale float buffer"));
+  }
+  if (dst_byte_buffer == nullptr && dst_float_buffer == nullptr) {
+    return false;
   }
 
-  if (do_float) {
-    _newrectf = static_cast<float *>(
-        MEM_mallocN(sizeof(float) * ibuf->channels * newx * newy, "scalefastimbuf f"));
-    if (_newrectf == nullptr) {
-      if (_newrect) {
-        MEM_freeN(_newrect);
+  /* Processing. Step through pixels in fixed point coordinates. */
+  constexpr int FRAC_BITS = 16;
+  int64_t stepx = ((int64_t(ibuf->x) << FRAC_BITS) + newx / 2) / newx;
+  int64_t stepy = ((int64_t(ibuf->y) << FRAC_BITS) + newy / 2) / newy;
+  if (dst_byte_buffer != nullptr) {
+    uint *dst = dst_byte_buffer;
+    int64_t posy = 0;
+    for (int y = 0; y < newy; y++, posy += stepy) {
+      const uint *src = reinterpret_cast<const uint *>(ibuf->byte_buffer.data) +
+                        (posy >> FRAC_BITS) * ibuf->x;
+      int64_t posx = 0;
+      for (int x = 0; x < newx; x++, posx += stepx) {
+        *dst = src[posx >> FRAC_BITS];
+        dst++;
       }
-      return false;
     }
-    newrectf = _newrectf;
   }
-
-  stepx = round(65536.0 * (ibuf->x - 1.0) / (newx - 1.0));
-  stepy = round(65536.0 * (ibuf->y - 1.0) / (newy - 1.0));
-  ofsy = 32768;
-
-  for (y = newy; y > 0; y--, ofsy += stepy) {
-    if (do_rect) {
-      rect = (uint *)ibuf->byte_buffer.data;
-      rect += (ofsy >> 16) * ibuf->x;
-      ofsx = 32768;
-
-      for (x = newx; x > 0; x--, ofsx += stepx) {
-        *newrect++ = rect[ofsx >> 16];
-      }
-    }
-
-    if (do_float) {
-      rectf = ibuf->float_buffer.data;
-      rectf += size_t(ofsy >> 16) * ibuf->x * ibuf->channels;
-      ofsx = 32768;
-
-      for (x = newx; x > 0; x--, ofsx += stepx) {
-        float *pixel = &rectf[size_t(ofsx >> 16) * ibuf->channels];
-        for (int c = 0; c < ibuf->channels; ++c) {
-          *newrectf++ = pixel[c];
+  if (dst_float_buffer != nullptr) {
+    float *dst = dst_float_buffer;
+    int64_t posy = 0;
+    for (int y = 0; y < newy; y++, posy += stepy) {
+      const float *src = reinterpret_cast<const float *>(ibuf->float_buffer.data) +
+                         (posy >> FRAC_BITS) * ibuf->x * channels;
+      int64_t posx = 0;
+      for (int x = 0; x < newx; x++, posx += stepx) {
+        const float *srcpix = src + (posx >> FRAC_BITS) * channels;
+        for (int c = 0; c < channels; c++) {
+          *dst++ = srcpix[c];
         }
       }
     }
   }
 
-  if (do_rect) {
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(_newrect), IB_TAKE_OWNERSHIP);
-  }
-
-  if (do_float) {
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, reinterpret_cast<float *>(_newrectf), IB_TAKE_OWNERSHIP);
-  }
-
+  /* Alter the image. */
   ibuf->x = newx;
   ibuf->y = newy;
+
+  if (ibuf->byte_buffer.data) {
+    imb_freerectImBuf(ibuf);
+    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte_buffer), IB_TAKE_OWNERSHIP);
+  }
+  if (ibuf->float_buffer.data) {
+    imb_freerectfloatImBuf(ibuf);
+    IMB_assign_float_buffer(ibuf, dst_float_buffer, IB_TAKE_OWNERSHIP);
+  }
   return true;
 }
 
@@ -1184,7 +1161,7 @@ void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
 
         if (dst_float_buffer) {
           float *pixel = dst_float_buffer + ibuf->channels * offset;
-          blender::math::interpolate_bilinear_fl(
+          math::interpolate_bilinear_fl(
               ibuf->float_buffer.data, pixel, ibuf->x, ibuf->y, ibuf->channels, u, v);
         }
       }
