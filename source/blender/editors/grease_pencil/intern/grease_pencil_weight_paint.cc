@@ -456,10 +456,10 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
   const Scene &scene = *CTX_data_scene(C);
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
 
-  /* Smooth weights in all drawings. */
+  /* Smooth weights in all editable drawings. */
   threading::parallel_for(drawings.index_range(), 1, [&](const IndexRange drawing_range) {
-    for (const int drawing_i : drawing_range) {
-      bke::CurvesGeometry &curves = drawings[drawing_i].drawing.strokes_for_write();
+    for (const int drawing : drawing_range) {
+      bke::CurvesGeometry &curves = drawings[drawing].drawing.strokes_for_write();
       bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
       /* Skip the drawing when it doesn't use the active vertex group. */
@@ -475,7 +475,7 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
       bke::SpanAttributeWriter<float> weights = attributes.lookup_for_write_span<float>(
           object_defgroup->name);
       Array<float> smoothed_weights(weights.span.size());
-      Array<float> distances_to_next(curves.points_num());
+      Array<float> distance_to_next(curves.points_num());
 
       /* Smooth all strokes in the drawing. */
       threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange curves_range) {
@@ -490,7 +490,7 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
           const IndexRange points = points_by_curve[curve];
           for (const int point : points) {
             const int next_point = point < points.last() ? (point + 1) : points.first();
-            distances_to_next[point] = math::length(positions[next_point] - positions[point]);
+            distance_to_next[point] = math::length(positions[next_point] - positions[point]);
           }
         }
 
@@ -515,13 +515,13 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
                  * of point B for 0.5.
                  * The center point always counts for 1.
                  */
-                const float average_distance = (distances_to_next[prev_point] +
-                                                distances_to_next[point]) *
+                const float average_distance = (distance_to_next[prev_point] +
+                                                distance_to_next[point]) *
                                                0.5f;
                 if (average_distance != 0.0f) {
-                  smoothed_weight_sum += weights.span[prev_point] * distances_to_next[point] /
+                  smoothed_weight_sum += weights.span[prev_point] * distance_to_next[point] /
                                          average_distance;
-                  smoothed_weight_sum += weights.span[next_point] * distances_to_next[prev_point] /
+                  smoothed_weight_sum += weights.span[next_point] * distance_to_next[prev_point] /
                                          average_distance;
                 }
                 else {
