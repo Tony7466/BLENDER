@@ -13,8 +13,12 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_modifier.hh"
 #include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "DNA_meshdata_types.h"
+
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "ED_curves.hh"
 #include "ED_view3d.hh"
@@ -414,6 +418,160 @@ static void GREASE_PENCIL_OT_weight_invert(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 }
 
+static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
+{
+  /* Get the active vertex group in the Grease Pencil object. */
+  Object *object = CTX_data_active_object(C);
+  const int object_defgroup_nr = BKE_object_defgroup_active_index_get(object) - 1;
+  if (object_defgroup_nr == -1) {
+    return OPERATOR_CANCELLED;
+  }
+  const bDeformGroup *object_defgroup = static_cast<const bDeformGroup *>(
+      BLI_findlink(BKE_object_defgroup_list(object), object_defgroup_nr));
+  if (object_defgroup->flag & DG_LOCK_WEIGHT) {
+    BKE_report(op->reports, RPT_WARNING, "Active vertex group is locked");
+    return OPERATOR_CANCELLED;
+  }
+
+  const float smooth_factor = RNA_float_get(op->ptr, "factor");
+  const int repeat = RNA_int_get(op->ptr, "repeat");
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const Scene &scene = *CTX_data_scene(C);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
+
+  /* Smooth weights in all drawings. */
+  threading::parallel_for(drawings.index_range(), 1, [&](const IndexRange drawing_range) {
+    for (const int drawing_i : drawing_range) {
+      bke::CurvesGeometry &curves = drawings[drawing_i].drawing.strokes_for_write();
+      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+      /* Skip the drawing when it doesn't use the active vertex group. */
+      if (!attributes.contains(object_defgroup->name)) {
+        continue;
+      }
+
+      const OffsetIndices points_by_curve = curves.points_by_curve();
+      const VArray<bool> cyclic = curves.cyclic();
+      MutableSpan<MDeformVert> deform_verts = curves.deform_verts_for_write();
+      const Span<float3> positions = curves.positions();
+
+      bke::SpanAttributeWriter<float> weights = attributes.lookup_for_write_span<float>(
+          object_defgroup->name);
+      Array<float> smoothed_weights(weights.span.size());
+      Array<float> distances_to_next(curves.points_num());
+
+      /* Smooth all strokes in the drawing. */
+      threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange curves_range) {
+        const IndexRange points_of_curves = IndexRange(
+            points_by_curve[curves_range.first()].first(),
+            points_by_curve[curves_range.last()].last() -
+                points_by_curve[curves_range.first()].first() + 1);
+
+        /* Calculate the distance between stroke points. This distance is used in averaging the
+         * weights of the points. */
+        for (const int curve : curves_range) {
+          const IndexRange points = points_by_curve[curve];
+          for (const int point : points) {
+            const int next_point = point < points.last() ? (point + 1) : points.first();
+            distances_to_next[point] = math::length(positions[next_point] - positions[point]);
+          }
+        }
+
+        for ([[maybe_unused]] const int iteration : IndexRange(repeat)) {
+          for (const int curve : curves_range) {
+            const IndexRange points = points_by_curve[curve];
+            for (const int point : points) {
+              /* Smooth the point weight by averaging it with the weights of the neighboring
+               * points. */
+              const int prev_point = point > points.first() ? (point - 1) :
+                                                              (cyclic[curve] ? points.last() : -1);
+              const int next_point = point < points.last() ? (point + 1) :
+                                                             (cyclic[curve] ? points.first() : -1);
+              float smoothed_weight_sum = weights.span[point];
+              int smoothed_count = 1;
+
+              if (prev_point != -1 && next_point != -1) {
+                /* Calculate a weighted average, based on the distance of the neighboring points.
+                 * Close neighbors weigh more in the average.
+                 * Example: when the distance to point A is 1.0 and the distance of point B is 3.0,
+                 * the vertex weight of point A counts for 1.5 in the average and the vertex weight
+                 * of point B for 0.5.
+                 * The center point always counts for 1.
+                 */
+                const float average_distance = (distances_to_next[prev_point] +
+                                                distances_to_next[point]) *
+                                               0.5f;
+                if (average_distance != 0.0f) {
+                  smoothed_weight_sum += weights.span[prev_point] * distances_to_next[point] /
+                                         average_distance;
+                  smoothed_weight_sum += weights.span[next_point] * distances_to_next[prev_point] /
+                                         average_distance;
+                }
+                else {
+                  smoothed_weight_sum += weights.span[prev_point] + weights.span[next_point];
+                }
+                smoothed_count = 3;
+              }
+              else if (prev_point != -1) {
+                smoothed_weight_sum += weights.span[prev_point];
+                smoothed_count = 2;
+              }
+              else if (next_point != -1) {
+                smoothed_weight_sum += weights.span[next_point];
+                smoothed_count = 2;
+              }
+              smoothed_weights[point] = math::interpolate(
+                  weights.span[point], smoothed_weight_sum / float(smoothed_count), smooth_factor);
+            }
+          }
+
+          weights.span.slice(points_of_curves)
+              .copy_from(smoothed_weights.as_span().slice(points_of_curves));
+        }
+      });
+
+      weights.finish();
+    }
+  });
+
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static bool vertex_group_exists_poll(bContext *C)
+{
+  if (!active_grease_pencil_poll(C)) {
+    return false;
+  }
+  const Object *object = CTX_data_active_object(C);
+  if ((object->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) {
+    return false;
+  }
+  return !BLI_listbase_is_empty(BKE_object_defgroup_list(object));
+}
+
+static void GREASE_PENCIL_OT_vertex_group_smooth(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Smooth Vertex Group";
+  ot->idname = "GREASE_PENCIL_OT_vertex_group_smooth";
+  ot->description = "Smooth the weights of the active vertex group";
+
+  /* Callbacks. */
+  ot->poll = vertex_group_exists_poll;
+  ot->exec = vertex_group_smooth_exec;
+
+  /* Flags. */
+  ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
+
+  /* Operator properties. */
+  RNA_def_float(ot->srna, "factor", 0.5f, 0.0f, 1.0, "Factor", "", 0.0f, 1.0f);
+  RNA_def_int(ot->srna, "repeat", 1, 1, 10000, "Iterations", "", 1, 200);
+}
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_weight_paint()
@@ -422,4 +580,5 @@ void ED_operatortypes_grease_pencil_weight_paint()
   WM_operatortype_append(GREASE_PENCIL_OT_weight_toggle_direction);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_sample);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_invert);
+  WM_operatortype_append(GREASE_PENCIL_OT_vertex_group_smooth);
 }
