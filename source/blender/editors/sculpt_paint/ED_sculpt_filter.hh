@@ -22,7 +22,7 @@ struct wmOperatorType;
 
 namespace blender {
 namespace bke::pbvh {
-struct Node;
+class Node;
 }
 namespace ed::sculpt_paint {
 namespace auto_mask {
@@ -32,7 +32,7 @@ namespace cloth {
 struct SimulationData;
 }
 namespace undo {
-struct Type;
+enum class Type : int8_t;
 }
 }
 }
@@ -107,6 +107,8 @@ struct Cache {
 
   ViewContext vc;
   float start_filter_strength;
+
+  ~Cache();
 };
 
 void cache_init(bContext *C,

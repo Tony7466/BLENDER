@@ -39,6 +39,8 @@
 #include "ED_select_utils.hh"
 
 #include "ED_sculpt_undo.hh"
+#include "ED_sculpt_hide.hh"
+#include "ED_sculpt_gesture.hh"
 
 #include "bmesh.hh"
 

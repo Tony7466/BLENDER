@@ -16,8 +16,6 @@
 
 #include "BLT_translation.hh"
 
-#include "DNA_userdef_types.h"
-
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -31,6 +29,10 @@
 #include "WM_types.hh"
 
 #include "ED_paint.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_color.hh"
+#include "ED_sculpt_filter.hh"
+#include "ED_sculpt_smooth.hh"
 
 #include "mesh_brush_common.hh"
 #include "sculpt_intern.hh"

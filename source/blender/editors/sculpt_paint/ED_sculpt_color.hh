@@ -21,7 +21,7 @@ enum class AttrDomain : int8_t;
 struct GAttributeReader;
 struct GSpanAttributeWriter;
 namespace pbvh {
-struct Node;
+class Node;
 }
 }
 

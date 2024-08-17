@@ -14,8 +14,6 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_color_types.h"
-#include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -43,11 +41,11 @@
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf_types.hh"
 
+#include "ED_sculpt_boundary.hh"
+#include "ED_sculpt_pose.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
 #include "ED_view3d.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_immediate_util.hh"

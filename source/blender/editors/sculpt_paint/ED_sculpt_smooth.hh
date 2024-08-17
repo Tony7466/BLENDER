@@ -13,12 +13,14 @@
 #include "BLI_generic_span.hh"
 #include "BLI_set.hh"
 
+#include "BKE_subdiv_ccg.hh"
+
 struct BMVert;
 struct Object;
 struct SubdivCCG;
 struct SubdivCCGCoord;
 namespace blender::bke {
-struct AttrDomain;
+enum class AttrDomain : int8_t;
 }
 
 namespace blender::ed::sculpt_paint::smooth {

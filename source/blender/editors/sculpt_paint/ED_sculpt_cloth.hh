@@ -19,7 +19,7 @@ struct Brush;
 struct Sculpt;
 struct SculptSession;
 namespace blender::bke::pbvh {
-struct Node;
+class Node;
 }
 
 namespace blender::ed::sculpt_paint::cloth {

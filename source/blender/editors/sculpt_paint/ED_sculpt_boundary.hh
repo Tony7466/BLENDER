@@ -25,7 +25,7 @@ struct SculptSession;
 struct SubdivCCG;
 struct SubdivCCGCoord;
 namespace blender::bke::pbvh {
-struct Node;
+class Node;
 }
 
 namespace blender::ed::sculpt_paint::boundary {

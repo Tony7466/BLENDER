@@ -5,6 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
+#include "ED_sculpt_cloth.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -28,7 +29,6 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_ccg.hh"
 #include "BKE_collision.h"
-#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
@@ -37,16 +37,18 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "ED_sculpt.hh"
+#include "ED_sculpt_automask.hh"
+#include "ED_sculpt_filter.hh"
+#include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_hide.hh"
 
 #include "mesh_brush_common.hh"
-#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"

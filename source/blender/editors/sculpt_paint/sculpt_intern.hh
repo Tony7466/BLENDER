@@ -12,13 +12,11 @@
 #include <queue>
 
 #include "BKE_attribute.hh"
-#include "BKE_collision.h"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
 #include "BLI_array.hh"
-#include "BLI_bit_vector.hh"
 #include "BLI_generic_array.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
@@ -29,6 +27,7 @@
 #include "DNA_brush_enums.h"
 
 #include "ED_view3d.hh"
+#include "ED_sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint {
 namespace auto_mask {
