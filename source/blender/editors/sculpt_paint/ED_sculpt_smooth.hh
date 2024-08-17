@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "BLI_offset_indices.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_generic_span.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 
 #include "BKE_subdiv_ccg.hh"
@@ -119,4 +119,4 @@ void calc_relaxed_translations_bmesh(const Set<BMVert *, 0> &verts,
                                      Vector<Vector<BMVert *>> &neighbors,
                                      MutableSpan<float3> translations);
 
-}
+}  // namespace blender::ed::sculpt_paint::smooth

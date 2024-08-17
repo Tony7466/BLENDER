@@ -11,9 +11,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_generic_span.hh"
-#include "BLI_span.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_span.hh"
 
 struct Depsgraph;
 namespace blender::bke {
@@ -23,7 +23,7 @@ struct GSpanAttributeWriter;
 namespace pbvh {
 class Node;
 }
-}
+}  // namespace blender::bke
 
 namespace blender::ed::sculpt_paint::color {
 
@@ -71,4 +71,4 @@ void do_smear_brush(const Depsgraph &depsgraph,
                     const Sculpt &sd,
                     Object &ob,
                     Span<bke::pbvh::Node *> nodes);
-}
+}  // namespace blender::ed::sculpt_paint::color

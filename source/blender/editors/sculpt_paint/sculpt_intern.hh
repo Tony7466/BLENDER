@@ -26,8 +26,8 @@
 
 #include "DNA_brush_enums.h"
 
-#include "ED_view3d.hh"
 #include "ED_sculpt_undo.hh"
+#include "ED_view3d.hh"
 
 namespace blender::ed::sculpt_paint {
 namespace auto_mask {
@@ -602,7 +602,6 @@ void SCULPT_fake_neighbors_enable(Object &ob);
 void SCULPT_fake_neighbors_disable(Object &ob);
 void SCULPT_fake_neighbors_free(Object &ob);
 
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -902,7 +901,6 @@ void SCULPT_OT_dynamic_topology_toggle(wmOperatorType *ot);
 /** \name Brushes
  * \{ */
 
-
 namespace blender::ed::sculpt_paint {
 
 void multiplane_scrape_preview_draw(uint gpuattr,
@@ -910,7 +908,6 @@ void multiplane_scrape_preview_draw(uint gpuattr,
                                     const SculptSession &ss,
                                     const float outline_col[3],
                                     float outline_alpha);
-
 
 }
 /**

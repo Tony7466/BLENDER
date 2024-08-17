@@ -30,8 +30,8 @@
 #include "ED_sculpt_boundary.hh"
 #include "ED_sculpt_dyntopo.hh"
 #include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_flood_fill.hh"
 #include "ED_sculpt_filter.hh"
+#include "ED_sculpt_flood_fill.hh"
 #include "ED_sculpt_islands.hh"
 #include "ED_sculpt_undo.hh"
 

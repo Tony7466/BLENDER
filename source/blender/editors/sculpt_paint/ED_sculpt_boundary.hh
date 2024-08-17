@@ -12,10 +12,10 @@
 #include "BLI_array.hh"
 #include "BLI_bit_span.hh"
 #include "BLI_map.hh"
-#include "BLI_span.hh"
-#include "BLI_offset_indices.hh"
-#include "BLI_vector.hh"
 #include "BLI_math_vector.hh"
+#include "BLI_offset_indices.hh"
+#include "BLI_span.hh"
+#include "BLI_vector.hh"
 
 struct Brush;
 struct BMVert;
@@ -116,7 +116,6 @@ bool vert_is_boundary(const SubdivCCG &subdiv_ccg,
                       SubdivCCGCoord vert);
 bool vert_is_boundary(BMVert *vert);
 
-
 /**
  * Main function to get #SculptBoundary data both for brush deformation and viewport preview.
  * Can return NULL if there is no boundary from the given vertex using the given radius.
@@ -150,4 +149,4 @@ void edges_preview_draw(uint gpuattr,
                         float outline_alpha);
 void pivot_line_preview_draw(uint gpuattr, SculptSession &ss);
 
-}
+}  // namespace blender::ed::sculpt_paint::boundary

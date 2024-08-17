@@ -96,4 +96,4 @@ void execute(Object &object,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
 
-}
+}  // namespace blender::ed::sculpt_paint::flood_fill

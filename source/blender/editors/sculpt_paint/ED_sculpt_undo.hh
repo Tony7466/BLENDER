@@ -9,10 +9,10 @@
 #pragma once
 
 #include "BLI_array.hh"
-#include "BLI_vector.hh"
-#include "BLI_math_vector.hh"
-#include "BLI_bit_vector.hh"
 #include "BLI_bit_group_vector.hh"
+#include "BLI_bit_vector.hh"
+#include "BLI_math_vector.hh"
+#include "BLI_vector.hh"
 
 struct BMLogEntry;
 struct Depsgraph;
@@ -114,4 +114,4 @@ void restore_from_bmesh_enter_geometry(const StepData &step_data, Mesh &mesh);
 BMLogEntry *get_bmesh_log_entry();
 
 void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object);
-}
+}  // namespace blender::ed::sculpt_paint::undo

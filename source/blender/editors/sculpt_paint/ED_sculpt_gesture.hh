@@ -13,8 +13,8 @@
 #include "BLI_math_matrix.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_vec_types.h"
 #include "DNA_scene_enums.h"
+#include "DNA_vec_types.h"
 
 #include "ED_view3d.hh"
 
@@ -148,4 +148,4 @@ void operator_properties(wmOperatorType *ot, ShapeType shapeType);
 /* Apply the gesture action to the selected nodes. */
 void apply(bContext &C, GestureData &gesture_data, wmOperator &op);
 
-}
+}  // namespace blender::ed::sculpt_paint::gesture

@@ -36,4 +36,4 @@ bool vert_all_faces_visible_get(Span<bool> hide_poly,
                                 SubdivCCGCoord vert);
 bool vert_all_faces_visible_get(BMVert *vert);
 
-}
+}  // namespace blender::ed::sculpt_paint::hide

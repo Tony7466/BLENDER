@@ -93,5 +93,5 @@ float constant_to_relative_detail(float constant_detail,
                                   float pixel_radius,
                                   float pixel_size,
                                   const Object &ob);
-}
-}
+}  // namespace detail_size
+}  // namespace blender::ed::sculpt_paint::dyntopo

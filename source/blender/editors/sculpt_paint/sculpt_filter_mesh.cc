@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_filter.hh" // TODO- Move this function's initialization to a separate file
+#include "ED_sculpt_filter.hh"  // TODO- Move this function's initialization to a separate file
 
 #include <fmt/format.h>
 
@@ -123,9 +123,7 @@ void zero_disabled_axis_components(const filter::Cache &filter_cache,
   }
 }
 
-Cache::~Cache()
-{
-}
+Cache::~Cache() {}
 
 void cache_init(bContext *C,
                 Object &ob,

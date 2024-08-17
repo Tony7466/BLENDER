@@ -27,8 +27,8 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "ED_sculpt_flood_fill.hh"
 #include "ED_sculpt_cloth.hh"
+#include "ED_sculpt_flood_fill.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_state.hh"

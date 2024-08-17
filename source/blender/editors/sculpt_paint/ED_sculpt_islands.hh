@@ -22,4 +22,4 @@ void invalidate(SculptSession &ss);
 /** Get vertex island key. */
 int vert_id_get(const SculptSession &ss, int vert);
 
-}
+}  // namespace blender::ed::sculpt_paint::islands

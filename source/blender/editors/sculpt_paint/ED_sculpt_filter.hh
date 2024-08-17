@@ -11,8 +11,8 @@
 #include <array>
 
 #include "BLI_array.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
 
 #include "ED_view3d.hh"
@@ -34,8 +34,8 @@ struct SimulationData;
 namespace undo {
 enum class Type : int8_t;
 }
-}
-}
+}  // namespace ed::sculpt_paint
+}  // namespace blender
 
 namespace blender::ed::sculpt_paint::filter {
 
@@ -124,5 +124,4 @@ void register_operator_props(wmOperatorType *ot);
 float3x3 to_orientation_space(const filter::Cache &filter_cache);
 float3x3 to_object_space(const filter::Cache &filter_cache);
 void zero_disabled_axis_components(const filter::Cache &filter_cache, MutableSpan<float3> vectors);
-}
-
+}  // namespace blender::ed::sculpt_paint::filter

@@ -355,6 +355,6 @@ void FillDataBMesh::execute(Object & /*object*/,
   }
 }
 
-}  // namespace flood_fill
+}  // namespace blender::ed::sculpt_paint::flood_fill
 
 /** \} */

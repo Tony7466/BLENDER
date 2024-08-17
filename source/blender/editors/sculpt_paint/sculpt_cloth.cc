@@ -44,8 +44,8 @@
 
 #include "ED_sculpt.hh"
 #include "ED_sculpt_automask.hh"
-#include "ED_sculpt_filter.hh"
 #include "ED_sculpt_face_set.hh"
+#include "ED_sculpt_filter.hh"
 #include "ED_sculpt_hide.hh"
 
 #include "mesh_brush_common.hh"

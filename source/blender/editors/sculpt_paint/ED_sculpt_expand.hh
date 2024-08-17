@@ -8,8 +8,8 @@
 #pragma once
 
 #include "BLI_array.hh"
-#include "BLI_set.hh"
 #include "BLI_math_vector.hh"
+#include "BLI_set.hh"
 
 #include "BKE_pbvh.hh"
 
@@ -175,4 +175,4 @@ struct Cache {
   int normal_falloff_blur_steps;
 };
 
-}
+}  // namespace blender::ed::sculpt_paint::expand

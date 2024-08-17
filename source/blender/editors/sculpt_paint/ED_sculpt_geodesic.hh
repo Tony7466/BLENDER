@@ -33,4 +33,4 @@ Array<float> distances_create_from_vert_and_symm(const Depsgraph &depsgraph,
                                                  PBVHVertRef vertex,
                                                  float limit_radius);
 
-}
+}  // namespace blender::ed::sculpt_paint::geodesic

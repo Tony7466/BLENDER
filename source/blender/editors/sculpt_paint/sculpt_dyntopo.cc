@@ -32,8 +32,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_undo.hh"
 #include "ED_sculpt_undo.hh"
+#include "ED_undo.hh"
 #include "sculpt_intern.hh"
 
 #include "UI_interface.hh"

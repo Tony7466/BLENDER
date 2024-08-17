@@ -4024,9 +4024,7 @@ static const char *sculpt_tool_name(const Sculpt &sd)
 }
 
 namespace blender::ed::sculpt_paint {
-StrokeCache::StrokeCache()
-{
-}
+StrokeCache::StrokeCache() {}
 
 StrokeCache::~StrokeCache()
 {

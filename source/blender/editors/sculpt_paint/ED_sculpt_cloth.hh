@@ -9,8 +9,8 @@
 #pragma once
 
 #include "BLI_array.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_map.hh"
+#include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
 
 #include "BKE_collision.h"
@@ -153,4 +153,4 @@ Vector<blender::bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss
 
 bool is_cloth_deform_brush(const Brush &brush);
 
-}
+}  // namespace blender::ed::sculpt_paint::cloth

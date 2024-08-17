@@ -9,9 +9,9 @@
 #pragma once
 
 #include "BLI_array.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
-#include "BLI_offset_indices.hh"
 
 #include "BKE_attribute.hh"
 
@@ -80,4 +80,4 @@ void filter_verts_with_unique_face_sets_bmesh(bool unique,
                                               const Set<BMVert *, 0> verts,
                                               MutableSpan<float> factors);
 
-}
+}  // namespace blender::ed::sculpt_paint::face_set

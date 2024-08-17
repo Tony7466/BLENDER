@@ -56,4 +56,4 @@ std::unique_ptr<SculptPoseIKChainPreview> preview_ik_chain_init(const Depsgraph 
                                                                 const float3 &initial_location,
                                                                 float radius);
 
-}
+}  // namespace blender::ed::sculpt_paint::pose

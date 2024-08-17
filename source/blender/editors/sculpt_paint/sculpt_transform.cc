@@ -79,10 +79,9 @@ void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char 
   }
 }
 
-static std::array<float4x4, 8> transform_matrices_init(
-    const SculptSession &ss,
-    const ePaintSymmetryFlags symm,
-    const TransformDisplacementMode t_mode)
+static std::array<float4x4, 8> transform_matrices_init(const SculptSession &ss,
+                                                       const ePaintSymmetryFlags symm,
+                                                       const TransformDisplacementMode t_mode)
 {
   std::array<float4x4, 8> mats;
 

@@ -69,4 +69,4 @@ int settings_hash(const Object &ob, const Cache &automasking);
 
 bool tool_can_reuse_automask(int sculpt_tool);
 
-}
+}  // namespace blender::ed::sculpt_paint::auto_mask
