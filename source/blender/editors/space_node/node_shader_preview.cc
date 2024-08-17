@@ -29,7 +29,7 @@
 #include "DNA_world_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BKE_colortools.hh"
 #include "BKE_compute_contexts.hh"
@@ -782,7 +782,7 @@ static void ensure_nodetree_previews(const bContext &C,
     return;
   }
   if (tree_previews.rendering) {
-    WM_jobs_stop(CTX_wm_manager(&C), CTX_wm_space_node(&C), shader_preview_startjob);
+    WM_jobs_stop_type(CTX_wm_manager(&C), CTX_wm_space_node(&C), WM_JOB_TYPE_RENDER_PREVIEW);
     return;
   }
   tree_previews.rendering = true;
@@ -817,10 +817,15 @@ static void ensure_nodetree_previews(const bContext &C,
        original_path;
        original_path = original_path->next)
   {
-    bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
-    memcpy(new_path, original_path, sizeof(bNodeTreePath));
     bNode *parent = bke::nodeFindNodebyName(job_data->treepath_copy.last()->nodetree,
                                             original_path->node_name);
+    if (parent == nullptr) {
+      /* In some cases (e.g. muted nodes), there may not be an equivalent node in the copied
+       * nodetree. In that case, just skip the node. */
+      continue;
+    }
+    bNodeTreePath *new_path = MEM_cnew<bNodeTreePath>(__func__);
+    memcpy(new_path, original_path, sizeof(bNodeTreePath));
     new_path->nodetree = reinterpret_cast<bNodeTree *>(parent->id);
     job_data->treepath_copy.append(new_path);
   }
@@ -832,15 +837,10 @@ static void ensure_nodetree_previews(const bContext &C,
   WM_jobs_start(CTX_wm_manager(&C), wm_job);
 }
 
-void stop_preview_job(wmWindowManager &wm)
-{
-  WM_jobs_stop(&wm, nullptr, shader_preview_startjob);
-}
-
 void free_previews(wmWindowManager &wm, SpaceNode &snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
-  WM_jobs_kill(&wm, &snode, shader_preview_startjob);
+  WM_jobs_kill_type(&wm, &snode, WM_JOB_TYPE_RENDER_PREVIEW);
   snode.runtime->tree_previews_per_context.clear_and_shrink();
 }
 

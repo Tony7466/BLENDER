@@ -84,7 +84,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLO_readfile.hh"
 
@@ -676,25 +676,6 @@ static bool seq_speed_factor_set(Sequence *seq, void *user_data)
   return true;
 }
 
-static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *user_data)
-{
-  const Scene *scene = static_cast<const Scene *>(user_data);
-
-  if (seq->speed_factor == 1 || !SEQ_retiming_is_allowed(seq)) {
-    return true;
-  }
-
-  const int content_length = SEQ_time_strip_length_get(scene, seq);
-
-  SEQ_retiming_data_ensure(seq);
-
-  SeqRetimingKey *key = &seq->retiming_keys[seq->retiming_keys_num - 1];
-  key->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
-  seq->speed_factor = 1.0f;
-
-  return true;
-}
-
 static void version_geometry_nodes_replace_transfer_attribute_node(bNodeTree *ntree)
 {
   using namespace blender;
@@ -976,7 +957,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
       bNode *capture_node = geometry_in_link->fromnode;
       const NodeGeometryAttributeCapture &capture_storage =
           *static_cast<const NodeGeometryAttributeCapture *>(capture_node->storage);
-      if (capture_storage.data_type != CD_PROP_BOOL ||
+      if (capture_storage.data_type_legacy != CD_PROP_BOOL ||
           bke::AttrDomain(capture_storage.domain) != bke::AttrDomain::Face)
       {
         return false;
@@ -1020,7 +1001,7 @@ static void version_geometry_nodes_extrude_smooth_propagation(bNodeTree &ntree)
     new_nodes.append(&capture_node);
     auto *capture_node_storage = MEM_cnew<NodeGeometryAttributeCapture>(__func__);
     capture_node.storage = capture_node_storage;
-    capture_node_storage->data_type = CD_PROP_BOOL;
+    capture_node_storage->data_type_legacy = CD_PROP_BOOL;
     capture_node_storage->domain = int8_t(bke::AttrDomain::Face);
     bNodeSocket &capture_node_geo_in = version_node_add_socket(
         ntree, capture_node, SOCK_IN, "NodeSocketGeometry", "Geometry");
@@ -1378,18 +1359,6 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 6)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      Editing *ed = SEQ_editing_get(scene);
-      if (ed == nullptr) {
-        continue;
-      }
-
-      SEQ_for_each_callback(
-          &scene->ed->seqbase, do_versions_sequencer_init_retiming_tool_data, scene);
-    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 306, 13)) {
@@ -4279,8 +4248,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
       curves_id->flag &= ~CV_SCULPT_SELECTION_ENABLED;
     }
     LISTBASE_FOREACH (Curves *, curves_id, &bmain->hair_curves) {
-      BKE_id_attribute_rename(&curves_id->id, ".selection_point_float", ".selection", nullptr);
-      BKE_id_attribute_rename(&curves_id->id, ".selection_curve_float", ".selection", nullptr);
+      AttributeOwner owner = AttributeOwner::from_id(&curves_id->id);
+      BKE_attribute_rename(owner, ".selection_point_float", ".selection", nullptr);
+      BKE_attribute_rename(owner, ".selection_curve_float", ".selection", nullptr);
     }
 
     /* Toggle the Invert Vertex Group flag on Armature modifiers in some cases. */

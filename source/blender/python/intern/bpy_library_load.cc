@@ -71,7 +71,7 @@ struct BPy_Library {
   bool bmain_is_temp;
 };
 
-static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kwds);
+static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *kw);
 static PyObject *bpy_lib_enter(BPy_Library *self);
 static PyObject *bpy_lib_exit(BPy_Library *self, PyObject *args);
 static PyObject *bpy_lib_dir(BPy_Library *self);
@@ -468,16 +468,16 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
    */
   BLI_assert(!do_append || !create_liboverrides);
 
-  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, true);
+  BKE_main_id_tag_all(bmain, ID_TAG_PRE_EXISTING, true);
 
   /* here appending/linking starts */
-  const int id_tag_extra = self->bmain_is_temp ? int(LIB_TAG_TEMP_MAIN) : 0;
+  const int id_tag_extra = self->bmain_is_temp ? int(ID_TAG_TEMP_MAIN) : 0;
   LibraryLink_Params liblink_params;
   BLO_library_link_params_init(&liblink_params, bmain, self->flag, id_tag_extra);
 
   BlendfileLinkAppendContext *lapp_context = BKE_blendfile_link_append_context_new(
       &liblink_params);
-  /* Note: Transfers the ownership of the `blo_handle` to the `lapp_context`. */
+  /* NOTE: Transfers the ownership of the `blo_handle` to the `lapp_context`. */
   BKE_blendfile_link_append_context_library_add(lapp_context, self->abspath, self->blo_handle);
   self->blo_handle = nullptr;
 
@@ -572,7 +572,7 @@ static PyObject *bpy_lib_exit(BPy_Library *self, PyObject * /*args*/)
 #endif  // USE_RNA_DATABLOCKS
 
   BKE_blendfile_link_append_context_free(lapp_context);
-  BKE_main_id_tag_all(bmain, LIB_TAG_PRE_EXISTING, false);
+  BKE_main_id_tag_all(bmain, ID_TAG_PRE_EXISTING, false);
 
   BKE_reports_free(&self->reports);
 

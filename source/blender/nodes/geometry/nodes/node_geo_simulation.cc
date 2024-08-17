@@ -45,7 +45,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_nodes.hh"
 
@@ -296,9 +296,6 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(current_node_ptr->owner_id);
   bNode *current_node = static_cast<bNode *>(current_node_ptr->data);
 
-  Scene *scene = CTX_data_scene(C);
-  SpaceNode *snode = CTX_wm_space_node(C);
-
   const bke::bNodeTreeZones *zones = ntree.zones();
   if (!zones) {
     return;
@@ -312,141 +309,27 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
   }
   bNode &output_node = const_cast<bNode &>(*zone->output_node);
 
+  BakeDrawContext ctx;
+  if (!get_bake_draw_context(C, output_node, ctx)) {
+    return;
+  }
+
   draw_simulation_state(C, layout, ntree, output_node);
-
-  if (snode == nullptr) {
-    return;
-  }
-  std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
-      ed::space_node::get_modifier_for_node_editor(*snode);
-  if (!object_and_modifier.has_value()) {
-    return;
-  }
-  const Object &object = *object_and_modifier->object;
-  const NodesModifierData &nmd = *object_and_modifier->nmd;
-  const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
-                                                                                     output_node);
-  if (!bake_id.has_value()) {
-    return;
-  }
-  const NodesModifierBake *bake = nullptr;
-  for (const NodesModifierBake &iter_bake : Span{nmd.bakes, nmd.bakes_num}) {
-    if (iter_bake.id == *bake_id) {
-      bake = &iter_bake;
-      break;
-    }
-  }
-  if (bake == nullptr) {
-    return;
-  }
-
-  PointerRNA bake_rna = RNA_pointer_create(
-      const_cast<ID *>(&object.id), &RNA_NodesModifierBake, (void *)bake);
-
-  const std::optional<IndexRange> simulation_range = bke::bake::get_node_bake_frame_range(
-      *scene, object, nmd, *bake_id);
-
-  std::optional<IndexRange> baked_range;
-  if (nmd.runtime->cache) {
-    const bke::bake::ModifierCache &cache = *nmd.runtime->cache;
-    std::lock_guard lock{cache.mutex};
-    if (const std::unique_ptr<bke::bake::SimulationNodeCache> *node_cache_ptr =
-            cache.simulation_cache_by_id.lookup_ptr(*bake_id))
-    {
-      const bke::bake::SimulationNodeCache &node_cache = **node_cache_ptr;
-      if (node_cache.cache_status == bke::bake::CacheStatus::Baked &&
-          !node_cache.bake.frames.is_empty())
-      {
-        const int first_frame = node_cache.bake.frames.first()->frame.frame();
-        const int last_frame = node_cache.bake.frames.last()->frame.frame();
-        baked_range = IndexRange(first_frame, last_frame - first_frame + 1);
-      }
-    }
-  }
-  bool is_baked = baked_range.has_value();
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiLayoutSetEnabled(layout, ID_IS_EDITABLE(&object));
+  uiLayoutSetEnabled(layout, ID_IS_EDITABLE(ctx.object));
 
   {
     uiLayout *col = uiLayoutColumn(layout, false);
-    uiLayout *row = uiLayoutRow(col, true);
-    {
-      char bake_label[1024] = N_("Bake");
-
-      PointerRNA ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake_single",
-                  bake_label,
-                  ICON_NONE,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
-      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
-      RNA_int_set(&ptr, "bake_id", bake->id);
-    }
-    {
-      PointerRNA ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake_delete_single",
-                  "",
-                  ICON_TRASH,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
-      WM_operator_properties_id_lookup_set_from_id(&ptr, &object.id);
-      RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
-      RNA_int_set(&ptr, "bake_id", bake->id);
-    }
-    if (is_baked) {
-      char baked_range_label[64];
-      SNPRINTF(baked_range_label,
-               N_("Baked %d - %d"),
-               int(baked_range->first()),
-               int(baked_range->last()));
-      uiItemL(layout, baked_range_label, ICON_NONE);
-    }
-    else if (simulation_range.has_value()) {
-      char simulation_range_label[64];
-      SNPRINTF(simulation_range_label,
-               N_("Frames %d - %d"),
-               int(simulation_range->first()),
-               int(simulation_range->last()));
-      uiItemL(layout, simulation_range_label, ICON_NONE);
+    draw_bake_button(ctx, col);
+    if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
+      uiItemL(col, bake_state_str->c_str(), ICON_NONE);
     }
   }
-  {
-    uiLayout *settings_col = uiLayoutColumn(layout, false);
-    uiLayoutSetActive(settings_col, !is_baked);
-    {
-      uiLayout *col = uiLayoutColumn(settings_col, true);
-      uiLayoutSetActive(col, !is_baked);
-      uiItemR(col, &bake_rna, "use_custom_path", UI_ITEM_NONE, "Custom Path", ICON_NONE);
-      uiLayout *subcol = uiLayoutColumn(col, true);
-      uiLayoutSetActive(subcol, bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
-      uiItemR(subcol, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
-    }
-    {
-      uiLayout *col = uiLayoutColumn(settings_col, true);
-      uiItemR(col,
-              &bake_rna,
-              "use_custom_simulation_frame_range",
-              UI_ITEM_NONE,
-              "Custom Range",
-              ICON_NONE);
-      uiLayout *subcol = uiLayoutColumn(col, true);
-      uiLayoutSetActive(subcol, bake->flag & NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE);
-      uiItemR(subcol, &bake_rna, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
-      uiItemR(subcol, &bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
-    }
-  }
-
-  draw_data_blocks(C, layout, bake_rna);
+  draw_common_bake_settings(ctx, layout);
+  draw_data_blocks(C, layout, ctx.bake_rna);
 }
 
 namespace sim_input_node {
@@ -1012,7 +895,7 @@ static void node_free_storage(bNode *node)
 static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const bNode *src_node)
 {
   const NodeGeometrySimulationOutput &src_storage = node_storage(*src_node);
-  auto *dst_storage = MEM_new<NodeGeometrySimulationOutput>(__func__, src_storage);
+  auto *dst_storage = MEM_cnew<NodeGeometrySimulationOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
 
   socket_items::copy_array<SimulationItemsAccessor>(*src_node, *dst_node);
@@ -1110,7 +993,7 @@ void mix_baked_data_item(const eNodeSocketDatatype socket_type,
     case SOCK_ROTATION:
     case SOCK_RGBA:
     case SOCK_MATRIX: {
-      const CPPType &type = node_geo_simulation_cc::get_simulation_item_cpp_type(socket_type);
+      const CPPType &type = *bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
       SocketValueVariant prev_value_variant = *static_cast<const SocketValueVariant *>(prev);
       SocketValueVariant next_value_variant = *static_cast<const SocketValueVariant *>(next);
       if (prev_value_variant.is_context_dependent_field() ||

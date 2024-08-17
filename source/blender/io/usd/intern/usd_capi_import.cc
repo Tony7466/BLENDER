@@ -485,7 +485,7 @@ static void import_freejob(void *user_data)
   delete data;
 }
 
-bool USD_import(bContext *C,
+bool USD_import(const bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
                 bool as_background_job,
@@ -521,7 +521,7 @@ bool USD_import(bContext *C,
                                 job->scene,
                                 "USD Import",
                                 WM_JOB_PROGRESS,
-                                WM_JOB_TYPE_ALEMBIC);
+                                WM_JOB_TYPE_USD_IMPORT);
 
     /* setup job */
     WM_jobs_customdata_set(wm_job, job, import_freejob);
@@ -573,7 +573,7 @@ USDMeshReadParams create_mesh_read_params(const double motion_sample_time, const
 }
 
 void USD_read_geometry(CacheReader *reader,
-                       Object *ob,
+                       const Object *ob,
                        blender::bke::GeometrySet &geometry_set,
                        const USDMeshReadParams params,
                        const char **err_str)
