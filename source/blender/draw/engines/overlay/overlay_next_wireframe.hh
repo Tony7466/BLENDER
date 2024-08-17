@@ -10,6 +10,8 @@
 
 #include "draw_common.hh"
 
+#include "DNA_volume_types.h"
+
 namespace blender::draw::overlay {
 
 class Wireframe {
@@ -120,6 +122,15 @@ class Wireframe {
         coloring.pointcloud_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
         break;
       case OB_VOLUME:
+        geom = DRW_cache_volume_face_wireframe_get(ob_ref.object);
+        if (static_cast<Volume *>(ob_ref.object->data)->display.wireframe_type ==
+            VOLUME_WIREFRAME_POINTS)
+        {
+          coloring.pointcloud_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        }
+        else {
+          coloring.mesh_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
+        }
         break;
       default:
         break;
