@@ -31,6 +31,11 @@ namespace blender::bke::volume_grid {
  * are loaded from disk. Those may even be unloaded temporarily to avoid using too much memory.
  */
 struct LazyLoadedGrid {
+  /**
+   * The newly loaded grid. In some cases, only the tree if this is used. The referenced tree is
+   * expected to be either uniquely owned or implicitly-shared. In the latter case, the
+   * implicit-sharing info for the tree has to be available too.
+   */
   std::shared_ptr<openvdb::GridBase> grid;
   ImplicitSharingPtr<> tree_sharing_info;
 };
@@ -234,13 +239,13 @@ class VolumeGridData : public ImplicitSharingMixin {
   bool is_reloadable() const;
 
  private:
-  void ensure_grid_loaded() const;
-  void delete_self();
-
   /**
    * Unloads the tree data if it's reloadable and no one is using it right now.
    */
   void unload_tree_if_possible() const;
+
+  void ensure_grid_loaded() const;
+  void delete_self();
 };
 
 /**
