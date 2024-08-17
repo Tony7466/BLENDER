@@ -716,7 +716,6 @@ if(UNIX AND NOT APPLE)
         ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
         ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
         ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/symbolic/apps/blender-symbolic.svg
-        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender_system_information.sh
       DESTINATION "."
     )
 
@@ -741,6 +740,7 @@ if(UNIX AND NOT APPLE)
         PROGRAMS
         ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
         ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender_system_information.sh
         DESTINATION "."
       )
 
@@ -1474,13 +1474,13 @@ elseif(WIN32)
   if(NOT WITH_PYTHON_MODULE)
     install(
       FILES
-        ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_information.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu_glitchworkaround.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_log.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_factory_startup.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_oculus.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/oculus.json
+        ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_information.cmd
       DESTINATION ${TARGETDIR_EXE}
     )
   endif()
@@ -1617,7 +1617,7 @@ elseif(APPLE)
 
   if(NOT WITH_PYTHON_MODULE)
     install(
-      FILES
+      PROGRAMS
         ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender_system_information.sh
       DESTINATION "./Blender.app/Contents/Resources"
     )
