@@ -29,66 +29,54 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+#ifdef WITH_IO_WAVEFRONT_OBJ
   const std::string path = params.extract_input<std::string>("Path");
-
   if (path.empty()) {
     params.set_default_remaining_outputs();
     return;
   }
 
-  GeometrySet output;
+  OBJImportParams import_params;
+  STRNCPY(import_params.filepath, path.c_str());
 
-  if (geo_cache_contains(path)) {
-    output = geo_cache_get(path);
-  }
-  else {
-    OBJImportParams import_params;
+  ReportList reports;
+  BKE_reports_init(&reports, RPT_STORE);
+  BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
+  import_params.reports = &reports;
 
-    STRNCPY(import_params.filepath, path.c_str());
+  Vector<bke::GeometrySet> geometries;
+  OBJ_import_geometries(&import_params, geometries);
 
-    ReportList reports;
-    BKE_reports_init(&reports, RPT_STORE);
-    import_params.reports = &reports;
-
-    Vector<bke::GeometrySet> geometries;
-
-    OBJ_import_geometries(&import_params, geometries);
-
-    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-      NodeWarningType type;
-
-      switch (report->type) {
-        case RPT_ERROR:
-          type = NodeWarningType::Error;
-          break;
-        default:
-          type = NodeWarningType::Info;
-          break;
-      }
-
-      params.error_message_add(type, TIP_(report->message));
+  LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
+    NodeWarningType type;
+    switch (report->type) {
+      case RPT_ERROR:
+        type = NodeWarningType::Error;
+        break;
+      default:
+        type = NodeWarningType::Info;
+        break;
     }
-
-    BKE_reports_free(&reports);
-
-    if (geometries.size() == 0) {
-      params.set_default_remaining_outputs();
-      return;
-    }
-
-    bke::Instances *instances = new bke::Instances();
-
-    for (GeometrySet geometry : geometries) {
-      const int handle = instances->add_reference(bke::InstanceReference{geometry});
-      instances->add_instance(handle, float4x4::identity());
-    }
-
-    output = GeometrySet::from_instances(instances);
-
-    geo_cache_set(path, output);
+    params.error_message_add(type, TIP_(report->message));
   }
 
-  params.set_output("Instances", output);
+  if (geometries.is_empty()) {
+    params.set_default_remaining_outputs();
+    return;
+  }
+
+  bke::Instances *instances = new bke::Instances();
+  for (GeometrySet geometry : geometries) {
+    const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
+    instances->add_instance(handle, float4x4::identity());
+  }
+
+  params.set_output("Instances", GeometrySet::from_instances(instances));
+#else
+  params.error_message_add(NodeWarningType::Error,
+                           TIP_("Disabled, Blender was compiled without OBJ I/O"));
+  params.set_default_remaining_outputs();
+#endif
 }
 
 static void node_register()

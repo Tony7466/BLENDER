@@ -1763,6 +1763,7 @@ static void gwl_registry_entry_update_all(GWL_Display *display, const int interf
 /** \name Private Utility Functions
  * \{ */
 
+#ifdef WITH_GHOST_WAYLAND_LIBDECOR
 static const char *strchr_or_end(const char *str, const char ch)
 {
   const char *p = str;
@@ -1791,6 +1792,7 @@ static bool string_elem_split_by_delim(const char *haystack, const char delim, c
   }
   return false;
 }
+#endif /* WITH_GHOST_WAYLAND_LIBDECOR */
 
 static uint64_t sub_abs_u64(const uint64_t a, const uint64_t b)
 {
@@ -2157,6 +2159,9 @@ static const GWL_Cursor_ShapeInfo ghost_wl_cursors = []() -> GWL_Cursor_ShapeInf
     CASE_CURSOR(GHOST_kStandardCursorBottomRightCorner, "bottom_right_corner");
     CASE_CURSOR(GHOST_kStandardCursorBottomLeftCorner, "bottom_left_corner");
     CASE_CURSOR(GHOST_kStandardCursorCopy, "copy");
+    CASE_CURSOR(GHOST_kStandardCursorLeftHandle, "");
+    CASE_CURSOR(GHOST_kStandardCursorRightHandle, "");
+    CASE_CURSOR(GHOST_kStandardCursorBothHandles, "");
     CASE_CURSOR(GHOST_kStandardCursorCustom, "");
   }
 #undef CASE_CURSOR
@@ -3394,7 +3399,7 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
   std::lock_guard lock{seat->data_offer_dnd_mutex};
 
   /* No need to check this for null (as other callbacks do).
-   * because the the data-offer has not been accepted (actions set... etc). */
+   * because the data-offer has not been accepted (actions set... etc). */
   GWL_DataOffer *data_offer = seat->data_offer_dnd;
 
   /* Use a blank string for  `mime_receive` to prevent crashes, although could also be `nullptr`.
@@ -3611,8 +3616,24 @@ static bool update_cursor_scale(GWL_Cursor &cursor,
 {
   int scale = 0;
   for (const GWL_Output *output : seat_state_pointer->outputs) {
-    if (output->scale > scale) {
-      scale = output->scale;
+    int output_scale_floor = output->scale;
+
+    /* It's important to round down in the case of fractional scale,
+     * otherwise the cursor can be scaled down to be unusably small.
+     * This is especially a problem when:
+     * - The cursor theme has one size (24px for the default cursor).
+     * - The fractional scaling is set just above 1 (typically 125%).
+     *
+     * In this case the `output->scale` is rounded up to 2 and a larger cursor is requested.
+     * It's assumed a large cursor is available but that's not always the case.
+     * When only a smaller cursor is available it's still assumed to be large,
+     * fractional scaling causes the cursor to be scaled down making it ~10px. see #105895. */
+    if (output_scale_floor > 1 && output->has_scale_fractional) {
+      output_scale_floor = std::max(1, output->scale_fractional / FRACTIONAL_DENOMINATOR);
+    }
+
+    if (output_scale_floor > scale) {
+      scale = output_scale_floor;
     }
   }
 
@@ -4871,7 +4892,7 @@ static void keyboard_handle_keymap(void *data,
 
   CLOG_INFO(LOG, 2, "keymap");
 
-  /* Reset in case there was a previous non-zero active layout for the the last key-map.
+  /* Reset in case there was a previous non-zero active layout for the last key-map.
    * Note that this is set later by `wl_keyboard_listener::modifiers`, it's possible that handling
    * the first modifier will run #xkb_state_update_mask again (if the active layout is non-zero)
    * however as this is only done when the layout changed, it's harmless.

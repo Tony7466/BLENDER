@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -322,6 +322,7 @@ static int node_add_group_exec(bContext *C, wmOperator *op)
      */
     group_node->flag &= ~NODE_OPTIONS;
   }
+  group_node->width = node_group->default_group_node_width;
 
   group_node->id = &node_group->id;
   id_us_plus(group_node->id);
@@ -424,6 +425,7 @@ static bool add_node_group_asset(const bContext &C,
   }
   /* By default, don't show the data-block selector since it's not usually necessary for assets. */
   group_node->flag &= ~NODE_OPTIONS;
+  group_node->width = node_group->default_group_node_width;
 
   group_node->id = &node_group->id;
   id_us_plus(group_node->id);
@@ -780,6 +782,7 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
     }
   }
 
+  bNodeTree &node_tree = *snode.edittree;
   float2 position = snode.runtime->cursor;
   Vector<bNode *> nodes;
   /* Add a node for each image. */
@@ -796,7 +799,9 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
     }
     else {
       node->id = (ID *)image;
+      blender::bke::nodeTagUpdateID(node);
     }
+    BKE_ntree_update_tag_node_property(&node_tree, node);
     nodes.append(node);
     /* Initial offset between nodes. */
     position[1] -= 20.0f;
@@ -807,7 +812,6 @@ static int node_add_file_exec(bContext *C, wmOperator *op)
   }
 
   /* Set new nodes as selected. */
-  bNodeTree &node_tree = *snode.edittree;
   node_deselect_all(node_tree);
   for (bNode *node : nodes) {
     bke::nodeSetSelected(node, true);

@@ -76,7 +76,8 @@
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
-#include "BKE_packedFile.h"
+#include "BKE_node.hh"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -105,6 +106,8 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 #include "ED_view3d_offscreen.hh"
+
+#include "NOD_composite.hh"
 
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
@@ -449,6 +452,21 @@ static void wm_file_read_setup_wm_finalize(bContext *C,
   /* Else just using the new WM read from file, nothing to do. */
   BLI_assert(wm_setup_data->old_wm == nullptr);
   MEM_delete(wm_setup_data);
+
+  /* UI Updates. */
+  /* Flag local View3D's to check and exit if they are empty. */
+  LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+        if (sl->spacetype == SPACE_VIEW3D) {
+          View3D *v3d = reinterpret_cast<View3D *>(sl);
+          if (v3d->localvd) {
+            v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
+          }
+        }
+      }
+    }
+  }
 }
 
 /** \} */
@@ -784,6 +802,19 @@ static void wm_file_read_post(bContext *C,
     wm_event_do_depsgraph(C, true);
 
     ED_editors_init(C);
+
+    /* Add-ons are disabled when loading the startup file, so the Render Layer node in compositor
+     * node trees might be wrong due to missing render engines that are available as add-ons, like
+     * Cycles. So we need to update compositor node trees after reading the file when add-ons are
+     * now loaded. */
+    if (is_startup_file) {
+      FOREACH_NODETREE_BEGIN (bmain, node_tree, owner_id) {
+        if (node_tree->type == NTREE_COMPOSIT) {
+          ntreeCompositUpdateRLayers(node_tree);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
 
 #if 1
     WM_event_add_notifier(C, NC_WM | ND_FILEREAD, nullptr);
@@ -3431,8 +3462,9 @@ static void save_set_filepath(bContext *C, wmOperator *op)
       STRNCPY(filepath, blendfile_path);
     }
 
-    /* For convencience when using "Save As" on asset system files: Replace .asset.blend extension
-     * with just .blend. Asset system files must not be overridden (except by the asset system),
+    /* For convenience when using "Save As" on asset system files:
+     * Replace `.asset.blend` extension with just `.blend`.
+     * Asset system files must not be overridden (except by the asset system),
      * there are further checks to prevent this entirely. */
     if (bmain->is_asset_edit_file &&
         blender::StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX))
@@ -3539,19 +3571,21 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (!is_save_as) {
-    /* If saved as current file, there are technically no more compatibility issues, the file on
-     * disk now matches the currently opened data version-wise. */
+  if (!use_save_as_copy) {
+    /* If saved file is the active one, there are technically no more compatibility issues, the
+     * file on disk now matches the currently opened data version-wise. */
     bmain->has_forward_compatibility_issues = false;
-  }
 
-  WM_event_add_notifier(C, NC_WM | ND_FILESAVE, nullptr);
-  if (wmWindowManager *wm = CTX_wm_manager(C)) {
-    /* Restart auto-save timer to avoid unnecessary unexpected freezing (because of auto-save) when
-     * often saving manually. */
-    wm_autosave_timer_end(wm);
-    wm_autosave_timer_begin(wm);
-    wm->autosave_scheduled = false;
+    /* If saved file is the active one, notify WM so that saved status and window title can be
+     * updated. */
+    WM_event_add_notifier(C, NC_WM | ND_FILESAVE, nullptr);
+    if (wmWindowManager *wm = CTX_wm_manager(C)) {
+      /* Restart auto-save timer to avoid unnecessary unexpected freezing (because of auto-save)
+       * when often saving manually. */
+      wm_autosave_timer_end(wm);
+      wm_autosave_timer_begin(wm);
+      wm->autosave_scheduled = false;
+    }
   }
 
   if (!is_save_as && RNA_boolean_get(op->ptr, "exit")) {

@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -188,6 +188,7 @@ static int node_group_edit_exec(bContext *C, wmOperator *op)
   }
 
   WM_event_add_notifier(C, NC_SCENE | ND_NODES, nullptr);
+  WM_event_add_notifier(C, NC_NODE | ND_NODE_GIZMO, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1332,6 +1333,72 @@ void NODE_OT_group_insert(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = node_group_insert_exec;
   ot->poll = node_group_operator_editable;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Set Default Group Width Operator
+ * \{ */
+
+static bool node_default_group_width_set_poll(bContext *C)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (!snode) {
+    return false;
+  }
+  bNodeTree *ntree = snode->edittree;
+  if (!ntree) {
+    return false;
+  }
+  if (!ID_IS_EDITABLE(ntree)) {
+    return false;
+  }
+  if (snode->nodetree == snode->edittree) {
+    /* Top-level node group does not have enough context to set the node width. */
+    CTX_wm_operator_poll_msg_set(C, "There is no parent group node in this context");
+    return false;
+  }
+  return true;
+}
+
+static int node_default_group_width_set_exec(bContext *C, wmOperator * /*op*/)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNodeTree *ntree = snode->edittree;
+
+  bNodeTreePath *last_path_item = static_cast<bNodeTreePath *>(snode->treepath.last);
+  bNodeTreePath *parent_path_item = last_path_item->prev;
+  if (!parent_path_item) {
+    return OPERATOR_CANCELLED;
+  }
+  bNodeTree *parent_ntree = parent_path_item->nodetree;
+  if (!parent_ntree) {
+    return OPERATOR_CANCELLED;
+  }
+  parent_ntree->ensure_topology_cache();
+  bNode *parent_node = bke::nodeFindNodebyName(parent_ntree, last_path_item->node_name);
+  if (!parent_node) {
+    return OPERATOR_CANCELLED;
+  }
+  ntree->default_group_node_width = parent_node->width;
+  WM_event_add_notifier(C, NC_NODE | NA_EDITED, nullptr);
+  return OPERATOR_CANCELLED;
+}
+
+void NODE_OT_default_group_width_set(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Default Group Node Width";
+  ot->description = "Set the width based on the parent group node in the current context";
+  ot->idname = "NODE_OT_default_group_width_set";
+
+  /* api callbacks */
+  ot->exec = node_default_group_width_set_exec;
+  ot->poll = node_default_group_width_set_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

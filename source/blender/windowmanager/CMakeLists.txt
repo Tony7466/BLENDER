@@ -210,7 +210,7 @@ endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_windowmanager bf_rna)
 
 if(WITH_GTESTS)
