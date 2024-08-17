@@ -143,10 +143,8 @@ void main()
   }
 
 #ifdef POINTS
-  finalColor.rgb = wire_col;
-  finalColor.a = 1.0;
-  finalColorInner.rgb = rim_col;
-  finalColorInner.a = 1.0;
+  finalColor = wire_col.rgbb;
+  finalColorInner = rim_col.rgbb;
 #else
   /* Convert to screen position [0..sizeVp]. */
   edgeStart = ((gl_Position.xy / gl_Position.w) * 0.5 + 0.5) * sizeViewport.xy;

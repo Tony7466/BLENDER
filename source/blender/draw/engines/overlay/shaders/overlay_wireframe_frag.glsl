@@ -25,9 +25,10 @@ void main()
   float fac = dist * dist * 4.0;
   /* Create a small gradient so that dense objects have a small fresnel effect. */
   /* Non linear blend. */
-  vec4 col1 = sqrt(finalColorInner);
-  vec4 col2 = sqrt(finalColor);
-  fragColor = mix(col2, col1, 0.45 + fac * 0.65);
+  vec3 rim_col = sqrt(finalColorInner.rgb);
+  vec3 wire_col = sqrt(finalColor.rgb);
+  vec3 final_front_col = mix(rim_col, wire_col, 0.35);
+  fragColor = vec4(mix(final_front_col, rim_col, saturate(fac)), 1.0);
   fragColor *= fragColor;
 
 #elif !defined(SELECT_EDGES)
