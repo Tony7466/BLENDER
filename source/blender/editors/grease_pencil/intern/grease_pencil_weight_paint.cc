@@ -434,7 +434,7 @@ static void GREASE_PENCIL_OT_weight_invert(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 }
 
-static int vertex_group_normalize(bContext *C, wmOperator *op)
+static int vertex_group_normalize_exec(bContext *C, wmOperator *op)
 {
   /* Get the active vertex group in the Grease Pencil object. */
   Object *object = CTX_data_active_object(C);
@@ -534,18 +534,6 @@ static int vertex_group_normalize(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool vertex_group_exists_poll(bContext *C)
-{
-  if (!active_grease_pencil_poll(C)) {
-    return false;
-  }
-  const Object *object = CTX_data_active_object(C);
-  if ((object->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) == 0) {
-    return false;
-  }
-  return !BLI_listbase_is_empty(BKE_object_defgroup_list(object));
-}
-
 static void GREASE_PENCIL_OT_vertex_group_normalize(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -554,14 +542,14 @@ static void GREASE_PENCIL_OT_vertex_group_normalize(wmOperatorType *ot)
   ot->description = "Normalize weights of the active vertex group";
 
   /* Callbacks. */
-  ot->poll = vertex_group_exists_poll;
-  ot->exec = vertex_group_normalize;
+  ot->poll = grease_pencil_vertex_group_weight_poll;
+  ot->exec = vertex_group_normalize_exec;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-static int vertex_group_normalize_all(bContext *C, wmOperator *op)
+static int vertex_group_normalize_all_exec(bContext *C, wmOperator *op)
 {
   /* Get the active vertex group in the Grease Pencil object. */
   Object *object = CTX_data_active_object(C);
@@ -635,8 +623,8 @@ static void GREASE_PENCIL_OT_vertex_group_normalize_all(wmOperatorType *ot)
       "weights is 1.0";
 
   /* Callbacks. */
-  ot->poll = vertex_group_exists_poll;
-  ot->exec = vertex_group_normalize_all;
+  ot->poll = grease_pencil_vertex_group_weight_poll;
+  ot->exec = vertex_group_normalize_all_exec;
 
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
