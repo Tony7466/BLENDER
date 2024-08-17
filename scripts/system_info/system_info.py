@@ -53,22 +53,30 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
         # TODO: We could just do re.search(r"Blender (.*)", text)
         # It handles both cases.
     """
-    # TODO: Switch to (.*) for everything to make it more reliable in edge cases
+    branch_match = re.search(r"build branch: (.*)", text)
+    commit_date_match = re.search(r"build commit date: (.*)", text)
+    commit_time_match = re.search(r"build commit time: (.*)", text)
+    build_hash_match = re.search(r"build hash: (.*)", text)
+    """
+    # Old regular expressions.
+    # Left here if we want to switch back. But a simple (.*) can capture anything
+    # including builds with build info turned off
     branch_match = re.search(r"build branch: (.*)", text)
     commit_date_match = re.search(r"build commit date: (\d+-\d+-\d+)", text)
     commit_time_match = re.search(r"build commit time: (\d+:\d+)", text)
     build_hash_match = re.search(r"build hash: (\w+)", text)
+    """
 
     # TODO: Replace with something else?
     # Error on failure?
     failed = "Script failed"
 
     query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash `{:s}`".format(
-        version_match.group(1) if version_match else failed,
+        version_match.group(1).strip() if version_match else failed,
         branch_match.group(1).strip() if branch_match else failed,
-        commit_date_match.group(1) if commit_date_match else failed,
-        commit_time_match.group(1) if commit_time_match else failed,
-        build_hash_match.group(1) if build_hash_match else failed,
+        commit_date_match.group(1).strip() if commit_date_match else failed,
+        commit_time_match.group(1).strip() if commit_time_match else failed,
+        build_hash_match.group(1).strip() if build_hash_match else failed,
     )
 
     query_str = urllib.parse.urlencode(query_params)
