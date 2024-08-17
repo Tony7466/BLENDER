@@ -376,7 +376,6 @@ static void scale_down_x(ImBuf *ibuf, int newx)
   uchar4 *dst_byte = nullptr;
   float *dst_float = nullptr;
   alloc_scale_dst_buffers(ibuf, newx, ibuf->y, &dst_byte, &dst_float);
-
   const bool do_byte = (dst_byte != nullptr);
   const bool do_float = (dst_float != nullptr);
   if (!do_byte && !do_float) {
@@ -468,7 +467,6 @@ static void scale_down_y(ImBuf *ibuf, int newy)
   uchar4 *dst_byte = nullptr;
   float *dst_float = nullptr;
   alloc_scale_dst_buffers(ibuf, ibuf->x, newy, &dst_byte, &dst_float);
-
   const bool do_byte = (dst_byte != nullptr);
   const bool do_float = (dst_float != nullptr);
   if (!do_byte && !do_float) {
@@ -559,185 +557,97 @@ static void scale_down_y(ImBuf *ibuf, int newy)
 
 static void scale_up_x(ImBuf *ibuf, int newx)
 {
-  uchar *rect, *_newrect = nullptr, *newrect;
-  float *rectf, *_newrectf = nullptr, *newrectf;
-  int x, y;
-  bool do_byte = false, do_float = false;
-
-  if (ibuf == nullptr) {
+  using namespace blender;
+  uchar4 *dst_byte = nullptr;
+  float *dst_float = nullptr;
+  alloc_scale_dst_buffers(ibuf, newx, ibuf->y, &dst_byte, &dst_float);
+  const bool do_byte = (dst_byte != nullptr);
+  const bool do_float = (dst_float != nullptr);
+  if (!do_byte && !do_float) {
     return;
   }
-  if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
-    return;
+
+  const uchar4 *src_byte = nullptr;
+  if (do_byte) {
+    src_byte = reinterpret_cast<const uchar4 *>(ibuf->byte_buffer.data);
+  }
+  const float *src_float = nullptr;
+  if (do_float) {
+    src_float = ibuf->float_buffer.data;
   }
 
-  if (ibuf->byte_buffer.data) {
-    do_byte = true;
-    _newrect = static_cast<uchar *>(MEM_mallocN(newx * ibuf->y * sizeof(int), "scaleupx"));
-    if (_newrect == nullptr) {
-      return;
-    }
-  }
-  if (ibuf->float_buffer.data) {
-    do_float = true;
-    _newrectf = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * newx * ibuf->y, "scaleupxf"));
-    if (_newrectf == nullptr) {
-      if (_newrect) {
-        MEM_freeN(_newrect);
-      }
-      return;
-    }
-  }
-
-  rect = ibuf->byte_buffer.data;
-  rectf = ibuf->float_buffer.data;
-  newrect = _newrect;
-  newrectf = _newrectf;
-
-  /* Special case, copy all columns, needed since the scaling logic assumes there is at least
-   * two rows to interpolate between causing out of bounds read for 1px images, see #70356. */
+  /* Special case: source is 1px wide (see #70356). */
   if (UNLIKELY(ibuf->x == 1)) {
     if (do_byte) {
-      for (y = ibuf->y; y > 0; y--) {
-        for (x = newx; x > 0; x--) {
-          memcpy(newrect, rect, sizeof(char[4]));
-          newrect += 4;
+      for (int y = ibuf->y; y > 0; y--) {
+        for (int x = newx; x > 0; x--) {
+          *dst_byte = *src_byte;
+          dst_byte++;
         }
-        rect += 4;
+        src_byte++;
       }
     }
     if (do_float) {
-      for (y = ibuf->y; y > 0; y--) {
-        for (x = newx; x > 0; x--) {
-          memcpy(newrectf, rectf, sizeof(float[4]));
-          newrectf += 4;
+      for (int y = ibuf->y; y > 0; y--) {
+        for (int x = newx; x > 0; x--) {
+          memcpy(dst_float, src_float, sizeof(float) * ibuf->channels);
+          dst_float += ibuf->channels;
         }
-        rectf += 4;
+        src_float += ibuf->channels;
       }
     }
   }
   else {
-    const float add = (ibuf->x - 1.001) / (newx - 1.0);
-    float sample;
+    const float add = (ibuf->x - 1.001f) / (newx - 1.0f);
+    float4 val(0.0f), nval(0.0f), diff(0.0f);
+    float4 valf(0.0f), nvalf(0.0f), difff(0.0f);
+    uchar4 *dst_byte_ptr = dst_byte;
+    float *dst_float_ptr = dst_float;
 
-    float val_a, nval_a, diff_a;
-    float val_b, nval_b, diff_b;
-    float val_g, nval_g, diff_g;
-    float val_r, nval_r, diff_r;
-    float val_af, nval_af, diff_af;
-    float val_bf, nval_bf, diff_bf;
-    float val_gf, nval_gf, diff_gf;
-    float val_rf, nval_rf, diff_rf;
+    for (int y = ibuf->y; y > 0; y--) {
 
-    val_a = nval_a = diff_a = val_b = nval_b = diff_b = 0;
-    val_g = nval_g = diff_g = val_r = nval_r = diff_r = 0;
-    val_af = nval_af = diff_af = val_bf = nval_bf = diff_bf = 0;
-    val_gf = nval_gf = diff_gf = val_rf = nval_rf = diff_rf = 0;
-
-    for (y = ibuf->y; y > 0; y--) {
-
-      sample = 0;
+      float sample = 0;
 
       if (do_byte) {
-        val_a = rect[0];
-        nval_a = rect[4];
-        diff_a = nval_a - val_a;
-        val_a += 0.5f;
-
-        val_b = rect[1];
-        nval_b = rect[5];
-        diff_b = nval_b - val_b;
-        val_b += 0.5f;
-
-        val_g = rect[2];
-        nval_g = rect[6];
-        diff_g = nval_g - val_g;
-        val_g += 0.5f;
-
-        val_r = rect[3];
-        nval_r = rect[7];
-        diff_r = nval_r - val_r;
-        val_r += 0.5f;
-
-        rect += 8;
+        val = float4(src_byte[0]);
+        nval = float4(src_byte[1]);
+        diff = nval - val;
+        val += 0.5f;
+        src_byte += 2;
       }
       if (do_float) {
-        val_af = rectf[0];
-        nval_af = rectf[4];
-        diff_af = nval_af - val_af;
-
-        val_bf = rectf[1];
-        nval_bf = rectf[5];
-        diff_bf = nval_bf - val_bf;
-
-        val_gf = rectf[2];
-        nval_gf = rectf[6];
-        diff_gf = nval_gf - val_gf;
-
-        val_rf = rectf[3];
-        nval_rf = rectf[7];
-        diff_rf = nval_rf - val_rf;
-
-        rectf += 8;
+        valf = load_pixel(src_float, ibuf->channels);
+        nvalf = load_pixel(src_float + ibuf->channels, ibuf->channels);
+        difff = nvalf - valf;
+        src_float += ibuf->channels * 2;
       }
-      for (x = newx; x > 0; x--) {
+      for (int x = newx; x > 0; x--) {
         if (sample >= 1.0f) {
           sample -= 1.0f;
 
           if (do_byte) {
-            val_a = nval_a;
-            nval_a = rect[0];
-            diff_a = nval_a - val_a;
-            val_a += 0.5f;
-
-            val_b = nval_b;
-            nval_b = rect[1];
-            diff_b = nval_b - val_b;
-            val_b += 0.5f;
-
-            val_g = nval_g;
-            nval_g = rect[2];
-            diff_g = nval_g - val_g;
-            val_g += 0.5f;
-
-            val_r = nval_r;
-            nval_r = rect[3];
-            diff_r = nval_r - val_r;
-            val_r += 0.5f;
-            rect += 4;
+            val = nval;
+            nval = float4(src_byte[0]);
+            diff = nval - val;
+            val += 0.5f;
+            src_byte++;
           }
           if (do_float) {
-            val_af = nval_af;
-            nval_af = rectf[0];
-            diff_af = nval_af - val_af;
-
-            val_bf = nval_bf;
-            nval_bf = rectf[1];
-            diff_bf = nval_bf - val_bf;
-
-            val_gf = nval_gf;
-            nval_gf = rectf[2];
-            diff_gf = nval_gf - val_gf;
-
-            val_rf = nval_rf;
-            nval_rf = rectf[3];
-            diff_rf = nval_rf - val_rf;
-            rectf += 4;
+            valf = nvalf;
+            nvalf = load_pixel(src_float, ibuf->channels);
+            difff = nvalf - valf;
+            src_float += ibuf->channels;
           }
         }
         if (do_byte) {
-          newrect[0] = val_a + sample * diff_a;
-          newrect[1] = val_b + sample * diff_b;
-          newrect[2] = val_g + sample * diff_g;
-          newrect[3] = val_r + sample * diff_r;
-          newrect += 4;
+          float4 pix = val + sample * diff;
+          *dst_byte_ptr = uchar4(pix);
+          dst_byte_ptr++;
         }
         if (do_float) {
-          newrectf[0] = val_af + sample * diff_af;
-          newrectf[1] = val_bf + sample * diff_bf;
-          newrectf[2] = val_gf + sample * diff_gf;
-          newrectf[3] = val_rf + sample * diff_rf;
-          newrectf += 4;
+          float4 pix = valf + sample * difff;
+          store_pixel(dst_float_ptr, pix, ibuf->channels);
+          dst_float_ptr += ibuf->channels;
         }
         sample += add;
       }
@@ -746,11 +656,11 @@ static void scale_up_x(ImBuf *ibuf, int newx)
 
   if (do_byte) {
     imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, _newrect, IB_TAKE_OWNERSHIP);
+    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
   }
   if (do_float) {
     imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, _newrectf, IB_TAKE_OWNERSHIP);
+    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
   }
 
   ibuf->x = newx;
@@ -758,186 +668,89 @@ static void scale_up_x(ImBuf *ibuf, int newx)
 
 static void scale_up_y(ImBuf *ibuf, int newy)
 {
-  uchar *rect, *_newrect = nullptr, *newrect;
-  float *rectf, *_newrectf = nullptr, *newrectf;
-  int x, y, skipx;
-  bool do_byte = false, do_float = false;
-
-  if (ibuf == nullptr) {
+  using namespace blender;
+  uchar4 *dst_byte = nullptr;
+  float *dst_float = nullptr;
+  alloc_scale_dst_buffers(ibuf, ibuf->x, newy, &dst_byte, &dst_float);
+  const bool do_byte = (dst_byte != nullptr);
+  const bool do_float = (dst_float != nullptr);
+  if (!do_byte && !do_float) {
     return;
   }
-  if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
-    return;
-  }
 
-  if (ibuf->byte_buffer.data) {
-    do_byte = true;
-    _newrect = static_cast<uchar *>(MEM_mallocN(ibuf->x * newy * sizeof(int), "scaleupy"));
-    if (_newrect == nullptr) {
-      return;
-    }
-  }
-  if (ibuf->float_buffer.data) {
-    do_float = true;
-    _newrectf = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * ibuf->x * newy, "scaleupyf"));
-    if (_newrectf == nullptr) {
-      if (_newrect) {
-        MEM_freeN(_newrect);
-      }
-      return;
-    }
-  }
-
-  rect = ibuf->byte_buffer.data;
-  rectf = ibuf->float_buffer.data;
-  newrect = _newrect;
-  newrectf = _newrectf;
-
-  skipx = 4 * ibuf->x;
-
-  /* Special case, copy all rows, needed since the scaling logic assumes there is at least
-   * two rows to interpolate between causing out of bounds read for 1px images, see #70356. */
+  /* Special case: source is 1px high (see #70356). */
   if (UNLIKELY(ibuf->y == 1)) {
     if (do_byte) {
-      for (y = newy; y > 0; y--) {
-        memcpy(newrect, rect, sizeof(char) * skipx);
-        newrect += skipx;
+      for (int y = newy; y > 0; y--) {
+        memcpy(dst_byte, ibuf->byte_buffer.data, sizeof(uchar4) * ibuf->x);
+        dst_byte += ibuf->x;
       }
     }
     if (do_float) {
-      for (y = newy; y > 0; y--) {
-        memcpy(newrectf, rectf, sizeof(float) * skipx);
-        newrectf += skipx;
+      for (int y = newy; y > 0; y--) {
+        memcpy(dst_float, ibuf->float_buffer.data, sizeof(float) * ibuf->x * ibuf->channels);
+        dst_float += ibuf->x * ibuf->channels;
       }
     }
   }
   else {
-    const float add = (ibuf->y - 1.001) / (newy - 1.0);
-    float sample;
+    const float add = (ibuf->y - 1.001f) / (newy - 1.0f);
+    float4 val(0.0f), nval(0.0f), diff(0.0f);
+    float4 valf(0.0f), nvalf(0.0f), difff(0.0f);
+    const uchar4 *src_byte = nullptr;
+    const float *src_float = nullptr;
+    uchar4 *dst_byte_ptr = dst_byte;
+    float *dst_float_ptr = dst_float;
 
-    float val_a, nval_a, diff_a;
-    float val_b, nval_b, diff_b;
-    float val_g, nval_g, diff_g;
-    float val_r, nval_r, diff_r;
-    float val_af, nval_af, diff_af;
-    float val_bf, nval_bf, diff_bf;
-    float val_gf, nval_gf, diff_gf;
-    float val_rf, nval_rf, diff_rf;
-
-    val_a = nval_a = diff_a = val_b = nval_b = diff_b = 0;
-    val_g = nval_g = diff_g = val_r = nval_r = diff_r = 0;
-    val_af = nval_af = diff_af = val_bf = nval_bf = diff_bf = 0;
-    val_gf = nval_gf = diff_gf = val_rf = nval_rf = diff_rf = 0;
-
-    for (x = ibuf->x; x > 0; x--) {
-      sample = 0;
+    for (int x = ibuf->x; x > 0; x--) {
+      float sample = 0;
       if (do_byte) {
-        rect = ibuf->byte_buffer.data + 4 * (x - 1);
-        newrect = _newrect + 4 * (x - 1);
+        src_byte = reinterpret_cast<const uchar4 *>(ibuf->byte_buffer.data) + (x - 1);
+        dst_byte_ptr = dst_byte + (x - 1);
 
-        val_a = rect[0];
-        nval_a = rect[skipx];
-        diff_a = nval_a - val_a;
-        val_a += 0.5f;
-
-        val_b = rect[1];
-        nval_b = rect[skipx + 1];
-        diff_b = nval_b - val_b;
-        val_b += 0.5f;
-
-        val_g = rect[2];
-        nval_g = rect[skipx + 2];
-        diff_g = nval_g - val_g;
-        val_g += 0.5f;
-
-        val_r = rect[3];
-        nval_r = rect[skipx + 3];
-        diff_r = nval_r - val_r;
-        val_r += 0.5f;
-
-        rect += 2 * skipx;
+        val = float4(src_byte[0]);
+        nval = float4(src_byte[ibuf->x]);
+        diff = nval - val;
+        val += 0.5f;
+        src_byte += ibuf->x * 2;
       }
       if (do_float) {
-        rectf = ibuf->float_buffer.data + 4 * (x - 1);
-        newrectf = _newrectf + 4 * (x - 1);
+        src_float = ibuf->float_buffer.data + ibuf->channels * (x - 1);
+        dst_float_ptr = dst_float + ibuf->channels * (x - 1);
 
-        val_af = rectf[0];
-        nval_af = rectf[skipx];
-        diff_af = nval_af - val_af;
-
-        val_bf = rectf[1];
-        nval_bf = rectf[skipx + 1];
-        diff_bf = nval_bf - val_bf;
-
-        val_gf = rectf[2];
-        nval_gf = rectf[skipx + 2];
-        diff_gf = nval_gf - val_gf;
-
-        val_rf = rectf[3];
-        nval_rf = rectf[skipx + 3];
-        diff_rf = nval_rf - val_rf;
-
-        rectf += 2 * skipx;
+        valf = load_pixel(src_float, ibuf->channels);
+        nvalf = load_pixel(src_float + ibuf->channels * ibuf->x, ibuf->channels);
+        difff = nvalf - valf;
+        src_float += ibuf->channels * ibuf->x * 2;
       }
 
-      for (y = newy; y > 0; y--) {
+      for (int y = newy; y > 0; y--) {
         if (sample >= 1.0f) {
           sample -= 1.0f;
 
           if (do_byte) {
-            val_a = nval_a;
-            nval_a = rect[0];
-            diff_a = nval_a - val_a;
-            val_a += 0.5f;
-
-            val_b = nval_b;
-            nval_b = rect[1];
-            diff_b = nval_b - val_b;
-            val_b += 0.5f;
-
-            val_g = nval_g;
-            nval_g = rect[2];
-            diff_g = nval_g - val_g;
-            val_g += 0.5f;
-
-            val_r = nval_r;
-            nval_r = rect[3];
-            diff_r = nval_r - val_r;
-            val_r += 0.5f;
-            rect += skipx;
+            val = nval;
+            nval = float4(src_byte[0]);
+            diff = nval - val;
+            val += 0.5f;
+            src_byte += ibuf->x;
           }
           if (do_float) {
-            val_af = nval_af;
-            nval_af = rectf[0];
-            diff_af = nval_af - val_af;
-
-            val_bf = nval_bf;
-            nval_bf = rectf[1];
-            diff_bf = nval_bf - val_bf;
-
-            val_gf = nval_gf;
-            nval_gf = rectf[2];
-            diff_gf = nval_gf - val_gf;
-
-            val_rf = nval_rf;
-            nval_rf = rectf[3];
-            diff_rf = nval_rf - val_rf;
-            rectf += skipx;
+            valf = nvalf;
+            nvalf = load_pixel(src_float, ibuf->channels);
+            difff = nvalf - valf;
+            src_float += ibuf->channels * ibuf->x;
           }
         }
         if (do_byte) {
-          newrect[0] = val_a + sample * diff_a;
-          newrect[1] = val_b + sample * diff_b;
-          newrect[2] = val_g + sample * diff_g;
-          newrect[3] = val_r + sample * diff_r;
-          newrect += skipx;
+          float4 pix = val + sample * diff;
+          *dst_byte_ptr = uchar4(pix);
+          dst_byte_ptr += ibuf->x;
         }
         if (do_float) {
-          newrectf[0] = val_af + sample * diff_af;
-          newrectf[1] = val_bf + sample * diff_bf;
-          newrectf[2] = val_gf + sample * diff_gf;
-          newrectf[3] = val_rf + sample * diff_rf;
-          newrectf += skipx;
+          float4 pix = valf + sample * difff;
+          store_pixel(dst_float_ptr, pix, ibuf->channels);
+          dst_float_ptr += ibuf->channels * ibuf->x;
         }
         sample += add;
       }
@@ -946,11 +759,11 @@ static void scale_up_y(ImBuf *ibuf, int newy)
 
   if (do_byte) {
     imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, _newrect, IB_TAKE_OWNERSHIP);
+    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
   }
   if (do_float) {
     imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, _newrectf, IB_TAKE_OWNERSHIP);
+    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
   }
 
   ibuf->y = newy;
