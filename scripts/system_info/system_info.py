@@ -53,12 +53,14 @@ def main():
         # TODO: We could just do re.search(r"Blender (.*)", text)
         # It handles both cases.
     """
+    # TODO: Switch to (.*) for everything to make it more reliable in edge cases
     branch_match = re.search(r"build branch: (.*)", text)
     commit_date_match = re.search(r"build commit date: (\d+-\d+-\d+)", text)
     commit_time_match = re.search(r"build commit time: (\d+:\d+)", text)
     build_hash_match = re.search(r"build hash: (\w+)", text)
 
     # TODO: Replace with something else?
+    # Error on failure?
     failed = "Script failed"
 
     query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash `{:s}`".format(
