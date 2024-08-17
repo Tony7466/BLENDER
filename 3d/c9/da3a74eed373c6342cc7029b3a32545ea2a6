@@ -7,3 +7,4 @@ Referenced by issue #64382, show_ortho_grid not working in orthographic top and 
 Referenced by issue #64334, TKEY error message on timeline
 Referenced by issue #64341, Alpha Hashed crash comes and goes
 Referenced by issue #64284, Mirroed Collection Intances have flipped normals/face orientation.
+Referenced by issue #64562, CTRL + G creates new (unlisted) collection
