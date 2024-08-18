@@ -734,8 +734,7 @@ static void file_draw_preview(const FileList *files,
                       false,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
-    else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading))
-    {
+    else if (icon && ((!is_icon && !(file->typeflag & FILE_TYPE_FTFONT)) || is_loading)) {
       /* Smaller, fainter icon at bottom-left for preview image thumbnail, but not for fonts. */
       UI_icon_draw_ex(icon_x,
                       icon_y,
