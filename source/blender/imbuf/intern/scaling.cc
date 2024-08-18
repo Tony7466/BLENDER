@@ -744,6 +744,24 @@ bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
   return true;
 }
 
+template<typename T>
+static void scale_nearest(const T *src, T *dst, int ibufx, int ibufy, int newx, int newy)
+{
+  /* Nearest sample scaling. Step through pixels in fixed point coordinates. */
+  constexpr int FRAC_BITS = 16;
+  int64_t stepx = ((int64_t(ibufx) << FRAC_BITS) + newx / 2) / newx;
+  int64_t stepy = ((int64_t(ibufy) << FRAC_BITS) + newy / 2) / newy;
+  int64_t posy = 0;
+  for (int y = 0; y < newy; y++, posy += stepy) {
+    const T *row = src + (posy >> FRAC_BITS) * ibufx;
+    int64_t posx = 0;
+    for (int x = 0; x < newx; x++, posx += stepx) {
+      *dst = row[posx >> FRAC_BITS];
+      dst++;
+    }
+  }
+}
+
 bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
@@ -754,67 +772,43 @@ bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
     return false;
   }
 
-  /* Create destination buffers. */
-  uint *dst_byte_buffer = nullptr;
-  if (ibuf->byte_buffer.data) {
-    dst_byte_buffer = static_cast<uint *>(
-        MEM_mallocN(sizeof(uint) * newx * newy, "scale byte buffer"));
-  }
-  float *dst_float_buffer = nullptr;
-  const int channels = ibuf->channels;
-  if (ibuf->float_buffer.data) {
-    dst_float_buffer = static_cast<float *>(
-        MEM_mallocN(sizeof(float) * channels * newx * newy, "scale float buffer"));
-  }
-  if (dst_byte_buffer == nullptr && dst_float_buffer == nullptr) {
+  uchar4 *dst_byte = nullptr;
+  float *dst_float = nullptr;
+  alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
+  if (dst_byte == nullptr && dst_float == nullptr) {
     return false;
   }
 
-  /* Processing. Step through pixels in fixed point coordinates. */
-  constexpr int FRAC_BITS = 16;
-  int64_t stepx = ((int64_t(ibuf->x) << FRAC_BITS) + newx / 2) / newx;
-  int64_t stepy = ((int64_t(ibuf->y) << FRAC_BITS) + newy / 2) / newy;
-  if (dst_byte_buffer != nullptr) {
-    uint *dst = dst_byte_buffer;
-    int64_t posy = 0;
-    for (int y = 0; y < newy; y++, posy += stepy) {
-      const uint *src = reinterpret_cast<const uint *>(ibuf->byte_buffer.data) +
-                        (posy >> FRAC_BITS) * ibuf->x;
-      int64_t posx = 0;
-      for (int x = 0; x < newx; x++, posx += stepx) {
-        *dst = src[posx >> FRAC_BITS];
-        dst++;
-      }
-    }
+  /* Byte pixels. */
+  if (dst_byte != nullptr) {
+    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
+    scale_nearest(src, dst_byte, ibuf->x, ibuf->y, newx, newy);
+    imb_freerectImBuf(ibuf);
+    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
   }
-  if (dst_float_buffer != nullptr) {
-    float *dst = dst_float_buffer;
-    int64_t posy = 0;
-    for (int y = 0; y < newy; y++, posy += stepy) {
-      const float *src = reinterpret_cast<const float *>(ibuf->float_buffer.data) +
-                         (posy >> FRAC_BITS) * ibuf->x * channels;
-      int64_t posx = 0;
-      for (int x = 0; x < newx; x++, posx += stepx) {
-        const float *srcpix = src + (posx >> FRAC_BITS) * channels;
-        for (int c = 0; c < channels; c++) {
-          *dst++ = srcpix[c];
-        }
-      }
+  /* Float pixels. */
+  if (dst_float != nullptr) {
+    if (ibuf->channels == 1) {
+      scale_nearest(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx, newy);
     }
+    else if (ibuf->channels == 2) {
+      const float2 *src = (const float2 *)ibuf->float_buffer.data;
+      scale_nearest(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx, newy);
+    }
+    else if (ibuf->channels == 3) {
+      const float3 *src = (const float3 *)ibuf->float_buffer.data;
+      scale_nearest(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx, newy);
+    }
+    else if (ibuf->channels == 4) {
+      const float4 *src = (const float4 *)ibuf->float_buffer.data;
+      scale_nearest(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx, newy);
+    }
+    imb_freerectfloatImBuf(ibuf);
+    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
   }
 
-  /* Alter the image. */
   ibuf->x = newx;
   ibuf->y = newy;
-
-  if (ibuf->byte_buffer.data) {
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte_buffer), IB_TAKE_OWNERSHIP);
-  }
-  if (ibuf->float_buffer.data) {
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float_buffer, IB_TAKE_OWNERSHIP);
-  }
   return true;
 }
 
