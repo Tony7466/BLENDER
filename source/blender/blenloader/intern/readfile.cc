@@ -1800,7 +1800,7 @@ static void *read_struct(FileData *fd, BHead *bh, const char *blockname, const i
     BHead *bh_orig = bh;
 #endif
 
-    /* Endianess switch is based on file DNA.
+    /* Endianness switch is based on file DNA.
      *
      * NOTE: raw data (aka #SDNA_RAW_DATA_STRUCT_INDEX #SDNAnr) is not handled here, it's up to
      * the calling code to manage this. */
@@ -2317,7 +2317,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
   //  printf("direct_link_library: filepath_abs %s\n", lib->runtime.filepath_abs);
 
   BlendDataReader reader = {fd};
-  BKE_packedfile_blend_read(&reader, &lib->packedfile);
+  BKE_packedfile_blend_read(&reader, &lib->packedfile, lib->filepath);
 
   /* new main */
   newmain = BKE_main_new();
