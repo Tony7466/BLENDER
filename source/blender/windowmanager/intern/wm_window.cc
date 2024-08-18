@@ -621,17 +621,19 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
                            static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
 }
 
-void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen)
+static void wm_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen)
 {
+  /* Set the decoration settings by parsing the current theme.
+   * NOTE: screen may be null. In which case, only the window is used as a theme provider. */
   GHOST_DecorationSettings decoration_settings = {};
 
-  /* Update custom titlebar color by parsing the current theme. */
+  /** Colored Titlebar Decoration. */
   /* For main windows, use the topbar color. */
   if (WM_window_should_have_global_areas(win)) {
     UI_SetTheme(SPACE_TOPBAR, RGN_TYPE_HEADER);
   }
   /* For single editor floating windows, use the editor header color. */
-  else if (BLI_listbase_is_single(&screen->areabase)) {
+  else if (screen && BLI_listbase_is_single(&screen->areabase)) {
     const ScrArea *main_area = static_cast<ScrArea *>(screen->areabase.first);
     UI_SetTheme(main_area->spacetype, RGN_TYPE_HEADER);
   }
@@ -649,8 +651,9 @@ void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen
   GHOST_SetDecorationSettings(static_cast<GHOST_WindowHandle>(win->ghostwin), decoration_settings);
 }
 
-void WM_window_decoration_apply(const wmWindow *win)
+void WM_window_decoration_apply(const wmWindow *win, const bScreen *screen)
 {
+  wm_window_decoration_parse_theme(win, screen);
   GHOST_ApplyDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin));
 }
 
