@@ -95,8 +95,8 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
     CacheMap::MutableAccessor accessor;
     const bool newly_inserted = cache.map.add(accessor, std::ref(key));
     if (!newly_inserted) {
-      /* The value is available already. The we unfortunately computed the value unnecessarily.
-       * Use the value created by the other thread instead. */
+      /* The value is available already. It was computed unnecessarily. Use the value created by
+       * the other thread instead. */
       return accessor->second.value;
     }
     /* We want to store the key in the map, but the reference we got passed in may go out of scope.
