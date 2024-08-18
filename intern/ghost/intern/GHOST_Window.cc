@@ -33,6 +33,7 @@ GHOST_Window::GHOST_Window(uint32_t width,
       m_canAcceptDragOperation(false),
       m_isUnsavedChanges(false),
       m_windowDecorationFlags(GHOST_kDecorationNone),
+      m_windowDecorationSettings(),
       m_wantStereoVisual(wantStereoVisual),
       m_nativePixelSize(1.0f),
       m_context(new GHOST_ContextNone(false))
