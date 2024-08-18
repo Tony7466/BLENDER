@@ -279,15 +279,20 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
       });
 
   particle_dot = selectable_shader("overlay_particle_dot",
-                                   [](gpu::shader::ShaderCreateInfo &info) {});
+                                   [](gpu::shader::ShaderCreateInfo &info) {
+                                     info.additional_infos_.clear();
+                                     info.additional_info("overlay_particle",
+                                                          "draw_view",
+                                                          "draw_modelmat_new",
+                                                          "draw_resource_handle_new",
+                                                          "draw_globals");
+                                   });
 
-  particle_shape = selectable_shader("overlay_particle_shape",
-                                     [](gpu::shader::ShaderCreateInfo &info) {});
+  particle_shape = selectable_shader("overlay_particle_shape_next",
+                                     [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 
-  particle_wire = selectable_shader("overlay_extra_groundline",
-                                    [](gpu::shader::ShaderCreateInfo &info) {
-                                      /* TODO */
-                                    });
+  particle_hair = selectable_shader("overlay_particle_shape_next",
+                                    [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)

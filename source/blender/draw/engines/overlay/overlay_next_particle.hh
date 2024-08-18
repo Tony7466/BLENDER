@@ -18,11 +18,13 @@ namespace blender::draw::overlay {
 
 class Particles {
  private:
-  PassSimple particle_ps_ = {"particle_ps_"};
-  PassSimple::Sub *dot_ps_ = nullptr;
-  PassSimple::Sub *shape_ps_ = nullptr;
+  PassMain particle_ps_ = {"particle_ps_"};
+  PassMain::Sub *dot_ps_ = nullptr;
+  PassMain::Sub *shape_ps_ = nullptr;
 
-  PassSimple edit_particle_ps_ = {"edit_particle_ps_"};
+  PassMain edit_particle_ps_ = {"edit_particle_ps_"};
+
+  bool capture;
 
  public:
   void begin_sync(Resources &res, const State &state)
@@ -46,9 +48,10 @@ class Particles {
       sub.bind_texture("weightTex", res.weight_ramp_tx);
       shape_ps_ = &sub;
     }
+    capture = res.selection_type != SelectionType::DISABLED;
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State & /*state*/)
+  void object_sync(const ObjectRef &ob_ref, Resources &res)
   {
     Object *ob = ob_ref.object;
 
@@ -65,14 +68,10 @@ class Particles {
         continue;
       }
 
-      auto set_color = [&](PassSimple::Sub &sub) {
+      auto set_color = [&](PassMain::Sub &sub) {
         /* NOTE(fclem): Is color even useful in our modern context? */
         Material *ma = BKE_object_material_get_eval(ob, part->omat);
         sub.push_constant("ucolor", float4(ma ? float3(&ma->r) : float3(0.6f), part->draw_size));
-      };
-      auto resource_handle_get = [&]() {
-        /* TODO(fclem): Create a handle per object with unit transform matrix. */
-        return ResourceHandle(0);
       };
 
       blender::gpu::Batch *geom = nullptr;
@@ -91,28 +90,32 @@ class Particles {
         case PART_DRAW_DOT:
           geom = DRW_cache_particles_get_dots(ob, psys);
           set_color(*dot_ps_);
-          dot_ps_->draw(geom, resource_handle_get(), res.select_id(ob_ref).get());
+          dot_ps_->draw(geom, ResourceHandle(0), res.select_id(ob_ref).get());
           break;
         case PART_DRAW_AXIS:
           geom = DRW_cache_particles_get_dots(ob, psys);
           set_color(*shape_ps_);
-          shape_ps_->push_constant("shape_type", draw_as);
+          shape_ps_->push_constant("shape_type", PART_SHAPE_AXIS);
           shape_ps_->draw_expand(
-              geom, GPU_PRIM_LINES, 3, 1, resource_handle_get(), res.select_id(ob_ref).get());
+              geom, GPU_PRIM_LINES, 3, 1, ResourceHandle(0), res.select_id(ob_ref).get());
           break;
         case PART_DRAW_CIRC:
           geom = DRW_cache_particles_get_dots(ob, psys);
           set_color(*shape_ps_);
-          shape_ps_->push_constant("shape_type", draw_as);
-          shape_ps_->draw_expand(
-              geom, GPU_PRIM_LINES, 16, 1, resource_handle_get(), res.select_id(ob_ref).get());
+          shape_ps_->push_constant("shape_type", PART_SHAPE_CIRCLE);
+          shape_ps_->draw_expand(geom,
+                                 GPU_PRIM_LINES,
+                                 PARTICLE_SHAPE_CIRCLE_RESOLUTION,
+                                 1,
+                                 ResourceHandle(0),
+                                 res.select_id(ob_ref).get());
           break;
         case PART_DRAW_CROSS:
           geom = DRW_cache_particles_get_dots(ob, psys);
           set_color(*shape_ps_);
-          shape_ps_->push_constant("shape_type", draw_as);
+          shape_ps_->push_constant("shape_type", PART_SHAPE_CROSS);
           shape_ps_->draw_expand(
-              geom, GPU_PRIM_LINES, 3, 1, resource_handle_get(), res.select_id(ob_ref).get());
+              geom, GPU_PRIM_LINES, 3, 1, ResourceHandle(0), res.select_id(ob_ref).get());
           break;
       }
     }

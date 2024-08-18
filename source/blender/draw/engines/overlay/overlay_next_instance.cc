@@ -195,7 +195,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
-    layer.particles.object_sync(ob_ref, resources, state);
+    layer.particles.object_sync(ob_ref, resources);
 
     if (object_is_selected(ob_ref)) {
       if (in_edit_mode || in_paint_mode || in_sculpt_mode) {
