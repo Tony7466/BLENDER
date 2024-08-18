@@ -101,23 +101,19 @@ class GHOST_Window : public GHOST_IWindow {
   virtual void setDecorationStyle(GHOST_TWindowDecorationStyleFlags styleFlags) override;
 
   /**
-   * Apply the window client-side decorations (CSD) using the current decoration style flags.
+   * Set the window client-side decorations (CSD) settings.
+   * \param decorationSettings: Decoration settings.
+   */
+  virtual void setDecorationSettings(GHOST_DecorationSettings decorationSettings) override;
+
+  /**
+   * Apply the window client-side decorations (CSD) using the current decoration style flags and
+   * settings.
    */
   virtual GHOST_TSuccess applyDecoration() override
   {
     return GHOST_kSuccess;
   }
-
-  /**
-   * Set colors to be used by custom titlebar client-side window decorations (CSD).
-   * \param backgroundColor: Titlebar background color.
-   * \param titleTextColor: Titlebar title text color.
-   */
-  virtual GHOST_TSuccess setDecorationTitlebarColors(const float /*backgroundColor*/[3],
-                                                     const float /*titlebarColor*/[3]) override
-  {
-    return GHOST_kFailure;
-  };
 
   /**
    * Returns the current cursor shape.
@@ -440,8 +436,9 @@ class GHOST_Window : public GHOST_IWindow {
   /** Stores whether this is a full screen window. */
   bool m_fullScreen;
 
-  /** Stores whether the windows has custom client-side decorations. */
+  /** Custom Client-Side Window Decorations. (CSD). */
   GHOST_TWindowDecorationStyleFlags m_windowDecorationFlags;
+  GHOST_DecorationSettings m_windowDecorationSettings;
 
   /** Whether to attempt to initialize a context with a stereo frame-buffer. */
   bool m_wantStereoVisual;

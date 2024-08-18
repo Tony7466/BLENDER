@@ -620,21 +620,18 @@ void GHOST_SetDecorationStyle(GHOST_WindowHandle windowhandle,
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
   window->setDecorationStyle(styleFlags);
 }
+
+void GHOST_SetDecorationSettings(GHOST_WindowHandle windowhandle,
+                                 GHOST_DecorationSettings decorationSettings)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  window->setDecorationSettings(decorationSettings);
 }
 
 GHOST_TSuccess GHOST_ApplyDecoration(GHOST_WindowHandle windowhandle)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
   return window->applyDecoration();
-}
-
-GHOST_TSuccess GHOST_SetDecorationTitlebarColors(GHOST_WindowHandle windowhandle,
-                                                 const float backgroundColor[3],
-                                                 const float titleTextColor[3])
-{
-
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  return window->setDecorationTitlebarColors(backgroundColor, titleTextColor);
 }
 
 GHOST_RectangleHandle GHOST_GetWindowBounds(GHOST_WindowHandle windowhandle)

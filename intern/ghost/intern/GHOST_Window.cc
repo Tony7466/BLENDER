@@ -66,6 +66,11 @@ void GHOST_Window::setDecorationStyle(GHOST_TWindowDecorationStyleFlags styleFla
   m_windowDecorationFlags = styleFlags;
 }
 
+void GHOST_Window::setDecorationSettings(GHOST_DecorationSettings decorationSettings)
+{
+  m_windowDecorationSettings = decorationSettings;
+}
+
 GHOST_TSuccess GHOST_Window::setDrawingContextType(GHOST_TDrawingContextType type)
 {
   if (type != m_drawingContextType) {

@@ -389,13 +389,12 @@ enum eWM_DecorationStyleFlag {
 };
 ENUM_OPERATORS(eWM_DecorationStyleFlag, WM_DECORATION_COLORED_TITLEBAR)
 
+/* Get/set decoration style flags. */
 eWM_DecorationStyleFlag WM_window_decoration_get_style(const wmWindow *win);
 void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag style_flags);
+/* Apply the decorations to the window using the current flags and settings. */
 void WM_window_decoration_apply(const wmWindow *win);
-void WM_window_decoration_set_titlebar_colors(const wmWindow *win,
-                                              const float background_color[3],
-                                              const float title_text_color[3]);
-
+/* Parse the current theme and set the current decoration settings. */
 void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen);
 
 /* `wm_files.cc`. */

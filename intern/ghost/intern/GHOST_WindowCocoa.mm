@@ -549,34 +549,31 @@ GHOST_TSuccess GHOST_WindowCocoa::setPath(const char *filepath)
 GHOST_TSuccess GHOST_WindowCocoa::applyDecoration()
 {
   @autoreleasepool {
-    m_window.titlebarAppearsTransparent = m_windowDecorationFlags &
-                                          GHOST_kDecorationColoredTitleBar;
-  }
-  return GHOST_kSuccess;
-}
+    if (m_windowDecorationFlags & GHOST_kDecorationColoredTitleBar) {
+      const float(&background_color)[3] = m_windowDecorationSettings.colored_titlebar_bg_color;
 
-GHOST_TSuccess GHOST_WindowCocoa::setDecorationTitlebarColors(const float backgroundColor[3],
-                                                              const float /*titlebarColor*/[3])
-{
-  @autoreleasepool {
-    /* Titlebar background color. */
-    m_window.backgroundColor = [NSColor colorWithRed:backgroundColor[0]
-                                               green:backgroundColor[1]
-                                                blue:backgroundColor[2]
-                                               alpha:1.0];
+      /* Titlebar background color. */
+      m_window.backgroundColor = [NSColor colorWithRed:background_color[0]
+                                                 green:background_color[1]
+                                                  blue:background_color[2]
+                                                 alpha:1.0];
 
-    /**
-     * Titlebar title text color.
-     * Determine whether we should use the macOS dark or light titlebar text appearance by using
-     * the value (V) component of the titlebar background's HSV representation. With values below
-     * 0.5 considered as dark themes, and values above 0.5 considered as light themes.
-     */
+      /* Titlebar foreground color.
+       * Use the value component of the titlebar background's HSV representation to determine
+       * whether we should use the macOS dark or light titlebar text appearance. With values below
+       * 0.5 considered as dark themes, and values above 0.5 considered as light themes.
+       */
+      const float hsv_v = MAX(background_color[0], MAX(background_color[1], background_color[2]));
 
-    const float hsv_v = MAX(backgroundColor[0], MAX(backgroundColor[1], backgroundColor[2]));
+      const NSAppearanceName win_appearance = hsv_v > 0.5 ? NSAppearanceNameVibrantLight :
+                                                            NSAppearanceNameVibrantDark;
 
-    const NSAppearanceName win_appearance = hsv_v < 0.5 ? NSAppearanceNameVibrantDark :
-                                                          NSAppearanceNameVibrantLight;
-    m_window.appearance = [NSAppearance appearanceNamed:win_appearance];
+      m_window.appearance = [NSAppearance appearanceNamed:win_appearance];
+      m_window.titlebarAppearsTransparent = YES;
+    }
+    else {
+      m_window.titlebarAppearsTransparent = NO;
+    }
   }
   return GHOST_kSuccess;
 }

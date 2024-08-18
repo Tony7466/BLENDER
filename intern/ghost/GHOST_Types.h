@@ -724,6 +724,11 @@ typedef struct {
   GHOST_TDrawingContextType context_type;
 } GHOST_GPUSettings;
 
+typedef struct {
+  float colored_titlebar_bg_color[3];
+  float colored_titlebar_fg_color[3];
+} GHOST_DecorationSettings;
+
 #ifdef WITH_VULKAN_BACKEND
 typedef struct {
   /** Image handle to the image that will be presented to the user. */
