@@ -53,7 +53,12 @@ class Wireframe {
           [&](GPUShader *shader, const char *name, bool use_coloring, float wire_threshold) {
             auto &sub = pass.sub(name);
             if (res.shaders.wireframe_mesh.get() == shader) {
-              sub.specialize_constant(shader, "use_custom_depth_bias", do_smooth_lines);
+              /* WORKAROUND: Metal has a bug when not using this custom bias (see #126464). */
+              bool use_custom_bias = do_smooth_lines || GPU_type_matches_ex(GPU_DEVICE_ANY,
+                                                                            GPU_OS_ANY,
+                                                                            GPU_DRIVER_ANY,
+                                                                            GPU_BACKEND_METAL);
+              sub.specialize_constant(shader, "use_custom_depth_bias", use_custom_bias);
             }
             sub.shader_set(shader);
             sub.bind_ubo("globalsBlock", &res.globals_buf);
