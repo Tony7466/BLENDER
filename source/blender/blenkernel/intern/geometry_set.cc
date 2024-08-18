@@ -828,8 +828,6 @@ bool object_has_geometry_set_instances(const Object &object)
   }
   if (object.type != OB_MESH && geometry_set->has_component<MeshComponent>()) {
     return true;
-        break;
-      case GeometryComponent::Type::Physics:
   }
   if (object.type != OB_POINTCLOUD && geometry_set->has_component<PointCloudComponent>()) {
     return true;
@@ -843,6 +841,9 @@ bool object_has_geometry_set_instances(const Object &object)
     return true;
   }
   if (object.type != OB_GREASE_PENCIL && geometry_set->has_component<GreasePencilComponent>()) {
+    return true;
+  }
+  if (geometry_set->has_component<PhysicsComponent>()) {
     return true;
   }
   return false;
