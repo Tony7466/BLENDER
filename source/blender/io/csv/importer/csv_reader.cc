@@ -41,7 +41,7 @@ static Vector<std::string> get_columns(const StringRef &line)
   return columns;
 }
 
-static eCustomDataType get_column_type(const char *start, const char *end)
+static bool get_column_type(const char *start, const char *end, eCustomDataType &column_type)
 {
   bool success = false;
 
@@ -49,22 +49,23 @@ static eCustomDataType get_column_type(const char *start, const char *end)
   parse_int(start, end, success, _val_int);
 
   if (success) {
-    return eCustomDataType::CD_PROP_INT32;
+    column_type = eCustomDataType::CD_PROP_INT32;
+    return true;
   }
 
   float _val_float = 0.0f;
   parse_float(start, end, success, _val_float);
 
   if (success) {
-    return eCustomDataType::CD_PROP_FLOAT;
+    column_type = eCustomDataType::CD_PROP_FLOAT;
+    return true;
   }
 
-  // TODO: error - unsupported type
+  return false;
 }
 
-static Vector<eCustomDataType> get_column_types(const StringRef &line)
+static bool get_column_types(const StringRef &line, Vector<eCustomDataType> &column_types)
 {
-  Vector<eCustomDataType> column_types;
   const char *p = line.begin(), *end = line.end();
   const char *cell_start = p, *cell_end = p;
 
@@ -74,7 +75,11 @@ static Vector<eCustomDataType> get_column_types(const StringRef &line)
     }
     cell_end = p;
 
-    column_types.append(get_column_type(cell_start, cell_end));
+    eCustomDataType column_type;
+    if (!get_column_type(cell_start, cell_end, column_type)) {
+      return false;
+    }
+    column_types.append(column_type);
 
     if (p == end) {
       break;
@@ -82,7 +87,8 @@ static Vector<eCustomDataType> get_column_types(const StringRef &line)
     p++;
     cell_start = p;
   }
-  return column_types;
+
+  return true;
 }
 
 static int64_t get_row_count(StringRef &buffer)
@@ -97,8 +103,12 @@ static int64_t get_row_count(StringRef &buffer)
   return row_count;
 }
 
-static void parse_csv_cell(
-    CsvData &csv_data, int64_t row_index, int64_t col_index, const char *start, const char *end)
+static bool parse_csv_cell(CsvData &csv_data,
+                           int64_t row_index,
+                           int64_t col_index,
+                           const char *start,
+                           const char *end,
+                           const CSVImportParams &import_params)
 {
   bool success = false;
 
@@ -108,7 +118,24 @@ static void parse_csv_cell(
       parse_int(start, end, success, value);
       if (success) {
         csv_data.set_data(row_index, col_index, value);
-      }  // TODO : Handle invalid value
+      }
+      else {
+        std::string column_name = csv_data.get_column_name(col_index);
+        fprintf(
+            stderr,
+            "CSV file: '%s', unexpected value found at row %lld for column %s of type Integer.\n",
+            import_params.filepath,
+            row_index,
+            column_name.c_str());
+        BKE_reportf(import_params.reports,
+                    RPT_ERROR,
+                    "CSV Import: file '%s' has an unexpected value at row %lld for column %s of "
+                    "type Integer",
+                    import_params.filepath,
+                    row_index,
+                    column_name.c_str());
+        return false;
+      }
       break;
     }
     case eCustomDataType::CD_PROP_FLOAT: {
@@ -116,16 +143,38 @@ static void parse_csv_cell(
       parse_float(start, end, success, value);
       if (success) {
         csv_data.set_data(row_index, col_index, value);
-      }  // TODO : Handle invalid value
+      }
+      else {
+        std::string column_name = csv_data.get_column_name(col_index);
+        fprintf(
+            stderr,
+            "CSV file: '%s', unexpected value found at row %lld for column %s of type Float.\n",
+            import_params.filepath,
+            row_index,
+            column_name.c_str());
+        BKE_reportf(import_params.reports,
+                    RPT_ERROR,
+                    "CSV Import: file '%s' has an unexpected value at row %lld for column %s of "
+                    "type Float",
+                    import_params.filepath,
+                    row_index,
+                    column_name.c_str());
+        return false;
+      }
       break;
     }
     default: {
-      break;
+      return false;
     }
   }
+
+  return true;
 }
 
-static void parse_csv_line(CsvData &csv_data, int64_t row_index, const StringRef &line)
+static bool parse_csv_line(CsvData &csv_data,
+                           int64_t row_index,
+                           const StringRef &line,
+                           const CSVImportParams &import_params)
 {
   const char *p = line.begin(), *end = line.end();
   const char *cell_start = p, *cell_end = p;
@@ -138,25 +187,37 @@ static void parse_csv_line(CsvData &csv_data, int64_t row_index, const StringRef
     }
     cell_end = p;
 
-    parse_csv_cell(csv_data, row_index, col_index, cell_start, cell_end);
+    if (!parse_csv_cell(csv_data, row_index, col_index, cell_start, cell_end, import_params)) {
+      return false;
+    }
+    col_index++;
 
     if (p == end) {
       break;
     }
     p++;
     cell_start = p;
-    col_index++;
   }
+
+  return true;
 }
 
-static void parse_csv_data(CsvData &csv_data, StringRef &buffer)
+static bool parse_csv_data(CsvData &csv_data,
+                           StringRef &buffer,
+                           const CSVImportParams &import_params)
 {
   int64_t row_index = 0;
   while (!buffer.is_empty()) {
     const StringRef line = read_next_line(buffer);
-    parse_csv_line(csv_data, row_index, line);
+
+    if (!parse_csv_line(csv_data, row_index, line, import_params)) {
+      return false;  // error
+    }
+
     row_index++;
   }
+
+  return true;
 }
 
 PointCloud *read_csv_file(const CSVImportParams &import_params)
@@ -179,7 +240,7 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
 
   // get row count and columns
   if (buffer_str.is_empty()) {
-    fprintf(stderr, "CSV file:'%s', Is empty.\n", import_params.filepath);
+    fprintf(stderr, "CSV file: '%s', Is empty.\n", import_params.filepath);
     BKE_reportf(
         import_params.reports, RPT_ERROR, "CSV Import: empty file '%s'", import_params.filepath);
     return nullptr;
@@ -189,9 +250,11 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
   const Vector<std::string> columns = get_columns(header);
 
   if (buffer_str.is_empty()) {
-    fprintf(stderr, "CSV file:'%s', Has no points.\n", import_params.filepath);
-    BKE_reportf(
-        import_params.reports, RPT_ERROR, "CSV Import: no points '%s'", import_params.filepath);
+    fprintf(stderr, "CSV file: '%s', Has no rows.\n", import_params.filepath);
+    BKE_reportf(import_params.reports,
+                RPT_ERROR,
+                "CSV Import: no rows in file '%s'",
+                import_params.filepath);
     return nullptr;
   }
 
@@ -199,7 +262,21 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
   StringRef data_buffer(buffer_str.begin(), buffer_str.end());
 
   const StringRef first_row = read_next_line(buffer_str);
-  const Vector<eCustomDataType> column_types = get_column_types(first_row);
+
+  Vector<eCustomDataType> column_types;
+  if (!get_column_types(first_row, column_types)) {
+    std::string column_name = columns[column_types.size()];
+    fprintf(stderr,
+            "CSV file: '%s', Column %s is of unsupported data type.\n",
+            import_params.filepath,
+            column_name.c_str());
+    BKE_reportf(import_params.reports,
+                RPT_ERROR,
+                "CSV Import: file '%s', Column %s is of unsupported data type",
+                import_params.filepath,
+                column_name.c_str());
+    return nullptr;
+  }
 
   const int64_t row_count = get_row_count(buffer_str);
 
@@ -207,9 +284,12 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
   CsvData csv_data(row_count, columns, column_types);
 
   // fill csv data while seeking over the file
-  parse_csv_data(csv_data, data_buffer);
-
-  // return point cloud from csv data
-  return csv_data.to_point_cloud();
+  if (parse_csv_data(csv_data, data_buffer, import_params)) {
+    // return point cloud from csv data
+    return csv_data.to_point_cloud();
+  }
+  else {
+    return nullptr;
+  }
 }
 }  // namespace blender::io::csv
