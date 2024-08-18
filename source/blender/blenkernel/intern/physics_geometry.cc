@@ -947,7 +947,10 @@ void PhysicsGeometryImpl::delete_self()
 
 void PhysicsGeometryImpl::tag_read_cache_changed()
 {
-  tag_cache_dirty(this->custom_data_read_cache_valid);
+  /* Cache only becomes invalid if there is world data that can change. */
+  if (this->world_data != nullptr) {
+    tag_cache_dirty(this->custom_data_read_cache_valid);
+  }
 }
 
 void PhysicsGeometryImpl::tag_body_topology_changed()
