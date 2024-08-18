@@ -46,6 +46,13 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
  */
 void set_approximate_size_limit(int64_t limit_in_bytes);
 
+/**
+ * Remove all elements from the cache. Note that this does not guarantee that no elements are in
+ * the cache after the function returned. This is because another thread may have added a new
+ * element right after the clearing.
+ */
+void clear();
+
 /* -------------------------------------------------------------------- */
 /** \name Inline Functions
  * \{ */

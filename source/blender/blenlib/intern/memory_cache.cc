@@ -133,6 +133,22 @@ void set_approximate_size_limit(const int64_t limit_in_bytes)
   try_enforce_limit();
 }
 
+void clear()
+{
+  Cache &cache = get_cache();
+  std::lock_guard lock{cache.global_mutex};
+
+  /* It's not possible to just call a map.clear() method because that is not thread-safe. */
+  for (const GenericKey *key : cache.keys) {
+    const bool success = cache.map.remove(*key);
+    BLI_assert(success);
+    UNUSED_VARS_NDEBUG(success);
+  }
+  cache.keys.clear();
+  cache.size_in_bytes = 0;
+  cache.memory.reset();
+}
+
 static void try_enforce_limit()
 {
   Cache &cache = get_cache();
