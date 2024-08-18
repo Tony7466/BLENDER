@@ -277,6 +277,17 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.define("inst_pos", "data_buf[gl_InstanceID].xyz");
         info.vertex_inputs_.pop_last();
       });
+
+  particle_dot = selectable_shader("overlay_particle_dot",
+                                   [](gpu::shader::ShaderCreateInfo &info) {});
+
+  particle_shape = selectable_shader("overlay_particle_shape",
+                                     [](gpu::shader::ShaderCreateInfo &info) {});
+
+  particle_wire = selectable_shader("overlay_extra_groundline",
+                                    [](gpu::shader::ShaderCreateInfo &info) {
+                                      /* TODO */
+                                    });
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)
