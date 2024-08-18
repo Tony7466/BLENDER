@@ -1,2 +1,3 @@
 Referenced by issue #126318, compositor with large resolution renders causes Exception Access Violation and Crash
 Referenced by issue #125618, 4.2 EEVEE Cryptomatte pass no longer matches Cycles
+Referenced by issue #126445, Regression: Symmetry doesn't work with deform brushes
