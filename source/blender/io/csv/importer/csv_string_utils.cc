@@ -103,7 +103,7 @@ const char *parse_float(const char *p, const char *end, bool &success, float &ds
   int sign = 0;
   p = drop_sign(p, end, sign);
   fast_float::from_chars_result res = fast_float::from_chars(p, end, dst);
-  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
+  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range) || res.ptr < end) {
     success = false;
   }
   else {
@@ -121,7 +121,7 @@ const char *parse_int(const char *p, const char *end, bool &success, int &dst, b
   int sign = 0;
   p = drop_sign(p, end, sign);
   std::from_chars_result res = std::from_chars(p, end, dst);
-  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range)) {
+  if (ELEM(res.ec, std::errc::invalid_argument, std::errc::result_out_of_range) || res.ptr < end) {
     success = false;
   }
   else {

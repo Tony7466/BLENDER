@@ -41,7 +41,7 @@ static Vector<std::string> get_columns(const StringRef &line)
   return columns;
 }
 
-static CsvColumnType get_column_type(const char *start, const char *end)
+static eCustomDataType get_column_type(const char *start, const char *end)
 {
   bool success = false;
 
@@ -49,22 +49,22 @@ static CsvColumnType get_column_type(const char *start, const char *end)
   parse_int(start, end, success, _val_int);
 
   if (success) {
-    return CsvColumnType::INT;
+    return eCustomDataType::CD_PROP_INT32;
   }
 
   float _val_float = 0.0f;
   parse_float(start, end, success, _val_float);
 
   if (success) {
-    return CsvColumnType::FLOAT;
+    return eCustomDataType::CD_PROP_FLOAT;
   }
 
   // TODO: error - unsupported type
 }
 
-static Vector<CsvColumnType> get_column_types(const StringRef &line)
+static Vector<eCustomDataType> get_column_types(const StringRef &line)
 {
-  Vector<CsvColumnType> column_types;
+  Vector<eCustomDataType> column_types;
   const char *p = line.begin(), *end = line.end();
   const char *cell_start = p, *cell_end = p;
 
@@ -103,7 +103,7 @@ static void parse_csv_cell(
   bool success = false;
 
   switch (csv_data.get_column_type(col_index)) {
-    case CsvColumnType::INT: {
+    case eCustomDataType::CD_PROP_INT32: {
       int value = 0;
       parse_int(start, end, success, value);
       if (success) {
@@ -111,12 +111,15 @@ static void parse_csv_cell(
       }  // TODO : Handle invalid value
       break;
     }
-    case CsvColumnType::FLOAT: {
+    case eCustomDataType::CD_PROP_FLOAT: {
       float value = 0.0f;
       parse_float(start, end, success, value);
       if (success) {
         csv_data.set_data(row_index, col_index, value);
       }  // TODO : Handle invalid value
+      break;
+    }
+    default: {
       break;
     }
   }
@@ -196,7 +199,7 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
   StringRef data_buffer(buffer_str.begin(), buffer_str.end());
 
   const StringRef first_row = read_next_line(buffer_str);
-  const Vector<CsvColumnType> column_types = get_column_types(first_row);
+  const Vector<eCustomDataType> column_types = get_column_types(first_row);
 
   const int64_t row_count = get_row_count(buffer_str);
 

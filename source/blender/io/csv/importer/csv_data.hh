@@ -17,8 +17,6 @@
 struct PointCloud;
 
 namespace blender::io::csv {
-enum class CsvColumnType { INT, FLOAT };
-
 class CsvData {
  private:
   Array<GArray<>> data;
@@ -27,10 +25,12 @@ class CsvData {
   int64_t column_count;
 
   Array<std::string> column_names;
-  Array<CsvColumnType> column_types;
+  Array<eCustomDataType> column_types;
 
  public:
-  CsvData(int64_t row_count, Vector<std::string> column_names, Vector<CsvColumnType> column_types);
+  CsvData(int64_t row_count,
+          Vector<std::string> column_names,
+          Vector<eCustomDataType> column_types);
 
   PointCloud *to_point_cloud() const;
 
@@ -41,7 +41,7 @@ class CsvData {
     typed_mutable_span[row_index] = value;
   }
 
-  inline CsvColumnType get_column_type(int64_t col_index) const
+  inline eCustomDataType get_column_type(int64_t col_index) const
   {
     return column_types[col_index];
   }
@@ -52,6 +52,6 @@ class CsvData {
   }
 
  private:
-  GArray<> create_garray_for_type(CsvColumnType &type);
+  GArray<> create_garray_for_type(eCustomDataType &type);
 };
 }  // namespace blender::io::csv
