@@ -100,6 +100,7 @@ void Instance::begin_sync()
     layer.light_probes.begin_sync(resources, state);
     layer.metaballs.begin_sync();
     layer.meshes.begin_sync(resources, state, view);
+    layer.particles.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
     layer.relations.begin_sync();
     layer.speakers.begin_sync();
@@ -194,6 +195,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
+    layer.particles.object_sync(ob_ref, resources, state);
 
     if (object_is_selected(ob_ref)) {
       if (in_edit_mode || in_paint_mode || in_sculpt_mode) {
@@ -334,6 +336,7 @@ void Instance::draw(Manager &manager)
     layer.lattices.draw(framebuffer, manager, view);
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
+    layer.particles.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 
