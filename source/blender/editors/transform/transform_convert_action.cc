@@ -651,25 +651,70 @@ static void createTransActionData(bContext *C, TransInfo *t)
       cfra = float(scene->r.cfra);
     }
 
-    if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
-      adt_count = count_fcurve_keys(
-          static_cast<FCurve *>(ale->key_data), t->frame_side, cfra, is_prop_edit);
-    }
-    else if (ale->type == ANIMTYPE_GPLAYER) {
-      adt_count = count_gplayer_frames(
-          static_cast<bGPDlayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
-    }
-    else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      using namespace blender::bke::greasepencil;
-      adt_count = count_grease_pencil_frames(
-          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, use_duplicated);
-    }
-    else if (ale->type == ANIMTYPE_MASKLAYER) {
-      adt_count = count_masklayer_frames(
-          static_cast<MaskLayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
-    }
-    else {
-      BLI_assert(0);
+    switch (ale->type) {
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACURVE:
+        adt_count = count_fcurve_keys(
+            static_cast<FCurve *>(ale->key_data), t->frame_side, cfra, is_prop_edit);
+        break;
+      case ANIMTYPE_GPLAYER:
+        adt_count = count_gplayer_frames(
+            static_cast<bGPDlayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
+        break;
+      case ANIMTYPE_GREASE_PENCIL_LAYER: {
+        using namespace blender::bke::greasepencil;
+        adt_count = count_grease_pencil_frames(
+            static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, use_duplicated);
+        break;
+      }
+      case ANIMTYPE_MASKLAYER:
+        adt_count = count_masklayer_frames(
+            static_cast<MaskLayer *>(ale->data), t->frame_side, cfra, is_prop_edit);
+        break;
+      case ANIMTYPE_NONE:
+      case ANIMTYPE_ANIMDATA:
+      case ANIMTYPE_SPECIALDATA__UNUSED:
+      case ANIMTYPE_SUMMARY:
+      case ANIMTYPE_SCENE:
+      case ANIMTYPE_OBJECT:
+      case ANIMTYPE_GROUP:
+      case ANIMTYPE_NLACONTROLS:
+      case ANIMTYPE_FILLACT_LAYERED:
+      case ANIMTYPE_ACTION_SLOT:
+      case ANIMTYPE_FILLACTD:
+      case ANIMTYPE_FILLDRIVERS:
+      case ANIMTYPE_DSMAT:
+      case ANIMTYPE_DSLAM:
+      case ANIMTYPE_DSCAM:
+      case ANIMTYPE_DSCACHEFILE:
+      case ANIMTYPE_DSCUR:
+      case ANIMTYPE_DSSKEY:
+      case ANIMTYPE_DSWOR:
+      case ANIMTYPE_DSNTREE:
+      case ANIMTYPE_DSPART:
+      case ANIMTYPE_DSMBALL:
+      case ANIMTYPE_DSARM:
+      case ANIMTYPE_DSMESH:
+      case ANIMTYPE_DSTEX:
+      case ANIMTYPE_DSLAT:
+      case ANIMTYPE_DSLINESTYLE:
+      case ANIMTYPE_DSSPK:
+      case ANIMTYPE_DSGPENCIL:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_DSHAIR:
+      case ANIMTYPE_DSPOINTCLOUD:
+      case ANIMTYPE_DSVOLUME:
+      case ANIMTYPE_SHAPEKEY:
+      case ANIMTYPE_GPDATABLOCK:
+      case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+      case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+      case ANIMTYPE_MASKDATABLOCK:
+      case ANIMTYPE_NLATRACK:
+      case ANIMTYPE_NLAACTION:
+      case ANIMTYPE_PALETTE:
+      case ANIMTYPE_NUM_TYPES:
+        BLI_assert_unreachable();
+        break;
     }
 
     if (adt_count > 0) {
@@ -938,8 +983,8 @@ static void recalcData_actedit(TransInfo *t)
   ac.area = t->area;
   ac.region = t->region;
   ac.sl = static_cast<SpaceLink *>((t->area) ? t->area->spacedata.first : nullptr);
-  ac.spacetype = (t->area) ? t->area->spacetype : 0;
-  ac.regiontype = (t->region) ? t->region->regiontype : 0;
+  ac.spacetype = eSpace_Type((t->area) ? t->area->spacetype : 0);
+  ac.regiontype = eRegion_Type((t->region) ? t->region->regiontype : 0);
 
   ANIM_animdata_context_getdata(&ac);
 
@@ -1168,7 +1213,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       switch (ale->datatype) {
         case ALE_GPFRAME:
-          ale->id->tag &= ~LIB_TAG_DOIT;
+          ale->id->tag &= ~ID_TAG_DOIT;
           posttrans_gpd_clean((bGPdata *)ale->id);
           break;
 
@@ -1256,7 +1301,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
         case ALE_GPFRAME:
           /* Grease Pencil legacy. */
           if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
-            ale->id->tag &= ~LIB_TAG_DOIT;
+            ale->id->tag &= ~ID_TAG_DOIT;
             posttrans_gpd_clean((bGPdata *)ale->id);
           }
           break;
@@ -1295,7 +1340,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
 
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         if (ale->datatype == ALE_MASKLAY) {
-          ale->id->tag &= ~LIB_TAG_DOIT;
+          ale->id->tag &= ~ID_TAG_DOIT;
           posttrans_mask_clean((Mask *)ale->id);
         }
       }

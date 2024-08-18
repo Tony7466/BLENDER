@@ -447,6 +447,15 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_default_input_itemf(
                                       N_("The position from the context")};
       RNA_enum_item_add(&items, &items_count, &position);
     }
+    else if (type->type == SOCK_MATRIX) {
+      const EnumPropertyItem instance_transform{
+          GEO_NODE_DEFAULT_FIELD_INPUT_INSTANCE_TRANSFORM_FIELD,
+          "INSTANCE_TRANSFORM",
+          0,
+          N_("Instance Transform"),
+          N_("Transformation of each instance from the geometry context")};
+      RNA_enum_item_add(&items, &items_count, &instance_transform);
+    }
   }
 
   RNA_enum_item_end(&items, &items_count);
@@ -463,9 +472,6 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocket_attribute_domain_item
   for (const EnumPropertyItem *item = rna_enum_attribute_domain_items; item->identifier != nullptr;
        item++)
   {
-    if (!U.experimental.use_grease_pencil_version3 && item->value == int(bke::AttrDomain::Layer)) {
-      continue;
-    }
     RNA_enum_item_add(&item_array, &items_len, item);
   }
   RNA_enum_item_end(&item_array, &items_len);
@@ -712,6 +718,7 @@ static const EnumPropertyItem *rna_NodeTreeInterfaceSocketFloat_subtype_itemf(
                                    PROP_TIME_ABSOLUTE,
                                    PROP_DISTANCE,
                                    PROP_WAVELENGTH,
+                                   PROP_COLOR_TEMPERATURE,
                                    PROP_NONE},
                                   r_free);
 }
@@ -789,6 +796,12 @@ void rna_NodeTreeInterfaceSocketVector_default_value_range(
   *max = FLT_MAX;
   *softmin = dval->min;
   *softmax = dval->max;
+}
+
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocketString_subtype_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  return rna_subtype_filter_itemf({PROP_FILEPATH, PROP_NONE}, r_free);
 }
 
 /* using a context update function here, to avoid searching the node if possible */
@@ -1050,9 +1063,10 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "default_input", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
-  RNA_def_property_ui_text(prop,
-                           "Default Input",
-                           "Input to use when the socket is unconnected. Requires \"Hide Value\"");
+  RNA_def_property_ui_text(
+      prop,
+      "Default Input",
+      "Input to use when the socket is unconnected. Requires \"Hide Value\".");
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_default_input_itemf");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");

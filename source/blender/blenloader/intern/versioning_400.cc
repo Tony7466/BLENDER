@@ -17,6 +17,8 @@
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
+#include "DNA_collection_types.h"
+#include "DNA_constraint_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
@@ -27,6 +29,7 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
+#include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
 #include "DNA_defaults.h"
@@ -49,24 +52,31 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
 #include "BKE_effect.h"
+#include "BKE_file_handler.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
+#include "BKE_image_format.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_nla.h"
 #include "BKE_node_runtime.hh"
+#include "BKE_paint.hh"
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
 #include "IMB_imbuf_enums.h"
 
 #include "SEQ_iterator.hh"
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
@@ -344,6 +354,400 @@ static void versioning_eevee_shadow_settings(Object *object)
   SET_FLAG_FROM_TEST(object->visibility_flag, hide_shadows, OB_HIDE_SHADOW);
 }
 
+static void versioning_eevee_material_shadow_none(Material *material)
+{
+  if (!material->use_nodes || material->nodetree == nullptr) {
+    return;
+  }
+  bNodeTree *ntree = material->nodetree;
+
+  bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  bNode *old_output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  if (output_node == nullptr) {
+    return;
+  }
+
+  bNodeSocket *existing_out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+  bNodeSocket *volume_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Volume");
+  if (existing_out_sock->link == nullptr && volume_sock->link) {
+    /* Don't apply versioning to a material that only has a volumetric input as this makes the
+     * object surface opaque to the camera, hiding the volume inside. */
+    return;
+  }
+
+  if (output_node->custom1 == SHD_OUTPUT_ALL) {
+    /* We do not want to affect Cycles. So we split the output into two specific outputs. */
+    output_node->custom1 = SHD_OUTPUT_CYCLES;
+
+    bNode *new_output = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeOutputMaterial");
+    new_output->custom1 = SHD_OUTPUT_EEVEE;
+    new_output->parent = output_node->parent;
+    new_output->locx = output_node->locx;
+    new_output->locy = output_node->locy - output_node->height - 120;
+
+    auto copy_link = [&](const char *socket_name) {
+      bNodeSocket *sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, socket_name);
+      if (sock && sock->link) {
+        bNodeLink *link = sock->link;
+        bNodeSocket *to_sock = blender::bke::nodeFindSocket(new_output, SOCK_IN, socket_name);
+        blender::bke::nodeAddLink(ntree, link->fromnode, link->fromsock, new_output, to_sock);
+      }
+    };
+
+    /* Don't copy surface as that is handled later */
+    copy_link("Volume");
+    copy_link("Displacement");
+    copy_link("Thickness");
+
+    output_node = new_output;
+  }
+
+  bNodeSocket *out_sock = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+  bNodeSocket *old_out_sock = blender::bke::nodeFindSocket(old_output_node, SOCK_IN, "Surface");
+
+  /* Add mix node for mixing between original material, and transparent BSDF for shadows */
+  bNode *mix_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMixShader");
+  STRNCPY(mix_node->label, "Disable Shadow");
+  mix_node->flag |= NODE_HIDDEN;
+  mix_node->parent = output_node->parent;
+  mix_node->locx = output_node->locx;
+  mix_node->locy = output_node->locy - output_node->height - 120;
+  bNodeSocket *mix_fac = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 0));
+  bNodeSocket *mix_in_1 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 1));
+  bNodeSocket *mix_in_2 = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->inputs, 2));
+  bNodeSocket *mix_out = static_cast<bNodeSocket *>(BLI_findlink(&mix_node->outputs, 0));
+  if (old_out_sock->link != nullptr) {
+    blender::bke::nodeAddLink(
+        ntree, old_out_sock->link->fromnode, old_out_sock->link->fromsock, mix_node, mix_in_1);
+    if (out_sock->link != nullptr) {
+      blender::bke::nodeRemLink(ntree, out_sock->link);
+    }
+  }
+  blender::bke::nodeAddLink(ntree, mix_node, mix_out, output_node, out_sock);
+
+  /* Add light path node to control shadow visibility */
+  bNode *lp_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeLightPath");
+  lp_node->flag |= NODE_HIDDEN;
+  lp_node->parent = output_node->parent;
+  lp_node->locx = output_node->locx;
+  lp_node->locy = mix_node->locy + 35;
+  bNodeSocket *is_shadow = blender::bke::nodeFindSocket(lp_node, SOCK_OUT, "Is Shadow Ray");
+  blender::bke::nodeAddLink(ntree, lp_node, is_shadow, mix_node, mix_fac);
+  /* Hide unconnected sockets for cleaner look. */
+  LISTBASE_FOREACH (bNodeSocket *, sock, &lp_node->outputs) {
+    if (sock != is_shadow) {
+      sock->flag |= SOCK_HIDDEN;
+    }
+  }
+
+  /* Add transparent BSDF to make shadows transparent. */
+  bNode *bsdf_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeBsdfTransparent");
+  bsdf_node->flag |= NODE_HIDDEN;
+  bsdf_node->parent = output_node->parent;
+  bsdf_node->locx = output_node->locx;
+  bsdf_node->locy = mix_node->locy - 35;
+  bNodeSocket *bsdf_out = blender::bke::nodeFindSocket(bsdf_node, SOCK_OUT, "BSDF");
+  blender::bke::nodeAddLink(ntree, bsdf_node, bsdf_out, mix_node, mix_in_2);
+}
+
+/**
+ * Represents a source of transparency inside the closure part of a material node-tree.
+ * Sources can be combined together down the tree to figure out where the source of the alpha is.
+ * If there is multiple alpha source, we consider the tree as having complex alpha and don't do the
+ * versioning.
+ */
+struct AlphaSource {
+  enum AlphaState {
+    /* Alpha input is 0. */
+    ALPHA_OPAQUE = 0,
+    /* Alpha input is 1. */
+    ALPHA_FULLY_TRANSPARENT,
+    /* Alpha is between 0 and 1, from a graph input or the result of one blending operation. */
+    ALPHA_SEMI_TRANSPARENT,
+    /* Alpha is unknown and the result of more than one blending operation. */
+    ALPHA_COMPLEX_MIX
+  };
+
+  /* Socket that is the source of the potential semi-transparency. */
+  bNodeSocket *socket = nullptr;
+  /* State of the source. */
+  AlphaState state;
+  /* True if socket is transparency instead of alpha (e.g: `1-alpha`). */
+  bool is_transparency = false;
+
+  static AlphaSource alpha_source(bNodeSocket *fac, bool inverted = false)
+  {
+    return {fac, ALPHA_SEMI_TRANSPARENT, inverted};
+  }
+  static AlphaSource opaque()
+  {
+    return {nullptr, ALPHA_OPAQUE, false};
+  }
+  static AlphaSource fully_transparent(bNodeSocket *socket = nullptr, bool inverted = false)
+  {
+    return {socket, ALPHA_FULLY_TRANSPARENT, inverted};
+  }
+  static AlphaSource complex_alpha()
+  {
+    return {nullptr, ALPHA_COMPLEX_MIX, false};
+  }
+
+  bool is_opaque() const
+  {
+    return state == ALPHA_OPAQUE;
+  }
+  bool is_fully_transparent() const
+  {
+    return state == ALPHA_FULLY_TRANSPARENT;
+  }
+  bool is_transparent() const
+  {
+    return state != ALPHA_OPAQUE;
+  }
+  bool is_semi_transparent() const
+  {
+    return state == ALPHA_SEMI_TRANSPARENT;
+  }
+  bool is_complex() const
+  {
+    return state == ALPHA_COMPLEX_MIX;
+  }
+
+  /* Combine two source together with a blending parameter. */
+  static AlphaSource mix(const AlphaSource &a, const AlphaSource &b, bNodeSocket *fac)
+  {
+    if (a.is_complex() || b.is_complex()) {
+      return complex_alpha();
+    }
+    if (a.is_semi_transparent() || b.is_semi_transparent()) {
+      return complex_alpha();
+    }
+    if (a.is_fully_transparent() && b.is_fully_transparent()) {
+      return fully_transparent();
+    }
+    if (a.is_opaque() && b.is_opaque()) {
+      return opaque();
+    }
+    /* Only one of them is fully transparent. */
+    return alpha_source(fac, !a.is_transparent());
+  }
+
+  /* Combine two source together with an additive blending parameter. */
+  static AlphaSource add(const AlphaSource &a, const AlphaSource &b)
+  {
+    if (a.is_complex() || b.is_complex()) {
+      return complex_alpha();
+    }
+    if (a.is_semi_transparent() && b.is_transparent()) {
+      return complex_alpha();
+    }
+    if (a.is_transparent() && b.is_semi_transparent()) {
+      return complex_alpha();
+    }
+    /* Either one of them is opaque or they are both opaque. */
+    return a.is_transparent() ? a : b;
+  }
+};
+
+/**
+ * WARNING: recursive.
+ */
+static AlphaSource versioning_eevee_alpha_source_get(bNodeSocket *socket, int depth = 0)
+{
+  if (depth > 100) {
+    /* Protection against infinite / very long recursion.
+     * Also a node-tree with that much depth is likely to not be compatible. */
+    return AlphaSource::complex_alpha();
+  }
+
+  if (socket->link == nullptr) {
+    /* Unconnected closure socket is always opaque black. */
+    return AlphaSource::opaque();
+  }
+
+  bNode *node = socket->link->fromnode;
+
+  switch (node->type) {
+    case NODE_REROUTE: {
+      return versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth + 1);
+    }
+
+    case NODE_GROUP: {
+      return AlphaSource::complex_alpha();
+    }
+
+    case SH_NODE_BSDF_TRANSPARENT: {
+      bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Color");
+      if (socket->link == nullptr) {
+        float *socket_color_value = version_cycles_node_socket_rgba_value(socket);
+        if ((socket_color_value[0] == 0.0f) && (socket_color_value[1] == 0.0f) &&
+            (socket_color_value[2] == 0.0f))
+        {
+          return AlphaSource::opaque();
+        }
+        if ((socket_color_value[0] == 1.0f) && (socket_color_value[1] == 1.0f) &&
+            (socket_color_value[2] == 1.0f))
+        {
+          return AlphaSource::fully_transparent(socket, true);
+        }
+      }
+      return AlphaSource::alpha_source(socket, true);
+    }
+
+    case SH_NODE_MIX_SHADER: {
+      bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Fac");
+      AlphaSource src0 = versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth + 1);
+      AlphaSource src1 = versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 2)), depth + 1);
+
+      if (socket->link == nullptr) {
+        float socket_float_value = *version_cycles_node_socket_float_value(socket);
+        if (socket_float_value == 0.0f) {
+          return src0;
+        }
+        if (socket_float_value == 1.0f) {
+          return src1;
+        }
+      }
+      return AlphaSource::mix(src0, src1, socket);
+    }
+
+    case SH_NODE_ADD_SHADER: {
+      AlphaSource src0 = versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 0)), depth + 1);
+      AlphaSource src1 = versioning_eevee_alpha_source_get(
+          static_cast<bNodeSocket *>(BLI_findlink(&node->inputs, 1)), depth + 1);
+      return AlphaSource::add(src0, src1);
+    }
+
+    case SH_NODE_BSDF_PRINCIPLED: {
+      bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Alpha");
+      if (socket->link == nullptr) {
+        float socket_value = *version_cycles_node_socket_float_value(socket);
+        if (socket_value == 0.0f) {
+          return AlphaSource::fully_transparent(socket);
+        }
+        if (socket_value == 1.0f) {
+          return AlphaSource::opaque();
+        }
+      }
+      return AlphaSource::alpha_source(socket);
+    }
+
+    case SH_NODE_EEVEE_SPECULAR: {
+      bNodeSocket *socket = blender::bke::nodeFindSocket(node, SOCK_IN, "Transparency");
+      if (socket->link == nullptr) {
+        float socket_value = *version_cycles_node_socket_float_value(socket);
+        if (socket_value == 0.0f) {
+          return AlphaSource::fully_transparent(socket, true);
+        }
+        if (socket_value == 1.0f) {
+          return AlphaSource::opaque();
+        }
+      }
+      return AlphaSource::alpha_source(socket, true);
+    }
+
+    default:
+      return AlphaSource::opaque();
+  }
+}
+
+/**
+ * This function detect the alpha input of a material node-tree and then convert the input alpha to
+ * a step function, either statically or using a math node when there is some value plugged in.
+ * If the closure mixture mix some alpha more than once, we cannot convert automatically and keep
+ * the same behavior. So we bail out in this case.
+ *
+ * Only handles the closure tree from the output node.
+ */
+static bool versioning_eevee_material_blend_mode_settings(bNodeTree *ntree, float threshold)
+{
+  bNode *output_node = version_eevee_output_node_get(ntree, SH_NODE_OUTPUT_MATERIAL);
+  if (output_node == nullptr) {
+    return true;
+  }
+  bNodeSocket *surface_socket = blender::bke::nodeFindSocket(output_node, SOCK_IN, "Surface");
+
+  AlphaSource alpha = versioning_eevee_alpha_source_get(surface_socket);
+
+  if (alpha.is_complex()) {
+    return false;
+  }
+  if (alpha.socket == nullptr) {
+    return true;
+  }
+
+  bool is_opaque = (threshold == 2.0f);
+  if (is_opaque) {
+    if (alpha.socket->link != nullptr) {
+      blender::bke::nodeRemLink(ntree, alpha.socket->link);
+    }
+
+    float value = (alpha.is_transparency) ? 0.0f : 1.0f;
+    float values[4] = {value, value, value, 1.0f};
+
+    /* Set default value to opaque. */
+    if (alpha.socket->type == SOCK_RGBA) {
+      copy_v4_v4(version_cycles_node_socket_rgba_value(alpha.socket), values);
+    }
+    else {
+      *version_cycles_node_socket_float_value(alpha.socket) = value;
+    }
+  }
+  else {
+    if (alpha.socket->link != nullptr) {
+      /* Insert math node. */
+      bNode *to_node = alpha.socket->link->tonode;
+      bNode *from_node = alpha.socket->link->fromnode;
+      bNodeSocket *to_socket = alpha.socket->link->tosock;
+      bNodeSocket *from_socket = alpha.socket->link->fromsock;
+      blender::bke::nodeRemLink(ntree, alpha.socket->link);
+
+      bNode *math_node = blender::bke::nodeAddNode(nullptr, ntree, "ShaderNodeMath");
+      math_node->custom1 = NODE_MATH_GREATER_THAN;
+      math_node->flag |= NODE_HIDDEN;
+      math_node->parent = to_node->parent;
+      math_node->locx = to_node->locx - math_node->width - 30;
+      math_node->locy = min_ff(to_node->locy, from_node->locy);
+
+      bNodeSocket *input_1 = static_cast<bNodeSocket *>(BLI_findlink(&math_node->inputs, 0));
+      bNodeSocket *input_2 = static_cast<bNodeSocket *>(BLI_findlink(&math_node->inputs, 1));
+      bNodeSocket *output = static_cast<bNodeSocket *>(math_node->outputs.first);
+      bNodeSocket *alpha_sock = input_1;
+      bNodeSocket *threshold_sock = input_2;
+
+      blender::bke::nodeAddLink(ntree, from_node, from_socket, math_node, alpha_sock);
+      blender::bke::nodeAddLink(ntree, math_node, output, to_node, to_socket);
+
+      *version_cycles_node_socket_float_value(threshold_sock) = alpha.is_transparency ?
+                                                                    1.0f - threshold :
+                                                                    threshold;
+    }
+    else {
+      /* Modify alpha value directly. */
+      if (alpha.socket->type == SOCK_RGBA) {
+        float *default_value = version_cycles_node_socket_rgba_value(alpha.socket);
+        float sum = default_value[0] + default_value[1] + default_value[2];
+        /* Don't do the division if possible to avoid float imprecision. */
+        float avg = (sum >= 3.0f) ? 1.0f : (sum / 3.0f);
+        float value = float((alpha.is_transparency) ? (avg > 1.0f - threshold) :
+                                                      (avg > threshold));
+        float values[4] = {value, value, value, 1.0f};
+        copy_v4_v4(default_value, values);
+      }
+      else {
+        float *default_value = version_cycles_node_socket_float_value(alpha.socket);
+        *default_value = float((alpha.is_transparency) ? (*default_value > 1.0f - threshold) :
+                                                         (*default_value > threshold));
+      }
+    }
+  }
+  return true;
+}
+
 static void versioning_replace_splitviewer(bNodeTree *ntree)
 {
   /* Split viewer was replaced with a regular split node, so add a viewer node,
@@ -416,6 +820,29 @@ static void version_nla_tweakmode_incomplete(Main *bmain)
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
     scene->flag &= ~SCE_NLA_EDIT_ON;
   }
+}
+
+static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data)
+{
+  const Scene *scene = static_cast<Scene *>(user_data);
+  const float speed_factor = seq->speed_factor;
+
+  if (speed_factor == 1.0f || !SEQ_retiming_is_allowed(seq) || SEQ_retiming_keys_count(seq) > 0) {
+    return true;
+  }
+
+  SEQ_retiming_data_ensure(seq);
+  SeqRetimingKey *last_key = &SEQ_retiming_keys_get(seq)[1];
+
+  last_key->strip_frame_index = (seq->len) / speed_factor;
+
+  if (seq->type == SEQ_TYPE_SOUND_RAM) {
+    const int prev_length = seq->len - seq->startofs - seq->endofs;
+    const float left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+    SEQ_time_right_handle_frame_set(scene, seq, left_handle + prev_length);
+  }
+
+  return true;
 }
 
 void do_versions_after_linking_400(FileData *fd, Main *bmain)
@@ -498,18 +925,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     FOREACH_NODETREE_END;
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
-    BKE_mesh_legacy_face_map_to_generic(bmain);
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 5)) {
-    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
-    bool is_cycles = scene && STREQ(scene->r.engine, RE_engine_id_CYCLES);
-    if (!is_cycles) {
-      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-        versioning_eevee_shadow_settings(object);
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 27)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      Editing *ed = SEQ_editing_get(scene);
+      if (ed != nullptr) {
+        SEQ_for_each_callback(&ed->seqbase, versioning_convert_strip_speed_factor, scene);
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 34)) {
+    BKE_mesh_legacy_face_map_to_generic(bmain);
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 23)) {
@@ -541,6 +967,86 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     /* Shift animation data to accommodate the new Roughness input. */
     version_node_socket_index_animdata(
         bmain, NTREE_SHADER, SH_NODE_SUBSURFACE_SCATTERING, 4, 1, 5);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 50)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    if (scene_uses_eevee_legacy) {
+      LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+        versioning_eevee_shadow_settings(object);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 51)) {
+    /* Convert blend method to math nodes. */
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool scene_uses_eevee_legacy = scene && STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+
+    LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+      if (scene_uses_eevee_legacy) {
+        if (!material->use_nodes || material->nodetree == nullptr) {
+          /* Nothing to version. */
+        }
+        else if (ELEM(material->blend_method, MA_BM_HASHED, MA_BM_BLEND)) {
+          /* Compatible modes. Nothing to change. */
+        }
+        else if (material->blend_shadow == MA_BS_NONE) {
+          /* No need to match the surface since shadows are disabled. */
+        }
+        else if (material->blend_shadow == MA_BS_SOLID) {
+          /* This is already versioned an transferred to `transparent_shadows`. */
+        }
+        else if ((material->blend_shadow == MA_BS_CLIP && material->blend_method != MA_BM_CLIP) ||
+                 (material->blend_shadow == MA_BS_HASHED))
+        {
+          BLO_reportf_wrap(
+              fd->reports,
+              RPT_WARNING,
+              RPT_("Material %s could not be converted because of different Blend Mode "
+                   "and Shadow Mode (need manual adjustment)\n"),
+              material->id.name + 2);
+        }
+        else {
+          /* TODO(fclem): Check if threshold is driven or has animation. Bail out if needed? */
+
+          float threshold = (material->blend_method == MA_BM_CLIP) ? material->alpha_threshold :
+                                                                     2.0f;
+
+          if (!versioning_eevee_material_blend_mode_settings(material->nodetree, threshold)) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_WARNING,
+                             RPT_("Material %s could not be converted because of non-trivial "
+                                  "alpha blending (need manual adjustment)\n"),
+                             material->id.name + 2);
+          }
+        }
+
+        if (material->blend_shadow == MA_BS_NONE) {
+          versioning_eevee_material_shadow_none(material);
+        }
+        /* Set blend_mode & blend_shadow for forward compatibility. */
+        material->blend_method = (material->blend_method != MA_BM_BLEND) ? MA_BM_HASHED :
+                                                                           MA_BM_BLEND;
+        material->blend_shadow = (material->blend_shadow == MA_BS_SOLID) ? MA_BS_SOLID :
+                                                                           MA_BS_HASHED;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 52)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (STREQ(scene->r.engine, RE_engine_id_BLENDER_EEVEE)) {
+        STRNCPY(scene->r.engine, RE_engine_id_BLENDER_EEVEE_NEXT);
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 6)) {
+    /* Shift animation data to accommodate the new Diffuse Roughness input. */
+    version_node_socket_index_animdata(bmain, NTREE_SHADER, SH_NODE_BSDF_PRINCIPLED, 7, 1, 30);
   }
 
   /**
@@ -1452,7 +1958,7 @@ static void change_input_socket_to_rotation_type(bNodeTree &ntree,
   socket.type = SOCK_ROTATION;
   STRNCPY(socket.idname, "NodeSocketRotation");
   auto *old_value = static_cast<bNodeSocketValueVector *>(socket.default_value);
-  auto *new_value = MEM_new<bNodeSocketValueRotation>(__func__);
+  auto *new_value = MEM_cnew<bNodeSocketValueRotation>(__func__);
   copy_v3_v3(new_value->value_euler, old_value->value);
   socket.default_value = new_value;
   MEM_freeN(old_value);
@@ -1955,7 +2461,7 @@ static void enable_geometry_nodes_is_modifier(Main &bmain)
         return true;
       }
       if (!group->geometry_node_asset_traits) {
-        group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+        group->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(__func__);
       }
       group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
       return false;
@@ -2114,6 +2620,40 @@ static bool seq_filter_bilinear_to_auto(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+static void update_paint_modes_for_brush_assets(Main &bmain)
+{
+  /* Replace paint brushes with a reference to the default brush asset for that mode. */
+  LISTBASE_FOREACH (Scene *, scene, &bmain.scenes) {
+    BKE_paint_brushes_set_default_references(scene->toolsettings);
+  }
+
+  /* Replace persistent tool references with the new single builtin brush tool. */
+  LISTBASE_FOREACH (WorkSpace *, workspace, &bmain.workspaces) {
+    LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
+      if (tref->space_type != SPACE_VIEW3D) {
+        continue;
+      }
+      if (!ELEM(tref->mode,
+                CTX_MODE_SCULPT,
+                CTX_MODE_PAINT_VERTEX,
+                CTX_MODE_PAINT_WEIGHT,
+                CTX_MODE_PAINT_TEXTURE,
+                CTX_MODE_PAINT_GPENCIL_LEGACY,
+                CTX_MODE_PAINT_GREASE_PENCIL,
+                CTX_MODE_SCULPT_GPENCIL_LEGACY,
+                CTX_MODE_SCULPT_GREASE_PENCIL,
+                CTX_MODE_WEIGHT_GPENCIL_LEGACY,
+                CTX_MODE_WEIGHT_GREASE_PENCIL,
+                CTX_MODE_VERTEX_GPENCIL_LEGACY,
+                CTX_MODE_SCULPT_CURVES))
+      {
+        continue;
+      }
+      STRNCPY(tref->idname, "builtin.brush");
+    }
+  }
+}
+
 static void image_settings_avi_to_ffmpeg(Scene *scene)
 {
   if (ELEM(scene->r.im_format.imtype, R_IMF_IMTYPE_AVIRAW, R_IMF_IMTYPE_AVIJPEG)) {
@@ -2230,6 +2770,31 @@ static void add_image_editor_asset_shelf(Main &bmain)
   }
 }
 
+/**
+ * It was possible that curve attributes were initialized to 0 even if that is not allowed for some
+ * attributes.
+ */
+static void fix_built_in_curve_attribute_defaults(Main *bmain)
+{
+  LISTBASE_FOREACH (Curves *, curves, &bmain->hair_curves) {
+    const int curves_num = curves->geometry.curve_num;
+    if (int *resolutions = static_cast<int *>(CustomData_get_layer_named_for_write(
+            &curves->geometry.curve_data, CD_PROP_INT32, "resolution", curves_num)))
+    {
+      for (int &resolution : blender::MutableSpan{resolutions, curves_num}) {
+        resolution = std::max(resolution, 1);
+      }
+    }
+    if (int8_t *nurb_orders = static_cast<int8_t *>(CustomData_get_layer_named_for_write(
+            &curves->geometry.curve_data, CD_PROP_INT8, "nurbs_order", curves_num)))
+    {
+      for (int8_t &nurbs_order : blender::MutableSpan{nurb_orders, curves_num}) {
+        nurbs_order = std::max<int8_t>(nurbs_order, 1);
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2272,9 +2837,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 7)) {
-    LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      version_mesh_crease_generic(*bmain);
-    }
+    version_mesh_crease_generic(*bmain);
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 8)) {
@@ -3488,39 +4051,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 31)) {
+    bool only_uses_eevee_legacy_or_workbench = true;
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (!STR_ELEM(scene->r.engine, RE_engine_id_BLENDER_EEVEE, RE_engine_id_BLENDER_WORKBENCH)) {
+        only_uses_eevee_legacy_or_workbench = false;
+      }
+    }
     /* Mark old EEVEE world volumes for showing conversion operator. */
     LISTBASE_FOREACH (World *, world, &bmain->worlds) {
       if (world->nodetree) {
-        /* NOTE: duplicated from `ntreeShaderOutputNode` with small adjustments so it can be called
-         * during versioning. */
-        bNode *output_node = nullptr;
-
-        LISTBASE_FOREACH (bNode *, node, &world->nodetree->nodes) {
-          if (node->type != SH_NODE_OUTPUT_WORLD) {
-            continue;
-          }
-
-          if (node->custom1 == SHD_OUTPUT_ALL) {
-            if (output_node == nullptr) {
-              output_node = node;
-            }
-            else if (output_node->custom1 == SHD_OUTPUT_ALL) {
-              if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
-                output_node = node;
-              }
-            }
-          }
-          else if (node->custom1 == SHD_OUTPUT_EEVEE) {
-            if (output_node == nullptr) {
-              output_node = node;
-            }
-            else if ((node->flag & NODE_DO_OUTPUT) && !(output_node->flag & NODE_DO_OUTPUT)) {
-              output_node = node;
-            }
-          }
-        }
-        /* End duplication. */
-
+        bNode *output_node = version_eevee_output_node_get(world->nodetree, SH_NODE_OUTPUT_WORLD);
         if (output_node) {
           bNodeSocket *volume_input_socket = static_cast<bNodeSocket *>(
               BLI_findlink(&output_node->inputs, 1));
@@ -3528,6 +4068,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             LISTBASE_FOREACH (bNodeLink *, node_link, &world->nodetree->links) {
               if (node_link->tonode == output_node && node_link->tosock == volume_input_socket) {
                 world->flag |= WO_USE_EEVEE_FINITE_VOLUME;
+                /* Only display a warning message if we are sure this can be used by EEVEE. */
+                if (only_uses_eevee_legacy_or_workbench) {
+                  BLO_reportf_wrap(fd->reports,
+                                   RPT_WARNING,
+                                   RPT_("%s contains a volume shader that might need to be "
+                                        "converted to object (see world volume panel)\n"),
+                                   world->id.name + 2);
+                }
               }
             }
           }
@@ -3594,7 +4142,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       world->sun_threshold = default_world->sun_threshold;
       world->sun_angle = default_world->sun_angle;
       world->sun_shadow_maximum_resolution = default_world->sun_shadow_maximum_resolution;
-      world->flag |= WO_USE_SUN_SHADOW;
+      /* Having the sun extracted is mandatory to keep the same look and avoid too much light
+       * leaking compared to EEVEE-Legacy. But adding shadows might create performance overhead and
+       * change the result in a very different way. So we disable shadows in older file. */
+      world->flag &= ~WO_USE_SUN_SHADOW;
     }
   }
 
@@ -3616,7 +4167,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         IDProperty *clight = version_cycles_properties_from_ID(&light->id);
         if (clight) {
           bool value = version_cycles_property_boolean(
-              clight, "use_shadow", default_light->mode & LA_SHADOW);
+              clight, "cast_shadow", default_light->mode & LA_SHADOW);
           SET_FLAG_FROM_TEST(light->mode, value, LA_SHADOW);
         }
       }
@@ -3721,6 +4272,292 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         item.name = BLI_strdup("Value");
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 53)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_NODE) {
+            SpaceNode *snode = reinterpret_cast<SpaceNode *>(sl);
+            snode->overlay.flag |= SN_OVERLAY_SHOW_REROUTE_AUTO_LABELS;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 55)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != CMP_NODE_CURVE_RGB) {
+          continue;
+        }
+
+        CurveMapping &curve_mapping = *static_cast<CurveMapping *>(node->storage);
+
+        /* Film-like tone only works with the combined curve, which is the fourth curve, so make
+         * the combined curve current, as we now hide the rest of the curves since they no longer
+         * have an effect. */
+        if (curve_mapping.tone == CURVE_TONE_FILMLIKE) {
+          curve_mapping.cur = 3;
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 2)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, space_link, &area->spacedata) {
+          if (space_link->spacetype == SPACE_NODE) {
+            SpaceNode *space_node = reinterpret_cast<SpaceNode *>(space_link);
+            space_node->flag &= ~SNODE_FLAG_UNUSED_5;
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 60) ||
+      (bmain->versionfile == 403 && !MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)))
+  {
+    /* Limit Rotation constraints from old files should use the legacy Limit
+     * Rotation behavior. */
+    LISTBASE_FOREACH (Object *, obj, &bmain->objects) {
+      LISTBASE_FOREACH (bConstraint *, constraint, &obj->constraints) {
+        if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
+          continue;
+        }
+        static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
+      }
+
+      if (!obj->pose) {
+        continue;
+      }
+      LISTBASE_FOREACH (bPoseChannel *, pbone, &obj->pose->chanbase) {
+        LISTBASE_FOREACH (bConstraint *, constraint, &pbone->constraints) {
+          if (constraint->type != CONSTRAINT_TYPE_ROTLIMIT) {
+            continue;
+          }
+          static_cast<bRotLimitConstraint *>(constraint->data)->flag |= LIMIT_ROT_LEGACY_BEHAVIOR;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 61)) {
+    /* LIGHT_PROBE_RESOLUTION_64 has been removed in EEVEE-Next as the tedrahedral mapping is to
+     * low res to be usable. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->eevee.gi_cubemap_resolution < 128) {
+        scene->eevee.gi_cubemap_resolution = 128;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 64)) {
+    Scene *scene = static_cast<Scene *>(bmain->scenes.first);
+    bool is_eevee_legacy = scene && STR_ELEM(scene->r.engine, RE_engine_id_BLENDER_EEVEE);
+    if (is_eevee_legacy) {
+      /* Re-apply versioning made for EEVEE-Next in 4.1 before it got delayed. */
+      LISTBASE_FOREACH (Material *, material, &bmain->materials) {
+        bool transparent_shadows = material->blend_shadow != MA_BS_SOLID;
+        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      }
+      LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
+        mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
+                                         MA_SURFACE_METHOD_FORWARD :
+                                         MA_SURFACE_METHOD_DEFERRED;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 3)) {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      if (BrushGpencilSettings *settings = brush->gpencil_settings) {
+        /* Copy the `draw_strength` value to the `alpha` value. */
+        brush->alpha = settings->draw_strength;
+
+        /* We approximate the simplify pixel threshold by taking the previous threshold (world
+         * space) and dividing by the legacy radius conversion factor. This should generally give
+         * reasonable "pixel" threshold values, at least for previous GPv2 defaults. */
+        settings->simplify_px = settings->simplify_f /
+                                blender::bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR * 0.1f;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 4)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->view_settings.temperature = 6500.0f;
+      scene->view_settings.tint = 10.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 7)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      SequencerToolSettings *sequencer_tool_settings = SEQ_tool_settings_ensure(scene);
+      sequencer_tool_settings->snap_mode |= SEQ_SNAP_TO_PREVIEW_BORDERS |
+                                            SEQ_SNAP_TO_PREVIEW_CENTER |
+                                            SEQ_SNAP_TO_STRIPS_PREVIEW;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 8)) {
+    update_paint_modes_for_brush_assets(*bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 9)) {
+    fix_built_in_curve_attribute_defaults(bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 10)) {
+    /* Initialize Color Balance node white point settings. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == CMP_NODE_COLORBALANCE) {
+            NodeColorBalance *n = static_cast<NodeColorBalance *>(node->storage);
+            n->input_temperature = n->output_temperature = 6500.0f;
+            n->input_tint = n->output_tint = 10.0f;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 11)) {
+    LISTBASE_FOREACH (Curves *, curves, &bmain->hair_curves) {
+      curves->geometry.attributes_active_index = curves->attributes_active_index_legacy;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 13)) {
+    Camera default_cam = *DNA_struct_default_get(Camera);
+    LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+      camera->central_cylindrical_range_u_min = default_cam.central_cylindrical_range_u_min;
+      camera->central_cylindrical_range_u_max = default_cam.central_cylindrical_range_u_max;
+      camera->central_cylindrical_range_v_min = default_cam.central_cylindrical_range_v_min;
+      camera->central_cylindrical_range_v_max = default_cam.central_cylindrical_range_v_max;
+      camera->central_cylindrical_radius = default_cam.central_cylindrical_radius;
+    }
+  }
+
+  /* The File Output node now uses the linear color space setting of its stored image formats. So
+   * we need to ensure the color space value is initialized to some sane default based on the image
+   * type. Furthermore, the node now gained a new Save As Render option that is global to the node,
+   * which will be used if Use Node Format is enabled for each input, so we potentially need to
+   * disable Use Node Format in case inputs had different Save As render options. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 14)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+
+      LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+        if (node->type != CMP_NODE_OUTPUT_FILE) {
+          continue;
+        }
+
+        /* Initialize node format color space if it is not set. */
+        NodeImageMultiFile *storage = static_cast<NodeImageMultiFile *>(node->storage);
+        if (storage->format.linear_colorspace_settings.name[0] == '\0') {
+          BKE_image_format_update_color_space_for_type(&storage->format);
+        }
+
+        if (BLI_listbase_is_empty(&node->inputs)) {
+          continue;
+        }
+
+        /* Initialize input formats color space if it is not set. */
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+          if (input_storage->format.linear_colorspace_settings.name[0] == '\0') {
+            BKE_image_format_update_color_space_for_type(&input_storage->format);
+          }
+        }
+
+        /* EXR images don't use Save As Render. */
+        if (ELEM(storage->format.imtype, R_IMF_IMTYPE_OPENEXR, R_IMF_IMTYPE_MULTILAYER)) {
+          continue;
+        }
+
+        /* Find out if all inputs have the same Save As Render option. */
+        const bNodeSocket *first_input = static_cast<bNodeSocket *>(node->inputs.first);
+        const NodeImageMultiFileSocket *first_input_storage =
+            static_cast<NodeImageMultiFileSocket *>(first_input->storage);
+        const bool first_save_as_render = first_input_storage->save_as_render;
+        bool all_inputs_have_same_save_as_render = true;
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          const NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+          if (bool(input_storage->save_as_render) != first_save_as_render) {
+            all_inputs_have_same_save_as_render = false;
+            break;
+          }
+        }
+
+        /* All inputs have the same save as render option, so we set the node Save As Render option
+         * to that value, and we leave inputs as is. */
+        if (all_inputs_have_same_save_as_render) {
+          storage->save_as_render = first_save_as_render;
+          continue;
+        }
+
+        /* For inputs that have Use Node Format enabled, we need to disabled it because otherwise
+         * they will use the node's Save As Render option. It follows that we need to copy the
+         * node's format to the input format. */
+        LISTBASE_FOREACH (const bNodeSocket *, input, &node->inputs) {
+          NodeImageMultiFileSocket *input_storage = static_cast<NodeImageMultiFileSocket *>(
+              input->storage);
+
+          if (!input_storage->use_node_format) {
+            continue;
+          }
+
+          input_storage->use_node_format = false;
+          input_storage->format = storage->format;
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 15)) {
+    using namespace blender;
+
+    LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
+      const ListBase *exporters = &collection->exporters;
+      LISTBASE_FOREACH (CollectionExport *, data, exporters) {
+        /* The name field should be empty at this point. */
+        BLI_assert(data->name[0] == '\0');
+
+        bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+        BKE_collection_exporter_name_set(exporters, data, fh ? fh->label : DATA_("Undefined"));
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 16)) {
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->eevee.flag |= SCE_EEVEE_FAST_GI_ENABLED;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 17)) {
+    FOREACH_NODETREE_BEGIN (bmain, tree, id) {
+      if (tree->default_group_node_width == 0) {
+        tree->default_group_node_width = GROUP_NODE_DEFAULT_WIDTH;
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**

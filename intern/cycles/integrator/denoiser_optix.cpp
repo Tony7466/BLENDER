@@ -199,8 +199,8 @@ static OptixResult optixUtilDenoiserInvokeTiled(OptixDenoiser denoiser,
 }
 #  endif
 
-OptiXDenoiser::OptiXDenoiser(Device *path_trace_device, const DenoiseParams &params)
-    : DenoiserGPU(path_trace_device, params), state_(path_trace_device, "__denoiser_state", true)
+OptiXDenoiser::OptiXDenoiser(Device *denoiser_device, const DenoiseParams &params)
+    : DenoiserGPU(denoiser_device, params), state_(denoiser_device, "__denoiser_state", true)
 {
 }
 
@@ -217,6 +217,14 @@ OptiXDenoiser::~OptiXDenoiser()
 uint OptiXDenoiser::get_device_type_mask() const
 {
   return DEVICE_MASK_OPTIX;
+}
+
+bool OptiXDenoiser::is_device_supported(const DeviceInfo &device)
+{
+  if (device.type == DEVICE_OPTIX) {
+    return device.denoisers & DENOISER_OPTIX;
+  }
+  return false;
 }
 
 bool OptiXDenoiser::denoise_buffer(const DenoiseTask &task)

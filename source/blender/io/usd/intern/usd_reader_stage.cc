@@ -17,6 +17,7 @@
 #include "usd_reader_skeleton.hh"
 #include "usd_reader_volume.hh"
 #include "usd_reader_xform.hh"
+#include "usd_utils.hh"
 
 #include <pxr/pxr.h>
 #include <pxr/usd/usdGeom/camera.h>
@@ -566,7 +567,7 @@ void USDStageReader::import_all_materials(Main *bmain)
     Material *new_mtl = mtl_reader.add_material(usd_mtl);
     BLI_assert_msg(new_mtl, "Failed to create material");
 
-    const std::string mtl_name = pxr::TfMakeValidIdentifier(new_mtl->id.name + 2);
+    const std::string mtl_name = make_safe_name(new_mtl->id.name + 2, true);
     settings_.mat_name_to_mat.lookup_or_add_default(mtl_name) = new_mtl;
 
     if (params_.mtl_name_collision_mode == USD_MTL_NAME_COLLISION_MAKE_UNIQUE) {
@@ -723,8 +724,8 @@ void USDStageReader::create_proto_collections(Main *bmain, Collection *parent_co
       Collection *proto_coll = create_collection(bmain, instancer_protos_coll, coll_name.c_str());
       blender::Vector<USDPrimReader *> proto_readers = instancer_proto_readers_.lookup_default(
           proto_path, {});
-      for (USDPrimReader *reader : proto_readers) {
-        Object *ob = reader->object();
+      for (USDPrimReader *proto : proto_readers) {
+        Object *ob = proto->object();
         if (!ob) {
           continue;
         }

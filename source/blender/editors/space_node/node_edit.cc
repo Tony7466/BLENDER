@@ -50,7 +50,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -219,9 +219,6 @@ static void compo_freejob(void *cjv)
     bke::ntreeFreeTree(cj->localtree);
     MEM_freeN(cj->localtree);
   }
-  if (cj->compositor_depsgraph != nullptr) {
-    DEG_graph_free(cj->compositor_depsgraph);
-  }
 
   MEM_delete(cj);
 }
@@ -235,8 +232,15 @@ static void compo_initjob(void *cjv)
   Scene *scene = cj->scene;
   ViewLayer *view_layer = cj->view_layer;
 
-  cj->compositor_depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_RENDER);
-  DEG_debug_name_set(cj->compositor_depsgraph, "COMPOSITOR");
+  bke::CompositorRuntime &compositor_runtime = scene->runtime->compositor;
+
+  if (!compositor_runtime.preview_depsgraph) {
+    compositor_runtime.preview_depsgraph = DEG_graph_new(
+        bmain, scene, view_layer, DAG_EVAL_RENDER);
+    DEG_debug_name_set(compositor_runtime.preview_depsgraph, "COMPOSITOR");
+  }
+
+  cj->compositor_depsgraph = compositor_runtime.preview_depsgraph;
   DEG_graph_build_for_compositor_preview(cj->compositor_depsgraph, cj->ntree);
 
   /* NOTE: Don't update animation to preserve unkeyed changes, this means can not use
@@ -252,8 +256,8 @@ static void compo_initjob(void *cjv)
     compo_tag_output_nodes(cj->localtree, cj->recalc_flags);
   }
 
+  cj->re = RE_NewInteractiveCompositorRender(scene);
   if (scene->r.compositor_device == SCE_COMPOSITOR_DEVICE_GPU) {
-    cj->re = RE_NewInteractiveCompositorRender(scene);
     RE_system_gpu_context_ensure(cj->re);
   }
 }
@@ -1519,7 +1523,7 @@ static int node_read_viewlayers_exec(bContext *C, wmOperator * /*op*/)
 
   /* first tag scenes unread */
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-    scene->id.tag |= LIB_TAG_DOIT;
+    scene->id.tag |= ID_TAG_DOIT;
   }
 
   for (bNode *node : edit_tree.all_nodes()) {
@@ -1530,10 +1534,10 @@ static int node_read_viewlayers_exec(bContext *C, wmOperator * /*op*/)
       if (id == nullptr) {
         continue;
       }
-      if (id->tag & LIB_TAG_DOIT) {
+      if (id->tag & ID_TAG_DOIT) {
         RE_ReadRenderResult(curscene, (Scene *)id);
         ntreeCompositTagRender((Scene *)id);
-        id->tag &= ~LIB_TAG_DOIT;
+        id->tag &= ~ID_TAG_DOIT;
       }
     }
   }
