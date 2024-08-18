@@ -1004,13 +1004,10 @@ GHOST_TSuccess GHOST_SystemCocoa::getButtons(GHOST_Buttons &buttons) const
 
 GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
 {
-  return GHOST_TCapabilityFlag(
-      GHOST_CAPABILITY_FLAG_ALL &
-      ~(
-          /* Cocoa has no support for a primary selection clipboard. */
-          GHOST_kCapabilityPrimaryClipboard |
-          /* This Cocoa back-end has not yet implemented image copy/paste. */
-          GHOST_kCapabilityClipboardImages));
+  return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
+                               ~(
+                                   /* Cocoa has no support for a primary selection clipboard. */
+                                   GHOST_kCapabilityPrimaryClipboard));
 }
 
 /* --------------------------------------------------------------------
@@ -1252,6 +1249,48 @@ GHOST_TSuccess GHOST_SystemCocoa::handleWindowEvent(GHOST_TEventType eventType,
   return GHOST_kSuccess;
 }
 
+/**
+ * Convert an NSImage to an ImBuf.
+ * \param image: NSImage to convert. Ownership is not transfered.
+ * \return Pointer to the resulting allocated ImBuf. Caller must free.
+ */
+static ImBuf *NSImageToImBuf(NSImage *image)
+{
+  ImBuf *ibuf = IMB_allocImBuf(image.size.width, image.size.height, 32, IB_rect);
+
+  if (!ibuf) {
+    return nullptr;
+  }
+
+  @autoreleasepool {
+    NSBitmapImageRep *bitmapImage = nil;
+    for (NSImageRep *representation in [image representations]) {
+      if ([representation isKindOfClass:[NSBitmapImageRep class]]) {
+        bitmapImage = (NSBitmapImageRep *)representation;
+        break;
+      }
+    }
+
+    if (bitmapImage == nil || bitmapImage.bitsPerPixel != 32 || bitmapImage.isPlanar ||
+        bitmapImage.bitmapFormat & (NSBitmapFormatAlphaFirst | NSBitmapFormatFloatingPointSamples))
+    {
+      return nullptr;
+    }
+
+    uint8_t *ibuf_data = ibuf->byte_buffer.data;
+    uint8_t *bmp_data = (uint8_t *)bitmapImage.bitmapData;
+    /* Vertical Flip. */
+    for (int y = 0; y < image.size.height; y++) {
+      const int row_byte_count = 4 * image.size.width;
+      const int ibuf_off = (image.size.height - y - 1) * row_byte_count;
+      const int bmp_off = y * row_byte_count;
+      memcpy(ibuf_data + ibuf_off, bmp_data + bmp_off, row_byte_count);
+    }
+  }
+
+  return ibuf;
+}
+
 /* NOTE: called from #NSWindow subclass. */
 GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType,
                                                       GHOST_TDragnDropTypes draggedObjectType,
@@ -1315,6 +1354,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
 
               strArray->strings[i] = temp_buff;
             }
+            printf("Dropped filename\n");
 
             eventData = static_cast<GHOST_TDragnDropDataPtr>(strArray);
             break;
@@ -1333,134 +1373,17 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
                 temp_buff, [droppedStr cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
             temp_buff[pastedTextSize] = '\0';
 
-            eventData = static_cast<GHOST_TDragnDropDataPtr>(temp_buff);
+            eventData = (GHOST_TDragnDropDataPtr)temp_buff;
             break;
           }
           case GHOST_kDragnDropTypeBitmap: {
-            NSImage *droppedImg = (NSImage *)data;
-            NSSize imgSize = droppedImg.size;
+            NSImage *droppedImg = static_cast<NSImage *>(data);
+            ImBuf *ibuf = NSImageToImBuf(droppedImg);
 
-            ImBuf *ibuf = IMB_allocImBuf(imgSize.width, imgSize.height, 32, IB_rect);
-            if (!ibuf) {
-              [droppedImg release];
-              return GHOST_kFailure;
-            }
+            eventData = (GHOST_TDragnDropDataPtr)ibuf;
 
-            /* Get the bitmap of the image. */
-            NSEnumerator *enumerator = [[droppedImg representations] objectEnumerator];
-            NSImageRep *representation;
-            NSBitmapImageRep *bitmapImage = nil;
-            while ((representation = [enumerator nextObject])) {
-              if ([representation isKindOfClass:[NSBitmapImageRep class]]) {
-                bitmapImage = (NSBitmapImageRep *)representation;
-                break;
-              }
-            }
-            if (bitmapImage == nil) {
-              return GHOST_kFailure;
-            }
-
-            if ((bitmapImage.bitsPerPixel == 32) && ((bitmapImage.bitmapFormat & 0x5) == 0) &&
-                !bitmapImage.isPlanar)
-            {
-              /* Try a fast copy if the image is a meshed RGBA 32bit bitmap. */
-              uint8_t *toIBuf = ibuf->byte_buffer.data;
-              uint8_t *rasterRGB = (uint8_t *)bitmapImage.bitmapData;
-              for (int y = 0; y < imgSize.height; y++) {
-                const int to_i = (imgSize.height - y - 1) * imgSize.width;
-                const int from_i = y * imgSize.width;
-                memcpy(toIBuf + 4 * to_i, rasterRGB + 4 * from_i, 4 * imgSize.width);
-              }
-            }
-            else {
-              /* Tell cocoa image resolution is same as current system one */
-              bitmapImage.size = imgSize;
-
-              /* Convert the image in a RGBA 32bit format */
-              /* As Core Graphics does not support contexts with non premutliplied alpha,
-               * we need to get alpha key values in a separate batch */
-
-              /* First get RGB values w/o Alpha to avoid pre-multiplication,
-               * 32bit but last byte is unused */
-              NSBitmapImageRep *blBitmapFormatImageRGB = [[NSBitmapImageRep alloc]
-                  initWithBitmapDataPlanes:nullptr
-                                pixelsWide:imgSize.width
-                                pixelsHigh:imgSize.height
-                             bitsPerSample:8
-                           samplesPerPixel:3
-                                  hasAlpha:NO
-                                  isPlanar:NO
-                            colorSpaceName:NSDeviceRGBColorSpace
-                              bitmapFormat:(NSBitmapFormat)0
-                               bytesPerRow:4 * imgSize.width
-                              bitsPerPixel:32 /* RGB format padded to 32bits. */];
-
-              [NSGraphicsContext saveGraphicsState];
-              [NSGraphicsContext
-                  setCurrentContext:[NSGraphicsContext
-                                        graphicsContextWithBitmapImageRep:blBitmapFormatImageRGB]];
-              [bitmapImage draw];
-              [NSGraphicsContext restoreGraphicsState];
-
-              uint8_t *rasterRGB = (uint8_t *)[blBitmapFormatImageRGB bitmapData];
-              if (rasterRGB == nullptr) {
-                [bitmapImage release];
-                [blBitmapFormatImageRGB release];
-                [droppedImg release];
-                return GHOST_kFailure;
-              }
-
-              /* Then get Alpha values by getting the RGBA image (that is pre-multiplied BTW) */
-              NSBitmapImageRep *blBitmapFormatImageRGBA = [[NSBitmapImageRep alloc]
-                  initWithBitmapDataPlanes:nullptr
-                                pixelsWide:imgSize.width
-                                pixelsHigh:imgSize.height
-                             bitsPerSample:8
-                           samplesPerPixel:4
-                                  hasAlpha:YES
-                                  isPlanar:NO
-                            colorSpaceName:NSDeviceRGBColorSpace
-                              bitmapFormat:(NSBitmapFormat)0
-                               bytesPerRow:4 * imgSize.width
-                              bitsPerPixel:32 /* RGBA */];
-
-              [NSGraphicsContext saveGraphicsState];
-              [NSGraphicsContext
-                  setCurrentContext:[NSGraphicsContext graphicsContextWithBitmapImageRep:
-                                                           blBitmapFormatImageRGBA]];
-              [bitmapImage draw];
-              [NSGraphicsContext restoreGraphicsState];
-
-              uint8_t *rasterRGBA = (uint8_t *)[blBitmapFormatImageRGBA bitmapData];
-              if (rasterRGBA == nullptr) {
-                [bitmapImage release];
-                [blBitmapFormatImageRGB release];
-                [blBitmapFormatImageRGBA release];
-                [droppedImg release];
-                return GHOST_kFailure;
-              }
-
-              /* Copy the image to ibuf, flipping it vertically. */
-              uint8_t *toIBuf = ibuf->byte_buffer.data;
-              for (int y = 0; y < imgSize.height; y++) {
-                for (int x = 0; x < imgSize.width; x++) {
-                  const int to_i = (imgSize.height - y - 1) * imgSize.width + x;
-                  const int from_i = y * imgSize.width + x;
-
-                  toIBuf[4 * to_i] = rasterRGB[4 * from_i];          /* R */
-                  toIBuf[4 * to_i + 1] = rasterRGB[4 * from_i + 1];  /* G */
-                  toIBuf[4 * to_i + 2] = rasterRGB[4 * from_i + 2];  /* B */
-                  toIBuf[4 * to_i + 3] = rasterRGBA[4 * from_i + 3]; /* A */
-                }
-              }
-
-              [blBitmapFormatImageRGB release];
-              [blBitmapFormatImageRGBA release];
-              [droppedImg release];
-            }
-
-            eventData = static_cast<GHOST_TDragnDropDataPtr>(ibuf);
-
+            [droppedImg release];
+            printf("Bitmap Dropped!\n");
             break;
           }
           default:
@@ -2099,6 +2022,89 @@ void GHOST_SystemCocoa::putClipboard(const char *buffer, bool selection) const
     NSString *textToCopy = [NSString stringWithCString:buffer encoding:NSUTF8StringEncoding];
     [pasteBoard setString:textToCopy forType:NSPasteboardTypeString];
   }
+}
+
+GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
+{
+  @autoreleasepool {
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    NSArray *supportedTypes = [NSArray
+        arrayWithObjects:NSPasteboardTypeFileURL, NSPasteboardTypeTIFF, NSPasteboardTypePNG, nil];
+
+    NSPasteboardType availableType = [pasteboard availableTypeFromArray:supportedTypes];
+
+    /* If the clipboard contains a file path (FileURL), discard it. As the associated
+     * image data of copied image files do not contain the actual image, but a generic
+     * image file icon and legacy garbage bitmap data. */
+    if (!availableType || [availableType isEqualToString:NSPasteboardTypeFileURL]) {
+      return GHOST_kFailure;
+    }
+  }
+
+  return GHOST_kSuccess;
+}
+
+uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
+{
+  if (!hasClipboardImage()) {
+    return nullptr;
+  }
+
+  @autoreleasepool {
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    NSImage *clipboardImage = [[[NSImage alloc] initWithPasteboard:pasteboard] autorelease];
+
+    if (!clipboardImage) {
+      return nullptr;
+    }
+
+    ImBuf *ibuf = NSImageToImBuf(clipboardImage);
+
+    if (ibuf) {
+      const uint64_t byteCount = clipboardImage.size.width * clipboardImage.size.height * 4;
+      uint *rgba = (uint *)malloc(byteCount);
+
+      memcpy(rgba, ibuf->byte_buffer.data, byteCount);
+      IMB_freeImBuf(ibuf);
+
+      *r_width = clipboardImage.size.width;
+      *r_height = clipboardImage.size.height;
+
+      return rgba;
+    }
+  }
+
+  return nullptr;
+}
+
+GHOST_TSuccess GHOST_SystemCocoa::putClipboardImage(uint *rgba, int width, int height) const
+{
+  @autoreleasepool {
+    NSBitmapImageRep *imageRep = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:reinterpret_cast<unsigned char **>(&rgba)
+                      pixelsWide:width
+                      pixelsHigh:height
+                   bitsPerSample:8
+                 samplesPerPixel:4
+                        hasAlpha:YES
+                        isPlanar:NO
+                  colorSpaceName:NSDeviceRGBColorSpace
+                     bytesPerRow:width * 4
+                    bitsPerPixel:32];
+
+    NSImage *image = [[[NSImage alloc] initWithSize:NSMakeSize(width, height)] autorelease];
+    [image addRepresentation:imageRep];
+
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
+
+    BOOL pasteSuccess = [pasteboard writeObjects:@[ image ]];
+
+    if (!pasteSuccess) {
+      return GHOST_kFailure;
+    }
+  }
+  return GHOST_kSuccess;
 }
 
 GHOST_TSuccess GHOST_SystemCocoa::showMessageBox(const char *title,
