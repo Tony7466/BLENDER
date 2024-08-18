@@ -59,7 +59,7 @@ const char *drop_non_whitespace(const char *p, const char *end);
  * Returns the start of remainder of the input string after parsing.
  */
 const char *parse_int(
-    const char *p, const char *end, int fallback, int &dst, bool skip_space = true);
+    const char *p, const char *end, bool &success, int &dst, bool skip_space = true);
 
 /**
  * Parse a float from an input string.
@@ -71,26 +71,7 @@ const char *parse_int(
  *
  * Returns the start of remainder of the input string after parsing.
  */
-const char *parse_float(const char *p,
-                        const char *end,
-                        float fallback,
-                        float &dst,
-                        bool skip_space = true,
-                        bool require_trailing_space = false);
-
-/**
- * Parse a number of white-space separated floats from an input string.
- * The parsed `count` numbers are stored in `dst`. If a
- * number can't be parsed (invalid syntax, out of range),
- * `fallback` value is stored instead.
- *
- * Returns the start of remainder of the input string after parsing.
- */
-const char *parse_floats(const char *p,
-                         const char *end,
-                         float fallback,
-                         float *dst,
-                         int count,
-                         bool require_trailing_space = false);
+const char *parse_float(
+    const char *p, const char *end, bool &success, float &dst, bool skip_space = true);
 
 }  // namespace blender::io::csv

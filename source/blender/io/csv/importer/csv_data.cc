@@ -12,20 +12,21 @@
 
 namespace blender::io::csv {
 CsvData::CsvData(int64_t row_count,
-                 Vector<std::string> columns,
+                 Vector<std::string> column_names,
                  Vector<CsvColumnType> column_types)
+    : row_count(row_count),
+      column_count(column_names.size()),
+      column_names(column_names.as_span()),
+      column_types(column_types.as_span())
 {
-  this->row_count = row_count;
-  this->column_count = columns.size();
-
   for (int i = 0; i < this->column_count; i++) {
-    data.add(columns[i], create_garray_for_type(column_types[i]));
+    data[i] = create_garray_for_type(this->column_types[i]);
   }
 }
 
-template<typename T> void CsvData::set_data(int64_t row_index, std::string &name, T value)
+template<typename T> void CsvData::set_data(int64_t row_index, int64_t col_index, T value)
 {
-  data.lookup(name)[row_index] = value;
+  data[row_index][col_index] = value;
 }
 
 PointCloud *CsvData::to_point_cloud() const

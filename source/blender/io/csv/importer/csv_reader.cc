@@ -18,13 +18,143 @@
 #include "csv_reader.hh"
 
 namespace blender::io::csv {
-static Vector<std::string> get_columns(const StringRef &line) {}
+static Vector<std::string> get_columns(const StringRef &line)
+{
+  Vector<std::string> columns;
+  const char *p = line.begin(), *end = line.end();
+  const char *cell_start = p, *cell_end = p;
 
-static Vector<CsvColumnType> get_column_types(const StringRef &line) {}
+  while (p != end) {
+    while (*p != ',' && p != end) {
+      p++;
+    }
+    cell_end = p;
 
-static int64_t get_row_count(StringRef &buffer) {}
+    columns.append(std::string(cell_start, cell_end));
 
-static void parse_csv_data(CsvData &csv_data, StringRef &buffer) {}
+    if (p == end) {
+      break;
+    }
+    p++;
+    cell_start = p;
+  }
+  return columns;
+}
+
+static CsvColumnType get_column_type(const char *start, const char *end)
+{
+  bool success = false;
+
+  int _val_int = 0;
+  parse_int(start, end, success, _val_int);
+
+  if (success) {
+    return CsvColumnType::INT;
+  }
+
+  float _val_float = 0.0f;
+  parse_float(start, end, success, _val_float);
+
+  if (success) {
+    return CsvColumnType::FLOAT;
+  }
+
+  // TODO: error - unsupported type
+}
+
+static Vector<CsvColumnType> get_column_types(const StringRef &line)
+{
+  Vector<CsvColumnType> column_types;
+  const char *p = line.begin(), *end = line.end();
+  const char *cell_start = p, *cell_end = p;
+
+  while (p != end) {
+    while (*p != ',' && p != end) {
+      p++;
+    }
+    cell_end = p;
+
+    column_types.append(get_column_type(cell_start, cell_end));
+
+    if (p == end) {
+      break;
+    }
+    p++;
+    cell_start = p;
+  }
+  return column_types;
+}
+
+static int64_t get_row_count(StringRef &buffer)
+{
+  int64_t row_count = 1;
+
+  while (!buffer.is_empty()) {
+    read_next_line(buffer);
+    row_count++;
+  }
+
+  return row_count;
+}
+
+static void parse_csv_cell(
+    CsvData &csv_data, int64_t row_index, int64_t col_index, const char *start, const char *end)
+{
+  bool success = false;
+
+  switch (csv_data.get_column_type(col_index)) {
+    case CsvColumnType::INT: {
+      int value = 0;
+      parse_int(start, end, success, value);
+      if (success) {
+        csv_data.set_data(row_index, col_index, value);
+      }  // TODO : Handle invalid value
+      break;
+    }
+    case CsvColumnType::FLOAT: {
+      float value = 0.0f;
+      parse_float(start, end, success, value);
+      if (success) {
+        csv_data.set_data(row_index, col_index, value);
+      }  // TODO : Handle invalid value
+      break;
+    }
+  }
+}
+
+static void parse_csv_line(CsvData &csv_data, int64_t row_index, const StringRef &line)
+{
+  const char *p = line.begin(), *end = line.end();
+  const char *cell_start = p, *cell_end = p;
+
+  int64_t col_index = 0;
+
+  while (p != end) {
+    while (*p != ',' && p != end) {
+      p++;
+    }
+    cell_end = p;
+
+    parse_csv_cell(csv_data, row_index, col_index, cell_start, cell_end);
+
+    if (p == end) {
+      break;
+    }
+    p++;
+    cell_start = p;
+    col_index++;
+  }
+}
+
+static void parse_csv_data(CsvData &csv_data, StringRef &buffer)
+{
+  int64_t row_index = 0;
+  while (!buffer.is_empty()) {
+    const StringRef line = read_next_line(buffer);
+    parse_csv_line(csv_data, row_index, line);
+    row_index++;
+  }
+}
 
 PointCloud *read_csv_file(const CSVImportParams &import_params)
 {
