@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <limits>
+#include <shared_mutex>
+
 #include "BLI_assert.h"
 #include "BLI_virtual_array.hh"
 
@@ -17,8 +20,6 @@
 #include "DNA_customdata_types.h"
 #include "attribute_access_intern.hh"
 #include "physics_geometry_impl.hh"
-
-#include <shared_mutex>
 
 class btRigidBody;
 class btMotionState;
@@ -302,24 +303,43 @@ static const void *physics_attribute_default_value(PhysicsGeometry::BodyAttribut
       static const float4x4 default_value = float4x4::identity();
       return &default_value;
     }
+    case BodyAttribute::mass: {
+      static const float default_value = 1.0f;
+      return &default_value;
+    }
+    case BodyAttribute::inertia: {
+      static const float3 default_value = float3(1.0f);
+      return &default_value;
+    }
+    case BodyAttribute::activation_state: {
+      static const int default_value = int(PhysicsGeometry::BodyActivationState::Active);
+      return &default_value;
+    }
+    case BodyAttribute::friction: {
+      static const float default_value = 0.5f;
+      return &default_value;
+    }
+    case BodyAttribute::linear_sleeping_threshold: {
+      static const float default_value = 0.8f;
+      return &default_value;
+    }
+    case BodyAttribute::angular_sleeping_threshold: {
+      static const float default_value = 1.0f;
+      return &default_value;
+    }
+
     case BodyAttribute::id:
     case BodyAttribute::is_static:
     case BodyAttribute::is_kinematic:
-    case BodyAttribute::mass:
-    case BodyAttribute::inertia:
     case BodyAttribute::position:
     case BodyAttribute::rotation:
     case BodyAttribute::velocity:
     case BodyAttribute::angular_velocity:
-    case BodyAttribute::activation_state:
-    case BodyAttribute::friction:
     case BodyAttribute::rolling_friction:
     case BodyAttribute::spinning_friction:
     case BodyAttribute::restitution:
     case BodyAttribute::linear_damping:
     case BodyAttribute::angular_damping:
-    case BodyAttribute::linear_sleeping_threshold:
-    case BodyAttribute::angular_sleeping_threshold:
     case BodyAttribute::total_force:
     case BodyAttribute::total_torque:
       return type.default_value();
@@ -348,13 +368,20 @@ static const void *physics_attribute_default_value(PhysicsGeometry::ConstraintAt
       static const float4x4 default_value = float4x4::identity();
       return &default_value;
     }
-    case ConstraintAttribute::constraint_enabled:
+    case ConstraintAttribute::constraint_enabled: {
+      static const bool default_value = true;
+      return &default_value;
+    }
+    case ConstraintAttribute::breaking_impulse_threshold: {
+      static const float default_value = std::numeric_limits<float>::infinity();
+      return &default_value;
+    }
+
     case ConstraintAttribute::applied_impulse:
     case ConstraintAttribute::applied_force1:
     case ConstraintAttribute::applied_force2:
     case ConstraintAttribute::applied_torque1:
     case ConstraintAttribute::applied_torque2:
-    case ConstraintAttribute::breaking_impulse_threshold:
     case ConstraintAttribute::disable_collision:
       return type.default_value();
   }
