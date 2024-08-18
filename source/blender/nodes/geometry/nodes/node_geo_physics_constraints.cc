@@ -127,7 +127,6 @@ static void node_rna(StructRNA *srna)
   using ConstraintType = bke::PhysicsGeometry::ConstraintType;
 
   static EnumPropertyItem constraint_type_items[] = {
-      {int(ConstraintType::None), "NONE", 0, "None", ""},
       {int(ConstraintType::Fixed), "FIXED", 0, "Fixed", ""},
       {int(ConstraintType::Point), "POINT", 0, "Point", ""},
       {int(ConstraintType::Hinge), "HINGE", 0, "Hinge", ""},

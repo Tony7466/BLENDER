@@ -47,7 +47,6 @@ class PhysicsGeometry {
   };
 
   enum class ConstraintType {
-    None = -1,
     Fixed = 0,
     Point,
     Hinge,

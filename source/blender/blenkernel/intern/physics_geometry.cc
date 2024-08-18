@@ -227,8 +227,6 @@ static bool validate_bullet_constraint_type(const PhysicsGeometry::ConstraintTyp
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
   switch (type) {
-    case ConstraintType::None:
-      return constraint == nullptr;
     case ConstraintType::Fixed:
       return dynamic_cast<const btFixedConstraint *>(constraint) != nullptr;
     case ConstraintType::Point:
@@ -246,8 +244,8 @@ static bool validate_bullet_constraint_type(const PhysicsGeometry::ConstraintTyp
     case ConstraintType::SixDoFSpring2:
       return dynamic_cast<const btGeneric6DofSpring2Constraint *>(constraint) != nullptr;
     case ConstraintType::Contact:
-      /* Can't be created manually. */
-      return constraint == nullptr;
+      /* XXX Currently unsupported. */
+      return false;
     case ConstraintType::Gear:
       return dynamic_cast<const btGearConstraint *>(constraint) != nullptr;
   }
@@ -268,8 +266,6 @@ static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::Con
   [[maybe_unused]] btVector3 axis_z = btVector3(0, 0, 1);
 
   switch (type) {
-    case ConstraintType::None:
-      return nullptr;
     case ConstraintType::Fixed:
       return new btFixedConstraint(body1, body2, zero_mat, zero_mat);
     case ConstraintType::Point:
@@ -287,7 +283,8 @@ static btTypedConstraint *make_bullet_constraint_type(const PhysicsGeometry::Con
     case ConstraintType::SixDoFSpring2:
       return new btGeneric6DofSpring2Constraint(body1, body2, zero_mat, zero_mat);
     case ConstraintType::Contact:
-      /* Can't be created manually. */
+      /* XXX Currently unsupported. */
+      BLI_assert_unreachable();
       return nullptr;
     case ConstraintType::Gear:
       return new btGearConstraint(body1, body2, zero_vec, zero_vec);
@@ -1156,7 +1153,7 @@ void PhysicsGeometryImpl::ensure_constraints_no_lock()
 
   AttributeAccessor custom_data_attributes = this->custom_data_attributes();
   const VArray<int> types = *custom_data_attributes.lookup_or_default<int>(
-      constraint_type_id, AttrDomain::Edge, int(ConstraintType::None));
+      constraint_type_id, AttrDomain::Edge, int(ConstraintType::Fixed));
   const VArray<int> body1 = *custom_data_attributes.lookup_or_default<int>(
       constraint_body1_id, AttrDomain::Edge, -1);
   const VArray<int> body2 = *custom_data_attributes.lookup_or_default<int>(
@@ -1406,7 +1403,7 @@ void PhysicsGeometryImpl::create_world()
   const VArray<int> constraint_types = *src_attributes.lookup_or_default(
       physics_attribute_name(ConstraintAttribute::constraint_type),
       AttrDomain::Edge,
-      int(ConstraintType::None));
+      int(ConstraintType::Fixed));
   const VArray<int> constraint_bodies1 = *src_attributes.lookup_or_default(
       physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge, -1);
   const VArray<int> constraint_bodies2 = *src_attributes.lookup_or_default(
@@ -2290,7 +2287,7 @@ VArray<int> PhysicsGeometry::constraint_types() const
 AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
 {
   const VArray<int> default_varray = VArray<int>::ForSingle(
-      int(PhysicsGeometry::ConstraintType::None), this->constraints_num());
+      int(PhysicsGeometry::ConstraintType::Fixed), this->constraints_num());
   return attributes_for_write().lookup_or_add_for_write<int>(
       constraint_attribute_name(ConstraintAttribute::constraint_type),
       AttrDomain::Edge,

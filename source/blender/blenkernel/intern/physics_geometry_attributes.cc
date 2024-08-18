@@ -329,7 +329,6 @@ static float4x4 constraint_frame1_get_fn(const btTypedConstraint *constraint)
       const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
       return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisA()));
     }
-    case ConstraintType::None:
     case ConstraintType::Contact:
       return float4x4::identity();
   }
@@ -390,7 +389,6 @@ static void constraint_frame1_set_fn(btTypedConstraint *constraint, float4x4 val
       typed_constraint->setAxisA(bt_axis);
       break;
     }
-    case ConstraintType::None:
     case ConstraintType::Contact:
       break;
   }
@@ -442,7 +440,6 @@ static float4x4 constraint_frame2_get_fn(const btTypedConstraint *constraint)
       const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
       return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisB()));
     }
-    case ConstraintType::None:
     case ConstraintType::Contact:
       return float4x4::identity();
   }
@@ -503,7 +500,6 @@ static void constraint_frame2_set_fn(btTypedConstraint *constraint, float4x4 val
       typed_constraint->setAxisB(bt_axis);
       break;
     }
-    case ConstraintType::None:
     case ConstraintType::Contact:
       break;
   }
