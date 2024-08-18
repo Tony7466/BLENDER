@@ -558,7 +558,9 @@ static void scale_down_y(ImBuf *ibuf, int newy)
 
 template<typename T> static void scale_up_x(const T *src, T *dst, int ibufx, int ibufy, int newx)
 {
-  const float add = (ibufx - 1.001f) / (newx - 1.0f);
+  const float add = (ibufx - 0.001f) / newx;
+  const T *src_start = src;
+  T *dst_ptr = dst;
   /* Special case: source is 1px wide (see #70356). */
   if (UNLIKELY(ibufx == 1)) {
     for (int y = ibufy; y > 0; y--) {
@@ -570,28 +572,35 @@ template<typename T> static void scale_up_x(const T *src, T *dst, int ibufx, int
     }
   }
   else {
-    T *dst_ptr = dst;
-    for (int y = ibufy; y > 0; y--) {
-      float sample = 0;
+    for (int y = 0; y < ibufy; y++) {
+      float sample = -0.5f + add * 0.5f;
+      int counter = 0;
+      src = src_start + y * ibufx;
       float4 val = load_pixel(src);
       float4 nval = load_pixel(src + 1);
       float4 diff = nval - val;
       src += 2;
-      for (int x = newx; x > 0; x--) {
+      counter += 2;
+      for (int x = 0; x < newx; x++) {
         if (sample >= 1.0f) {
           sample -= 1.0f;
           val = nval;
           nval = load_pixel(src);
           diff = nval - val;
-          src++;
+          if (counter + 1 < ibufx) {
+            src++;
+            counter++;
+          }
         }
-        float4 pix = val + sample * diff;
+        float4 pix = val + blender::math::max(sample, 0.0f) * diff;
         store_pixel(pix, dst_ptr);
         dst_ptr++;
         sample += add;
       }
     }
   }
+  BLI_assert(src - src_start <= ibufx * ibufy);
+  BLI_assert(dst_ptr - dst == newx * ibufy);
 }
 
 static void scale_up_x(ImBuf *ibuf, int newx)
@@ -637,7 +646,9 @@ static void scale_up_x(ImBuf *ibuf, int newx)
 
 template<typename T> static void scale_up_y(const T *src, T *dst, int ibufx, int ibufy, int newy)
 {
-  const float add = (ibufy - 1.001f) / (newy - 1.0f);
+  const float add = (ibufy - 0.001f) / newy;
+  const T *src_ptr = src;
+  T *dst_ptr = dst;
   /* Special case: source is 1px high (see #70356). */
   if (UNLIKELY(ibufy == 1)) {
     for (int y = newy; y > 0; y--) {
@@ -646,31 +657,38 @@ template<typename T> static void scale_up_y(const T *src, T *dst, int ibufx, int
     }
   }
   else {
-    for (int x = ibufx; x > 0; x--) {
-      float sample = 0;
-      const T *src_ptr = src + (x - 1);
-      T *dst_ptr = dst + (x - 1);
+    for (int x = 0; x < ibufx; x++) {
+      float sample = -0.5f + add * 0.5f;
+      int counter = 0;
+      src_ptr = src + x;
+      dst_ptr = dst + x;
 
       float4 val = load_pixel(src_ptr);
       float4 nval = load_pixel(src_ptr + ibufx);
       float4 diff = nval - val;
       src_ptr += ibufx * 2;
+      counter += 2;
 
-      for (int y = newy; y > 0; y--) {
+      for (int y = 0; y < newy; y++) {
         if (sample >= 1.0f) {
           sample -= 1.0f;
           val = nval;
           nval = load_pixel(src_ptr);
           diff = nval - val;
-          src_ptr += ibufx;
+          if (counter + 1 < ibufy) {
+            src_ptr += ibufx;
+            ++counter;
+          }
         }
-        float4 pix = val + sample * diff;
+        float4 pix = val + blender::math::max(sample, 0.0f) * diff;
         store_pixel(pix, dst_ptr);
         dst_ptr += ibufx;
         sample += add;
       }
     }
   }
+  BLI_assert(src_ptr - src <= ibufx * ibufy + ibufx - 1);
+  BLI_assert(dst_ptr - dst == ibufx * newy + ibufx - 1);
 }
 
 static void scale_up_y(ImBuf *ibuf, int newy)

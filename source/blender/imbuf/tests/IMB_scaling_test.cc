@@ -177,11 +177,11 @@ TEST(imbuf_scaling, bilinear_fractional_larger)
   ImBuf *res = scale_fractional_larger(false, false);
   const uchar4 *got = reinterpret_cast<uchar4 *>(res->byte_buffer.data);
   EXPECT_EQ(uint4(got[0 + 0 * res->x]), uint4(0, 0, 0, 255));
-  EXPECT_EQ(uint4(got[1 + 0 * res->x]), uint4(159, 0, 0, 255));
-  EXPECT_EQ(uint4(got[7 + 0 * res->x]), uint4(52, 125, 12, 255));
-  EXPECT_EQ(uint4(got[2 + 2 * res->x]), uint4(225, 78, 72, 195));
-  EXPECT_EQ(uint4(got[3 + 2 * res->x]), uint4(148, 59, 38, 44));
-  EXPECT_EQ(uint4(got[8 + 6 * res->x]), uint4(57, 0, 96, 252));
+  EXPECT_EQ(uint4(got[1 + 0 * res->x]), uint4(127, 0, 0, 255));
+  EXPECT_EQ(uint4(got[7 + 0 * res->x]), uint4(52, 100, 16, 255));
+  EXPECT_EQ(uint4(got[2 + 2 * res->x]), uint4(235, 55, 51, 215));
+  EXPECT_EQ(uint4(got[3 + 2 * res->x]), uint4(153, 55, 35, 54));
+  EXPECT_EQ(uint4(got[8 + 6 * res->x]), uint4(37, 0, 62, 162));
   IMB_freeImBuf(res);
 }
 
