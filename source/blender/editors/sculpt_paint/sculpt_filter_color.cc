@@ -29,13 +29,13 @@
 #include "WM_types.hh"
 
 #include "ED_paint.hh"
-#include "ED_sculpt_automask.hh"
-#include "ED_sculpt_color.hh"
-#include "ED_sculpt_filter.hh"
-#include "ED_sculpt_smooth.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_color.hh"
+#include "sculpt_filter.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_smooth.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

@@ -15,8 +15,7 @@
 #include "BLI_math_base.hh"
 #include "BLI_task.hh"
 
-#include "editors/sculpt_paint/ED_sculpt_face_set.hh"
-
+#include "editors/sculpt_paint/sculpt_face_set.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {

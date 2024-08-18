@@ -6,7 +6,7 @@
  * \ingroup edsculpt
  * Implements the bke::pbvh::Tree node hiding operator.
  */
-#include "ED_sculpt_hide.hh"
+#include "sculpt_hide.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -36,8 +36,6 @@
 #include "WM_types.hh"
 
 #include "ED_screen.hh"
-#include "ED_sculpt_gesture.hh"
-#include "ED_sculpt_islands.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -46,7 +44,9 @@
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_gesture.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
 
 namespace blender::ed::sculpt_paint::hide {
 

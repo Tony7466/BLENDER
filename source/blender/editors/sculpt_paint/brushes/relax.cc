@@ -13,12 +13,11 @@
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
-#include "editors/sculpt_paint/ED_sculpt_boundary.hh"
-#include "editors/sculpt_paint/ED_sculpt_face_set.hh"
-#include "editors/sculpt_paint/ED_sculpt_smooth.hh"
-
 #include "editors/sculpt_paint/mesh_brush_common.hh"
+#include "editors/sculpt_paint/sculpt_boundary.hh"
+#include "editors/sculpt_paint/sculpt_face_set.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "editors/sculpt_paint/sculpt_smooth.hh"
 
 namespace blender::ed::sculpt_paint {
 

@@ -31,11 +31,11 @@
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-#include "ED_sculpt_filter.hh"
 #include "ED_view3d.hh"
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_filter.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"

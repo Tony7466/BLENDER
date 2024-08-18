@@ -26,8 +26,8 @@
 
 #include "DNA_brush_enums.h"
 
-#include "ED_sculpt_undo.hh"
 #include "ED_view3d.hh"
+#include "sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint {
 namespace auto_mask {

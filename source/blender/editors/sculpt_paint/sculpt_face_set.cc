@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_face_set.hh"
+#include "sculpt_face_set.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -51,13 +51,13 @@
 #include "WM_types.hh"
 
 #include "ED_sculpt.hh"
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_gesture.hh"
-#include "ED_sculpt_islands.hh"
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_gesture.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

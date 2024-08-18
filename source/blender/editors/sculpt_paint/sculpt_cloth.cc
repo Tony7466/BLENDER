@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_cloth.hh"
+#include "sculpt_cloth.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -43,12 +43,12 @@
 #include "WM_types.hh"
 
 #include "ED_sculpt.hh"
-#include "ED_sculpt_automask.hh"
-#include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_filter.hh"
-#include "ED_sculpt_hide.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_filter.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"

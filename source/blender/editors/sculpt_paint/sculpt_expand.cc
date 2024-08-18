@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_expand.hh"
+#include "sculpt_expand.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -42,15 +42,16 @@
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_color.hh"
-#include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_flood_fill.hh"
-#include "ED_sculpt_geodesic.hh"
-#include "ED_sculpt_islands.hh"
-#include "ED_sculpt_smooth.hh"
+
 #include "paint_intern.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_color.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_flood_fill.hh"
+#include "sculpt_geodesic.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
+#include "sculpt_smooth.hh"
 
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"

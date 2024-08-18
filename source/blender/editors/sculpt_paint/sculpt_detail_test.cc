@@ -6,7 +6,7 @@
  * \ingroup edsculpt
  */
 
-#include "ED_sculpt_dyntopo.hh"
+#include "sculpt_dyntopo.hh"
 
 #include "BKE_object_types.hh"
 

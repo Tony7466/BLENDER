@@ -17,9 +17,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_sculpt_gesture.hh"
-
 #include "mesh_brush_common.hh"
+#include "sculpt_gesture.hh"
 #include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::project {

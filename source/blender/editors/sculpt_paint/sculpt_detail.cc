@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_dyntopo.hh"
+#include "sculpt_dyntopo.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -38,6 +38,7 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
+
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"

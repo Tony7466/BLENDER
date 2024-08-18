@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_smooth.hh"
+#include "sculpt_smooth.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,11 +22,10 @@
 #include "BKE_subdiv_ccg.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_color.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
-
-#include "ED_sculpt_color.hh"
-#include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_hide.hh"
 
 #include "bmesh.hh"
 

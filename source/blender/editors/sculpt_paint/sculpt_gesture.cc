@@ -6,7 +6,7 @@
  * \ingroup edsculpt
  * Common helper methods and structures for gesture operations.
  */
-#include "ED_sculpt_gesture.hh"
+#include "sculpt_gesture.hh"
 
 #include "MEM_guardedalloc.h"
 

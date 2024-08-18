@@ -6,7 +6,7 @@
  * \ingroup edsculpt
  */
 
-#include "ED_sculpt_automask.hh"
+#include "sculpt_automask.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -27,17 +27,16 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_dyntopo.hh"
-#include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_filter.hh"
-#include "ED_sculpt_flood_fill.hh"
-#include "ED_sculpt_islands.hh"
-#include "ED_sculpt_undo.hh"
-
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_filter.hh"
+#include "sculpt_flood_fill.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
+#include "sculpt_undo.hh"
 
 #include "bmesh.hh"
 

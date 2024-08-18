@@ -29,7 +29,7 @@
  * a tentative undo step with is appended later when the operator ends.
  * Operators must have the OPTYPE_UNDO flag set for this to work properly.
  */
-#include "ED_sculpt_undo.hh"
+#include "sculpt_undo.hh"
 
 #include <cstddef>
 
@@ -73,13 +73,13 @@
 #include "ED_geometry.hh"
 #include "ED_object.hh"
 #include "ED_sculpt.hh"
-#include "ED_sculpt_color.hh"
-#include "ED_sculpt_dyntopo.hh"
-#include "ED_sculpt_face_set.hh"
 #include "ED_undo.hh"
 
 #include "bmesh.hh"
 #include "paint_intern.hh"
+#include "sculpt_color.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
 #include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::undo {

@@ -65,9 +65,6 @@
 #include "ED_paint.hh"
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-#include "ED_sculpt_automask.hh"
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_cloth.hh"
 #include "ED_view3d.hh"
 
 /* For IMB_BlendMode only. */
@@ -78,6 +75,9 @@
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh" /* own include */
+#include "sculpt_automask.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_cloth.hh"
 #include "sculpt_intern.hh"
 
 using blender::IndexRange;

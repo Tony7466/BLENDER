@@ -21,12 +21,11 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_sculpt_hide.hh"
-#include "ED_sculpt_smooth.hh"
-
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_smooth.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_filter.hh"  // TODO- Move this function's initialization to a separate file
+#include "sculpt_filter.hh"  // TODO- Move this function's initialization to a separate file
 
 #include <fmt/format.h>
 
@@ -39,16 +39,16 @@
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-#include "ED_sculpt_automask.hh"
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_cloth.hh"
-#include "ED_sculpt_face_set.hh"
-#include "ED_sculpt_smooth.hh"
 #include "ED_view3d.hh"
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_cloth.hh"
+#include "sculpt_face_set.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_smooth.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

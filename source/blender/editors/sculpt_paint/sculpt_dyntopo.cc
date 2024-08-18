@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
-#include "ED_sculpt_dyntopo.hh"
+#include "sculpt_dyntopo.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -32,9 +32,10 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_sculpt_undo.hh"
 #include "ED_undo.hh"
+
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"

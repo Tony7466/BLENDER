@@ -38,14 +38,13 @@
 
 #include "ED_select_utils.hh"
 
-#include "ED_sculpt_gesture.hh"
-#include "ED_sculpt_hide.hh"
-#include "ED_sculpt_undo.hh"
-
 #include "bmesh.hh"
 
 #include "paint_intern.hh"
+#include "sculpt_gesture.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint::mask {
 

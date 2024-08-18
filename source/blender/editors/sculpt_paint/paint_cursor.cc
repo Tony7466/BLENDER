@@ -43,10 +43,6 @@
 
 #include "ED_grease_pencil.hh"
 #include "ED_image.hh"
-#include "ED_sculpt_boundary.hh"
-#include "ED_sculpt_cloth.hh"
-#include "ED_sculpt_expand.hh"
-#include "ED_sculpt_pose.hh"
 #include "ED_view3d.hh"
 
 #include "GPU_immediate.hh"
@@ -58,9 +54,13 @@
 #include "UI_resources.hh"
 
 #include "paint_intern.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_cloth.hh"
+#include "sculpt_expand.hh"
 /* still needed for sculpt_stroke_get_location, should be
  * removed eventually (TODO) */
 #include "sculpt_intern.hh"
+#include "sculpt_pose.hh"
 
 /* TODOs:
  *

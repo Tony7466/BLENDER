@@ -37,12 +37,12 @@
 #include "GPU_state.hh"
 
 #include "ED_screen.hh"
-#include "ED_sculpt_cloth.hh"
 #include "ED_view3d.hh"
 
 #include "IMB_imbuf_types.hh"
 
 #include "paint_intern.hh"
+#include "sculpt_cloth.hh"
 #include "sculpt_intern.hh"
 
 // #define DEBUG_TIME
