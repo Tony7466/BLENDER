@@ -291,7 +291,7 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
   particle_shape = selectable_shader("overlay_particle_shape_next",
                                      [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 
-  particle_hair = selectable_shader("overlay_particle_shape_next",
+  particle_hair = selectable_shader("overlay_particle_hair_next",
                                     [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 }
 

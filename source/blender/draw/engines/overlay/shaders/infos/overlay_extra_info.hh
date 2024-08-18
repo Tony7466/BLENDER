@@ -358,6 +358,25 @@ GPU_SHADER_CREATE_INFO(overlay_particle_shape_next)
     .fragment_source("overlay_particle_shape_frag.glsl")
     .additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
 
+GPU_SHADER_CREATE_INFO(overlay_particle_hair_next)
+    .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::VEC3, "nor")
+    .push_constant(Type::INT, "colorType")
+    .push_constant(Type::BOOL, "isTransform")
+    .push_constant(Type::BOOL, "useColoring")
+    .vertex_out(overlay_extra_iface)
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .fragment_out(1, Type::VEC4, "lineOutput")
+    .vertex_source("overlay_particle_hair_vert.glsl")
+    .fragment_source("overlay_particle_shape_frag.glsl")
+    .additional_info("draw_view",
+                     "draw_modelmat_new",
+                     "draw_object_infos_new",
+                     "draw_resource_handle_new",
+                     "draw_globals");
+
 GPU_SHADER_CREATE_INFO(overlay_particle_shape_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_particle_shape", "drw_clipped");
