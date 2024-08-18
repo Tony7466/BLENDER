@@ -299,14 +299,13 @@ static btTypedConstraint *make_constraint_type(const PhysicsGeometry::Constraint
                                                btJointFeedback *feedback)
 {
   btTypedConstraint *constraint = make_bullet_constraint_type(type, body1, body2);
-  if (constraint) {
-    constraint->setUserConstraintType(int(type));
-    /* The user ID value is used to store the index and some flags in the lower bits. Initialize
-     * this to zero to clear those bits initially (index is lazy-initialized). */
-    constraint->setUserConstraintId(0);
-    // constraint->enableFeedback(true);
-    constraint->setJointFeedback(feedback);
-  }
+  BLI_assert(constraint != nullptr);
+  constraint->setUserConstraintType(int(type));
+  /* The user ID value is used to store the index and some flags in the lower bits. Initialize
+   * this to zero to clear those bits initially (index is lazy-initialized). */
+  constraint->setUserConstraintId(0);
+  // constraint->enableFeedback(true);
+  constraint->setJointFeedback(feedback);
   return constraint;
 }
 
@@ -411,6 +410,20 @@ void PhysicsWorldData::resize(const int body_num,
     constraints_ = std::move(new_constraints);
     constraint_feedback_ = std::move(new_constraint_feedback);
 
+    /* Initialize new constraints. */
+    const VArray<int> default_types = VArray<int>::ForSingle(
+        int(PhysicsGeometry::ConstraintType::Fixed), constraint_num);
+    const VArray<int> default_bodies = VArray<int>::ForSingle(-1, constraint_num);
+    create_constraints(IndexRange::from_begin_end(0, dst_constraint_range.start()),
+                       default_types,
+                       default_bodies,
+                       default_bodies);
+    create_constraints(
+        IndexRange::from_begin_end(dst_constraint_range.one_after_last(), constraint_num),
+        default_types,
+        default_bodies,
+        default_bodies);
+
     constraint_index_cache_.tag_dirty();
   }
 
@@ -454,10 +467,8 @@ void PhysicsWorldData::ensure_body_and_constraint_indices() const
     for (const int i : constraints_.index_range()) {
       /* Note: Technically the btTypedConstraint is not mutable here! We're just using it as a
        * cache with exclusive write access, so it's fine. */
-      btTypedConstraint *constraint = const_cast<btTypedConstraint *>(this->constraints_[i]);
-      if (constraint) {
-        set_constraint_index(*constraint, i);
-      }
+      btTypedConstraint &constraint = *const_cast<btTypedConstraint *>(this->constraints_[i]);
+      set_constraint_index(constraint, i);
     }
   });
 }
@@ -476,10 +487,12 @@ void PhysicsWorldData::ensure_bodies_and_constraints_in_world()
   /* Note: Bullet does a linear search for every single constraint removal, not great. */
   constraints_in_world_cache_.ensure([&]() {
     for (const int i : constraints_.index_range()) {
-      btTypedConstraint *constraint = constraints_[i];
-      if (constraint != nullptr && !is_constraint_in_world(*constraint)) {
-        world_->addConstraint(constraint);
-        set_constraint_in_world(*constraint, true);
+      btTypedConstraint &constraint = *constraints_[i];
+      if (!is_constraint_in_world(constraint)) {
+        if (&constraint.getRigidBodyA() != &constraint.getRigidBodyB()) {
+          world_->addConstraint(&constraint);
+        }
+        set_constraint_in_world(constraint, true);
       }
     }
   });
@@ -567,14 +580,11 @@ void PhysicsWorldData::create_constraints(const IndexMask &selection,
 
       world_->removeConstraint(const_cast<btTypedConstraint *>(&current_constraint));
       delete constraints_[index];
-      constraints_[index] = nullptr;
       changed = true;
     }
 
     constraints_[index] = make_constraint_type(type, *body1, *body2, &constraint_feedback_[index]);
-    if (constraints_[index]) {
-      changed = true;
-    }
+    changed = true;
   });
 
   if (changed) {
@@ -1752,7 +1762,10 @@ bool PhysicsGeometryImpl::validate_world_data()
       physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge);
   for (const int i : constraints.index_range()) {
     const btTypedConstraint *constraint = constraints[i];
-
+    if (constraint == nullptr) {
+      BLI_assert_unreachable();
+      ok = false;
+    }
     /* Constraint class should match the type enum. */
     if (!validate_bullet_constraint_type(
             PhysicsGeometry::ConstraintType(cached_constraint_types[i]), constraint))
@@ -1760,11 +1773,6 @@ bool PhysicsGeometryImpl::validate_world_data()
       BLI_assert_unreachable();
       ok = false;
     }
-    /* Null pointer is allowed for constraints. */
-    if (constraint == nullptr) {
-      continue;
-    }
-
     if (get_constraint_index(*constraint) != i) {
       BLI_assert_unreachable();
       ok = false;
@@ -1793,15 +1801,18 @@ bool PhysicsGeometryImpl::validate_world_data()
       BLI_assert_unreachable();
       ok = false;
     }
-    bool world_has_constraint_ref = false;
-    for (const int i : IndexRange(this->world_data->world().getNumConstraints())) {
-      if (this->world_data->world().getConstraint(i) == constraint) {
-        world_has_constraint_ref = true;
+    /* Constraints with body1 == body2 are not actually added to the world (Bullet crashes otherwise). */
+    if (&constraint->getRigidBodyA() != &constraint->getRigidBodyB()) {
+      bool world_has_constraint_ref = false;
+      for (const int i : IndexRange(this->world_data->world().getNumConstraints())) {
+        if (this->world_data->world().getConstraint(i) == constraint) {
+          world_has_constraint_ref = true;
+        }
       }
-    }
-    if (!world_has_constraint_ref) {
-      BLI_assert_unreachable();
-      ok = false;
+      if (!world_has_constraint_ref) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
     }
   }
 

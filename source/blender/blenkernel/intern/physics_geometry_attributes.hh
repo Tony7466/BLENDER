@@ -334,7 +334,10 @@ static const void *physics_attribute_default_value(PhysicsGeometry::ConstraintAt
 
   const CPPType &type = physics_attribute_type(attribute);
   switch (attribute) {
-    case ConstraintAttribute::constraint_type:
+    case ConstraintAttribute::constraint_type: {
+      static const int default_value = int(PhysicsGeometry::ConstraintType::Fixed);
+      return &default_value;
+    }
     case ConstraintAttribute::constraint_body1:
     case ConstraintAttribute::constraint_body2: {
       static const int default_value = -1;
@@ -431,8 +434,8 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
 template<typename T> using RigidBodyGetFn = T (*)(const btRigidBody &body);
 template<typename T> using RigidBodySetFn = void (*)(btRigidBody &body, T value);
 
-template<typename T> using ConstraintGetFn = T (*)(const btTypedConstraint *constraint);
-template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint *constraint, T value);
+template<typename T> using ConstraintGetFn = T (*)(const btTypedConstraint &constraint);
+template<typename T> using ConstraintSetFn = void (*)(btTypedConstraint &constraint, T value);
 
 template<typename ElemT, RigidBodyGetFn<ElemT> GetFn, RigidBodySetFn<ElemT> SetFn>
 class VMutableArrayImpl_For_PhysicsBodies final : public VMutableArrayImpl<ElemT> {
@@ -529,37 +532,37 @@ class VMutableArrayImpl_For_PhysicsConstraints final : public VMutableArrayImpl<
  private:
   ElemT get(const int64_t index) const override
   {
-    return GetFn(world_data_->constraints()[index]);
+    return GetFn(*world_data_->constraints()[index]);
   }
 
   void set(const int64_t index, ElemT value) override
   {
-    SetFn(world_data_->constraints()[index], value);
+    SetFn(*world_data_->constraints()[index], value);
   }
 
   void materialize(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { dst[i] = GetFn(world_data_->constraints()[i]); });
+        [&](const int64_t i) { dst[i] = GetFn(*world_data_->constraints()[i]); });
   }
 
   void materialize_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>(
-        [&](const int64_t i) { new (dst + i) ElemT(GetFn(world_data_->constraints()[i])); });
+        [&](const int64_t i) { new (dst + i) ElemT(GetFn(*world_data_->constraints()[i])); });
   }
 
   void materialize_compressed(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      dst[pos] = GetFn(world_data_->constraints()[i]);
+      dst[pos] = GetFn(*world_data_->constraints()[i]);
     });
   }
 
   void materialize_compressed_to_uninitialized(const IndexMask &mask, ElemT *dst) const override
   {
     mask.foreach_index_optimized<int64_t>([&](const int64_t i, const int64_t pos) {
-      new (dst + pos) ElemT(GetFn(world_data_->constraints()[i]));
+      new (dst + pos) ElemT(GetFn(*world_data_->constraints()[i]));
     });
   }
 };

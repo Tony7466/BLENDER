@@ -252,82 +252,75 @@ static float3 total_torque_get_fn(const btRigidBody &body)
 }
 static void total_torque_set_fn(btRigidBody & /*body*/, float3 /*value*/) {}
 
-// static int constraint_type_get_fn(const btTypedConstraint *constraint)
+// static int constraint_type_get_fn(const btTypedConstraint &constraint)
 //{
-//   return int(constraint ?
-//                  bke::PhysicsGeometry::ConstraintType(constraint->getUserConstraintType()) :
-//                  bke::PhysicsGeometry::ConstraintType::None);
+//   return int(bke::PhysicsGeometry::ConstraintType(constraint.getUserConstraintType()));
 // }
-// static void constraint_type_set_fn(btTypedConstraint * /*constraint*/, int /*value*/) {}
+// static void constraint_type_set_fn(btTypedConstraint & /*constraint*/, int /*value*/) {}
 
-static bool constraint_enabled_get_fn(const btTypedConstraint *constraint)
+static bool constraint_enabled_get_fn(const btTypedConstraint &constraint)
 {
-  return constraint ? constraint->isEnabled() : false;
+  return constraint.isEnabled();
 }
-static void constraint_enabled_set_fn(btTypedConstraint *constraint, const bool value)
+static void constraint_enabled_set_fn(btTypedConstraint &constraint, const bool value)
 {
-  if (constraint) {
-    constraint->setEnabled(value);
-  }
+  constraint.setEnabled(value);
 }
 
-// static int constraint_body1_get_fn(const btTypedConstraint *constraint)
+// static int constraint_body1_get_fn(const btTypedConstraint &constraint)
 //{
-//   return constraint ? get_body_index(constraint->getRigidBodyA()) : -1;
+//   return get_body_index(constraint.getRigidBodyA());
 // }
-// static void constraint_body1_set_fn(btTypedConstraint *constraint, int /*value*/) {}
+// static void constraint_body1_set_fn(btTypedConstraint &constraint, int /*value*/) {}
 //
-// static int constraint_body2_get_fn(const btTypedConstraint *constraint)
+// static int constraint_body2_get_fn(const btTypedConstraint &constraint)
 //{
-//   return constraint ? get_body_index(constraint->getRigidBodyB()) : -1;
+//   return get_body_index(constraint.getRigidBodyB());
 // }
-// static void constraint_body2_set_fn(btTypedConstraint * /*constraint*/, int /*value*/) {}
+// static void constraint_body2_set_fn(btTypedConstraint & /*constraint*/, int /*value*/) {}
 
-static float4x4 constraint_frame1_get_fn(const btTypedConstraint *constraint)
+static float4x4 constraint_frame1_get_fn(const btTypedConstraint &constraint)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  if (!constraint) {
-    return float4x4::identity();
-  }
-  switch (ConstraintType(constraint->getUserConstraintType())) {
+  switch (ConstraintType(constraint.getUserConstraintType())) {
     case ConstraintType::Fixed: {
-      const auto *typed_constraint = static_cast<const btFixedConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      const auto &typed_constraint = static_cast<const btFixedConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::Point: {
-      const auto *typed_constraint = static_cast<const btPoint2PointConstraint *>(constraint);
-      return math::from_location<float4x4>(to_blender(typed_constraint->getPivotInA()));
+      const auto &typed_constraint = static_cast<const btPoint2PointConstraint &>(constraint);
+      return math::from_location<float4x4>(to_blender(typed_constraint.getPivotInA()));
     }
     case ConstraintType::Hinge: {
-      const auto *typed_constraint = static_cast<const btHingeConstraint *>(constraint);
-      return to_blender(typed_constraint->getAFrame());
+      const auto &typed_constraint = static_cast<const btHingeConstraint &>(constraint);
+      return to_blender(typed_constraint.getAFrame());
     }
     case ConstraintType::Slider: {
-      const auto *typed_constraint = static_cast<const btSliderConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      const auto &typed_constraint = static_cast<const btSliderConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::ConeTwist: {
-      const auto *typed_constraint = static_cast<const btConeTwistConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      const auto &typed_constraint = static_cast<const btConeTwistConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::SixDoF: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      const auto &typed_constraint = static_cast<const btGeneric6DofConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::SixDoFSpring: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofSpringConstraint *>(
+      const auto &typed_constraint = static_cast<const btGeneric6DofSpringConstraint &>(
           constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::SixDoFSpring2: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofSpring2Constraint *>(
+      const auto &typed_constraint = static_cast<const btGeneric6DofSpring2Constraint &>(
           constraint);
-      return to_blender(typed_constraint->getFrameOffsetA());
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::Gear: {
-      const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
-      return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisA()));
+      const auto &typed_constraint = static_cast<const btGearConstraint &>(constraint);
+      return math::from_up_axis<float4x4>(to_blender(typed_constraint.getAxisA()));
     }
     case ConstraintType::Contact:
       return float4x4::identity();
@@ -335,58 +328,55 @@ static float4x4 constraint_frame1_get_fn(const btTypedConstraint *constraint)
   BLI_assert_unreachable();
   return float4x4::identity();
 }
-static void constraint_frame1_set_fn(btTypedConstraint *constraint, float4x4 value)
+static void constraint_frame1_set_fn(btTypedConstraint &constraint, float4x4 value)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  if (!constraint) {
-    return;
-  }
-  switch (ConstraintType(constraint->getUserConstraintType())) {
+  switch (ConstraintType(constraint.getUserConstraintType())) {
     case ConstraintType::Fixed: {
-      auto *typed_constraint = static_cast<btFixedConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btFixedConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::Point: {
-      auto *typed_constraint = static_cast<btPoint2PointConstraint *>(constraint);
-      typed_constraint->setPivotA(to_bullet(value.location()));
+      auto &typed_constraint = static_cast<btPoint2PointConstraint &>(constraint);
+      typed_constraint.setPivotA(to_bullet(value.location()));
       break;
     }
     case ConstraintType::Hinge: {
-      auto *typed_constraint = static_cast<btHingeConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getBFrame());
+      auto &typed_constraint = static_cast<btHingeConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getBFrame());
       break;
     }
     case ConstraintType::Slider: {
-      auto *typed_constraint = static_cast<btSliderConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btSliderConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::ConeTwist: {
-      auto *typed_constraint = static_cast<btConeTwistConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btConeTwistConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::SixDoF: {
-      auto *typed_constraint = static_cast<btGeneric6DofConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btGeneric6DofConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::SixDoFSpring: {
-      auto *typed_constraint = static_cast<btGeneric6DofSpringConstraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btGeneric6DofSpringConstraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::SixDoFSpring2: {
-      auto *typed_constraint = static_cast<btGeneric6DofSpring2Constraint *>(constraint);
-      typed_constraint->setFrames(to_bullet(value), typed_constraint->getFrameOffsetB());
+      auto &typed_constraint = static_cast<btGeneric6DofSpring2Constraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::Gear: {
-      auto *typed_constraint = static_cast<btGearConstraint *>(constraint);
+      auto &typed_constraint = static_cast<btGearConstraint &>(constraint);
       btVector3 bt_axis = to_bullet(value.z_axis());
-      typed_constraint->setAxisA(bt_axis);
+      typed_constraint.setAxisA(bt_axis);
       break;
     }
     case ConstraintType::Contact:
@@ -394,51 +384,48 @@ static void constraint_frame1_set_fn(btTypedConstraint *constraint, float4x4 val
   }
 }
 
-static float4x4 constraint_frame2_get_fn(const btTypedConstraint *constraint)
+static float4x4 constraint_frame2_get_fn(const btTypedConstraint &constraint)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  if (!constraint) {
-    return float4x4::identity();
-  }
-  switch (ConstraintType(constraint->getUserConstraintType())) {
+  switch (ConstraintType(constraint.getUserConstraintType())) {
     case ConstraintType::Fixed: {
-      const auto *typed_constraint = static_cast<const btFixedConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      const auto &typed_constraint = static_cast<const btFixedConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::Point: {
-      const auto *typed_constraint = static_cast<const btPoint2PointConstraint *>(constraint);
-      return math::from_location<float4x4>(to_blender(typed_constraint->getPivotInB()));
+      const auto &typed_constraint = static_cast<const btPoint2PointConstraint &>(constraint);
+      return math::from_location<float4x4>(to_blender(typed_constraint.getPivotInB()));
     }
     case ConstraintType::Hinge: {
-      const auto *typed_constraint = static_cast<const btHingeConstraint *>(constraint);
-      return to_blender(typed_constraint->getBFrame());
+      const auto &typed_constraint = static_cast<const btHingeConstraint &>(constraint);
+      return to_blender(typed_constraint.getBFrame());
     }
     case ConstraintType::Slider: {
-      const auto *typed_constraint = static_cast<const btSliderConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      const auto &typed_constraint = static_cast<const btSliderConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::ConeTwist: {
-      const auto *typed_constraint = static_cast<const btConeTwistConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      const auto &typed_constraint = static_cast<const btConeTwistConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::SixDoF: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofConstraint *>(constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      const auto &typed_constraint = static_cast<const btGeneric6DofConstraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::SixDoFSpring: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofSpringConstraint *>(
+      const auto &typed_constraint = static_cast<const btGeneric6DofSpringConstraint &>(
           constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::SixDoFSpring2: {
-      const auto *typed_constraint = static_cast<const btGeneric6DofSpring2Constraint *>(
+      const auto &typed_constraint = static_cast<const btGeneric6DofSpring2Constraint &>(
           constraint);
-      return to_blender(typed_constraint->getFrameOffsetB());
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::Gear: {
-      const auto *typed_constraint = static_cast<const btGearConstraint *>(constraint);
-      return math::from_up_axis<float4x4>(to_blender(typed_constraint->getAxisB()));
+      const auto &typed_constraint = static_cast<const btGearConstraint &>(constraint);
+      return math::from_up_axis<float4x4>(to_blender(typed_constraint.getAxisB()));
     }
     case ConstraintType::Contact:
       return float4x4::identity();
@@ -446,58 +433,55 @@ static float4x4 constraint_frame2_get_fn(const btTypedConstraint *constraint)
   BLI_assert_unreachable();
   return float4x4::identity();
 }
-static void constraint_frame2_set_fn(btTypedConstraint *constraint, float4x4 value)
+static void constraint_frame2_set_fn(btTypedConstraint &constraint, float4x4 value)
 {
   using ConstraintType = PhysicsGeometry::ConstraintType;
 
-  if (!constraint) {
-    return;
-  }
-  switch (ConstraintType(constraint->getUserConstraintType())) {
+  switch (ConstraintType(constraint.getUserConstraintType())) {
     case ConstraintType::Fixed: {
-      auto *typed_constraint = static_cast<btFixedConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btFixedConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::Point: {
-      auto *typed_constraint = static_cast<btPoint2PointConstraint *>(constraint);
-      typed_constraint->setPivotB(to_bullet(value.location()));
+      auto &typed_constraint = static_cast<btPoint2PointConstraint &>(constraint);
+      typed_constraint.setPivotB(to_bullet(value.location()));
       break;
     }
     case ConstraintType::Hinge: {
-      auto *typed_constraint = static_cast<btHingeConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getAFrame(), to_bullet(value));
+      auto &typed_constraint = static_cast<btHingeConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getAFrame(), to_bullet(value));
       break;
     }
     case ConstraintType::Slider: {
-      auto *typed_constraint = static_cast<btSliderConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btSliderConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::ConeTwist: {
-      auto *typed_constraint = static_cast<btConeTwistConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btConeTwistConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::SixDoF: {
-      auto *typed_constraint = static_cast<btGeneric6DofConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btGeneric6DofConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::SixDoFSpring: {
-      auto *typed_constraint = static_cast<btGeneric6DofSpringConstraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btGeneric6DofSpringConstraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::SixDoFSpring2: {
-      auto *typed_constraint = static_cast<btGeneric6DofSpring2Constraint *>(constraint);
-      typed_constraint->setFrames(typed_constraint->getFrameOffsetA(), to_bullet(value));
+      auto &typed_constraint = static_cast<btGeneric6DofSpring2Constraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::Gear: {
-      auto *typed_constraint = static_cast<btGearConstraint *>(constraint);
+      auto &typed_constraint = static_cast<btGearConstraint &>(constraint);
       btVector3 bt_axis = to_bullet(value.z_axis());
-      typed_constraint->setAxisB(bt_axis);
+      typed_constraint.setAxisB(bt_axis);
       break;
     }
     case ConstraintType::Contact:
@@ -505,99 +489,82 @@ static void constraint_frame2_set_fn(btTypedConstraint *constraint, float4x4 val
   }
 }
 
-static float constraint_applied_impulse_get_fn(const btTypedConstraint *constraint)
+static float constraint_applied_impulse_get_fn(const btTypedConstraint &constraint)
 {
   /* Note: applied transform requires that needsFeedback is set first. */
-  return constraint && constraint->needsFeedback() ? to_blender(constraint->getAppliedImpulse()) :
-                                                     float(0.0f);
+  return constraint.needsFeedback() ? to_blender(constraint.getAppliedImpulse()) : float(0.0f);
 }
-static void constraint_applied_impulse_set_fn(btTypedConstraint * /*constraint*/, float /*value*/)
+static void constraint_applied_impulse_set_fn(btTypedConstraint & /*constraint*/, float /*value*/)
 {
 }
 
-static float3 applied_force1_get_fn(const btTypedConstraint *constraint)
+static float3 applied_force1_get_fn(const btTypedConstraint &constraint)
 {
-  if (!constraint) {
-    return float3(0.0f);
-  }
-  const btJointFeedback *feedback = constraint->getJointFeedback();
+  const btJointFeedback *feedback = constraint.getJointFeedback();
   if (!feedback) {
     return float3(0.0f);
   }
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyA);
 }
-static void applied_force1_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
+static void applied_force1_set_fn(btTypedConstraint & /*constraint*/, float3 /*value*/) {}
 
-static float3 applied_force2_get_fn(const btTypedConstraint *constraint)
+static float3 applied_force2_get_fn(const btTypedConstraint &constraint)
 {
-  if (!constraint) {
-    return float3(0.0f);
-  }
-  const btJointFeedback *feedback = constraint->getJointFeedback();
+  const btJointFeedback *feedback = constraint.getJointFeedback();
   if (!feedback) {
     return float3(0.0f);
   }
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyB);
 }
-static void applied_force2_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
+static void applied_force2_set_fn(btTypedConstraint & /*constraint*/, float3 /*value*/) {}
 
-static float3 applied_torque1_get_fn(const btTypedConstraint *constraint)
+static float3 applied_torque1_get_fn(const btTypedConstraint &constraint)
 {
-  if (!constraint) {
-    return float3(0.0f);
-  }
-  const btJointFeedback *feedback = constraint->getJointFeedback();
+  const btJointFeedback *feedback = constraint.getJointFeedback();
   if (!feedback) {
     return float3(0.0f);
   }
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedTorqueBodyA);
 }
-static void applied_torque1_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
+static void applied_torque1_set_fn(btTypedConstraint & /*constraint*/, float3 /*value*/) {}
 
-static float3 applied_torque2_get_fn(const btTypedConstraint *constraint)
+static float3 applied_torque2_get_fn(const btTypedConstraint &constraint)
 {
-  if (!constraint) {
-    return float3(0.0f);
-  }
-  const btJointFeedback *feedback = constraint->getJointFeedback();
+  const btJointFeedback *feedback = constraint.getJointFeedback();
   if (!feedback) {
     return float3(0.0f);
   }
   /* Note: applied transform requires that needsFeedback is set first. */
   return to_blender(feedback->m_appliedForceBodyA);
 }
-static void applied_torque2_set_fn(btTypedConstraint * /*constraint*/, float3 /*value*/) {}
+static void applied_torque2_set_fn(btTypedConstraint & /*constraint*/, float3 /*value*/) {}
 
-static float constraint_breaking_impulse_threshold_get_fn(const btTypedConstraint *constraint)
+static float constraint_breaking_impulse_threshold_get_fn(const btTypedConstraint &constraint)
 {
-  return constraint ? to_blender(constraint->getBreakingImpulseThreshold()) : float(0.0f);
+  return to_blender(constraint.getBreakingImpulseThreshold());
 }
-static void constraint_breaking_impulse_threshold_set_fn(btTypedConstraint *constraint,
+static void constraint_breaking_impulse_threshold_set_fn(btTypedConstraint &constraint,
                                                          const float value)
 {
-  if (constraint) {
-    constraint->setBreakingImpulseThreshold(value);
-  }
+  constraint.setBreakingImpulseThreshold(value);
 }
 
-static bool constraint_disable_collision_get_fn(const btTypedConstraint * /*constraint*/)
+static bool constraint_disable_collision_get_fn(const btTypedConstraint & /*constraint*/)
 {
   return false;
 }
-static void constraint_disable_collision_set_fn(btTypedConstraint *constraint, bool value)
+static void constraint_disable_collision_set_fn(btTypedConstraint &constraint, bool value)
 {
-  if (constraint) {
-    if (value) {
-      constraint->getRigidBodyA().addConstraintRef(constraint);
-      constraint->getRigidBodyB().addConstraintRef(constraint);
-    }
-    else {
-      constraint->getRigidBodyA().removeConstraintRef(constraint);
-      constraint->getRigidBodyB().removeConstraintRef(constraint);
-    }
+  if (value) {
+    constraint.getRigidBodyA().addConstraintRef(&constraint);
+    constraint.getRigidBodyB().addConstraintRef(&constraint);
+  }
+  else {
+    constraint.getRigidBodyA().removeConstraintRef(&constraint);
+    constraint.getRigidBodyB().removeConstraintRef(&constraint);
   }
 }
 
