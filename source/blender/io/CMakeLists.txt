@@ -34,5 +34,5 @@ if(WITH_USD)
   add_subdirectory(usd)
 endif()
 
-# TODO: WITH_IO_CSV if check
+# TODO: WITH_IO_CSV Check
 add_subdirectory(csv)

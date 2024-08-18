@@ -24,10 +24,26 @@ CsvData::CsvData(int64_t row_count,
   }
 }
 
-template<typename T> void CsvData::set_data(int64_t row_index, int64_t col_index, T value)
-{
-  data[row_index][col_index] = value;
-}
+// template<typename T> void CsvData::set_data(int64_t row_index, int64_t col_index, T value)
+// {
+//   GMutableSpan mutable_span = data[col_index].as_mutable_span();
+//   MutableSpan typed_mutable_span = mutable_span.typed<T>();
+//   typed_mutable_span[row_index] = value;
+// }
+
+// void CsvData::set_data_int(int64_t row_index, int64_t col_index, int value)
+// {
+//   GMutableSpan mutable_span = data[col_index].as_mutable_span();
+//   MutableSpan typed_mutable_span = mutable_span.typed<int>();
+//   typed_mutable_span[row_index] = value;
+// }
+
+// void CsvData::set_data_float(int64_t row_index, int64_t col_index, float value)
+// {
+//   GMutableSpan mutable_span = data[col_index].as_mutable_span();
+//   MutableSpan typed_mutable_span = mutable_span.typed<float>();
+//   typed_mutable_span[row_index] = value;
+// }
 
 PointCloud *CsvData::to_point_cloud() const
 {

@@ -359,6 +359,7 @@ DefNode(GeometryNode, GEO_NODE_GRID_TO_MESH, 0, "GRID_TO_MESH", GridToMesh, "Gri
 DefNode(GeometryNode, GEO_NODE_IMAGE_INFO, 0, "IMAGE_INFO", ImageInfo, "Image Info", "Retrieve information about an image")
 DefNode(GeometryNode, GEO_NODE_IMAGE_TEXTURE, def_geo_image_texture, "IMAGE_TEXTURE", ImageTexture, "Image Texture", "Sample values from an image texture")
 DefNode(GeometryNode, GEO_NODE_IMAGE, def_geo_image, "IMAGE", InputImage, "Image", "Input image")
+DefNode(GeometryNode, GEO_NODE_IMPORT_CSV, 0, "IMPORT_CSV", ImportCSV, "Import CSV", "Import a point cloud from a CSV file")
 DefNode(GeometryNode, GEO_NODE_IMPORT_STL, 0, "IMPORT_STL", ImportSTL, "Import STL", "Import a mesh from an STL file")
 DefNode(GeometryNode, GEO_NODE_IMPORT_PLY, 0, "IMPORT_PLY", ImportPLY, "Import PLY", "Import a point cloud from a PLY file")
 DefNode(GeometryNode, GEO_NODE_IMPORT_OBJ, 0, "IMPORT_OBJ", ImportOBJ, "Import OBJ", "Import geometry from an OBJ file")

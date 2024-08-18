@@ -21,9 +21,10 @@ set(INC
   ../../render
   ../../windowmanager
   ../../io/common
+  ../../io/csv
   ../../io/stl
-  ../../io/wavefront_obj
   ../../io/ply
+  ../../io/wavefront_obj
   # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -94,6 +95,7 @@ set(SRC
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
+  nodes/node_geo_import_csv.cc
   nodes/node_geo_import_obj.cc
   nodes/node_geo_import_ply.cc
   nodes/node_geo_import_stl.cc
@@ -251,6 +253,12 @@ set(LIB
   bf_nodes
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
+)
+
+# TODO: WITH_IO_CSV Check
+list(APPEND LIB
+  PRIVATE bf_io_common
+  PRIVATE bf_io_csv
 )
 
 if(WITH_IO_STL)

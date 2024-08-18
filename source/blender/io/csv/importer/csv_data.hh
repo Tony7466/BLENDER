@@ -32,9 +32,14 @@ class CsvData {
  public:
   CsvData(int64_t row_count, Vector<std::string> column_names, Vector<CsvColumnType> column_types);
 
-  template<typename T> void set_data(int64_t row_index, int64_t col_index, T value);
-
   PointCloud *to_point_cloud() const;
+
+  template<typename T> inline void set_data(int64_t row_index, int64_t col_index, T value)
+  {
+    GMutableSpan mutable_span = data[col_index].as_mutable_span();
+    MutableSpan typed_mutable_span = mutable_span.typed<T>();
+    typed_mutable_span[row_index] = value;
+  }
 
   inline CsvColumnType get_column_type(int64_t col_index) const
   {
