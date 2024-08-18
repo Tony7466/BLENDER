@@ -621,11 +621,6 @@ void WM_window_decoration_set_style(const wmWindow *win, eWM_DecorationStyleFlag
                            static_cast<GHOST_TWindowDecorationStyleFlags>(ghost_style_flags));
 }
 
-void WM_window_decoration_apply(const wmWindow *win)
-{
-  GHOST_ApplyDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin));
-}
-
 void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen)
 {
   GHOST_DecorationSettings decoration_settings = {};
@@ -652,6 +647,11 @@ void WM_window_decoration_parse_theme(const wmWindow *win, const bScreen *screen
   copy_v3_v3(decoration_settings.colored_titlebar_fg_color, titlebar_fg_color);
 
   GHOST_SetDecorationSettings(static_cast<GHOST_WindowHandle>(win->ghostwin), decoration_settings);
+}
+
+void WM_window_decoration_apply(const wmWindow *win)
+{
+  GHOST_ApplyDecoration(static_cast<GHOST_WindowHandle>(win->ghostwin));
 }
 
 /**
