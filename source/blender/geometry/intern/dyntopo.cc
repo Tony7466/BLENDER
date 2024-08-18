@@ -34,7 +34,7 @@ std::ostream &operator<<(std::ostream &stream, const std::array<T, num> &data)
 {
   stream << "{";
   for (const int64_t i : IndexRange(num)) {
-    stream << data[i] << (num - 1 == i ? "" : ", ");
+    stream << data[i] << (num - 1 == i ? "" : "\t");
   }
   stream << "}";
   return stream;
@@ -43,7 +43,7 @@ std::ostream &operator<<(std::ostream &stream, const std::array<T, num> &data)
 template<typename T> std::ostream &operator<<(std::ostream &stream, const Span<T> span)
 {
   for (const int64_t i : span.index_range()) {
-    stream << span[i] << (span.size() - 1 == i ? "" : ", ");
+    stream << span[i] << (span.size() - 1 == i ? "" : "\t");
   }
   return stream;
 }
@@ -58,6 +58,13 @@ template<typename T> std::ostream &operator<<(std::ostream &stream, Vector<T> da
 {
   stream << data.as_span();
   return stream;
+}
+
+static void table_iota(const int num)
+{
+  for (const int i : IndexRange(num)) {
+    std::cout << i << (i == num - 1 ? "\n" : "\t");
+  }
 }
 
 template<typename In, typename Out, typename Func>
@@ -1100,6 +1107,8 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
 {
   std::priority_queue<std::pair<int, int>> level_edge_queue;
 
+  Array<bool> visited_edges(edges.size(), false);
+
   for (const int face_i : face_pre_subdiv_level.index_range()) {
     if (face_pre_subdiv_level[face_i] > 0) {
       for (const int edge_i : faces_edges[face_i]) {
@@ -1112,8 +1121,13 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
     const auto [level, edge_index] = level_edge_queue.top();
     level_edge_queue.pop();
 
+    if (visited_edges[edge_index]) {
+      continue;
+    }
+    visited_edges[edge_index] = true;
+
     for (const int face_i : edge_to_face_map[edge_index]) {
-      if (face_pre_subdiv_level[face_i] >= level - 1) {
+      if (face_pre_subdiv_level[face_i] >= level / 2 + 1) {
         continue;
       }
       const int3 face_edges(
@@ -1133,22 +1147,25 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
       // constexpr float length_threshold = 1.6f;
       const bool prev_affected = prev_edge_length > edge_length * threshold_factor;
       const bool next_affected = next_edge_length > edge_length * threshold_factor;
-      if (prev_affected || next_affected) {
-        face_pre_subdiv_level[face_i] = level - 1;
-      }
-      else {
-        face_pre_subdiv_level[face_i] = level / 2;
+
+      const int prev_level = prev_affected ? (level / 2 + 1) : (0);
+      const int next_level = next_affected ? (level / 2 + 1) : (0);
+
+      face_pre_subdiv_level[face_i] = math::max(math::max(prev_level, next_level), level / 2);
+
+      if (prev_level > 1) {
+        level_edge_queue.emplace(prev_level, prev_edge_index);
       }
 
-      if (prev_affected) {
-        level_edge_queue.emplace(face_pre_subdiv_level[face_i], prev_edge_index);
-      }
-
-      if (next_affected) {
-        level_edge_queue.emplace(face_pre_subdiv_level[face_i], next_edge_index);
+      if (next_level > 1) {
+        level_edge_queue.emplace(next_level, next_edge_index);
       }
     }
   }
+
+  // std::cout << "\n";
+  // table_iota(face_pre_subdiv_level.size());
+  // std::cout << face_pre_subdiv_level << ";\n";
 }
 
 Mesh *subdivide(const Mesh &src_mesh,
