@@ -525,4 +525,9 @@ inline std::optional<CollisionShape::ShapeType> to_blender(const int bt_shape_ty
   return std::nullopt;
 }
 
+float4x4 get_constraint_frame1(const btTypedConstraint &constraint);
+void set_constraint_frame1(btTypedConstraint &constraint, float4x4 value);
+float4x4 get_constraint_frame2(const btTypedConstraint &constraint);
+void set_constraint_frame2(btTypedConstraint &constraint, float4x4 value);
+
 }  // namespace blender::bke

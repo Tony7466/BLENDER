@@ -638,8 +638,15 @@ TEST_F(PhysicsGeometryTest, join_geometry)
                   constraint_types.size());
   EXPECT_EQ_ARRAY(Span<int>{2, 0, -1}.data(), constraint_body1.data(), constraint_body1.size());
   EXPECT_EQ_ARRAY(Span<int>{1, 2, 1}.data(), constraint_body2.data(), constraint_body2.size());
-  EXPECT_EQ_ARRAY(frame1.data(), constraint_frame1.data(), constraint_frame1.size());
-  EXPECT_EQ_ARRAY(frame2.data(), constraint_frame2.data(), constraint_frame2.size());
+  /* Point constraint only retains the translation part of the frame matrix. */
+  const float4x4 frame1_loc0 = math::from_location<float4x4>(frame1[0].location());
+  const float4x4 frame2_loc0 = math::from_location<float4x4>(frame2[0].location());
+  EXPECT_EQ_ARRAY(Span<float4x4>({frame1_loc0, frame1[1], frame1[2]}).data(),
+                  constraint_frame1.data(),
+                  constraint_frame1.size());
+  EXPECT_EQ_ARRAY(Span<float4x4>({frame2_loc0, frame2[1], frame2[2]}).data(),
+                  constraint_frame2.data(),
+                  constraint_frame2.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
