@@ -154,11 +154,14 @@ int SCULPT_vertex_count_get(const SculptSession &ss)
   return 0;
 }
 
-const float *SCULPT_vertex_co_get(const SculptSession &ss, PBVHVertRef vertex)
+const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
+                                  const Object &object,
+                                  PBVHVertRef vertex)
 {
+  const SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case blender::bke::pbvh::Type::Mesh:
-      return BKE_pbvh_get_vert_positions(*ss.pbvh)[vertex.i];
+      return blender::bke::pbvh::vert_positions_eval(depsgraph, object)[vertex.i];
     case blender::bke::pbvh::Type::BMesh:
       return ((BMVert *)vertex.i)->co;
     case blender::bke::pbvh::Type::Grids: {
@@ -172,11 +175,14 @@ const float *SCULPT_vertex_co_get(const SculptSession &ss, PBVHVertRef vertex)
   return nullptr;
 }
 
-const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVertRef vertex)
+const blender::float3 SCULPT_vertex_normal_get(const Depsgraph &depsgraph,
+                                               const Object &object,
+                                               PBVHVertRef vertex)
 {
+  const SculptSession &ss = *object.sculpt;
   switch (ss.pbvh->type()) {
     case blender::bke::pbvh::Type::Mesh: {
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss.pbvh);
+      const Span<float3> vert_normals = blender::bke::pbvh::vert_normals_eval(depsgraph, object);
       return vert_normals[vertex.i];
     }
     case blender::bke::pbvh::Type::BMesh: {
@@ -197,13 +203,13 @@ const blender::float3 SCULPT_vertex_normal_get(const SculptSession &ss, PBVHVert
 
 namespace blender::ed::sculpt_paint {
 
-Span<float3> vert_positions_for_grab_active_get(const Object &object)
+Span<float3> vert_positions_for_grab_active_get(const Depsgraph &depsgraph, const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   BLI_assert(ss.pbvh->type() == bke::pbvh::Type::Mesh);
   if (ss.shapekey_active) {
     /* Always grab active shape key if the sculpt happens on shapekey. */
-    return BKE_pbvh_get_vert_positions(*ss.pbvh);
+    return bke::pbvh::vert_positions_eval(depsgraph, object);
   }
   /* Otherwise use the base mesh positions. */
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -547,7 +553,7 @@ bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
   return true;
 }
 
-bool vert_has_unique_face_set(const BMVert * /* vert */)
+bool vert_has_unique_face_set(const BMVert * /*vert*/)
 {
   /* TODO: Obviously not fully implemented yet. Needs to be implemented for Relax Face Sets brush
    * to work. */
@@ -755,8 +761,10 @@ bool vert_is_boundary(const SculptSession &ss, const PBVHVertRef vertex)
 {
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
-      if (!hide::vert_all_faces_visible_get(
-              Span(ss.hide_poly, ss.faces_num), ss.vert_to_face_map, vertex.i))
+      if (!hide::vert_all_faces_visible_get(ss.hide_poly ? Span(ss.hide_poly, ss.faces_num) :
+                                                           Span<bool>(),
+                                            ss.vert_to_face_map,
+                                            vertex.i))
       {
         return true;
       }
@@ -1014,7 +1022,8 @@ std::optional<BMVert *> nearest_vert_calc_bmesh(const bke::pbvh::Tree &pbvh,
   return nearest.vert;
 }
 
-PBVHVertRef nearest_vert_calc(const Object &object,
+PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
+                              const Object &object,
                               const float3 &location,
                               const float max_distance,
                               const bool use_original)
@@ -1023,7 +1032,7 @@ PBVHVertRef nearest_vert_calc(const Object &object,
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, object);
       const bke::AttributeAccessor attributes = mesh.attributes();
       VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
       const std::optional<int> nearest = nearest_vert_calc_mesh(
@@ -1318,7 +1327,7 @@ static void restore_face_set_from_undo_step(Object &object)
   }
 }
 
-void restore_position_from_undo_step(Object &object)
+void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
 {
   SculptSession &ss = *object.sculpt;
   Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
@@ -1326,7 +1335,7 @@ void restore_position_from_undo_step(Object &object)
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      MutableSpan positions_eval = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      MutableSpan positions_eval = bke::pbvh::vert_positions_eval_for_write(depsgraph, object);
       MutableSpan positions_orig = mesh.vert_positions_for_write();
 
       struct LocalData {
@@ -1426,10 +1435,10 @@ void restore_position_from_undo_step(Object &object)
   /* Update normals for potentially-changed positions. Theoretically this may be unnecessary if
    * the tool restoring to the initial state doesn't use the normals, but we have no easy way to
    * know that from here. */
-  bke::pbvh::update_normals(*ss.pbvh, ss.subdiv_ccg);
+  bke::pbvh::update_normals(depsgraph, object, *ss.pbvh);
 }
 
-static void restore_from_undo_step(const Sculpt &sd, Object &object)
+static void restore_from_undo_step(const Depsgraph &depsgraph, const Sculpt &sd, Object &object)
 {
   SculptSession &ss = *object.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
@@ -1444,14 +1453,14 @@ static void restore_from_undo_step(const Sculpt &sd, Object &object)
       break;
     case SCULPT_TOOL_DRAW_FACE_SETS:
       if (ss.cache->alt_smooth) {
-        restore_position_from_undo_step(object);
+        restore_position_from_undo_step(depsgraph, object);
       }
       else {
         restore_face_set_from_undo_step(object);
       }
       break;
     default:
-      restore_position_from_undo_step(object);
+      restore_position_from_undo_step(depsgraph, object);
       break;
   }
   /* Disable multi-threading when dynamic-topology is enabled. Otherwise,
@@ -2042,7 +2051,8 @@ static AreaNormalCenterData calc_area_normal_and_center_reduce(const AreaNormalC
   return joined;
 }
 
-void calc_area_center(const Brush &brush,
+void calc_area_center(const Depsgraph &depsgraph,
+                      const Brush &brush,
                       const Object &ob,
                       Span<bke::pbvh::Node *> nodes,
                       float r_area_co[3])
@@ -2055,8 +2065,8 @@ void calc_area_center(const Brush &brush,
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss.pbvh);
+      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, ob);
+      const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, ob);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
@@ -2140,7 +2150,8 @@ void calc_area_center(const Brush &brush,
   }
 }
 
-std::optional<float3> calc_area_normal(const Brush &brush,
+std::optional<float3> calc_area_normal(const Depsgraph &depsgraph,
+                                       const Brush &brush,
                                        Object &ob,
                                        Span<bke::pbvh::Node *> nodes)
 {
@@ -2151,8 +2162,8 @@ std::optional<float3> calc_area_normal(const Brush &brush,
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss.pbvh);
+      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, ob);
+      const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, ob);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
@@ -2225,7 +2236,8 @@ std::optional<float3> calc_area_normal(const Brush &brush,
   return std::nullopt;
 }
 
-void calc_area_normal_and_center(const Brush &brush,
+void calc_area_normal_and_center(const Depsgraph &depsgraph,
+                                 const Brush &brush,
                                  const Object &ob,
                                  Span<bke::pbvh::Node *> nodes,
                                  float r_area_no[3],
@@ -2239,8 +2251,8 @@ void calc_area_normal_and_center(const Brush &brush,
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(*ss.pbvh);
+      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, ob);
+      const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, ob);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
@@ -2699,13 +2711,16 @@ static Vector<bke::pbvh::Node *> sculpt_pbvh_gather_texpaint(Object &ob,
 }
 
 /* Calculate primary direction of movement for many brushes. */
-static float3 calc_sculpt_normal(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes)
+static float3 calc_sculpt_normal(const Depsgraph &depsgraph,
+                                 const Sculpt &sd,
+                                 Object &ob,
+                                 Span<bke::pbvh::Node *> nodes)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const SculptSession &ss = *ob.sculpt;
   switch (brush.sculpt_plane) {
     case SCULPT_DISP_DIR_AREA:
-      return calc_area_normal(brush, ob, nodes).value_or(float3(0));
+      return calc_area_normal(depsgraph, brush, ob, nodes).value_or(float3(0));
     case SCULPT_DISP_DIR_VIEW:
       return ss.cache->true_view_normal;
     case SCULPT_DISP_DIR_X:
@@ -2719,7 +2734,10 @@ static float3 calc_sculpt_normal(const Sculpt &sd, Object &ob, Span<bke::pbvh::N
   return {};
 }
 
-static void update_sculpt_normal(const Sculpt &sd, Object &ob, Span<bke::pbvh::Node *> nodes)
+static void update_sculpt_normal(const Depsgraph &depsgraph,
+                                 const Sculpt &sd,
+                                 Object &ob,
+                                 Span<bke::pbvh::Node *> nodes)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   StrokeCache &cache = *ob.sculpt->cache;
@@ -2733,7 +2751,7 @@ static void update_sculpt_normal(const Sculpt &sd, Object &ob, Span<bke::pbvh::N
   if (cache.mirror_symmetry_pass == 0 && cache.radial_symmetry_pass == 0 &&
       (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(cache) || update_normal))
   {
-    cache.sculpt_normal = calc_sculpt_normal(sd, ob, nodes);
+    cache.sculpt_normal = calc_sculpt_normal(depsgraph, sd, ob, nodes);
     if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
       project_plane_v3_v3v3(cache.sculpt_normal, cache.sculpt_normal, cache.view_normal);
       normalize_v3(cache.sculpt_normal);
@@ -2888,13 +2906,12 @@ static bool sculpt_needs_pbvh_pixels(PaintModeSettings &paint_mode_settings,
   return false;
 }
 
-static void sculpt_pbvh_update_pixels(PaintModeSettings &paint_mode_settings,
-                                      SculptSession &ss,
+static void sculpt_pbvh_update_pixels(const Depsgraph &depsgraph,
+                                      PaintModeSettings &paint_mode_settings,
                                       Object &ob)
 {
   using namespace blender;
   BLI_assert(ob.type == OB_MESH);
-  const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
 
   Image *image;
   ImageUser *image_user;
@@ -2902,7 +2919,7 @@ static void sculpt_pbvh_update_pixels(PaintModeSettings &paint_mode_settings,
     return;
   }
 
-  bke::pbvh::build_pixels(*ss.pbvh, mesh, *image, *image_user);
+  bke::pbvh::build_pixels(depsgraph, ob, *image, *image_user);
 }
 
 /** \} */
@@ -2918,6 +2935,7 @@ struct SculptRaycastData {
   bool hit;
   float depth;
   bool original;
+  Span<blender::float3> vert_positions;
   Span<int> corner_verts;
   Span<blender::int3> corner_tris;
   Span<int> corner_tri_faces;
@@ -2938,6 +2956,7 @@ struct SculptFindNearestToRayData {
   float depth;
   float dist_sq_to_ray;
   bool original;
+  Span<float3> vert_positions;
   Span<int> corner_verts;
   Span<blender::int3> corner_tris;
   Span<int> corner_tri_faces;
@@ -3062,7 +3081,8 @@ bool SCULPT_tool_needs_all_pbvh_nodes(const Brush &brush)
 
 namespace blender::ed::sculpt_paint {
 
-void calc_brush_plane(const Brush &brush,
+void calc_brush_plane(const Depsgraph &depsgraph,
+                      const Brush &brush,
                       Object &ob,
                       Span<bke::pbvh::Node *> nodes,
                       float3 &r_area_no,
@@ -3095,7 +3115,7 @@ void calc_brush_plane(const Brush &brush,
         break;
 
       case SCULPT_DISP_DIR_AREA:
-        calc_area_normal_and_center(brush, ob, nodes, r_area_no, r_area_co);
+        calc_area_normal_and_center(depsgraph, brush, ob, nodes, r_area_no, r_area_co);
         if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
           project_plane_v3_v3v3(r_area_no, r_area_no, ss.cache->view_normal);
           normalize_v3(r_area_no);
@@ -3109,7 +3129,7 @@ void calc_brush_plane(const Brush &brush,
     /* For flatten center. */
     /* Flatten center has not been calculated yet if we are not using the area normal. */
     if (brush.sculpt_plane != SCULPT_DISP_DIR_AREA) {
-      calc_area_center(brush, ob, nodes, r_area_co);
+      calc_area_center(depsgraph, brush, ob, nodes, r_area_co);
     }
 
     /* For area normal. */
@@ -3216,7 +3236,8 @@ void SCULPT_vertcos_to_key(Object &ob, KeyBlock *kb, const Span<float3> vertCos)
 
 namespace blender::ed::sculpt_paint {
 
-static void sculpt_topology_update(const Scene & /*scene*/,
+static void sculpt_topology_update(const Depsgraph &depsgraph,
+                                   const Scene & /*scene*/,
                                    const Sculpt &sd,
                                    Object &ob,
                                    const Brush &brush,
@@ -3255,8 +3276,11 @@ static void sculpt_topology_update(const Scene & /*scene*/,
   }
 
   for (bke::pbvh::Node *node : nodes) {
-    undo::push_node(
-        ob, node, brush.sculpt_tool == SCULPT_TOOL_MASK ? undo::Type::Mask : undo::Type::Position);
+    undo::push_node(depsgraph,
+                    ob,
+                    node,
+                    brush.sculpt_tool == SCULPT_TOOL_MASK ? undo::Type::Mask :
+                                                            undo::Type::Position);
     BKE_pbvh_node_mark_update(node);
 
     BKE_pbvh_node_mark_topology_update(node);
@@ -3277,7 +3301,10 @@ static void sculpt_topology_update(const Scene & /*scene*/,
   mul_m4_v3(ob.object_to_world().ptr(), location);
 }
 
-static void push_undo_nodes(Object &ob, const Brush &brush, const Span<bke::pbvh::Node *> nodes)
+static void push_undo_nodes(const Depsgraph &depsgraph,
+                            Object &ob,
+                            const Brush &brush,
+                            const Span<bke::pbvh::Node *> nodes)
 {
   SculptSession &ss = *ob.sculpt;
 
@@ -3293,11 +3320,11 @@ static void push_undo_nodes(Object &ob, const Brush &brush, const Span<bke::pbvh
       need_coords = true;
     }
     else {
-      undo::push_nodes(ob, nodes, undo::Type::FaceSet);
+      undo::push_nodes(depsgraph, ob, nodes, undo::Type::FaceSet);
     }
   }
   else if (brush.sculpt_tool == SCULPT_TOOL_MASK) {
-    undo::push_nodes(ob, nodes, undo::Type::Mask);
+    undo::push_nodes(depsgraph, ob, nodes, undo::Type::Mask);
     for (bke::pbvh::Node *node : nodes) {
       BKE_pbvh_node_mark_update_mask(node);
     }
@@ -3309,7 +3336,7 @@ static void push_undo_nodes(Object &ob, const Brush &brush, const Span<bke::pbvh
         BKE_pbvh_ensure_node_face_corners(*ss.pbvh, mesh.corner_tris());
       }
     }
-    undo::push_nodes(ob, nodes, undo::Type::Color);
+    undo::push_nodes(depsgraph, ob, nodes, undo::Type::Color);
     for (bke::pbvh::Node *node : nodes) {
       BKE_pbvh_node_mark_update_color(node);
     }
@@ -3319,14 +3346,15 @@ static void push_undo_nodes(Object &ob, const Brush &brush, const Span<bke::pbvh
   }
 
   if (need_coords) {
-    undo::push_nodes(ob, nodes, undo::Type::Position);
+    undo::push_nodes(depsgraph, ob, nodes, undo::Type::Position);
     for (bke::pbvh::Node *node : nodes) {
       BKE_pbvh_node_mark_positions_update(node);
     }
   }
 }
 
-static void do_brush_action(const Scene &scene,
+static void do_brush_action(const Depsgraph &depsgraph,
+                            const Scene &scene,
                             const Sculpt &sd,
                             Object &ob,
                             const Brush &brush,
@@ -3341,7 +3369,7 @@ static void do_brush_action(const Scene &scene,
   const bool use_pixels = sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob);
 
   if (sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob)) {
-    sculpt_pbvh_update_pixels(paint_mode_settings, ss, ob);
+    sculpt_pbvh_update_pixels(depsgraph, paint_mode_settings, ob);
 
     texnodes = sculpt_pbvh_gather_texpaint(ob, brush, use_original, 1.0f);
 
@@ -3400,7 +3428,7 @@ static void do_brush_action(const Scene &scene,
     if (SCULPT_stroke_is_first_brush_step(*ss.cache)) {
       /* Initialize auto-masking cache. */
       if (auto_mask::is_enabled(sd, &ss, &brush)) {
-        ss.cache->automasking = auto_mask::cache_init(sd, &brush, ob);
+        ss.cache->automasking = auto_mask::cache_init(depsgraph, sd, &brush, ob);
         ss.last_automasking_settings_hash = auto_mask::settings_hash(ob, *ss.cache->automasking);
       }
       /* Initialize surface smooth cache. */
@@ -3421,24 +3449,25 @@ static void do_brush_action(const Scene &scene,
   float location[3];
 
   if (!use_pixels) {
-    push_undo_nodes(ob, brush, nodes);
+    push_undo_nodes(depsgraph, ob, brush, nodes);
   }
 
   if (sculpt_brush_needs_normal(ss, sd, brush)) {
-    update_sculpt_normal(sd, ob, nodes);
+    update_sculpt_normal(depsgraph, sd, ob, nodes);
   }
 
   update_brush_local_mat(sd, ob);
 
   if (brush.sculpt_tool == SCULPT_TOOL_POSE && SCULPT_stroke_is_first_brush_step(*ss.cache)) {
-    pose::pose_brush_init(ob, ss, brush);
+    pose::pose_brush_init(depsgraph, ob, ss, brush);
   }
 
   if (brush.deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM) {
     if (!ss.cache->cloth_sim) {
-      ss.cache->cloth_sim = cloth::brush_simulation_create(ob, 1.0f, 0.0f, 0.0f, false, true);
+      ss.cache->cloth_sim = cloth::brush_simulation_create(
+          depsgraph, ob, 1.0f, 0.0f, 0.0f, false, true);
     }
-    cloth::brush_store_simulation_state(ss, *ss.cache->cloth_sim);
+    cloth::brush_store_simulation_state(depsgraph, ob, *ss.cache->cloth_sim);
     cloth::ensure_nodes_constraints(
         sd, ob, nodes, *ss.cache->cloth_sim, ss.cache->location, FLT_MAX);
   }
@@ -3454,10 +3483,10 @@ static void do_brush_action(const Scene &scene,
       const bool use_vector_displacement = (brush.flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
                                             (brush.mtex.brush_map_mode == MTEX_MAP_MODE_AREA));
       if (use_vector_displacement) {
-        do_draw_vector_displacement_brush(sd, ob, nodes);
+        do_draw_vector_displacement_brush(depsgraph, sd, ob, nodes);
       }
       else {
-        do_draw_brush(sd, ob, nodes);
+        do_draw_brush(depsgraph, sd, ob, nodes);
       }
       break;
     }
@@ -3469,129 +3498,129 @@ static void do_brush_action(const Scene &scene,
          * enhance brush in the middle of the stroke. */
         if (ss.cache->bstrength < 0.0f) {
           /* Invert mode, intensify details. */
-          do_enhance_details_brush(sd, ob, nodes);
+          do_enhance_details_brush(depsgraph, sd, ob, nodes);
         }
         else {
-          do_smooth_brush(sd, ob, nodes, std::clamp(ss.cache->bstrength, 0.0f, 1.0f));
+          do_smooth_brush(depsgraph, sd, ob, nodes, std::clamp(ss.cache->bstrength, 0.0f, 1.0f));
         }
       }
       else if (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE) {
-        do_surface_smooth_brush(sd, ob, nodes);
+        do_surface_smooth_brush(depsgraph, sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_CREASE:
-      do_crease_brush(scene, sd, ob, nodes);
+      do_crease_brush(depsgraph, scene, sd, ob, nodes);
       break;
     case SCULPT_TOOL_BLOB:
-      do_blob_brush(scene, sd, ob, nodes);
+      do_blob_brush(depsgraph, scene, sd, ob, nodes);
       break;
     case SCULPT_TOOL_PINCH:
-      do_pinch_brush(sd, ob, nodes);
+      do_pinch_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_INFLATE:
-      do_inflate_brush(sd, ob, nodes);
+      do_inflate_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_GRAB:
-      do_grab_brush(sd, ob, nodes);
+      do_grab_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_ROTATE:
-      do_rotate_brush(sd, ob, nodes);
+      do_rotate_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_SNAKE_HOOK:
-      do_snake_hook_brush(sd, ob, nodes);
+      do_snake_hook_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_NUDGE:
-      do_nudge_brush(sd, ob, nodes);
+      do_nudge_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_THUMB:
-      do_thumb_brush(sd, ob, nodes);
+      do_thumb_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_LAYER:
-      do_layer_brush(sd, ob, nodes);
+      do_layer_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_FLATTEN:
-      do_flatten_brush(sd, ob, nodes);
+      do_flatten_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLAY:
-      do_clay_brush(sd, ob, nodes);
+      do_clay_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLAY_STRIPS:
-      do_clay_strips_brush(sd, ob, nodes);
+      do_clay_strips_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_MULTIPLANE_SCRAPE:
-      do_multiplane_scrape_brush(sd, ob, nodes);
+      do_multiplane_scrape_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLAY_THUMB:
-      do_clay_thumb_brush(sd, ob, nodes);
+      do_clay_thumb_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_FILL:
       if (invert && brush.flag & BRUSH_INVERT_TO_SCRAPE_FILL) {
-        do_scrape_brush(sd, ob, nodes);
+        do_scrape_brush(depsgraph, sd, ob, nodes);
       }
       else {
-        do_fill_brush(sd, ob, nodes);
+        do_fill_brush(depsgraph, sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_SCRAPE:
       if (invert && brush.flag & BRUSH_INVERT_TO_SCRAPE_FILL) {
-        do_fill_brush(sd, ob, nodes);
+        do_fill_brush(depsgraph, sd, ob, nodes);
       }
       else {
-        do_scrape_brush(sd, ob, nodes);
+        do_scrape_brush(depsgraph, sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_MASK:
       switch ((BrushMaskTool)brush.mask_tool) {
         case BRUSH_MASK_DRAW:
-          do_mask_brush(sd, ob, nodes);
+          do_mask_brush(depsgraph, sd, ob, nodes);
           break;
         case BRUSH_MASK_SMOOTH:
-          do_smooth_mask_brush(sd, ob, nodes, ss.cache->bstrength);
+          do_smooth_mask_brush(depsgraph, sd, ob, nodes, ss.cache->bstrength);
           break;
       }
       break;
     case SCULPT_TOOL_POSE:
-      pose::do_pose_brush(sd, ob, nodes);
+      pose::do_pose_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_DRAW_SHARP:
-      do_draw_sharp_brush(sd, ob, nodes);
+      do_draw_sharp_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_ELASTIC_DEFORM:
-      do_elastic_deform_brush(sd, ob, nodes);
+      do_elastic_deform_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_SLIDE_RELAX:
       if (ss.cache->alt_smooth) {
-        do_topology_relax_brush(sd, ob, nodes);
+        do_topology_relax_brush(depsgraph, sd, ob, nodes);
       }
       else {
-        do_topology_slide_brush(sd, ob, nodes);
+        do_topology_slide_brush(depsgraph, sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_BOUNDARY:
-      boundary::do_boundary_brush(sd, ob, nodes);
+      boundary::do_boundary_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_CLOTH:
-      cloth::do_cloth_brush(sd, ob, nodes);
+      cloth::do_cloth_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_DRAW_FACE_SETS:
       if (!ss.cache->alt_smooth) {
-        do_draw_face_sets_brush(sd, ob, nodes);
+        do_draw_face_sets_brush(depsgraph, sd, ob, nodes);
       }
       else {
-        do_relax_face_sets_brush(sd, ob, nodes);
+        do_relax_face_sets_brush(depsgraph, sd, ob, nodes);
       }
       break;
     case SCULPT_TOOL_DISPLACEMENT_ERASER:
-      do_displacement_eraser_brush(sd, ob, nodes);
+      do_displacement_eraser_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_DISPLACEMENT_SMEAR:
-      do_displacement_smear_brush(sd, ob, nodes);
+      do_displacement_smear_brush(depsgraph, sd, ob, nodes);
       break;
     case SCULPT_TOOL_PAINT:
-      color::do_paint_brush(paint_mode_settings, sd, ob, nodes, texnodes);
+      color::do_paint_brush(depsgraph, paint_mode_settings, sd, ob, nodes, texnodes);
       break;
     case SCULPT_TOOL_SMEAR:
-      color::do_smear_brush(sd, ob, nodes);
+      color::do_smear_brush(depsgraph, sd, ob, nodes);
       break;
   }
 
@@ -3599,15 +3628,16 @@ static void do_brush_action(const Scene &scene,
       brush.autosmooth_factor > 0)
   {
     if (brush.flag & BRUSH_INVERSE_SMOOTH_PRESSURE) {
-      do_smooth_brush(sd, ob, nodes, brush.autosmooth_factor * (1.0f - ss.cache->pressure));
+      do_smooth_brush(
+          depsgraph, sd, ob, nodes, brush.autosmooth_factor * (1.0f - ss.cache->pressure));
     }
     else {
-      do_smooth_brush(sd, ob, nodes, brush.autosmooth_factor);
+      do_smooth_brush(depsgraph, sd, ob, nodes, brush.autosmooth_factor);
     }
   }
 
   if (sculpt_brush_use_topology_rake(ss, brush)) {
-    do_bmesh_topology_rake_brush(sd, ob, nodes, brush.topology_rake_factor);
+    do_bmesh_topology_rake_brush(depsgraph, sd, ob, nodes, brush.topology_rake_factor);
   }
 
   if (!auto_mask::tool_can_reuse_automask(brush.sculpt_tool) ||
@@ -3622,13 +3652,13 @@ static void do_brush_action(const Scene &scene,
       !ELEM(
           brush.sculpt_tool, SCULPT_TOOL_CLOTH, SCULPT_TOOL_DRAW_FACE_SETS, SCULPT_TOOL_BOUNDARY))
   {
-    do_gravity_brush(sd, ob, nodes);
+    do_gravity_brush(depsgraph, sd, ob, nodes);
   }
 
   if (brush.deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM) {
     if (SCULPT_stroke_is_main_symmetry_pass(*ss.cache)) {
       cloth::sim_activate_nodes(*ss.cache->cloth_sim, nodes);
-      cloth::do_simulation_step(sd, ob, *ss.cache->cloth_sim, nodes);
+      cloth::do_simulation_step(depsgraph, sd, ob, *ss.cache->cloth_sim, nodes);
     }
   }
 
@@ -3698,14 +3728,16 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
 
 namespace blender::ed::sculpt_paint {
 
-using BrushActionFunc = void (*)(const Scene &scene,
+using BrushActionFunc = void (*)(const Depsgraph &depsgraph,
+                                 const Scene &scene,
                                  const Sculpt &sd,
                                  Object &ob,
                                  const Brush &brush,
                                  UnifiedPaintSettings &ups,
                                  PaintModeSettings &paint_mode_settings);
 
-static void do_tiled(const Scene &scene,
+static void do_tiled(const Depsgraph &depsgraph,
+                     const Scene &scene,
                      const Sculpt &sd,
                      Object &ob,
                      const Brush &brush,
@@ -3745,7 +3777,7 @@ static void do_tiled(const Scene &scene,
 
   /* First do the "un-tiled" position to initialize the stroke for this location. */
   cache->tile_pass = 0;
-  action(scene, sd, ob, brush, ups, paint_mode_settings);
+  action(depsgraph, scene, sd, ob, brush, ups, paint_mode_settings);
 
   /* Now do it for all the tiles. */
   copy_v3_v3_int(cur, start);
@@ -3764,13 +3796,14 @@ static void do_tiled(const Scene &scene,
           cache->plane_offset[dim] = cur[dim] * step[dim];
           cache->initial_location[dim] = cur[dim] * step[dim] + original_initial_location[dim];
         }
-        action(scene, sd, ob, brush, ups, paint_mode_settings);
+        action(depsgraph, scene, sd, ob, brush, ups, paint_mode_settings);
       }
     }
   }
 }
 
-static void do_radial_symmetry(const Scene &scene,
+static void do_radial_symmetry(const Depsgraph &depsgraph,
+                               const Scene &scene,
                                const Sculpt &sd,
                                Object &ob,
                                const Brush &brush,
@@ -3787,7 +3820,7 @@ static void do_radial_symmetry(const Scene &scene,
     const float angle = 2.0f * M_PI * i / sd.radial_symm[axis - 'X'];
     ss.cache->radial_symmetry_pass = i;
     SCULPT_cache_calc_brushdata_symm(*ss.cache, symm, axis, angle);
-    do_tiled(scene, sd, ob, brush, ups, paint_mode_settings, action);
+    do_tiled(depsgraph, scene, sd, ob, brush, ups, paint_mode_settings, action);
   }
 }
 
@@ -3806,7 +3839,8 @@ static void sculpt_fix_noise_tear(const Sculpt &sd, Object &ob)
   }
 }
 
-static void do_symmetrical_brush_actions(const Scene &scene,
+static void do_symmetrical_brush_actions(const Depsgraph &depsgraph,
+                                         const Scene &scene,
                                          const Sculpt &sd,
                                          Object &ob,
                                          const BrushActionFunc action,
@@ -3834,11 +3868,14 @@ static void do_symmetrical_brush_actions(const Scene &scene,
     cache.radial_symmetry_pass = 0;
 
     SCULPT_cache_calc_brushdata_symm(cache, symm, 0, 0);
-    do_tiled(scene, sd, ob, brush, ups, paint_mode_settings, action);
+    do_tiled(depsgraph, scene, sd, ob, brush, ups, paint_mode_settings, action);
 
-    do_radial_symmetry(scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'X', feather);
-    do_radial_symmetry(scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'Y', feather);
-    do_radial_symmetry(scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'Z', feather);
+    do_radial_symmetry(
+        depsgraph, scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'X', feather);
+    do_radial_symmetry(
+        depsgraph, scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'Y', feather);
+    do_radial_symmetry(
+        depsgraph, scene, sd, ob, brush, ups, paint_mode_settings, action, symm, 'Z', feather);
   }
 }
 
@@ -4315,7 +4352,8 @@ static bool sculpt_needs_delta_for_tip_orientation(const Brush &brush)
               SCULPT_TOOL_SNAKE_HOOK);
 }
 
-static void sculpt_update_brush_delta(UnifiedPaintSettings &ups,
+static void sculpt_update_brush_delta(const Depsgraph &depsgraph,
+                                      UnifiedPaintSettings &ups,
                                       const Object &ob,
                                       const Brush &brush)
 {
@@ -4351,11 +4389,11 @@ static void sculpt_update_brush_delta(UnifiedPaintSettings &ups,
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
     if (tool == SCULPT_TOOL_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
       if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
-        const Span<float3> positions = vert_positions_for_grab_active_get(ob);
+        const Span<float3> positions = vert_positions_for_grab_active_get(depsgraph, ob);
         cache->orig_grab_location = positions[std::get<int>(ss.active_vert())];
       }
       else {
-        cache->orig_grab_location = ss.active_vert_position(ob);
+        cache->orig_grab_location = ss.active_vert_position(depsgraph, ob);
       }
     }
     else {
@@ -4529,6 +4567,7 @@ static void sculpt_update_cache_paint_variants(StrokeCache &cache, const Brush &
 static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, PointerRNA *ptr)
 {
   Scene &scene = *CTX_data_scene(C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   UnifiedPaintSettings &ups = scene.toolsettings->unified_paint_settings;
   SculptSession &ss = *ob.sculpt;
   StrokeCache &cache = *ss.cache;
@@ -4610,7 +4649,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, Po
     copy_v3_v3(cache.anchored_location, cache.true_location);
   }
 
-  sculpt_update_brush_delta(ups, ob, brush);
+  sculpt_update_brush_delta(depsgraph, ups, ob, brush);
 
   if (brush.sculpt_tool == SCULPT_TOOL_ROTATE) {
     cache.vertex_rotation = -BLI_dial_angle(cache.dial, cache.mouse) * cache.bstrength;
@@ -4693,6 +4732,7 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
                               node,
                               origco,
                               use_origco,
+                              srd.vert_positions,
                               srd.corner_verts,
                               srd.corner_tris,
                               srd.corner_tri_faces,
@@ -4738,6 +4778,7 @@ static void sculpt_find_nearest_to_ray_cb(blender::bke::pbvh::Node &node,
                                           node,
                                           origco,
                                           use_origco,
+                                          srd.vert_positions,
                                           srd.corner_verts,
                                           srd.corner_tris,
                                           srd.corner_tri_faces,
@@ -4834,6 +4875,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   srd.hit = false;
   if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
     const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    srd.vert_positions = bke::pbvh::vert_positions_eval(*depsgraph, ob);
     srd.corner_verts = mesh.corner_verts();
     srd.corner_tris = mesh.corner_tris();
     srd.corner_tri_faces = mesh.corner_tri_faces();
@@ -4865,7 +4907,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   const PBVHVertRef active_vertex = srd.active_vertex;
   ss.set_active_vert(active_vertex);
   SCULPT_vertex_random_access_ensure(ss);
-  copy_v3_v3(out->active_vertex_co, SCULPT_vertex_co_get(ss, active_vertex));
+  copy_v3_v3(out->active_vertex_co, SCULPT_vertex_co_get(*depsgraph, ob, active_vertex));
 
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -4924,7 +4966,8 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   }
 
   /* Calculate the sampled normal. */
-  if (const std::optional<float3> sampled_normal = calc_area_normal(brush, ob, nodes)) {
+  if (const std::optional<float3> sampled_normal = calc_area_normal(*depsgraph, brush, ob, nodes))
+  {
     copy_v3_v3(out->normal, *sampled_normal);
     copy_v3_v3(ss.cursor_sampled_normal, *sampled_normal);
   }
@@ -4986,6 +5029,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
     srd.hit = false;
     if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+      srd.vert_positions = bke::pbvh::vert_positions_eval(*depsgraph, ob);
       srd.corner_verts = mesh.corner_verts();
       srd.corner_tris = mesh.corner_tris();
       srd.corner_tri_faces = mesh.corner_tri_faces();
@@ -5021,6 +5065,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
   srd.hit = false;
   if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
     const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+    srd.vert_positions = bke::pbvh::vert_positions_eval(*depsgraph, ob);
     srd.corner_verts = mesh.corner_verts();
     srd.corner_tris = mesh.corner_tris();
     srd.corner_tri_faces = mesh.corner_tri_faces();
@@ -5098,7 +5143,7 @@ static void sculpt_brush_stroke_init(bContext *C)
   ED_paint_tool_update_sticky_shading_color(C, &ob);
 }
 
-static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
+static void sculpt_restore_mesh(const Depsgraph &depsgraph, const Sculpt &sd, Object &ob)
 {
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
@@ -5117,7 +5162,7 @@ static void sculpt_restore_mesh(const Sculpt &sd, Object &ob)
       (brush->flag & BRUSH_DRAG_DOT))
   {
 
-    undo::restore_from_undo_step(sd, ob);
+    undo::restore_from_undo_step(depsgraph, sd, ob);
 
     if (ss.cache) {
       ss.cache->layer_displacement_factor = {};
@@ -5173,7 +5218,7 @@ void flush_update_step(bContext *C, UpdateType update_type)
     rcti r;
 
     if (update_type == UpdateType::Position) {
-      bke::pbvh::update_bounds(ob, *ss.pbvh);
+      bke::pbvh::update_bounds(depsgraph, ob, *ss.pbvh);
     }
 
     RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -5415,6 +5460,7 @@ static void sculpt_stroke_update_step(bContext *C,
 {
   UnifiedPaintSettings &ups = CTX_data_tool_settings(C)->unified_paint_settings;
   const Scene &scene = *CTX_data_scene(C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.sculpt;
@@ -5425,7 +5471,7 @@ static void sculpt_stroke_update_step(bContext *C,
 
   SCULPT_stroke_modifiers_check(C, ob, brush);
   sculpt_update_cache_variants(C, sd, ob, itemptr);
-  sculpt_restore_mesh(sd, ob);
+  sculpt_restore_mesh(depsgraph, sd, ob);
 
   if (sd.flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL)) {
     BKE_pbvh_bmesh_detail_size_set(
@@ -5444,10 +5490,11 @@ static void sculpt_stroke_update_step(bContext *C,
 
   if (dyntopo::stroke_is_dyntopo(ss, brush)) {
     do_symmetrical_brush_actions(
-        scene, sd, ob, sculpt_topology_update, ups, tool_settings.paint_mode);
+        depsgraph, scene, sd, ob, sculpt_topology_update, ups, tool_settings.paint_mode);
   }
 
-  do_symmetrical_brush_actions(scene, sd, ob, do_brush_action, ups, tool_settings.paint_mode);
+  do_symmetrical_brush_actions(
+      depsgraph, scene, sd, ob, do_brush_action, ups, tool_settings.paint_mode);
 
   /* Hack to fix noise texture tearing mesh. */
   sculpt_fix_noise_tear(sd, ob);
@@ -5632,6 +5679,7 @@ static int sculpt_brush_stroke_exec(bContext *C, wmOperator *op)
 static void sculpt_brush_stroke_cancel(bContext *C, wmOperator *op)
 {
   using namespace blender::ed::sculpt_paint;
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.sculpt;
   Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
@@ -5640,7 +5688,7 @@ static void sculpt_brush_stroke_cancel(bContext *C, wmOperator *op)
   /* XXX Canceling strokes that way does not work with dynamic topology,
    *     user will have to do real undo for now. See #46456. */
   if (ss.cache && !dyntopo::stroke_is_dyntopo(ss, brush)) {
-    undo::restore_from_undo_step(sd, ob);
+    undo::restore_from_undo_step(depsgraph, sd, ob);
   }
 
   paint_stroke_cancel(C, op, static_cast<PaintStroke *>(op->customdata));
@@ -5840,12 +5888,13 @@ static void fake_neighbor_search_bmesh(const SculptSession &ss,
   }
 }
 
-static PBVHVertRef fake_neighbor_search(Object &ob,
+static PBVHVertRef fake_neighbor_search(const Depsgraph &depsgraph,
+                                        Object &ob,
                                         const PBVHVertRef vertex,
                                         float max_distance_sq)
 {
   SculptSession &ss = *ob.sculpt;
-  const float3 location = SCULPT_vertex_co_get(ss, vertex);
+  const float3 location = SCULPT_vertex_co_get(depsgraph, ob, vertex);
   Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
     return node_in_sphere(node, location, max_distance_sq, false);
   });
@@ -5861,7 +5910,7 @@ static PBVHVertRef fake_neighbor_search(Object &ob,
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-      const Span<float3> vert_positions = BKE_pbvh_get_vert_positions(*ss.pbvh);
+      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, ob);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert",
                                                                   bke::AttrDomain::Point);
@@ -5964,7 +6013,7 @@ void ensure_boundary_info(Object &object)
 
 }  // namespace blender::ed::sculpt_paint::boundary
 
-void SCULPT_fake_neighbors_ensure(Object &ob, const float max_dist)
+void SCULPT_fake_neighbors_ensure(const Depsgraph &depsgraph, Object &ob, const float max_dist)
 {
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
@@ -5990,7 +6039,7 @@ void SCULPT_fake_neighbors_ensure(Object &ob, const float max_dist)
 
     /* This vertex does not have a fake neighbor yet, search one for it. */
     if (ss.fake_neighbors.fake_neighbor_index[i] == FAKE_NEIGHBOR_NONE) {
-      const PBVHVertRef to_v = fake_neighbor_search(ob, from_v, max_distance_sq);
+      const PBVHVertRef to_v = fake_neighbor_search(depsgraph, ob, from_v, max_distance_sq);
       if (to_v.i != PBVH_REF_NONE) {
         /* Add the fake neighbor if available. */
         fake_neighbor_add(ss, from_v, to_v);
@@ -7134,21 +7183,23 @@ void update_shape_keys(Object &object,
   }
 }
 
-void apply_translations_to_pbvh(bke::pbvh::Tree &pbvh,
-                                Span<int> verts,
+void apply_translations_to_pbvh(const Depsgraph &depsgraph,
+                                Object &object,
+                                const Span<int> verts,
                                 const Span<float3> translations)
 {
-  if (!BKE_pbvh_is_deformed(pbvh)) {
+  if (!BKE_pbvh_is_deformed(*object.sculpt->pbvh)) {
     return;
   }
-  MutableSpan<float3> pbvh_positions = BKE_pbvh_get_vert_positions(pbvh);
+  MutableSpan<float3> pbvh_positions = bke::pbvh::vert_positions_eval_for_write(depsgraph, object);
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     pbvh_positions[vert] += translations[i];
   }
 }
 
-void write_translations(const Sculpt &sd,
+void write_translations(const Depsgraph &depsgraph,
+                        const Sculpt &sd,
                         Object &object,
                         const Span<float3> positions_eval,
                         const Span<int> verts,
@@ -7159,7 +7210,7 @@ void write_translations(const Sculpt &sd,
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
-  apply_translations_to_pbvh(*ss.pbvh, verts, translations);
+  apply_translations_to_pbvh(depsgraph, object, verts, translations);
 
   if (!ss.deform_imats.is_empty()) {
     apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
