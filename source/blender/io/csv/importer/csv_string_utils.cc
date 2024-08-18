@@ -34,7 +34,7 @@ StringRef read_next_line(StringRef &buffer)
   }
 
   buffer = StringRef(ptr, end);
-  return StringRef(start, len);
+  return StringRef(start, len - 1);
 }
 
 static bool is_whitespace(char c)
