@@ -1393,6 +1393,7 @@ void BKE_nodetree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index
 #define GEO_NODE_PHYSICS_APPLY_TORQUE 2163
 #define GEO_NODE_PHYSICS_APPLY_IMPULSE 2164
 #define GEO_NODE_PHYSICS_APPLY_ANGULAR_IMPULSE 2165
+#define GEO_NODE_COLLISION_SHAPE_INERTIA 2166
 
 /** \} */
 

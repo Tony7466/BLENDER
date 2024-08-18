@@ -314,6 +314,7 @@ DefNode(GeometryNode, GEO_NODE_BOUNDING_BOX, 0, "BOUNDING_BOX", BoundBox, "Bound
 DefNode(GeometryNode, GEO_NODE_CAPTURE_ATTRIBUTE, rna_def_geo_capture_attribute, "CAPTURE_ATTRIBUTE", CaptureAttribute, "Capture Attribute", "Store the result of a field on a geometry and output the data as a node socket. Allows remembering or interpolating data as the geometry changes, such as positions before deformation")
 DefNode(GeometryNode, GEO_NODE_COLLECTION_INFO, 0, "COLLECTION_INFO", CollectionInfo, "Collection Info", "Retrieve geometry instances from a collection")
 DefNode(GeometryNode, GEO_NODE_COLLISION_SHAPE, 0, "COLLISION_SHAPE", CollisionShape, "Collision Shape", "Collision shape for a physics body")
+DefNode(GeometryNode, GEO_NODE_COLLISION_SHAPE_INERTIA, 0, "COLLISION_SHAPE_INERTIA", CollisionShapeInertia, "Collision Shape Inertia", "Compute local moment of inertia of collision shapes")
 DefNode(GeometryNode, GEO_NODE_CONVEX_HULL, 0, "CONVEX_HULL", ConvexHull, "Convex Hull", "Create a mesh that encloses all points in the input geometry with the smallest number of points")
 DefNode(GeometryNode, GEO_NODE_CURVE_ENDPOINT_SELECTION, 0, "CURVE_ENDPOINT_SELECTION", CurveEndpointSelection, "Endpoint Selection", "Provide a selection for an arbitrary number of endpoints in each spline")
 DefNode(GeometryNode, GEO_NODE_CURVE_HANDLE_TYPE_SELECTION, def_geo_curve_handle_type_selection, "CURVE_HANDLE_TYPE_SELECTION", CurveHandleTypeSelection, "Handle Type Selection", "Provide a selection based on the handle types of Bézier control points")

@@ -538,6 +538,7 @@ class NODE_MT_category_simulation(Menu):
         layout = self.layout
         node_add_menu.add_simulation_zone(layout, label="Simulation Zone")
         node_add_menu.add_node_type(layout, "GeometryNodeCollisionShape")
+        node_add_menu.add_node_type(layout, "GeometryNodeCollisionShapeInertia")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyAngularImpulse")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyForce")
         node_add_menu.add_node_type(layout, "GeometryNodePhysicsApplyImpulse")
