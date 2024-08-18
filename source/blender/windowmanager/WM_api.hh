@@ -379,8 +379,8 @@ void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title = nul
 bool WM_stereo3d_enabled(wmWindow *win, bool skip_stereo3d_check);
 
 /** Client-Side Window Decorations (CSD). */
-/* Flags for WM_window_decoration_set_style().
- * NOTE: To be kept in sync with GHOST_TWindowDecorationFlags. */
+/* Flags for #WM_window_decoration_set_style().
+ * NOTE: To be kept in sync with #GHOST_TWindowDecorationFlags. */
 enum eWM_DecorationStyleFlag {
   /** No Decorations / System Decorations. */
   WM_DECORATION_NONE = 0,
