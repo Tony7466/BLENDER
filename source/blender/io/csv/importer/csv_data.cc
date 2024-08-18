@@ -14,7 +14,8 @@ namespace blender::io::csv {
 CsvData::CsvData(int64_t row_count,
                  Vector<std::string> column_names,
                  Vector<CsvColumnType> column_types)
-    : row_count(row_count),
+    : data(column_names.size()),
+      row_count(row_count),
       column_count(column_names.size()),
       column_names(column_names.as_span()),
       column_types(column_types.as_span())
