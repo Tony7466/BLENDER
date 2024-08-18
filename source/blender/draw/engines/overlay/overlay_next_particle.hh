@@ -114,7 +114,7 @@ class Particles {
             break;
           }
           geom = DRW_cache_particles_get_hair(ob, psys, nullptr);
-          hair_ps_->push_constant("useColoring", true);
+          hair_ps_->push_constant("useColoring", true); /* TODO */
           hair_ps_->draw(geom, handle, res.select_id(ob_ref).get());
           break;
         case PART_DRAW_NOT:

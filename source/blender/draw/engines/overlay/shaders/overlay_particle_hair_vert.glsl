@@ -100,11 +100,11 @@ void main()
   float facing = clamp(abs(dot(ws_N, drw_world_incident_vector(ws_P))), 0.0, 1.0);
 
   /* Do interpolation in a non-linear space to have a better visual result. */
-  rim_col = square(rim_col);
-  wire_col = square(wire_col);
+  rim_col = sqrt(rim_col);
+  wire_col = sqrt(wire_col);
   vec3 final_front_col = mix(rim_col, wire_col, 0.35);
   finalColor.rgb = mix(rim_col, final_front_col, facing);
-  finalColor.rgb = sqrt(finalColor.rgb);
+  finalColor.rgb = square(finalColor.rgb);
   finalColor.a = 1.0;
 
   view_clipping_distances(ws_P);
