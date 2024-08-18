@@ -11,6 +11,7 @@
 #include "overlay_next_private.hh"
 
 #include "overlay_next_antialiasing.hh"
+#include "overlay_next_armature.hh"
 #include "overlay_next_background.hh"
 #include "overlay_next_bounds.hh"
 #include "overlay_next_camera.hh"
@@ -55,6 +56,7 @@ class Instance {
 
   struct OverlayLayer {
     const SelectionType selection_type_;
+    Armatures armatures = {selection_type_};
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Empties empties = {selection_type_};

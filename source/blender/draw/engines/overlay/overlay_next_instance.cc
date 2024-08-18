@@ -90,6 +90,7 @@ void Instance::begin_sync()
   outline.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
+    layer.armatures.begin_sync(state);
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
     layer.empties.begin_sync();
@@ -140,6 +141,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.meshes.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_ARMATURE:
+        layer.armatures.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_CURVES_LEGACY:
         break;
@@ -167,6 +169,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.cameras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
+        layer.armatures.object_sync(manager, ob_ref, resources);
         break;
       case OB_LATTICE:
         if (!in_edit_mode) {
@@ -218,6 +221,7 @@ void Instance::end_sync()
   resources.end_sync();
 
   auto end_sync_layer = [&](OverlayLayer &layer) {
+    layer.armatures.end_sync(resources, shapes, state);
     layer.bounds.end_sync(resources, shapes, state);
     layer.cameras.end_sync(resources, shapes, state);
     layer.empties.end_sync(resources, shapes, state);
@@ -334,6 +338,7 @@ void Instance::draw(Manager &manager)
     layer.lattices.draw(framebuffer, manager, view);
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
+    layer.armatures.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 
