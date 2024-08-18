@@ -20,6 +20,7 @@ class OUTLINER_HT_header(Header):
         display_mode = space.display_mode
         scene = context.scene
         ks = context.scene.keying_sets.active
+        objs = bpy.context.selected_objects
 
         layout.template_header()
 
@@ -62,8 +63,12 @@ class OUTLINER_HT_header(Header):
             sub.active = space.use_filter_id_type
             sub.prop(space, "filter_id_type", text="", icon_only=True)
 
-        if display_mode == 'VIEW_LAYER':
-            layout.operator("outliner.collection_new", text="", icon='COLLECTION_NEW').nested = True
+        if display_mode == 'VIEW_LAYER': #need to make a new collection of selected objects from button
+            if len(objs) == 0:            
+                layout.operator("outliner.collection_new", text="", icon='COLLECTION_NEW').nested = True
+            else:            
+                layout.operator("object.move_to_collection", text="", icon='COLLECTION_NEW').nested = True
+                
 
         elif display_mode == 'ORPHAN_DATA':
             layout.operator("outliner.orphans_purge", text="Purge")
@@ -492,7 +497,7 @@ class OUTLINER_PT_filter(Panel):
             row = sub.row()
             row.label(icon='CAMERA_DATA')
             row.prop(space, "use_filter_object_camera", text="Cameras")
-        if bpy.data.grease_pencils_v3:
+        if bpy.data.grease_pencils:
             row = sub.row()
             row.label(icon='STROKE')
             row.prop(space, "use_filter_object_grease_pencil", text="Grease Pencil")
