@@ -81,6 +81,7 @@ static void scale_nearest(bool use_float)
     IMB_scalefastImBuf(img, DST_LARGER_X, DST_LARGER_Y);
     IMB_scalefastImBuf(img, SRC_X, SRC_Y);
     IMB_scalefastImBuf(img, DST_SMALLER_X, DST_SMALLER_Y);
+    IMB_scalefastImBuf(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -93,6 +94,7 @@ static void xform_nearest(bool use_float)
     imb_xform_nearest(img, DST_LARGER_X, DST_LARGER_Y);
     imb_xform_nearest(img, SRC_X, SRC_Y);
     imb_xform_nearest(img, DST_SMALLER_X, DST_SMALLER_Y);
+    imb_xform_nearest(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -102,9 +104,10 @@ static void xform_boxfilt(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("xform_boxfilt");
-    imb_xform_box(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
     imb_xform_box(img, SRC_X, SRC_Y);
     imb_xform_box(img, DST_SMALLER_X, DST_SMALLER_Y);
+    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -117,6 +120,7 @@ static void scale_bilinear_st(bool use_float)
     IMB_scaleImBuf(img, DST_LARGER_X, DST_LARGER_Y);
     IMB_scaleImBuf(img, SRC_X, SRC_Y);
     IMB_scaleImBuf(img, DST_SMALLER_X, DST_SMALLER_Y);
+    IMB_scaleImBuf(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -129,6 +133,7 @@ static void scale_bilinear(bool use_float)
     IMB_scaleImBuf_threaded(img, DST_LARGER_X, DST_LARGER_Y);
     IMB_scaleImBuf_threaded(img, SRC_X, SRC_Y);
     IMB_scaleImBuf_threaded(img, DST_SMALLER_X, DST_SMALLER_Y);
+    IMB_scaleImBuf_threaded(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -141,6 +146,7 @@ static void xform_bilinear(bool use_float)
     imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
     imb_xform_bilinear(img, SRC_X, SRC_Y);
     imb_xform_bilinear(img, DST_SMALLER_X, DST_SMALLER_Y);
+    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
