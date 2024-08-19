@@ -688,7 +688,7 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
                                        const Span<CollisionShapePtr> shapes,
                                        const Span<int> shape_handles)
 {
-  bool removed_body = false;
+  bool added_or_removed_body = false;
   selection.foreach_index([&](const int index) {
     const int handle = shape_handles[index];
     if (!shapes.index_range().contains(handle)) {
@@ -708,16 +708,23 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
     if (bt_shape == nullptr) {
       world_->removeRigidBody(body);
       body->setCollisionShape(nullptr);
-      removed_body = true;
+      added_or_removed_body = true;
     }
     else {
+      if (body->getCollisionShape() == nullptr) {
+        /* Tag the cache to make sure the body is added to the world. */
+        added_or_removed_body = true;
+      }
       /* Motion type and mass must be compatible with the shape. */
       const bool set_static = bt_shape->isNonMoving();
       if (set_static != was_static) {
         world_->removeRigidBody(body);
-        // this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
-        //    body->getBroadphaseProxy(), this->dispatcher_);
-        removed_body = true;
+        added_or_removed_body = true;
+      }
+      else {
+        /* No need to remove the body entirely, just clean up the pair cache to force an update. */
+        this->broadphase_->getOverlappingPairCache()->cleanProxyFromPairs(
+            body->getBroadphaseProxy(), this->dispatcher_);
       }
 
       if (set_static) {
@@ -728,7 +735,7 @@ void PhysicsWorldData::set_body_shapes(const IndexMask &selection,
       body->setCollisionShape(const_cast<btCollisionShape *>(bt_shape));
     }
   });
-  if (removed_body) {
+  if (added_or_removed_body) {
     this->tag_bodies_in_world();
   }
 }
