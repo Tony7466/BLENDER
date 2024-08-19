@@ -14,6 +14,8 @@
 
 #include "BKE_tracking.h"
 
+#include "BLI_math_rotation.h"
+
 #include "DNA_camera_types.h"
 
 #include "ED_view3d.hh"
