@@ -330,7 +330,7 @@ class BaseCryptoMatteOperation : public NodeOperation {
 
     /* Clear the matte to zero to ready it to accumulate the coverage. */
     const float4 zero_color = float4(0.0f);
-    GPU_texture_clear(output_matte.texture(), GPU_DATA_FLOAT, zero_color);
+    GPU_texture_clear(output_matte, GPU_DATA_FLOAT, zero_color);
 
     Vector<float> identifiers = get_identifiers();
     /* The user haven't selected any entities, return the currently zero matte. */
@@ -619,9 +619,9 @@ class CryptoMatteOperation : public BaseCryptoMatteOperation {
           continue;
         }
 
-        GPUTexture *pass_texture = context().cache_manager().cached_images.get(
+        Result *pass_result = context().cache_manager().cached_images.get(
             context(), image, &image_user_for_layer, render_pass->name);
-        layers.append(pass_texture);
+        layers.append(*pass_result);
       }
 
       /* If we already found Cryptomatte layers, no need to check other render layers. */
@@ -832,7 +832,7 @@ class LegacyCryptoMatteOperation : public BaseCryptoMatteOperation {
     Vector<GPUTexture *> layers;
     /* Add all textures of all inputs except the first input, which is the input image. */
     for (const bNodeSocket *socket : bnode().input_sockets().drop_front(1)) {
-      layers.append(get_input(socket->identifier).texture());
+      layers.append(get_input(socket->identifier));
     }
     return layers;
   }
