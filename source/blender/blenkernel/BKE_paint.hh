@@ -473,7 +473,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
 
   /**
    * Normals corresponding to the #deform_cos evaluated/deform positions. Stored as a #SharedCache
-   * for consistency with mesh caches.
+   * for consistency with mesh caches in #MeshRuntime::vert_normals_cache.
    */
   blender::SharedCache<blender::Vector<blender::float3>> vert_normals_deform;
   blender::SharedCache<blender::Vector<blender::float3>> face_normals_deform;
