@@ -20,6 +20,8 @@
 #include "BKE_paint.hh"
 #include "BKE_vfont.hh"
 
+#include "BLT_translation.hh"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_screen.hh"
@@ -29,6 +31,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+
+#include "UI_resources.hh"
 
 #include "view3d_intern.hh"
 
@@ -524,8 +528,30 @@ static eV3D_OpEvent view3d_navigate_event(ViewOpsData *vod, const wmEvent *event
     if (event->type == vod->init.event_type && event->val == KM_RELEASE) {
       return VIEW_CONFIRM;
     }
-    if (event->type == EVT_ESCKEY && event->val == KM_PRESS) {
-      return VIEW_CANCEL;
+    if (event->val == KM_PRESS) {
+      if (event->type == EVT_ESCKEY) {
+        return VIEW_CANCEL;
+      }
+      if (event->type == EVT_SKEY) {
+        vod->viewops_flag ^= VIEWOPS_FLAG_ORBIT_SELECT;
+        U.uiflag ^= USER_ORBIT_SELECTION;
+        U.runtime.is_dirty = true;
+      }
+      if (event->type == EVT_DKEY) {
+        vod->viewops_flag ^= VIEWOPS_FLAG_DEPTH_NAVIGATE;
+        U.uiflag ^= USER_DEPTH_NAVIGATE;
+        U.runtime.is_dirty = true;
+      }
+      if (event->type == EVT_PKEY) {
+        vod->viewops_flag ^= VIEWOPS_FLAG_PERSP_ENSURE;
+        U.uiflag ^= USER_AUTOPERSP;
+        U.runtime.is_dirty = true;
+      }
+      if (event->type == EVT_ZKEY) {
+        vod->viewops_flag ^= VIEWOPS_FLAG_ZOOM_TO_MOUSE;
+        U.uiflag ^= USER_ZOOM_TO_MOUSEPOS;
+        U.runtime.is_dirty = true;
+      }
     }
   }
 
@@ -595,6 +621,28 @@ bool view3d_zoom_or_dolly_poll(bContext *C)
   return view3d_navigation_poll_impl(C, RV3D_LOCK_ZOOM_AND_DOLLY);
 }
 
+static void view3d_navigate_update_status(bContext *C, wmOperator *op, ViewOpsData *vod)
+{
+  WorkspaceStatus status(C);
+  status.opmodal(IFACE_("Cancel"), op->type, VIEW_MODAL_CANCEL);
+  status.opmodal(IFACE_("Snap"), op->type, VIEWROT_MODAL_AXIS_SNAP_ENABLE, vod->axis_snap);
+  status.opmodal(IFACE_("Zoom"), op->type, VIEWROT_MODAL_SWITCH_ZOOM);
+  status.opmodal(IFACE_("Move"), op->type, VIEWROT_MODAL_SWITCH_MOVE);
+  status.opmodal(IFACE_("Rotate"), op->type, VIEWROT_MODAL_SWITCH_ROTATE);
+
+  status.item_bool(
+      IFACE_("Orbit Selection"), vod->viewops_flag & VIEWOPS_FLAG_ORBIT_SELECT, ICON_EVENT_S);
+
+  status.item_bool(
+      IFACE_("Use Depth"), vod->viewops_flag & VIEWOPS_FLAG_DEPTH_NAVIGATE, ICON_EVENT_D);
+
+  status.item_bool(
+      IFACE_("Auto Perspective"), vod->viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE, ICON_EVENT_P);
+
+  status.item_bool(
+      IFACE_("Zoom to Mouse"), vod->viewops_flag & VIEWOPS_FLAG_ZOOM_TO_MOUSE, ICON_EVENT_Z);
+}
+
 int view3d_navigate_modal_fn(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ViewOpsData *vod = static_cast<ViewOpsData *>(op->customdata);
@@ -610,12 +658,15 @@ int view3d_navigate_modal_fn(bContext *C, wmOperator *op, const wmEvent *event)
 
   int ret = vod->nav_type->apply_fn(C, vod, event_code, event->xy);
 
+  view3d_navigate_update_status(C, op, vod);
+
   if ((ret & OPERATOR_RUNNING_MODAL) == 0) {
     if (ret & OPERATOR_FINISHED) {
       ED_view3d_camera_lock_undo_push(op->type->name, vod->v3d, vod->rv3d, C);
     }
     viewops_data_free(C, vod);
     op->customdata = nullptr;
+    ED_workspace_status_text(C, nullptr);
   }
 
   return ret;
