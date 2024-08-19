@@ -3416,13 +3416,13 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Material *, material, &bmain->materials) {
       bool transparent_shadows = true;
       if (is_eevee) {
-        transparent_shadows = material->blend_shadow == MA_BS_SOLID;
+        transparent_shadows = material->blend_shadow != MA_BS_SOLID;
       }
       else if (IDProperty *cmat = version_cycles_properties_from_ID(&material->id)) {
         transparent_shadows = version_cycles_property_boolean(
             cmat, "use_transparent_shadow", true);
       }
-      SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+      SET_FLAG_FROM_TEST(material->blend_flag, true, MA_BL_TRANSPARENT_SHADOW);
     }
   }
 
@@ -4366,8 +4366,8 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     if (is_eevee_legacy) {
       /* Re-apply versioning made for EEVEE-Next in 4.1 before it got delayed. */
       LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-        bool transparent_shadows = material->blend_shadow == MA_BS_SOLID;
-        SET_FLAG_FROM_TEST(material->blend_flag, transparent_shadows, MA_BL_TRANSPARENT_SHADOW);
+        /* Transparent shadow flag is set to true by default. */
+        SET_FLAG_FROM_TEST(material->blend_flag, true, MA_BL_TRANSPARENT_SHADOW);
       }
       LISTBASE_FOREACH (Material *, mat, &bmain->materials) {
         mat->surface_render_method = (mat->blend_method == MA_BM_BLEND) ?
