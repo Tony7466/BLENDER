@@ -115,6 +115,95 @@ static const std::array<uint3, 12> bone_box_solid_tris{
     {4, 6, 7},
 };
 
+static const std::array<float3, 6> bone_octahedral_verts{
+    float3{0.0f, 0.0f, 0.0f},
+    {0.1f, 0.1f, 0.1f},
+    {0.1f, 0.1f, -0.1f},
+    {-0.1f, 0.1f, -0.1f},
+    {-0.1f, 0.1f, 0.1f},
+    {0.0f, 1.0f, 0.0f},
+};
+
+/**
+ * NOTE: This is not the correct normals.
+ * The correct smooth normals for the equator vertices should be
+ * {+-0.943608f * M_SQRT1_2, -0.331048f, +-0.943608f * M_SQRT1_2}
+ * but it creates problems for outlines when bones are scaled.
+ */
+static const std::array<float3, 6> bone_octahedral_smooth_normals{
+    float3{0.0f, -1.0f, 0.0f},
+    {M_SQRT1_2f, 0.0f, M_SQRT1_2f},
+    {M_SQRT1_2f, 0.0f, -M_SQRT1_2f},
+    {-M_SQRT1_2f, 0.0f, -M_SQRT1_2f},
+    {-M_SQRT1_2f, 0.0f, M_SQRT1_2f},
+    {0.0f, 1.0f, 0.0f},
+};
+
+static const std::array<uint2, 12> bone_octahedral_wire = {
+    uint2{0, 1},
+    {1, 5},
+    {5, 3},
+    {3, 0},
+    {0, 4},
+    {4, 5},
+    {5, 2},
+    {2, 0},
+    {1, 2},
+    {2, 3},
+    {3, 4},
+    {4, 1},
+};
+
+static const std::array<uint3, 8> bone_octahedral_solid_tris = {
+    uint3{2, 1, 0}, /* bottom */
+    {3, 2, 0},
+    {4, 3, 0},
+    {1, 4, 0},
+
+    {5, 1, 2}, /* top */
+    {5, 2, 3},
+    {5, 3, 4},
+    {5, 4, 1},
+};
+
+/**
+ * Store indices of generated verts from bone_octahedral_solid_tris to define adjacency infos.
+ * Example: triangle {2, 1, 0} is adjacent to {3, 2, 0}, {1, 4, 0} and {5, 1, 2}.
+ * {2, 1, 0} becomes {0, 1, 2}
+ * {3, 2, 0} becomes {3, 4, 5}
+ * {1, 4, 0} becomes {9, 10, 11}
+ * {5, 1, 2} becomes {12, 13, 14}
+ * According to opengl specification it becomes (starting from
+ * the first vertex of the first face aka. vertex 2):
+ * {0, 12, 1, 10, 2, 3}
+ */
+static const std::array<uint4, 12> bone_octahedral_wire_lines_adjacency = {
+    uint4{0, 1, 2, 6},
+    {0, 12, 1, 6},
+    {0, 3, 12, 6},
+    {0, 2, 3, 6},
+    {1, 6, 2, 3},
+    {1, 12, 6, 3},
+    {1, 0, 12, 3},
+    {1, 2, 0, 3},
+    {2, 0, 1, 12},
+    {2, 3, 0, 12},
+    {2, 6, 3, 12},
+    {2, 1, 6, 12},
+};
+
+/* aligned with bone_octahedral_solid_tris */
+static const float bone_octahedral_solid_normals[8][3] = {
+    {M_SQRT1_2, -M_SQRT1_2, 0.00000000f},
+    {-0.00000000f, -M_SQRT1_2, -M_SQRT1_2},
+    {-M_SQRT1_2, -M_SQRT1_2, 0.00000000f},
+    {0.00000000f, -M_SQRT1_2, M_SQRT1_2},
+    {0.99388373f, 0.11043154f, -0.00000000f},
+    {0.00000000f, 0.11043154f, -0.99388373f},
+    {-0.99388373f, 0.11043154f, 0.00000000f},
+    {0.00000000f, 0.11043154f, 0.99388373f},
+};
+
 static void append_line_loop(
     Vector<Vertex> &dest, Span<float2> verts, float z, int flag, bool dashed = false)
 {
@@ -261,6 +350,21 @@ static void append_sphere(Vector<VertShaded> &dest, const eDRWLevelOfDetail leve
 
 ShapeCache::ShapeCache()
 {
+  UNUSED_VARS(bone_octahedral_wire);
+
+  /* armature_octahedron */
+  {
+    Vector<VertShaded> verts;
+    for (int tri = 0; tri < 8; tri++) {
+      for (int v = 0; v < 3; v++) {
+        verts.append({bone_octahedral_verts[bone_octahedral_solid_tris[tri][v]],
+                      VCLASS_NONE,
+                      bone_octahedral_solid_normals[tri]});
+      }
+    }
+    bone_octahedron = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
   /* quad_wire */
   {
     Vector<Vertex> verts;

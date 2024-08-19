@@ -192,8 +192,27 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   /** Selectable Shaders */
 
+  armature_shape_outline = selectable_shader("overlay_armature_shape_outline_next",
+                                             [](gpu::shader::ShaderCreateInfo & /*info*/) {});
+
+  armature_shape_fill = selectable_shader(
+      "overlay_armature_shape_solid", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "mat4", "data_buf[]");
+        info.define("inst_obmat", "data_buf[gl_InstanceID]");
+        info.vertex_inputs_.pop_last();
+      });
+
+  armature_shape_wire = selectable_shader("overlay_armature_shape_wire_next",
+                                          [](gpu::shader::ShaderCreateInfo & /*info*/) {});
+
   armature_sphere_outline = selectable_shader(
       "overlay_armature_sphere_outline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "mat4", "data_buf[]");
+        info.define("inst_obmat", "data_buf[gl_InstanceID]");
+        info.vertex_inputs_.pop_last();
+      });
+  armature_sphere_fill = selectable_shader(
+      "overlay_armature_sphere_solid", [](gpu::shader::ShaderCreateInfo &info) {
         info.storage_buf(0, Qualifier::READ, "mat4", "data_buf[]");
         info.define("inst_obmat", "data_buf[gl_InstanceID]");
         info.vertex_inputs_.pop_last();

@@ -43,6 +43,7 @@ void main()
 
   fragColor = mix(vec4(geometry_out.finalColor.rgb, alpha), vec4(0), mix_w);
   fragColor.a *= 1.0 - mix_w;
-  select_id_output(select_id);
   lineOutput = vec4(0);
+
+  select_id_output(select_id);
 }

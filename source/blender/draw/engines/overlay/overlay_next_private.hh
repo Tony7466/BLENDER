@@ -91,6 +91,8 @@ class ShapeCache {
   using BatchPtr = std::unique_ptr<gpu::Batch, BatchDeleter>;
 
  public:
+  BatchPtr bone_octahedron;
+
   BatchPtr quad_wire;
   BatchPtr quad_solid;
   BatchPtr plain_axes;
@@ -189,7 +191,11 @@ class ShaderModule {
   ShaderPtr outline_detect = shader("overlay_outline_detect");
 
   /** Selectable Shaders */
+  ShaderPtr armature_shape_outline;
+  ShaderPtr armature_shape_fill;
+  ShaderPtr armature_shape_wire;
   ShaderPtr armature_sphere_outline;
+  ShaderPtr armature_sphere_fill;
   ShaderPtr depth_mesh;
   ShaderPtr extra_grid;
   ShaderPtr extra_shape;

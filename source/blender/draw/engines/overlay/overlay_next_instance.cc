@@ -90,7 +90,7 @@ void Instance::begin_sync()
   outline.begin_sync(resources, state);
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
-    layer.armatures.begin_sync(state);
+    layer.armatures.begin_sync(resources, state);
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
     layer.empties.begin_sync();
@@ -145,7 +145,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.meshes.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_ARMATURE:
-        layer.armatures.edit_object_sync(manager, ob_ref, resources);
+        layer.armatures.edit_object_sync(ob_ref, resources);
         break;
       case OB_CURVES_LEGACY:
         break;
@@ -177,7 +177,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.cameras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
-        layer.armatures.object_sync(manager, ob_ref, resources);
+        layer.armatures.object_sync(ob_ref, resources);
         break;
       case OB_LATTICE:
         if (!in_edit_mode) {

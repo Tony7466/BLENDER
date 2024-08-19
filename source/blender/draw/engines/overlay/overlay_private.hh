@@ -464,6 +464,7 @@ struct OVERLAY_DupliData {
 struct BoneInstanceData {
   /* Keep sync with bone instance vertex format (OVERLAY_InstanceFormats) */
   union {
+    float4x4 mat44;
     float mat[4][4];
     struct {
       float _pad0[3], color_hint_a;
@@ -483,6 +484,8 @@ struct BoneInstanceData {
   /* Constructor used by metaball overlays and expected to be used for drawing
    * metaball_wire_sphere with armature wire shader that produces wide-lines. */
   BoneInstanceData(Object *ob, const float *pos, const float radius, const float color[4]);
+
+  BoneInstanceData(const float4x4 &bone_mat) : mat44(bone_mat){};
 };
 
 struct OVERLAY_InstanceFormats {
