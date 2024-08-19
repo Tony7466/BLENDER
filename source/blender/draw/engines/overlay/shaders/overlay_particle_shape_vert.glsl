@@ -47,10 +47,15 @@ void main()
   uint axis_id = uint(shape_vert_id) >> 1u;
   uint axis_vert = uint(shape_vert_id) & 1u;
 
+#ifdef GPU_METAL
+  /* Metal has a different provoking vertex convention. */
+  axis_vert ^= 1u;
+#endif
+
   vec3 shape_pos = vec3(0.0);
   switch (shape_type) {
     case PART_SHAPE_AXIS:
-      shape_pos = vec3(axis_id == 0, axis_id == 1, axis_id == 2) * 2.0 * float(axis_vert == 0u);
+      shape_pos = vec3(axis_id == 0, axis_id == 1, axis_id == 2) * 2.0 * float(axis_vert != 0u);
       break;
     case PART_SHAPE_CROSS:
       shape_pos = vec3(axis_id == 0, axis_id == 1, axis_id == 2) * (axis_vert == 0u ? 1.0 : -1.0);
