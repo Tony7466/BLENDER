@@ -329,6 +329,8 @@ static void sound_free_audio(bSound *sound)
     AUD_Sound_free(sound->cache);
     sound->cache = nullptr;
   }
+
+  BKE_sound_fft_cache_delete(sound);
 #else
   UNUSED_VARS(sound);
 #endif /* WITH_AUDASPACE */

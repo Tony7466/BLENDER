@@ -48,8 +48,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     return;
   }
 
-  // TODO: make descriptions more concise.
-  b.add_input<decl::Sound>("Sound");
+  b.add_input<decl::Sound>("Sound")
+      .description("The sound to retrieve the amplitude from")
+      .hide_label();
   b.add_input<decl::Float>("Time")
       .subtype(PropertySubType::PROP_TIME_ABSOLUTE)
       .min(0)
@@ -74,7 +75,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(10000)
       .supports_field()
       .description("The upper bound of frequency to be sampled");
-  b.add_output<decl::Float>("Amplitude").dependent_field({1, 2, 3, 4, 5});
+  b.add_output<decl::Float>("Amplitude")
+      .dependent_field({1, 2, 3, 4, 5})
+      .description("The amplitude computed from the source Sound input");
 
 #if defined(WITH_FFTW3)
   // Make FFTW routines thread-safe.
@@ -178,13 +181,17 @@ class SampleSoundFunction : public mf::MultiFunction {
         dst[i] = 0;
         return;
       }
+      const std::optional<int> channel = downmixes[i] ?
+                                             std::nullopt :
+                                             std::make_optional(math::clamp(
+                                                 channels[i], 0, sound_->audio_channels - 1));
+
       const int leftmost = sample_index - samples_per_frame;
       const int aligned_sample_index = aligned(sample_index, fft_size);
       const int aligned_leftmost = aligned(leftmost, fft_size);
       const int smooth_radius = (fft_size > samples_per_frame) ?
                                     2 :
                                     (aligned_sample_index - aligned_leftmost) / fft_size + 1;
-      const int channel = math::clamp(channels[i], 0, sound_->audio_channels - 1);
 
       Array<FFTResult *> results(smooth_radius);
       for (int j = 0; j < smooth_radius; ++j) {
@@ -195,9 +202,7 @@ class SampleSoundFunction : public mf::MultiFunction {
         parameter.fft_size = fft_size;
 
         results[j] = cache.try_get_or_compute(parameter, [&]() {
-          return compute_fft(aligned_sample_index - fft_size * j,
-                             fft_size,
-                             downmixes[i] ? std::nullopt : std::optional(channel));
+          return compute_fft(aligned_sample_index - fft_size * j, fft_size, channel);
         });
       }
 
@@ -211,10 +216,11 @@ class SampleSoundFunction : public mf::MultiFunction {
                                          1 - double(leftmost - aligned_leftmost) /
                                                  double(fft_size);
 
-      float smoothed = 0;
+      double smoothed = 0;
       for (int j = 0; j < smooth_radius; ++j) {
-        float value = results[j]->bins[high + (high == low && high != bin_size - 1)] -
-                      results[j]->bins[low];
+        double value = (results[j]->bins[high + (high == low && high != bin_size - 1)] -
+                        results[j]->bins[low]) /
+                       math::sqrt(fft_size);
         if (j == 0) {
           smoothed += value * factor_current;
         }
@@ -225,7 +231,7 @@ class SampleSoundFunction : public mf::MultiFunction {
           smoothed += value;
         }
       }
-      dst[i] = smoothed;
+      dst[i] = smoothed / (smooth_radius - 1);
     });
   }
 
@@ -291,7 +297,6 @@ class SampleSoundFunction : public mf::MultiFunction {
     fftwf_plan plan = fftwf_plan_dft_r2c_1d(fft_size, buffer.data(), fftwf_buffer, FFTW_ESTIMATE);
     fftwf_execute(plan);
 
-    // TODO: parallel scan
     for (int j = 1; j < bin_size; ++j) {
       buffer[j] = buffer[j - 1] + math::abs(fftwf_buffer[j - 1][0]) / bin_size;
     }
@@ -320,7 +325,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   const NodeGeometrySampleSoundWindow window = NodeGeometrySampleSoundWindow(storage.window);
   const NodeGeometrySampleSoundFFTSize fft_size = NodeGeometrySampleSoundFFTSize(storage.fft_size);
 
-  Main *bmain = params.bmain();
   const Scene *scene = DEG_get_input_scene(params.depsgraph());
   const double frame_rate = FPS;
 
@@ -328,7 +332,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   {
     std::lock_guard lock{mutex};
     if (!sound->fft_cache) {
-      BKE_sound_fft_cache_new(sound, BKE_sound_get_length(bmain, sound));
+      BKE_sound_fft_cache_new(sound);
     }
   }
 

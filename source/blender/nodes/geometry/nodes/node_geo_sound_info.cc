@@ -13,9 +13,11 @@ namespace blender::nodes::node_geo_sound_info_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Sound>("Sound");
+  b.add_input<decl::Sound>("Sound").hide_label();
   b.add_output<decl::Int>("Audio Channels").description("Total channel amount of the sound");
-  b.add_output<decl::Int>("Sample Rate").subtype(PropertySubType::PROP_FREQUENCY);
+  b.add_output<decl::Int>("Sample Rate")
+      .subtype(PropertySubType::PROP_FREQUENCY)
+      .description("Sample rate of the sound");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

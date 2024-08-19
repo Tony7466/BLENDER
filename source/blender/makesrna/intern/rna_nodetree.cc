@@ -10000,7 +10000,7 @@ static void def_geo_sample_sound(StructRNA *srna)
 
   PropertyRNA *prop;
   prop = RNA_def_property(srna, "window", PROP_ENUM, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Window function", "Window function");
+  RNA_def_property_ui_text(prop, "Window function", "Type of window function to apply.");
   RNA_def_property_enum_sdna(prop, nullptr, "window");
   RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_window);
   RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_WINDOW_HANN);
@@ -10008,7 +10008,11 @@ static void def_geo_sample_sound(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "fft_size", PROP_ENUM, PROP_NONE);
-  RNA_def_property_ui_text(prop, "FFT size", "FFT size");
+  RNA_def_property_ui_text(
+      prop,
+      "FFT size",
+      "FFT size to use when sampling sound. Larger value means more frequency details and less "
+      "temporal details, while smaller value does the opposite.");
   RNA_def_property_enum_sdna(prop, nullptr, "fft_size");
   RNA_def_property_enum_items(prop, rna_node_geometry_sample_sound_fft_size);
   RNA_def_property_enum_default(prop, GEO_NODE_SAMPLE_SOUND_FFT_SIZE_ADAPTIVE);

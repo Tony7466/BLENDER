@@ -6,21 +6,24 @@
  * \ingroup bke
  */
 
+#include <mutex>
+
 #include "BKE_sound_fft_cache.hh"
 #include "BLI_math_base.hh"
 
 using blender::bke::sound::fft_cache::FFTCache;
 using blender::bke::sound::fft_cache::FFTCacheRuntime;
 
-void BKE_sound_fft_cache_new(bSound *sound, int length)
+void BKE_sound_fft_cache_new(bSound *sound)
 {
   sound->fft_cache = MEM_new<FFTCacheRuntime>(__func__);
-  sound->fft_cache->cache = std::make_shared<FFTCache>(length * sound->samplerate);
+  sound->fft_cache->cache = std::make_shared<FFTCache>();
 }
 
 void BKE_sound_fft_cache_delete(bSound *sound)
 {
   MEM_delete(sound->fft_cache);
+  sound->fft_cache = nullptr;
 }
 
 namespace blender::bke::sound::fft_cache {
@@ -31,16 +34,26 @@ uint64_t FFTParameter::hash() const
   return get_default_hash(aligned_sample_index, fft_size, window) ^ (h4 * 3632623);
 }
 
-FFTCache::FFTCache(int total_samples) : total_samples_(total_samples) {}
+FFTCache::FFTCache() {}
 
 FFTResult *FFTCache::try_get_or_compute(const FFTParameter &parameter,
                                         const FunctionRef<std::unique_ptr<FFTResult>()> fn)
 {
-  // TODO: do not lock every time we read
-  std::lock_guard lock{mutex_};
-  FFTResult *result = map_.lookup_or_add_cb(parameter, fn).get();
+  // Try to read from map.
+  {
+    std::shared_lock lock{mutex_};
+    auto result = map_.lookup_ptr(parameter);
+    if (result) {
+      return result->get();
+    }
+  }
 
-  return result;
+  // Otherwise, lock and calculate.
+  {
+    std::unique_lock lock{mutex_};
+    FFTResult *result = map_.lookup_or_add_cb(parameter, fn).get();
+    return result;
+  }
 }
 
 }  // namespace blender::bke::sound::fft_cache

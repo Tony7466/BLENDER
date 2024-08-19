@@ -16,9 +16,18 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Sound>("Sound");
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "sound", UI_ITEM_NONE, "", ICON_NONE);
+  uiTemplateID(layout,
+               C,
+               ptr,
+               "sound",
+               nullptr,
+               "SOUND_OT_open",
+               nullptr,
+               UI_TEMPLATE_ID_FILTER_ALL,
+               false,
+               nullptr);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
