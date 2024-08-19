@@ -755,6 +755,13 @@ void GPENCIL_OT_weightmode_toggle(wmOperatorType *ot)
 /** \name Toggle Vertex Paint Mode Operator
  * \{ */
 
+static bool grease_pencil_poll_vertex_cursor(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  return ob && (ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) && (ob->type == OB_GREASE_PENCIL) &&
+         CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
+}
+
 static bool gpencil_vertexmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
@@ -764,12 +771,14 @@ static bool gpencil_vertexmode_toggle_poll(bContext *C)
   }
   return false;
 }
+
 static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
 {
   const bool back = RNA_boolean_get(op->ptr, "back");
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   bool is_object = false;
@@ -822,11 +831,16 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
      * Need Draw as well (used for Palettes). */
     BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
     BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_vertexpaint);
+    Paint *vertex_paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::VertexGPencil);
 
-    BKE_paint_brushes_validate(bmain, &ts->gp_vertexpaint->paint);
+    BKE_paint_brushes_validate(bmain, vertex_paint);
+
+    if (ob->type == OB_GREASE_PENCIL) {
+      ED_paint_cursor_start(vertex_paint, grease_pencil_poll_vertex_cursor);
+    }
 
     /* Ensure Palette by default. */
-    BKE_gpencil_palette_ensure(bmain, CTX_data_scene(C));
+    BKE_gpencil_palette_ensure(bmain, scene);
   }
 
   /* setup other modes */
