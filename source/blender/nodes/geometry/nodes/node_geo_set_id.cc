@@ -61,7 +61,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   for (const GeometryComponent::Type type : {GeometryComponent::Type::Instance,
                                              GeometryComponent::Type::Mesh,
                                              GeometryComponent::Type::PointCloud,
-                                             GeometryComponent::Type::Curve})
+                                             GeometryComponent::Type::Curve,
+                                             GeometryComponent::Type::Physics})
   {
     if (geometry_set.has(type)) {
       set_id_in_component(geometry_set.get_component_for_write(type), selection_field, id_field);
