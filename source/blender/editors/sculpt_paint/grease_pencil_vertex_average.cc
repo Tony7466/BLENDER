@@ -60,6 +60,9 @@ void VertexAverageOperation::on_stroke_extended(const bContext &C,
           color_count++;
         }
       });
+      if (color_count == 0) {
+        return false;
+      }
       average_color = average_color / color_count;
       const ColorGeometry4f mix_color(average_color.x, average_color.y, average_color.z, 1.0f);
 
@@ -93,6 +96,9 @@ void VertexAverageOperation::on_stroke_extended(const bContext &C,
           color_count++;
         }
       });
+      if (color_count == 0) {
+        return false;
+      }
       average_color = average_color / color_count;
       const ColorGeometry4f mix_color(average_color.x, average_color.y, average_color.z, 1.0f);
 
