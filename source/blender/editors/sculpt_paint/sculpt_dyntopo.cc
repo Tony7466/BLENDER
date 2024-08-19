@@ -65,7 +65,6 @@ void enable_ex(Main &bmain, Depsgraph &depsgraph, Object &ob)
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh);
 
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&ob);
 
   /* Dynamic topology doesn't ensure selection state is valid, so remove #36280. */
   BKE_mesh_mselect_clear(mesh);
@@ -120,7 +119,6 @@ static void disable(
   }
 
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&ob);
 
   if (undo_step) {
     undo::restore_from_bmesh_enter_geometry(*undo_step, *mesh);

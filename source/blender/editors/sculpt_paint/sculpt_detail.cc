@@ -144,7 +144,6 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
 
   /* Force rebuild of bke::pbvh::Tree for better BB placement. */
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&ob);
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
 
   /* Redraw. */

@@ -144,7 +144,6 @@ static int sculpt_optimize_exec(bContext *C, wmOperator * /*op*/)
 
   SculptSession &ss = *ob.sculpt;
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&ob);
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
@@ -252,7 +251,6 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
   islands::invalidate(ss);
 
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&ob);
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 

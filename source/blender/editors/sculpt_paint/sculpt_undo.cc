@@ -693,7 +693,6 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
   }
   else {
     BKE_sculptsession_free_pbvh(&ss);
-    BKE_object_free_derived_caches(&object);
     DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 }
@@ -705,7 +704,6 @@ static void bmesh_enable(Object &object, StepData &step_data)
   Mesh *mesh = static_cast<Mesh *>(object.data);
 
   BKE_sculptsession_free_pbvh(&ss);
-  BKE_object_free_derived_caches(&object);
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
   /* Create empty BMesh and enable logging. */
@@ -818,7 +816,6 @@ static void restore_geometry(StepData &step_data, Object &object)
   if (step_data.geometry_clear_pbvh) {
     SculptSession &ss = *object.sculpt;
     BKE_sculptsession_free_pbvh(&ss);
-    BKE_object_free_derived_caches(&object);
     DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 
