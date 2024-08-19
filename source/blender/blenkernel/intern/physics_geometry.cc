@@ -1812,12 +1812,17 @@ bool PhysicsGeometryImpl::validate_world_data()
     }
 
     /* All bodies must be in the world, except if they don't have a collision shape. */
-    if (body->getCollisionShape() != nullptr &&
-        (!body->isInWorld() || bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(
-                                   body)) >= bt_collision_objects.size()))
-    {
-      BLI_assert_unreachable();
-      ok = false;
+    if (body->getCollisionShape() != nullptr) {
+      if (!body->isInWorld()) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+      if (bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(body)) >=
+          bt_collision_objects.size())
+      {
+        BLI_assert_unreachable();
+        ok = false;
+      }
     }
 
     /* Bodies with a non-moving collision shape must be static and zero-mass. */
