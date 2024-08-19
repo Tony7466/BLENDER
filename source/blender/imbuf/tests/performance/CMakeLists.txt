@@ -19,3 +19,6 @@ set(SRC
 )
 
 blender_add_test_performance_executable(IMB_performance "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+if(WITH_BUILDINFO)
+  target_link_libraries(IMB_performance_test PRIVATE buildinfoobj)
+endif()
