@@ -1035,6 +1035,10 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
     screen->active_region = nullptr;
   }
 
+  if (region_prev != screen->active_region || !screen->active_region) {
+    WM_window_status_area_tag_redraw(win);
+  }
+
   /* Check for redraw headers. */
   if (region_prev != screen->active_region) {
 
@@ -1204,7 +1208,7 @@ static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
   const short size = screen_global_header_size();
   rcti rect;
 
-  BLI_rcti_init(&rect, 0, WM_window_pixels_x(win) - 1, 0, WM_window_pixels_y(win) - 1);
+  BLI_rcti_init(&rect, 0, WM_window_native_pixel_x(win) - 1, 0, WM_window_native_pixel_y(win) - 1);
   rect.ymin = rect.ymax - size;
 
   screen_global_area_refresh(
@@ -1214,11 +1218,11 @@ static void screen_global_topbar_area_refresh(wmWindow *win, bScreen *screen)
 static void screen_global_statusbar_area_refresh(wmWindow *win, bScreen *screen)
 {
   const short size_min = 1;
-  const short size_max = 0.8f * screen_global_header_size();
+  const short size_max = 0.85f * screen_global_header_size();
   const short size = (screen->flag & SCREEN_COLLAPSE_STATUSBAR) ? size_min : size_max;
   rcti rect;
 
-  BLI_rcti_init(&rect, 0, WM_window_pixels_x(win) - 1, 0, WM_window_pixels_y(win) - 1);
+  BLI_rcti_init(&rect, 0, WM_window_native_pixel_x(win) - 1, 0, WM_window_native_pixel_y(win) - 1);
   rect.ymax = rect.ymin + size_max;
 
   screen_global_area_refresh(
