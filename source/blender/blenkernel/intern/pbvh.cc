@@ -1081,7 +1081,7 @@ static void update_normals_mesh(Object &object_orig, Object &object_eval, Span<N
       [&]() {
         if (face_normals_cache.is_dirty()) {
           face_normals_cache.ensure([&](Vector<float3> &r_data) {
-            r_data.resize(positions.size());
+            r_data.resize(faces.size());
             bke::mesh::normals_calc_faces(positions, faces, corner_verts, r_data);
           });
         }
@@ -1103,7 +1103,7 @@ static void update_normals_mesh(Object &object_orig, Object &object_eval, Span<N
 
   if (vert_normals_cache.is_dirty()) {
     vert_normals_cache.ensure([&](Vector<float3> &r_data) {
-      r_data.resize(faces.size());
+      r_data.resize(positions.size());
       mesh::normals_calc_verts(
           positions, faces, corner_verts, vert_to_face_map, face_normals, r_data);
     });
