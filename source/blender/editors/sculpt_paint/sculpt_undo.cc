@@ -29,6 +29,7 @@
  * a tentative undo step with is appended later when the operator ends.
  * Operators must have the OPTYPE_UNDO flag set for this to work properly.
  */
+#include "sculpt_undo.hh"
 
 #include <cstddef>
 
@@ -76,7 +77,11 @@
 
 #include "bmesh.hh"
 #include "paint_intern.hh"
+#include "sculpt_color.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint::undo {
 
@@ -692,7 +697,8 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
     }
   }
   else {
-    SCULPT_pbvh_clear(object);
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 }
 
@@ -702,7 +708,8 @@ static void bmesh_enable(Object &object, StepData &step_data)
   SculptSession &ss = *object.sculpt;
   Mesh *mesh = static_cast<Mesh *>(object.data);
 
-  SCULPT_pbvh_clear(object);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
   /* Create empty BMesh and enable logging. */
   BMeshCreateParams bmesh_create_params{};
@@ -812,7 +819,9 @@ static void geometry_free_data(NodeGeometry *geometry)
 static void restore_geometry(StepData &step_data, Object &object)
 {
   if (step_data.geometry_clear_pbvh) {
-    SCULPT_pbvh_clear(object);
+    SculptSession &ss = *object.sculpt;
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 
   Mesh *mesh = static_cast<Mesh *>(object.data);
