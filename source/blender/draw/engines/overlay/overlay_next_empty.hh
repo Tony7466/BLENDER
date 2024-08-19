@@ -37,9 +37,6 @@ class Empties {
   View view_reference_images = {"view_reference_images"};
   float view_dist = 0.0f;
 
-  float3 camera_position;
-  float3 camera_forward;
-
   struct CallBuffers {
     const SelectionType selection_type_;
     EmptyInstanceBuf plain_axes_buf = {selection_type_, "plain_axes_buf"};
@@ -58,8 +55,6 @@ class Empties {
   void begin_sync(Resources &res, const State &state, const View &view)
   {
     view_dist = state.view_dist_get(view.winmat());
-    camera_position = view.viewinv().location();
-    camera_forward = view.viewinv().z_axis();
 
     auto init_pass = [&](PassMain &pass, DRWState draw_state) {
       pass.init();
@@ -277,7 +272,7 @@ class Empties {
        * object. */
       char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                ob->empty_image_depth;
-      PassMain::Sub &pass = get_subpass(state, *ob, use_alpha_blend, mat);
+      PassMain::Sub &pass = create_subpass(state, *ob, use_alpha_blend, mat);
       pass.bind_texture("imgTexture", tex);
       pass.push_constant("imgPremultiplied", use_alpha_premult);
       pass.push_constant("imgAlphaBlend", use_alpha_blend);
@@ -289,37 +284,34 @@ class Empties {
     }
   }
 
-  PassMain::Sub &get_subpass(const State &state,
+  PassMain::Sub &create_subpass(const State &state,
                              const Object &ob,
                              const bool use_alpha_blend,
                              const float4x4 &mat)
   {
     const bool in_front = state.use_in_front && ob.dtx & OB_DRAW_IN_FRONT;
     if (in_front) {
-      return create_subpass(camera_position, camera_forward, mat, images_front_ps_);
+      return create_subpass(state, mat, images_front_ps_);
     }
     const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                    ob.empty_image_depth;
     switch (depth_mode) {
       case OB_EMPTY_IMAGE_DEPTH_BACK:
-        return create_subpass(camera_position, camera_forward, mat, images_back_ps_);
+        return create_subpass(state, mat, images_back_ps_);
       case OB_EMPTY_IMAGE_DEPTH_FRONT:
-        return create_subpass(camera_position, camera_forward, mat, images_front_ps_);
+        return create_subpass(state, mat, images_front_ps_);
       case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
       default:
-        return use_alpha_blend ?
-                   create_subpass(camera_position, camera_forward, mat, images_blend_ps_) :
-                   images_ps_;
+        return use_alpha_blend ? create_subpass(state, mat, images_blend_ps_) : images_ps_;
     }
   }
 
-  static PassMain::Sub &create_subpass(const float3 &camera_position,
-                                       const float3 &camera_forward,
+  static PassMain::Sub &create_subpass(const State &state,
                                        const float4x4 &mat,
                                        PassSortable &parent)
   {
-    const float3 tmp = camera_position - mat.location();
-    const float z = -math::dot(camera_forward, tmp);
+    const float3 tmp = state.camera_position - mat.location();
+    const float z = -math::dot(state.camera_forward, tmp);
     return parent.sub("Sub", z);
   };
 };

@@ -59,6 +59,8 @@ struct State {
   short v3d_flag;     /* TODO: move to #View3DOverlay. */
   short v3d_gridflag; /* TODO: move to #View3DOverlay. */
   int cfra;
+  float3 camera_position;
+  float3 camera_forward;
   DRWState clipping_state;
 
   float view_dist_get(const float4x4 &winmat) const

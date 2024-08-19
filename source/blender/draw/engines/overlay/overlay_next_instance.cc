@@ -84,6 +84,9 @@ void Instance::begin_sync()
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
+  state.camera_position = view.viewinv().location();
+  state.camera_forward = view.viewinv().z_axis();
+
   resources.begin_sync();
 
   background.begin_sync(resources, state);
