@@ -7218,12 +7218,10 @@ void write_translations(const Depsgraph &depsgraph,
 
   clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
 
-  {
-    MutableSpan<float3> positions_eval = bke::pbvh::vert_positions_eval_for_write(depsgraph,
-                                                                                  object);
-    if (positions_eval.data() != positions_orig.data()) {
-      apply_translations(translations, verts, positions_eval);
-    }
+  MutableSpan<float3> positions_eval_mut = bke::pbvh::vert_positions_eval_for_write(depsgraph,
+                                                                                    object);
+  if (positions_eval_mut.data() != positions_orig.data()) {
+    apply_translations(translations, verts, positions_eval_mut);
   }
 
   if (!ss.deform_imats.is_empty()) {
