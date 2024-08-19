@@ -413,15 +413,6 @@ bool IMB_scale(ImBuf *ibuf,
                IMBScaleFilter filter,
                bool threaded = true);
 
-bool IMB_scaleImBuf(ImBuf *ibuf, unsigned int newx, unsigned int newy);
-
-/**
- * Return true if \a ibuf is modified.
- */
-bool IMB_scalefastImBuf(ImBuf *ibuf, unsigned int newx, unsigned int newy);
-
-void IMB_scaleImBuf_threaded(ImBuf *ibuf, unsigned int newx, unsigned int newy);
-
 bool IMB_saveiff(ImBuf *ibuf, const char *filepath, int flags);
 
 bool IMB_ispic(const char *filepath);

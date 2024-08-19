@@ -732,7 +732,7 @@ static void scale_up_y(ImBuf *ibuf, int newy)
   ibuf->y = newy;
 }
 
-bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
+static bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
 
@@ -780,7 +780,7 @@ static void scale_nearest(const T *src, T *dst, int ibufx, int ibufy, int newx, 
   }
 }
 
-bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
+static bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
   if (ibuf == nullptr) {
@@ -830,7 +830,7 @@ bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
   return true;
 }
 
-void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
+static void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
 {
   using namespace blender;
   using namespace blender::imbuf;

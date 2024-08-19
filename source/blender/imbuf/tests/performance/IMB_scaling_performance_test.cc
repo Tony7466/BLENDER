@@ -72,16 +72,29 @@ static void imb_xform_box(ImBuf *&src, int width, int height)
 {
   imb_scale_via_transform(src, width, height, IMB_FILTER_BOX);
 }
+static void imb_scale_nearest_st(ImBuf *&src, int width, int height)
+{
+  IMB_scale(src, width, height, IMBScaleFilter::Nearest, false);
+}
+static void imb_scale_bilinear(ImBuf *&src, int width, int height)
+{
+  IMB_scale(src, width, height, IMBScaleFilter::Bilinear, true);
+}
+static void imb_scale_box_st(ImBuf *&src, int width, int height)
+{
+  IMB_scale(src, width, height, IMBScaleFilter::Box, false);
+}
+
 
 static void scale_nearest(bool use_float)
 {
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("scale_nearest");
-    IMB_scalefastImBuf(img, DST_LARGER_X, DST_LARGER_Y);
-    IMB_scalefastImBuf(img, SRC_X, SRC_Y);
-    IMB_scalefastImBuf(img, DST_SMALLER_X, DST_SMALLER_Y);
-    IMB_scalefastImBuf(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_scale_nearest_st(img, DST_LARGER_X, DST_LARGER_Y);
+      imb_scale_nearest_st(img, SRC_X, SRC_Y);
+      imb_scale_nearest_st(img, DST_SMALLER_X, DST_SMALLER_Y);
+      imb_scale_nearest_st(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -117,10 +130,10 @@ static void scale_bilinear_st(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("scale_bilin_st");
-    IMB_scaleImBuf(img, DST_LARGER_X, DST_LARGER_Y);
-    IMB_scaleImBuf(img, SRC_X, SRC_Y);
-    IMB_scaleImBuf(img, DST_SMALLER_X, DST_SMALLER_Y);
-    IMB_scaleImBuf(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_scale_box_st(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_scale_box_st(img, SRC_X, SRC_Y);
+    imb_scale_box_st(img, DST_SMALLER_X, DST_SMALLER_Y);
+    imb_scale_box_st(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
@@ -130,10 +143,10 @@ static void scale_bilinear(bool use_float)
   ImBuf *img = create_src_image(use_float);
   {
     SCOPED_TIMER("scale_bilinear");
-    IMB_scaleImBuf_threaded(img, DST_LARGER_X, DST_LARGER_Y);
-    IMB_scaleImBuf_threaded(img, SRC_X, SRC_Y);
-    IMB_scaleImBuf_threaded(img, DST_SMALLER_X, DST_SMALLER_Y);
-    IMB_scaleImBuf_threaded(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_scale_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
+    imb_scale_bilinear(img, SRC_X, SRC_Y);
+    imb_scale_bilinear(img, DST_SMALLER_X, DST_SMALLER_Y);
+    imb_scale_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }

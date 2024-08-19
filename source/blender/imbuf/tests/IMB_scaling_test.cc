@@ -58,13 +58,13 @@ static ImBuf *scale_2x_smaller(bool nearest, bool threaded, int float_channels =
                                     create_6x2_test_image();
   int ww = 3, hh = 1;
   if (threaded) {
-    IMB_scaleImBuf_threaded(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Linear, true);
   }
   else if (nearest) {
-    IMB_scalefastImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Nearest, false);
   }
   else {
-    IMB_scaleImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Box, false);
   }
   return img;
 }
@@ -75,13 +75,13 @@ static ImBuf *scale_to_1x1(bool nearest, bool threaded, int float_channels = 0)
                                     create_6x2_test_image();
   int ww = 1, hh = 1;
   if (threaded) {
-    IMB_scaleImBuf_threaded(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Linear, true);
   }
   else if (nearest) {
-    IMB_scalefastImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Nearest, false);
   }
   else {
-    IMB_scaleImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Box, false);
   }
   return img;
 }
@@ -92,13 +92,13 @@ static ImBuf *scale_fractional_larger(bool nearest, bool threaded, int float_cha
                                     create_6x2_test_image();
   int ww = 9, hh = 7;
   if (threaded) {
-    IMB_scaleImBuf_threaded(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Linear, true);
   }
   else if (nearest) {
-    IMB_scalefastImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Nearest, false);
   }
   else {
-    IMB_scaleImBuf(img, ww, hh);
+    IMB_scale(img, ww, hh, IMBScaleFilter::Box, false);
   }
   return img;
 }
