@@ -3,3 +3,4 @@ Referenced by commit e8de8ee85a01a2482d31b953050d65a68904340a, Fix hang on start
 Referenced by commit 3a2fafba7380eefdc628b7ff593497a39bf2318f, Revert "Fix hang on startup under Wayland with the WayFire compositor"
 Referenced by commit 2d152db090d283f3f5bc1c8b25a1e881f1e9b4e7, GHOST/Wayland: use XDG_CURRENT_DESKTOP to detect GNOME
 Referenced by issue #76428, GHOST/Wayland Support
+Referenced by issue #126419, Blender 4.2 - Entering Grease Pencil 'Weight Paint' mode (in a new scene) crashes Blender
