@@ -313,16 +313,16 @@ void Instance::draw(Manager &manager)
   GPU_framebuffer_bind(resources.overlay_line_fb);
   GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
 
-  regular.cameras.draw_image_scene_background(
+  regular.cameras.draw_scene_background_images(
       resources.overlay_color_only_fb, state, manager, view);
-  infront.cameras.draw_image_scene_background(
+  infront.cameras.draw_scene_background_images(
       resources.overlay_color_only_fb, state, manager, view);
 
-  regular.empties.draw_image_background(resources.overlay_color_only_fb, manager, view);
-  regular.cameras.draw_image_background(resources.overlay_color_only_fb, manager, view);
-  infront.cameras.draw_image_background(resources.overlay_color_only_fb, manager, view);
+  regular.empties.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  regular.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
 
-  regular.empties.draw_image(resources.overlay_fb, manager, view);
+  regular.empties.draw_images(resources.overlay_fb, manager, view);
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
@@ -362,7 +362,7 @@ void Instance::draw(Manager &manager)
 
   /* TODO(: Breaks selection on M1 Max. */
   // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
-  // infront.empties.draw_in_front(resources.overlay_in_front_fb, manager, view);
+  // infront.empties.draw_in_front_images(resources.overlay_in_front_fb, manager, view);
   // regular.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
   // infront.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
 

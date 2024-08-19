@@ -20,17 +20,17 @@ class Empties {
  private:
   /* Images added by Image > Background. Both added in preset view (like Top, Front, ..) and in
    * custom view. Object property "In Front" unchecked. */
-  PassSortable empties_back_ps_ = {"empties_back_ps_"};
-  /* All Empty images from cases of `empties_ps_`, `empties_blend_ps_`, `empties_back_ps_`
+  PassSortable images_back_ps_ = {"images_back_ps_"};
+  /* All Empty images from cases of `images_ps_`, `images_blend_ps_`, `images_back_ps_`
    * with object property "In Front" checked. */
-  PassSortable empties_front_ps_ = {"empties_front_ps_"};
+  PassSortable images_front_ps_ = {"images_front_ps_"};
 
   /* Images added by Empty > Image and Image > Reference with unchecked image "Opacity".
    * Object property "In Front" unchecked. */
-  PassMain empties_ps_ = {"empties_ps_"};
+  PassMain images_ps_ = {"images_ps_"};
   /* Images added by Empty > Image and Image > Reference with image "Opacity" checked.
    * Object property "In Front" unchecked. */
-  PassSortable empties_blend_ps_ = {"empties_blend_ps_"};
+  PassSortable images_blend_ps_ = {"images_blend_ps_"};
 
   PassSimple ps_ = {"Empties"};
 
@@ -78,14 +78,14 @@ class Empties {
     DRWState draw_state;
 
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
-    init_pass(empties_ps_, draw_state);
+    init_pass(images_ps_, draw_state);
 
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA_PREMUL;
-    init_sortable(empties_back_ps_, draw_state);
-    init_sortable(empties_blend_ps_, draw_state);
+    init_sortable(images_back_ps_, draw_state);
+    init_sortable(images_blend_ps_, draw_state);
 
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
-    init_sortable(empties_front_ps_, draw_state);
+    init_sortable(images_front_ps_, draw_state);
 
     begin_sync(call_buffers_);
   }
@@ -190,31 +190,31 @@ class Empties {
     manager.submit(ps_, view);
   }
 
-  void draw_image_background(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw_background_images(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(empties_back_ps_, view);
+    manager.submit(images_back_ps_, view);
   }
 
-  void draw_image(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw_images(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(framebuffer);
 
     view_reference_images.sync(view.viewmat(),
                                winmat_polygon_offset(view.winmat(), view_dist, -1.0f));
 
-    manager.submit(empties_ps_, view_reference_images);
-    manager.submit(empties_blend_ps_, view_reference_images);
+    manager.submit(images_ps_, view_reference_images);
+    manager.submit(images_blend_ps_, view_reference_images);
   }
 
-  void draw_in_front(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw_in_front_images(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(framebuffer);
 
     view_reference_images.sync(view.viewmat(),
                                winmat_polygon_offset(view.winmat(), view_dist, -1.0f));
 
-    manager.submit(empties_front_ps_, view_reference_images);
+    manager.submit(images_front_ps_, view_reference_images);
   }
 
  private:
@@ -277,8 +277,7 @@ class Empties {
        * object. */
       char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                ob->empty_image_depth;
-      const bool in_front = state.use_in_front && ob_ref.object->dtx & OB_DRAW_IN_FRONT;
-      PassMain::Sub &pass = get_subpass(*ob, use_alpha_blend, mat, in_front);
+      PassMain::Sub &pass = get_subpass(state, *ob, use_alpha_blend, mat);
       pass.bind_texture("imgTexture", tex);
       pass.push_constant("imgPremultiplied", use_alpha_premult);
       pass.push_constant("imgAlphaBlend", use_alpha_blend);
@@ -290,26 +289,27 @@ class Empties {
     }
   }
 
-  PassMain::Sub &get_subpass(const Object &ob,
+  PassMain::Sub &get_subpass(const State &state,
+                             const Object &ob,
                              const bool use_alpha_blend,
-                             const float4x4 &mat,
-                             const bool in_front)
+                             const float4x4 &mat)
   {
+    const bool in_front = state.use_in_front && ob.dtx & OB_DRAW_IN_FRONT;
     if (in_front) {
-      return create_subpass(camera_position, camera_forward, mat, empties_front_ps_);
+      return create_subpass(camera_position, camera_forward, mat, images_front_ps_);
     }
     const char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
                                                    ob.empty_image_depth;
     switch (depth_mode) {
       case OB_EMPTY_IMAGE_DEPTH_BACK:
-        return create_subpass(camera_position, camera_forward, mat, empties_back_ps_);
+        return create_subpass(camera_position, camera_forward, mat, images_back_ps_);
       case OB_EMPTY_IMAGE_DEPTH_FRONT:
-        return create_subpass(camera_position, camera_forward, mat, empties_front_ps_);
+        return create_subpass(camera_position, camera_forward, mat, images_front_ps_);
       case OB_EMPTY_IMAGE_DEPTH_DEFAULT:
       default:
         return use_alpha_blend ?
-                   create_subpass(camera_position, camera_forward, mat, empties_blend_ps_) :
-                   empties_ps_;
+                   create_subpass(camera_position, camera_forward, mat, images_blend_ps_) :
+                   images_ps_;
     }
   }
 
