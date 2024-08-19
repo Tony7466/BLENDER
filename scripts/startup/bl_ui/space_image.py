@@ -876,7 +876,17 @@ class IMAGE_HT_header(Header):
         layout.template_ID(sima, "image", new="image.new", open="image.open")
 
         if show_maskedit:
-            row = layout.row()
+            row = layout.row(align=True)
+            row.prop(tool_settings, "use_proportional_edit_mask", text="", icon_only=True)
+            sub = row.row(align=True)
+            sub.active = tool_settings.use_proportional_edit_mask
+            sub.prop_with_popover(
+                tool_settings,
+                "proportional_edit_falloff",
+                text="",
+                icon_only=True,
+                panel="IMAGE_PT_proportional_edit",
+            )
             row.template_ID(sima, "mask", new="mask.new")
 
         if not show_render:
