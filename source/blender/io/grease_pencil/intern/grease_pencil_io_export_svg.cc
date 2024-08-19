@@ -215,7 +215,9 @@ void SVGExporter::export_grease_pencil_layer(pugi::xml_node layer_node,
 
   const float4x4 layer_to_world = layer.to_world_space(object);
   const float4x4 viewmat = float4x4(context_.rv3d->viewmat);
-  const float4x4 layer_to_view = viewmat * layer_to_world;
+  /* SVG has inverted Y axis. */
+  const float4x4 svg_coords = math::from_scale<float4x4>(float3(1, -1, 1));
+  const float4x4 layer_to_view = svg_coords * viewmat * layer_to_world;
 
   auto write_stroke = [&](const Span<float3> positions,
                           const bool cyclic,
