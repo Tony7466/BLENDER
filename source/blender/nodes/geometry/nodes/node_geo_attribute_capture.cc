@@ -264,7 +264,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     static const Array<GeometryComponent::Type> types = {GeometryComponent::Type::Mesh,
                                                          GeometryComponent::Type::PointCloud,
                                                          GeometryComponent::Type::Curve,
-                                                         GeometryComponent::Type::GreasePencil};
+                                                         GeometryComponent::Type::GreasePencil,
+                                                         GeometryComponent::Type::Physics};
 
     geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
       for (const GeometryComponent::Type type : types) {
