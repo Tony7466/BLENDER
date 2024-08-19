@@ -197,7 +197,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.relations.object_sync(ob_ref, resources, state);
-    layer.wireframe.object_sync(manager, ob_ref, resources, !in_edit_paint_mode);
+    layer.wireframe.object_sync(manager, ob_ref, resources, in_edit_paint_mode);
 
     if (object_is_selected(ob_ref) && !in_edit_paint_mode) {
       outline.object_sync(manager, ob_ref, state);

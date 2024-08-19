@@ -12,6 +12,8 @@
 
 #include "draw_common.hh"
 
+#include "overlay_next_mesh.hh"
+
 namespace blender::draw::overlay {
 
 class Wireframe {
@@ -53,12 +55,7 @@ class Wireframe {
           [&](GPUShader *shader, const char *name, bool use_coloring, float wire_threshold) {
             auto &sub = pass.sub(name);
             if (res.shaders.wireframe_mesh.get() == shader) {
-              /* WORKAROUND: Metal has a bug when not using this custom bias (see #126464). */
-              bool use_custom_bias = do_smooth_lines || GPU_type_matches_ex(GPU_DEVICE_ANY,
-                                                                            GPU_OS_ANY,
-                                                                            GPU_DRIVER_ANY,
-                                                                            GPU_BACKEND_METAL);
-              sub.specialize_constant(shader, "use_custom_depth_bias", use_custom_bias);
+              sub.specialize_constant(shader, "use_custom_depth_bias", do_smooth_lines);
             }
             sub.shader_set(shader);
             sub.bind_ubo("globalsBlock", &res.globals_buf);
@@ -88,7 +85,7 @@ class Wireframe {
   void object_sync(Manager &manager,
                    const ObjectRef &ob_ref,
                    Resources &res,
-                   const bool use_coloring)
+                   const bool in_edit_paint_mode)
   {
     if (!enabled) {
       return;
@@ -99,7 +96,7 @@ class Wireframe {
     /* TODO(fclem): Non-mandatory handle creation and reuse with other overlays. */
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
-    ColoringPass &coloring = use_coloring ? colored : non_colored;
+    ColoringPass &coloring = in_edit_paint_mode ? non_colored : colored;
     gpu::Batch *geom;
     switch (ob_ref.object->type) {
       case OB_CURVES_LEGACY:
@@ -124,17 +121,18 @@ class Wireframe {
         geom = DRW_cache_mesh_face_wireframe_get(ob_ref.object);
         (all_edges ? coloring.mesh_all_edges_ps_ : coloring.mesh_ps_)
             ->draw(geom, res_handle, res.select_id(ob_ref).get());
-#if 0 /* TODO */
-        if (!is_edit_mode || has_edit_mesh_cage) {
-          /* Draw loose geometry. */
-          if (is_mesh_verts_only) {
-            /* Draw loose verts. */
+
+        /* Draw loose geometry. */
+        if (!in_edit_paint_mode || Meshes::mesh_has_edit_cage(ob_ref.object)) {
+          const Mesh *mesh = static_cast<const Mesh *>(ob_ref.object->data);
+          if ((mesh->edges_num == 0) && (mesh->verts_num > 0)) {
+            geom = DRW_cache_mesh_all_verts_get(ob_ref.object);
+            coloring.pointcloud_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
           }
-          else {
-            /* Draw loose edges. */
+          else if ((geom = DRW_cache_mesh_loose_edges_get(ob_ref.object))) {
+            coloring.mesh_all_edges_ps_->draw(geom, res_handle, res.select_id(ob_ref).get());
           }
         }
-#endif
         break;
       case OB_POINTCLOUD:
         geom = DRW_pointcloud_batch_cache_get_dots(ob_ref.object);
