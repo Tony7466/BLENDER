@@ -251,6 +251,15 @@ void Instance::draw(Manager &manager)
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
+  if (state.xray_enabled) {
+    /* For Xray we render the scene to a separate depth buffer. */
+    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
+    resources.depth_target_tx.wrap(resources.xray_depth_tx);
+  }
+  else {
+    resources.depth_target_tx.wrap(resources.depth_tx);
+  }
+
   /* TODO(fclem): Remove mandatory allocation. */
   if (!resources.depth_in_front_tx.is_valid()) {
     resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
@@ -269,10 +278,10 @@ void Instance::draw(Manager &manager)
     resources.line_tx.acquire(int2(1, 1), GPU_RGBA8);
     resources.overlay_tx.acquire(int2(1, 1), GPU_SRGB8_A8);
 
-    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
-    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
-    resources.overlay_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
-    resources.overlay_line_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx));
+    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx));
+    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx));
+    resources.overlay_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx));
+    resources.overlay_line_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx));
   }
   else {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
@@ -280,9 +289,9 @@ void Instance::draw(Manager &manager)
     resources.line_tx.acquire(render_size, GPU_RGBA8, usage);
     resources.overlay_tx.acquire(render_size, GPU_SRGB8_A8, usage);
 
-    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+    resources.overlay_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx),
                                 GPU_ATTACHMENT_TEXTURE(resources.overlay_tx));
-    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_tx),
+    resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx),
                                      GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
                                      GPU_ATTACHMENT_TEXTURE(resources.line_tx));
     resources.overlay_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx),
@@ -300,9 +309,15 @@ void Instance::draw(Manager &manager)
   resources.overlay_output_fb.ensure(GPU_ATTACHMENT_NONE,
                                      GPU_ATTACHMENT_TEXTURE(resources.color_overlay_tx));
 
-  float4 clear_color(0.0f);
   GPU_framebuffer_bind(resources.overlay_line_fb);
-  GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
+  float4 clear_color(0.0f);
+  if (state.xray_enabled) {
+    /* Rendering to a new depth buffer that needs to be cleared. */
+    GPU_framebuffer_clear_color_depth(resources.overlay_line_fb, clear_color, 1.0f);
+  }
+  else {
+    GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
+  }
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
@@ -350,6 +365,7 @@ void Instance::draw(Manager &manager)
 
   resources.line_tx.release();
   resources.overlay_tx.release();
+  resources.xray_depth_tx.release();
   resources.depth_in_front_alloc_tx.release();
   resources.color_overlay_alloc_tx.release();
   resources.color_render_alloc_tx.release();
