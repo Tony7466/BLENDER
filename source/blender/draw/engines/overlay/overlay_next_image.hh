@@ -8,11 +8,6 @@
 
 #pragma once
 
-#include "BLI_function_ref.hh"
-#include "BLI_math_rotation.h"
-
-#include "DNA_image_types.h"
-
 #include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
