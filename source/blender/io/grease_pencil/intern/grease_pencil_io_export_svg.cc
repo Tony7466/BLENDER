@@ -34,6 +34,10 @@
 #include <optional>
 #include <pugixml.hpp>
 
+#ifdef WIN32
+#  include "utfconv.hh"
+#endif
+
 /** \file
  * \ingroup bgrease_pencil
  */
