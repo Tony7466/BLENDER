@@ -12,7 +12,6 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
 #include "DNA_camera_types.h"
@@ -84,8 +83,6 @@ class Cameras {
   PassMain background_scene_ps_ = {"background_scene_ps_"};
   /* Same as `foreground_ps_` with "View as Render" checked. */
   PassMain foreground_scene_ps_ = {"foreground_scene_ps_"};
-
-  Vector<MovieClip *> bg_movie_clips;
 
   View view_reference_images = {"view_reference_images"};
   float view_dist = 0.0f;
@@ -365,11 +362,6 @@ class Cameras {
  public:
   Cameras(const SelectionType selection_type) : call_buffers_{selection_type} {};
 
-  ~Cameras()
-  {
-    free_movieclips_textures();
-  }
-
   void begin_sync(Resources &res, State &state, View &view)
   {
     view_dist = state.view_dist_get(view.winmat());
@@ -403,7 +395,6 @@ class Cameras {
     draw_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA_PREMUL;
     init_pass(foreground_ps_, draw_state);
     init_pass(foreground_scene_ps_, draw_state);
-    free_movieclips_textures();
   }
 
   void object_sync(
@@ -552,7 +543,8 @@ class Cameras {
     if (is_camera_view && (cam->flag & CAM_SHOW_BG_IMAGE) &&
         !BLI_listbase_is_empty(&cam->bg_images))
     {
-      sync_camera_images(ob_ref, select_id, shapes, manager, state, call_buffers_.selection_type_);
+      sync_camera_images(
+          ob_ref, select_id, shapes, manager, state, res, call_buffers_.selection_type_);
     }
   }
 
@@ -645,19 +637,12 @@ class Cameras {
   }
 
  private:
-  void free_movieclips_textures()
-  {
-    /* Free Movie clip textures after rendering */
-    for (MovieClip *clip : bg_movie_clips) {
-      BKE_movieclip_free_gputexture(clip);
-    }
-  }
-
   void sync_camera_images(const ObjectRef &ob_ref,
                           select::ID select_id,
                           ShapeCache &shapes,
                           Manager &manager,
                           const State &state,
+                          Resources &res,
                           const SelectionType selection_type)
   {
     Object *ob = ob_ref.object;
@@ -687,7 +672,7 @@ class Cameras {
 
       /* retrieve the image we want to show, continue to next when no image could be found */
       GPUTexture *tex = image_camera_background_texture_get(
-          bgpic, state, aspect, use_alpha_premult, use_view_transform);
+          bgpic, state, res, aspect, use_alpha_premult, use_view_transform);
 
       if (tex) {
         image_camera_background_matrix_get(cam, bgpic, state, aspect, mat);
@@ -778,7 +763,8 @@ class Cameras {
   }
 
   GPUTexture *image_camera_background_texture_get(const CameraBGImage *bgpic,
-                                                  const State state,
+                                                  const State &state,
+                                                  Resources &res,
                                                   float &r_aspect,
                                                   bool &r_use_alpha_premult,
                                                   bool &r_use_view_transform)
@@ -852,7 +838,7 @@ class Cameras {
         BKE_movieclip_get_size(clip, &bgpic->cuser, &width, &height);
 
         /* Save for freeing. */
-        bg_movie_clips.append(clip);
+        res.bg_movie_clips.append(clip);
         break;
       }
 
