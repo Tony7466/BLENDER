@@ -1153,6 +1153,7 @@ def fbx_data_mesh_elements(root, me_obj, scene_data, done_meshes):
     del t_pvi_edge_indices
 
     # Loop normals.
+    do_optimize_normals = scene_data.settings.optimize_normals
     tspacenumber = 0
     if write_normals:
         normal_bl_dtype = np.single
@@ -1188,10 +1189,15 @@ def fbx_data_mesh_elements(root, me_obj, scene_data, done_meshes):
         # FBX SDK documentation says that normals should use IndexToDirect.
         elem_data_single_string(lay_nor, b"ReferenceInformationType", b"IndexToDirect")
 
-        # Tuple of unique sorted normals and then the index in the unique sorted normals of each normal in t_normal.
-        # Since we don't care about how the normals are sorted, only that they're unique, we can use the fast unique
-        # helper function.
-        t_normal, t_normal_idx = fast_first_axis_unique(t_normal.reshape(-1, 3), return_inverse=True)
+        if do_optimize_normals:
+            # Tuple of unique sorted normals and then the index in the unique sorted normals of each normal in t_normal.
+            # Since we don't care about how the normals are sorted, only that they're unique, we can use the fast unique
+            # helper function.
+            t_normal, t_normal_idx = fast_first_axis_unique(t_normal.reshape(-1, 3), return_inverse=True)
+        else:
+            # Export normals in a linear fashion
+            t_normal = t_normal.reshape(-1, 3)
+            t_normal_idx = np.arange(len(t_normal), dtype=normal_idx_fbx_dtype)
 
         # Convert to the type for fbx
         t_normal_idx = astype_view_signedness(t_normal_idx, normal_idx_fbx_dtype)
@@ -3429,6 +3435,7 @@ def save_single(operator, scene, depsgraph, filepath="",
                 use_mesh_edges=True,
                 use_tspace=True,
                 use_triangles=False,
+                optimize_normals=False,
                 embed_textures=False,
                 use_custom_props=False,
                 bake_space_transform=False,
@@ -3497,7 +3504,7 @@ def save_single(operator, scene, depsgraph, filepath="",
         bake_space_transform, global_matrix_inv, global_matrix_inv_transposed,
         context_objects, object_types, use_mesh_modifiers, use_mesh_modifiers_render,
         mesh_smooth_type, use_subsurf, use_mesh_edges, use_tspace, use_triangles,
-        armature_nodetype, use_armature_deform_only,
+        optimize_normals, armature_nodetype, use_armature_deform_only,
         add_leaf_bones, bone_correction_matrix, bone_correction_matrix_inv,
         bake_anim, bake_anim_use_all_bones, bake_anim_use_nla_strips, bake_anim_use_all_actions,
         bake_anim_step, bake_anim_simplify_factor, bake_anim_force_startend_keying,
@@ -3576,6 +3583,7 @@ def defaults_unity3d():
         "use_subsurf": False,
         "use_tspace": False,  # XXX Why? Unity is expected to support tspace import...
         "use_triangles": False,
+        "optimize_normals": False, # Appears to cause problems when using imported blend shape normals
 
         "use_armature_deform_only": True,
 
