@@ -274,7 +274,7 @@ class VolumeTreeAccessToken {
 
  public:
   /**
-   * Defaulting everything but the destructor is fine, because the default behavior works
+   * Defaulting everything but the destructor is fine because the default behavior works
    * correctly on the single data member. The destructor has a special implementation because it
    * may automatically unload the volume tree if it's not used anymore to conserve memory.
    */

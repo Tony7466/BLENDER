@@ -42,7 +42,7 @@ struct Cache {
   std::atomic<int64_t> size_in_bytes = 0;
 
   std::mutex global_mutex;
-  /** Amount of memory current used in the cache. */
+  /** Amount of memory currently used in the cache. */
   MemoryCount memory;
   /**
    * Keys currently cached. This is stored separately from the map, because the map does not allow
@@ -61,11 +61,12 @@ static void try_enforce_limit();
 
 static void set_new_logical_time(const StoredValue &stored_value, const int64_t new_time)
 {
-  /* Don't want to use `std::atomic` directory in the struct, because that makes it
+  /* Don't want to use `std::atomic` directly in the struct, because that makes it
    * non-movable. Could also use a non-const accessor, but that may degrade performance more.
    * It's not necessary for correctness that the time is exactly the right value. */
   reinterpret_cast<std::atomic<int64_t> *>(const_cast<int64_t *>(&stored_value.last_use_time))
       ->store(new_time, std::memory_order_relaxed);
+  static_assert(sizeof(int64_t) == sizeof(std::atomic<int64_t>));
 }
 
 std::shared_ptr<CachedValue> get_base(const GenericKey &key,
@@ -73,7 +74,7 @@ std::shared_ptr<CachedValue> get_base(const GenericKey &key,
 {
   Cache &cache = get_cache();
   /* "Touch" the cached value so that we know that it is still used. This makes it less likely that
-   * it removed. */
+   * it is removed. */
   const int64_t new_time = cache.logical_time.fetch_add(1, std::memory_order_relaxed);
   {
     /* Fast path when the value is already cached. */
@@ -200,8 +201,8 @@ static void try_enforce_limit()
   }
 
   /* Avoid recounting memory if the last item is not way too large and the overshoot is still ok.
-   * The alternative would be to subtract the last item from the counted memory again, but that is
-   * not implemented yet. */
+   * The alternative would be to subtract the last item from the counted memory again, but removing
+   * from #MemoryCount is not implemented yet. */
   bool need_memory_recount = false;
   if (cache.memory.total_bytes < approximate_limit * 1.1) {
     *first_bad_index += 1;
