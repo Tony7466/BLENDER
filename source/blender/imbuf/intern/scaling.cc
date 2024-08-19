@@ -404,349 +404,284 @@ static inline void store_pixel(float4 pix, float4 *ptr)
   *ptr = pix;
 }
 
-template<typename T> static void scale_down_x(const T *src, T *dst, int ibufx, int ibufy, int newx)
-{
-  const float add = (ibufx - 0.01f) / newx;
-  const float inv_add = 1.0f / add;
+struct ScaleDownX {
+  template<typename T>
+  static void op(const T *src, T *dst, int ibufx, int ibufy, int newx, int /*newy*/, bool threaded)
+  {
+    using namespace blender;
+    const float add = (ibufx - 0.01f) / newx;
+    const float inv_add = 1.0f / add;
 
-  const T *src_start = src;
-  T *dst_start = dst;
-  for (int y = ibufy; y > 0; y--) {
-    float sample = 0.0f;
-    float4 val(0.0f);
+    const int grain_size = threaded ? 32 : ibufy;
+    threading::parallel_for(IndexRange(ibufy), grain_size, [&](IndexRange range) {
+      for (const int y : range) {
+        const T *src_ptr = src + y * ibufx;
+        T *dst_ptr = dst + y * newx;
+        float sample = 0.0f;
+        float4 val(0.0f);
 
-    for (int x = newx; x > 0; x--) {
-      float4 nval = -val * sample;
-      sample += add;
-      while (sample >= 1.0f) {
-        sample -= 1.0f;
-        nval += load_pixel(src);
+        for (int x = 0; x < newx; x++) {
+          float4 nval = -val * sample;
+          sample += add;
+          while (sample >= 1.0f) {
+            sample -= 1.0f;
+            nval += load_pixel(src_ptr);
+            src_ptr++;
+          }
+
+          val = load_pixel(src_ptr);
+          src_ptr++;
+
+          float4 pix = (nval + sample * val) * inv_add;
+          store_pixel(pix, dst_ptr);
+          dst_ptr++;
+
+          sample -= 1.0f;
+        }
+      }
+    });
+  }
+};
+
+struct ScaleDownY {
+  template<typename T>
+  static void op(const T *src, T *dst, int ibufx, int ibufy, int /*newx*/, int newy, bool threaded)
+  {
+    using namespace blender;
+    const float add = (ibufy - 0.01f) / newy;
+    const float inv_add = 1.0f / add;
+
+    const int grain_size = threaded ? 32 : ibufx;
+    threading::parallel_for(IndexRange(ibufx), grain_size, [&](IndexRange range) {
+      for (const int x : range) {
+        const T *src_ptr = src + x;
+        T *dst_ptr = dst + x;
+        float sample = 0.0f;
+        float4 val(0.0f);
+
+        for (int y = 0; y < newy; y++) {
+          float4 nval = -val * sample;
+          sample += add;
+          while (sample >= 1.0f) {
+            sample -= 1.0f;
+            nval += load_pixel(src_ptr);
+            src_ptr += ibufx;
+          }
+
+          val = load_pixel(src_ptr);
+          src_ptr += ibufx;
+
+          float4 pix = (nval + sample * val) * inv_add;
+          store_pixel(pix, dst_ptr);
+          dst_ptr += ibufx;
+
+          sample -= 1.0f;
+        }
+      }
+    });
+  }
+};
+
+struct ScaleUpX {
+  template<typename T>
+  static void op(const T *src, T *dst, int ibufx, int ibufy, int newx, int /*newy*/, bool threaded)
+  {
+    using namespace blender;
+    const float add = (ibufx - 0.001f) / newx;
+    /* Special case: source is 1px wide (see #70356). */
+    if (UNLIKELY(ibufx == 1)) {
+      for (int y = ibufy; y > 0; y--) {
+        for (int x = newx; x > 0; x--) {
+          *dst = *src;
+          dst++;
+        }
         src++;
       }
-
-      val = load_pixel(src);
-      src++;
-
-      float4 pix = (nval + sample * val) * inv_add;
-      store_pixel(pix, dst);
-      dst++;
-
-      sample -= 1.0f;
     }
-  }
-  BLI_assert(src - src_start == ibufx * ibufy); /* see bug #26502. */
-  BLI_assert(dst - dst_start == newx * ibufy);
-}
-
-static void scale_down_x(ImBuf *ibuf, int newx)
-{
-  uchar4 *dst_byte = nullptr;
-  float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, newx, ibuf->y, &dst_byte, &dst_float);
-  if (dst_byte == nullptr && dst_float == nullptr) {
-    return;
-  }
-
-  /* Byte pixels. */
-  if (dst_byte != nullptr) {
-    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
-    scale_down_x(src, dst_byte, ibuf->x, ibuf->y, newx);
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
-  }
-
-  /* Float pixels. */
-  if (dst_float != nullptr) {
-    if (ibuf->channels == 1) {
-      scale_down_x(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 2) {
-      const float2 *src = (const float2 *)ibuf->float_buffer.data;
-      scale_down_x(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 3) {
-      const float3 *src = (const float3 *)ibuf->float_buffer.data;
-      scale_down_x(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 4) {
-      const float4 *src = (const float4 *)ibuf->float_buffer.data;
-      scale_down_x(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
-  }
-
-  ibuf->x = newx;
-}
-
-template<typename T> static void scale_down_y(const T *src, T *dst, int ibufx, int ibufy, int newy)
-{
-  const float add = (ibufy - 0.01f) / newy;
-  const float inv_add = 1.0f / add;
-
-  const T *src_start = src;
-  T *dst_ptr = dst;
-  for (int x = ibufx - 1; x >= 0; x--) {
-    src = src_start + x;
-    dst_ptr = dst + x;
-    float sample = 0.0f;
-    float4 val(0.0f);
-
-    for (int y = newy; y > 0; y--) {
-      float4 nval = -val * sample;
-      sample += add;
-      while (sample >= 1.0f) {
-        sample -= 1.0f;
-        nval += load_pixel(src);
-        src += ibufx;
-      }
-
-      val = load_pixel(src);
-      src += ibufx;
-
-      float4 pix = (nval + sample * val) * inv_add;
-      store_pixel(pix, dst_ptr);
-      dst_ptr += ibufx;
-
-      sample -= 1.0f;
-    }
-  }
-  BLI_assert(src - src_start == ibufx * ibufy); /* see bug #26502. */
-  BLI_assert(dst_ptr - dst == ibufx * newy);
-}
-
-static void scale_down_y(ImBuf *ibuf, int newy)
-{
-  uchar4 *dst_byte = nullptr;
-  float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, ibuf->x, newy, &dst_byte, &dst_float);
-  if (dst_byte == nullptr && dst_float == nullptr) {
-    return;
-  }
-
-  /* Byte pixels. */
-  if (dst_byte != nullptr) {
-    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
-    scale_down_y(src, dst_byte, ibuf->x, ibuf->y, newy);
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
-  }
-
-  /* Float pixels. */
-  if (dst_float != nullptr) {
-    if (ibuf->channels == 1) {
-      scale_down_y(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 2) {
-      const float2 *src = (const float2 *)ibuf->float_buffer.data;
-      scale_down_y(src, (float2 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 3) {
-      const float3 *src = (const float3 *)ibuf->float_buffer.data;
-      scale_down_y(src, (float3 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 4) {
-      const float4 *src = (const float4 *)ibuf->float_buffer.data;
-      scale_down_y(src, (float4 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
-  }
-
-  ibuf->y = newy;
-}
-
-template<typename T> static void scale_up_x(const T *src, T *dst, int ibufx, int ibufy, int newx)
-{
-  const float add = (ibufx - 0.001f) / newx;
-  const T *src_start = src;
-  T *dst_ptr = dst;
-  /* Special case: source is 1px wide (see #70356). */
-  if (UNLIKELY(ibufx == 1)) {
-    for (int y = ibufy; y > 0; y--) {
-      for (int x = newx; x > 0; x--) {
-        *dst = *src;
-        dst++;
-      }
-      src++;
-    }
-  }
-  else {
-    for (int y = 0; y < ibufy; y++) {
-      float sample = -0.5f + add * 0.5f;
-      int counter = 0;
-      src = src_start + y * ibufx;
-      float4 val = load_pixel(src);
-      float4 nval = load_pixel(src + 1);
-      float4 diff = nval - val;
-      src += 2;
-      counter += 2;
-      for (int x = 0; x < newx; x++) {
-        if (sample >= 1.0f) {
-          sample -= 1.0f;
-          val = nval;
-          nval = load_pixel(src);
-          diff = nval - val;
-          if (counter + 1 < ibufx) {
-            src++;
-            counter++;
+    else {
+      const int grain_size = threaded ? 32 : ibufy;
+      threading::parallel_for(IndexRange(ibufy), grain_size, [&](IndexRange range) {
+        for (const int y : range) {
+          float sample = -0.5f + add * 0.5f;
+          int counter = 0;
+          const T *src_ptr = src + y * ibufx;
+          T *dst_ptr = dst + y * newx;
+          float4 val = load_pixel(src_ptr);
+          float4 nval = load_pixel(src_ptr + 1);
+          float4 diff = nval - val;
+          src_ptr += 2;
+          counter += 2;
+          for (int x = 0; x < newx; x++) {
+            if (sample >= 1.0f) {
+              sample -= 1.0f;
+              val = nval;
+              nval = load_pixel(src_ptr);
+              diff = nval - val;
+              if (counter + 1 < ibufx) {
+                src_ptr++;
+                counter++;
+              }
+            }
+            float4 pix = val + blender::math::max(sample, 0.0f) * diff;
+            store_pixel(pix, dst_ptr);
+            dst_ptr++;
+            sample += add;
           }
         }
-        float4 pix = val + blender::math::max(sample, 0.0f) * diff;
-        store_pixel(pix, dst_ptr);
-        dst_ptr++;
-        sample += add;
+      });
+    }
+  }
+};
+
+struct ScaleUpY {
+  template<typename T>
+  static void op(const T *src, T *dst, int ibufx, int ibufy, int /*newx*/, int newy, bool threaded)
+  {
+    using namespace blender;
+    const float add = (ibufy - 0.001f) / newy;
+    /* Special case: source is 1px high (see #70356). */
+    if (UNLIKELY(ibufy == 1)) {
+      for (int y = newy; y > 0; y--) {
+        memcpy(dst, src, sizeof(T) * ibufx);
+        dst += ibufx;
       }
     }
-  }
-  BLI_assert(src - src_start <= ibufx * ibufy);
-  BLI_assert(dst_ptr - dst == newx * ibufy);
-}
+    else {
+      const int grain_size = threaded ? 32 : ibufx;
+      threading::parallel_for(IndexRange(ibufx), grain_size, [&](IndexRange range) {
+        for (const int x : range) {
+          float sample = -0.5f + add * 0.5f;
+          int counter = 0;
+          const T *src_ptr = src + x;
+          T *dst_ptr = dst + x;
 
-static void scale_up_x(ImBuf *ibuf, int newx)
-{
-  uchar4 *dst_byte = nullptr;
-  float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, newx, ibuf->y, &dst_byte, &dst_float);
-  if (dst_byte == nullptr && dst_float == nullptr) {
-    return;
-  }
+          float4 val = load_pixel(src_ptr);
+          float4 nval = load_pixel(src_ptr + ibufx);
+          float4 diff = nval - val;
+          src_ptr += ibufx * 2;
+          counter += 2;
 
-  /* Byte pixels. */
-  if (dst_byte != nullptr) {
-    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
-    scale_up_x(src, dst_byte, ibuf->x, ibuf->y, newx);
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
-  }
-
-  /* Float pixels. */
-  if (dst_float != nullptr) {
-    if (ibuf->channels == 1) {
-      scale_up_x(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 2) {
-      const float2 *src = (const float2 *)ibuf->float_buffer.data;
-      scale_up_x(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 3) {
-      const float3 *src = (const float3 *)ibuf->float_buffer.data;
-      scale_up_x(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    else if (ibuf->channels == 4) {
-      const float4 *src = (const float4 *)ibuf->float_buffer.data;
-      scale_up_x(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx);
-    }
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
-  }
-
-  ibuf->x = newx;
-}
-
-template<typename T> static void scale_up_y(const T *src, T *dst, int ibufx, int ibufy, int newy)
-{
-  const float add = (ibufy - 0.001f) / newy;
-  const T *src_ptr = src;
-  T *dst_ptr = dst;
-  /* Special case: source is 1px high (see #70356). */
-  if (UNLIKELY(ibufy == 1)) {
-    for (int y = newy; y > 0; y--) {
-      memcpy(dst, src, sizeof(T) * ibufx);
-      dst += ibufx;
-    }
-  }
-  else {
-    for (int x = 0; x < ibufx; x++) {
-      float sample = -0.5f + add * 0.5f;
-      int counter = 0;
-      src_ptr = src + x;
-      dst_ptr = dst + x;
-
-      float4 val = load_pixel(src_ptr);
-      float4 nval = load_pixel(src_ptr + ibufx);
-      float4 diff = nval - val;
-      src_ptr += ibufx * 2;
-      counter += 2;
-
-      for (int y = 0; y < newy; y++) {
-        if (sample >= 1.0f) {
-          sample -= 1.0f;
-          val = nval;
-          nval = load_pixel(src_ptr);
-          diff = nval - val;
-          if (counter + 1 < ibufy) {
-            src_ptr += ibufx;
-            ++counter;
+          for (int y = 0; y < newy; y++) {
+            if (sample >= 1.0f) {
+              sample -= 1.0f;
+              val = nval;
+              nval = load_pixel(src_ptr);
+              diff = nval - val;
+              if (counter + 1 < ibufy) {
+                src_ptr += ibufx;
+                ++counter;
+              }
+            }
+            float4 pix = val + blender::math::max(sample, 0.0f) * diff;
+            store_pixel(pix, dst_ptr);
+            dst_ptr += ibufx;
+            sample += add;
           }
         }
-        float4 pix = val + blender::math::max(sample, 0.0f) * diff;
-        store_pixel(pix, dst_ptr);
-        dst_ptr += ibufx;
-        sample += add;
-      }
+      });
     }
   }
-  BLI_assert(src_ptr - src <= ibufx * ibufy + ibufx - 1);
-  BLI_assert(dst_ptr - dst == ibufx * newy + ibufx - 1);
+};
+
+using ScaleFunction = void (*)(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded);
+
+template<typename T>
+static void instantiate_pixel_op(T & /*op*/,
+                                 const ImBuf *ibuf,
+                                 int newx,
+                                 int newy,
+                                 uchar4 *dst_byte,
+                                 float *dst_float,
+                                 bool threaded)
+{
+  if (dst_byte != nullptr) {
+    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
+    T::op(src, dst_byte, ibuf->x, ibuf->y, newx, newy, threaded);
+  }
+  if (dst_float != nullptr) {
+    if (ibuf->channels == 1) {
+      T::op(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx, newy, threaded);
+    }
+    else if (ibuf->channels == 2) {
+      const float2 *src = (const float2 *)ibuf->float_buffer.data;
+      T::op(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx, newy, threaded);
+    }
+    else if (ibuf->channels == 3) {
+      const float3 *src = (const float3 *)ibuf->float_buffer.data;
+      T::op(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx, newy, threaded);
+    }
+    else if (ibuf->channels == 4) {
+      const float4 *src = (const float4 *)ibuf->float_buffer.data;
+      T::op(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx, newy, threaded);
+    }
+  }
 }
 
-static void scale_up_y(ImBuf *ibuf, int newy)
+static void scale_down_x_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+{
+  ScaleDownX op;
+  instantiate_pixel_op(op, ibuf, newx, newy, dst_byte, dst_float, threaded);
+}
+
+static void scale_down_y_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+{
+  ScaleDownY op;
+  instantiate_pixel_op(op, ibuf, newx, newy, dst_byte, dst_float, threaded);
+}
+
+static void scale_up_x_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+{
+  ScaleUpX op;
+  instantiate_pixel_op(op, ibuf, newx, newy, dst_byte, dst_float, threaded);
+}
+
+static void scale_up_y_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+{
+  ScaleUpY op;
+  instantiate_pixel_op(op, ibuf, newx, newy, dst_byte, dst_float, threaded);
+}
+
+static void apply_scale_func(ImBuf *ibuf, int newx, int newy, ScaleFunction func, bool threaded)
 {
   uchar4 *dst_byte = nullptr;
   float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, ibuf->x, newy, &dst_byte, &dst_float);
+  alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
   if (dst_byte == nullptr && dst_float == nullptr) {
     return;
   }
 
-  /* Byte pixels. */
+  func(ibuf, newx, newy, dst_byte, dst_float, threaded);
+
   if (dst_byte != nullptr) {
-    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
-    scale_up_y(src, dst_byte, ibuf->x, ibuf->y, newy);
     imb_freerectImBuf(ibuf);
     IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
   }
-
-  /* Float pixels. */
   if (dst_float != nullptr) {
-    if (ibuf->channels == 1) {
-      scale_up_y(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 2) {
-      const float2 *src = (const float2 *)ibuf->float_buffer.data;
-      scale_up_y(src, (float2 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 3) {
-      const float3 *src = (const float3 *)ibuf->float_buffer.data;
-      scale_up_y(src, (float3 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
-    else if (ibuf->channels == 4) {
-      const float4 *src = (const float4 *)ibuf->float_buffer.data;
-      scale_up_y(src, (float4 *)dst_float, ibuf->x, ibuf->y, newy);
-    }
     imb_freerectfloatImBuf(ibuf);
     IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
   }
-
+  ibuf->x = newx;
   ibuf->y = newy;
 }
 
 static void imb_scale_box(ImBuf *ibuf, uint newx, uint newy, bool threaded)
 {
-  //@TODO: threaded
-
   if (newx != 0 && (newx < ibuf->x)) {
-    scale_down_x(ibuf, newx);
+    apply_scale_func(ibuf, newx, ibuf->y, scale_down_x_func, threaded);
   }
   if (newy != 0 && (newy < ibuf->y)) {
-    scale_down_y(ibuf, newy);
+    apply_scale_func(ibuf, ibuf->x, newy, scale_down_y_func, threaded);
   }
   if (newx != 0 && (newx > ibuf->x)) {
-    scale_up_x(ibuf, newx);
+    apply_scale_func(ibuf, newx, ibuf->y, scale_up_x_func, threaded);
   }
   if (newy != 0 && (newy > ibuf->y)) {
-    scale_up_y(ibuf, newy);
+    apply_scale_func(ibuf, ibuf->x, newy, scale_up_y_func, threaded);
   }
 }
 
