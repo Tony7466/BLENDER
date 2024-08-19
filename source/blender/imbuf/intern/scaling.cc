@@ -732,19 +732,9 @@ static void scale_up_y(ImBuf *ibuf, int newy)
   ibuf->y = newy;
 }
 
-static bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
+static void imb_scale_box(ImBuf *ibuf, uint newx, uint newy, bool threaded)
 {
-  BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
-
-  if (ibuf == nullptr) {
-    return false;
-  }
-  if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
-    return false;
-  }
-  if (newx == ibuf->x && newy == ibuf->y) {
-    return false;
-  }
+  //@TODO: threaded
 
   if (newx != 0 && (newx < ibuf->x)) {
     scale_down_x(ibuf, newx);
@@ -758,98 +748,71 @@ static bool IMB_scaleImBuf(ImBuf *ibuf, uint newx, uint newy)
   if (newy != 0 && (newy > ibuf->y)) {
     scale_up_y(ibuf, newy);
   }
-
-  return true;
 }
 
 template<typename T>
-static void scale_nearest(const T *src, T *dst, int ibufx, int ibufy, int newx, int newy)
+static void scale_nearest(
+    const T *src, T *dst, int ibufx, int ibufy, int newx, int newy, blender::IndexRange y_range)
 {
   /* Nearest sample scaling. Step through pixels in fixed point coordinates. */
   constexpr int FRAC_BITS = 16;
   int64_t stepx = ((int64_t(ibufx) << FRAC_BITS) + newx / 2) / newx;
   int64_t stepy = ((int64_t(ibufy) << FRAC_BITS) + newy / 2) / newy;
-  int64_t posy = 0;
-  for (int y = 0; y < newy; y++, posy += stepy) {
+  int64_t posy = y_range.first() * stepy;
+  dst += y_range.first() * newx;
+  for (const int y : y_range) {
+    UNUSED_VARS(y);
     const T *row = src + (posy >> FRAC_BITS) * ibufx;
     int64_t posx = 0;
     for (int x = 0; x < newx; x++, posx += stepx) {
       *dst = row[posx >> FRAC_BITS];
       dst++;
     }
+    posy += stepy;
   }
 }
 
-static bool IMB_scalefastImBuf(ImBuf *ibuf, uint newx, uint newy)
+static void imb_scale_nearest(
+    const ImBuf *ibuf, uint newx, uint newy, uchar4 *dst_byte, float *dst_float, bool threaded)
 {
-  BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
-  if (ibuf == nullptr) {
-    return false;
-  }
-  if (newx == ibuf->x && newy == ibuf->y) {
-    return false;
-  }
+  using namespace blender;
 
-  uchar4 *dst_byte = nullptr;
-  float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
-  if (dst_byte == nullptr && dst_float == nullptr) {
-    return false;
-  }
-
-  /* Byte pixels. */
-  if (dst_byte != nullptr) {
-    const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
-    scale_nearest(src, dst_byte, ibuf->x, ibuf->y, newx, newy);
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
-  }
-  /* Float pixels. */
-  if (dst_float != nullptr) {
-    if (ibuf->channels == 1) {
-      scale_nearest(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx, newy);
+  const int grain_size = threaded ? 64 : newy;
+  threading::parallel_for(IndexRange(newy), grain_size, [&](IndexRange y_range) {
+    /* Byte pixels. */
+    if (dst_byte != nullptr) {
+      const uchar4 *src = (const uchar4 *)ibuf->byte_buffer.data;
+      scale_nearest(src, dst_byte, ibuf->x, ibuf->y, newx, newy, y_range);
     }
-    else if (ibuf->channels == 2) {
-      const float2 *src = (const float2 *)ibuf->float_buffer.data;
-      scale_nearest(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx, newy);
+    /* Float pixels. */
+    if (dst_float != nullptr) {
+      if (ibuf->channels == 1) {
+        scale_nearest(ibuf->float_buffer.data, dst_float, ibuf->x, ibuf->y, newx, newy, y_range);
+      }
+      else if (ibuf->channels == 2) {
+        const float2 *src = (const float2 *)ibuf->float_buffer.data;
+        scale_nearest(src, (float2 *)dst_float, ibuf->x, ibuf->y, newx, newy, y_range);
+      }
+      else if (ibuf->channels == 3) {
+        const float3 *src = (const float3 *)ibuf->float_buffer.data;
+        scale_nearest(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx, newy, y_range);
+      }
+      else if (ibuf->channels == 4) {
+        const float4 *src = (const float4 *)ibuf->float_buffer.data;
+        scale_nearest(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx, newy, y_range);
+      }
     }
-    else if (ibuf->channels == 3) {
-      const float3 *src = (const float3 *)ibuf->float_buffer.data;
-      scale_nearest(src, (float3 *)dst_float, ibuf->x, ibuf->y, newx, newy);
-    }
-    else if (ibuf->channels == 4) {
-      const float4 *src = (const float4 *)ibuf->float_buffer.data;
-      scale_nearest(src, (float4 *)dst_float, ibuf->x, ibuf->y, newx, newy);
-    }
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
-  }
-
-  ibuf->x = newx;
-  ibuf->y = newy;
-  return true;
+  });
 }
 
-static void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
+static void imb_scale_bilinear(
+    const ImBuf *ibuf, uint newx, uint newy, uchar4 *dst_byte, float *dst_float, bool threaded)
 {
   using namespace blender;
   using namespace blender::imbuf;
-  BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
 
-  /* Create destination buffers. */
-  uchar *dst_byte_buffer = nullptr;
-  if (ibuf->byte_buffer.data) {
-    dst_byte_buffer = static_cast<uchar *>(
-        MEM_mallocN(sizeof(uchar) * 4 * newx * newy, "threaded scale byte buffer"));
-  }
-  float *dst_float_buffer = nullptr;
-  if (ibuf->float_buffer.data) {
-    dst_float_buffer = static_cast<float *>(
-        MEM_mallocN(sizeof(float) * ibuf->channels * newx * newy, "threaded scale float buffer"));
-  }
-
-  /* Threaded processing. */
-  threading::parallel_for(IndexRange(newy), 32, [&](IndexRange y_range) {
+  const int grain_size = threaded ? 32 : newy;
+  threading::parallel_for(IndexRange(newy), grain_size, [&](IndexRange y_range) {
     float factor_x = float(ibuf->x) / newx;
     float factor_y = float(ibuf->y) / newy;
 
@@ -858,32 +821,17 @@ static void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
       for (int x = 0; x < newx; x++) {
         float u = (float(x) + 0.5f) * factor_x - 0.5f;
         int64_t offset = int64_t(y) * newx + x;
-
-        if (dst_byte_buffer) {
-          interpolate_bilinear_byte(ibuf, dst_byte_buffer + 4 * offset, u, v);
+        if (dst_byte) {
+          interpolate_bilinear_byte(ibuf, (uchar *)(dst_byte + offset), u, v);
         }
-
-        if (dst_float_buffer) {
-          float *pixel = dst_float_buffer + ibuf->channels * offset;
+        if (dst_float) {
+          float *pixel = dst_float + ibuf->channels * offset;
           math::interpolate_bilinear_fl(
               ibuf->float_buffer.data, pixel, ibuf->x, ibuf->y, ibuf->channels, u, v);
         }
       }
     }
   });
-
-  /* Alter the image. */
-  ibuf->x = newx;
-  ibuf->y = newy;
-
-  if (ibuf->byte_buffer.data) {
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, dst_byte_buffer, IB_TAKE_OWNERSHIP);
-  }
-  if (ibuf->float_buffer.data) {
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float_buffer, IB_TAKE_OWNERSHIP);
-  }
 }
 
 bool IMB_scale(
@@ -896,18 +844,43 @@ bool IMB_scale(
   if (newx == ibuf->x && newy == ibuf->y) {
     return false;
   }
+
+  if (filter == IMBScaleFilter::Box) {
+    /* Box filter does memory allocation internally due to separate
+     * horizontal and vertical passes. */
+    imb_scale_box(ibuf, newx, newy, threaded);
+    return true;
+  }
+
+  /* Allocate destination buffers. */
+  uchar4 *dst_byte = nullptr;
+  float *dst_float = nullptr;
+  alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
+  if (dst_byte == nullptr && dst_float == nullptr) {
+    return false;
+  }
+
   if (filter == IMBScaleFilter::Nearest) {
-    return IMB_scalefastImBuf(ibuf, newx, newy);  //@TODO: threaded
+    imb_scale_nearest(ibuf, newx, newy, dst_byte, dst_float, threaded);
   }
   else if (filter == IMBScaleFilter::Bilinear) {
-    IMB_scaleImBuf_threaded(ibuf, newx, newy);  //@TODO: non-threaded
-  }
-  else if (filter == IMBScaleFilter::Box) {
-    IMB_scaleImBuf(ibuf, newx, newy);  //@TODO: threaded
+    imb_scale_bilinear(ibuf, newx, newy, dst_byte, dst_float, threaded);
   }
   else {
     BLI_assert_unreachable();
-    return false;
   }
+
+  /* Alter the image. */
+  ibuf->x = newx;
+  ibuf->y = newy;
+  if (ibuf->byte_buffer.data) {
+    imb_freerectImBuf(ibuf);
+    IMB_assign_byte_buffer(ibuf, (uchar *)dst_byte, IB_TAKE_OWNERSHIP);
+  }
+  if (ibuf->float_buffer.data) {
+    imb_freerectfloatImBuf(ibuf);
+    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
+  }
+
   return true;
 }

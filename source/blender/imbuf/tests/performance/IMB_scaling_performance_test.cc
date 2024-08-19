@@ -70,11 +70,23 @@ static void imb_xform_bilinear(ImBuf *&src, int width, int height)
 }
 static void imb_xform_box(ImBuf *&src, int width, int height)
 {
-  imb_scale_via_transform(src, width, height, IMB_FILTER_BOX);
+  imb_scale_via_transform(src,
+                          width,
+                          height,
+                          width < src->x && height < src->y ? IMB_FILTER_BOX :
+                                                              IMB_FILTER_BILINEAR);
 }
 static void imb_scale_nearest_st(ImBuf *&src, int width, int height)
 {
   IMB_scale(src, width, height, IMBScaleFilter::Nearest, false);
+}
+static void imb_scale_nearest(ImBuf *&src, int width, int height)
+{
+  IMB_scale(src, width, height, IMBScaleFilter::Nearest, true);
+}
+static void imb_scale_bilinear_st(ImBuf *&src, int width, int height)
+{
+  IMB_scale(src, width, height, IMBScaleFilter::Bilinear, false);
 }
 static void imb_scale_bilinear(ImBuf *&src, int width, int height)
 {
@@ -84,94 +96,39 @@ static void imb_scale_box_st(ImBuf *&src, int width, int height)
 {
   IMB_scale(src, width, height, IMBScaleFilter::Box, false);
 }
-
-
-static void scale_nearest(bool use_float)
+static void imb_scale_box(ImBuf *&src, int width, int height)
 {
-  ImBuf *img = create_src_image(use_float);
-  {
-    SCOPED_TIMER("scale_nearest");
-    imb_scale_nearest_st(img, DST_LARGER_X, DST_LARGER_Y);
-      imb_scale_nearest_st(img, SRC_X, SRC_Y);
-      imb_scale_nearest_st(img, DST_SMALLER_X, DST_SMALLER_Y);
-      imb_scale_nearest_st(img, DST_LARGER_X, DST_LARGER_Y);
-  }
-  IMB_freeImBuf(img);
+  IMB_scale(src, width, height, IMBScaleFilter::Box, true);
 }
 
-static void xform_nearest(bool use_float)
+static void scale_perf_impl(const char *name,
+                            bool use_float,
+                            void (*func)(ImBuf *&src, int width, int height))
 {
   ImBuf *img = create_src_image(use_float);
   {
-    SCOPED_TIMER("xform_nearest");
-    imb_xform_nearest(img, DST_LARGER_X, DST_LARGER_Y);
-    imb_xform_nearest(img, SRC_X, SRC_Y);
-    imb_xform_nearest(img, DST_SMALLER_X, DST_SMALLER_Y);
-    imb_xform_nearest(img, DST_LARGER_X, DST_LARGER_Y);
-  }
-  IMB_freeImBuf(img);
-}
-
-static void xform_boxfilt(bool use_float)
-{
-  ImBuf *img = create_src_image(use_float);
-  {
-    SCOPED_TIMER("xform_boxfilt");
-    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
-    imb_xform_box(img, SRC_X, SRC_Y);
-    imb_xform_box(img, DST_SMALLER_X, DST_SMALLER_Y);
-    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
-  }
-  IMB_freeImBuf(img);
-}
-
-static void scale_bilinear_st(bool use_float)
-{
-  ImBuf *img = create_src_image(use_float);
-  {
-    SCOPED_TIMER("scale_bilin_st");
-    imb_scale_box_st(img, DST_LARGER_X, DST_LARGER_Y);
-    imb_scale_box_st(img, SRC_X, SRC_Y);
-    imb_scale_box_st(img, DST_SMALLER_X, DST_SMALLER_Y);
-    imb_scale_box_st(img, DST_LARGER_X, DST_LARGER_Y);
-  }
-  IMB_freeImBuf(img);
-}
-
-static void scale_bilinear(bool use_float)
-{
-  ImBuf *img = create_src_image(use_float);
-  {
-    SCOPED_TIMER("scale_bilinear");
-    imb_scale_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
-    imb_scale_bilinear(img, SRC_X, SRC_Y);
-    imb_scale_bilinear(img, DST_SMALLER_X, DST_SMALLER_Y);
-    imb_scale_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
-  }
-  IMB_freeImBuf(img);
-}
-
-static void xform_bilinear(bool use_float)
-{
-  ImBuf *img = create_src_image(use_float);
-  {
-    SCOPED_TIMER("xform_bilinear");
-    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
-    imb_xform_bilinear(img, SRC_X, SRC_Y);
-    imb_xform_bilinear(img, DST_SMALLER_X, DST_SMALLER_Y);
-    imb_xform_bilinear(img, DST_LARGER_X, DST_LARGER_Y);
+    SCOPED_TIMER(name);
+    func(img, DST_LARGER_X, DST_LARGER_Y);
+    func(img, SRC_X, SRC_Y);
+    func(img, DST_SMALLER_X, DST_SMALLER_Y);
+    func(img, DST_LARGER_X, DST_LARGER_Y);
   }
   IMB_freeImBuf(img);
 }
 
 static void test_scaling_perf(bool use_float)
 {
-  scale_nearest(use_float);
-  xform_nearest(use_float);
-  xform_boxfilt(use_float);
-  scale_bilinear_st(use_float);
-  scale_bilinear(use_float);
-  xform_bilinear(use_float);
+  scale_perf_impl("scale_neare_s", use_float, imb_scale_nearest_st);
+  scale_perf_impl("scale_neare_m", use_float, imb_scale_nearest);
+  scale_perf_impl("xform_neare_m", use_float, imb_xform_nearest);
+
+  scale_perf_impl("scale_bilin_s", use_float, imb_scale_bilinear_st);
+  scale_perf_impl("scale_bilin_m", use_float, imb_scale_bilinear);
+  scale_perf_impl("xform_bilin_m", use_float, imb_xform_bilinear);
+
+  scale_perf_impl("scale_boxfl_s", use_float, imb_scale_box_st);
+  scale_perf_impl("scale_boxfl_m", use_float, imb_scale_box);
+  scale_perf_impl("xform_boxfl_m", use_float, imb_xform_box);
 }
 
 TEST(imbuf_scaling, scaling_perf_byte)
