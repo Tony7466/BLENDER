@@ -2052,7 +2052,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
                           mesh_orig->verts_num);
 
       if (key_data.data() != nullptr) {
-        /* apply shape keys coordinates to pbvh::Tree */
         BKE_pbvh_vert_coords_apply(*ss.pbvh, key_data);
         if (ss.deform_cos.is_empty()) {
           ss.deform_cos = key_data;
