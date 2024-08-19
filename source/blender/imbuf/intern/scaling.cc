@@ -885,3 +885,29 @@ void IMB_scaleImBuf_threaded(ImBuf *ibuf, uint newx, uint newy)
     IMB_assign_float_buffer(ibuf, dst_float_buffer, IB_TAKE_OWNERSHIP);
   }
 }
+
+bool IMB_scale(
+    ImBuf *ibuf, unsigned int newx, unsigned int newy, IMBScaleFilter filter, bool threaded)
+{
+  BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
+  if (ibuf == nullptr) {
+    return false;
+  }
+  if (newx == ibuf->x && newy == ibuf->y) {
+    return false;
+  }
+  if (filter == IMBScaleFilter::Nearest) {
+    return IMB_scalefastImBuf(ibuf, newx, newy);  //@TODO: threaded
+  }
+  else if (filter == IMBScaleFilter::Bilinear) {
+    IMB_scaleImBuf_threaded(ibuf, newx, newy);  //@TODO: non-threaded
+  }
+  else if (filter == IMBScaleFilter::Box) {
+    IMB_scaleImBuf(ibuf, newx, newy);  //@TODO: threaded
+  }
+  else {
+    BLI_assert_unreachable();
+    return false;
+  }
+  return true;
+}
