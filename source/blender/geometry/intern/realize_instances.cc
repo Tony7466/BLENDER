@@ -2450,7 +2450,7 @@ static void execute_realize_physics_task(const RealizeInstancesOptions & /*optio
   }
 
   if (write_constraints) {
-    const IndexRange src_body_range = physics.constraints_range();
+    const IndexRange src_body_range = physics.bodies_range();
     const VArray<int> src_constraint_body1 = physics_info.constraint_bodies1;
     const VArray<int> src_constraint_body2 = physics_info.constraint_bodies2;
 
