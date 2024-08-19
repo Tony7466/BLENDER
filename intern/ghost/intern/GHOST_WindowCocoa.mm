@@ -550,7 +550,7 @@ GHOST_TSuccess GHOST_WindowCocoa::applyDecoration()
 {
   @autoreleasepool {
     if (m_windowDecorationFlags & GHOST_kDecorationColoredTitleBar) {
-      const float(&background_color)[3] = m_windowDecorationSettings.colored_titlebar_bg_color;
+      const float *background_color = m_windowDecorationSettings.colored_titlebar_bg_color;
 
       /* Titlebar background color. */
       m_window.backgroundColor = [NSColor colorWithRed:background_color[0]
