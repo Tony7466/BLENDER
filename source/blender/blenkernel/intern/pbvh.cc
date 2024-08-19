@@ -908,7 +908,7 @@ static const SharedCache<Vector<float3>> &vert_normals_cache_eval(const Object &
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_matches(*mesh_eval, mesh_orig)) {
-        BLI_assert(mesh_eval->verts_num == mesh_orig->verts_num);
+        BLI_assert(mesh_eval->verts_num == mesh_orig.verts_num);
         return mesh_eval->runtime->vert_normals_cache;
       }
     }
@@ -940,7 +940,7 @@ static const SharedCache<Vector<float3>> &face_normals_cache_eval(const Object &
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_matches(*mesh_eval, mesh_orig)) {
-        BLI_assert(mesh_eval->verts_num == mesh_orig->verts_num);
+        BLI_assert(mesh_eval->verts_num == mesh_orig.verts_num);
         return mesh_eval->runtime->face_normals_cache;
       }
     }
@@ -2810,7 +2810,7 @@ static Span<float3> vert_positions_eval(const Object &object_orig, const Object 
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_matches(*mesh_eval, mesh_orig)) {
-        BLI_assert(mesh_eval->verts_num == mesh_orig->verts_num);
+        BLI_assert(mesh_eval->verts_num == mesh_orig.verts_num);
         return mesh_eval->vert_positions();
       }
     }
@@ -2834,7 +2834,7 @@ static MutableSpan<float3> vert_positions_eval_for_write(Object &object_orig, Ob
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_matches(*mesh_eval, mesh_orig)) {
-        BLI_assert(mesh_eval->verts_num == mesh_orig->verts_num);
+        BLI_assert(mesh_eval->verts_num == mesh_orig.verts_num);
         Mesh *mesh_eval_mut = const_cast<Mesh *>(mesh_eval);
         return mesh_eval_mut->vert_positions_for_write();
       }
