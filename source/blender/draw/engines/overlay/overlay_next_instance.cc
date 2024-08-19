@@ -89,12 +89,10 @@ void Instance::begin_sync()
   background.begin_sync(resources, state);
   outline.begin_sync(resources, state);
 
-  images.begin_sync(resources, state, view);
-
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
     layer.cameras.begin_sync(resources, state, view);
-    layer.empties.begin_sync();
+    layer.empties.begin_sync(resources, state, view);
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
     layer.lattices.begin_sync(resources, state);
@@ -163,8 +161,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY: {
-        layer.empties.object_sync(
-            ob_ref, shapes, manager, resources, state, layer.images_pass_source);
+        layer.empties.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       }
       case OB_CAMERA:
@@ -321,11 +318,11 @@ void Instance::draw(Manager &manager)
   infront.cameras.draw_image_scene_background(
       resources.overlay_color_only_fb, state, manager, view);
 
-  images.draw_image_background(resources.overlay_color_only_fb, manager, view);
+  regular.empties.draw_image_background(resources.overlay_color_only_fb, manager, view);
   regular.cameras.draw_image_background(resources.overlay_color_only_fb, manager, view);
   infront.cameras.draw_image_background(resources.overlay_color_only_fb, manager, view);
 
-  images.draw_image(resources.overlay_fb, manager, view);
+  regular.empties.draw_image(resources.overlay_fb, manager, view);
 
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
@@ -365,7 +362,7 @@ void Instance::draw(Manager &manager)
 
   /* TODO(: Breaks selection on M1 Max. */
   // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
-  // images.draw_in_front(resources.overlay_in_front_fb, manager, view);
+  // infront.empties.draw_in_front(resources.overlay_in_front_fb, manager, view);
   // regular.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
   // infront.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
 

@@ -19,7 +19,6 @@
 #include "overlay_next_force_field.hh"
 #include "overlay_next_grease_pencil.hh"
 #include "overlay_next_grid.hh"
-#include "overlay_next_image.hh"
 #include "overlay_next_lattice.hh"
 #include "overlay_next_light.hh"
 #include "overlay_next_lightprobe.hh"
@@ -53,12 +52,10 @@ class Instance {
   /** Overlay types. */
   Background background;
 
-  Images images;
   Outline outline;
 
   struct OverlayLayer {
     const SelectionType selection_type_;
-    const Images::PassSource &images_pass_source;
 
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
@@ -74,8 +71,7 @@ class Instance {
     Prepass prepass = {selection_type_};
     Relations relations;
     Speakers speakers = {selection_type_};
-  } regular{selection_type_, images.pass_source},
-      infront{selection_type_, images.in_front_pass_source};
+  } regular{selection_type_}, infront{selection_type_};
 
   Grid grid;
 
