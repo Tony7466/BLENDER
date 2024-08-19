@@ -609,6 +609,34 @@ void PhysicsWorldData::create_constraints(const IndexMask &selection,
   }
 }
 
+void PhysicsWorldData::set_disable_collision(const IndexMask &selection,
+                                             const VArray<bool> &disable_collision)
+{
+  selection.foreach_index([&](const int index) {
+    btTypedConstraint *constraint = constraints_[index];
+    const bool disable = disable_collision[index];
+
+    btRigidBody &body1 = constraint->getRigidBodyA();
+    btRigidBody &body2 = constraint->getRigidBodyB();
+    if (&body1 != &btTypedConstraint::getFixedBody()) {
+      if (disable) {
+        body1.addConstraintRef(constraint);
+      }
+      else {
+        body1.removeConstraintRef(constraint);
+      }
+    }
+    if (&body2 != &btTypedConstraint::getFixedBody()) {
+      if (disable) {
+        body2.addConstraintRef(constraint);
+      }
+      else {
+        body2.removeConstraintRef(constraint);
+      }
+    }
+  });
+}
+
 void PhysicsWorldData::set_overlap_filter(OverlapFilterFn fn)
 {
   overlap_filter_ = new OverlapFilterWrapper(std::move(fn));
@@ -981,7 +1009,6 @@ void PhysicsGeometryImpl::tag_constraints_changed()
 void PhysicsGeometryImpl::tag_constraint_disable_collision_changed()
 {
   tag_cache_dirty(this->constraint_disable_collision_valid);
-  this->tag_read_cache_changed();
 }
 
 bool PhysicsGeometryImpl::has_builtin_attribute_custom_data_layer(
@@ -1158,8 +1185,10 @@ void PhysicsGeometryImpl::ensure_body_masses_no_lock()
 
 void PhysicsGeometryImpl::ensure_constraints()
 {
-  ensure_cache(
-      this->data_mutex, this->constraints_valid, [&]() { this->ensure_constraints_no_lock(); });
+  ensure_cache_any(this->data_mutex,
+                   {&this->constraints_valid, &this->constraint_disable_collision_valid},
+                   {[&]() { this->ensure_constraints_no_lock(); },
+                    [&]() { this->ensure_constraint_disable_collision_no_lock(); }});
 }
 
 void PhysicsGeometryImpl::ensure_constraints_no_lock()
@@ -1190,6 +1219,33 @@ void PhysicsGeometryImpl::ensure_constraints_no_lock()
 
   const IndexMask selection = this->world_data->constraints().index_range();
   this->world_data->create_constraints(selection, types, body1, body2);
+}
+
+void PhysicsGeometryImpl::ensure_constraint_disable_collision()
+{
+  ensure_cache(this->data_mutex, this->constraint_disable_collision_valid, [&]() {
+    this->ensure_constraint_disable_collision_no_lock();
+  });
+}
+
+void PhysicsGeometryImpl::ensure_constraint_disable_collision_no_lock()
+{
+  const static StringRef disable_collision_id = PhysicsGeometry::constraint_attribute_name(
+      PhysicsGeometry::ConstraintAttribute::disable_collision);
+
+  if (!is_cache_dirty(this->constraint_disable_collision_valid)) {
+    return;
+  }
+  if (this->world_data == nullptr) {
+    return;
+  }
+
+  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
+  const VArray<bool> disable_collision = *custom_data_attributes.lookup_or_default<bool>(
+      disable_collision_id, AttrDomain::Edge, false);
+
+  const IndexMask selection = this->world_data->constraints().index_range();
+  this->world_data->set_disable_collision(selection, disable_collision);
 }
 
 void PhysicsGeometryImpl::ensure_custom_data_attribute(
@@ -1709,6 +1765,19 @@ bool PhysicsGeometryImpl::try_move_data(const PhysicsGeometryImpl &src,
   return true;
 }
 
+[[maybe_unused]] static bool has_constraint_ref(const btRigidBody &body,
+                                                const btTypedConstraint &constraint)
+{
+  for (const int i_ref : IndexRange(body.getNumConstraintRefs())) {
+    const btTypedConstraint *ref_constraint = const_cast<btRigidBody &>(body).getConstraintRef(
+        i_ref);
+    if (ref_constraint == &constraint) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool PhysicsGeometryImpl::validate_world_data()
 {
   bool ok = true;
@@ -1719,6 +1788,7 @@ bool PhysicsGeometryImpl::validate_world_data()
 
   this->ensure_motion_type();
   this->ensure_constraints();
+  this->ensure_read_cache();
   this->world_data->ensure_body_and_constraint_indices();
   this->world_data->ensure_bodies_and_constraints_in_world();
 
@@ -1779,6 +1849,8 @@ bool PhysicsGeometryImpl::validate_world_data()
       physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge);
   const VArray<int> cached_constraint_body2 = *cached_attributes.lookup<int>(
       physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge);
+  const VArray<bool> cached_constraint_disable_collision = *cached_attributes.lookup<bool>(
+      physics_attribute_name(ConstraintAttribute::disable_collision), AttrDomain::Edge);
   for (const int i : constraints.index_range()) {
     const btTypedConstraint *constraint = constraints[i];
     if (constraint == nullptr) {
@@ -1830,6 +1902,27 @@ bool PhysicsGeometryImpl::validate_world_data()
         }
       }
       if (!world_has_constraint_ref) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+    }
+
+    /* Constraints that disable the collision between its bodies add a reference on each body. */
+    const btRigidBody &body1 = constraint->getRigidBodyA();
+    const btRigidBody &body2 = constraint->getRigidBodyB();
+    const bool is_fixed1 = (&body1 == &btTypedConstraint::getFixedBody());
+    const bool is_fixed2 = (&body2 == &btTypedConstraint::getFixedBody());
+    const bool found_ref_in_body1 = has_constraint_ref(body1, *constraint);
+    const bool found_ref_in_body2 = has_constraint_ref(body2, *constraint);
+
+    if (cached_constraint_disable_collision[i]) {
+      if ((!is_fixed1 && !found_ref_in_body1) || (!is_fixed2 && !found_ref_in_body2)) {
+        BLI_assert_unreachable();
+        ok = false;
+      }
+    }
+    else {
+      if ((!is_fixed1 && found_ref_in_body1) || (!is_fixed2 && found_ref_in_body2)) {
         BLI_assert_unreachable();
         ok = false;
       }
@@ -2412,8 +2505,8 @@ VArray<bool> PhysicsGeometry::constraint_disable_collision() const
 
 AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
 {
-  return attributes_for_write().lookup_for_write<bool>(
-      constraint_attribute_name(ConstraintAttribute::disable_collision));
+  return attributes_for_write().lookup_or_add_for_write<bool>(
+      constraint_attribute_name(ConstraintAttribute::disable_collision), AttrDomain::Edge);
 }
 
 StringRef PhysicsGeometry::body_attribute_name(BodyAttribute attribute)

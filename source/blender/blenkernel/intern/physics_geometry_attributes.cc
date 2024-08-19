@@ -360,22 +360,6 @@ static void constraint_breaking_impulse_threshold_set_fn(btTypedConstraint &cons
   constraint.setBreakingImpulseThreshold(value);
 }
 
-static bool constraint_disable_collision_get_fn(const btTypedConstraint & /*constraint*/)
-{
-  return false;
-}
-static void constraint_disable_collision_set_fn(btTypedConstraint &constraint, bool value)
-{
-  if (value) {
-    constraint.getRigidBodyA().addConstraintRef(&constraint);
-    constraint.getRigidBodyB().addConstraintRef(&constraint);
-  }
-  else {
-    constraint.getRigidBodyA().removeConstraintRef(&constraint);
-    constraint.getRigidBodyB().removeConstraintRef(&constraint);
-  }
-}
-
 template<bool allow_cache>
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
@@ -660,13 +644,23 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                             physics_access,
                                             allow_cache,
                                             {});
-  static BuiltinConstraintAttributeProvider<bool,
-                                            constraint_disable_collision_get_fn,
-                                            constraint_disable_collision_set_fn>
-      constraint_disable_collision(ConstraintAttribute::disable_collision,
-                                   BuiltinAttributeProvider::NonDeletable,
-                                   physics_access,
-                                   allow_cache);
+  static BuiltinCustomDataLayerProvider constraint_disable_collision(
+      physics_attribute_name(ConstraintAttribute::disable_collision),
+      AttrDomain::Edge,
+      CD_PROP_BOOL,
+      BuiltinAttributeProvider::NonDeletable,
+      constraint_custom_data_access,
+      [](void *owner) {
+        PhysicsGeometryImpl &impl = *static_cast<PhysicsGeometryImpl *>(owner);
+        physics_attribute_finish(impl, PhysicsGeometry::ConstraintAttribute::disable_collision);
+      });
+  // static BuiltinConstraintAttributeProvider<bool,
+  //                                           constraint_disable_collision_get_fn,
+  //                                           constraint_disable_collision_set_fn>
+  //     constraint_disable_collision(ConstraintAttribute::disable_collision,
+  //                                  BuiltinAttributeProvider::NonDeletable,
+  //                                  physics_access,
+  //                                  allow_cache);
 
   static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
   static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Edge,

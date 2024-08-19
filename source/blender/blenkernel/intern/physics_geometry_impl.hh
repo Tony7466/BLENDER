@@ -67,11 +67,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   mutable CacheFlag body_mass_valid = false;
   /* Valid when internal constraints have been updated to specified types and bodies. */
   mutable CacheFlag constraints_valid = false;
-  /* Cache for disable_collisions flags of constraints. These are stored indirectly by Bullet: a
-   * constraint disables collisions by adding "constraint refs" to bodies, when adding a constraint
-   * to the world. To determine if a constraint disables collisions after the fact requires looping
-   * over all constraint refs of the affected bodies. The cache avoids doing that multiple times
-   * for each body. */
+  /* Valid when constraint references to disable collisions have been updated. */
   mutable CacheFlag constraint_disable_collision_valid = false;
 
   int body_num_;
@@ -96,11 +92,11 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
 
   void tag_read_cache_changed();
   void tag_body_topology_changed();
-  void tag_constraint_disable_collision_changed();
   void tag_body_collision_shape_changed();
   void tag_body_is_static_changed();
   void tag_body_mass_changed();
   void tag_constraints_changed();
+  void tag_constraint_disable_collision_changed();
 
   bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
   bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
@@ -110,6 +106,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   /* Make sure attributes with write caches have been transferred to world data. */
   void ensure_motion_type();
   void ensure_constraints();
+  void ensure_constraint_disable_collision();
   void ensure_custom_data_attribute(BodyAttribute attribute) const;
   void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
 
@@ -171,6 +168,7 @@ struct PhysicsGeometryImpl : public ImplicitSharingMixin {
   void ensure_body_is_static_no_lock();
   void ensure_body_masses_no_lock();
   void ensure_constraints_no_lock();
+  void ensure_constraint_disable_collision_no_lock();
   void ensure_custom_data_attribute_no_lock(BodyAttribute attribute);
   void ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute);
 
@@ -236,6 +234,8 @@ class PhysicsWorldData : NonCopyable, NonMovable {
                           const VArray<int> &types,
                           const VArray<int> &bodies1,
                           const VArray<int> &bodies2);
+
+  void set_disable_collision(const IndexMask &selection, const VArray<bool> &disable_collision);
 
   void set_overlap_filter(OverlapFilterFn fn);
   void clear_overlap_filter();

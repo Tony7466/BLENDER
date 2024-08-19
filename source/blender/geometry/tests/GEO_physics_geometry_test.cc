@@ -539,6 +539,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
     AttributeWriter<float4x4> constraint_frame1 = geo1->constraint_frame1_for_write();
     AttributeWriter<float4x4> constraint_frame2 = geo1->constraint_frame2_for_write();
+    AttributeWriter<bool> disable_collision = geo1->constraint_disable_collision_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
     masses.varray.set_all({5, 15, 25, 35, 45});
     constraint_types.varray.set_all({int(ConstraintType::Point), int(ConstraintType::Slider)});
@@ -546,6 +547,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1, 2});
     constraint_frame1.varray.set_all(frame1.as_span().slice(0, 2));
     constraint_frame2.varray.set_all(frame2.as_span().slice(0, 2));
+    disable_collision.varray.set_all({true, false});
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
@@ -553,6 +555,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.finish();
     constraint_frame1.finish();
     constraint_frame2.finish();
+    disable_collision.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
   }
   test_data(*geo1, false, 5, 2, 3);
@@ -578,6 +581,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_body2 = geo3->constraint_body2_for_write();
     AttributeWriter<float4x4> constraint_frame1 = geo3->constraint_frame1_for_write();
     AttributeWriter<float4x4> constraint_frame2 = geo3->constraint_frame2_for_write();
+    AttributeWriter<bool> disable_collision = geo3->constraint_disable_collision_for_write();
     body_shapes.varray.set_all({0, 100});
     masses.varray.set_all({3, 33});
     constraint_types.varray.set_all({int(ConstraintType::Fixed)});
@@ -585,6 +589,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1});
     constraint_frame1.varray.set_all(frame1.as_span().slice(2, 1));
     constraint_frame2.varray.set_all(frame2.as_span().slice(2, 1));
+    disable_collision.varray.set_all({true});
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
@@ -592,6 +597,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.finish();
     constraint_frame1.finish();
     constraint_frame2.finish();
+    disable_collision.finish();
     geo3->compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
@@ -630,6 +636,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   const VArraySpan<int> constraint_body2 = geo_result.constraint_body2();
   const VArraySpan<float4x4> constraint_frame1 = geo_result.constraint_frame1();
   const VArraySpan<float4x4> constraint_frame2 = geo_result.constraint_frame2();
+  const VArraySpan<bool> disable_collision = geo_result.constraint_disable_collision();
   EXPECT_EQ_ARRAY(Span<int>{int(ConstraintType::Point),
                             int(ConstraintType::Slider),
                             int(ConstraintType::Fixed)}
@@ -640,13 +647,15 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   EXPECT_EQ_ARRAY(Span<int>{1, 2, 1}.data(), constraint_body2.data(), constraint_body2.size());
   /* Point constraint only retains the translation part of the frame matrix. */
   const float4x4 frame1_loc0 = math::from_location<float4x4>(frame1[0].location());
-  const float4x4 frame2_loc0 = math::from_location<float4x4>(frame2[0].location());
   EXPECT_EQ_ARRAY(Span<float4x4>({frame1_loc0, frame1[1], frame1[2]}).data(),
                   constraint_frame1.data(),
                   constraint_frame1.size());
+  const float4x4 frame2_loc0 = math::from_location<float4x4>(frame2[0].location());
   EXPECT_EQ_ARRAY(Span<float4x4>({frame2_loc0, frame2[1], frame2[2]}).data(),
                   constraint_frame2.data(),
                   constraint_frame2.size());
+  EXPECT_EQ_ARRAY(
+      Span<bool>({true, false, true}).data(), disable_collision.data(), disable_collision.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
