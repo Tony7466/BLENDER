@@ -64,7 +64,7 @@ class VKThreadData : public NonCopyable, NonMovable {
   pthread_t thread_id;
   render_graph::VKRenderGraph render_graph;
   uint32_t current_swap_chain_index = UINT32_MAX;
-  Vector<VKResourcePool> swap_chain_resources;
+  std::array<VKResourcePool, 5> swap_chain_resources;
 
   VKThreadData(VKDevice &device,
                pthread_t thread_id,
@@ -134,6 +134,7 @@ class VKDevice : public NonCopyable {
 
  public:
   render_graph::VKResourceStateTracker resources;
+  VKDiscardPool orphaned_data;
   VKPipelinePool pipelines;
 
   /**
@@ -267,6 +268,21 @@ class VKDevice : public NonCopyable {
    * Get or create current thread data.
    */
   VKThreadData &current_thread_data();
+
+  /**
+   * Get the discard pool for the current thread.
+   *
+   * When the active thread has a context a discard pool associated to the thread is returned.
+   * When there is no context the orphan discard pool is returned.
+   *
+   * A thread with a context can have multiple discard pools. One for each swapchain image.
+   * A thread without a context is most likely a discarded resource triggered during dependency
+   * graph update. A deps graph update from the viewport during playback or editing; or a deps
+   * graph update when rendering. These can happen from a different thread which will don't have a
+   * context at all.
+   */
+  VKDiscardPool &discard_pool_for_current_thread();
+
   void context_register(VKContext &context);
   void context_unregister(VKContext &context);
   Span<std::reference_wrapper<VKContext>> contexts_get() const;

@@ -70,8 +70,9 @@ void VKContext::sync_backbuffer()
     {
       thread_data_.current_swap_chain_index = swap_chain_data.swap_chain_index;
       VKResourcePool &resource_pool = thread_data_.resource_pool_get();
-      resource_pool.destroy_discarded_resources(device);
-      resource_pool.descriptor_pools.reset();
+      resource_pool.discard_pool.destroy_discarded_resources(device);
+      resource_pool.reset();
+      resource_pool.discard_pool.move_data(device.orphaned_data);
     }
 
     const bool reset_framebuffer = swap_chain_format_ != swap_chain_data.format ||
@@ -102,6 +103,11 @@ void VKContext::sync_backbuffer()
       vk_extent_ = swap_chain_data.extent;
     }
   }
+#if 0
+  else (is_background) {
+    discard all orphaned data
+  }
+#endif
 }
 
 void VKContext::activate()

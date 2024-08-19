@@ -356,7 +356,6 @@ VKThreadData::VKThreadData(VKDevice &device,
                            render_graph::VKResourceStateTracker &resources)
     : thread_id(thread_id), render_graph(std::move(command_buffer), resources)
 {
-  swap_chain_resources.resize(5);
   for (VKResourcePool &resource_pool : swap_chain_resources) {
     resource_pool.init(device);
   }
@@ -367,7 +366,6 @@ void VKThreadData::deinit(VKDevice &device)
   for (VKResourcePool &resource_pool : swap_chain_resources) {
     resource_pool.deinit(device);
   }
-  swap_chain_resources.clear();
 }
 
 /** \} */
@@ -394,6 +392,19 @@ VKThreadData &VKDevice::current_thread_data()
       resources);
   thread_data_.append(thread_data);
   return *thread_data;
+}
+
+VKDiscardPool &VKDevice::discard_pool_for_current_thread()
+{
+  std::scoped_lock mutex(resources.mutex);
+  pthread_t current_thread_id = pthread_self();
+  for (VKThreadData *thread_data : thread_data_) {
+    if (pthread_equal(thread_data->thread_id, current_thread_id)) {
+      return thread_data->resource_pool_get().discard_pool;
+    }
+  }
+
+  return orphaned_data;
 }
 
 void VKDevice::context_register(VKContext &context)

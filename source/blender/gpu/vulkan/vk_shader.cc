@@ -581,26 +581,26 @@ void VKShader::init(const shader::ShaderCreateInfo &info, bool /*is_batch_compil
 VKShader::~VKShader()
 {
   VKDevice &device = VKBackend::get().device;
-  VKResourcePool &resource_pool = device.current_thread_data().resource_pool_get();
+  VKDiscardPool &discard_pool = device.discard_pool_for_current_thread();
 
   if (vertex_module_ != VK_NULL_HANDLE) {
-    resource_pool.discard_shader_module(vertex_module_);
+    discard_pool.discard_shader_module(vertex_module_);
     vertex_module_ = VK_NULL_HANDLE;
   }
   if (geometry_module_ != VK_NULL_HANDLE) {
-    resource_pool.discard_shader_module(geometry_module_);
+    discard_pool.discard_shader_module(geometry_module_);
     geometry_module_ = VK_NULL_HANDLE;
   }
   if (fragment_module_ != VK_NULL_HANDLE) {
-    resource_pool.discard_shader_module(fragment_module_);
+    discard_pool.discard_shader_module(fragment_module_);
     fragment_module_ = VK_NULL_HANDLE;
   }
   if (compute_module_ != VK_NULL_HANDLE) {
-    resource_pool.discard_shader_module(compute_module_);
+    discard_pool.discard_shader_module(compute_module_);
     compute_module_ = VK_NULL_HANDLE;
   }
   if (vk_pipeline_layout != VK_NULL_HANDLE) {
-    resource_pool.discard_pipeline_layout(vk_pipeline_layout);
+    discard_pool.discard_pipeline_layout(vk_pipeline_layout);
     vk_pipeline_layout = VK_NULL_HANDLE;
   }
   /* Unset not owning handles. */
