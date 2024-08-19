@@ -55,8 +55,7 @@ static void grease_pencil_transdata_add_drawing_users(const GreasePencil &grease
 {
   using namespace blender::bke::greasepencil;
 
-  for (const int drawing_i : grease_pencil.drawings().index_range()) {
-    const GreasePencilDrawingBase *drawing_base = grease_pencil.drawings()[drawing_i];
+  for (const GreasePencilDrawingBase *drawing_base : grease_pencil.drawings()) {
     /* Only actual drawings have a user count, ignore drawing references. */
     if (drawing_base->type != GP_DRAWING) {
       continue;
@@ -73,8 +72,7 @@ static void grease_pencil_transdata_remove_drawing_users(const GreasePencil &gre
 {
   using namespace blender::bke::greasepencil;
 
-  for (const int drawing_i : grease_pencil.drawings().index_range()) {
-    const GreasePencilDrawingBase *drawing_base = grease_pencil.drawings()[drawing_i];
+  for (const GreasePencilDrawingBase *drawing_base : grease_pencil.drawings()) {
     /* Only actual drawings have a user count, ignore drawing references. */
     if (drawing_base->type != GP_DRAWING) {
       continue;
