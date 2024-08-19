@@ -109,6 +109,9 @@ struct GreasePencilStrokeParams {
 IndexMask point_selection_mask(const GreasePencilStrokeParams &params,
                                const bool use_masking,
                                IndexMaskMemory &memory);
+IndexMask stroke_selection_mask(const GreasePencilStrokeParams &params,
+                                const bool use_masking,
+                                IndexMaskMemory &memory);
 IndexMask fill_selection_mask(const GreasePencilStrokeParams &params,
                               const bool use_masking,
                               IndexMaskMemory &memory);
