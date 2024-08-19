@@ -526,27 +526,6 @@ void PhysicsWorldData::compute_body_shape_indices(Span<CollisionShapePtr> shapes
   }
 }
 
-void PhysicsWorldData::compute_disable_collision_flags(MutableSpan<bool> r_flags)
-{
-  BLI_assert(r_flags.size() == constraints_.size());
-
-  /* Technically only need constraint indices here. */
-  ensure_body_and_constraint_indices();
-
-  r_flags.fill(false);
-  for (const int i_body : rigid_bodies_.index_range()) {
-    /* Note: Technically the btRigidBody is not mutable here, Bullet is just very incorrect with
-     * const usage ... */
-    btRigidBody &body = const_cast<btRigidBody &>(*rigid_bodies_[i_body]);
-    for (const int i_ref : IndexRange(body.getNumConstraintRefs())) {
-      const btTypedConstraint *constraint = body.getConstraintRef(i_ref);
-      BLI_assert(constraint != nullptr);
-      const int i_constraint = get_constraint_index(*constraint);
-      r_flags[i_constraint] = true;
-    }
-  }
-}
-
 void PhysicsWorldData::create_constraints(const IndexMask &selection,
                                           const VArray<int> &types,
                                           const VArray<int> &bodies1,
@@ -1072,12 +1051,6 @@ void PhysicsGeometryImpl::ensure_read_cache() const
 
     /* Write to cache attributes. */
     MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
-    /* Disable collision flags for constraints are computed explicitly. */
-    SpanAttributeWriter<bool> disable_collision_flags =
-        dst_attributes.lookup_or_add_for_write_only_span<bool>(disable_collision_id,
-                                                               AttrDomain::Edge);
-    this->world_data->compute_disable_collision_flags(disable_collision_flags.span);
-    disable_collision_flags.finish();
 
     /* Read from world data and ignore the cache.
      * Important! This also prevents deadlock caused by re-entering this function. */

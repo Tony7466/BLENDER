@@ -226,9 +226,6 @@ class PhysicsWorldData : NonCopyable, NonMovable {
   /* Compute the indices of body collision shape pointers in the span. */
   void compute_body_shape_indices(Span<CollisionShapePtr> shapes,
                                   MutableSpan<int> r_indices) const;
-  /* Compute which constraints disable collisions, this is not stored directly in Bullet
-   * constraints. */
-  void compute_disable_collision_flags(MutableSpan<bool> r_flags);
 
   void create_constraints(const IndexMask &selection,
                           const VArray<int> &types,
