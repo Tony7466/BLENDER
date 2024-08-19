@@ -583,9 +583,6 @@ struct ScaleUpY {
   }
 };
 
-using ScaleFunction = void (*)(
-    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded);
-
 template<typename T>
 static void instantiate_pixel_op(T & /*op*/,
                                  const ImBuf *ibuf,
@@ -646,8 +643,12 @@ static void scale_up_y_func(
   instantiate_pixel_op(op, ibuf, newx, newy, dst_byte, dst_float, threaded);
 }
 
-static void apply_scale_func(ImBuf *ibuf, int newx, int newy, ScaleFunction func, bool threaded)
+using ScaleFunction = void (*)(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded);
+
+static void scale_with_function(ImBuf *ibuf, int newx, int newy, ScaleFunction func, bool threaded)
 {
+  /* Allocate destination buffers. */
   uchar4 *dst_byte = nullptr;
   float *dst_float = nullptr;
   alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
@@ -655,8 +656,10 @@ static void apply_scale_func(ImBuf *ibuf, int newx, int newy, ScaleFunction func
     return;
   }
 
+  /* Do actual processing. */
   func(ibuf, newx, newy, dst_byte, dst_float, threaded);
 
+  /* Modify image to point to new destination. */
   if (dst_byte != nullptr) {
     imb_freerectImBuf(ibuf);
     IMB_assign_byte_buffer(ibuf, reinterpret_cast<uint8_t *>(dst_byte), IB_TAKE_OWNERSHIP);
@@ -672,16 +675,16 @@ static void apply_scale_func(ImBuf *ibuf, int newx, int newy, ScaleFunction func
 static void imb_scale_box(ImBuf *ibuf, uint newx, uint newy, bool threaded)
 {
   if (newx != 0 && (newx < ibuf->x)) {
-    apply_scale_func(ibuf, newx, ibuf->y, scale_down_x_func, threaded);
+    scale_with_function(ibuf, newx, ibuf->y, scale_down_x_func, threaded);
   }
   if (newy != 0 && (newy < ibuf->y)) {
-    apply_scale_func(ibuf, ibuf->x, newy, scale_down_y_func, threaded);
+    scale_with_function(ibuf, ibuf->x, newy, scale_down_y_func, threaded);
   }
   if (newx != 0 && (newx > ibuf->x)) {
-    apply_scale_func(ibuf, newx, ibuf->y, scale_up_x_func, threaded);
+    scale_with_function(ibuf, newx, ibuf->y, scale_up_x_func, threaded);
   }
   if (newy != 0 && (newy > ibuf->y)) {
-    apply_scale_func(ibuf, ibuf->x, newy, scale_up_y_func, threaded);
+    scale_with_function(ibuf, ibuf->x, newy, scale_up_y_func, threaded);
   }
 }
 
@@ -707,8 +710,8 @@ static void scale_nearest(
   }
 }
 
-static void imb_scale_nearest(
-    const ImBuf *ibuf, uint newx, uint newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+static void scale_nearest_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
 {
   using namespace blender;
 
@@ -740,8 +743,8 @@ static void imb_scale_nearest(
   });
 }
 
-static void imb_scale_bilinear(
-    const ImBuf *ibuf, uint newx, uint newy, uchar4 *dst_byte, float *dst_float, bool threaded)
+static void scale_bilinear_func(
+    const ImBuf *ibuf, int newx, int newy, uchar4 *dst_byte, float *dst_float, bool threaded)
 {
   using namespace blender;
   using namespace blender::imbuf;
@@ -780,42 +783,18 @@ bool IMB_scale(
     return false;
   }
 
-  if (filter == IMBScaleFilter::Box) {
-    /* Box filter does memory allocation internally due to separate
-     * horizontal and vertical passes. */
-    imb_scale_box(ibuf, newx, newy, threaded);
-    return true;
-  }
-
-  /* Allocate destination buffers. */
-  uchar4 *dst_byte = nullptr;
-  float *dst_float = nullptr;
-  alloc_scale_dst_buffers(ibuf, newx, newy, &dst_byte, &dst_float);
-  if (dst_byte == nullptr && dst_float == nullptr) {
-    return false;
-  }
-
   if (filter == IMBScaleFilter::Nearest) {
-    imb_scale_nearest(ibuf, newx, newy, dst_byte, dst_float, threaded);
+    scale_with_function(ibuf, newx, newy, scale_nearest_func, threaded);
   }
   else if (filter == IMBScaleFilter::Bilinear) {
-    imb_scale_bilinear(ibuf, newx, newy, dst_byte, dst_float, threaded);
+    scale_with_function(ibuf, newx, newy, scale_bilinear_func, threaded);
+  }
+  else if (filter == IMBScaleFilter::Box) {
+    imb_scale_box(ibuf, newx, newy, threaded);
   }
   else {
     BLI_assert_unreachable();
+    return false;
   }
-
-  /* Alter the image. */
-  ibuf->x = newx;
-  ibuf->y = newy;
-  if (ibuf->byte_buffer.data) {
-    imb_freerectImBuf(ibuf);
-    IMB_assign_byte_buffer(ibuf, (uchar *)dst_byte, IB_TAKE_OWNERSHIP);
-  }
-  if (ibuf->float_buffer.data) {
-    imb_freerectfloatImBuf(ibuf);
-    IMB_assign_float_buffer(ibuf, dst_float, IB_TAKE_OWNERSHIP);
-  }
-
   return true;
 }
