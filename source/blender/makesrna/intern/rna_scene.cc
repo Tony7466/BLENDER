@@ -50,6 +50,7 @@
 #include "rna_internal.hh"
 
 /* Include for Bake Options */
+#include "RE_compositor.hh"
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
@@ -1849,11 +1850,26 @@ void rna_Scene_compositor_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr
 {
   Scene *scene = (Scene *)ptr->owner_id;
 
-  if (scene->nodetree) {
-    bNodeTree *ntree = reinterpret_cast<bNodeTree *>(scene->nodetree);
-    WM_main_add_notifier(NC_NODE | NA_EDITED, &ntree->id);
-    WM_main_add_notifier(NC_SCENE | ND_NODES, &ntree->id);
-    ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  if (!scene->nodetree) {
+    return;
+  }
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(scene->nodetree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, &ntree->id);
+  WM_main_add_notifier(NC_SCENE | ND_NODES, &ntree->id);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+
+  /* Free compositors since it is easier to just recreate compositors instead of figuring out
+   * exactly what changed and trying to update the data that needs to be changed. Practically, this
+   * only affects cached data, which needs to be recomputed anyways for changes to execution
+   * device, precision, or compositor engine. */
+  Render *scene_render = RE_GetSceneRender(scene);
+  if (scene_render) {
+    RE_compositor_free(*scene_render);
+  }
+  Render *interactive_compositor_render = RE_GetSceneInteractiveCompositorRender(scene);
+  if (interactive_compositor_render) {
+    RE_compositor_free(*interactive_compositor_render);
   }
 }
 

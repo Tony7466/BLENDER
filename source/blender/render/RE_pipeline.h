@@ -166,10 +166,12 @@ typedef struct RenderStats {
  */
 struct Render *RE_NewRender(const char *name);
 struct Render *RE_GetRender(const char *name);
+struct Render *RE_GetInteractiveCompositorRender(const char *name);
 
 struct Scene;
 struct Render *RE_NewSceneRender(const struct Scene *scene);
 struct Render *RE_GetSceneRender(const struct Scene *scene);
+struct Render *RE_GetSceneInteractiveCompositorRender(const struct Scene *scene);
 
 struct RenderEngineType;
 struct ViewRender *RE_NewViewRender(struct RenderEngineType *engine_type);

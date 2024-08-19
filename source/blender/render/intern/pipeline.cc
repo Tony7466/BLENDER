@@ -327,6 +327,11 @@ Render *RE_GetRender(const char *name)
   return nullptr;
 }
 
+Render *RE_GetInteractiveCompositorRender(const char *name)
+{
+  return RenderGlobal.interactive_compositor_renders.lookup_default(name, nullptr);
+}
+
 RenderResult *RE_AcquireResultRead(Render *re)
 {
   if (re) {
@@ -572,6 +577,13 @@ Render *RE_NewInteractiveCompositorRender(const Scene *scene)
     RE_InitRenderCB(render);
     return render;
   });
+}
+
+Render *RE_GetSceneInteractiveCompositorRender(const Scene *scene)
+{
+  char render_name[MAX_SCENE_RENDER_NAME];
+  scene_render_name_get(scene, sizeof(render_name), render_name);
+  return RE_GetInteractiveCompositorRender(render_name);
 }
 
 void RE_InitRenderCB(Render *re)
