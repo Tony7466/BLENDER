@@ -799,7 +799,7 @@ static void icon_verify_datatoc(IconImage *iimg)
         iimg->datatoc_rect, iimg->datatoc_size, IB_rect, nullptr, "<matcap icon>");
     /* w and h were set on initialize */
     if (bbuf->x != iimg->h && bbuf->y != iimg->w) {
-      IMB_scaleImBuf(bbuf, iimg->w, iimg->h);
+      IMB_scale(bbuf, iimg->w, iimg->h, IMBScaleFilter::Box, false);
     }
 
     iimg->rect = IMB_steal_byte_buffer(bbuf);
@@ -1344,6 +1344,7 @@ static void svg_replace_color_attributes(std::string &svg,
       {"blender.shading", nullptr, TH_ICON_SHADING},
       {"blender.folder", nullptr, TH_ICON_FOLDER},
       {"blender.fund", nullptr, TH_ICON_FUND},
+      {"blender.autokey", nullptr, TH_ICON_AUTOKEY},
       {"blender.tool_add", tool_add},
       {"blender.tool_remove", tool_remove},
       {"blender.tool_select", tool_select},
@@ -1538,7 +1539,7 @@ static void icon_draw_size(float x,
   else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
     float outline_intensity = mono_border ? (btheme->tui.icon_border_intensity > 0.0f ?
                                                  btheme->tui.icon_border_intensity :
-                                                 0.5f) :
+                                                 0.3f) :
                                             0.0f;
     float color[4];
     if (mono_rgba) {
@@ -2005,6 +2006,38 @@ void UI_icon_draw_ex(float x,
                  inverted);
 }
 
+ImBuf *UI_svg_icon_bitmap(uint icon_id, float size, bool multicolor)
+{
+  if (icon_id >= ICON_BLANK_LAST_SVG_ITEM) {
+    return nullptr;
+  }
+
+  ImBuf *ibuf = nullptr;
+  int width;
+  int height;
+  blender::Array<uchar> bitmap;
+
+  if (multicolor) {
+    bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, true, icon_source_edit_cb);
+  }
+  else {
+    bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, false, nullptr);
+  }
+
+  if (!bitmap.is_empty()) {
+    ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
+  }
+
+  if (ibuf) {
+    IMB_flipy(ibuf);
+    if (multicolor) {
+      IMB_premultiply_alpha(ibuf);
+    }
+  }
+
+  return ibuf;
+}
+
 void UI_icon_text_overlay_init_from_count(IconTextOverlay *text_overlay,
                                           const int icon_indicator_number)
 {
@@ -2024,8 +2057,6 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
   UNUSED_VARS(icon, size);
   return nullptr;
 #else
-
-  constexpr bool show_color = false;
 
   int icon_id = ICON_NONE;
   switch (icon) {
@@ -2049,17 +2080,6 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
     return nullptr;
   }
 
-  int width;
-  int height;
-  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, show_color);
-  if (bitmap.is_empty()) {
-    return nullptr;
-  }
-  ImBuf *ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
-  IMB_flipy(ibuf);
-  if (show_color) {
-    IMB_premultiply_alpha(ibuf);
-  }
-  return ibuf;
+  return UI_svg_icon_bitmap(icon_id, size, false);
 #endif
 }

@@ -29,6 +29,7 @@
  * a tentative undo step with is appended later when the operator ends.
  * Operators must have the OPTYPE_UNDO flag set for this to work properly.
  */
+#include "sculpt_undo.hh"
 
 #include <cstddef>
 
@@ -76,6 +77,9 @@
 
 #include "bmesh.hh"
 #include "paint_intern.hh"
+#include "sculpt_color.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
 #include "sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint::undo {
@@ -123,92 +127,6 @@ namespace blender::ed::sculpt_paint::undo {
  * manner as well. */
 
 #define NO_ACTIVE_LAYER bke::AttrDomain::Auto
-
-/* Storage of geometry for the undo node.
- * Is used as a storage for either original or modified geometry. */
-struct NodeGeometry {
-  /* Is used for sanity check, helping with ensuring that two and only two
-   * geometry pushes happened in the undo stack. */
-  bool is_initialized;
-
-  CustomData vert_data;
-  CustomData edge_data;
-  CustomData corner_data;
-  CustomData face_data;
-  int *face_offset_indices;
-  const ImplicitSharingInfo *face_offsets_sharing_info;
-  int totvert;
-  int totedge;
-  int totloop;
-  int faces_num;
-};
-
-struct StepData {
-  /**
-   * The type of data stored in this undo step. For historical reasons this is often set when the
-   * first undo node is pushed.
-   */
-  Type type = Type::None;
-
-  /** Name of the object associated with this undo data (`object.id.name`). */
-  std::string object_name;
-
-  /** Name of the object's active shape key when the undo step was created. */
-  std::string active_shape_key_name;
-
-  /* The number of vertices in the entire mesh. */
-  int mesh_verts_num;
-  /* The number of face corners in the entire mesh. */
-  int mesh_corners_num;
-
-  /** The number of grids in the entire mesh. */
-  int mesh_grids_num;
-  /** A copy of #SubdivCCG::grid_size. */
-  int grid_size;
-
-  float3 pivot_pos;
-  float4 pivot_rot;
-
-  /* Geometry modification operations.
-   *
-   * Original geometry is stored before some modification is run and is used to restore state of
-   * the object when undoing the operation
-   *
-   * Modified geometry is stored after the modification and is used to redo the modification. */
-  bool geometry_clear_pbvh;
-  NodeGeometry geometry_original;
-  NodeGeometry geometry_modified;
-
-  /* bmesh */
-  BMLogEntry *bm_entry;
-
-  /* Geometry at the bmesh enter moment. */
-  NodeGeometry geometry_bmesh_enter;
-
-  bool applied;
-
-  std::mutex nodes_mutex;
-
-  /**
-   * #undo::Node is stored per pbvh::Node to reduce data storage needed for changes only impacting
-   * small portions of the mesh. During undo step creation and brush evaluation we often need to
-   * look up the undo state for a specific node. That lookup must be protected by a lock since
-   * nodes are pushed from multiple threads. This map speeds up undo node access to reduce the
-   * amount of time we wait for the lock.
-   *
-   * This is only accessible when building the undo step, in between #push_begin and #push_end.
-   *
-   * \todo All nodes in a single step have the same type, so using the type as part of the map key
-   * should be unnecessary. However, to remove it, first the storage of the undo type should be
-   * moved to #StepData from #Node.
-   */
-  Map<const bke::pbvh::Node *, std::unique_ptr<Node>> undo_nodes_by_pbvh_node;
-
-  /** Storage of per-node undo data after creation of the undo step is finished. */
-  Vector<std::unique_ptr<Node>> nodes;
-
-  size_t undo_size;
-};
 
 struct SculptAttrRef {
   bke::AttrDomain domain;
@@ -692,7 +610,8 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
     }
   }
   else {
-    SCULPT_pbvh_clear(object);
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 }
 
@@ -702,7 +621,8 @@ static void bmesh_enable(Object &object, StepData &step_data)
   SculptSession &ss = *object.sculpt;
   Mesh *mesh = static_cast<Mesh *>(object.data);
 
-  SCULPT_pbvh_clear(object);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
   /* Create empty BMesh and enable logging. */
   BMeshCreateParams bmesh_create_params{};
@@ -812,7 +732,9 @@ static void geometry_free_data(NodeGeometry *geometry)
 static void restore_geometry(StepData &step_data, Object &object)
 {
   if (step_data.geometry_clear_pbvh) {
-    SCULPT_pbvh_clear(object);
+    SculptSession &ss = *object.sculpt;
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 
   Mesh *mesh = static_cast<Mesh *>(object.data);
@@ -974,7 +896,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         mesh.tag_positions_changed();
         BKE_sculptsession_free_deformMats(&ss);
       }
-      bke::pbvh::update_bounds(*ss.pbvh);
+      bke::pbvh::update_bounds(*depsgraph, object, *ss.pbvh);
       bke::pbvh::store_bounds_orig(*ss.pbvh);
       break;
     }
@@ -1008,9 +930,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         });
       }
 
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      BKE_pbvh_sync_visibility_from_verts(*ss.pbvh, &mesh);
-      bke::pbvh::update_visibility(*ss.pbvh);
+      BKE_pbvh_sync_visibility_from_verts(object);
+      bke::pbvh::update_visibility(object, *ss.pbvh);
       if (BKE_sculpt_multires_active(scene, &object)) {
         multires_mark_as_modified(depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
       }
@@ -1052,7 +973,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
 
       hide::sync_all_from_faces(object);
-      bke::pbvh::update_visibility(*ss.pbvh);
+      bke::pbvh::update_visibility(object, *ss.pbvh);
       break;
     }
     case Type::Mask: {
@@ -1084,7 +1005,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         });
       }
 
-      bke::pbvh::update_mask(*ss.pbvh);
+      bke::pbvh::update_mask(object, *ss.pbvh);
       break;
     }
     case Type::FaceSet: {
@@ -1208,7 +1129,7 @@ static void alloc_and_store_hidden(const SculptSession &ss,
   }
 }
 
-static void store_coords(const Object &object, Node &unode)
+static void store_coords(const Depsgraph &depsgraph, const Object &object, Node &unode)
 {
   SculptSession &ss = *object.sculpt;
 
@@ -1238,10 +1159,10 @@ static void store_coords(const Object &object, Node &unode)
     }
   }
   else {
-    array_utils::gather(BKE_pbvh_get_vert_positions(*ss.pbvh).as_span(),
+    array_utils::gather(bke::pbvh::vert_positions_eval(depsgraph, object),
                         unode.vert_indices.as_span(),
                         unode.position.as_mutable_span());
-    array_utils::gather(BKE_pbvh_get_vert_normals(*ss.pbvh),
+    array_utils::gather(bke::pbvh::vert_normals_eval(depsgraph, object),
                         unode.vert_indices.as_span(),
                         unode.normal.as_mutable_span());
     if (ss.deform_modifiers_active) {
@@ -1377,7 +1298,8 @@ static void store_face_sets(const Mesh &mesh, Node &unode)
       unode.face_sets.as_mutable_span());
 }
 
-static void fill_node_data(const Object &object,
+static void fill_node_data(const Depsgraph &depsgraph,
+                           const Object &object,
                            const bke::pbvh::Node *node,
                            const Type type,
                            Node &unode)
@@ -1427,7 +1349,7 @@ static void fill_node_data(const Object &object,
       if (ss.deform_modifiers_active) {
         unode.orig_position.reinitialize(unode.vert_indices.size());
       }
-      store_coords(object, unode);
+      store_coords(depsgraph, object, unode);
       break;
     }
     case Type::HideVert: {
@@ -1578,7 +1500,10 @@ static Node *ensure_node(StepData &step_data, const bke::pbvh::Node &node, bool 
   return unode.get();
 }
 
-void push_node(const Object &object, const bke::pbvh::Node *node, Type type)
+void push_node(const Depsgraph &depsgraph,
+               const Object &object,
+               const bke::pbvh::Node *node,
+               Type type)
 {
   SculptSession &ss = *object.sculpt;
   if (ss.bm || ELEM(type, Type::DyntopoBegin, Type::DyntopoEnd)) {
@@ -1599,10 +1524,13 @@ void push_node(const Object &object, const bke::pbvh::Node *node, Type type)
 
   ss.needs_flush_to_id = 1;
 
-  fill_node_data(object, node, type, *unode);
+  fill_node_data(depsgraph, object, node, type, *unode);
 }
 
-void push_nodes(Object &object, const Span<const bke::pbvh::Node *> nodes, const Type type)
+void push_nodes(const Depsgraph &depsgraph,
+                Object &object,
+                const Span<const bke::pbvh::Node *> nodes,
+                const Type type)
 {
   SculptSession &ss = *object.sculpt;
   if (ss.bm || ELEM(type, Type::DyntopoBegin, Type::DyntopoEnd)) {
@@ -1629,7 +1557,7 @@ void push_nodes(Object &object, const Span<const bke::pbvh::Node *> nodes, const
 
   threading::parallel_for(nodes_to_fill.index_range(), 1, [&](const IndexRange range) {
     for (const auto &[node, unode] : nodes_to_fill.as_span().slice(range)) {
-      fill_node_data(object, node, type, *unode);
+      fill_node_data(depsgraph, object, node, type, *unode);
     }
   });
 }
@@ -2071,7 +1999,7 @@ static bool use_multires_mesh(bContext *C)
   return sculpt_session->multires.active;
 }
 
-static void push_all_grids(Object *object)
+static void push_all_grids(const Depsgraph &depsgraph, Object *object)
 {
   SculptSession &ss = *object->sculpt;
 
@@ -2088,9 +2016,7 @@ static void push_all_grids(Object *object)
   }
 
   Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
-  for (bke::pbvh::Node *node : nodes) {
-    push_node(*object, node, Type::Position);
-  }
+  push_nodes(depsgraph, *object, nodes, Type::Position);
 }
 
 void push_multires_mesh_begin(bContext *C, const char *str)
@@ -2099,6 +2025,7 @@ void push_multires_mesh_begin(bContext *C, const char *str)
     return;
   }
 
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   Object *object = CTX_data_active_object(C);
 
   push_begin_ex(*object, str);
@@ -2106,7 +2033,7 @@ void push_multires_mesh_begin(bContext *C, const char *str)
   geometry_push(*object);
   get_step_data()->geometry_clear_pbvh = false;
 
-  push_all_grids(object);
+  push_all_grids(depsgraph, object);
 }
 
 void push_multires_mesh_end(bContext *C, const char *str)
