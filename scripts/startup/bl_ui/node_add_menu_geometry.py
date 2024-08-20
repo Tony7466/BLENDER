@@ -654,6 +654,7 @@ class NODE_MT_category_utilities_matrix(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeCombineTransform")
         node_add_menu.add_node_type(layout, "FunctionNodeInvertMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeMatrixMultiply")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixSVD")
         node_add_menu.add_node_type(layout, "FunctionNodeProjectPoint")
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateMatrix")
         node_add_menu.add_node_type(layout, "FunctionNodeSeparateTransform")
