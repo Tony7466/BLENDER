@@ -37,11 +37,7 @@ void main()
   float edgeCoord = geometry_noperspective_out.edgeCoord;
 #endif
 
-  if (do_smooth_wire) {
-    wire_width -= 0.5;
-  }
-
-  float half_size = wire_width / 2.0;
+  float half_size = (do_smooth_wire ? wire_width - 0.5 : wire_width) / 2.0;
 
   float dist = abs(edgeCoord) - half_size;
   const float mix_w = clamp(edge_step(dist), 0.0, 1.0);

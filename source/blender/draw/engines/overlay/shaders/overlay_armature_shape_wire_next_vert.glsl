@@ -52,8 +52,8 @@ void do_vertex(const uint strip_index,
                uint out_vertex_id,
                uint out_primitive_id,
                vec4 color,
-               vec4 pos,
-               vec3 world_pos,
+               vec4 hs_P,
+               vec3 ws_P,
                float coord,
                vec2 offset)
 {
@@ -68,11 +68,11 @@ void do_vertex(const uint strip_index,
 
   finalColor = color;
   edgeCoord = coord;
-  gl_Position = pos;
+  gl_Position = hs_P;
   /* Multiply offset by 2 because gl_Position range is [-1..1]. */
-  gl_Position.xy += offset * 2.0 * pos.w;
+  gl_Position.xy += offset * 2.0 * hs_P.w;
 
-  view_clipping_distances(world_pos);
+  view_clipping_distances(ws_P);
 }
 
 void geometry_main(VertOut geom_in[2],
