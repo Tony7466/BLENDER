@@ -1411,11 +1411,30 @@ static size_t animfilter_fcurves_span(bAnimContext *ac,
   return num_items;
 }
 
-static std::optional<eAnimFilter_Flags> animfilter_act_group_compute_filter_flags(
-    bAnimContext *ac, bActionGroup *agrp, eAnimFilter_Flags filter_mode)
+/**
+ * Filters a channel group and its children.
+ *
+ * This works both for channel groups in legacy and in layered actions.
+ *
+ * Note: `slot_handle` is only used for layered actions, and is ignored for
+ * legacy actions.
+ */
+static size_t animfilter_act_group(bAnimContext *ac,
+                                   ListBase *anim_data,
+                                   bAction *act,
+                                   animrig::slot_handle_t slot_handle,
+                                   bActionGroup *agrp,
+                                   eAnimFilter_Flags filter_mode,
+                                   ID *owner_id)
 {
-  BLI_assert(ac != nullptr);
+  BLI_assert(act != nullptr);
   BLI_assert(agrp != nullptr);
+
+  ListBase tmp_data = {nullptr, nullptr};
+  size_t tmp_items = 0;
+  size_t items = 0;
+
+  animrig::Action &action = act->wrap();
 
   /* if we care about the selection status of the channels,
    * but the group isn't expanded (1)...
@@ -1432,7 +1451,7 @@ static std::optional<eAnimFilter_Flags> animfilter_act_group_compute_filter_flag
     /* If the group itself isn't selected appropriately,
      * we shouldn't consider its children either. */
     if (ANIMCHANNEL_SELOK(SEL_AGRP(agrp)) == 0) {
-      return std::nullopt;
+      return 0;
     }
 
     /* if we're still here,
@@ -1447,29 +1466,6 @@ static std::optional<eAnimFilter_Flags> animfilter_act_group_compute_filter_flag
     filter_mode &= ~(ANIMFILTER_SEL | ANIMFILTER_UNSEL | ANIMFILTER_LIST_VISIBLE);
   }
 
-  return filter_mode;
-}
-
-static size_t animfilter_act_group(bAnimContext *ac,
-                                   ListBase *anim_data,
-                                   bAction *act,
-                                   bActionGroup *agrp,
-                                   eAnimFilter_Flags filter_mode,
-                                   ID *owner_id)
-{
-  ListBase tmp_data = {nullptr, nullptr};
-  size_t tmp_items = 0;
-  size_t items = 0;
-  // int ofilter = filter_mode;
-
-  if (auto filter_mode_updated = animfilter_act_group_compute_filter_flags(ac, agrp, filter_mode))
-  {
-    filter_mode = filter_mode_updated.value();
-  }
-  else {
-    return 0;
-  }
-
   /* add grouped F-Curves */
   BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_AGRP(ac, agrp)) {
     /* special filter so that we can get just the F-Curves within the active group */
@@ -1481,17 +1477,28 @@ static size_t animfilter_act_group(bAnimContext *ac,
       if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || !(agrp->flag & AGRP_NOTVISIBLE)) {
         /* group must be editable for its children to be editable (if we care about this) */
         if (!(filter_mode & ANIMFILTER_FOREDIT) || EDITABLE_AGRP(agrp)) {
-          /* get first F-Curve which can be used here */
-          FCurve *first_fcu = animfilter_fcurve_next(ac,
-                                                     static_cast<FCurve *>(agrp->channels.first),
-                                                     ANIMTYPE_FCURVE,
-                                                     filter_mode,
-                                                     agrp,
-                                                     owner_id);
+          /* Filter the fcurves in this group, adding them to the temporary
+           * filter list. */
+          if (action.is_action_legacy()) {
+            /* get first F-Curve which can be used here */
+            FCurve *first_fcu = animfilter_fcurve_next(ac,
+                                                       static_cast<FCurve *>(agrp->channels.first),
+                                                       ANIMTYPE_FCURVE,
+                                                       filter_mode,
+                                                       agrp,
+                                                       owner_id);
 
-          /* filter list, starting from this F-Curve */
-          tmp_items += animfilter_fcurves(
-              ac, &tmp_data, first_fcu, ANIMTYPE_FCURVE, filter_mode, agrp, owner_id, &act->id);
+            /* filter list, starting from this F-Curve */
+            tmp_items += animfilter_fcurves(
+                ac, &tmp_data, first_fcu, ANIMTYPE_FCURVE, filter_mode, agrp, owner_id, &act->id);
+          }
+          else {
+            BLI_assert(agrp->channel_bag != nullptr);
+            Span<FCurve *> fcurves = agrp->channel_bag->wrap().fcurves().slice(
+                agrp->fcurve_range_start, agrp->fcurve_range_length);
+            tmp_items += animfilter_fcurves_span(
+                ac, &tmp_data, fcurves, slot_handle, filter_mode, owner_id, &act->id);
+          }
         }
       }
     }
@@ -1502,13 +1509,17 @@ static size_t animfilter_act_group(bAnimContext *ac,
   if (tmp_items) {
     /* add this group as a channel first */
     if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
-      /* restore original filter mode so that this next step works ok... */
-      // filter_mode = ofilter;
-
       /* filter selection of channel specially here again,
        * since may be open and not subject to previous test */
       if (ANIMCHANNEL_SELOK(SEL_AGRP(agrp))) {
-        ANIMCHANNEL_NEW_CHANNEL(ac->bmain, agrp, ANIMTYPE_GROUP, owner_id, &act->id);
+        if (action.is_action_legacy()) {
+          ANIMCHANNEL_NEW_CHANNEL(ac->bmain, agrp, ANIMTYPE_GROUP, owner_id, &act->id);
+        }
+        else {
+          ANIMCHANNEL_NEW_CHANNEL_FULL(ac->bmain, agrp, ANIMTYPE_GROUP, owner_id, &act->id, {
+            ale->slot_handle = slot_handle;
+          });
+        }
       }
     }
 
@@ -1519,83 +1530,6 @@ static size_t animfilter_act_group(bAnimContext *ac,
   }
 
   /* return the number of items added to the list */
-  return items;
-}
-
-static size_t animfilter_act_group_channel_bag(bAnimContext *ac,
-                                               ListBase *anim_data,
-                                               animrig::Action &action,
-                                               animrig::Slot &slot,
-                                               animrig::ChannelBag &channel_bag,
-                                               bActionGroup &channel_group,
-                                               eAnimFilter_Flags filter_mode,
-                                               ID *animated_id)
-{
-  ListBase tmp_data = {nullptr, nullptr};
-  size_t tmp_items = 0;
-  size_t items = 0;
-
-  if (auto filter_mode_updated = animfilter_act_group_compute_filter_flags(
-          ac, &channel_group, filter_mode))
-  {
-    filter_mode = filter_mode_updated.value();
-  }
-  else {
-    return 0;
-  }
-
-  /* Add grouped F-Curves. */
-  BEGIN_ANIMFILTER_SUBCHANNELS (EXPANDED_AGRP(ac, &channel_group)) {
-    /* Special filter so that we can get just the F-Curves within the active group. */
-    if (!(filter_mode & ANIMFILTER_ACTGROUPED) || (channel_group.flag & AGRP_ACTIVE)) {
-      /* For the Graph Editor, curves may be set to not be visible in the view
-       * to lessen clutter, but to do this, we need to check that the group
-       * doesn't have its not-visible flag set preventing all its sub-curves to
-       * be shown. */
-      if (!(filter_mode & ANIMFILTER_CURVE_VISIBLE) || !(channel_group.flag & AGRP_NOTVISIBLE)) {
-        /* Group must be editable for its children to be editable (if we care
-         * about this). */
-        if (!(filter_mode & ANIMFILTER_FOREDIT) || EDITABLE_AGRP(&channel_group)) {
-          /* Add the fcurves in the group to the temporary filter list. */
-          Span<FCurve *> fcurves = channel_bag.fcurves().slice(channel_group.fcurve_range_start,
-                                                               channel_group.fcurve_range_length);
-          tmp_items += animfilter_fcurves_span(
-              ac, &tmp_data, fcurves, slot.handle, filter_mode, animated_id, &action.id);
-        }
-      }
-    }
-  }
-  END_ANIMFILTER_SUBCHANNELS;
-
-  /* Did we find anything? */
-  if (tmp_items) {
-    /* Add this group as a channel first. */
-    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
-      /* Filter selection of channel specially here again, since may be open and
-       * not subject to previous test. */
-      if (ANIMCHANNEL_SELOK(SEL_AGRP(&channel_group))) {
-        if (filter_mode & ANIMFILTER_TMP_PEEK) {
-          return 1;
-        }
-
-        bAnimListElem *ale = make_new_animlistelem(
-            ac->bmain, &channel_group, ANIMTYPE_GROUP, animated_id, &action.id);
-        ale->slot_handle = slot.handle;
-
-        if (ale) {
-          BLI_addtail(anim_data, ale);
-          items++;
-        }
-      }
-    }
-
-    /* Now add the list of collected channels. */
-    BLI_movelisttolist(anim_data, &tmp_data);
-    BLI_assert(BLI_listbase_is_empty(&tmp_data));
-    items += tmp_items;
-  }
-
-  /* Return the number of items added to the list. */
   return items;
 }
 
@@ -1650,8 +1584,8 @@ static size_t animfilter_action_slot(bAnimContext *ac,
 
     /* Add channel groups and their member channels. */
     for (bActionGroup *group : channel_bag->channel_groups()) {
-      items += animfilter_act_group_channel_bag(
-          ac, anim_data, action, slot, *channel_bag, *group, filter_mode, animated_id);
+      items += animfilter_act_group(
+          ac, anim_data, &action, slot.handle, group, filter_mode, animated_id);
     }
 
     /* Add ungrouped channels. */
@@ -1741,7 +1675,8 @@ static size_t animfilter_action(bAnimContext *ac,
         lastchan = static_cast<FCurve *>(agrp->channels.last);
       }
 
-      items += animfilter_act_group(ac, anim_data, &action, agrp, filter_mode, owner_id);
+      items += animfilter_act_group(
+          ac, anim_data, &action, animrig::Slot::unassigned, agrp, filter_mode, owner_id);
     }
 
     /* Un-grouped F-Curves (only if we're not only considering those channels in
