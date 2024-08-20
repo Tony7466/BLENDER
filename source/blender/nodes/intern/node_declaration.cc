@@ -92,10 +92,10 @@ void NodeDeclarationBuilder::finalize()
   this->build_remaining_anonymous_attribute_relations();
   if (is_function_node_) {
     for (SocketDeclaration *socket_decl : declaration_.inputs) {
-      socket_decl->category = SocketCategory::Dynamic;
+      socket_decl->structure_type = StructureType::Dynamic;
     }
     for (SocketDeclaration *socket_decl : declaration_.outputs) {
-      socket_decl->category = SocketCategory::Dynamic;
+      socket_decl->structure_type = StructureType::Dynamic;
     }
   }
   BLI_assert(declaration_.is_valid());
@@ -527,7 +527,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()
 {
   BLI_assert(this->is_input());
   decl_base_->input_field_type = InputSocketFieldType::IsSupported;
-  this->category(SocketCategory::Dynamic);
+  this->structure_type(StructureType::Dynamic);
   return *this;
 }
 
@@ -538,7 +538,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::dependent_field(
   this->reference_pass(input_dependencies);
   decl_base_->output_field_dependency = OutputFieldDependency::ForPartiallyDependentField(
       std::move(input_dependencies));
-  this->category(SocketCategory::Dynamic);
+  this->structure_type(StructureType::Dynamic);
   return *this;
 }
 
@@ -650,7 +650,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on_all()
     this->field_source();
   }
   field_on_all_ = true;
-  this->category(SocketCategory::Field);
+  this->structure_type(StructureType::Field);
   return *this;
 }
 
@@ -658,7 +658,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_source()
 {
   BLI_assert(this->is_output());
   decl_base_->output_field_dependency = OutputFieldDependency::ForFieldSource();
-  this->category(SocketCategory::Field);
+  this->structure_type(StructureType::Field);
   return *this;
 }
 
@@ -676,7 +676,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::implicit_field_on_al
 {
   this->implicit_field(fn);
   field_on_all_ = true;
-  this->category(SocketCategory::Field);
+  this->structure_type(StructureType::Field);
   return *this;
 }
 
@@ -685,7 +685,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::implicit_field_on(
 {
   this->field_on(input_indices);
   this->implicit_field(fn);
-  this->category(SocketCategory::Field);
+  this->structure_type(StructureType::Field);
   return *this;
 }
 
@@ -750,9 +750,10 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
   return *this;
 }
 
-BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::category(const SocketCategory category)
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::structure_type(
+    const StructureType structure_type)
 {
-  decl_base_->category = category;
+  decl_base_->structure_type = structure_type;
   return *this;
 }
 

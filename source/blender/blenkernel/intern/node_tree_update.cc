@@ -859,14 +859,14 @@ class NodeTreeMainUpdater {
   int get_socket_shape(const bNodeSocket &socket)
   {
     if (socket.runtime->declaration) {
-      switch (socket.runtime->declaration->category) {
-        case SocketCategory::Single:
+      switch (socket.runtime->declaration->structure_type) {
+        case StructureType::Single:
           return SOCK_DISPLAY_SHAPE_CIRCLE;
-        case SocketCategory::Dynamic:
+        case StructureType::Dynamic:
           return SOCK_DISPLAY_SHAPE_CIRCLE_DOT;
-        case SocketCategory::Field:
+        case StructureType::Field:
           return SOCK_DISPLAY_SHAPE_DIAMOND;
-        case SocketCategory::Grid:
+        case StructureType::Grid:
           return SOCK_DISPLAY_SHAPE_SQUARE;
       }
     }

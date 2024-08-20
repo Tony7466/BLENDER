@@ -26,7 +26,7 @@ namespace blender::nodes {
 
 class NodeDeclarationBuilder;
 
-enum class SocketCategory {
+enum class StructureType {
   Single,
   Dynamic,
   Field,
@@ -200,7 +200,7 @@ class SocketDeclaration : public ItemDeclaration {
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
 
-  SocketCategory category = SocketCategory::Single;
+  StructureType structure_type = StructureType::Single;
 
  private:
   CompositorInputRealizationOptions compositor_realization_options_ =
@@ -393,7 +393,7 @@ class BaseSocketDeclarationBuilder {
                                                 const void *data,
                                                 StringRef property_name);
 
-  BaseSocketDeclarationBuilder &category(SocketCategory category);
+  BaseSocketDeclarationBuilder &structure_type(StructureType structure_type);
 
   /** Index in the list of inputs or outputs. */
   int index() const;
