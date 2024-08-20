@@ -14,6 +14,13 @@
 #include "overlay_shader_shared.h"
 
 namespace blender::draw::overlay {
+using namespace blender;
+
+enum eArmatureDrawMode {
+  ARM_DRAW_MODE_OBJECT,
+  ARM_DRAW_MODE_POSE,
+  ARM_DRAW_MODE_EDIT,
+};
 
 class Armatures {
   using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
@@ -23,8 +30,13 @@ class Armatures {
 
   PassSimple armature_ps_ = {"Armature"};
 
+  /* Force transparent drawing in Xray mode. */
   bool draw_transparent = false;
+  /* Force disable drawing relation is relations are off in viewport. */
   bool show_relations = false;
+  /* Show selection state. */
+  bool show_outline = false;
+
   bool do_pose_xray = false;
   bool do_pose_fade_geom = false;
 
@@ -40,7 +52,9 @@ class Armatures {
     /* Custom bone wire-frame. */
     PassSimple::Sub *shape_wire = nullptr;
 
-    BoneInstanceBuf octahedral_buf_ = {selection_type_, "octahedral_buf"};
+    BoneInstanceBuf octahedral_buf = {selection_type_, "octahedral_buf"};
+
+    Map<Object *, PassSimple::Sub *> custom_shapes;
 
     BoneBuffers(const SelectionType selection_type) : selection_type_(selection_type){};
   };
@@ -57,6 +71,7 @@ class Armatures {
 
     draw_transparent = (state.v3d->shading.type == OB_WIRE) || XRAY_FLAG_ENABLED(state.v3d);
     show_relations = !((state.v3d->flag & V3D_HIDE_HELPLINES) || is_select_mode);
+    show_outline = (state.v3d->flag & V3D_SELECT_OUTLINE);
     do_pose_xray = (state.overlay.flag & V3D_OVERLAY_BONE_SELECT);
     // do_pose_fade_geom = do_pose_xray && !(state.object_mode & OB_MODE_WEIGHT_PAINT) &&
     //                     draw_ctx->object_pose != nullptr;
@@ -186,28 +201,111 @@ class Armatures {
       /* Wires. */
     }
 
-    auto clear_buffers = [](BoneBuffers &bb) { bb.octahedral_buf_.clear(); };
+    auto clear_buffers = [](BoneBuffers &bb) {
+      bb.octahedral_buf.clear();
+      bb.custom_shapes.clear();
+    };
 
     clear_buffers(transparent);
     clear_buffers(opaque);
   }
 
+  struct DrawContext {
+    /* Current armature object */
+    Object *ob = nullptr;
+
+    eArmatureDrawMode draw_mode;
+    eArmature_Drawtype drawtype;
+
+    Armatures::BoneBuffers *bone_buf = nullptr;
+
+    /* TODO: Legacy structures to be removed after overlay next is shipped. */
+    DRWCallBuffer *outline = nullptr;
+    DRWCallBuffer *solid = nullptr;
+    DRWCallBuffer *wire = nullptr;
+    DRWCallBuffer *envelope_outline = nullptr;
+    DRWCallBuffer *envelope_solid = nullptr;
+    DRWCallBuffer *envelope_distance = nullptr;
+    DRWCallBuffer *stick = nullptr;
+    DRWCallBuffer *dof_lines = nullptr;
+    DRWCallBuffer *dof_sphere = nullptr;
+    DRWCallBuffer *point_solid = nullptr;
+    DRWCallBuffer *point_outline = nullptr;
+    DRWShadingGroup *custom_solid = nullptr;
+    DRWShadingGroup *custom_outline = nullptr;
+    DRWShadingGroup *custom_wire = nullptr;
+    GHash *custom_shapes_ghash = nullptr;
+    OVERLAY_ExtraCallBuffers *extras = nullptr;
+
+    /* Not a theme, this is an override. */
+    const float *const_color = nullptr;
+    /* Wire thickness. */
+    float const_wire = 0.0f;
+
+    bool do_relations = false;
+    bool transparent = false;
+    bool show_relations = false;
+    bool draw_relation_from_head = false;
+    /* Draw the inner part of the bones, otherwise render just outlines. */
+    bool is_filled = false;
+
+    const ThemeWireColor *bcolor = nullptr; /* pchan color */
+
+    DrawContext() = default;
+  };
+
+  DrawContext create_draw_context(const ObjectRef &ob_ref,
+                                  const Resources &res,
+                                  const State &state,
+                                  eArmatureDrawMode draw_mode)
+  {
+    bArmature *arm = static_cast<bArmature *>(ob_ref.object->data);
+
+    DrawContext ctx;
+    ctx.ob = ob_ref.object;
+    ctx.draw_mode = draw_mode;
+    ctx.drawtype = eArmature_Drawtype(arm->drawtype);
+
+    const bool is_edit_or_pose_mode = draw_mode != ARM_DRAW_MODE_OBJECT;
+    const bool draw_as_wire = (ctx.ob->dt < OB_SOLID);
+    const bool is_transparent = draw_transparent || (draw_as_wire && is_edit_or_pose_mode);
+
+    ctx.bone_buf = is_transparent ? &transparent : &opaque;
+
+    ctx.is_filled = (!draw_transparent && !draw_as_wire) || is_edit_or_pose_mode;
+    ctx.show_relations = show_relations;
+    ctx.do_relations = show_relations && is_edit_or_pose_mode;
+    ctx.draw_relation_from_head = (arm->flag & ARM_DRAW_RELATION_FROM_HEAD);
+    ctx.const_color = is_edit_or_pose_mode ? nullptr : &res.object_wire_color(ob_ref, state)[0];
+    ctx.const_wire = ((ctx.ob->base_flag & BASE_SELECTED) && show_outline ?
+                          1.5f :
+                          ((!ctx.is_filled || is_transparent) ? 1.0f : 0.0f));
+    return ctx;
+  }
+
   void edit_object_sync(const ObjectRef &ob_ref, Resources &res)
   {
     const select::ID radius_id = res.select_id(ob_ref);
-    opaque.octahedral_buf_.append({ob_ref.object->object_to_world()}, radius_id);
+    opaque.octahedral_buf.append({ob_ref.object->object_to_world()}, radius_id);
   }
 
-  void object_sync(const ObjectRef &ob_ref, Resources &res)
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
   {
-    const select::ID radius_id = res.select_id(ob_ref);
-    opaque.octahedral_buf_.append({ob_ref.object->object_to_world()}, radius_id);
+    if (ob_ref.object->dt == OB_BOUNDBOX) {
+      return;
+    }
+
+    DrawContext ctx = create_draw_context(ob_ref, res, state, ARM_DRAW_MODE_OBJECT);
+    draw_armature_pose(&ctx);
+
+    // const select::ID radius_id = res.select_id(ob_ref);
+    // opaque.octahedral_buf.append({ob_ref.object->object_to_world()}, radius_id);
   }
 
   void end_sync(Resources & /*res*/, ShapeCache &shapes, const State & /*state*/)
   {
     auto clear_buffers = [&](BoneBuffers &bb) {
-      bb.octahedral_buf_.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
+      bb.octahedral_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
     };
 
     clear_buffers(transparent);
@@ -219,6 +317,11 @@ class Armatures {
     GPU_framebuffer_bind(framebuffer);
     manager.submit(armature_ps_, view);
   }
+
+  /* Public for the time of the Overlay Next port to avoid duplicated logic. */
+ public:
+  static void draw_armature_pose(Armatures::DrawContext *ctx);
+  static void draw_armature_edit(Armatures::DrawContext *ctx);
 };
 
 }  // namespace blender::draw::overlay

@@ -177,7 +177,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.cameras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
-        layer.armatures.object_sync(ob_ref, resources);
+        layer.armatures.object_sync(ob_ref, resources, state);
         break;
       case OB_LATTICE:
         if (!in_edit_mode) {
