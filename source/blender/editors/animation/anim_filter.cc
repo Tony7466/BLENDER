@@ -1411,17 +1411,11 @@ static size_t animfilter_fcurves_span(bAnimContext *ac,
   return num_items;
 }
 
-static size_t animfilter_act_group(bAnimContext *ac,
-                                   ListBase *anim_data,
-                                   bAction *act,
-                                   bActionGroup *agrp,
-                                   eAnimFilter_Flags filter_mode,
-                                   ID *owner_id)
+static std::optional<eAnimFilter_Flags> animfilter_act_group_compute_filter_flags(
+    bAnimContext *ac, bActionGroup *agrp, eAnimFilter_Flags filter_mode)
 {
-  ListBase tmp_data = {nullptr, nullptr};
-  size_t tmp_items = 0;
-  size_t items = 0;
-  // int ofilter = filter_mode;
+  BLI_assert(ac != nullptr);
+  BLI_assert(agrp != nullptr);
 
   /* if we care about the selection status of the channels,
    * but the group isn't expanded (1)...
@@ -1438,7 +1432,7 @@ static size_t animfilter_act_group(bAnimContext *ac,
     /* If the group itself isn't selected appropriately,
      * we shouldn't consider its children either. */
     if (ANIMCHANNEL_SELOK(SEL_AGRP(agrp)) == 0) {
-      return 0;
+      return std::nullopt;
     }
 
     /* if we're still here,
@@ -1451,6 +1445,29 @@ static size_t animfilter_act_group(bAnimContext *ac,
      * - Creating ghost curves in Graph Editor.
      */
     filter_mode &= ~(ANIMFILTER_SEL | ANIMFILTER_UNSEL | ANIMFILTER_LIST_VISIBLE);
+  }
+
+  return filter_mode;
+}
+
+static size_t animfilter_act_group(bAnimContext *ac,
+                                   ListBase *anim_data,
+                                   bAction *act,
+                                   bActionGroup *agrp,
+                                   eAnimFilter_Flags filter_mode,
+                                   ID *owner_id)
+{
+  ListBase tmp_data = {nullptr, nullptr};
+  size_t tmp_items = 0;
+  size_t items = 0;
+  // int ofilter = filter_mode;
+
+  if (auto filter_mode_updated = animfilter_act_group_compute_filter_flags(ac, agrp, filter_mode))
+  {
+    filter_mode = filter_mode_updated.value();
+  }
+  else {
+    return 0;
   }
 
   /* add grouped F-Curves */
@@ -1518,36 +1535,13 @@ static size_t animfilter_act_group_channel_bag(bAnimContext *ac,
   size_t tmp_items = 0;
   size_t items = 0;
 
-  /* If we care about the selection status of the channels, but the group isn't
-   * expanded (1)...
-   *
-   * (1) This only matters if we actually care about the hierarchy though.
-   *   - Hierarchy matters: this hack should be applied.
-   *   - Hierarchy ignored: cases like #21276 won't work properly, unless we
-   *     skip this hack.
-   */
-  if (
-      /* Care about hierarchy but group isn't expanded. */
-      ((filter_mode & ANIMFILTER_LIST_VISIBLE) && EXPANDED_AGRP(ac, &channel_group) == 0) &&
-      /* Care about selection status. */
-      (filter_mode & (ANIMFILTER_SEL | ANIMFILTER_UNSEL)))
+  if (auto filter_mode_updated = animfilter_act_group_compute_filter_flags(
+          ac, &channel_group, filter_mode))
   {
-    /* If the group itself isn't selected appropriately, we shouldn't consider
-     * its children either. */
-    if (ANIMCHANNEL_SELOK(SEL_AGRP(&channel_group)) == 0) {
-      return 0;
-    }
-
-    /* If we're still here, then the selection status of the curves within this
-     * group should not matter, since this creates too much overhead for
-     * animators (i.e. making a slow workflow).
-     *
-     * Tools affected by this at time of coding (2010 Feb 09):
-     * - Inserting keyframes on selected channels only.
-     * - Pasting keyframes.
-     * - Creating ghost curves in Graph Editor.
-     */
-    filter_mode &= ~(ANIMFILTER_SEL | ANIMFILTER_UNSEL | ANIMFILTER_LIST_VISIBLE);
+    filter_mode = filter_mode_updated.value();
+  }
+  else {
+    return 0;
   }
 
   /* Add grouped F-Curves. */
