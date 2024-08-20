@@ -24,7 +24,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(1)
       .max(100)
       .description("Width of the active voxel surface, in voxels");
-  b.add_output<decl::Float>("SDF Grid");
+  b.add_output<decl::Float>("SDF Grid").category(SocketCategory::Grid);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

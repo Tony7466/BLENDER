@@ -28,10 +28,13 @@ enum class Operation {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Grid 1").hide_value();
-  b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(
-      [](bNode &node) { node.custom1 = int16_t(Operation::Difference); });
-  b.add_output<decl::Float>("Grid").hide_value();
+  b.add_input<decl::Float>("Grid 1").hide_value().category(SocketCategory::Grid);
+  b.add_input<decl::Float>("Grid 2")
+      .hide_value()
+      .multi_input()
+      .make_available([](bNode &node) { node.custom1 = int16_t(Operation::Difference); })
+      .category(SocketCategory::Grid);
+  b.add_output<decl::Float>("Grid").hide_value().category(SocketCategory::Grid);
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
