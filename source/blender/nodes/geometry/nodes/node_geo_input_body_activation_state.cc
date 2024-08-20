@@ -75,7 +75,7 @@ static void node_register()
       &ntype, GEO_NODE_INPUT_BODY_ACTIVATION_STATE, "Body Activation State", NODE_CLASS_INPUT);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
