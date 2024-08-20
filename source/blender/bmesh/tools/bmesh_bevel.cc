@@ -2362,6 +2362,10 @@ static void bevel_extend_edge_data(BevVert *bv)
         for (int k = 1; k < vm->seg; k++) {
           v2 = mesh_vert(vm, i % vm->count, 0, k)->v;
 
+          if (v2 == nullptr) {
+            continue;
+          }
+
           /* Here v1 & v2 are current and next BMverts,
            * we find common edge and set its edge data. */
           e = v1->e;
@@ -2409,6 +2413,10 @@ static void bevel_extend_edge_data(BevVert *bv)
         BMEdge *e;
         for (int k = 1; k < vm->seg; k++) {
           v2 = mesh_vert(vm, i % vm->count, 0, k)->v;
+
+          if (v2 == nullptr) {
+            continue;
+          }
 
           e = v1->e;
           while (e->v1 != v2 && e->v2 != v2) {
