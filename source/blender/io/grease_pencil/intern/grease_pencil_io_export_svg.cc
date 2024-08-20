@@ -300,13 +300,7 @@ pugi::xml_node SVGExporter::write_polygon(pugi::xml_node node,
     if (i > 0) {
       txt.append(" ");
     }
-    float2 screen_co = float2(0);
-    ED_view3d_project_float_ex(context_.region,
-                               const_cast<float(*)[4]>(context_.rv3d->winmat),
-                               false,
-                               math::transform_point(transform, positions[i]),
-                               screen_co,
-                               V3D_PROJ_TEST_NOP);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     txt.append(std::to_string(screen_co.x) + "," + std::to_string(screen_co.y));
   }
 
@@ -332,13 +326,7 @@ pugi::xml_node SVGExporter::write_polyline(pugi::xml_node node,
     if (i > 0) {
       txt.append(" ");
     }
-    float2 screen_co = float2(0);
-    ED_view3d_project_float_ex(context_.region,
-                               const_cast<float(*)[4]>(context_.rv3d->winmat),
-                               false,
-                               math::transform_point(transform, positions[i]),
-                               screen_co,
-                               V3D_PROJ_TEST_NOP);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     txt.append(std::to_string(screen_co.x) + "," + std::to_string(screen_co.y));
   }
 
@@ -359,13 +347,7 @@ pugi::xml_node SVGExporter::write_path(pugi::xml_node node,
     if (i > 0) {
       txt.append("L");
     }
-    float2 screen_co = float2(0);
-    ED_view3d_project_float_ex(context_.region,
-                               const_cast<float(*)[4]>(context_.rv3d->winmat),
-                               false,
-                               math::transform_point(transform, positions[i]),
-                               screen_co,
-                               V3D_PROJ_TEST_NOP);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     txt.append(std::to_string(screen_co.x) + "," + std::to_string(screen_co.y));
   }
   /* Close patch (cyclic). */

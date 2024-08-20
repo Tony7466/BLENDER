@@ -559,4 +559,20 @@ void GreasePencilExporter::foreach_stroke_in_layer(const Object &object,
   }
 }
 
+float2 GreasePencilExporter::project_to_screen(const float4x4 &transform,
+                                               const float3 &position) const
+{
+  float2 screen_co = float2(0.0f);
+  if (ED_view3d_project_float_ex(context_.region,
+                                 const_cast<float(*)[4]>(context_.rv3d->winmat),
+                                 false,
+                                 math::transform_point(transform, position),
+                                 screen_co,
+                                 V3D_PROJ_TEST_NOP) == V3D_PROJ_RET_OK)
+  {
+    return screen_co;
+  }
+  return float2(0.0f);
+}
+
 }  // namespace blender::io::grease_pencil

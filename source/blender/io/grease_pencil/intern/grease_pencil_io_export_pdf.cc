@@ -236,14 +236,7 @@ void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
   }
 
   for (const int i : positions.index_range()) {
-    float2 screen_co = float2(0);
-    ED_view3d_project_float_ex(context_.region,
-                               const_cast<float(*)[4]>(context_.rv3d->winmat),
-                               false,
-                               math::transform_point(transform, positions[i]),
-                               screen_co,
-                               V3D_PROJ_TEST_NOP);
-
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     if (i == 0) {
       HPDF_Page_MoveTo(page_, screen_co.x, screen_co.y);
     }
