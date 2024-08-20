@@ -1,2 +1,3 @@
 Referenced by pull request #125396, Fix #125375: Sculpt undo with duplicate object causes crash
 Referenced by commit 7e0029fb656a8307ad9a8cb18f097f0483599a28, Sculpt: Simplify BVH node flag initialization, avoid normals update
+Referenced by commit ef0b163b498e29a0eb629d637af9697abe68c669, Sculpt: Make BMesh BVH tree build similar to mesh/grids
