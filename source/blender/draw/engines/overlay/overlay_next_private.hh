@@ -200,6 +200,9 @@ class ShaderModule {
   ShaderPtr facing;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
+  ShaderPtr particle_dot;
+  ShaderPtr particle_shape;
+  ShaderPtr particle_hair;
   ShaderPtr wireframe_mesh;
   ShaderPtr wireframe_curve;
   ShaderPtr wireframe_points; /* Draw objects without edges for the wireframe overlay. */
@@ -278,7 +281,7 @@ struct Resources : public select::SelectMap {
   /**
    * Depth target.
    * Can either be default depth buffer texture from #DefaultTextureList
-   * or `xray_depth_tx` if Xray is enabled.
+   * or `xray_depth_tx` if X-ray is enabled.
    */
   TextureRef depth_target_tx;
 

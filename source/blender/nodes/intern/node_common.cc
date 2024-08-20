@@ -130,7 +130,7 @@ bool node_group_poll_instance(const bNode *node,
   if (!grouptree) {
     return true;
   }
-  return blender::bke::nodeGroupPoll(nodetree, grouptree, disabled_hint);
+  return blender::bke::node_group_poll(nodetree, grouptree, disabled_hint);
 }
 
 std::string node_group_ui_description(const bNode &node)
@@ -150,9 +150,9 @@ std::string node_group_ui_description(const bNode &node)
   return group->description;
 }
 
-bool blender::bke::nodeGroupPoll(const bNodeTree *nodetree,
-                                 const bNodeTree *grouptree,
-                                 const char **r_disabled_hint)
+bool blender::bke::node_group_poll(const bNodeTree *nodetree,
+                                   const bNodeTree *grouptree,
+                                   const char **r_disabled_hint)
 {
   /* unspecified node group, generally allowed
    * (if anything, should be avoided on operator level)
@@ -248,7 +248,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
 {
   SocketDeclarationPtr dst;
 
-  blender::bke::bNodeSocketType *base_typeinfo = blender::bke::nodeSocketTypeFind(
+  blender::bke::bNodeSocketType *base_typeinfo = blender::bke::node_socket_type_find(
       io_socket.socket_type);
   if (base_typeinfo == nullptr) {
     return dst;
@@ -569,7 +569,7 @@ void register_node_type_frame()
   blender::bke::node_type_size(ntype, 150, 100, 0);
   ntype->flag |= NODE_BACKGROUND;
 
-  blender::bke::nodeRegisterType(ntype);
+  blender::bke::node_register_type(ntype);
 }
 
 /** \} */
@@ -583,8 +583,9 @@ static void node_reroute_init(bNodeTree *ntree, bNode *node)
   /* NOTE: Cannot use socket templates for this, since it would reset the socket type
    * on each file read via the template verification procedure.
    */
-  blender::bke::nodeAddStaticSocket(ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "Input", "Input");
-  blender::bke::nodeAddStaticSocket(
+  blender::bke::node_add_static_socket(
+      ntree, node, SOCK_IN, SOCK_RGBA, PROP_NONE, "Input", "Input");
+  blender::bke::node_add_static_socket(
       ntree, node, SOCK_OUT, SOCK_RGBA, PROP_NONE, "Output", "Output");
 }
 
@@ -597,7 +598,7 @@ void register_node_type_reroute()
   blender::bke::node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_reroute_init;
 
-  blender::bke::nodeRegisterType(ntype);
+  blender::bke::node_register_type(ntype);
 }
 
 static void propagate_reroute_type_from_start_socket(
@@ -683,10 +684,12 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
     bNodeSocket *output_socket = (bNodeSocket *)reroute_node->outputs.first;
 
     if (input_socket->typeinfo != socket_type) {
-      blender::bke::nodeModifySocketType(ntree, reroute_node, input_socket, socket_type->idname);
+      blender::bke::node_modify_socket_type(
+          ntree, reroute_node, input_socket, socket_type->idname);
     }
     if (output_socket->typeinfo != socket_type) {
-      blender::bke::nodeModifySocketType(ntree, reroute_node, output_socket, socket_type->idname);
+      blender::bke::node_modify_socket_type(
+          ntree, reroute_node, output_socket, socket_type->idname);
     }
   }
 }
@@ -846,7 +849,7 @@ void register_node_type_group_input()
   ntype->declare = blender::nodes::group_input_declare;
   ntype->insert_link = blender::nodes::group_input_insert_link;
 
-  blender::bke::nodeRegisterType(ntype);
+  blender::bke::node_register_type(ntype);
 }
 
 bNodeSocket *node_group_output_find_socket(bNode *node, const char *identifier)
@@ -872,7 +875,7 @@ void register_node_type_group_output()
 
   ntype->no_muting = true;
 
-  blender::bke::nodeRegisterType(ntype);
+  blender::bke::node_register_type(ntype);
 }
 
 /** \} */
