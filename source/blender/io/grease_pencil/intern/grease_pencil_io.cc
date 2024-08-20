@@ -119,17 +119,17 @@ Object *GreasePencilImporter::create_object(const StringRefNull name)
   return ob_gpencil;
 }
 
-int32_t GreasePencilImporter::create_material(const StringRefNull name,
-                                              const bool stroke,
-                                              const bool fill)
+int GreasePencilImporter::create_material(const StringRefNull name,
+                                          const bool stroke,
+                                          const bool fill)
 {
   const ColorGeometry4f default_stroke_color = {0.0f, 0.0f, 0.0f, 1.0f};
   const ColorGeometry4f default_fill_color = {0.5f, 0.5f, 0.5f, 1.0f};
-  int32_t mat_index = BKE_gpencil_object_material_index_get_by_name(object_, name.c_str());
+  int mat_index = BKE_gpencil_object_material_index_get_by_name(object_, name.c_str());
   /* Stroke and Fill material. */
   if (mat_index == -1) {
     Main *bmain = CTX_data_main(&context_.C);
-    int32_t new_idx;
+    int new_idx;
     Material *mat_gp = BKE_gpencil_object_material_new(bmain, object_, name.c_str(), &new_idx);
     MaterialGPencilStyle *gp_style = mat_gp->gp_style;
     gp_style->flag &= ~GP_MATERIAL_STROKE_SHOW;
