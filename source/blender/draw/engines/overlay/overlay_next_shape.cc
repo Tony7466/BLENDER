@@ -132,10 +132,10 @@ static const std::array<float3, 6> bone_octahedral_verts{
  */
 static const std::array<float3, 6> bone_octahedral_smooth_normals{
     float3{0.0f, -1.0f, 0.0f},
-    {M_SQRT1_2f, 0.0f, M_SQRT1_2f},
-    {M_SQRT1_2f, 0.0f, -M_SQRT1_2f},
-    {-M_SQRT1_2f, 0.0f, -M_SQRT1_2f},
-    {-M_SQRT1_2f, 0.0f, M_SQRT1_2f},
+    {float(M_SQRT1_2), 0.0f, float(M_SQRT1_2)},
+    {float(M_SQRT1_2), 0.0f, -float(M_SQRT1_2)},
+    {-float(M_SQRT1_2), 0.0f, -float(M_SQRT1_2)},
+    {-float(M_SQRT1_2), 0.0f, float(M_SQRT1_2)},
     {0.0f, 1.0f, 0.0f},
 };
 
