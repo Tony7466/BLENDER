@@ -1844,6 +1844,7 @@ void uiTemplateAction(uiLayout *layout,
   /* This must be heap-allocated because template_ID() will call MEM_dupallocN()
    * on the pointer we pass, and that doesn't like stack-allocated stuff. */
   TemplateID *template_ui = MEM_cnew<TemplateID>(__func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(template_ui); });
   template_ui->ptr = adt_ptr;
   template_ui->prop = adt_action_prop;
   template_ui->prv_rows = 0;
@@ -1863,8 +1864,6 @@ void uiTemplateAction(uiLayout *layout,
   uiLayout *row = uiLayoutRow(layout, true);
   template_ID(
       C, row, template_ui, &RNA_Action, flag, newop, nullptr, unlinkop, text, false, false);
-
-  MEM_freeN(template_ui);
 }
 
 void uiTemplateIDBrowse(uiLayout *layout,
