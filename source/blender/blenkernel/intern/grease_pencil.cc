@@ -2693,9 +2693,8 @@ std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max(con
     if (!layer.is_visible()) {
       continue;
     }
-    if (layer.has_drawing_at(frame)) {
-      const bke::greasepencil::Drawing &drawing = *this->get_drawing_at(layer, frame);
-      const bke::CurvesGeometry &curves = drawing.strokes();
+    if (const bke::greasepencil::Drawing *drawing = this->get_drawing_at(layer, frame)) {
+      const bke::CurvesGeometry &curves = drawing->strokes();
       bounds = bounds::merge(bounds, curves.bounds_min_max());
     }
   }
