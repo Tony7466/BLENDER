@@ -120,7 +120,7 @@ struct SelectMap {
   }
 
   /* Load an invalid index that will not write to the output (not selectable). */
-  [[nodiscard]] const ID select_invalid_id()
+  [[nodiscard]] static const ID select_invalid_id()
   {
     return {uint32_t(-1)};
   }

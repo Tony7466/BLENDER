@@ -55,7 +55,9 @@ class Armatures {
     BoneInstanceBuf octahedral_fill_buf = {selection_type_, "octahedral_fill_buf"};
     BoneInstanceBuf octahedral_outline_buf = {selection_type_, "octahedral_outline_buf"};
 
-    Map<Object *, PassSimple::Sub *> custom_shapes;
+    Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
+    Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
+    Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_wire;
 
     BoneBuffers(const SelectionType selection_type) : selection_type_(selection_type){};
   };
@@ -205,7 +207,11 @@ class Armatures {
     auto clear_buffers = [](BoneBuffers &bb) {
       bb.octahedral_fill_buf.clear();
       bb.octahedral_outline_buf.clear();
-      bb.custom_shapes.clear();
+      /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
+       * Prefer a pruning strategy. */
+      bb.custom_shape_fill.clear();
+      bb.custom_shape_outline.clear();
+      bb.custom_shape_wire.clear();
     };
 
     clear_buffers(transparent);
@@ -307,6 +313,18 @@ class Armatures {
     auto clear_buffers = [&](BoneBuffers &bb) {
       bb.octahedral_fill_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
       bb.octahedral_outline_buf.end_sync(*bb.shape_outline, shapes.bone_octahedron_wire.get());
+
+      using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
+
+      for (CustomShapeBuf item : bb.custom_shape_fill.items()) {
+        item.value->end_sync(*bb.shape_fill, item.key);
+      }
+      for (CustomShapeBuf item : bb.custom_shape_outline.items()) {
+        item.value->end_sync(*bb.shape_outline, item.key);
+      }
+      for (CustomShapeBuf item : bb.custom_shape_wire.items()) {
+        item.value->end_sync(*bb.shape_wire, item.key);
+      }
     };
 
     clear_buffers(transparent);

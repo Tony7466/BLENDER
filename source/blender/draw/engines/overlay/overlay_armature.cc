@@ -804,9 +804,11 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
                                                const float hint_color[4],
                                                const float outline_color[4],
                                                const float wire_width,
+                                               const draw::select::ID select_id,
                                                Object &custom)
 {
   using namespace blender::draw;
+  using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_mesh_batch_cache_validate(custom, mesh);
@@ -818,28 +820,61 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
   DRWCallBuffer *buf;
 
   if (surf || edges || loose_edges) {
-    mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
+    inst_data.mat44 = ctx->ob->object_to_world() * float4x4(bone_mat);
   }
 
-  if (surf && ctx->custom_solid) {
-    buf = custom_bone_instance_shgroup(ctx, ctx->custom_solid, surf);
-    OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
-    OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
-    DRW_buffer_add_entry_struct(buf, inst_data.mat);
+  if (surf) {
+    inst_data.set_hint_color(hint_color);
+    inst_data.set_color(bone_color);
+    if (ctx->bone_buf && ctx->is_filled) {
+      ctx->bone_buf->custom_shape_fill
+          .lookup_or_add_cb(surf,
+                            [ctx]() {
+                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                       "CustomBoneSolid");
+                            })
+          ->append(inst_data, select_id);
+    }
+    else if (ctx->custom_solid) {
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_solid, surf);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
-  if (edges && ctx->custom_outline) {
-    buf = custom_bone_instance_shgroup(ctx, ctx->custom_outline, edges);
-    OVERLAY_bone_instance_data_set_color(&inst_data, outline_color);
-    DRW_buffer_add_entry_struct(buf, inst_data.mat);
+  if (edges) {
+    inst_data.set_color(outline_color);
+    if (ctx->bone_buf) {
+      ctx->bone_buf->custom_shape_fill
+          .lookup_or_add_cb(edges,
+                            [ctx]() {
+                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                       "CustomBoneOutline");
+                            })
+          ->append(inst_data, select_id);
+    }
+    else if (ctx->custom_outline) {
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_outline, edges);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   if (loose_edges) {
-    buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
-    OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
+    inst_data.set_hint_color(outline_color);
     inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
     inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
-    DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    if (ctx->bone_buf) {
+      ctx->bone_buf->custom_shape_wire
+          .lookup_or_add_cb(loose_edges,
+                            [ctx]() {
+                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                       "CustomBoneWire");
+                            })
+          ->append(inst_data, select_id);
+    }
+    else {
+      buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   /* TODO(fclem): needs to be moved elsewhere. */
@@ -851,22 +886,36 @@ static void drw_shgroup_bone_custom_mesh_wire(const Armatures::DrawContext *ctx,
                                               const float (*bone_mat)[4],
                                               const float color[4],
                                               const float wire_width,
+                                              const draw::select::ID select_id,
                                               Object &custom)
 {
   using namespace blender::draw;
+  using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_mesh_batch_cache_validate(custom, mesh);
 
   blender::gpu::Batch *geom = DRW_mesh_batch_cache_get_all_edges(mesh);
   if (geom) {
-    DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, geom);
     BoneInstanceData inst_data;
-    mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
-    OVERLAY_bone_instance_data_set_color_hint(&inst_data, color);
+    inst_data.mat44 = ctx->ob->object_to_world() * float4x4(bone_mat);
+    inst_data.set_hint_color(color);
     inst_data.color_a = encode_2f_to_float(color[0], color[1]);
     inst_data.color_b = encode_2f_to_float(color[2], wire_width / WIRE_WIDTH_COMPRESSION);
-    DRW_buffer_add_entry_struct(buf, inst_data.mat);
+
+    if (ctx->bone_buf) {
+      ctx->bone_buf->custom_shape_wire
+          .lookup_or_add_cb(geom,
+                            [ctx]() {
+                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                       "CustomBoneWire");
+                            })
+          ->append(inst_data, select_id);
+    }
+    else {
+      DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, geom);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   /* TODO(fclem): needs to be moved elsewhere. */
@@ -878,9 +927,11 @@ static void drw_shgroup_custom_bone_curve(const Armatures::DrawContext *ctx,
                                           const float (*bone_mat)[4],
                                           const float outline_color[4],
                                           const float wire_width,
+                                          const draw::select::ID select_id,
                                           Object *custom)
 {
   using namespace blender::draw;
+  using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   /* TODO(fclem): arg... less than ideal but we never iter on this object
    * to assure batch cache is valid. */
   DRW_curve_batch_cache_validate(curve);
@@ -897,13 +948,24 @@ static void drw_shgroup_custom_bone_curve(const Armatures::DrawContext *ctx,
 
   if (loose_edges) {
     BoneInstanceData inst_data;
-    mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
-
-    DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
-    OVERLAY_bone_instance_data_set_color_hint(&inst_data, outline_color);
+    inst_data.mat44 = ctx->ob->object_to_world() * float4x4(bone_mat);
+    inst_data.set_hint_color(outline_color);
     inst_data.color_a = encode_2f_to_float(outline_color[0], outline_color[1]);
     inst_data.color_b = encode_2f_to_float(outline_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
-    DRW_buffer_add_entry_struct(buf, inst_data.mat);
+
+    if (ctx->bone_buf) {
+      ctx->bone_buf->custom_shape_wire
+          .lookup_or_add_cb(loose_edges,
+                            [ctx]() {
+                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                       "CustomBoneWire");
+                            })
+          ->append(inst_data, select_id);
+    }
+    else {
+      DRWCallBuffer *buf = custom_bone_instance_shgroup(ctx, ctx->custom_wire, loose_edges);
+      DRW_buffer_add_entry_struct(buf, inst_data.mat);
+    }
   }
 
   /* TODO(fclem): needs to be moved elsewhere. */
@@ -916,6 +978,7 @@ static void drw_shgroup_bone_custom_solid(const Armatures::DrawContext *ctx,
                                           const float hint_color[4],
                                           const float outline_color[4],
                                           const float wire_width,
+                                          const draw::select::ID select_id,
                                           Object *custom)
 {
   /* The custom object is not an evaluated object, so its object->data field hasn't been replaced
@@ -924,14 +987,26 @@ static void drw_shgroup_bone_custom_solid(const Armatures::DrawContext *ctx,
    * larger refactor of this area. */
   Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf_unchecked(custom);
   if (mesh != nullptr) {
-    drw_shgroup_bone_custom_solid_mesh(
-        ctx, *mesh, bone_mat, bone_color, hint_color, outline_color, wire_width, *custom);
+    drw_shgroup_bone_custom_solid_mesh(ctx,
+                                       *mesh,
+                                       bone_mat,
+                                       bone_color,
+                                       hint_color,
+                                       outline_color,
+                                       wire_width,
+                                       select_id,
+                                       *custom);
     return;
   }
 
   if (ELEM(custom->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
-    drw_shgroup_custom_bone_curve(
-        ctx, static_cast<Curve *>(custom->data), bone_mat, outline_color, wire_width, custom);
+    drw_shgroup_custom_bone_curve(ctx,
+                                  static_cast<Curve *>(custom->data),
+                                  bone_mat,
+                                  outline_color,
+                                  wire_width,
+                                  select_id,
+                                  custom);
   }
 }
 
@@ -939,18 +1014,19 @@ static void drw_shgroup_bone_custom_wire(const Armatures::DrawContext *ctx,
                                          const float (*bone_mat)[4],
                                          const float color[4],
                                          const float wire_width,
+                                         const draw::select::ID select_id,
                                          Object *custom)
 {
   /* See comments in #drw_shgroup_bone_custom_solid. */
   Mesh *mesh = BKE_object_get_evaluated_mesh_no_subsurf_unchecked(custom);
   if (mesh != nullptr) {
-    drw_shgroup_bone_custom_mesh_wire(ctx, *mesh, bone_mat, color, wire_width, *custom);
+    drw_shgroup_bone_custom_mesh_wire(ctx, *mesh, bone_mat, color, wire_width, select_id, *custom);
     return;
   }
 
   if (ELEM(custom->type, OB_CURVES_LEGACY, OB_FONT, OB_SURF)) {
     drw_shgroup_custom_bone_curve(
-        ctx, static_cast<Curve *>(custom->data), bone_mat, color, wire_width, custom);
+        ctx, static_cast<Curve *>(custom->data), bone_mat, color, wire_width, select_id, custom);
   }
 }
 
@@ -2078,6 +2154,32 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
 
     if (ctx->bone_buf) {
       /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+
+      /* Custom bone shapes are only supported in pose mode for now. */
+      const bPoseChannel *pchan = bone.as_posebone();
+      Object *custom_shape_ob = pchan->custom;
+
+      if (custom_shape_ob->type == OB_EMPTY) {
+        if (custom_shape_ob->empty_drawtype != OB_EMPTY_IMAGE) {
+          /* TODO(fclem): Support empty object instances. */
+        }
+      }
+      else if (boneflag & (BONE_DRAWWIRE | BONE_DRAW_LOCKED_WEIGHT)) {
+        drw_shgroup_bone_custom_wire(
+            ctx, disp_mat, col_wire, pchan->custom_shape_wire_width, sel_id, pchan->custom);
+      }
+      else {
+        drw_shgroup_bone_custom_solid(ctx,
+                                      disp_mat,
+                                      col_solid,
+                                      col_hint,
+                                      col_wire,
+                                      pchan->custom_shape_wire_width,
+                                      sel_id,
+                                      pchan->custom);
+      }
+
       return;
     }
 
@@ -2101,11 +2203,18 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
                                     col_hint,
                                     col_wire,
                                     pchan->custom_shape_wire_width,
+                                    /* Dummy values for legacy pipeline. */
+                                    draw::select::SelectMap::select_invalid_id(),
                                     pchan->custom);
     }
     else {
-      drw_shgroup_bone_custom_wire(
-          ctx, disp_mat, col_wire, pchan->custom_shape_wire_width, pchan->custom);
+      drw_shgroup_bone_custom_wire(ctx,
+                                   disp_mat,
+                                   col_wire,
+                                   pchan->custom_shape_wire_width,
+                                   /* Dummy values for legacy pipeline. */
+                                   draw::select::SelectMap::select_invalid_id(),
+                                   pchan->custom);
     }
 
     if (select_id != -1) {
