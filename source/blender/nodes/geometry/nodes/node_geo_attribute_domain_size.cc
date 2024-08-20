@@ -67,23 +67,23 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *rigid_bodies_socket = layers_socket->next;
   bNodeSocket *constraints_socket = rigid_bodies_socket->next;
 
-  bke::nodeSetSocketAvailability(ntree,
-                                 point_socket,
-                                 ELEM(node->custom1,
-                                      int16_t(GeometryComponent::Type::Mesh),
-                                      int16_t(GeometryComponent::Type::Curve),
-                                      int16_t(GeometryComponent::Type::PointCloud)));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(ntree,
+                                    point_socket,
+                                    ELEM(node->custom1,
+                                         int16_t(GeometryComponent::Type::Mesh),
+                                         int16_t(GeometryComponent::Type::Curve),
+                                         int16_t(GeometryComponent::Type::PointCloud)));
+  bke::node_set_socket_availability(
       ntree, edge_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, face_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, face_corner_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, spline_socket, node->custom1 == int16_t(GeometryComponent::Type::Curve));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, instances_socket, node->custom1 == int16_t(GeometryComponent::Type::Instance));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, layers_socket, node->custom1 == int16_t(GeometryComponent::Type::GreasePencil));
   bke::nodeSetSocketAvailability(
       ntree, rigid_bodies_socket, node->custom1 == int16_t(GeometryComponent::Type::Physics));
@@ -191,7 +191,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
