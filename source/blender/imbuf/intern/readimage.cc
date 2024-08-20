@@ -193,7 +193,7 @@ ImBuf *IMB_thumb_load_image(const char *filepath,
   }
   else {
     /* Skip images of other types if over 100MB. */
-    if ((load_flags & IMBThumbLoadFlags::LoadLargeFiles) == IMBThumbLoadFlags::None) {
+    if ((load_flags & IMBThumbLoadFlags::LoadLargeFiles) == IMBThumbLoadFlags::Zero) {
       const size_t file_size = BLI_file_size(filepath);
       if (file_size != size_t(-1) && file_size > THUMB_SIZE_MAX) {
         return nullptr;

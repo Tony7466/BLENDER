@@ -74,7 +74,7 @@ ImBuf *IMB_testiffname(const char *filepath, int flags);
 ImBuf *IMB_loadiffname(const char *filepath, int flags, char colorspace[IM_MAX_SPACE]);
 
 enum class IMBThumbLoadFlags {
-  None = 0,
+  Zero = 0,
   /** Normally files larger than 100MB are not loaded for thumbnails, except when this flag is set.
    */
   LoadLargeFiles = (1 << 0),
@@ -84,7 +84,7 @@ ENUM_OPERATORS(IMBThumbLoadFlags, IMBThumbLoadFlags::LoadLargeFiles);
 ImBuf *IMB_thumb_load_image(const char *filepath,
                             const size_t max_thumb_size,
                             char colorspace[IM_MAX_SPACE],
-                            IMBThumbLoadFlags load_flags = IMBThumbLoadFlags::None);
+                            IMBThumbLoadFlags load_flags = IMBThumbLoadFlags::Zero);
 
 void IMB_freeImBuf(ImBuf *ibuf);
 
