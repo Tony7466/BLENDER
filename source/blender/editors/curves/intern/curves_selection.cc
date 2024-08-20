@@ -921,7 +921,8 @@ bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
                 const bke::crazyspace::GeometryDeformation &deformation,
                 const float4x4 &projection,
-                const IndexMask &mask,
+                const IndexMask &selection_mask,
+                const IndexMask &bezier_mask,
                 const bke::AttrDomain selection_domain,
                 const rcti &rect,
                 const eSelectOp sel_op)
@@ -932,7 +933,7 @@ bool select_box(const ViewContext &vc,
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selection_writers) {
-      fill_selection_false(selection.span, mask);
+      fill_selection_false(selection.span, selection_mask);
     };
     changed = true;
   }
@@ -942,6 +943,8 @@ bool select_box(const ViewContext &vc,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
+          const IndexMask &mask = (selection_attribute_name == ".selection") ? selection_mask :
+                                                                               bezier_mask;
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
@@ -965,6 +968,7 @@ bool select_box(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
+          const IndexMask &mask = selection_mask;
           mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
@@ -1015,7 +1019,8 @@ bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
                   const bke::crazyspace::GeometryDeformation &deformation,
                   const float4x4 &projection_matrix,
-                  const IndexMask &mask,
+                  const IndexMask &selection_mask,
+                  const IndexMask &bezier_mask,
                   const bke::AttrDomain selection_domain,
                   const Span<int2> lasso_coords,
                   const eSelectOp sel_op)
@@ -1027,7 +1032,7 @@ bool select_lasso(const ViewContext &vc,
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selection_writers) {
-      fill_selection_false(selection.span, mask);
+      fill_selection_false(selection.span, selection_mask);
     };
     changed = true;
   }
@@ -1037,6 +1042,8 @@ bool select_lasso(const ViewContext &vc,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
+          const IndexMask &mask = (selection_attribute_name == ".selection") ? selection_mask :
+                                                                               bezier_mask;
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection_matrix);
@@ -1064,6 +1071,7 @@ bool select_lasso(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
+          const IndexMask &mask = selection_mask;
           mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
@@ -1128,7 +1136,8 @@ bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
                    const bke::crazyspace::GeometryDeformation &deformation,
                    const float4x4 &projection,
-                   const IndexMask &mask,
+                   const IndexMask &selection_mask,
+                   const IndexMask &bezier_mask,
                    const bke::AttrDomain selection_domain,
                    const int2 coord,
                    const float radius,
@@ -1140,7 +1149,7 @@ bool select_circle(const ViewContext &vc,
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
     for (bke::GSpanAttributeWriter &selection : selection_writers) {
-      fill_selection_false(selection.span, mask);
+      fill_selection_false(selection.span, selection_mask);
     };
     changed = true;
   }
@@ -1150,6 +1159,8 @@ bool select_circle(const ViewContext &vc,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
+          const IndexMask &mask = (selection_attribute_name == ".selection") ? selection_mask :
+                                                                               bezier_mask;
           mask.slice_content(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
@@ -1173,6 +1184,7 @@ bool select_circle(const ViewContext &vc,
         [&](const IndexRange range,
             const Span<float3> positions,
             StringRef /* selection_attribute_name */) {
+          const IndexMask &mask = selection_mask;
           mask.slice_content(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {

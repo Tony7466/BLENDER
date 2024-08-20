@@ -137,7 +137,7 @@ class DefocusOperation : public NodeOperation {
 
     radius.bind_as_texture(shader, "radius_tx");
 
-    GPU_texture_filter_mode(bokeh_kernel.texture(), true);
+    GPU_texture_filter_mode(bokeh_kernel, true);
     bokeh_kernel.bind_as_texture(shader, "weights_tx");
 
     const Domain domain = compute_domain();
@@ -366,5 +366,5 @@ void register_node_type_cmp_defocus()
       &ntype, "NodeDefocus", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
