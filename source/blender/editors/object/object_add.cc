@@ -1227,6 +1227,10 @@ static int object_image_add_exec(bContext *C, wmOperator *op)
     }
   }
 
+  if (images.is_empty()) {
+    return OPERATOR_CANCELLED;
+  }
+
   for (Image *image : images) {
     /* Add new empty. */
     ushort local_view_bits;
