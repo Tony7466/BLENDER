@@ -78,23 +78,24 @@ static void node_update(bNodeTree *tree, bNode *node)
   bNodeSocket *mesh_socket = next_socket();
   bNodeSocket *child_shape_socket = next_socket();
 
-  bke::nodeSetSocketAvailability(tree, scale_socket, ELEM(type, ShapeType::UniformScaling));
-  bke::nodeSetSocketAvailability(tree, size_vector_socket, ELEM(type, ShapeType::Box));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(tree, scale_socket, ELEM(type, ShapeType::UniformScaling));
+  bke::node_set_socket_availability(tree, size_vector_socket, ELEM(type, ShapeType::Box));
+  bke::node_set_socket_availability(
       tree,
       radius_socket,
       ELEM(type, ShapeType::Sphere, ShapeType::Cylinder, ShapeType::Cone, ShapeType::Capsule));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       tree, height_socket, ELEM(type, ShapeType::Cylinder, ShapeType::Cone, ShapeType::Capsule));
-  bke::nodeSetSocketAvailability(tree, plane_normal_socket, ELEM(type, ShapeType::StaticPlane));
-  bke::nodeSetSocketAvailability(tree, plane_constant_socket, ELEM(type, ShapeType::StaticPlane));
+  bke::node_set_socket_availability(tree, plane_normal_socket, ELEM(type, ShapeType::StaticPlane));
+  bke::node_set_socket_availability(
+      tree, plane_constant_socket, ELEM(type, ShapeType::StaticPlane));
   const bool use_points = ELEM(type, ShapeType::Triangle);
-  bke::nodeSetSocketAvailability(tree, point0_socket, use_points);
-  bke::nodeSetSocketAvailability(tree, point1_socket, use_points);
-  bke::nodeSetSocketAvailability(tree, point2_socket, use_points);
-  bke::nodeSetSocketAvailability(tree, geometry_socket, ELEM(type, ShapeType::ConvexHull));
-  bke::nodeSetSocketAvailability(tree, mesh_socket, ELEM(type, ShapeType::TriangleMesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(tree, point0_socket, use_points);
+  bke::node_set_socket_availability(tree, point1_socket, use_points);
+  bke::node_set_socket_availability(tree, point2_socket, use_points);
+  bke::node_set_socket_availability(tree, geometry_socket, ELEM(type, ShapeType::ConvexHull));
+  bke::node_set_socket_availability(tree, mesh_socket, ELEM(type, ShapeType::TriangleMesh));
+  bke::node_set_socket_availability(
       tree, child_shape_socket, ELEM(type, ShapeType::UniformScaling, ShapeType::Compound));
 }
 

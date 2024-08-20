@@ -85,9 +85,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
       ntree, instances_socket, node->custom1 == int16_t(GeometryComponent::Type::Instance));
   bke::node_set_socket_availability(
       ntree, layers_socket, node->custom1 == int16_t(GeometryComponent::Type::GreasePencil));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, rigid_bodies_socket, node->custom1 == int16_t(GeometryComponent::Type::Physics));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, constraints_socket, node->custom1 == int16_t(GeometryComponent::Type::Physics));
 }
 
