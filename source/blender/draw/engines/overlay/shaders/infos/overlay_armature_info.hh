@@ -140,6 +140,11 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_solid_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_armature_shape_solid", "drw_clipped");
 
+GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_next_iface, "")
+    .flat(Type::VEC4, "finalColor")
+    .flat(Type::FLOAT, "wire_width")
+    .no_perspective(Type::FLOAT, "edgeCoord");
+
 GPU_SHADER_INTERFACE_INFO(overlay_armature_shape_wire_iface, "geometry_in")
     .flat(Type::VEC4, "finalColor")
     .flat(Type::FLOAT, "wire_width");
@@ -188,15 +193,20 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_no_geom)
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_next)
     .do_static_compilation(true)
+    .define("NO_GEOM")
     .push_constant(Type::BOOL, "do_smooth_wire")
-    .vertex_in(0, Type::VEC3, "pos")
-    .storage_buf(0, Qualifier::READ, "mat4", "data_buf[]")
+    .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
+    .storage_buf(1, Qualifier::READ, "mat4", "data_buf[]")
+    .push_constant(Type::IVEC2, "gpu_attr_0")
     .define("inst_obmat", "data_buf[gl_InstanceID]")
-    .vertex_out(overlay_armature_wire_iface)
-    .vertex_source("overlay_armature_shape_wire_vert_no_geom.glsl")
-    .fragment_source("overlay_armature_wire_frag.glsl")
+    .vertex_out(overlay_armature_shape_wire_next_iface)
+    .vertex_source("overlay_armature_shape_wire_next_vert.glsl")
+    .fragment_source("overlay_armature_shape_wire_frag.glsl")
     .typedef_source("overlay_shader_shared.h")
-    .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
+    .additional_info("overlay_frag_output",
+                     "overlay_armature_common",
+                     "gpu_index_load",
+                     "draw_globals");
 
 /** \} */
 

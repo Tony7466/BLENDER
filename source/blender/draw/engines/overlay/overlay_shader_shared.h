@@ -53,7 +53,7 @@ ENUM_OPERATORS(OVERLAY_GridBits, CUSTOM_GRID)
 #define OVERLAY_GRID_STEPS_LEN 8
 
 /* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down. */
-#define WIRE_WIDTH_COMPRESSION 16
+#define WIRE_WIDTH_COMPRESSION 16.0
 
 struct OVERLAY_GridData {
   float4 steps[OVERLAY_GRID_STEPS_LEN]; /* float arrays are padded to float4 in std130. */
