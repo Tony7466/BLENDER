@@ -39,6 +39,7 @@ struct BMesh;
 struct CCGElem;
 struct CCGKey;
 struct CustomData;
+struct Depsgraph;
 struct IsectRayPrecalc;
 struct Mesh;
 struct SubdivCCG;
@@ -273,7 +274,7 @@ std::unique_ptr<Tree> build_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
  */
 std::unique_ptr<Tree> build_bmesh(BMesh *bm);
 
-void build_pixels(Object &object, Image &image, ImageUser &image_user);
+void build_pixels(const Depsgraph &depsgraph, Object &object, Image &image, ImageUser &image_user);
 void free(std::unique_ptr<Tree> &pbvh);
 
 /* Hierarchical Search in the BVH, two methods:
@@ -498,7 +499,7 @@ namespace blender::bke::pbvh {
  * Recalculate node bounding boxes based on the current coordinates. Calculation is only done for
  * affected nodes with the #PBVH_UpdateBB flag set.
  */
-void update_bounds(const Object &object, Tree &pbvh);
+void update_bounds(const Depsgraph &depsgraph, const Object &object, Tree &pbvh);
 void update_bounds_mesh(Span<float3> vert_positions, Tree &pbvh);
 void update_bounds_grids(const CCGKey &key, Span<CCGElem *> elems, Tree &pbvh);
 void update_bounds_bmesh(const Object &object, Tree &pbvh);
@@ -513,7 +514,7 @@ void store_bounds_orig(Tree &pbvh);
 
 void update_mask(const Object &object, Tree &pbvh);
 void update_visibility(const Object &object, Tree &pbvh);
-void update_normals(Object &object, Tree &pbvh);
+void update_normals(const Depsgraph &depsgraph, Object &object_orig, Tree &pbvh);
 /** Update geometry normals (potentially on the original object geometry). */
 void update_normals_from_eval(Object &object_eval, Tree &pbvh);
 
@@ -537,9 +538,32 @@ void BKE_pbvh_node_get_bm_orco_data(blender::bke::pbvh::Node *node,
                                     float (**r_orco_coords)[3],
                                     BMVert ***r_orco_verts);
 
-blender::Span<blender::float3> BKE_pbvh_get_vert_positions(const blender::bke::pbvh::Tree &pbvh);
-blender::MutableSpan<blender::float3> BKE_pbvh_get_vert_positions(blender::bke::pbvh::Tree &pbvh);
-blender::Span<blender::float3> BKE_pbvh_get_vert_normals(const blender::bke::pbvh::Tree &pbvh);
+namespace blender::bke::pbvh {
+
+/**
+ * Retrieve the positions array from the evaluated mesh after deforming modifiers and before
+ * topology-changing operations. If there are no deform modifiers, this returns the original mesh's
+ * vertex positions.
+ */
+Span<float3> vert_positions_eval(const Depsgraph &depsgraph, const Object &object);
+Span<float3> vert_positions_eval_from_eval(const Object &object_eval);
+
+/**
+ * Retrieve write access to the evaluated deform positions, or the original object positions if
+ * there are no deformation modifiers. Writing the the evaluated positions is necessary because
+ * they are used for drawing and we don't run a full dependency graph update whenever they are
+ * changed.
+ */
+MutableSpan<float3> vert_positions_eval_for_write(const Depsgraph &depsgraph, Object &object);
+
+/**
+ * Return the vertex normals corresponding the the positions from #vert_positions_eval. This may be
+ * a reference to the normals cache on the original mesh.
+ */
+Span<float3> vert_normals_eval(const Depsgraph &depsgraph, const Object &object);
+Span<float3> vert_normals_eval_from_eval(const Object &object_eval);
+
+}  // namespace blender::bke::pbvh
 
 void BKE_pbvh_ensure_node_face_corners(blender::bke::pbvh::Tree &pbvh,
                                        blender::Span<blender::int3> corner_tris);
