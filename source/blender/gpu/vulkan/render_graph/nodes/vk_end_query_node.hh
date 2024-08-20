@@ -21,7 +21,7 @@ struct VKEndQueryData {
 };
 
 /**
- * Blit Image Node
+ * End Query Node
  *
  * - Contains logic to copy relevant data to the VKRenderGraphNode.
  * - Determine read/write resource dependencies.

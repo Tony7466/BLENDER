@@ -22,7 +22,7 @@ struct VKResetQueryPoolData {
 };
 
 /**
- * Begin query
+ * Reset query pool.
  *
  * - Contains logic to copy relevant data to the VKRenderGraphNode.
  * - Determine read/write resource dependencies.

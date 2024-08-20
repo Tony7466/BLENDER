@@ -91,7 +91,6 @@ void VKQueryPool::end_query()
 
 void VKQueryPool::get_occlusion_result(MutableSpan<uint32_t> r_values)
 {
-  GPU_debug_capture_begin(__func__);
   VKContext &context = *VKContext::get();
   /* During selection the frame buffer is still rendering. It needs to finish the render scope to
    * ensure the END_RENDERING node */
@@ -118,7 +117,6 @@ void VKQueryPool::get_occlusion_result(MutableSpan<uint32_t> r_values)
     queries_left = max_ii(queries_left - query_chunk_len_, 0);
     pool_index += 1;
   }
-  GPU_debug_capture_end();
 }
 
 }  // namespace blender::gpu
