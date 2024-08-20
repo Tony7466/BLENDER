@@ -139,7 +139,7 @@ static const std::array<float3, 6> bone_octahedral_smooth_normals{
     {0.0f, 1.0f, 0.0f},
 };
 
-static const std::array<uint2, 12> bone_octahedral_wire = {
+static const std::array<uint2, 12> bone_octahedral_wire_lines = {
     uint2{0, 1},
     {1, 5},
     {5, 3},
@@ -350,7 +350,7 @@ static void append_sphere(Vector<VertShaded> &dest, const eDRWLevelOfDetail leve
 
 ShapeCache::ShapeCache()
 {
-  UNUSED_VARS(bone_octahedral_wire);
+  UNUSED_VARS(bone_octahedral_wire_lines);
 
   /* armature_octahedron */
   {
@@ -365,6 +365,24 @@ ShapeCache::ShapeCache()
     bone_octahedron = BatchPtr(
         GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
+  {
+    GPUIndexBufBuilder elb;
+    GPU_indexbuf_init(&elb, GPU_PRIM_LINES_ADJ, 12, 24);
+
+    for (int i = 0; i < 12; i++) {
+      GPU_indexbuf_add_line_adj_verts(&elb,
+                                      bone_octahedral_wire_lines_adjacency[i][0],
+                                      bone_octahedral_wire_lines_adjacency[i][1],
+                                      bone_octahedral_wire_lines_adjacency[i][2],
+                                      bone_octahedral_wire_lines_adjacency[i][3]);
+    }
+    gpu::IndexBuf *ibo = GPU_indexbuf_build(&elb);
+
+    /* NOTE: Reuses the same VBO as bone_octahedron. Thus has the same vertex format. */
+    bone_octahedron_wire = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINES_ADJ, bone_octahedron.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
+  }
+
   /* quad_wire */
   {
     Vector<Vertex> verts;

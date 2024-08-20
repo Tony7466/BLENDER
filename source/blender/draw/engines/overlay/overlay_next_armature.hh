@@ -52,7 +52,8 @@ class Armatures {
     /* Custom bone wire-frame. */
     PassSimple::Sub *shape_wire = nullptr;
 
-    BoneInstanceBuf octahedral_buf = {selection_type_, "octahedral_buf"};
+    BoneInstanceBuf octahedral_fill_buf = {selection_type_, "octahedral_fill_buf"};
+    BoneInstanceBuf octahedral_outline_buf = {selection_type_, "octahedral_outline_buf"};
 
     Map<Object *, PassSimple::Sub *> custom_shapes;
 
@@ -202,7 +203,8 @@ class Armatures {
     }
 
     auto clear_buffers = [](BoneBuffers &bb) {
-      bb.octahedral_buf.clear();
+      bb.octahedral_fill_buf.clear();
+      bb.octahedral_outline_buf.clear();
       bb.custom_shapes.clear();
     };
 
@@ -213,11 +215,13 @@ class Armatures {
   struct DrawContext {
     /* Current armature object */
     Object *ob = nullptr;
+    const ObjectRef *ob_ref = nullptr;
 
-    eArmatureDrawMode draw_mode;
-    eArmature_Drawtype drawtype;
+    eArmatureDrawMode draw_mode = ARM_DRAW_MODE_OBJECT;
+    eArmature_Drawtype drawtype = ARM_OCTA;
 
     Armatures::BoneBuffers *bone_buf = nullptr;
+    Resources *res = nullptr;
 
     /* TODO: Legacy structures to be removed after overlay next is shipped. */
     DRWCallBuffer *outline = nullptr;
@@ -255,7 +259,7 @@ class Armatures {
   };
 
   DrawContext create_draw_context(const ObjectRef &ob_ref,
-                                  const Resources &res,
+                                  Resources &res,
                                   const State &state,
                                   eArmatureDrawMode draw_mode)
   {
@@ -263,6 +267,8 @@ class Armatures {
 
     DrawContext ctx;
     ctx.ob = ob_ref.object;
+    ctx.ob_ref = &ob_ref;
+    ctx.res = &res;
     ctx.draw_mode = draw_mode;
     ctx.drawtype = eArmature_Drawtype(arm->drawtype);
 
@@ -277,17 +283,14 @@ class Armatures {
     ctx.do_relations = show_relations && is_edit_or_pose_mode;
     ctx.draw_relation_from_head = (arm->flag & ARM_DRAW_RELATION_FROM_HEAD);
     ctx.const_color = is_edit_or_pose_mode ? nullptr : &res.object_wire_color(ob_ref, state)[0];
-    ctx.const_wire = ((ctx.ob->base_flag & BASE_SELECTED) && show_outline ?
-                          1.5f :
-                          ((!ctx.is_filled || is_transparent) ? 1.0f : 0.0f));
+    ctx.const_wire = (!ctx.is_filled || is_transparent) ? 1.0f : 0.0f;
+    if ((ctx.ob->base_flag & BASE_SELECTED) && show_outline) {
+      ctx.const_wire = 1.5f;
+    }
     return ctx;
   }
 
-  void edit_object_sync(const ObjectRef &ob_ref, Resources &res)
-  {
-    const select::ID radius_id = res.select_id(ob_ref);
-    opaque.octahedral_buf.append({ob_ref.object->object_to_world()}, radius_id);
-  }
+  void edit_object_sync(const ObjectRef & /*ob_ref*/, Resources & /*res*/) {}
 
   void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
   {
@@ -297,15 +300,13 @@ class Armatures {
 
     DrawContext ctx = create_draw_context(ob_ref, res, state, ARM_DRAW_MODE_OBJECT);
     draw_armature_pose(&ctx);
-
-    // const select::ID radius_id = res.select_id(ob_ref);
-    // opaque.octahedral_buf.append({ob_ref.object->object_to_world()}, radius_id);
   }
 
   void end_sync(Resources & /*res*/, ShapeCache &shapes, const State & /*state*/)
   {
     auto clear_buffers = [&](BoneBuffers &bb) {
-      bb.octahedral_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
+      bb.octahedral_fill_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
+      bb.octahedral_outline_buf.end_sync(*bb.shape_outline, shapes.bone_octahedron_wire.get());
     };
 
     clear_buffers(transparent);

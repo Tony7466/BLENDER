@@ -483,9 +483,41 @@ struct BoneInstanceData {
   BoneInstanceData() = default;
   /* Constructor used by metaball overlays and expected to be used for drawing
    * metaball_wire_sphere with armature wire shader that produces wide-lines. */
-  BoneInstanceData(Object *ob, const float *pos, const float radius, const float color[4]);
+  BoneInstanceData(const Object *ob, const float *pos, const float radius, const float color[4]);
 
-  BoneInstanceData(const float4x4 &bone_mat) : mat44(bone_mat){};
+  BoneInstanceData(const float4x4 &bone_mat, const float4 &bone_color, const float4 &hint_color)
+      : mat44(bone_mat)
+  {
+    set_color(bone_color);
+    set_hint_color(hint_color);
+  };
+
+  BoneInstanceData(const float4x4 &bone_mat, const float4 &bone_color) : mat44(bone_mat)
+  {
+    set_color(bone_color);
+  };
+
+  void set_color(const float4 &bone_color)
+  {
+    /* Encoded color into 2 floats to be able to use the matrix to color the custom bones. */
+    color_a = encode_2f_to_float(bone_color[0], bone_color[1]);
+    color_b = encode_2f_to_float(bone_color[2], bone_color[3]);
+  }
+
+  void set_hint_color(const float4 &hint_color)
+  {
+    /* Encoded color into 2 floats to be able to use the matrix to color the custom bones. */
+    color_hint_a = encode_2f_to_float(hint_color[0], hint_color[1]);
+    color_hint_b = encode_2f_to_float(hint_color[2], hint_color[3]);
+  }
+
+ private:
+  /* Encode 2 units float with byte precision into a float. */
+  float encode_2f_to_float(float a, float b) const
+  {
+    /* NOTE: `b` can go up to 2. Needed to encode wire size. */
+    return float(int(clamp_f(a, 0.0f, 1.0f) * 255) | (int(clamp_f(b, 0.0f, 2.0f) * 255) << 8));
+  }
 };
 
 struct OVERLAY_InstanceFormats {

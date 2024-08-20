@@ -471,7 +471,7 @@ bool Instance::object_is_edit_mode(const Object *object)
 #include "overlay_private.hh"
 
 /* TODO(fclem): Move elsewhere. */
-BoneInstanceData::BoneInstanceData(Object *ob,
+BoneInstanceData::BoneInstanceData(const Object *ob,
                                    const float *pos,
                                    const float radius,
                                    const float color[4])

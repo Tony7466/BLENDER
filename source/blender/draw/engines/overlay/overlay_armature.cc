@@ -2076,6 +2076,11 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
     const float(*disp_mat)[4] = bone.disp_mat();
 
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      return;
+    }
+
     if (select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_BONE);
     }
@@ -2145,6 +2150,20 @@ class ArmatureBoneDrawStrategyOcta : public ArmatureBoneDrawStrategy {
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+      float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(bone.disp_mat());
+
+      if (ctx->is_filled) {
+        ctx->bone_buf->octahedral_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
+      }
+      if (col_wire[3] > 0.0f) {
+        ctx->bone_buf->octahedral_outline_buf.append({bone_mat, col_wire}, sel_id);
+      }
+      return;
+    }
+
     if (select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_BONE);
     }
@@ -2196,6 +2215,11 @@ class ArmatureBoneDrawStrategyLine : public ArmatureBoneDrawStrategy {
     const float no_display[4] = {0.0f, 0.0f, 0.0f, 0.0f};
     const float *col_head = no_display;
     const float *col_tail = col_bone;
+
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      return;
+    }
 
     if (ctx->const_color != nullptr) {
       col_wire = no_display; /* actually shrink the display. */
@@ -2288,6 +2312,11 @@ class ArmatureBoneDrawStrategyBBone : public ArmatureBoneDrawStrategy {
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      return;
+    }
+
     if (select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_BONE);
     }
@@ -2360,6 +2389,11 @@ class ArmatureBoneDrawStrategyEnvelope : public ArmatureBoneDrawStrategy {
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      return;
+    }
+
     const float *rad_head, *rad_tail, *distance;
     if (bone.is_editbone()) {
       const EditBone *eBone = bone.as_editbone();
@@ -2429,6 +2463,11 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
                  const int select_id) const override
   {
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
+
+    if (ctx->bone_buf) {
+      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      return;
+    }
 
     if (select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_BONE);
@@ -2530,7 +2569,9 @@ void Armatures::draw_armature_edit(Armatures::DrawContext *ctx)
   const ArmatureBoneDrawStrategy &draw_strat = strategy_for_armature_drawtype(
       eArmature_Drawtype(arm->drawtype));
 
-  for (eBone = static_cast<EditBone *>(arm->edbo->first), index = ob_orig->runtime->select_id;
+  for (eBone = static_cast<EditBone *>(arm->edbo->first),
+      /* Note: Selection Next handles the object id merging later. */
+       index = ctx->bone_buf ? 0x0 : ob_orig->runtime->select_id;
        eBone;
        eBone = eBone->next, index += 0x10000)
   {
@@ -2621,7 +2662,8 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
 
     if (is_pose_select) {
       const Object *ob_orig = DEG_get_original_object(ob);
-      index = ob_orig->runtime->select_id;
+      /* Note: Selection Next handles the object id merging later. */
+      index = ctx->bone_buf ? 0x0 : ob_orig->runtime->select_id;
     }
   }
 
@@ -2652,6 +2694,9 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     }
   }
 
+  /* TODO(fclem): Remove global access. This is only used for culling in selection mode.
+   * This is just a workaround for slow selection queries. Selection-next will not have this issue.
+   */
   const DRWView *view = is_pose_select ? DRW_view_default_get() : nullptr;
 
   const ArmatureBoneDrawStrategy &draw_strat_normal = strategy_for_armature_drawtype(
