@@ -70,8 +70,6 @@ static bool is_selected_frame(const GreasePencil &grease_pencil, const int frame
 bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
 {
   bool result = false;
-  // Object *ob_eval_ = (Object *)DEG_get_evaluated_id(depsgraph, &ob->id);
-  // bGPdata *gpd_eval = (bGPdata *)ob_eval_->data;
   Object &ob_eval = *DEG_get_evaluated_object(context_.depsgraph, params_.object);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_eval.data);
 
