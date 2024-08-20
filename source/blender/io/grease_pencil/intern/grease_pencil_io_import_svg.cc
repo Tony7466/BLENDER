@@ -354,20 +354,6 @@ bool SVGImporter::read(StringRefNull filepath)
     shift_to_bounds_center(grease_pencil);
   }
 
-  /* Convert Bezier curves to poly curves.
-   * XXX This will not be necessary once Bezier curves are fully supported in grease pencil. */
-  if (params_.convert_to_poly_curves) {
-    for (GreasePencilDrawingBase *drawing_base : grease_pencil.drawings()) {
-      if (drawing_base->type != GP_DRAWING) {
-        continue;
-      }
-      Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-      drawing.strokes_for_write().resolution_for_write().fill(params_.resolution);
-      drawing.strokes_for_write() = blender::geometry::resample_to_evaluated(
-          drawing.strokes(), drawing.strokes().curves_range(), {});
-    }
-  }
-
   return true;
 }
 

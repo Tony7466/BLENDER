@@ -43,7 +43,6 @@ struct ImportParams {
   int resolution = 10;
   bool use_scene_unit = false;
   bool recenter_bounds = false;
-  bool convert_to_poly_curves = false;
 };
 
 struct ExportParams {

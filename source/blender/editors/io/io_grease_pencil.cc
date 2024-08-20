@@ -150,11 +150,9 @@ static int grease_pencil_import_svg_exec(bContext *C, wmOperator *op)
   const float scale = RNA_float_get(op->ptr, "scale");
   const bool use_scene_unit = RNA_boolean_get(op->ptr, "use_scene_unit");
   const bool recenter_bounds = true;
-  const bool convert_to_poly_curves = true;
 
   const IOContext io_context(*C, region, v3d, rv3d, op->reports);
-  const ImportParams params = {
-      scale, scene->r.cfra, resolution, use_scene_unit, recenter_bounds, convert_to_poly_curves};
+  const ImportParams params = {scale, scene->r.cfra, resolution, use_scene_unit, recenter_bounds};
 
   /* Loop all selected files to import them. All SVG imported shared the same import
    * parameters, but they are created in separated grease pencil objects. */
