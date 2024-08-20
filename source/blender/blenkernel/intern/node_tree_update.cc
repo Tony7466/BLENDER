@@ -858,14 +858,16 @@ class NodeTreeMainUpdater {
 
   int get_socket_shape(const bNodeSocket &socket)
   {
-    if (socket.runtime->field_state) {
-      switch (*socket.runtime->field_state) {
-        case bke::FieldSocketState::RequiresSingle:
+    if (socket.runtime->declaration) {
+      switch (socket.runtime->declaration->category) {
+        case SocketCategory::Single:
           return SOCK_DISPLAY_SHAPE_CIRCLE;
-        case bke::FieldSocketState::CanBeField:
-          return SOCK_DISPLAY_SHAPE_DIAMOND_DOT;
-        case bke::FieldSocketState::IsField:
+        case SocketCategory::Dynamic:
+          return SOCK_DISPLAY_SHAPE_CIRCLE_DOT;
+        case SocketCategory::Field:
           return SOCK_DISPLAY_SHAPE_DIAMOND;
+        case SocketCategory::Grid:
+          return SOCK_DISPLAY_SHAPE_SQUARE;
       }
     }
     return socket.display_shape;

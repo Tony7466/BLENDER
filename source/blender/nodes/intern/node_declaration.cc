@@ -736,6 +736,12 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::category(const SocketCategory category)
+{
+  decl_base_->category = category;
+  return *this;
+}
+
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
     const PointerRNA ptr, const StringRef property_name)
 {
