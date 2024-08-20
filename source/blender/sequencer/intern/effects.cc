@@ -21,6 +21,7 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -3126,6 +3127,112 @@ static void fill_rect_alpha_under(
   }
 }
 
+static int text_effect_line_size_get(const SeqRenderData *context, const Sequence *seq)
+{
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  /* Compensate text size for preview render size. */
+  double proxy_size_comp = context->scene->r.size / 100.0;
+  if (context->preview_render_size != SEQ_RENDER_SIZE_SCENE) {
+    proxy_size_comp = SEQ_rendersize_to_scale_factor(context->preview_render_size);
+  }
+
+  return proxy_size_comp * data->text_size;
+}
+
+static int text_effect_font_init(const SeqRenderData *context, const Sequence *seq, int font_flags)
+{
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  int font = blf_mono_font_render;
+
+  if (data->text_blf_id == SEQ_FONT_NOT_LOADED) {
+    data->text_blf_id = -1;
+
+    SEQ_effect_text_font_load(data, false);
+  }
+
+  if (data->text_blf_id >= 0) {
+    font = data->text_blf_id;
+  }
+
+  BLF_size(font, text_effect_line_size_get(context, seq));
+  BLF_enable(font, font_flags);
+
+  return font;
+}
+
+static void calc_text_runtime(const Sequence *seq, int font, int wrap_width)
+{
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  data->runtime = MEM_new<TextVarsRuntime>(__func__);
+  TextVarsRuntime *runtime = data->runtime;
+
+  runtime->line_height = BLF_height_max(font);
+  runtime->character_count = BLI_strlen_utf8(data->text);
+
+  int byte_offset = 0;
+  while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
+    const char *str = data->text + byte_offset;
+    const int char_length = BLI_str_utf8_size_or_error(str);
+
+    runtime->character_byte_offsets.append(byte_offset);
+    runtime->character_byte_lengths.append(char_length);
+    runtime->character_widths.append(BLF_width(font, str, char_length, nullptr));
+
+    byte_offset += char_length;
+  }
+
+  /* Postprocess: Detect word wrapping. After character, which index is saved, line must be
+   * broken.*/
+  if (wrap_width != -1) {  // XXX eeeeeeeee, but also another reason to move these into own fn
+    blender::Vector<int> break_at_char_indices;
+    float char_x = 0.0f;
+    int break_at_char_index = 0;
+    for (int i : runtime->character_byte_offsets.index_range()) {
+      const char *chr = data->text + runtime->character_byte_offsets[i];
+
+      if (chr[0] != ' ' && chr[0] != '\n') {
+        break_at_char_index = i;
+      }
+      if (chr[0] == ' ' && char_x > wrap_width && break_at_char_index > 0) {
+        break_at_char_indices.append(break_at_char_index);
+        break_at_char_index = 0;
+      }
+      if (chr[0] == '\n') {
+        break_at_char_index = 0;
+      }
+      char_x += runtime->character_widths[i];
+    }
+  }
+
+  /* Postprocess: Apply word wrapping. */
+  runtime->line_byte_offsets.append(0);
+  int line_start_byte_offset = 0;
+  float2 char_position{0.0f, 0.0f};
+  for (int i : runtime->character_byte_offsets.index_range()) {
+    const char *chr = data->text + runtime->character_byte_offsets[i];
+    const int char_byte_offset = runtime->character_byte_offsets[i];
+    const int char_length = runtime->character_byte_lengths[i];
+
+    runtime->character_positions.append(char_position);
+    char_position.x += runtime->character_widths[i];
+
+    if (chr[0] == '\n' || break_at_char_indices.contains(i)) {
+      runtime->line_witdths.append(char_position.x);
+      runtime->line_lengths.append(char_byte_offset - line_start_byte_offset);
+
+      char_position.x = 0;
+      char_position.y -= runtime->line_height;
+
+      line_start_byte_offset = char_byte_offset + char_length;
+      runtime->line_byte_offsets.append(line_start_byte_offset);
+    }
+    if (chr[0] == '\0') {
+      runtime->line_witdths.append(char_position.x);
+      runtime->line_lengths.append(char_byte_offset - line_start_byte_offset);
+    }
+  }
+}
+
 static ImBuf *do_text_effect(const SeqRenderData *context,
                              Sequence *seq,
                              float /*timeline_frame*/,
@@ -3140,48 +3247,24 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   const int width = out->x;
   const int height = out->y;
-  int font = blf_mono_font_render;
-  int y_ofs, x, y;
-  double proxy_size_comp;
-
-  if (data->text_blf_id == SEQ_FONT_NOT_LOADED) {
-    data->text_blf_id = -1;
-
-    SEQ_effect_text_font_load(data, false);
-  }
-
-  if (data->text_blf_id >= 0) {
-    font = data->text_blf_id;
-  }
-
-  const char *display_device = context->scene->display_settings.display_device;
-  ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
-
-  /* Compensate text size for preview render size. */
-  proxy_size_comp = context->scene->r.size / 100.0;
-  if (context->preview_render_size != SEQ_RENDER_SIZE_SCENE) {
-    proxy_size_comp = SEQ_rendersize_to_scale_factor(context->preview_render_size);
-  }
-
-  /* set before return */
-  BLF_size(font, proxy_size_comp * data->text_size);
 
   const int font_flags = BLF_WORD_WRAP | /* Always allow wrapping. */
                          ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
-  BLF_enable(font, font_flags);
+  const int font = text_effect_font_init(context, seq, font_flags);
+
+  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * width : -1;
+  calc_text_runtime(seq, font, wrap_width);  // xxx alloc/free
 
   /* use max width to enable newlines only */
-  BLF_wordwrap(font, (data->wrap_width != 0.0f) ? data->wrap_width * width : -1);
-
+  const char *display_device = context->scene->display_settings.display_device;
+  ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
   BLF_buffer(font, nullptr, out->byte_buffer.data, width, height, display);
 
   const int line_height = BLF_height_max(font);
-
-  y_ofs = -BLF_descender(font);
-
-  x = (data->loc[0] * width);
-  y = (data->loc[1] * height) + y_ofs;
+  int y_ofs = -BLF_descender(font);
+  int x = (data->loc[0] * width);
+  int y = (data->loc[1] * height) + y_ofs;
 
   /* Calculate bounding box and wrapping information. */
   rcti rect;
@@ -3217,10 +3300,16 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
     outline_rect = draw_text_outline(context, data, font, display, x, y, line_height, rect, out);
   }
 
-  /* Draw text itself. */
-  BLF_position(font, x, y, 0.0f);
-  BLF_buffer_col(font, data->color);
-  BLF_draw_buffer(font, data->text, sizeof(data->text));
+  TextVarsRuntime *runtime = data->runtime;
+  for (int i : runtime->character_positions.index_range()) {
+    const char *chr = data->text + runtime->character_byte_offsets[i];
+    float2 text_offset = runtime->character_positions[i];
+
+    /* Draw text itself. */
+    BLF_position(font, x + text_offset.x, y + text_offset.y, 0.0f);
+    BLF_buffer_col(font, data->color);
+    BLF_draw_buffer(font, chr, runtime->character_byte_lengths[i]);
+  }
 
   BLF_buffer(font, nullptr, nullptr, 0, 0, nullptr);
   BLF_disable(font, font_flags);
