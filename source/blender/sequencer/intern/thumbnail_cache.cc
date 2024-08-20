@@ -8,7 +8,6 @@
 
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
-#include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
@@ -142,31 +141,6 @@ struct ThumbnailCache {
   }
 };
 
-//@TODO: simplify this, unnecessarily complex
-static void scale_thumbnail(const ImBuf *in, ImBuf *out)
-{
-  float image_scale_factor = float(out->x) / in->x;
-  float transform_matrix[4][4];
-
-  /* Set to keep same loc,scale,rot but change scale to thumb size limit. */
-  const float scale_x = 1 * image_scale_factor;
-  const float scale_y = 1 * image_scale_factor;
-  const float image_center_offs_x = (out->x - in->x) / 2;
-  const float image_center_offs_y = (out->y - in->y) / 2;
-  const float pivot[3] = {in->x / 2.0f, in->y / 2.0f, 0.0f};
-
-  float rotation_matrix[3][3];
-  unit_m3(rotation_matrix);
-  loc_rot_size_to_mat4(transform_matrix,
-                       float3{image_center_offs_x, image_center_offs_y, 0.0f},
-                       rotation_matrix,
-                       float3{scale_x, scale_y, 1.0f});
-  transform_pivot_set_m4(transform_matrix, pivot);
-  invert_m4(transform_matrix);
-  IMB_transform(
-      in, out, IMB_TRANSFORM_MODE_REGULAR, IMB_FILTER_NEAREST, transform_matrix, nullptr);
-}
-
 static ThumbnailCache *ensure_thumbnail_cache(Scene *scene)
 {
   ThumbnailCache **cache = &scene->ed->runtime.thumbnail_cache;
@@ -253,25 +227,15 @@ static ImBuf *make_thumb_for_image(Scene *scene, const ThumbnailCache::Request &
   return ibuf;
 }
 
-static ImBuf *scale_to_thumbnail_size(Scene *scene, ImBuf *ibuf)
+static void scale_to_thumbnail_size(ImBuf *ibuf)
 {
   if (ibuf == nullptr) {
-    return nullptr;
+    return;
   }
   int width = ibuf->x;
   int height = ibuf->y;
   image_size_to_thumb_size(width, height);
-  if (width == ibuf->x && height == ibuf->y) {
-    return ibuf;
-  }
-
-  /* Scale ibuf to thumbnail size. */
-  ImBuf *scaled_ibuf = IMB_allocImBuf(
-      width, height, 32, ibuf->float_buffer.data ? IB_rectfloat : IB_rect);
-  scale_thumbnail(ibuf, scaled_ibuf);
-  seq_imbuf_assign_spaces(scene, scaled_ibuf);
-  IMB_freeImBuf(ibuf);
-  return scaled_ibuf;
+  IMB_scale(ibuf, width, height, IMBScaleFilter::Nearest, false);
 }
 
 /* Background job that processes in-flight thumbnail requests. */
@@ -415,7 +379,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
           BLI_assert_unreachable();
         }
 
-        thumb = scale_to_thumbnail_size(job->scene_, thumb);
+        scale_to_thumbnail_size(thumb);
 
         /* Add result into the cache (under cache mutex lock). */
         BLI_mutex_lock(&thumb_cache_lock);
