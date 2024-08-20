@@ -91,7 +91,7 @@ static constexpr float bone_box_verts[8][3] = {
     {-1.0f, 1.0f, 1.0f},
 };
 
-static constexpr std::array<uint, 24> bone_box_wire = {
+static constexpr std::array<uint, 24> bone_box_wire_lines = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
 
@@ -113,6 +113,46 @@ static const std::array<uint3, 12> bone_box_solid_tris{
 
     {4, 5, 6}, /* top */
     {4, 6, 7},
+};
+
+/**
+ * Store indices of generated verts from bone_box_solid_tris to define adjacency infos.
+ * See bone_octahedral_solid_tris for more infos.
+ */
+static const std::array<uint4, 12> bone_box_wire_lines_adjacency = {
+    uint4{4, 2, 0, 11},
+    {0, 1, 2, 8},
+    {2, 4, 1, 14},
+    {1, 0, 4, 20}, /* bottom */
+    {0, 8, 11, 14},
+    {2, 14, 8, 20},
+    {1, 20, 14, 11},
+    {4, 11, 20, 8}, /* top */
+    {20, 0, 11, 2},
+    {11, 2, 8, 1},
+    {8, 1, 14, 4},
+    {14, 4, 20, 0}, /* sides */
+};
+
+/* aligned with bone_box_solid_tris */
+static const std::array<float3, 12> bone_box_solid_normals = {
+    float3{0.0f, -1.0f, 0.0f},
+    {0.0f, -1.0f, 0.0f},
+
+    {1.0f, 0.0f, 0.0f},
+    {1.0f, 0.0f, 0.0f},
+
+    {0.0f, 0.0f, -1.0f},
+    {0.0f, 0.0f, -1.0f},
+
+    {-1.0f, 0.0f, 0.0f},
+    {-1.0f, 0.0f, 0.0f},
+
+    {0.0f, 0.0f, 1.0f},
+    {0.0f, 0.0f, 1.0f},
+
+    {0.0f, 1.0f, 0.0f},
+    {0.0f, 1.0f, 0.0f},
 };
 
 static const std::array<float3, 6> bone_octahedral_verts{
@@ -352,7 +392,7 @@ ShapeCache::ShapeCache()
 {
   UNUSED_VARS(bone_octahedral_wire_lines);
 
-  /* armature_octahedron */
+  /* Armature Octahedron. */
   {
     Vector<VertShaded> verts;
     for (int tri = 0; tri < 8; tri++) {
@@ -369,18 +409,41 @@ ShapeCache::ShapeCache()
     GPUIndexBufBuilder elb;
     GPU_indexbuf_init(&elb, GPU_PRIM_LINES_ADJ, 12, 24);
 
-    for (int i = 0; i < 12; i++) {
-      GPU_indexbuf_add_line_adj_verts(&elb,
-                                      bone_octahedral_wire_lines_adjacency[i][0],
-                                      bone_octahedral_wire_lines_adjacency[i][1],
-                                      bone_octahedral_wire_lines_adjacency[i][2],
-                                      bone_octahedral_wire_lines_adjacency[i][3]);
+    for (auto line : bone_octahedral_wire_lines_adjacency) {
+      GPU_indexbuf_add_line_adj_verts(&elb, line[0], line[1], line[2], line[3]);
     }
     gpu::IndexBuf *ibo = GPU_indexbuf_build(&elb);
 
     /* NOTE: Reuses the same VBO as bone_octahedron. Thus has the same vertex format. */
     bone_octahedron_wire = BatchPtr(GPU_batch_create_ex(
         GPU_PRIM_LINES_ADJ, bone_octahedron.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
+  }
+
+  /* Armature BBones. */
+  {
+    Vector<VertShaded> verts;
+    for (int tri = 0; tri < 12; tri++) {
+      for (int v = 0; v < 3; v++) {
+        verts.append({bone_box_verts[bone_box_solid_tris[tri][v]],
+                      VCLASS_NONE,
+                      bone_box_solid_normals[tri]});
+      }
+    }
+    bone_box = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  {
+    GPUIndexBufBuilder elb;
+    GPU_indexbuf_init(&elb, GPU_PRIM_LINES_ADJ, 12, 36);
+
+    for (auto line : bone_box_wire_lines_adjacency) {
+      GPU_indexbuf_add_line_adj_verts(&elb, line[0], line[1], line[2], line[3]);
+    }
+    gpu::IndexBuf *ibo = GPU_indexbuf_build(&elb);
+
+    /* NOTE: Reuses the same VBO as bone_box. Thus has the same vertex format. */
+    bone_box_wire = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINES_ADJ, bone_box.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
   }
 
   /* quad_wire */
@@ -454,7 +517,7 @@ ShapeCache::ShapeCache()
   /* cube */
   {
     Vector<Vertex> verts;
-    for (auto index : bone_box_wire) {
+    for (auto index : bone_box_wire_lines) {
       float x = bone_box_verts[index][0];
       float y = bone_box_verts[index][1] * 2.0 - 1.0f;
       float z = bone_box_verts[index][2];
@@ -748,8 +811,8 @@ ShapeCache::ShapeCache()
   }
   /* camera volume wire */
   {
-    Vector<Vertex> verts(bone_box_wire.size());
-    for (int i : bone_box_wire) {
+    Vector<Vertex> verts(bone_box_wire_lines.size());
+    for (int i : bone_box_wire_lines) {
       const float x = bone_box_verts[i][2];
       const float y = bone_box_verts[i][0];
       const float z = bone_box_verts[i][1];

@@ -93,6 +93,8 @@ class ShapeCache {
  public:
   BatchPtr bone_octahedron;
   BatchPtr bone_octahedron_wire;
+  BatchPtr bone_box;
+  BatchPtr bone_box_wire;
 
   BatchPtr quad_wire;
   BatchPtr quad_solid;

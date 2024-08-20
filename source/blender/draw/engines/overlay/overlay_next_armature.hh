@@ -55,6 +55,9 @@ class Armatures {
     BoneInstanceBuf octahedral_fill_buf = {selection_type_, "octahedral_fill_buf"};
     BoneInstanceBuf octahedral_outline_buf = {selection_type_, "octahedral_outline_buf"};
 
+    BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
+    BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
+
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_wire;
@@ -207,6 +210,8 @@ class Armatures {
     auto clear_buffers = [](BoneBuffers &bb) {
       bb.octahedral_fill_buf.clear();
       bb.octahedral_outline_buf.clear();
+      bb.bbones_fill_buf.clear();
+      bb.bbones_outline_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
        * Prefer a pruning strategy. */
       bb.custom_shape_fill.clear();
@@ -310,9 +315,12 @@ class Armatures {
 
   void end_sync(Resources & /*res*/, ShapeCache &shapes, const State & /*state*/)
   {
-    auto clear_buffers = [&](BoneBuffers &bb) {
+    auto end_sync = [&](BoneBuffers &bb) {
       bb.octahedral_fill_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
       bb.octahedral_outline_buf.end_sync(*bb.shape_outline, shapes.bone_octahedron_wire.get());
+
+      bb.bbones_fill_buf.end_sync(*bb.shape_fill, shapes.bone_box.get());
+      bb.bbones_outline_buf.end_sync(*bb.shape_outline, shapes.bone_box_wire.get());
 
       using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
 
@@ -327,8 +335,8 @@ class Armatures {
       }
     };
 
-    clear_buffers(transparent);
-    clear_buffers(opaque);
+    end_sync(transparent);
+    end_sync(opaque);
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)

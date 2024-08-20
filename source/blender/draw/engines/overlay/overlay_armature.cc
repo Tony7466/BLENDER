@@ -2423,6 +2423,32 @@ class ArmatureBoneDrawStrategyBBone : public ArmatureBoneDrawStrategy {
 
     if (ctx->bone_buf) {
       /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+
+      /* NOTE: Cannot reinterpret as float4x4 because of alignment requirement of float4x4.
+       * This would require a deeper refactor. */
+      Span<Mat4> bbone_matrices;
+      if (bone.is_posebone()) {
+        bbone_matrices = {(Mat4 *)bone.as_posebone()->draw_data->bbone_matrix,
+                          bone.as_posebone()->bone->segments};
+      }
+      else {
+        bbone_matrices = {(Mat4 *)bone.as_editbone()->disp_bbone_mat,
+                          bone.as_editbone()->segments};
+      }
+
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+
+      for (const Mat4 &in_bone_mat : bbone_matrices) {
+        float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(in_bone_mat.mat);
+
+        if (ctx->is_filled) {
+          ctx->bone_buf->bbones_fill_buf.append({bone_mat, col_solid, col_hint}, sel_id);
+        }
+        if (col_wire[3] > 0.0f) {
+          ctx->bone_buf->bbones_outline_buf.append({bone_mat, col_wire}, sel_id);
+        }
+      }
+
       return;
     }
 
