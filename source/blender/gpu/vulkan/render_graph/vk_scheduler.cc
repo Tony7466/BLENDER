@@ -68,7 +68,6 @@ std::optional<std::pair<int64_t, int64_t>> VKScheduler::find_rendering_scope(
   for (int64_t index : search_range) {
     NodeHandle node_handle = result_[index];
     const VKRenderGraphNode &node = render_graph.nodes_[node_handle];
-    std::cout << "find rendering scope " << node.type << "\n";
     if (node.type == VKNodeType::BEGIN_RENDERING) {
       rendering_start = index;
     }
