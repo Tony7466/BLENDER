@@ -7,6 +7,7 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
 
@@ -57,19 +58,40 @@ class EraseOperation : public GreasePencilStrokeOperation {
   Set<GreasePencilDrawing *> affected_drawings_;
 };
 
+struct SegmentCircleIntersection {
+  /* Position of the intersection in the segment.
+   * Note: we use a value > 1.0f as initial value so that sorting intersection by increasing
+   * factor can directly put the invalid ones at the end. */
+  float factor = 2.0f;
+
+  /* True if the intersection corresponds to an inside/outside transition with respect to the
+   * circle, false if it corresponds to an outside/inside transition. */
+  bool inside_outside_intersection = false;
+
+  int ring_index = -1;
+
+  /* An intersection is considered valid if it lies inside of the segment, i.e.
+   * if its factor is in (0,1). */
+  bool is_valid() const
+  {
+    return IN_RANGE(factor, 0.0f, 1.0f);
+  }
+};
+enum class PointCircleSide { Outside, OutsideInsideBoundary, InsideOutsideBoundary, Inside };
+
 /**
  * Utility class that actually executes the update when the stroke is updated. That's useful
  * because it avoids passing a very large number of parameters between functions.
  */
 struct EraseOperationExecutor {
 
-  float2 mouse_position{};
-  float eraser_radius{};
-  float eraser_strength{};
-  Brush *brush_{};
+  float2 mouse_position;
+  float eraser_radius;
+  float eraser_strength;
+  Brush *brush_;
 
-  int2 mouse_position_pixels{};
-  int64_t eraser_squared_radius_pixels{};
+  int2 mouse_position_pixels;
+  int64_t eraser_squared_radius_pixels;
 
   /* Threshold below which points are considered as transparent and thus shall be removed. */
   static constexpr float opacity_threshold = 0.05f;
@@ -120,41 +142,20 @@ struct EraseOperationExecutor {
     if (i == 0) {
       /* One intersection. */
       const float mu0_f = -b / (2.0f * a);
-      r_mu0 = round_fl_to_int(mu0_f * segment_length);
+      r_mu0 = math::round(mu0_f * segment_length);
       return 1;
     }
 
     /* Two intersections. */
-    const float i_sqrt = sqrtf(float(i));
+    const float i_sqrt = math::sqrt(float(i));
     const float mu0_f = (-b + i_sqrt) / (2.0f * a);
     const float mu1_f = (-b - i_sqrt) / (2.0f * a);
 
-    r_mu0 = round_fl_to_int(mu0_f * segment_length);
-    r_mu1 = round_fl_to_int(mu1_f * segment_length);
+    r_mu0 = math::round(mu0_f * segment_length);
+    r_mu1 = math::round(mu1_f * segment_length);
 
     return 2;
   }
-
-  struct SegmentCircleIntersection {
-    /* Position of the intersection in the segment.
-     * Note: we use a value > 1.0f as initial value so that sorting intersection by increasing
-     * factor can directly put the invalid ones at the end. */
-    float factor = 2.0f;
-
-    /* True if the intersection corresponds to an inside/outside transition with respect to the
-     * circle, false if it corresponds to an outside/inside transition. */
-    bool inside_outside_intersection = false;
-
-    int ring_index = -1;
-
-    /* An intersection is considered valid if it lies inside of the segment, i.e.
-     * if its factor is in (0,1). */
-    bool is_valid() const
-    {
-      return IN_RANGE(factor, 0.0f, 1.0f);
-    }
-  };
-  enum class PointCircleSide { Outside, OutsideInsideBoundary, InsideOutsideBoundary, Inside };
 
   /**
    * Computes the intersection between the eraser tool and a 2D segment, using integer values.
@@ -532,7 +533,7 @@ struct EraseOperationExecutor {
     /* First, distance-based sampling with a small pixel distance.
      * The samples are stored in increasing radius order. */
     const int step_pixels = 2;
-    int nb_samples = round_fl_to_int(this->eraser_radius / step_pixels);
+    int nb_samples = math::round(this->eraser_radius / step_pixels);
     Vector<EraserRing> eraser_rings(nb_samples);
     for (const int sample_index : eraser_rings.index_range()) {
       const int64_t sampled_distance = (sample_index + 1) * step_pixels;
@@ -574,7 +575,7 @@ struct EraseOperationExecutor {
       const float t = (opacity_threshold - sample.opacity) /
                       (sample_after.opacity - sample.opacity);
 
-      const int64_t radius = round_fl_to_int_clamp(
+      const int64_t radius = math::round(
           math::interpolate(float(sample.radius), float(sample_after.radius), t));
 
       sample.radius = radius;
@@ -657,15 +658,15 @@ struct EraseOperationExecutor {
         src, screen_space_positions, eraser_rings, src_point_ring, src_intersections);
 
     /* Function to get the resulting opacity at a specific point in the source. */
-    const VArray<float> &src_opacity = *(
-        src.attributes().lookup_or_default<float>(opacity_attr, bke::AttrDomain::Point, 1.0f));
+    const VArray<float> &src_opacity = *src.attributes().lookup_or_default<float>(
+        opacity_attr, bke::AttrDomain::Point, 1.0f);
     const auto compute_opacity = [&](const int src_point) {
       const float distance = math::distance(screen_space_positions[src_point],
                                             this->mouse_position);
-      const float brush_opacity = 1.0f - this->eraser_strength *
-                                             BKE_brush_curve_strength(
-                                                 this->brush_, distance, this->eraser_radius);
-      return math::min(src_opacity[src_point], brush_opacity);
+      const float brush_strength = this->eraser_strength *
+                                   BKE_brush_curve_strength(
+                                       this->brush_, distance, this->eraser_radius);
+      return math::clamp(src_opacity[src_point] - brush_strength, 0.0f, 1.0f);
     };
 
     /* Compute the map of points in the destination.
@@ -996,13 +997,13 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample &start
   }
   BLI_assert(brush->gpencil_settings != nullptr);
 
+  BKE_curvemapping_init(brush->curve);
   BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
 
-  radius_ = BKE_brush_size_get(scene, brush);
   eraser_mode_ = eGP_BrushEraserMode(brush->gpencil_settings->eraser_mode);
   keep_caps_ = ((brush->gpencil_settings->flag & GP_BRUSH_ERASER_KEEP_CAPS) != 0);
   active_layer_only_ = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
-  strength_ = BKE_brush_alpha_get(scene, brush);
+  strength_ = brush->alpha;
 }
 
 void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
@@ -1022,8 +1023,8 @@ void EraseOperation::on_stroke_done(const bContext &C)
     grease_pencil.runtime->temp_eraser_size = 0.0f;
   }
 
+  /* Epsilon used for simplify. */
   const float epsilon = 0.01f;
-
   for (GreasePencilDrawing *drawing_ : affected_drawings_) {
     blender::bke::CurvesGeometry &curves = drawing_->geometry.wrap();
 
