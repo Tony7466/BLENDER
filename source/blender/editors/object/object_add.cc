@@ -1235,7 +1235,7 @@ static int object_image_add_exec(bContext *C, wmOperator *op)
     add_generic_get_opts(C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
     Object *ob = add_type(C, OB_EMPTY, nullptr, loc, rot, false, local_view_bits);
 
-    const float size = RNA_float_get(op->ptr, "img_size");
+    const float size = RNA_float_get(op->ptr, "display_size");
     ob->empty_drawsize = size;
 
     if (RNA_boolean_get(op->ptr, "background")) {
@@ -1353,7 +1353,7 @@ void OBJECT_OT_empty_image_add(wmOperatorType *ot)
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
 
   prop = RNA_def_float_distance(ot->srna,
-                     "img_size",
+                     "display_size",
                      5.0f,
                      0.0,
                      OBJECT_ADD_SIZE_MAXF,
