@@ -46,3 +46,9 @@ blender::VectorSet<Sequence *> SEQ_get_connected_strips(const Sequence *seq);
  * Check whether a strip has any connections.
  */
 bool SEQ_is_strip_connected(const Sequence *seq);
+
+/**
+ * Check whether the list of strips are a single connection "group", that is, they are all
+ * connected to each other and there are no outside connections.
+ */
+bool SEQ_are_strips_connected_together(blender::VectorSet<Sequence *> &seq_list);

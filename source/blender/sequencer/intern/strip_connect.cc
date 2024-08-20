@@ -133,3 +133,21 @@ bool SEQ_is_strip_connected(const Sequence *seq)
   }
   return !BLI_listbase_is_empty(&seq->connections);
 }
+
+bool SEQ_are_strips_connected_together(blender::VectorSet<Sequence *> &seq_list)
+{
+  const int expected_connection_num = seq_list.size() - 1;
+  for (Sequence *seq1 : seq_list) {
+    blender::VectorSet<Sequence *> connections = SEQ_get_connected_strips(seq1);
+    int found_connection_num = connections.size();
+    if (found_connection_num != expected_connection_num) {
+      return false;
+    }
+    for (Sequence *seq2 : connections) {
+      if (!seq_list.contains(seq2)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}

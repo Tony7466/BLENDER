@@ -2150,10 +2150,13 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
         changed = true;
       }
 
-      /* Propagate selection to connected strips. */
-      StripSelection selection;
-      selection.seq1 = seq;
-      sequencer_select_connected_strips(selection);
+      const bool ignore_connections = RNA_boolean_get(op->ptr, "ignore_connections");
+      if (!ignore_connections) {
+        /* Propagate selection to connected strips. */
+        StripSelection selection;
+        selection.seq1 = seq;
+        sequencer_select_connected_strips(selection);
+      }
     }
   }
 
@@ -2223,6 +2226,13 @@ void SEQUENCER_OT_select_box(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
       ot->srna, "include_handles", false, "Select Handles", "Select the strips and their handles");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna,
+                         "ignore_connections",
+                         false,
+                         "Ignore Connections",
+                         "Select strips individually whether or not they are connected");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 

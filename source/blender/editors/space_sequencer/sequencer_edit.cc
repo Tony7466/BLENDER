@@ -1039,16 +1039,7 @@ static int sequencer_connect_exec(bContext *C, wmOperator *op)
   }
 
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
-  bool clear_all = true;
-  if (toggle) {
-    for (Sequence *seq : selected) {
-      if (!SEQ_is_strip_connected(seq)) {
-        clear_all = false;
-        break;
-      }
-    }
-  }
-  if (clear_all) {
+  if (toggle && SEQ_are_strips_connected_together(selected)) {
     SEQ_disconnect(selected);
   }
   else {
