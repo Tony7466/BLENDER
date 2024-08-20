@@ -85,11 +85,11 @@ static void write_fill_color_attribute(pugi::xml_node node,
 }
 
 static void write_rect(pugi::xml_node node,
-                       float x,
-                       float y,
-                       float width,
-                       float height,
-                       float thickness,
+                       const float x,
+                       const float y,
+                       const float width,
+                       const float height,
+                       const float thickness,
                        const std::string &hexcolor)
 {
   pugi::xml_node rect_node = node.append_child("rect");

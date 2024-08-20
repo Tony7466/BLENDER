@@ -203,7 +203,7 @@ void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
                                            const bool cyclic,
                                            const ColorGeometry4f &color,
                                            const float opacity,
-                                           std::optional<float> width)
+                                           const std::optional<float> width)
 {
   if (width) {
     HPDF_Page_SetLineJoin(page_, HPDF_ROUND_JOIN);
