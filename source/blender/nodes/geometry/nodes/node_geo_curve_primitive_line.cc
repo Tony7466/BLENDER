@@ -65,11 +65,11 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *direction_socket = p2_socket->next;
   bNodeSocket *length_socket = direction_socket->next;
 
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, p2_socket, mode == GEO_NODE_CURVE_PRIMITIVE_LINE_MODE_POINTS);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, direction_socket, mode == GEO_NODE_CURVE_PRIMITIVE_LINE_MODE_DIRECTION);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, length_socket, mode == GEO_NODE_CURVE_PRIMITIVE_LINE_MODE_DIRECTION);
 }
 
@@ -143,18 +143,18 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_CURVE_PRIMITIVE_LINE, "Curve Line", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  node_type_storage(&ntype,
-                    "NodeGeometryCurvePrimitiveLine",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryCurvePrimitiveLine",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

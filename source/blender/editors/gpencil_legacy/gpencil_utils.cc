@@ -50,6 +50,7 @@
 #include "BKE_material.h"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
@@ -59,7 +60,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
@@ -445,7 +446,7 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
       item_tmp.identifier = ma->id.name + 2;
       item_tmp.name = ma->id.name + 2;
       item_tmp.value = i;
-      item_tmp.icon = ma->preview ? ma->preview->icon_id : ICON_NONE;
+      item_tmp.icon = ma->preview ? ma->preview->runtime->icon_id : ICON_NONE;
 
       RNA_enum_item_add(&item, &totitem, &item_tmp);
     }
@@ -1429,13 +1430,6 @@ void ED_gpencil_add_defaults(bContext *C, Object *ob)
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
-  Paint *paint = &ts->gp_paint->paint;
-  Brush *brush = BKE_paint_brush(paint);
-  /* if not exist, create a new one */
-  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-    /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
-  }
 
   /* ensure a color exists and is assigned to object */
   BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, ob, ts);
@@ -1726,7 +1720,7 @@ void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y)
   GPU_line_smooth(false);
 }
 
-static bool gpencil_brush_cursor_poll(bContext *C)
+bool ED_gpencil_brush_cursor_poll(bContext *C)
 {
   if (WM_toolsystem_active_tool_is_brush(C)) {
     return true;
@@ -2017,7 +2011,7 @@ void ED_gpencil_toggle_brush_cursor(bContext *C, bool enable, void *customdata)
     /* enable cursor */
     gset->paintcursor = WM_paint_cursor_activate(SPACE_TYPE_ANY,
                                                  RGN_TYPE_ANY,
-                                                 gpencil_brush_cursor_poll,
+                                                 ED_gpencil_brush_cursor_poll,
                                                  gpencil_brush_cursor_draw,
                                                  (lastpost) ? customdata : nullptr);
   }
@@ -3429,7 +3423,11 @@ int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       gpencil_layer_new_name_get(gpd, name, sizeof(name));
       RNA_property_string_set(op->ptr, prop, name);
-      return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Add New Layer"), IFACE_("Add"));
+      return WM_operator_props_dialog_popup(C,
+                                            op,
+                                            200,
+                                            IFACE_("Add New Layer"),
+                                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
     }
   }
   return 0;

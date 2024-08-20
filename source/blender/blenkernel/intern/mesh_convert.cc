@@ -26,7 +26,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_DerivedMesh.hh"
 #include "BKE_curves.hh"
 #include "BKE_deform.hh"
 #include "BKE_displist.h"
@@ -476,7 +475,7 @@ void BKE_mesh_to_curve_nurblist(const Mesh *mesh, ListBase *nurblist, const int 
         VertLink *vl;
 
         /* create new 'nurb' within the curve */
-        nu = MEM_new<Nurb>("MeshNurb", blender::dna::shallow_zero_initialize());
+        nu = static_cast<Nurb *>(MEM_callocN(sizeof(Nurb), __func__));
 
         nu->pntsu = faces_num;
         nu->pntsv = 1;
@@ -707,7 +706,7 @@ static const Curves *get_evaluated_curves_from_object(const Object *object)
 static Mesh *mesh_new_from_evaluated_curve_type_object(const Object *evaluated_object)
 {
   if (const Mesh *mesh = BKE_object_get_evaluated_mesh(evaluated_object)) {
-    return BKE_mesh_copy_for_eval(mesh);
+    return BKE_mesh_copy_for_eval(*mesh);
   }
   if (const Curves *curves = get_evaluated_curves_from_object(evaluated_object)) {
     const blender::bke::AnonymousAttributePropagationInfo propagation_info;
@@ -766,7 +765,7 @@ static Mesh *mesh_new_from_mball_object(Object *object)
     return (Mesh *)BKE_id_new_nomain(ID_ME, ((ID *)object->data)->name + 2);
   }
 
-  return BKE_mesh_copy_for_eval(mesh_eval);
+  return BKE_mesh_copy_for_eval(*mesh_eval);
 }
 
 static Mesh *mesh_new_from_mesh(Object *object, const Mesh *mesh)
@@ -816,7 +815,7 @@ static Mesh *mesh_new_from_mesh_object_with_layers(Depsgraph *depsgraph,
     mask.lmask |= CD_MASK_ORIGINDEX;
     mask.pmask |= CD_MASK_ORIGINDEX;
   }
-  Mesh *result = mesh_create_eval_final(depsgraph, scene, &object_for_eval, &mask);
+  Mesh *result = blender::bke::mesh_create_eval_final(depsgraph, scene, &object_for_eval, &mask);
   return BKE_mesh_wrapper_ensure_subdivision(result);
 }
 
@@ -825,7 +824,12 @@ static Mesh *mesh_new_from_mesh_object(Depsgraph *depsgraph,
                                        const bool preserve_all_data_layers,
                                        const bool preserve_origindex)
 {
-  if (preserve_all_data_layers || preserve_origindex) {
+  /* This function tries to reevaluate the object from the original data. If the original object
+   * was not a mesh object, this won't work because it uses mesh object evaluation which assumes
+   * the type of the original object data. */
+  if (!(object->runtime->data_orig && GS(object->runtime->data_orig->name) != ID_ME) &&
+      (preserve_all_data_layers || preserve_origindex))
+  {
     return mesh_new_from_mesh_object_with_layers(depsgraph, object, preserve_origindex);
   }
   const Mesh *mesh_input = (const Mesh *)object->data;
@@ -1052,7 +1056,7 @@ static void move_shapekey_layers_to_keyblocks(const Mesh &mesh,
 void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
 {
   using namespace blender::bke;
-  BLI_assert(mesh_src->id.tag & LIB_TAG_NO_MAIN);
+  BLI_assert(mesh_src->id.tag & ID_TAG_NO_MAIN);
   if (ob) {
     BLI_assert(mesh_dst == ob->data);
   }
@@ -1110,7 +1114,7 @@ void BKE_mesh_nomain_to_mesh(Mesh *mesh_src, Mesh *mesh_dst, Object *ob)
 
 void BKE_mesh_nomain_to_meshkey(Mesh *mesh_src, Mesh *mesh_dst, KeyBlock *kb)
 {
-  BLI_assert(mesh_src->id.tag & LIB_TAG_NO_MAIN);
+  BLI_assert(mesh_src->id.tag & ID_TAG_NO_MAIN);
 
   const int totvert = mesh_src->verts_num;
 

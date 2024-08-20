@@ -50,7 +50,7 @@
 #include "IMB_imbuf_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "libmv-capi.h"
 #include "tracking_private.h"
@@ -1173,7 +1173,7 @@ float BKE_tracking_track_get_weight_for_marker(MovieClip *clip,
                                                MovieTrackingTrack *track,
                                                MovieTrackingMarker *marker)
 {
-  FCurve *weight_fcurve;
+  const FCurve *weight_fcurve;
   float weight = track->weight;
 
   weight_fcurve = id_data_find_fcurve(

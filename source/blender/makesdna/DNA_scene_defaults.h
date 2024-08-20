@@ -184,6 +184,7 @@
     .gi_irradiance_smoothing = 0.1f, \
     .gi_filter_quality = 3.0f, \
     .gi_irradiance_pool_size = 16, \
+    .shadow_pool_size = 512, \
  \
     .taa_samples = 16, \
     .taa_render_samples = 64, \
@@ -213,6 +214,13 @@
     .gtao_focus = 0.05f, \
     .gtao_resolution = 2, \
  \
+    .fast_gi_step_count = 8, \
+    .fast_gi_ray_count = 2, \
+    .fast_gi_distance = 0.0f, \
+    .fast_gi_thickness_near = 0.25f, \
+    .fast_gi_thickness_far = DEG2RAD(45), \
+    .fast_gi_method = FAST_GI_FULL, \
+ \
     .bokeh_overblur = 5.0f, \
     .bokeh_max_size = 100.0f, \
     .bokeh_threshold = 1.0f, \
@@ -230,7 +238,6 @@
     .motion_blur_max = 32, \
     .motion_blur_steps = 1, \
  \
-    .clamp_world = 10.0f, \
     .clamp_surface_indirect = 10.0f, \
 \
     .shadow_cube_size = 512, \
@@ -243,7 +250,6 @@
  \
     .ray_tracing_options = _DNA_DEFAULT_RaytraceEEVEE, \
  \
-    .light_cache_data = NULL, \
     .light_threshold = 0.01f, \
  \
     .overscan = 3.0f, \

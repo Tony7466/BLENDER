@@ -227,7 +227,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       for (const int layer_index : grease_pencil.layers().index_range()) {
-        const Drawing *drawing = get_eval_grease_pencil_layer_drawing(grease_pencil, layer_index);
+        const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
         if (drawing == nullptr) {
           continue;
         }
@@ -254,10 +254,12 @@ static void node_geo_exec(GeoNodeExecParams params)
         const int handle = dst_instances->add_reference(bke::InstanceReference{temp_set});
         dst_instances->add_instance(handle, float4x4::identity());
       }
-      GeometrySet::propagate_attributes_from_layer_to_instances(
-          geometry_set.get_grease_pencil()->attributes(),
-          geometry_set.get_instances_for_write()->attributes_for_write(),
-          propagation_info);
+      if (geometry_set.has_instances()) {
+        GeometrySet::propagate_attributes_from_layer_to_instances(
+            geometry_set.get_grease_pencil()->attributes(),
+            geometry_set.get_instances_for_write()->attributes_for_write(),
+            propagation_info);
+      }
       geometry_set.replace_grease_pencil(nullptr);
     }
     geometry_set.remove_geometry_during_modify();
@@ -276,13 +278,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_INSTANCE_ON_POINTS, "Instance on Points", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

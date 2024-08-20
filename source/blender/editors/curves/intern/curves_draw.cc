@@ -35,7 +35,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 extern "C" {
 #include "curve_fit_nd.h"
@@ -1083,12 +1083,13 @@ static int curves_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         /* needed or else the draw matrix can be incorrect */
         view3d_operator_needs_opengl(C);
 
-        ED_view3d_depth_override(cdd->vc.depsgraph,
-                                 cdd->vc.region,
-                                 cdd->vc.v3d,
-                                 nullptr,
-                                 V3D_DEPTH_NO_GPENCIL,
-                                 &cdd->depths);
+        eV3DDepthOverrideMode depth_mode = V3D_DEPTH_NO_OVERLAYS;
+        if (cps->flag & CURVE_PAINT_FLAG_DEPTH_ONLY_SELECTED) {
+          depth_mode = V3D_DEPTH_SELECTED_ONLY;
+        }
+
+        ED_view3d_depth_override(
+            cdd->vc.depsgraph, cdd->vc.region, cdd->vc.v3d, nullptr, depth_mode, &cdd->depths);
 
         if (cdd->depths != nullptr) {
           cdd->project.use_depth = true;

@@ -75,7 +75,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -410,13 +410,17 @@ static void image_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_struct_list(reader, ImagePackedFile, &(ima->packedfiles));
 
   if (ima->packedfiles.first) {
-    LISTBASE_FOREACH (ImagePackedFile *, imapf, &ima->packedfiles) {
-      BKE_packedfile_blend_read(reader, &imapf->packedfile);
+    LISTBASE_FOREACH_MUTABLE (ImagePackedFile *, imapf, &ima->packedfiles) {
+      BKE_packedfile_blend_read(reader, &imapf->packedfile, imapf->filepath);
+      if (!imapf->packedfile) {
+        BLI_remlink(&ima->packedfiles, imapf);
+        MEM_freeN(imapf);
+      }
     }
     ima->packedfile = nullptr;
   }
   else {
-    BKE_packedfile_blend_read(reader, &ima->packedfile);
+    BKE_packedfile_blend_read(reader, &ima->packedfile, ima->filepath);
   }
 
   BLI_listbase_clear(&ima->anims);
@@ -795,7 +799,7 @@ bool BKE_image_scale(Image *image, int width, int height, ImageUser *iuser)
   ibuf = BKE_image_acquire_ibuf(image, iuser, &lock);
 
   if (ibuf) {
-    IMB_scaleImBuf(ibuf, width, height);
+    IMB_scale(ibuf, width, height, IMBScaleFilter::Box, false);
     BKE_image_mark_dirty(image, ibuf);
   }
 
@@ -1363,10 +1367,8 @@ static bool image_memorypack_imbuf(
   }
 
   ImagePackedFile *imapf;
-  PackedFile *pf = MEM_cnew<PackedFile>("PackedFile");
-
-  pf->size = ibuf->encoded_size;
-  pf->data = IMB_steal_encoded_buffer(ibuf);
+  PackedFile *pf = BKE_packedfile_new_from_memory(IMB_steal_encoded_buffer(ibuf),
+                                                  ibuf->encoded_size);
 
   imapf = static_cast<ImagePackedFile *>(MEM_mallocN(sizeof(ImagePackedFile), "Image PackedFile"));
   STRNCPY(imapf->filepath, filepath);
@@ -1587,21 +1589,21 @@ void BKE_image_free_all_textures(Main *bmain)
   for (ima = static_cast<Image *>(bmain->images.first); ima;
        ima = static_cast<Image *>(ima->id.next))
   {
-    ima->id.tag &= ~LIB_TAG_DOIT;
+    ima->id.tag &= ~ID_TAG_DOIT;
   }
 
   for (tex = static_cast<Tex *>(bmain->textures.first); tex;
        tex = static_cast<Tex *>(tex->id.next))
   {
     if (tex->ima) {
-      tex->ima->id.tag |= LIB_TAG_DOIT;
+      tex->ima->id.tag |= ID_TAG_DOIT;
     }
   }
 
   for (ima = static_cast<Image *>(bmain->images.first); ima;
        ima = static_cast<Image *>(ima->id.next))
   {
-    if (ima->cache && (ima->id.tag & LIB_TAG_DOIT)) {
+    if (ima->cache && (ima->id.tag & ID_TAG_DOIT)) {
 #ifdef CHECK_FREED_SIZE
       uintptr_t old_size = image_mem_size(ima);
 #endif
@@ -1978,8 +1980,7 @@ void BKE_image_stamp_buf(Scene *scene,
                          uchar *rect,
                          float *rectf,
                          int width,
-                         int height,
-                         int channels)
+                         int height)
 {
   StampData stamp_data;
   int w, h, pad;
@@ -2034,7 +2035,7 @@ void BKE_image_stamp_buf(Scene *scene,
   BLF_size(mono, scene->r.stamp_font_id);
   BLF_wordwrap(mono, width - (BUFF_MARGIN_X * 2));
 
-  BLF_buffer(mono, rectf, rect, width, height, channels, display);
+  BLF_buffer(mono, rectf, rect, width, height, display);
   BLF_buffer_col(mono, scene->r.fg_stamp);
   pad = BLF_width_max(mono);
 
@@ -2358,7 +2359,7 @@ void BKE_image_stamp_buf(Scene *scene,
   }
 
   /* cleanup the buffer. */
-  BLF_buffer(mono, nullptr, nullptr, 0, 0, 0, nullptr);
+  BLF_buffer(mono, nullptr, nullptr, 0, 0, nullptr);
   BLF_wordwrap(mono, 0);
 
 #undef TEXT_SIZE_CHECK
@@ -2479,6 +2480,23 @@ void BKE_stamp_info_callback(void *data,
   }
 
 #undef CALL
+}
+
+void BKE_image_multilayer_stamp_info_callback(void *data,
+                                              const Image &image,
+                                              StampCallback callback,
+                                              bool noskip)
+{
+  BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+
+  if (!image.rr || !image.rr->stamp_data) {
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+    return;
+  }
+
+  BKE_stamp_info_callback(data, image.rr->stamp_data, callback, noskip);
+
+  BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
 }
 
 void BKE_render_result_stamp_data(RenderResult *rr, const char *key, const char *value)
@@ -3806,11 +3824,14 @@ static void image_init_multilayer_multiview(Image *ima, RenderResult *rr)
 
 RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
 {
+  BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+
   RenderResult *rr = nullptr;
+
   if (ima->rr) {
     rr = ima->rr;
   }
-  else if (ima->type == IMA_TYPE_R_RESULT) {
+  else if (scene && ima->type == IMA_TYPE_R_RESULT) {
     if (ima->render_slot == ima->last_render_slot) {
       rr = RE_AcquireResultRead(RE_GetSceneRender(scene));
     }
@@ -3823,15 +3844,27 @@ RenderResult *BKE_image_acquire_renderresult(Scene *scene, Image *ima)
     image_init_multilayer_multiview(ima, rr);
   }
 
+  if (rr) {
+    RE_ReferenceRenderResult(rr);
+  }
+
+  BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
   return rr;
 }
 
-void BKE_image_release_renderresult(Scene *scene, Image *ima)
+void BKE_image_release_renderresult(Scene *scene, Image *ima, RenderResult *render_result)
 {
+  if (render_result) {
+    /* Decrement user counter, and free if nobody else holds a reference to the result. */
+    BLI_mutex_lock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+    RE_FreeRenderResult(render_result);
+    BLI_mutex_unlock(static_cast<ThreadMutex *>(ima->runtime.cache_mutex));
+  }
+
   if (ima->rr) {
     /* pass */
   }
-  else if (ima->type == IMA_TYPE_R_RESULT) {
+  else if (scene && ima->type == IMA_TYPE_R_RESULT) {
     if (ima->render_slot == ima->last_render_slot) {
       RE_ReleaseResult(RE_GetSceneRender(scene));
     }
@@ -4756,6 +4789,77 @@ ImBuf *BKE_image_acquire_ibuf(Image *ima, ImageUser *iuser, void **r_lock)
   return ibuf;
 }
 
+static int get_multilayer_view_index(const Image &image,
+                                     const ImageUser &image_user,
+                                     const char *view_name)
+{
+  if (BLI_listbase_count_at_most(&image.rr->views, 2) <= 1) {
+    return 0;
+  }
+
+  const int view_image = image_user.view;
+  const bool is_allview = (view_image == 0); /* if view selected == All (0) */
+
+  if (is_allview) {
+    /* Heuristic to match image name with scene names check if the view name exists in the image.
+     */
+    const int view = BLI_findstringindex(&image.rr->views, view_name, offsetof(RenderView, name));
+    if (view == -1) {
+      return 0;
+    }
+    return view;
+  }
+
+  return view_image - 1;
+}
+
+ImBuf *BKE_image_acquire_multilayer_view_ibuf(const RenderData &render_data,
+                                              Image &image,
+                                              const ImageUser &image_user,
+                                              const char *pass_name,
+                                              const char *view_name)
+{
+  BLI_mutex_lock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+
+  /* Local changes to the original ImageUser. */
+  ImageUser local_user = image_user;
+
+  /* Force load the image once, possibly with a different user from what it will need to be in the
+   * end. This ensures proper image type, and initializes multi-layer state when needed. */
+  ImBuf *tmp_ibuf = image_acquire_ibuf(&image, &local_user, nullptr);
+  IMB_freeImBuf(tmp_ibuf);
+
+  if (BKE_image_is_multilayer(&image)) {
+    BLI_assert(pass_name);
+
+    if (!image.rr) {
+      BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+      return nullptr;
+    }
+
+    const RenderLayer *render_layer = static_cast<const RenderLayer *>(
+        BLI_findlink(&image.rr->layers, local_user.layer));
+
+    local_user.view = get_multilayer_view_index(image, local_user, view_name);
+    local_user.pass = BLI_findstringindex(
+        &render_layer->passes, pass_name, offsetof(RenderPass, name));
+
+    if (!BKE_image_multilayer_index(image.rr, &local_user)) {
+      BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+      return nullptr;
+    }
+  }
+  else {
+    local_user.multi_index = BKE_scene_multiview_view_id_get(&render_data, view_name);
+  }
+
+  ImBuf *ibuf = image_acquire_ibuf(&image, &local_user, nullptr);
+
+  BLI_mutex_unlock(static_cast<ThreadMutex *>(image.runtime.cache_mutex));
+
+  return ibuf;
+}
+
 void BKE_image_release_ibuf(Image *ima, ImBuf *ibuf, void *lock)
 {
   if (lock != nullptr) {
@@ -4798,6 +4902,31 @@ bool BKE_image_has_ibuf(Image *ima, ImageUser *iuser)
   IMB_freeImBuf(ibuf);
 
   return ibuf != nullptr;
+}
+
+ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short *r_height)
+{
+  void *lock;
+  ImBuf *image_ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+  if (image_ibuf == nullptr) {
+    return nullptr;
+  }
+
+  ImBuf *preview = IMB_dupImBuf(image_ibuf);
+  float scale = float(max_size) / float(std::max(image_ibuf->x, image_ibuf->y));
+  if (r_width) {
+    *r_width = image_ibuf->x;
+  }
+  if (r_height) {
+    *r_height = image_ibuf->y;
+  }
+  BKE_image_release_ibuf(ima, image_ibuf, lock);
+
+  /* Resize. */
+  IMB_scale(preview, scale * image_ibuf->x, scale * image_ibuf->y, IMBScaleFilter::Box, false);
+  IMB_rect_from_float(preview);
+
+  return preview;
 }
 
 /** \} */

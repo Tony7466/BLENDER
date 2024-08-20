@@ -6,10 +6,9 @@
 #pragma BLENDER_REQUIRE(draw_model_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
-
-#define filmScalingFactor float(uniform_buf.film.scaling_factor)
 
 vec3 g_emission;
 vec3 g_transmittance;
@@ -35,7 +34,6 @@ float g_closure_rand[CLOSURE_BIN_COUNT];
 ClosureUndetermined g_closure_get(int i)
 {
   switch (i) {
-    default:
     case 0:
       return g_closure_bins[0];
 #if CLOSURE_BIN_COUNT > 1
@@ -47,6 +45,9 @@ ClosureUndetermined g_closure_get(int i)
       return g_closure_bins[2];
 #endif
   }
+  /* TODO: this should be unreachable, better to have an assert. */
+  ClosureUndetermined cl_empty;
+  return cl_empty;
 }
 
 ClosureUndetermined g_closure_get_resolved(int i, float weight_fac)
@@ -105,10 +106,13 @@ void closure_select(inout ClosureUndetermined destination,
                     inout float random,
                     ClosureUndetermined candidate)
 {
-  if (closure_select_check(candidate.weight, destination.weight, random)) {
-    float tmp = destination.weight;
+  float candidate_color_weight = average(abs(candidate.color));
+  if (closure_select_check(candidate.weight * candidate_color_weight, destination.weight, random))
+  {
+    float total_weight = destination.weight;
     destination = candidate;
-    destination.weight = tmp;
+    destination.color /= candidate_color_weight;
+    destination.weight = total_weight;
   }
 }
 
@@ -370,10 +374,13 @@ float ambient_occlusion_eval(vec3 normal,
                     noise,
                     uniform_buf.ao.pixel_size,
                     max_distance,
-                    uniform_buf.ao.thickness,
+                    uniform_buf.ao.thickness_near,
+                    uniform_buf.ao.thickness_far,
                     uniform_buf.ao.angle_bias,
+                    2,
                     10,
-                    inverted != 0.0);
+                    inverted != 0.0,
+                    true);
 
   return saturate(ctx.occlusion_result.r);
 #  else
@@ -633,7 +640,7 @@ vec3 displacement_bump()
 void fragment_displacement()
 {
 #ifdef MAT_DISPLACEMENT_BUMP
-  g_data.N = displacement_bump();
+  g_data.N = g_data.Ni = displacement_bump();
 #endif
 }
 
@@ -710,9 +717,9 @@ vec3 coordinate_incoming(vec3 P)
  *
  * \{ */
 
-float film_scaling_factor_get()
+float texture_lod_bias_get()
 {
-  return float(uniform_buf.film.scaling_factor);
+  return uniform_buf.film.texture_lod_bias;
 }
 
 /** \} */
@@ -728,7 +735,7 @@ float film_scaling_factor_get()
 /* Point clouds and curves are not compatible with volume grids.
  * They will fallback to their own attributes loading. */
 #if defined(MAT_VOLUME) && !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
-#  if defined(OBINFO_LIB) && !defined(MAT_GEOM_WORLD)
+#  if defined(VOLUME_INFO_LIB) && !defined(MAT_GEOM_WORLD)
 /* We could just check for GRID_ATTRIBUTES but this avoids for header dependency. */
 #    define GRID_ATTRIBUTES_LOAD_POST
 #  endif
@@ -737,7 +744,7 @@ float film_scaling_factor_get()
 float attr_load_temperature_post(float attr)
 {
 #ifdef GRID_ATTRIBUTES_LOAD_POST
-  /* Bring the into standard range without having to modify the grid values */
+  /* Bring the value into standard range without having to modify the grid values */
   attr = (attr > 0.01) ? (attr * drw_volume.temperature_mul + drw_volume.temperature_bias) : 0.0;
 #endif
   return attr;

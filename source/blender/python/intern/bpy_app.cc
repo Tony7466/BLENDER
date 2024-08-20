@@ -129,10 +129,10 @@ PyDoc_STRVAR(
     "This module contains application values that remain unchanged during runtime.");
 
 static PyStructSequence_Desc app_info_desc = {
-    "bpy.app",       /* name */
-    bpy_app_doc,     /* doc */
-    app_info_fields, /* fields */
-    ARRAY_SIZE(app_info_fields) - 1,
+    /*name*/ "bpy.app",
+    /*doc*/ bpy_app_doc,
+    /*fields*/ app_info_fields,
+    /*n_in_sequence*/ ARRAY_SIZE(app_info_fields) - 1,
 };
 
 static PyObject *make_app_info()
@@ -255,6 +255,15 @@ static int bpy_app_debug_set(PyObject * /*self*/, PyObject *value, void *closure
 
 PyDoc_STRVAR(
     /* Wrap. */
+    bpy_app_internet_offline_doc,
+    "Boolean, true when internet access is allowed by Blender & 3rd party scripts (read-only)");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_internet_offline_override_doc,
+    "Boolean, true when internet access preference is overridden by the command line (read-only)");
+
+PyDoc_STRVAR(
+    /* Wrap. */
     bpy_app_global_flag_doc,
     "Boolean, for application behavior "
     "(started with ``--enable-*`` matching this attribute name)");
@@ -360,6 +369,23 @@ static PyObject *bpy_app_preview_render_size_get(PyObject * /*self*/, void *clos
 static PyObject *bpy_app_autoexec_fail_message_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(G.autoexec_fail);
+}
+
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_python_args_doc,
+    "Leading arguments to use when calling Python directly (via ``sys.executable``). "
+    "These arguments match settings Blender uses to "
+    "ensure Python runs with a compatible environment (read-only).");
+static PyObject *bpy_app_python_args_get(PyObject * /*self*/, void * /*closure*/)
+{
+  const char *args[1];
+  int args_num = 0;
+  if (!BPY_python_use_system_env_get()) {
+    /* Isolated Python environment. */
+    args[args_num++] = "-I";
+  }
+  return PyC_Tuple_PackArray_String(args, args_num);
 }
 
 PyDoc_STRVAR(
@@ -487,6 +513,17 @@ static PyGetSetDef bpy_app_getsets[] = {
      bpy_app_preview_render_size_doc,
      (void *)ICON_SIZE_PREVIEW},
 
+    {"online_access",
+     bpy_app_global_flag_get,
+     nullptr,
+     bpy_app_internet_offline_doc,
+     (void *)G_FLAG_INTERNET_ALLOW},
+    {"online_access_override",
+     bpy_app_global_flag_get,
+     nullptr,
+     bpy_app_internet_offline_override_doc,
+     (void *)G_FLAG_INTERNET_OVERRIDE_PREF_ANY},
+
     /* security */
     {"autoexec_fail",
      bpy_app_global_flag_get,
@@ -499,6 +536,8 @@ static PyGetSetDef bpy_app_getsets[] = {
      nullptr,
      (void *)G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET},
     {"autoexec_fail_message", bpy_app_autoexec_fail_message_get, nullptr, nullptr, nullptr},
+
+    {"python_args", bpy_app_python_args_get, nullptr, bpy_app_python_args_doc, nullptr},
 
     /* Support script authors setting the Blender binary path to use, otherwise this value
      * is not known when built as a Python module. */

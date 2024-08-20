@@ -26,12 +26,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # 1) CMake has issues detecting openmp support in clang-cl so we have to provide
   #    the right switches here.
   # 2) While the /openmp switch *should* work, it currently doesn't as for clang 9.0.0
+  # 3) Using the registry to locate llvmroot doesn't work on some installs. When this happens,
+  #    attempt to locate openmp in the lib directory of the parent of the clang-cl binary
   if(WITH_OPENMP)
     set(OPENMP_CUSTOM ON)
     set(OPENMP_FOUND ON)
     set(OpenMP_C_FLAGS "/clang:-fopenmp")
     set(OpenMP_CXX_FLAGS "/clang:-fopenmp")
-    get_filename_component(LLVMROOT "[HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\LLVM\\LLVM;]" ABSOLUTE CACHE)
+    get_filename_component(LLVMBIN ${CMAKE_CXX_COMPILER} DIRECTORY)
+    get_filename_component(LLVMROOT ${LLVMBIN} DIRECTORY)
     set(CLANG_OPENMP_DLL "${LLVMROOT}/bin/libomp.dll")
     set(CLANG_OPENMP_LIB "${LLVMROOT}/lib/libomp.lib")
     if(NOT EXISTS "${CLANG_OPENMP_DLL}")
@@ -177,8 +180,8 @@ remove_cc_flag(
 )
 
 if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
-  string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
-  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
+  string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference /clang:-funsigned-char /clang:-fno-strict-aliasing /clang:-ffp-contract=off")
+  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference /clang:-funsigned-char /clang:-fno-strict-aliasing /clang:-ffp-contract=off")
 else()
   string(APPEND CMAKE_CXX_FLAGS " /nologo /J /Gd /MP /EHsc /bigobj")
   string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd /MP /bigobj")
@@ -440,12 +443,16 @@ endif()
 
 if(WITH_FFTW3)
   set(FFTW3 ${LIBDIR}/fftw3)
-  if(EXISTS ${FFTW3}/lib/libfftw3-3.lib) # 3.6 libraries
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/libfftw3-3.lib ${FFTW3}/lib/libfftw3f.lib)
-  elseif(EXISTS ${FFTW3}/lib/libfftw.lib)
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/libfftw.lib) # 3.5 Libraries
-  else()
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/fftw3.lib ${FFTW3}/lib/fftw3f.lib) # msys2+MSVC Libraries
+  set(FFTW3_LIBRARIES
+    ${FFTW3}/lib/fftw3.lib
+    ${FFTW3}/lib/fftw3f.lib
+  )
+  if(EXISTS ${FFTW3}/lib/fftw3_threads.lib)
+    list(APPEND FFTW3_LIBRARIES
+      ${FFTW3}/lib/fftw3_threads.lib
+      ${FFTW3}/lib/fftw3f_threads.lib
+    )
+    set(WITH_FFTW3_THREADS_SUPPORT ON)
   endif()
   set(FFTW3_INCLUDE_DIRS ${FFTW3}/include)
   set(FFTW3_LIBPATH ${FFTW3}/lib)
@@ -508,12 +515,13 @@ if(WITH_OPENCOLLADA)
   endif()
 
   list(APPEND OPENCOLLADA_LIBRARIES ${OPENCOLLADA}/lib/opencollada/UTF.lib)
+  if(EXISTS ${OPENCOLLADA}/lib/opencollada/pcre.lib)
+    set(PCRE_LIBRARIES
+      optimized ${OPENCOLLADA}/lib/opencollada/pcre.lib
 
-  set(PCRE_LIBRARIES
-    optimized ${OPENCOLLADA}/lib/opencollada/pcre.lib
-
-    debug ${OPENCOLLADA}/lib/opencollada/pcre_d.lib
-  )
+      debug ${OPENCOLLADA}/lib/opencollada/pcre_d.lib
+    )
+  endif()
 endif()
 
 if(WITH_CODEC_FFMPEG)
@@ -1305,6 +1313,7 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
 
   file(GLOB _sycl_pi_runtime_libraries_glob
     ${SYCL_ROOT_DIR}/bin/pi_*.dll
+    ${SYCL_ROOT_DIR}/bin/ur_*.dll
   )
   list(REMOVE_ITEM _sycl_pi_runtime_libraries_glob "${SYCL_ROOT_DIR}/bin/pi_opencl.dll")
   list(APPEND _sycl_runtime_libraries ${_sycl_pi_runtime_libraries_glob})
@@ -1319,12 +1328,15 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
   )
 endif()
 
-
+# Add the msvc directory to the path so when building with ASAN enabled tools such as
+# msgfmt which run before the install phase can find the asan shared libraries.
+get_filename_component(_msvc_path ${CMAKE_C_COMPILER} DIRECTORY)
 # Environment variables to run precompiled executables that needed libraries.
 list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ";" _library_paths)
-set(PLATFORM_ENV_BUILD_DIRS "${LIBDIR}/epoxy/bin\;${LIBDIR}/tbb/bin\;${LIBDIR}/OpenImageIO/bin\;${LIBDIR}/boost/lib\;${LIBDIR}/openexr/bin\;${LIBDIR}/imath/bin\;${LIBDIR}/shaderc/bin\;${PATH}")
+set(PLATFORM_ENV_BUILD_DIRS "${_msvc_path}\;${LIBDIR}/epoxy/bin\;${LIBDIR}/tbb/bin\;${LIBDIR}/OpenImageIO/bin\;${LIBDIR}/boost/lib\;${LIBDIR}/openexr/bin\;${LIBDIR}/imath/bin\;${LIBDIR}/shaderc/bin\;${PATH}")
 set(PLATFORM_ENV_BUILD "PATH=${PLATFORM_ENV_BUILD_DIRS}")
 # Install needs the additional folders from PLATFORM_ENV_BUILD_DIRS as well, as tools like:
 # `idiff` and `abcls` use the release mode dlls.
 set(PLATFORM_ENV_INSTALL "PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/blender.shared/\;${PLATFORM_ENV_BUILD_DIRS}\;$ENV{PATH}")
 unset(_library_paths)
+unset(_msvc_path)

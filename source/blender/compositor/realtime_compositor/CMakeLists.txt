@@ -28,8 +28,10 @@ set(SRC
   intern/domain.cc
   intern/evaluator.cc
   intern/input_single_value_operation.cc
+  intern/meta_data.cc
   intern/node_operation.cc
   intern/operation.cc
+  intern/profiler.cc
   intern/realize_on_domain_operation.cc
   intern/reduce_to_single_value_operation.cc
   intern/render_context.cc
@@ -49,8 +51,10 @@ set(SRC
   COM_evaluator.hh
   COM_input_descriptor.hh
   COM_input_single_value_operation.hh
+  COM_meta_data.hh
   COM_node_operation.hh
   COM_operation.hh
+  COM_profiler.hh
   COM_realize_on_domain_operation.hh
   COM_reduce_to_single_value_operation.hh
   COM_render_context.hh
@@ -64,6 +68,7 @@ set(SRC
   COM_utilities.hh
 
   algorithms/intern/deriche_gaussian_blur.cc
+  algorithms/intern/extract_alpha.cc
   algorithms/intern/jump_flooding.cc
   algorithms/intern/morphological_blur.cc
   algorithms/intern/morphological_distance.cc
@@ -79,6 +84,7 @@ set(SRC
   algorithms/intern/van_vliet_gaussian_blur.cc
 
   algorithms/COM_algorithm_deriche_gaussian_blur.hh
+  algorithms/COM_algorithm_extract_alpha.hh
   algorithms/COM_algorithm_jump_flooding.hh
   algorithms/COM_algorithm_morphological_blur.hh
   algorithms/COM_algorithm_morphological_distance.hh
@@ -100,6 +106,7 @@ set(SRC
   cached_resources/intern/cached_texture.cc
   cached_resources/intern/deriche_gaussian_coefficients.cc
   cached_resources/intern/distortion_grid.cc
+  cached_resources/intern/fog_glow_kernel.cc
   cached_resources/intern/keying_screen.cc
   cached_resources/intern/morphological_distance_feather_weights.cc
   cached_resources/intern/ocio_color_space_conversion_shader.cc
@@ -116,6 +123,7 @@ set(SRC
   cached_resources/COM_cached_texture.hh
   cached_resources/COM_deriche_gaussian_coefficients.hh
   cached_resources/COM_distortion_grid.hh
+  cached_resources/COM_fog_glow_kernel.hh
   cached_resources/COM_keying_screen.hh
   cached_resources/COM_morphological_distance_feather_weights.hh
   cached_resources/COM_ocio_color_space_conversion_shader.hh
@@ -363,10 +371,6 @@ set(shader_create_info_list_file "${CMAKE_CURRENT_BINARY_DIR}/compositor_shader_
 file(GENERATE OUTPUT ${shader_create_info_list_file} CONTENT "${SHADER_CREATE_INFOS_CONTENT}")
 
 if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  add_definitions(-DWITH_TBB)
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
     # that will collide with the stl versions.
@@ -386,6 +390,16 @@ if(WITH_OPENCOLORIO)
   list(APPEND LIB
     ${OPENCOLORIO_LIBRARIES}
   )
+endif()
+
+if(WITH_FFTW3)
+  list(APPEND INC_SYS
+    ${FFTW3_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${FFTW3_LIBRARIES}
+  )
+  add_definitions(-DWITH_FFTW3)
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

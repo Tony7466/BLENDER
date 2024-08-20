@@ -24,8 +24,9 @@ from mathutils import (
 from bpy.app.translations import (
     pgettext_tip as tip_,
     pgettext_rpt as rpt_,
-    pgettext_data as data_,
 )
+
+from nodeitems_builtins import node_tree_group_type
 
 
 class NodeSetting(PropertyGroup):
@@ -112,7 +113,7 @@ class NodeAddOperator:
         space = context.space_data
         # needs active node editor and a tree to add nodes to
         return (space and (space.type == 'NODE_EDITOR') and
-                space.edit_tree and not space.edit_tree.library)
+                space.edit_tree and space.edit_tree.is_editable)
 
     # Default invoke stores the mouse position to place the node correctly
     # and optionally invokes the transform operator
@@ -151,6 +152,12 @@ class NODE_OT_add_node(NodeAddOperator, Operator):
     @classmethod
     def description(cls, _context, properties):
         nodetype = properties["type"]
+        if nodetype in node_tree_group_type.values():
+            for setting in properties.settings:
+                if setting.name == "node_tree":
+                    node_group = eval(setting.value)
+                    if node_group.description:
+                        return node_group.description
         bl_rna = bpy.types.Node.bl_rna_get_subclass(nodetype)
         if bl_rna is not None:
             return tip_(bl_rna.description)
@@ -222,7 +229,7 @@ class NODE_OT_collapse_hide_unused_toggle(Operator):
         space = context.space_data
         # needs active node editor and a tree
         return (space and (space.type == 'NODE_EDITOR') and
-                (space.edit_tree and not space.edit_tree.library))
+                (space.edit_tree and space.edit_tree.is_editable))
 
     def execute(self, context):
         space = context.space_data

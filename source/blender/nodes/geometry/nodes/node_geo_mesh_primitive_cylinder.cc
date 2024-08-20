@@ -79,7 +79,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryMeshCylinder &storage = node_storage(*node);
   const GeometryNodeMeshCircleFillType fill = (GeometryNodeMeshCircleFillType)storage.fill_type;
   const bool has_fill = fill != GEO_NODE_MESH_CIRCLE_FILL_NONE;
-  bke::nodeSetSocketAvailability(ntree, fill_subdiv_socket, has_fill);
+  bke::node_set_socket_availability(ntree, fill_subdiv_socket, has_fill);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -146,16 +146,16 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_CYLINDER, "Cylinder", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryMeshCylinder", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

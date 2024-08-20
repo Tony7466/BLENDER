@@ -194,6 +194,11 @@ add_blender_test(
   --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_text.py
 )
 
+add_blender_test(
+  script_pyapi_grease_pencil
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_pyapi_grease_pencil.py
+)
+
 # ------------------------------------------------------------------------------
 # DATA MANAGEMENT TESTS
 
@@ -211,14 +216,23 @@ add_blender_test(
   --output-dir ${TEST_OUT_DIR}/blendfile_io/
 )
 
-add_blender_test(
-  blendfile_versioning
-  --log "*blendfile*"
-  --debug-memory
-  --debug
-  --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_versioning.py --
-  --src-test-dir ${TEST_SRC_DIR}/
-)
+# This test can be extremely long, especially in debug builds.
+# Generate BLENDFILE_VERSIONING_SPLIT_RANGE instances of the test,
+# each processing their own subset of the whole set of blendfiles.
+set(BLENDFILE_VERSIONING_SPLIT_RANGE 8)
+math(EXPR BLENDFILE_VERSIONING_SPLIT_RANGE_CMAKE "${BLENDFILE_VERSIONING_SPLIT_RANGE} - 1")
+foreach(idx RANGE ${BLENDFILE_VERSIONING_SPLIT_RANGE_CMAKE})
+  add_blender_test(
+    "blendfile_versioning_${idx}_over_${BLENDFILE_VERSIONING_SPLIT_RANGE}"
+    --log "*blendfile*"
+    --debug-memory
+    --debug
+    --python ${CMAKE_CURRENT_LIST_DIR}/bl_blendfile_versioning.py --
+    --src-test-dir ${TEST_SRC_DIR}/
+    --slice-range ${BLENDFILE_VERSIONING_SPLIT_RANGE}
+    --slice-index ${idx}
+  )
+endforeach()
 
 add_blender_test(
   blendfile_liblink
@@ -389,8 +403,8 @@ add_blender_test(
 if(WITH_EXPERIMENTAL_FEATURES)
   # Only run with Project Baklava enabled.
   add_blender_test(
-    bl_animation_id
-    --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_id.py
+    bl_animation_action
+    --python ${CMAKE_CURRENT_LIST_DIR}/bl_animation_action.py
   )
 endif()
 
@@ -656,12 +670,11 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
       list(APPEND render_tests openvdb)
     endif()
 
-    # Temporarily disabled until all platforms upgrade to OIDN 2.3.
-    #if(WITH_OPENIMAGEDENOISE)
-    #  list(APPEND render_tests denoise)
-    #endif()
+    if(WITH_OPENIMAGEDENOISE)
+      list(APPEND render_tests denoise)
+    endif()
 
-    # Disabled until new OpenGL version with deterministic results.
+    # Disabled until new OpenPGL version with deterministic results.
     #if(WITH_CYCLES_PATH_GUIDING)
     #  list(APPEND render_tests guiding)
     #endif()
@@ -674,9 +687,12 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
 
     # Cycles
     if(WITH_CYCLES)
-      set(_cycles_blacklist "")
-      if(NOT WITH_CYCLES_OSL)
-        set(_cycles_blacklist OSL)
+      set(_cycles_blocklist "")
+      if((NOT WITH_CYCLES_OSL) OR (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL))
+        # Disable OSL tests if built without OSL or
+        # Disable OSL tests during the "normal" test phase to avoid double
+        # testing during the OSL test phase.
+        set(_cycles_blocklist OSL)
       endif()
       foreach(_cycles_device ${CYCLES_TEST_DEVICES})
         string(TOLOWER "${_cycles_device}" _cycles_device_lower)
@@ -684,22 +700,44 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
 
         foreach(render_test ${_cycles_render_tests})
           set(_cycles_test_name "cycles_${render_test}_${_cycles_device_lower}")
-          add_render_test(
-            ${_cycles_test_name}
-            ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
-            -testdir "${TEST_SRC_DIR}/render/${render_test}"
-            -outdir "${TEST_OUT_DIR}/cycles"
-            -device ${_cycles_device}
-            -blacklist ${_cycles_blacklist}
-          )
-
-          if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
-            set_tests_properties(${_cycles_test_name} PROPERTIES RUN_SERIAL TRUE)
+          if (NOT(WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL AND ("${render_test}" STREQUAL "osl")))
+            # Only run OSL basic tests during this phase if WITH_CYCLES_TEST_OSL isn't enabled
+            add_render_test(
+              ${_cycles_test_name}
+              ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
+              -testdir "${TEST_SRC_DIR}/render/${render_test}"
+              -outdir "${TEST_OUT_DIR}/cycles"
+              -device ${_cycles_device}
+              -blocklist ${_cycles_blocklist}
+            )
+            if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
+              set_tests_properties(${_cycles_test_name} PROPERTIES RUN_SERIAL TRUE)
+            endif()
           endif()
+
+          if (WITH_CYCLES_TEST_OSL AND WITH_CYCLES_OSL)
+            # OSL is only supported with CPU and OptiX
+            # TODO: Enable OptiX support once it's more stable
+            if("${_cycles_device_lower}" STREQUAL "cpu")
+              add_render_test(
+                ${_cycles_test_name}_osl
+                ${CMAKE_CURRENT_LIST_DIR}/cycles_render_tests.py
+                -testdir "${TEST_SRC_DIR}/render/${render_test}"
+                -outdir "${TEST_OUT_DIR}/cycles_osl"
+                -device ${_cycles_device}
+                -osl
+              )
+              # Doesn't do anything until OptiX is enabled
+              if(NOT ("${_cycles_device_lower}" STREQUAL "cpu"))
+                set_tests_properties(${_cycles_test_name}_osl PROPERTIES RUN_SERIAL TRUE)
+              endif()
+            endif()
+          endif()
+
           unset(_cycles_test_name)
         endforeach()
       endforeach()
-      unset(_cycles_blacklist)
+      unset(_cycles_blocklist)
     endif()
 
     if(WITH_GPU_RENDER_TESTS)
@@ -710,17 +748,6 @@ if(WITH_CYCLES OR WITH_GPU_RENDER_TESTS)
       if(WITH_GPU_RENDER_TESTS_SILENT)
         list(APPEND _gpu_render_tests_arguments --fail-silently)
       endif()
-
-      # Eevee
-      foreach(render_test ${gpu_render_tests})
-        add_render_test(
-          eevee_${render_test}
-          ${CMAKE_CURRENT_LIST_DIR}/eevee_render_tests.py
-          -testdir "${TEST_SRC_DIR}/render/${render_test}"
-          -outdir "${TEST_OUT_DIR}/eevee"
-          ${_gpu_render_tests_arguments}
-        )
-      endforeach()
 
       # Eevee Next
       foreach(render_test ${gpu_render_tests})
@@ -841,6 +868,7 @@ set(geo_node_tests
   curves
   curves/interpolate_curves
   geometry
+  grease_pencil
   instance
   repeat_zone
   mesh_primitives

@@ -123,6 +123,15 @@ class DATA_PT_lens(CameraButtonsPanel, Panel):
                     col.prop(cam, "fisheye_polynomial_k2", text="K2")
                     col.prop(cam, "fisheye_polynomial_k3", text="K3")
                     col.prop(cam, "fisheye_polynomial_k4", text="K4")
+                elif cam.panorama_type == 'CENTRAL_CYLINDRICAL':
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_range_v_min", text="Height Min")
+                    sub.prop(cam, "central_cylindrical_range_v_max", text="Max")
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_range_u_min", text="Longitude Min")
+                    sub.prop(cam, "central_cylindrical_range_u_max", text="Max")
+                    sub = col.column(align=True)
+                    sub.prop(cam, "central_cylindrical_radius", text="Cylinder radius")
 
             elif engine in {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT', 'BLENDER_WORKBENCH'}:
                 if cam.lens_unit == 'MILLIMETERS':
@@ -253,9 +262,15 @@ class DATA_PT_camera_dof(CameraButtonsPanel, Panel):
         col.prop(dof, "focus_object", text="Focus on Object")
         if dof.focus_object and dof.focus_object.type == 'ARMATURE':
             col.prop_search(dof, "focus_subtarget", dof.focus_object.data, "bones", text="Focus on Bone")
+
         sub = col.column()
         sub.active = (dof.focus_object is None)
-        sub.prop(dof, "focus_distance", text="Focus Distance")
+        row = sub.row(align=True)
+        row.prop(dof, "focus_distance", text="Focus Distance")
+        row.operator(
+            "ui.eyedropper_depth",
+            icon='EYEDROPPER',
+            text="").prop_data_path = "scene.camera.data.dof.focus_distance"
 
 
 class DATA_PT_camera_dof_aperture(CameraButtonsPanel, Panel):

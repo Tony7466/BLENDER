@@ -140,13 +140,13 @@ enum ModifierApplyFlag {
   /** Ignore scene simplification flag and use subdivisions
    * level set in multires modifier. */
   MOD_APPLY_IGNORE_SIMPLIFY = 1 << 3,
-  /** The effect of this modifier will be applied to the base mesh
+  /** The effect of this modifier will be applied to the original geometry
    * The modifier itself will be removed from the modifier stack.
    * This flag can be checked to ignore rendering display data to the mesh.
    * See `OBJECT_OT_modifier_apply` operator. */
-  MOD_APPLY_TO_BASE_MESH = 1 << 4,
+  MOD_APPLY_TO_ORIGINAL = 1 << 4,
 };
-ENUM_OPERATORS(ModifierApplyFlag, MOD_APPLY_TO_BASE_MESH);
+ENUM_OPERATORS(ModifierApplyFlag, MOD_APPLY_TO_ORIGINAL);
 
 struct ModifierUpdateDepsgraphContext {
   Scene *scene;
@@ -223,14 +223,14 @@ struct ModifierTypeInfo {
    */
   void (*deform_verts_EM)(ModifierData *md,
                           const ModifierEvalContext *ctx,
-                          BMEditMesh *em,
+                          const BMEditMesh *em,
                           Mesh *mesh,
                           blender::MutableSpan<blender::float3> positions);
 
   /* Set deform matrix per vertex for crazy-space correction */
   void (*deform_matrices_EM)(ModifierData *md,
                              const ModifierEvalContext *ctx,
-                             BMEditMesh *em,
+                             const BMEditMesh *em,
                              Mesh *mesh,
                              blender::MutableSpan<blender::float3> positions,
                              blender::MutableSpan<blender::float3x3> matrices);
@@ -578,7 +578,7 @@ void BKE_modifier_deform_verts(ModifierData *md,
 
 void BKE_modifier_deform_vertsEM(ModifierData *md,
                                  const ModifierEvalContext *ctx,
-                                 BMEditMesh *em,
+                                 const BMEditMesh *em,
                                  Mesh *mesh,
                                  blender::MutableSpan<blender::float3> positions);
 

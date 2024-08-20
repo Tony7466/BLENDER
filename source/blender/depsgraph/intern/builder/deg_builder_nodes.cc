@@ -96,7 +96,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 #include "RNA_types.hh"
 
 #include "DEG_depsgraph.hh"
@@ -365,7 +365,7 @@ ID *DepsgraphNodeBuilder::get_cow_id(const ID *id_orig) const
 
 ID *DepsgraphNodeBuilder::ensure_cow_id(ID *id_orig)
 {
-  if (id_orig->tag & LIB_TAG_COPIED_ON_EVAL) {
+  if (id_orig->tag & ID_TAG_COPIED_ON_EVAL) {
     /* ID is already remapped to copy-on-evaluation. */
     return id_orig;
   }
@@ -506,7 +506,7 @@ void DepsgraphNodeBuilder::update_invalid_cow_pointers()
       /* Node/ID already tagged for copy-on-eval flush, no need to check it. */
       continue;
     }
-    if ((id_node->id_cow->flag & LIB_EMBEDDED_DATA) != 0) {
+    if ((id_node->id_cow->flag & ID_FLAG_EMBEDDED_DATA) != 0) {
       /* For now, we assume embedded data are managed by their owner IDs and do not need to be
        * checked here.
        *
@@ -572,9 +572,6 @@ void DepsgraphNodeBuilder::build_id(ID *id, const bool force_be_visible)
   switch (id_type) {
     case ID_AC:
       build_action((bAction *)id);
-      break;
-    case ID_AN:
-      build_animation((Animation *)id);
       break;
     case ID_AR:
       build_armature((bArmature *)id);
@@ -1238,15 +1235,10 @@ void DepsgraphNodeBuilder::build_animdata(ID *id)
   if (adt->action != nullptr) {
     build_action(adt->action);
   }
-  if (adt->animation != nullptr) {
-    build_animation(adt->animation);
-  }
   /* Make sure ID node exists. */
   (void)add_id_node(id);
   ID *id_cow = get_cow_id(id);
-  if (adt->action != nullptr || adt->animation != nullptr ||
-      !BLI_listbase_is_empty(&adt->nla_tracks))
-  {
+  if (adt->action != nullptr || !BLI_listbase_is_empty(&adt->nla_tracks)) {
     OperationNode *operation_node;
     /* Explicit entry operation. */
     operation_node = add_operation_node(id, NodeType::ANIMATION, OperationCode::ANIMATION_ENTRY);
@@ -1290,7 +1282,7 @@ void DepsgraphNodeBuilder::build_animation_images(ID *id)
    * we have to check if they might be created during evaluation. */
   bool has_image_animation = false;
   if (ELEM(GS(id->name), ID_MA, ID_WO)) {
-    bNodeTree *ntree = *BKE_ntree_ptr_from_id(id);
+    bNodeTree *ntree = *bke::node_tree_ptr_from_id(id);
     if (ntree != nullptr && ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION)
     {
       has_image_animation = true;
@@ -1314,15 +1306,6 @@ void DepsgraphNodeBuilder::build_action(bAction *action)
   }
   build_idproperties(action->id.properties);
   add_operation_node(&action->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
-}
-
-void DepsgraphNodeBuilder::build_animation(Animation *animation)
-{
-  if (built_map_.checkIsBuiltAndTag(animation)) {
-    return;
-  }
-  build_idproperties(animation->id.properties);
-  add_operation_node(&animation->id, NodeType::ANIMATION, OperationCode::ANIMATION_EVAL);
 }
 
 void DepsgraphNodeBuilder::build_driver(ID *id, FCurve *fcurve, int driver_index)
@@ -1416,6 +1399,9 @@ void DepsgraphNodeBuilder::build_driver_id_property(const PointerRNA &target_pro
   }
   if (!rna_prop_affects_parameters_node(&ptr, prop)) {
     return;
+  }
+  if (ptr.owner_id) {
+    build_id(ptr.owner_id);
   }
   const char *prop_identifier = RNA_property_identifier((PropertyRNA *)prop);
   /* Custom properties of bones are placed in their components to improve granularity. */
@@ -2031,7 +2017,9 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
       build_nodetree(group_ntree);
     }
     else {
-      BLI_assert_msg(0, "Unknown ID type used for node");
+      /* Ignore this case. It can happen when the node type is not known currently. Either because
+       * it belongs to an add-on or because it comes from a different Blender version that does
+       * support the ID type here already. */
     }
   }
 

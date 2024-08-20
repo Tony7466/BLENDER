@@ -21,7 +21,7 @@
 #include "BKE_tracking.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -151,7 +151,7 @@ class PlaneTrackDeformOperation : public NodeOperation {
         "Plane Track Deform Homography Matrices");
 
     Result plane_mask = compute_plane_mask(homography_matrices, homography_matrices_buffer);
-    Result anti_aliased_plane_mask = context().create_temporary_result(ResultType::Float);
+    Result anti_aliased_plane_mask = context().create_result(ResultType::Float);
     smaa(context(), plane_mask, anti_aliased_plane_mask);
     plane_mask.release();
 
@@ -182,9 +182,9 @@ class PlaneTrackDeformOperation : public NodeOperation {
     GPU_uniformbuf_bind(homography_matrices_buffer, ubo_location);
 
     Result &input_image = get_input("Image");
-    GPU_texture_mipmap_mode(input_image.texture(), true, true);
-    GPU_texture_anisotropic_filter(input_image.texture(), true);
-    GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_EXTEND);
+    GPU_texture_mipmap_mode(input_image, true, true);
+    GPU_texture_anisotropic_filter(input_image, true);
+    GPU_texture_extend_mode(input_image, GPU_SAMPLER_EXTEND_MODE_EXTEND);
     input_image.bind_as_texture(shader, "input_tx");
 
     plane_mask.bind_as_texture(shader, "mask_tx");
@@ -215,7 +215,7 @@ class PlaneTrackDeformOperation : public NodeOperation {
     GPU_uniformbuf_bind(homography_matrices_buffer, ubo_location);
 
     const Domain domain = compute_domain();
-    Result plane_mask = context().create_temporary_result(ResultType::Float);
+    Result plane_mask = context().create_result(ResultType::Float);
     plane_mask.allocate_texture(domain);
     plane_mask.bind_as_image(shader, "mask_img");
 
@@ -327,15 +327,15 @@ void register_node_type_cmp_planetrackdeform()
 {
   namespace file_ns = blender::nodes::node_composite_planetrackdeform_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_PLANETRACKDEFORM, "Plane Track Deform", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_planetrackdeform_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_planetrackdeform;
   ntype.initfunc_api = file_ns::init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodePlaneTrackDeformData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

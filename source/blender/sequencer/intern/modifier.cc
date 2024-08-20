@@ -31,6 +31,8 @@
 #include "SEQ_modifier.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sound.hh"
+#include "SEQ_time.hh"
+#include "SEQ_utils.hh"
 
 #include "BLO_read_write.hh"
 
@@ -1372,13 +1374,13 @@ static SequenceModifierTypeInfo seqModifier_Tonemap = {
 };
 
 static SequenceModifierTypeInfo seqModifier_SoundEqualizer = {
-    CTX_N_(BLT_I18NCONTEXT_ID_SEQUENCE, "Equalizer"), /* name */
-    "SoundEqualizerModifierData",                     /* struct_name */
-    sizeof(SoundEqualizerModifierData),               /* struct_size */
-    SEQ_sound_equalizermodifier_init_data,            /* init_data */
-    SEQ_sound_equalizermodifier_free,                 /* free_data */
-    SEQ_sound_equalizermodifier_copy_data,            /* copy_data */
-    nullptr,                                          /* apply */
+    /*name*/ CTX_N_(BLT_I18NCONTEXT_ID_SEQUENCE, "Equalizer"),
+    /*struct_name*/ "SoundEqualizerModifierData",
+    /*struct_size*/ sizeof(SoundEqualizerModifierData),
+    /*init_data*/ SEQ_sound_equalizermodifier_init_data,
+    /*free_data*/ SEQ_sound_equalizermodifier_free,
+    /*copy_data*/ SEQ_sound_equalizermodifier_copy_data,
+    /*apply*/ nullptr,
 };
 /** \} */
 
@@ -1493,6 +1495,23 @@ SequenceModifierData *SEQ_modifier_find_by_name(Sequence *seq, const char *name)
       BLI_findstring(&(seq->modifiers), name, offsetof(SequenceModifierData, name)));
 }
 
+static bool skip_modifier(Scene *scene, const SequenceModifierData *smd, int timeline_frame)
+{
+  using namespace blender::seq;
+
+  if (smd->mask_sequence == nullptr) {
+    return false;
+  }
+  const bool strip_has_ended_skip = smd->mask_input_type == SEQUENCE_MASK_INPUT_STRIP &&
+                                    smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE &&
+                                    !SEQ_time_strip_intersects_frame(
+                                        scene, smd->mask_sequence, timeline_frame);
+  const bool missing_data_skip = !SEQ_sequence_has_valid_data(smd->mask_sequence) ||
+                                 media_presence_is_missing(scene, smd->mask_sequence);
+
+  return strip_has_ended_skip || missing_data_skip;
+}
+
 ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
                                 Sequence *seq,
                                 ImBuf *ibuf,
@@ -1518,7 +1537,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
       continue;
     }
 
-    if (smti->apply) {
+    if (smti->apply && !skip_modifier(context->scene, smd, timeline_frame)) {
       int frame_offset;
       if (smd->mask_time == SEQUENCE_MASK_TIME_RELATIVE) {
         frame_offset = seq->start;

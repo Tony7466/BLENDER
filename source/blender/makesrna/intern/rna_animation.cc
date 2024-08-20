@@ -32,7 +32,9 @@
 
 #include "ED_keyframing.hh"
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
+
+using namespace blender;
 
 /* exported for use in API */
 const EnumPropertyItem rna_enum_keyingset_path_grouping_items[] = {
@@ -62,7 +64,7 @@ const EnumPropertyItem rna_enum_keying_flag_items[] = {
      0,
      "XYZ=RGB Colors (ignored)",
      "This flag is no longer in use, and is here so that code that uses it doesn't break. The "
-     "XYZ=RGB coloring is determined by the animation preferences"},
+     "XYZ=RGB coloring is determined by the animation preferences."},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -83,7 +85,7 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
      0,
      "XYZ=RGB Colors (ignored)",
      "This flag is no longer in use, and is here so that code that uses it doesn't break. The "
-     "XYZ=RGB coloring is determined by the animation preferences"},
+     "XYZ=RGB coloring is determined by the animation preferences."},
     {INSERTKEY_REPLACE,
      "INSERTKEY_REPLACE",
      0,
@@ -100,17 +102,6 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
      "Cycle Aware Keying",
      "When inserting into a curve with cyclic extrapolation, remap the keyframe inside "
      "the cycle time range, and if changing an end key, also update the other one"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
-constexpr int binding_items_value_create_new = -1;
-const EnumPropertyItem rna_enum_animation_binding_items[] = {
-    {binding_items_value_create_new,
-     "NEW",
-     ICON_ADD,
-     "New",
-     "Create a new animation binding for this data-block"},
-    {int(blender::animrig::Binding::unassigned), "UNASSIGNED", 0, "(none/legacy)", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -158,10 +149,23 @@ static int rna_AnimData_action_editable(const PointerRNA *ptr, const char ** /*r
 
 static void rna_AnimData_action_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
-  ID *ownerId = ptr->owner_id;
+#  ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(ptr->owner_id);
+  ID &animated_id = *ptr->owner_id;
 
-  /* set action */
+  /* TODO: protect against altering action in NLA tweak mode, see BKE_animdata_action_editable() */
+
+  bAction *action = static_cast<bAction *>(value.data);
+  if (!action) {
+    blender::animrig::unassign_action(animated_id);
+    return;
+  }
+
+  blender::animrig::assign_action(action->wrap(), animated_id);
+#  else
+  ID *ownerId = ptr->owner_id;
   BKE_animdata_set_action(nullptr, ownerId, static_cast<bAction *>(value.data));
+#  endif
 }
 
 static void rna_AnimData_tmpact_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
@@ -216,22 +220,8 @@ bool rna_AnimData_tweakmode_override_apply(Main * /*bmain*/,
 }
 
 #  ifdef WITH_ANIM_BAKLAVA
-static void rna_AnimData_animation_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
-{
-  BLI_assert(ptr->owner_id);
-  ID &animated_id = *ptr->owner_id;
-
-  Animation *anim = static_cast<Animation *>(value.data);
-  if (!anim) {
-    blender::animrig::unassign_animation(animated_id);
-    return;
-  }
-
-  blender::animrig::assign_animation(anim->wrap(), animated_id);
-}
-
-static void rna_AnimData_animation_binding_handle_set(
-    PointerRNA *ptr, const blender::animrig::binding_handle_t new_binding_handle)
+static void rna_AnimData_action_slot_handle_set(
+    PointerRNA *ptr, const blender::animrig::slot_handle_t new_slot_handle)
 {
   BLI_assert(ptr->owner_id);
   ID &animated_id = *ptr->owner_id;
@@ -246,38 +236,35 @@ static void rna_AnimData_animation_binding_handle_set(
     return;
   }
 
-  if (new_binding_handle == blender::animrig::Binding::unassigned) {
-    /* No need to check with the Animation, as 'no binding' is always valid. */
-    adt->binding_handle = blender::animrig::Binding::unassigned;
-    return;
-  }
-
-  blender::animrig::Animation *anim = blender::animrig::get_animation(animated_id);
-  if (!anim) {
-    /* No animation to verify the binding handle is valid. As the binding handle
-     * will be completely ignored when re-assigning an Animation, better to
-     * refuse setting it altogether. This will make bugs in Python code more obvious. */
+  blender::animrig::Action *action = blender::animrig::get_action(animated_id);
+  if (!action) {
+    /* No Action to verify the slot handle is valid. As the slot handle will be
+     * completely ignored when re-assigning an Action, better to refuse setting
+     * it altogether. This will make bugs in Python code more obvious. */
     WM_reportf(RPT_ERROR,
-               "Data-block '%s' does not have an animation, cannot set binding handle",
+               "Data-block '%s' does not have an Action, cannot set slot handle",
                animated_id.name + 2);
     return;
   }
 
-  blender::animrig::Binding *binding = anim->binding_for_handle(new_binding_handle);
-  if (!binding) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' has no binding with handle %d",
-               anim->id.name + 2,
-               new_binding_handle);
-    return;
-  }
-  if (!anim->assign_id(binding, animated_id)) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' binding '%s' (%d) could not be assigned to %s",
-               anim->id.name + 2,
-               binding->name,
-               binding->handle,
-               animated_id.name + 2);
+  blender::animrig::Slot *slot = action->slot_for_handle(new_slot_handle);
+  if (!action->assign_id(slot, animated_id)) {
+    if (slot) {
+      WM_reportf(RPT_ERROR,
+                 "Action '%s' slot '%s' (%d) could not be assigned to %s",
+                 action->id.name + 2,
+                 slot->name,
+                 slot->handle,
+                 animated_id.name + 2);
+    }
+    else {
+      /* This is highly unexpected, as unassigning a Slot should always be allowed. */
+      BLI_assert_unreachable();
+      WM_reportf(RPT_ERROR,
+                 "Action '%s' slot could not be unassigned from %s",
+                 action->id.name + 2,
+                 animated_id.name + 2);
+    }
     return;
   }
 }
@@ -287,123 +274,108 @@ static AnimData &rna_animdata(const PointerRNA *ptr)
   return *reinterpret_cast<AnimData *>(ptr->data);
 }
 
-static int rna_AnimData_animation_binding_get(PointerRNA *ptr)
+static PointerRNA rna_AnimData_action_slot_get(PointerRNA *ptr)
 {
+  using animrig::Action;
+  using animrig::Slot;
+
   AnimData &adt = rna_animdata(ptr);
-  return adt.binding_handle;
+
+  if (!adt.action || adt.slot_handle == Slot::unassigned) {
+    return PointerRNA_NULL;
+  }
+
+  Action &action = adt.action->wrap();
+  Slot *slot = action.slot_for_handle(adt.slot_handle);
+  if (!slot) {
+    return PointerRNA_NULL;
+  }
+  return RNA_pointer_create(&action.id, &RNA_ActionSlot, slot);
 }
 
-static void rna_AnimData_animation_binding_set(PointerRNA *ptr, int value)
+static void rna_AnimData_action_slot_set(PointerRNA *ptr, PointerRNA value, ReportList *reports)
 {
-  using blender::animrig::Animation;
-  using blender::animrig::Binding;
-  using blender::animrig::binding_handle_t;
+  using animrig::Action;
+  using animrig::Slot;
 
   AnimData &adt = rna_animdata(ptr);
-  ID &animated_id = *ptr->owner_id;
-
-  const binding_handle_t new_binding_handle = binding_handle_t(value);
-  if (new_binding_handle == Binding::unassigned) {
-    /* No need to check with the Animation, as 'no binding' is always valid. */
-    adt.binding_handle = Binding::unassigned;
+  if (!adt.action) {
+    BKE_report(reports, RPT_ERROR, "Cannot set slot without an assigned Action.");
     return;
   }
 
-  if (!adt.animation) {
-    /* No animation to verify the binding handle is valid. As the binding handle
-     * will be completely ignored when re-assigning an Animation, better to
-     * refuse setting it altogether. This will make bugs in Python code more obvious. */
-    WM_reportf(RPT_ERROR,
-               "Data-block '%s' does not have an animation, cannot set binding handle",
-               animated_id.name + 2);
+  ID *animated_id = ptr->owner_id;
+  BLI_assert(animated_id); /* Otherwise there is nothing to own this AnimData. */
+
+  ActionSlot *dna_slot = static_cast<ActionSlot *>(value.data);
+  if (!dna_slot) {
+    animrig::unassign_slot(*animated_id);
     return;
   }
 
-  Animation &anim = adt.animation->wrap();
-  Binding *binding = nullptr;
+  Action &action = adt.action->wrap();
+  Slot &slot = dna_slot->wrap();
 
-  if (new_binding_handle == binding_items_value_create_new) {
-    /* Special case for this enum item. */
-    binding = &anim.binding_add_for_id(animated_id);
-  }
-  else {
-    binding = anim.binding_for_handle(new_binding_handle);
-    if (!binding) {
-      WM_reportf(RPT_ERROR,
-                 "Animation '%s' has no binding with handle %d",
-                 anim.id.name + 2,
-                 new_binding_handle);
-      return;
-    }
-  }
-
-  if (!anim.assign_id(binding, animated_id)) {
-    WM_reportf(RPT_ERROR,
-               "Animation '%s' binding '%s' (%d) could not be assigned to %s",
-               anim.id.name + 2,
-               binding->name_without_prefix().c_str(),
-               binding->handle,
-               animated_id.name + 2);
+  if (!action.slots().as_span().contains(&slot)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "This slot (%s) does not belong to the assigned Action (%s)",
+                slot.name,
+                action.id.name + 2);
     return;
   }
 
-  WM_main_add_notifier(NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  if (!action.assign_id(&slot, *animated_id)) {
+    /* TODO: make assign_id() return a different type that gives us more info about what went
+     * wrong. */
+    BKE_reportf(reports, RPT_ERROR, "Cannot assign slot %s to %s.", slot.name, animated_id->name);
+    return;
+  }
 }
 
-static const EnumPropertyItem *rna_AnimData_animation_binding_itemf(bContext * /*C*/,
-                                                                    PointerRNA *ptr,
-                                                                    PropertyRNA * /*prop*/,
-                                                                    bool *r_free)
+/* Skip any slot that is not suitable for the ID owning the AnimData. */
+static bool rna_iterator_animdata_action_slots_skip(CollectionPropertyIterator *iter, void *data)
 {
-  using blender::animrig::Animation;
-  using blender::animrig::Binding;
+  using animrig::Slot;
+
+  /* Get the current Slot being iterated over. */
+  const Slot **slot_ptr_ptr = static_cast<const Slot **>(data);
+  BLI_assert(slot_ptr_ptr);
+  BLI_assert(*slot_ptr_ptr);
+  const Slot &slot = **slot_ptr_ptr;
+
+  /* Get the animated ID. */
+  const ID *animated_id = iter->parent.owner_id;
+  BLI_assert(animated_id);
+
+  /* Skip this Slot if it's not suitable for the animated ID. */
+  return !slot.is_suitable_for(*animated_id);
+}
+
+static void rna_iterator_animdata_action_slots_begin(CollectionPropertyIterator *iter,
+                                                     PointerRNA *ptr)
+{
+  using animrig::Action;
+  using animrig::Slot;
 
   AnimData &adt = rna_animdata(ptr);
-  if (!adt.animation) {
-    // TODO: handle properly.
-    *r_free = false;
-    return rna_enum_animation_binding_items;
+  if (!adt.action) {
+    /* No action means no slots. */
+    rna_iterator_array_begin(iter, nullptr, 0, 0, 0, nullptr);
+    return;
   }
 
-  const Animation &anim = adt.animation->wrap();
-
-  EnumPropertyItem item = {0};
-  EnumPropertyItem *items = nullptr;
-  int num_items = 0;
-
-  bool found_assigned_binding = false;
-  for (const Binding *binding : anim.bindings()) {
-    item.value = binding->handle;
-    item.identifier = binding->name;
-    item.name = binding->name_without_prefix().c_str();
-    item.icon = UI_icon_from_idcode(binding->idtype);
-    item.description = "";
-    RNA_enum_item_add(&items, &num_items, &item);
-
-    found_assigned_binding |= binding->handle == adt.binding_handle;
-  }
-
-  if (num_items > 0) {
-    RNA_enum_item_add_separator(&items, &num_items);
-  }
-
-  /* Only add the 'New' option. Unassigning should be done with the 'X' button. */
-  BLI_assert(rna_enum_animation_binding_items[0].value == binding_items_value_create_new);
-  RNA_enum_item_add(&items, &num_items, &rna_enum_animation_binding_items[0]);
-
-  if (!found_assigned_binding) {
-    /* The assigned binding was not found, so show an option that reflects that. */
-    BLI_assert(rna_enum_animation_binding_items[1].value == Binding::unassigned);
-    RNA_enum_item_add(&items, &num_items, &rna_enum_animation_binding_items[1]);
-  }
-
-  RNA_enum_item_end(&items, &num_items);
-
-  *r_free = true;
-  return items;
+  Action &action = adt.action->wrap();
+  Span<Slot *> slots = action.slots();
+  rna_iterator_array_begin(iter,
+                           (void *)slots.data(),
+                           sizeof(Slot *),
+                           slots.size(),
+                           0,
+                           rna_iterator_animdata_action_slots_skip);
 }
 
-#  endif
+#  endif /* WITH_ANIM_BAKLAVA */
 
 /* ****************************** */
 
@@ -948,6 +920,11 @@ static FCurve *rna_Driver_find(AnimData *adt,
 
   /* Returns nullptr if not found. */
   return BKE_fcurve_find(&adt->drivers, data_path, index);
+}
+
+std::optional<std::string> rna_AnimData_path(const PointerRNA * /*ptr*/)
+{
+  return std::string{"animation_data"};
 }
 
 bool rna_AnimaData_override_apply(Main *bmain, RNAPropertyOverrideApplyContext &rnaapply_ctx)
@@ -1568,6 +1545,7 @@ static void rna_def_animdata(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "AnimData", nullptr);
   RNA_def_struct_ui_text(srna, "Animation Data", "Animation data for data-block");
   RNA_def_struct_ui_icon(srna, ICON_ANIM_DATA);
+  RNA_def_struct_path_func(srna, "rna_AnimData_path");
 
   /* NLA */
   prop = RNA_def_property(srna, "nla_tracks", PROP_COLLECTION, PROP_NONE);
@@ -1666,45 +1644,51 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN | NA_EDITED, nullptr);
 
 #  ifdef WITH_ANIM_BAKLAVA
-  /* Animation data-block */
-  prop = RNA_def_property(srna, "animation", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "Animation");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(prop, nullptr, "rna_AnimData_animation_set", nullptr, nullptr);
-  RNA_def_property_ui_text(prop, "Animation", "Active Animation for this data-block");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
-
-  prop = RNA_def_property(srna, "animation_binding_handle", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "binding_handle");
-  RNA_def_property_int_funcs(prop, nullptr, "rna_AnimData_animation_binding_handle_set", nullptr);
+  prop = RNA_def_property(srna, "action_slot_handle", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "slot_handle");
+  RNA_def_property_int_funcs(prop, nullptr, "rna_AnimData_action_slot_handle_set", nullptr);
   RNA_def_property_ui_text(prop,
-                           "Animation Binding Handle",
-                           "A number that identifies which sub-set of the Animation is considered "
+                           "Action Slot Handle",
+                           "A number that identifies which sub-set of the Action is considered "
                            "to be for this data-block");
-  RNA_def_property_update(prop, NC_ANIMATION | ND_ANIMCHAN, "rna_AnimData_dependency_update");
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
-  prop = RNA_def_property(srna, "animation_binding_name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_sdna(prop, nullptr, "binding_name");
+  prop = RNA_def_property(srna, "action_slot_name", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "slot_name");
   RNA_def_property_ui_text(
       prop,
-      "Animation Binding Name",
-      "The name of the animation binding. The binding identifies which sub-set of the Animation "
-      "is considered to be for this data-block, and its name is used to find the right binding "
-      "when assigning an Animation");
+      "Action Slot Name",
+      "The name of the action slot. The slot identifies which sub-set of the Action "
+      "is considered to be for this data-block, and its name is used to find the right slot "
+      "when assigning an Action.");
 
-  prop = RNA_def_property(srna, "animation_binding", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop,
-                              "rna_AnimData_animation_binding_get",
-                              "rna_AnimData_animation_binding_set",
-                              "rna_AnimData_animation_binding_itemf");
-  RNA_def_property_enum_items(prop, rna_enum_animation_binding_items);
+  prop = RNA_def_property(srna, "action_slot", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionSlot");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_ui_text(
       prop,
-      "Animation Binding",
-      "The binding identifies which sub-set of the Animation is considered to be for this "
-      "data-block, and its name is used to find the right binding when assigning an Animation");
+      "Action Slot",
+      "The slot identifies which sub-set of the Action is considered to be for this "
+      "data-block, and its name is used to find the right slot when assigning an Action");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_AnimData_action_slot_get", "rna_AnimData_action_slot_set", nullptr, nullptr);
+  RNA_def_property_update(prop, NC_ANIMATION | ND_NLA_ACTCHANGE, "rna_AnimData_dependency_update");
 
-#  endif
+  prop = RNA_def_property(srna, "action_slots", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "ActionSlot");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_iterator_animdata_action_slots_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_dereference_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_ui_text(prop, "Slots", "The list of slots in this animation data-block");
+#  endif /* WITH_ANIM_BAKLAVA */
 
   RNA_define_lib_overridable(false);
 

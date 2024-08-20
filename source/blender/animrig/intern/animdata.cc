@@ -6,13 +6,15 @@
  * \ingroup animrig
  */
 
-#include "ANIM_animation.hh"
+#include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
+
+#include "BLT_translation.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -53,7 +55,7 @@ bAction *id_action_ensure(Main *bmain, ID *id)
   if (adt->action == nullptr) {
     /* init action name from name of ID block */
     char actname[sizeof(id->name) - 2];
-    SNPRINTF(actname, "%sAction", id->name + 2);
+    SNPRINTF(actname, DATA_("%sAction"), id->name + 2);
 
     /* create action */
     adt->action = BKE_action_add(bmain, actname);
@@ -94,38 +96,42 @@ void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
     BLI_remlink(&adt->drivers, fcu);
   }
   else if (adt->action) {
-    bAction *act = adt->action;
+    Action &action = adt->action->wrap();
 
-    /* Remove from group or action, whichever one "owns" the F-Curve. */
-    if (fcu->grp) {
-      bActionGroup *agrp = fcu->grp;
+    if (action.is_action_legacy()) {
+      /* Remove from group or action, whichever one "owns" the F-Curve. */
+      if (fcu->grp) {
+        bActionGroup *agrp = fcu->grp;
 
-      /* Remove F-Curve from group+action. */
-      action_groups_remove_channel(act, fcu);
+        /* Remove F-Curve from group+action. */
+        action_groups_remove_channel(&action, fcu);
 
-      /* If group has no more channels, remove it too,
-       * otherwise can have many dangling groups #33541.
-       */
-      if (BLI_listbase_is_empty(&agrp->channels)) {
-        BLI_freelinkN(&act->groups, agrp);
+        /* If group has no more channels, remove it too,
+         * otherwise can have many dangling groups #33541.
+         */
+        if (BLI_listbase_is_empty(&agrp->channels)) {
+          BLI_freelinkN(&action.groups, agrp);
+        }
       }
+      else {
+        BLI_remlink(&action.curves, fcu);
+      }
+
+      /* If action has no more F-Curves as a result of this, unlink it from
+       * AnimData if it did not come from a NLA Strip being tweaked.
+       *
+       * This is done so that we don't have dangling Object+Action entries in
+       * channel list that are empty, and linger around long after the data they
+       * are for has disappeared (and probably won't come back).
+       */
+      animdata_remove_empty_action(adt);
     }
     else {
-      BLI_remlink(&act->curves, fcu);
+      action_fcurve_remove(action, *fcu);
+      /* Return early to avoid the call to BKE_fcurve_free because the fcu has already been freed
+       * by action_fcurve_remove. */
+      return;
     }
-
-    /* If action has no more F-Curves as a result of this, unlink it from
-     * AnimData if it did not come from a NLA Strip being tweaked.
-     *
-     * This is done so that we don't have dangling Object+Action entries in
-     * channel list that are empty, and linger around long after the data they
-     * are for has disappeared (and probably won't come back).
-     */
-    animdata_remove_empty_action(adt);
-  }
-  else if (adt->animation) {
-    /* TODO: support deleting FCurves from Animation data-blocks. */
-    return;
   }
   else {
     BLI_assert_unreachable();
@@ -138,7 +144,7 @@ bool animdata_remove_empty_action(AnimData *adt)
 {
   if (adt->action != nullptr) {
     bAction *act = adt->action;
-
+    DEG_id_tag_update(&act->id, ID_RECALC_ANIMATION_NO_FLUSH);
     if (BLI_listbase_is_empty(&act->curves) && (adt->flag & ADT_NLA_EDIT_ON) == 0) {
       id_us_min(&act->id);
       adt->action = nullptr;
@@ -182,32 +188,43 @@ void reevaluate_fcurve_errors(bAnimContext *ac)
   }
 }
 
-const FCurve *fcurve_find_by_rna_path(const Animation &anim,
-                                      const ID &animated_id,
+const FCurve *fcurve_find_by_rna_path(const AnimData &adt,
                                       const StringRefNull rna_path,
                                       const int array_index)
 {
-  const Binding *binding = anim.binding_for_id(animated_id);
-  if (!binding) {
-    /* No need to inspect anything if this ID does not have an animation Binding. */
+  BLI_assert(adt.action);
+  if (!adt.action) {
     return nullptr;
   }
 
+  const Action &action = adt.action->wrap();
+  BLI_assert(action.is_action_layered());
+
+  const Slot *slot = action.slot_for_handle(adt.slot_handle);
+  if (!slot) {
+    /* No need to inspect anything if this ID does not have an Action Slot. */
+    return nullptr;
+  }
+
+  /* No check for the slot's ID type. Not only do we not have the actual ID
+   * to do this check, but also, since the Action and the slot have been
+   * assigned, just trust that it's valid. */
+
   /* Iterate the layers top-down, as higher-up animation overrides (or at least can override)
    * lower-down animation. */
-  for (int layer_idx = anim.layer_array_num - 1; layer_idx >= 0; layer_idx--) {
-    const Layer *layer = anim.layer(layer_idx);
+  for (int layer_idx = action.layer_array_num - 1; layer_idx >= 0; layer_idx--) {
+    const Layer *layer = action.layer(layer_idx);
 
     /* TODO: refactor this into something nicer once we have different strip types. */
     for (const Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
           const KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-          const ChannelBag *channelbag_for_binding = key_strip.channelbag_for_binding(*binding);
-          if (!channelbag_for_binding) {
+          const ChannelBag *channelbag_for_slot = key_strip.channelbag_for_slot(*slot);
+          if (!channelbag_for_slot) {
             continue;
           }
-          const FCurve *fcu = channelbag_for_binding->fcurve_find(rna_path, array_index);
+          const FCurve *fcu = channelbag_for_slot->fcurve_find({rna_path, array_index});
           if (!fcu) {
             continue;
           }

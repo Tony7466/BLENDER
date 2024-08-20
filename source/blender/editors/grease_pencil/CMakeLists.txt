@@ -14,7 +14,8 @@ set(INC
   ../../../../extern/curve_fit_nd
   ../../geometry
   ../sculpt_paint
-  # RNA_prototypes.h
+  ../../modifiers/intern/lineart
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -27,7 +28,9 @@ set(SRC
   intern/grease_pencil_edit.cc
   intern/grease_pencil_frames.cc
   intern/grease_pencil_geom.cc
+  intern/grease_pencil_image_render.cc
   intern/grease_pencil_layers.cc
+  intern/grease_pencil_lineart.cc
   intern/grease_pencil_material.cc
   intern/grease_pencil_ops.cc
   intern/grease_pencil_primitive.cc

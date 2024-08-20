@@ -128,7 +128,7 @@ static void createTransCursor_view3d(bContext * /*C*/, TransInfo *t)
   TransData *td;
 
   Scene *scene = t->scene;
-  if (ID_IS_LINKED(scene)) {
+  if (!ID_IS_EDITABLE(scene)) {
     BKE_report(t->reports, RPT_ERROR, "Linked data can't text-space transform");
     return;
   }
@@ -148,7 +148,7 @@ static void createTransCursor_view3d(bContext * /*C*/, TransInfo *t)
   td->ob = nullptr;
 
   unit_m3(td->mtx);
-  BKE_scene_cursor_rot_to_mat3(cursor, td->axismtx);
+  copy_m3_m3(td->axismtx, cursor->matrix<blender::float3x3>().ptr());
   normalize_m3(td->axismtx);
   pseudoinverse_m3_m3(td->smtx, td->mtx, PSEUDOINVERSE_EPSILON);
 

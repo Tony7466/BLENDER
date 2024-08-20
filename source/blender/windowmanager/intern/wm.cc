@@ -228,6 +228,8 @@ static void window_manager_blend_read_data(BlendDataReader *reader, ID *id)
   wm->winactive = nullptr;
   wm->init_flag = 0;
   wm->op_undo_depth = 0;
+  wm->extensions_updates = WM_EXTENSIONS_UPDATE_UNSET;
+  wm->extensions_blocked = 0;
 
   BLI_assert(wm->runtime == nullptr);
   wm->runtime = MEM_new<blender::bke::WindowManagerRuntime>(__func__);
@@ -254,7 +256,7 @@ IDTypeInfo IDType_ID_WM = {
     /*name_plural*/ N_("window_managers"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_WINDOWMANAGER,
     /*flags*/ IDTYPE_FLAGS_NO_COPY | IDTYPE_FLAGS_NO_LIBLINKING | IDTYPE_FLAGS_NO_ANIMDATA |
-        IDTYPE_FLAGS_NO_MEMFILE_UNDO,
+        IDTYPE_FLAGS_NO_MEMFILE_UNDO | IDTYPE_FLAGS_NEVER_UNUSED,
     /*asset_type_info*/ nullptr,
 
     /*init_data*/ nullptr,
@@ -507,7 +509,7 @@ void WM_check(bContext *C)
   /* Case: file-read. */
   /* NOTE: this runs in background mode to set the screen context cb. */
   if ((wm->init_flag & WM_INIT_FLAG_WINDOW) == 0) {
-    ED_screens_init(bmain, wm);
+    ED_screens_init(C, bmain, wm);
     wm->init_flag |= WM_INIT_FLAG_WINDOW;
   }
 }

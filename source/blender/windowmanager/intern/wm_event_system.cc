@@ -137,6 +137,35 @@ static void wm_event_state_update_and_click_set_ex(wmEvent *event,
                                                    const bool check_double_click);
 
 /* -------------------------------------------------------------------- */
+/** \name Private Utilities
+ * \{ */
+
+/**
+ * Return true if `region` exists in any screen.
+ * Note that `region` may be freed memory so it's contents should never be read.
+ */
+static bool screen_temp_region_exists(const ARegion *region)
+{
+  /* TODO(@ideasman42): this function would ideally not be needed.
+   * It avoids problems restoring the #bContext::wm::region_popup
+   * when it's not known if the popup was removed, however it would be better to
+   * resolve this by ensuring the contexts previous state never references stale data.
+   *
+   * This could be done using a context "stack" allowing freeing windowing data to clear
+   * references at all levels in the stack. */
+
+  Main *bmain = G_MAIN;
+  LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+    if (BLI_findindex(&screen->regionbase, region) != -1) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Event Management
  * \{ */
 
@@ -144,7 +173,7 @@ wmEvent *wm_event_add_ex(wmWindow *win,
                          const wmEvent *event_to_add,
                          const wmEvent *event_to_add_after)
 {
-  wmEvent *event = MEM_new<wmEvent>(__func__);
+  wmEvent *event = MEM_cnew<wmEvent>(__func__);
 
   *event = *event_to_add;
 
@@ -349,7 +378,7 @@ void WM_event_add_notifier_ex(wmWindowManager *wm, const wmWindow *win, uint typ
   if (BLI_gset_ensure_p_ex(wm->notifier_queue_set, &note_test, &note_p)) {
     return;
   }
-  wmNotifier *note = MEM_new<wmNotifier>(__func__);
+  wmNotifier *note = MEM_cnew<wmNotifier>(__func__);
   *note = note_test;
   *note_p = note;
   BLI_addtail(&wm->notifier_queue, note);
@@ -545,10 +574,10 @@ void wm_event_do_notifiers(bContext *C)
       if (note->category == NC_WM) {
         if (ELEM(note->data, ND_FILEREAD, ND_FILESAVE)) {
           wm->file_saved = 1;
-          wm_window_title(wm, win);
+          WM_window_title(wm, win);
         }
         else if (note->data == ND_DATACHANGED) {
-          wm_window_title(wm, win);
+          WM_window_title(wm, win);
         }
         else if (note->data == ND_UNDO) {
           ED_preview_restart_queue_work(C);
@@ -784,7 +813,7 @@ static eHandlerActionFlag wm_handler_ui_call(bContext *C,
 {
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = CTX_wm_region(C);
-  ARegion *menu = CTX_wm_menu(C);
+  ARegion *region_popup = CTX_wm_region_popup(C);
   static bool do_wheel_ui = true;
   const bool is_wheel = ELEM(event->type, WHEELUPMOUSE, WHEELDOWNMOUSE, MOUSEPAN);
 
@@ -820,8 +849,9 @@ static eHandlerActionFlag wm_handler_ui_call(bContext *C,
   if (handler->context.region) {
     CTX_wm_region_set(C, handler->context.region);
   }
-  if (handler->context.menu) {
-    CTX_wm_menu_set(C, handler->context.menu);
+  if (handler->context.region_popup) {
+    BLI_assert(screen_temp_region_exists(handler->context.region_popup));
+    CTX_wm_region_popup_set(C, handler->context.region_popup);
   }
 
   int retval = handler->handle_fn(C, event, handler->user_data);
@@ -830,13 +860,14 @@ static eHandlerActionFlag wm_handler_ui_call(bContext *C,
   if ((retval != WM_UI_HANDLER_BREAK) || always_pass) {
     CTX_wm_area_set(C, area);
     CTX_wm_region_set(C, region);
-    CTX_wm_menu_set(C, menu);
+    BLI_assert((region_popup == nullptr) || screen_temp_region_exists(region_popup));
+    CTX_wm_region_popup_set(C, region_popup);
   }
   else {
     /* This special cases is for areas and regions that get removed. */
     CTX_wm_area_set(C, nullptr);
     CTX_wm_region_set(C, nullptr);
-    CTX_wm_menu_set(C, nullptr);
+    CTX_wm_region_popup_set(C, nullptr);
   }
 
   if (retval == WM_UI_HANDLER_BREAK) {
@@ -992,8 +1023,8 @@ static intptr_t wm_operator_register_active_id(const wmWindowManager *wm)
 bool WM_operator_poll(bContext *C, wmOperatorType *ot)
 {
 
-  LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-    wmOperatorType *ot_macro = WM_operatortype_find(macro->idname, false);
+  LISTBASE_FOREACH (wmOperatorTypeMacro *, otmacro, &ot->macro) {
+    wmOperatorType *ot_macro = WM_operatortype_find(otmacro->idname, false);
 
     if (!WM_operator_poll(C, ot_macro)) {
       return false;
@@ -1022,8 +1053,8 @@ bool WM_operator_ui_poll(wmOperatorType *ot, PointerRNA *ptr)
 {
   if (ot->macro.first != nullptr) {
     /* For macros, check all have exec() we can call. */
-    LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-      wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
+    LISTBASE_FOREACH (wmOperatorTypeMacro *, otmacro, &ot->macro) {
+      wmOperatorType *otm = WM_operatortype_find(otmacro->idname, false);
       if (otm && WM_operator_ui_poll(otm, ptr)) {
         return true;
       }
@@ -1332,8 +1363,8 @@ bool WM_operator_repeat_check(const bContext * /*C*/, wmOperator *op)
   }
   if (op->opm) {
     /* For macros, check all have exec() we can call. */
-    LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &op->opm->type->macro) {
-      wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
+    LISTBASE_FOREACH (wmOperatorTypeMacro *, otmacro, &op->opm->type->macro) {
+      wmOperatorType *otm = WM_operatortype_find(otmacro->idname, false);
       if (otm && otm->exec == nullptr) {
         return false;
       }
@@ -1363,8 +1394,9 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
                                       PointerRNA *properties,
                                       ReportList *reports)
 {
-  /* Operator-type names are static still. pass to allocation name for debugging. */
-  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  /* Operator-type names are static still (for C++ defined operators).
+   * Pass to allocation name for debugging. */
+  wmOperator *op = MEM_cnew<wmOperator>(ot->rna_ext.srna ? __func__ : ot->idname);
 
   /* Adding new operator could be function, only happens here now. */
   op->type = ot;
@@ -1427,9 +1459,9 @@ static wmOperator *wm_operator_create(wmWindowManager *wm,
       RNA_STRUCT_END;
     }
     else {
-      LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-        wmOperatorType *otm = WM_operatortype_find(macro->idname, false);
-        wmOperator *opm = wm_operator_create(wm, otm, macro->ptr, nullptr);
+      LISTBASE_FOREACH (wmOperatorTypeMacro *, otmacro, &ot->macro) {
+        wmOperatorType *otm = WM_operatortype_find(otmacro->idname, false);
+        wmOperator *opm = wm_operator_create(wm, otm, otmacro->ptr, nullptr);
 
         BLI_addtail(&motherop->macro, opm);
         opm->opm = motherop; /* Pointer to mom, for modal(). */
@@ -1970,8 +2002,8 @@ void WM_operator_name_call_ptr_with_depends_on_cursor(bContext *C,
 {
   bool depends_on_cursor = WM_operator_depends_on_cursor(*C, *ot, properties);
 
-  LISTBASE_FOREACH (wmOperatorTypeMacro *, macro, &ot->macro) {
-    if (wmOperatorType *otm = WM_operatortype_find(macro->idname, false)) {
+  LISTBASE_FOREACH (wmOperatorTypeMacro *, otmacro, &ot->macro) {
+    if (wmOperatorType *otm = WM_operatortype_find(otmacro->idname, false)) {
       if (WM_operator_depends_on_cursor(*C, *otm, properties)) {
         depends_on_cursor = true;
       }
@@ -2188,9 +2220,9 @@ void WM_event_remove_handlers(bContext *C, ListBase *handlers)
       wmEventHandler_UI *handler = (wmEventHandler_UI *)handler_base;
 
       if (handler->remove_fn) {
-        ScrArea *area = CTX_wm_area(C);
-        ARegion *region = CTX_wm_region(C);
-        ARegion *menu = CTX_wm_menu(C);
+        ScrArea *area_prev = CTX_wm_area(C);
+        ARegion *region_prev = CTX_wm_region(C);
+        ARegion *region_popup_prev = CTX_wm_region_popup(C);
 
         if (handler->context.area) {
           CTX_wm_area_set(C, handler->context.area);
@@ -2198,15 +2230,22 @@ void WM_event_remove_handlers(bContext *C, ListBase *handlers)
         if (handler->context.region) {
           CTX_wm_region_set(C, handler->context.region);
         }
-        if (handler->context.menu) {
-          CTX_wm_menu_set(C, handler->context.menu);
+        if (handler->context.region_popup) {
+          BLI_assert(screen_temp_region_exists(handler->context.region_popup));
+          CTX_wm_region_popup_set(C, handler->context.region_popup);
         }
 
         handler->remove_fn(C, handler->user_data);
 
-        CTX_wm_area_set(C, area);
-        CTX_wm_region_set(C, region);
-        CTX_wm_menu_set(C, menu);
+        /* Currently we don't have a practical way to check if this region
+         * was a temporary region created by `handler`, so do a full lookup. */
+        if (region_popup_prev && !screen_temp_region_exists(region_popup_prev)) {
+          region_popup_prev = nullptr;
+        }
+
+        CTX_wm_area_set(C, area_prev);
+        CTX_wm_region_set(C, region_prev);
+        CTX_wm_region_popup_set(C, region_popup_prev);
       }
     }
 
@@ -2425,6 +2464,32 @@ static void wm_event_modalkeymap_end(wmEvent *event, const wmEvent_ModalMapStore
   if (event_backup->dbl_click_disabled) {
     event->val = KM_DBL_CLICK;
   }
+}
+
+/**
+ * Insert modal operator into list of modal handlers, respecting priority.
+ */
+static void wm_handler_operator_insert(wmWindow *win, wmEventHandler_Op *handler)
+{
+  if (!(handler->op->type->flag & OPTYPE_MODAL_PRIORITY)) {
+    /* Keep priority operators in front. */
+    wmEventHandler *last_priority_handler = nullptr;
+    LISTBASE_FOREACH (wmEventHandler *, handler_iter, &win->modalhandlers) {
+      if (handler_iter->type == WM_HANDLER_TYPE_OP) {
+        wmEventHandler_Op *handler_iter_op = (wmEventHandler_Op *)handler_iter;
+        if (handler_iter_op->op->type->flag & OPTYPE_MODAL_PRIORITY) {
+          last_priority_handler = handler_iter;
+        }
+      }
+    }
+
+    if (last_priority_handler) {
+      BLI_insertlinkafter(&win->modalhandlers, last_priority_handler, handler);
+      return;
+    }
+  }
+
+  BLI_addhead(&win->modalhandlers, handler);
 }
 
 /**
@@ -2656,8 +2721,8 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
       const int window_center[2] = {
-          WM_window_pixels_x(win) / 2,
-          WM_window_pixels_y(win) / 2,
+          WM_window_native_pixel_x(win) / 2,
+          WM_window_native_pixel_y(win) / 2,
       };
 
       const rcti window_rect = {
@@ -4335,7 +4400,7 @@ void WM_event_add_fileselect(bContext *C, wmOperator *op)
   handler->context.area = root_area;
   handler->context.region = root_region;
 
-  BLI_addhead(&root_win->modalhandlers, handler);
+  wm_handler_operator_insert(root_win, handler);
 
   /* Check props once before invoking if check is available
    * ensures initial properties are valid. */
@@ -4438,7 +4503,7 @@ wmEventHandler_Op *WM_event_add_modal_handler_ex(wmWindow *win,
   handler->context.region_type = handler->context.region ? handler->context.region->regiontype :
                                                            -1;
 
-  BLI_addhead(&win->modalhandlers, handler);
+  wm_handler_operator_insert(win, handler);
 
   if (op->type->modalkeymap) {
     WM_window_status_area_tag_redraw(win);
@@ -4510,6 +4575,20 @@ void WM_event_modal_handler_region_replace(wmWindow *win,
       if ((handler->context.region == old_region) && (handler->is_fileselect == false)) {
         handler->context.region = new_region;
         handler->context.region_type = new_region ? new_region->regiontype : int(RGN_TYPE_WINDOW);
+      }
+    }
+  }
+}
+
+void WM_event_ui_handler_region_popup_replace(wmWindow *win,
+                                              const ARegion *old_region,
+                                              ARegion *new_region)
+{
+  LISTBASE_FOREACH (wmEventHandler *, handler_base, &win->modalhandlers) {
+    if (handler_base->type == WM_HANDLER_TYPE_UI) {
+      wmEventHandler_UI *handler = (wmEventHandler_UI *)handler_base;
+      if (handler->context.region_popup == old_region) {
+        handler->context.region_popup = new_region;
       }
     }
   }
@@ -4779,12 +4858,12 @@ wmEventHandler_UI *WM_event_add_ui_handler(const bContext *C,
   if (C) {
     handler->context.area = CTX_wm_area(C);
     handler->context.region = CTX_wm_region(C);
-    handler->context.menu = CTX_wm_menu(C);
+    handler->context.region_popup = CTX_wm_region_popup(C);
   }
   else {
     handler->context.area = nullptr;
     handler->context.region = nullptr;
-    handler->context.menu = nullptr;
+    handler->context.region_popup = nullptr;
   }
 
   BLI_assert((flag & WM_HANDLER_DO_FREE) == 0);
@@ -4907,6 +4986,106 @@ void WM_event_add_mousemove(wmWindow *win)
 /* -------------------------------------------------------------------- */
 /** \name Ghost Event Conversion
  * \{ */
+
+#ifdef WITH_INPUT_NDOF
+/**
+ * \return The WM enum for NDOF button or #EVENT_NONE (which should be ignored)
+ */
+static int wm_event_type_from_ndof_button(GHOST_NDOF_ButtonT button)
+{
+#  define CASE_NDOF_BUTTON(button) \
+    case GHOST_NDOF_BUTTON_##button: \
+      return NDOF_BUTTON_##button
+
+#  define CASE_NDOF_BUTTON_IGNORE(button) \
+    case GHOST_NDOF_BUTTON_##button: \
+      break;
+
+  switch (button) {
+    CASE_NDOF_BUTTON(MENU);
+    CASE_NDOF_BUTTON(FIT);
+    CASE_NDOF_BUTTON(TOP);
+    CASE_NDOF_BUTTON(LEFT);
+    CASE_NDOF_BUTTON(RIGHT);
+    CASE_NDOF_BUTTON(FRONT);
+    CASE_NDOF_BUTTON(BOTTOM);
+    CASE_NDOF_BUTTON(BACK);
+    CASE_NDOF_BUTTON(ROLL_CW);
+    CASE_NDOF_BUTTON(ROLL_CCW);
+    CASE_NDOF_BUTTON(ISO1);
+    CASE_NDOF_BUTTON(ISO2);
+    CASE_NDOF_BUTTON(1);
+    CASE_NDOF_BUTTON(2);
+    CASE_NDOF_BUTTON(3);
+    CASE_NDOF_BUTTON(4);
+    CASE_NDOF_BUTTON(5);
+    CASE_NDOF_BUTTON(6);
+    CASE_NDOF_BUTTON(7);
+    CASE_NDOF_BUTTON(8);
+    CASE_NDOF_BUTTON(9);
+    CASE_NDOF_BUTTON(10);
+    CASE_NDOF_BUTTON(11);
+    CASE_NDOF_BUTTON(12);
+    CASE_NDOF_BUTTON(ROTATE);
+    CASE_NDOF_BUTTON(PANZOOM);
+    CASE_NDOF_BUTTON(DOMINANT);
+    CASE_NDOF_BUTTON(PLUS);
+    CASE_NDOF_BUTTON(MINUS);
+    CASE_NDOF_BUTTON(SPIN_CW);
+    CASE_NDOF_BUTTON(SPIN_CCW);
+    CASE_NDOF_BUTTON(TILT_CW);
+    CASE_NDOF_BUTTON(TILT_CCW);
+    CASE_NDOF_BUTTON(V1);
+    CASE_NDOF_BUTTON(V2);
+    CASE_NDOF_BUTTON(V3);
+    CASE_NDOF_BUTTON(SAVE_V1);
+    CASE_NDOF_BUTTON(SAVE_V2);
+    CASE_NDOF_BUTTON(SAVE_V3);
+
+    /* Disabled as GHOST converts these to keyboard events
+     * which use regular keyboard event handling logic. */
+    /* Keyboard emulation. */
+    CASE_NDOF_BUTTON_IGNORE(ESC);
+    CASE_NDOF_BUTTON_IGNORE(ENTER);
+    CASE_NDOF_BUTTON_IGNORE(DELETE);
+    CASE_NDOF_BUTTON_IGNORE(TAB);
+    CASE_NDOF_BUTTON_IGNORE(SPACE);
+    CASE_NDOF_BUTTON_IGNORE(ALT);
+    CASE_NDOF_BUTTON_IGNORE(SHIFT);
+    CASE_NDOF_BUTTON_IGNORE(CTRL);
+
+    CASE_NDOF_BUTTON_IGNORE(KBP_F1);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F2);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F3);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F4);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F5);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F6);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F7);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F8);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F9);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F10);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F11);
+    CASE_NDOF_BUTTON_IGNORE(KBP_F12);
+
+    CASE_NDOF_BUTTON_IGNORE(NP_F1);
+    CASE_NDOF_BUTTON_IGNORE(NP_F2);
+    CASE_NDOF_BUTTON_IGNORE(NP_F3);
+    CASE_NDOF_BUTTON_IGNORE(NP_F4);
+
+    /* Quiet switch warnings. */
+    CASE_NDOF_BUTTON_IGNORE(NONE);
+    CASE_NDOF_BUTTON_IGNORE(INVALID);
+    CASE_NDOF_BUTTON_IGNORE(USER);
+  }
+
+#  undef CASE_NDOF_BUTTON
+#  undef CASE_NDOF_BUTTON_IGNORE
+
+  CLOG_WARN(WM_LOG_EVENTS, "unknown event type %d from ndof button", int(button));
+  return EVENT_NONE;
+}
+
+#endif /* WITH_INPUT_NDOF */
 
 /**
  * \return The WM enum for key or #EVENT_NONE (which should be ignored).
@@ -5240,8 +5419,8 @@ static wmWindow *wm_event_cursor_other_windows(wmWindowManager *wm, wmWindow *wi
 
   /* Check if outside, include top window bar. */
   int event_xy[2] = {UNPACK2(event->xy)};
-  if (event_xy[0] < 0 || event_xy[1] < 0 || event_xy[0] > WM_window_pixels_x(win) ||
-      event_xy[1] > WM_window_pixels_y(win) + 30)
+  if (event_xy[0] < 0 || event_xy[1] < 0 || event_xy[0] > WM_window_native_pixel_x(win) ||
+      event_xy[1] > WM_window_native_pixel_y(win) + 30)
   {
     /* Let's skip windows having modal handlers now. */
     /* Potential XXX ugly... I wouldn't have added a `modalhandlers` list
@@ -5929,8 +6108,7 @@ void wm_event_add_ghostevent(wmWindowManager *wm,
     case GHOST_kEventNDOFButton: {
       const GHOST_TEventNDOFButtonData *e = static_cast<const GHOST_TEventNDOFButtonData *>(
           customdata);
-
-      event.type = NDOF_BUTTON_INDEX_AS_EVENT(e->button);
+      event.type = wm_event_type_from_ndof_button(static_cast<GHOST_NDOF_ButtonT>(e->button));
 
       switch (e->action) {
         case GHOST_kPress:

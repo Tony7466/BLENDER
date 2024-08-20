@@ -53,8 +53,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *count_socket = static_cast<bNodeSocket *>(node->inputs.first)->next->next;
   bNodeSocket *length_socket = count_socket->next;
 
-  bke::nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
-  bke::nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
+  bke::node_set_socket_availability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
+  bke::node_set_socket_availability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -84,8 +84,8 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
           using namespace blender::bke::greasepencil;
           for (const int layer_index : grease_pencil->layers().index_range()) {
-            Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
-                                                                              layer_index);
+            Drawing *drawing = grease_pencil->get_eval_drawing(*grease_pencil->layer(layer_index));
+
             if (drawing == nullptr) {
               continue;
             }
@@ -116,8 +116,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
           using namespace blender::bke::greasepencil;
           for (const int layer_index : grease_pencil->layers().index_range()) {
-            Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
-                                                                              layer_index);
+            Drawing *drawing = grease_pencil->get_eval_drawing(*grease_pencil->layer(layer_index));
             if (drawing == nullptr) {
               continue;
             }
@@ -147,8 +146,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
           using namespace blender::bke::greasepencil;
           for (const int layer_index : grease_pencil->layers().index_range()) {
-            Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(*grease_pencil,
-                                                                              layer_index);
+            Drawing *drawing = grease_pencil->get_eval_drawing(*grease_pencil->layer(layer_index));
             if (drawing == nullptr) {
               continue;
             }
@@ -201,17 +199,17 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_RESAMPLE_CURVE, "Resample Curve", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryCurveResample", node_free_standard_storage, node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

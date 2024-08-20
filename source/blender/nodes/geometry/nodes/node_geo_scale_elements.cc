@@ -69,7 +69,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const GeometryNodeScaleElementsMode mode = GeometryNodeScaleElementsMode(node->custom2);
   const bool use_single_axis = mode == GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS;
 
-  bke::nodeSetSocketAvailability(ntree, axis_socket, use_single_axis);
+  bke::node_set_socket_availability(ntree, axis_socket, use_single_axis);
 }
 
 static Array<int> create_reverse_offsets(const Span<int> indices, const int items_num)
@@ -570,7 +570,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SCALE_ELEMENTS, "Scale Elements", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
@@ -578,7 +578,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

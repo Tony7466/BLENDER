@@ -406,8 +406,8 @@ void AnimationImporter::Assign_transform_animations(
           fcurve_deg_to_rad(fcu);
         }
       }
-      COLLADAFW::Rotate *rot = (COLLADAFW::Rotate *)transform;
-      COLLADABU::Math::Vector3 &axis = rot->getRotationAxis();
+      const COLLADAFW::Rotate *rot = (COLLADAFW::Rotate *)transform;
+      const COLLADABU::Math::Vector3 &axis = rot->getRotationAxis();
 
       switch (binding->animationClass) {
         case COLLADAFW::AnimationList::ANGLE: {
@@ -1336,7 +1336,7 @@ bool AnimationImporter::evaluate_animation(COLLADAFW::Transformation *tm,
         COLLADABU::Math::Matrix4 matrix;
         int mi = 0, mj = 0;
 
-        for (FCurve *curve : curves) {
+        for (const FCurve *curve : curves) {
           matrix.setElement(mi, mj, evaluate_fcurve(curve, fra));
           mj++;
           if (mj == 4) {
