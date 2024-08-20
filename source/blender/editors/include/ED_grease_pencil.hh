@@ -81,9 +81,11 @@ blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSetting
 
 namespace blender::ed::greasepencil {
 
-enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
+enum class ReprojectMode : int8_t { Front, Side, Top, View, Cursor, Surface, Keep };
 
-enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
+enum class DrawingPlacementDepth : int8_t { ObjectOrigin, Cursor, Surface, NearestStroke };
+
+enum class DrawingPlacementPlane : int8_t { View, Front, Side, Top, Cursor };
 
 class DrawingPlacement {
   const ARegion *region_;
@@ -109,6 +111,16 @@ class DrawingPlacement {
                    const View3D &view3d,
                    const Object &eval_object,
                    const bke::greasepencil::Layer *layer);
+
+  /**
+   * Construct the object based on a ReprojectMode enum instead of Scene values.
+   */
+  DrawingPlacement(const Scene &scene,
+                   const ARegion &region,
+                   const View3D &view3d,
+                   const Object &eval_object,
+                   const bke::greasepencil::Layer *layer,
+                   ReprojectMode reproject_mode);
   DrawingPlacement(const DrawingPlacement &other);
   DrawingPlacement(DrawingPlacement &&other);
   DrawingPlacement &operator=(const DrawingPlacement &other);
@@ -422,6 +434,11 @@ struct PointTransferData {
   float factor;
   bool is_src_point;
   bool is_cut;
+  /* Additional attributes changes that can be stored to be used after a call to
+   * compute_topology_change.
+   * Note that they won't be automatically updated in the destination's attributes.
+   */
+  float opacity;
 
   /**
    * Source point is the last of the curve.

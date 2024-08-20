@@ -1332,8 +1332,9 @@ void RNA_api_ui_layout(StructRNA *srna)
                                   "Item. Exposes an RNA item and places it into the layout.");
   api_ui_item_rna_common(func);
   api_ui_item_common(func);
-  RNA_def_string(
+  PropertyRNA *prop = RNA_def_string(
       func, "placeholder", nullptr, 0, "", "Hint describing the expected value when empty");
+  RNA_def_property_clear_flag(prop, PROP_NEVER_NULL);
   RNA_def_boolean(func, "expand", false, "", "Expand button to show more detail");
   RNA_def_boolean(func, "slider", false, "", "Use slider widget for numeric values");
   RNA_def_int(func,
@@ -2232,7 +2233,7 @@ void RNA_api_ui_layout(StructRNA *srna)
                         0,
                         "",
                         "Identifier of this asset view. Necessary to tell apart different asset "
-                        "views and to idenify an asset view read from a .blend");
+                        "views and to identify an asset view read from a .blend");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(func,
                          "asset_library_dataptr",
