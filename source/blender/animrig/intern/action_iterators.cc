@@ -24,11 +24,10 @@ void action_foreach_fcurve(Action &action,
   else if (action.is_action_layered()) {
     for (Layer *layer : action.layers()) {
       for (Strip *strip : layer->strips()) {
-        if (!strip->is<KeyframeStrip>()) {
+        if (!strip->is_keyframe_strip()) {
           continue;
         }
-        KeyframeStrip &key_strip = strip->as<KeyframeStrip>();
-        for (ChannelBag *bag : key_strip.channelbags()) {
+        for (ChannelBag *bag : strip->keyframe_data().channelbags()) {
           if (bag->slot_handle != handle) {
             continue;
           }

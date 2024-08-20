@@ -71,21 +71,25 @@ static animrig::Layer &ActionLayer_alloc()
   ActionLayer *layer = DNA_struct_default_alloc(ActionLayer);
   return layer->wrap();
 }
-static animrig::Strip &ActionStrip_alloc_infinite(const Strip::Type type)
+static animrig::Strip &ActionStrip_alloc_infinite(bAction *owning_action, const Strip::Type type)
 {
-  ActionStrip *strip = nullptr;
+  ActionStrip *strip = MEM_new<ActionStrip>(__func__);
+
+  /* Copy the default ActionStrip fields into the allocated data-block. */
+  memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
+
+  strip->owning_action = owning_action;
+
   switch (type) {
     case Strip::Type::Keyframe: {
-      KeyframeActionStrip *key_strip = MEM_new<KeyframeActionStrip>(__func__);
-      strip = &key_strip->strip;
+      strip->strip_type = type;
+      strip->data_index = owning_action->new_strip_keyframe_data();
       break;
     }
   }
 
-  BLI_assert_msg(strip, "unsupported strip type");
+  BLI_assert_msg(strip->data_index != -1, "unsupported strip type");
 
-  /* Copy the default ActionStrip fields into the allocated data-block. */
-  memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
   return strip->wrap();
 }
 
@@ -218,9 +222,9 @@ void Action::layer_keystrip_ensure()
     layer = this->layer(0);
   }
 
-  /* Ensure a KeyframeStrip. */
+  /* Ensure a keyframe Strip. */
   if (layer->strips().is_empty()) {
-    layer->strip_add<KeyframeStrip>();
+    layer->strip_add(Strip::Type::Keyframe);
   }
 
   /* Within the limits of Baklava Phase 1, the above code should not have
@@ -482,6 +486,29 @@ bool Action::is_slot_animated(const slot_handle_t slot_handle) const
   return !fcurves.is_empty();
 }
 
+int Action::new_strip_keyframe_data()
+{
+  ActionStripKeyframeData *data = MEM_new<ActionStripKeyframeData>(__func__);
+
+  grow_array_and_append<::ActionLayer *>(
+      &this->strip_keyframe_data_array, &this->strip_keyframe_data_num, data);
+
+  return this->strip_keyframe_data_num - 1;
+}
+
+Span<const StripKeyframeData *> Action::strip_keyframe_data() const
+{
+  return blender::Span<StripKeyframeData *>{
+      reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
+      this->strip_keyframe_data_num};
+}
+Span<StripKeyframeData *> Action::strip_keyframe_data()
+{
+  return blender::MutableSpan<StripKeyframeData *>{
+      reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
+      this->strip_keyframe_data_num};
+}
+
 Layer *Action::get_layer_for_keyframing()
 {
   assert_baklava_phase_1_invariants(*this);
@@ -628,7 +655,7 @@ Strip *Layer::strip(const int64_t index)
 
 Strip &Layer::strip_add(const Strip::Type strip_type)
 {
-  Strip &strip = ActionStrip_alloc_infinite(strip_type);
+  Strip &strip = ActionStrip_alloc_infinite(this->owning_action, strip_type);
 
   /* Add the new strip to the strip array. */
   grow_array_and_append<::ActionStrip *>(&this->strip_array, &this->strip_array_num, &strip);
@@ -934,27 +961,27 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 
 /* ----- ActionStrip implementation ----------- */
 
-Strip *Strip::duplicate(const StringRefNull allocation_name) const
-{
-  switch (this->type()) {
-    case Type::Keyframe: {
-      const KeyframeStrip &source = this->as<KeyframeStrip>();
-      KeyframeStrip *copy = MEM_new<KeyframeStrip>(allocation_name.c_str(), source);
-      return &copy->strip.wrap();
-    }
-  }
-  BLI_assert_unreachable();
-  return nullptr;
-}
+// Strip *Strip::duplicate(const StringRefNull allocation_name) const
+// {
+//   switch (this->type()) {
+//     case Type::Keyframe: {
+//       const KeyframeStrip &source = this->as<KeyframeStrip>();
+//       KeyframeStrip *copy = MEM_new<KeyframeStrip>(allocation_name.c_str(), source);
+//       return &copy->strip.wrap();
+//     }
+//   }
+//   BLI_assert_unreachable();
+//   return nullptr;
+// }
 
 Strip::~Strip()
 {
-  switch (this->type()) {
-    case Type::Keyframe:
-      this->as<KeyframeStrip>().~KeyframeStrip();
-      return;
-  }
-  BLI_assert_unreachable();
+  // switch (this->type()) {
+  //   case Type::Keyframe:
+  //     this->as<KeyframeStrip>().~KeyframeStrip();
+  //     return;
+  // }
+  // BLI_assert_unreachable();
 }
 
 bool Strip::is_infinite() const
@@ -986,9 +1013,24 @@ void Strip::resize(const float frame_start, const float frame_end)
   this->frame_end = frame_end;
 }
 
-/* ----- KeyframeActionStrip implementation ----------- */
+const StripKeyframeData &Strip::keyframe_data() const
+{
+  BLI_assert(this->owning_action != nullptr);
+  BLI_assert(this->strip_type == animrig::Strip::Type::Keyframe);
 
-KeyframeStrip::KeyframeStrip(const KeyframeStrip &other)
+  return *strip.owning_action->wrap().strip_keyframe_data()[strip.data_index];
+}
+StripKeyframeData &Strip::keyframe_data()
+{
+  BLI_assert(this->owning_action != nullptr);
+  BLI_assert(this->strip_type == animrig::Strip::Type::Keyframe);
+
+  return *strip.owning_action->wrap().strip_keyframe_data()[strip.data_index];
+}
+
+/* ----- ActionStripKeyframeData implementation ----------- */
+
+StripKeyframeData::StripKeyframeData(const StripKeyframeData &other)
 {
   memcpy(this, &other, sizeof(*this));
 
@@ -1000,7 +1042,7 @@ KeyframeStrip::KeyframeStrip(const KeyframeStrip &other)
   }
 }
 
-KeyframeStrip::~KeyframeStrip()
+StripKeyframeData::~StripKeyframeData()
 {
   for (ChannelBag *channelbag_for_slot : this->channelbags()) {
     MEM_delete(channelbag_for_slot);
@@ -1009,47 +1051,47 @@ KeyframeStrip::~KeyframeStrip()
   this->channelbag_array_num = 0;
 }
 
-template<> bool Strip::is<KeyframeStrip>() const
-{
-  return this->type() == KeyframeStrip::TYPE;
-}
+// template<> bool Strip::is<KeyframeStrip>() const
+// {
+//   return this->type() == KeyframeStrip::TYPE;
+// }
 
-template<> KeyframeStrip &Strip::as<KeyframeStrip>()
-{
-  BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
-  return *reinterpret_cast<KeyframeStrip *>(this);
-}
+// template<> KeyframeStrip &Strip::as<KeyframeStrip>()
+// {
+//   BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
+//   return *reinterpret_cast<KeyframeStrip *>(this);
+// }
 
-template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const
-{
-  BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
-  return *reinterpret_cast<const KeyframeStrip *>(this);
-}
+// template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const
+// {
+//   BLI_assert_msg(this->is<KeyframeStrip>(), "Strip is not a KeyframeStrip");
+//   return *reinterpret_cast<const KeyframeStrip *>(this);
+// }
 
-KeyframeStrip::operator Strip &()
-{
-  return this->strip.wrap();
-}
+// KeyframeStrip::operator Strip &()
+// {
+//   return this->strip.wrap();
+// }
 
-blender::Span<const ChannelBag *> KeyframeStrip::channelbags() const
+blender::Span<const ChannelBag *> StripKeyframeData::channelbags() const
 {
   return blender::Span<ChannelBag *>{reinterpret_cast<ChannelBag **>(this->channelbag_array),
                                      this->channelbag_array_num};
 }
-blender::MutableSpan<ChannelBag *> KeyframeStrip::channelbags()
+blender::MutableSpan<ChannelBag *> StripKeyframeData::channelbags()
 {
   return blender::MutableSpan<ChannelBag *>{
       reinterpret_cast<ChannelBag **>(this->channelbag_array), this->channelbag_array_num};
 }
-const ChannelBag *KeyframeStrip::channelbag(const int64_t index) const
+const ChannelBag *StripKeyframeData::channelbag(const int64_t index) const
 {
   return &this->channelbag_array[index]->wrap();
 }
-ChannelBag *KeyframeStrip::channelbag(const int64_t index)
+ChannelBag *StripKeyframeData::channelbag(const int64_t index)
 {
   return &this->channelbag_array[index]->wrap();
 }
-const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle) const
+const ChannelBag *StripKeyframeData::channelbag_for_slot(const slot_handle_t slot_handle) const
 {
   for (const ChannelBag *channels : this->channelbags()) {
     if (channels->slot_handle == slot_handle) {
@@ -1058,7 +1100,7 @@ const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_ha
   }
   return nullptr;
 }
-int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag) const
+int64_t StripKeyframeData::find_channelbag_index(const ChannelBag &channelbag) const
 {
   for (int64_t index = 0; index < this->channelbag_array_num; index++) {
     if (this->channelbag(index) == &channelbag) {
@@ -1067,22 +1109,22 @@ int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag) const
   }
   return -1;
 }
-ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_handle)
+ChannelBag *StripKeyframeData::channelbag_for_slot(const slot_handle_t slot_handle)
 {
-  const auto *const_this = const_cast<const KeyframeStrip *>(this);
+  const auto *const_this = const_cast<const StripKeyframeData *>(this);
   const auto *const_channels = const_this->channelbag_for_slot(slot_handle);
   return const_cast<ChannelBag *>(const_channels);
 }
-const ChannelBag *KeyframeStrip::channelbag_for_slot(const Slot &slot) const
+const ChannelBag *StripKeyframeData::channelbag_for_slot(const Slot &slot) const
 {
   return this->channelbag_for_slot(slot.handle);
 }
-ChannelBag *KeyframeStrip::channelbag_for_slot(const Slot &slot)
+ChannelBag *StripKeyframeData::channelbag_for_slot(const Slot &slot)
 {
   return this->channelbag_for_slot(slot.handle);
 }
 
-ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
+ChannelBag &StripKeyframeData::channelbag_for_slot_add(const Slot &slot)
 {
   BLI_assert_msg(channelbag_for_slot(slot) == nullptr,
                  "Cannot add chans-for-slot for already-registered slot");
@@ -1096,7 +1138,7 @@ ChannelBag &KeyframeStrip::channelbag_for_slot_add(const Slot &slot)
   return channels;
 }
 
-ChannelBag &KeyframeStrip::channelbag_for_slot_ensure(const Slot &slot)
+ChannelBag &StripKeyframeData::channelbag_for_slot_ensure(const Slot &slot)
 {
   ChannelBag *channel_bag = this->channelbag_for_slot(slot);
   if (channel_bag != nullptr) {
@@ -1111,7 +1153,7 @@ static void channelbag_ptr_destructor(ActionChannelBag **dna_channelbag_ptr)
   MEM_delete(&channelbag);
 };
 
-bool KeyframeStrip::channelbag_remove(ChannelBag &channelbag_to_remove)
+bool StripKeyframeData::channelbag_remove(ChannelBag &channelbag_to_remove)
 {
   const int64_t channelbag_index = this->find_channelbag_index(channelbag_to_remove);
   if (channelbag_index < 0) {
@@ -1199,12 +1241,12 @@ void ChannelBag::fcurves_clear()
   dna::array::clear(&this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_ptr_destructor);
 }
 
-SingleKeyingResult KeyframeStrip::keyframe_insert(Main *bmain,
-                                                  const Slot &slot,
-                                                  const FCurveDescriptor fcurve_descriptor,
-                                                  const float2 time_value,
-                                                  const KeyframeSettings &settings,
-                                                  const eInsertKeyFlags insert_key_flags)
+SingleKeyingResult StripKeyframeData::keyframe_insert(Main *bmain,
+                                                      const Slot &slot,
+                                                      const FCurveDescriptor fcurve_descriptor,
+                                                      const float2 time_value,
+                                                      const KeyframeSettings &settings,
+                                                      const eInsertKeyFlags insert_key_flags)
 {
   /* Get the fcurve, or create one if it doesn't exist and the keying flags
    * allow. */
@@ -1307,8 +1349,8 @@ static const animrig::ChannelBag *channelbag_for_action_slot(const Action &actio
     for (const animrig::Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case animrig::Strip::Type::Keyframe: {
-          const animrig::KeyframeStrip &key_strip = strip->as<animrig::KeyframeStrip>();
-          const animrig::ChannelBag *bag = key_strip.channelbag_for_slot(slot_handle);
+          const animrig::StripKeyframeData &data = strip->keyframe_data();
+          const animrig::ChannelBag *bag = data.channelbag_for_slot(slot_handle);
           if (bag) {
             return bag;
           }
@@ -1353,7 +1395,7 @@ template<typename ActionType,
          typename FCurveType,
          typename LayerType,
          typename StripType,
-         typename KeyframeStripType,
+         typename StripKeyframeDataType,
          typename ChannelBagType>
 static Vector<FCurveType *> fcurves_all_into(ActionType &action)
 {
@@ -1379,8 +1421,8 @@ static Vector<FCurveType *> fcurves_all_into(ActionType &action)
     for (StripType *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
-          KeyframeStripType &key_strip = strip->template as<KeyframeStrip>();
-          for (ChannelBagType *bag : key_strip.channelbags()) {
+          StripKeyframeData &data = strip->keyframe_data();
+          for (ChannelBagType *bag : data.channelbags()) {
             for (FCurveType *fcurve : bag->fcurves()) {
               all_fcurves.append(fcurve);
             }
@@ -1394,7 +1436,7 @@ static Vector<FCurveType *> fcurves_all_into(ActionType &action)
 
 Vector<FCurve *> fcurves_all(Action &action)
 {
-  return fcurves_all_into<Action, FCurve, Layer, Strip, KeyframeStrip, ChannelBag>(action);
+  return fcurves_all_into<Action, FCurve, Layer, Strip, StripKeyframeData, ChannelBag>(action);
 }
 
 Vector<const FCurve *> fcurves_all(const Action &action)
@@ -1403,7 +1445,7 @@ Vector<const FCurve *> fcurves_all(const Action &action)
                           const FCurve,
                           const Layer,
                           const Strip,
-                          const KeyframeStrip,
+                          const StripKeyframeData,
                           const ChannelBag>(action);
 }
 
@@ -1464,9 +1506,9 @@ FCurve *action_fcurve_ensure(Main *bmain,
     action.layer_keystrip_ensure();
 
     assert_baklava_phase_1_invariants(action);
-    KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
+    StripKeyframeData &strip_data = action.layer(0)->strip(0)->keyframe_data();
 
-    return &strip.channelbag_for_slot_ensure(slot).fcurve_ensure(bmain, fcurve_descriptor);
+    return &strip_data.channelbag_for_slot_ensure(slot).fcurve_ensure(bmain, fcurve_descriptor);
   }
 
   /* Try to find f-curve matching for this setting.
@@ -1537,8 +1579,8 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
       if (!(strip->type() == Strip::Type::Keyframe)) {
         continue;
       }
-      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
-      for (ChannelBag *bag : key_strip.channelbags()) {
+      StripKeyframeData &data = strip->keyframe_data();
+      for (ChannelBag *bag : data.channelbags()) {
         const bool removed = bag->fcurve_remove(fcu);
         if (removed) {
           return true;
@@ -1644,7 +1686,7 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Action &converted_action = dna_action->wrap();
   Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
-  KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
+  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
   BLI_assert(strip.channelbag_array_num == 0);
   ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
 

@@ -848,12 +848,12 @@ static SingleKeyingResult insert_key_layer(Main *bmain,
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->as<KeyframeStrip>().keyframe_insert(bmain,
-                                                    slot,
-                                                    {rna_path, key_data.array_index, prop_subtype},
-                                                    key_data.position,
-                                                    key_settings,
-                                                    insert_key_flags);
+  return strip->keyframe_data().keyframe_insert(bmain,
+                                                slot,
+                                                {rna_path, key_data.array_index, prop_subtype},
+                                                key_data.position,
+                                                key_settings,
+                                                insert_key_flags);
 }
 
 static CombinedKeyingResult insert_key_layered_action(Main *bmain,

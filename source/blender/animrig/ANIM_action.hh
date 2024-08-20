@@ -240,6 +240,19 @@ class Action : public ::bAction {
    */
   Slot *slot_active_get();
 
+  /**
+   * Strip data array access.
+   */
+  Span<const StripKeyframeData *> strip_keyframe_data() const;
+  Span<StripKeyframeData *> strip_keyframe_data();
+
+  /**
+   * Creates a new `StripKeyframeData` and appends it to the array.
+   *
+   * \return The index of the new item in the array.
+   */
+  int new_strip_keyframe_data();
+
   /** Assign this Action to the ID.
    *
    * \param slot: The slot this ID should be animated by, may be nullptr if it is to be
@@ -326,35 +339,17 @@ static_assert(sizeof(Action) == sizeof(::bAction),
 class Strip : public ::ActionStrip {
  public:
   /**
-   * Strip instances should not be created via this constructor. Create a sub-class like
-   * #KeyframeStrip instead.
-   *
-   * The reason is that various functions will assume that the `Strip` is actually a down-cast
-   * instance of another strip class, and that `Strip::type()` will say which type. To avoid having
-   * to explicitly deal with an 'invalid' type everywhere, creating a `Strip` directly is simply
-   * not allowed.
+   * Strips should never be directly constructed or copied. They should be
+   * created via the APIs on `Layer`, which ensure the strips are properly
+   * initialized and hooked up. Strips don't make sense outside the context of
+   * an owning `Layer` and owning `Action`.
    */
   Strip() = delete;
-
-  /**
-   * Strip cannot be duplicated via the copy constructor. Either use a concrete
-   * strip type's copy constructor, or use Strip::duplicate().
-   *
-   * The reason why the copy constructor won't work is due to the double nature
-   * of the inheritance at play here:
-   *
-   * C-style inheritance: `KeyframeActionStrip` "inherits" `ActionStrip"
-   *   by embedding the latter. This means that any `KeyframeActionStrip *`
-   *   can be reinterpreted as `ActionStrip *`.
-   *
-   * C++-style inheritance: the C++ wrappers inherit the DNA structs, so
-   *   `animrig::Strip` inherits `::ActionStrip`, and
-   *   `animrig::KeyframeStrip` inherits `::KeyframeActionStrip`.
-   */
   Strip(const Strip &other) = delete;
+
   ~Strip();
 
-  Strip *duplicate(StringRefNull allocation_name) const;
+  // Strip *duplicate(StringRefNull allocation_name) const;
 
   enum class Type : int8_t { Keyframe = 0 };
 
@@ -367,9 +362,9 @@ class Strip : public ::ActionStrip {
     return Type(this->strip_type);
   }
 
-  template<typename T> bool is() const;
-  template<typename T> T &as();
-  template<typename T> const T &as() const;
+  // template<typename T> bool is() const;
+  // template<typename T> T &as();
+  // template<typename T> const T &as() const;
 
   bool is_infinite() const;
   bool contains_frame(float frame_time) const;
@@ -383,6 +378,14 @@ class Strip : public ::ActionStrip {
    * (negative for frame_start, positive for frame_end) are supported.
    */
   void resize(float frame_start, float frame_end);
+
+  bool is_keyframe_strip() const
+  {
+    return this->type() == Type::Keyframe;
+  }
+
+  const StripKeyframeData &keyframe_data() const;
+  StripKeyframeData &keyframe_data();
 };
 static_assert(sizeof(Strip) == sizeof(::ActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -447,18 +450,18 @@ class Layer : public ::ActionLayer {
    */
   Strip &strip_add(Strip::Type strip_type);
 
-  /**
-   * Add a new strip of the type of T.
-   *
-   * T must be a concrete subclass of animrig::Strip.
-   *
-   * \see KeyframeStrip
-   */
-  template<typename T> T &strip_add()
-  {
-    Strip &strip = this->strip_add(T::TYPE);
-    return strip.as<T>();
-  }
+  // /**
+  //  * Add a new strip of the type of T.
+  //  *
+  //  * T must be a concrete subclass of animrig::Strip.
+  //  *
+  //  * \see KeyframeStrip
+  //  */
+  // template<typename T> T &strip_add()
+  // {
+  //   Strip &strip = this->strip_add(T::TYPE);
+  //   return strip.as<T>();
+  // }
 
   /**
    * Remove the strip from this layer.
@@ -617,25 +620,13 @@ static_assert(sizeof(Slot) == sizeof(::ActionSlot),
 ENUM_OPERATORS(Slot::Flags, Slot::Flags::Active);
 
 /**
- * KeyframeStrips effectively contain a bag of F-Curves for each Slot.
+ * Keyframe strips effectively contain a bag of F-Curves for each Slot.
  */
-class KeyframeStrip : public ::KeyframeActionStrip {
+class StripKeyframeData : public ::ActionStripKeyframeData {
  public:
-  /**
-   * Low-level strip type.
-   *
-   * Do not use this in comparisons directly, use Strip::as<KeyframeStrip>() or
-   * Strip::is<KeyframeStrip>() instead. This value is here only to make
-   * functions like those easier to write.
-   */
-  static constexpr Strip::Type TYPE = Strip::Type::Keyframe;
-
-  KeyframeStrip() = default;
-  KeyframeStrip(const KeyframeStrip &other);
-  ~KeyframeStrip();
-
-  /** Implicitly convert a KeyframeStrip& to a Strip&. */
-  operator Strip &();
+  StripKeyframeData() = default;
+  StripKeyframeData(const StripKeyframeData &other);
+  ~StripKeyframeData();
 
   /* ChannelBag array access. */
   blender::Span<const ChannelBag *> channelbags() const;
@@ -684,11 +675,11 @@ class KeyframeStrip : public ::KeyframeActionStrip {
                                      const KeyframeSettings &settings,
                                      eInsertKeyFlags insert_key_flags = INSERTKEY_NOFLAGS);
 };
-static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeActionStrip),
+static_assert(sizeof(StripKeyframeData) == sizeof(::ActionStripKeyframeData),
               "DNA struct and its C++ wrapper must have the same size");
 
-template<> KeyframeStrip &Strip::as<KeyframeStrip>();
-template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const;
+// template<> KeyframeStrip &Strip::as<KeyframeStrip>();
+// template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const;
 
 /**
  * Collection of F-Curves, intended for a specific Slot handle.
@@ -1035,13 +1026,13 @@ inline const blender::animrig::Strip &ActionStrip::wrap() const
   return *reinterpret_cast<const blender::animrig::Strip *>(this);
 }
 
-inline blender::animrig::KeyframeStrip &KeyframeActionStrip::wrap()
+inline blender::animrig::StripKeyframeData &ActionStripKeyframeData::wrap()
 {
-  return *reinterpret_cast<blender::animrig::KeyframeStrip *>(this);
+  return *reinterpret_cast<blender::animrig::StripKeyframeData *>(this);
 }
-inline const blender::animrig::KeyframeStrip &KeyframeActionStrip::wrap() const
+inline const blender::animrig::StripKeyframeData &ActionStripKeyframeData::wrap() const
 {
-  return *reinterpret_cast<const blender::animrig::KeyframeStrip *>(this);
+  return *reinterpret_cast<const blender::animrig::StripKeyframeData *>(this);
 }
 
 inline blender::animrig::ChannelBag &ActionChannelBag::wrap()

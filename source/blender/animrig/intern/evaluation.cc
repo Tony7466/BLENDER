@@ -130,12 +130,12 @@ static void animsys_write_orig_anim_rna(PointerRNA *ptr,
   }
 }
 
-static EvaluationResult evaluate_keyframe_strip(PointerRNA &animated_id_ptr,
-                                                KeyframeStrip &key_strip,
-                                                const slot_handle_t slot_handle,
-                                                const AnimationEvalContext &offset_eval_context)
+static EvaluationResult evaluate_keyframe_data(PointerRNA &animated_id_ptr,
+                                               StripKeyframeData &strip_data,
+                                               const slot_handle_t slot_handle,
+                                               const AnimationEvalContext &offset_eval_context)
 {
-  ChannelBag *channelbag_for_slot = key_strip.channelbag_for_slot(slot_handle);
+  ChannelBag *channelbag_for_slot = strip_data.channelbag_for_slot(slot_handle);
   if (!channelbag_for_slot) {
     return {};
   }
@@ -201,8 +201,8 @@ static EvaluationResult evaluate_strip(PointerRNA &animated_id_ptr,
 
   switch (strip.type()) {
     case Strip::Type::Keyframe: {
-      KeyframeStrip &key_strip = strip.as<KeyframeStrip>();
-      return evaluate_keyframe_strip(animated_id_ptr, key_strip, slot_handle, offset_eval_context);
+      StripKeyframeData &data = strip.keyframe_data();
+      return evaluate_keyframe_data(animated_id_ptr, data, slot_handle, offset_eval_context);
     }
   }
 

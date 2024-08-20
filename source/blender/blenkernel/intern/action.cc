@@ -303,16 +303,17 @@ static void write_channelbag(BlendWriter *writer, animrig::ChannelBag &channelba
   }
 }
 
-static void write_keyframe_strip(BlendWriter *writer, animrig::KeyframeStrip &key_strip)
+static void write_strip(BlendWriter *writer, animrig::Strip &strip)
 {
-  BLO_write_struct(writer, KeyframeActionStrip, &key_strip);
+  BLO_write_struct(writer, ActionStrip, &strip);
 
-  auto channelbags = key_strip.channelbags();
-  BLO_write_pointer_array(writer, channelbags.size(), channelbags.data());
+  /* TODO: move this to writing `StripKeyframeData`. */
+  // auto channelbags = key_strip.channelbags();
+  // BLO_write_pointer_array(writer, channelbags.size(), channelbags.data());
 
-  for (animrig::ChannelBag *channelbag : channelbags) {
-    write_channelbag(writer, *channelbag);
-  }
+  // for (animrig::ChannelBag *channelbag : channelbags) {
+  //   write_channelbag(writer, *channelbag);
+  // }
 }
 
 static void write_strips(BlendWriter *writer, Span<animrig::Strip *> strips)
@@ -320,12 +321,7 @@ static void write_strips(BlendWriter *writer, Span<animrig::Strip *> strips)
   BLO_write_pointer_array(writer, strips.size(), strips.data());
 
   for (animrig::Strip *strip : strips) {
-    switch (strip->type()) {
-      case animrig::Strip::Type::Keyframe: {
-        auto &key_strip = strip->as<animrig::KeyframeStrip>();
-        write_keyframe_strip(writer, key_strip);
-      }
-    }
+    write_strip(writer, *strip);
   }
 }
 
@@ -491,16 +487,18 @@ static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channe
   }
 }
 
-static void read_keyframe_strip(BlendDataReader *reader, animrig::KeyframeStrip &strip)
+static void read_strip(BlendDataReader *reader, animrig::Strip &strip)
 {
-  BLO_read_pointer_array(
-      reader, strip.channelbag_array_num, reinterpret_cast<void **>(&strip.channelbag_array));
+  /* TODO: move to reading `StripKeyframeData`. */
 
-  for (int i = 0; i < strip.channelbag_array_num; i++) {
-    BLO_read_struct(reader, ActionChannelBag, &strip.channelbag_array[i]);
-    ActionChannelBag *channelbag = strip.channelbag_array[i];
-    read_channelbag(reader, channelbag->wrap());
-  }
+  // BLO_read_pointer_array(
+  //     reader, strip.channelbag_array_num, reinterpret_cast<void **>(&strip.channelbag_array));
+
+  // for (int i = 0; i < strip.channelbag_array_num; i++) {
+  //   BLO_read_struct(reader, ActionChannelBag, &strip.channelbag_array[i]);
+  //   ActionChannelBag *channelbag = strip.channelbag_array[i];
+  //   read_channelbag(reader, channelbag->wrap());
+  // }
 }
 
 static void read_layers(BlendDataReader *reader, animrig::Action &action)
@@ -516,14 +514,10 @@ static void read_layers(BlendDataReader *reader, animrig::Action &action)
         reader, layer->strip_array_num, reinterpret_cast<void **>(&layer->strip_array));
     for (int strip_idx = 0; strip_idx < layer->strip_array_num; strip_idx++) {
       BLO_read_struct(reader, ActionStrip, &layer->strip_array[strip_idx]);
-      ActionStrip *dna_strip = layer->strip_array[strip_idx];
-      animrig::Strip &strip = dna_strip->wrap();
 
-      switch (strip.type()) {
-        case animrig::Strip::Type::Keyframe: {
-          read_keyframe_strip(reader, strip.as<animrig::KeyframeStrip>());
-        }
-      }
+      // ActionStrip *dna_strip = layer->strip_array[strip_idx];
+      // animrig::Strip &strip = dna_strip->wrap();
+      // read_strip(reader, strip);
     }
   }
 }
