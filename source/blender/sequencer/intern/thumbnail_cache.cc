@@ -320,7 +320,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
      * we don't want to go too wide since that would potentially mean that a single input
      * movie gets assigned to more than one thread, and the thumbnail loading itself
      * is somewhat-threaded already. */
-    int64_t grain_size = math::max(8ll, requests.size() / 4);
+    int64_t grain_size = math::max<int64_t>(8, requests.size() / 4);
     threading::parallel_for(requests.index_range(), grain_size, [&](IndexRange range) {
       /* Often the same movie file is chopped into multiple strips next to each other.
        * Since the requests are sorted by file path and frame index, we can reuse ImBufAnim
