@@ -36,7 +36,7 @@ namespace blender::seq {
 
 static constexpr int MAX_THUMBNAILS = 5000;
 
-// #define DEBUG_PRINT_THUMB_JOB_TIMES 1
+// #define DEBUG_PRINT_THUMB_JOB_TIMES
 
 static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
 
@@ -279,7 +279,7 @@ void ThumbGenerationJob::free_fn(void *customdata)
 
 void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_status)
 {
-#if DEBUG_PRINT_THUMB_JOB_TIMES
+#ifdef DEBUG_PRINT_THUMB_JOB_TIMES
   clock_t t0 = clock();
   std::atomic<int> total_thumbs = 0, total_images = 0, total_movies = 0;
 #endif
@@ -334,20 +334,20 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
           break;
         }
 
-#if DEBUG_PRINT_THUMB_JOB_TIMES
+#ifdef DEBUG_PRINT_THUMB_JOB_TIMES
         ++total_thumbs;
 #endif
         ImBuf *thumb = nullptr;
         if (request.seq_type == SEQ_TYPE_IMAGE) {
           /* Load thumbnail for an image. */
-#if DEBUG_PRINT_THUMB_JOB_TIMES
+#ifdef DEBUG_PRINT_THUMB_JOB_TIMES
           ++total_images;
 #endif
           thumb = make_thumb_for_image(job->scene_, request);
         }
         else if (request.seq_type == SEQ_TYPE_MOVIE) {
           /* Load thumbnail for an movie. */
-#if DEBUG_PRINT_THUMB_JOB_TIMES
+#ifdef DEBUG_PRINT_THUMB_JOB_TIMES
           ++total_movies;
 #endif
 
@@ -407,7 +407,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
     });
   }
 
-#if DEBUG_PRINT_THUMB_JOB_TIMES
+#ifdef DEBUG_PRINT_THUMB_JOB_TIMES
   clock_t t1 = clock();
   printf("VSE thumb job: %i thumbs (%i img, %i movie) in %.3f sec\n",
          total_thumbs.load(),
