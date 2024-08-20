@@ -4575,6 +4575,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    * \note Keep this message at the bottom of the function.
    */
 
+  FOREACH_NODETREE_BEGIN (bmain, tree, id) {
+    tree->tree_interface.foreach_item([&](bNodeTreeInterfaceItem &item) {
+      if (item.item_type == NODE_INTERFACE_SOCKET) {
+        bNodeTreeInterfaceSocket &socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(item);
+        if (socket.flag & NODE_INTERFACE_SOCKET_SINGLE_VALUE_ONLY_LEGACY) {
+          socket.structure_type = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE;
+        }
+      }
+      return true;
+    });
+  }
+  FOREACH_NODETREE_END;
+
   /* Always run this versioning; meshes are written with the legacy format which always needs to
    * be converted to the new format on file load. Can be moved to a subversion check in a larger
    * breaking release. */

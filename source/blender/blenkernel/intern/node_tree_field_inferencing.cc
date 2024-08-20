@@ -507,23 +507,33 @@ static void determine_group_input_states(
     const MutableSpan<SocketFieldState> field_state_by_socket_id)
 {
   {
-    /* Non-field inputs never support fields. */
     for (const int index : tree.interface_inputs().index_range()) {
       const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[index];
       const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
       if (!nodes::socket_type_supports_fields(type)) {
+        /* Non-field inputs never support fields. */
         new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
       }
-      else if (group_input->default_input != NODE_INPUT_DEFAULT_VALUE) {
-        new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
-      }
-      else if (is_layer_selection_field(*group_input)) {
-        new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
-      }
-      else if (group_input->flag & NODE_INTERFACE_SOCKET_SINGLE_VALUE_ONLY) {
-        new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
+      else {
+        if (group_input->structure_type == NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_AUTO) {
+          if (group_input->default_input != NODE_INPUT_DEFAULT_VALUE) {
+            new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
+          }
+          else if (is_layer_selection_field(*group_input)) {
+            new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
+          }
+        }
+        else if (ELEM(group_input->structure_type,
+                      NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD,
+                      NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC))
+        {
+          new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
+        }
+        else {
+          new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
+        }
       }
     }
   }

@@ -27,10 +27,10 @@ namespace blender::nodes {
 class NodeDeclarationBuilder;
 
 enum class StructureType {
-  Single,
-  Dynamic,
-  Field,
-  Grid,
+  Single = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE,
+  Dynamic = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC,
+  Field = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD,
+  Grid = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID,
 };
 
 enum class InputSocketFieldType {

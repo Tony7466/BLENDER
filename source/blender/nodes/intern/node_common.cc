@@ -374,6 +374,22 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       break;
     }
   }
+
+  switch (io_socket.structure_type) {
+    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_AUTO: {
+      /* TODO */
+      dst->structure_type = StructureType::Single;
+      break;
+    }
+    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE:
+    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC:
+    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD:
+    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID: {
+      dst->structure_type = StructureType(io_socket.structure_type);
+      break;
+    }
+  }
+
   dst->name = io_socket.name ? io_socket.name : "";
   dst->identifier = io_socket.identifier;
   dst->in_out = in_out;
