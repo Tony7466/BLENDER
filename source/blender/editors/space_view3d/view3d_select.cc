@@ -1204,9 +1204,9 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-    const IndexMask visible_handle_elements =
-        ed::greasepencil::retrieve_visible_bezier_handle_elements(
-            *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
+        const IndexMask visible_handle_elements =
+            ed::greasepencil::retrieve_visible_bezier_handle_elements(
+                *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
         const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
@@ -1216,7 +1216,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
                                              deformation,
                                              projection,
                                              mask,
-                                       visible_handle_elements,
+                                             visible_handle_elements,
                                              selection_domain,
                                              attribute_name,
                                              mcoords,
@@ -4300,9 +4300,9 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-    const IndexMask visible_handle_elements =
-        ed::greasepencil::retrieve_visible_bezier_handle_elements(
-            *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
+        const IndexMask visible_handle_elements =
+            ed::greasepencil::retrieve_visible_bezier_handle_elements(
+                *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
         const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
@@ -4312,7 +4312,7 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
                                            deformation,
                                            projection,
                                            mask,
-                                      visible_handle_elements,
+                                           visible_handle_elements,
                                            selection_domain,
                                            attribute_name,
                                            *rect,
@@ -5164,9 +5164,9 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *vc->obedit, info.layer_index, info.frame_number);
-    const IndexMask visible_handle_elements =
-        ed::greasepencil::retrieve_visible_bezier_handle_elements(
-            *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
+        const IndexMask visible_handle_elements =
+            ed::greasepencil::retrieve_visible_bezier_handle_elements(
+                *vc->obedit, info.drawing, info.layer_index, selection_domain, memory);
         const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
         const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc->rv3d,
                                                                             layer_to_world);
@@ -5176,7 +5176,7 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
                                               deformation,
                                               projection,
                                               mask,
-                                        visible_handle_elements,
+                                              visible_handle_elements,
                                               selection_domain,
                                               attribute_name,
                                               int2(mval),
