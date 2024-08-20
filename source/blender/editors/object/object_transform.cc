@@ -15,6 +15,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mesh_types.h"
@@ -959,15 +960,23 @@ static int apply_objects_internal(bContext *C,
     else if (ob->type == OB_GREASE_PENCIL) {
       GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
-      for (GreasePencilDrawingBase *base : grease_pencil.drawings()) {
-        if (base->type != GP_DRAWING) {
-          continue;
-        }
-        bke::greasepencil::Drawing &drawing =
-            reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
-        bke::CurvesGeometry &curves = drawing.strokes_for_write();
-        curves.transform(float4x4(mat));
-        curves.calculate_bezier_auto_handles();
+      for (const int layer_i : grease_pencil.layers().index_range()) {
+        bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+        const float4x4 layer_to_object = layer.to_object_space(*ob);
+        const float4x4 object_to_layer = math::invert(layer_to_object);
+        const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+        frames.foreach_item(
+            [&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+              GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+              if (base->type != GP_DRAWING) {
+                return;
+              }
+              bke::greasepencil::Drawing &drawing =
+                  reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+              bke::CurvesGeometry &curves = drawing.strokes_for_write();
+              curves.transform(object_to_layer * float4x4(mat) * layer_to_object);
+              curves.calculate_bezier_auto_handles();
+            });
       }
     }
     else if (ob->type == OB_POINTCLOUD) {
