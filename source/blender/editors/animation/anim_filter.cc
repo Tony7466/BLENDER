@@ -543,8 +543,6 @@ bool ANIM_animdata_can_have_greasepencil(const eAnimCont_Types type)
  * whether any channels will be added (but without needing them to actually get created).
  *
  * \warning This causes the calling function to return early if we're only "peeking" for channels.
- *
- * XXX: ale_statement stuff is really a hack for one special case. It shouldn't really be needed.
  */
 #define ANIMCHANNEL_NEW_CHANNEL_FULL( \
     bmain, channel_data, channel_type, owner_id, fcurve_owner_id, ale_statement) \
