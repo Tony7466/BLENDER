@@ -1514,7 +1514,7 @@ bool ChannelBag::channel_group_remove(bActionGroup &group)
     return false;
   }
 
-  /* Move the group's fcurves to just passed the end of where the grouped
+  /* Move the group's fcurves to just past the end of where the grouped
    * fcurves will be after this group is removed. */
   bActionGroup *last_group = this->channel_groups().last();
   BLI_assert(last_group != nullptr);
