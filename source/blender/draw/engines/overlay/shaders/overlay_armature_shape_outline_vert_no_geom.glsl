@@ -80,7 +80,6 @@ void main()
   for (int v = 0; v < 4; v++) {
     do_vertex_shader(in_inst_obmat,
                      in_pos[v],
-                     in_snor[v],
                      pPos[v],
                      vPos[v],
                      ssPos[v],
