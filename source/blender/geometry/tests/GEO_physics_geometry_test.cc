@@ -417,6 +417,13 @@ TEST_F(PhysicsGeometryTest, realize_instances)
 {
   AllShapesData all_shapes_data;
 
+  const Array<float4x4> CoM_values = Array<float4x4>(
+      {math::from_rotation<float4x4>(math::EulerXYZ(0, 30, -10)),
+       math::from_scale<float4x4>(float3(1.5f, 1.0f, 2.0f)),
+       math::from_location<float4x4>(float3(-3, 1, 1)),
+       float4x4::identity(),
+       math::from_location<float4x4>(float3(2, 1, 0))});
+
   bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(5, 2, 3);
   test_data(*geo1, false, 5, 2, 3);
   add_value_attribute(*geo1, bke::AttrDomain::Point, 1);
@@ -430,8 +437,11 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   geo1->tag_collision_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo1->body_shapes_for_write();
+    AttributeWriter<float4x4> center_of_mass = geo1->body_center_of_mass_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
+    center_of_mass.varray.set_all(CoM_values.as_span());
     body_shapes.finish();
+    center_of_mass.finish();
     geo1->compute_local_inertia(geo1->bodies_range());
   }
 
@@ -496,6 +506,10 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   EXPECT_EQ(3, result_body_shapes[5]);
   /* Starts as 100, all out-of-bounds indices become -1. */
   EXPECT_EQ(-1, result_body_shapes[6]);
+  {
+    const VArraySpan<float4x4> CoM = geo_result.body_center_of_mass();
+    EXPECT_EQ_ARRAY(CoM_values.data(), CoM.data(), CoM.size());
+  }
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);

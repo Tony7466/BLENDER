@@ -2192,7 +2192,7 @@ MutableSpan<CollisionShapePtr> PhysicsGeometry::shapes_for_write()
 
 VArray<int> PhysicsGeometry::body_ids() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::id)).varray.typed<int>();
+  return *attributes().lookup<int>(body_attribute_name(BodyAttribute::id));
 }
 
 AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
@@ -2217,7 +2217,7 @@ AttributeWriter<int> PhysicsGeometry::body_shapes_for_write()
 
 VArray<bool> PhysicsGeometry::body_is_static() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::is_static)).varray.typed<bool>();
+  return *attributes().lookup<bool>(body_attribute_name(BodyAttribute::is_static));
 }
 
 AttributeWriter<bool> PhysicsGeometry::body_is_static_for_write()
@@ -2228,9 +2228,7 @@ AttributeWriter<bool> PhysicsGeometry::body_is_static_for_write()
 
 VArray<bool> PhysicsGeometry::body_is_kinematic() const
 {
-  return attributes()
-      .lookup(body_attribute_name(BodyAttribute::is_kinematic))
-      .varray.typed<bool>();
+  return *attributes().lookup<bool>(body_attribute_name(BodyAttribute::is_kinematic));
 }
 
 AttributeWriter<bool> PhysicsGeometry::body_is_kinematic_for_write()
@@ -2241,7 +2239,7 @@ AttributeWriter<bool> PhysicsGeometry::body_is_kinematic_for_write()
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::mass)).varray.typed<float>();
+  return *attributes().lookup<float>(body_attribute_name(BodyAttribute::mass));
 }
 
 AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
@@ -2252,7 +2250,7 @@ AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 
 VArray<float3> PhysicsGeometry::body_inertias() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::inertia)).varray.typed<float3>();
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::inertia));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
@@ -2261,9 +2259,20 @@ AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
       body_attribute_name(BodyAttribute::inertia));
 }
 
+VArray<float4x4> PhysicsGeometry::body_center_of_mass() const
+{
+  return *attributes().lookup<float4x4>(body_attribute_name(BodyAttribute::center_of_mass));
+}
+
+AttributeWriter<float4x4> PhysicsGeometry::body_center_of_mass_for_write()
+{
+  return attributes_for_write().lookup_for_write<float4x4>(
+      body_attribute_name(BodyAttribute::center_of_mass));
+}
+
 VArray<float3> PhysicsGeometry::body_positions() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::position)).varray.typed<float3>();
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::position));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
@@ -2274,9 +2283,7 @@ AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
 
 VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
 {
-  return attributes()
-      .lookup(body_attribute_name(BodyAttribute::rotation))
-      .varray.typed<math::Quaternion>();
+  return *attributes().lookup<math::Quaternion>(body_attribute_name(BodyAttribute::rotation));
 }
 
 AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
@@ -2287,7 +2294,7 @@ AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
 
 VArray<float3> PhysicsGeometry::body_velocities() const
 {
-  return attributes().lookup(body_attribute_name(BodyAttribute::velocity)).varray.typed<float3>();
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::velocity));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
@@ -2298,9 +2305,7 @@ AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
 
 VArray<float3> PhysicsGeometry::body_angular_velocities() const
 {
-  return attributes()
-      .lookup(body_attribute_name(BodyAttribute::angular_velocity))
-      .varray.typed<float3>();
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::angular_velocity));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
@@ -2311,7 +2316,7 @@ AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
 
 VArray<int> PhysicsGeometry::body_activation_states() const
 {
-  return attributes().lookup<int>(body_attribute_name(BodyAttribute::activation_state)).varray;
+  return *attributes().lookup<int>(body_attribute_name(BodyAttribute::activation_state));
 }
 
 AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
@@ -2322,12 +2327,12 @@ AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
 
 VArray<float3> PhysicsGeometry::body_total_force() const
 {
-  return attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_force)).varray;
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_force));
 }
 
 VArray<float3> PhysicsGeometry::body_total_torque() const
 {
-  return attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_torque)).varray;
+  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_torque));
 }
 
 void PhysicsGeometry::apply_force(const IndexMask &selection,
@@ -2375,9 +2380,8 @@ void PhysicsGeometry::compute_local_inertia(const IndexMask &selection)
 
 VArray<bool> PhysicsGeometry::constraint_enabled() const
 {
-  return attributes()
-      .lookup<bool>(constraint_attribute_name(ConstraintAttribute::constraint_enabled))
-      .varray;
+  return *attributes().lookup<bool>(
+      constraint_attribute_name(ConstraintAttribute::constraint_enabled));
 }
 
 AttributeWriter<bool> PhysicsGeometry::constraint_enabled_for_write()
@@ -2388,9 +2392,8 @@ AttributeWriter<bool> PhysicsGeometry::constraint_enabled_for_write()
 
 VArray<int> PhysicsGeometry::constraint_types() const
 {
-  return attributes()
-      .lookup<int>(constraint_attribute_name(ConstraintAttribute::constraint_type))
-      .varray;
+  return *attributes().lookup<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_type));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
@@ -2405,9 +2408,8 @@ AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
 
 VArray<int> PhysicsGeometry::constraint_body1() const
 {
-  return attributes()
-      .lookup<int>(constraint_attribute_name(ConstraintAttribute::constraint_body1))
-      .varray;
+  return *attributes().lookup<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body1));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
@@ -2421,9 +2423,8 @@ AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
 
 VArray<int> PhysicsGeometry::constraint_body2() const
 {
-  return attributes()
-      .lookup<int>(constraint_attribute_name(ConstraintAttribute::constraint_body2))
-      .varray;
+  return *attributes().lookup<int>(
+      constraint_attribute_name(ConstraintAttribute::constraint_body2));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
@@ -2437,9 +2438,8 @@ AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
 
 VArray<float4x4> PhysicsGeometry::constraint_frame1() const
 {
-  return attributes()
-      .lookup<float4x4>(constraint_attribute_name(ConstraintAttribute::constraint_frame1))
-      .varray;
+  return *attributes().lookup<float4x4>(
+      constraint_attribute_name(ConstraintAttribute::constraint_frame1));
 }
 
 AttributeWriter<float4x4> PhysicsGeometry::constraint_frame1_for_write()
@@ -2450,9 +2450,8 @@ AttributeWriter<float4x4> PhysicsGeometry::constraint_frame1_for_write()
 
 VArray<float4x4> PhysicsGeometry::constraint_frame2() const
 {
-  return attributes()
-      .lookup<float4x4>(constraint_attribute_name(ConstraintAttribute::constraint_frame2))
-      .varray;
+  return *attributes().lookup<float4x4>(
+      constraint_attribute_name(ConstraintAttribute::constraint_frame2));
 }
 
 AttributeWriter<float4x4> PhysicsGeometry::constraint_frame2_for_write()
@@ -2463,16 +2462,14 @@ AttributeWriter<float4x4> PhysicsGeometry::constraint_frame2_for_write()
 
 VArray<float> PhysicsGeometry::constraint_applied_impulse() const
 {
-  return attributes()
-      .lookup<float>(constraint_attribute_name(ConstraintAttribute::applied_impulse))
-      .varray;
+  return *attributes().lookup<float>(
+      constraint_attribute_name(ConstraintAttribute::applied_impulse));
 }
 
 VArray<float> PhysicsGeometry::constraint_breaking_impulse_threshold_impulse() const
 {
-  return attributes()
-      .lookup<float>(constraint_attribute_name(ConstraintAttribute::breaking_impulse_threshold))
-      .varray;
+  return *attributes().lookup<float>(
+      constraint_attribute_name(ConstraintAttribute::breaking_impulse_threshold));
 }
 
 AttributeWriter<float> PhysicsGeometry::constraint_breaking_impulse_threshold_for_write()
@@ -2483,9 +2480,8 @@ AttributeWriter<float> PhysicsGeometry::constraint_breaking_impulse_threshold_fo
 
 VArray<bool> PhysicsGeometry::constraint_disable_collision() const
 {
-  return attributes()
-      .lookup<bool>(constraint_attribute_name(ConstraintAttribute::disable_collision))
-      .varray;
+  return *attributes().lookup<bool>(
+      constraint_attribute_name(ConstraintAttribute::disable_collision));
 }
 
 AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
