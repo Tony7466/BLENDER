@@ -349,7 +349,7 @@ ccl_device_inline float3 mix(const float3 a, const float3 b, float t)
 
 ccl_device_inline float3 mix(const float3 a, const float3 b, float3 t)
 {
-  return make_float3(mix(a.x, b.x, t.x), mix(a.y, b.y, t.y), mix(a.z, b.z, t.z));
+  return a + t * (b - a);
 }
 
 ccl_device_inline float3 rcp(const float3 a)

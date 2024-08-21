@@ -37,11 +37,10 @@ color fresnel_conductor(float cosi, color eta, color k)
   return (Rparl2 + Rperp2) * 0.5;
 }
 
+/* Equations to map color to complex IOR, from "Artist Friendly Metallic Fresnel",
+ * Ole Gulbrandsen,2014 https://jcgt.org/published/0003/04/03/paper.pdf */
 vector conductor_ior_from_color(color reflectivity, color edge_tint)
 {
-  /* "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
-   * https://jcgt.org/published/0003/04/03/paper.pdf */
-
   vector r = clamp(reflectivity, 0.0, 0.99);
   vector r_sqrt = sqrt(r);
   vector one = 1.0;
@@ -54,9 +53,6 @@ vector conductor_ior_from_color(color reflectivity, color edge_tint)
 
 vector conductor_extinction_from_color(color reflectivity, vector n)
 {
-  /* "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
-   * https://jcgt.org/published/0003/04/03/paper.pdf */
-
   vector r = clamp(reflectivity, 0.0, 0.99);
 
   vector np1 = n + 1.0;

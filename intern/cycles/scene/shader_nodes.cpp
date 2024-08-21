@@ -2447,7 +2447,7 @@ NODE_DEFINE(MetallicBsdfNode)
 {
   NodeType *type = NodeType::add("Metallic_bsdf", create, NodeType::SHADER);
 
-  SOCKET_IN_COLOR(color, "Base Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_COLOR(color, "Base Color", make_float3(0.617f, 0.577f, 0.540f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2464,10 +2464,10 @@ NODE_DEFINE(MetallicBsdfNode)
   fresnel_type_enum.insert("physical_conductor", CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
   SOCKET_ENUM(fresnel_type, "fresnel_type", fresnel_type_enum, CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
 
-  SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(1.0f, 1.0f, 1.0f));
+  SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(0.695f, 0.726f, 0.770f));
 
-  SOCKET_IN_VECTOR(ior, "IOR", make_float3(2.741f, 2.542f, 2.267f));
-  SOCKET_IN_VECTOR(k, "Extinction", make_float3(3.814f, 3.434f, 3.038f));
+  SOCKET_IN_VECTOR(ior, "IOR", make_float3(2.757f, 2.513f, 2.231f));
+  SOCKET_IN_VECTOR(k, "Extinction", make_float3(3.867f, 3.404f, 3.009f));
 
   SOCKET_IN_VECTOR(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
 

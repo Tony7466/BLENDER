@@ -11,15 +11,15 @@ namespace blender::nodes::node_shader_bsdf_metallic_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Base Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_input<decl::Color>("Edge Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Color>("Base Color").default_value({0.617f, 0.577f, 0.540f, 1.0f});
+  b.add_input<decl::Color>("Edge Tint").default_value({0.695f, 0.726f, 0.770f, 1.0f});
   b.add_input<decl::Vector>("IOR")
-      .default_value({2.741f, 2.542f, 2.267f})
+      .default_value({2.757f, 2.513f, 2.231f})
       .min(0.0f)
       .max(100.0f)
       .description("Real part of the conductor's IOR");
   b.add_input<decl::Vector>("Extinction")
-      .default_value({3.814f, 3.434f, 3.038f})
+      .default_value({3.867f, 3.404f, 3.009f})
       .min(0.0f)
       .max(100.0f)
       .description("Complex part of the conductor's IOR");

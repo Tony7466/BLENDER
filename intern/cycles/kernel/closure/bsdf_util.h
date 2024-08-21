@@ -103,6 +103,8 @@ ccl_device Spectrum fresnel_conductor(float cosi, const Spectrum eta, const Spec
   return (Rparl2 + Rperp2) * 0.5f;
 }
 
+/* Equations to map color to complex IOR, from "Artist Friendly Metallic Fresnel",
+ * Ole Gulbrandsen,2014 https://jcgt.org/published/0003/04/03/paper.pdf */
 ccl_device float3 conductor_ior_from_color(float3 r, const float3 edge_tint)
 {
   r = clamp(r, zero_float3(), make_float3(0.99f));
@@ -133,9 +135,6 @@ ccl_device void complex_ior_from_base_edge(const float3 reflectivity,
                                            ccl_private float3 *eta,
                                            ccl_private float3 *k)
 {
-  /* Equations from "Artist Friendly Metallic Fresnel", Ole Gulbrandsen, 2014
-   * https://jcgt.org/published/0003/04/03/paper.pdf */
-
   *eta = conductor_ior_from_color(reflectivity, edge_tint);
   *k = conductor_extinction_from_color(reflectivity, *eta);
 }

@@ -516,7 +516,7 @@ ccl_device
         bsdf->alpha_y = alpha_y;
 
         ClosureType distribution = (ClosureType)node.w;
-        /* setup bsdf */
+        /* Setup BSDF */
         if (distribution == CLOSURE_BSDF_MICROFACET_BECKMANN_ID) {
           sd->flag |= bsdf_microfacet_beckmann_setup(bsdf);
         }

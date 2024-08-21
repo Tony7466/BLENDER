@@ -5,10 +5,10 @@
 #include "node_fresnel.h"
 #include "stdcycles.h"
 
-shader node_metallic_bsdf(color BaseColor = 0.8,
-                          color EdgeTint = 1.0,
-                          vector IOR = vector(2.741, 2.542, 2.267),
-                          vector Extinction = vector(3.814, 3.434, 3.038),
+shader node_metallic_bsdf(color BaseColor = color(0.617, 0.577, 0.540),
+                          color EdgeTint = color(0.695, 0.726, 0.770),
+                          vector IOR = vector(2.757, 2.513, 2.231),
+                          vector Extinction = vector(3.867, 3.404, 3.009),
                           string distribution = "multi_ggx",
                           string fresnel_type = "physical_conductor",
                           float Roughness = 0.5,

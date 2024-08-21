@@ -4133,18 +4133,18 @@ static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
      "PHYSICAL_CONDUCTOR",
      0,
      "Physical Conductor",
-     "Physically accurate Fresnel effect based on the complex IOR of the material"},
+     "Fresnel conductor based on the complex refractive index per color channel"},
     {SHD_ARTISTIC_CONDUCTOR,
      "ARTISTIC_CONDUCTOR",
      0,
      "Artistic Conductor",
-     "Conductor Fresnel with artist friendly color inputs"},
+     "Fresnel conductor with artist friendly color inputs"},
     {SHD_CONDUCTOR_F82,
      "F82",
      0,
      "F82 Tint",
-     "An approximation of the Conductor Fresnel curve based on the perpendicular color and the "
-     "tint at an angle of 82°"},
+     "An approximation of the Fresnel conductor curve based on the colors at perpendicular and "
+     "glancing (roughly 82°) angles"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
