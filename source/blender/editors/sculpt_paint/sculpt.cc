@@ -3305,7 +3305,7 @@ static void sculpt_topology_update(const Depsgraph &depsgraph,
     max_edge_len = dyntopo::detail_size::relative_to_detail_size(
         sd.detail_size, ss.cache->radius, ss.cache->dyntopo_pixel_radius, U.pixelsize);
   }
-  const float min_edge_len = max_edge_len * dyntopo::detail_size::RELATIVE_SCALE_FACTOR;
+  const float min_edge_len = max_edge_len * dyntopo::detail_size::EDGE_LENGTH_MIN_FACTOR;
 
   bke::pbvh::bmesh_update_topology(*ss.pbvh,
                                    *ss.bm_log,
