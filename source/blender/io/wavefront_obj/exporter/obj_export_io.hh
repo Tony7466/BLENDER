@@ -143,6 +143,10 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("cstype rat bspline\n");
   }
+  void write_obj_nurbs_degree(int deg)
+  {
+    write_impl("deg {}\n", deg);
+  }
   void write_obj_nurbs_degree(std::pair<int, int> degs)
   {
     write_impl("deg {} {}\n", degs.first, degs.second);

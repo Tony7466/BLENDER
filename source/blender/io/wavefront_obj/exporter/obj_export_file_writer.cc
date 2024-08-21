@@ -452,7 +452,20 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
     const std::pair<int, int> nurbs_degrees = obj_nurbs_data.get_nurbs_degree(spline_idx);
     fh.write_obj_group(nurbs_name);
     fh.write_obj_cstype();
-    fh.write_obj_nurbs_degree(nurbs_degrees);
+    int dim;
+    switch (obj_nurbs_data.get_object_type()) {
+      case OB_CURVES_LEGACY:
+        fh.write_obj_nurbs_degree(nurbs_degrees.first);
+        dim = 1;
+        break;
+      case OB_SURF:
+        fh.write_obj_nurbs_degree(nurbs_degrees);
+        dim = 2;
+        break;
+      default:
+          BLI_assert_unreachable();
+    };
+
     /**
      * The numbers written here are indices into the vertex coordinates written
      * earlier, relative to the line that is going to be written.
@@ -481,7 +494,7 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
      * parameter range are inserted. However for curves with endpoint flag,
      * first degree+1 numbers are zeroes, and last degree+1 numbers are ones
      */
-    for (int uv = 0; 2 != uv; ++uv) {
+    for (int uv = 0; dim != uv; ++uv) {
       const int nurbs_degree = uv ? nurbs_degrees.second : nurbs_degrees.first;
       const short flags = obj_nurbs_data.get_nurbs_flags(spline_idx, uv);
       const bool cyclic = flags & CU_NURB_CYCLIC;
