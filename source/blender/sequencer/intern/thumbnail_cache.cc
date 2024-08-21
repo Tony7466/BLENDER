@@ -54,12 +54,12 @@ struct ThumbnailCache {
     int frame_index = 0;
     int stream_index = 0;
     ImBuf *thumb = nullptr;
-    double used_at = 0;
+    int64_t used_at = 0;
   };
 
   struct FileEntry {
     Vector<FrameEntry> frames;
-    double used_at = 0;
+    int64_t used_at = 0;
   };
 
   //@TODO: when processing order by timestamps (starting from most recent) somehow?
@@ -68,7 +68,7 @@ struct ThumbnailCache {
                      int frame,
                      int stream,
                      SequenceType type,
-                     double time,
+                     int64_t logical_time,
                      float time_frame,
                      int ch,
                      int width,
@@ -77,7 +77,7 @@ struct ThumbnailCache {
           frame_index(frame),
           stream_index(stream),
           seq_type(type),
-          requested_at(time),
+          requested_at(logical_time),
           timeline_frame(time_frame),
           channel(ch),
           full_width(width),
@@ -91,7 +91,7 @@ struct ThumbnailCache {
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
     /* The following members are payload and do not contribute to uniqueness. */
-    double requested_at = 0;
+    int64_t requested_at = 0;
     float timeline_frame = 0;
     int channel = 0;
     int full_width = 0;
@@ -111,6 +111,7 @@ struct ThumbnailCache {
   //@TODO: do we need something for multi-view/stereo?
   Map<std::string, FileEntry> map_;
   Set<Request> requests_;
+  int64_t logical_time_ = 0;
 
   ~ThumbnailCache()
   {
@@ -126,6 +127,7 @@ struct ThumbnailCache {
     }
     map_.clear_and_shrink();
     requests_.clear_and_shrink();
+    logical_time_ = 0;
   }
 
   void remove_entry(const std::string &path)
@@ -426,11 +428,11 @@ void ThumbGenerationJob::end_fn(void *customdata)
 static ImBuf *query_thumbnail(ThumbnailCache &cache,
                               const std::string &key,
                               int frame_index,
-                              double cur_time,
                               float timeline_frame,
                               const bContext *C,
                               const Sequence *seq)
 {
+  int64_t cur_time = cache.logical_time_;
   ThumbnailCache::FileEntry *val = cache.map_.lookup_ptr(key);
 
   if (val == nullptr) {
@@ -489,8 +491,10 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
   return val->frames[best_index].thumb;
 }
 
-ImBuf *thumbnail_cache_get(
-    const bContext *C, Scene *scene, const Sequence *seq, float timeline_frame, double cur_time)
+ImBuf *thumbnail_cache_get(const bContext *C,
+                           Scene *scene,
+                           const Sequence *seq,
+                           float timeline_frame)
 {
   if (!can_have_thumbnail(scene, seq)) {
     return nullptr;
@@ -506,7 +510,7 @@ ImBuf *thumbnail_cache_get(
 
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = ensure_thumbnail_cache(scene);
-  ImBuf *res = query_thumbnail(*cache, key, frame_index, cur_time, timeline_frame, C, seq);
+  ImBuf *res = query_thumbnail(*cache, key, frame_index, timeline_frame, C, seq);
   BLI_mutex_unlock(&thumb_cache_lock);
 
   if (res) {
@@ -523,17 +527,18 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
   //@TODO implement, and call this when reloading strips
 }
 
-void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
+void thumbnail_cache_maintain_capacity(Scene *scene)
 {
   BLI_mutex_lock(&thumb_cache_lock);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
+    cache->logical_time_++;
 
     /* Count total number of thumbnails, and track which one is the least recently used file. */
     int64_t entries = 0;
     std::string oldest_file;
-    /* Do not remove thumbnails for files used within last 1 sec. */
-    double oldest_time = cur_time - 1.0;
+    /* Do not remove thumbnails for files used within last 10 updates. */
+    int64_t oldest_time = cache->logical_time_ - 10;
     int64_t oldest_entries = 0;
     for (const auto &kvp : cache->map_.items()) {
       entries += kvp.value.frames.size();
@@ -550,12 +555,12 @@ void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time)
       entries -= oldest_entries;
     }
 
-    /* If we're still beyond capacity, remove individual long-unused (but not within last 10 sec)
-     * individual frames. */
+    /* If we're still beyond capacity, remove individual long-unused (but not within
+     * last 100 updates) individual frames. */
     if (entries > MAX_THUMBNAILS) {
       for (const auto &kvp : cache->map_.items()) {
         for (int64_t i = 0; i < kvp.value.frames.size(); i++) {
-          if (kvp.value.frames[i].used_at < cur_time - 10.0) {
+          if (kvp.value.frames[i].used_at < cache->logical_time_ - 100) {
             IMB_freeImBuf(kvp.value.frames[i].thumb);
             kvp.value.frames.remove_and_reorder(i);
           }

@@ -11,7 +11,6 @@
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
-#include "BLI_time.h"
 
 #include "BKE_context.hh"
 
@@ -196,8 +195,6 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   Editing *ed = SEQ_editing_get(scene);
   ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
 
-  const double cur_time = BLI_time_now_seconds();
-
   float thumb_width, image_width, image_height;
   const float thumb_height = y2 - y1;
   seq_get_thumb_image_dimensions(
@@ -254,7 +251,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     BLI_rcti_init(&crop, cropx_min, cropx_max - 1, 0, int(image_height) - 1);
 
     /* Get the thumbnail image. */
-    ImBuf *ibuf = seq::thumbnail_cache_get(C, scene, seq, timeline_frame, cur_time);
+    ImBuf *ibuf = seq::thumbnail_cache_get(C, scene, seq, timeline_frame);
     if (ibuf && clipped) {
       /*@TODO: stop doing this on the CPU. */
       ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);

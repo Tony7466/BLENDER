@@ -23,8 +23,7 @@ namespace blender::seq {
 static constexpr int SEQ_THUMB_SIZE = 256;
 
 /**
- * Get a thumbnail image for given strip `seq` at `timeline_frame`. `cur_time` is current system
- * time, used to record when a thumbnail was last needed.
+ * Get a thumbnail image for given strip `seq` at `timeline_frame`.
  *
  * The function can return null if a strip type does not have a thumbnail, a source media file is
  * not found, or the thumbnail has not been loaded yet.
@@ -34,14 +33,16 @@ static constexpr int SEQ_THUMB_SIZE = 256;
  *
  * When there is no exact match, a request to load a thumbnail will be internally added and
  * processed in the background. */
-ImBuf *thumbnail_cache_get(
-    const bContext *C, Scene *scene, const Sequence *seq, float timeline_frame, double cur_time);
+ImBuf *thumbnail_cache_get(const bContext *C,
+                           Scene *scene,
+                           const Sequence *seq,
+                           float timeline_frame);
 
 /**
  * If total amount of resident thumbnails is too large, try to remove oldest-used ones to
  * keep the cache size in check.
  */
-void thumbnail_cache_maintain_capacity(Scene *scene, double cur_time);
+void thumbnail_cache_maintain_capacity(Scene *scene);
 
 void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq);
 
