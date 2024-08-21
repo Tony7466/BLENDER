@@ -36,6 +36,7 @@
 
 #include "paint_intern.hh" /* own include */
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 using blender::Array;
 using blender::ColorGeometry4f;
@@ -327,7 +328,7 @@ static void transform_active_color(bContext *C,
   transform_active_color_data(*BKE_mesh_from_object(&obact), transform_fn);
 
   for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_update_color(node);
+    BKE_pbvh_node_mark_update_color(*node);
   }
 
   undo::push_end(obact);

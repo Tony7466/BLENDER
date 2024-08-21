@@ -6,6 +6,8 @@
  * \ingroup edsculpt
  */
 
+#include "sculpt_automask.hh"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
@@ -27,7 +29,14 @@
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_filter.hh"
+#include "sculpt_flood_fill.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
+#include "sculpt_undo.hh"
 
 #include "bmesh.hh"
 
@@ -840,14 +849,14 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob)
   }
 }
 
-#define EDGE_DISTANCE_INF -1
+static constexpr int EDGE_DISTANCE_INF = -1;
 
-enum eBoundaryAutomaskMode {
-  AUTOMASK_INIT_BOUNDARY_EDGES = 1,
-  AUTOMASK_INIT_BOUNDARY_FACE_SETS = 2,
+enum class BoundaryAutomaskMode {
+  Edges = 1,
+  FaceSets = 2,
 };
 
-static void init_boundary_masking(Object &ob, eBoundaryAutomaskMode mode, int propagation_steps)
+static void init_boundary_masking(Object &ob, BoundaryAutomaskMode mode, int propagation_steps)
 {
   SculptSession &ss = *ob.sculpt;
 
@@ -859,12 +868,12 @@ static void init_boundary_masking(Object &ob, eBoundaryAutomaskMode mode, int pr
 
     edge_distance[i] = EDGE_DISTANCE_INF;
     switch (mode) {
-      case AUTOMASK_INIT_BOUNDARY_EDGES:
+      case BoundaryAutomaskMode::Edges:
         if (boundary::vert_is_boundary(ss, vertex)) {
           edge_distance[i] = 0;
         }
         break;
-      case AUTOMASK_INIT_BOUNDARY_FACE_SETS:
+      case BoundaryAutomaskMode::FaceSets:
         if (!face_set::vert_has_unique_face_set(ss, vertex)) {
           edge_distance[i] = 0;
         }
@@ -1114,11 +1123,11 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
   const int steps = boundary_propagation_steps(sd, brush);
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_BOUNDARY_EDGES)) {
     SCULPT_vertex_random_access_ensure(ss);
-    init_boundary_masking(ob, AUTOMASK_INIT_BOUNDARY_EDGES, steps);
+    init_boundary_masking(ob, BoundaryAutomaskMode::Edges, steps);
   }
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_BOUNDARY_FACE_SETS)) {
     SCULPT_vertex_random_access_ensure(ss);
-    init_boundary_masking(ob, AUTOMASK_INIT_BOUNDARY_FACE_SETS, steps);
+    init_boundary_masking(ob, BoundaryAutomaskMode::FaceSets, steps);
   }
 
   /* Subtractive modes. */

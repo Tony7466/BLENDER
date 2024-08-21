@@ -16,8 +16,6 @@
 
 #include "BLT_translation.hh"
 
-#include "DNA_userdef_types.h"
-
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -33,7 +31,12 @@
 #include "ED_paint.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_color.hh"
+#include "sculpt_filter.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_smooth.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -398,7 +401,7 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object &ob)
                         *nodes[i],
                         tls,
                         color_attribute);
-      BKE_pbvh_node_mark_update_color(nodes[i]);
+      BKE_pbvh_node_mark_update_color(*nodes[i]);
     }
   });
   color_attribute.finish();

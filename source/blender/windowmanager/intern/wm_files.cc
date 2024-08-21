@@ -38,6 +38,7 @@
 #include "BLI_filereader.h"
 #include "BLI_linklist.h"
 #include "BLI_math_time.h"
+#include "BLI_memory_cache.hh"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_time.h"
@@ -512,7 +513,10 @@ static void wm_init_userdef(Main *bmain)
     SET_FLAG_FROM_TEST(G.f, U.flag & USER_INTERNET_ALLOW, G_FLAG_INTERNET_ALLOW);
   }
 
-  MEM_CacheLimiter_set_maximum(size_t(U.memcachelimit) * 1024 * 1024);
+  const int64_t cache_limit = int64_t(U.memcachelimit) * 1024 * 1024;
+  MEM_CacheLimiter_set_maximum(cache_limit);
+  blender::memory_cache::set_approximate_size_limit(cache_limit);
+
   BKE_sound_init(bmain);
 
   /* Update the temporary directory from the preferences or fallback to the system default. */
@@ -1774,7 +1778,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
     }
 
     /* File-system thumbnail image can be 256x256. */
-    IMB_scaleImBuf(ibuf, ex * 2, ey * 2);
+    IMB_scale(ibuf, ex * 2, ey * 2, IMBScaleFilter::Box, false);
 
     /* Save metadata for quick access. */
     char version_st[10] = {0};
@@ -1784,7 +1788,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
 
     /* Thumbnail inside blend should be 128x128. */
     ImBuf *thumb_ibuf = IMB_dupImBuf(ibuf);
-    IMB_scaleImBuf(thumb_ibuf, ex, ey);
+    IMB_scale(thumb_ibuf, ex, ey, IMBScaleFilter::Box, false);
 
     BlendThumbnail *thumb = BKE_main_thumbnail_from_imbuf(nullptr, thumb_ibuf);
     IMB_freeImBuf(thumb_ibuf);
@@ -1899,11 +1903,15 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
     IMB_metadata_set_field(ibuf->metadata, "Thumb::Blender::Version", version_st);
 
     /* BLEN_THUMB_SIZE is size of thumbnail inside blend file: 128x128. */
-    IMB_scaleImBuf(thumb_ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE);
+    IMB_scale(thumb_ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE, IMBScaleFilter::Box, false);
     thumb = BKE_main_thumbnail_from_imbuf(nullptr, thumb_ibuf);
     IMB_freeImBuf(thumb_ibuf);
     /* Thumbnail saved to file-system should be 256x256. */
-    IMB_scaleImBuf(ibuf, PREVIEW_RENDER_LARGE_HEIGHT, PREVIEW_RENDER_LARGE_HEIGHT);
+    IMB_scale(ibuf,
+              PREVIEW_RENDER_LARGE_HEIGHT,
+              PREVIEW_RENDER_LARGE_HEIGHT,
+              IMBScaleFilter::Box,
+              false);
   }
   else {
     /* '*r_thumb' needs to stay nullptr to prevent a bad thumbnail from being handled. */

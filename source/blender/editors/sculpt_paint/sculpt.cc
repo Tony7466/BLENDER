@@ -51,10 +51,7 @@
 #include "BKE_image.h"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
-#include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node_runtime.hh"
@@ -63,7 +60,6 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.hh"
-#include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 #include "BLI_math_vector.hh"
@@ -83,7 +79,18 @@
 #include "ED_view3d.hh"
 
 #include "paint_intern.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_boundary.hh"
+#include "sculpt_cloth.hh"
+#include "sculpt_color.hh"
+#include "sculpt_dyntopo.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_filter.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_islands.hh"
+#include "sculpt_pose.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -1221,7 +1228,7 @@ static void restore_mask_from_undo_step(Object &object)
           if (const undo::Node *unode = undo::get_node(node, undo::Type::Mask)) {
             const Span<int> verts = bke::pbvh::node_unique_verts(*node);
             array_utils::scatter(unode->mask.as_span(), verts, mask.span);
-            BKE_pbvh_node_mark_update_mask(node);
+            BKE_pbvh_node_mark_update_mask(*node);
           }
         }
       });
@@ -1237,7 +1244,7 @@ static void restore_mask_from_undo_step(Object &object)
               const float orig_mask = BM_log_original_mask(ss.bm_log, vert);
               BM_ELEM_CD_SET_FLOAT(vert, offset, orig_mask);
             }
-            BKE_pbvh_node_mark_update_mask(node);
+            BKE_pbvh_node_mark_update_mask(*node);
           }
         }
       }
@@ -1261,7 +1268,7 @@ static void restore_mask_from_undo_step(Object &object)
                 index++;
               }
             }
-            BKE_pbvh_node_mark_update_mask(node);
+            BKE_pbvh_node_mark_update_mask(*node);
           }
         }
       });
@@ -1315,7 +1322,7 @@ static void restore_face_set_from_undo_step(Object &object)
             const Span<int> faces = unode->face_indices;
             const Span<int> face_sets = unode->face_sets;
             blender::array_utils::scatter(face_sets, faces, attribute.span);
-            BKE_pbvh_node_mark_update_face_sets(node);
+            BKE_pbvh_node_mark_update_face_sets(*node);
           }
         }
       });
@@ -1384,7 +1391,7 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
                   object, mesh, *active_key, verts, tls.translations, positions_orig);
             }
 
-            BKE_pbvh_node_mark_positions_update(node);
+            BKE_pbvh_node_mark_positions_update(*node);
           }
         }
       });
@@ -1401,7 +1408,7 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
               copy_v3_v3(vert->co, orig_co);
             }
           }
-          BKE_pbvh_node_mark_positions_update(node);
+          BKE_pbvh_node_mark_positions_update(*node);
         }
       });
       break;
@@ -1424,7 +1431,7 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
                 index++;
               }
             }
-            BKE_pbvh_node_mark_positions_update(node);
+            BKE_pbvh_node_mark_positions_update(*node);
           }
         }
       });
@@ -2604,10 +2611,10 @@ namespace blender::ed::sculpt_paint {
 
 bool node_fully_masked_or_hidden(const bke::pbvh::Node &node)
 {
-  if (BKE_pbvh_node_fully_hidden_get(&node)) {
+  if (BKE_pbvh_node_fully_hidden_get(node)) {
     return true;
   }
-  if (BKE_pbvh_node_fully_masked_get(&node)) {
+  if (BKE_pbvh_node_fully_masked_get(node)) {
     return true;
   }
   return false;
@@ -3281,15 +3288,30 @@ static void sculpt_topology_update(const Depsgraph &depsgraph,
                     node,
                     brush.sculpt_tool == SCULPT_TOOL_MASK ? undo::Type::Mask :
                                                             undo::Type::Position);
-    BKE_pbvh_node_mark_update(node);
+    BKE_pbvh_node_mark_update(*node);
 
-    BKE_pbvh_node_mark_topology_update(node);
+    BKE_pbvh_node_mark_topology_update(*node);
     BKE_pbvh_bmesh_node_save_orig(ss.bm, ss.bm_log, node, false);
   }
+
+  float max_edge_len;
+  if (sd.flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL)) {
+    max_edge_len = dyntopo::detail_size::constant_to_detail_size(sd.constant_detail, ob);
+  }
+  else if (sd.flags & SCULPT_DYNTOPO_DETAIL_BRUSH) {
+    max_edge_len = dyntopo::detail_size::brush_to_detail_size(sd.detail_percent, ss.cache->radius);
+  }
+  else {
+    max_edge_len = dyntopo::detail_size::relative_to_detail_size(
+        sd.detail_size, ss.cache->radius, ss.cache->dyntopo_pixel_radius, U.pixelsize);
+  }
+  const float min_edge_len = max_edge_len * dyntopo::detail_size::EDGE_LENGTH_MIN_FACTOR;
 
   bke::pbvh::bmesh_update_topology(*ss.pbvh,
                                    *ss.bm_log,
                                    mode,
+                                   min_edge_len,
+                                   max_edge_len,
                                    ss.cache->location,
                                    ss.cache->view_normal,
                                    ss.cache->radius,
@@ -3312,7 +3334,7 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
 
   if (brush.sculpt_tool == SCULPT_TOOL_DRAW_FACE_SETS) {
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_update_face_sets(node);
+      BKE_pbvh_node_mark_update_face_sets(*node);
     }
 
     /* Draw face sets in smooth mode moves the vertices. */
@@ -3326,7 +3348,7 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
   else if (brush.sculpt_tool == SCULPT_TOOL_MASK) {
     undo::push_nodes(depsgraph, ob, nodes, undo::Type::Mask);
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_update_mask(node);
+      BKE_pbvh_node_mark_update_mask(*node);
     }
   }
   else if (SCULPT_tool_is_paint(brush.sculpt_tool)) {
@@ -3338,7 +3360,7 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
     }
     undo::push_nodes(depsgraph, ob, nodes, undo::Type::Color);
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_update_color(node);
+      BKE_pbvh_node_mark_update_color(*node);
     }
   }
   else {
@@ -3348,7 +3370,7 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
   if (need_coords) {
     undo::push_nodes(depsgraph, ob, nodes, undo::Type::Position);
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_positions_update(node);
+      BKE_pbvh_node_mark_positions_update(*node);
     }
   }
 }
@@ -4900,6 +4922,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
+    ss.clear_active_vert();
     return false;
   }
 
@@ -5148,6 +5171,24 @@ static void sculpt_restore_mesh(const Depsgraph &depsgraph, const Sculpt &sd, Ob
   using namespace blender::ed::sculpt_paint;
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
+
+  /* Brushes that use original coordinates and need a "restore" step. This has to happen separately
+   * rather than in the brush deformation calculation because that is called once for each symmetry
+   * pass, potentially within the same BVH node.
+   *
+   * Note: Despite the Cloth and Boundary brush using original coordinates, the brushes do not
+   * expect this restoration to happen on every stroke step. Performing this restoration causes
+   * issues with the cloth simulation mode for those brushes.
+   */
+  if (ELEM(brush->sculpt_tool,
+           SCULPT_TOOL_ELASTIC_DEFORM,
+           SCULPT_TOOL_GRAB,
+           SCULPT_TOOL_THUMB,
+           SCULPT_TOOL_ROTATE))
+  {
+    undo::restore_from_undo_step(depsgraph, sd, ob);
+    return;
+  }
 
   /* For the cloth brush it makes more sense to not restore the mesh state to keep running the
    * simulation from the previous state. */
@@ -5472,21 +5513,6 @@ static void sculpt_stroke_update_step(bContext *C,
   SCULPT_stroke_modifiers_check(C, ob, brush);
   sculpt_update_cache_variants(C, sd, ob, itemptr);
   sculpt_restore_mesh(depsgraph, sd, ob);
-
-  if (sd.flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL)) {
-    BKE_pbvh_bmesh_detail_size_set(
-        *ss.pbvh, dyntopo::detail_size::constant_to_detail_size(sd.constant_detail, ob));
-  }
-  else if (sd.flags & SCULPT_DYNTOPO_DETAIL_BRUSH) {
-    BKE_pbvh_bmesh_detail_size_set(
-        *ss.pbvh, dyntopo::detail_size::brush_to_detail_size(sd.detail_percent, ss.cache->radius));
-  }
-  else {
-    BKE_pbvh_bmesh_detail_size_set(
-        *ss.pbvh,
-        dyntopo::detail_size::relative_to_detail_size(
-            sd.detail_size, ss.cache->radius, ss.cache->dyntopo_pixel_radius, U.pixelsize));
-  }
 
   if (dyntopo::stroke_is_dyntopo(ss, brush)) {
     do_symmetrical_brush_actions(
