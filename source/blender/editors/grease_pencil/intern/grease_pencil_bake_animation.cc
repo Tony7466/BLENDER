@@ -166,7 +166,6 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   Object *target_object = object::add_type(
       C, OB_GREASE_PENCIL, nullptr, scene.cursor.location, float3(0), false, local_view_bits);
-  create_blank(bmain, *target_object, 0);
 
   float4x4 invmat = math::invert(target_object->object_to_world());
 
@@ -197,17 +196,17 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
 
     for (Object *source_object : bake_targets) {
       Object *ob_eval = DEG_get_evaluated_object(&depsgraph, source_object);
-      GreasePencil &source_eval_grease_pencil = *static_cast<GreasePencil *>(target_object->data);
+      GreasePencil &source_eval_grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
 
       for (const Layer *source_layer : source_eval_grease_pencil.layers()) {
         char *layer_name;
         BLI_SCOPED_DEFER([&] { MEM_SAFE_FREE(layer_name); });
-
         layer_name = BLI_sprintfN(
             "%s_%s", source_object->id.name + 2, source_layer->name().c_str());
         TreeNode *node = target.find_node_by_name(layer_name);
         if (node == nullptr) {
           target.add_layer(layer_name);
+          target.add_empty_drawings(1);
         }
 
         Layer &target_layer = target.find_node_by_name(layer_name)->as_layer();
