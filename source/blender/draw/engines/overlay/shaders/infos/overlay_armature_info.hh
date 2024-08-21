@@ -104,12 +104,16 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_outline_no_geom)
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_outline_next)
     .do_static_compilation(true)
-    .define("NO_GEOM")
-    .vertex_in(0, Type::VEC3, "pos")
+    .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
+    .storage_buf(1, Qualifier::READ, "mat4", "data_buf[]")
+    .push_constant(Type::IVEC2, "gpu_attr_0")
     .vertex_out(overlay_armature_shape_outline_no_geom_iface)
-    .vertex_source("overlay_armature_shape_outline_vert.glsl")
+    .vertex_source("overlay_armature_shape_outline_next_vert.glsl")
     .fragment_source("overlay_armature_wire_frag.glsl")
-    .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
+    .additional_info("overlay_frag_output",
+                     "overlay_armature_common",
+                     "gpu_index_load",
+                     "draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_armature_shape_outline_clipped)
     .do_static_compilation(true)

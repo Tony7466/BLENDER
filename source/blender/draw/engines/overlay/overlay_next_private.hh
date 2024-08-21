@@ -415,6 +415,21 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
     pass.bind_ssbo("data_buf", &data_buf);
     pass.draw(shape, data_buf.size());
   }
+
+  void end_sync(PassSimple::Sub &pass,
+                gpu::Batch *shape,
+                GPUPrimType primitive_type,
+                uint primitive_len)
+  {
+    if (data_buf.is_empty()) {
+      return;
+    }
+    this->select_bind(pass);
+    data_buf.push_update();
+    pass.bind_ssbo("data_buf", &data_buf);
+    pass.draw_expand(
+        shape, primitive_type, primitive_len, data_buf.size(), ResourceHandle(0), uint(0));
+  }
 };
 
 struct VertexPrimitiveBuf {
