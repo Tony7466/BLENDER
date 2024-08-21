@@ -156,7 +156,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
 
   const bool only_selected = RNA_boolean_get(op->ptr, "only_selected");
   const int frame_offset = RNA_int_get(op->ptr, "frame_target") - frame_start;
-  const ReprojectModes reproject_mode = ReprojectModes(RNA_enum_get(op->ptr, "project_type"));
+  const ReprojectMode reproject_mode = ReprojectMode(RNA_enum_get(op->ptr, "project_type"));
 
   View3D *v3d = CTX_wm_view3d(C);
 
@@ -334,23 +334,23 @@ static void GREASE_PENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot)
   RNA_def_int(
       ot->srna, "frame_target", 1, 1, 100000, "Target Frame", "Destination frame", 1, 100000);
 
-  const EnumPropertyItem rna_gpencil_reproject_type_items[] = {
-      {int(ReprojectModes::Keep), "KEEP", 0, "No Reproject", ""},
-      {int(ReprojectModes::Front),
+  static const EnumPropertyItem rna_grease_pencil_reproject_type_items[] = {
+      {int(ReprojectMode::Keep), "KEEP", 0, "No Reproject", ""},
+      {int(ReprojectMode::Front),
        "FRONT",
        0,
        "Front",
        "Reproject the strokes using the X-Z plane"},
-      {int(ReprojectModes::Side), "SIDE", 0, "Side", "Reproject the strokes using the Y-Z plane"},
-      {int(ReprojectModes::Top), "TOP", 0, "Top", "Reproject the strokes using the X-Y plane"},
-      {int(ReprojectModes::View),
+      {int(ReprojectMode::Side), "SIDE", 0, "Side", "Reproject the strokes using the Y-Z plane"},
+      {int(ReprojectMode::Top), "TOP", 0, "Top", "Reproject the strokes using the X-Y plane"},
+      {int(ReprojectMode::View),
        "VIEW",
        0,
        "View",
        "Reproject the strokes to end up on the same plane, as if drawn from the current "
        "viewpoint "
        "using 'Cursor' Stroke Placement"},
-      {int(ReprojectModes::Cursor),
+      {int(ReprojectMode::Cursor),
        "CURSOR",
        0,
        "Cursor",
@@ -360,8 +360,8 @@ static void GREASE_PENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot)
 
   RNA_def_enum(ot->srna,
                "project_type",
-               rna_gpencil_reproject_type_items,
-               int(ReprojectModes::Keep),
+               rna_grease_pencil_reproject_type_items,
+               int(ReprojectMode::Keep),
                "Projection Type",
                "");
 }

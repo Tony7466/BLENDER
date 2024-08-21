@@ -708,19 +708,4 @@ void set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
 
 GreasePencilLineartModifierData *get_first_lineart_modifier(const Object &ob);
 
-enum class ReprojectModes {
-  /* Axis */
-  Front = 0,
-  Side,
-  Top,
-  /** On same plane, parallel to view-plane. */
-  View,
-  /** Re-projected on to the scene geometry. */
-  Surface,
-  /** Re-projected on 3D cursor orientation. */
-  Cursor,
-  /** Keep equals (used in some operators). */
-  Keep,
-};
-
 }  // namespace blender::ed::greasepencil
