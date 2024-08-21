@@ -80,6 +80,17 @@ typedef enum NodeSocketInterfaceStructureType {
   NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID = 4,
 } NodeSocketInterfaceStructureType;
 
+#ifdef __cplusplus
+namespace blender::nodes {
+enum class StructureType {
+  Single = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE,
+  Dynamic = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC,
+  Field = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD,
+  Grid = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID,
+};
+}
+#endif
+
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
 
@@ -106,7 +117,9 @@ typedef struct bNodeTreeInterfaceSocket {
 
   /** #NodeSocketInterfaceStructureType. */
   int8_t structure_type;
-  char _pad[7];
+  /** #NodeSocketInterfaceStructureType. */
+  int8_t derived_structure_type;
+  char _pad[6];
 
 #ifdef __cplusplus
   bNodeSocketTypeHandle *socket_typeinfo() const;

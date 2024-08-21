@@ -375,21 +375,6 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     }
   }
 
-  switch (io_socket.structure_type) {
-    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_AUTO: {
-      /* TODO */
-      dst->structure_type = StructureType::Single;
-      break;
-    }
-    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE:
-    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC:
-    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD:
-    case NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID: {
-      dst->structure_type = StructureType(io_socket.structure_type);
-      break;
-    }
-  }
-
   dst->name = io_socket.name ? io_socket.name : "";
   dst->identifier = io_socket.identifier;
   dst->in_out = in_out;
@@ -397,6 +382,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
   dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & NODE_INTERFACE_SOCKET_HIDE_VALUE;
   dst->compact = io_socket.flag & NODE_INTERFACE_SOCKET_COMPACT;
+  dst->structure_type = StructureType(io_socket.derived_structure_type);
   return dst;
 }
 
@@ -534,17 +520,17 @@ void node_group_declare(NodeDeclarationBuilder &b)
   if (group->type == NTREE_GEOMETRY) {
     group->ensure_interface_cache();
     const Span<const bNodeTreeInterfaceSocket *> inputs = group->interface_inputs();
-    const FieldInferencingInterface &field_interface =
-        *group->runtime->field_inferencing_interface;
+    // const FieldInferencingInterface &field_interface =
+    //     *group->runtime->field_inferencing_interface;
     for (const int i : inputs.index_range()) {
       SocketDeclaration &decl = *r_declaration.inputs[i];
-      decl.input_field_type = field_interface.inputs[i];
+      // decl.input_field_type = field_interface.inputs[i];
       set_default_input_field(*inputs[i], decl);
     }
 
-    for (const int i : r_declaration.outputs.index_range()) {
-      r_declaration.outputs[i]->output_field_dependency = field_interface.outputs[i];
-    }
+    // for (const int i : r_declaration.outputs.index_range()) {
+    //   r_declaration.outputs[i]->output_field_dependency = field_interface.outputs[i];
+    // }
   }
 }
 

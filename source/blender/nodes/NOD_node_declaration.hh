@@ -26,13 +26,6 @@ namespace blender::nodes {
 
 class NodeDeclarationBuilder;
 
-enum class StructureType {
-  Single = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_SINGLE,
-  Dynamic = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC,
-  Field = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD,
-  Grid = NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_GRID,
-};
-
 enum class InputSocketFieldType {
   /** The input is required to be a single value. */
   None,

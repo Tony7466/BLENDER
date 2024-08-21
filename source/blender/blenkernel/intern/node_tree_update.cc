@@ -504,9 +504,12 @@ class NodeTreeMainUpdater {
       if (this->propagate_enum_definitions(ntree)) {
         result.interface_changed = true;
       }
-      if (node_field_inferencing::update_field_inferencing(ntree)) {
+      if (node_structure_type_inferencing::update_structure_type_inferencing(ntree)) {
         result.interface_changed = true;
       }
+      // if (node_field_inferencing::update_field_inferencing(ntree)) {
+      //   result.interface_changed = true;
+      // }
       this->update_from_field_inference(ntree);
       if (anonymous_attribute_inferencing::update_anonymous_attribute_relations(ntree)) {
         result.interface_changed = true;
@@ -869,6 +872,9 @@ class NodeTreeMainUpdater {
         case StructureType::Grid:
           return SOCK_DISPLAY_SHAPE_SQUARE;
       }
+    }
+    if (socket.owner_node().type == NODE_REROUTE) {
+      return SOCK_DISPLAY_SHAPE_CIRCLE_DOT;
     }
     return socket.display_shape;
   }

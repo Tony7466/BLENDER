@@ -112,13 +112,16 @@ static const FieldInferencingInterface &get_dummy_field_inferencing_interface(co
   return inferencing_interface;
 }
 
+const FieldInferencingInterface &get_node_field_inferencing_interface(const bNode &node,
+                                                                      ResourceScope &scope);
+
 /**
  * Retrieves information about how the node interacts with fields.
  * In the future, this information can be stored in the node declaration. This would allow this
  * function to return a reference, making it more efficient.
  */
-static const FieldInferencingInterface &get_node_field_inferencing_interface(const bNode &node,
-                                                                             ResourceScope &scope)
+const FieldInferencingInterface &get_node_field_inferencing_interface(const bNode &node,
+                                                                      ResourceScope &scope)
 {
   /* Node groups already reference all required information, so just return that. */
   if (node.is_group()) {
@@ -517,19 +520,19 @@ static void determine_group_input_states(
         new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
       }
       else {
-        if (group_input->structure_type == NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_AUTO) {
+        if (ELEM(group_input->derived_structure_type,
+                 NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC,
+                 NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD))
+        {
           if (group_input->default_input != NODE_INPUT_DEFAULT_VALUE) {
             new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
           }
           else if (is_layer_selection_field(*group_input)) {
             new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
           }
-        }
-        else if (ELEM(group_input->structure_type,
-                      NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_FIELD,
-                      NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_DYNAMIC))
-        {
-          new_inferencing_interface.inputs[index] = InputSocketFieldType::Implicit;
+          else {
+            new_inferencing_interface.inputs[index] = InputSocketFieldType::IsSupported;
+          }
         }
         else {
           new_inferencing_interface.inputs[index] = InputSocketFieldType::None;

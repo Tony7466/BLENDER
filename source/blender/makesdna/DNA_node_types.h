@@ -815,6 +815,9 @@ typedef struct bNodeTree {
   /** Get all input nodes of the node group. */
   blender::Span<bNode *> group_input_nodes();
   blender::Span<const bNode *> group_input_nodes() const;
+  /** Get all output nodes of the node group. Not that generally only one of them is active. */
+  blender::Span<bNode *> group_output_nodes();
+  blender::Span<const bNode *> group_output_nodes() const;
 
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;

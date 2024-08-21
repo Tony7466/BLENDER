@@ -27,7 +27,7 @@ static bool socket_is_field(const bNodeSocket &socket)
   return socket.runtime->field_state == FieldSocketState::IsField;
 }
 
-static const aal::RelationsInNode &get_relations_in_node(const bNode &node, ResourceScope &scope)
+const aal::RelationsInNode &get_relations_in_node(const bNode &node, ResourceScope &scope)
 {
   if (node.is_group()) {
     if (const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id)) {
