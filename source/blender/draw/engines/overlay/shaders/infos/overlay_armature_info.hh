@@ -220,6 +220,7 @@ GPU_SHADER_CREATE_INFO(overlay_armature_shape_wire_next)
 
 GPU_SHADER_CREATE_INFO(overlay_armature_envelope_outline)
     .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC2, "pos0")
     .vertex_in(1, Type::VEC2, "pos1")
     .vertex_in(2, Type::VEC2, "pos2")
@@ -244,6 +245,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_envelope_solid_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_armature_envelope_solid)
     .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC3, "pos")
     /* Per instance. Assumed to be in world coordinate already. */
     .vertex_in(1, Type::VEC4, "headSphere")

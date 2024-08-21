@@ -24,6 +24,7 @@ enum eArmatureDrawMode {
 
 class Armatures {
   using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
+  using BoneEnvelopeBuf = ShapeInstanceBuf<BoneEnvelopeData>;
 
  private:
   const SelectionType selection_type_;
@@ -51,6 +52,9 @@ class Armatures {
     PassSimple::Sub *shape_outline = nullptr;
     /* Custom bone wire-frame. */
     PassSimple::Sub *shape_wire = nullptr;
+    /* Envelopes. */
+    PassSimple::Sub *envelope_fill = nullptr;
+    PassSimple::Sub *envelope_outline = nullptr;
 
     BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
     BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
@@ -60,6 +64,9 @@ class Armatures {
 
     BoneInstanceBuf sphere_fill_buf = {selection_type_, "sphere_fill_buf"};
     BoneInstanceBuf sphere_outline_buf = {selection_type_, "sphere_outline_buf"};
+
+    BoneEnvelopeBuf envelope_fill_buf = {selection_type_, "envelope_fill_buf"};
+    BoneEnvelopeBuf envelope_outline_buf = {selection_type_, "envelope_outline_buf"};
 
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
@@ -107,9 +114,11 @@ class Armatures {
     res.select_bind(armature_ps_);
 
     /* Transparent draws needs to be issued first. */
+    {
+      /* Envelopes. */
+    }
 
     /* "Opaque" draws. */
-
     {
       {
         auto &sub = armature_ps_.sub("opaque.sphere_fill");
@@ -212,13 +221,51 @@ class Armatures {
       /* Stick Bones. */
     }
     {
-      /* Envelopes. */
+      {
+        auto &sub = armature_ps_.sub("opaque.envelope_fill");
+        sub.state_set(default_state | DRW_STATE_CULL_BACK);
+        sub.shader_set(res.shaders.armature_envelope_fill.get());
+        sub.push_constant("isDistance", false);
+        sub.push_constant("alpha", 1.0f);
+        opaque.envelope_fill = &sub;
+      }
+      {
+        auto &sub = armature_ps_.sub("transparent.envelope_fill");
+        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) |
+                      (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
+        sub.shader_set(res.shaders.armature_envelope_fill.get());
+        sub.push_constant("alpha", wire_alpha * 0.6f);
+        transparent.envelope_fill = &sub;
+      }
+
+      {
+        auto &sub = armature_ps_.sub("opaque.envelope_outline");
+        sub.state_set(default_state | DRW_STATE_CULL_BACK);
+        sub.shader_set(res.shaders.armature_envelope_outline.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("alpha", 1.0f);
+        opaque.envelope_outline = &sub;
+      }
+      if (use_wire_alpha) {
+        auto &sub = armature_ps_.sub("transparent.envelope_outline");
+        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) |
+                      (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
+        sub.shader_set(res.shaders.armature_envelope_outline.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("alpha", 1.0f);
+        transparent.envelope_outline = &sub;
+      }
+      else {
+        transparent.envelope_outline = opaque.envelope_outline;
+      }
     }
     {
       /* Wires. */
     }
 
     auto clear_buffers = [](BoneBuffers &bb) {
+      bb.envelope_fill_buf.clear();
+      bb.envelope_outline_buf.clear();
       bb.bbones_fill_buf.clear();
       bb.bbones_outline_buf.clear();
       bb.octahedral_fill_buf.clear();
@@ -354,6 +401,9 @@ class Armatures {
       bb.bbones_fill_buf.end_sync(*bb.shape_fill, shapes.bone_box.get());
       bb.bbones_outline_buf.end_sync(
           *bb.shape_outline, shapes.bone_box_wire.get(), GPU_PRIM_LINES, 1);
+
+      bb.envelope_fill_buf.end_sync(*bb.envelope_fill, shapes.bone_envelope.get());
+      bb.envelope_outline_buf.end_sync(*bb.envelope_outline, shapes.bone_envelope_wire.get());
 
       using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
 

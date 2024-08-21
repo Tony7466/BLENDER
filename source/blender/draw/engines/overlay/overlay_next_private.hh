@@ -93,6 +93,8 @@ class ShapeCache {
  public:
   BatchPtr bone_box;
   BatchPtr bone_box_wire;
+  BatchPtr bone_envelope;
+  BatchPtr bone_envelope_wire;
   BatchPtr bone_octahedron;
   BatchPtr bone_octahedron_wire;
   BatchPtr bone_sphere;
@@ -196,6 +198,8 @@ class ShaderModule {
   ShaderPtr outline_detect = shader("overlay_outline_detect");
 
   /** Selectable Shaders */
+  ShaderPtr armature_envelope_fill;
+  ShaderPtr armature_envelope_outline;
   ShaderPtr armature_shape_outline;
   ShaderPtr armature_shape_fill;
   ShaderPtr armature_shape_wire;

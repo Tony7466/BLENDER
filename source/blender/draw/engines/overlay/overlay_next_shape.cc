@@ -22,6 +22,13 @@ struct VertShaded {
   float3 nor;
 };
 
+/* TODO(fclem): Might be good to remove for simplicity. */
+struct VertexTriple {
+  float2 pos0;
+  float2 pos1;
+  float2 pos2;
+};
+
 /* Caller gets ownership of the #gpu::VertBuf. */
 static gpu::VertBuf *vbo_from_vector(const Vector<Vertex> &vector)
 {
@@ -49,6 +56,21 @@ static gpu::VertBuf *vbo_from_vector(Vector<VertShaded> &vector)
   gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
   GPU_vertbuf_data_alloc(*vbo, vector.size());
   vbo->data<VertShaded>().copy_from(vector);
+  return vbo;
+}
+
+static gpu::VertBuf *vbo_from_vector(Vector<VertexTriple> &vector)
+{
+  static GPUVertFormat format = {0};
+  if (format.attr_len == 0) {
+    GPU_vertformat_attr_add(&format, "pos0", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos1", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    GPU_vertformat_attr_add(&format, "pos2", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  }
+
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo, vector.size());
+  vbo->data<VertexTriple>().copy_from(vector);
   return vbo;
 }
 
@@ -462,6 +484,53 @@ ShapeCache::ShapeCache()
     /* NOTE: Reuses the same VBO as bone_box. Thus has the same vertex format. */
     bone_box_wire = BatchPtr(GPU_batch_create_ex(
         GPU_PRIM_LINES_ADJ, bone_box.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
+  }
+
+  /* Armature Envelope. */
+  {
+    constexpr int lon_res = 24;
+    constexpr int lat_res = 24;
+    constexpr float lon_inc = 2.0f * M_PI / lon_res;
+    constexpr float lat_inc = M_PI / lat_res;
+
+    auto lat_lon_to_co = [](const float lat, const float lon) {
+      return float3(sinf(lat) * cosf(lon), sinf(lat) * sinf(lon), cosf(lat));
+    };
+
+    Vector<Vertex> verts;
+    float lon = 0.0f;
+    for (int i = 0; i < lon_res; i++, lon += lon_inc) {
+      float lat = 0.0f;
+      /* NOTE: the poles are duplicated on purpose, to restart the strip. */
+      for (int j = 0; j < lat_res; j++, lat += lat_inc) {
+        verts.append({lat_lon_to_co(lat, lon), VCLASS_NONE});
+        verts.append({lat_lon_to_co(lat, lon + lon_inc), VCLASS_NONE});
+      }
+      /* Closing the loop */
+      verts.append({lat_lon_to_co(M_PI, lon), VCLASS_NONE});
+      verts.append({lat_lon_to_co(M_PI, lon + lon_inc), VCLASS_NONE});
+    }
+
+    bone_envelope = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_TRI_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  {
+    constexpr int circle_resolution = 64;
+    float2 v0, v1, v2;
+
+    auto circle_pt = [](const float angle) { return float2(sinf(angle), cosf(angle)); };
+
+    Vector<VertexTriple> verts;
+    /* Output 3 verts for each position. See shader for explanation. */
+    v0 = circle_pt((2.0f * M_PI * -2) / float(circle_resolution));
+    v1 = circle_pt((2.0f * M_PI * -1) / float(circle_resolution));
+    for (int a = 0; a <= circle_resolution; a++, v0 = v1, v1 = v2) {
+      v2 = circle_pt((2.0f * M_PI * a) / float(circle_resolution));
+      verts.append({v0, v1, v2});
+    }
+
+    bone_envelope_wire = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 
   /* quad_wire */

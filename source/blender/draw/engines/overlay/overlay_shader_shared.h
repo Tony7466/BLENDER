@@ -256,6 +256,45 @@ struct ParticlePointData {
 };
 BLI_STATIC_ASSERT_ALIGN(ParticlePointData, 16)
 
+struct BoneEnvelopeData {
+  float4 head_sphere;
+  float4 tail_sphere;
+  float4 bone_color_and_wire_width;
+  float4 state_color;
+  float4 x_axis;
+
+#ifndef GPU_SHADER
+  BoneEnvelopeData() = default;
+
+  /* For bone fills. */
+  BoneEnvelopeData(float4 &head_sphere,
+                   float4 &tail_sphere,
+                   float3 &bone_color,
+                   float3 &state_color,
+                   float3 &x_axis)
+      : head_sphere(head_sphere),
+        tail_sphere(tail_sphere),
+        bone_color_and_wire_width(bone_color),
+        state_color(state_color),
+        x_axis(x_axis){};
+
+  /* For bone outlines. */
+  BoneEnvelopeData(float4 &head_sphere,
+                   float4 &tail_sphere,
+                   float4 &color_and_wire_width,
+                   float3 &x_axis)
+      : head_sphere(head_sphere),
+        tail_sphere(tail_sphere),
+        bone_color_and_wire_width(color_and_wire_width),
+        x_axis(x_axis){};
+
+  /* For bone distance volumes. */
+  BoneEnvelopeData(float4 &head_sphere, float4 &tail_sphere, float3 &x_axis)
+      : head_sphere(head_sphere), tail_sphere(tail_sphere), x_axis(x_axis){};
+#endif
+};
+BLI_STATIC_ASSERT_ALIGN(BoneEnvelopeData, 16)
+
 #ifndef GPU_SHADER
 #  ifdef __cplusplus
 }

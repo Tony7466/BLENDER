@@ -192,6 +192,34 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   /** Selectable Shaders */
 
+  armature_envelope_fill = selectable_shader(
+      "overlay_armature_envelope_solid", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "BoneEnvelopeData", "data_buf[]");
+        info.define("headSphere", "data_buf[gl_InstanceID].head_sphere");
+        info.define("tailSphere", "data_buf[gl_InstanceID].tail_sphere");
+        info.define("xAxis", "data_buf[gl_InstanceID].x_axis.xyz");
+        info.define("stateColor", "data_buf[gl_InstanceID].state_color.xyz");
+        info.define("boneColor", "data_buf[gl_InstanceID].bone_color_and_wire_width.xyz");
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+      });
+
+  armature_envelope_outline = selectable_shader(
+      "overlay_armature_envelope_outline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "BoneEnvelopeData", "data_buf[]");
+        info.define("headSphere", "data_buf[gl_InstanceID].head_sphere");
+        info.define("tailSphere", "data_buf[gl_InstanceID].tail_sphere");
+        info.define("outlineColorSize", "data_buf[gl_InstanceID].bone_color_and_wire_width");
+        info.define("xAxis", "data_buf[gl_InstanceID].x_axis.xyz");
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+      });
+
   armature_shape_outline = selectable_shader("overlay_armature_shape_outline_next",
                                              [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 
