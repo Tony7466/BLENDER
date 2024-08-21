@@ -191,6 +191,7 @@ static void keymap_grease_pencil_fill_tool(wmKeyConfig *keyconf)
 
 void ED_operatortypes_grease_pencil()
 {
+  ED_operatortypes_grease_pencil_bake_animation();
   ED_operatortypes_grease_pencil_draw();
   ED_operatortypes_grease_pencil_frames();
   ED_operatortypes_grease_pencil_layers();
