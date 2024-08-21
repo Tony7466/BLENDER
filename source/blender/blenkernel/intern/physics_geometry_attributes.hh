@@ -42,7 +42,6 @@ static Span<PhysicsGeometry::BodyAttribute> all_body_attributes()
       BodyAttribute::is_kinematic,
       BodyAttribute::mass,
       BodyAttribute::inertia,
-      BodyAttribute::center_of_mass,
       BodyAttribute::position,
       BodyAttribute::rotation,
       BodyAttribute::velocity,
@@ -126,8 +125,6 @@ static StringRef physics_attribute_name(PhysicsGeometry::BodyAttribute attribute
       return "mass";
     case BodyAttribute::inertia:
       return "inertia";
-    case BodyAttribute::center_of_mass:
-      return "center_of_mass";
     case BodyAttribute::position:
       return "position";
     case BodyAttribute::rotation:
@@ -216,8 +213,6 @@ static const CPPType &physics_attribute_type(PhysicsGeometry::BodyAttribute attr
       return CPPType::get<float>();
     case BodyAttribute::inertia:
       return CPPType::get<float3>();
-    case BodyAttribute::center_of_mass:
-      return CPPType::get<float4x4>();
     case BodyAttribute::position:
       return CPPType::get<float3>();
     case BodyAttribute::rotation:
@@ -297,10 +292,6 @@ static const void *physics_attribute_default_value(PhysicsGeometry::BodyAttribut
   switch (attribute) {
     case BodyAttribute::collision_shape: {
       static const int default_value = -1;
-      return &default_value;
-    }
-    case BodyAttribute::center_of_mass: {
-      static const float4x4 default_value = float4x4::identity();
       return &default_value;
     }
     case BodyAttribute::mass: {
@@ -405,7 +396,6 @@ static void physics_attribute_finish(PhysicsGeometryImpl &impl,
       impl.tag_body_mass_changed();
       break;
 
-    case BodyAttribute::center_of_mass:
     case BodyAttribute::id:
     case BodyAttribute::is_kinematic:
     case BodyAttribute::inertia:

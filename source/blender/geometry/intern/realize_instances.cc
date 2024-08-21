@@ -468,8 +468,20 @@ static void copy_generic_attributes_to_result(
           const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
           const IndexRange element_slice = range_fn(domain);
 
+          const bool is_com = ordered_attributes.ids[attribute_index] == "center_of_mass";
+          if (is_com) {
+            std::cout << "Copy CoM: ";
+          }
+
           GMutableSpan dst_span = dst_attribute_writers[attribute_index].span.slice(element_slice);
           if (src_attributes[attribute_index].has_value()) {
+            if (is_com) {
+              std::cout << "copy data: " << std::endl;
+              const Span<float4x4> data = src_attributes[attribute_index]->typed<float4x4>();
+              for (const int i : data.index_range()) {
+                std::cout << data[i] << std::endl;
+              }
+            }
             threaded_copy(*src_attributes[attribute_index], dst_span);
           }
           else {
@@ -477,7 +489,13 @@ static void copy_generic_attributes_to_result(
             const void *fallback = attribute_fallbacks.array[attribute_index] == nullptr ?
                                        cpp_type.default_value() :
                                        attribute_fallbacks.array[attribute_index];
+            if (is_com) {
+              std::cout << "no data! filling with: " << (float4x4 *)fallback;
+            }
             threaded_fill({cpp_type, fallback}, dst_span);
+          }
+          if (is_com) {
+            std::cout << std::endl;
           }
         }
       });
@@ -2576,6 +2594,9 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
     const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
     const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
+    if (attribute_id == "center_of_mass") {
+      int x = 1;
+    }
     dst_attribute_writers.append(
         dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
     BLI_assert(bool(dst_attribute_writers.last()));
@@ -2605,9 +2626,17 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   });
 
   /* Tag modified attributes. */
-  for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
+  const float4x4 *f = nullptr;
+  for (const int i : ordered_attributes.ids.index_range()) {
+    GSpanAttributeWriter &dst_attribute = dst_attribute_writers[i];
     dst_attribute.finish();
+    if (ordered_attributes.ids[i] == "center_of_mass") {
+      f = (float4x4 *)dst_attribute.span.data();
+    }
   }
+  // for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
+  //   dst_attribute.finish();
+  // }
   dst_physics->tag_collision_shapes_changed();
   body_shapes.finish();
   position.finish();

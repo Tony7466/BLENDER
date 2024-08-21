@@ -2259,17 +2259,6 @@ AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
       body_attribute_name(BodyAttribute::inertia));
 }
 
-VArray<float4x4> PhysicsGeometry::body_center_of_mass() const
-{
-  return *attributes().lookup<float4x4>(body_attribute_name(BodyAttribute::center_of_mass));
-}
-
-AttributeWriter<float4x4> PhysicsGeometry::body_center_of_mass_for_write()
-{
-  return attributes_for_write().lookup_for_write<float4x4>(
-      body_attribute_name(BodyAttribute::center_of_mass));
-}
-
 VArray<float3> PhysicsGeometry::body_positions() const
 {
   return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::position));

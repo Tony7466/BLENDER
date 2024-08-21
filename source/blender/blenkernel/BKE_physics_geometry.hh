@@ -75,7 +75,6 @@ class PhysicsGeometry {
     is_kinematic,
     mass,
     inertia,
-    center_of_mass,
     position,
     rotation,
     velocity,
@@ -176,9 +175,6 @@ class PhysicsGeometry {
 
   VArray<float3> body_inertias() const;
   AttributeWriter<float3> body_inertias_for_write();
-
-  VArray<float4x4> body_center_of_mass() const;
-  AttributeWriter<float4x4> body_center_of_mass_for_write();
 
   VArray<float3> body_positions() const;
   AttributeWriter<float3> body_positions_for_write();

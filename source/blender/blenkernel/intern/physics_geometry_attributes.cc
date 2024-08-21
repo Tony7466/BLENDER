@@ -122,14 +122,6 @@ static void inertia_set_fn(btRigidBody &body, float3 value)
     body.updateInertiaTensor();
   }
 }
-static float4x4 center_of_mass_get_fn(const btRigidBody &body)
-{
-  return to_blender(body.getCenterOfMassTransform());
-}
-static void center_of_mass_set_fn(btRigidBody &body, float4x4 value)
-{
-  body.setCenterOfMassTransform(to_bullet(value));
-}
 static float3 position_get_fn(const btRigidBody &body)
 {
   return to_blender(body.getWorldTransform().getOrigin());
@@ -444,11 +436,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
       });
   static BuiltinRigidBodyAttributeProvider<float3, inertia_get_fn, inertia_set_fn> body_inertia(
       BodyAttribute::inertia, BuiltinAttributeProvider::NonDeletable, physics_access, allow_cache);
-  static BuiltinRigidBodyAttributeProvider<float4x4, center_of_mass_get_fn, center_of_mass_set_fn>
-      body_center_of_mass(BodyAttribute::center_of_mass,
-                          BuiltinAttributeProvider::NonDeletable,
-                          physics_access,
-                          allow_cache);
   static BuiltinRigidBodyAttributeProvider<float3, position_get_fn, position_set_fn> body_position(
       BodyAttribute::position,
       BuiltinAttributeProvider::NonDeletable,
@@ -672,7 +659,6 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
                                       &body_kinematic,
                                       &body_mass,
                                       &body_inertia,
-                                      &body_center_of_mass,
                                       &body_position,
                                       &body_rotation,
                                       &body_velocity,
