@@ -6,8 +6,6 @@
  * \ingroup bke
  */
 
-#include <mutex>
-
 #include "BKE_sound_fft_cache.hh"
 #include "BLI_math_base.hh"
 
@@ -36,24 +34,16 @@ uint64_t FFTParameter::hash() const
 
 FFTCache::FFTCache() {}
 
-FFTResult *FFTCache::try_get_or_compute(const FFTParameter &parameter,
-                                        const FunctionRef<std::unique_ptr<FFTResult>()> fn)
+std::shared_ptr<FFTResult> FFTCache::get_or_compute(
+    const FFTParameter &parameter, const FunctionRef<std::shared_ptr<FFTResult>()> fn)
 {
-  // Try to read from map.
-  {
-    std::shared_lock lock{mutex_};
-    auto result = map_.lookup_ptr(parameter);
-    if (result) {
-      return result->get();
-    }
+  CacheMap::MutableAccessor mutable_accessor;
+  if (!map_.add(mutable_accessor, parameter)) {
+    return mutable_accessor->second;
   }
 
-  // Otherwise, lock and calculate.
-  {
-    std::unique_lock lock{mutex_};
-    FFTResult *result = map_.lookup_or_add_cb(parameter, fn).get();
-    return result;
-  }
+  mutable_accessor->second = std::move(fn());
+  return mutable_accessor->second;
 }
 
 }  // namespace blender::bke::sound::fft_cache

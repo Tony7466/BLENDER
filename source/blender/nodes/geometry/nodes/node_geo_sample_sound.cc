@@ -151,7 +151,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     device_specs.channels = AUD_Channels(sound_->audio_channels);
 
     device_ = AUD_Device_open("read", device_specs, 0, "Sample Sound");
-    handle_ = AUD_Device_play(device_, sound_->handle, true);
+    handle_ = AUD_Device_play(device_, sound_->playback_handle, true);
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
@@ -193,16 +193,17 @@ class SampleSoundFunction : public mf::MultiFunction {
                                     2 :
                                     (aligned_sample_index - aligned_leftmost) / fft_size + 1;
 
-      Array<FFTResult *> results(smooth_radius);
+      Array<std::shared_ptr<FFTResult>> results(smooth_radius);
       for (int j = 0; j < smooth_radius; ++j) {
         FFTParameter parameter{};
         parameter.aligned_sample_index = aligned_sample_index - fft_size * j;
-        parameter.window = window_;
         parameter.channel = channel;
         parameter.fft_size = fft_size;
+        parameter.window = window_;
 
-        results[j] = cache.try_get_or_compute(parameter, [&]() {
-          return compute_fft(aligned_sample_index - fft_size * j, fft_size, channel);
+        results[j] = cache.get_or_compute(parameter, [&]() {
+          return std::shared_ptr<FFTResult>(compute_fft(
+              parameter.aligned_sample_index, parameter.fft_size, parameter.channel));
         });
       }
 
@@ -259,7 +260,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     }
   }
 
-  std::unique_ptr<bke::sound::fft_cache::FFTResult> compute_fft(
+  FFTResult *compute_fft(
       const int64_t aligned_sample_index,
       const int fft_size,
       const std::optional<int> channel) const
@@ -304,7 +305,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     fftwf_destroy_plan(plan);
     fftwf_free(fftwf_buffer);
 
-    return std::unique_ptr<FFTResult>(new FFTResult{Span<float>(buffer.begin(), bin_size)});
+    return new FFTResult{Span<float>(buffer.begin(), bin_size)};
   }
 
   inline int aligned(int sample_index, int fft_size) const
@@ -372,7 +373,7 @@ static void node_register()
       &ntype, "NodeGeometrySampleSound", node_free_standard_storage, node_copy_standard_storage);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons_ex = node_layout_ex;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

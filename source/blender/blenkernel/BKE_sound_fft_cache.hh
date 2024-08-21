@@ -4,11 +4,9 @@
 
 #pragma once
 
-#include <shared_mutex>
-
 #include "BLI_array.hh"
+#include "BLI_concurrent_map.hh"
 #include "BLI_function_ref.hh"
-#include "BLI_map.hh"
 #include "BLI_struct_equality_utils.hh"
 
 #include "DNA_sound_types.h"
@@ -33,17 +31,17 @@ struct FFTResult {
   Array<float> bins;
 };
 
+using CacheMap = ConcurrentMap<FFTParameter, std::shared_ptr<FFTResult>>;
+
 class FFTCache {
  public:
   FFTCache();
 
-  FFTResult *try_get_or_compute(const FFTParameter &parameter,
-                                const FunctionRef<std::unique_ptr<FFTResult>()> fn);
-
-  std::shared_mutex mutex_;
+  std::shared_ptr<FFTResult> get_or_compute(const FFTParameter &parameter,
+                                            const FunctionRef<std::shared_ptr<FFTResult>()> fn);
 
  private:
-  Map<FFTParameter, std::unique_ptr<FFTResult>> map_;
+  CacheMap map_;
 };
 
 struct FFTCacheRuntime {
