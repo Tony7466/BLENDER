@@ -2469,6 +2469,9 @@ class ArmatureBoneDrawStrategyBBone : public ArmatureBoneDrawStrategy {
         }
       }
 
+      if (ctx->draw_mode == ARM_DRAW_MODE_EDIT) {
+        draw_points(ctx, bone, boneflag, col_solid, select_id);
+      }
       return;
     }
 
