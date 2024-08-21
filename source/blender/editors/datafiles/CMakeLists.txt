@@ -178,6 +178,9 @@ if(WITH_BLENDER)
       antialiased
       append_blend
       area_join
+      area_join_down
+      area_join_left
+      area_join_up
       area_swap
       armature_data
       arrow_leftright

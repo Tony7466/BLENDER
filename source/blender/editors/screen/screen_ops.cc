@@ -3738,7 +3738,17 @@ static int area_join_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  return OPERATOR_CANCELLED;
+  if (!area_join_init(C, op, nullptr, nullptr)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  sAreaJoinData *jd = (sAreaJoinData *)op->customdata;
+  jd->x = event->xy[0];
+  jd->y = event->xy[1];
+  jd->draw_callback = WM_draw_cb_activate(CTX_wm_window(C), area_join_draw_cb, op);
+
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
 }
 
 /* Apply the docking of the area. */
@@ -4235,12 +4245,26 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
   /* Join needs two very similar areas. */
   if (sa1 && sa2) {
     eScreenDir dir = area_getorientation(sa1, sa2);
-    if (dir != SCREEN_DIR_NONE) {
+    if (!U.experimental.use_docking && dir != SCREEN_DIR_NONE) {
+      uiItemFullO(layout,
+                  "SCREEN_OT_area_join",
+                  IFACE_("Join Areas"),
+                  ICON_AREA_JOIN,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
+      RNA_int_set_array(&ptr, "source_xy", blender::int2{sa2->totrct.xmin, sa2->totrct.ymin});
+      RNA_int_set_array(&ptr, "target_xy", blender::int2{sa1->totrct.xmin, sa1->totrct.ymin});
+
+      uiItemS(layout);
+    }
+    else if (U.experimental.use_docking && dir != SCREEN_DIR_NONE) {
       uiItemFullO(layout,
                   "SCREEN_OT_area_join",
                   (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Up") :
                                                             IFACE_("Join Right"),
-                  ICON_AREA_JOIN,
+                  ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? ICON_AREA_JOIN_UP : ICON_AREA_JOIN,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
                   UI_ITEM_NONE,
@@ -4248,15 +4272,15 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
       RNA_int_set_array(&ptr, "source_xy", blender::int2{sa2->totrct.xmin, sa2->totrct.ymin});
       RNA_int_set_array(&ptr, "target_xy", blender::int2{sa1->totrct.xmin, sa1->totrct.ymin});
 
-      uiItemFullO(layout,
-                  "SCREEN_OT_area_join",
-                  (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Down") :
-                                                            IFACE_("Join Left"),
-                  ICON_AREA_JOIN,
-                  nullptr,
-                  WM_OP_EXEC_DEFAULT,
-                  UI_ITEM_NONE,
-                  &ptr);
+      uiItemFullO(
+          layout,
+          "SCREEN_OT_area_join",
+          (ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S)) ? IFACE_("Join Down") : IFACE_("Join Left"),
+          ELEM(dir, SCREEN_DIR_N, SCREEN_DIR_S) ? ICON_AREA_JOIN_DOWN : ICON_AREA_JOIN_LEFT,
+          nullptr,
+          WM_OP_EXEC_DEFAULT,
+          UI_ITEM_NONE,
+          &ptr);
       RNA_int_set_array(&ptr, "source_xy", blender::int2{sa1->totrct.xmin, sa1->totrct.ymin});
       RNA_int_set_array(&ptr, "target_xy", blender::int2{sa2->totrct.xmin, sa2->totrct.ymin});
 
