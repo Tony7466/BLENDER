@@ -71,11 +71,19 @@ class Armatures {
   BoneBuffers opaque = {selection_type_};
   BoneBuffers transparent = {selection_type_};
 
+  bool enabled = false;
+
  public:
   Armatures(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync(Resources &res, const State &state)
   {
+    enabled = !(state.overlay.flag & V3D_OVERLAY_HIDE_BONES);
+
+    if (!enabled) {
+      return;
+    }
+
     const bool is_select_mode = (selection_type_ != SelectionType::DISABLED);
 
     draw_transparent = (state.v3d->shading.type == OB_WIRE) || XRAY_FLAG_ENABLED(state.v3d);
@@ -306,20 +314,35 @@ class Armatures {
     return ctx;
   }
 
-  void edit_object_sync(const ObjectRef & /*ob_ref*/, Resources & /*res*/) {}
-
-  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  void edit_object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
   {
-    if (ob_ref.object->dt == OB_BOUNDBOX) {
+    if (!enabled) {
       return;
     }
 
-    DrawContext ctx = create_draw_context(ob_ref, res, state, ARM_DRAW_MODE_OBJECT);
+    DrawContext ctx = create_draw_context(ob_ref, res, state, ARM_DRAW_MODE_EDIT);
+    draw_armature_edit(&ctx);
+  }
+
+  void object_sync(const ObjectRef &ob_ref, Resources &res, const State &state)
+  {
+    if (!enabled || ob_ref.object->dt == OB_BOUNDBOX) {
+      return;
+    }
+
+    eArmatureDrawMode draw_mode = is_pose_mode(ob_ref.object, state) ? ARM_DRAW_MODE_POSE :
+                                                                       ARM_DRAW_MODE_OBJECT;
+
+    DrawContext ctx = create_draw_context(ob_ref, res, state, draw_mode);
     draw_armature_pose(&ctx);
   }
 
   void end_sync(Resources & /*res*/, ShapeCache &shapes, const State & /*state*/)
   {
+    if (!enabled) {
+      return;
+    }
+
     auto end_sync = [&](BoneBuffers &bb) {
       bb.sphere_fill_buf.end_sync(*bb.sphere_fill, shapes.bone_sphere.get());
       bb.sphere_outline_buf.end_sync(*bb.sphere_outline, shapes.bone_sphere_wire.get());
@@ -351,6 +374,10 @@ class Armatures {
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
+    if (!enabled) {
+      return;
+    }
+
     GPU_framebuffer_bind(framebuffer);
     manager.submit(armature_ps_, view);
   }
@@ -359,6 +386,27 @@ class Armatures {
  public:
   static void draw_armature_pose(Armatures::DrawContext *ctx);
   static void draw_armature_edit(Armatures::DrawContext *ctx);
+
+  bool is_pose_mode(Object *armature_ob, const State &state)
+  {
+    Object *active_ob = state.active_base->object;
+
+    /* Pose armature is handled by pose mode engine. */
+    if (((armature_ob == active_ob) || (armature_ob->mode & OB_MODE_POSE)) &&
+        ((state.object_mode & OB_MODE_POSE) != 0))
+    {
+      return true;
+    }
+
+    /* Armature parent is also handled by pose mode engine. */
+    if ((active_ob != nullptr) && (state.object_mode & OB_MODE_ALL_WEIGHT_PAINT)) {
+      if (armature_ob == BKE_object_pose_armature_get(active_ob)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
 };
 
 }  // namespace blender::draw::overlay

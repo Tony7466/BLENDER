@@ -145,7 +145,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.meshes.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_ARMATURE:
-        layer.armatures.edit_object_sync(ob_ref, resources);
+        layer.armatures.edit_object_sync(ob_ref, resources, state);
         break;
       case OB_CURVES_LEGACY:
         break;
@@ -177,7 +177,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.cameras.object_sync(ob_ref, resources, state);
         break;
       case OB_ARMATURE:
-        layer.armatures.object_sync(ob_ref, resources, state);
+        if (!in_edit_mode) {
+          layer.armatures.object_sync(ob_ref, resources, state);
+        }
         break;
       case OB_LATTICE:
         if (!in_edit_mode) {
