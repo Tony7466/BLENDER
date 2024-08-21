@@ -81,8 +81,8 @@ class Cameras {
     CameraInstanceBuf volume_buf = {selection_type_, "camera_volume_buf"};
     CameraInstanceBuf volume_wire_buf = {selection_type_, "camera_volume_wire_buf"};
     CameraInstanceBuf sphere_solid_buf = {selection_type_, "camera_sphere_solid_buf"};
-    LineInstanceBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
-    LineInstanceBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
+    LinePrimitiveBuf stereo_connect_lines = {selection_type_, "camera_dashed_lines_buf"};
+    LinePrimitiveBuf tracking_path = {selection_type_, "camera_tracking_path_buf"};
     Empties::CallBuffers empties{selection_type_};
   } call_buffers_;
 
@@ -91,11 +91,11 @@ class Cameras {
                                     const View3D *v3d,
                                     const float4 &color,
                                     const ObjectRef &ob_ref,
+                                    const bool is_select,
                                     Resources &res,
                                     CallBuffers &call_buffers)
   {
     const DRWContextState *draw_ctx = DRW_context_state_get();
-    const bool is_select = DRW_state_is_select();
     Object *ob = ob_ref.object;
 
     MovieClip *clip = BKE_object_movieclip_get((Scene *)scene, ob, false);
@@ -146,7 +146,7 @@ class Cameras {
         }
         bool is_selected = TRACK_SELECTED(track);
 
-        float4x4 bundle_mat = math::translate(tracking_object_mat, float3{track->bundle_pos});
+        float4x4 bundle_mat = math::translate(tracking_object_mat, float3(track->bundle_pos));
 
         const float *bundle_color;
         if (track->flag & TRACK_CUSTOMCOLOR) {
@@ -180,7 +180,7 @@ class Cameras {
           }
 
           call_buffers.sphere_solid_buf.append(
-              ExtraInstanceData{bundle_mat, {float3{bundle_color}, 1.0f}, v3d->bundle_size},
+              ExtraInstanceData{bundle_mat, float4(float3(bundle_color), 1.0f), v3d->bundle_size},
               track_select_id);
         }
         else {
@@ -236,6 +236,7 @@ class Cameras {
                                 const select::ID select_id,
                                 const Scene *scene,
                                 const View3D *v3d,
+                                const bool is_select,
                                 Resources &res,
                                 Object *ob,
                                 CallBuffers &call_buffers)
@@ -243,7 +244,6 @@ class Cameras {
     CameraInstanceData stereodata = instdata;
 
     const Camera *cam = static_cast<const Camera *>(ob->data);
-    const bool is_select = DRW_state_is_select();
     const char *viewnames[2] = {STEREO_LEFT_NAME, STEREO_RIGHT_NAME};
 
     const bool is_stereo3d_cameras = (v3d->stereo3d_flag & V3D_S3D_DISPCAMERAS) != 0;
@@ -367,9 +367,14 @@ class Cameras {
     const Scene *scene = state.scene;
     const RegionView3D *rv3d = state.rv3d;
 
+    if (v3d == nullptr) {
+      /* Can happen in when in UV view. */
+      return;
+    }
+
     const Camera *cam = static_cast<Camera *>(ob->data);
     const Object *camera_object = DEG_get_evaluated_object(state.depsgraph, v3d->camera);
-    const bool is_select = DRW_state_is_select();
+    const bool is_select = call_buffers_.selection_type_ == SelectionType::ENABLED;
     const bool is_active = (ob == camera_object);
     const bool is_camera_view = (is_active && (rv3d->persp == RV3D_CAMOB));
 
@@ -442,7 +447,7 @@ class Cameras {
     else {
       /* Stereo cameras, volumes, plane drawing. */
       if (is_stereo3d_display_extra) {
-        stereoscopy_extra(data, select_id, scene, v3d, res, ob, call_buffers_);
+        stereoscopy_extra(data, select_id, scene, v3d, is_select, res, ob, call_buffers_);
       }
       else {
         call_buffers_.frame_buf.append(data, select_id);
@@ -484,8 +489,14 @@ class Cameras {
 
     /* Motion Tracking. */
     if ((v3d->flag2 & V3D_SHOW_RECONSTRUCTION) != 0) {
-      view3d_reconstruction(
-          select_id, scene, v3d, res.object_wire_color(ob_ref, state), ob_ref, res, call_buffers_);
+      view3d_reconstruction(select_id,
+                            scene,
+                            v3d,
+                            res.object_wire_color(ob_ref, state),
+                            ob_ref,
+                            is_select,
+                            res,
+                            call_buffers_);
     }
 
     // TODO: /* Background images. */
