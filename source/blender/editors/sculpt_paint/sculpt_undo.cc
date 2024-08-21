@@ -128,92 +128,6 @@ namespace blender::ed::sculpt_paint::undo {
 
 #define NO_ACTIVE_LAYER bke::AttrDomain::Auto
 
-/* Storage of geometry for the undo node.
- * Is used as a storage for either original or modified geometry. */
-struct NodeGeometry {
-  /* Is used for sanity check, helping with ensuring that two and only two
-   * geometry pushes happened in the undo stack. */
-  bool is_initialized;
-
-  CustomData vert_data;
-  CustomData edge_data;
-  CustomData corner_data;
-  CustomData face_data;
-  int *face_offset_indices;
-  const ImplicitSharingInfo *face_offsets_sharing_info;
-  int totvert;
-  int totedge;
-  int totloop;
-  int faces_num;
-};
-
-struct StepData {
-  /**
-   * The type of data stored in this undo step. For historical reasons this is often set when the
-   * first undo node is pushed.
-   */
-  Type type = Type::None;
-
-  /** Name of the object associated with this undo data (`object.id.name`). */
-  std::string object_name;
-
-  /** Name of the object's active shape key when the undo step was created. */
-  std::string active_shape_key_name;
-
-  /* The number of vertices in the entire mesh. */
-  int mesh_verts_num;
-  /* The number of face corners in the entire mesh. */
-  int mesh_corners_num;
-
-  /** The number of grids in the entire mesh. */
-  int mesh_grids_num;
-  /** A copy of #SubdivCCG::grid_size. */
-  int grid_size;
-
-  float3 pivot_pos;
-  float4 pivot_rot;
-
-  /* Geometry modification operations.
-   *
-   * Original geometry is stored before some modification is run and is used to restore state of
-   * the object when undoing the operation
-   *
-   * Modified geometry is stored after the modification and is used to redo the modification. */
-  bool geometry_clear_pbvh;
-  NodeGeometry geometry_original;
-  NodeGeometry geometry_modified;
-
-  /* bmesh */
-  BMLogEntry *bm_entry;
-
-  /* Geometry at the bmesh enter moment. */
-  NodeGeometry geometry_bmesh_enter;
-
-  bool applied;
-
-  std::mutex nodes_mutex;
-
-  /**
-   * #undo::Node is stored per pbvh::Node to reduce data storage needed for changes only impacting
-   * small portions of the mesh. During undo step creation and brush evaluation we often need to
-   * look up the undo state for a specific node. That lookup must be protected by a lock since
-   * nodes are pushed from multiple threads. This map speeds up undo node access to reduce the
-   * amount of time we wait for the lock.
-   *
-   * This is only accessible when building the undo step, in between #push_begin and #push_end.
-   *
-   * \todo All nodes in a single step have the same type, so using the type as part of the map key
-   * should be unnecessary. However, to remove it, first the storage of the undo type should be
-   * moved to #StepData from #Node.
-   */
-  Map<const bke::pbvh::Node *, std::unique_ptr<Node>> undo_nodes_by_pbvh_node;
-
-  /** Storage of per-node undo data after creation of the undo step is finished. */
-  Vector<std::unique_ptr<Node>> nodes;
-
-  size_t undo_size;
-};
-
 struct SculptAttrRef {
   bke::AttrDomain domain;
   eCustomDataType type;
@@ -692,11 +606,12 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
   if (step_data.type == Type::Mask) {
     Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_redraw(node);
+      BKE_pbvh_node_mark_redraw(*node);
     }
   }
   else {
-    SCULPT_pbvh_clear(object);
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 }
 
@@ -706,7 +621,8 @@ static void bmesh_enable(Object &object, StepData &step_data)
   SculptSession &ss = *object.sculpt;
   Mesh *mesh = static_cast<Mesh *>(object.data);
 
-  SCULPT_pbvh_clear(object);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
 
   /* Create empty BMesh and enable logging. */
   BMeshCreateParams bmesh_create_params{};
@@ -816,7 +732,9 @@ static void geometry_free_data(NodeGeometry *geometry)
 static void restore_geometry(StepData &step_data, Object &object)
 {
   if (step_data.geometry_clear_pbvh) {
-    SCULPT_pbvh_clear(object);
+    SculptSession &ss = *object.sculpt;
+    BKE_sculptsession_free_pbvh(&ss);
+    DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   }
 
   Mesh *mesh = static_cast<Mesh *>(object.data);
@@ -938,6 +856,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Position: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -952,12 +872,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_position_grids(grids, key, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          const Span<int> grids = bke::pbvh::node_grid_indices(node);
+        for (bke::pbvh::Node *node : nodes) {
+          const Span<int> grids = bke::pbvh::node_grid_indices(*node);
           if (indices_contain_true(modified_grids, grids)) {
-            BKE_pbvh_node_mark_positions_update(&node);
+            BKE_pbvh_node_mark_positions_update(*node);
           }
-        });
+        }
         multires_mark_as_modified(depsgraph, &object, MULTIRES_COORDS_MODIFIED);
       }
       else {
@@ -966,11 +886,11 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         }
         Array<bool> modified_verts(ss.totvert, false);
         restore_position_mesh(object, step_data.nodes, modified_verts);
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_positions_update(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_positions_update(*node);
           }
-        });
+        }
       }
 
       if (tag_update) {
@@ -983,6 +903,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideVert: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -994,22 +916,22 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_vert_visibility_grids(subdiv_ccg, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(node))) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(*node))) {
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
       else {
         Array<bool> modified_verts(ss.totvert, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_vert_visibility_mesh(object, *unode, modified_verts);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
 
       BKE_pbvh_sync_visibility_from_verts(object);
@@ -1020,6 +942,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideFace: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1032,26 +956,26 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
 
       if (use_multires_undo(step_data, ss)) {
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, node, faces_vector);
+              *ss.pbvh, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
       else {
         const Span<int> tri_faces = mesh.corner_tri_faces();
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, node, faces_vector);
+              tri_faces, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
 
       hide::sync_all_from_faces(object);
@@ -1059,6 +983,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Mask: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1069,28 +995,30 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_mask_grids(object, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(node))) {
-            BKE_pbvh_node_mark_update_mask(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(*node))) {
+            BKE_pbvh_node_mark_update_mask(*node);
           }
-        });
+        }
       }
       else {
         Array<bool> modified_verts(ss.totvert, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_mask_mesh(object, *unode, modified_verts);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_update_mask(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_update_mask(*node);
           }
-        });
+        }
       }
 
       bke::pbvh::update_mask(object, *ss.pbvh);
       break;
     }
     case Type::FaceSet: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1102,30 +1030,32 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       if (use_multires_undo(step_data, ss)) {
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, node, faces_vector);
+              *ss.pbvh, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_face_sets(&node);
+            BKE_pbvh_node_mark_update_face_sets(*node);
           }
-        });
+        }
       }
       else {
         const Span<int> tri_faces = mesh.corner_tri_faces();
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, node, faces_vector);
+              tri_faces, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_face_sets(&node);
+            BKE_pbvh_node_mark_update_face_sets(*node);
           }
-        });
+        }
       }
       break;
     }
     case Type::Color: {
+      const Span<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1133,11 +1063,11 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
 
       Array<bool> modified_verts(ss.totvert, false);
       restore_color(object, step_data, modified_verts);
-      bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-        if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-          BKE_pbvh_node_mark_update_color(&node);
+      for (bke::pbvh::Node *node : nodes) {
+        if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+          BKE_pbvh_node_mark_update_color(*node);
         }
-      });
+      }
       break;
     }
     case Type::Geometry: {

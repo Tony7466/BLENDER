@@ -23,6 +23,7 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
@@ -39,7 +40,10 @@
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -111,7 +115,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   }
 
   for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_topology_update(node);
+    BKE_pbvh_node_mark_topology_update(*node);
   }
   /* Get the bounding box, its center and size. */
   const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob.sculpt->pbvh);
@@ -133,7 +137,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
       *ss.pbvh, *ss.bm_log, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
   {
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_topology_update(node);
+      BKE_pbvh_node_mark_topology_update(*node);
     }
   }
 
@@ -142,7 +146,9 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   undo::push_end(ob);
 
   /* Force rebuild of bke::pbvh::Tree for better BB placement. */
-  SCULPT_pbvh_clear(ob);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
+
   /* Redraw. */
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 

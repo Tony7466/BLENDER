@@ -49,6 +49,7 @@
 #include "sculpt_face_set.hh"
 #include "sculpt_intern.hh"
 #include "sculpt_smooth.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -395,7 +396,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -437,7 +438,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -475,7 +476,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -525,7 +526,7 @@ static void calc_inflate_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -557,7 +558,7 @@ static void calc_inflate_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -591,7 +592,7 @@ static void calc_inflate_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -641,7 +642,7 @@ static void calc_scale_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -673,7 +674,7 @@ static void calc_scale_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -706,7 +707,7 @@ static void calc_scale_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -772,7 +773,7 @@ static void calc_sphere_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -803,7 +804,7 @@ static void calc_sphere_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -835,7 +836,7 @@ static void calc_sphere_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -898,7 +899,7 @@ static void calc_random_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -931,7 +932,7 @@ static void calc_random_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -966,7 +967,7 @@ static void calc_random_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1036,7 +1037,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1091,7 +1092,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1132,7 +1133,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1208,7 +1209,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1268,7 +1269,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1307,7 +1308,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1383,7 +1384,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1421,7 +1422,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1466,7 +1467,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1501,7 +1502,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1544,7 +1545,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1580,7 +1581,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1697,7 +1698,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1786,7 +1787,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1860,7 +1861,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[node_index]);
+          BKE_pbvh_node_mark_positions_update(*nodes[node_index]);
         }
       });
       break;
@@ -1910,7 +1911,7 @@ static void calc_enhance_details_filter(const Depsgraph &depsgraph,
           write_translations(
               depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1941,7 +1942,7 @@ static void calc_enhance_details_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_data.positions, translations);
           apply_translations(translations, grids, subdiv_ccg);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1973,7 +1974,7 @@ static void calc_enhance_details_filter(const Depsgraph &depsgraph,
           clip_and_lock_translations(sd, ss, orig_positions, translations);
           apply_translations(translations, verts);
 
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2023,7 +2024,7 @@ static void calc_erase_displacement_filter(const Depsgraph &depsgraph,
       clip_and_lock_translations(sd, ss, orig_data.positions, translations);
       apply_translations(translations, grids, subdiv_ccg);
 
-      BKE_pbvh_node_mark_positions_update(nodes[i]);
+      BKE_pbvh_node_mark_positions_update(*nodes[i]);
     }
   });
 }

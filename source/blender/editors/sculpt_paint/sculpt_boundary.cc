@@ -23,6 +23,7 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
+#include "brushes/types.hh"
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
 #include "sculpt_cloth.hh"
@@ -1333,7 +1334,7 @@ static void do_bend_brush(const Depsgraph &depsgraph,
                          strength,
                          deform_target,
                          positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1620,7 +1621,7 @@ static void do_slide_brush(const Depsgraph &depsgraph,
                           strength,
                           deform_target,
                           positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -1890,7 +1891,7 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
                             strength,
                             deform_target,
                             positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2161,7 +2162,7 @@ static void do_grab_brush(const Depsgraph &depsgraph,
                          strength,
                          deform_target,
                          positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2441,7 +2442,7 @@ static void do_twist_brush(const Depsgraph &depsgraph,
                           strength,
                           deform_target,
                           positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2843,7 +2844,7 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
                            strength,
                            deform_target,
                            positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;

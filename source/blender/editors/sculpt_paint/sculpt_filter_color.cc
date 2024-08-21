@@ -36,6 +36,7 @@
 #include "sculpt_filter.hh"
 #include "sculpt_intern.hh"
 #include "sculpt_smooth.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -400,7 +401,7 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object &ob)
                         *nodes[i],
                         tls,
                         color_attribute);
-      BKE_pbvh_node_mark_update_color(nodes[i]);
+      BKE_pbvh_node_mark_update_color(*nodes[i]);
     }
   });
   color_attribute.finish();

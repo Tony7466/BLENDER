@@ -37,6 +37,7 @@
 #include "paint_intern.hh"
 #include "sculpt_filter.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -304,7 +305,7 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
         for (const int i : range) {
           transform_node_mesh(
               depsgraph, sd, transform_mats, positions_eval, *nodes[i], ob, tls, positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -314,7 +315,7 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
         TransformLocalData &tls = all_tls.local();
         for (const int i : range) {
           transform_node_grids(sd, transform_mats, *nodes[i], ob, tls);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -324,7 +325,7 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
         TransformLocalData &tls = all_tls.local();
         for (const int i : range) {
           transform_node_bmesh(sd, transform_mats, *nodes[i], ob, tls);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -499,7 +500,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
                                         ob,
                                         tls,
                                         positions_orig);
-            BKE_pbvh_node_mark_positions_update(nodes[i]);
+            BKE_pbvh_node_mark_positions_update(*nodes[i]);
           }
         });
         break;
@@ -510,7 +511,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
           for (const int i : range) {
             elastic_transform_node_grids(
                 sd, params, elastic_transform_mat, elastic_transform_pivot, *nodes[i], ob, tls);
-            BKE_pbvh_node_mark_positions_update(nodes[i]);
+            BKE_pbvh_node_mark_positions_update(*nodes[i]);
           }
         });
         break;
@@ -521,7 +522,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
           for (const int i : range) {
             elastic_transform_node_bmesh(
                 sd, params, elastic_transform_mat, elastic_transform_pivot, *nodes[i], ob, tls);
-            BKE_pbvh_node_mark_positions_update(nodes[i]);
+            BKE_pbvh_node_mark_positions_update(*nodes[i]);
           }
         });
         break;

@@ -79,6 +79,8 @@
 #include "sculpt_boundary.hh"
 #include "sculpt_cloth.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_pose.hh"
+#include "sculpt_undo.hh"
 
 using blender::IndexRange;
 using blender::bke::AttrDomain;
@@ -2305,7 +2307,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   fill_active_color(obact, paintcol, true, affect_alpha);
 
   for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_update_color(node);
+    BKE_pbvh_node_mark_update_color(*node);
   }
   undo::push_end(obact);
 

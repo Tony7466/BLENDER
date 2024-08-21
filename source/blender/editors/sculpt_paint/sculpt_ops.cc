@@ -146,10 +146,13 @@ static void SCULPT_OT_set_persistent_base(wmOperatorType *ot)
 
 static int sculpt_optimize_exec(bContext *C, wmOperator * /*op*/)
 {
-  Object *ob = CTX_data_active_object(C);
+  Object &ob = *CTX_data_active_object(C);
 
-  SCULPT_pbvh_clear(*ob);
-  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
+  SculptSession &ss = *ob.sculpt;
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 
   return OPERATOR_FINISHED;
 }
@@ -253,7 +256,8 @@ static int sculpt_symmetrize_exec(bContext *C, wmOperator *op)
 
   islands::invalidate(ss);
 
-  SCULPT_pbvh_clear(ob);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 
   return OPERATOR_FINISHED;
@@ -1162,7 +1166,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
         threading::isolate_task([&]() {
           for (const int i : range) {
             bake_mask_mesh(*depsgraph, ob, *automasking, mode, factor, *nodes[i], tls, mask.span);
-            BKE_pbvh_node_mark_update_mask(nodes[i]);
+            BKE_pbvh_node_mark_update_mask(*nodes[i]);
             bke::pbvh::node_update_mask_mesh(mask.span, *nodes[i]);
           }
         });
@@ -1174,7 +1178,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
         LocalData &tls = all_tls.local();
         for (const int i : range) {
           bake_mask_grids(*depsgraph, ob, *automasking, mode, factor, *nodes[i], tls);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          BKE_pbvh_node_mark_update_mask(*nodes[i]);
         }
       });
       bke::pbvh::update_mask(ob, *ss.pbvh);
@@ -1185,7 +1189,7 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
         LocalData &tls = all_tls.local();
         for (const int i : range) {
           bake_mask_bmesh(*depsgraph, ob, *automasking, mode, factor, *nodes[i], tls);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          BKE_pbvh_node_mark_update_mask(*nodes[i]);
         }
       });
       bke::pbvh::update_mask(ob, *ss.pbvh);
