@@ -2460,9 +2460,8 @@ NODE_DEFINE(MetallicBsdfNode)
 
   static NodeEnum fresnel_type_enum;
   fresnel_type_enum.insert("f82", CLOSURE_BSDF_F82_CONDUCTOR);
-  fresnel_type_enum.insert("artist_conductor", CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
   fresnel_type_enum.insert("physical_conductor", CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
-  SOCKET_ENUM(fresnel_type, "fresnel_type", fresnel_type_enum, CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
+  SOCKET_ENUM(fresnel_type, "fresnel_type", fresnel_type_enum, CLOSURE_BSDF_F82_CONDUCTOR);
 
   SOCKET_IN_COLOR(edge_tint, "Edge Tint", make_float3(0.695f, 0.726f, 0.770f));
 

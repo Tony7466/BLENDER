@@ -565,9 +565,6 @@ static ShaderNode *add_node(Scene *scene,
     }
 
     switch (b_metallic_node.fresnel_type()) {
-      case BL::ShaderNodeBsdfMetallic::fresnel_type_ARTISTIC_CONDUCTOR:
-        metal->set_fresnel_type(CLOSURE_BSDF_ARTISTIC_CONDUCTOR);
-        break;
       case BL::ShaderNodeBsdfMetallic::fresnel_type_PHYSICAL_CONDUCTOR:
         metal->set_fresnel_type(CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
         break;

@@ -58,7 +58,7 @@ static void node_shader_buts_metallic(uiLayout *layout, bContext * /*C*/, Pointe
 static void node_shader_init_metallic(bNodeTree * /*ntree*/, bNode *node)
 {
   node->custom1 = SHD_GLOSSY_MULTI_GGX;
-  node->custom2 = SHD_ARTISTIC_CONDUCTOR;
+  node->custom2 = SHD_PHYSICAL_CONDUCTOR;
 }
 
 static int node_shader_gpu_bsdf_metallic(GPUMaterial *mat,

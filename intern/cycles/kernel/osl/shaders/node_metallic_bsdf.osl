@@ -32,23 +32,13 @@ shader node_metallic_bsdf(color BaseColor = color(0.617, 0.577, 0.540),
       T = rotate(T, Rotation * M_2PI, point(0.0, 0.0, 0.0), Normal);
   }
 
-  color F0 = clamp(BaseColor, color(0.0), color(1.0));
-  color F82 = clamp(EdgeTint, color(0.0), color(1.0));
-
   if (fresnel_type == "f82") {
+    color F0 = clamp(BaseColor, color(0.0), color(1.0));
+    color F82 = clamp(EdgeTint, color(0.0), color(1.0));
     BSDF = microfacet_f82_tint(distribution, Normal, T, alpha_x, alpha_y, F0, F82);
   }
   else {
-    vector n, k;
-    if (fresnel_type == "physical_conductor") {
-      n = max(IOR, 0.0);
-      k = max(Extinction, 0.0);
-    }
-    else {
-      n = conductor_ior_from_color(F0, F82);
-      k = conductor_extinction_from_color(F0, n);
-    }
-
-    BSDF = conductor_bsdf(Normal, T, alpha_x, alpha_y, n, k, distribution);
+    BSDF = conductor_bsdf(
+        Normal, T, alpha_x, alpha_y, max(IOR, 0.0), max(Extinction, 0.0), distribution);
   }
 }

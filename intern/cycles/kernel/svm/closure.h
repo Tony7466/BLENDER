@@ -480,8 +480,7 @@ ccl_device
       break;
     }
     case CLOSURE_BSDF_PHYSICAL_CONDUCTOR:
-    case CLOSURE_BSDF_F82_CONDUCTOR:
-    case CLOSURE_BSDF_ARTISTIC_CONDUCTOR: {
+    case CLOSURE_BSDF_F82_CONDUCTOR: {
 #ifdef __CAUSTICS_TRICKS__
       if (!kernel_data.integrator.caustics_reflective && (path_flag & PATH_RAY_DIFFUSE))
         break;
@@ -526,20 +525,12 @@ ccl_device
 
         const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
 
-        if (type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR || type == CLOSURE_BSDF_ARTISTIC_CONDUCTOR) {
+        if (type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR) {
           ccl_private FresnelConductor *fresnel = (ccl_private FresnelConductor *)
               closure_alloc_extra(sd, sizeof(FresnelConductor));
 
-          float3 n, k;
-          if (type == CLOSURE_BSDF_PHYSICAL_CONDUCTOR) {
-            n = max(stack_load_float3(stack, base_ior_offset), zero_float3());
-            k = max(stack_load_float3(stack, edge_tint_k_offset), zero_float3());
-          }
-          else {
-            const float3 color = saturate(stack_load_float3(stack, base_ior_offset));
-            const float3 tint = saturate(stack_load_float3(stack, edge_tint_k_offset));
-            complex_ior_from_base_edge(color, tint, &n, &k);
-          }
+          const float3 n = max(stack_load_float3(stack, base_ior_offset), zero_float3());
+          const float3 k = max(stack_load_float3(stack, edge_tint_k_offset), zero_float3());
 
           fresnel->n = rgb_to_spectrum(n);
           fresnel->k = rgb_to_spectrum(k);
