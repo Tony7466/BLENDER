@@ -126,7 +126,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   /* Update topology size. */
   const float max_edge_len = 1.0f /
                              (sd->constant_detail * mat4_to_scale(ob.object_to_world().ptr()));
-  const float min_edge_len = max_edge_len * 0.4f;
+  const float min_edge_len = max_edge_len * detail_size::RELATIVE_SCALE_FACTOR;
 
   undo::push_begin(ob, op);
   undo::push_node(depsgraph, ob, nullptr, undo::Type::Position);
