@@ -844,7 +844,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
   if (edges) {
     inst_data.set_color(outline_color);
     if (ctx->bone_buf) {
-      ctx->bone_buf->custom_shape_fill
+      ctx->bone_buf->custom_shape_outline
           .lookup_or_add_cb(edges,
                             [ctx]() {
                               return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,

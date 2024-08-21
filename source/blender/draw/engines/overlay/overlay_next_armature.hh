@@ -364,7 +364,7 @@ class Armatures {
         item.value->end_sync(*bb.shape_outline, item.key, GPU_PRIM_LINES, 1);
       }
       for (CustomShapeBuf item : bb.custom_shape_wire.items()) {
-        item.value->end_sync(*bb.shape_wire, item.key);
+        item.value->end_sync(*bb.shape_wire, item.key, GPU_PRIM_TRIS, 2);
       }
     };
 
