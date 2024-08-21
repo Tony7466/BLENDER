@@ -86,8 +86,9 @@ static void node_eval_inverse(inverse_eval::InverseEvalParams &params)
   const math::Quaternion U = params.get_output<math::Quaternion>("U");
   const float3 S = params.get_output<float3>("S");
   const math::Quaternion V = params.get_output<math::Quaternion>("V");
+  const math::Quaternion V_inv = math::Quaternion(V.w, -V.imaginary_part());
   const float3x3 matrix3 = math::from_rotation<float3x3>(U) * math::from_scale<float3x3>(S) *
-                           math::from_rotation<float3x3>(V);
+                           math::from_rotation<float3x3>(V_inv);
   params.set_input("Matrix", float4x4(matrix3));
 }
 
