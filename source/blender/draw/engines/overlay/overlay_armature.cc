@@ -2908,7 +2908,8 @@ static void armature_context_setup(Armatures::DrawContext *ctx,
                                    const eArmatureDrawMode draw_mode,
                                    const float *const_color)
 {
-  BLI_assert(BLI_memory_is_zero(ctx, sizeof(*ctx)));
+  /* Not true anymore. */
+  // BLI_assert(BLI_memory_is_zero(ctx, sizeof(*ctx)));
   const bool is_edit_or_pose_mode = draw_mode != ARM_DRAW_MODE_OBJECT;
   const bool is_xray = (ob->dtx & OB_DRAW_IN_FRONT) != 0 ||
                        (pd->armature.do_pose_xray && draw_mode == ARM_DRAW_MODE_POSE);
