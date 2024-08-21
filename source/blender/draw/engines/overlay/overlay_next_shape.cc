@@ -419,6 +419,24 @@ ShapeCache::ShapeCache()
         GPU_PRIM_LINES_ADJ, bone_octahedron.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
   }
 
+  {
+    constexpr int resolution = 64;
+    Vector<float2> ring = ring_vertices(0.05f, resolution);
+
+    Vector<Vertex> verts;
+    for (int a : IndexRange(resolution + 1)) {
+      float2 cv = ring[a % resolution];
+      verts.append({{cv.x, cv.y, 0.0f}, VCLASS_EMPTY_SCALED});
+    }
+
+    bone_sphere = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_TRI_FAN, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  {
+    bone_sphere_wire = BatchPtr(
+        GPU_batch_create(GPU_PRIM_LINE_STRIP, bone_sphere.get()->verts[0], nullptr));
+  }
+
   /* Armature BBones. */
   {
     Vector<VertShaded> verts;

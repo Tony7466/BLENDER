@@ -1056,14 +1056,30 @@ static void drw_shgroup_bone_custom_empty(const Armatures::DrawContext *ctx,
 }
 
 /* Head and tail sphere */
-static void drw_shgroup_bone_point(const Armatures::DrawContext *ctx,
-                                   const float (*bone_mat)[4],
-                                   const float bone_color[4],
-                                   const float hint_color[4],
-                                   const float outline_color[4])
+static void drw_shgroup_bone_sphere(const Armatures::DrawContext *ctx,
+                                    const float (*bone_mat)[4],
+                                    const float bone_color[4],
+                                    const float hint_color[4],
+                                    const float outline_color[4],
+                                    const int select_id)
 {
+  auto sel_id = (ctx->bone_buf) ? ctx->res->select_id(*ctx->ob_ref, select_id) :
+                                  draw::select::SelectMap::select_invalid_id();
+  float4x4 mat = ctx->ob->object_to_world() * float4x4(bone_mat);
+
+  if (ctx->bone_buf) {
+    if (ctx->is_filled) {
+      ctx->bone_buf->sphere_fill_buf.append({mat, bone_color, hint_color}, sel_id);
+    }
+    if (outline_color[3] > 0.0f) {
+      ctx->bone_buf->sphere_outline_buf.append({mat, outline_color}, sel_id);
+    }
+    return;
+  }
+
   BoneInstanceData inst_data;
-  mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), bone_mat);
+  inst_data.mat44 = mat;
+
   if (ctx->point_solid) {
     OVERLAY_bone_instance_data_set_color(&inst_data, bone_color);
     OVERLAY_bone_instance_data_set_color_hint(&inst_data, hint_color);
@@ -1727,7 +1743,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
   /* Draw root point if we are not connected to our parent */
 
   if (!(bone.has_parent() && (boneflag & BONE_CONNECTED))) {
-    if (select_id != -1) {
+    if (select_id != -1 && ctx->bone_buf == nullptr) {
       DRW_select_load_id(select_id | BONESEL_ROOT);
     }
 
@@ -1741,12 +1757,13 @@ static void draw_points(const Armatures::DrawContext *ctx,
                                 &envelope_ignore);
     }
     else {
-      drw_shgroup_bone_point(ctx, bone.disp_mat(), col_solid, col_hint_root, col_wire_root);
+      drw_shgroup_bone_sphere(
+          ctx, bone.disp_mat(), col_solid, col_hint_root, col_wire_root, select_id);
     }
   }
 
   /*  Draw tip point */
-  if (select_id != -1) {
+  if (select_id != -1 && ctx->bone_buf == nullptr) {
     DRW_select_load_id(select_id | BONESEL_TIP);
   }
 
@@ -1760,10 +1777,11 @@ static void draw_points(const Armatures::DrawContext *ctx,
                               &bone.rad_tail());
   }
   else {
-    drw_shgroup_bone_point(ctx, bone.disp_tail_mat(), col_solid, col_hint_tail, col_wire_tail);
+    drw_shgroup_bone_sphere(
+        ctx, bone.disp_tail_mat(), col_solid, col_hint_tail, col_wire_tail, select_id);
   }
 
-  if (select_id != -1) {
+  if (select_id != -1 && ctx->bone_buf == nullptr) {
     DRW_select_load_id(-1);
   }
 }
@@ -2270,6 +2288,8 @@ class ArmatureBoneDrawStrategyOcta : public ArmatureBoneDrawStrategy {
       if (col_wire[3] > 0.0f) {
         ctx->bone_buf->octahedral_outline_buf.append({bone_mat, col_wire}, sel_id);
       }
+
+      draw_points(ctx, bone, boneflag, col_solid, select_id);
       return;
     }
 

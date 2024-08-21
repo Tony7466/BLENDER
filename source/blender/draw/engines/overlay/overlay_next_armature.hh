@@ -44,19 +44,22 @@ class Armatures {
     const SelectionType selection_type_;
 
     /* Bone end points (joints). */
-    PassSimple::Sub *point_fill = nullptr;
-    PassSimple::Sub *point_outline = nullptr;
+    PassSimple::Sub *sphere_fill = nullptr;
+    PassSimple::Sub *sphere_outline = nullptr;
     /* Bone shapes. */
     PassSimple::Sub *shape_fill = nullptr;
     PassSimple::Sub *shape_outline = nullptr;
     /* Custom bone wire-frame. */
     PassSimple::Sub *shape_wire = nullptr;
 
+    BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
+    BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
+
     BoneInstanceBuf octahedral_fill_buf = {selection_type_, "octahedral_fill_buf"};
     BoneInstanceBuf octahedral_outline_buf = {selection_type_, "octahedral_outline_buf"};
 
-    BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
-    BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
+    BoneInstanceBuf sphere_fill_buf = {selection_type_, "sphere_fill_buf"};
+    BoneInstanceBuf sphere_outline_buf = {selection_type_, "sphere_outline_buf"};
 
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
@@ -101,18 +104,18 @@ class Armatures {
 
     {
       {
-        auto &sub = armature_ps_.sub("opaque.point_fill");
+        auto &sub = armature_ps_.sub("opaque.sphere_fill");
         sub.state_set(default_state);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", 1.0f);
-        opaque.point_fill = &sub;
+        opaque.sphere_fill = &sub;
       }
       {
-        auto &sub = armature_ps_.sub("transparent.point_fill");
+        auto &sub = armature_ps_.sub("transparent.sphere_fill");
         sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.4f);
-        transparent.point_fill = &sub;
+        transparent.sphere_fill = &sub;
       }
 
       {
@@ -131,23 +134,23 @@ class Armatures {
       }
 
       {
-        auto &sub = armature_ps_.sub("opaque.point_outline");
+        auto &sub = armature_ps_.sub("opaque.sphere_outline");
         sub.state_set(default_state);
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.point_outline = &sub;
+        opaque.sphere_outline = &sub;
       }
       if (use_wire_alpha) {
-        auto &sub = armature_ps_.sub("transparent.point_outline");
+        auto &sub = armature_ps_.sub("transparent.sphere_outline");
         sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
-        transparent.point_outline = &sub;
+        transparent.sphere_outline = &sub;
       }
       else {
-        transparent.point_outline = opaque.point_outline;
+        transparent.sphere_outline = opaque.sphere_outline;
       }
 
       {
@@ -208,10 +211,12 @@ class Armatures {
     }
 
     auto clear_buffers = [](BoneBuffers &bb) {
-      bb.octahedral_fill_buf.clear();
-      bb.octahedral_outline_buf.clear();
       bb.bbones_fill_buf.clear();
       bb.bbones_outline_buf.clear();
+      bb.octahedral_fill_buf.clear();
+      bb.octahedral_outline_buf.clear();
+      bb.sphere_fill_buf.clear();
+      bb.sphere_outline_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
        * Prefer a pruning strategy. */
       bb.custom_shape_fill.clear();
@@ -316,6 +321,9 @@ class Armatures {
   void end_sync(Resources & /*res*/, ShapeCache &shapes, const State & /*state*/)
   {
     auto end_sync = [&](BoneBuffers &bb) {
+      bb.sphere_fill_buf.end_sync(*bb.sphere_fill, shapes.bone_sphere.get());
+      bb.sphere_outline_buf.end_sync(*bb.sphere_outline, shapes.bone_sphere_wire.get());
+
       bb.octahedral_fill_buf.end_sync(*bb.shape_fill, shapes.bone_octahedron.get());
       bb.octahedral_outline_buf.end_sync(
           *bb.shape_outline, shapes.bone_octahedron_wire.get(), GPU_PRIM_LINES, 1);
