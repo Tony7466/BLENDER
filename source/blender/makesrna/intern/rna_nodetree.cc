@@ -4144,7 +4144,7 @@ static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
      0,
      "F82 Tint",
      "An approximation of the Fresnel conductor curve based on the colors at perpendicular and "
-     "glancing (roughly 82°) angles"},
+     "near-grazing (roughly 82°) angles"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
