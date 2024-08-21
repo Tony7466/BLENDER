@@ -678,7 +678,7 @@ static void drw_shgroup_bone_envelope_distance(const Armatures::DrawContext *ctx
                                                const float *radius_tail,
                                                const float *distance)
 {
-  if (ctx->envelope_distance) {
+  if (ctx->draw_envelope_distance) {
     float head_sph[4] = {0.0f, 0.0f, 0.0f, 1.0f}, tail_sph[4] = {0.0f, 1.0f, 0.0f, 1.0f};
     float xaxis[4] = {1.0f, 0.0f, 0.0f, 1.0f};
     /* Still less operation than m4 multiplication. */
@@ -694,7 +694,14 @@ static void drw_shgroup_bone_envelope_distance(const Armatures::DrawContext *ctx
     head_sph[3] += *distance * obscale;
     tail_sph[3] = *radius_tail * obscale;
     tail_sph[3] += *distance * obscale;
-    DRW_buffer_add_entry(ctx->envelope_distance, head_sph, tail_sph, xaxis);
+    if (ctx->bone_buf) {
+      ctx->bone_buf->envelope_distance_buf.append(
+          {*(float4 *)head_sph, *(float4 *)tail_sph, *(float3 *)xaxis},
+          draw::select::SelectMap::select_invalid_id());
+    }
+    else if (ctx->envelope_distance) {
+      DRW_buffer_add_entry(ctx->envelope_distance, head_sph, tail_sph, xaxis);
+    }
   }
 }
 
@@ -3010,6 +3017,7 @@ static void armature_context_setup(Armatures::DrawContext *ctx,
   ctx->const_wire = ((ob->base_flag & BASE_SELECTED) && (pd->v3d_flag & V3D_SELECT_OUTLINE) ?
                          1.5f :
                          ((!is_filled || is_transparent) ? 1.0f : 0.0f));
+  ctx->draw_envelope_distance = is_edit_or_pose_mode;
   ctx->draw_relation_from_head = (arm->flag & ARM_DRAW_RELATION_FROM_HEAD);
 
   /* Call the draw strategy after setting the generic context properties, so

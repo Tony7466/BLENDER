@@ -55,6 +55,7 @@ class Armatures {
     /* Envelopes. */
     PassSimple::Sub *envelope_fill = nullptr;
     PassSimple::Sub *envelope_outline = nullptr;
+    PassSimple::Sub *envelope_distance = nullptr;
 
     BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
     BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
@@ -67,6 +68,7 @@ class Armatures {
 
     BoneEnvelopeBuf envelope_fill_buf = {selection_type_, "envelope_fill_buf"};
     BoneEnvelopeBuf envelope_outline_buf = {selection_type_, "envelope_outline_buf"};
+    BoneEnvelopeBuf envelope_distance_buf = {selection_type_, "envelope_distance_buf"};
 
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
@@ -105,20 +107,39 @@ class Armatures {
     /* Draw bone outlines and custom shape wire with a specific alpha. */
     const bool use_wire_alpha = (wire_alpha < 1.0f);
 
-    DRWState default_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                             DRW_STATE_WRITE_DEPTH | state.clipping_state;
-
     GPUTexture **depth_tex = (state.xray_enabled) ? &res.depth_tx : &res.dummy_depth_tx;
 
     armature_ps_.init();
     res.select_bind(armature_ps_);
 
-    /* Transparent draws needs to be issued first. */
+    /* Envelope distances need to be drawn first as they use additive transparent blending. */
     {
-      /* Envelopes. */
+      DRWState transparent_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                                   DRW_STATE_BLEND_ADD | state.clipping_state;
+      {
+        auto &sub = armature_ps_.sub("opaque.envelope_distance");
+        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT);
+        sub.shader_set(res.shaders.armature_envelope_fill.get());
+        sub.push_constant("alpha", 1.0f);
+        sub.push_constant("isDistance", true);
+        opaque.envelope_distance = &sub;
+      }
+      if (use_wire_alpha) {
+        auto &sub = armature_ps_.sub("transparent.envelope_distance");
+        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT);
+        sub.shader_set(res.shaders.armature_envelope_fill.get());
+        sub.push_constant("alpha", wire_alpha);
+        sub.push_constant("isDistance", true);
+        transparent.envelope_distance = &sub;
+      }
+      else {
+        transparent.envelope_distance = opaque.envelope_distance;
+      }
     }
 
-    /* "Opaque" draws. */
+    DRWState default_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                             DRW_STATE_WRITE_DEPTH | state.clipping_state;
+
     {
       {
         auto &sub = armature_ps_.sub("opaque.sphere_fill");
@@ -252,7 +273,7 @@ class Armatures {
                       (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
         sub.shader_set(res.shaders.armature_envelope_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
-        sub.push_constant("alpha", 1.0f);
+        sub.push_constant("alpha", wire_alpha);
         transparent.envelope_outline = &sub;
       }
       else {
@@ -266,6 +287,7 @@ class Armatures {
     auto clear_buffers = [](BoneBuffers &bb) {
       bb.envelope_fill_buf.clear();
       bb.envelope_outline_buf.clear();
+      bb.envelope_distance_buf.clear();
       bb.bbones_fill_buf.clear();
       bb.bbones_outline_buf.clear();
       bb.octahedral_fill_buf.clear();
@@ -288,6 +310,7 @@ class Armatures {
     Object *ob = nullptr;
     const ObjectRef *ob_ref = nullptr;
 
+    /* Note: can be mutated inside `draw_armature_pose()`. */
     eArmatureDrawMode draw_mode = ARM_DRAW_MODE_OBJECT;
     eArmature_Drawtype drawtype = ARM_OCTA;
 
@@ -320,6 +343,7 @@ class Armatures {
     bool do_relations = false;
     bool transparent = false;
     bool show_relations = false;
+    bool draw_envelope_distance = false;
     bool draw_relation_from_head = false;
     /* Draw the inner part of the bones, otherwise render just outlines. */
     bool is_filled = false;
@@ -352,6 +376,7 @@ class Armatures {
     ctx.is_filled = (!draw_transparent && !draw_as_wire) || is_edit_or_pose_mode;
     ctx.show_relations = show_relations;
     ctx.do_relations = show_relations && is_edit_or_pose_mode;
+    ctx.draw_envelope_distance = is_edit_or_pose_mode;
     ctx.draw_relation_from_head = (arm->flag & ARM_DRAW_RELATION_FROM_HEAD);
     ctx.const_color = is_edit_or_pose_mode ? nullptr : &res.object_wire_color(ob_ref, state)[0];
     ctx.const_wire = (!ctx.is_filled || is_transparent) ? 1.0f : 0.0f;
@@ -404,6 +429,7 @@ class Armatures {
 
       bb.envelope_fill_buf.end_sync(*bb.envelope_fill, shapes.bone_envelope.get());
       bb.envelope_outline_buf.end_sync(*bb.envelope_outline, shapes.bone_envelope_wire.get());
+      bb.envelope_distance_buf.end_sync(*bb.envelope_distance, shapes.bone_envelope.get());
 
       using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
 
@@ -441,14 +467,14 @@ class Armatures {
   {
     Object *active_ob = state.active_base->object;
 
-    /* Pose armature is handled by pose mode engine. */
+    /* Armature is in pose mode. */
     if (((armature_ob == active_ob) || (armature_ob->mode & OB_MODE_POSE)) &&
         ((state.object_mode & OB_MODE_POSE) != 0))
     {
       return true;
     }
 
-    /* Armature parent is also handled by pose mode engine. */
+    /* Active object is in weight paint and the associated armature is in pose mode. */
     if ((active_ob != nullptr) && (state.object_mode & OB_MODE_ALL_WEIGHT_PAINT)) {
       if (armature_ob == BKE_object_pose_armature_get(active_ob)) {
         return true;
