@@ -1342,7 +1342,7 @@ template<typename Fn>
 static int foreach_curve_segment(const CurveSegmentsData &segment_data,
                                  const int curve_index,
                                  const IndexRange points,
-                                 Fn fn)
+                                 Fn &&fn)
 {
   if (points.is_empty()) {
     return 0;

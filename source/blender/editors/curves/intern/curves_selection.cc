@@ -1235,8 +1235,8 @@ IndexMask select_mask_from_predicates(const bke::CurvesGeometry &curves,
                                       const IndexMask &mask,
                                       const bke::AttrDomain selection_domain,
                                       IndexMaskMemory &memory,
-                                      PointSelectFn point_predicate,
-                                      LineSelectFn line_predicate)
+                                      PointSelectFn &&point_predicate,
+                                      LineSelectFn &&line_predicate)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArraySpan<bool> cyclic = curves.cyclic();
