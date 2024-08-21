@@ -2209,7 +2209,7 @@ static float2 compute_2d_gabor_noise_cell(const float2 cell,
 
     /* The kernel is windowed beyond the unit distance, so early exit with a zero for points that
      * are further than a unit radius. */
-    if (math::length_squared(position_in_kernel_space) >= 1.0f) {
+    if (math::length_squared(position_in_kernel_space) >= radius) {
       continue;
     }
 
@@ -2350,7 +2350,7 @@ static float2 compute_3d_gabor_noise_cell(const float3 cell,
 
     /* The kernel is windowed beyond the unit distance, so early exit with a zero for points that
      * are further than a unit radius. */
-    if (math::length_squared(position_in_kernel_space) >= 1.0f) {
+    if (math::length_squared(position_in_kernel_space) >= radius) {
       continue;
     }
 

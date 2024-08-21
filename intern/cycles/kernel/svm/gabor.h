@@ -155,7 +155,7 @@ ccl_device float2 compute_2d_gabor_noise_cell(float2 cell,
 
     /* The kernel is windowed beyond the unit distance, so early exit with a zero for points that
      * are further than a unit radius. */
-    if (dot(position_in_kernel_space, position_in_kernel_space) >= 1.0f) {
+    if (dot(position_in_kernel_space, position_in_kernel_space) >= radius) {
       continue;
     }
 
@@ -289,7 +289,7 @@ ccl_device float2 compute_3d_gabor_noise_cell(float3 cell,
 
     /* The kernel is windowed beyond the unit distance, so early exit with a zero for points that
      * are further than a unit radius. */
-    if (dot(position_in_kernel_space, position_in_kernel_space) >= 1.0f) {
+    if (dot(position_in_kernel_space, position_in_kernel_space) >= radius) {
       continue;
     }
 
