@@ -624,7 +624,17 @@ void select_adjacent(bke::CurvesGeometry &curves,
           selection_typed[point_i] = true;
         }
       }
+      if (deselect) {
+        const int first_point = points.first();
+        const int last_point = points.last();
 
+        if (!selection_typed[first_point]) {
+          selection_typed[first_point] = true;
+        }
+        if (!selection_typed[last_point]) {
+          selection_typed[last_point] = true;
+        }
+      }
       /* Handle cyclic curve case. */
       if (cyclic[curve_i]) {
         if (selection_typed[points.first()] != selection_typed[points.last()]) {
