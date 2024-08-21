@@ -206,7 +206,6 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
         TreeNode *node = target.find_node_by_name(layer_name);
         if (node == nullptr) {
           target.add_layer(layer_name);
-          target.add_empty_drawings(1);
         }
 
         Layer &target_layer = target.find_node_by_name(layer_name)->as_layer();
@@ -218,20 +217,18 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
 
         const int target_frame_num = scene.r.cfra + frame_offset;
         GreasePencilFrame *target_frame = target_layer.add_frame(target_frame_num);
-        Drawing &target_drawing = *target.get_editable_drawing_at(target_layer, target_frame_num);
 
         Drawing &source_drawing = *source_eval_grease_pencil.get_drawing_at(*source_layer,
                                                                             scene.r.cfra);
         const int duplicated_drawing_index = target.drawings().size();
         target.add_duplicate_drawings(1, source_drawing);
 
-        GreasePencilFrame frame_duplicate = *source_frame;
-        frame_duplicate.drawing_index = duplicated_drawing_index;
-
         target_frame->drawing_index = duplicated_drawing_index;
         target_frame->flag = source_frame->flag;
         target_frame->flag ^= GP_FRAME_SELECTED;
         target_frame->type = source_frame->type;
+
+        Drawing &target_drawing = *target.get_editable_drawing_at(target_layer, target_frame_num);
 
         bke::AttributeAccessor source_attributes = source_drawing.strokes().attributes();
         const VArray<int> source_material_indices = *source_attributes.lookup_or_default<int>(
