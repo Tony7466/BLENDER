@@ -22,12 +22,16 @@ namespace blender::bke::node_structure_type_inferencing {
 using nodes::StructureType;
 
 struct SocketUsageInfo {
-  bool used_as_single_value = false;
+  bool requires_single_value = false;
+  bool requires_grid = false;
   bool evaluated_as_field = false;
 
-  void merge(const SocketUsageInfo &other)
+  void merge(const SocketUsageInfo &other, const bool do_grid = true)
   {
-    this->used_as_single_value |= other.used_as_single_value;
+    this->requires_single_value |= other.requires_single_value;
+    if (do_grid) {
+      this->requires_grid |= other.requires_grid;
+    }
     this->evaluated_as_field |= other.evaluated_as_field;
   }
 };
@@ -35,6 +39,7 @@ struct SocketUsageInfo {
 bool update_structure_type_inferencing(bNodeTree &tree)
 {
   tree.ensure_topology_cache();
+  tree.ensure_interface_cache();
   if (tree.has_available_link_cycle()) {
     return true;
   }
@@ -75,7 +80,7 @@ bool update_structure_type_inferencing(bNodeTree &tree)
             continue;
           }
           socket_usages[input_socket.index_in_tree()].merge(
-              socket_usages[output_socket.index_in_tree()]);
+              socket_usages[output_socket.index_in_tree()], false);
         }
         for (const bNodeSocket *input_socket : node->input_sockets()) {
           if (!input_socket->is_available()) {
@@ -91,7 +96,11 @@ bool update_structure_type_inferencing(bNodeTree &tree)
               break;
             }
             case StructureType::Single: {
-              usage.used_as_single_value = true;
+              usage.requires_single_value = true;
+              break;
+            }
+            case StructureType::Grid: {
+              usage.requires_grid = true;
               break;
             }
             default: {
@@ -120,11 +129,14 @@ bool update_structure_type_inferencing(bNodeTree &tree)
     bNodeTreeInterfaceSocket &io_socket = *tree.interface_inputs()[input_i];
     if (io_socket.structure_type == NODE_INTERFACE_SOCKET_STRUCTURE_TYPE_AUTO) {
       const SocketUsageInfo &usage = group_input_usages[input_i];
-      if (usage.used_as_single_value) {
+      if (usage.requires_single_value) {
         io_socket.derived_structure_type = int8_t(StructureType::Single);
       }
       else if (usage.evaluated_as_field) {
         io_socket.derived_structure_type = int8_t(StructureType::Field);
+      }
+      else if (usage.requires_grid) {
+        io_socket.derived_structure_type = int8_t(StructureType::Grid);
       }
       else {
         io_socket.derived_structure_type = int8_t(StructureType::Dynamic);

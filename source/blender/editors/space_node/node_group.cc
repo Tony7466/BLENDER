@@ -1177,7 +1177,8 @@ static void node_group_make_insert_selected(const bContext &C,
   remap_pairing(group, nodes_to_move, node_identifier_map);
 
   if (group.type == NTREE_GEOMETRY) {
-    bke::node_field_inferencing::update_field_inferencing(group);
+    bke::node_structure_type_inferencing::update_structure_type_inferencing(group);
+    // bke::node_field_inferencing::update_field_inferencing(group);
   }
   nodes::update_node_declaration_and_sockets(ntree, *gnode);
 
