@@ -3986,6 +3986,7 @@ static int edbm_select_more_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const bool use_face_step = RNA_boolean_get(op->ptr, "use_face_step");
+  const int repetitions = RNA_int_get(op->ptr, "repeat");
 
   const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C));
@@ -3997,7 +3998,9 @@ static int edbm_select_more_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    EDBM_select_more(em, use_face_step);
+    for (int i = 0; i < repetitions; i++) {
+      EDBM_select_more(em, use_face_step);
+    }
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
@@ -4021,6 +4024,8 @@ void MESH_OT_select_more(wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna, "use_face_step", true, "Face Step", "Connected faces (instead of edges)");
+  RNA_def_int(
+      ot->srna, "repeat", 1, 1, INT32_MAX, "Iterations", "Number of times to repeat operation", 1, INT32_MAX);
 }
 
 /** \} */
@@ -4034,6 +4039,7 @@ static int edbm_select_less_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   const bool use_face_step = RNA_boolean_get(op->ptr, "use_face_step");
+  const int repetitions = RNA_int_get(op->ptr, "repeat");
 
   const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
       scene, view_layer, CTX_wm_view3d(C));
@@ -4045,7 +4051,9 @@ static int edbm_select_less_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    EDBM_select_less(em, use_face_step);
+    for (int i = 0; i < repetitions; i++) {
+      EDBM_select_less(em, use_face_step);
+    }
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
   }
@@ -4069,6 +4077,8 @@ void MESH_OT_select_less(wmOperatorType *ot)
 
   RNA_def_boolean(
       ot->srna, "use_face_step", true, "Face Step", "Connected faces (instead of edges)");
+  RNA_def_int(
+      ot->srna, "repeat", 1, 1, INT32_MAX, "Iterations", "Number of times to repeat operation", 1, INT32_MAX);
 }
 
 /** \} */
