@@ -18,6 +18,7 @@
 #include "csv_reader.hh"
 
 namespace blender::io::csv {
+
 static Vector<std::string> get_columns(const StringRef &line)
 {
   Vector<std::string> columns;
@@ -292,4 +293,5 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
     return nullptr;
   }
 }
+
 }  // namespace blender::io::csv

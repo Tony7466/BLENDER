@@ -17,6 +17,7 @@
 struct PointCloud;
 
 namespace blender::io::csv {
+
 class CsvData {
  private:
   Array<GArray<>> data;
@@ -54,4 +55,5 @@ class CsvData {
  private:
   GArray<> create_garray_for_type(eCustomDataType &type);
 };
+
 }  // namespace blender::io::csv

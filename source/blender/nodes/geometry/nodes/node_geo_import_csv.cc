@@ -10,6 +10,7 @@
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_import_csv {
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::String>("Path")

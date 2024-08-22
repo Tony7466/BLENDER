@@ -13,6 +13,7 @@
 #include "csv_data.hh"
 
 namespace blender::io::csv {
+
 CsvData::CsvData(int64_t row_count,
                  Vector<std::string> column_names,
                  Vector<eCustomDataType> column_types)
@@ -65,4 +66,5 @@ GArray<> CsvData::create_garray_for_type(eCustomDataType &type)
     }
   }
 }
+
 }  // namespace blender::io::csv

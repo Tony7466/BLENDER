@@ -13,5 +13,7 @@
 struct PointCloud;
 
 namespace blender::io::csv {
+
 PointCloud *importer_point_cloud(const CSVImportParams &import_params);
+
 }
