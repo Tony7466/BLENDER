@@ -2966,7 +2966,6 @@ static void jump_flooding_pass(Span<JFACoord> input,
 
 static void text_draw(const TextVars *data, const TextVarsRuntime *runtime, float color[4])
 {
-  /* Draw text itself. */
   for (int i : runtime->character_positions.index_range()) {
     const char *chr = data->text + runtime->character_byte_offsets[i];
     float2 char_position = runtime->character_positions[i];
@@ -2985,7 +2984,7 @@ static rcti draw_text_outline(const SeqRenderData *context,
 {
   /* Outline width of 1.0 maps to half of text line height. */
   const int outline_width = int(runtime->line_height * 0.5f * data->outline_width);
-  if (outline_width < 1 || data->outline_color[3] <= 0.0f) {
+  if (outline_width < 1 || data->outline_color[3] <= 0.0f || ((data->flag & SEQ_TEXT_OUTLINE) == 0) {
     return runtime->text_boundbox;
   }
 
@@ -3164,7 +3163,6 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
 
   BLF_size(font, text_effect_line_size_get(context, seq));
   BLF_enable(font, font_flags);
-
   return font;
 }
 
@@ -3282,11 +3280,10 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
                                 runtime->line_start_indices.size() * runtime->line_height;
 }
 
-static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
+static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  data->runtime = MEM_new<TextVarsRuntime>(__func__);
-  TextVarsRuntime *runtime = data->runtime;
+  TextVarsRuntime *runtime = MEM_new<TextVarsRuntime>(__func__);
 
   runtime->font = font;
   runtime->line_height = BLF_height_max(font);
@@ -3295,6 +3292,8 @@ static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
   build_character_info(data, runtime);
   apply_word_wrapping(data, runtime, ibuf);
   apply_text_alignment(data, runtime, ibuf);
+  data->runtime = runtime;
+  return runtime;
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3309,26 +3308,17 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
    * need to clear it. */
   ImBuf *out = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  const int font_flags = ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
-                         ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
-  const int font = text_effect_font_init(context, seq, font_flags);
 
-  calc_text_runtime(seq, font, out);  // xxx alloc/free
-  TextVarsRuntime *runtime = data->runtime;
-
-  /* use max width to enable newlines only */
   const char *display_device = context->scene->display_settings.display_device;
   ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
+  const int font_flags = ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
+                         ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
+  const int font = text_effect_font_init(context, seq, out, display, font_flags);
+
+  TextVarsRuntime *runtime = calc_text_runtime(seq, font, out);  // xxx alloc/free;
+  rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
-
-  /* Draw text outline. */
-  rcti outline_rect;
-  if (data->flag & SEQ_TEXT_OUTLINE) {
-    outline_rect = draw_text_outline(context, data, runtime, display, out);
-  }
-
   text_draw(data, runtime, data->color);
-
   BLF_buffer(font, nullptr, nullptr, 0, 0, nullptr);
   BLF_disable(font, font_flags);
 
