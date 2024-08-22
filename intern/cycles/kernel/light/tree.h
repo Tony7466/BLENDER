@@ -32,8 +32,8 @@ ccl_device float light_tree_cos_bound_subtended_angle(const BoundingBox bbox,
   float radius_sq = len_squared(bbox.max - centroid);
 
   /* If P is inside the bounding sphere, `theta_u` covers the whole sphere and return -1.0
-   * Otherwise compute `sin(theta_u) = radius / distance_to_center` and convert to
-   * cos(theta_u) */
+   * Otherwise compute cos(theta_u) by substituting our values into the cos_from_sin() formula on
+   * the basis that `sin(theta_u) = radius / distance_to_center`. */
   return (distance_to_center_sq <= radius_sq) ?
              -1.0f :
              safe_sqrtf(1.0f - (radius_sq / distance_to_center_sq));
