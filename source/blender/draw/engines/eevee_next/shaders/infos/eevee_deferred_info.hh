@@ -45,7 +45,7 @@ GPU_SHADER_CREATE_INFO(eevee_gbuffer_data)
 GPU_SHADER_CREATE_INFO(eevee_deferred_tile_classify)
     .fragment_source("eevee_deferred_tile_classify_frag.glsl")
     .additional_info("eevee_shared", "draw_fullscreen")
-    .subpass_in(1, Type::UINT, "in_gbuffer_header", DEFERRED_GBUFFER_ROG_ID)
+    //.subpass_in(1, Type::UINT, "in_gbuffer_header", DEFERRED_GBUFFER_ROG_ID)
     .typedef_source("draw_shader_shared.hh")
     .push_constant(Type::INT, "current_bit")
     .do_static_compilation(true);
