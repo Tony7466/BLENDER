@@ -1116,6 +1116,7 @@ static int sequencer_reload_exec(bContext *C, wmOperator *op)
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     if (seq->flag & SELECT) {
       SEQ_add_reload_new_file(bmain, scene, seq, !adjust_length);
+      blender::seq::thumbnail_cache_invalidate_strip(scene, seq);
 
       if (adjust_length) {
         if (SEQ_transform_test_overlap(scene, ed->seqbasep, seq)) {

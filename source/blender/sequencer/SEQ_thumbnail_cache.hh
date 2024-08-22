@@ -55,9 +55,4 @@ void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect);
 void thumbnail_cache_clear(Scene *scene);
 void thumbnail_cache_destroy(Scene *scene);
 
-std::string thumbnail_cache_get_stats(Scene *scene);
-void thumbnail_cache_for_each_request(
-    Scene *scene,
-    FunctionRef<void(int index, float timeline_frame, int channel, int frame_index)> callback);
-
 }  // namespace blender::seq

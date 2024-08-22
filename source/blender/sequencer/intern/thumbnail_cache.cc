@@ -28,8 +28,6 @@
 
 #include "WM_api.hh"
 
-#include <fmt/format.h>
-
 #include "render.hh"
 
 namespace blender::seq {
@@ -62,7 +60,6 @@ struct ThumbnailCache {
     int64_t used_at = 0;
   };
 
-  //@TODO: when processing order by timestamps (starting from most recent) somehow?
   struct Request {
     explicit Request(const std::string &path,
                      int frame,
@@ -108,7 +105,6 @@ struct ThumbnailCache {
     }
   };
 
-  //@TODO: do we need something for multi-view/stereo?
   Map<std::string, FileEntry> map_;
   Set<Request> requests_;
   int64_t logical_time_ = 0;
@@ -362,11 +358,7 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
 
             cur_anim_path = request.file_path;
             cur_stream = request.stream_index;
-            int flag = IB_rect;
-            // if (seq->flag & SEQ_FILTERY) {
-            //   flag |= IB_animdeinterlace; //@TODO
-            // }
-            cur_anim = IMB_open_anim(cur_anim_path.c_str(), flag, cur_stream, nullptr);
+            cur_anim = IMB_open_anim(cur_anim_path.c_str(), IB_rect, cur_stream, nullptr);
           }
 
           /* Decode the movie frame. */
@@ -524,7 +516,30 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
   if (!can_have_thumbnail(scene, seq)) {
     return;
   }
-  //@TODO implement, and call this when reloading strips
+
+  BLI_mutex_lock(&thumb_cache_lock);
+  ThumbnailCache *cache = query_thumbnail_cache(scene);
+  if (cache != nullptr) {
+    if (ELEM((seq)->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
+      const StripElem *elem = seq->strip->stripdata;
+      if (elem != nullptr) {
+        int paths_count = 1;
+        if (seq->type == SEQ_TYPE_IMAGE) {
+          /* Image strip has array of file names. */
+          paths_count = int(MEM_allocN_len(elem) / sizeof(*elem));
+        }
+        char filepath[FILE_MAX];
+        const char *basepath = seq->scene ? ID_BLEND_PATH_FROM_GLOBAL(&seq->scene->id) :
+                                            BKE_main_blendfile_path_from_global();
+        for (int i = 0; i < paths_count; i++, elem++) {
+          BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, elem->filename);
+          BLI_path_abs(filepath, basepath);
+          cache->remove_entry(filepath);
+        }
+      }
+    }
+  }
+  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_maintain_capacity(Scene *scene)
@@ -602,47 +617,6 @@ void thumbnail_cache_destroy(Scene *scene)
     BLI_assert(cache == scene->ed->runtime.thumbnail_cache);
     MEM_delete(scene->ed->runtime.thumbnail_cache);
     scene->ed->runtime.thumbnail_cache = nullptr;
-  }
-  BLI_mutex_unlock(&thumb_cache_lock);
-}
-
-std::string thumbnail_cache_get_stats(Scene *scene)
-{
-  std::string stats = "<no cache>";
-  BLI_mutex_lock(&thumb_cache_lock);
-  ThumbnailCache *cache = query_thumbnail_cache(scene);
-  if (cache != nullptr) {
-    int64_t entries = 0, bytes = 0;
-    for (const auto &kvp : cache->map_.items()) {
-      entries += kvp.value.frames.size();
-      for (const auto &thumb : kvp.value.frames) {
-        if (thumb.thumb) {
-          bytes += thumb.thumb->x * thumb.thumb->y * 4;
-        }
-      }
-    }
-    stats = fmt::format("Thumb cache (new): {} file paths, {} thumbs, {:.1f} MB, {} requests",
-                        cache->map_.size(),
-                        entries,
-                        bytes / double(1024 * 1024),
-                        cache->requests_.size());
-  }
-  BLI_mutex_unlock(&thumb_cache_lock);
-  return stats;
-}
-
-void thumbnail_cache_for_each_request(
-    Scene *scene,
-    FunctionRef<void(int index, float timeline_frame, int channel, int frame_index)> callback)
-{
-  BLI_mutex_lock(&thumb_cache_lock);
-  ThumbnailCache *cache = query_thumbnail_cache(scene);
-  if (cache != nullptr) {
-    int index = 0;
-    for (const ThumbnailCache::Request &request : cache->requests_) {
-      callback(index, request.timeline_frame, request.channel, request.frame_index);
-      index++;
-    }
   }
   BLI_mutex_unlock(&thumb_cache_lock);
 }

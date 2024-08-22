@@ -253,7 +253,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     /* Get the thumbnail image. */
     ImBuf *ibuf = seq::thumbnail_cache_get(C, scene, seq, timeline_frame);
     if (ibuf && clipped) {
-      /*@TODO: stop doing this on the CPU. */
+      /* Crop it to the part needed by the timeline view. */
       ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);
       if (crop.xmin < 0 || crop.ymin < 0) {
         crop.xmin = 0;

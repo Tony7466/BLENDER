@@ -1563,25 +1563,6 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
 
   draw_strips_foreground(timeline_ctx, strips_batch, strips);
 
-  //@TODO: temp display of thumb cache stats
-  {
-#if 0
-    seq::thumbnail_cache_for_each_request(
-        timeline_ctx->scene,
-        [&](int index, float timeline_frame, int channel, int /*frame_index*/) {
-          uchar4 col((index * 15) & 0xFF, 0xFF - ((index * 11) & 0xFF), 128, 255);
-          timeline_ctx->quads->add_wire_quad(
-              timeline_frame - 0.1f, channel, timeline_frame + 1.1f, channel + 1, col);
-        });
-    timeline_ctx->quads->draw();
-#endif
-
-    uchar stats_col[4] = {255, 192, 32, 255};
-    std::string stats = seq::thumbnail_cache_get_stats(timeline_ctx->scene);
-    UI_view2d_text_cache_add_rectf(
-        timeline_ctx->v2d, &timeline_ctx->v2d->cur, stats.c_str(), stats.size(), stats_col);
-  }
-
   /* Draw icons. */
   draw_strip_icons(timeline_ctx, strips);
 
