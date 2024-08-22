@@ -3755,8 +3755,8 @@ static int area_join_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   sAreaJoinData *jd = (sAreaJoinData *)op->customdata;
-  jd->x = event->xy[0];
-  jd->y = event->xy[1];
+  jd->start_x = event->xy[0];
+  jd->start_y = event->xy[1];
   jd->draw_callback = WM_draw_cb_activate(CTX_wm_window(C), area_join_draw_cb, op);
 
   WM_event_add_modal_handler(C, op);
@@ -4885,7 +4885,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   if (U.experimental.use_docking) {
     uiItemFullO(layout,
                 "SCREEN_OT_area_join",
-                IFACE_("Dock Area"),
+                IFACE_("Move/Split Area"),
                 ICON_AREA_DOCK,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
@@ -4893,32 +4893,32 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
                 &ptr);
     RNA_int_set_array(&ptr, "source_xy", loc);
   }
+  else {
+    /* Vertical Split */
+    uiItemFullO(layout,
+                "SCREEN_OT_area_split",
+                IFACE_("Vertical Split"),
+                ICON_SPLIT_VERTICAL,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
 
-  /* Vertical Split */
-  uiItemFullO(layout,
-              "SCREEN_OT_area_split",
-              IFACE_("Vertical Split"),
-              ICON_SPLIT_VERTICAL,
-              nullptr,
-              WM_OP_INVOKE_DEFAULT,
-              UI_ITEM_NONE,
-              &ptr);
+    RNA_int_set_array(&ptr, "cursor", loc);
+    RNA_enum_set(&ptr, "direction", SCREEN_AXIS_V);
 
-  RNA_int_set_array(&ptr, "cursor", loc);
-  RNA_enum_set(&ptr, "direction", SCREEN_AXIS_V);
-
-  /* Horizontal Split */
-  uiItemFullO(layout,
-              "SCREEN_OT_area_split",
-              IFACE_("Horizontal Split"),
-              ICON_SPLIT_HORIZONTAL,
-              nullptr,
-              WM_OP_INVOKE_DEFAULT,
-              UI_ITEM_NONE,
-              &ptr);
-
-  RNA_int_set_array(&ptr, "cursor", &loc[0]);
-  RNA_enum_set(&ptr, "direction", SCREEN_AXIS_H);
+    /* Horizontal Split */
+    uiItemFullO(layout,
+                "SCREEN_OT_area_split",
+                IFACE_("Horizontal Split"),
+                ICON_SPLIT_HORIZONTAL,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    RNA_int_set_array(&ptr, "cursor", &loc[0]);
+    RNA_enum_set(&ptr, "direction", SCREEN_AXIS_H);
+  }
 
   uiItemS(layout);
 
@@ -4941,7 +4941,7 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
 
   uiItemO(layout, nullptr, ICON_NONE, "SCREEN_OT_area_dupli");
   uiItemS(layout);
-  uiItemO(layout, nullptr, ICON_NONE, "SCREEN_OT_area_close");
+  uiItemO(layout, nullptr, ICON_X, "SCREEN_OT_area_close");
 }
 
 void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /*arg*/)
