@@ -1060,6 +1060,12 @@ static void sequencer_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceSeq, sl);
 }
 
+static void sequencer_idle_status(bContext *C, wmWindow *win, ScrArea *area, ARegion *region)
+{
+  WorkspaceStatus status(C);
+  status.item("Test", ICON_ACTION);
+}
+
 void ED_spacetype_sequencer()
 {
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
@@ -1084,6 +1090,7 @@ void ED_spacetype_sequencer()
   st->blend_read_data = sequencer_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = sequencer_space_blend_write;
+  st->idle_status = sequencer_idle_status;
 
   /* Create regions: */
   /* Main window. */

@@ -6394,6 +6394,27 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
+  /* Does the area have a custom idle_status handler? */
+  ScrArea *area = nullptr;
+  if (region) {
+    ED_screen_areas_iter (win, screen, area_iter) {
+      LISTBASE_FOREACH (ARegion *, region_iter, &area_iter->regionbase) {
+        if (region == region_iter) {
+          area = area_iter;
+          break;
+        }
+      }
+    }
+    if (area && area->type->idle_status) {
+      area->type->idle_status(C, win, area, region);
+      if (!workspace->runtime->status.is_empty()) {
+        uiTemplateInputStatus(layout, C);
+        ED_workspace_status_text(C, nullptr);
+        return;
+      }
+    }
+  }
+
   /* Otherwise should cursor keymap status. */
   for (int i = 0; i < 3; i++) {
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
