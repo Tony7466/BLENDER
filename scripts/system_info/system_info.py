@@ -21,7 +21,7 @@ def prefill_bug_report_info():
         struct.calcsize("P") * 8,
     )
 
-    # There doesn't appear to be a no easy way to collect GPU information in Python
+    # There doesn't appear to be a easy way to collect GPU information in Python
     # if Blender isn't opening and we can't import the GPU module.
     # So just tell users to follow a written guide.
     query_params["gpu"] = """Follow our guide to collect this information:
