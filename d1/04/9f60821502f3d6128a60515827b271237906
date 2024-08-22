@@ -3,3 +3,4 @@ Referenced by pull request #126290, Fix #126149: Flat face wireframe edges hidde
 Referenced by commit a716685f2f54f07910e1d47a6b38cdd0ec2edfbc, Fix #126149: Flat face wireframe edges hidden on some platforms
 Referenced by issue #124452, Blender LTS: Maintenance Task 4.2
 Referenced by issue #126464, Overlay: Wireframe broken on subdiv meshes when using thin and aliased wires
+Referenced by commit 6e845f54c35c9ac082c4755c07d2e574301ef070, Fix #126464: Subdiv optimal display edges causes broken wires on Metal
