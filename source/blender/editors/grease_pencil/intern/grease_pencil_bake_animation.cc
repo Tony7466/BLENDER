@@ -159,6 +159,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   const ReprojectMode reproject_mode = ReprojectMode(RNA_enum_get(op->ptr, "project_type"));
 
   View3D *v3d = CTX_wm_view3d(C);
+  ARegion *region = CTX_wm_region(C);
 
   Vector<Object *> bake_targets;
   get_bake_targets(*C, depsgraph, scene, bake_targets);
@@ -167,11 +168,12 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   Object *target_object = object::add_type(
       C, OB_GREASE_PENCIL, nullptr, scene.cursor.location, float3(0), false, local_view_bits);
 
-  float4x4 invmat = math::invert(target_object->object_to_world());
+  const float4x4 invmat = math::invert(target_object->object_to_world());
 
   WM_cursor_wait(true);
 
   GreasePencil &target = *static_cast<GreasePencil *>(target_object->data);
+  Object *target_object_eval = DEG_get_evaluated_object(&depsgraph, target_object);
 
   Set<int> keyframes;
   if (only_selected) {
@@ -195,8 +197,9 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
     BKE_scene_graph_update_for_newframe(&depsgraph);
 
     for (Object *source_object : bake_targets) {
-      Object *ob_eval = DEG_get_evaluated_object(&depsgraph, source_object);
-      GreasePencil &source_eval_grease_pencil = *static_cast<GreasePencil *>(ob_eval->data);
+      Object *source_object_eval = DEG_get_evaluated_object(&depsgraph, source_object);
+      GreasePencil &source_eval_grease_pencil = *static_cast<GreasePencil *>(
+          source_object_eval->data);
 
       for (const Layer *source_layer : source_eval_grease_pencil.layers()) {
         char *layer_name;
@@ -209,6 +212,11 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
         }
 
         Layer &target_layer = target.find_node_by_name(layer_name)->as_layer();
+        std::optional<DrawingPlacement> drawing_placement;
+        if (reproject_mode != ReprojectMode::Keep) {
+          drawing_placement = DrawingPlacement(
+              scene, *region, *v3d, *target_object_eval, &target_layer, reproject_mode);
+        }
 
         const GreasePencilFrame *source_frame = source_layer->frame_at(scene.r.cfra);
         if (source_frame == nullptr) {
@@ -267,8 +275,11 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
 
         target_material_indices.finish();
         for (float3 &pos : target_strokes.positions_for_write()) {
-          pos = math::transform_point(ob_eval->object_to_world(), pos);
+          pos = math::transform_point(source_object_eval->object_to_world(), pos);
           pos = math::transform_point(invmat, pos);
+          if (drawing_placement) {
+            pos = drawing_placement->reproject(pos);
+          }
         }
       }
     }
