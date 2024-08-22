@@ -3160,15 +3160,8 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
   return font;
 }
 
-static void calc_text_runtime(const Sequence *seq, int font, int wrap_width)
+static void build_character_info(const TextVars *data, TextVarsRuntime *runtime, int font)
 {
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  data->runtime = MEM_new<TextVarsRuntime>(__func__);
-  TextVarsRuntime *runtime = data->runtime;
-
-  runtime->line_height = BLF_height_max(font);
-  runtime->character_count = BLI_strlen_utf8(data->text);
-
   int byte_offset = 0;
   while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
@@ -3180,12 +3173,16 @@ static void calc_text_runtime(const Sequence *seq, int font, int wrap_width)
 
     byte_offset += char_length;
   }
+}
 
-  /* Stage 2: Apply word wrapping.*/
+/* This function applies word wrapping. */
+static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
+{
+  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * ibuf->x :
+                                                      std::numeric_limits<int>::max();
   float2 char_position{0.0f, 0.0f};
   bool is_word_wrap = false;
   runtime->line_start_indices.append(0);
-  int line_char_count = 0;
 
   for (int i = 0; i < runtime->character_count; i++) {
     const char *chr = data->text + runtime->character_byte_offsets[i];
@@ -3203,20 +3200,80 @@ static void calc_text_runtime(const Sequence *seq, int font, int wrap_width)
 
     if (is_word_wrap || chr[0] == '\n') {
       runtime->line_witdths.append(char_position.x);
-      runtime->line_character_counts.append(line_char_count);
+      runtime->line_end_indices.append(i);
       runtime->line_start_indices.append(i + 1);
 
       char_position.x = 0;
       char_position.y -= runtime->line_height;
-      line_char_count = 0;
       continue;
     }
     char_position.x += runtime->character_widths[i];
-    line_char_count++;
   }
 
   runtime->line_witdths.append(char_position.x);
-  runtime->line_character_counts.append(line_char_count);
+  runtime->line_end_indices.append(runtime->character_count);
+}
+
+static float2 vertical_alignment_offset_get(const TextVars *data, const TextVarsRuntime *runtime)
+{
+  const float text_height = runtime->line_start_indices.size() * runtime->line_height;
+  if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
+    return {0.0f, text_height};
+  }
+  else if (data->align_y == SEQ_TEXT_ALIGN_Y_CENTER) {
+    return {0.0f, text_height / 2.0f};
+  }
+
+  return {0.0f, 0.0f};
+}
+
+static float2 horizontal_alignment_offset_get(const TextVars *data, float line_width)
+{
+  if (data->align == SEQ_TEXT_ALIGN_X_RIGHT) {
+    return {-line_width, 0.0f};
+  }
+  else if (data->align == SEQ_TEXT_ALIGN_X_CENTER) {
+    return {-line_width / 2.0f, 0.0f};
+  }
+
+  return {0.0f, 0.0f};
+}
+
+static void apply_text_alignment(const TextVars *data,
+                                 TextVarsRuntime *runtime,
+                                 const ImBuf *ibuf,
+                                 int font)
+{
+  const int image_width = ibuf->x;
+  const int image_height = ibuf->y;
+
+  float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
+  float2 line_height_alignment{0.0f, -runtime->line_height - BLF_descender(font)};
+  float2 vertical_alignment = vertical_alignment_offset_get(data, runtime);
+
+  for (int i : runtime->line_start_indices.index_range()) {
+    float2 horizontal_alignment = horizontal_alignment_offset_get(data, runtime->line_witdths[i]);
+    float2 alignment = image_center + line_height_alignment + vertical_alignment +
+                       horizontal_alignment;
+
+    for (int j = runtime->line_start_indices[i]; j < runtime->line_end_indices[i]; j++) {
+      runtime->character_positions[j] += alignment;
+    }
+  }
+}
+
+static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
+{
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  data->runtime = MEM_new<TextVarsRuntime>(__func__);
+  TextVarsRuntime *runtime = data->runtime;
+
+  runtime->line_height = BLF_height_max(font);
+  runtime->character_count = BLI_strlen_utf8(data->text);
+
+  build_character_info(data, runtime, font);
+  apply_word_wrapping(data, runtime, ibuf);
+  apply_text_alignment(data, runtime, ibuf, font);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3231,69 +3288,58 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
    * need to clear it. */
   ImBuf *out = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  const int width = out->x;
-  const int height = out->y;
-
-  const int font_flags = BLF_WORD_WRAP | /* Always allow wrapping. */
-                         ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
+  const int font_flags = ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
   const int font = text_effect_font_init(context, seq, font_flags);
 
-  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * width :
-                                                      std::numeric_limits<int>::max();
-  calc_text_runtime(seq, font, wrap_width);  // xxx alloc/free
+  calc_text_runtime(seq, font, out);  // xxx alloc/free
 
   /* use max width to enable newlines only */
   const char *display_device = context->scene->display_settings.display_device;
   ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
-  BLF_buffer(font, nullptr, out->byte_buffer.data, width, height, display);
+  BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
 
-  const int line_height = BLF_height_max(font);
-  int y_ofs = -BLF_descender(font);
-  int x = (data->loc[0] * width);
-  int y = (data->loc[1] * height) + y_ofs;
+  /* Calculate bounding box and wrapping information. */ /*
+   rcti rect;
+   ResultBLF wrap_info;
+   BLF_boundbox(font, data->text, sizeof(data->text), &rect, &wrap_info);
 
-  /* Calculate bounding box and wrapping information. */
-  rcti rect;
-  ResultBLF wrap_info;
-  BLF_boundbox(font, data->text, sizeof(data->text), &rect, &wrap_info);
+   if ((data->align == SEQ_TEXT_ALIGN_X_LEFT) && (data->align_y == SEQ_TEXT_ALIGN_Y_TOP)) {
+     y -= line_height;
+   }
+   else {
+     if (data->align == SEQ_TEXT_ALIGN_X_RIGHT) {
+       x -= BLI_rcti_size_x(&rect);
+     }
+     else if (data->align == SEQ_TEXT_ALIGN_X_CENTER) {
+       x -= BLI_rcti_size_x(&rect) / 2;
+     }
 
-  if ((data->align == SEQ_TEXT_ALIGN_X_LEFT) && (data->align_y == SEQ_TEXT_ALIGN_Y_TOP)) {
-    y -= line_height;
-  }
-  else {
-    if (data->align == SEQ_TEXT_ALIGN_X_RIGHT) {
-      x -= BLI_rcti_size_x(&rect);
-    }
-    else if (data->align == SEQ_TEXT_ALIGN_X_CENTER) {
-      x -= BLI_rcti_size_x(&rect) / 2;
-    }
-
-    if (data->align_y == SEQ_TEXT_ALIGN_Y_TOP) {
-      y -= line_height;
-    }
-    else if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
-      y += (wrap_info.lines - 1) * line_height;
-    }
-    else if (data->align_y == SEQ_TEXT_ALIGN_Y_CENTER) {
-      y += (((wrap_info.lines - 1) / 2) * line_height) - (line_height / 2);
-    }
-  }
-  BLI_rcti_translate(&rect, x, y);
+     if (data->align_y == SEQ_TEXT_ALIGN_Y_TOP) {
+       y -= line_height;
+     }
+     else if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
+       y += (wrap_info.lines - 1) * line_height;
+     }
+     else if (data->align_y == SEQ_TEXT_ALIGN_Y_CENTER) {
+       y += (((wrap_info.lines - 1) / 2) * line_height) - (line_height / 2);
+     }
+   }
+   BLI_rcti_translate(&rect, x, y);*/
 
   /* Draw text outline. */
-  rcti outline_rect = rect;
+  /*rcti outline_rect = rect;
   if (data->flag & SEQ_TEXT_OUTLINE) {
     outline_rect = draw_text_outline(context, data, font, display, x, y, line_height, rect, out);
-  }
+  }*/
 
+  /* Draw text itself. */
   TextVarsRuntime *runtime = data->runtime;
   for (int i : runtime->character_positions.index_range()) {
     const char *chr = data->text + runtime->character_byte_offsets[i];
-    float2 text_offset = runtime->character_positions[i];
+    float2 char_position = runtime->character_positions[i];
 
-    /* Draw text itself. */
-    BLF_position(font, x + text_offset.x, y + text_offset.y, 0.0f);
+    BLF_position(font, char_position.x, char_position.y, 0.0f);
     BLF_buffer_col(font, data->color);
     BLF_draw_buffer(font, chr, runtime->character_byte_lengths[i]);
   }
@@ -3303,11 +3349,11 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
 
   /* Draw shadow. */
   if (data->flag & SEQ_TEXT_SHADOW) {
-    draw_text_shadow(context, data, line_height, outline_rect, out);
+    // draw_text_shadow(context, data, line_height, outline_rect, out);
   }
 
   /* Draw box under text. */
-  if (data->flag & SEQ_TEXT_BOX) {
+  /*if (data->flag & SEQ_TEXT_BOX) {
     if (out->byte_buffer.data) {
       const int margin = data->box_margin * width;
       const int minx = rect.xmin - margin;
@@ -3316,7 +3362,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
       const int maxy = rect.ymax + margin;
       fill_rect_alpha_under(out, data->box_color, minx, miny, maxx, maxy);
     }
-  }
+  }*/
 
   return out;
 }

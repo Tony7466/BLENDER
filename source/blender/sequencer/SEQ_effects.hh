@@ -105,8 +105,8 @@ struct TextVarsRuntime {
   Vector<float2> character_positions;
   Vector<float> character_widths;
 
-  Vector<int> line_start_indices;
-  Vector<int> line_character_counts;
+  Vector<int> line_start_indices;  // XXX use IndexRange instead of 2 vectors
+  Vector<int> line_end_indices;
   Vector<float> line_witdths;
 
   int line_height;
