@@ -246,6 +246,21 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.vertex_inputs_.pop_last();
       });
 
+  armature_wire = selectable_shader(
+      "overlay_armature_wire", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_view",
+                             "overlay_frag_output",
+                             "draw_resource_handle_new",
+                             "draw_modelmat_new",
+                             "draw_globals");
+        info.storage_buf(0, Qualifier::READ, "VertexData", "data_buf[]");
+        info.define("pos", "data_buf[gl_VertexID].pos_.xyz");
+        info.define("color", "data_buf[gl_VertexID].color_");
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+      });
+
   depth_mesh = selectable_shader("overlay_depth_only", [](gpu::shader::ShaderCreateInfo &info) {
     info.additional_infos_.clear();
     info.additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new");

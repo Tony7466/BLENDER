@@ -205,6 +205,7 @@ class ShaderModule {
   ShaderPtr armature_shape_wire;
   ShaderPtr armature_sphere_outline;
   ShaderPtr armature_sphere_fill;
+  ShaderPtr armature_wire;
   ShaderPtr depth_mesh;
   ShaderPtr extra_grid;
   ShaderPtr extra_shape;

@@ -641,20 +641,6 @@ static void drw_shgroup_bone_box(const Armatures::DrawContext *ctx,
   }
 }
 
-/* Wire */
-static void drw_shgroup_bone_wire(const Armatures::DrawContext *ctx,
-                                  const float (*bone_mat)[4],
-                                  const float color[4])
-{
-  float head[3], tail[3];
-  mul_v3_m4v3(head, ctx->ob->object_to_world().ptr(), bone_mat[3]);
-  add_v3_v3v3(tail, bone_mat[3], bone_mat[1]);
-  mul_m4_v3(ctx->ob->object_to_world().ptr(), tail);
-
-  DRW_buffer_add_entry(ctx->wire, head, color);
-  DRW_buffer_add_entry(ctx->wire, tail, color);
-}
-
 /* Stick */
 static void drw_shgroup_bone_stick(const Armatures::DrawContext *ctx,
                                    const float (*bone_mat)[4],
@@ -2674,34 +2660,43 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
                  const eBone_Flag boneflag,
                  const int select_id) const override
   {
+    using namespace blender::math;
+
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
 
-    if (ctx->bone_buf) {
-      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
-      return;
-    }
-
-    if (select_id != -1) {
+    if (select_id != -1 && ctx->bone_buf == nullptr) {
       DRW_select_load_id(select_id | BONESEL_BONE);
     }
 
-    if (bone.is_posebone()) {
-      const bPoseChannel *pchan = bone.as_posebone();
-      Mat4 *bbones_mat = (Mat4 *)pchan->draw_data->bbone_matrix;
-      BLI_assert(bbones_mat != nullptr);
+    auto sel_id = (ctx->bone_buf) ? ctx->res->select_id(*ctx->ob_ref, select_id) :
+                                    draw::select::SelectMap::select_invalid_id();
 
-      for (int i = pchan->bone->segments; i--; bbones_mat++) {
-        drw_shgroup_bone_wire(ctx, bbones_mat->mat, col_wire);
-      }
+    /* NOTE: Cannot reinterpret as float4x4 because of alignment requirement of float4x4.
+     * This would require a deeper refactor. */
+    Span<Mat4> bbone_matrices;
+    if (bone.is_posebone()) {
+      bbone_matrices = {(Mat4 *)bone.as_posebone()->draw_data->bbone_matrix,
+                        bone.as_posebone()->bone->segments};
     }
     else {
-      const EditBone *eBone = bone.as_editbone();
-      for (int i = 0; i < eBone->segments; i++) {
-        drw_shgroup_bone_wire(ctx, eBone->disp_bbone_mat[i], col_wire);
+      bbone_matrices = {(Mat4 *)bone.as_editbone()->disp_bbone_mat, bone.as_editbone()->segments};
+    }
+
+    for (const Mat4 &in_bone_mat : bbone_matrices) {
+      float4x4 bmat = float4x4(in_bone_mat.mat);
+      float3 head = transform_point(ctx->ob->object_to_world(), bmat.location());
+      float3 tail = transform_point(ctx->ob->object_to_world(), bmat.location() + bmat.y_axis());
+
+      if (ctx->bone_buf) {
+        ctx->bone_buf->wire_buf.append(head, tail, float4(col_wire), sel_id);
+      }
+      else {
+        DRW_buffer_add_entry(ctx->wire, head, col_wire);
+        DRW_buffer_add_entry(ctx->wire, tail, col_wire);
       }
     }
 
-    if (select_id != -1) {
+    if (select_id != -1 && ctx->bone_buf == nullptr) {
       DRW_select_load_id(-1);
     }
 

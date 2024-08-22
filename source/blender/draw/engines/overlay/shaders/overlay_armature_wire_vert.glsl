@@ -4,9 +4,12 @@
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 void main()
 {
+  select_id_set(in_select_buf[gl_VertexID / 2]);
+
   finalColor.rgb = color.rgb;
   finalColor.a = 1.0;
 
