@@ -5,6 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
+#include "sculpt_cloth.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -28,7 +29,6 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_ccg.hh"
 #include "BKE_collision.h"
-#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
@@ -37,7 +37,6 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
@@ -45,9 +44,14 @@
 
 #include "ED_sculpt.hh"
 
+#include "brushes/types.hh"
 #include "mesh_brush_common.hh"
-#include "paint_intern.hh"
+#include "sculpt_automask.hh"
+#include "sculpt_face_set.hh"
+#include "sculpt_filter.hh"
+#include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -2251,7 +2255,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
                                    *nodes[i],
                                    object,
                                    tls);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2262,7 +2266,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
         for (const int i : range) {
           apply_filter_forces_grids(
               *depsgraph, filter_type, filter_strength, gravity, *nodes[i], object, tls);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -2272,7 +2276,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
         for (const int i : range) {
           apply_filter_forces_bmesh(
               *depsgraph, filter_type, filter_strength, gravity, *nodes[i], object, tls);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;

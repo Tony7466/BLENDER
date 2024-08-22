@@ -5,6 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
+#include "sculpt_dyntopo.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,11 +23,10 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_immediate_util.hh"
@@ -39,7 +39,11 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
+
+#include "DEG_depsgraph.hh"
+
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -111,7 +115,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   }
 
   for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_topology_update(node);
+    BKE_pbvh_node_mark_topology_update(*node);
   }
   /* Get the bounding box, its center and size. */
   const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob.sculpt->pbvh);
@@ -120,20 +124,28 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   const float size = math::reduce_max(dim);
 
   /* Update topology size. */
-  float object_space_constant_detail = 1.0f / (sd->constant_detail *
-                                               mat4_to_scale(ob.object_to_world().ptr()));
-  BKE_pbvh_bmesh_detail_size_set(*ss.pbvh, object_space_constant_detail);
+  const float max_edge_len = 1.0f /
+                             (sd->constant_detail * mat4_to_scale(ob.object_to_world().ptr()));
+  const float min_edge_len = max_edge_len * detail_size::EDGE_LENGTH_MIN_FACTOR;
 
   undo::push_begin(ob, op);
   undo::push_node(depsgraph, ob, nullptr, undo::Type::Position);
 
   const double start_time = BLI_time_now_seconds();
 
-  while (bke::pbvh::bmesh_update_topology(
-      *ss.pbvh, *ss.bm_log, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
+  while (bke::pbvh::bmesh_update_topology(*ss.pbvh,
+                                          *ss.bm_log,
+                                          PBVH_Collapse | PBVH_Subdivide,
+                                          min_edge_len,
+                                          max_edge_len,
+                                          center,
+                                          nullptr,
+                                          size,
+                                          false,
+                                          false))
   {
     for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_topology_update(node);
+      BKE_pbvh_node_mark_topology_update(*node);
     }
   }
 
@@ -142,7 +154,9 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   undo::push_end(ob);
 
   /* Force rebuild of bke::pbvh::Tree for better BB placement. */
-  SCULPT_pbvh_clear(ob);
+  BKE_sculptsession_free_pbvh(&ss);
+  DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
+
   /* Redraw. */
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 

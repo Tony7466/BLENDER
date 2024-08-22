@@ -137,7 +137,8 @@ class Node {
 
   /* Indicates whether this node is a leaf or not; also used for
    * marking various updates that need to be applied. */
-  PBVHNodeFlags flag_ = PBVHNodeFlags(0);
+  PBVHNodeFlags flag_ = PBVH_UpdateBB | PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers |
+                        PBVH_UpdateRedraw;
 
   /* Used for ray-casting: how close the bounding-box is to the ray point. */
   float tmin_ = 0.0f;
@@ -198,10 +199,6 @@ class Tree {
 
   /* flag are verts/faces deformed */
   bool deformed_ = false;
-
-  /* Dynamic topology */
-  float bm_max_edge_len_;
-  float bm_min_edge_len_;
 
   float planes_[6][4];
   int num_planes_;
@@ -276,15 +273,6 @@ std::unique_ptr<Tree> build_bmesh(BMesh *bm);
 
 void build_pixels(const Depsgraph &depsgraph, Object &object, Image &image, ImageUser &image_user);
 void free(std::unique_ptr<Tree> &pbvh);
-
-/* Hierarchical Search in the BVH, two methods:
- * - For each hit calling a callback.
- * - Gather nodes in an array (easy to multi-thread) see search_gather.
- */
-
-void search_callback(Tree &pbvh,
-                     FunctionRef<bool(Node &)> filter_fn,
-                     FunctionRef<void(Node &)> hit_fn);
 
 /* Ray-cast
  * the hit callback is called for all leaf nodes intersecting the ray;
@@ -388,11 +376,6 @@ int count_grid_quads(const BitGroupVector<> &grid_visibility,
 int BKE_pbvh_get_grid_num_verts(const blender::bke::pbvh::Tree &pbvh);
 int BKE_pbvh_get_grid_num_faces(const blender::bke::pbvh::Tree &pbvh);
 
-/**
- * Only valid for type == #blender::bke::pbvh::Type::BMesh.
- */
-void BKE_pbvh_bmesh_detail_size_set(blender::bke::pbvh::Tree &pbvh, float detail_size);
-
 enum PBVHTopologyUpdateMode {
   PBVH_Subdivide = 1,
   PBVH_Collapse = 2,
@@ -407,6 +390,8 @@ namespace blender::bke::pbvh {
 bool bmesh_update_topology(Tree &pbvh,
                            BMLog &bm_log,
                            PBVHTopologyUpdateMode mode,
+                           float min_edge_len,
+                           float max_edge_len,
                            const float center[3],
                            const float view_normal[3],
                            float radius,
@@ -417,21 +402,21 @@ bool bmesh_update_topology(Tree &pbvh,
 
 /* Node Access */
 
-void BKE_pbvh_node_mark_update(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_update_mask(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_update_color(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_update_face_sets(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_update_visibility(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_rebuild_draw(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_redraw(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_positions_update(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_mark_topology_update(blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_fully_hidden_set(blender::bke::pbvh::Node *node, int fully_hidden);
-bool BKE_pbvh_node_fully_hidden_get(const blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_fully_masked_set(blender::bke::pbvh::Node *node, int fully_masked);
-bool BKE_pbvh_node_fully_masked_get(const blender::bke::pbvh::Node *node);
-void BKE_pbvh_node_fully_unmasked_set(blender::bke::pbvh::Node *node, int fully_masked);
-bool BKE_pbvh_node_fully_unmasked_get(const blender::bke::pbvh::Node *node);
+void BKE_pbvh_node_mark_update(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_update_mask(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_update_color(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_update_face_sets(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_update_visibility(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_rebuild_draw(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_redraw(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_positions_update(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_mark_topology_update(blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_fully_hidden_set(blender::bke::pbvh::Node &node, int fully_hidden);
+bool BKE_pbvh_node_fully_hidden_get(const blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_fully_masked_set(blender::bke::pbvh::Node &node, int fully_masked);
+bool BKE_pbvh_node_fully_masked_get(const blender::bke::pbvh::Node &node);
+void BKE_pbvh_node_fully_unmasked_set(blender::bke::pbvh::Node &node, int fully_masked);
+bool BKE_pbvh_node_fully_unmasked_get(const blender::bke::pbvh::Node &node);
 
 void BKE_pbvh_mark_rebuild_pixels(blender::bke::pbvh::Tree &pbvh);
 
@@ -502,7 +487,7 @@ namespace blender::bke::pbvh {
 void update_bounds(const Depsgraph &depsgraph, const Object &object, Tree &pbvh);
 void update_bounds_mesh(Span<float3> vert_positions, Tree &pbvh);
 void update_bounds_grids(const CCGKey &key, Span<CCGElem *> elems, Tree &pbvh);
-void update_bounds_bmesh(const Object &object, Tree &pbvh);
+void update_bounds_bmesh(const BMesh &bm, Tree &pbvh);
 
 /**
  * Copy all current node bounds to the original bounds. "Original" bounds are typically from before
