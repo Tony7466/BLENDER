@@ -380,7 +380,11 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
     return;
   }
 
-  /* Set the fcurve listbase pointers. */
+  /* Set the fcurve listbase pointers.
+   *
+   * Note that the fcurves' own prev/next pointers are hooked up by
+   * `action_blend_write_make_legacy_fcurves_listbase()`, so that they function
+   * properly as a list. */
   for (bActionGroup *group : channel_groups) {
     if (group->fcurve_range_length == 0) {
       group->channels = {nullptr, nullptr};
@@ -476,12 +480,15 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
     const animrig::Slot &first_slot = *action.slot(0);
 
+    /* Note: channel group forward-compat data requires that fcurve
+     * forward-compat legacy data is also written, and vice-versa. Both have
+     * pointers to each other that won't resolve properly when loaded in older
+     * Blender versions if only one is written. */
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
+    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
     Span<bActionGroup *> channel_groups = channel_groups_for_action_slot(action,
                                                                          first_slot.handle);
     action_blend_write_make_legacy_channel_groups_listbase(action.groups, channel_groups);
-
-    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
-    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
   }
 #else
   /* Built without Baklava, so ensure that the written data is clean. This should not change

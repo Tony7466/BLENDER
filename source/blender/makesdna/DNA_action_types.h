@@ -1244,7 +1244,7 @@ typedef struct ActionChannelBag {
    * for membership is the information in the channel groups here.
    *
    * Invariants:
-   * 1. The groups are stored in this array in the same order as thier indices
+   * 1. The groups are stored in this array in the same order as their indices
    *    into the fcurve array.
    * 2. The grouped fcurves are tightly packed, starting at the first fcurve and
    *    having no gaps of ungrouped fcurves between them. Ungrouped fcurves come

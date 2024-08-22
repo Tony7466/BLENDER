@@ -707,21 +707,20 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
 {
   bActionGroup *group = (bActionGroup *)ptr->data;
 
-  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
-      MEM_callocN(sizeof(ActionGroupChannelsIterator), __func__));
+  ActionGroupChannelsIterator *custom_iter = MEM_cnew<ActionGroupChannelsIterator>(__func__);
 
-  iter->internal.custom = custom;
+  iter->internal.custom = custom_iter;
 
   /* Group from a layered action. */
   if (group->channel_bag != nullptr) {
     MutableSpan<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
 
-    custom->tag = ActionGroupChannelsIterator::ARRAY;
-    custom->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start);
-    custom->array.endptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start +
-                                                    group->fcurve_range_length);
-    custom->array.itemsize = sizeof(FCurve *);
-    custom->array.length = group->fcurve_range_length;
+    custom_iter->tag = ActionGroupChannelsIterator::ARRAY;
+    custom_iter->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start);
+    custom_iter->array.endptr = reinterpret_cast<char *>(
+        fcurves.data() + group->fcurve_range_start + group->fcurve_range_length);
+    custom_iter->array.itemsize = sizeof(FCurve *);
+    custom_iter->array.length = group->fcurve_range_length;
 
     iter->valid = group->fcurve_range_length != 0;
 
@@ -729,10 +728,10 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
   }
 
   /* Group from a legacy action. */
-  custom->tag = ActionGroupChannelsIterator::LISTBASE;
-  custom->listbase.link = static_cast<Link *>(group->channels.first);
+  custom_iter->tag = ActionGroupChannelsIterator::LISTBASE;
+  custom_iter->listbase.link = static_cast<Link *>(group->channels.first);
 
-  iter->valid = custom->listbase.link != nullptr;
+  iter->valid = custom_iter->listbase.link != nullptr;
 }
 
 static void rna_ActionGroup_channels_end(CollectionPropertyIterator *iter)
@@ -745,26 +744,26 @@ static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
   BLI_assert(iter->internal.custom != nullptr);
   BLI_assert(iter->valid);
 
-  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
+  ActionGroupChannelsIterator *custom_iter = static_cast<ActionGroupChannelsIterator *>(
       iter->internal.custom);
 
-  switch (custom->tag) {
+  switch (custom_iter->tag) {
     case ActionGroupChannelsIterator::ARRAY: {
-      custom->array.ptr += custom->array.itemsize;
-      iter->valid = (custom->array.ptr != custom->array.endptr);
+      custom_iter->array.ptr += custom_iter->array.itemsize;
+      iter->valid = (custom_iter->array.ptr != custom_iter->array.endptr);
       break;
     }
     case ActionGroupChannelsIterator::LISTBASE: {
-      FCurve *fcurve = (FCurve *)custom->listbase.link;
+      FCurve *fcurve = (FCurve *)custom_iter->listbase.link;
       bActionGroup *grp = fcurve->grp;
       /* Only continue if the next F-Curve (if existent) belongs in the same
        * group. */
       if ((fcurve->next) && (fcurve->next->grp == grp)) {
-        custom->listbase.link = custom->listbase.link->next;
-        iter->valid = (custom->listbase.link != nullptr);
+        custom_iter->listbase.link = custom_iter->listbase.link->next;
+        iter->valid = (custom_iter->listbase.link != nullptr);
       }
       else {
-        custom->listbase.link = nullptr;
+        custom_iter->listbase.link = nullptr;
         iter->valid = false;
       }
       break;
@@ -776,16 +775,16 @@ static PointerRNA rna_ActionGroup_channels_get(CollectionPropertyIterator *iter)
 {
   BLI_assert(iter->internal.custom != nullptr);
   BLI_assert(iter->valid);
-  ActionGroupChannelsIterator *custom = static_cast<ActionGroupChannelsIterator *>(
+  ActionGroupChannelsIterator *custom_iter = static_cast<ActionGroupChannelsIterator *>(
       iter->internal.custom);
 
   FCurve *fcurve;
-  switch (custom->tag) {
+  switch (custom_iter->tag) {
     case ActionGroupChannelsIterator::ARRAY:
-      fcurve = *reinterpret_cast<FCurve **>(custom->array.ptr);
+      fcurve = *reinterpret_cast<FCurve **>(custom_iter->array.ptr);
       break;
     case ActionGroupChannelsIterator::LISTBASE:
-      fcurve = reinterpret_cast<FCurve *>(custom->listbase.link);
+      fcurve = reinterpret_cast<FCurve *>(custom_iter->listbase.link);
       break;
   }
 
