@@ -88,7 +88,7 @@ static void draw_item(uiList * /*ui_list*/,
 static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   static const uiListType *items_list = []() {
-    uiListType *list = MEM_new<uiListType>(__func__);
+    uiListType *list = MEM_cnew<uiListType>(__func__);
     STRNCPY(list->idname, "NODE_UL_capture_items_list");
     list->draw_item = draw_item;
     WM_uilisttype_add(list);
@@ -337,7 +337,7 @@ static void node_register()
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

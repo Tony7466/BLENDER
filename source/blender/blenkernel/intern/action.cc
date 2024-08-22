@@ -60,7 +60,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLO_read_write.hh"
 
@@ -156,8 +156,8 @@ static void action_copy_data(Main * /*bmain*/,
   /* Copy all simple properties. */
   action_dst.layer_array_num = action_src.layer_array_num;
   action_dst.layer_active_index = action_src.layer_active_index;
-  action_dst.binding_array_num = action_src.binding_array_num;
-  action_dst.last_binding_handle = action_src.last_binding_handle;
+  action_dst.slot_array_num = action_src.slot_array_num;
+  action_dst.last_slot_handle = action_src.last_slot_handle;
 
   /* Layers. */
   action_dst.layer_array = MEM_cnew_array<ActionLayer *>(action_src.layer_array_num, __func__);
@@ -165,11 +165,10 @@ static void action_copy_data(Main * /*bmain*/,
     action_dst.layer_array[i] = MEM_new<animrig::Layer>(__func__, *action_src.layer(i));
   }
 
-  /* Bindings. */
-  action_dst.binding_array = MEM_cnew_array<ActionBinding *>(action_src.binding_array_num,
-                                                             __func__);
-  for (int i : action_src.bindings().index_range()) {
-    action_dst.binding_array[i] = MEM_new<animrig::Binding>(__func__, *action_src.binding(i));
+  /* Slots. */
+  action_dst.slot_array = MEM_cnew_array<ActionSlot *>(action_src.slot_array_num, __func__);
+  for (int i : action_src.slots().index_range()) {
+    action_dst.slot_array[i] = MEM_new<animrig::Slot>(__func__, *action_src.slot(i));
   }
 
   if (flag & LIB_ID_COPY_NO_PREVIEW) {
@@ -192,12 +191,12 @@ static void action_free_data(ID *id)
   MEM_SAFE_FREE(action.layer_array);
   action.layer_array_num = 0;
 
-  /* Free bindings. */
-  for (animrig::Binding *binding : action.bindings()) {
-    MEM_delete(binding);
+  /* Free slots. */
+  for (animrig::Slot *slot : action.slots()) {
+    MEM_delete(slot);
   }
-  MEM_SAFE_FREE(action.binding_array);
-  action.binding_array_num = 0;
+  MEM_SAFE_FREE(action.slot_array);
+  action.slot_array_num = 0;
 
   /* Free legacy F-Curves & groups. */
   BKE_fcurves_free(&action.curves);
@@ -239,35 +238,35 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
      * it's possible to report invalid pointers, which should be avoided at all
      * time. */
     if (bmain) {
-      for (animrig::Binding *binding : action.bindings()) {
-        for (ID *binding_user : binding->users(*bmain)) {
-          BKE_LIB_FOREACHID_PROCESS_ID(data, binding_user, idwalk_flags);
+      for (animrig::Slot *slot : action.slots()) {
+        for (ID *slot_user : slot->users(*bmain)) {
+          BKE_LIB_FOREACHID_PROCESS_ID(data, slot_user, idwalk_flags);
         }
       }
     }
   }
-  else if (bmain && !bmain->is_action_binding_to_id_map_dirty) {
+  else if (bmain && !bmain->is_action_slot_to_id_map_dirty) {
     /* Because BKE_library_foreach_ID_link() can be called with bmain=nullptr,
      * there are cases where we do not know which `main` this is called for. An example is in
      * `deg_eval_copy_on_write.cc`, function `deg_expand_eval_copy_datablock`.
      *
      * Also if the cache is already dirty, we shouldn't loop over the pointers in there. If we
-     * were to call `binding->users(*bmain)` in that case, it would rebuild the cache. But then
+     * were to call `slot->users(*bmain)` in that case, it would rebuild the cache. But then
      * another ID using the same Action may also trigger a rebuild of the cache, because another
      * user pointer changed, forcing way too many rebuilds of the user map.  */
     bool should_invalidate = false;
 
-    for (animrig::Binding *binding : action.bindings()) {
-      for (ID *binding_user : binding->runtime_users()) {
-        ID *old_pointer = binding_user;
-        BKE_LIB_FOREACHID_PROCESS_ID(data, binding_user, idwalk_flags);
-        /* If binding_user changed, the cache should be invalidated. */
-        should_invalidate |= (binding_user != old_pointer);
+    for (animrig::Slot *slot : action.slots()) {
+      for (ID *slot_user : slot->runtime_users()) {
+        ID *old_pointer = slot_user;
+        BKE_LIB_FOREACHID_PROCESS_ID(data, slot_user, idwalk_flags);
+        /* If slot_user changed, the cache should be invalidated. */
+        should_invalidate |= (slot_user != old_pointer);
       }
     }
 
     if (should_invalidate) {
-      animrig::Binding::users_invalidate(*bmain);
+      animrig::Slot::users_invalidate(*bmain);
     }
   }
 
@@ -290,6 +289,7 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void write_channelbag(BlendWriter *writer, animrig::ChannelBag &channelbag)
 {
   BLO_write_struct(writer, ActionChannelBag, &channelbag);
@@ -339,31 +339,127 @@ static void write_layers(BlendWriter *writer, Span<animrig::Layer *> layers)
   }
 }
 
-static void write_bindings(BlendWriter *writer, Span<animrig::Binding *> bindings)
+static void write_slots(BlendWriter *writer, Span<animrig::Slot *> slots)
 {
-  BLO_write_pointer_array(writer, bindings.size(), bindings.data());
-  for (animrig::Binding *binding : bindings) {
+  BLO_write_pointer_array(writer, slots.size(), slots.data());
+  for (animrig::Slot *slot : slots) {
     /* Make a shallow copy using the C type, so that no new runtime struct is
      * allocated for the copy. */
-    ActionBinding shallow_copy = *binding;
+    ActionSlot shallow_copy = *slot;
     shallow_copy.runtime = nullptr;
 
-    BLO_write_struct_at_address(writer, ActionBinding, binding, &shallow_copy);
+    BLO_write_struct_at_address(writer, ActionSlot, slot, &shallow_copy);
   }
 }
+
+/**
+ * Create a listbase from a Span of F-Curves.
+ *
+ * \note this does NOT transfer ownership of the pointers. The ListBase should not be freed,
+ * but given to `action_blend_write_clear_legacy_fcurves_listbase()` below.
+ *
+ * \warning This code is modifying actual '`Main`' data in-place, which is
+ * usually not acceptable (due to risks of unsafe concurrent accesses mainly).
+ * The reasons why this is currently seen as 'reasonably safe' are:
+ *   - Current blender code is _not_ expected to access the affected FCurve data
+ *     (`prev`/`next` listbase pointers) in any way, as they are stored in an array.
+ *   - The `action.curves` listbase modification is safe/valid, as this is a member of
+ *     the Action ID, which is a shallow copy of the actual ID data from Main.
+ */
+static void action_blend_write_make_legacy_fcurves_listbase(ListBase &listbase,
+                                                            const Span<FCurve *> fcurves)
+{
+  if (fcurves.is_empty()) {
+    BLI_listbase_clear(&listbase);
+    return;
+  }
+
+  /* Determine the prev/next pointers on the elements. */
+  const int last_index = fcurves.size() - 1;
+  for (int index : fcurves.index_range()) {
+    fcurves[index]->prev = (index > 0) ? fcurves[index - 1] : nullptr;
+    fcurves[index]->next = (index < last_index) ? fcurves[index + 1] : nullptr;
+  }
+
+  listbase.first = fcurves[0];
+  listbase.last = fcurves[last_index];
+}
+
+static void action_blend_write_clear_legacy_fcurves_listbase(ListBase &listbase)
+{
+  LISTBASE_FOREACH (FCurve *, fcurve, &listbase) {
+    fcurve->prev = nullptr;
+    fcurve->next = nullptr;
+  }
+
+  BLI_listbase_clear(&listbase);
+}
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifdef WITH_ANIM_BAKLAVA
+  /* Create legacy data for Layered Actions: the F-Curves from the first Slot,
+   * bottom layer, first Keyframe strip. */
+  const bool do_write_forward_compat = !BLO_write_is_undo(writer) && action.slot_array_num > 0 &&
+                                       action.is_action_layered();
+  if (do_write_forward_compat) {
+    animrig::assert_baklava_phase_1_invariants(action);
+    BLI_assert_msg(BLI_listbase_is_empty(&action.curves),
+                   "Layered Action should not have legacy data");
+    BLI_assert_msg(BLI_listbase_is_empty(&action.groups),
+                   "Layered Action should not have legacy data");
+
+    const animrig::Slot &first_slot = *action.slot(0);
+    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
+    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
+  }
+#else
+  /* Built without Baklava, so ensure that the written data is clean. This should not change
+   * anything, as the reading code below also ensures these fields are empty, and the APIs to add
+   * those should be unavailable. */
+  BLI_assert_msg(action.layer_array == nullptr,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.layer_array_num == 0,
+                 "Action should not have layers, built without Baklava experimental feature");
+  BLI_assert_msg(action.slot_array == nullptr,
+                 "Action should not have slots, built without Baklava experimental feature");
+  BLI_assert_msg(action.slot_array_num == 0,
+                 "Action should not have slots, built without Baklava experimental feature");
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.slot_array = nullptr;
+  action.slot_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
+
   BLO_write_id_struct(writer, bAction, id_address, &action.id);
   BKE_id_blend_write(writer, &action.id);
 
+#ifdef WITH_ANIM_BAKLAVA
   /* Write layered Action data. */
   write_layers(writer, action.layers());
-  write_bindings(writer, action.bindings());
+  write_slots(writer, action.slots());
 
-  /* Write legacy F-Curves & groups. */
+  if (do_write_forward_compat) {
+    /* The pointers to the first/last FCurve in the `action.curves` have already
+     * been written as part of the Action struct data, so they can be cleared
+     * here, such that the code writing legacy fcurves below does nothing (as
+     * expected). And to leave the Action in a consistent state (it shouldn't
+     * have F-Curves in both legacy and layered storage).
+     *
+     * Note that the FCurves themselves have been written as part of the layered
+     * animation writing code called above. Writing them again as part of the
+     * handling of the legacy `action.fcurves` ListBase would corrupt the
+     * blend-file by generating two `BHead` `DATA` blocks with the same old
+     * address for the same ID.
+     */
+    action_blend_write_clear_legacy_fcurves_listbase(action.curves);
+  }
+#endif /* WITH_ANIM_BAKLAVA */
+
+  /* Write legacy F-Curves & Groups. */
   BKE_fcurve_blend_write_listbase(writer, &action.curves);
   LISTBASE_FOREACH (bActionGroup *, grp, &action.groups) {
     BLO_write_struct(writer, bActionGroup, grp);
@@ -376,36 +472,48 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BKE_previewimg_blend_write(writer, action.preview);
 }
 
+#ifdef WITH_ANIM_BAKLAVA
 static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channelbag)
 {
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&channelbag.fcurve_array));
+  BLO_read_pointer_array(
+      reader, channelbag.fcurve_array_num, reinterpret_cast<void **>(&channelbag.fcurve_array));
 
   for (int i = 0; i < channelbag.fcurve_array_num; i++) {
     BLO_read_struct(reader, FCurve, &channelbag.fcurve_array[i]);
-    BKE_fcurve_blend_read_data(reader, channelbag.fcurve_array[i]);
+    FCurve *fcurve = channelbag.fcurve_array[i];
+
+    /* Clear the prev/next pointers set by the forward compatibility code in
+     * action_blend_write(). */
+    fcurve->prev = nullptr;
+    fcurve->next = nullptr;
+
+    BKE_fcurve_blend_read_data(reader, fcurve);
   }
 }
 
 static void read_keyframe_strip(BlendDataReader *reader, animrig::KeyframeStrip &strip)
 {
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&strip.channelbags_array));
+  BLO_read_pointer_array(
+      reader, strip.channelbag_array_num, reinterpret_cast<void **>(&strip.channelbag_array));
 
-  for (int i = 0; i < strip.channelbags_array_num; i++) {
-    BLO_read_struct(reader, ActionChannelBag, &strip.channelbags_array[i]);
-    ActionChannelBag *channelbag = strip.channelbags_array[i];
+  for (int i = 0; i < strip.channelbag_array_num; i++) {
+    BLO_read_struct(reader, ActionChannelBag, &strip.channelbag_array[i]);
+    ActionChannelBag *channelbag = strip.channelbag_array[i];
     read_channelbag(reader, channelbag->wrap());
   }
 }
 
-static void read_layers(BlendDataReader *reader, animrig::Action &anim)
+static void read_layers(BlendDataReader *reader, animrig::Action &action)
 {
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.layer_array));
+  BLO_read_pointer_array(
+      reader, action.layer_array_num, reinterpret_cast<void **>(&action.layer_array));
 
-  for (int layer_idx = 0; layer_idx < anim.layer_array_num; layer_idx++) {
-    BLO_read_struct(reader, ActionLayer, &anim.layer_array[layer_idx]);
-    ActionLayer *layer = anim.layer_array[layer_idx];
+  for (int layer_idx = 0; layer_idx < action.layer_array_num; layer_idx++) {
+    BLO_read_struct(reader, ActionLayer, &action.layer_array[layer_idx]);
+    ActionLayer *layer = action.layer_array[layer_idx];
 
-    BLO_read_pointer_array(reader, reinterpret_cast<void **>(&layer->strip_array));
+    BLO_read_pointer_array(
+        reader, layer->strip_array_num, reinterpret_cast<void **>(&layer->strip_array));
     for (int strip_idx = 0; strip_idx < layer->strip_array_num; strip_idx++) {
       BLO_read_struct(reader, ActionStrip, &layer->strip_array[strip_idx]);
       ActionStrip *dna_strip = layer->strip_array[strip_idx];
@@ -420,27 +528,54 @@ static void read_layers(BlendDataReader *reader, animrig::Action &anim)
   }
 }
 
-static void read_bindings(BlendDataReader *reader, animrig::Action &anim)
+static void read_slots(BlendDataReader *reader, animrig::Action &action)
 {
-  BLO_read_pointer_array(reader, reinterpret_cast<void **>(&anim.binding_array));
+  BLO_read_pointer_array(
+      reader, action.slot_array_num, reinterpret_cast<void **>(&action.slot_array));
 
-  for (int i = 0; i < anim.binding_array_num; i++) {
-    BLO_read_struct(reader, ActionBinding, &anim.binding_array[i]);
-    anim.binding_array[i]->wrap().blend_read_post();
+  for (int i = 0; i < action.slot_array_num; i++) {
+    BLO_read_struct(reader, ActionSlot, &action.slot_array[i]);
+    action.slot_array[i]->wrap().blend_read_post();
   }
 }
+#endif /* WITH_ANIM_BAKLAVA */
 
 static void action_blend_read_data(BlendDataReader *reader, ID *id)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+#ifdef WITH_ANIM_BAKLAVA
   read_layers(reader, action);
-  read_bindings(reader, action);
+  read_slots(reader, action);
+#else
+  /* Built without Baklava, so do not read the layers, strips, slots, etc.
+   * This ensures the F-Curves in the legacy `curves` ListBase are read & used
+   * (these are written by future Blender versions for forward compatibility). */
+  action.layer_array = nullptr;
+  action.layer_array_num = 0;
+  action.slot_array = nullptr;
+  action.slot_array_num = 0;
+#endif /* WITH_ANIM_BAKLAVA */
 
-  /* Read legacy data. */
-  BLO_read_struct_list(reader, FCurve, &action.curves);
-  BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
-  BLO_read_struct_list(reader, bActionGroup, &action.groups);
+  if (action.is_action_layered()) {
+    /* Clear the forward-compatible storage (see action_blend_write_data()). */
+    BLI_listbase_clear(&action.curves);
+    BLI_assert(BLI_listbase_is_empty(&action.groups));
+  }
+  else {
+    /* Read legacy data. */
+    BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
+    BLO_read_struct_list(reader, FCurve, &action.curves);
+    BLO_read_struct_list(reader, bActionGroup, &action.groups);
+
+    BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
+
+    LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
+      BLO_read_struct(reader, FCurve, &agrp->channels.first);
+      BLO_read_struct(reader, FCurve, &agrp->channels.last);
+    }
+  }
+
   BLO_read_struct_list(reader, TimeMarker, &action.markers);
 
   LISTBASE_FOREACH (bActionChannel *, achan, &action.chanbase) {
@@ -448,12 +583,6 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
     BLO_read_struct_list(reader, bConstraintChannel, &achan->constraintChannels);
   }
 
-  BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
-
-  LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
-    BLO_read_struct(reader, FCurve, &agrp->channels.first);
-    BLO_read_struct(reader, FCurve, &agrp->channels.last);
-  }
   /* End of reading legacy data. */
 
   BLO_read_struct(reader, PreviewImage, &action.preview);
@@ -487,7 +616,11 @@ static AssetTypeInfo AssetType_AC = {
 IDTypeInfo IDType_ID_AC = {
     /*id_code*/ ID_AC,
     /*id_filter*/ FILTER_ID_AC,
+
+    /* This value will be set dynamically in `BKE_idtype_init()` to only include
+     * animatable ID types (see `animrig::Slot::users()`). */
     /*dependencies_id_types*/ FILTER_ID_ALL,
+
     /*main_listbase_index*/ INDEX_ID_AC,
     /*struct_size*/ sizeof(bAction),
     /*name*/ "Action",
@@ -1718,132 +1851,6 @@ bool BKE_action_is_cyclic(const bAction *act)
   return act && (act->flag & ACT_FRAME_RANGE) && (act->flag & ACT_CYCLIC);
 }
 
-eAction_TransformFlags BKE_action_get_item_transform_flags(bAction *act,
-                                                           Object *ob,
-                                                           bPoseChannel *pchan,
-                                                           ListBase *curves)
-{
-  PointerRNA ptr;
-  short flags = 0;
-
-  /* build PointerRNA from provided data to obtain the paths to use */
-  if (pchan) {
-    ptr = RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan);
-  }
-  else if (ob) {
-    ptr = RNA_id_pointer_create((ID *)ob);
-  }
-  else {
-    return eAction_TransformFlags(0);
-  }
-
-  /* get the basic path to the properties of interest */
-  const std::optional<std::string> basePath = RNA_path_from_ID_to_struct(&ptr);
-  if (!basePath) {
-    return eAction_TransformFlags(0);
-  }
-
-  /* search F-Curves for the given properties
-   * - we cannot use the groups, since they may not be grouped in that way...
-   */
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
-    const char *bPtr = nullptr, *pPtr = nullptr;
-
-    /* If enough flags have been found,
-     * we can stop checking unless we're also getting the curves. */
-    if ((flags == ACT_TRANS_ALL) && (curves == nullptr)) {
-      break;
-    }
-
-    /* just in case... */
-    if (fcu->rna_path == nullptr) {
-      continue;
-    }
-
-    /* step 1: check for matching base path */
-    bPtr = strstr(fcu->rna_path, basePath->c_str());
-
-    if (bPtr) {
-      /* we must add len(basePath) bytes to the match so that we are at the end of the
-       * base path so that we don't get false positives with these strings in the names
-       */
-      bPtr += strlen(basePath->c_str());
-
-      /* step 2: check for some property with transforms
-       * - to speed things up, only check for the ones not yet found
-       *   unless we're getting the curves too
-       * - if we're getting the curves, the BLI_genericNodeN() creates a LinkData
-       *   node wrapping the F-Curve, which then gets added to the list
-       * - once a match has been found, the curve cannot possibly be any other one
-       */
-      if ((curves) || (flags & ACT_TRANS_LOC) == 0) {
-        pPtr = strstr(bPtr, "location");
-        if (pPtr) {
-          flags |= ACT_TRANS_LOC;
-
-          if (curves) {
-            BLI_addtail(curves, BLI_genericNodeN(fcu));
-          }
-          continue;
-        }
-      }
-
-      if ((curves) || (flags & ACT_TRANS_SCALE) == 0) {
-        pPtr = strstr(bPtr, "scale");
-        if (pPtr) {
-          flags |= ACT_TRANS_SCALE;
-
-          if (curves) {
-            BLI_addtail(curves, BLI_genericNodeN(fcu));
-          }
-          continue;
-        }
-      }
-
-      if ((curves) || (flags & ACT_TRANS_ROT) == 0) {
-        pPtr = strstr(bPtr, "rotation");
-        if (pPtr) {
-          flags |= ACT_TRANS_ROT;
-
-          if (curves) {
-            BLI_addtail(curves, BLI_genericNodeN(fcu));
-          }
-          continue;
-        }
-      }
-
-      if ((curves) || (flags & ACT_TRANS_BBONE) == 0) {
-        /* bbone shape properties */
-        pPtr = strstr(bPtr, "bbone_");
-        if (pPtr) {
-          flags |= ACT_TRANS_BBONE;
-
-          if (curves) {
-            BLI_addtail(curves, BLI_genericNodeN(fcu));
-          }
-          continue;
-        }
-      }
-
-      if ((curves) || (flags & ACT_TRANS_PROP) == 0) {
-        /* custom properties only */
-        pPtr = strstr(bPtr, "[\"");
-        if (pPtr) {
-          flags |= ACT_TRANS_PROP;
-
-          if (curves) {
-            BLI_addtail(curves, BLI_genericNodeN(fcu));
-          }
-          continue;
-        }
-      }
-    }
-  }
-
-  /* return flags found */
-  return eAction_TransformFlags(flags);
-}
-
 /* ************** Pose Management Tools ****************** */
 
 void BKE_pose_rest(bPose *pose, bool selected_bones_only)
@@ -2143,7 +2150,13 @@ void BKE_pose_blend_read_data(BlendDataReader *reader, ID *id_owner, bPose *pose
   }
   pose->ikdata = nullptr;
   if (pose->ikparam != nullptr) {
-    BLO_read_data_address(reader, &pose->ikparam);
+    const char *structname = BKE_pose_ikparam_get_name(pose);
+    if (structname) {
+      pose->ikparam = BLO_read_struct_by_name_array(reader, structname, 1, pose->ikparam);
+    }
+    else {
+      pose->ikparam = nullptr;
+    }
   }
 }
 

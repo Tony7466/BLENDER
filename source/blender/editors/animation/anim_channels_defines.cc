@@ -49,7 +49,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
@@ -76,6 +76,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "anim_intern.hh"
+
 using namespace blender;
 
 /* *********************************************** */
@@ -86,9 +88,6 @@ using namespace blender;
 
 /* size of indent steps */
 #define INDENT_STEP_SIZE (0.35f * U.widget_unit)
-
-/* size of string buffers used for animation channel displayed names */
-#define ANIM_CHAN_NAME_SIZE 256
 
 /* get the pointer used for some flag */
 #define GET_ACF_FLAG_PTR(ptr, type) ((*(type) = sizeof(ptr)), &(ptr))
@@ -976,15 +975,15 @@ static void acf_fcurve_name(bAnimListElem *ale, char *name)
   FCurve *fcurve = static_cast<FCurve *>(ale->data);
 
   if (ale->fcurve_owner_id && GS(ale->fcurve_owner_id->name) == ID_AC &&
-      ale->binding_handle != Binding::unassigned)
+      ale->slot_handle != Slot::unassigned)
   {
     /* F-Curve comes from a layered Action. This means that we cannot trust `ale->id` or
      * `ale->adt`, because in the Action Editor those are set to whatever object has this Action
-     * assigned. This F-Curve may be for a different binding, though, and thus might be animating a
+     * assigned. This F-Curve may be for a different slot, though, and thus might be animating a
      * entirely different ID type. */
     const Action &action = reinterpret_cast<bAction *>(ale->fcurve_owner_id)->wrap();
-    const Binding *binding = action.binding_for_handle(ale->binding_handle);
-    if (!binding) {
+    const Slot *slot = action.slot_for_handle(ale->slot_handle);
+    if (!slot) {
       /* Defer to the default F-Curve resolution, but without the animated ID
        * pointer, as it's likely to be wrong anyway. */
       getname_anim_fcurve(name, nullptr, fcurve);
@@ -992,7 +991,7 @@ static void acf_fcurve_name(bAnimListElem *ale, char *name)
     }
 
     BLI_assert(ale->bmain);
-    const std::string fcurve_name = getname_anim_fcurve_bound(*ale->bmain, *binding, *fcurve);
+    const std::string fcurve_name = getname_anim_fcurve_for_slot(*ale->bmain, *slot, *fcurve);
     const size_t num_chars_copied = fcurve_name.copy(name, std::string::npos);
     name[num_chars_copied] = '\0';
 
@@ -1359,40 +1358,58 @@ static bAnimChannelType ACF_FILLANIM = {
     /*setting_ptr*/ acf_fillanim_setting_ptr,
 };
 
-static void acf_action_binding_name(bAnimListElem *ale, char *r_name)
+static void acf_action_slot_name(bAnimListElem *ale, char *r_name)
 {
-  const animrig::Binding *binding = static_cast<animrig::Binding *>(ale->data);
-  if (!binding) {
-    /* Trying to getting the binding's name without a binding is a bug. */
+  const animrig::Slot *slot = static_cast<animrig::Slot *>(ale->data);
+  if (!slot) {
+    /* Trying to getting the slot's name without a slot is a bug. */
     BLI_assert_unreachable();
     BLI_strncpy(r_name, "-nil-", ANIM_CHAN_NAME_SIZE);
     return;
   }
 
-  BLI_strncpy(r_name, binding->name_without_prefix().c_str(), ANIM_CHAN_NAME_SIZE);
+  BLI_assert(ale->bmain);
+  const int num_users = slot->users(*ale->bmain).size();
+  const char *display_name = slot->name_without_prefix().c_str();
+
+  BLI_assert(num_users >= 0);
+  switch (num_users) {
+    case 0:
+      BLI_snprintf(r_name, ANIM_CHAN_NAME_SIZE, "%s (unassigned)", display_name);
+      break;
+    case 1:
+      BLI_strncpy(r_name, display_name, ANIM_CHAN_NAME_SIZE);
+      break;
+    default:
+      BLI_snprintf(r_name, ANIM_CHAN_NAME_SIZE, "%s (%d)", display_name, num_users);
+      break;
+  }
 }
-static bool acf_action_binding_name_prop(bAnimListElem *ale,
-                                         PointerRNA *r_ptr,
-                                         PropertyRNA **r_prop)
+static bool acf_action_slot_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
-  animrig::Binding *binding = static_cast<animrig::Binding *>(ale->data);
+  animrig::Slot *slot = static_cast<animrig::Slot *>(ale->data);
   BLI_assert(GS(ale->fcurve_owner_id->name) == ID_AC);
 
-  *r_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_ActionBinding, binding);
+  *r_ptr = RNA_pointer_create(ale->fcurve_owner_id, &RNA_ActionSlot, slot);
   *r_prop = RNA_struct_find_property(r_ptr, "name_display");
 
   return (*r_prop != nullptr);
 }
 
-static int acf_action_binding_icon(bAnimListElem *ale)
+static int acf_action_slot_icon(bAnimListElem * /*ale*/)
 {
-  animrig::Binding *binding = static_cast<animrig::Binding *>(ale->data);
-  return UI_icon_from_idcode(binding->idtype);
+  return ICON_LINK_BLEND; /* TODO: design icon. */
 }
 
-static bool acf_action_binding_setting_valid(bAnimContext * /*ac*/,
-                                             bAnimListElem * /*ale*/,
-                                             const eAnimChannel_Settings setting)
+static int acf_action_slot_idtype_icon(bAnimListElem *ale)
+{
+  animrig::Slot *slot = static_cast<animrig::Slot *>(ale->data);
+  return UI_icon_from_idcode(slot->idtype);
+}
+
+static bool acf_action_slot_setting_valid(bAnimContext * /*ac*/,
+                                          bAnimListElem * /*ale*/,
+                                          const eAnimChannel_Settings setting)
 {
   switch (setting) {
     case ACHANNEL_SETTING_SELECT:
@@ -1404,31 +1421,31 @@ static bool acf_action_binding_setting_valid(bAnimContext * /*ac*/,
   }
 }
 
-static int acf_action_binding_setting_flag(bAnimContext * /*ac*/,
-                                           eAnimChannel_Settings setting,
-                                           bool *r_neg)
+static int acf_action_slot_setting_flag(bAnimContext * /*ac*/,
+                                        eAnimChannel_Settings setting,
+                                        bool *r_neg)
 {
   *r_neg = false;
 
   switch (setting) {
     case ACHANNEL_SETTING_SELECT:
-      return int(animrig::Binding::Flags::Selected);
+      return int(animrig::Slot::Flags::Selected);
     case ACHANNEL_SETTING_EXPAND:
-      return int(animrig::Binding::Flags::Expanded);
+      return int(animrig::Slot::Flags::Expanded);
     default:
       return 0;
   }
 }
-static void *acf_action_binding_setting_ptr(bAnimListElem *ale,
-                                            eAnimChannel_Settings /*setting*/,
-                                            short *r_type)
+static void *acf_action_slot_setting_ptr(bAnimListElem *ale,
+                                         eAnimChannel_Settings /*setting*/,
+                                         short *r_type)
 {
-  animrig::Binding *binding = static_cast<animrig::Binding *>(ale->data);
-  return GET_ACF_FLAG_PTR(binding->binding_flags, r_type);
+  animrig::Slot *slot = static_cast<animrig::Slot *>(ale->data);
+  return GET_ACF_FLAG_PTR(slot->slot_flags, r_type);
 }
 
-static bAnimChannelType ACF_ACTION_BINDING = {
-    /*channel_type_name*/ "Action Binding",
+static bAnimChannelType ACF_ACTION_SLOT = {
+    /*channel_type_name*/ "Action Slot",
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
     /*get_backdrop_color*/ acf_generic_dataexpand_color,
@@ -1437,13 +1454,13 @@ static bAnimChannelType ACF_ACTION_BINDING = {
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
 
-    /*name*/ acf_action_binding_name,
-    /*name_prop*/ acf_action_binding_name_prop,
-    /*icon*/ acf_action_binding_icon,
+    /*name*/ acf_action_slot_name,
+    /*name_prop*/ acf_action_slot_name_prop,
+    /*icon*/ acf_action_slot_icon,
 
-    /*has_setting*/ acf_action_binding_setting_valid,
-    /*setting_flag*/ acf_action_binding_setting_flag,
-    /*setting_ptr*/ acf_action_binding_setting_ptr,
+    /*has_setting*/ acf_action_slot_setting_valid,
+    /*setting_flag*/ acf_action_slot_setting_flag,
+    /*setting_ptr*/ acf_action_slot_setting_ptr,
 };
 
 #endif  // WITH_ANIM_BAKLAVA
@@ -4490,8 +4507,8 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_NLACURVE;    /* NLA Control FCurve Channel */
 
 #ifdef WITH_ANIM_BAKLAVA
-    animchannelTypeInfo[type++] = &ACF_FILLANIM;       /* Object's Layered Action Expander */
-    animchannelTypeInfo[type++] = &ACF_ACTION_BINDING; /* Action Binding Expander */
+    animchannelTypeInfo[type++] = &ACF_FILLANIM;    /* Object's Layered Action Expander */
+    animchannelTypeInfo[type++] = &ACF_ACTION_SLOT; /* Action Slot Expander */
 #else
     animchannelTypeInfo[type++] = nullptr;
     animchannelTypeInfo[type++] = nullptr;
@@ -4539,8 +4556,8 @@ static void ANIM_init_channel_typeinfo_data()
 #ifdef WITH_ANIM_BAKLAVA
     BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_FILLACT_LAYERED] == &ACF_FILLANIM,
                    "ANIMTYPE_FILLACT_LAYERED does not match ACF_FILLANIM");
-    BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_ACTION_BINDING] == &ACF_ACTION_BINDING,
-                   "ANIMTYPE_ACTION_BINDING does not match ACF_ACTION_BINDING");
+    BLI_assert_msg(animchannelTypeInfo[ANIMTYPE_ACTION_SLOT] == &ACF_ACTION_SLOT,
+                   "ANIMTYPE_ACTION_SLOT does not match ACF_ACTION_SLOT");
 #endif
   }
 }
@@ -5034,6 +5051,8 @@ void ANIM_channel_draw(
           draw_sliders = (sipo->flag & SIPO_SLIDERS);
           break;
         }
+        default:
+          BLI_assert_unreachable();
       }
     }
 
@@ -5852,6 +5871,8 @@ void ANIM_channel_draw_widgets(const bContext *C,
           draw_sliders = (sipo->flag & SIPO_SLIDERS);
           break;
         }
+        default:
+          BLI_assert_unreachable();
       }
     }
 
@@ -5962,6 +5983,14 @@ void ANIM_channel_draw_widgets(const bContext *C,
 
         UI_block_emboss_set(block, UI_EMBOSS_NONE);
       }
+
+#ifdef WITH_ANIM_BAKLAVA
+      /* Slot ID type indicator. */
+      if (ale->type == ANIMTYPE_ACTION_SLOT) {
+        offset -= ICON_WIDTH;
+        UI_icon_draw(offset, ymid, acf_action_slot_idtype_icon(ale));
+      }
+#endif /* WITH_ANIM_BAKLAVA */
     }
 
     /* Draw slider:

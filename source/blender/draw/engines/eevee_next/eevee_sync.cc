@@ -34,13 +34,6 @@ namespace blender::eevee {
  *
  * \{ */
 
-void SyncModule::view_update()
-{
-  if (DEG_id_type_updated(inst_.depsgraph, ID_WO)) {
-    world_updated_ = true;
-  }
-}
-
 ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
 {
   ObjectKey key(ob_ref.object);
@@ -56,11 +49,10 @@ ObjectHandle &SyncModule::sync_object(const ObjectRef &ob_ref)
   return handle;
 }
 
-WorldHandle SyncModule::sync_world()
+WorldHandle SyncModule::sync_world(const ::World &world)
 {
   WorldHandle handle;
-  handle.recalc = world_updated_ ? int(ID_RECALC_SHADING) : 0;
-  world_updated_ = false;
+  handle.recalc = inst_.get_recalc_flags(world);
   return handle;
 }
 
@@ -251,7 +243,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     inst_.volume.object_sync(ob_handle);
   }
 
-  /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
+  /* Use a valid bounding box. The pbvh::Tree module already does its own culling, but a valid */
   /* bounding box is still needed for directional shadow tile-map bounds computation. */
   const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob_ref.object->sculpt->pbvh);
   const float3 center = math::midpoint(bounds.min, bounds.max);

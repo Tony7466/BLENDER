@@ -307,7 +307,7 @@ int BKE_fcurves_filter(ListBase *dst, ListBase *src, const char *dataPrefix, con
  * \note Return pointer parameters (`r_action`, `r_driven` and `r_special`) are all optional and
  * may be NULL.
  *
- * \note since Animation data-blocks may have multiple layers all containing an F-Curve for this
+ * \note since Actions may have multiple layers all containing an F-Curve for this
  * property, what is returned is a best-effort guess. The topmost layer has priority, and it is
  * assumed that when it has a strip, it's infinite.
  */
@@ -441,6 +441,11 @@ bool BKE_fcurve_is_protected(const FCurve *fcu);
  * Are any of the keyframe control points selected on the F-Curve?
  */
 bool BKE_fcurve_has_selected_control_points(const FCurve *fcu);
+
+/**
+ * Deselect all keyframes within that FCurve.
+ */
+void BKE_fcurve_deselect_all_keys(FCurve &fcu);
 
 /**
  * Checks if the F-Curve has a Cycles modifier with simple settings
@@ -656,7 +661,7 @@ void BKE_fmodifiers_blend_read_data(BlendDataReader *reader, ListBase *fmodifier
  * If this is used to write an FCurve, be sure to call `BLO_write_struct(writer, FCurve, fcurve);`
  * before calling this function.
  */
-void BKE_fcurve_blend_write_data(BlendWriter *writer, FCurve *fcurve);
+void BKE_fcurve_blend_write_data(BlendWriter *writer, FCurve *fcu);
 void BKE_fcurve_blend_write_listbase(BlendWriter *writer, ListBase *fcurves);
 void BKE_fcurve_blend_read_data(BlendDataReader *reader, FCurve *fcu);
 void BKE_fcurve_blend_read_data_listbase(BlendDataReader *reader, ListBase *fcurves);

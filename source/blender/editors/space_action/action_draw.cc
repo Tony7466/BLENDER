@@ -56,7 +56,7 @@ using namespace blender;
 void draw_channel_names(bContext *C,
                         bAnimContext *ac,
                         ARegion *region,
-                        const ListBase /* bAnimListElem */ &anim_data)
+                        const ListBase /*bAnimListElem*/ &anim_data)
 {
   bAnimListElem *ale;
   View2D *v2d = &region->v2d;
@@ -380,14 +380,14 @@ static void draw_keyframes(bAnimContext *ac,
                                       scale_factor,
                                       action_flag);
         break;
-      case ALE_ACTION_BINDING:
-        ED_add_action_binding_channel(draw_list,
-                                      adt,
-                                      static_cast<bAction *>(ale->key_data)->wrap(),
-                                      *static_cast<animrig::Binding *>(ale->data),
-                                      ycenter,
-                                      scale_factor,
-                                      action_flag);
+      case ALE_ACTION_SLOT:
+        ED_add_action_slot_channel(draw_list,
+                                   adt,
+                                   static_cast<bAction *>(ale->key_data)->wrap(),
+                                   *static_cast<animrig::Slot *>(ale->data),
+                                   ycenter,
+                                   scale_factor,
+                                   action_flag);
         break;
       case ALE_ACT:
         ED_add_action_channel(draw_list,

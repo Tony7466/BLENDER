@@ -874,6 +874,18 @@ static void setup_app_data(bContext *C,
     BLI_assert(bfd->curscene != nullptr);
     mode = LOAD_UNDO;
   }
+  else if (bfd->fileflags & G_FILE_ASSET_EDIT_FILE) {
+    BKE_report(reports->reports,
+               RPT_WARNING,
+               "This file is managed by the asset system, you cannot overwrite it (using \"Save "
+               "As\" is possible)");
+    /* From now on the file in memory is a normal file, further saving it will contain a
+     * window-manager, scene, ... and potentially user created data. Use #Main.is_asset_edit_file
+     * to detect if saving this file needs extra protections. */
+    bfd->fileflags &= ~G_FILE_ASSET_EDIT_FILE;
+    BLI_assert(bfd->main->is_asset_edit_file);
+    mode = LOAD_UI_OFF;
+  }
   /* May happen with library files, loading undo-data should never have a null `curscene`
    * (but may have a null `curscreen`). */
   else if (ELEM(nullptr, bfd->curscreen, bfd->curscene)) {
@@ -1026,14 +1038,14 @@ static void setup_app_data(bContext *C,
   if (mode == LOAD_UNDO) {
     /* It's possible to undo into a time before the scene existed, in this case the window's scene
      * will be null. Since it doesn't make sense to remove the window, set it to the current scene.
+     *
      * NOTE: Redo will restore the active scene to the window so a reasonably consistent state
-     * is maintained. We could do better by keeping a window/scene map for each undo step. */
-    wmWindowManager *wm = static_cast<wmWindowManager *>(bfd->main->wm.first);
-    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      if (win->scene == nullptr) {
-        win->scene = curscene;
-      }
-    }
+     * is maintained. We could do better by keeping a window/scene map for each undo step.
+     *
+     * Another source of potential inconsistency is undoing into a step where the active camera
+     * object does not exist (see e.g. #125636).
+     */
+    wm_data_consistency_ensure(CTX_wm_manager(C), curscene, cur_view_layer);
   }
 
   BLI_assert(BKE_main_namemap_validate(bfd->main));
@@ -1110,7 +1122,7 @@ static void setup_app_data(bContext *C,
     /* Perform complex versioning that involves adding or removing IDs,
      * and/or needs to operate over the whole Main data-base
      * (versioning done in file reading code only operates on a per-library basis). */
-    BLO_read_do_version_after_setup(bmain, reports);
+    BLO_read_do_version_after_setup(bmain, nullptr, reports);
   }
 
   bmain->recovered = false;
@@ -1181,7 +1193,7 @@ static void setup_app_data(bContext *C,
     ID *id_iter;
     int missing_linked_ids_num = 0;
     FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
-      if (ID_IS_LINKED(id_iter) && (id_iter->tag & LIB_TAG_MISSING)) {
+      if (ID_IS_LINKED(id_iter) && (id_iter->tag & ID_TAG_MISSING)) {
         missing_linked_ids_num++;
         BLO_reportf_wrap(reports,
                          RPT_INFO,
@@ -1471,6 +1483,15 @@ UserDef *BKE_blendfile_userdef_from_defaults()
 
   BKE_preferences_extension_repo_add_defaults_all(userdef);
 
+  {
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Cloth");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/General");
+    BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(
+        userdef, "VIEW3D_AST_brush_sculpt", "Brushes/Mesh/Sculpt/Painting");
+  }
+
   return userdef;
 }
 
@@ -1621,29 +1642,6 @@ WorkspaceConfigFileData *BKE_blendfile_workspace_config_read(const char *filepat
   return workspace_config;
 }
 
-bool BKE_blendfile_workspace_config_write(Main *bmain, const char *filepath, ReportList *reports)
-{
-  const int fileflags = G.fileflags & ~G_FILE_NO_UI;
-  bool retval = false;
-
-  BKE_blendfile_write_partial_begin(bmain);
-
-  for (WorkSpace *workspace = static_cast<WorkSpace *>(bmain->workspaces.first); workspace;
-       workspace = static_cast<WorkSpace *>(workspace->id.next))
-  {
-    BKE_blendfile_write_partial_tag_ID(&workspace->id, true);
-  }
-
-  if (BKE_blendfile_write_partial(bmain, filepath, fileflags, BLO_WRITE_PATH_REMAP_NONE, reports))
-  {
-    retval = true;
-  }
-
-  BKE_blendfile_write_partial_end(bmain);
-
-  return retval;
-}
-
 void BKE_blendfile_workspace_config_data_free(WorkspaceConfigFileData *workspace_config)
 {
   BKE_main_free(workspace_config->main);
@@ -1682,7 +1680,7 @@ PartialWriteContext::~PartialWriteContext()
   BKE_main_destroy(this->bmain);
 };
 
-void PartialWriteContext::preempt_session_uid(ID *ctx_id, unsigned int session_uid)
+void PartialWriteContext::preempt_session_uid(ID *ctx_id, uint session_uid)
 {
   /* If there is already an existing ID in the 'matching' set with that UID, it should be the same
    * as the given ctx_id. */
@@ -1713,17 +1711,21 @@ void PartialWriteContext::preempt_session_uid(ID *ctx_id, unsigned int session_u
               "Non-matching IDs sharing the same session UID in the partial write context.");
     BKE_main_idmap_remove_id(this->bmain.id_map, matching_ctx_id);
     /* FIXME: Allow #BKE_lib_libblock_session_uid_renew to work with temp IDs? */
-    matching_ctx_id->tag &= ~LIB_TAG_TEMP_MAIN;
+    matching_ctx_id->tag &= ~ID_TAG_TEMP_MAIN;
     BKE_lib_libblock_session_uid_renew(matching_ctx_id);
-    matching_ctx_id->tag |= LIB_TAG_TEMP_MAIN;
+    matching_ctx_id->tag |= ID_TAG_TEMP_MAIN;
     BKE_main_idmap_insert_id(this->bmain.id_map, matching_ctx_id);
     BLI_assert(BKE_main_idmap_lookup_uid(this->bmain.id_map, session_uid) == nullptr);
   }
   ctx_id->session_uid = session_uid;
 }
 
-void PartialWriteContext::ensure_id_user(ID *ctx_id, const bool set_fake_user)
+void PartialWriteContext::process_added_id(ID *ctx_id,
+                                           const PartialWriteContext::IDAddOperations operations)
 {
+  const bool set_fake_user = (operations & SET_FAKE_USER) != 0;
+  const bool set_clipboard_mark = (operations & SET_CLIPBOARD_MARK) != 0;
+
   if (set_fake_user) {
     id_fake_user_set(ctx_id);
   }
@@ -1731,6 +1733,10 @@ void PartialWriteContext::ensure_id_user(ID *ctx_id, const bool set_fake_user)
     /* NOTE: Using this tag will ensure that this ID is written on disk in current state (current
      * context session). However, reloading the blendfile will clear this tag. */
     id_us_ensure_real(ctx_id);
+  }
+
+  if (set_clipboard_mark) {
+    ctx_id->flag |= ID_FLAG_CLIPBOARD_MARK;
   }
 }
 
@@ -1744,7 +1750,7 @@ ID *PartialWriteContext::id_add_copy(const ID *id, const bool regenerate_session
                                    nullptr,
                                    nullptr,
                                    (LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT));
-  ctx_root_id->tag |= LIB_TAG_TEMP_MAIN;
+  ctx_root_id->tag |= ID_TAG_TEMP_MAIN;
   if (regenerate_session_uid) {
     /* Calling #BKE_lib_libblock_session_uid_renew is not needed here, copying already generated a
      * new one. */
@@ -1763,7 +1769,7 @@ ID *PartialWriteContext::id_add_copy(const ID *id, const bool regenerate_session
 void PartialWriteContext::make_local(ID *ctx_id, const int make_local_flags)
 {
   /* Making an ID local typically resets its session UID, here we want to keep the same value. */
-  const unsigned int ctx_id_session_uid = ctx_id->session_uid;
+  const uint ctx_id_session_uid = ctx_id->session_uid;
   BKE_main_idmap_remove_id(this->bmain.id_map, ctx_id);
   BKE_main_idmap_insert_id(matching_uid_map_, ctx_id);
 
@@ -1795,7 +1801,7 @@ Library *PartialWriteContext::ensure_library(blender::StringRefNull library_abso
     const char *library_name = BLI_path_basename(library_absolute_path.c_str());
     ctx_lib = static_cast<Library *>(
         BKE_id_new_in_lib(&this->bmain, nullptr, ID_LI, library_name));
-    ctx_lib->id.tag |= LIB_TAG_TEMP_MAIN;
+    ctx_lib->id.tag |= ID_TAG_TEMP_MAIN;
     id_us_min(&ctx_lib->id);
     this->libraries_map_.add(library_absolute_path, ctx_lib);
   }
@@ -1812,26 +1818,25 @@ ID *PartialWriteContext::id_add(
   constexpr int make_local_flags = (LIB_ID_MAKELOCAL_INDIRECT | LIB_ID_MAKELOCAL_FORCE_LOCAL |
                                     LIB_ID_MAKELOCAL_LIBOVERRIDE_CLEAR);
 
-  const bool set_fake_user = (options.operations & SET_FAKE_USER) != 0;
   const bool add_dependencies = (options.operations & ADD_DEPENDENCIES) != 0;
   const bool clear_dependencies = (options.operations & CLEAR_DEPENDENCIES) != 0;
   const bool duplicate_dependencies = (options.operations & DUPLICATE_DEPENDENCIES) != 0;
-  BLI_assert(clear_dependencies || add_dependencies);
+  BLI_assert(clear_dependencies || add_dependencies || dependencies_filter_cb);
   BLI_assert(!clear_dependencies || !(add_dependencies || duplicate_dependencies));
   UNUSED_VARS_NDEBUG(add_dependencies, clear_dependencies, duplicate_dependencies);
 
   /* Do not directly add an embedded ID. Add its owner instead. */
-  if (id->flag & LIB_EMBEDDED_DATA) {
+  if (id->flag & ID_FLAG_EMBEDDED_DATA) {
     id = BKE_id_owner_get(const_cast<ID *>(id), true);
   }
 
-  /* The given ID may have already been added (either explicitely or as a dependency) before. */
+  /* The given ID may have already been added (either explicitly or as a dependency) before. */
   ID *ctx_root_id = BKE_main_idmap_lookup_uid(matching_uid_map_, id->session_uid);
   if (ctx_root_id) {
     /* If the root orig ID is already in the context, assume all of its dependencies are as well.
      */
     BLI_assert(ctx_root_id->session_uid == id->session_uid);
-    this->ensure_id_user(ctx_root_id, set_fake_user);
+    this->process_added_id(ctx_root_id, options.operations);
     return ctx_root_id;
   }
 
@@ -1849,7 +1854,7 @@ ID *PartialWriteContext::id_add(
   BLI_assert(ctx_root_id->session_uid == id->session_uid);
   local_ctx_id_map.add(id, ctx_root_id);
   post_process_ids_todo.append({ctx_root_id, options.operations});
-  this->ensure_id_user(ctx_root_id, set_fake_user);
+  this->process_added_id(ctx_root_id, options.operations);
 
   blender::VectorSet<ID *> ids_to_process{ctx_root_id};
   auto dependencies_cb = [this,
@@ -1858,9 +1863,6 @@ ID *PartialWriteContext::id_add(
                           &ids_to_process,
                           &post_process_ids_todo,
                           dependencies_filter_cb](LibraryIDLinkCallbackData *cb_data) -> int {
-    constexpr PartialWriteContext::IDAddOperations per_id_operations_filter =
-        PartialWriteContext::IDAddOperations(MAKE_LOCAL | SET_FAKE_USER | CLEAR_DEPENDENCIES |
-                                             DUPLICATE_DEPENDENCIES);
     ID **id_ptr = cb_data->id_pointer;
     const ID *orig_deps_id = *id_ptr;
 
@@ -1877,16 +1879,15 @@ ID *PartialWriteContext::id_add(
       return IDWALK_RET_NOP;
     }
 
-    PartialWriteContext::IDAddOperations operations_final = options.operations;
+    PartialWriteContext::IDAddOperations operations_final = PartialWriteContext::IDAddOperations(
+        options.operations & MASK_INHERITED);
     if (dependencies_filter_cb) {
-      PartialWriteContext::IDAddOperations operations_per_id = dependencies_filter_cb(cb_data,
-                                                                                      options);
+      const PartialWriteContext::IDAddOperations operations_per_id = dependencies_filter_cb(
+          cb_data, options);
       operations_final = PartialWriteContext::IDAddOperations(
-          (operations_per_id & per_id_operations_filter) |
-          (options.operations & ~per_id_operations_filter));
+          (operations_per_id & MASK_PER_ID_USAGE) | (operations_final & ~MASK_PER_ID_USAGE));
     }
 
-    const bool set_fake_user = (operations_final & SET_FAKE_USER) != 0;
     const bool add_dependencies = (operations_final & ADD_DEPENDENCIES) != 0;
     const bool clear_dependencies = (operations_final & CLEAR_DEPENDENCIES) != 0;
     const bool duplicate_dependencies = (operations_final & DUPLICATE_DEPENDENCIES) != 0;
@@ -1908,7 +1909,7 @@ ID *PartialWriteContext::id_add(
       return IDWALK_RET_NOP;
     }
     /* else if (add_dependencies) */
-    /* The given ID may have already been added (either explicitely or as a dependency) before. */
+    /* The given ID may have already been added (either explicitly or as a dependency) before. */
     ID *ctx_deps_id = nullptr;
     if (duplicate_dependencies) {
       ctx_deps_id = local_ctx_id_map.lookup(orig_deps_id);
@@ -1923,7 +1924,7 @@ ID *PartialWriteContext::id_add(
          * a case is bad practice. On the other hand, some of these pointers are present in
          * 'normal' IDs, like e.g. the parent collections ones. This implies that currently, all
          * attempt to adding a collection to a partial write context should make usage of a custom
-         * `dependencies_filter_cb` function to explicitely clear these pointers. */
+         * `dependencies_filter_cb` function to explicitly clear these pointers. */
         CLOG_ERROR(&LOG_PARTIALWRITE,
                    "First dependency to ID '%s' found through a 'loopback' usage from ID '%s', "
                    "this should never happen",
@@ -1943,7 +1944,7 @@ ID *PartialWriteContext::id_add(
     else {
       BLI_assert(ctx_deps_id->session_uid == orig_deps_id->session_uid);
     }
-    this->ensure_id_user(ctx_deps_id, set_fake_user);
+    this->process_added_id(ctx_deps_id, operations_final);
     /* In-place remapping. */
     *id_ptr = ctx_deps_id;
     return IDWALK_RET_NOP;
@@ -1975,17 +1976,15 @@ ID *PartialWriteContext::id_create(const short id_type,
                                    Library *library,
                                    PartialWriteContext::IDAddOptions options)
 {
-  const bool set_fake_user = (options.operations & SET_FAKE_USER) != 0;
-
   Library *ctx_library = nullptr;
   if (library) {
     ctx_library = this->ensure_library(library->runtime.filepath_abs);
   }
   ID *ctx_id = static_cast<ID *>(
       BKE_id_new_in_lib(&this->bmain, ctx_library, id_type, id_name.c_str()));
-  ctx_id->tag |= LIB_TAG_TEMP_MAIN;
+  ctx_id->tag |= ID_TAG_TEMP_MAIN;
   id_us_min(ctx_id);
-  this->ensure_id_user(ctx_id, set_fake_user);
+  this->process_added_id(ctx_id, options.operations);
   /* See function doc about why handling of #matching_uid_map_ can be skipped here. */
   BKE_main_idmap_insert_id(this->bmain.id_map, ctx_id);
   return ctx_id;
@@ -2013,7 +2012,7 @@ void PartialWriteContext::remove_unused(const bool clear_extra_user)
     }
     FOREACH_MAIN_ID_END;
   }
-  BKE_lib_query_unused_ids_tag(&this->bmain, LIB_TAG_DOIT, parameters);
+  BKE_lib_query_unused_ids_tag(&this->bmain, ID_TAG_DOIT, parameters);
 
   CLOG_INFO(&LOG_PARTIALWRITE,
             3,
@@ -2021,7 +2020,7 @@ void PartialWriteContext::remove_unused(const bool clear_extra_user)
             parameters.num_total[INDEX_ID_NULL]);
   ID *id_iter;
   FOREACH_MAIN_ID_BEGIN (&this->bmain, id_iter) {
-    if ((id_iter->tag & LIB_TAG_DOIT) != 0) {
+    if ((id_iter->tag & ID_TAG_DOIT) != 0) {
       BKE_main_idmap_remove_id(matching_uid_map_, id_iter);
     }
   }
@@ -2133,129 +2132,5 @@ bool PartialWriteContext::write(const char *write_filepath, ReportList &reports)
 }
 
 }  // namespace blender::bke::blendfile
-
-static void blendfile_write_partial_clear_flags(Main *bmain_src)
-{
-  ListBase *lbarray[INDEX_ID_MAX];
-  int a = set_listbasepointers(bmain_src, lbarray);
-  while (a--) {
-    LISTBASE_FOREACH (ID *, id, lbarray[a]) {
-      id->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
-      id->flag &= ~(LIB_CLIPBOARD_MARK);
-    }
-  }
-}
-
-void BKE_blendfile_write_partial_begin(Main *bmain)
-{
-  blendfile_write_partial_clear_flags(bmain);
-}
-
-void BKE_blendfile_write_partial_tag_ID(ID *id, bool set)
-{
-  if (set) {
-    id->tag |= LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT;
-    id->flag |= LIB_CLIPBOARD_MARK;
-  }
-  else {
-    id->tag &= ~(LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT);
-    id->flag &= ~LIB_CLIPBOARD_MARK;
-  }
-}
-
-static void blendfile_write_partial_cb(void * /*handle*/, Main * /*bmain*/, void *vid)
-{
-  if (vid) {
-    ID *id = static_cast<ID *>(vid);
-    /* only tag for need-expand if not done, prevents eternal loops */
-    if ((id->tag & LIB_TAG_DOIT) == 0) {
-      id->tag |= LIB_TAG_NEED_EXPAND | LIB_TAG_DOIT;
-    }
-
-    if (id->lib && (id->lib->id.tag & LIB_TAG_DOIT) == 0) {
-      id->lib->id.tag |= LIB_TAG_DOIT;
-    }
-  }
-}
-
-bool BKE_blendfile_write_partial(Main *bmain_src,
-                                 const char *filepath,
-                                 const int write_flags,
-                                 const int remap_mode,
-                                 ReportList *reports)
-{
-  Main *bmain_dst = MEM_cnew<Main>("copybuffer");
-  ListBase *lbarray_dst[INDEX_ID_MAX], *lbarray_src[INDEX_ID_MAX];
-  int a, retval;
-
-  void *path_list_backup = nullptr;
-  const eBPathForeachFlag path_list_flag = (BKE_BPATH_FOREACH_PATH_SKIP_LINKED |
-                                            BKE_BPATH_FOREACH_PATH_SKIP_MULTIFILE);
-
-  /* This is needed to be able to load that file as a real one later
-   * (otherwise `main->filepath` will not be set at read time). */
-  STRNCPY(bmain_dst->filepath, bmain_src->filepath);
-
-  BLO_expand_main(nullptr, bmain_src, blendfile_write_partial_cb);
-
-  /* move over all tagged blocks */
-  set_listbasepointers(bmain_src, lbarray_src);
-  a = set_listbasepointers(bmain_dst, lbarray_dst);
-  while (a--) {
-    ID *id, *nextid;
-    ListBase *lb_dst = lbarray_dst[a], *lb_src = lbarray_src[a];
-
-    for (id = static_cast<ID *>(lb_src->first); id; id = nextid) {
-      nextid = static_cast<ID *>(id->next);
-      if (id->tag & LIB_TAG_DOIT) {
-        BLI_remlink(lb_src, id);
-        BLI_addtail(lb_dst, id);
-      }
-    }
-  }
-
-  /* Backup paths because remap relative will overwrite them.
-   *
-   * NOTE: we do this only on the list of data-blocks that we are writing
-   * because the restored full list is not guaranteed to be in the same
-   * order as before, as expected by BKE_bpath_list_restore.
-   *
-   * This happens because id_sort_by_name does not take into account
-   * string case or the library name, so the order is not strictly
-   * defined for two linked data-blocks with the same name! */
-  if (remap_mode != BLO_WRITE_PATH_REMAP_NONE) {
-    path_list_backup = BKE_bpath_list_backup(bmain_dst, path_list_flag);
-  }
-
-  /* save the buffer */
-  BlendFileWriteParams blend_file_write_params{};
-  blend_file_write_params.remap_mode = eBLO_WritePathRemap(remap_mode);
-  retval = BLO_write_file(bmain_dst, filepath, write_flags, &blend_file_write_params, reports);
-
-  if (path_list_backup) {
-    BKE_bpath_list_restore(bmain_dst, path_list_flag, path_list_backup);
-    BKE_bpath_list_free(path_list_backup);
-  }
-
-  /* move back the main, now sorted again */
-  set_listbasepointers(bmain_src, lbarray_dst);
-  a = set_listbasepointers(bmain_dst, lbarray_src);
-  while (a--) {
-    ListBase *lb_dst = lbarray_dst[a], *lb_src = lbarray_src[a];
-    while (ID *id = static_cast<ID *>(BLI_pophead(lb_src))) {
-      BLI_addtail(lb_dst, id);
-      id_sort_by_name(lb_dst, id, nullptr);
-    }
-  }
-
-  MEM_freeN(bmain_dst);
-
-  return retval;
-}
-
-void BKE_blendfile_write_partial_end(Main *bmain_src)
-{
-  blendfile_write_partial_clear_flags(bmain_src);
-}
 
 /** \} */

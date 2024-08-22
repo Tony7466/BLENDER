@@ -14,10 +14,10 @@ import os
 import sys
 import types
 
+# Only do soft-dependency on `bpy` module, not real strong need for it currently.
 try:
     import bpy
 except ModuleNotFoundError:
-    print("Could not import bpy, some features are not available when not run from Blender.")
     bpy = None
 
 ###############################################################################
@@ -90,9 +90,10 @@ LANGUAGES = (
     (51, "Swahili (Kiswahili)", "sw"),
     (52, "Belarusian (беларуску)", "be"),
     (53, "Danish (Dansk)", "da"),
+    (54, "Slovenian (Slovenščina)", "sl"),
 )
 
-# Default context, in py (keep in sync with `BLT_translation.h`)!
+# Default context, in py (keep in sync with `BLT_translation.hh`)!
 if bpy is not None:
     assert bpy.app.translations.contexts.default == "*"
 DEFAULT_CONTEXT = "*"
