@@ -82,9 +82,10 @@
 #include "UI_view2d.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "NOD_geometry_exec.hh"
+#include "NOD_geometry_nodes_gizmos.hh"
 #include "NOD_geometry_nodes_log.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_node_extra_info.hh"
@@ -164,7 +165,7 @@ static bNodeTree *node_tree_from_ID(ID *id)
     if (GS(id->name) == ID_NT) {
       return (bNodeTree *)id;
     }
-    return blender::bke::ntreeFromID(id);
+    return blender::bke::node_tree_from_id(id);
   }
 
   return nullptr;
@@ -352,7 +353,7 @@ static Array<uiBlock *> node_uiblocks_init(const bContext &C, const Span<bNode *
 
 float2 node_to_view(const bNode &node, const float2 &co)
 {
-  const float2 node_location = bke::nodeToView(&node, co);
+  const float2 node_location = bke::node_to_view(&node, co);
   return node_location * UI_SCALE_FAC;
 }
 
@@ -370,7 +371,7 @@ void node_to_updated_rect(const bNode &node, rctf &r_rect)
 float2 node_from_view(const bNode &node, const float2 &co)
 {
   const float2 node_location = co / UI_SCALE_FAC;
-  return bke::nodeFromView(&node, node_location);
+  return bke::node_from_view(&node, node_location);
 }
 
 static bool is_node_panels_supported(const bNode &node)
@@ -824,6 +825,7 @@ static void add_panel_items_recursive(const bContext &C,
       }
     }
     else if (item.is_valid_socket()) {
+      bool need_socket_spacing = false;
       if (item.input) {
         /* Draw buttons before the first input. */
         if (!state.buttons_drawn) {
@@ -838,7 +840,7 @@ static void add_panel_items_recursive(const bContext &C,
         else {
           /* Space between items. */
           if (!state.is_first && item.input->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+            need_socket_spacing = true;
           }
         }
       }
@@ -850,9 +852,12 @@ static void add_panel_items_recursive(const bContext &C,
         else {
           /* Space between items. */
           if (!state.is_first && item.output->is_visible()) {
-            locy -= NODE_ITEM_SPACING_Y;
+            need_socket_spacing = true;
           }
         }
+      }
+      if (need_socket_spacing) {
+        locy -= NODE_ITEM_SPACING_Y;
       }
 
       if (!is_parent_collapsed &&
@@ -1134,7 +1139,7 @@ static void node_draw_mute_line(const bContext &C,
   GPU_blend(GPU_BLEND_ALPHA);
 
   for (const bNodeLink &link : node.internal_links()) {
-    if (!bke::nodeLinkIsHidden(&link)) {
+    if (!bke::node_link_is_hidden(&link)) {
       node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
     }
   }
@@ -1500,6 +1505,9 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
   }
 
   fmt::format_to(fmt::appender(buf), TIP_("Geometry:"));
+  if (!value_log.name.empty()) {
+    fmt::format_to(fmt::appender(buf), " \"{}\"", value_log.name);
+  }
   fmt::format_to(fmt::appender(buf), "\n");
   for (bke::GeometryComponent::Type type : component_types) {
     switch (type) {
@@ -1544,22 +1552,21 @@ static void create_inspection_string_for_geometry_info(const geo_log::GeometryIn
         if (value_log.edit_data_info.has_value()) {
           const geo_log::GeometryInfoLog::EditDataInfo &edit_info = *value_log.edit_data_info;
           fmt::format_to(fmt::appender(buf),
-                         TIP_("\u2022 Edit Curves: {}, {}"),
+                         TIP_("\u2022 Edit: {}, {}, {}"),
                          edit_info.has_deformed_positions ? TIP_("positions") :
                                                             TIP_("no positions"),
-                         edit_info.has_deform_matrices ? TIP_("matrices") : TIP_("no matrices"));
+                         edit_info.has_deform_matrices ? TIP_("matrices") : TIP_("no matrices"),
+                         edit_info.gizmo_transforms_num > 0 ? TIP_("gizmos") : TIP_("no gizmos"));
         }
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
-        if (U.experimental.use_grease_pencil_version3) {
-          const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
-              *value_log.grease_pencil_info;
-          fmt::format_to(fmt::appender(buf),
-                         TIP_("\u2022 Grease Pencil: {} layers"),
-                         to_string(grease_pencil_info.layers_num));
-          break;
-        }
+        const geo_log::GeometryInfoLog::GreasePencilInfo &grease_pencil_info =
+            *value_log.grease_pencil_info;
+        fmt::format_to(fmt::appender(buf),
+                       TIP_("\u2022 Grease Pencil: {} layers"),
+                       to_string(grease_pencil_info.layers_num));
+        break;
       }
     }
     if (type != component_types.last()) {
@@ -2774,7 +2781,7 @@ static bNodeInstanceKey current_node_instance_key(const SpaceNode &snode, const 
   /* Assume that the currently editing tree is the last in the path. */
   BLI_assert(snode.edittree == path->nodetree);
 
-  return bke::BKE_node_instance_key(path->parent_key, snode.edittree, &node);
+  return bke::node_instance_key(path->parent_key, snode.edittree, &node);
 }
 
 static std::optional<std::chrono::nanoseconds> compositor_accumulate_frame_node_execution_time(
@@ -3343,7 +3350,7 @@ static void node_draw_basis(const bContext &C,
       }
       else if (previews_compo) {
         bNodePreview *preview_compositor = static_cast<bNodePreview *>(
-            bke::BKE_node_instance_hash_lookup(previews_compo, key));
+            bke::node_instance_hash_lookup(previews_compo, key));
         if (preview_compositor) {
           node_draw_extra_info_panel(
               C, tree_draw_ctx, snode, node, preview_compositor->ibuf, block);
@@ -4042,7 +4049,7 @@ static void frame_node_draw_label(TreeDrawContext &tree_draw_ctx,
 {
   const float aspect = snode.runtime->aspect;
   /* XXX font id is crap design */
-  const int fontid = UI_style_get()->widgetlabel.uifont_id;
+  const int fontid = UI_style_get()->widget.uifont_id;
   const NodeFrame *data = (const NodeFrame *)node.storage;
   const float font_size = data->label_size / aspect;
 
@@ -4162,6 +4169,64 @@ static void frame_node_draw(const bContext &C,
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
+}
+
+static Set<const bNodeSocket *> find_sockets_on_active_gizmo_paths(const bContext &C,
+                                                                   const SpaceNode &snode)
+{
+  const std::optional<ed::space_node::ObjectAndModifier> object_and_modifier =
+      ed::space_node::get_modifier_for_node_editor(snode);
+  if (!object_and_modifier) {
+    return {};
+  }
+  snode.edittree->ensure_topology_cache();
+
+  /* Compute the compute context hash for the current node tree path. */
+  std::optional<ComputeContextHash> current_compute_context_hash =
+      [&]() -> std::optional<ComputeContextHash> {
+    ComputeContextBuilder compute_context_builder;
+    compute_context_builder.push<bke::ModifierComputeContext>(
+        object_and_modifier->nmd->modifier.name);
+    if (!ed::space_node::push_compute_context_for_tree_path(snode, compute_context_builder)) {
+      return std::nullopt;
+    }
+    return compute_context_builder.current()->hash();
+  }();
+  if (!current_compute_context_hash) {
+    return {};
+  }
+
+  Set<const bNodeSocket *> sockets_on_gizmo_paths;
+
+  ComputeContextBuilder compute_context_builder;
+  nodes::gizmos::foreach_active_gizmo(
+      C,
+      compute_context_builder,
+      [&](const Object &gizmo_object,
+          const NodesModifierData &gizmo_nmd,
+          const ComputeContext &gizmo_context,
+          const bNode &gizmo_node,
+          const bNodeSocket &gizmo_socket) {
+        if (&gizmo_object != object_and_modifier->object) {
+          return;
+        }
+        if (&gizmo_nmd != object_and_modifier->nmd) {
+          return;
+        }
+        nodes::gizmos::foreach_socket_on_gizmo_path(
+            gizmo_context,
+            gizmo_node,
+            gizmo_socket,
+            [&](const ComputeContext &compute_context,
+                const bNodeSocket &socket,
+                const nodes::inverse_eval::ElemVariant & /*elem*/) {
+              if (compute_context.hash() == *current_compute_context_hash) {
+                sockets_on_gizmo_paths.add(&socket);
+              }
+            });
+      });
+
+  return sockets_on_gizmo_paths;
 }
 
 /**
@@ -4564,14 +4629,14 @@ static void node_draw_nodetree(const bContext &C,
   nodelink_batch_start(snode);
 
   for (const bNodeLink *link : ntree.all_links()) {
-    if (!bke::nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
+    if (!bke::node_link_is_hidden(link) && !bke::node_link_is_selected(link)) {
       node_draw_link(C, region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
   for (const bNodeLink *link : ntree.all_links()) {
-    if (!bke::nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
+    if (!bke::node_link_is_hidden(link) && bke::node_link_is_selected(link)) {
       node_draw_link(C, region.v2d, snode, *link, true);
     }
   }
@@ -4587,7 +4652,7 @@ static void node_draw_nodetree(const bContext &C,
       continue;
     }
 
-    const bNodeInstanceKey key = bke::BKE_node_instance_key(parent_key, &ntree, &node);
+    const bNodeInstanceKey key = bke::node_instance_key(parent_key, &ntree, &node);
     node_draw(C, tree_draw_ctx, region, snode, ntree, node, *blocks[node.index()], key);
   }
 }
@@ -4631,7 +4696,7 @@ static void snode_setup_v2d(SpaceNode &snode, ARegion &region, const float2 &cen
   snode.runtime->aspect = BLI_rctf_size_x(&v2d.cur) / float(region.winx);
 }
 
-/* Similar to is_compositor_enabled() in `draw_manager.cc` but checks all 3D views. */
+/* Similar to DRW_is_viewport_compositor_enabled() in `draw_manager.cc` but checks all 3D views. */
 static bool realtime_compositor_is_in_use(const bContext &context)
 {
   const Scene *scene = CTX_data_scene(&context);
@@ -4684,6 +4749,8 @@ static void draw_nodetree(const bContext &C,
   Array<uiBlock *> blocks = node_uiblocks_init(C, nodes);
 
   TreeDrawContext tree_draw_ctx;
+
+  BLI_SCOPED_DEFER([&]() { ntree.runtime->sockets_on_active_gizmo_paths.clear(); });
   if (ntree.type == NTREE_GEOMETRY) {
     tree_draw_ctx.geo_log_by_zone = geo_log::GeoModifierLog::get_tree_log_by_zone_for_node_editor(
         *snode);
@@ -4694,6 +4761,10 @@ static void draw_nodetree(const bContext &C,
     const WorkSpace *workspace = CTX_wm_workspace(&C);
     tree_draw_ctx.active_geometry_nodes_viewer = viewer_path::find_geometry_nodes_viewer(
         workspace->viewer_path, *snode);
+
+    /* This set of socket is used when drawing links to determine which links should use the
+     * special gizmo drawing. */
+    ntree.runtime->sockets_on_active_gizmo_paths = find_sockets_on_active_gizmo_paths(C, *snode);
   }
   else if (ntree.type == NTREE_COMPOSIT) {
     const Scene *scene = CTX_data_scene(&C);

@@ -93,8 +93,8 @@ typedef struct uiStyle {
 
   uiFontStyle paneltitle;
   uiFontStyle grouplabel;
-  uiFontStyle widgetlabel;
   uiFontStyle widget;
+  uiFontStyle tooltip;
 
   float panelzoom;
 
@@ -202,6 +202,9 @@ typedef struct ThemeUI {
   unsigned char icon_shading[4];
   /** File folders. */
   unsigned char icon_folder[4];
+  /** Auto Keying indicator. */
+  unsigned char icon_autokey[4];
+  char _pad3[4];
   /** Intensity of the border icons. >0 will render an border around themed
    * icons. */
   float icon_border_intensity;
@@ -299,6 +302,7 @@ typedef struct ThemeSpace {
   unsigned char bone_solid[4], bone_pose[4], bone_pose_active[4], bone_locked_weight[4];
   unsigned char strip[4], strip_select[4];
   unsigned char cframe[4];
+  unsigned char before_current_frame[4], after_current_frame[4];
   unsigned char time_keyframe[4], time_gp_keyframe[4];
   unsigned char freestyle_edge_mark[4], freestyle_face_mark[4];
   unsigned char time_scrub_background[4];
@@ -750,13 +754,14 @@ typedef struct UserDef_Experimental {
   char use_sculpt_tools_tilt;
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
-  char use_grease_pencil_version3;
   char enable_overlay_next;
   char use_new_volume_nodes;
+  char use_new_file_import_nodes;
   char use_shader_node_previews;
-  char use_grease_pencil_version3_convert_on_load;
   char use_animation_baklava;
-  char _pad[2];
+  char use_docking;
+  char enable_new_cpu_compositor;
+  char _pad[1];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -1592,6 +1597,7 @@ typedef enum eUserpref_SeqProxySetup {
 
 typedef enum eUserpref_SeqEditorFlags {
   USER_SEQ_ED_SIMPLE_TWEAKING = (1 << 0),
+  USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT = (1 << 1),
 } eUserpref_SeqEditorFlags;
 
 /* Locale Ids. Auto will try to get local from OS. Our default is English though. */

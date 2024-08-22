@@ -36,14 +36,14 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   RenderBuffers &rbufs = inst_.render_buffers;
 
   world_ps_.init();
-  world_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  world_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
   world_ps_.material_set(manager, gpumat);
   world_ps_.push_constant("world_opacity_fade", background_opacity);
   world_ps_.push_constant("world_background_blur", square_f(background_blur));
   SphereProbeData &world_data = *static_cast<SphereProbeData *>(&inst_.light_probes.world_sphere_);
   world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
   world_ps_.bind_texture("utility_tx", inst_.pipelines.utility_tx);
-  /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
+  /* RenderPasses & AOVs. */
   world_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
   world_ps_.bind_image("rp_value_img", &rbufs.rp_value_tx);
   world_ps_.bind_image("rp_cryptomatte_img", &rbufs.cryptomatte_tx);
@@ -56,6 +56,25 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   /* To allow opaque pass rendering over it. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+
+  clear_ps_.init();
+  clear_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  clear_ps_.shader_set(inst_.shaders.static_shader_get(RENDERPASS_CLEAR));
+  /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
+  clear_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
+  clear_ps_.bind_image("rp_value_img", &rbufs.rp_value_tx);
+  clear_ps_.bind_image("rp_cryptomatte_img", &rbufs.cryptomatte_tx);
+  /* Required by validation layers. */
+  clear_ps_.bind_resources(inst_.cryptomatte);
+  clear_ps_.bind_resources(inst_.uniform_data);
+  clear_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  /* To allow opaque pass rendering over it. */
+  clear_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+}
+
+void BackgroundPipeline::clear(View &view)
+{
+  inst_.manager->submit(clear_ps_, view);
 }
 
 void BackgroundPipeline::render(View &view)
@@ -164,6 +183,7 @@ void WorldVolumePipeline::render(View &view)
     inst_.volume.prop_extinction_tx_.clear(float4(0.0f));
     inst_.volume.prop_emission_tx_.clear(float4(0.0f));
     inst_.volume.prop_phase_tx_.clear(float4(0.0f));
+    inst_.volume.prop_phase_weight_tx_.clear(float4(0.0f));
     return;
   }
 
@@ -188,7 +208,7 @@ void ShadowPipeline::sync()
   bool shadow_update_tbdr = (ShadowModule::shadow_technique == ShadowTechnique::TILE_COPY);
   if (shadow_update_tbdr) {
     draw::PassMain::Sub &pass = render_ps_.sub("Shadow.TilePageClear");
-    pass.subpass_transition(GPU_ATTACHEMENT_WRITE, {GPU_ATTACHEMENT_WRITE});
+    pass.subpass_transition(GPU_ATTACHMENT_WRITE, {GPU_ATTACHMENT_WRITE});
     pass.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_TILE_CLEAR));
     /* Only manually clear depth of the updated tiles.
      * This is because the depth is initialized to near depth using attachments for fast clear and
@@ -232,7 +252,7 @@ void ShadowPipeline::sync()
     pass.state_set(DRW_STATE_DEPTH_ALWAYS);
     /* Metal have implicit sync with Raster Order Groups. Other backend need to have manual
      * sub-pass transition to allow reading the frame-buffer. This is a no-op on Metal. */
-    pass.subpass_transition(GPU_ATTACHEMENT_WRITE, {GPU_ATTACHEMENT_READ});
+    pass.subpass_transition(GPU_ATTACHMENT_WRITE, {GPU_ATTACHMENT_READ});
     pass.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
     pass.bind_ssbo("dst_coord_buf", inst_.shadows.dst_coord_buf_);
     pass.bind_ssbo("src_coord_buf", inst_.shadows.src_coord_buf_);
@@ -450,12 +470,12 @@ void ForwardPipeline::render(View &view,
 void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 {
   gbuffer_ps_.init();
-  gbuffer_ps_.subpass_transition(GPU_ATTACHEMENT_WRITE,
-                                 {GPU_ATTACHEMENT_WRITE,
-                                  GPU_ATTACHEMENT_WRITE,
-                                  GPU_ATTACHEMENT_WRITE,
-                                  GPU_ATTACHEMENT_WRITE,
-                                  GPU_ATTACHEMENT_WRITE});
+  gbuffer_ps_.subpass_transition(GPU_ATTACHMENT_WRITE,
+                                 {GPU_ATTACHMENT_WRITE,
+                                  GPU_ATTACHMENT_WRITE,
+                                  GPU_ATTACHMENT_WRITE,
+                                  GPU_ATTACHMENT_WRITE,
+                                  GPU_ATTACHMENT_WRITE});
   /* G-buffer. */
   gbuffer_ps_.bind_image(GBUF_NORMAL_SLOT, &inst.gbuffer.normal_img_tx);
   gbuffer_ps_.bind_image(GBUF_CLOSURE_SLOT, &inst.gbuffer.closure_img_tx);
@@ -561,12 +581,12 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
     {
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY);
       PassMain::Sub &sub = gbuffer_ps_.sub("StencilClassify");
-      sub.subpass_transition(GPU_ATTACHEMENT_WRITE, /* Needed for depth test. */
-                             {GPU_ATTACHEMENT_IGNORE,
-                              GPU_ATTACHEMENT_READ, /* Header. */
-                              GPU_ATTACHEMENT_IGNORE,
-                              GPU_ATTACHEMENT_IGNORE,
-                              GPU_ATTACHEMENT_IGNORE});
+      sub.subpass_transition(GPU_ATTACHMENT_WRITE, /* Needed for depth test. */
+                             {GPU_ATTACHMENT_IGNORE,
+                              GPU_ATTACHMENT_READ, /* Header. */
+                              GPU_ATTACHMENT_IGNORE,
+                              GPU_ATTACHMENT_IGNORE,
+                              GPU_ATTACHMENT_IGNORE});
       sub.shader_set(sh);
       sub.state_set(DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_ALWAYS);
       if (GPU_stencil_export_support()) {
