@@ -2231,7 +2231,7 @@ const char *node_static_socket_interface_type_new(const int type, const int subt
         case PROP_COLOR_TEMPERATURE:
           return "NodeTreeInterfaceSocketFloatColorTemperature";
         case PROP_FREQUENCY:
-          return "NodeSocketFloatFrequency";
+          return "NodeTreeInterfaceSocketFloatFrequency";
         case PROP_NONE:
         default:
           return "NodeTreeInterfaceSocketFloat";
