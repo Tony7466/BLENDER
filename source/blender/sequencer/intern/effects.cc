@@ -3190,7 +3190,8 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
                                                       std::numeric_limits<int>::max();
   float2 char_position{0.0f, 0.0f};
   bool is_word_wrap = false;
-  runtime->line_start_indices.append(0);
+  int line_start_index = 0;
+  int line_size = 0;
 
   for (int i = 0; i < runtime->character_count; i++) {
     const char *chr = data->text + runtime->character_byte_offsets[i];
@@ -3208,23 +3209,25 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
 
     if (is_word_wrap || chr[0] == '\n') {
       runtime->line_witdths.append(char_position.x);
-      runtime->line_end_indices.append(i);
-      runtime->line_start_indices.append(i + 1);
+      runtime->line_index_ranges.append(blender::IndexRange(line_start_index, line_size));
 
+      line_start_index = i + 1;
+      line_size = 0;
       char_position.x = 0;
       char_position.y -= runtime->line_height;
       continue;
     }
     char_position.x += runtime->character_widths[i];
+    line_size++;
   }
 
   runtime->line_witdths.append(char_position.x);
-  runtime->line_end_indices.append(runtime->character_count);
+  runtime->line_index_ranges.append(blender::IndexRange(line_start_index, line_size));
 }
 
 static float2 vertical_alignment_offset_get(const TextVars *data, const TextVarsRuntime *runtime)
 {
-  const float text_height = runtime->line_start_indices.size() * runtime->line_height;
+  const float text_height = runtime->line_index_ranges.size() * runtime->line_height;
   if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
     return {0.0f, text_height};
   }
@@ -3259,27 +3262,26 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
   runtime->text_boundbox.xmax = std::numeric_limits<int>::min();
   runtime->text_boundbox.xmin = std::numeric_limits<int>::max();
 
-  for (int i : runtime->line_start_indices.index_range()) {
+  /* For each line. */
+  for (int i : runtime->line_index_ranges.index_range()) {
     float2 horizontal_alignment = horizontal_alignment_offset_get(data, runtime->line_witdths[i]);
     float2 alignment = image_center + line_height_alignment + vertical_alignment +
                        horizontal_alignment;
 
-    for (int j = runtime->line_start_indices[i]; j < runtime->line_end_indices[i]; j++) {
+    /* For each character in line. */
+    for (int j : runtime->line_index_ranges[i]) {
       runtime->character_positions[j] += alignment;
 
-      if (runtime->character_positions[j].x < runtime->text_boundbox.xmin) {
-        runtime->text_boundbox.xmin = runtime->character_positions[j].x;
-      }
-
-      float char_xmax = runtime->character_positions[j].x + runtime->character_widths[j];
-      if (char_xmax > runtime->text_boundbox.xmax) {
-        runtime->text_boundbox.xmax = char_xmax;
-      }
+      int char_x_end = std::round(runtime->character_positions[j].x +
+                                  runtime->character_widths[j]);
+      runtime->text_boundbox.xmin = std::min(int(std::round(runtime->character_positions[j].x)),
+                                             runtime->text_boundbox.xmin);
+      runtime->text_boundbox.xmax = std::max(char_x_end, runtime->text_boundbox.xmax);
     }
   }
   runtime->text_boundbox.ymax = runtime->character_positions[0].y - line_height_alignment.y;
   runtime->text_boundbox.ymin = runtime->text_boundbox.ymax -
-                                runtime->line_start_indices.size() * runtime->line_height;
+                                runtime->line_index_ranges.size() * runtime->line_height;
 }
 
 static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
