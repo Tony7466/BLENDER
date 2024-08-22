@@ -12,7 +12,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_output<decl::Matrix>("Projection")
       .description(
-          "Transforms points in view space to region space (normalized device coordinates)");
+          "Transforms points in view space (clip space) to region space (normalized device "
+          "coordinates)");
   b.add_output<decl::Matrix>("View").description(
       "Transforms points from object space to view space using the viewport's location and "
       "rotation");
