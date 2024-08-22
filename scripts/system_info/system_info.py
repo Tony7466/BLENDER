@@ -41,31 +41,13 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
 
     output = subprocess.run(command, stdout=subprocess.PIPE)
     text = output.stdout.decode("utf-8")
+
     # Gather version number and type (Alpha, Beta, etc)
     version_match = re.search(r"Blender (.*)", text)
-    """
-    # Old search. Left here if we want to switch back to it because "Blender ANYTHING" is too general
-    version_match = re.search(r"Blender (\d+(\.\d+)+\s[A-Za-z]+)", text)
-    if not version_match:
-        # Gather just version number (Previous version_match doesn't work on final
-        # release builds that don't have text after the version number)
-        version_match = re.search(r"Blender (\d+(\.\d+)+)", text)
-        # TODO: We could just do re.search(r"Blender (.*)", text)
-        # It handles both cases.
-    """
     branch_match = re.search(r"build branch: (.*)", text)
     commit_date_match = re.search(r"build commit date: (.*)", text)
     commit_time_match = re.search(r"build commit time: (.*)", text)
     build_hash_match = re.search(r"build hash: (.*)", text)
-    """
-    # Old regular expressions.
-    # Left here if we want to switch back. But a simple (.*) can capture anything
-    # including builds with build info turned off
-    branch_match = re.search(r"build branch: (.*)", text)
-    commit_date_match = re.search(r"build commit date: (\d+-\d+-\d+)", text)
-    commit_time_match = re.search(r"build commit time: (\d+:\d+)", text)
-    build_hash_match = re.search(r"build hash: (\w+)", text)
-    """
 
     # TODO: Replace with something else?
     # Error on failure?
