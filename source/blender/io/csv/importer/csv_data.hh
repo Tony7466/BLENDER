@@ -45,7 +45,7 @@ class CsvData {
     return column_types[col_index];
   }
 
-  std::string get_column_name(int64_t col_index) const
+  StringRef get_column_name(int64_t col_index) const
   {
     return column_names[col_index];
   }
