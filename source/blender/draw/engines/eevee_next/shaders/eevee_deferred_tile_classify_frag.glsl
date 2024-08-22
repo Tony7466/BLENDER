@@ -17,7 +17,7 @@ void main()
     has_transmission = 1 << 2;
   }
 
-#if defined(GPU_ARB_shader_stencil_export) || defined(GPU_METAL)
+#if defined(GPU_ARB_shader_stencil_export)
   gl_FragStencilRefARB = closure_count | has_transmission;
 #else
   /* Instead of setting the stencil at once, we do it (literally) bit by bit.

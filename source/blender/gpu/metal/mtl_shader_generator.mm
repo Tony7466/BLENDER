@@ -942,6 +942,10 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     msl_defines_string += "#define GPU_ARB_texture_gather 1\n";
   }
 
+  if (GPU_stencil_export_support()) {
+    msl_defines_string += "#define GPU_ARB_shader_stencil_export 1\n";
+  }
+
   shd_builder_->glsl_vertex_source_ = msl_defines_string + shd_builder_->glsl_vertex_source_;
   if (!msl_iface.uses_transform_feedback) {
     shd_builder_->glsl_fragment_source_ = msl_defines_string + shd_builder_->glsl_fragment_source_;
@@ -1041,7 +1045,8 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
                                       std::string::npos;
 
     /* TODO(fclem): Add to create info. */
-    msl_iface.uses_gl_FragStencilRefARB = shd_builder_->glsl_fragment_source_.find(
+    msl_iface.uses_gl_FragStencilRefARB = GPU_stencil_export_support() &&
+                                          shd_builder_->glsl_fragment_source_.find(
                                               "gl_FragStencilRefARB") != std::string::npos;
 
     msl_iface.depth_write = info->depth_write_;
