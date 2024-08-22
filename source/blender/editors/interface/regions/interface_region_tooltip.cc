@@ -802,7 +802,10 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
     }
   }
   else {
-    const std::optional<EnumPropertyItem> enum_item = UI_but_rna_enum_item_get(*C, *but);
+    /* If we are getting an EnumPropertyItem for a button in the expanded menu popup, we dont want
+     * to rely on the button tip (but only use the enum tip/description). */
+    bool r_from_parent = false;
+    std::optional<EnumPropertyItem> enum_item = UI_but_rna_enum_item_get(*C, *but, &r_from_parent);
     if (is_label) {
       but_tip_label = UI_but_string_get_tooltip_label(*but);
       but_label = UI_but_string_get_label(*but);
@@ -811,7 +814,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
     else {
       but_label = UI_but_string_get_label(*but);
       but_tip_label = UI_but_string_get_tooltip_label(*but);
-      but_tip = UI_but_string_get_tooltip(*C, *but);
+      but_tip = enum_item && r_from_parent ? "" : UI_but_string_get_tooltip(*C, *but);
       enum_label = enum_item ? enum_item->name : "";
       const char *description_c = enum_item ? enum_item->description : nullptr;
       enum_tip = description_c ? description_c : "";

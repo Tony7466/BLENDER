@@ -1444,7 +1444,9 @@ const bContextStore *UI_but_context_get(const uiBut *but);
 void UI_but_unit_type_set(uiBut *but, int unit_type);
 int UI_but_unit_type_get(const uiBut *but);
 
-std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but);
+std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C,
+                                                         uiBut &but,
+                                                         bool *r_from_parent);
 
 std::string UI_but_string_get_rna_property_identifier(const uiBut &but);
 std::string UI_but_string_get_rna_struct_identifier(const uiBut &but);

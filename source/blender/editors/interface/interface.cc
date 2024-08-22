@@ -6410,16 +6410,32 @@ void UI_but_func_hold_set(uiBut *but, uiButHandleHoldFunc func, void *argN)
   but->hold_argN = argN;
 }
 
-std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C, uiBut &but)
+std::optional<EnumPropertyItem> UI_but_rna_enum_item_get(bContext &C,
+                                                         uiBut &but,
+                                                         bool *r_from_parent)
 {
   PointerRNA *ptr = nullptr;
   PropertyRNA *prop = nullptr;
   int value = 0;
+
+  /* Is this an (not-opened) enum? */
   if (but.rnaprop && RNA_property_type(but.rnaprop) == PROP_ENUM) {
     ptr = &but.rnapoin;
     prop = but.rnaprop;
     value = ELEM(but.type, UI_BTYPE_ROW, UI_BTYPE_TAB) ? int(but.hardmax) :
                                                          int(ui_but_value_get(&but));
+  }
+  /* Or one of the items/choices in an opened popup? */
+  else if ((but.type == UI_BTYPE_BUT_MENU) && (but.block->handle != nullptr)) {
+    uiBut *but_parent = but.block->handle->popup_create_vars.but;
+    if ((but_parent && but_parent->rnaprop) &&
+        (RNA_property_type(but_parent->rnaprop) == PROP_ENUM))
+    {
+      ptr = &but_parent->rnapoin;
+      prop = but_parent->rnaprop;
+      value = int(but.hardmin);
+      *r_from_parent = true;
+    }
   }
   else if (but.optype) {
     wmOperatorType *ot = but.optype;
