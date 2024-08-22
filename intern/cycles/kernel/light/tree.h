@@ -23,11 +23,11 @@
 
 CCL_NAMESPACE_BEGIN
 
+/* Consine of the angle subtended by the smallest enclosing sphere of the node bounding box. */
 ccl_device float light_tree_cos_bound_subtended_angle(const BoundingBox bbox,
                                                       const float3 centroid,
                                                       const float3 P)
 {
-  /* Consine of the angle subtended by the smallest enclosing sphere of the node bounding box. */
   float distance_to_center_sq = len_squared(P - centroid);
   float radius_sq = len_squared(bbox.max - centroid);
 
