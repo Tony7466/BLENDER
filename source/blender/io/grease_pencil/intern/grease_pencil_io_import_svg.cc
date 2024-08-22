@@ -97,8 +97,7 @@ static ColorGeometry4f average_gradient_color(const NSVGgradient &svg_gradient)
  * This is because gradients for fill materials in particular can only be defined by materials.
  * Since each path can have a unique gradient it potentially requires a material per curve.
  * Stroke gradients could be baked into vertex colors. */
-static ColorGeometry4f convert_svg_color(const NSVGpaint &svg_paint,
-                                         const NSVGpath *svg_path = nullptr)
+static ColorGeometry4f convert_svg_color(const NSVGpaint &svg_paint)
 {
   switch (NSVGpaintType(svg_paint.type)) {
     case NSVG_PAINT_UNDEF:
@@ -108,11 +107,9 @@ static ColorGeometry4f convert_svg_color(const NSVGpaint &svg_paint,
     case NSVG_PAINT_COLOR:
       return unpack_nano_color(svg_paint.color);
     case NSVG_PAINT_LINEAR_GRADIENT:
-      return svg_path != nullptr ? average_gradient_color(*svg_paint.gradient) :
-                                   ColorGeometry4f(0, 0, 0, 1);
+      return average_gradient_color(*svg_paint.gradient);
     case NSVG_PAINT_RADIAL_GRADIENT:
-      return svg_path != nullptr ? average_gradient_color(*svg_paint.gradient) :
-                                   ColorGeometry4f(0, 0, 0, 1);
+      return average_gradient_color(*svg_paint.gradient);
 
     default:
       BLI_assert_unreachable();
@@ -204,7 +201,7 @@ static void shape_attributes_to_curves(bke::CurvesGeometry &curves,
       "opacity", bke::AttrDomain::Point);
 
   materials.span.slice(curves_range).fill(material_index);
-  const ColorGeometry4f shape_color = convert_svg_color(shape.fill, shape.paths);
+  const ColorGeometry4f shape_color = convert_svg_color(shape.fill);
   fill_colors.span.slice(curves_range).fill(shape_color);
   fill_opacities.span.slice(curves_range).fill(shape_color.a);
 
