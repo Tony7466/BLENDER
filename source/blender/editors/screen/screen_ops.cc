@@ -3739,8 +3739,17 @@ static int area_join_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  if (!area_join_init(C, op, nullptr, nullptr)) {
-    return OPERATOR_CANCELLED;
+  if (ISMOUSE(event->type)) {
+    if (!area_join_init(C, op, nullptr, nullptr)) {
+      return OPERATOR_CANCELLED;
+    }
+  }
+  else if (U.experimental.use_docking) {
+    /* Keyboard shortcut to docking. We just need the active area. */
+    ScrArea *sa1 = CTX_wm_area(C);
+    if (!sa1 || ED_area_is_global(sa1) || !area_join_init(C, op, sa1, nullptr)) {
+      return OPERATOR_CANCELLED;
+    }
   }
 
   sAreaJoinData *jd = (sAreaJoinData *)op->customdata;
