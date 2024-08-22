@@ -5,7 +5,7 @@
 
 # Keep the information collected in this script up to date with /scripts/modules/bl_ui_utils/bug_report_url.py
 
-def main():
+def prefill_bug_report_info():
     import re
     import struct
     import platform
@@ -83,4 +83,4 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     webbrowser.open(f"https://redirect.blender.org/?{query_str}")
 
 if __name__ == "__main__":
-    main()
+    prefill_bug_report_info()
