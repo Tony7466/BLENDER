@@ -19,7 +19,7 @@
 
 namespace blender::io::csv {
 
-static Vector<std::string> get_columns(const StringRef &line)
+static Vector<std::string> get_columns(const StringRef line)
 {
   Vector<std::string> columns;
   const char *p = line.begin(), *end = line.end();
@@ -65,7 +65,7 @@ static bool get_column_type(const char *start, const char *end, eCustomDataType 
   return false;
 }
 
-static bool get_column_types(const StringRef &line, Vector<eCustomDataType> &column_types)
+static bool get_column_types(const StringRef line, Vector<eCustomDataType> &column_types)
 {
   const char *p = line.begin(), *end = line.end();
   const char *cell_start = p, *cell_end = p;
@@ -92,7 +92,7 @@ static bool get_column_types(const StringRef &line, Vector<eCustomDataType> &col
   return true;
 }
 
-static int64_t get_row_count(StringRef &buffer)
+static int64_t get_row_count(StringRef buffer)
 {
   int64_t row_count = 1;
 
@@ -174,7 +174,7 @@ static bool parse_csv_cell(CsvData &csv_data,
 
 static bool parse_csv_line(CsvData &csv_data,
                            int64_t row_index,
-                           const StringRef &line,
+                           const StringRef line,
                            const CSVImportParams &import_params)
 {
   const char *p = line.begin(), *end = line.end();
@@ -204,7 +204,7 @@ static bool parse_csv_line(CsvData &csv_data,
 }
 
 static bool parse_csv_data(CsvData &csv_data,
-                           StringRef &buffer,
+                           StringRef buffer,
                            const CSVImportParams &import_params)
 {
   int64_t row_index = 0;

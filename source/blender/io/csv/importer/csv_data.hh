@@ -29,9 +29,7 @@ class CsvData {
   Array<eCustomDataType> column_types;
 
  public:
-  CsvData(int64_t rows_num,
-          Vector<std::string> column_names,
-          Vector<eCustomDataType> column_types);
+  CsvData(int64_t rows_num, Span<std::string> column_names, Span<eCustomDataType> column_types);
 
   PointCloud *to_point_cloud() const;
 

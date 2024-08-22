@@ -15,13 +15,13 @@
 namespace blender::io::csv {
 
 CsvData::CsvData(int64_t rows_num,
-                 Vector<std::string> column_names,
-                 Vector<eCustomDataType> column_types)
+                 Span<std::string> column_names,
+                 Span<eCustomDataType> column_types)
     : data(column_names.size()),
       rows_num(rows_num),
       columns_num(column_names.size()),
-      column_names(column_names.as_span()),
-      column_types(column_types.as_span())
+      column_names(column_names),
+      column_types(column_types)
 {
   for (int i = 0; i < this->columns_num; i++) {
     data[i] = create_garray_for_type(this->column_types[i]);
