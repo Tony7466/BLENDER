@@ -32,17 +32,25 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description(
+          "Microfacet roughness of the surface (0.0 is a perfect mirror reflection, 1.0 is "
+          "completely rough)");
+  ;
   b.add_input<decl::Float>("Anisotropy")
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description(
+          "Amount of anisotropy for reflection. Higher values give elongated highlights along the "
+          "tangent direction");
   b.add_input<decl::Float>("Rotation")
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description("Rotates the direction of anisotropy, with 1.0 going full circle");
   b.add_input<decl::Vector>("Normal").hide_value();
   b.add_input<decl::Vector>("Tangent").hide_value();
   b.add_input<decl::Float>("Weight").unavailable();
@@ -58,7 +66,7 @@ static void node_shader_buts_metallic(uiLayout *layout, bContext * /*C*/, Pointe
 static void node_shader_init_metallic(bNodeTree * /*ntree*/, bNode *node)
 {
   node->custom1 = SHD_GLOSSY_MULTI_GGX;
-  node->custom2 = SHD_PHYSICAL_CONDUCTOR;
+  node->custom2 = SHD_CONDUCTOR_F82;
 }
 
 static int node_shader_gpu_bsdf_metallic(GPUMaterial *mat,
