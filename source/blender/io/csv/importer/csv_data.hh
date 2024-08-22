@@ -22,38 +22,38 @@ class CsvData {
  private:
   Array<GArray<>> data;
 
-  int64_t row_count;
-  int64_t column_count;
+  int64_t rows_num;
+  int64_t columns_num;
 
   Array<std::string> column_names;
   Array<eCustomDataType> column_types;
 
  public:
-  CsvData(int64_t row_count,
+  CsvData(int64_t rows_num,
           Vector<std::string> column_names,
           Vector<eCustomDataType> column_types);
 
   PointCloud *to_point_cloud() const;
 
-  template<typename T> inline void set_data(int64_t row_index, int64_t col_index, T value)
+  template<typename T> void set_data(int64_t row_index, int64_t col_index, T value)
   {
     GMutableSpan mutable_span = data[col_index].as_mutable_span();
     MutableSpan typed_mutable_span = mutable_span.typed<T>();
     typed_mutable_span[row_index] = value;
   }
 
-  inline eCustomDataType get_column_type(int64_t col_index) const
+  eCustomDataType get_column_type(int64_t col_index) const
   {
     return column_types[col_index];
   }
 
-  inline std::string get_column_name(int64_t col_index) const
+  std::string get_column_name(int64_t col_index) const
   {
     return column_names[col_index];
   }
 
  private:
-  GArray<> create_garray_for_type(eCustomDataType &type);
+  GArray<> create_garray_for_type(eCustomDataType type);
 };
 
 }  // namespace blender::io::csv

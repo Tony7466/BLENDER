@@ -114,7 +114,7 @@ static bool parse_csv_cell(CsvData &csv_data,
   bool success = false;
 
   switch (csv_data.get_column_type(col_index)) {
-    case eCustomDataType::CD_PROP_INT32: {
+    case CD_PROP_INT32: {
       int value = 0;
       parse_int(start, end, success, value);
       if (success) {
@@ -139,7 +139,7 @@ static bool parse_csv_cell(CsvData &csv_data,
       }
       break;
     }
-    case eCustomDataType::CD_PROP_FLOAT: {
+    case CD_PROP_FLOAT: {
       float value = 0.0f;
       parse_float(start, end, success, value);
       if (success) {
@@ -212,7 +212,7 @@ static bool parse_csv_data(CsvData &csv_data,
     const StringRef line = read_next_line(buffer);
 
     if (!parse_csv_line(csv_data, row_index, line, import_params)) {
-      return false;  // error
+      return false;
     }
 
     row_index++;
@@ -289,9 +289,8 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
     // return point cloud from csv data
     return csv_data.to_point_cloud();
   }
-  else {
-    return nullptr;
-  }
+
+  return nullptr;
 }
 
 }  // namespace blender::io::csv
