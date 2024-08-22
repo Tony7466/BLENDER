@@ -3181,56 +3181,42 @@ static void calc_text_runtime(const Sequence *seq, int font, int wrap_width)
     byte_offset += char_length;
   }
 
-  /* Postprocess: Detect word wrapping. After character, which index is saved, line must be
-   * broken.*/
-  if (wrap_width != -1) {  // XXX eeeeeeeee, but also another reason to move these into own fn
-    blender::Vector<int> break_at_char_indices;
-    float char_x = 0.0f;
-    int break_at_char_index = 0;
-    for (int i : runtime->character_byte_offsets.index_range()) {
-      const char *chr = data->text + runtime->character_byte_offsets[i];
-
-      if (chr[0] != ' ' && chr[0] != '\n') {
-        break_at_char_index = i;
-      }
-      if (chr[0] == ' ' && char_x > wrap_width && break_at_char_index > 0) {
-        break_at_char_indices.append(break_at_char_index);
-        break_at_char_index = 0;
-      }
-      if (chr[0] == '\n') {
-        break_at_char_index = 0;
-      }
-      char_x += runtime->character_widths[i];
-    }
-  }
-
-  /* Postprocess: Apply word wrapping. */
-  runtime->line_byte_offsets.append(0);
-  int line_start_byte_offset = 0;
+  /* Stage 2: Apply word wrapping.*/
   float2 char_position{0.0f, 0.0f};
-  for (int i : runtime->character_byte_offsets.index_range()) {
+  bool is_word_wrap = false;
+  runtime->line_start_indices.append(0);
+  int line_char_count = 0;
+
+  for (int i = 0; i < runtime->character_count; i++) {
     const char *chr = data->text + runtime->character_byte_offsets[i];
-    const int char_byte_offset = runtime->character_byte_offsets[i];
-    const int char_length = runtime->character_byte_lengths[i];
-
     runtime->character_positions.append(char_position);
-    char_position.x += runtime->character_widths[i];
 
-    if (chr[0] == '\n' || break_at_char_indices.contains(i)) {
+    if (is_word_wrap && chr[0] == ' ') {
+      continue;
+    }
+    if (is_word_wrap && chr[0] != ' ') {
+      is_word_wrap = false;
+    }
+    if (chr[0] == ' ' && char_position.x > wrap_width) {
+      is_word_wrap = true;
+    }
+
+    if (is_word_wrap || chr[0] == '\n') {
       runtime->line_witdths.append(char_position.x);
-      runtime->line_lengths.append(char_byte_offset - line_start_byte_offset);
+      runtime->line_character_counts.append(line_char_count);
+      runtime->line_start_indices.append(i + 1);
 
       char_position.x = 0;
       char_position.y -= runtime->line_height;
-
-      line_start_byte_offset = char_byte_offset + char_length;
-      runtime->line_byte_offsets.append(line_start_byte_offset);
+      line_char_count = 0;
+      continue;
     }
-    if (chr[0] == '\0') {
-      runtime->line_witdths.append(char_position.x);
-      runtime->line_lengths.append(char_byte_offset - line_start_byte_offset);
-    }
+    char_position.x += runtime->character_widths[i];
+    line_char_count++;
   }
+
+  runtime->line_witdths.append(char_position.x);
+  runtime->line_character_counts.append(line_char_count);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3253,7 +3239,8 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
   const int font = text_effect_font_init(context, seq, font_flags);
 
-  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * width : -1;
+  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * width :
+                                                      std::numeric_limits<int>::max();
   calc_text_runtime(seq, font, wrap_width);  // xxx alloc/free
 
   /* use max width to enable newlines only */

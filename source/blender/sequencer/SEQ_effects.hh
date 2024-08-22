@@ -105,8 +105,8 @@ struct TextVarsRuntime {
   Vector<float2> character_positions;
   Vector<float> character_widths;
 
-  Vector<int> line_byte_offsets;
-  Vector<int> line_lengths;
+  Vector<int> line_start_indices;
+  Vector<int> line_character_counts;
   Vector<float> line_witdths;
 
   int line_height;
