@@ -2984,7 +2984,9 @@ static rcti draw_text_outline(const SeqRenderData *context,
 {
   /* Outline width of 1.0 maps to half of text line height. */
   const int outline_width = int(runtime->line_height * 0.5f * data->outline_width);
-  if (outline_width < 1 || data->outline_color[3] <= 0.0f || ((data->flag & SEQ_TEXT_OUTLINE) == 0) {
+  if (outline_width < 1 || data->outline_color[3] <= 0.0f ||
+      ((data->flag & SEQ_TEXT_OUTLINE) == 0))
+  {
     return runtime->text_boundbox;
   }
 
@@ -3313,8 +3315,8 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
   const int font_flags = ((data->flag & SEQ_TEXT_BOLD) ? BLF_BOLD : 0) |
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
-  const int font = text_effect_font_init(context, seq, out, display, font_flags);
 
+  const int font = text_effect_font_init(context, seq, font_flags);
   TextVarsRuntime *runtime = calc_text_runtime(seq, font, out);  // xxx alloc/free;
   rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
