@@ -1,2 +1,3 @@
 Referenced by issue #126394, ffmpeg for Windows is built with no CPU SIMD optimizations since 4.0
 Referenced by pull request #126396, Fix #126394: ffmpeg on win64 is built without SIMD optimizations
+Referenced by commit 246a0ec46a9ecd97e22e585fd044ab28ef4eae27, Fix #126394: ffmpeg on win64 is built without SIMD optimizations
