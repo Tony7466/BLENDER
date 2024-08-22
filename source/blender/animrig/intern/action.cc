@@ -116,8 +116,7 @@ static void grow_array_and_insert(T **array, int *num, const int index, T item)
 {
   BLI_assert(index >= 0 && index <= *num);
   const int new_array_num = *num + 1;
-  T *new_array = reinterpret_cast<T *>(
-      MEM_cnew_array<T *>(new_array_num, "animrig::action/grow_array"));
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
 
   blender::uninitialized_relocate_n(*array, index, new_array);
   new_array[index] = item;
@@ -146,7 +145,7 @@ template<typename T> static void shrink_array_and_remove(T **array, int *num, co
 {
   BLI_assert(index >= 0 && index < *num);
   const int new_array_num = *num - 1;
-  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
 
   blender::uninitialized_move_n(*array, index, new_array);
   blender::uninitialized_move_n(*array + index + 1, *num - index - 1, new_array + index);
