@@ -23,17 +23,20 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device float light_tree_cos_bounding_sphere_angle(const BoundingBox bbox,
+ccl_device float light_tree_cos_bound_subtended_angle(const BoundingBox bbox,
                                                       const float3 centroid,
                                                       const float3 P)
 {
-  float sphere_radius = len_squared(bbox.max - centroid);
-  float distance_to_center = len_squared(P - centroid);
+  /* Consine of the angle subtended by the smallest enclosing sphere of the node bounding box. */
+  float distance_to_center_sq = len_squared(P - centroid);
+  float radius_sq = len_squared(bbox.max - centroid);
 
-  /* If P is inside the bounding sphere, `theta_u` covers the whole sphere. */
-  return (distance_to_center <= sphere_radius) ?
+  /* If P is inside the bounding sphere, `theta_u` covers the whole sphere and return -1.0
+   * Otherwise compute `sin(theta_u) = radius_sq / distance_to_center_sq` and convert to
+   * cos(theta_u) */
+  return (distance_to_center_sq <= radius_sq) ?
              -1.0f :
-             cos_from_sin(sqrtf(sphere_radius) / sqrtf(distance_to_center));
+             safe_sqrtf(1.0f - (radius_sq / distance_to_center_sq));
 }
 
 /* Compute vector v as in Fig .8. P_v is the corresponding point along the ray. */
@@ -330,7 +333,7 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       theta_d = fast_atan2f(t - closest_t, distance) + fast_atan2f(closest_t, distance);
       /* Vector that forms a minimal angle with the emitter centroid. */
       point_to_centroid = -compute_v(centroid, P, D, bcone.axis, t);
-      cos_theta_u = light_tree_cos_bounding_sphere_angle(bbox, centroid, closest_point);
+      cos_theta_u = light_tree_cos_bound_subtended_angle(bbox, centroid, closest_point);
     }
     else {
       const float3 N = N_or_D;
@@ -346,7 +349,7 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       }
 
       point_to_centroid = normalize_len(centroid - P, &distance);
-      cos_theta_u = light_tree_cos_bounding_sphere_angle(bbox, centroid, P);
+      cos_theta_u = light_tree_cos_bound_subtended_angle(bbox, centroid, P);
       theta_d = 1.0f;
     }
     /* Clamp distance to half the radius of the cluster when splitting is disabled. */
