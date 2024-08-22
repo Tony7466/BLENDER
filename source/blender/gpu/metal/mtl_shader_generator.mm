@@ -951,6 +951,10 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     shd_builder_->glsl_fragment_source_ = msl_defines_string + shd_builder_->glsl_fragment_source_;
   }
 
+  if (info->name_ == "eevee_deferred_tile_classify") {
+    printf("%s\n%s\n\n", info->name_.c_str(), shd_builder_->glsl_fragment_source_.c_str());
+  }
+
   /* Extract SSBO usage information from shader pragma:
    *
    * #pragma USE_SSBO_VERTEX_FETCH(Output Prim Type, num output vertices per input primitive)
@@ -1045,8 +1049,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
                                       std::string::npos;
 
     /* TODO(fclem): Add to create info. */
-    msl_iface.uses_gl_FragStencilRefARB = GPU_stencil_export_support() &&
-                                          shd_builder_->glsl_fragment_source_.find(
+    msl_iface.uses_gl_FragStencilRefARB = shd_builder_->glsl_fragment_source_.find(
                                               "gl_FragStencilRefARB") != std::string::npos;
 
     msl_iface.depth_write = info->depth_write_;

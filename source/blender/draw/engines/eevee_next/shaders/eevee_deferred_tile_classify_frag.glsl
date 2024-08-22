@@ -17,9 +17,6 @@ void main()
     has_transmission = 1 << 2;
   }
 
-#if defined(GPU_ARB_shader_stencil_export)
-  gl_FragStencilRefARB = closure_count | has_transmission;
-#else
   /* Instead of setting the stencil at once, we do it (literally) bit by bit.
    * Discard fragments that do not have a number of closure whose bit-pattern
    * overlap the current stencil un-masked bit. */
@@ -27,5 +24,4 @@ void main()
     discard;
     return;
   }
-#endif
 }

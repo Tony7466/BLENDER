@@ -450,9 +450,11 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
   GCaps.transform_feedback_support = true;
   GCaps.stencil_export_support = false;
+  /*
   if (@available(macOS 13.0, *)) {
     GCaps.stencil_export_support = true;
   }
+  */
 
   /* OPENGL Related workarounds -- none needed for Metal. */
   GCaps.extensions_len = 0;
