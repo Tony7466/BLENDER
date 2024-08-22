@@ -691,7 +691,9 @@ static bool action_unlink_poll(bContext *C)
     ID *animated_id = nullptr;
     AnimData *adt = ED_actedit_animdata_from_context(C, &animated_id);
     if (animated_id) {
-      // TODO: check ID_IS_OVERRIDE_LIBRARY(animated_id)) and/or friends.
+      if (!BKE_id_is_editable(CTX_data_main(C), animated_id)) {
+        return false;
+      }
       if (!adt) {
         return false;
       }
