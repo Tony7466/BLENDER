@@ -960,6 +960,8 @@ static int apply_objects_internal(bContext *C,
     else if (ob->type == OB_GREASE_PENCIL) {
       GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
+      const float scalef = mat4_to_scale(mat);
+
       for (const int layer_i : grease_pencil.layers().index_range()) {
         bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
         const float4x4 layer_to_object = layer.to_object_space(*ob);
@@ -974,6 +976,13 @@ static int apply_objects_internal(bContext *C,
               bke::greasepencil::Drawing &drawing =
                   reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
               bke::CurvesGeometry &curves = drawing.strokes_for_write();
+              MutableSpan<float> radii = drawing.radii_for_write();
+              threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
+                for (const int i : range) {
+                  radii[i] *= scalef;
+                }
+              });
+
               curves.transform(object_to_layer * float4x4(mat) * layer_to_object);
               curves.calculate_bezier_auto_handles();
             });
