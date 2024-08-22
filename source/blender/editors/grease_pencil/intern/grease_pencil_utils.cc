@@ -168,12 +168,15 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
       placement_loc_ = float3(scene.cursor.location);
       break;
     case ReprojectMode::View:
-      depth_ = DrawingPlacementDepth::ObjectOrigin;
+      depth_ = DrawingPlacementDepth::Surface;
       surface_offset_ = 0.0f;
       placement_loc_ = layer_space_to_world_space_.location();
       break;
     /* TODO: Implement ReprojectMode::Surface for reproject operator */
     default:
+      depth_ = DrawingPlacementDepth::ObjectOrigin;
+      surface_offset_ = 0.0f;
+      placement_loc_ = float3(0.0f);
       break;
   }
 
