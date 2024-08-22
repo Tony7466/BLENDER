@@ -55,6 +55,10 @@ static bAction *find_action(Main &bmain, ID &id)
         /* No animation  */
         return nullptr;
       }
+      Action &action = ob->adt->action->wrap();
+      if (!action.is_action_layered()) {
+        return nullptr;
+      }
       return ob->adt->action;
     }
   }
@@ -69,6 +73,10 @@ static bAction *find_action(Main &bmain, ID &id)
     }
     AnimData *adt = BKE_animdata_from_id(data);
     if (!adt) {
+      return nullptr;
+    }
+    Action &action = adt->action->wrap();
+    if (!action.is_action_layered()) {
       return nullptr;
     }
     return adt->action;
