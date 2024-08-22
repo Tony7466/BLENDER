@@ -14,9 +14,7 @@ def prefill_bug_report_info():
     import urllib.parse
     from pathlib import Path
 
-    query_params = {"type": "bug_report"}
-
-    query_params["project"] = "blender"
+    query_params = {"type": "bug_report", "project": "blender"}
 
     query_params["os"] = "{:s} {:d} Bits".format(
         platform.platform(),
@@ -25,6 +23,7 @@ def prefill_bug_report_info():
 
     # There doesn't appear to be a no easy way to collect GPU information in Python
     # if Blender isn't opening and we can't import the GPU module.
+    # So just tell users to follow a written guide.
     query_params["gpu"] = """Follow our guide to collect this information:
 https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/collect_system_information/"""
 
@@ -37,9 +36,7 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     else:  # Linux
         blender_dir = script_directory.joinpath("../../../blender")
 
-    command = [blender_dir, "--version"]
-
-    output = subprocess.run(command, stdout=subprocess.PIPE)
+    output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE)
     text = output.stdout.decode("utf-8")
 
     # Gather version number and type (Alpha, Beta, etc)
@@ -51,18 +48,19 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
 
     # TODO: Replace with something else?
     # Error on failure?
-    failed = "Script failed"
+    failed_string = "Script failed"
 
     query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash `{:s}`".format(
-        version_match.group(1).strip() if version_match else failed,
-        branch_match.group(1).strip() if branch_match else failed,
-        commit_date_match.group(1).strip() if commit_date_match else failed,
-        commit_time_match.group(1).strip() if commit_time_match else failed,
-        build_hash_match.group(1).strip() if build_hash_match else failed,
+        version_match.group(1).strip() if version_match else failed_string,
+        branch_match.group(1).strip() if branch_match else failed_string,
+        commit_date_match.group(1).strip() if commit_date_match else failed_string,
+        commit_time_match.group(1).strip() if commit_time_match else failed_string,
+        build_hash_match.group(1).strip() if build_hash_match else failed_string,
     )
 
     query_str = urllib.parse.urlencode(query_params)
     webbrowser.open(f"https://redirect.blender.org/?{query_str}")
+
 
 if __name__ == "__main__":
     prefill_bug_report_info()
