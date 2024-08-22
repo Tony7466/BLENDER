@@ -10,6 +10,7 @@
 #include "BLI_math_color.h"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_path_util.h"
@@ -316,8 +317,8 @@ bool SVGImporter::read(StringRefNull filepath)
   /* Overall scale for SVG coordinates in millimeters. */
   const float svg_scale = 0.001f * scene_unit_scale * params_.scale;
   /* Grease pencil is rotated 90 degrees in X axis by default. */
-  const float4x4 transform = math::scale(math::from_rotation<float4x4>(math::EulerXYZ(-90, 0, 0)),
-                                         float3(svg_scale));
+  const float4x4 transform = math::scale(
+      math::from_rotation<float4x4>(math::EulerXYZ(DEG2RAD(-90), 0, 0)), float3(svg_scale));
 
   /* True if any shape has a color gradient, which are not fully supported. */
   bool has_color_gradient = false;
