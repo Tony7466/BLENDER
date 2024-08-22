@@ -1,1 +1,2 @@
 Referenced by issue #126624, Undo in Sculpt Mode crashes Blender
+Referenced by pull request #126626, Fix #126624: Sculpt undo crash with shape keys
