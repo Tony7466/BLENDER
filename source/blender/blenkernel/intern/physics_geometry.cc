@@ -2531,8 +2531,8 @@ float4x4 get_constraint_frame1(const btTypedConstraint &constraint)
       return math::from_location<float4x4>(to_blender(typed_constraint.getPivotInA()));
     }
     case ConstraintType::Hinge: {
-      const auto &typed_constraint = static_cast<const btHingeConstraint &>(constraint);
-      return to_blender(typed_constraint.getAFrame());
+      const auto &typed_constraint = static_cast<const btHinge2Constraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetA());
     }
     case ConstraintType::Slider: {
       const auto &typed_constraint = static_cast<const btSliderConstraint &>(constraint);
@@ -2583,8 +2583,8 @@ void set_constraint_frame1(btTypedConstraint &constraint, float4x4 value)
       break;
     }
     case ConstraintType::Hinge: {
-      auto &typed_constraint = static_cast<btHingeConstraint &>(constraint);
-      typed_constraint.setFrames(to_bullet(value), typed_constraint.getBFrame());
+      auto &typed_constraint = static_cast<btHinge2Constraint &>(constraint);
+      typed_constraint.setFrames(to_bullet(value), typed_constraint.getFrameOffsetB());
       break;
     }
     case ConstraintType::Slider: {
@@ -2637,8 +2637,8 @@ float4x4 get_constraint_frame2(const btTypedConstraint &constraint)
       return math::from_location<float4x4>(to_blender(typed_constraint.getPivotInB()));
     }
     case ConstraintType::Hinge: {
-      const auto &typed_constraint = static_cast<const btHingeConstraint &>(constraint);
-      return to_blender(typed_constraint.getBFrame());
+      const auto &typed_constraint = static_cast<const btHinge2Constraint &>(constraint);
+      return to_blender(typed_constraint.getFrameOffsetB());
     }
     case ConstraintType::Slider: {
       const auto &typed_constraint = static_cast<const btSliderConstraint &>(constraint);
@@ -2689,8 +2689,8 @@ void set_constraint_frame2(btTypedConstraint &constraint, float4x4 value)
       break;
     }
     case ConstraintType::Hinge: {
-      auto &typed_constraint = static_cast<btHingeConstraint &>(constraint);
-      typed_constraint.setFrames(typed_constraint.getAFrame(), to_bullet(value));
+      auto &typed_constraint = static_cast<btHinge2Constraint &>(constraint);
+      typed_constraint.setFrames(typed_constraint.getFrameOffsetA(), to_bullet(value));
       break;
     }
     case ConstraintType::Slider: {
