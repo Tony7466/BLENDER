@@ -4867,6 +4867,18 @@ static void screen_area_menu_items(ScrArea *area, uiLayout *layout)
   /* Mouse position as if in middle of area. */
   const int loc[2] = {BLI_rcti_cent_x(&area->totrct), BLI_rcti_cent_y(&area->totrct)};
 
+  if (U.experimental.use_docking) {
+    uiItemFullO(layout,
+                "SCREEN_OT_area_join",
+                IFACE_("Dock Area"),
+                ICON_AREA_DOCK,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    RNA_int_set_array(&ptr, "source_xy", loc);
+  }
+
   /* Vertical Split */
   uiItemFullO(layout,
               "SCREEN_OT_area_split",

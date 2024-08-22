@@ -177,6 +177,7 @@ if(WITH_BLENDER)
       anim_data
       antialiased
       append_blend
+      area_dock
       area_join
       area_join_down
       area_join_left
