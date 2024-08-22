@@ -10,12 +10,6 @@
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(select_lib.glsl)
 
-/* project to screen space */
-vec2 proj(vec4 pos)
-{
-  return (0.5 * (pos.xy / pos.w) + 0.5) * sizeViewport.xy;
-}
-
 struct VertIn {
   vec3 ls_P;
   mat4 inst_matrix;
@@ -35,7 +29,7 @@ struct VertOut {
   vec3 vs_P;
   vec3 ws_P;
   vec4 hs_P;
-  vec2 ndc_P;
+  vec2 ss_P;
   vec4 color_size;
   int inverted;
 };
@@ -49,7 +43,7 @@ VertOut vertex_main(VertIn v_in)
   v_out.ws_P = transform_point(model_mat, v_in.ls_P);
   v_out.vs_P = drw_point_world_to_view(v_out.ws_P);
   v_out.hs_P = drw_point_view_to_homogenous(v_out.vs_P);
-  v_out.ndc_P = drw_perspective_divide(v_out.hs_P).xy;
+  v_out.ss_P = drw_perspective_divide(v_out.hs_P).xy * sizeViewport;
   v_out.inverted = int(dot(cross(model_mat[0].xyz, model_mat[1].xyz), model_mat[2].xyz) < 0.0);
   v_out.color_size = bone_color;
 
@@ -121,7 +115,7 @@ void geometry_main(VertOut geom_in[4],
     return;
   }
 
-  vec2 perp = normalize(geom_in[2].ndc_P - geom_in[1].ndc_P);
+  vec2 perp = normalize(geom_in[2].ss_P - geom_in[1].ss_P);
   vec2 edge_dir = vec2(-perp.y, perp.x);
 
   vec2 hidden_point;
@@ -131,12 +125,12 @@ void geometry_main(VertOut geom_in[4],
    * choose the other point anyway.
    * This fixes some issue with cubes in orthographic views. */
   if (geom_in[0].vs_P.z < geom_in[3].vs_P.z) {
-    hidden_point = (abs(fac0) > 1e-5) ? geom_in[0].ndc_P : geom_in[3].ndc_P;
+    hidden_point = (abs(fac0) > 1e-5) ? geom_in[0].ss_P : geom_in[3].ss_P;
   }
   else {
-    hidden_point = (abs(fac3) > 1e-5) ? geom_in[3].ndc_P : geom_in[0].ndc_P;
+    hidden_point = (abs(fac3) > 1e-5) ? geom_in[3].ss_P : geom_in[0].ss_P;
   }
-  vec2 hidden_dir = normalize(hidden_point - geom_in[1].ndc_P);
+  vec2 hidden_dir = normalize(hidden_point - geom_in[1].ss_P);
 
   float fac = dot(-hidden_dir, edge_dir);
   edge_dir *= (fac < 0.0) ? -1.0 : 1.0;
