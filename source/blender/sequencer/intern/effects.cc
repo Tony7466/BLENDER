@@ -2964,20 +2964,29 @@ static void jump_flooding_pass(Span<JFACoord> input,
   });
 }
 
+static void text_draw(const TextVars *data, const TextVarsRuntime *runtime, float color[4])
+{
+  /* Draw text itself. */
+  for (int i : runtime->character_positions.index_range()) {
+    const char *chr = data->text + runtime->character_byte_offsets[i];
+    float2 char_position = runtime->character_positions[i];
+
+    BLF_position(runtime->font, char_position.x, char_position.y, 0.0f);
+    BLF_buffer_col(runtime->font, color);
+    BLF_draw_buffer(runtime->font, chr, runtime->character_byte_lengths[i]);
+  }
+}
+
 static rcti draw_text_outline(const SeqRenderData *context,
                               const TextVars *data,
-                              int font,
+                              const TextVarsRuntime *runtime,
                               ColorManagedDisplay *display,
-                              int x,
-                              int y,
-                              int line_height,
-                              const rcti &rect,
                               ImBuf *out)
 {
   /* Outline width of 1.0 maps to half of text line height. */
-  const int outline_width = int(line_height * 0.5f * data->outline_width);
+  const int outline_width = int(runtime->line_height * 0.5f * data->outline_width);
   if (outline_width < 1 || data->outline_color[3] <= 0.0f) {
-    return rect;
+    return runtime->text_boundbox;
   }
 
   const int2 size = int2(context->rectx, context->recty);
@@ -2985,12 +2994,11 @@ static rcti draw_text_outline(const SeqRenderData *context,
   /* Draw white text into temporary buffer. */
   const size_t pixel_count = size_t(size.x) * size.y;
   Array<uchar4> tmp_buf(pixel_count, uchar4(0));
-  BLF_buffer(font, nullptr, (uchar *)tmp_buf.data(), size.x, size.y, display);
-  BLF_position(font, x, y, 0.0f);
-  BLF_buffer_col(font, float4(1.0f));
-  BLF_draw_buffer(font, data->text, sizeof(data->text));
+  BLF_buffer(runtime->font, nullptr, (uchar *)tmp_buf.data(), size.x, size.y, display);
 
-  rcti outline_rect = rect;
+  text_draw(data, runtime, float4(1.0f));
+
+  rcti outline_rect = runtime->text_boundbox;
   BLI_rcti_pad(&outline_rect, outline_width + 1, outline_width + 1);
   outline_rect.xmin = clamp_i(outline_rect.xmin, 0, size.x - 1);
   outline_rect.xmax = clamp_i(outline_rect.xmax, 0, size.x - 1);
@@ -3086,7 +3094,7 @@ static rcti draw_text_outline(const SeqRenderData *context,
       }
     }
   });
-  BLF_buffer(font, nullptr, out->byte_buffer.data, size.x, size.y, display);
+  BLF_buffer(runtime->font, nullptr, out->byte_buffer.data, size.x, size.y, display);
 
   return outline_rect;
 }
@@ -3160,7 +3168,7 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
   return font;
 }
 
-static void build_character_info(const TextVars *data, TextVarsRuntime *runtime, int font)
+static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
 {
   int byte_offset = 0;
   while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
@@ -3169,7 +3177,7 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime,
 
     runtime->character_byte_offsets.append(byte_offset);
     runtime->character_byte_lengths.append(char_length);
-    runtime->character_widths.append(BLF_width(font, str, char_length, nullptr));
+    runtime->character_widths.append(BLF_width(runtime->font, str, char_length, nullptr));
 
     byte_offset += char_length;
   }
@@ -3239,20 +3247,17 @@ static float2 horizontal_alignment_offset_get(const TextVars *data, float line_w
   return {0.0f, 0.0f};
 }
 
-static void apply_text_alignment(const TextVars *data,
-                                 TextVarsRuntime *runtime,
-                                 const ImBuf *ibuf,
-                                 int font)
+static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
 {
   const int image_width = ibuf->x;
   const int image_height = ibuf->y;
 
   float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
-  float2 line_height_alignment{0.0f, -runtime->line_height - BLF_descender(font)};
+  float2 line_height_alignment{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
   float2 vertical_alignment = vertical_alignment_offset_get(data, runtime);
 
-  runtime->text_boundbox.xmax = std::numeric_limits<float>::min();
-  runtime->text_boundbox.xmin = std::numeric_limits<float>::max();
+  runtime->text_boundbox.xmax = std::numeric_limits<int>::min();
+  runtime->text_boundbox.xmin = std::numeric_limits<int>::max();
 
   for (int i : runtime->line_start_indices.index_range()) {
     float2 horizontal_alignment = horizontal_alignment_offset_get(data, runtime->line_witdths[i]);
@@ -3283,25 +3288,13 @@ static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
   data->runtime = MEM_new<TextVarsRuntime>(__func__);
   TextVarsRuntime *runtime = data->runtime;
 
+  runtime->font = font;
   runtime->line_height = BLF_height_max(font);
   runtime->character_count = BLI_strlen_utf8(data->text);
 
-  build_character_info(data, runtime, font);
+  build_character_info(data, runtime);
   apply_word_wrapping(data, runtime, ibuf);
-  apply_text_alignment(data, runtime, ibuf, font);
-}
-
-static void text_draw(const TextVars *data, TextVarsRuntime *runtime, int font)
-{
-  /* Draw text itself. */
-  for (int i : runtime->character_positions.index_range()) {
-    const char *chr = data->text + runtime->character_byte_offsets[i];
-    float2 char_position = runtime->character_positions[i];
-
-    BLF_position(font, char_position.x, char_position.y, 0.0f);
-    BLF_buffer_col(font, data->color);
-    BLF_draw_buffer(font, chr, runtime->character_byte_lengths[i]);
-  }
+  apply_text_alignment(data, runtime, ibuf);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3330,13 +3323,11 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
 
   /* Draw text outline. */
   rcti outline_rect;
-  BLI_rcti_rctf_copy(&outline_rect, &runtime->text_boundbox);
   if (data->flag & SEQ_TEXT_OUTLINE) {
-    // outline_rect = draw_text_outline(context, data, font, display, x, y, line_height, rect,
-    // out);
+    outline_rect = draw_text_outline(context, data, runtime, display, out);
   }
 
-  text_draw(data, runtime, font);
+  text_draw(data, runtime, data->color);
 
   BLF_buffer(font, nullptr, nullptr, 0, 0, nullptr);
   BLF_disable(font, font_flags);

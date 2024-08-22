@@ -109,9 +109,10 @@ struct TextVarsRuntime {
   Vector<int> line_end_indices;
   Vector<float> line_witdths;
 
-  rctf text_boundbox;
+  rcti text_boundbox;
   int line_height;
   int character_count;
+  int font;
 };
 
 }  // namespace blender::seq
