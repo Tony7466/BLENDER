@@ -220,7 +220,7 @@ void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
       const T a = interpolate_attribute_of_a_intersection_point<T>(attr_a, inter_point);
       const T b = interpolate_attribute_of_b_intersection_point<T>(attr_b, inter_point);
 
-      dst_attr[i] = attribute_math::mix2<T>(0.0f, a, b);
+      dst_attr[i] = attribute_math::mix2<T>(0.5f, a, b);
     }
   }
 }
