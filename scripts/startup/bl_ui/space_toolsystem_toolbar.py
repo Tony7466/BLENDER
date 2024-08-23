@@ -3031,7 +3031,7 @@ class _defs_grease_pencil_vertex:
     @staticmethod
     def poll_select_mask(context):
         if context is None:
-            return True
+            return False
         ob = context.active_object
         tool_settings = context.scene.tool_settings
         return (
@@ -3934,7 +3934,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             *_tools_annotate,
             None,
             lambda context: (
-                VIEW3D_PT_tools_active._tools_gpencil_select
+                VIEW3D_PT_tools_active._tools_select
                 if _defs_grease_pencil_vertex.poll_select_mask(context)
                 else ()
             ),
