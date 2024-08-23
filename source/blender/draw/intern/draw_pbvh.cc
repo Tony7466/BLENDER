@@ -1628,6 +1628,7 @@ static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
     case bke::pbvh::Type::BMesh:
       break;
   }
+  return draw_data.tris_ibos;
 }
 
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
@@ -1663,6 +1664,8 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
       }
     }
   });
+
+  return batches;
 }
 
 static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
@@ -1755,6 +1758,8 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
       GPU_batch_vertbuf_add(batches[i], position_vbos[i], false);
     }
   });
+
+  return draw_data.lines_batches;
 }
 
 Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data)
