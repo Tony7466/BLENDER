@@ -1371,6 +1371,9 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 
   bke::pbvh::update_normals_from_eval(*const_cast<Object *>(scd->ob), *pbvh);
 
+  if (!pbvh->draw_data) {
+    pbvh->draw_data = std::make_unique<draw::pbvh::DrawCache>();
+  }
   draw::pbvh::DrawCache &draw_data = dynamic_cast<draw::pbvh::DrawCache &>(*pbvh->draw_data);
 
   IndexMaskMemory memory;
