@@ -1188,11 +1188,11 @@ static GPUVertFormat format_for_request(const OrigMeshData &orig_mesh_data,
   }
 }
 
-static void ensure_vbos_allocation_size_mesh(const Object &object,
-                                             const GPUVertFormat &format,
-                                             const Span<bke::pbvh::Node> nodes,
-                                             const IndexMask &nodes_to_update,
-                                             const MutableSpan<gpu::VertBuf *> vbos)
+static void ensure_vbos_allocated_mesh(const Object &object,
+                                       const GPUVertFormat &format,
+                                       const Span<bke::pbvh::Node> nodes,
+                                       const IndexMask &nodes_to_update,
+                                       const MutableSpan<gpu::VertBuf *> vbos)
 {
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
   const Span<int> tri_faces = mesh.corner_tri_faces();
@@ -1210,11 +1210,11 @@ static void ensure_vbos_allocation_size_mesh(const Object &object,
   });
 }
 
-static void ensure_vbos_allocation_size_grids(const Object &object,
-                                              const GPUVertFormat &format,
-                                              const Span<bke::pbvh::Node> nodes,
-                                              const IndexMask &nodes_to_update,
-                                              const MutableSpan<gpu::VertBuf *> vbos)
+static void ensure_vbos_allocated_grids(const Object &object,
+                                        const GPUVertFormat &format,
+                                        const Span<bke::pbvh::Node> nodes,
+                                        const IndexMask &nodes_to_update,
+                                        const MutableSpan<gpu::VertBuf *> vbos)
 {
   const SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -1232,11 +1232,11 @@ static void ensure_vbos_allocation_size_grids(const Object &object,
   });
 }
 
-static void ensure_vbos_allocation_size_bmesh(const Object &object,
-                                              const GPUVertFormat &format,
-                                              const Span<bke::pbvh::Node> nodes,
-                                              const IndexMask &nodes_to_update,
-                                              const MutableSpan<gpu::VertBuf *> vbos)
+static void ensure_vbos_allocated_bmesh(const Object &object,
+                                        const GPUVertFormat &format,
+                                        const Span<bke::pbvh::Node> nodes,
+                                        const IndexMask &nodes_to_update,
+                                        const MutableSpan<gpu::VertBuf *> vbos)
 {
   const SculptSession &ss = *object.sculpt;
   const BMesh &bm = *ss.bm;
@@ -1524,18 +1524,18 @@ static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      ensure_vbos_allocation_size_mesh(object, format, nodes, nodes_to_update, vbos);
+      ensure_vbos_allocated_mesh(object, format, nodes, nodes_to_update, vbos);
       fill_vbos_mesh(object, orig_mesh_data, nodes, nodes_to_update, attr, vbos);
       break;
     }
     case bke::pbvh::Type::Grids: {
-      ensure_vbos_allocation_size_grids(object, format, nodes, nodes_to_update, vbos);
+      ensure_vbos_allocated_grids(object, format, nodes, nodes_to_update, vbos);
       fill_vbos_grids(
           object, orig_mesh_data, nodes, draw_data.use_flat_layout, nodes_to_update, attr, vbos);
       break;
     }
     case bke::pbvh::Type::BMesh: {
-      ensure_vbos_allocation_size_bmesh(object, format, nodes, nodes_to_update, vbos);
+      ensure_vbos_allocated_bmesh(object, format, nodes, nodes_to_update, vbos);
       fill_vbos_bmesh(object, orig_mesh_data, nodes, nodes_to_update, attr, vbos);
       break;
     }
