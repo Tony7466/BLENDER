@@ -5,6 +5,7 @@
 /** \file
  * \ingroup animrig
  */
+#include <iostream>
 
 #include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
@@ -38,7 +39,7 @@ namespace blender::animrig {
 
 /* Find an action that is related to the given ID. Either on the data if the ID is an Object or a
  * user of the ID. */
-static bAction *find_action(Main &bmain, ID &id)
+static bAction *find_action(const Main &bmain, const ID &id)
 {
   if (GS(id.name) != ID_OB && ID_REAL_USERS(&id) == 1) {
     /* Find the one object using this datablock. If found, and it has
@@ -52,7 +53,7 @@ static bAction *find_action(Main &bmain, ID &id)
         continue;
       }
       if (!ob->adt || !ob->adt->action) {
-        /* No animation  */
+        /* No animation.  */
         return nullptr;
       }
       Action &action = ob->adt->action->wrap();
@@ -102,26 +103,24 @@ bAction *id_action_ensure(Main *bmain, ID *id)
   /* init action if none available yet */
   /* TODO: need some wizardry to handle NLA stuff correct */
   if (adt->action == nullptr) {
-    bAction *action;
+    bAction *action = nullptr;
     if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
       action = find_action(*bmain, *id);
     }
-    if (!action) {
+    if (action == nullptr) {
       /* init action name from name of ID block */
       char actname[sizeof(id->name) - 2];
       SNPRINTF(actname, DATA_("%sAction"), id->name + 2);
 
       /* create action */
       action = BKE_action_add(bmain, actname);
+      /* set ID-type from ID-block that this is going to be assigned to
+       * so that users can't accidentally break actions by assigning them
+       * to the wrong places
+       */
+      BKE_animdata_action_ensure_idroot(id, adt->action);
     }
-
     adt->action = action;
-
-    /* set ID-type from ID-block that this is going to be assigned to
-     * so that users can't accidentally break actions by assigning them
-     * to the wrong places
-     */
-    BKE_animdata_action_ensure_idroot(id, adt->action);
 
     /* Tag depsgraph to be rebuilt to include time dependency. */
     DEG_relations_tag_update(bmain);
