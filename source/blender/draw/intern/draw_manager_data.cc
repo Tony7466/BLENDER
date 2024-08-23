@@ -10,7 +10,6 @@
 
 #include "draw_attributes.hh"
 #include "draw_manager_c.hh"
-#include "draw_pbvh.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_curve.hh"
