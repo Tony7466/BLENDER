@@ -383,7 +383,7 @@ bool SVGImporter::read(StringRefNull filepath)
   if (has_color_gradient) {
     BKE_report(context_.reports,
                RPT_WARNING,
-               "SVG has gradients, Grease Pencil color will be approximate");
+               "SVG has gradients, Grease Pencil color will be approximated");
   }
 
   return true;
