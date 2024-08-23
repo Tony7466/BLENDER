@@ -1612,7 +1612,7 @@ static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
         ibos[i] = create_tri_index_grids(key,
                                          subdiv_ccg,
                                          sharp_faces,
-                                         do_coarse,
+                                         false,  // TODO
                                          bke::pbvh::node_grid_indices(nodes[i]),
                                          draw_data.use_flat_layout[i]);
       });
@@ -1704,7 +1704,7 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
         ibos[i] = create_lines_index_grids(key,
                                            subdiv_ccg,
                                            sharp_faces,
-                                           do_coarse,
+                                           false,  // TODO
                                            bke::pbvh::node_tri_indices(nodes[i]),
                                            draw_data.use_flat_layout[i]);
       });
