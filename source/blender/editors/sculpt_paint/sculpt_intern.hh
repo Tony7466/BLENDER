@@ -170,6 +170,7 @@ struct StrokeCache {
    */
   bool invert;
   float pressure;
+  float hardness;
   /**
    * Depending on the mode, can either be the raw brush strength, or a scaled (possibly negative)
    * value.
@@ -327,7 +328,6 @@ struct StrokeCache {
 
   float4x4 stroke_local_mat;
   float multiplane_scrape_angle;
-  float hardness;
 
   rcti previous_r; /* previous redraw rectangle */
   rcti current_r;  /* current redraw rectangle */
