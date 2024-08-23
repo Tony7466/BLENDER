@@ -604,9 +604,8 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
   }
 
   if (step_data.type == Type::Mask) {
-    Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
-    for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_redraw(node);
+    for (bke::pbvh::Node *node : bke::pbvh::all_leaf_nodes(*ss.pbvh)) {
+      BKE_pbvh_node_mark_redraw(*node);
     }
   }
   else {
@@ -856,6 +855,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Position: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -870,12 +871,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_position_grids(grids, key, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          const Span<int> grids = bke::pbvh::node_grid_indices(node);
+        for (bke::pbvh::Node *node : nodes) {
+          const Span<int> grids = bke::pbvh::node_grid_indices(*node);
           if (indices_contain_true(modified_grids, grids)) {
-            BKE_pbvh_node_mark_positions_update(&node);
+            BKE_pbvh_node_mark_positions_update(*node);
           }
-        });
+        }
         multires_mark_as_modified(depsgraph, &object, MULTIRES_COORDS_MODIFIED);
       }
       else {
@@ -884,11 +885,11 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         }
         Array<bool> modified_verts(ss.totvert, false);
         restore_position_mesh(object, step_data.nodes, modified_verts);
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_positions_update(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_positions_update(*node);
           }
-        });
+        }
       }
 
       if (tag_update) {
@@ -901,6 +902,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideVert: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -912,22 +915,22 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_vert_visibility_grids(subdiv_ccg, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(node))) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(*node))) {
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
       else {
         Array<bool> modified_verts(ss.totvert, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_vert_visibility_mesh(object, *unode, modified_verts);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
 
       BKE_pbvh_sync_visibility_from_verts(object);
@@ -938,6 +941,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideFace: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -949,27 +954,28 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
 
       if (use_multires_undo(step_data, ss)) {
+        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, node, faces_vector);
+              subdiv_ccg, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
       else {
         const Span<int> tri_faces = mesh.corner_tri_faces();
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, node, faces_vector);
+              tri_faces, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_visibility(&node);
+            BKE_pbvh_node_mark_update_visibility(*node);
           }
-        });
+        }
       }
 
       hide::sync_all_from_faces(object);
@@ -977,6 +983,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Mask: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -987,28 +995,30 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_mask_grids(object, *unode, modified_grids);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(node))) {
-            BKE_pbvh_node_mark_update_mask(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_grids, bke::pbvh::node_grid_indices(*node))) {
+            BKE_pbvh_node_mark_update_mask(*node);
           }
-        });
+        }
       }
       else {
         Array<bool> modified_verts(ss.totvert, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_mask_mesh(object, *unode, modified_verts);
         }
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-            BKE_pbvh_node_mark_update_mask(&node);
+        for (bke::pbvh::Node *node : nodes) {
+          if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+            BKE_pbvh_node_mark_update_mask(*node);
           }
-        });
+        }
       }
 
       bke::pbvh::update_mask(object, *ss.pbvh);
       break;
     }
     case Type::FaceSet: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1019,31 +1029,34 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         restore_face_sets(object, *unode, modified_faces);
       }
       if (use_multires_undo(step_data, ss)) {
+        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, node, faces_vector);
+              subdiv_ccg, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_face_sets(&node);
+            BKE_pbvh_node_mark_update_face_sets(*node);
           }
-        });
+        }
       }
       else {
         const Span<int> tri_faces = mesh.corner_tri_faces();
         Vector<int> faces_vector;
-        bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
+        for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, node, faces_vector);
+              tri_faces, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
-            BKE_pbvh_node_mark_update_face_sets(&node);
+            BKE_pbvh_node_mark_update_face_sets(*node);
           }
-        });
+        }
       }
       break;
     }
     case Type::Color: {
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
         return;
@@ -1051,11 +1064,11 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
 
       Array<bool> modified_verts(ss.totvert, false);
       restore_color(object, step_data, modified_verts);
-      bke::pbvh::search_callback(*ss.pbvh, {}, [&](bke::pbvh::Node &node) {
-        if (indices_contain_true(modified_verts, bke::pbvh::node_verts(node))) {
-          BKE_pbvh_node_mark_update_color(&node);
+      for (bke::pbvh::Node *node : nodes) {
+        if (indices_contain_true(modified_verts, bke::pbvh::node_verts(*node))) {
+          BKE_pbvh_node_mark_update_color(*node);
         }
-      });
+      }
       break;
     }
     case Type::Geometry: {
@@ -1334,7 +1347,8 @@ static void fill_node_data(const Depsgraph &depsgraph,
       bke::pbvh::node_face_indices_calc_mesh(mesh.corner_tri_faces(), *node, unode.face_indices);
     }
     else {
-      bke::pbvh::node_face_indices_calc_grids(*ss.pbvh, *node, unode.face_indices);
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      bke::pbvh::node_face_indices_calc_grids(subdiv_ccg, *node, unode.face_indices);
     }
   }
 
@@ -2015,7 +2029,7 @@ static void push_all_grids(const Depsgraph &depsgraph, Object *object)
     return;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
   push_nodes(depsgraph, *object, nodes, Type::Position);
 }
 
