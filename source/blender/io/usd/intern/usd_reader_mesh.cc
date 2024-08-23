@@ -211,7 +211,9 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
 
   readFaceSetsSample(bmain, mesh, motionSampleTime);
 
-  if (mesh_prim_.GetPointsAttr().ValueMightBeTimeVarying()) {
+  if (mesh_prim_.GetPointsAttr().ValueMightBeTimeVarying() ||
+      mesh_prim_.GetVelocitiesAttr().ValueMightBeTimeVarying())
+  {
     is_time_varying_ = true;
   }
 
@@ -808,7 +810,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
                                const USDMeshReadParams params,
-                               const char ** /*err_str*/)
+                               const char ** /*r_err_str*/)
 {
   if (!mesh_prim_) {
     return existing_mesh;
@@ -866,10 +868,10 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 
 void USDMeshReader::read_geometry(bke::GeometrySet &geometry_set,
                                   const USDMeshReadParams params,
-                                  const char **err_str)
+                                  const char **r_err_str)
 {
   Mesh *existing_mesh = geometry_set.get_mesh_for_write();
-  Mesh *new_mesh = read_mesh(existing_mesh, params, err_str);
+  Mesh *new_mesh = read_mesh(existing_mesh, params, r_err_str);
 
   if (new_mesh != existing_mesh) {
     geometry_set.replace_mesh(new_mesh);

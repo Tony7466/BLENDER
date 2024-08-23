@@ -623,11 +623,11 @@ void WM_toolsystem_refresh_active(bContext *C)
     CTX_wm_region_set(C, context_prev.region);
   }
 
-  BKE_workspace_id_tag_all_visible(bmain, LIB_TAG_DOIT);
+  BKE_workspace_id_tag_all_visible(bmain, ID_TAG_DOIT);
 
   LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
-    if (workspace->id.tag & LIB_TAG_DOIT) {
-      workspace->id.tag &= ~LIB_TAG_DOIT;
+    if (workspace->id.tag & ID_TAG_DOIT) {
+      workspace->id.tag &= ~ID_TAG_DOIT;
       /* Refresh to ensure data is initialized.
        * This is needed because undo can load a state which no longer has the underlying DNA data
        * needed for the tool (un-initialized paint-slots for eg), see: #64339. */
@@ -638,11 +638,14 @@ void WM_toolsystem_refresh_active(bContext *C)
   }
 }
 
-void WM_toolsystem_refresh_screen_area(WorkSpace *workspace,
+bool WM_toolsystem_refresh_screen_area(WorkSpace *workspace,
                                        const Scene *scene,
                                        ViewLayer *view_layer,
                                        ScrArea *area)
 {
+  const bool is_tool_set_prev = area->runtime.is_tool_set;
+  const bToolRef *tref_prev = area->runtime.tool;
+
   area->runtime.tool = nullptr;
   area->runtime.is_tool_set = true;
   const int mode = WM_toolsystem_mode_from_spacetype(scene, view_layer, area, area->spacetype);
@@ -654,6 +657,7 @@ void WM_toolsystem_refresh_screen_area(WorkSpace *workspace,
       }
     }
   }
+  return !(is_tool_set_prev && (tref_prev == area->runtime.tool));
 }
 
 void WM_toolsystem_refresh_screen_window(wmWindow *win)
@@ -814,7 +818,7 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
         case SEQ_VIEW_SEQUENCE:
           return "builtin.select";
         case SEQ_VIEW_PREVIEW:
-          return "builtin.sample";
+          return "builtin.select_box";
         case SEQ_VIEW_SEQUENCE_PREVIEW:
           return "builtin.select";
       }

@@ -2739,7 +2739,7 @@ static int paste_material_exec(bContext *C, wmOperator *op)
    * check for a property that marks this as the active material. */
   Material *ma_from = nullptr;
   LISTBASE_FOREACH (Material *, ma_iter, &temp_bmain->materials) {
-    if (ma_iter->id.flag & LIB_CLIPBOARD_MARK) {
+    if (ma_iter->id.flag & ID_FLAG_CLIPBOARD_MARK) {
       ma_from = ma_iter;
       break;
     }
@@ -2769,7 +2769,7 @@ static int paste_material_exec(bContext *C, wmOperator *op)
     BKE_library_foreach_ID_link(
         bmain, &nodetree->id, paste_material_nodetree_ids_decref, nullptr, IDWALK_NOP);
 
-    blender::bke::ntreeFreeEmbeddedTree(nodetree);
+    blender::bke::node_tree_free_embedded_tree(nodetree);
     MEM_freeN(nodetree);
     ma->nodetree = nullptr;
   }

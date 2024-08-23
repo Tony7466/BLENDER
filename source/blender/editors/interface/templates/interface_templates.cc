@@ -16,6 +16,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
@@ -44,6 +45,7 @@
 #include "BLF_api.hh"
 #include "BLT_translation.hh"
 
+#include "BKE_anim_data.hh"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
 #include "BKE_colorband.hh"
@@ -61,7 +63,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -450,11 +452,11 @@ static void id_search_cb_tagged(const bContext *C,
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
-    if (id->tag & LIB_TAG_DOIT) {
+    if (id->tag & ID_TAG_DOIT) {
       if (id_search_allows_id(template_ui, flag, id, str)) {
         search.add(id->name + 2, id);
       }
-      id->tag &= ~LIB_TAG_DOIT;
+      id->tag &= ~ID_TAG_DOIT;
     }
   }
 
@@ -488,10 +490,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
     scene = CTX_data_scene(C);
   }
 
-  BKE_main_id_flag_listbase(lb, LIB_TAG_DOIT, false);
+  BKE_main_id_flag_listbase(lb, ID_TAG_DOIT, false);
 
   FOREACH_SCENE_OBJECT_BEGIN (scene, ob_iter) {
-    ob_iter->id.tag |= LIB_TAG_DOIT;
+    ob_iter->id.tag |= ID_TAG_DOIT;
   }
   FOREACH_SCENE_OBJECT_END;
   id_search_cb_tagged(C, arg_template, str, items);
@@ -545,7 +547,7 @@ static uiBlock *id_search_menu(bContext *C, ARegion *region, void *arg_litem)
 
 static void template_id_cb(bContext *C, void *arg_litem, void *arg_event);
 
-void UI_context_active_but_prop_get_templateID(bContext *C,
+void UI_context_active_but_prop_get_templateID(const bContext *C,
                                                PointerRNA *r_ptr,
                                                PropertyRNA **r_prop)
 {
@@ -591,7 +593,7 @@ static void template_id_liboverride_hierarchy_collection_root_find_recursive(
 static void template_id_liboverride_hierarchy_collections_tag_recursive(
     Collection *root_collection, ID *target_id, const bool do_parents)
 {
-  root_collection->id.tag |= LIB_TAG_DOIT;
+  root_collection->id.tag |= ID_TAG_DOIT;
 
   /* Tag all local parents of the root collection, so that usages of the root collection and other
    * linked ones can be replaced by the local overrides in those parents too. */
@@ -604,7 +606,7 @@ static void template_id_liboverride_hierarchy_collections_tag_recursive(
       if (ID_IS_LINKED(iter->collection)) {
         continue;
       }
-      iter->collection->id.tag |= LIB_TAG_DOIT;
+      iter->collection->id.tag |= ID_TAG_DOIT;
     }
   }
 
@@ -747,7 +749,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -762,7 +764,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       else if (object_active != nullptr && !ID_IS_LINKED(object_active) &&
                &object_active->instance_collection->id == id)
       {
-        object_active->id.tag |= LIB_TAG_DOIT;
+        object_active->id.tag |= ID_TAG_DOIT;
         BKE_lib_override_library_create(bmain,
                                         scene,
                                         view_layer,
@@ -780,7 +782,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -794,7 +796,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       }
       else {
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(
             bmain, scene, view_layer, nullptr, id, nullptr, nullptr, &id_override, false);
@@ -821,7 +823,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
         {
           template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
           if (object_active != nullptr) {
-            object_active->id.tag |= LIB_TAG_DOIT;
+            object_active->id.tag |= ID_TAG_DOIT;
           }
           BKE_lib_override_library_create(bmain,
                                           scene,
@@ -834,7 +836,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
                                           false);
         }
         else {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
           BKE_lib_override_library_create(bmain,
                                           scene,
                                           view_layer,
@@ -982,7 +984,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_FAKE_USER:
       if (id) {
-        if (id->flag & LIB_FAKEUSER) {
+        if (id->flag & ID_FLAG_FAKEUSER) {
           id_us_plus(id);
         }
         else {
@@ -1047,6 +1049,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         else {
           Main *bmain = CTX_data_main(C);
           id_single_user(C, id, &template_ui->ptr, template_ui->prop);
+          WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
           DEG_relations_tag_update(bmain);
         }
         undo_push_label = "Make Single User";
@@ -1371,7 +1374,7 @@ static void template_ID(const bContext *C,
     if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
-        if (id->tag & LIB_TAG_INDIRECT) {
+        if (id->tag & ID_TAG_INDIRECT) {
           but = uiDefIconBut(block,
                              UI_BTYPE_BUT,
                              0,
@@ -1815,6 +1818,54 @@ void uiTemplateID(uiLayout *layout,
                  1.0f,
                  live_icon,
                  false);
+}
+
+void uiTemplateAction(uiLayout *layout,
+                      const bContext *C,
+                      ID *id,
+                      const char *newop,
+                      const char *unlinkop,
+                      const char *text)
+{
+  if (!id_can_have_animdata(id)) {
+    RNA_warning("Cannot show Action selector for non-animatable ID: %s", id->name + 2);
+    return;
+  }
+
+  PropertyRNA *adt_action_prop = RNA_struct_type_find_property(&RNA_AnimData, "action");
+  BLI_assert(adt_action_prop);
+  BLI_assert(RNA_property_type(adt_action_prop) == PROP_POINTER);
+
+  /* Construct a pointer with the animated ID as owner, even when `adt` may be `nullptr`.
+   * This way it is possible to use this RNA pointer to get/set `adt->action`, as that RNA property
+   * has a getter and setter that only need the owner ID and are null-safe regarding the `adt`
+   * itself. */
+  AnimData *adt = BKE_animdata_from_id(id);
+  PointerRNA adt_ptr = RNA_pointer_create(id, &RNA_AnimData, adt);
+
+  /* This must be heap-allocated because template_ID() will call MEM_dupallocN()
+   * on the pointer we pass, and that doesn't like stack-allocated stuff. */
+  TemplateID *template_ui = MEM_cnew<TemplateID>(__func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(template_ui); });
+  template_ui->ptr = adt_ptr;
+  template_ui->prop = adt_action_prop;
+  template_ui->prv_rows = 0;
+  template_ui->prv_cols = 0;
+  template_ui->scale = 1.0f;
+  template_ui->filter = UI_TEMPLATE_ID_FILTER_ALL;
+
+  int flag = UI_ID_BROWSE | UI_ID_RENAME | UI_ID_DELETE;
+  if (newop) {
+    flag |= UI_ID_ADD_NEW;
+  }
+
+  template_ui->idcode = ID_AC;
+  template_ui->idlb = which_libbase(CTX_data_main(C), ID_AC);
+  BLI_assert(template_ui->idlb);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  template_ID(
+      C, row, template_ui, &RNA_Action, flag, newop, nullptr, unlinkop, text, false, false);
 }
 
 void uiTemplateIDBrowse(uiLayout *layout,
@@ -6405,7 +6456,7 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     if (msg) {
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
       uiItemS_ex(row, -0.5f);
-      uiItemL(row, msg ? msg : "", ICON_NONE);
+      uiItemL(row, msg, ICON_NONE);
       uiItemS_ex(row, 0.7f);
     }
 
