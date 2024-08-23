@@ -25,6 +25,7 @@
 namespace blender::gpu {
 class Batch;
 class IndexBuf;
+class VertBuf;
 }  // namespace blender::gpu
 struct Mesh;
 struct CustomData;

@@ -340,9 +340,6 @@ static void pbvh_bmesh_node_split(Tree &pbvh,
   }
   n->bm_faces_.clear_and_shrink();
 
-  if (n->draw_batches_) {
-    draw::pbvh::node_free(n->draw_batches_);
-  }
   n->flag_ &= ~PBVH_Leaf;
 
   /* Recurse. */
