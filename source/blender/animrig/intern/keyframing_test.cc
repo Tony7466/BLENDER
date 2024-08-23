@@ -218,6 +218,55 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   EXPECT_EQ(7.0, fcurve->bezt[1].vec[1][1]);
 }
 
+TEST_F(KeyframingTest, insert_keyframes__layered_action__action_reuse)
+{
+  /* Turn on Baklava experimental flag. */
+  U.flag |= USER_DEVELOPER_UI;
+  U.experimental.use_animation_baklava = 1;
+
+  AnimationEvalContext anim_eval_context = {nullptr, 1.0};
+  CombinedKeyingResult result_ob;
+  result_ob = insert_keyframes(bmain,
+                               &armature_object_rna_pointer,
+                               std::nullopt,
+                               {{"location"}},
+                               10.0,
+                               anim_eval_context,
+                               BEZT_KEYTYPE_KEYFRAME,
+                               INSERTKEY_NOFLAGS);
+
+  ASSERT_EQ(result_ob.get_count(SingleKeyingResult::SUCCESS), 3);
+  ASSERT_TRUE(armature_object->adt != nullptr);
+  ASSERT_TRUE(armature_object->adt->action != nullptr);
+
+  PointerRNA armature_rna_pointer = RNA_id_pointer_create(&armature->id);
+
+  result_ob = insert_keyframes(bmain,
+                               &armature_rna_pointer,
+                               std::nullopt,
+                               {{"display_type"}},
+                               10.0,
+                               anim_eval_context,
+                               BEZT_KEYTYPE_KEYFRAME,
+                               INSERTKEY_NOFLAGS);
+  ASSERT_EQ(result_ob.get_count(SingleKeyingResult::SUCCESS), 1);
+  ASSERT_TRUE(armature->adt != nullptr);
+  ASSERT_TRUE(armature->adt->action != nullptr);
+
+  /* Action is expected to be reused between object and data. */
+  ASSERT_TRUE(armature->adt->action == armature_object->adt->action);
+
+  Action &action = armature->adt->action->wrap();
+  /* Should have two slots now. */
+  ASSERT_EQ(action.slot_array_num, 2);
+  for (Slot *slot : action.slots()) {
+    ASSERT_TRUE(slot->idtype == ID_AR || slot->idtype == ID_OB);
+  }
+
+  U.experimental.use_animation_baklava = 0;
+  U.flag &= ~USER_DEVELOPER_UI;
+}
+
 /* Keying a single element of an array property. */
 TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
 {
