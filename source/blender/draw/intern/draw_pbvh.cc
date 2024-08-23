@@ -652,10 +652,9 @@ static void fill_vbos_grids(const Object &object,
     }
   }
   else {
-    const GenericRequest &attr = std::get<GenericRequest>(request);
-    const eCustomDataType data_type = attr.type;
+    const eCustomDataType type = std::get<GenericRequest>(request).type;
     nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-      bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+      bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         using Converter = AttributeConverter<T>;
         using VBOType = typename Converter::VBOType;
@@ -699,14 +698,14 @@ static void fill_vbos_mesh(const Object &object,
       case CustomRequest::Normal: {
         const Span<float3> vert_normals = bke::pbvh::vert_normals_eval_from_eval(object);
         const Span<float3> face_normals = bke::pbvh::face_normals_eval_from_eval(object);
-        const VArraySpan sharp_faces = *attributes.lookup<bool>(".sharp_face",
+        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
         nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_normal_mesh(corner_verts,
                                corner_tris,
                                tri_faces,
-                               hide_poly,
                                sharp_faces,
+                               hide_poly,
                                vert_normals,
                                face_normals,
                                bke::pbvh::node_tri_indices(nodes[i]),
@@ -716,29 +715,41 @@ static void fill_vbos_mesh(const Object &object,
       }
       case CustomRequest::Mask: {
         const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          extract_data_vert_mesh<float>(corner_verts,
-                                        corner_tris,
-                                        tri_faces,
-                                        hide_poly,
-                                        mask,
-                                        bke::pbvh::node_tri_indices(nodes[i]),
-                                        *vbos[i]);
-        });
+        if (!mask.is_empty()) {
+          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+            extract_data_vert_mesh<float>(corner_verts,
+                                          corner_tris,
+                                          tri_faces,
+                                          hide_poly,
+                                          mask,
+                                          bke::pbvh::node_tri_indices(nodes[i]),
+                                          *vbos[i]);
+          });
+        }
+        else {
+          nodes_to_update.foreach_index(GrainSize(16),
+                                        [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
+        }
         break;
       }
       case CustomRequest::FaceSet: {
         const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                              bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_face_set_mesh(tri_faces,
-                                 hide_poly,
-                                 face_sets,
-                                 orig_mesh_data.face_set_default,
-                                 orig_mesh_data.face_set_seed,
-                                 bke::pbvh::node_tri_indices(nodes[i]),
-                                 *vbos[i]);
-        });
+        if (!face_sets.is_empty()) {
+          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+            fill_vbo_face_set_mesh(tri_faces,
+                                   hide_poly,
+                                   face_sets,
+                                   orig_mesh_data.face_set_default,
+                                   orig_mesh_data.face_set_seed,
+                                   bke::pbvh::node_tri_indices(nodes[i]),
+                                   *vbos[i]);
+          });
+        }
+        else {
+          nodes_to_update.foreach_index(
+              GrainSize(16), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
+        }
         break;
       }
     }
@@ -1450,6 +1461,8 @@ static GPUVertFormat format_for_request(const OrigMeshData &orig_mesh_data,
     const GenericRequest &attr = std::get<GenericRequest>(request);
     return attribute_format(orig_mesh_data, attr.name, attr.type);
   }
+  BLI_assert_unreachable();
+  return {};
 }
 
 static void ensure_vbos_allocated_mesh(const Object &object,
