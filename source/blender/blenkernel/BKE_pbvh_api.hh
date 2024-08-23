@@ -525,6 +525,8 @@ MutableSpan<float3> vert_positions_eval_for_write(const Depsgraph &depsgraph, Ob
 Span<float3> vert_normals_eval(const Depsgraph &depsgraph, const Object &object_orig);
 Span<float3> vert_normals_eval_from_eval(const Object &object_eval);
 
+Span<float3> face_normals_eval_from_eval(const Object &object_eval);
+
 }  // namespace blender::bke::pbvh
 
 void BKE_pbvh_ensure_node_face_corners(blender::bke::pbvh::Tree &pbvh,
@@ -539,6 +541,10 @@ Vector<Node *> all_leaf_nodes(Tree &pbvh);
 Vector<Node *> search_gather(Tree &pbvh,
                              FunctionRef<bool(Node &)> scb,
                              PBVHNodeFlags leaf_flag = PBVH_Leaf);
+
+IndexMask search_nodes(const Tree &pbvh,
+                       IndexMaskMemory &memory,
+                       FunctionRef<bool(const Node &)> filter_fn);
 
 void node_update_mask_mesh(Span<float> mask, Node &node);
 void node_update_mask_grids(const CCGKey &key, Span<CCGElem *> grids, Node &node);

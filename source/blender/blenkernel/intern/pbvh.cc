@@ -612,7 +612,7 @@ Tree::~Tree()
 {
   for (Node &node : this->nodes_) {
     if (node.flag_ & (PBVH_Leaf | PBVH_TexLeaf)) {
-      blender::bke::pbvh::node_pixels_free(&node);
+      node_pixels_free(&node);
     }
   }
 
@@ -2639,6 +2639,13 @@ Span<float3> vert_normals_eval_from_eval(const Object &object_eval)
   return vert_normals_cache_eval(object_orig, object_eval).data();
 }
 
+Span<float3> face_normals_eval_from_eval(const Object &object_eval)
+{
+  BLI_assert(!DEG_is_original_object(&object_eval));
+  Object &object_orig = *DEG_get_original_object(&const_cast<Object &>(object_eval));
+  return face_normals_cache_eval(object_orig, object_eval).data();
+}
+
 }  // namespace blender::bke::pbvh
 
 void BKE_pbvh_ensure_node_face_corners(blender::bke::pbvh::Tree &pbvh,
@@ -2810,6 +2817,19 @@ Vector<Node *> search_gather(Tree &pbvh,
   }
 
   return nodes;
+}
+
+IndexMask search_nodes(const Tree &pbvh,
+                       IndexMaskMemory &memory,
+                       FunctionRef<bool(const Node &)> filter_fn)
+{
+  Vector<Node *> nodes = search_gather(const_cast<Tree &>(pbvh),
+                                       [&](Node &node) { return filter_fn(node); });
+  Array<int> indices(nodes.size());
+  for (const int i : nodes.index_range()) {
+    indices[i] = nodes[i] - pbvh.nodes_.data();
+  }
+  return IndexMask::from_indices(indices.as_span(), memory);
 }
 
 }  // namespace blender::bke::pbvh
