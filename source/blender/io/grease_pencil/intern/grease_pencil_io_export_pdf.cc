@@ -81,7 +81,7 @@ bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
     case ExportParams::FrameMode::Active: {
       const int frame_number = scene.r.cfra;
 
-      this->prepare_camera_params(scene, frame_number, true);
+      this->prepare_render_params(scene, frame_number);
       this->add_page();
       this->export_grease_pencil_objects(frame_number);
       result = this->write_to_file(filepath);
@@ -99,7 +99,7 @@ bool PDFExporter::export_scene(Scene &scene, StringRefNull filepath)
           scene.r.cfra = frame_number;
           BKE_scene_graph_update_for_newframe(context_.depsgraph);
 
-          this->prepare_camera_params(scene, frame_number, true);
+          this->prepare_render_params(scene, frame_number);
           this->add_page();
           this->export_grease_pencil_objects(frame_number);
         }
@@ -154,8 +154,6 @@ void PDFExporter::export_grease_pencil_layer(const Object &object,
   using bke::greasepencil::Drawing;
 
   const float4x4 layer_to_world = layer.to_world_space(object);
-  const float4x4 viewmat = float4x4(context_.rv3d->viewmat);
-  const float4x4 layer_to_view = viewmat * layer_to_world;
 
   auto write_stroke = [&](const Span<float3> positions,
                           const bool cyclic,
@@ -164,7 +162,7 @@ void PDFExporter::export_grease_pencil_layer(const Object &object,
                           const std::optional<float> width,
                           const bool /*round_cap*/,
                           const bool /*is_outline*/) {
-    write_stroke_to_polyline(layer_to_view, positions, cyclic, color, opacity, width);
+    write_stroke_to_polyline(layer_to_world, positions, cyclic, color, opacity, width);
   };
 
   foreach_stroke_in_layer(object, layer, drawing, write_stroke);
@@ -192,8 +190,8 @@ bool PDFExporter::add_page()
     return false;
   }
 
-  HPDF_Page_SetWidth(page_, render_size_.x);
-  HPDF_Page_SetHeight(page_, render_size_.y);
+  HPDF_Page_SetWidth(page_, render_rect_.size().x);
+  HPDF_Page_SetHeight(page_, render_rect_.size().y);
 
   return true;
 }
@@ -236,7 +234,7 @@ void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
   }
 
   for (const int i : positions.index_range()) {
-    const float2 screen_co = this->project_to_screen(transform, positions[i]);
+    const float2 screen_co = this->project_to_screen(transform, positions[i], false, false);
     if (i == 0) {
       HPDF_Page_MoveTo(page_, screen_co.x, screen_co.y);
     }

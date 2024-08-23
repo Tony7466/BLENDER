@@ -35,6 +35,8 @@
 
 #include "gpencil_io_base.hh"
 
+#include <iostream>
+
 using blender::Span;
 
 namespace blender::io::gpencil {
