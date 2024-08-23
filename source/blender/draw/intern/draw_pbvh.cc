@@ -1774,11 +1774,4 @@ Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data)
   return draw_data.material_indices;
 }
 
-IndexMask calc_visible_nodes(const bke::pbvh::Tree &pbvh,
-                             const RegionView3D &rv3d,
-                             IndexMaskMemory &memory)
-{
-  //
-}
-
 }  // namespace blender::draw::pbvh
