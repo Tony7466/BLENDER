@@ -126,11 +126,6 @@ static void rna_Action_tag_animupdate(Main *, Scene *, PointerRNA *ptr)
   DEG_id_tag_update(&action.id, ID_RECALC_ANIMATION);
 }
 
-static animrig::Strip &rna_data_strip(const PointerRNA *ptr)
-{
-  return reinterpret_cast<ActionStrip *>(ptr->data)->wrap();
-}
-
 static animrig::ChannelBag &rna_data_channelbag(const PointerRNA *ptr)
 {
   return reinterpret_cast<ActionChannelBag *>(ptr->data)->wrap();
@@ -448,14 +443,15 @@ static ActionChannelBag *rna_ChannelBags_new(ActionStrip *dna_strip,
                                              ActionSlot *dna_slot)
 {
   animrig::Strip &strip = dna_strip->wrap();
+  animrig::StripKeyframeData &strip_data = strip.keyframe_data();
   animrig::Slot &slot = dna_slot->wrap();
 
-  if (key_strip.channelbag_for_slot(slot) != nullptr) {
+  if (strip_data.channelbag_for_slot(slot) != nullptr) {
     BKE_report(reports, RPT_ERROR, "A channelbag for this slot already exists");
     return nullptr;
   }
 
-  ChannelBag &channelbag = key_strip.channelbag_for_slot_add(slot);
+  ChannelBag &channelbag = strip_data.channelbag_for_slot_add(slot);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   /* No need to tag the depsgraph, as there is no new animation yet. */
@@ -1726,13 +1722,13 @@ static void rna_def_keyframestrip_channelbags(BlenderRNA *brna, PropertyRNA *cpr
 
   RNA_def_property_srna(cprop, "ActionChannelBags");
   srna = RNA_def_struct(brna, "ActionChannelBags", nullptr);
-  RNA_def_struct_sdna(srna, "KeyframeActionStrip");
+  RNA_def_struct_sdna(srna, "ActionStrip");
   RNA_def_struct_ui_text(
       srna,
       "Animation Channels for Slots",
       "For each action slot, a list of animation channels that are meant for that slot");
 
-  /* KeyframeStrip.channelbags.new(slot=...) */
+  /* Strip.channelbags.new(slot=...) */
   func = RNA_def_function(srna, "new", "rna_ChannelBags_new");
   RNA_def_function_ui_description(
       func,
@@ -1749,7 +1745,7 @@ static void rna_def_keyframestrip_channelbags(BlenderRNA *brna, PropertyRNA *cpr
   parm = RNA_def_pointer(func, "channelbag", "ActionChannelBag", "", "Newly created channelbag");
   RNA_def_function_return(func, parm);
 
-  /* KeyframeStrip.channelbags.remove(strip) */
+  /* Strip.channelbags.remove(strip) */
   func = RNA_def_function(srna, "remove", "rna_ChannelBags_remove");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Remove the channelbag from the strip");
@@ -1757,14 +1753,12 @@ static void rna_def_keyframestrip_channelbags(BlenderRNA *brna, PropertyRNA *cpr
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED | PARM_RNAPTR);
 }
 
-static void rna_def_action_keyframe_strip(BlenderRNA *brna)
+/**
+ * Define the methods and properties specific to keyframe strips.
+ */
+static void rna_def_action_keyframe_strip(BlenderRNA *brna, StructRNA *srna)
 {
-  StructRNA *srna;
   PropertyRNA *prop;
-
-  srna = RNA_def_struct(brna, "ActionStrip", "ActionStrip");
-  RNA_def_struct_ui_text(
-      srna, "Keyframe Animation Strip", "Strip with a set of F-Curves for each action slot");
 
   prop = RNA_def_property(srna, "channelbags", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "ActionChannelBag");
@@ -1783,7 +1777,7 @@ static void rna_def_action_keyframe_strip(BlenderRNA *brna)
     FunctionRNA *func;
     PropertyRNA *parm;
 
-    /* KeyframeStrip.channels(...). */
+    /* Strip.channels(...). */
     func = RNA_def_function(srna, "channels", "rna_ActionStrip_channels");
     RNA_def_function_ui_description(func, "Find the ActionChannelBag for a specific Slot");
     parm = RNA_def_int(func,
@@ -1799,7 +1793,7 @@ static void rna_def_action_keyframe_strip(BlenderRNA *brna)
     parm = RNA_def_pointer(func, "channels", "ActionChannelBag", "Channels", "");
     RNA_def_function_return(func, parm);
 
-    /* KeyframeStrip.key_insert(...). */
+    /* Strip.key_insert(...). */
 
     func = RNA_def_function(srna, "key_insert", "rna_ActionStrip_key_insert");
     RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
@@ -1877,8 +1871,10 @@ static void rna_def_action_strip(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, prop_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  /* Define Strip subclasses. */
-  rna_def_action_keyframe_strip(brna);
+  /* Define methods and properties specific to different strip types.
+   *
+   * TODO: move these to a data property on the strip. */
+  rna_def_action_keyframe_strip(brna, srna);
 }
 
 static void rna_def_channelbag_fcurves(BlenderRNA *brna, PropertyRNA *cprop)

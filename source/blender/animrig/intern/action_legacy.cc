@@ -12,7 +12,7 @@ static Strip *first_keyframe_strip(Action &action)
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
       if (strip->is_keyframe_strip()) {
-        return &strip;
+        return strip;
       }
     }
   }
@@ -49,7 +49,7 @@ ChannelBag &channelbag_ensure(Action &action)
 
   /* Ensure a Layer + keyframe Strip. */
   action.layer_keystrip_ensure();
-  Strip &keystrip = action.layer(0)->strip(0);
+  Strip &keystrip = *action.layer(0)->strip(0);
 
   /* Ensure a ChannelBag. */
   return keystrip.keyframe_data().channelbag_for_slot_ensure(*slot);

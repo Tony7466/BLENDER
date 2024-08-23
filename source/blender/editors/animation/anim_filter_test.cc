@@ -72,22 +72,25 @@ TEST_F(ActionFilterTest, slots_expanded_or_not)
   ASSERT_TRUE(action->assign_id(&slot_suzanne, suzanne->id));
 
   Layer &layer = action->layer_add("Kübus layer");
-  KeyframeStrip &key_strip = layer.strip_add(Strip::Type::Keyframe).as<KeyframeStrip>();
+  Strip &key_strip = layer.strip_add(Strip::Type::Keyframe);
+  StripKeyframeData &strip_data = key_strip.keyframe_data();
 
   /* Create multiple FCurves for multiple Slots. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  ASSERT_EQ(SingleKeyingResult::SUCCESS,
-            key_strip.keyframe_insert(bmain, slot_cube, {"location", 0}, {1.0f, 0.25f}, settings));
-  ASSERT_EQ(SingleKeyingResult::SUCCESS,
-            key_strip.keyframe_insert(bmain, slot_cube, {"location", 1}, {1.0f, 0.25f}, settings));
   ASSERT_EQ(
       SingleKeyingResult::SUCCESS,
-      key_strip.keyframe_insert(bmain, slot_suzanne, {"location", 0}, {1.0f, 0.25f}, settings));
+      strip_data.keyframe_insert(bmain, slot_cube, {"location", 0}, {1.0f, 0.25f}, settings));
   ASSERT_EQ(
       SingleKeyingResult::SUCCESS,
-      key_strip.keyframe_insert(bmain, slot_suzanne, {"location", 1}, {1.0f, 0.25f}, settings));
+      strip_data.keyframe_insert(bmain, slot_cube, {"location", 1}, {1.0f, 0.25f}, settings));
+  ASSERT_EQ(
+      SingleKeyingResult::SUCCESS,
+      strip_data.keyframe_insert(bmain, slot_suzanne, {"location", 0}, {1.0f, 0.25f}, settings));
+  ASSERT_EQ(
+      SingleKeyingResult::SUCCESS,
+      strip_data.keyframe_insert(bmain, slot_suzanne, {"location", 1}, {1.0f, 0.25f}, settings));
 
-  ChannelBag *cube_channel_bag = key_strip.channelbag_for_slot(slot_cube);
+  ChannelBag *cube_channel_bag = strip_data.channelbag_for_slot(slot_cube);
   ASSERT_NE(nullptr, cube_channel_bag);
   FCurve *fcu_cube_loc_x = cube_channel_bag->fcurve_find({"location", 0});
   FCurve *fcu_cube_loc_y = cube_channel_bag->fcurve_find({"location", 1});
@@ -229,19 +232,22 @@ TEST_F(ActionFilterTest, layered_action_active_fcurves)
   ASSERT_TRUE(action->assign_id(&slot_cube, cube->id));
 
   Layer &layer = action->layer_add("Kübus layer");
-  KeyframeStrip &key_strip = layer.strip_add(Strip::Type::Keyframe).as<KeyframeStrip>();
+  Strip &key_strip = layer.strip_add(Strip::Type::Keyframe);
+  StripKeyframeData &strip_data = key_strip.keyframe_data();
 
   /* Create multiple FCurves. */
   const KeyframeSettings settings = get_keyframe_settings(false);
-  ASSERT_EQ(SingleKeyingResult::SUCCESS,
-            key_strip.keyframe_insert(bmain, slot_cube, {"location", 0}, {1.0f, 0.25f}, settings));
-  ASSERT_EQ(SingleKeyingResult::SUCCESS,
-            key_strip.keyframe_insert(bmain, slot_cube, {"location", 1}, {1.0f, 0.25f}, settings));
+  ASSERT_EQ(
+      SingleKeyingResult::SUCCESS,
+      strip_data.keyframe_insert(bmain, slot_cube, {"location", 0}, {1.0f, 0.25f}, settings));
+  ASSERT_EQ(
+      SingleKeyingResult::SUCCESS,
+      strip_data.keyframe_insert(bmain, slot_cube, {"location", 1}, {1.0f, 0.25f}, settings));
 
   /* Set one F-Curve as the active one, and the other as inactive. The latter is necessary because
    * by default the first curve is automatically marked active, but that's too trivial a test case
    * (it's too easy to mistakenly just return the first-seen F-Curve). */
-  ChannelBag *cube_channel_bag = key_strip.channelbag_for_slot(slot_cube);
+  ChannelBag *cube_channel_bag = strip_data.channelbag_for_slot(slot_cube);
   ASSERT_NE(nullptr, cube_channel_bag);
   FCurve *fcurve_active = cube_channel_bag->fcurve_find({"location", 1});
   fcurve_active->flag |= FCURVE_ACTIVE;

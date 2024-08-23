@@ -82,8 +82,9 @@ static animrig::Strip &ActionStrip_alloc_infinite(bAction *owning_action, const 
 
   switch (type) {
     case Strip::Type::Keyframe: {
-      strip->strip_type = type;
-      strip->data_index = owning_action->new_strip_keyframe_data();
+      strip->strip_type = int8_t(type);
+      StripKeyframeData *strip_data = MEM_new<StripKeyframeData>(__func__);
+      strip->data_index = owning_action->wrap().strip_keyframe_data_append(strip_data);
       break;
     }
   }
@@ -486,12 +487,10 @@ bool Action::is_slot_animated(const slot_handle_t slot_handle) const
   return !fcurves.is_empty();
 }
 
-int Action::new_strip_keyframe_data()
+int Action::strip_keyframe_data_append(StripKeyframeData *strip_data)
 {
-  ActionStripKeyframeData *data = MEM_new<ActionStripKeyframeData>(__func__);
-
-  grow_array_and_append<::ActionLayer *>(
-      &this->strip_keyframe_data_array, &this->strip_keyframe_data_num, data);
+  grow_array_and_append<ActionStripKeyframeData *>(
+      &this->strip_keyframe_data_array, &this->strip_keyframe_data_num, strip_data);
 
   return this->strip_keyframe_data_num - 1;
 }
@@ -961,18 +960,31 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 
 /* ----- ActionStrip implementation ----------- */
 
-// Strip *Strip::duplicate(const StringRefNull allocation_name) const
-// {
-//   switch (this->type()) {
-//     case Type::Keyframe: {
-//       const KeyframeStrip &source = this->as<KeyframeStrip>();
-//       KeyframeStrip *copy = MEM_new<KeyframeStrip>(allocation_name.c_str(), source);
-//       return &copy->strip.wrap();
-//     }
-//   }
-//   BLI_assert_unreachable();
-//   return nullptr;
-// }
+Strip *Strip::duplicate(const StringRefNull allocation_name) const
+{
+  Action &action = this->owning_action->wrap();
+
+  /* Make shallow copy of the strip. */
+  Strip *copy = nullptr;
+  {
+    ActionStrip *tmp = MEM_new<ActionStrip>(allocation_name.c_str());
+    *tmp = *(ActionStrip *)(this);
+    copy = &tmp->wrap();
+  }
+
+  /* Duplicate the strip's data. */
+  switch (copy->type()) {
+    case Type::Keyframe: {
+      const StripKeyframeData &strip_data_source = *action.strip_keyframe_data()[copy->data_index];
+      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(allocation_name.c_str(),
+                                                                      strip_data_source);
+      copy->data_index = action.strip_keyframe_data_append(strip_data_copy);
+      break;
+    }
+  }
+
+  return copy;
+}
 
 Strip::~Strip()
 {
@@ -1016,16 +1028,16 @@ void Strip::resize(const float frame_start, const float frame_end)
 const StripKeyframeData &Strip::keyframe_data() const
 {
   BLI_assert(this->owning_action != nullptr);
-  BLI_assert(this->strip_type == animrig::Strip::Type::Keyframe);
+  BLI_assert(this->type() == animrig::Strip::Type::Keyframe);
 
-  return *strip.owning_action->wrap().strip_keyframe_data()[strip.data_index];
+  return *this->owning_action->wrap().strip_keyframe_data()[this->data_index];
 }
 StripKeyframeData &Strip::keyframe_data()
 {
   BLI_assert(this->owning_action != nullptr);
-  BLI_assert(this->strip_type == animrig::Strip::Type::Keyframe);
+  BLI_assert(this->type() == animrig::Strip::Type::Keyframe);
 
-  return *strip.owning_action->wrap().strip_keyframe_data()[strip.data_index];
+  return *this->owning_action->wrap().strip_keyframe_data()[this->data_index];
 }
 
 /* ----- ActionStripKeyframeData implementation ----------- */
@@ -1421,7 +1433,7 @@ static Vector<FCurveType *> fcurves_all_into(ActionType &action)
     for (StripType *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
-          StripKeyframeData &data = strip->keyframe_data();
+          StripKeyframeDataType &data = strip->keyframe_data();
           for (ChannelBagType *bag : data.channelbags()) {
             for (FCurveType *fcurve : bag->fcurves()) {
               all_fcurves.append(fcurve);
@@ -1687,8 +1699,8 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
   Strip &strip = layer.strip_add(Strip::Type::Keyframe);
-  BLI_assert(strip.channelbag_array_num == 0);
-  ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
+  BLI_assert(strip.keyframe_data().channelbag_array_num == 0);
+  ChannelBag *bag = &strip.keyframe_data().channelbag_for_slot_add(slot);
 
   const int fcu_count = BLI_listbase_count(&legacy_action.curves);
   bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Convert to layered action");

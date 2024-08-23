@@ -251,7 +251,7 @@ class Action : public ::bAction {
    *
    * \return The index of the new item in the array.
    */
-  int new_strip_keyframe_data();
+  int strip_keyframe_data_append(StripKeyframeData *strip_data);
 
   /** Assign this Action to the ID.
    *
@@ -349,7 +349,7 @@ class Strip : public ::ActionStrip {
 
   ~Strip();
 
-  // Strip *duplicate(StringRefNull allocation_name) const;
+  Strip *duplicate(StringRefNull allocation_name) const;
 
   enum class Type : int8_t { Keyframe = 0 };
 
