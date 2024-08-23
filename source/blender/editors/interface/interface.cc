@@ -3385,6 +3385,63 @@ static void ui_but_free_type_specific(uiBut *but)
   }
 }
 
+static void ui_but_mem_delete(const uiBut *but)
+{
+  switch (but->type) {
+    case UI_BTYPE_NUM:
+      MEM_delete(reinterpret_cast<const uiButNumber *>(but));
+      break;
+    case UI_BTYPE_NUM_SLIDER:
+      MEM_delete(reinterpret_cast<const uiButNumberSlider *>(but));
+      break;
+    case UI_BTYPE_COLOR:
+      MEM_delete(reinterpret_cast<const uiButColor *>(but));
+      break;
+    case UI_BTYPE_DECORATOR:
+      MEM_delete(reinterpret_cast<const uiButDecorator *>(but));
+      break;
+    case UI_BTYPE_TAB:
+      MEM_delete(reinterpret_cast<const uiButTab *>(but));
+      break;
+    case UI_BTYPE_SEARCH_MENU:
+      MEM_delete(reinterpret_cast<const uiButSearch *>(but));
+      break;
+    case UI_BTYPE_PROGRESS:
+      MEM_delete(reinterpret_cast<const uiButProgress *>(but));
+      break;
+    case UI_BTYPE_SEPR_LINE:
+      MEM_delete(reinterpret_cast<const uiButSeparatorLine *>(but));
+      break;
+    case UI_BTYPE_HSVCUBE:
+      MEM_delete(reinterpret_cast<const uiButHSVCube *>(but));
+      break;
+    case UI_BTYPE_COLORBAND:
+      MEM_delete(reinterpret_cast<const uiButColorBand *>(but));
+      break;
+    case UI_BTYPE_CURVE:
+      MEM_delete(reinterpret_cast<const uiButCurveMapping *>(but));
+      break;
+    case UI_BTYPE_CURVEPROFILE:
+      MEM_delete(reinterpret_cast<const uiButCurveProfile *>(but));
+      break;
+    case UI_BTYPE_HOTKEY_EVENT:
+      MEM_delete(reinterpret_cast<const uiButHotkeyEvent *>(but));
+      break;
+    case UI_BTYPE_VIEW_ITEM:
+      MEM_delete(reinterpret_cast<const uiButViewItem *>(but));
+      break;
+    case UI_BTYPE_LABEL:
+      MEM_delete(reinterpret_cast<const uiButLabel *>(but));
+      break;
+    case UI_BTYPE_SCROLL:
+      MEM_delete(reinterpret_cast<const uiButScrollBar *>(but));
+      break;
+    default:
+      MEM_delete(but);
+      break;
+  }
+}
+
 /* can be called with C==nullptr */
 static void ui_but_free(const bContext *C, uiBut *but)
 {
@@ -3442,7 +3499,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
 
   BLI_assert(UI_butstore_is_registered(but->block, but) == false);
 
-  MEM_delete(but);
+  ui_but_mem_delete(but);
 }
 
 static void ui_block_free_active_operator(uiBlock *block)
@@ -4056,7 +4113,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
   }
 #endif
 
-  MEM_delete(old_but_ptr);
+  ui_but_mem_delete(old_but_ptr);
 
   return but;
 }
