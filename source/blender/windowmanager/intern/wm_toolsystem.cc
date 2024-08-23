@@ -167,7 +167,8 @@ static blender::StringRef brush_type_identifier_get(const int brush_type,
 }
 
 static bool brush_type_is_compatible_with_active_tool(bContext *C,
-                                                      blender::StringRef brush_type_id)
+                                                      int brush_type,
+                                                      const PaintMode paint_mode)
 {
   if (!WM_toolsystem_active_tool_is_brush(C)) {
     return false;
@@ -182,26 +183,64 @@ static bool brush_type_is_compatible_with_active_tool(bContext *C,
     return true;
   }
 
-  const blender::StringRef type_from_tool = active_tool->runtime->data_block;
-  const blender::StringRef type_from_brush = brush_type_id;
-  return type_from_tool == type_from_brush;
+  const blender::StringRef type_name_from_tool = active_tool->runtime->data_block;
+  const blender::StringRef type_name_from_brush = brush_type_identifier_get(brush_type,
+                                                                            paint_mode);
+  return type_name_from_tool == type_name_from_brush;
 }
 
+bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *brush)
+{
+  const bToolRef *active_tool = WM_toolsystem_ref_from_context(C);
+
+  /* The "Brush" tool supports all kinds of brushes. Just activate the brush and keep the active
+   * tool unchanged. */
+  if (STREQ(active_tool->idname, "builtin.brush")) {
+    return BKE_paint_main_brush_set(paint, brush);
+  }
+
+  if (!BKE_paint_brush_set(paint, brush)) {
+    return false;
+  }
+  BKE_paint_toolslots_brush_update(paint);
+
+  /* If necessary, find a compatible tool to switch to. */
+  {
+    const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
+    std::optional<int> brush_type = BKE_paint_get_brush_tool_from_paintmode(brush, paint_mode);
+    if (!brush_type) {
+      BLI_assert_unreachable();
+      WM_toolsystem_ref_set_by_id(C, "builtin.brush");
+      return true;
+    }
+
+    if (!brush_type_is_compatible_with_active_tool(C, *brush_type, paint_mode)) {
+      blender::StringRef brush_type_id = brush_type_identifier_get(*brush_type, paint_mode);
+      std::optional<blender::StringRefNull> compatible_tool = find_tool_id_from_brush_type_id(
+          C, brush_type_id);
+      WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
+    }
+    return true;
+  }
+}
+
+#if 0
 void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
                                                            const int brush_type,
                                                            const PaintMode paint_mode)
 {
-  blender::StringRef brush_type_id = brush_type_identifier_get(brush_type, paint_mode);
 
-  if (brush_type_is_compatible_with_active_tool(C, brush_type_id)) {
+  if (brush_type_is_compatible_with_active_tool(C, brush_type, paint_mode)) {
     /* Active tool is already compatible, nothing to do. */
     return;
   }
 
+  blender::StringRef brush_type_id = brush_type_identifier_get(brush_type, paint_mode);
   std::optional<blender::StringRefNull> compatible_tool = find_tool_id_from_brush_type_id(
       C, brush_type_id);
   WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
 }
+#endif
 
 /**
  * Activate a brush compatible with \a tref, call when the active tool changes.
@@ -241,12 +280,49 @@ static void activate_compatible_brush_from_toolref(bContext *C,
     const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
     BLI_assert(items != nullptr);
 
-    const int i = items ? RNA_enum_from_identifier(items, tref_rt->data_block) : -1;
-    if (i != -1) {
-      const int slot_index = items[i].value;
+    if (STREQ(tref->idname, "builtin.brush")) {
       wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
       LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-        if (workspace == WM_window_get_active_workspace(win)) {
+        if (workspace != WM_window_get_active_workspace(win)) {
+          continue;
+        }
+
+        Scene *scene = WM_window_get_active_scene(win);
+        BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
+        Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
+
+        if (paint->main_brush) {
+          BKE_paint_main_brush_set(paint, paint->main_brush);
+        }
+        else {
+          std::optional<AssetWeakReference> main_brush_asset_reference =
+              [&]() -> std::optional<AssetWeakReference> {
+            if (paint->main_brush_asset_reference) {
+              return *paint->main_brush_asset_reference;
+            }
+            return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
+                                                          std::nullopt);
+          }();
+
+          if (main_brush_asset_reference) {
+            Brush *main_brush = reinterpret_cast<Brush *>(
+                blender::bke::asset_edit_id_from_weak_reference(
+                    *bmain, ID_BR, *main_brush_asset_reference));
+
+            BKE_paint_main_brush_set(paint, main_brush);
+          }
+        }
+      }
+    }
+    else {
+      const int i = items ? RNA_enum_from_identifier(items, tref_rt->data_block) : -1;
+      if (i != -1) {
+        const int slot_index = items[i].value;
+        wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+        LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+          if (workspace != WM_window_get_active_workspace(win)) {
+            continue;
+          }
           Scene *scene = WM_window_get_active_scene(win);
           BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
           Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);

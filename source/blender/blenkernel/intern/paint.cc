@@ -648,6 +648,17 @@ const Brush *BKE_paint_brush_for_read(const Paint *paint)
   return paint ? paint->brush : nullptr;
 }
 
+static AssetWeakReference *asset_reference_create_from_brush(Brush *brush)
+{
+  if (std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
+          brush->id))
+  {
+    return MEM_new<AssetWeakReference>(__func__, *weak_ref);
+  }
+
+  return nullptr;
+}
+
 bool BKE_paint_brush_set(Paint *paint, Brush *brush)
 {
   if (paint == nullptr) {
@@ -661,17 +672,27 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
 
   MEM_delete(paint->brush_asset_reference);
   paint->brush_asset_reference = nullptr;
-
   if (brush != nullptr) {
-    std::optional<AssetWeakReference> weak_ref = blender::bke::asset_edit_weak_reference_from_id(
-        brush->id);
-    if (weak_ref.has_value()) {
-      paint->brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *weak_ref);
-    }
+    paint->brush_asset_reference = asset_reference_create_from_brush(brush);
   }
 
-  BKE_paint_toolslots_brush_update(paint);
+  // BKE_paint_toolslots_brush_update(paint);
 
+  return true;
+}
+
+bool BKE_paint_main_brush_set(Paint *paint, Brush *brush)
+{
+  if (!BKE_paint_brush_set(paint, brush)) {
+    return false;
+  }
+  paint->main_brush = brush;
+
+  MEM_delete(paint->main_brush_asset_reference);
+  paint->main_brush_asset_reference = nullptr;
+  if (brush != nullptr) {
+    paint->main_brush_asset_reference = asset_reference_create_from_brush(brush);
+  }
   return true;
 }
 

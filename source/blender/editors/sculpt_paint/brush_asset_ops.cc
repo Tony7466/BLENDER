@@ -66,6 +66,7 @@ static int brush_asset_activate_exec(bContext *C, wmOperator *op)
 
   Paint *paint = BKE_paint_get_active_from_context(C);
 
+#if 0
   if (!BKE_paint_brush_set(paint, brush)) {
     /* Note brush datablock was still added, so was not a no-op. */
     BKE_report(op->reports, RPT_WARNING, "Unable to activate brush, wrong object mode");
@@ -80,6 +81,12 @@ static int brush_asset_activate_exec(bContext *C, wmOperator *op)
   }
   else {
     BLI_assert_unreachable();
+  }
+#endif
+  if (!WM_toolsystem_activate_brush_and_tool(C, paint, brush)) {
+    /* Note brush datablock was still added, so was not a no-op. */
+    BKE_report(op->reports, RPT_WARNING, "Unable to activate brush, wrong object mode");
+    return OPERATOR_FINISHED;
   }
 
   WM_main_add_notifier(NC_ASSET | NA_ACTIVATED, nullptr);
@@ -270,7 +277,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   brush = reinterpret_cast<Brush *>(
       bke::asset_edit_id_from_weak_reference(*bmain, ID_BR, brush_asset_reference));
 
-  if (!BKE_paint_brush_set(paint, brush)) {
+  if (!WM_toolsystem_activate_brush_and_tool(C, paint, brush)) {
     /* Note brush asset was still saved in editable asset library, so was not a no-op. */
     BKE_report(op->reports, RPT_WARNING, "Unable to activate just-saved brush asset");
   }

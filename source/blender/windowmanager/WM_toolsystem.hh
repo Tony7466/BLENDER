@@ -12,8 +12,10 @@
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 
+struct Brush;
 struct IDProperty;
 struct Main;
+struct Paint;
 struct PointerRNA;
 struct Scene;
 struct ScrArea;
@@ -61,6 +63,10 @@ bToolRef *WM_toolsystem_ref_set_by_id(bContext *C, const char *name);
 bToolRef_Runtime *WM_toolsystem_runtime_from_context(bContext *C);
 bToolRef_Runtime *WM_toolsystem_runtime_find(WorkSpace *workspace, const bToolKey *tkey);
 
+/**
+ * \return True if the brush was successfully activated.
+ */
+bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *brush);
 /**
  * Activate a tool appropriate for a certain brush type, call when changing the active brush.
  *

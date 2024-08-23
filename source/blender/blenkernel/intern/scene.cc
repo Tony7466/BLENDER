@@ -593,6 +593,16 @@ static void scene_foreach_paint(LibraryForeachIDData *data,
                                                     &paint_old->brush,
                                                     IDWALK_CB_NOP);
 
+  Brush *override_brush_tmp = nullptr;
+  Brush **override_brush_p = paint ? &paint->main_brush : &override_brush_tmp;
+  BKE_LIB_FOREACHID_UNDO_PRESERVE_PROCESS_IDSUPER_P(data,
+                                                    override_brush_p,
+                                                    do_undo_restore,
+                                                    SCENE_FOREACH_UNDO_RESTORE,
+                                                    reader,
+                                                    &paint_old->main_brush,
+                                                    IDWALK_CB_NOP);
+
   Brush *eraser_brush_tmp = nullptr;
   Brush **eraser_brush_p = paint ? &paint->eraser_brush : &eraser_brush_tmp;
   BKE_LIB_FOREACHID_UNDO_PRESERVE_PROCESS_IDSUPER_P(data,

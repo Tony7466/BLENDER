@@ -224,6 +224,8 @@ void BKE_paint_brush_asset_reference_from_essentials(const char *name,
  * asset reference will still be updated).
  */
 bool BKE_paint_brush_set(Paint *paint, Brush *brush);
+/* Makes \a brush the active brush, and updates the main brush reference. */
+bool BKE_paint_main_brush_set(Paint *paint, Brush *brush);
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
