@@ -1354,7 +1354,9 @@ static void calc_material_indices(const Object &object,
         if (tris.is_empty()) {
           node_materials[i] = 0;
         }
-        node_materials[i] = material_indices[tri_faces[tris.first()]];
+        else {
+          node_materials[i] = material_indices[tri_faces[tris.first()]];
+        }
       });
       break;
     }
@@ -1370,7 +1372,9 @@ static void calc_material_indices(const Object &object,
         if (grids.is_empty()) {
           node_materials[i] = 0;
         }
-        node_materials[i] = material_indices[grid_faces[grids.first()]];
+        else {
+          node_materials[i] = material_indices[grid_faces[grids.first()]];
+        }
       });
       break;
     }
