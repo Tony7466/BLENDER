@@ -53,13 +53,28 @@
 
 #include "attribute_convert.hh"
 #include "bmesh.hh"
-#include "draw_pbvh.hh"
 #include "gpu_private.hh"
 
 #define MAX_PBVH_BATCH_KEY 512
 #define MAX_PBVH_VBOS 16
 
 namespace blender::draw::pbvh {
+
+struct OrigMeshData {
+  StringRef active_color;
+  StringRef default_color;
+  StringRef active_uv_map;
+  StringRef default_uv_map;
+  int face_set_default;
+  int face_set_seed;
+  OrigMeshData(const Mesh &mesh)
+      : active_color(mesh.active_color_attribute),
+        default_color(mesh.default_color_attribute),
+        active_uv_map(CustomData_get_active_layer_name(&mesh.corner_data, CD_PROP_FLOAT2)),
+        default_uv_map(CustomData_get_render_layer_name(&mesh.corner_data, CD_PROP_FLOAT2))
+  {
+  }
+};
 
 static bool pbvh_attr_supported(const AttributeRequest &request)
 {
@@ -562,6 +577,191 @@ static void fill_vbo_face_set_grids(const CCGKey &key,
   }
 }
 
+static void fill_vbos_grids(const Object &object,
+                            const OrigMeshData &orig_mesh_data,
+                            const Span<bke::pbvh::Node> nodes,
+                            const Span<bool> use_flat_layout,
+                            const IndexMask &nodes_to_update,
+                            const AttributeRequest &request,
+                            const MutableSpan<gpu::VertBuf *> vbos)
+{
+  const SculptSession &ss = *object.sculpt;
+  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> grids = subdiv_ccg.grids;
+
+  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
+    switch (*request_type) {
+      case CustomRequest::Position: {
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_position_grids(
+              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::Normal: {
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+        const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
+        const bke::AttributeAccessor attributes = mesh.attributes();
+        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
+                                                                bke::AttrDomain::Face);
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_normal_grids(key,
+                                grids,
+                                grid_to_face_map,
+                                sharp_faces,
+                                use_flat_layout[i],
+                                bke::pbvh::node_grid_indices(nodes[i]),
+                                *vbos[i]);
+        });
+
+        break;
+      }
+      case CustomRequest::Mask: {
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_mask_grids(
+              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::FaceSet: {
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+        const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
+        const bke::AttributeAccessor attributes = mesh.attributes();
+        if (const VArray<int> face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                                  bke::AttrDomain::Face))
+        {
+          const VArraySpan<int> face_sets_span(face_sets);
+          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+            fill_vbo_face_set_grids(key,
+                                    grid_to_face_map,
+                                    face_sets_span,
+                                    orig_mesh_data.face_set_default,
+                                    orig_mesh_data.face_set_seed,
+                                    use_flat_layout[i],
+                                    bke::pbvh::node_grid_indices(nodes[i]),
+                                    *vbos[i]);
+          });
+        }
+        else {
+          nodes_to_update.foreach_index(
+              GrainSize(1), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4{UCHAR_MAX}); });
+        }
+        break;
+      }
+    }
+  }
+  else {
+    const GenericRequest &attr = std::get<GenericRequest>(request);
+    const eCustomDataType data_type = attr.type;
+    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+      bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
+        using T = decltype(dummy);
+        using Converter = AttributeConverter<T>;
+        using VBOType = typename Converter::VBOType;
+        if constexpr (!std::is_void_v<VBOType>) {
+          vbo.vert_buf->data<VBOType>().fill(Converter::convert(fallback_value_for_fill<T>()));
+        }
+      });
+    });
+  }
+}
+
+static void fill_vbos_mesh(const Object &object,
+                           const OrigMeshData &orig_mesh_data,
+                           const Span<bke::pbvh::Node> nodes,
+                           const IndexMask &nodes_to_update,
+                           const AttributeRequest &request,
+                           const MutableSpan<gpu::VertBuf *> vbos)
+{
+  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int3> corner_tris = mesh.corner_tris();
+  const Span<int> tri_faces = mesh.corner_tri_faces();
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
+  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
+    switch (*request_type) {
+      case CustomRequest::Position: {
+        const Span<float3> vert_positions = bke::pbvh::vert_positions_eval_from_eval(object);
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          extract_data_vert_mesh<float3>(corner_verts,
+                                         corner_tris,
+                                         tri_faces,
+                                         hide_poly,
+                                         vert_positions,
+                                         bke::pbvh::node_tri_indices(nodes[i]),
+                                         *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::Normal: {
+        const Span<float3> vert_normals = bke::pbvh::vert_normals_eval_from_eval(object);
+        const Span<float3> face_normals = bke::pbvh::face_normals_eval_from_eval(object);
+        const VArraySpan sharp_faces = *attributes.lookup<bool>(".sharp_face",
+                                                                bke::AttrDomain::Face);
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_normal_mesh(corner_verts,
+                               corner_tris,
+                               tri_faces,
+                               hide_poly,
+                               sharp_faces,
+                               vert_normals,
+                               face_normals,
+                               bke::pbvh::node_tri_indices(nodes[i]),
+                               *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::Mask: {
+        const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          extract_data_vert_mesh<float>(corner_verts,
+                                        corner_tris,
+                                        tri_faces,
+                                        hide_poly,
+                                        mask,
+                                        bke::pbvh::node_tri_indices(nodes[i]),
+                                        *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::FaceSet: {
+        const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                             bke::AttrDomain::Face);
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_face_set_mesh(tri_faces,
+                                 hide_poly,
+                                 face_sets,
+                                 orig_mesh_data.face_set_default,
+                                 orig_mesh_data.face_set_seed,
+                                 bke::pbvh::node_tri_indices(nodes[i]),
+                                 *vbos[i]);
+        });
+        break;
+      }
+    }
+  }
+  else {
+    const GenericRequest &attr = std::get<GenericRequest>(request);
+    const StringRef name = attr.name;
+    const bke::AttrDomain domain = attr.domain;
+    const eCustomDataType data_type = attr.type;
+    const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
+    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+      fill_vbo_attribute_mesh(corner_verts,
+                              corner_tris,
+                              tri_faces,
+                              hide_poly,
+                              attribute,
+                              domain,
+                              bke::pbvh::node_tri_indices(nodes[i]),
+                              *vbos[i]);
+    });
+  }
+}
+
 static void fill_vbo_position_bmesh(const Set<BMFace *, 0> &faces, gpu::VertBuf &vbo)
 {
   float3 *data = vbo.data<float3>().data();
@@ -666,6 +866,86 @@ static void fill_vbo_attribute_bmesh(const Set<BMFace *, 0> &faces,
       }
     }
   });
+}
+
+static void fill_vbos_bmesh(const Object &object,
+                            const OrigMeshData &orig_mesh_data,
+                            const Span<bke::pbvh::Node> nodes,
+                            const IndexMask &nodes_to_update,
+                            const AttributeRequest &request,
+                            const MutableSpan<gpu::VertBuf *> vbos)
+{
+  const SculptSession &ss = *object.sculpt;
+  const BMesh &bm = *ss.bm;
+  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
+    switch (*request_type) {
+      case CustomRequest::Position: {
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_position_bmesh(
+              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])), *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::Normal: {
+        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          fill_vbo_normal_bmesh(
+              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])), *vbos[i]);
+        });
+        break;
+      }
+      case CustomRequest::Mask:
+        const int cd_offset = CustomData_get_offset_named(
+            &bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
+        if (cd_offset != -1) {
+          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+            extract_data_vert_bmesh<float>(
+                BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
+                cd_offset,
+                *vbos[i]);
+          });
+        }
+        else {
+          nodes_to_update.foreach_index(GrainSize(16),
+                                        [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
+        }
+        break;
+      case CustomRequest::FaceSet: {
+        const int cd_offset = CustomData_get_offset_named(
+            &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
+
+        if (cd_offset != -1) {
+          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+            fill_vbo_face_set_bmesh(
+                BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
+                orig_mesh_data.face_set_default,
+                orig_mesh_data.face_set_seed,
+                cd_offset,
+                *vbos[i]);
+          });
+        }
+        else {
+          nodes_to_update.foreach_index(
+              GrainSize(16), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
+        }
+        break;
+      }
+    }
+  }
+  else {
+    const GenericRequest &attr = std::get<GenericRequest>(request);
+    const StringRefNull name = attr.name;
+    const bke::AttrDomain domain = attr.domain;
+    const eCustomDataType data_type = attr.type;
+    const CustomData &custom_data = *get_cdata(bm, domain);
+    const int offset = CustomData_get_offset_named(&custom_data, data_type, name);
+    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+      fill_vbo_attribute_bmesh(BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
+                               data_type,
+                               domain,
+                               offset,
+                               *vbos[i]);
+    });
+  }
 }
 
 static gpu::IndexBuf *create_index_faces(const Span<int2> edges,
@@ -967,12 +1247,12 @@ static void calc_material_indices(const Object &object,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      const Span<int> grid_faces = subdiv_ccg.grid_to_face_map;
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const Span<int> grid_faces = subdiv_ccg.grid_to_face_map;
       nodes_to_update.foreach_index(GrainSize(16), [&](const int i) {
         const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
         if (grids.is_empty()) {
@@ -1125,22 +1405,6 @@ static const GPUVertFormat &face_set_format()
   return format;
 }
 
-struct OrigMeshData {
-  StringRef active_color;
-  StringRef default_color;
-  StringRef active_uv_map;
-  StringRef default_uv_map;
-  int face_set_default;
-  int face_set_seed;
-  OrigMeshData(const Mesh &mesh)
-      : active_color(mesh.active_color_attribute),
-        default_color(mesh.default_color_attribute),
-        active_uv_map(CustomData_get_active_layer_name(&mesh.corner_data, CD_PROP_FLOAT2)),
-        default_uv_map(CustomData_get_render_layer_name(&mesh.corner_data, CD_PROP_FLOAT2))
-  {
-  }
-};
-
 static GPUVertFormat attribute_format(const OrigMeshData &orig_mesh_data,
                                       const StringRefNull name,
                                       const eCustomDataType data_type)
@@ -1250,262 +1514,6 @@ static void ensure_vbos_allocated_bmesh(const Object &object,
       GPU_vertbuf_data_alloc(*vbos[i], verts_num);
     }
   });
-}
-
-static void fill_vbos_mesh(const Object &object,
-                           const OrigMeshData &orig_mesh_data,
-                           const Span<bke::pbvh::Node> nodes,
-                           const IndexMask &nodes_to_update,
-                           const AttributeRequest &request,
-                           const MutableSpan<gpu::VertBuf *> vbos)
-{
-  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-  const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int3> corner_tris = mesh.corner_tris();
-  const Span<int> tri_faces = mesh.corner_tri_faces();
-  const bke::AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-
-  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
-    switch (*request_type) {
-      case CustomRequest::Position: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-        const Span<float3> vert_positions = bke::pbvh::vert_positions_eval_from_eval(object);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          extract_data_vert_mesh<float3>(corner_verts,
-                                         corner_tris,
-                                         tri_faces,
-                                         hide_poly,
-                                         vert_positions,
-                                         bke::pbvh::node_tri_indices(nodes[i]),
-                                         *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::Normal: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-        const Span<float3> vert_normals = bke::pbvh::vert_normals_eval_from_eval(object);
-        const Span<float3> face_normals = bke::pbvh::face_normals_eval_from_eval(object);
-        const VArraySpan sharp_faces = *attributes.lookup<bool>(".sharp_face",
-                                                                bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_normal_mesh(corner_verts,
-                               corner_tris,
-                               tri_faces,
-                               hide_poly,
-                               sharp_faces,
-                               vert_normals,
-                               face_normals,
-                               bke::pbvh::node_tri_indices(nodes[i]),
-                               *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::Mask: {
-        const VArraySpan mask = *attributes.lookup<float>(".sculpt_mask", bke::AttrDomain::Point);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          extract_data_vert_mesh<float>(corner_verts,
-                                        corner_tris,
-                                        tri_faces,
-                                        hide_poly,
-                                        mask,
-                                        bke::pbvh::node_tri_indices(nodes[i]),
-                                        *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::FaceSet: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-        const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
-                                                             bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_face_set_mesh(tri_faces,
-                                 hide_poly,
-                                 face_sets,
-                                 orig_mesh_data.face_set_default,
-                                 orig_mesh_data.face_set_seed,
-                                 bke::pbvh::node_tri_indices(nodes[i]),
-                                 *vbos[i]);
-        });
-        break;
-      }
-    }
-  }
-  else {
-    const GenericRequest &attr = std::get<GenericRequest>(request);
-    const StringRefNull name = attr.name;
-    const bke::AttrDomain domain = attr.domain;
-    const eCustomDataType data_type = attr.type;
-    const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-      fill_vbo_attribute_mesh(corner_verts,
-                              corner_tris,
-                              tri_faces,
-                              hide_poly,
-                              attribute,
-                              domain,
-                              bke::pbvh::node_tri_indices(nodes[i]),
-                              *vbos[i]);
-    });
-  }
-}
-
-static void fill_vbos_grids(const Object &object,
-                            const OrigMeshData &orig_mesh_data,
-                            const Span<bke::pbvh::Node> nodes,
-                            const Span<bool> use_flat_layout,
-                            const IndexMask &nodes_to_update,
-                            const AttributeRequest &request,
-                            const MutableSpan<gpu::VertBuf *> vbos)
-{
-  const SculptSession &ss = *object.sculpt;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
-
-  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
-    switch (*request_type) {
-      case CustomRequest::Position: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_position_grids(
-              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::Normal: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-        const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
-        const bke::AttributeAccessor attributes = mesh.attributes();
-        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
-                                                                bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_normal_grids(key,
-                                grids,
-                                grid_to_face_map,
-                                sharp_faces,
-                                use_flat_layout[i],
-                                bke::pbvh::node_grid_indices(nodes[i]),
-                                *vbos[i]);
-        });
-
-        break;
-      }
-      case CustomRequest::Mask: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_mask_grids(
-              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::FaceSet: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-        const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
-        const bke::AttributeAccessor attributes = mesh.attributes();
-        if (const VArray<int> face_sets = *attributes.lookup<int>(".sculpt_face_set",
-                                                                  bke::AttrDomain::Face))
-        {
-          const VArraySpan<int> face_sets_span(face_sets);
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-            fill_vbo_face_set_grids(key,
-                                    grid_to_face_map,
-                                    face_sets_span,
-                                    orig_mesh_data.face_set_default,
-                                    orig_mesh_data.face_set_seed,
-                                    use_flat_layout[i],
-                                    bke::pbvh::node_grid_indices(nodes[i]),
-                                    *vbos[i]);
-          });
-        }
-        else {
-          nodes_to_update.foreach_index(
-              GrainSize(1), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4{UCHAR_MAX}); });
-        }
-        break;
-      }
-    }
-  }
-  else {
-    const GenericRequest &attr = std::get<GenericRequest>(request);
-    const eCustomDataType data_type = attr.type;
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-      bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
-        using T = decltype(dummy);
-        using Converter = AttributeConverter<T>;
-        using VBOType = typename Converter::VBOType;
-        if constexpr (!std::is_void_v<VBOType>) {
-          vbo.vert_buf->data<VBOType>().fill(Converter::convert(fallback_value_for_fill<T>()));
-        }
-      });
-    });
-  }
-}
-
-static void fill_vbos_bmesh(const Object &object,
-                            const OrigMeshData &orig_mesh_data,
-                            const Span<bke::pbvh::Node> nodes,
-                            const IndexMask &nodes_to_update,
-                            const AttributeRequest &request,
-                            const MutableSpan<gpu::VertBuf *> vbos)
-{
-  const SculptSession &ss = *object.sculpt;
-  const BMesh &bm = *ss.bm;
-  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
-    switch (*request_type) {
-      case CustomRequest::Position: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_position_bmesh(
-              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])), *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::Normal: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_normal_bmesh(
-              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])), *vbos[i]);
-        });
-        break;
-      }
-      case CustomRequest::Mask:
-        const BMesh &bm = *ss.bm;
-        const int mask_offset = CustomData_get_offset_named(
-            &bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          extract_data_vert_bmesh<float>(
-              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
-              mask_offset,
-              *vbos[i]);
-        });
-        break;
-      case CustomRequest::FaceSet: {
-        const int face_set_offset = CustomData_get_offset_named(
-            &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_face_set_bmesh(
-              BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
-              orig_mesh_data.face_set_default,
-              orig_mesh_data.face_set_seed,
-              face_set_offset,
-              *vbos[i]);
-        });
-        break;
-      }
-    }
-  }
-  else {
-    const GenericRequest &attr = std::get<GenericRequest>(request);
-    const StringRefNull name = attr.name;
-    const bke::AttrDomain domain = attr.domain;
-    const eCustomDataType data_type = attr.type;
-    const CustomData &custom_data = *get_cdata(bm, domain);
-    const int offset = CustomData_get_offset_named(&custom_data, data_type, name);
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-      fill_vbo_attribute_bmesh(BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
-                               data_type,
-                               domain,
-                               offset,
-                               *vbos[i]);
-    });
-  }
 }
 
 static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
