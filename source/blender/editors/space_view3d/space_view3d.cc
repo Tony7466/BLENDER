@@ -1775,25 +1775,25 @@ void ED_view3d_buttons_region_layout_ex(const bContext *C,
       break;
   }
 
-  // switch (mode) {
-  //   case CTX_MODE_PAINT_GPENCIL_LEGACY:
-  //     ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
-  //     break;
-  //   case CTX_MODE_SCULPT_GPENCIL_LEGACY:
-  //     ARRAY_SET_ITEMS(contexts, ".greasepencil_sculpt");
-  //     break;
-  //   case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
-  //     ARRAY_SET_ITEMS(contexts, ".greasepencil_weight");
-  //     break;
-  //   case CTX_MODE_EDIT_GPENCIL_LEGACY:
-  //     ARRAY_SET_ITEMS(contexts, ".greasepencil_edit");
-  //     break;
-  //   case CTX_MODE_VERTEX_GPENCIL_LEGACY:
-  //     ARRAY_SET_ITEMS(contexts, ".greasepencil_vertex");
-  //     break;
-  //   default:
-  //     break;
-  // }
+  switch (mode) {
+    case CTX_MODE_PAINT_GPENCIL_LEGACY:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_paint");
+      break;
+    case CTX_MODE_SCULPT_GPENCIL_LEGACY:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_sculpt");
+      break;
+    case CTX_MODE_WEIGHT_GPENCIL_LEGACY:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_weight");
+      break;
+    case CTX_MODE_EDIT_GPENCIL_LEGACY:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_edit");
+      break;
+    case CTX_MODE_VERTEX_GPENCIL_LEGACY:
+      ARRAY_SET_ITEMS(contexts, ".greasepencil_vertex");
+      break;
+    default:
+      break;
+  }
 
   ListBase *paneltypes = &region->type->paneltypes;
 
