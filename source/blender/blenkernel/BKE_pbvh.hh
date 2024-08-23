@@ -81,9 +81,3 @@ void BKE_pbvh_draw_debug_cb(blender::bke::pbvh::Tree &pbvh,
                                             const float bmax[3],
                                             PBVHNodeFlags flag),
                             void *user_data);
-
-namespace blender::bke::pbvh {
-class DrawCache {
-  virtual ~DrawCache() = default;
-};
-}  // namespace blender::bke::pbvh

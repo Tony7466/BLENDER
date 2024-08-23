@@ -164,6 +164,11 @@ class Node {
   int debug_draw_gen_ = 0;
 };
 
+class DrawCache {
+ public:
+  virtual ~DrawCache() = default;
+};
+
 /**
  * \todo Most data is public but should either be removed or become private in the future.
  * The "_" suffix means that fields shouldn't be used by consumers of the `bke::pbvh` API.
