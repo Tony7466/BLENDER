@@ -1677,7 +1677,7 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
       const Span<int2> edges = mesh.edges();
       const Span<int> corner_verts = mesh.corner_verts();
       const Span<int> corner_edges = mesh.corner_edges();
-      const Span<int3> corner_tris = mesh.corner_tris();  // TODO
+      const Span<int3> corner_tris = mesh.corner_tris();
       const Span<int> tri_faces = mesh.corner_tri_faces();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
