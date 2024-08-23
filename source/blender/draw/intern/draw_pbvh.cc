@@ -708,9 +708,9 @@ static void fill_vbos_grids(const Object &object,
         break;
       }
       case CustomRequest::FaceSet: {
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
         const int face_set_default = orig_mesh_data.face_set_default;
         const int face_set_seed = orig_mesh_data.face_set_seed;
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
         const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
         const bke::AttributeAccessor attributes = mesh.attributes();
         if (const VArray<int> face_sets = *attributes.lookup<int>(".sculpt_face_set",
@@ -1033,11 +1033,10 @@ static void fill_vbos_bmesh(const Object &object,
   }
   else {
     const GenericRequest &attr = std::get<GenericRequest>(request);
-    const StringRefNull name = attr.name;
     const bke::AttrDomain domain = attr.domain;
     const eCustomDataType data_type = attr.type;
     const CustomData &custom_data = *get_cdata(bm, domain);
-    const int offset = CustomData_get_offset_named(&custom_data, data_type, name);
+    const int offset = CustomData_get_offset_named(&custom_data, data_type, attr.name);
     nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
       fill_vbo_attribute_bmesh(BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
                                data_type,
@@ -1452,7 +1451,6 @@ static gpu::IndexBuf *create_tri_index_grids(const CCGKey &key,
 
 static gpu::IndexBuf *create_lines_index_grids(const CCGKey &key,
                                                const SubdivCCG &subdiv_ccg,
-                                               const Span<bool> sharp_faces,
                                                const bool do_coarse,
                                                const Span<int> grid_indices,
                                                const bool use_flat_layout)
@@ -1501,7 +1499,7 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
 
   IndexMaskMemory memory;
   const IndexMask nodes_to_calculate = IndexMask::from_predicate(
-      nodes_to_update, GrainSize(128), memory, [&](const int i) { return !ibos[i]; });
+      nodes_to_update, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
 
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1528,14 +1526,10 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
         const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
         const bke::AttributeAccessor attributes = base_mesh.attributes();
-        const VArraySpan sharp_faces = *attributes.lookup<bool>(".sharp_face",
-                                                                bke::AttrDomain::Face);
-
         const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
         const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
         ibos[i] = create_lines_index_grids(key,
                                            subdiv_ccg,
-                                           sharp_faces,
                                            false,  // TODO
                                            bke::pbvh::node_tri_indices(nodes[i]),
                                            draw_data.use_flat_layout[i]);
@@ -1544,10 +1538,10 @@ static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
     }
     case bke::pbvh::Type::BMesh: {
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
-        const int visible_faces_num = 100;
-        ibos[i] = create_index_bmesh(
-            BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
-            visible_faces_num);
+        const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(
+            &const_cast<bke::pbvh::Node &>(nodes[i]));
+        const int visible_faces_num = count_visible_tris_bmesh(faces);  // TODO
+        ibos[i] = create_index_bmesh(faces, visible_faces_num);
       });
       break;
     }
