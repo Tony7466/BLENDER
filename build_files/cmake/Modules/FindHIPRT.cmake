@@ -38,7 +38,7 @@ set(HIPRT_VERSION)
 
 if(HIPRT_INCLUDE_DIR)
   file(STRINGS "${HIPRT_INCLUDE_DIR}/hiprt/hiprt.h" _hiprt_version
-	REGEX "^#define HIPRT_VERSION_STR[ \t]\".*\"$")
+    REGEX "^#define HIPRT_VERSION_STR[ \t]\".*\"$")
   string(REGEX MATCHALL "[0-9]+[.0-9]+" HIPRT_VERSION ${_hiprt_version})
 endif()
 

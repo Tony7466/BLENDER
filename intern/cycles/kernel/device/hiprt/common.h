@@ -44,8 +44,7 @@ struct LocalPayload {
 
 #  if defined(HIPRT_SHARED_STACK)
 #    define GET_TRAVERSAL_STACK() \
-      Stack stack(kg->global_stack_buffer, \
-                  kg->shared_stack); \
+      Stack stack(kg->global_stack_buffer, kg->shared_stack); \
       Instance_Stack instance_stack;
 #  else
 #    define GET_TRAVERSAL_STACK()
@@ -54,29 +53,29 @@ struct LocalPayload {
 #  ifdef HIPRT_SHARED_STACK
 #    define GET_TRAVERSAL_ANY_HIT(FUNCTION_TABLE, RAY_TYPE, RAY_TIME) \
       hiprtSceneTraversalAnyHitCustomStack<Stack, Instance_Stack> traversal( \
-                                                            (hiprtScene)kernel_data.device_bvh, \
-                                                            ray_hip, \
-                                                            stack, \
-                                                            instance_stack, \
-                                                            visibility, \
-                                                            hiprtTraversalHintDefault, \
-                                                            &payload, \
-                                                            kernel_params.FUNCTION_TABLE, \
-                                                            RAY_TYPE, \
-                                                            RAY_TIME);
+          (hiprtScene)kernel_data.device_bvh, \
+          ray_hip, \
+          stack, \
+          instance_stack, \
+          visibility, \
+          hiprtTraversalHintDefault, \
+          &payload, \
+          kernel_params.FUNCTION_TABLE, \
+          RAY_TYPE, \
+          RAY_TIME);
 
 #    define GET_TRAVERSAL_CLOSEST_HIT(FUNCTION_TABLE, RAY_TYPE, RAY_TIME) \
       hiprtSceneTraversalClosestCustomStack<Stack, Instance_Stack> traversal( \
-                                                             (hiprtScene)kernel_data.device_bvh, \
-                                                             ray_hip, \
-                                                             stack, \
-                                                             instance_stack, \
-                                                             visibility, \
-                                                             hiprtTraversalHintDefault, \
-                                                             &payload, \
-                                                             kernel_params.FUNCTION_TABLE, \
-                                                             RAY_TYPE, \
-                                                             RAY_TIME);
+          (hiprtScene)kernel_data.device_bvh, \
+          ray_hip, \
+          stack, \
+          instance_stack, \
+          visibility, \
+          hiprtTraversalHintDefault, \
+          &payload, \
+          kernel_params.FUNCTION_TABLE, \
+          RAY_TYPE, \
+          RAY_TIME);
 #  else
 #    define GET_TRAVERSAL_ANY_HIT(FUNCTION_TABLE) \
       hiprtSceneTraversalAnyHit traversal(kernel_data.device_bvh, \
