@@ -1568,6 +1568,7 @@ static void ensure_vbos_allocated_mesh(const Object &object,
     // TODO: Split VBO size calculation and VBO reallocation.
     const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
     const int verts_num = count_visible_tris_mesh(tris, tri_faces, hide_poly) * 3;
+
     if (vbos[i]->data<uchar>().data() == nullptr ||
         GPU_vertbuf_get_vertex_len(vbos[i]) != verts_num)
     {
@@ -1579,6 +1580,7 @@ static void ensure_vbos_allocated_mesh(const Object &object,
 static void ensure_vbos_allocated_grids(const Object &object,
                                         const GPUVertFormat &format,
                                         const Span<bke::pbvh::Node> nodes,
+                                        const Span<bool> use_flat_layout,
                                         const IndexMask &nodes_to_update,
                                         const MutableSpan<gpu::VertBuf *> vbos)
 {
@@ -1590,7 +1592,8 @@ static void ensure_vbos_allocated_grids(const Object &object,
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
-    const int verts_per_grid = square_i(key.grid_size - 1) * 4;  // TODO: use_flat_layout
+    const int verts_per_grid = use_flat_layout[i] ? square_i(key.grid_size - 1) * 4 :
+                                                    square_i(key.grid_size);
     const int verts_num = bke::pbvh::node_grid_indices(nodes[i]).size() * verts_per_grid;
     if (vbos[i]->data<uchar>().data() == nullptr ||
         GPU_vertbuf_get_vertex_len(vbos[i]) != verts_num)
@@ -1643,7 +1646,8 @@ static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      ensure_vbos_allocated_grids(object, format, nodes, nodes_to_update, vbos);
+      ensure_vbos_allocated_grids(
+          object, format, nodes, draw_data.use_flat_layout, nodes_to_update, vbos);
       fill_vbos_grids(
           object, orig_mesh_data, nodes, draw_data.use_flat_layout, nodes_to_update, attr, vbos);
       break;
