@@ -3718,6 +3718,9 @@ static int area_join_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent *event);
+static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event);
+
 /* interaction callback */
 static int area_join_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -3741,19 +3744,33 @@ static int area_join_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  if (ISMOUSE(event->type)) {
+  if (U.experimental.use_docking) {
+    /* Launched from menu item or keyboard shortcut. */
     if (!area_join_init(C, op, nullptr, nullptr)) {
-      return OPERATOR_CANCELLED;
+      ScrArea *sa1 = CTX_wm_area(C);
+      if (!sa1 || ED_area_is_global(sa1) || !area_join_init(C, op, sa1, nullptr)) {
+        return OPERATOR_CANCELLED;
+      }
     }
-  }
-  else if (U.experimental.use_docking) {
-    /* Keyboard shortcut to docking. We just need the active area. */
-    ScrArea *sa1 = CTX_wm_area(C);
-    if (!sa1 || ED_area_is_global(sa1) || !area_join_init(C, op, sa1, nullptr)) {
-      return OPERATOR_CANCELLED;
-    }
+    sAreaJoinData *jd = (sAreaJoinData *)op->customdata;
+    jd->sa2 = jd->sa1;
+    jd->start_x = jd->sa1->totrct.xmin;
+    jd->start_y = jd->sa1->totrct.ymax;
+    jd->current_x = event->xy[0];
+    jd->current_y = event->xy[1];
+    jd->draw_callback = WM_draw_cb_activate(CTX_wm_window(C), area_join_draw_cb, op);
+    WM_cursor_set(jd->win1, area_join_cursor(jd, event));
+    area_join_update_data(C, jd, event);
+    area_join_dock_cb_window(jd, op);
+    WM_event_add_notifier(C, NC_WINDOW, nullptr);
+    WM_event_add_modal_handler(C, op);
+    return OPERATOR_RUNNING_MODAL;
   }
 
+  /* With docking turned off. */
+  if (!area_join_init(C, op, nullptr, nullptr)) {
+    return OPERATOR_CANCELLED;
+  }
   sAreaJoinData *jd = (sAreaJoinData *)op->customdata;
   jd->start_x = event->xy[0];
   jd->start_y = event->xy[1];
@@ -3866,6 +3883,47 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
   return U.experimental.use_docking ? WM_CURSOR_PICK_AREA : WM_CURSOR_STOP;
 }
 
+static float area_docking_snap(const float pos, const wmEvent *event)
+{
+  const bool alt = event->modifier & KM_ALT;
+  const bool ctrl = event->modifier & KM_CTRL;
+  const float accel = (alt || ctrl) ? 2.5f : 2.0;
+
+  float factor = pos * accel;
+
+  if (!alt) {
+    if (factor >= 0.4375f && factor < 0.5f) {
+      factor = 0.499999f;
+    }
+    else if (factor >= 0.5f && factor < 0.5625f) {
+      factor = 0.500001f;
+    }
+  }
+
+  if (ctrl) {
+    if (factor < 0.1875f) {
+      factor = 0.125f;
+    }
+    else if (factor >= 0.1875f && factor < 0.3125f) {
+      factor = 0.25f;
+    }
+    else if (factor >= 0.3125f && factor < 0.4375f) {
+      factor = 0.375f;
+    }
+    else if (factor >= 0.5625f && factor < 0.6875f) {
+      factor = 0.625f;
+    }
+    else if (factor >= 0.6875f && factor < 0.8125f) {
+      factor = 0.75f;
+    }
+    else if (factor > 0.8125f) {
+      factor = 0.875f;
+    }
+  }
+
+  return factor;
+}
+
 static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *event)
 {
   if (!U.experimental.use_docking || !jd->sa2 || !jd->win2) {
@@ -3898,7 +3956,7 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
   if (ELEM(jd->dir, SCREEN_DIR_N, SCREEN_DIR_S)) {
     /* Up or Down to immediate neighbor. */
     if (event->xy[0] <= jd->sa1->totrct.xmax && event->xy[0] >= jd->sa1->totrct.xmin) {
-      const int join_y = std::min(jd->sa2->winy * 0.3f, 6 * HEADERY * UI_SCALE_FAC);
+      const int join_y = std::min(jd->sa2->winy * 0.25f, 5 * HEADERY * UI_SCALE_FAC);
       if (jd->sa2->winy < min_y || (jd->dir == SCREEN_DIR_N && y < join_y) ||
           (jd->dir == SCREEN_DIR_S && (jd->sa2->winy - y) < join_y))
       {
@@ -3910,7 +3968,7 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
   if (ELEM(jd->dir, SCREEN_DIR_W, SCREEN_DIR_E)) {
     /* Left or Right to immediate neighbor. */
     if (event->xy[1] <= jd->sa1->totrct.ymax && event->xy[1] >= jd->sa1->totrct.ymin) {
-      const int join_x = std::min(jd->sa2->winx * 0.3f, 6 * AREAMINX * UI_SCALE_FAC);
+      const int join_x = std::min(jd->sa2->winx * 0.25f, 5 * AREAMINX * UI_SCALE_FAC);
       if (jd->sa2->winx < min_x || (jd->dir == SCREEN_DIR_W && (jd->sa2->winx - x) < join_x) ||
           (jd->dir == SCREEN_DIR_E && x < join_x))
       {
@@ -3922,15 +3980,14 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
   /* If we've made it here, then there can be no joining possible. */
   jd->dir = SCREEN_DIR_NONE;
   jd->factor = 0.5f;
-  float accel = (jd->sa1 == jd->sa2) ? 1.7f : 2.0f;
 
   /* if the area is narrow then there are only two docking targets. */
   if (jd->sa2->winx < min_x) {
-    jd->factor = float(y) / float(jd->sa2->winy) * accel;
+    jd->factor = area_docking_snap(float(y) / float(jd->sa2->winy), event);
     return (y < jd->sa2->winy / 2) ? AreaDockTarget::Bottom : AreaDockTarget::Top;
   }
   if (jd->sa2->winy < min_y) {
-    jd->factor = float(x) / float(jd->sa2->winx) * accel;
+    jd->factor = area_docking_snap(float(x) / float(jd->sa2->winx), event);
     return (x < jd->sa2->winx / 2) ? AreaDockTarget::Left : AreaDockTarget::Right;
   }
 
@@ -3945,20 +4002,21 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
   const bool upper_left = float(x) / float(y + 1) < area_ratio;
   /* Split the area diagonally from top-left to bottom-right. */
   const bool lower_left = float(x) / float(jd->sa2->winy - y + 1) < area_ratio;
+
   if (upper_left && !lower_left) {
-    jd->factor = (1.0f - float(y) / float(jd->sa2->winy)) * accel;
+    jd->factor = area_docking_snap(1.0f - float(y) / float(jd->sa2->winy), event);
     return AreaDockTarget::Top;
   }
   if (!upper_left && lower_left) {
-    jd->factor = float(y) / float(jd->sa2->winy) * accel;
+    jd->factor = area_docking_snap(float(y) / float(jd->sa2->winy), event);
     return AreaDockTarget::Bottom;
   }
   if (upper_left && lower_left) {
-    jd->factor = float(x) / float(jd->sa2->winx) * accel;
+    jd->factor = area_docking_snap(float(x) / float(jd->sa2->winx), event);
     return AreaDockTarget::Left;
   }
   if (!upper_left && !lower_left) {
-    jd->factor = (1.0f - float(x) / float(jd->sa2->winx)) * accel;
+    jd->factor = area_docking_snap(1.0f - float(x) / float(jd->sa2->winx), event);
     return AreaDockTarget::Right;
   }
   return AreaDockTarget::None;
@@ -4045,12 +4103,7 @@ static void area_join_update_data(bContext *C, sAreaJoinData *jd, const wmEvent 
 static void area_join_cancel(bContext *C, wmOperator *op)
 {
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
-
-  sAreaJoinData *jd = static_cast<sAreaJoinData *>(op->customdata);
-  if (!jd || jd->dock_target != AreaDockTarget::None || jd->dir != SCREEN_DIR_NONE) {
-    WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
-  }
-
+  WM_cursor_set(CTX_wm_window(C), WM_CURSOR_DEFAULT);
   area_join_exit(C, op);
 }
 
