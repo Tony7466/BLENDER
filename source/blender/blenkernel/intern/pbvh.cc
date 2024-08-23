@@ -2829,6 +2829,7 @@ IndexMask search_nodes(const Tree &pbvh,
   for (const int i : nodes.index_range()) {
     indices[i] = nodes[i] - pbvh.nodes_.data();
   }
+  std::sort(indices.begin(), indices.end());
   return IndexMask::from_indices(indices.as_span(), memory);
 }
 
