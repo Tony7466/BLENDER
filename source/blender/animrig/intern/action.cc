@@ -242,6 +242,7 @@ Layer &Action::layer_add(const StringRefNull name)
 {
   Layer &new_layer = ActionLayer_alloc();
   STRNCPY_UTF8(new_layer.name, name.c_str());
+  new_layer.owning_action = this;
 
   grow_array_and_append<::ActionLayer *>(&this->layer_array, &this->layer_array_num, &new_layer);
   this->layer_active_index = this->layer_array_num - 1;
