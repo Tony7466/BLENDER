@@ -947,27 +947,20 @@ struct EraseOperationExecutor {
   }
 };
 
-void EraseOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
+void EraseOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
-  Scene *scene = CTX_data_scene(&C);
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
 
   /* If we're using the draw tool to erase (e.g. while holding ctrl), then we should use the
    * eraser brush instead. */
   if (temp_eraser_) {
-    Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-    ARegion *region = CTX_wm_region(&C);
-    View3D *view3d = CTX_wm_view3d(&C);
-    RegionView3D *rv3d = CTX_wm_region_view3d(&C);
     Object *object = CTX_data_active_object(&C);
-    Object *eval_object = DEG_get_evaluated_object(depsgraph, object);
     GreasePencil *grease_pencil = static_cast<GreasePencil *>(object->data);
-
-    grease_pencil->runtime->temp_use_eraser = true;
 
     radius_ = paint->eraser_brush->size;
     grease_pencil->runtime->temp_eraser_size = radius_;
+    grease_pencil->runtime->temp_use_eraser = true;
 
     brush = BKE_paint_eraser_brush(paint);
   }
