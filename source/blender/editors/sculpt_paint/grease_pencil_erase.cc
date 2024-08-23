@@ -966,24 +966,7 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample &start
 
     grease_pencil->runtime->temp_use_eraser = true;
 
-    /* When erasing from the draw tool, we need to convert the scene radius to a pixel size if the
-     * brush uses the "scene" radius unit. */
-    if ((brush->flag & BRUSH_LOCK_SIZE) != 0) {
-      const bke::greasepencil::Layer &layer = *grease_pencil->get_active_layer();
-      ed::greasepencil::DrawingPlacement placement = ed::greasepencil::DrawingPlacement(
-          *scene, *region, *view3d, *eval_object, &layer);
-      if (placement.use_project_to_surface()) {
-        placement.cache_viewport_depths(depsgraph, region, view3d);
-      }
-      else if (placement.use_project_to_nearest_stroke()) {
-        placement.cache_viewport_depths(depsgraph, region, view3d);
-        placement.set_origin_to_nearest_stroke(start_sample.mouse_position);
-      }
-
-      const float pixel_size = ED_view3d_pixel_size(
-          rv3d, placement.project(start_sample.mouse_position));
-      radius_ = paint->eraser_brush->size;
-    }
+    radius_ = paint->eraser_brush->size;
     grease_pencil->runtime->temp_eraser_size = radius_;
 
     brush = BKE_paint_eraser_brush(paint);
