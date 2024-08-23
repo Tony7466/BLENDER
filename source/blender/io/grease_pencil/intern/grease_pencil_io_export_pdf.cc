@@ -234,7 +234,7 @@ void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
   }
 
   for (const int i : positions.index_range()) {
-    const float2 screen_co = this->project_to_screen(transform, positions[i], false, false);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     if (i == 0) {
       HPDF_Page_MoveTo(page_, screen_co.x, screen_co.y);
     }

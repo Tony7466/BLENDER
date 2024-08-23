@@ -297,7 +297,7 @@ pugi::xml_node SVGExporter::write_polygon(pugi::xml_node node,
       txt.append(" ");
     }
     /* SVG has inverted Y axis. */
-    const float2 screen_co = this->project_to_screen(transform, positions[i], false, true);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     txt.append(std::to_string(screen_co.x) + "," +
                std::to_string(render_rect_.size().y - screen_co.y));
   }
@@ -325,7 +325,7 @@ pugi::xml_node SVGExporter::write_polyline(pugi::xml_node node,
       txt.append(" ");
     }
     /* SVG has inverted Y axis. */
-    const float2 screen_co = this->project_to_screen(transform, positions[i], false, true);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     txt.append(std::to_string(screen_co.x) + "," +
                std::to_string(render_rect_.size().y - screen_co.y));
   }
@@ -347,7 +347,7 @@ pugi::xml_node SVGExporter::write_path(pugi::xml_node node,
     if (i > 0) {
       txt.append("L");
     }
-    const float2 screen_co = this->project_to_screen(transform, positions[i], false, true);
+    const float2 screen_co = this->project_to_screen(transform, positions[i]);
     /* SVG has inverted Y axis. */
     txt.append(std::to_string(screen_co.x) + "," +
                std::to_string(render_rect_.size().y - screen_co.y));

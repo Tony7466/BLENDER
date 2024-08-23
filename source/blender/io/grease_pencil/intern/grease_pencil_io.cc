@@ -552,40 +552,28 @@ void GreasePencilExporter::foreach_stroke_in_layer(const Object &object,
 }
 
 float2 GreasePencilExporter::project_to_screen(const float4x4 &transform,
-                                               const float3 &position,
-                                               const bool flip_x,
-                                               const bool flip_y) const
+                                               const float3 &position) const
 {
   const float3 world_pos = math::transform_point(transform, position);
 
-  auto apply_flip = [&](const float2 &screen_co, const int2 &target_size) {
-    return float2(flip_x ? target_size.x - screen_co.x : screen_co.x,
-                  flip_y ? target_size.y - screen_co.y : screen_co.y);
-  };
-
   if (camera_persmat_) {
     /* Use camera render space. */
-    const float2 screen_co = (float2(math::project_point(*camera_persmat_, world_pos)) + 1.0f) /
-                             2.0f * float2(render_rect_.size());
-    const float2 flipped_co = apply_flip(screen_co, int2(render_rect_.size()));
-    return flipped_co;
+    return (float2(math::project_point(*camera_persmat_, world_pos)) + 1.0f) / 2.0f *
+           float2(render_rect_.size());
   }
 
   /* Use 3D view screen space. */
-  const int2 region_size = {context_.region->winx, context_.region->winy};
-
   float2 screen_co;
   if (ED_view3d_project_float_global(context_.region, world_pos, screen_co, V3D_PROJ_TEST_NOP) ==
       V3D_PROJ_RET_OK)
   {
     if (!ELEM(V2D_IS_CLIPPED, screen_co.x, screen_co.y)) {
       /* Apply offset and scale. */
-      const float2 flipped_co = apply_flip(screen_co, region_size);
-      return flipped_co - render_rect_.min;
+      return screen_co - render_rect_.min;
     }
   }
 
-  return apply_flip(float2(V2D_IS_CLIPPED), region_size);
+  return float2(V2D_IS_CLIPPED);
 }
 
 }  // namespace blender::io::grease_pencil

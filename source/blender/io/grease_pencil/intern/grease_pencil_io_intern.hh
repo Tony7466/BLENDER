@@ -90,10 +90,7 @@ class GreasePencilExporter {
                                const bke::greasepencil::Drawing &drawing,
                                WriteStrokeFn stroke_fn);
 
-  float2 project_to_screen(const float4x4 &transform,
-                           const float3 &position,
-                           const bool flip_x,
-                           const bool flip_y) const;
+  float2 project_to_screen(const float4x4 &transform, const float3 &position) const;
 };
 
 }  // namespace blender::io::grease_pencil
