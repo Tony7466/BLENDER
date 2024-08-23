@@ -30,7 +30,7 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C)
+Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_painting(const bContext &C)
 {
   using namespace blender::bke::greasepencil;
 
@@ -104,6 +104,8 @@ float brush_point_influence(const Scene &scene,
   return influence_base * brush_falloff;
 }
 
+/* Compute the closest distance to the "surface". When the point is outside the polygon, compute
+ * the closest distance to the polygon points. When the point is inside the polygon return 0.*/
 float closest_distance_to_surface_2d(const float2 pt, const Span<float2> verts)
 {
   int j = verts.size() - 1;
@@ -331,7 +333,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   std::atomic<bool> changed = false;
-  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_painting(C);
   for (const int64_t i : drawings.index_range()) {
     const MutableDrawingInfo &info = drawings[i];
     GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
@@ -368,7 +370,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   std::atomic<bool> changed = false;
-  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_painting(C);
   threading::parallel_for(drawings.index_range(), grain_size.value, [&](const IndexRange range) {
     for (const int64_t i : range) {
       const MutableDrawingInfo &info = drawings[i];
@@ -409,7 +411,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   std::atomic<bool> changed = false;
-  const Vector<MutableDrawingInfo> drawings = get_drawings_for_sculpt(C);
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_painting(C);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     const Layer &layer = *grease_pencil.layer(info.layer_index);
 

@@ -52,8 +52,8 @@ set(SRC
   grease_pencil_fill.cc
   grease_pencil_interpolate.cc
   grease_pencil_paint.cc
+  grease_pencil_paint_common.cc
   grease_pencil_sculpt_clone.cc
-  grease_pencil_sculpt_common.cc
   grease_pencil_sculpt_grab.cc
   grease_pencil_sculpt_pinch.cc
   grease_pencil_sculpt_push.cc

@@ -65,8 +65,6 @@ class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
                              Fn &&fn)
   {
     const int size = color_grid_.size;
-    const int half_size = size / 2;
-    const float cell_size_px = color_grid_.cell_size_px;
     points.foreach_index(grain_size, [&](const int64_t point) {
       const int2 grid_pos = this->coords_to_grid_pos(positions[point], offset);
       /* Check if we intersect the grid and call the callback if we do. */
