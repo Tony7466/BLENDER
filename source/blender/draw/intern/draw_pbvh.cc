@@ -26,7 +26,6 @@
 #include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_timeit.hh"
@@ -945,7 +944,7 @@ static void create_lines_index_grids_flat_layout(const Span<int> grid_indices,
 }
 
 static void calc_material_indices(const Object &object,
-                                  const Span<bke::pbvh::Node *> nodes,
+                                  const Span<bke::pbvh::Node> nodes,
                                   const IndexMask &nodes_to_update,
                                   MutableSpan<int> node_materials)
 {
@@ -959,7 +958,7 @@ static void calc_material_indices(const Object &object,
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
       nodes_to_update.foreach_index(GrainSize(16), [&](const int i) {
-        const Span<int> tris = bke::pbvh::node_tri_indices(*nodes[i]);
+        const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
         if (tris.is_empty()) {
           node_materials[i] = 0;
         }
@@ -975,7 +974,7 @@ static void calc_material_indices(const Object &object,
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
       nodes_to_update.foreach_index(GrainSize(16), [&](const int i) {
-        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+        const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
         if (grids.is_empty()) {
           node_materials[i] = 0;
         }
@@ -1752,7 +1751,14 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
 
 Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data)
 {
-  return {};
+  const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
+  const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
+  if (draw_data.material_indices.size() != nodes.size()) {
+    // TODO: Allow to be empty when no material indices
+    draw_data.material_indices.reinitialize(nodes.size());
+    calc_material_indices(object, nodes, nodes.index_range(), draw_data.material_indices);
+  }
+  return draw_data.material_indices;
 }
 
 IndexMask calc_visible_nodes(const bke::pbvh::Tree &pbvh,
