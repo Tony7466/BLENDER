@@ -1565,6 +1565,7 @@ void BKE_paint_free(Paint *paint)
 {
   BKE_curvemapping_free(paint->cavity_curve);
   MEM_delete(paint->brush_asset_reference);
+  MEM_delete(paint->main_brush_asset_reference);
   MEM_delete(paint->eraser_brush_asset_reference);
   paint_tool_slots_free(paint);
 }
