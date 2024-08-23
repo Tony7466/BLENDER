@@ -582,7 +582,7 @@ void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
       GPUShader *sh = inst_.shaders.static_shader_get(DEFERRED_TILE_CLASSIFY);
       PassMain::Sub &sub = gbuffer_ps_.sub("StencilClassify");
       sub.subpass_transition(GPU_ATTACHMENT_WRITE, /* Needed for depth test. */
-                             {GPU_ATTACHMENT_IGNORE,
+                             {GPU_ATTACHMENT_READ,
                               GPU_ATTACHMENT_READ, /* Header. */
                               GPU_ATTACHMENT_IGNORE,
                               GPU_ATTACHMENT_IGNORE,
