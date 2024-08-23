@@ -1231,7 +1231,7 @@ struct DRWSculptCallbackData {
   bool fast_mode; /* Set by draw manager. Do not init. */
 
   int debug_node_nr;
-  blender::Set<blender::draw::pbvh::AttributeRequest> attrs;
+  blender::Span<blender::draw::pbvh::AttributeRequest> attrs;
 };
 
 #define SCULPT_DEBUG_COLOR(id) (sculpt_debug_colors[id % 9])
@@ -1437,15 +1437,15 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
   scd.use_mats = false;
   scd.use_mask = use_mask;
 
-  Set<pbvh::AttributeRequest> attrs;
+  Vector<pbvh::AttributeRequest, 16> attrs;
 
-  attrs.add(pbvh::CustomRequest::Position);
-  attrs.add(pbvh::CustomRequest::Normal);
+  attrs.append(pbvh::CustomRequest::Position);
+  attrs.append(pbvh::CustomRequest::Normal);
   if (use_mask) {
-    attrs.add(pbvh::CustomRequest::Mask);
+    attrs.append(pbvh::CustomRequest::Mask);
   }
   if (use_fset) {
-    attrs.add(pbvh::CustomRequest::FaceSet);
+    attrs.append(pbvh::CustomRequest::FaceSet);
   }
 
   Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -1456,14 +1456,14 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
       if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
               name))
       {
-        attrs.add(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
+        attrs.append(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
       }
     }
   }
 
   if (use_uv) {
     if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
-      attrs.add(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
     }
   }
 
@@ -1492,14 +1492,14 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
     memset(&cd_needed, 0, sizeof(cd_needed));
   }
 
-  blender::Set<pbvh::AttributeRequest> attrs;
+  blender::Vector<pbvh::AttributeRequest, 16> attrs;
 
-  attrs.add(pbvh::CustomRequest::Position);
-  attrs.add(pbvh::CustomRequest::Normal);
+  attrs.append(pbvh::CustomRequest::Position);
+  attrs.append(pbvh::CustomRequest::Normal);
 
   for (int i = 0; i < draw_attrs.num_requests; i++) {
     const DRW_AttributeRequest &req = draw_attrs.requests[i];
-    attrs.add(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
+    attrs.append(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
   }
 
   /* UV maps are not in attribute requests. */
@@ -1508,7 +1508,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
       int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
       CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
-        attrs.add(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
       }
     }
   }

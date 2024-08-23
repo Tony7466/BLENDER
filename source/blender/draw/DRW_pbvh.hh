@@ -11,6 +11,7 @@
 /* Needed for BKE_ccg.hh. */
 #include "BLI_assert.h"
 #include "BLI_index_mask.hh"
+#include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
@@ -21,6 +22,7 @@
 #include "DNA_customdata_types.h"
 
 #include "BKE_ccg.hh"
+#include "BKE_pbvh_api.hh"
 
 namespace blender::gpu {
 class Batch;
@@ -29,6 +31,7 @@ class VertBuf;
 }  // namespace blender::gpu
 struct Mesh;
 struct CustomData;
+struct Object;
 struct SubdivCCG;
 struct BMesh;
 struct BMFace;
@@ -38,10 +41,12 @@ enum class AttrDomain : int8_t;
 namespace pbvh {
 class Node;
 class DrawCache;
+class Tree;
 }  // namespace pbvh
 }  // namespace blender::bke
 
-namespace blender::draw::pbvh {
+namespace blender {
+namespace draw::pbvh {
 
 class GenericRequest {
  public:
@@ -64,11 +69,22 @@ enum class CustomRequest : int8_t {
 
 using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 
-class DrawCache;
+}  // namespace draw::pbvh
+
+template<> struct DefaultHash<draw::pbvh::AttributeRequest> {
+  uint64_t operator()(const draw::pbvh::AttributeRequest &value) const;
+};
+
+namespace draw::pbvh {
 
 struct ViewportRequest {
-  Set<AttributeRequest> attributes;
+  Vector<AttributeRequest> attributes;
   bool use_coarse_grids;
+  BLI_STRUCT_EQUALITY_OPERATORS_2(ViewportRequest, attributes, use_coarse_grids);
+  uint64_t hash() const
+  {
+    return get_default_hash(attributes, use_coarse_grids);
+  }
 };
 
 // TODO: Try to move back to cc file.
@@ -105,4 +121,5 @@ IndexMask calc_visible_nodes(const bke::pbvh::Tree &pbvh,
                              const RegionView3D &rv3d,
                              IndexMaskMemory &memory);
 
-}  // namespace blender::draw::pbvh
+}  // namespace draw::pbvh
+}  // namespace blender

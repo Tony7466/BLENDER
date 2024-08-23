@@ -38,7 +38,7 @@ float3 SculptBatch::debug_color()
 
 static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                                                  const bool use_wire,
-                                                 const Set<pbvh::AttributeRequest> &attrs)
+                                                 const Span<pbvh::AttributeRequest> attrs)
 {
   /* pbvh::Tree should always exist for non-empty meshes, created by depsgraph eval. */
   bke::pbvh::Tree *pbvh = ob->sculpt ? ob->sculpt->pbvh.get() : nullptr;
@@ -123,8 +123,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
 
   const Span<int> material_indices = draw::pbvh::ensure_material_indices(*ob, draw_data);
 
-  Vector<SculptBatch> result_batches(nodes_to_update.size());
-  nodes_to_update.foreach_index([&](const int i, const int pos) {
+  Vector<SculptBatch> result_batches(visible_nodes.size());
+  visible_nodes.foreach_index([&](const int i, const int pos) {
     result_batches[pos] = {};
     result_batches[pos].batch = batches[i];
     result_batches[pos].material_slot = material_indices.is_empty() ? 0 : material_indices[i];
@@ -136,15 +136,15 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
 
 Vector<SculptBatch> sculpt_batches_get(const Object *ob, SculptBatchFeature features)
 {
-  Set<pbvh::AttributeRequest> attrs;
+  Vector<pbvh::AttributeRequest, 16> attrs;
 
-  attrs.add(pbvh::CustomRequest::Position);
-  attrs.add(pbvh::CustomRequest::Normal);
+  attrs.append(pbvh::CustomRequest::Position);
+  attrs.append(pbvh::CustomRequest::Normal);
   if (features & SCULPT_BATCH_MASK) {
-    attrs.add(pbvh::CustomRequest::Mask);
+    attrs.append(pbvh::CustomRequest::Mask);
   }
   if (features & SCULPT_BATCH_FACE_SET) {
-    attrs.add(pbvh::CustomRequest::FaceSet);
+    attrs.append(pbvh::CustomRequest::FaceSet);
   }
 
   const Mesh *mesh = BKE_object_get_original_mesh(ob);
@@ -155,14 +155,14 @@ Vector<SculptBatch> sculpt_batches_get(const Object *ob, SculptBatchFeature feat
       if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
               name))
       {
-        attrs.add(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
+        attrs.append(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
       }
     }
   }
 
   if (features & SCULPT_BATCH_UV) {
     if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
-      attrs.add(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
     }
   }
 
@@ -179,14 +179,14 @@ Vector<SculptBatch> sculpt_batches_per_material_get(const Object *ob,
   DRW_MeshCDMask cd_needed;
   DRW_mesh_get_attributes(*ob, *mesh, materials.data(), materials.size(), &draw_attrs, &cd_needed);
 
-  Set<pbvh::AttributeRequest> attrs;
+  Vector<pbvh::AttributeRequest, 16> attrs;
 
-  attrs.add(pbvh::CustomRequest::Position);
-  attrs.add(pbvh::CustomRequest::Normal);
+  attrs.append(pbvh::CustomRequest::Position);
+  attrs.append(pbvh::CustomRequest::Normal);
 
   for (int i = 0; i < draw_attrs.num_requests; i++) {
     const DRW_AttributeRequest &req = draw_attrs.requests[i];
-    attrs.add(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
+    attrs.append(pbvh::GenericRequest{req.attribute_name, req.cd_type, req.domain});
   }
 
   /* UV maps are not in attribute requests. */
@@ -195,7 +195,7 @@ Vector<SculptBatch> sculpt_batches_per_material_get(const Object *ob,
       int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
       CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
-        attrs.add(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
+        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
       }
     }
   }

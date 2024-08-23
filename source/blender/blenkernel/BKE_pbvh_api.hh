@@ -55,10 +55,6 @@ struct PBVHData;
 struct NodeData;
 }  // namespace pixels
 }  // namespace bke::pbvh
-namespace draw::pbvh {
-struct PBVHBatches;
-struct PBVH_GPU_Args;
-}  // namespace draw::pbvh
 }  // namespace blender
 
 namespace blender::bke::pbvh {
