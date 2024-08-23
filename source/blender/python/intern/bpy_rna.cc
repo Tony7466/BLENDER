@@ -90,7 +90,7 @@
 
 BPy_StructRNA *bpy_context_module = nullptr; /* for fast access */
 
-static PyObject *pyrna_struct_Subtype(PointerRNA *ptr);
+static PyObject *pyrna_struct_Subtype(PointerRNA *ptr, bool create_struct_rna = false);
 static PyObject *pyrna_prop_collection_values(BPy_PropertyRNA *self);
 
 static PyObject *pyrna_register_class(PyObject *self, PyObject *py_class);
@@ -7364,7 +7364,7 @@ static void pyrna_subtype_set_rna(PyObject *newclass, StructRNA *srna)
 
   /* Python deals with the circular reference. */
   PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
-  item = pyrna_struct_CreatePyObject(&ptr);
+  item = pyrna_struct_CreatePyObject(&ptr, true);
 
   /* NOTE: must set the class not the __dict__ else the internal slots are not updated correctly.
    */
@@ -7599,22 +7599,22 @@ static StructRNA *srna_from_ptr(PointerRNA *ptr)
 }
 
 /* Always returns a new ref, be sure to decref when done. */
-static PyObject *pyrna_struct_Subtype(PointerRNA *ptr)
+static PyObject *pyrna_struct_Subtype(PointerRNA *ptr, const bool create_struct_rna)
 {
-  return pyrna_srna_Subtype(srna_from_ptr(ptr));
+  return pyrna_srna_Subtype(create_struct_rna ? ptr->type : srna_from_ptr(ptr));
 }
 
 /*-----------------------CreatePyObject---------------------------------*/
 
-PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
+PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr, const bool create_struct_rna)
 {
-  BPy_StructRNA *pyrna = nullptr;
-
   /* NOTE: don't rely on this to return None since nullptr data with a valid type can often crash.
    */
   if (ptr->data == nullptr && ptr->type == nullptr) { /* Operator RNA has nullptr data. */
     Py_RETURN_NONE;
   }
+
+  BPy_StructRNA *pyrna = nullptr;
 
   /* New in 2.8x, since not many types support instancing
    * we may want to use a flag to avoid looping over all classes. - campbell */
@@ -7625,7 +7625,7 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
     /* Refine may have changed types after the first instance was created. */
     if (ptr->type == pyrna->ptr.type) {
       Py_INCREF(pyrna);
-      return (PyObject *)pyrna;
+      return reinterpret_cast<PyObject *>(pyrna);
     }
 
     /* Existing users will need to use 'type_recast' method. */
@@ -7638,7 +7638,7 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
   }
 
   {
-    PyTypeObject *tp = (PyTypeObject *)pyrna_struct_Subtype(ptr);
+    PyTypeObject *tp = (PyTypeObject *)pyrna_struct_Subtype(ptr, create_struct_rna);
 
     if (tp) {
       pyrna = (BPy_StructRNA *)tp->tp_alloc(tp, 0);
