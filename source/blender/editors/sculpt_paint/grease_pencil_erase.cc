@@ -982,7 +982,7 @@ void EraseOperation::on_stroke_begin(const bContext &C, const InputSample &start
 
       const float pixel_size = ED_view3d_pixel_size(
           rv3d, placement.project(start_sample.mouse_position));
-      radius_ = brush->unprojected_radius / pixel_size;
+      radius_ = paint->eraser_brush->size;
     }
     grease_pencil->runtime->temp_eraser_size = radius_;
 
