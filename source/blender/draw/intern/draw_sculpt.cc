@@ -98,32 +98,37 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
 
   bke::pbvh::update_normals_from_eval(*const_cast<Object *>(ob), *pbvh);
 
-  const IndexMask nodes_to_update;  // TODO: Gather based on flags with index mask result
+  draw::pbvh::DrawCache &draw_data = dynamic_cast<draw::pbvh::DrawCache &>(*pbvh->draw_data);
 
   IndexMaskMemory memory;
-  const IndexMask visible_nodes = pbvh::calc_visible_nodes(*pbvh, *rv3d, memory);
+  const IndexMask visible_nodes = bke::pbvh::search_nodes(
+      *pbvh, memory, [&](const bke::pbvh::Node &node) {
+        return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
+      });
+
+  const IndexMask nodes_to_update = IndexMask::from_predicate(
+      update_only_visible ? visible_nodes : IndexMask(pbvh->nodes_.size()),
+      GrainSize(64),
+      memory,
+      [&](const int i) {
+        return (pbvh->nodes_[i].flag_ & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers)) != 0;
+      });
 
   Span<gpu::Batch *> batches;
   if (use_wire) {
-    batches = pbvh::ensure_lines_batches(
-        *ob,
-        {{}, fast_mode},
-        nodes_to_update,
-        reinterpret_cast<draw::pbvh::DrawCache &>(*pbvh->draw_data));
+    batches = pbvh::ensure_lines_batches(*ob, {{}, fast_mode}, nodes_to_update, draw_data);
   }
   else {
-    batches = pbvh::ensure_tris_batches(
-        *ob,
-        {attrs, fast_mode},
-        nodes_to_update,
-        reinterpret_cast<draw::pbvh::DrawCache &>(*pbvh->draw_data));
+    batches = pbvh::ensure_tris_batches(*ob, {attrs, fast_mode}, nodes_to_update, draw_data);
   }
+
+  const Span<int> material_indices = draw::pbvh::ensure_material_indices(*ob, draw_data);
 
   Vector<SculptBatch> result_batches(nodes_to_update.size());
   nodes_to_update.foreach_index([&](const int i, const int pos) {
     result_batches[pos] = {};
     result_batches[pos].batch = batches[i];
-    result_batches[pos].material_slot = 0;  // TODO
+    result_batches[pos].material_slot = material_indices.is_empty() ? 0 : material_indices[i];
     result_batches[pos].debug_index = pos;
   });
 
