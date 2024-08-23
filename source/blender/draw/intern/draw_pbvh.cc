@@ -1735,17 +1735,12 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
         GrainSize(64), [&](const int i) { GPU_batch_vertbuf_add(batches[i], vbos[i], false); });
   }
 
+  for (const AttributeRequest &attr : request.attributes) {
+    Span<gpu::VertBuf *> vbos = draw_data.attribute_vbos.lookup(attr);
+    nodes_to_update.foreach_index([&](const int i) { GPU_vertbuf_use(vbos[i]); });
+  }
+
   return batches;
-}
-
-static void clear_all_data(DrawCache &batches)
-{
-  batches.lines_ibos.clear();
-  batches.tris_ibos.clear();
-  batches.attribute_vbos.clear();
-
-  batches.lines_batches.clear();
-  batches.tris_batches.clear();
 }
 
 Span<gpu::Batch *> ensure_lines_batches(const Object &object,
@@ -1774,6 +1769,8 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
       GPU_batch_vertbuf_add(batches[i], position_vbos[i], false);
     }
   });
+
+  nodes_to_update.foreach_index([&](const int i) { GPU_vertbuf_use(position_vbos[i]); });
 
   return draw_data.lines_batches;
 }
