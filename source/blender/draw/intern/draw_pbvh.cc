@@ -893,7 +893,7 @@ static void fill_vbos_bmesh(const Object &object,
         });
         break;
       }
-      case CustomRequest::Mask:
+      case CustomRequest::Mask: {
         const int cd_offset = CustomData_get_offset_named(
             &bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
         if (cd_offset != -1) {
@@ -909,6 +909,7 @@ static void fill_vbos_bmesh(const Object &object,
                                         [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
         }
         break;
+      }
       case CustomRequest::FaceSet: {
         const int cd_offset = CustomData_get_offset_named(
             &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
