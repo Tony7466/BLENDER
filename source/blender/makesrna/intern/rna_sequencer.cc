@@ -194,6 +194,19 @@ static void UNUSED_FUNCTION(rna_Sequence_invalidate_composite_update)(Main * /*b
   }
 }
 
+static void rna_Sequence_text_edit_update(Main *bmain, Scene *scene, PointerRNA *ptr)
+{
+  Sequence *seq = (Sequence *)ptr->data;
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  if (data->runtime != nullptr) {
+    MEM_delete(data->runtime);
+    data->runtime = nullptr;
+  }
+
+  rna_Sequence_invalidate_raw_update(bmain, scene, ptr);
+}
+
 static void rna_Sequence_scene_switch_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Sequence_invalidate_raw_update(bmain, scene, ptr);
@@ -3372,14 +3385,14 @@ static void rna_def_text(StructRNA *srna)
       prop, "Font", "Font of the text. Falls back to the UI font by default.");
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_pointer_funcs(prop, nullptr, "rna_Sequence_text_font_set", nullptr, nullptr);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "font_size", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, nullptr, "text_size");
   RNA_def_property_ui_text(prop, "Size", "Size of the text");
   RNA_def_property_range(prop, 0.0, 2000);
   RNA_def_property_ui_range(prop, 0.0f, 2000, 10.0f, 1);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, nullptr, "color");
@@ -3437,14 +3450,14 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_ui_text(prop, "Location", "Location of the text");
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
   RNA_def_property_ui_range(prop, -10.0, 10.0, 1, -1);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "wrap_width", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "wrap_width");
   RNA_def_property_ui_text(prop, "Wrap Width", "Word wrap width as factor, zero disables");
   RNA_def_property_range(prop, 0, FLT_MAX);
   RNA_def_property_ui_range(prop, 0.0, 1.0, 1, -1);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "box_margin", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "box_margin");
@@ -3459,19 +3472,19 @@ static void rna_def_text(StructRNA *srna)
   RNA_def_property_enum_items(prop, text_align_x_items);
   RNA_def_property_ui_text(
       prop, "Align X", "Align the text along the X axis, relative to the text bounds");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "align_y");
   RNA_def_property_enum_items(prop, text_align_y_items);
   RNA_def_property_ui_text(
       prop, "Align Y", "Align the text along the Y axis, relative to the text bounds");
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "text", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Text", "Text that will be displayed");
   RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
-  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
+  RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_text_edit_update");
 
   prop = RNA_def_property(srna, "use_shadow", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SEQ_TEXT_SHADOW);

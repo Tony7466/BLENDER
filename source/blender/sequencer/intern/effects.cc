@@ -2671,6 +2671,10 @@ static void free_text_effect(Sequence *seq, const bool do_id_user)
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   SEQ_effect_text_font_unload(data, do_id_user);
 
+  if (data->runtime) {
+    MEM_delete(data->runtime);
+  }
+
   if (data) {
     MEM_freeN(data);
     seq->effectdata = nullptr;
@@ -2688,6 +2692,7 @@ static void copy_text_effect(Sequence *dst, const Sequence *src, const int flag)
   dst->effectdata = MEM_dupallocN(src->effectdata);
   TextVars *data = static_cast<TextVars *>(dst->effectdata);
 
+  data->runtime = nullptr;
   data->text_blf_id = -1;
   SEQ_effect_text_font_load(data, (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0);
 }
@@ -3286,6 +3291,11 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
 static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  if (data->runtime != nullptr) {
+    return data->runtime;
+  }
+
   TextVarsRuntime *runtime = MEM_new<TextVarsRuntime>(__func__);
 
   runtime->font = font;
