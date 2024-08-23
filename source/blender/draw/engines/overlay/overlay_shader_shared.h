@@ -295,6 +295,45 @@ struct BoneEnvelopeData {
 };
 BLI_STATIC_ASSERT_ALIGN(BoneEnvelopeData, 16)
 
+/* Keep in sync with armature_stick_vert.glsl. */
+enum StickBoneFlag : uint32_t {
+  COL_WIRE = (1u << 0u),
+  COL_HEAD = (1u << 1u),
+  COL_TAIL = (1u << 2u),
+  COL_BONE = (1u << 3u),
+  POS_HEAD = (1u << 4u),
+  POS_TAIL = (1u << 5u),
+  POS_BONE = (1u << 6u),
+};
+
+struct BoneStickData {
+  float4 bone_start;
+  float4 bone_end;
+  float4 wire_color;
+  float4 bone_color;
+  float4 head_color;
+  float4 tail_color;
+
+#ifndef GPU_SHADER
+  BoneStickData() = default;
+
+  /* For bone fills. */
+  BoneStickData(float3 &bone_start,
+                float3 &bone_end,
+                float4 &wire_color,
+                float4 &bone_color,
+                float4 &head_color,
+                float4 &tail_color)
+      : bone_start(bone_start),
+        bone_end(bone_end),
+        wire_color(wire_color),
+        bone_color(bone_color),
+        head_color(head_color),
+        tail_color(tail_color){};
+#endif
+};
+BLI_STATIC_ASSERT_ALIGN(BoneStickData, 16)
+
 #ifndef GPU_SHADER
 #  ifdef __cplusplus
 }

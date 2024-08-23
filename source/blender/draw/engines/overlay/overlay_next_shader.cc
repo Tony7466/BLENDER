@@ -246,6 +246,32 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.vertex_inputs_.pop_last();
       });
 
+  armature_stick = selectable_shader(
+      "overlay_armature_stick", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("overlay_frag_output",
+                             "overlay_armature_common",
+                             "draw_resource_handle_new",
+                             "draw_modelmat_new",
+                             "draw_globals");
+        info.storage_buf(0, Qualifier::READ, "BoneStickData", "data_buf[]");
+        info.define("boneStart", "data_buf[gl_InstanceID].bone_start.xyz");
+        info.define("boneEnd", "data_buf[gl_InstanceID].bone_end.xyz");
+        info.define("wireColor", "data_buf[gl_InstanceID].wire_color");
+        info.define("boneColor", "data_buf[gl_InstanceID].bone_color");
+        info.define("headColor", "data_buf[gl_InstanceID].head_color");
+        info.define("tailColor", "data_buf[gl_InstanceID].tail_color");
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+        info.vertex_in(1, gpu::shader::Type::INT, "vclass");
+        info.define("flag", "vclass");
+      });
+
   armature_wire = selectable_shader(
       "overlay_armature_wire", [](gpu::shader::ShaderCreateInfo &info) {
         info.additional_infos_.clear();

@@ -4,28 +4,21 @@
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
-
-/* TODO(@fclem): Share definition with C code. */
-#define COL_WIRE 1u /* (1 << 0) */
-#define COL_HEAD 2u /* (1 << 1) */
-#define COL_TAIL 4u /* (1 << 2) */
-#define COL_BONE 8u /* (1 << 3) */
-
-#define POS_HEAD 16u                /* (1 << 4) */
-#define POS_TAIL 32u /* (1 << 5) */ /* UNUSED */
-#define POS_BONE 64u                /* (1 << 6) */
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 #define is_head bool(flag & POS_HEAD)
 #define is_bone bool(flag & POS_BONE)
 
 /* project to screen space */
-vec2 proj(vec4 pos)
+vec2 proj(vec4 hs_P)
 {
-  return (0.5 * (pos.xy / pos.w) + 0.5) * sizeViewport.xy;
+  return (0.5 * (hs_P.xy / hs_P.w) + 0.5) * sizeViewport.xy;
 }
 
 void main()
 {
+  select_id_set(in_select_buf[gl_InstanceID]);
+
   finalInnerColor = ((flag & COL_HEAD) != 0u) ? headColor : tailColor;
   finalInnerColor = ((flag & COL_BONE) != 0u) ? boneColor : finalInnerColor;
   finalWireColor = (do_wire) ? wireColor : finalInnerColor;

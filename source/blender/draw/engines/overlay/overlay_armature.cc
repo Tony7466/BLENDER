@@ -647,14 +647,28 @@ static void drw_shgroup_bone_stick(const Armatures::DrawContext *ctx,
                                    const float col_wire[4],
                                    const float col_bone[4],
                                    const float col_head[4],
-                                   const float col_tail[4])
+                                   const float col_tail[4],
+                                   const int select_id)
 {
-  float head[3], tail[3];
-  mul_v3_m4v3(head, ctx->ob->object_to_world().ptr(), bone_mat[3]);
-  add_v3_v3v3(tail, bone_mat[3], bone_mat[1]);
-  mul_m4_v3(ctx->ob->object_to_world().ptr(), tail);
+  float4x4 bmat = float4x4(bone_mat);
+  float3 head = math::transform_point(ctx->ob->object_to_world(), bmat.location());
+  float3 tail = math::transform_point(ctx->ob->object_to_world(), bmat.location() + bmat.y_axis());
 
-  DRW_buffer_add_entry(ctx->stick, head, tail, col_wire, col_bone, col_head, col_tail);
+  if (ctx->bone_buf) {
+    auto sel_id = (select_id != -1) ? ctx->res->select_id(*ctx->ob_ref, select_id) :
+                                      draw::select::SelectMap::select_invalid_id();
+
+    ctx->bone_buf->stick_buf.append({head,
+                                     tail,
+                                     *(float4 *)col_wire,
+                                     *(float4 *)col_bone,
+                                     *(float4 *)col_head,
+                                     *(float4 *)col_tail},
+                                    sel_id);
+  }
+  else {
+    DRW_buffer_add_entry(ctx->stick, head, tail, col_wire, col_bone, col_head, col_tail);
+  }
 }
 
 /* Envelope */
@@ -2384,11 +2398,6 @@ class ArmatureBoneDrawStrategyLine : public ArmatureBoneDrawStrategy {
     const float *col_head = no_display;
     const float *col_tail = col_bone;
 
-    if (ctx->bone_buf) {
-      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
-      return;
-    }
-
     if (ctx->const_color != nullptr) {
       col_wire = no_display; /* actually shrink the display. */
       col_bone = col_head = col_tail = ctx->const_color;
@@ -2412,22 +2421,49 @@ class ArmatureBoneDrawStrategyLine : public ArmatureBoneDrawStrategy {
 
     if (select_id == -1) {
       /* Not in selection mode, draw everything at once. */
-      drw_shgroup_bone_stick(ctx, bone.disp_mat(), col_wire, col_bone, col_head, col_tail);
+      drw_shgroup_bone_stick(
+          ctx, bone.disp_mat(), col_wire, col_bone, col_head, col_tail, select_id);
     }
     else {
       /* In selection mode, draw bone, root and tip separately. */
-      DRW_select_load_id(select_id | BONESEL_BONE);
-      drw_shgroup_bone_stick(ctx, bone.disp_mat(), col_wire, col_bone, no_display, no_display);
+      if (ctx->bone_buf == nullptr) {
+        DRW_select_load_id(select_id | BONESEL_BONE);
+      }
+      drw_shgroup_bone_stick(ctx,
+                             bone.disp_mat(),
+                             col_wire,
+                             col_bone,
+                             no_display,
+                             no_display,
+                             select_id | BONESEL_BONE);
 
       if (col_head[3] > 0.0f) {
-        DRW_select_load_id(select_id | BONESEL_ROOT);
-        drw_shgroup_bone_stick(ctx, bone.disp_mat(), col_wire, no_display, col_head, no_display);
+        if (ctx->bone_buf == nullptr) {
+          DRW_select_load_id(select_id | BONESEL_ROOT);
+        }
+        drw_shgroup_bone_stick(ctx,
+                               bone.disp_mat(),
+                               col_wire,
+                               no_display,
+                               col_head,
+                               no_display,
+                               select_id | BONESEL_ROOT);
       }
 
-      DRW_select_load_id(select_id | BONESEL_TIP);
-      drw_shgroup_bone_stick(ctx, bone.disp_mat(), col_wire, no_display, no_display, col_tail);
+      if (ctx->bone_buf == nullptr) {
+        DRW_select_load_id(select_id | BONESEL_TIP);
+      }
+      drw_shgroup_bone_stick(ctx,
+                             bone.disp_mat(),
+                             col_wire,
+                             no_display,
+                             no_display,
+                             col_tail,
+                             select_id | BONESEL_TIP);
 
-      DRW_select_load_id(-1);
+      if (ctx->bone_buf == nullptr) {
+        DRW_select_load_id(-1);
+      }
     }
   }
 };

@@ -276,6 +276,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_armature_stick_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_armature_stick)
     .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
     /* Bone aligned screen space. */
     .vertex_in(0, Type::VEC2, "pos")
     .vertex_in(1, Type::UINT, "flag")

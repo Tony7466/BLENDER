@@ -25,6 +25,7 @@ enum eArmatureDrawMode {
 class Armatures {
   using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   using BoneEnvelopeBuf = ShapeInstanceBuf<BoneEnvelopeData>;
+  using BoneStickBuf = ShapeInstanceBuf<BoneStickData>;
 
  private:
   const SelectionType selection_type_;
@@ -56,6 +57,8 @@ class Armatures {
     PassSimple::Sub *envelope_fill = nullptr;
     PassSimple::Sub *envelope_outline = nullptr;
     PassSimple::Sub *envelope_distance = nullptr;
+    /* Stick bones. */
+    PassSimple::Sub *stick = nullptr;
     /* Wire bones. */
     PassSimple::Sub *wire = nullptr;
 
@@ -71,6 +74,8 @@ class Armatures {
     BoneEnvelopeBuf envelope_fill_buf = {selection_type_, "envelope_fill_buf"};
     BoneEnvelopeBuf envelope_outline_buf = {selection_type_, "envelope_outline_buf"};
     BoneEnvelopeBuf envelope_distance_buf = {selection_type_, "envelope_distance_buf"};
+
+    BoneStickBuf stick_buf = {selection_type_, "stick_buf"};
 
     LinePrimitiveBuf wire_buf = {selection_type_, "wire_buf"};
 
@@ -243,7 +248,24 @@ class Armatures {
       /* Degrees-of-Freedom. */
     }
     {
-      /* Stick Bones. */
+      {
+        auto &sub = armature_ps_.sub("opaque.stick");
+        sub.shader_set(res.shaders.armature_stick.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("alpha", 1.0f);
+        opaque.stick = &sub;
+      }
+      if (use_wire_alpha) {
+        auto &sub = armature_ps_.sub("transparent.stick");
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.shader_set(res.shaders.armature_stick.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("alpha", wire_alpha);
+        transparent.stick = &sub;
+      }
+      else {
+        transparent.stick = opaque.stick;
+      }
     }
     {
       {
@@ -315,6 +337,7 @@ class Armatures {
       bb.octahedral_outline_buf.clear();
       bb.sphere_fill_buf.clear();
       bb.sphere_outline_buf.clear();
+      bb.stick_buf.clear();
       bb.wire_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
        * Prefer a pruning strategy. */
@@ -452,6 +475,8 @@ class Armatures {
       bb.envelope_fill_buf.end_sync(*bb.envelope_fill, shapes.bone_envelope.get());
       bb.envelope_outline_buf.end_sync(*bb.envelope_outline, shapes.bone_envelope_wire.get());
       bb.envelope_distance_buf.end_sync(*bb.envelope_distance, shapes.bone_envelope.get());
+
+      bb.stick_buf.end_sync(*bb.stick, shapes.bone_stick.get());
 
       bb.wire_buf.end_sync(*bb.wire);
 

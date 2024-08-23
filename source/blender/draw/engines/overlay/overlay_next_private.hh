@@ -99,6 +99,7 @@ class ShapeCache {
   BatchPtr bone_octahedron_wire;
   BatchPtr bone_sphere;
   BatchPtr bone_sphere_wire;
+  BatchPtr bone_stick;
 
   BatchPtr quad_wire;
   BatchPtr quad_solid;
@@ -205,6 +206,7 @@ class ShaderModule {
   ShaderPtr armature_shape_wire;
   ShaderPtr armature_sphere_outline;
   ShaderPtr armature_sphere_fill;
+  ShaderPtr armature_stick;
   ShaderPtr armature_wire;
   ShaderPtr depth_mesh;
   ShaderPtr extra_grid;

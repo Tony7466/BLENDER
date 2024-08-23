@@ -441,6 +441,7 @@ ShapeCache::ShapeCache()
         GPU_PRIM_LINES_ADJ, bone_octahedron.get()->verts[0], ibo, GPU_BATCH_OWNS_INDEX));
   }
 
+  /* Armature Sphere. */
   {
     constexpr int resolution = 64;
     Vector<float2> ring = ring_vertices(0.05f, resolution);
@@ -457,6 +458,46 @@ ShapeCache::ShapeCache()
   {
     bone_sphere_wire = BatchPtr(
         GPU_batch_create(GPU_PRIM_LINE_STRIP, bone_sphere.get()->verts[0], nullptr));
+  }
+
+  /* Armature Stick. */
+  {
+    /* Gather as a strip and add to main buffer as a list of triangles. */
+    Vector<Vertex> vert_strip;
+    vert_strip.append({{0.0f, 1.0f, 0.0f}, COL_BONE | POS_BONE | POS_HEAD | COL_HEAD | COL_WIRE});
+    vert_strip.append({{0.0f, 1.0f, 0.0f}, COL_BONE | POS_BONE | POS_TAIL | COL_TAIL | COL_WIRE});
+    vert_strip.append({{0.0f, 0.0f, 0.0f}, COL_BONE | POS_BONE | POS_HEAD | COL_HEAD});
+    vert_strip.append({{0.0f, 0.0f, 0.0f}, COL_BONE | POS_BONE | POS_TAIL | COL_TAIL});
+    vert_strip.append({{0.0f, -1.0f, 0.0f}, COL_BONE | POS_BONE | POS_HEAD | COL_HEAD | COL_WIRE});
+    vert_strip.append({{0.0f, -1.0f, 0.0f}, COL_BONE | POS_BONE | POS_TAIL | COL_TAIL | COL_WIRE});
+
+    Vector<Vertex> verts;
+    /* Bone rectangle */
+    for (int t : IndexRange(vert_strip.size() - 2)) {
+      /* NOTE: Don't care about winding.
+       * Theses triangles are facing the camera and should not be backface culled. */
+      verts.append(vert_strip[t]);
+      verts.append(vert_strip[t + 1]);
+      verts.append(vert_strip[t + 2]);
+    }
+
+    constexpr int resolution = 12;
+    Vector<float2> ring = ring_vertices(2.0f, resolution);
+    for (int a : IndexRange(resolution)) {
+      float2 cv1 = ring[a % resolution];
+      float2 cv2 = ring[(a + 1) % resolution];
+      /* Head point. */
+      verts.append({{0.0f, 0.0f, 0.0f}, int(POS_HEAD | COL_HEAD)});
+      verts.append({{cv1.x, cv1.y, 0.0f}, int(POS_HEAD | COL_HEAD | COL_WIRE)});
+      verts.append({{cv2.x, cv2.y, 0.0f}, int(POS_HEAD | COL_HEAD | COL_WIRE)});
+      /* Tail point. */
+      verts.append({{0.0f, 0.0f, 0.0f}, int(POS_TAIL | COL_TAIL)});
+      verts.append({{cv1.x, cv1.y, 0.0f}, int(POS_TAIL | COL_TAIL | COL_WIRE)});
+      verts.append({{cv2.x, cv2.y, 0.0f}, int(POS_TAIL | COL_TAIL | COL_WIRE)});
+    }
+
+    bone_stick = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 
   /* Armature BBones. */
