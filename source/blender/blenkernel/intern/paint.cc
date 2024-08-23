@@ -1579,6 +1579,10 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
     dst->brush_asset_reference = MEM_new<AssetWeakReference>(__func__,
                                                              *src->brush_asset_reference);
   }
+  if (src->main_brush_asset_reference) {
+    dst->main_brush_asset_reference = MEM_new<AssetWeakReference>(
+        __func__, *src->main_brush_asset_reference);
+  }
   if (src->eraser_brush_asset_reference) {
     dst->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(
         __func__, *src->eraser_brush_asset_reference);
@@ -1616,6 +1620,9 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *paint)
   if (paint->brush_asset_reference) {
     BKE_asset_weak_reference_write(writer, paint->brush_asset_reference);
   }
+  if (paint->main_brush_asset_reference) {
+    BKE_asset_weak_reference_write(writer, paint->main_brush_asset_reference);
+  }
   if (paint->eraser_brush_asset_reference) {
     BKE_asset_weak_reference_write(writer, paint->eraser_brush_asset_reference);
   }
@@ -1640,6 +1647,11 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
   BLO_read_struct(reader, AssetWeakReference, &paint->brush_asset_reference);
   if (paint->brush_asset_reference) {
     BKE_asset_weak_reference_read(reader, paint->brush_asset_reference);
+  }
+
+  BLO_read_struct(reader, AssetWeakReference, &paint->main_brush_asset_reference);
+  if (paint->main_brush_asset_reference) {
+    BKE_asset_weak_reference_read(reader, paint->main_brush_asset_reference);
   }
 
   BLO_read_struct(reader, AssetWeakReference, &paint->eraser_brush_asset_reference);
