@@ -9,7 +9,6 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh.hh"
@@ -17,11 +16,11 @@
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "editors/sculpt_paint/sculpt_smooth.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -302,7 +301,7 @@ void do_enhance_details_brush(const Depsgraph &depsgraph,
   bke::pbvh::Tree &pbvh = *ss.pbvh;
 
   if (SCULPT_stroke_is_first_brush_step(*ss.cache)) {
-    ss.cache->detail_directions.reinitialize(SCULPT_vertex_count_get(ss));
+    ss.cache->detail_directions.reinitialize(SCULPT_vertex_count_get(object));
     Vector<bke::pbvh::Node *> effective_nodes = bke::pbvh::search_gather(
         pbvh, [&](bke::pbvh::Node &node) { return !node_fully_masked_or_hidden(node); });
     calc_smooth_translations(depsgraph, object, effective_nodes, ss.cache->detail_directions);
@@ -332,7 +331,7 @@ void do_enhance_details_brush(const Depsgraph &depsgraph,
                      object,
                      tls,
                      positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
