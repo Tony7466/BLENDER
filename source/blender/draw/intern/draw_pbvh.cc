@@ -85,15 +85,6 @@ static const GPUVertFormat &position_format()
   return format;
 }
 
-static const GPUVertFormat &position_format()
-{
-  static GPUVertFormat format{};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-  }
-  return format;
-}
-
 static const GPUVertFormat &normal_format()
 {
   static GPUVertFormat format{};
@@ -149,7 +140,6 @@ static GPUVertFormat format_for_request(const OrigMeshData &orig_mesh_data,
                                         const AttributeRequest &request)
 {
   if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
-    GPUVertFormat format;
     switch (*request_type) {
       case CustomRequest::Position:
         return position_format();
@@ -718,6 +708,8 @@ static void fill_vbos_grids(const Object &object,
         break;
       }
       case CustomRequest::FaceSet: {
+        const int face_set_default = orig_mesh_data.face_set_default;
+        const int face_set_seed = orig_mesh_data.face_set_seed;
         const Mesh &mesh = *static_cast<const Mesh *>(object.data);
         const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
         const bke::AttributeAccessor attributes = mesh.attributes();
@@ -729,8 +721,8 @@ static void fill_vbos_grids(const Object &object,
             fill_vbo_face_set_grids(key,
                                     grid_to_face_map,
                                     face_sets_span,
-                                    orig_mesh_data.face_set_default,
-                                    orig_mesh_data.face_set_seed,
+                                    face_set_default,
+                                    face_set_seed,
                                     use_flat_layout[i],
                                     bke::pbvh::node_grid_indices(nodes[i]),
                                     *vbos[i]);
@@ -826,6 +818,8 @@ static void fill_vbos_mesh(const Object &object,
         break;
       }
       case CustomRequest::FaceSet: {
+        const int face_set_default = orig_mesh_data.face_set_default;
+        const int face_set_seed = orig_mesh_data.face_set_seed;
         const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                              bke::AttrDomain::Face);
         if (!face_sets.is_empty()) {
@@ -833,8 +827,8 @@ static void fill_vbos_mesh(const Object &object,
             fill_vbo_face_set_mesh(tri_faces,
                                    hide_poly,
                                    face_sets,
-                                   orig_mesh_data.face_set_default,
-                                   orig_mesh_data.face_set_seed,
+                                   face_set_default,
+                                   face_set_seed,
                                    bke::pbvh::node_tri_indices(nodes[i]),
                                    *vbos[i]);
           });
@@ -1015,15 +1009,16 @@ static void fill_vbos_bmesh(const Object &object,
         break;
       }
       case CustomRequest::FaceSet: {
+        const int face_set_default = orig_mesh_data.face_set_default;
+        const int face_set_seed = orig_mesh_data.face_set_seed;
         const int cd_offset = CustomData_get_offset_named(
             &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
-
         if (cd_offset != -1) {
           nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_face_set_bmesh(
                 BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::Node &>(nodes[i])),
-                orig_mesh_data.face_set_default,
-                orig_mesh_data.face_set_seed,
+                face_set_default,
+                face_set_seed,
                 cd_offset,
                 *vbos[i]);
           });
