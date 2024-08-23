@@ -14,6 +14,8 @@ def prefill_bug_report_info():
     import urllib.parse
     from pathlib import Path
 
+    print("Collecting system information...")
+
     query_params = {"type": "bug_report", "project": "blender"}
 
     query_params["os"] = "{:s} {:d} Bits".format(
