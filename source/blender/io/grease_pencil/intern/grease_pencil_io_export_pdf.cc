@@ -135,11 +135,11 @@ void PDFExporter::export_grease_pencil_objects(const int frame_number)
 
     for (const bke::greasepencil::Layer *layer : grease_pencil_eval->layers()) {
       if (!layer->is_visible()) {
-        return;
+        continue;
       }
       const Drawing *drawing = grease_pencil_eval->get_drawing_at(*layer, frame_number);
       if (drawing == nullptr) {
-        return;
+        continue;
       }
 
       export_grease_pencil_layer(*ob_eval, *layer, *drawing);

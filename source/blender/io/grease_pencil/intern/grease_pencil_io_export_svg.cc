@@ -191,11 +191,11 @@ void SVGExporter::export_grease_pencil_objects(pugi::xml_node node, const int fr
 
     for (const bke::greasepencil::Layer *layer : grease_pencil_eval->layers()) {
       if (!layer->is_visible()) {
-        return;
+        continue;
       }
       const Drawing *drawing = grease_pencil_eval->get_drawing_at(*layer, frame_number);
       if (drawing == nullptr) {
-        return;
+        continue;
       }
 
       /* Layer node. */
