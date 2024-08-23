@@ -6,6 +6,7 @@
 
 #include "BLI_index_range.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_vector.hh"
 
 /** \file
@@ -99,17 +100,23 @@ void SEQ_effect_text_font_load(TextVars *data, bool do_id_user);
 using namespace blender;
 namespace blender::seq {
 
-struct TextVarsRuntime {
-  Vector<int> character_byte_offsets;
-  Vector<int> character_byte_lengths;
-  Vector<int> character_flags;
-  Vector<float2> character_positions;
-  Vector<float> character_widths;
+struct CharInfo {
+  const char *str_ptr;
+  int byte_length;
+  int flags;
+  float2 position;
+  float widths_pixels;
+  bool is_drawn = true; /* False, when character is excluded due to word wrapping. */
+};
 
-  Vector<IndexRange> line_index_ranges;
+struct TextVarsRuntime {
+  Vector<CharInfo> characters;
+  /* References array of `TextVarsRuntime::characters`. */
+  Vector<MutableSpan<CharInfo>> characters_per_line;
   Vector<float> line_witdths;
 
   rcti text_boundbox;
+  int line_count;
   int line_height;
   int character_count;
   int font;
