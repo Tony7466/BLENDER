@@ -25,6 +25,7 @@
 #include "DEG_depsgraph_build.hh"
 
 #include "DNA_anim_types.h"
+#include "DNA_key_types.h"
 
 #include "ED_anim_api.hh"
 
@@ -39,49 +40,68 @@ namespace blender::animrig {
 
 /* Find an action that is related to the given ID. Either on the data if the ID is an Object or a
  * user of the ID. */
-static bAction *find_action(const Main &bmain, const ID &id)
+static bAction *find_related_action(const Main &bmain, const ID &id)
 {
-  if (GS(id.name) != ID_OB && ID_REAL_USERS(&id) == 1) {
-    /* Find the one object using this datablock. If found, and it has
-     * an action, return that action instead. This is useful so object and data share the same
-     * action, but on different slots. */
-
-    for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
-         ob = static_cast<Object *>(ob->id.next))
-    {
-      if (ob->data != &id) {
-        continue;
-      }
-      if (!ob->adt || !ob->adt->action) {
-        /* No animation.  */
+  switch (GS(id.name)) {
+    case ID_OB: {
+      Object *ob = (Object *)(&id);
+      if (!ob) {
         return nullptr;
       }
-      Action &action = ob->adt->action->wrap();
+      ID *data = (ID *)ob->data;
+      if (!data) {
+        return nullptr;
+      }
+      AnimData *adt = BKE_animdata_from_id(data);
+      if (!adt) {
+        return nullptr;
+      }
+      Action &action = adt->action->wrap();
       if (!action.is_action_layered()) {
         return nullptr;
       }
-      return ob->adt->action;
+      return adt->action;
+      break;
+    }
+    case ID_KE: {
+      /* Shapekeys.  */
+      Key *shapekey = (Key *)(&id);
+      AnimData *adt = BKE_animdata_from_id(shapekey->from);
+      if (!adt || !adt->action) {
+        return nullptr;
+      }
+      return adt->action;
+      break;
+    }
+
+    default: {
+      if (ID_REAL_USERS(&id) != 1) {
+        return nullptr;
+      }
+      /* Find the one object using this datablock. If found, and it has
+       * an action, return that action instead. This is useful so object and data share the same
+       * action, but on different slots. */
+
+      for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
+           ob = static_cast<Object *>(ob->id.next))
+      {
+        if (ob->data != &id) {
+          continue;
+        }
+        if (!ob->adt || !ob->adt->action) {
+          /* No animation.  */
+          return nullptr;
+        }
+        Action &action = ob->adt->action->wrap();
+        if (!action.is_action_layered()) {
+          return nullptr;
+        }
+        return ob->adt->action;
+        break;
+      }
     }
   }
-  else if (GS(id.name) == ID_OB) {
-    Object *ob = (Object *)(&id);
-    if (!ob) {
-      return nullptr;
-    }
-    ID *data = (ID *)ob->data;
-    if (!data) {
-      return nullptr;
-    }
-    AnimData *adt = BKE_animdata_from_id(data);
-    if (!adt) {
-      return nullptr;
-    }
-    Action &action = adt->action->wrap();
-    if (!action.is_action_layered()) {
-      return nullptr;
-    }
-    return adt->action;
-  }
+
   return nullptr;
 }
 
@@ -105,7 +125,7 @@ bAction *id_action_ensure(Main *bmain, ID *id)
   if (adt->action == nullptr) {
     bAction *action = nullptr;
     if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
-      action = find_action(*bmain, *id);
+      action = find_related_action(*bmain, *id);
     }
     if (action == nullptr) {
       /* init action name from name of ID block */
