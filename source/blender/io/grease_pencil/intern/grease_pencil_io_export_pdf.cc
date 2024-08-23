@@ -219,14 +219,14 @@ void PDFExporter::write_stroke_to_polyline(const float4x4 &transform,
     HPDF_Page_SetRGBFill(page_, srgb.r, srgb.g, srgb.b);
     HPDF_Page_SetRGBStroke(page_, srgb.r, srgb.g, srgb.b);
     if (gstate) {
-      HPDF_ExtGState_SetAlphaFill(gstate, std::clamp(opacity, 0.0f, 1.0f));
-      HPDF_ExtGState_SetAlphaStroke(gstate, std::clamp(opacity, 0.0f, 1.0f));
+      HPDF_ExtGState_SetAlphaFill(gstate, std::clamp(total_opacity, 0.0f, 1.0f));
+      HPDF_ExtGState_SetAlphaStroke(gstate, std::clamp(total_opacity, 0.0f, 1.0f));
     }
   }
   else {
     HPDF_Page_SetRGBFill(page_, srgb.r, srgb.g, srgb.b);
     if (gstate) {
-      HPDF_ExtGState_SetAlphaFill(gstate, std::clamp(opacity, 0.0f, 1.0f));
+      HPDF_ExtGState_SetAlphaFill(gstate, std::clamp(total_opacity, 0.0f, 1.0f));
     }
   }
   if (gstate) {
