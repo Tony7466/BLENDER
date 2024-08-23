@@ -388,6 +388,15 @@ void expect_boolean_result_coord(const Span<float2> curve_a,
     return;
   }
 
+  int total_size = 0;
+  for (const int i : expected_points.index_range()) {
+    total_size += expected_points[i].size();
+  }
+  EXPECT_EQ(points.size(), total_size);
+  if (points.size() != total_size) {
+    return;
+  }
+
   for (const int polygon_id : points_by_polygon.index_range()) {
     const IndexRange vert_ids = points_by_polygon[polygon_id];
 
