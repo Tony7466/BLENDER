@@ -1586,7 +1586,6 @@ static void ensure_vbos_allocated_grids(const Object &object,
 {
   const SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
