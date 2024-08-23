@@ -1385,8 +1385,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
     update_only_visible = true;
   }
 
-  Mesh *mesh = static_cast<Mesh *>(scd->ob->data);
-  bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
+  bke::pbvh::update_normals_from_eval(*const_cast<Object *>(scd->ob), *pbvh);
 
   const IndexMask nodes_to_update;
   const IndexMask nodes_to_draw;
@@ -1398,7 +1397,7 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   }
 
   bke::pbvh::draw_cb(
-      *mesh,
+      *scd->ob,
       *pbvh,
       update_only_visible,
       update_frustum,

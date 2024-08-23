@@ -121,10 +121,12 @@ class Action : public ::bAction {
   bool layer_remove(Layer &layer_to_remove);
 
   /**
-   * If the Action is empty, create a default layer with a single infinite
-   * keyframe strip.
+   * Ensure that there is at least one layer with the infinite keyframe strip.
+   *
+   * \note Within the limits of Project Baklava Phase 1, this means that there
+   * will be exactly one layer with one keyframe strip on it.
    */
-  void layer_ensure_at_least_one();
+  void layer_keystrip_ensure();
 
   /* Action Slot access. */
   blender::Span<const Slot *> slots() const;
@@ -715,7 +717,7 @@ class ChannelBag : public ::ActionChannelBag {
    * Find an FCurve matching the fcurve descriptor, or create one if it doesn't
    * exist.
    *
-   * \param bmain Used to tag the dependency graph(s) for relationship
+   * \param bmain: Used to tag the dependency graph(s) for relationship
    * rebuilding. This is necessary when adding a new F-Curve, as a
    * previously-unanimated depsgraph component may become animated now. Can be
    * nullptr, in which case the tagging is skipped and is left as the
@@ -728,7 +730,7 @@ class ChannelBag : public ::ActionChannelBag {
    *
    * \return the F-Curve it it was created, or nullptr if it already existed.
    *
-   * \param bmain Used to tag the dependency graph(s) for relationship
+   * \param bmain: Used to tag the dependency graph(s) for relationship
    * rebuilding. This is necessary when adding a new F-Curve, as a
    * previously-unanimated depsgraph component may become animated now. Can be
    * nullptr, in which case the tagging is skipped and is left as the
@@ -751,6 +753,73 @@ class ChannelBag : public ::ActionChannelBag {
    */
   void fcurves_clear();
 
+  /* Channel group access. */
+  blender::Span<const bActionGroup *> channel_groups() const;
+  blender::MutableSpan<bActionGroup *> channel_groups();
+  const bActionGroup *channel_group(int64_t index) const;
+  bActionGroup *channel_group(int64_t index);
+
+  /**
+   * Find the first bActionGroup (channel group) with the given name.
+   *
+   * Note that channel groups with the same name are allowed, and this simply
+   * returns the first match.
+   *
+   * If no matching group is found, `nullptr` is returned.
+   */
+  const bActionGroup *channel_group_find(StringRef name) const;
+  bActionGroup *channel_group_find(StringRef name);
+
+  /**
+   * Find the channel group that contains the fcurve at `fcurve_array_index` as
+   * a member.
+   *
+   * \return The index of the channel group if found, or -1 if no such group is
+   * found.
+   */
+  int channel_group_containing_index(int fcurve_array_index);
+
+  /**
+   * Create a new empty channel group with the given name.
+   *
+   * The new group is added to the end of the channel group array of the
+   * ChannelBag.
+   *
+   * \return A reference to the new channel group.
+   */
+  bActionGroup &channel_group_create(StringRefNull name);
+
+  /**
+   * Find a channel group with the given name, or if none exists create one.
+   *
+   * If a new group is created, it's added to the end of the channel group array
+   * of the ChannelBag.
+   *
+   * \return A reference to the channel group.
+   */
+  bActionGroup &channel_group_ensure(StringRefNull name);
+
+  /**
+   * Remove the given channel group from the channel bag.
+   *
+   * Any fcurves that were part of this group will me moved to just after all
+   * grouped fcurves.
+   *
+   * \return true when the channel group was found & removed, false if it wasn't
+   * found.
+   */
+  bool channel_group_remove(bActionGroup &group);
+
+  /**
+   * Assigns the given FCurve to the given channel group.
+   *
+   * Fails if either doesn't belong to this channel bag, but otherwise always
+   * succeeds.
+   *
+   * \return True on success, false on failure.
+   */
+  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group);
+
  protected:
   /**
    * Create an F-Curve.
@@ -758,13 +827,86 @@ class ChannelBag : public ::ActionChannelBag {
    * Assumes that there is no such F-Curve yet on this ChannelBag. If it is
    * uncertain whether this is the case, use `fcurve_create_unique()` instead.
    *
-   * \param bmain Used to tag the dependency graph(s) for relationship
+   * \param bmain: Used to tag the dependency graph(s) for relationship
    * rebuilding. This is necessary when adding a new F-Curve, as a
    * previously-unanimated depsgraph component may become animated now. Can be
    * nullptr, in which case the tagging is skipped and is left as the
    * responsibility of the caller.
    */
   FCurve &fcurve_create(Main *bmain, FCurveDescriptor fcurve_descriptor);
+
+ private:
+  /**
+   * Remove the channel group at `channel_group_index` from the channel group
+   * array.
+   *
+   * This is a low-level function that *only* manipulates the channel group
+   * array in the most basic way. It literally just removes the given item from
+   * the array and frees it, just like `erase()` on `std::vector`.
+   *
+   * It specifically does *not* maintain any of the semantic invariants of the
+   * group array or its relationship to the fcurves.
+   *
+   * Both `collapse_channel_group_gaps()` and
+   * `update_fcurve_channel_group_pointers()` should be called at some point
+   * after this to restore the semantic invariants.
+   *
+   * \see `collapse_channel_group_gaps()`
+   *
+   * \see `update_fcurve_channel_group_pointers()`
+   */
+  void channel_group_remove_raw(int channel_group_index);
+
+  /**
+   * Move channel groups' fcurve spans so that there are no gaps between them,
+   * and to start at the first fcurve.
+   *
+   * This does *not* alter the order of the channel groups nor the number of
+   * fcurves in each group. It simply changes the start indices of each group so
+   * that the groups are packed together at the start of the fcurves.
+   *
+   * For example, if the mapping of groups to fcurves looks like this (g* are
+   * the groups, dots indicate ungrouped areas, and f* are the fcurves, so e.g.
+   * f1 and f2 are part of group g0):
+   *
+   * ```
+   *  ..| g0  |..|g1|.....| g2  |..
+   * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
+   * ```
+   *
+   * Then after calling this function they will look like this:
+   *
+   * ```
+   * | g0  |g1| g2  |..............
+   * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
+   * ```
+   *
+   * Note that this specifically does *not* move the fcurves, and therefore this
+   * alters fcurve membership in a way that depends on how the groups are
+   * shifted. It also does not update the group pointers inside the fcurves, so
+   * `update_fcurve_channel_group_pointers()` must be called at some point after
+   * this to fix those up.
+   *
+   * This upholds critical invariants and should be called any time gaps might
+   * be introduced (changing the fcurve span of or removing a group).
+   *
+   * \see `update_fcurve_channel_group_pointers()`
+   */
+  void collapse_channel_group_gaps();
+
+  /**
+   * Updates all fcurves to point at the channel group that they belong to.
+   *
+   * The indices in the channel groups are considered the source of truth, and
+   * the pointers in the fcurves are simply updated to match those.  Fcurves
+   * that don't belong to a group will have their group pointer set to null.
+   *
+   * This upholds critical invariants and should always be called after
+   * modifications to either the array of fcurves (changing the array position
+   * of, adding, or removing fcurves) or to the array of groups (changing the
+   * fcurve span of, removing, or adding groups).
+   */
+  void update_fcurve_channel_group_pointers();
 };
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
@@ -830,6 +972,24 @@ Action *get_action(ID &animated_id);
  */
 std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id);
 
+const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
+                                                      slot_handle_t slot_handle);
+animrig::ChannelBag *channelbag_for_action_slot(Action &action, slot_handle_t slot_handle);
+
+/**
+ * Return the channel groups for this specific slot handle.
+ *
+ * This is just a utility function, that's intended to become obsolete when multi-layer Actions
+ * are introduced. However, since Blender currently only supports a single layer with a single
+ * strip, of a single type, this function can be used.
+ *
+ * The use of this function is also an indicator for code that will have to be altered when
+ * multi-layered Actions are getting implemented.
+ */
+Span<bActionGroup *> channel_groups_for_action_slot(Action &action, slot_handle_t slot_handle);
+Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
+                                                          slot_handle_t slot_handle);
+
 /**
  * Return the F-Curves for this specific slot handle.
  *
@@ -850,7 +1010,7 @@ Span<const FCurve *> fcurves_for_action_slot(const Action &action, slot_handle_t
  *
  * This is a utility function whose purpose is unclear after multi-layer Actions are introduced.
  * It might still be useful, it might not be.
-
+ *
  * The use of this function is an indicator for code that might have to be altered when
  * multi-layered Actions are getting implemented.
  */
@@ -889,6 +1049,14 @@ FCurve *action_fcurve_ensure(Main *bmain,
  * Find the F-Curve from the given Action. This assumes that all the destinations are valid.
  */
 FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Remove the given FCurve from the action by searching for it in all channelbags.
+ * This assumes that an FCurve can only exist in an action once.
+ *
+ *  \returns true if the given FCurve was removed.
+ */
+bool action_fcurve_remove(Action &action, FCurve &fcu);
 
 /**
  * Find an appropriate user of the given Action + Slot for keyframing purposes.

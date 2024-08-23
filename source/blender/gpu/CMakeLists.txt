@@ -101,6 +101,7 @@ set(SRC
   GPU_material.hh
   GPU_matrix.hh
   GPU_platform.hh
+  GPU_platform_backend_enum.h
   GPU_primitive.hh
   GPU_select.hh
   GPU_shader.hh
@@ -226,6 +227,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_resource_access_info.cc
   vulkan/render_graph/vk_resource_state_tracker.cc
   vulkan/render_graph/vk_scheduler.cc
+  vulkan/vk_resource_pool.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_samplers.cc
@@ -265,8 +267,9 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
-  vulkan/render_graph/nodes/vk_blit_image_node.hh
+  vulkan/render_graph/nodes/vk_begin_query_node.hh
   vulkan/render_graph/nodes/vk_begin_rendering_node.hh
+  vulkan/render_graph/nodes/vk_blit_image_node.hh
   vulkan/render_graph/nodes/vk_clear_attachments_node.hh
   vulkan/render_graph/nodes/vk_clear_color_image_node.hh
   vulkan/render_graph/nodes/vk_clear_depth_stencil_image_node.hh
@@ -274,15 +277,18 @@ set(VULKAN_SRC
   vulkan/render_graph/nodes/vk_copy_buffer_to_image_node.hh
   vulkan/render_graph/nodes/vk_copy_image_node.hh
   vulkan/render_graph/nodes/vk_copy_image_to_buffer_node.hh
+  vulkan/render_graph/nodes/vk_dispatch_indirect_node.hh
   vulkan/render_graph/nodes/vk_dispatch_node.hh
-  vulkan/render_graph/nodes/vk_draw_node.hh
-  vulkan/render_graph/nodes/vk_draw_indexed_node.hh
   vulkan/render_graph/nodes/vk_draw_indexed_indirect_node.hh
+  vulkan/render_graph/nodes/vk_draw_indexed_node.hh
   vulkan/render_graph/nodes/vk_draw_indirect_node.hh
+  vulkan/render_graph/nodes/vk_draw_node.hh
+  vulkan/render_graph/nodes/vk_end_query_node.hh
   vulkan/render_graph/nodes/vk_end_rendering_node.hh
   vulkan/render_graph/nodes/vk_fill_buffer_node.hh
   vulkan/render_graph/nodes/vk_node_info.hh
   vulkan/render_graph/nodes/vk_pipeline_data.hh
+  vulkan/render_graph/nodes/vk_reset_query_pool_node.hh
   vulkan/render_graph/nodes/vk_synchronization_node.hh
   vulkan/render_graph/nodes/vk_update_mipmaps_node.hh
   vulkan/render_graph/vk_command_buffer_wrapper.hh
@@ -293,6 +299,7 @@ set(VULKAN_SRC
   vulkan/render_graph/vk_resource_access_info.hh
   vulkan/render_graph/vk_resource_state_tracker.hh
   vulkan/render_graph/vk_scheduler.hh
+  vulkan/vk_resource_pool.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_samplers.hh
@@ -507,6 +514,7 @@ set(GLSL_SRC
 
   shaders/gpu_shader_codegen_lib.glsl
 
+  shaders/common/gpu_shader_attribute_load_lib.glsl
   shaders/common/gpu_shader_bicubic_sampler_lib.glsl
   shaders/common/gpu_shader_common_color_ramp.glsl
   shaders/common/gpu_shader_common_color_utils.glsl
@@ -516,6 +524,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_common_math_utils.glsl
   shaders/common/gpu_shader_common_mix_rgb.glsl
   shaders/common/gpu_shader_debug_gradients_lib.glsl
+  shaders/common/gpu_shader_index_load_lib.glsl
   shaders/common/gpu_shader_math_base_lib.glsl
   shaders/common/gpu_shader_math_fast_lib.glsl
   shaders/common/gpu_shader_math_matrix_lib.glsl
@@ -719,8 +728,8 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_film_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_hiz_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_light_culling_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_volume_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_sphere_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_lightprobe_volume_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lookdev_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_lut_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_material_info.hh
@@ -765,6 +774,7 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/intern/shaders/draw_view_info.hh
 
   shaders/infos/gpu_clip_planes_info.hh
+  shaders/infos/gpu_index_load_info.hh
   shaders/infos/gpu_shader_2D_area_borders_info.hh
   shaders/infos/gpu_shader_2D_checker_info.hh
   shaders/infos/gpu_shader_2D_diag_stripes_info.hh
@@ -953,6 +963,8 @@ if(WITH_GTESTS)
       vulkan/render_graph/tests/vk_render_graph_test_render.cc
       vulkan/render_graph/tests/vk_render_graph_test_scheduler.cc
       vulkan/render_graph/tests/vk_render_graph_test_transfer.cc
+
+      vulkan/render_graph/tests/vk_render_graph_test_types.hh
     )
   endif()
 

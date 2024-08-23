@@ -111,6 +111,23 @@ template<typename T> static void grow_array_and_append(T **array, int *num, T it
   (*array)[*num - 1] = item;
 }
 
+template<typename T>
+static void grow_array_and_insert(T **array, int *num, const int index, T item)
+{
+  BLI_assert(index >= 0 && index <= *num);
+  const int new_array_num = *num + 1;
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
+
+  blender::uninitialized_relocate_n(*array, index, new_array);
+  new_array[index] = item;
+  blender::uninitialized_relocate_n(*array + index, *num - index, new_array + index + 1);
+
+  MEM_SAFE_FREE(*array);
+
+  *array = new_array;
+  *num = new_array_num;
+}
+
 template<typename T> static void shrink_array(T **array, int *num, const int shrink_num)
 {
   BLI_assert(shrink_num > 0);
@@ -122,6 +139,55 @@ template<typename T> static void shrink_array(T **array, int *num, const int shr
 
   *array = new_array;
   *num = new_array_num;
+}
+
+template<typename T> static void shrink_array_and_remove(T **array, int *num, const int index)
+{
+  BLI_assert(index >= 0 && index < *num);
+  const int new_array_num = *num - 1;
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
+
+  blender::uninitialized_move_n(*array, index, new_array);
+  blender::uninitialized_move_n(*array + index + 1, *num - index - 1, new_array + index);
+  MEM_freeN(*array);
+
+  *array = new_array;
+  *num = new_array_num;
+}
+
+/**
+ * Moves the given (end exclusive) range to index `to`, shifting other items
+ * before/after to make room.
+ *
+ * The range is moved such that the *start* ends up at `to`.
+ *
+ * `to` *must* be far away enough from the end of the array for the entire range
+ * to be moved there without spilling over the end of the array.
+ */
+template<typename T>
+static void array_shift_range(
+    T *array, const int num, const int range_start, const int range_end, const int to)
+{
+  BLI_assert(range_start <= range_end);
+  BLI_assert(range_end <= num);
+  BLI_assert(to <= num + range_start - range_end);
+
+  if (range_start == range_end || range_start == to) {
+    return;
+  }
+
+  if (to < range_start) {
+    T *start = array + to;
+    T *mid = array + range_start;
+    T *end = array + range_end;
+    std::rotate(start, mid, end);
+  }
+  else {
+    T *start = array + range_start;
+    T *mid = array + range_end;
+    T *end = array + to + range_end - range_start;
+    std::rotate(start, mid, end);
+  }
 }
 
 /* ----- Action implementation ----------- */
@@ -207,14 +273,26 @@ bool Action::layer_remove(Layer &layer_to_remove)
   return true;
 }
 
-void Action::layer_ensure_at_least_one()
+void Action::layer_keystrip_ensure()
 {
-  if (!this->layers().is_empty()) {
-    return;
+  /* Ensure a layer. */
+  Layer *layer;
+  if (this->layers().is_empty()) {
+    layer = &this->layer_add(DATA_(layer_default_name));
+  }
+  else {
+    layer = this->layer(0);
   }
 
-  Layer &layer = this->layer_add(DATA_(layer_default_name));
-  layer.strip_add(Strip::Type::Keyframe);
+  /* Ensure a KeyframeStrip. */
+  if (layer->strips().is_empty()) {
+    layer->strip_add<KeyframeStrip>();
+  }
+
+  /* Within the limits of Baklava Phase 1, the above code should not have
+   * created more than one layer, or more than one strip on the layer. And if a
+   * layer + strip already existed, that must have been a keyframe strip. */
+  assert_baklava_phase_1_invariants(*this);
 }
 
 int64_t Action::find_layer_index(const Layer &layer) const
@@ -483,6 +561,9 @@ Layer *Action::get_layer_for_keyframing()
 
 bool Action::assign_id(Slot *slot, ID &animated_id)
 {
+  BLI_assert_msg(!slot || this->slots().as_span().contains(slot),
+                 "Slot should be owned by this Action");
+
   AnimData *adt = BKE_animdata_ensure_id(&animated_id);
   if (!adt) {
     return false;
@@ -627,9 +708,9 @@ static void strip_ptr_destructor(ActionStrip **dna_strip_ptr)
   MEM_delete(&strip);
 };
 
-bool Layer::strip_remove(Strip &strip_to_remove)
+bool Layer::strip_remove(Strip &strip)
 {
-  const int64_t strip_index = this->find_strip_index(strip_to_remove);
+  const int64_t strip_index = this->find_strip_index(strip);
   if (strip_index < 0) {
     return false;
   }
@@ -1043,10 +1124,10 @@ const ChannelBag *KeyframeStrip::channelbag_for_slot(const slot_handle_t slot_ha
   }
   return nullptr;
 }
-int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag_to_remove) const
+int64_t KeyframeStrip::find_channelbag_index(const ChannelBag &channelbag) const
 {
   for (int64_t index = 0; index < this->channelbag_array_num; index++) {
-    if (this->channelbag(index) == &channelbag_to_remove) {
+    if (this->channelbag(index) == &channelbag) {
       return index;
     }
   }
@@ -1148,7 +1229,19 @@ FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descripto
     new_fcurve->flag |= FCURVE_ACTIVE; /* First curve is added active. */
   }
 
-  grow_array_and_append(&this->fcurve_array, &this->fcurve_array_num, new_fcurve);
+  bActionGroup *group = fcurve_descriptor.channel_group.has_value() ?
+                            &this->channel_group_ensure(*fcurve_descriptor.channel_group) :
+                            nullptr;
+  int insert_index = group ? group->fcurve_range_start + group->fcurve_range_length :
+                             this->fcurve_array_num;
+  BLI_assert(insert_index <= this->fcurve_array_num);
+
+  grow_array_and_insert(&this->fcurve_array, &this->fcurve_array_num, insert_index, new_fcurve);
+  if (group) {
+    group->fcurve_range_length += 1;
+    this->collapse_channel_group_gaps();
+    this->update_fcurve_channel_group_pointers();
+  }
 
   if (bmain) {
     DEG_relations_tag_update(bmain);
@@ -1169,10 +1262,23 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
     return false;
   }
 
+  const int group_index = this->channel_group_containing_index(fcurve_index);
+  if (group_index != -1) {
+    bActionGroup *group = this->channel_groups()[group_index];
+
+    group->fcurve_range_length -= 1;
+    if (group->fcurve_range_length <= 0) {
+      const int group_index = this->channel_groups().as_span().first_index_try(group);
+      this->channel_group_remove_raw(group_index);
+    }
+    this->collapse_channel_group_gaps();
+    this->update_fcurve_channel_group_pointers();
+  }
+
   dna::array::remove_index(
       &this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_index, fcurve_ptr_destructor);
 
-  /* As an optimisation, this function could call `DEG_relations_tag_update(bmain)` to prune any
+  /* As an optimization, this function could call `DEG_relations_tag_update(bmain)` to prune any
    * relationships that are now no longer necessary. This is not needed for correctness of the
    * depsgraph evaluation results though. */
 
@@ -1244,12 +1350,19 @@ SingleKeyingResult KeyframeStrip::keyframe_insert(Main *bmain,
 ChannelBag::ChannelBag(const ChannelBag &other)
 {
   this->slot_handle = other.slot_handle;
-  this->fcurve_array_num = other.fcurve_array_num;
 
+  this->fcurve_array_num = other.fcurve_array_num;
   this->fcurve_array = MEM_cnew_array<FCurve *>(other.fcurve_array_num, __func__);
   for (int i = 0; i < other.fcurve_array_num; i++) {
     const FCurve *fcu_src = other.fcurve_array[i];
     this->fcurve_array[i] = BKE_fcurve_copy(fcu_src);
+  }
+
+  this->group_array_num = other.group_array_num;
+  this->group_array = MEM_cnew_array<bActionGroup *>(other.group_array_num, __func__);
+  for (int i = 0; i < other.group_array_num; i++) {
+    const bActionGroup *group_src = other.group_array[i];
+    this->group_array[i] = static_cast<bActionGroup *>(MEM_dupallocN(group_src));
   }
 }
 
@@ -1260,6 +1373,12 @@ ChannelBag::~ChannelBag()
   }
   MEM_SAFE_FREE(this->fcurve_array);
   this->fcurve_array_num = 0;
+
+  for (bActionGroup *group : this->channel_groups()) {
+    MEM_SAFE_FREE(group);
+  }
+  MEM_SAFE_FREE(this->group_array);
+  this->group_array_num = 0;
 }
 
 blender::Span<const FCurve *> ChannelBag::fcurves() const
@@ -1279,11 +1398,189 @@ FCurve *ChannelBag::fcurve(const int64_t index)
   return this->fcurve_array[index];
 }
 
+blender::Span<const bActionGroup *> ChannelBag::channel_groups() const
+{
+  return blender::Span<bActionGroup *>{this->group_array, this->group_array_num};
+}
+blender::MutableSpan<bActionGroup *> ChannelBag::channel_groups()
+{
+  return blender::MutableSpan<bActionGroup *>{this->group_array, this->group_array_num};
+}
+const bActionGroup *ChannelBag::channel_group(const int64_t index) const
+{
+  BLI_assert(index < this->group_array_num);
+  return this->group_array[index];
+}
+bActionGroup *ChannelBag::channel_group(const int64_t index)
+{
+  BLI_assert(index < this->group_array_num);
+  return this->group_array[index];
+}
+
+const bActionGroup *ChannelBag::channel_group_find(const StringRef name) const
+{
+  for (const bActionGroup *group : this->channel_groups()) {
+    if (name == StringRef{group->name}) {
+      return group;
+    }
+  }
+
+  return nullptr;
+}
+
+bActionGroup *ChannelBag::channel_group_find(const StringRef name)
+{
+  /* Intermediate variable needed to disambiguate const/non-const overloads. */
+  Span<bActionGroup *> groups = this->channel_groups();
+  for (bActionGroup *group : groups) {
+    if (name == StringRef{group->name}) {
+      return group;
+    }
+  }
+
+  return nullptr;
+}
+
+int ChannelBag::channel_group_containing_index(const int fcurve_array_index)
+{
+  int i = 0;
+  for (bActionGroup *group : this->channel_groups()) {
+    if (fcurve_array_index >= group->fcurve_range_start &&
+        fcurve_array_index < (group->fcurve_range_start + group->fcurve_range_length))
+    {
+      return i;
+    }
+    i++;
+  }
+
+  return -1;
+}
+
+bActionGroup &ChannelBag::channel_group_create(StringRefNull name)
+{
+  bActionGroup *new_group = static_cast<bActionGroup *>(
+      MEM_callocN(sizeof(bActionGroup), __func__));
+
+  /* Find the end fcurve index of the current channel groups, to be used as the
+   * start of the new channel group. */
+  int fcurve_index = 0;
+  const int length = this->channel_groups().size();
+  if (length > 0) {
+    bActionGroup *last = this->channel_group(length - 1);
+    fcurve_index = last->fcurve_range_start + last->fcurve_range_length;
+  }
+  new_group->fcurve_range_start = fcurve_index;
+
+  new_group->channel_bag = this;
+
+  /* Make it selected. */
+  new_group->flag = AGRP_SELECTED;
+
+  /* Ensure it has a unique name. */
+  std::string unique_name = BLI_uniquename_cb(
+      [&](const StringRef name) {
+        for (bActionGroup *group : this->channel_groups()) {
+          if (STREQ(group->name, name.data())) {
+            return true;
+          }
+        }
+        return false;
+      },
+      '.',
+      name[0] == '\0' ? DATA_("Group") : name);
+
+  STRNCPY_UTF8(new_group->name, unique_name.c_str());
+
+  grow_array_and_append(&this->group_array, &this->group_array_num, new_group);
+
+  return *new_group;
+}
+
+bActionGroup &ChannelBag::channel_group_ensure(StringRefNull name)
+{
+  bActionGroup *group = this->channel_group_find(name);
+  if (group) {
+    return *group;
+  }
+
+  return this->channel_group_create(name);
+}
+
+bool ChannelBag::channel_group_remove(bActionGroup &group)
+{
+  const int group_index = this->channel_groups().as_span().first_index_try(&group);
+  if (group_index == -1) {
+    return false;
+  }
+
+  /* Move the group's fcurves to just past the end of where the grouped
+   * fcurves will be after this group is removed. */
+  bActionGroup *last_group = this->channel_groups().last();
+  BLI_assert(last_group != nullptr);
+  const int to_index = last_group->fcurve_range_start + last_group->fcurve_range_length -
+                       group.fcurve_range_length;
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    group.fcurve_range_start,
+                    group.fcurve_range_start + group.fcurve_range_length,
+                    to_index);
+
+  this->channel_group_remove_raw(group_index);
+  this->collapse_channel_group_gaps();
+  this->update_fcurve_channel_group_pointers();
+
+  return true;
+}
+
+void ChannelBag::channel_group_remove_raw(const int group_index)
+{
+  BLI_assert(group_index >= 0 && group_index < this->channel_groups().size());
+
+  MEM_SAFE_FREE(this->group_array[group_index]);
+  shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
+}
+
+void ChannelBag::collapse_channel_group_gaps()
+{
+  int index = 0;
+
+  for (bActionGroup *group : this->channel_groups()) {
+    group->fcurve_range_start = index;
+    index += group->fcurve_range_length;
+  }
+
+  BLI_assert(index <= this->fcurve_array_num);
+}
+
+void ChannelBag::update_fcurve_channel_group_pointers()
+{
+  Span<bActionGroup *> groups = this->channel_groups();
+  for (bActionGroup *group : groups) {
+    for (FCurve *fcurve :
+         this->fcurves().slice(group->fcurve_range_start, group->fcurve_range_length))
+    {
+      fcurve->grp = group;
+    }
+  }
+
+  int first_ungrouped_fcurve_index = 0;
+  if (!groups.is_empty()) {
+    first_ungrouped_fcurve_index = groups.last()->fcurve_range_start +
+                                   groups.last()->fcurve_range_length;
+  }
+
+  for (FCurve *fcurve : this->fcurves().drop_front(first_ungrouped_fcurve_index)) {
+    fcurve->grp = nullptr;
+  }
+}
+
 /* Utility function implementations. */
 
-static const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
-                                                             const slot_handle_t slot_handle)
+const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
+                                                      const slot_handle_t slot_handle)
 {
+  assert_baklava_phase_1_invariants(action);
+
   if (slot_handle == Slot::unassigned) {
     return nullptr;
   }
@@ -1305,12 +1602,33 @@ static const animrig::ChannelBag *channelbag_for_action_slot(const Action &actio
   return nullptr;
 }
 
-static animrig::ChannelBag *channelbag_for_action_slot(Action &action,
-                                                       const slot_handle_t slot_handle)
+animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
   const animrig::ChannelBag *const_bag = channelbag_for_action_slot(
       const_cast<const Action &>(action), slot_handle);
   return const_cast<animrig::ChannelBag *>(const_bag);
+}
+
+Span<bActionGroup *> channel_groups_for_action_slot(Action &action,
+                                                    const slot_handle_t slot_handle)
+{
+  assert_baklava_phase_1_invariants(action);
+  animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
+  if (!bag) {
+    return {};
+  }
+  return bag->channel_groups();
+}
+
+Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
+                                                          const slot_handle_t slot_handle)
+{
+  assert_baklava_phase_1_invariants(action);
+  const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
+  if (!bag) {
+    return {};
+  }
+  return bag->channel_groups();
 }
 
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
@@ -1397,6 +1715,9 @@ FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
   if (act == nullptr) {
     return nullptr;
   }
+#ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(act->wrap().is_action_legacy());
+#endif
   return BKE_fcurve_find(
       &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
 }
@@ -1443,7 +1764,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
     Slot &slot = action.slot_ensure_for_id(*ptr->owner_id);
     action.assign_id(&slot, *ptr->owner_id);
 
-    action.layer_ensure_at_least_one();
+    action.layer_keystrip_ensure();
 
     assert_baklava_phase_1_invariants(action);
     KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
@@ -1510,6 +1831,63 @@ FCurve *action_fcurve_ensure(Main *bmain,
   DEG_relations_tag_update(bmain);
 
   return fcu;
+}
+
+bool action_fcurve_remove(Action &action, FCurve &fcu)
+{
+  for (Layer *layer : action.layers()) {
+    for (Strip *strip : layer->strips()) {
+      if (!(strip->type() == Strip::Type::Keyframe)) {
+        continue;
+      }
+      KeyframeStrip &key_strip = strip->template as<KeyframeStrip>();
+      for (ChannelBag *bag : key_strip.channelbags()) {
+        const bool removed = bag->fcurve_remove(fcu);
+        if (removed) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group)
+{
+
+  if (this->channel_groups().as_span().first_index_try(&to_group) == -1) {
+    return false;
+  }
+
+  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  if (fcurve_index == -1) {
+    return false;
+  }
+
+  const int from_group_index = this->channel_group_containing_index(fcurve_index);
+  if (from_group_index != -1) {
+    bActionGroup *from_group = this->channel_groups()[from_group_index];
+    if (from_group == &to_group) {
+      return true;
+    }
+
+    from_group->fcurve_range_length--;
+    if (from_group->fcurve_range_length == 0) {
+      this->channel_group_remove_raw(from_group_index);
+    }
+  }
+
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    fcurve_index,
+                    fcurve_index + 1,
+                    to_group.fcurve_range_start + to_group.fcurve_range_length);
+  to_group.fcurve_range_length++;
+
+  this->collapse_channel_group_gaps();
+  this->update_fcurve_channel_group_pointers();
+
+  return true;
 }
 
 ID *action_slot_get_id_for_keying(Main &bmain,

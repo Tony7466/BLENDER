@@ -21,6 +21,8 @@ set(INC_SYS
 
 set(SRC
   intern/action.cc
+  intern/action_iterators.cc
+  intern/action_legacy.cc
   intern/action_runtime.cc
   intern/action_selection.cc
   intern/anim_rna.cc
@@ -35,6 +37,8 @@ set(SRC
   intern/visualkey.cc
 
   ANIM_action.hh
+  ANIM_action_iterators.hh
+  ANIM_action_legacy.hh
   ANIM_animdata.hh
   ANIM_armature_iter.hh
   ANIM_bone_collections.hh
@@ -62,6 +66,9 @@ set(LIB
   PRIVATE bf::intern::clog
 )
 
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_ANIM_BAKLAVA)
+endif()
 
 blender_add_lib(bf_animrig "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 add_library(bf::animrig ALIAS bf_animrig)
@@ -70,6 +77,7 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_SRC
+    intern/action_iterators_test.cc
     intern/action_test.cc
     intern/bone_collections_test.cc
     intern/evaluation_test.cc
