@@ -1354,6 +1354,7 @@ static void fill_vbos_mesh(const Object &object,
 static void fill_vbos_grids(const Object &object,
                             const OrigMeshData &orig_mesh_data,
                             const Span<bke::pbvh::Node> nodes,
+                            const Span<bool> use_flat_layout,
                             const IndexMask &nodes_to_update,
                             const AttributeRequest &request,
                             const MutableSpan<gpu::VertBuf *> vbos)
@@ -1368,7 +1369,7 @@ static void fill_vbos_grids(const Object &object,
       case CustomRequest::Position: {
         nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_position_grids(
-              key, grids, use_flat_layout, bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
+              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
         });
         break;
       }
@@ -1383,7 +1384,7 @@ static void fill_vbos_grids(const Object &object,
                                 grids,
                                 grid_to_face_map,
                                 sharp_faces,
-                                use_flat_layout,
+                                use_flat_layout[i],
                                 bke::pbvh::node_grid_indices(nodes[i]),
                                 *vbos[i]);
         });
@@ -1393,7 +1394,7 @@ static void fill_vbos_grids(const Object &object,
       case CustomRequest::Mask: {
         nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_mask_grids(
-              key, grids, use_flat_layout, bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
+              key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
         });
         break;
       }
@@ -1411,7 +1412,7 @@ static void fill_vbos_grids(const Object &object,
                                     face_sets_span,
                                     orig_mesh_data.face_set_default,
                                     orig_mesh_data.face_set_seed,
-                                    draw_data.use_flat_layout[i],
+                                    use_flat_layout[i],
                                     bke::pbvh::node_grid_indices(nodes[i]),
                                     *vbos[i]);
           });
@@ -1529,7 +1530,8 @@ static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
     }
     case bke::pbvh::Type::Grids: {
       ensure_vbos_allocation_size_grids(object, format, nodes, nodes_to_update, vbos);
-      fill_vbos_grids(object, orig_mesh_data, nodes, nodes_to_update, attr, vbos);
+      fill_vbos_grids(
+          object, orig_mesh_data, nodes, draw_data.use_flat_layout, nodes_to_update, attr, vbos);
       break;
     }
     case bke::pbvh::Type::BMesh: {
