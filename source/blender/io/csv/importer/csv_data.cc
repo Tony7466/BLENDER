@@ -32,10 +32,10 @@ PointCloud *CsvData::to_point_cloud() const
 {
   PointCloud *point_cloud = BKE_pointcloud_new_nomain(rows_num);
 
-  // set all positions to be zero
+  /* set all positions to be zero */
   point_cloud->positions_for_write().fill(float3(0.0f, 0.0f, 0.0f));
 
-  // fill the attributes
+  /* fill the attributes */
   for (int i = 0; i < columns_num; i++) {
     const std::string column_name = column_names[i];
     const eCustomDataType column_type = column_types[i];
