@@ -12,3 +12,4 @@ Referenced by issue #126119, Blender EGL_BAD_MATCH linux
 Referenced by issue #122055, Segmentation fault on startup (Linux)
 Referenced by issue #126484, Blender crashes when the shading panel is opened.
 Referenced by issue #126573, Segmentation Fault Upon Blender Startup
+Referenced by issue #126716, Failed to create OptiX denoiser
