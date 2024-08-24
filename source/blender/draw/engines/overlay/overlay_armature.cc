@@ -1914,7 +1914,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
     }
     else {
       drw_shgroup_bone_sphere(
-          ctx, bone.disp_mat(), col_solid, col_hint_root, col_wire_root, select_id);
+          ctx, bone.disp_mat(), col_solid, col_hint_root, col_wire_root, select_id | BONESEL_ROOT);
     }
   }
 
@@ -1936,8 +1936,12 @@ static void draw_points(const Armatures::DrawContext *ctx,
                               select_id | BONESEL_TIP);
   }
   else {
-    drw_shgroup_bone_sphere(
-        ctx, bone.disp_tail_mat(), col_solid, col_hint_tail, col_wire_tail, select_id);
+    drw_shgroup_bone_sphere(ctx,
+                            bone.disp_tail_mat(),
+                            col_solid,
+                            col_hint_tail,
+                            col_wire_tail,
+                            select_id | BONESEL_TIP);
   }
 
 #ifndef NO_LEGACY_OVERLAY
@@ -2361,7 +2365,7 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
 
     if (ctx->bone_buf) {
       /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
-      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
 
       /* Custom bone shapes are only supported in pose mode for now. */
       const bPoseChannel *pchan = bone.as_posebone();
@@ -2477,7 +2481,7 @@ class ArmatureBoneDrawStrategyOcta : public ArmatureBoneDrawStrategy {
 
     if (ctx->bone_buf) {
       /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
-      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
       float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(bone.disp_mat());
 
       if (ctx->is_filled) {
@@ -2686,7 +2690,7 @@ class ArmatureBoneDrawStrategyBBone : public ArmatureBoneDrawStrategy {
                           bone.as_editbone()->segments};
       }
 
-      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
+      auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
 
       for (const Mat4 &in_bone_mat : bbone_matrices) {
         float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(in_bone_mat.mat);
@@ -2867,7 +2871,7 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
     }
 #endif
 
-    auto sel_id = (ctx->bone_buf) ? ctx->res->select_id(*ctx->ob_ref, select_id) :
+    auto sel_id = (ctx->bone_buf) ? ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE) :
                                     draw::select::SelectMap::select_invalid_id();
 
     /* NOTE: Cannot reinterpret as float4x4 because of alignment requirement of float4x4.
