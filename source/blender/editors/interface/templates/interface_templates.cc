@@ -16,6 +16,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_cachefile_types.h"
 #include "DNA_collection_types.h"
@@ -44,6 +45,7 @@
 #include "BLF_api.hh"
 #include "BLT_translation.hh"
 
+#include "BKE_anim_data.hh"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
 #include "BKE_colorband.hh"
@@ -53,7 +55,6 @@
 #include "BKE_curveprofile.h"
 #include "BKE_file_handler.hh"
 #include "BKE_global.hh"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
@@ -62,7 +63,7 @@
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
@@ -80,6 +81,7 @@
 #include "ED_object.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
+#include "ED_screen_types.hh"
 #include "ED_undo.hh"
 
 #include "IMB_imbuf.hh"
@@ -90,7 +92,7 @@
 #include "RE_engine.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -450,11 +452,11 @@ static void id_search_cb_tagged(const bContext *C,
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {
-    if (id->tag & LIB_TAG_DOIT) {
+    if (id->tag & ID_TAG_DOIT) {
       if (id_search_allows_id(template_ui, flag, id, str)) {
         search.add(id->name + 2, id);
       }
-      id->tag &= ~LIB_TAG_DOIT;
+      id->tag &= ~ID_TAG_DOIT;
     }
   }
 
@@ -488,10 +490,10 @@ static void id_search_cb_objects_from_scene(const bContext *C,
     scene = CTX_data_scene(C);
   }
 
-  BKE_main_id_flag_listbase(lb, LIB_TAG_DOIT, false);
+  BKE_main_id_flag_listbase(lb, ID_TAG_DOIT, false);
 
   FOREACH_SCENE_OBJECT_BEGIN (scene, ob_iter) {
-    ob_iter->id.tag |= LIB_TAG_DOIT;
+    ob_iter->id.tag |= ID_TAG_DOIT;
   }
   FOREACH_SCENE_OBJECT_END;
   id_search_cb_tagged(C, arg_template, str, items);
@@ -545,7 +547,7 @@ static uiBlock *id_search_menu(bContext *C, ARegion *region, void *arg_litem)
 
 static void template_id_cb(bContext *C, void *arg_litem, void *arg_event);
 
-void UI_context_active_but_prop_get_templateID(bContext *C,
+void UI_context_active_but_prop_get_templateID(const bContext *C,
                                                PointerRNA *r_ptr,
                                                PropertyRNA **r_prop)
 {
@@ -591,7 +593,7 @@ static void template_id_liboverride_hierarchy_collection_root_find_recursive(
 static void template_id_liboverride_hierarchy_collections_tag_recursive(
     Collection *root_collection, ID *target_id, const bool do_parents)
 {
-  root_collection->id.tag |= LIB_TAG_DOIT;
+  root_collection->id.tag |= ID_TAG_DOIT;
 
   /* Tag all local parents of the root collection, so that usages of the root collection and other
    * linked ones can be replaced by the local overrides in those parents too. */
@@ -604,7 +606,7 @@ static void template_id_liboverride_hierarchy_collections_tag_recursive(
       if (ID_IS_LINKED(iter->collection)) {
         continue;
       }
-      iter->collection->id.tag |= LIB_TAG_DOIT;
+      iter->collection->id.tag |= ID_TAG_DOIT;
     }
   }
 
@@ -747,7 +749,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -762,7 +764,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       else if (object_active != nullptr && !ID_IS_LINKED(object_active) &&
                &object_active->instance_collection->id == id)
       {
-        object_active->id.tag |= LIB_TAG_DOIT;
+        object_active->id.tag |= ID_TAG_DOIT;
         BKE_lib_override_library_create(bmain,
                                         scene,
                                         view_layer,
@@ -780,7 +782,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       {
         template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(bmain,
                                         scene,
@@ -794,7 +796,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
       }
       else {
         if (object_active != nullptr) {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
         }
         BKE_lib_override_library_create(
             bmain, scene, view_layer, nullptr, id, nullptr, nullptr, &id_override, false);
@@ -821,7 +823,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
         {
           template_id_liboverride_hierarchy_collections_tag_recursive(collection_active, id, true);
           if (object_active != nullptr) {
-            object_active->id.tag |= LIB_TAG_DOIT;
+            object_active->id.tag |= ID_TAG_DOIT;
           }
           BKE_lib_override_library_create(bmain,
                                           scene,
@@ -834,7 +836,7 @@ ID *ui_template_id_liboverride_hierarchy_make(
                                           false);
         }
         else {
-          object_active->id.tag |= LIB_TAG_DOIT;
+          object_active->id.tag |= ID_TAG_DOIT;
           BKE_lib_override_library_create(bmain,
                                           scene,
                                           view_layer,
@@ -982,7 +984,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_FAKE_USER:
       if (id) {
-        if (id->flag & LIB_FAKEUSER) {
+        if (id->flag & ID_FLAG_FAKEUSER) {
           id_us_plus(id);
         }
         else {
@@ -1047,6 +1049,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
         else {
           Main *bmain = CTX_data_main(C);
           id_single_user(C, id, &template_ui->ptr, template_ui->prop);
+          WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
           DEG_relations_tag_update(bmain);
         }
         undo_push_label = "Make Single User";
@@ -1214,13 +1217,15 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                             BLT_I18NCONTEXT_ID_LATTICE,
                             BLT_I18NCONTEXT_ID_LIGHT,
                             BLT_I18NCONTEXT_ID_LIGHTPROBE,
+                            BLT_I18NCONTEXT_ID_MASK,
                             BLT_I18NCONTEXT_ID_MATERIAL,
-                            BLT_I18NCONTEXT_ID_MASK, );
+                            BLT_I18NCONTEXT_ID_MESH, );
   BLT_I18N_MSGID_MULTI_CTXT("New",
-                            BLT_I18NCONTEXT_ID_MESH,
                             BLT_I18NCONTEXT_ID_METABALL,
                             BLT_I18NCONTEXT_ID_NODETREE,
                             BLT_I18NCONTEXT_ID_OBJECT,
+                            BLT_I18NCONTEXT_ID_PAINTCURVE,
+                            BLT_I18NCONTEXT_ID_PALETTE,
                             BLT_I18NCONTEXT_ID_PARTICLESETTINGS,
                             BLT_I18NCONTEXT_ID_POINTCLOUD,
                             BLT_I18NCONTEXT_ID_SCENE,
@@ -1232,7 +1237,6 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                             BLT_I18NCONTEXT_ID_VOLUME,
                             BLT_I18NCONTEXT_ID_WORKSPACE,
                             BLT_I18NCONTEXT_ID_WORLD, );
-  BLT_I18N_MSGID_MULTI_CTXT("New", BLT_I18NCONTEXT_ID_PAINTCURVE, );
   /* NOTE: BLT_I18N_MSGID_MULTI_CTXT takes a maximum number of parameters,
    * check the definition to see if a new call must be added when the limit
    * is exceeded. */
@@ -1370,7 +1374,7 @@ static void template_ID(const bContext *C,
     if (!hide_buttons && !(idfrom && ID_IS_LINKED(idfrom))) {
       if (ID_IS_LINKED(id)) {
         const bool disabled = !BKE_idtype_idcode_is_localizable(GS(id->name));
-        if (id->tag & LIB_TAG_INDIRECT) {
+        if (id->tag & ID_TAG_INDIRECT) {
           but = uiDefIconBut(block,
                              UI_BTYPE_BUT,
                              0,
@@ -1816,6 +1820,54 @@ void uiTemplateID(uiLayout *layout,
                  false);
 }
 
+void uiTemplateAction(uiLayout *layout,
+                      const bContext *C,
+                      ID *id,
+                      const char *newop,
+                      const char *unlinkop,
+                      const char *text)
+{
+  if (!id_can_have_animdata(id)) {
+    RNA_warning("Cannot show Action selector for non-animatable ID: %s", id->name + 2);
+    return;
+  }
+
+  PropertyRNA *adt_action_prop = RNA_struct_type_find_property(&RNA_AnimData, "action");
+  BLI_assert(adt_action_prop);
+  BLI_assert(RNA_property_type(adt_action_prop) == PROP_POINTER);
+
+  /* Construct a pointer with the animated ID as owner, even when `adt` may be `nullptr`.
+   * This way it is possible to use this RNA pointer to get/set `adt->action`, as that RNA property
+   * has a getter and setter that only need the owner ID and are null-safe regarding the `adt`
+   * itself. */
+  AnimData *adt = BKE_animdata_from_id(id);
+  PointerRNA adt_ptr = RNA_pointer_create(id, &RNA_AnimData, adt);
+
+  /* This must be heap-allocated because template_ID() will call MEM_dupallocN()
+   * on the pointer we pass, and that doesn't like stack-allocated stuff. */
+  TemplateID *template_ui = MEM_cnew<TemplateID>(__func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(template_ui); });
+  template_ui->ptr = adt_ptr;
+  template_ui->prop = adt_action_prop;
+  template_ui->prv_rows = 0;
+  template_ui->prv_cols = 0;
+  template_ui->scale = 1.0f;
+  template_ui->filter = UI_TEMPLATE_ID_FILTER_ALL;
+
+  int flag = UI_ID_BROWSE | UI_ID_RENAME | UI_ID_DELETE;
+  if (newop) {
+    flag |= UI_ID_ADD_NEW;
+  }
+
+  template_ui->idcode = ID_AC;
+  template_ui->idlb = which_libbase(CTX_data_main(C), ID_AC);
+  BLI_assert(template_ui->idlb);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  template_ID(
+      C, row, template_ui, &RNA_Action, flag, newop, nullptr, unlinkop, text, false, false);
+}
+
 void uiTemplateIDBrowse(uiLayout *layout,
                         bContext *C,
                         PointerRNA *ptr,
@@ -2074,7 +2126,18 @@ static void template_search_add_button_name(uiBlock *block,
     return;
   }
 
-  PropertyRNA *name_prop = RNA_struct_name_property(type);
+  PropertyRNA *name_prop;
+#ifdef WITH_ANIM_BAKLAVA
+  if (type == &RNA_ActionSlot) {
+    name_prop = RNA_struct_find_property(active_ptr, "name_display");
+  }
+  else {
+#endif /* WITH_ANIM_BAKLAVA */
+    name_prop = RNA_struct_name_property(type);
+#ifdef WITH_ANIM_BAKLAVA
+  }
+#endif /* WITH_ANIM_BAKLAVA */
+
   const int width = template_search_textbut_width(active_ptr, name_prop);
   const int height = template_search_textbut_height();
   uiDefAutoButR(block, active_ptr, name_prop, 0, "", ICON_NONE, 0, 0, width, height);
@@ -2520,75 +2583,6 @@ void uiTemplateConstraints(uiLayout * /*layout*/, bContext *C, bool use_bone_con
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Grease Pencil Modifiers Template
- * \{ */
-
-/**
- * Function with void * argument for #uiListPanelIDFromDataFunc.
- */
-static void gpencil_modifier_panel_id(void *md_link, char *r_name)
-{
-  ModifierData *md = (ModifierData *)md_link;
-  BKE_gpencil_modifierType_panel_id(GpencilModifierType(md->type), r_name);
-}
-
-void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
-{
-  ARegion *region = CTX_wm_region(C);
-  Object *ob = blender::ed::object::context_active_object(C);
-  ListBase *modifiers = &ob->greasepencil_modifiers;
-
-  const bool panels_match = UI_panel_list_matches_data(
-      region, modifiers, gpencil_modifier_panel_id);
-
-  if (!panels_match) {
-    UI_panels_free_instanced(C, region);
-    LISTBASE_FOREACH (GpencilModifierData *, md, modifiers) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
-          GpencilModifierType(md->type));
-      if (mti->panel_register == nullptr) {
-        continue;
-      }
-
-      char panel_idname[MAX_NAME];
-      gpencil_modifier_panel_id(md, panel_idname);
-
-      /* Create custom data RNA pointer. */
-      PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      *md_ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
-
-      UI_panel_add_instanced(C, region, &region->panels, panel_idname, md_ptr);
-    }
-  }
-  else {
-    /* Assuming there's only one group of instanced panels, update the custom data pointers. */
-    Panel *panel = static_cast<Panel *>(region->panels.first);
-    LISTBASE_FOREACH (ModifierData *, md, modifiers) {
-      const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
-          GpencilModifierType(md->type));
-      if (mti->panel_register == nullptr) {
-        continue;
-      }
-
-      /* Move to the next instanced panel corresponding to the next modifier. */
-      while ((panel->type == nullptr) || !(panel->type->flag & PANEL_TYPE_INSTANCED)) {
-        panel = panel->next;
-        BLI_assert(panel !=
-                   nullptr); /* There shouldn't be fewer panels than modifiers with UIs. */
-      }
-
-      PointerRNA *md_ptr = static_cast<PointerRNA *>(MEM_mallocN(sizeof(PointerRNA), __func__));
-      *md_ptr = RNA_pointer_create(&ob->id, &RNA_GpencilModifier, md);
-      UI_panel_custom_data_set(panel, md_ptr);
-
-      panel = panel->next;
-    }
-  }
-}
-
-/** \} */
-
 #define ERROR_LIBDATA_MESSAGE N_("Can't edit external library data")
 
 /* -------------------------------------------------------------------- */
@@ -3016,12 +3010,9 @@ static void draw_exporter_item(uiList * /*ui_list*/,
                                int /*index*/,
                                int /*flt_flag*/)
 {
-  char name[MAX_IDPROP_NAME];
-  RNA_string_get(itemptr, "name", name);
-
   uiLayout *row = uiLayoutRow(layout, false);
-  uiItemS(row);
-  uiItemL(row, name, ICON_NONE);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
@@ -3751,7 +3742,7 @@ static void colorband_buttons_layout(uiLayout *layout,
     }
   });
 
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          colorband_tools_fn,
                          tools_cb,
@@ -4729,7 +4720,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
     UI_but_func_set(bt, [cb](bContext &C) { rna_update_cb(C, cb); });
   }
 
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   if (brush && neg_slope) {
     bt = uiDefIconBlockBut(block,
                            curvemap_brush_tools_negslope_func,
@@ -4758,7 +4749,7 @@ static void curvemap_buttons_layout(uiLayout *layout,
   UI_but_funcN_set(
       bt, [](bContext *, void *, void *) {}, tools_cb, nullptr);
 
-  UI_block_funcN_set(block, rna_update_cb, MEM_new<RNAUpdateCb>(__func__, cb), nullptr);
+  UI_block_funcN_set(block, rna_update_cb, MEM_cnew<RNAUpdateCb>(__func__, cb), nullptr);
 
   /* Curve itself. */
   const int size = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
@@ -5182,7 +5173,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   /* There is probably potential to use simpler "uiItemR" functions here, but automatic updating
    * after a preset is selected would be more complicated. */
   uiLayout *row = uiLayoutRow(layout, true);
-  RNAUpdateCb *presets_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *presets_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefBlockBut(block,
                      curve_profile_presets_fn,
                      presets_cb,
@@ -5307,7 +5298,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   });
 
   /* Reset view, reset curve */
-  RNAUpdateCb *tools_cb = MEM_new<RNAUpdateCb>(__func__, cb);
+  RNAUpdateCb *tools_cb = MEM_cnew<RNAUpdateCb>(__func__, cb);
   bt = uiDefIconBlockBut(block,
                          curve_profile_tools_fn,
                          tools_cb,
@@ -5322,7 +5313,7 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, const
   UI_but_funcN_set(
       bt, [](bContext *, void *, void *) {}, tools_cb, nullptr);
 
-  UI_block_funcN_set(block, rna_update_cb, MEM_new<RNAUpdateCb>(__func__, cb), nullptr);
+  UI_block_funcN_set(block, rna_update_cb, MEM_cnew<RNAUpdateCb>(__func__, cb), nullptr);
 
   /* The path itself */
   int path_width = max_ii(uiLayoutGetWidth(layout), UI_UNIT_X);
@@ -5966,22 +5957,22 @@ static void do_running_jobs(bContext *C, void * /*arg*/, int event)
       G.is_break = true;
       break;
     case B_STOPCAST:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_wm_screen(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_wm_screen(C));
       break;
     case B_STOPANIM:
       WM_operator_name_call(C, "SCREEN_OT_animation_play", WM_OP_INVOKE_SCREEN, nullptr, nullptr);
       break;
     case B_STOPCOMPO:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPSEQ:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPCLIP:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPFILE:
-      WM_jobs_stop(CTX_wm_manager(C), CTX_data_scene(C), nullptr);
+      WM_jobs_stop_all_from_owner(CTX_wm_manager(C), CTX_data_scene(C));
       break;
     case B_STOPOTHER:
       G.is_break = true;
@@ -6289,8 +6280,8 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
     add_v3_uchar_clamped(report_icon_color, brighten_amount);
   }
 
-  UI_fontstyle_set(&style->widgetlabel);
-  int width = BLF_width(style->widgetlabel.uifont_id, report->message, report->len);
+  UI_fontstyle_set(&style->widget);
+  int width = BLF_width(style->widget.uifont_id, report->message, report->len);
   width = min_ii(int(rti->widthfac * width), width);
   width = max_ii(width, 10 * UI_SCALE_FAC);
 
@@ -6360,6 +6351,39 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
   UI_block_emboss_set(block, previous_emboss);
 }
 
+static bool uiTemplateInputStatusAzone(uiLayout *layout, AZone *az, ARegion *region)
+{
+  if (az->type == AZONE_AREA) {
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    if (U.experimental.use_docking) {
+      uiItemL(layout, IFACE_("Split/Dock"), ICON_NONE);
+    }
+    else {
+      uiItemL(layout, IFACE_("Split/Join"), ICON_NONE);
+    }
+    uiItemS_ex(layout, 0.7f);
+    uiItemL(layout, "", ICON_EVENT_SHIFT);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, IFACE_("Duplicate into Window"), ICON_NONE);
+    uiItemS_ex(layout, 0.7f);
+    uiItemL(layout, "", ICON_EVENT_CTRL);
+    uiItemS_ex(layout, 1.5f);
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout, IFACE_("Swap Areas"), ICON_NONE);
+    return true;
+  }
+
+  if (az->type == AZONE_REGION) {
+    uiItemL(layout, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(layout,
+            (region->visible) ? IFACE_("Resize Region") : IFACE_("Show Hidden Region"),
+            ICON_NONE);
+    return true;
+  }
+
+  return false;
+}
+
 void uiTemplateInputStatus(uiLayout *layout, bContext *C)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -6377,6 +6401,10 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
         if (item.inverted) {
           but->drawflag |= UI_BUT_ICON_INVERT;
         }
+        const float offset = ui_event_icon_offset(item.icon);
+        if (offset != 0.0f) {
+          uiItemS_ex(row, offset);
+        }
       }
     }
     return;
@@ -6386,11 +6414,38 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     return;
   }
 
+  bScreen *screen = CTX_wm_screen(C);
+  ARegion *region = screen->active_region;
+  uiLayout *row = uiLayoutRow(layout, true);
+
+  if (region == nullptr) {
+    /* Check if over an action zone. */
+    LISTBASE_FOREACH (ScrArea *, area_iter, &screen->areabase) {
+      LISTBASE_FOREACH (AZone *, az, &area_iter->actionzones) {
+        if (BLI_rcti_isect_pt_v(&az->rect, win->eventstate->xy)) {
+          region = az->region;
+          if (uiTemplateInputStatusAzone(row, az, region)) {
+            return;
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if (!region) {
+    /* On a gap between editors. */
+    uiItemL(row, nullptr, ICON_MOUSE_LMB_DRAG);
+    uiItemL(row, IFACE_("Resize"), ICON_NONE);
+    uiItemS_ex(row, 0.7f);
+    uiItemL(row, nullptr, ICON_MOUSE_RMB);
+    uiItemS_ex(row, -0.5f);
+    uiItemL(row, IFACE_("Options"), ICON_NONE);
+    return;
+  }
+
   /* Otherwise should cursor keymap status. */
   for (int i = 0; i < 3; i++) {
-    uiLayout *box = uiLayoutRow(layout, false);
-    uiLayout *col = uiLayoutColumn(box, false);
-    uiLayout *row = uiLayoutRow(col, true);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
 
     const char *msg = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
@@ -6398,21 +6453,42 @@ void uiTemplateInputStatus(uiLayout *layout, bContext *C)
     const char *msg_drag = CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
                                       WM_window_cursor_keymap_status_get(win, i, 1));
 
-    if (msg || (msg_drag == nullptr)) {
-      /* Icon and text separately are closer together with aligned layout. */
+    if (msg) {
       uiItemL(row, "", (ICON_MOUSE_LMB + i));
-      uiItemL(row, msg ? msg : "", ICON_NONE);
+      uiItemS_ex(row, -0.5f);
+      uiItemL(row, msg, ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
 
     if (msg_drag) {
       uiItemL(row, "", (ICON_MOUSE_LMB_DRAG + i));
       uiItemL(row, msg_drag, ICON_NONE);
+      uiItemS_ex(row, 0.7f);
     }
-
-    /* Use trick with empty string to keep icons in same position. */
-    row = uiLayoutRow(col, false);
-    uiItemL(row, "                                                                   ", ICON_NONE);
   }
+}
+
+static std::string ui_template_status_tooltip(bContext *C, void * /*argN*/, const char * /*tip*/)
+{
+  Main *bmain = CTX_data_main(C);
+  std::string tooltip_message = "";
+
+  if (bmain->has_forward_compatibility_issues) {
+    char writer_ver_str[12];
+    BKE_blender_version_blendfile_string_from_values(
+        writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
+    tooltip_message += fmt::format(RPT_("File saved by newer Blender\n({}), expect loss of data"),
+                                   writer_ver_str);
+  }
+  if (bmain->is_asset_edit_file) {
+    if (!tooltip_message.empty()) {
+      tooltip_message += "\n\n";
+    }
+    tooltip_message += RPT_(
+        "This file is managed by the Blender asset system and cannot be overridden");
+  }
+
+  return tooltip_message;
 }
 
 void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
@@ -6434,6 +6510,29 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 
   if (U.statusbar_flag & STATUSBAR_SHOW_EXTENSIONS_UPDATES) {
     wmWindowManager *wm = CTX_wm_manager(C);
+
+    /* Special case, always show an alert for any blocked extensions. */
+    if (wm->extensions_blocked > 0) {
+      if (has_status_info) {
+        uiItemS_ex(row, -0.5f);
+        uiItemL(row, "|", ICON_NONE);
+        uiItemS_ex(row, -0.5f);
+      }
+      uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+      /* This operator also works fine for blocked extensions. */
+      uiItemO(row, "", ICON_ERROR, "EXTENSIONS_OT_userpref_show_for_update");
+      uiBut *but = static_cast<uiBut *>(uiLayoutGetBlock(layout)->buttons.last);
+      uchar color[4];
+      UI_GetThemeColor4ubv(TH_TEXT, color);
+      copy_v4_v4_uchar(but->col, color);
+
+      BLI_str_format_integer_unit(but->icon_overlay_text.text, wm->extensions_blocked);
+      UI_but_icon_indicator_color_set(but, color);
+
+      uiItemS_ex(row, 1.0f);
+      has_status_info = true;
+    }
+
     if ((G.f & G_FLAG_INTERNET_ALLOW) == 0) {
       if (has_status_info) {
         uiItemS_ex(row, -0.5f);
@@ -6478,7 +6577,6 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
 
       if (wm->extensions_updates > 0) {
         BLI_str_format_integer_unit(but->icon_overlay_text.text, wm->extensions_updates);
-        UI_GetThemeColor4ubv(TH_TEXT, color);
         UI_but_icon_indicator_color_set(but, color);
       }
 
@@ -6487,7 +6585,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
     }
   }
 
-  if (!bmain->has_forward_compatibility_issues) {
+  if (!BKE_main_has_issues(bmain)) {
     if (U.statusbar_flag & STATUSBAR_SHOW_VERSION) {
       if (has_status_info) {
         uiItemS_ex(row, -0.5f);
@@ -6501,70 +6599,74 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
     return;
   }
 
+  blender::StringRefNull version_string = ED_info_statusbar_string_ex(
+      bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
+  blender::StringRefNull warning_message;
+
   /* Blender version part is shown as warning area when there are forward compatibility issues with
    * currently loaded .blend file. */
-
-  status_info_txt = ED_info_statusbar_string_ex(bmain, scene, view_layer, STATUSBAR_SHOW_VERSION);
-
-  uiBut *but;
+  if (bmain->has_forward_compatibility_issues) {
+    warning_message = version_string;
+  }
+  else {
+    /* For other issues, still show the version if enabled. */
+    if (U.statusbar_flag & STATUSBAR_SHOW_VERSION) {
+      uiItemL(layout, version_string.c_str(), ICON_NONE);
+    }
+  }
 
   const uiStyle *style = UI_style_get();
   uiLayout *ui_abs = uiLayoutAbsolute(layout, false);
   uiBlock *block = uiLayoutGetBlock(ui_abs);
   eUIEmbossType previous_emboss = UI_block_emboss_get(block);
 
-  UI_fontstyle_set(&style->widgetlabel);
-  int width = int(
-      BLF_width(style->widgetlabel.uifont_id, status_info_txt, strlen(status_info_txt)));
-  width = max_ii(width, int(10 * UI_SCALE_FAC));
+  UI_fontstyle_set(&style->widget);
+  const int width = max_ii(
+      int(BLF_width(style->widget.uifont_id, warning_message.c_str(), warning_message.size())),
+      int(10 * UI_SCALE_FAC));
 
   UI_block_align_begin(block);
 
   /* Background for icon. */
-  but = uiDefBut(block,
-                 UI_BTYPE_ROUNDBOX,
-                 0,
-                 "",
-                 0,
-                 0,
-                 UI_UNIT_X + (6 * UI_SCALE_FAC),
-                 UI_UNIT_Y,
-                 nullptr,
-                 0.0f,
-                 0.0f,
-                 "");
+  uiBut *but = uiDefBut(block,
+                        UI_BTYPE_ROUNDBOX,
+                        0,
+                        "",
+                        0,
+                        0,
+                        UI_UNIT_X + (6 * UI_SCALE_FAC),
+                        UI_UNIT_Y,
+                        nullptr,
+                        0.0f,
+                        0.0f,
+                        "");
   /* UI_BTYPE_ROUNDBOX's bg color is set in but->col. */
   UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
 
-  /* Background for the rest of the message. */
-  but = uiDefBut(block,
-                 UI_BTYPE_ROUNDBOX,
-                 0,
-                 "",
-                 UI_UNIT_X + (6 * UI_SCALE_FAC),
-                 0,
-                 UI_UNIT_X + width,
-                 UI_UNIT_Y,
-                 nullptr,
-                 0.0f,
-                 0.0f,
-                 "");
+  if (!warning_message.is_empty()) {
+    /* Background for the rest of the message. */
+    but = uiDefBut(block,
+                   UI_BTYPE_ROUNDBOX,
+                   0,
+                   "",
+                   UI_UNIT_X + (6 * UI_SCALE_FAC),
+                   0,
+                   UI_UNIT_X + width,
+                   UI_UNIT_Y,
+                   nullptr,
+                   0.0f,
+                   0.0f,
+                   "");
 
-  /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
-  UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
-  but->col[3] = 64;
+    /* Use icon background at low opacity to highlight, but still contrasting with area TH_TEXT. */
+    UI_GetThemeColorType4ubv(TH_INFO_WARNING, SPACE_INFO, but->col);
+    but->col[3] = 64;
+  }
 
   UI_block_align_end(block);
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
-  /* The report icon itself. */
-  static char compat_error_msg[256];
-  char writer_ver_str[12];
-  BKE_blender_version_blendfile_string_from_values(
-      writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
-  SNPRINTF(compat_error_msg,
-           RPT_("File saved by newer Blender\n(%s), expect loss of data"),
-           writer_ver_str);
+  /* The warning icon itself. */
   but = uiDefIconBut(block,
                      UI_BTYPE_BUT,
                      0,
@@ -6576,23 +6678,27 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
                      nullptr,
                      0.0f,
                      0.0f,
-                     compat_error_msg);
+                     nullptr);
+  UI_but_func_tooltip_set(but, ui_template_status_tooltip, nullptr, nullptr);
   UI_GetThemeColorType4ubv(TH_INFO_WARNING_TEXT, SPACE_INFO, but->col);
   but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
 
-  /* The report message. */
-  but = uiDefBut(block,
-                 UI_BTYPE_BUT,
-                 0,
-                 status_info_txt,
-                 UI_UNIT_X,
-                 0,
-                 short(width + UI_UNIT_X),
-                 UI_UNIT_Y,
-                 nullptr,
-                 0.0f,
-                 0.0f,
-                 compat_error_msg);
+  /* The warning message, if any. */
+  if (!warning_message.is_empty()) {
+    but = uiDefBut(block,
+                   UI_BTYPE_BUT,
+                   0,
+                   warning_message.c_str(),
+                   UI_UNIT_X,
+                   0,
+                   short(width + UI_UNIT_X),
+                   UI_UNIT_Y,
+                   nullptr,
+                   0.0f,
+                   0.0f,
+                   nullptr);
+    UI_but_func_tooltip_set(but, ui_template_status_tooltip, nullptr, nullptr);
+  }
 
   UI_block_emboss_set(block, previous_emboss);
 }
@@ -6774,8 +6880,6 @@ int uiTemplateStatusBarModalItem(uiLayout *layout,
       icon = UI_icon_from_keymap_item(kmi_z, icon_mod);
 #endif
       uiItemL(layout, "", icon);
-
-      uiItemS_ex(layout, 0.6f);
       uiItemL(layout, xyz_label, ICON_NONE);
       uiItemS_ex(layout, 0.7f);
       return 3;
@@ -6805,13 +6909,19 @@ bool uiTemplateEventFromKeymapItem(uiLayout *layout,
     }
 
     /* Icon and text separately is closer together with aligned layout. */
+
     uiItemL(layout, "", icon);
-    if (icon < ICON_MOUSE_LMB || icon > ICON_MOUSE_RMB_DRAG) {
-      /* Mouse icons are left-aligned. Everything else needs a bit of space here. */
-      uiItemS_ex(layout, 0.6f);
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_MMB_SCROLL) {
+      /* Negative space after narrow mice icons. */
+      uiItemS_ex(layout, -0.5f);
     }
+
+    const float offset = ui_event_icon_offset(icon);
+    if (offset != 0.0f) {
+      uiItemS_ex(layout, offset);
+    }
+
     uiItemL(layout, CTX_IFACE_(BLT_I18NCONTEXT_ID_WINDOWMANAGER, text), ICON_NONE);
-    /* Separate items with some extra space. */
     uiItemS_ex(layout, 0.7f);
     ok = true;
   }
@@ -6877,6 +6987,14 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
   if (view_settings->flag & COLORMANAGE_VIEW_USE_CURVES) {
     uiTemplateCurveMapping(
         col, &view_transform_ptr, "curve_mapping", 'c', true, false, false, false);
+  }
+
+  col = uiLayoutColumn(layout, false);
+  uiItemR(col, &view_transform_ptr, "use_white_balance", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (view_settings->flag & COLORMANAGE_VIEW_USE_WHITE_BALANCE) {
+    uiItemR(
+        col, &view_transform_ptr, "white_balance_temperature", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &view_transform_ptr, "white_balance_tint", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -7204,10 +7322,10 @@ void uiTemplateCacheFile(uiLayout *layout,
   /* TODO: unused for now, so no need to expose. */
 #if 0
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &fileptr, "forward_axis", UI_ITEM_NONE, "Forward Axis", ICON_NONE);
+  uiItemR(row, &fileptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
 
   row = uiLayoutRow(layout, false);
-  uiItemR(row, &fileptr, "up_axis", UI_ITEM_NONE, "Up Axis", ICON_NONE);
+  uiItemR(row, &fileptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 #endif
 }
 
@@ -7216,7 +7334,7 @@ void uiTemplateCacheFile(uiLayout *layout,
 /* -------------------------------------------------------------------- */
 /** \name Recent Files Template
  * \{ */
-static void uiTemplateRecentFiles_tooltip_func(bContext * /*C*/, uiTooltipData *tip, void *argN)
+static void uiTemplateRecentFiles_tooltip_func(bContext & /*C*/, uiTooltipData &tip, void *argN)
 {
   char *path = (char *)argN;
 

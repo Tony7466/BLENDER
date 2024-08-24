@@ -34,7 +34,6 @@ set(LIB
   PRIVATE bf::dna
   bf_gpu
   PRIVATE bf::intern::guardedalloc
-
   ${FREETYPE_LIBRARIES} ${BROTLI_LIBRARIES}
 )
 
@@ -72,6 +71,17 @@ if(WITH_PYTHON)
   list(APPEND INC
     ../python
   )
+endif()
+
+if(WITH_HEADLESS)
+  add_definitions(-DWITH_HEADLESS)
+else()
+  # SVG icons.
+  list(APPEND LIB
+    PRIVATE bf::extern::nanosvg
+    PRIVATE bf::editor::datafiles
+  )
+
 endif()
 
 add_definitions(-DFRIBIDI_LIB_STATIC)

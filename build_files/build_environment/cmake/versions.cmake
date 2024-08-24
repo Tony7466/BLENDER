@@ -147,9 +147,9 @@ set(SDL_FILE SDL2-${SDL_VERSION}.tar.gz)
 set(SDL_CPE "cpe:2.3:a:libsdl:sdl:${SDL_VERSION}:*:*:*:*:*:*:*")
 set(SDL_HOMEPAGE https://www.libsdl.org)
 
-set(OPENCOLLADA_VERSION 717cb7c1041a1796aad3cf843dd8f5095d7a6a33)
+set(OPENCOLLADA_VERSION dfc341ab0b3b23ee307ab8660c0213e64da1eac6)
 set(OPENCOLLADA_URI https://github.com/aras-p/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
-set(OPENCOLLADA_HASH 64cb7f705751790f1a8c6d0dfe6682cd)
+set(OPENCOLLADA_HASH 2120c8c02aab840e81cb87e625a608f7)
 set(OPENCOLLADA_HASH_TYPE MD5)
 set(OPENCOLLADA_FILE opencollada-${OPENCOLLADA_VERSION}.tar.gz)
 
@@ -229,16 +229,27 @@ set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 # it wants to use in PCbuild/get_externals.bat for the following dependencies:
 # BZIP2, FFI, SQLITE and change the versions in this file as well. For compliance
 # reasons there can be no exceptions to this.
+# Additionally, keep the PYTHON_PIP_VERSION in sync with the pip version bundled
+# into Python.
 
-set(PYTHON_VERSION 3.11.7)
+set(PYTHON_VERSION 3.11.9)
 set(PYTHON_SHORT_VERSION 3.11)
 set(PYTHON_SHORT_VERSION_NO_DOTS 311)
 set(PYTHON_URI https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz)
-set(PYTHON_HASH d96c7e134c35a8c46236f8a0e566b69c)
+set(PYTHON_HASH 22ea467e7d915477152e99d5da856ddc)
 set(PYTHON_HASH_TYPE MD5)
 set(PYTHON_FILE Python-${PYTHON_VERSION}.tar.xz)
 set(PYTHON_CPE "cpe:2.3:a:python:python:${PYTHON_VERSION}:-:*:*:*:*:*:*")
 set(PYTHON_HOMEPAGE https://www.python.org/)
+
+# Python bundles pip wheel, and does not track CVEs from it. Add an explicit CPE
+# identifier for pip, so that cve_check can detect vulnerabilities in it.
+# The version needs to be kept in symc with the version bundled in Python.
+# Currently it is done manually by tracking _PIP_VERSION variable in the
+# `Lib/ensurepip/__init__.py`. For example,
+#   https://github.com/python/cpython/tree/v3.11.9/Lib/ensurepip/__init__.py
+set(PYTHON_PIP_VERSION 24.0)
+set(PYTHON_PIP_CPE "cpe:2.3:a:pypa:pip:${PYTHON_PIP_VERSION}:*:*:*:*:*:*:*")
 
 set(TBB_YEAR 2020)
 set(TBB_VERSION ${TBB_YEAR}_U3)
@@ -536,9 +547,9 @@ set(MATERIALX_HASH fad8f4e19305fb2ee920cbff638f3560)
 set(MATERIALX_HASH_TYPE MD5)
 set(MATERIALX_FILE materialx-v${MATERIALX_VERSION}.tar.gz)
 
-set(OIDN_VERSION 2.3.0-beta)
+set(OIDN_VERSION 2.3.0)
 set(OIDN_URI https://github.com/OpenImageDenoise/oidn/releases/download/v${OIDN_VERSION}/oidn-${OIDN_VERSION}.src.tar.gz)
-set(OIDN_HASH 3bb6596964a17143ad089aa29d1e775d)
+set(OIDN_HASH 31a3d8b9168966a2fa93daa6becad586)
 set(OIDN_HASH_TYPE MD5)
 set(OIDN_FILE oidn-${OIDN_VERSION}.src.tar.gz)
 
@@ -570,31 +581,31 @@ set(XR_OPENXR_SDK_HASH a2623ebab3d0b340bc16311b14f02075)
 set(XR_OPENXR_SDK_HASH_TYPE MD5)
 set(XR_OPENXR_SDK_FILE OpenXR-SDK-${XR_OPENXR_SDK_VERSION}.tar.gz)
 
-set(WL_PROTOCOLS_VERSION 1.32)
+set(WL_PROTOCOLS_VERSION 1.36)
 set(WL_PROTOCOLS_FILE wayland-protocols-${WL_PROTOCOLS_VERSION}.tar.xz)
 set(WL_PROTOCOLS_URI https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${WL_PROTOCOLS_VERSION}/downloads/${WL_PROTOCOLS_FILE})
-set(WL_PROTOCOLS_HASH 00c2cedb0d2df714a0965a00c19385c6)
+set(WL_PROTOCOLS_HASH d733380202a75ca837744e65b4dbadc5)
 set(WL_PROTOCOLS_HASH_TYPE MD5)
 set(WL_PROTOCOLS_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland-protocols)
 
-set(WAYLAND_VERSION 1.22.0)
+set(WAYLAND_VERSION 1.23.0)
 set(WAYLAND_FILE wayland-${WAYLAND_VERSION}.tar.xz)
 set(WAYLAND_URI https://gitlab.freedesktop.org/wayland/wayland/-/releases/${WAYLAND_VERSION}/downloads/wayland-${WAYLAND_VERSION}.tar.xz)
-set(WAYLAND_HASH 7410ab549e3928fce9381455b17b0803)
+set(WAYLAND_HASH 23ad991e776ec8cf7e58b34cbd2efa75)
 set(WAYLAND_HASH_TYPE MD5)
 set(WAYLAND_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland)
 
-set(WAYLAND_LIBDECOR_VERSION 0.1.0)
+set(WAYLAND_LIBDECOR_VERSION 0.2.2)
 set(WAYLAND_LIBDECOR_FILE libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
-set(WAYLAND_LIBDECOR_URI https://gitlab.gnome.org/jadahl/libdecor/uploads/81adf91d27620e20bcc5f6b9b312d768/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz )
-set(WAYLAND_LIBDECOR_HASH 47b59eba76faa3787f0878bf8700e912)
+set(WAYLAND_LIBDECOR_URI https://gitlab.freedesktop.org/libdecor/libdecor/-/releases/${WAYLAND_LIBDECOR_VERSION}/downloads/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
+set(WAYLAND_LIBDECOR_HASH 5b7f4a10a9335b62101bccc220e2d13a)
 set(WAYLAND_LIBDECOR_HASH_TYPE MD5)
 set(WAYLAND_LIBDECOR_HOMEPAGE https://gitlab.freedesktop.org/libdecor/libdecor)
 
-set(WAYLAND_WESTON_VERSION 12.0.92)
+set(WAYLAND_WESTON_VERSION 13.0.3)
 set(WAYLAND_WESTON_FILE weston-${WAYLAND_WESTON_VERSION}.tar.xz)
 set(WAYLAND_WESTON_URI https://gitlab.freedesktop.org/wayland/weston/-/releases/${WAYLAND_WESTON_VERSION}/downloads/weston-${WAYLAND_WESTON_VERSION}.tar.xz)
-set(WAYLAND_WESTON_HASH 44542b60bf9b9fe3add904af11bbad98)
+set(WAYLAND_WESTON_HASH 9e10833f807214b4b060a1a8db1e3057)
 set(WAYLAND_WESTON_HASH_TYPE MD5)
 set(WAYLAND_WESTON_HOMEPAGE https://wayland.freedesktop.org)
 
@@ -633,9 +644,9 @@ set(ZSTD_HASH_TYPE SHA256)
 set(ZSTD_FILE zstd-${ZSTD_VERSION}.tar.gz)
 set(ZSTD_CPE "cpe:2.3:a:facebook:zstandard:${ZSTD_VERSION}:*:*:*:*:*:*:*")
 
-set(SSE2NEON_VERSION cfaa59fc04fecb117c0a0f3fe9c82dece6f359ad)
+set(SSE2NEON_VERSION 227cc413fb2d50b2a10073087be96b59d5364aea)
 set(SSE2NEON_URI https://github.com/DLTcollab/sse2neon/archive/${SSE2NEON_VERSION}.tar.gz)
-set(SSE2NEON_HASH 5491c5038a301a6b0ba0531e516568bb50d165d206360f03d8d56558a2490669)
+set(SSE2NEON_HASH 3427a495743bb6fd1b5f9f806b80f57d67b1ac7ccf39a5f44aedd487fd7e6da1)
 set(SSE2NEON_HASH_TYPE SHA256)
 set(SSE2NEON_FILE sse2neon-${SSE2NEON_VERSION}.tar.gz)
 

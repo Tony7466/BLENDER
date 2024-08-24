@@ -36,14 +36,14 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   RenderBuffers &rbufs = inst_.render_buffers;
 
   world_ps_.init();
-  world_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  world_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL);
   world_ps_.material_set(manager, gpumat);
   world_ps_.push_constant("world_opacity_fade", background_opacity);
   world_ps_.push_constant("world_background_blur", square_f(background_blur));
   SphereProbeData &world_data = *static_cast<SphereProbeData *>(&inst_.light_probes.world_sphere_);
   world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
   world_ps_.bind_texture("utility_tx", inst_.pipelines.utility_tx);
-  /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
+  /* RenderPasses & AOVs. */
   world_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
   world_ps_.bind_image("rp_value_img", &rbufs.rp_value_tx);
   world_ps_.bind_image("rp_cryptomatte_img", &rbufs.cryptomatte_tx);
@@ -56,6 +56,25 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   /* To allow opaque pass rendering over it. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+
+  clear_ps_.init();
+  clear_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  clear_ps_.shader_set(inst_.shaders.static_shader_get(RENDERPASS_CLEAR));
+  /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
+  clear_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
+  clear_ps_.bind_image("rp_value_img", &rbufs.rp_value_tx);
+  clear_ps_.bind_image("rp_cryptomatte_img", &rbufs.cryptomatte_tx);
+  /* Required by validation layers. */
+  clear_ps_.bind_resources(inst_.cryptomatte);
+  clear_ps_.bind_resources(inst_.uniform_data);
+  clear_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
+  /* To allow opaque pass rendering over it. */
+  clear_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+}
+
+void BackgroundPipeline::clear(View &view)
+{
+  inst_.manager->submit(clear_ps_, view);
 }
 
 void BackgroundPipeline::render(View &view)
@@ -164,6 +183,7 @@ void WorldVolumePipeline::render(View &view)
     inst_.volume.prop_extinction_tx_.clear(float4(0.0f));
     inst_.volume.prop_emission_tx_.clear(float4(0.0f));
     inst_.volume.prop_phase_tx_.clear(float4(0.0f));
+    inst_.volume.prop_phase_weight_tx_.clear(float4(0.0f));
     return;
   }
 
@@ -501,30 +521,6 @@ void DeferredLayerBase::gbuffer_pass_sync(Instance &inst)
 
 void DeferredLayer::begin_sync()
 {
-  if (GPU_use_parallel_compilation()) {
-    /* Pre-compile specialization constants in parallel. */
-    Vector<ShaderSpecialization> specializations;
-    for (int i = 0; i < 3; i++) {
-      GPUShader *sh = inst_.shaders.static_shader_get(eShaderType(DEFERRED_LIGHT_SINGLE + i));
-      for (bool use_split_indirect : {false, true}) {
-        for (bool use_lightprobe_eval : {false, true}) {
-          for (bool use_transmission : {false, true}) {
-            specializations.append(
-                {sh,
-                 {{"render_pass_shadow_id", inst_.render_buffers.data.shadow_id},
-                  {"use_split_indirect", use_split_indirect},
-                  {"use_lightprobe_eval", use_lightprobe_eval},
-                  {"use_transmission", use_transmission},
-                  {"shadow_ray_count", inst_.shadows.get_data().ray_count},
-                  {"shadow_ray_step_count", inst_.shadows.get_data().step_count}}});
-          }
-        }
-      }
-    }
-
-    GPU_shaders_precompile_specializations(specializations);
-  }
-
   {
     prepass_ps_.init();
     /* Textures. */
@@ -754,6 +750,12 @@ PassMain::Sub *DeferredLayer::prepass_add(::Material *blender_mat,
 PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
+  if (closure_bits == eClosureBits(0)) {
+    /* Fix the case where there is no active closure in the shader.
+     * In this case we force the evaluation of emission to avoid disabling the entire layer by
+     * accident, see #126459. */
+    closure_bits |= CLOSURE_EMISSION;
+  }
   closure_bits_ |= closure_bits;
   closure_count_ = max_ii(closure_count_, count_bits_i(closure_bits));
 
@@ -1042,7 +1044,7 @@ PassMain::Sub *VolumeLayer::occupancy_add(const Object *ob,
                                           const ::Material *blender_mat,
                                           GPUMaterial *gpumat)
 {
-  BLI_assert_msg(GPU_material_has_volume_output(gpumat) == true,
+  BLI_assert_msg((ob->type == OB_VOLUME) || GPU_material_has_volume_output(gpumat),
                  "Only volume material should be added here");
   bool use_fast_occupancy = (ob->type == OB_VOLUME) ||
                             (blender_mat->volume_intersection_method == MA_VOLUME_ISECT_FAST);
@@ -1055,12 +1057,14 @@ PassMain::Sub *VolumeLayer::occupancy_add(const Object *ob,
   return pass;
 }
 
-PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
+PassMain::Sub *VolumeLayer::material_add(const Object *ob,
                                          const ::Material * /*blender_mat*/,
                                          GPUMaterial *gpumat)
 {
-  BLI_assert_msg(GPU_material_has_volume_output(gpumat) == true,
+  BLI_assert_msg((ob->type == OB_VOLUME) || GPU_material_has_volume_output(gpumat),
                  "Only volume material should be added here");
+  UNUSED_VARS_NDEBUG(ob);
+
   PassMain::Sub *pass = &material_ps_->sub(GPU_material_get_name(gpumat));
   pass->material_set(*inst_.manager, gpumat);
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_VOLUME_SCATTER)) {
@@ -1121,7 +1125,6 @@ void VolumeLayer::render(View &view, Texture &occupancy_tx)
 void VolumePipeline::sync()
 {
   object_integration_range_ = std::nullopt;
-  enabled_ = false;
   has_scatter_ = false;
   has_absorption_ = false;
   for (auto &layer : layers_) {
@@ -1131,8 +1134,6 @@ void VolumePipeline::sync()
 
 void VolumePipeline::render(View &view, Texture &occupancy_tx)
 {
-  BLI_assert_msg(enabled_, "Trying to run the volume object pipeline with no actual volume calls");
-
   for (auto &layer : layers_) {
     layer->render(view, occupancy_tx);
   }
@@ -1178,7 +1179,6 @@ VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
   VolumeObjectBounds object_bounds(inst_.camera, ob);
   object_integration_range_ = bounds::merge(object_integration_range_, object_bounds.z_range);
 
-  enabled_ = true;
   /* Do linear search in all layers in order. This can be optimized. */
   for (auto &layer : layers_) {
     if (!layer->bounds_overlaps(object_bounds)) {
@@ -1275,6 +1275,12 @@ PassMain::Sub *DeferredProbePipeline::prepass_add(::Material *blender_mat, GPUMa
 PassMain::Sub *DeferredProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
+  if (closure_bits == eClosureBits(0)) {
+    /* Fix the case where there is no active closure in the shader.
+     * In this case we force the evaluation of emission to avoid disabling the entire layer by
+     * accident, see #126459. */
+    closure_bits |= CLOSURE_EMISSION;
+  }
   opaque_layer_.closure_bits_ |= closure_bits;
   opaque_layer_.closure_count_ = max_ii(opaque_layer_.closure_count_, count_bits_i(closure_bits));
 
@@ -1386,6 +1392,12 @@ PassMain::Sub *PlanarProbePipeline::prepass_add(::Material *blender_mat, GPUMate
 PassMain::Sub *PlanarProbePipeline::material_add(::Material *blender_mat, GPUMaterial *gpumat)
 {
   eClosureBits closure_bits = shader_closure_bits_from_flag(gpumat);
+  if (closure_bits == eClosureBits(0)) {
+    /* Fix the case where there is no active closure in the shader.
+     * In this case we force the evaluation of emission to avoid disabling the entire layer by
+     * accident, see #126459. */
+    closure_bits |= CLOSURE_EMISSION;
+  }
   closure_bits_ |= closure_bits;
   closure_count_ = max_ii(closure_count_, count_bits_i(closure_bits));
 

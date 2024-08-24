@@ -61,7 +61,7 @@ bool VKBuffer::create(size_t size_in_bytes,
   BLI_assert(mapped_memory_ == nullptr);
 
   size_in_bytes_ = size_in_bytes;
-  VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device;
 
   VmaAllocator allocator = device.mem_allocator_get();
   VkBufferCreateInfo create_info = {};
@@ -109,7 +109,7 @@ void VKBuffer::update(const void *data) const
 
 void VKBuffer::flush() const
 {
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   VmaAllocator allocator = device.mem_allocator_get();
   vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
 }
@@ -126,6 +126,7 @@ void VKBuffer::clear(VKContext &context, uint32_t clear_value)
 void VKBuffer::read(VKContext &context, void *data) const
 {
   BLI_assert_msg(is_mapped(), "Cannot read a non-mapped buffer.");
+  context.rendering_end();
   context.render_graph.submit_buffer_for_read(vk_buffer_);
   memcpy(data, mapped_memory_, size_in_bytes_);
 }
@@ -144,7 +145,7 @@ bool VKBuffer::is_mapped() const
 bool VKBuffer::map()
 {
   BLI_assert(!is_mapped());
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   VmaAllocator allocator = device.mem_allocator_get();
   VkResult result = vmaMapMemory(allocator, allocation_, &mapped_memory_);
   return result == VK_SUCCESS;
@@ -153,7 +154,7 @@ bool VKBuffer::map()
 void VKBuffer::unmap()
 {
   BLI_assert(is_mapped());
-  const VKDevice &device = VKBackend::get().device_get();
+  const VKDevice &device = VKBackend::get().device;
   VmaAllocator allocator = device.mem_allocator_get();
   vmaUnmapMemory(allocator, allocation_);
   mapped_memory_ = nullptr;
@@ -165,10 +166,12 @@ bool VKBuffer::free()
     unmap();
   }
 
-  VKDevice &device = VKBackend::get().device_get();
-  device.discard_buffer(vk_buffer_, allocation_);
+  VKDevice &device = VKBackend::get().device;
+  device.discard_pool_for_current_thread().discard_buffer(vk_buffer_, allocation_);
+
   allocation_ = VK_NULL_HANDLE;
   vk_buffer_ = VK_NULL_HANDLE;
+
   return true;
 }
 

@@ -210,7 +210,7 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
     }
     GPU_vertbuf_init_with_format(vbo, format);
     GPU_vertbuf_data_alloc(vbo, size);
-    MutableSpan vbo_data(static_cast<short4 *>(GPU_vertbuf_get_data(vbo)), size);
+    MutableSpan vbo_data = vbo.data<short4>();
     MutableSpan corners_data = vbo_data.take_front(mr.corners_num);
     MutableSpan loose_data = vbo_data.take_back(mr.loose_indices_num);
 
@@ -232,7 +232,7 @@ void extract_normals(const MeshRenderData &mr, const bool use_hq, gpu::VertBuf &
     }
     GPU_vertbuf_init_with_format(vbo, format);
     GPU_vertbuf_data_alloc(vbo, size);
-    MutableSpan vbo_data(static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo)), size);
+    MutableSpan vbo_data = vbo.data<GPUPackedNormal>();
     MutableSpan corners_data = vbo_data.take_front(mr.corners_num);
     MutableSpan loose_data = vbo_data.take_back(mr.loose_indices_num);
 
@@ -259,12 +259,23 @@ static const GPUVertFormat &get_subdiv_lnor_format()
   return format;
 }
 
-void extract_normals_subdiv(const DRWSubdivCache &subdiv_cache,
+void extract_normals_subdiv(const MeshRenderData &mr,
+                            const DRWSubdivCache &subdiv_cache,
                             gpu::VertBuf &pos_nor,
                             gpu::VertBuf &lnor)
 {
-  GPU_vertbuf_init_build_on_device(lnor, get_subdiv_lnor_format(), subdiv_cache.num_subdiv_loops);
-  draw_subdiv_build_lnor_buffer(subdiv_cache, &pos_nor, &lnor);
-}
+  const int vbo_size = subdiv_full_vbo_size(mr, subdiv_cache);
+  const int loose_geom_start = subdiv_cache.num_subdiv_loops;
 
+  GPU_vertbuf_init_build_on_device(lnor, get_subdiv_lnor_format(), vbo_size);
+  draw_subdiv_build_lnor_buffer(subdiv_cache, &pos_nor, &lnor);
+
+  /* Push VBO content to the GPU and bind the VBO so that #GPU_vertbuf_update_sub can work. */
+  GPU_vertbuf_use(&lnor);
+
+  const float4 up(0.0f, 0.0f, 1.0f, 0.0f);
+  for (const int i : IndexRange::from_begin_end(loose_geom_start, vbo_size)) {
+    GPU_vertbuf_update_sub(&lnor, i * sizeof(float4), sizeof(float4), &up);
+  }
+}
 }  // namespace blender::draw

@@ -44,7 +44,8 @@ typedef struct GPUVertBufHandle GPUVertBufHandle;
 
 /* Forward declarations so the actual declarations can happen top-down. */
 struct ActionLayer;
-struct ActionBinding;
+struct ActionSlot;
+struct ActionSlot_runtime;
 struct ActionStrip;
 struct ActionChannelBag;
 
@@ -52,12 +53,16 @@ struct ActionChannelBag;
 #ifdef __cplusplus
 namespace blender::animrig {
 class Action;
-class Binding;
+class Slot;
+class SlotRuntime;
 class ChannelBag;
 class KeyframeStrip;
 class Layer;
 class Strip;
 }  // namespace blender::animrig
+using ActionSlotRuntimeHandle = blender::animrig::SlotRuntime;
+#else
+typedef struct ActionSlotRuntimeHandle ActionSlotRuntimeHandle;
 #endif
 
 /* ************************************************ */
@@ -672,10 +677,29 @@ typedef struct bActionGroup {
   struct bActionGroup *next, *prev;
 
   /**
+   * List of channels in this group for legacy actions.
+   *
    * NOTE: this must not be touched by standard listbase functions
    * which would clear links to other channels.
    */
   ListBase channels;
+
+  /**
+   * Span of channels in this group for layered actions.
+   *
+   * This specifies that span as a range of items in a ChannelBag's fcurve
+   * array.
+   */
+  int fcurve_range_start;
+  int fcurve_range_length;
+
+  /**
+   * For layered actions: the ChannelBag this group belongs to.
+   *
+   * This is needed in the keyframe drawing code, etc., to give direct access to
+   * the fcurves in this group.
+   */
+  struct ActionChannelBag *channel_bag;
 
   /** Settings for this action-group. */
   int flag;
@@ -736,9 +760,9 @@ typedef struct bAction {
   int layer_array_num;
   int layer_active_index; /* Index into layer_array, -1 means 'no active'. */
 
-  struct ActionBinding **binding_array; /* Array of 'binding_array_num` bindings. */
-  int binding_array_num;
-  int32_t last_binding_handle;
+  struct ActionSlot **slot_array; /* Array of 'slot_array_num` slots. */
+  int slot_array_num;
+  int32_t last_slot_handle;
 
   /* Note about legacy animation data:
    *
@@ -848,6 +872,12 @@ typedef enum eDopeSheet_FilterFlag {
   /** for 'DopeSheet' Editors - include 'summary' line */
   ADS_FILTER_SUMMARY = (1 << 4),
 
+  /**
+   * Show all Action slots; if not set, only show the Slot of the
+   * data-block that's being animated by the Action.
+   */
+  ADS_FILTER_ALL_SLOTS = (1 << 5),
+
   /* datatype-based filtering */
   ADS_FILTER_NOSHAPEKEYS = (1 << 6),
   ADS_FILTER_NOMESH = (1 << 7),
@@ -935,8 +965,11 @@ typedef struct SpaceAction {
   /** Copied to region. */
   View2D v2d DNA_DEPRECATED;
 
-  /** The currently active action. */
+  /** The currently active action and its slot. */
   bAction *action;
+  int32_t action_slot_handle;
+  char _pad2[4];
+
   /** The currently active context (when not showing action). */
   bDopeSheet ads;
 
@@ -1106,42 +1139,49 @@ typedef struct ActionLayer {
 } ActionLayer;
 
 /**
- * \see #blender::animrig::Binding
+ * \see #blender::animrig::Slot
  */
-typedef struct ActionBinding {
+typedef struct ActionSlot {
   /**
-   * Typically the ID name this binding was created for, including the two
+   * Typically the ID name this slot was created for, including the two
    * letters indicating the ID type.
    *
-   * \see #AnimData::binding_name
+   * \see #AnimData::slot_name
    */
   char name[66]; /* MAX_ID_NAME */
   uint8_t _pad0[2];
 
   /**
-   * Type of ID-blocks that this binding can be assigned to.
+   * Type of ID-blocks that this slot can be assigned to.
    * If 0, will be set to whatever ID is first assigned.
    */
   int idtype;
 
   /**
-   * Identifier of this Binding within the Animation data-block.
+   * Identifier of this Slot within the Action.
    *
-   * This number allows reorganization of the #bAction::binding_array without
+   * This number allows reorganization of the #bAction::slot_array without
    * invalidating references. Also these remain valid when copy-on-evaluate
    * copies are made.
    *
-   * Only valid within the Animation data-block that owns this Binding.
+   * Only valid within the Action that owns this Slot.
    *
-   * \see #blender::animrig::Action::binding_for_handle()
+   * \see #blender::animrig::Action::slot_for_handle()
    */
   int32_t handle;
 
+  /** \see #blender::animrig::Slot::flags() */
+  int8_t slot_flags;
+  uint8_t _pad1[3];
+
+  /** Runtime data. Set to nullptr when writing to disk. */
+  ActionSlotRuntimeHandle *runtime;
+
 #ifdef __cplusplus
-  blender::animrig::Binding &wrap();
-  const blender::animrig::Binding &wrap() const;
+  blender::animrig::Slot &wrap();
+  const blender::animrig::Slot &wrap() const;
 #endif
-} ActionBinding;
+} ActionSlot;
 
 /**
  * \see #blender::animrig::Strip
@@ -1161,7 +1201,7 @@ typedef struct ActionStrip {
    *
    * This offset determines the difference between "Animation time" (which would
    * typically be the same as the scene time, until the animation system
-   * supports strips referencing other Animation data-blocks).
+   * supports strips referencing other Actions).
    */
   float frame_offset;
 
@@ -1179,8 +1219,8 @@ typedef struct ActionStrip {
 typedef struct KeyframeActionStrip {
   ActionStrip strip;
 
-  struct ActionChannelBag **channelbags_array;
-  int channelbags_array_num;
+  struct ActionChannelBag **channelbag_array;
+  int channelbag_array_num;
 
   uint8_t _pad[4];
 
@@ -1194,13 +1234,31 @@ typedef struct KeyframeActionStrip {
  * \see #blender::animrig::ChannelBag
  */
 typedef struct ActionChannelBag {
-  int32_t binding_handle;
+  int32_t slot_handle;
+
+  /* Channel groups. These index into the `fcurve_array` below to specify group
+   * membership of the fcurves.
+   *
+   * Note that although the fcurves also have pointers back to the groups they
+   * belong to, those pointers are not the source of truth. The source of truth
+   * for membership is the information in the channel groups here.
+   *
+   * Invariants:
+   * 1. The groups are stored in this array in the same order as their indices
+   *    into the fcurve array.
+   * 2. The grouped fcurves are tightly packed, starting at the first fcurve and
+   *    having no gaps of ungrouped fcurves between them. Ungrouped fcurves come
+   *    at the end, after all of the grouped fcurves. */
+  int group_array_num;
+  struct bActionGroup **group_array;
+
+  uint8_t _pad[4];
 
   int fcurve_array_num;
   struct FCurve **fcurve_array; /* Array of 'fcurve_array_num' FCurves. */
 
   /* TODO: Design & implement a way to integrate other channel types as well,
-   * and still have them map to a certain binding */
+   * and still have them map to a certain slot */
 #ifdef __cplusplus
   blender::animrig::ChannelBag &wrap();
   const blender::animrig::ChannelBag &wrap() const;
@@ -1209,8 +1267,9 @@ typedef struct ActionChannelBag {
 
 #ifdef __cplusplus
 /* Some static assertions that things that should have the same type actually do. */
+static_assert(std::is_same_v<decltype(ActionSlot::handle), decltype(bAction::last_slot_handle)>);
 static_assert(
-    std::is_same_v<decltype(ActionBinding::handle), decltype(bAction::last_binding_handle)>);
+    std::is_same_v<decltype(ActionSlot::handle), decltype(ActionChannelBag::slot_handle)>);
 static_assert(
-    std::is_same_v<decltype(ActionBinding::handle), decltype(ActionChannelBag::binding_handle)>);
+    std::is_same_v<decltype(ActionSlot::handle), decltype(SpaceAction::action_slot_handle)>);
 #endif

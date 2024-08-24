@@ -103,8 +103,9 @@ static SpaceLink *sequencer_create(const ScrArea * /*area*/, const Scene *scene)
   sseq->timeline_overlay.flag = SEQ_TIMELINE_SHOW_STRIP_NAME | SEQ_TIMELINE_SHOW_STRIP_SOURCE |
                                 SEQ_TIMELINE_SHOW_STRIP_DURATION | SEQ_TIMELINE_SHOW_GRID |
                                 SEQ_TIMELINE_SHOW_FCURVES | SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG |
-                                SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_ALL_WAVEFORMS;
+                                SEQ_TIMELINE_SHOW_STRIP_RETIMING | SEQ_TIMELINE_WAVEFORMS_HALF;
   sseq->cache_overlay.flag = SEQ_CACHE_SHOW | SEQ_CACHE_SHOW_FINAL_OUT;
+  sseq->draw_flag |= SEQ_DRAW_TRANSFORM_PREVIEW;
 
   /* Header. */
   region = MEM_cnew<ARegion>("header for sequencer");
@@ -135,7 +136,6 @@ static SpaceLink *sequencer_create(const ScrArea * /*area*/, const Scene *scene)
   BLI_addtail(&sseq->regionbase, static_cast<void *>(region));
   region->regiontype = RGN_TYPE_TOOLS;
   region->alignment = RGN_ALIGN_LEFT;
-  region->flag = RGN_FLAG_HIDDEN;
 
   /* Channels. */
   region = MEM_cnew<ARegion>("channels for sequencer");
@@ -497,9 +497,16 @@ static void sequencer_main_clamp_view(const bContext *C, ARegion *region)
   float pad_top, pad_bottom;
   SEQ_get_timeline_region_padding(C, &pad_top, &pad_bottom);
   const float pixel_view_size_y = BLI_rctf_size_y(&v2d->cur) / BLI_rcti_size_y(&v2d->mask);
+  /* Add padding to be able to scroll the view so that the collapsed redo panel doesn't occlude any
+   * strips. */
+  float bottom_channel_padding = UI_MARKER_MARGIN_Y * pixel_view_size_y;
+  if (bottom_channel_padding < 1.0f) {
+    /* Make sure that we can always scroll off at least by one channel. */
+    bottom_channel_padding = 1.0f;
+  }
   /* Add the padding and make sure we have a margin of one channel in each direction.*/
   strip_boundbox.ymax += 1.0f + pad_top * pixel_view_size_y;
-  strip_boundbox.ymin -= 1.0f + pad_bottom * pixel_view_size_y;
+  strip_boundbox.ymin -= bottom_channel_padding;
 
   /* If a strip has been deleted, don't move the view automatically, keep current range until it is
    * changed. */
@@ -644,7 +651,7 @@ static bool is_mouse_over_retiming_key(const Scene *scene,
 {
   const SpaceSeq *sseq = static_cast<SpaceSeq *>(area->spacedata.first);
 
-  if (!SEQ_retiming_data_is_editable(seq) || !retiming_keys_are_visible(sseq)) {
+  if (!SEQ_retiming_data_is_editable(seq) || !retiming_keys_can_be_displayed(sseq)) {
     return false;
   }
 

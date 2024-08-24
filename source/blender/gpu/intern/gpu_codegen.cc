@@ -109,6 +109,10 @@ struct GPUPass {
   bool should_optimize;
   /** Whether pass is in the GPUPass cache. */
   bool cached;
+  /** Protects pass shader from being created from multiple threads at the same time. */
+  ThreadMutex shader_creation_mutex;
+
+  BatchHandle async_compilation_handle;
 };
 
 /* -------------------------------------------------------------------- */
@@ -175,7 +179,7 @@ static GPUPass *gpu_pass_cache_resolve_collision(GPUPass *pass,
   return nullptr;
 }
 
-static bool gpu_pass_is_valid(GPUPass *pass)
+static bool gpu_pass_is_valid(const GPUPass *pass)
 {
   /* Shader is not null if compilation is successful. */
   return (pass->compiled == false || pass->shader != nullptr);
@@ -282,10 +286,6 @@ class GPUCodegen {
     create_info = new GPUCodegenCreateInfo("codegen");
     output.create_info = reinterpret_cast<GPUShaderCreateInfo *>(
         static_cast<ShaderCreateInfo *>(create_info));
-
-    if (GPU_material_flag_get(mat_, GPU_MATFLAG_OBJECT_INFO)) {
-      create_info->additional_info("draw_object_infos");
-    }
   }
 
   ~GPUCodegen()
@@ -392,24 +392,6 @@ void GPUCodegen::generate_attribs()
 void GPUCodegen::generate_resources()
 {
   GPUCodegenCreateInfo &info = *create_info;
-
-  /* Ref. #98190: Defines are optimizations for old compilers.
-   * Might become unnecessary with EEVEE-Next. */
-  if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_COAT)) {
-    info.define("PRINCIPLED_COAT");
-  }
-  if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_METALLIC)) {
-    info.define("PRINCIPLED_METALLIC");
-  }
-  if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_DIELECTRIC)) {
-    info.define("PRINCIPLED_DIELECTRIC");
-  }
-  if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_GLASS)) {
-    info.define("PRINCIPLED_GLASS");
-  }
-  if (GPU_material_flag_get(&mat, GPU_MATFLAG_PRINCIPLED_ANY)) {
-    info.define("PRINCIPLED_ANY");
-  }
 
   std::stringstream ss;
 
@@ -632,8 +614,8 @@ void GPUCodegen::generate_cryptomatte()
   float material_hash = 0.0f;
   Material *material = GPU_material_get_material(&mat);
   if (material) {
-    blender::bke::cryptomatte::CryptomatteHash hash(material->id.name,
-                                                    BLI_strnlen(material->id.name, MAX_NAME - 2));
+    blender::bke::cryptomatte::CryptomatteHash hash(
+        material->id.name + 2, BLI_strnlen(material->id.name + 2, MAX_NAME - 2));
     material_hash = hash.float_encoded();
   }
   cryptomatte_input_->vec[0] = material_hash;
@@ -813,6 +795,8 @@ GPUPass *GPU_generate_pass(GPUMaterial *material,
      * Optimized passes cannot be optimized further, even if the heuristic is still not
      * favorable. */
     pass->should_optimize = (!optimize_graph) && codegen.should_optimize_heuristic();
+    pass->async_compilation_handle = -1;
+    BLI_mutex_init(&pass->shader_creation_mutex);
 
     codegen.create_info = nullptr;
 
@@ -916,13 +900,37 @@ bool GPU_pass_finalize_compilation(GPUPass *pass, GPUShader *shader)
   return success;
 }
 
+void GPU_pass_begin_async_compilation(GPUPass *pass, const char *shname)
+{
+  if (pass->async_compilation_handle == -1) {
+    GPUShaderCreateInfo *info = GPU_pass_begin_compilation(pass, shname);
+    BLI_assert(info);
+    pass->async_compilation_handle = GPU_shader_batch_create_from_infos({info});
+  }
+}
+
+bool GPU_pass_async_compilation_try_finalize(GPUPass *pass)
+{
+  BLI_assert(pass->async_compilation_handle != -1);
+  if (pass->async_compilation_handle) {
+    if (GPU_shader_batch_is_ready(pass->async_compilation_handle)) {
+      GPU_pass_finalize_compilation(
+          pass, GPU_shader_batch_finalize(pass->async_compilation_handle).first());
+    }
+  }
+
+  return pass->async_compilation_handle == 0;
+}
+
 bool GPU_pass_compile(GPUPass *pass, const char *shname)
 {
+  BLI_mutex_lock(&pass->shader_creation_mutex);
   bool success = true;
   if (GPUShaderCreateInfo *info = GPU_pass_begin_compilation(pass, shname)) {
     GPUShader *shader = GPU_shader_create_from_info(info);
     success = GPU_pass_finalize_compilation(pass, shader);
   }
+  BLI_mutex_unlock(&pass->shader_creation_mutex);
   return success;
 }
 
@@ -934,6 +942,7 @@ GPUShader *GPU_pass_shader_get(GPUPass *pass)
 static void gpu_pass_free(GPUPass *pass)
 {
   BLI_assert(pass->refcount == 0);
+  BLI_mutex_end(&pass->shader_creation_mutex);
   if (pass->shader) {
     GPU_shader_free(pass->shader);
   }

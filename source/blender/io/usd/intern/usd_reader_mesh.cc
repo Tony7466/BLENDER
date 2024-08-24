@@ -25,6 +25,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "BLI_task.hh"
 
 #include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
@@ -160,8 +161,7 @@ USDMeshReader::USDMeshReader(const pxr::UsdPrim &prim,
 {
 }
 
-static const std::optional<bke::AttrDomain> convert_usd_varying_to_blender(
-    const pxr::TfToken usd_domain)
+static std::optional<bke::AttrDomain> convert_usd_varying_to_blender(const pxr::TfToken usd_domain)
 {
   static const blender::Map<pxr::TfToken, bke::AttrDomain> domain_map = []() {
     blender::Map<pxr::TfToken, bke::AttrDomain> map;
@@ -211,7 +211,9 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
 
   readFaceSetsSample(bmain, mesh, motionSampleTime);
 
-  if (mesh_prim_.GetPointsAttr().ValueMightBeTimeVarying()) {
+  if (mesh_prim_.GetPointsAttr().ValueMightBeTimeVarying() ||
+      mesh_prim_.GetVelocitiesAttr().ValueMightBeTimeVarying())
+  {
     is_time_varying_ = true;
   }
 
@@ -269,12 +271,20 @@ bool USDMeshReader::topology_changed(const Mesh *existing_mesh, const double mot
     normal_interpolation_ = mesh_prim_.GetNormalsInterpolation();
   }
 
+  /* Blender expects mesh normals to actually be normalized. */
+  MutableSpan<pxr::GfVec3f> usd_data(normals_.data(), normals_.size());
+  threading::parallel_for(usd_data.index_range(), 4096, [&](const IndexRange range) {
+    for (const int normal_i : range) {
+      usd_data[normal_i].Normalize();
+    }
+  });
+
   return positions_.size() != existing_mesh->verts_num ||
          face_counts_.size() != existing_mesh->faces_num ||
          face_indices_.size() != existing_mesh->corners_num;
 }
 
-void USDMeshReader::read_mpolys(Mesh *mesh)
+void USDMeshReader::read_mpolys(Mesh *mesh) const
 {
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
@@ -309,10 +319,10 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
                                          const pxr::UsdGeomPrimvar &primvar,
                                          const double motionSampleTime)
 {
-  const StringRef primvar_name(primvar.StripPrimvarsName(primvar.GetName()).GetString());
+  const StringRef primvar_name(
+      pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetName()).GetString());
 
   pxr::VtArray<pxr::GfVec2f> usd_uvs = get_primvar_array<pxr::GfVec2f>(primvar, motionSampleTime);
-
   if (usd_uvs.empty()) {
     return;
   }
@@ -389,7 +399,7 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
   const std::optional<eCustomDataType> type = convert_usd_type_to_blender(pv_type);
 
   if (!domain.has_value() || !type.has_value()) {
-    const pxr::TfToken pv_name = primvar.StripPrimvarsName(primvar.GetPrimvarName());
+    const pxr::TfToken pv_name = pxr::UsdGeomPrimvar::StripPrimvarsName(primvar.GetPrimvarName());
     BKE_reportf(reports(),
                 RPT_WARNING,
                 "Primvar '%s' (interpolation %s, type %s) cannot be converted to Blender",
@@ -479,7 +489,7 @@ void USDMeshReader::process_normals_vertex_varying(Mesh *mesh)
       *mesh, Span(reinterpret_cast<const float3 *>(normals_.data()), int64_t(normals_.size())));
 }
 
-void USDMeshReader::process_normals_face_varying(Mesh *mesh)
+void USDMeshReader::process_normals_face_varying(Mesh *mesh) const
 {
   if (normals_.empty()) {
     return;
@@ -520,7 +530,7 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh)
   MEM_freeN(lnors);
 }
 
-void USDMeshReader::process_normals_uniform(Mesh *mesh)
+void USDMeshReader::process_normals_uniform(Mesh *mesh) const
 {
   if (normals_.empty()) {
     return;
@@ -628,7 +638,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
 
     const pxr::SdfValueTypeName type = pv.GetTypeName();
     const pxr::TfToken varying_type = pv.GetInterpolation();
-    const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+    const pxr::TfToken name = pxr::UsdGeomPrimvar::StripPrimvarsName(pv.GetPrimvarName());
 
     /* To avoid unnecessarily reloading static primvars during animation,
      * early out if not first load and this primvar isn't animated. */
@@ -800,7 +810,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
                                const USDMeshReadParams params,
-                               const char ** /*err_str*/)
+                               const char ** /*r_err_str*/)
 {
   if (!mesh_prim_) {
     return existing_mesh;
@@ -858,10 +868,10 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 
 void USDMeshReader::read_geometry(bke::GeometrySet &geometry_set,
                                   const USDMeshReadParams params,
-                                  const char **err_str)
+                                  const char **r_err_str)
 {
   Mesh *existing_mesh = geometry_set.get_mesh_for_write();
-  Mesh *new_mesh = read_mesh(existing_mesh, params, err_str);
+  Mesh *new_mesh = read_mesh(existing_mesh, params, r_err_str);
 
   if (new_mesh != existing_mesh) {
     geometry_set.replace_mesh(new_mesh);
