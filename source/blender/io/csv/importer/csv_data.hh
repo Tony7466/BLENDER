@@ -29,29 +29,33 @@ class CsvData {
   Array<eCustomDataType> column_types;
 
  public:
-  CsvData(int64_t rows_num, Span<std::string> column_names, Span<eCustomDataType> column_types);
+  CsvData(const int64_t rows_num,
+          const Span<std::string> column_names,
+          const Span<eCustomDataType> column_types);
 
   PointCloud *to_point_cloud() const;
 
-  template<typename T> void set_data(int64_t row_index, int64_t col_index, T value)
+  template<typename T>
+  void set_data(const int64_t row_index, const int64_t col_index, const T value)
   {
     GMutableSpan mutable_span = data[col_index].as_mutable_span();
     MutableSpan typed_mutable_span = mutable_span.typed<T>();
     typed_mutable_span[row_index] = value;
   }
 
-  eCustomDataType get_column_type(int64_t col_index) const
+  eCustomDataType get_column_type(const int64_t col_index) const
   {
     return column_types[col_index];
   }
 
-  StringRef get_column_name(int64_t col_index) const
+  StringRef get_column_name(const int64_t col_index) const
   {
     return column_names[col_index];
   }
 
  private:
-  GArray<> create_garray_for_type(eCustomDataType type);
+  GArray<> create_garray_for_type(const eCustomDataType type) const;
+  void *get_data_of_garray(const GArray<> array, const eCustomDataType type) const;
 };
 
 }  // namespace blender::io::csv

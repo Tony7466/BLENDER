@@ -14,9 +14,9 @@
 
 namespace blender::io::csv {
 
-CsvData::CsvData(int64_t rows_num,
-                 Span<std::string> column_names,
-                 Span<eCustomDataType> column_types)
+CsvData::CsvData(const int64_t rows_num,
+                 const Span<std::string> column_names,
+                 const Span<eCustomDataType> column_types)
     : data(column_names.size()),
       rows_num(rows_num),
       columns_num(column_names.size()),
@@ -39,19 +39,15 @@ PointCloud *CsvData::to_point_cloud() const
   for (int i = 0; i < columns_num; i++) {
     const std::string column_name = column_names[i];
     const eCustomDataType column_type = column_types[i];
-    const void *column_data = data[i].data();
-    CustomData_add_layer_named_with_data(&point_cloud->pdata,
-                                         column_type,
-                                         MEM_dupallocN(column_data),
-                                         rows_num,
-                                         column_name,
-                                         nullptr);
+    void *column_data = get_data_of_garray(data[i], column_type);
+    CustomData_add_layer_named_with_data(
+        &point_cloud->pdata, column_type, column_data, rows_num, column_name, nullptr);
   }
 
   return point_cloud;
 }
 
-GArray<> CsvData::create_garray_for_type(eCustomDataType type)
+GArray<> CsvData::create_garray_for_type(const eCustomDataType type) const
 {
   switch (type) {
     case CD_PROP_INT32: {
@@ -63,6 +59,24 @@ GArray<> CsvData::create_garray_for_type(eCustomDataType type)
     default: {
       BLI_assert_unreachable();
       return GArray<>();
+    }
+  }
+}
+
+void *CsvData::get_data_of_garray(const GArray<> array, const eCustomDataType type) const
+{
+  switch (type) {
+    case CD_PROP_INT32: {
+      Array<int> *data = new Array<int>(array.as_span().typed<int>());
+      return data->data();
+    }
+    case CD_PROP_FLOAT: {
+      Array<float> *data = new Array<float>(array.as_span().typed<float>());
+      return data->data();
+    }
+    default: {
+      BLI_assert_unreachable();
+      return nullptr;
     }
   }
 }
