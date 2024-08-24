@@ -1216,11 +1216,17 @@ static void drw_shgroup_bone_relationship_lines_ex(const Armatures::DrawContext 
                                                    const float end[3],
                                                    const float color[4])
 {
-  float s[3], e[3];
-  mul_v3_m4v3(s, ctx->ob->object_to_world().ptr(), start);
-  mul_v3_m4v3(e, ctx->ob->object_to_world().ptr(), end);
-  /* reverse order to have less stipple overlap */
-  OVERLAY_extra_line_dashed(ctx->extras, s, e, color);
+  float3 start_pt = math::transform_point(ctx->ob->object_to_world(), float3(start));
+  float3 end_pt = math::transform_point(ctx->ob->object_to_world(), float3(end));
+
+  if (ctx->bone_buf) {
+    /* reverse order to have less stipple overlap */
+    ctx->bone_buf->relations_buf.append(start_pt, end_pt, float4(color));
+  }
+  else {
+    /* reverse order to have less stipple overlap */
+    OVERLAY_extra_line_dashed(ctx->extras, start_pt, end_pt, color);
+  }
 }
 
 static void drw_shgroup_bone_relationship_lines(const Armatures::DrawContext *ctx,

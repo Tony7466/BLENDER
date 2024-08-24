@@ -42,7 +42,7 @@ class Armatures {
   bool show_outline = false;
 
   bool do_pose_xray = false;
-  bool do_pose_fade_geom = false;
+  // bool do_pose_fade_geom = false;
 
   struct BoneBuffers {
     const SelectionType selection_type_;
@@ -69,6 +69,8 @@ class Armatures {
     /* Degrees of freedom. */
     PassSimple::Sub *degrees_of_freedom_fill = nullptr;
     PassSimple::Sub *degrees_of_freedom_wire = nullptr;
+    /* Relations. */
+    PassSimple::Sub *relations = nullptr;
 
     BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
     BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
@@ -93,6 +95,8 @@ class Armatures {
                                                        "degrees_of_freedom_buf"};
     DegreesOfFreedomBuf degrees_of_freedom_wire_buf = {SelectionType::DISABLED,
                                                        "degrees_of_freedom_buf"};
+
+    LinePrimitiveBuf relations_buf = {SelectionType::DISABLED, "relations_buf"};
 
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
@@ -387,6 +391,14 @@ class Armatures {
       transparent.arrows = opaque.arrows;
     }
 
+    {
+      auto &sub = armature_ps_.sub("opaque.relations");
+      sub.shader_set(res.shaders.extra_wire.get());
+      sub.bind_ubo("globalsBlock", &res.globals_buf);
+      opaque.relations = &sub;
+      transparent.relations = opaque.relations;
+    }
+
     auto clear_buffers = [](BoneBuffers &bb) {
       bb.envelope_fill_buf.clear();
       bb.envelope_outline_buf.clear();
@@ -402,6 +414,7 @@ class Armatures {
       bb.arrows_buf.clear();
       bb.degrees_of_freedom_fill_buf.clear();
       bb.degrees_of_freedom_wire_buf.clear();
+      bb.relations_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
        * Prefer a pruning strategy. */
       bb.custom_shape_fill.clear();
@@ -558,6 +571,8 @@ class Armatures {
                                               shapes.bone_degrees_of_freedom.get());
       bb.degrees_of_freedom_wire_buf.end_sync(*bb.degrees_of_freedom_wire,
                                               shapes.bone_degrees_of_freedom_wire.get());
+
+      bb.relations_buf.end_sync(*bb.relations);
 
       using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
 
