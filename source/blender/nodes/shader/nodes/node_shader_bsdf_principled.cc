@@ -238,19 +238,24 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .short_label("Weight");
+      .short_label("Weight")
+      .description(
+          "Amount of reflection at grazing angles, which simulate surface details of cloth or "
+          "dust");
 #define SOCK_SHEEN_WEIGHT_ID 24
   sheen.add_input<decl::Float>("Sheen Roughness")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .short_label("Roughness");
+      .short_label("Roughness")
+      .description("Amount of color that is reflected back to the camera");
 #define SOCK_SHEEN_ROUGHNESS_ID 25
   sheen.add_input<decl::Color>("Sheen Tint")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .translation_context(BLT_I18NCONTEXT_ID_NODETREE)
-      .short_label("Tint");
+      .short_label("Tint")
+      .description("Tint reflections produce by Sheen with the Base Color");
 #define SOCK_SHEEN_TINT_ID 26
 
   /* Panel for Emission settings. */
@@ -276,9 +281,16 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.0)
       .min(0.0f)
       .max(100000.0f)
-      .subtype(PROP_WAVELENGTH);
+      .subtype(PROP_WAVELENGTH)
+      .description("Thickness of the film in nanometers. A value of 0 disables the simulation");
 #define SOCK_THIN_FILM_THICKNESS_ID 29
-  film.add_input<decl::Float>("Thin Film IOR").default_value(1.33f).min(1.0f).max(1000.0f);
+  film.add_input<decl::Float>("Thin Film IOR")
+      .default_value(1.33f)
+      .min(1.0f)
+      .max(1000.0f)
+      .description(
+          "Index of refraction (IOR) of the thin film.\n"
+          "The common range for this value is between 1.0 (vacuum and air) and 2.4 (diamond)");
 #define SOCK_THIN_FILM_IOR_ID 30
 }
 
