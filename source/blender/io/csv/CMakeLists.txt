@@ -22,13 +22,11 @@ set(SRC
   importer/csv_data.cc
   importer/csv_import.cc
   importer/csv_reader.cc
-  importer/csv_string_utils.cc
 
   IO_csv.hh
   importer/csv_data.hh
   importer/csv_import.hh
   importer/csv_reader.hh
-  importer/csv_string_utils.hh
 )
 
 set(LIB

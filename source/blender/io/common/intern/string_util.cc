@@ -2,11 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/** \file
- * \ingroup csv
- */
-
-#include "csv_string_utils.hh"
+#include "IO_string_util.hh"
 
 /* NOTE: we could use C++17 <charconv> from_chars to parse
  * floats, but even if some compilers claim full support,
@@ -17,7 +13,7 @@
 #include "fast_float.h"
 #include <charconv>
 
-namespace blender::io::csv {
+namespace blender::io {
 
 StringRef read_next_line(StringRef &buffer)
 {
@@ -131,4 +127,4 @@ const char *parse_int(const char *p, const char *end, bool &success, int &dst, b
   return res.ptr;
 }
 
-}  // namespace blender::io::csv
+}  // namespace blender::io

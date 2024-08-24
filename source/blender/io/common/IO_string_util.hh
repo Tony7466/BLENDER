@@ -2,10 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/** \file
- * \ingroup csv
- */
-
 #pragma once
 
 #include "BLI_string_ref.hh"
@@ -22,7 +18,7 @@
  * instead of just one pointer).
  */
 
-namespace blender::io::csv {
+namespace blender::io {
 
 /**
  * Fetches next line from an input string buffer.
@@ -74,4 +70,4 @@ const char *parse_int(
 const char *parse_float(
     const char *p, const char *end, bool &success, float &dst, bool skip_space = true);
 
-}  // namespace blender::io::csv
+}  // namespace blender::io
