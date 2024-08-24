@@ -10,6 +10,8 @@
 
 #include "BKE_global.hh"
 
+#include "BLI_math_matrix.hh"
+
 #include "DRW_gpu_wrapper.hh"
 #include "DRW_render.hh"
 
@@ -481,9 +483,21 @@ struct BoneInstanceData {
   };
 
   BoneInstanceData() = default;
+
   /* Constructor used by metaball overlays and expected to be used for drawing
    * metaball_wire_sphere with armature wire shader that produces wide-lines. */
-  BoneInstanceData(const Object *ob, const float *pos, const float radius, const float color[4]);
+  BoneInstanceData(const float4x4 &ob_mat,
+                   const float3 &pos,
+                   const float radius,
+                   const float color[4])
+
+  {
+    mat44[0] = ob_mat[0] * radius;
+    mat44[1] = ob_mat[1] * radius;
+    mat44[2] = ob_mat[2] * radius;
+    mat44[3] = float4(blender::math::transform_point(ob_mat, pos));
+    set_color(color);
+  }
 
   BoneInstanceData(const float4x4 &bone_mat, const float4 &bone_color, const float4 &hint_color)
       : mat44(bone_mat)

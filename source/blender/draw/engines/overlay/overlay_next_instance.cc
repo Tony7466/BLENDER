@@ -469,20 +469,3 @@ bool Instance::object_is_edit_mode(const Object *object)
 }
 
 }  // namespace blender::draw::overlay
-
-#include "overlay_private.hh"
-
-/* TODO(fclem): Move elsewhere. */
-BoneInstanceData::BoneInstanceData(const Object *ob,
-                                   const float *pos,
-                                   const float radius,
-                                   const float color[4])
-{
-  /* TODO(fclem): Use C++ math API. */
-  mul_v3_v3fl(this->mat[0], ob->object_to_world().ptr()[0], radius);
-  mul_v3_v3fl(this->mat[1], ob->object_to_world().ptr()[1], radius);
-  mul_v3_v3fl(this->mat[2], ob->object_to_world().ptr()[2], radius);
-  mul_v3_m4v3(this->mat[3], ob->object_to_world().ptr(), pos);
-  /* WATCH: Reminder, alpha is wire-size. */
-  OVERLAY_bone_instance_data_set_color(this, color);
-}
