@@ -717,12 +717,14 @@ ShapeCache::ShapeCache()
 
     Vector<Vertex> verts;
     for (int a : IndexRange(resolution + 1)) {
-      float2 cv = ring[a % resolution];
-      verts.append({{cv.x, 0.0f, cv.y}, VCLASS_EMPTY_SCALED});
+      float2 cv1 = ring[(a + 0) % resolution];
+      float2 cv2 = ring[(a + 1) % resolution];
+      verts.append({{cv1.x, 0.0f, cv1.y}, VCLASS_EMPTY_SCALED});
+      verts.append({{cv2.x, 0.0f, cv2.y}, VCLASS_EMPTY_SCALED});
     }
 
-    circle = BatchPtr(GPU_batch_create_ex(
-        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+    circle = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_LINES, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
   /* empty_spehere */
   {

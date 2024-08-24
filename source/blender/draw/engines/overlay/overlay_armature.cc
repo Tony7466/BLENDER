@@ -1084,11 +1084,63 @@ static void drw_shgroup_bone_custom_wire(const Armatures::DrawContext *ctx,
 static void drw_shgroup_bone_custom_empty(const Armatures::DrawContext *ctx,
                                           const float (*bone_mat)[4],
                                           const float color[4],
+                                          const float wire_width,
+                                          const draw::select::ID select_id,
                                           Object *custom)
 {
-  const float final_color[4] = {color[0], color[1], color[2], 1.0f};
-  float mat[4][4];
-  mul_m4_m4m4(mat, ctx->ob->object_to_world().ptr(), bone_mat);
+  using namespace blender::draw;
+  using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
+
+  if (ctx->bone_buf) {
+    gpu::Batch *geom = nullptr;
+    switch (custom->empty_drawtype) {
+      case OB_PLAINAXES:
+        geom = ctx->shapes->plain_axes.get();
+        break;
+      case OB_SINGLE_ARROW:
+        geom = ctx->shapes->single_arrow.get();
+        break;
+      case OB_CUBE:
+        geom = ctx->shapes->cube.get();
+        break;
+      case OB_CIRCLE:
+        geom = ctx->shapes->circle.get();
+        break;
+      case OB_EMPTY_SPHERE:
+        geom = ctx->shapes->empty_sphere.get();
+        break;
+      case OB_EMPTY_CONE:
+        geom = ctx->shapes->empty_cone.get();
+        break;
+      case OB_ARROWS:
+        geom = ctx->shapes->arrows.get();
+        break;
+      case OB_EMPTY_IMAGE:
+        /* Not supported. */
+        return;
+    }
+    BLI_assert(geom);
+
+    const float4 final_color(UNPACK3(color), 1.0f);
+
+    BoneInstanceData inst_data;
+    inst_data.mat44 = ctx->ob->object_to_world() * float4x4(bone_mat);
+    inst_data.set_hint_color(final_color);
+    inst_data.color_a = encode_2f_to_float(final_color[0], final_color[1]);
+    inst_data.color_b = encode_2f_to_float(final_color[2], wire_width / WIRE_WIDTH_COMPRESSION);
+
+    ctx->bone_buf->custom_shape_wire
+        .lookup_or_add_cb(geom,
+                          [ctx]() {
+                            return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
+                                                                     "CustomBoneEmpty");
+                          })
+        ->append(inst_data, select_id);
+    return;
+  }
+
+  const float4 final_color(UNPACK3(color), 1.0f);
+  const float4x4 mat = ctx->ob->object_to_world() * float4x4(bone_mat);
 
   switch (custom->empty_drawtype) {
     case OB_PLAINAXES:
@@ -1099,7 +1151,7 @@ static void drw_shgroup_bone_custom_empty(const Armatures::DrawContext *ctx,
     case OB_EMPTY_CONE:
     case OB_ARROWS:
       OVERLAY_empty_shape(
-          ctx->extras, mat, custom->empty_drawsize, custom->empty_drawtype, final_color);
+          ctx->extras, mat.ptr(), custom->empty_drawsize, custom->empty_drawtype, final_color);
       break;
     case OB_EMPTY_IMAGE:
       break;
@@ -2255,7 +2307,8 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
 
       if (custom_shape_ob->type == OB_EMPTY) {
         if (custom_shape_ob->empty_drawtype != OB_EMPTY_IMAGE) {
-          /* TODO(fclem): Support empty object instances. */
+          drw_shgroup_bone_custom_empty(
+              ctx, disp_mat, col_wire, pchan->custom_shape_wire_width, sel_id, pchan->custom);
         }
       }
       else if (boneflag & (BONE_DRAWWIRE | BONE_DRAW_LOCKED_WEIGHT)) {
@@ -2286,7 +2339,13 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
     if (pchan->custom->type == OB_EMPTY) {
       Object *ob = pchan->custom;
       if (ob->empty_drawtype != OB_EMPTY_IMAGE) {
-        drw_shgroup_bone_custom_empty(ctx, disp_mat, col_wire, pchan->custom);
+        drw_shgroup_bone_custom_empty(ctx,
+                                      disp_mat,
+                                      col_wire,
+                                      pchan->custom_shape_wire_width,
+                                      /* Dummy values for legacy pipeline. */
+                                      draw::select::SelectMap::select_invalid_id(),
+                                      pchan->custom);
       }
     }
     if ((boneflag & BONE_DRAWWIRE) == 0 && (boneflag & BONE_DRAW_LOCKED_WEIGHT) == 0) {
