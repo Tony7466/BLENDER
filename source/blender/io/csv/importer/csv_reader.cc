@@ -42,7 +42,7 @@ static Vector<std::string> get_columns(const StringRef line)
   return columns;
 }
 
-static bool get_column_type(const char *start, const char *end, eCustomDataType &column_type)
+static std::optional<eCustomDataType> get_column_type(const char *start, const char *end)
 {
   bool success = false;
 
@@ -50,19 +50,17 @@ static bool get_column_type(const char *start, const char *end, eCustomDataType 
   parse_int(start, end, success, _val_int);
 
   if (success) {
-    column_type = eCustomDataType::CD_PROP_INT32;
-    return true;
+    return eCustomDataType::CD_PROP_INT32;
   }
 
   float _val_float = 0.0f;
   parse_float(start, end, success, _val_float);
 
   if (success) {
-    column_type = eCustomDataType::CD_PROP_FLOAT;
-    return true;
+    return eCustomDataType::CD_PROP_FLOAT;
   }
 
-  return false;
+  return std::nullopt;
 }
 
 static bool get_column_types(const StringRef line, Vector<eCustomDataType> &column_types)
@@ -76,11 +74,11 @@ static bool get_column_types(const StringRef line, Vector<eCustomDataType> &colu
     }
     cell_end = p;
 
-    eCustomDataType column_type;
-    if (!get_column_type(cell_start, cell_end, column_type)) {
+    std::optional<eCustomDataType> column_type = get_column_type(cell_start, cell_end);
+    if (!column_type.has_value()) {
       return false;
     }
-    column_types.append(column_type);
+    column_types.append(column_type.value());
 
     if (p == end) {
       break;
