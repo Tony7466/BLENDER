@@ -305,31 +305,20 @@ GPU_SHADER_CREATE_INFO(overlay_armature_stick_clipped)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(overlay_armature_dof)
+    .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
     .vertex_in(0, Type::VEC2, "pos")
     /* Per instance. Assumed to be in world coordinate already. */
     .vertex_in(1, Type::VEC4, "color")
     .vertex_in(2, Type::MAT4, "inst_obmat")
     .vertex_out(overlay_armature_wire_iface)
     .vertex_source("overlay_armature_dof_vert.glsl")
+    .fragment_source("overlay_armature_dof_solid_frag.glsl")
     .additional_info("overlay_frag_output", "overlay_armature_common", "draw_globals");
 
-GPU_SHADER_CREATE_INFO(overlay_armature_dof_wire)
+GPU_SHADER_CREATE_INFO(overlay_armature_dof_lipped)
     .do_static_compilation(true)
-    .fragment_source("overlay_armature_dof_solid_frag.glsl")
-    .additional_info("overlay_armature_dof");
-
-GPU_SHADER_CREATE_INFO(overlay_armature_dof_wire_clipped)
-    .do_static_compilation(true)
-    .additional_info("overlay_armature_dof_wire", "drw_clipped");
-
-GPU_SHADER_CREATE_INFO(overlay_armature_dof_solid)
-    .do_static_compilation(true)
-    .fragment_source("overlay_armature_dof_solid_frag.glsl")
-    .additional_info("overlay_armature_dof");
-
-GPU_SHADER_CREATE_INFO(overlay_armature_dof_solid_clipped)
-    .do_static_compilation(true)
-    .additional_info("overlay_armature_dof_solid", "drw_clipped");
+    .additional_info("overlay_armature_dof", "drw_clipped");
 
 /** \} */
 

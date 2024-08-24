@@ -26,6 +26,7 @@ class Armatures {
   using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   using BoneEnvelopeBuf = ShapeInstanceBuf<BoneEnvelopeData>;
   using BoneStickBuf = ShapeInstanceBuf<BoneStickData>;
+  using DegreesOfFreedomBuf = ShapeInstanceBuf<ExtraInstanceData>;
 
  private:
   const SelectionType selection_type_;
@@ -62,6 +63,10 @@ class Armatures {
     /* Wire bones. */
     PassSimple::Sub *wire = nullptr;
 
+    /* Degrees of freedom. */
+    PassSimple::Sub *degrees_of_freedom_fill = nullptr;
+    PassSimple::Sub *degrees_of_freedom_wire = nullptr;
+
     BoneInstanceBuf bbones_fill_buf = {selection_type_, "bbones_fill_buf"};
     BoneInstanceBuf bbones_outline_buf = {selection_type_, "bbones_outline_buf"};
 
@@ -78,6 +83,11 @@ class Armatures {
     BoneStickBuf stick_buf = {selection_type_, "stick_buf"};
 
     LinePrimitiveBuf wire_buf = {selection_type_, "wire_buf"};
+
+    DegreesOfFreedomBuf degrees_of_freedom_fill_buf = {SelectionType::DISABLED,
+                                                       "degrees_of_freedom_buf"};
+    DegreesOfFreedomBuf degrees_of_freedom_wire_buf = {SelectionType::DISABLED,
+                                                       "degrees_of_freedom_buf"};
 
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_fill;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
@@ -121,7 +131,8 @@ class Armatures {
     armature_ps_.init();
     res.select_bind(armature_ps_);
 
-    /* Envelope distances need to be drawn first as they use additive transparent blending. */
+    /* Envelope distances and degrees of freedom need to be drawn first as they use additive
+     * transparent blending. */
     {
       DRWState transparent_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
                                    DRW_STATE_BLEND_ADD | state.clipping_state;
@@ -143,6 +154,26 @@ class Armatures {
       }
       else {
         transparent.envelope_distance = opaque.envelope_distance;
+      }
+
+      {
+        auto &sub = armature_ps_.sub("opaque.degrees_of_freedom_fill");
+        sub.state_set(transparent_state);
+        sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
+        sub.push_constant("alpha", 1.0f);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        opaque.degrees_of_freedom_fill = &sub;
+      }
+      if (use_wire_alpha) {
+        auto &sub = armature_ps_.sub("transparent.degrees_of_freedom_fill");
+        sub.state_set(transparent_state);
+        sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
+        sub.push_constant("alpha", wire_alpha);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        transparent.degrees_of_freedom_fill = &sub;
+      }
+      else {
+        transparent.degrees_of_freedom_fill = opaque.degrees_of_freedom_fill;
       }
     }
 
@@ -245,7 +276,23 @@ class Armatures {
       }
     }
     {
-      /* Degrees-of-Freedom. */
+      {
+        auto &sub = armature_ps_.sub("opaque.degrees_of_freedom_wire");
+        sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
+        sub.push_constant("alpha", 1.0f);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        opaque.degrees_of_freedom_wire = &sub;
+      }
+      if (use_wire_alpha) {
+        auto &sub = armature_ps_.sub("transparent.degrees_of_freedom_wire");
+        sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
+        sub.push_constant("alpha", wire_alpha);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        transparent.degrees_of_freedom_wire = &sub;
+      }
+      else {
+        transparent.degrees_of_freedom_wire = opaque.degrees_of_freedom_wire;
+      }
     }
     {
       {
@@ -339,6 +386,8 @@ class Armatures {
       bb.sphere_outline_buf.clear();
       bb.stick_buf.clear();
       bb.wire_buf.clear();
+      bb.degrees_of_freedom_fill_buf.clear();
+      bb.degrees_of_freedom_wire_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
        * Prefer a pruning strategy. */
       bb.custom_shape_fill.clear();
@@ -479,6 +528,11 @@ class Armatures {
       bb.stick_buf.end_sync(*bb.stick, shapes.bone_stick.get());
 
       bb.wire_buf.end_sync(*bb.wire);
+
+      bb.degrees_of_freedom_fill_buf.end_sync(*bb.degrees_of_freedom_fill,
+                                              shapes.bone_degrees_of_freedom.get());
+      bb.degrees_of_freedom_wire_buf.end_sync(*bb.degrees_of_freedom_wire,
+                                              shapes.bone_degrees_of_freedom_wire.get());
 
       using CustomShapeBuf = MutableMapItem<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>>;
 

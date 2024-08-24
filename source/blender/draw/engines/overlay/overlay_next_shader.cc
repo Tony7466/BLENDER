@@ -103,6 +103,15 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 {
   /** Shaders */
 
+  armature_degrees_of_freedom = shader(
+      "overlay_armature_dof", [](gpu::shader::ShaderCreateInfo &info) {
+        info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
+        info.define("inst_obmat", "data_buf[gl_InstanceID].object_to_world_");
+        info.define("color", "data_buf[gl_InstanceID].color_");
+        info.vertex_inputs_.pop_last();
+        info.vertex_inputs_.pop_last();
+      });
+
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 

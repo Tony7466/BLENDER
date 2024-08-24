@@ -228,6 +228,21 @@ struct ExtraInstanceData {
     return copy;
   }
 
+  /* For degrees of freedom. */
+  ExtraInstanceData(const float4x4 &object_to_world,
+                    const float4 &color,
+                    float angle_min_x,
+                    float angle_min_z,
+                    float angle_max_x,
+                    float angle_max_z)
+  {
+    this->color_ = color;
+    this->object_to_world_ = object_to_world;
+    this->object_to_world_[0][3] = angle_min_x;
+    this->object_to_world_[1][3] = angle_min_z;
+    this->object_to_world_[2][3] = angle_max_x;
+    this->object_to_world_[3][3] = angle_max_z;
+  };
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(ExtraInstanceData, 16)

@@ -574,6 +574,61 @@ ShapeCache::ShapeCache()
         GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
   }
 
+  /* Degrees of freedom. */
+  {
+    constexpr int resolution = 16;
+
+    Vector<Vertex> verts;
+    auto set_vert = [&](const float x, const float y, const int quarter) {
+      verts.append({{(quarter % 2 == 0) ? -x : x, (quarter < 2) ? -y : y, 0.0f}, VCLASS_NONE});
+    };
+
+    for (int quarter : IndexRange(4)) {
+      float prev_z = 0.0f;
+      for (int i : IndexRange(1, resolution - 1)) {
+        float z = sinf(M_PI_2 * i / float(resolution - 1));
+        float prev_x = 0.0f;
+        for (int j : IndexRange(1, resolution - i)) {
+          float x = sinf(M_PI_2 * j / float(resolution - 1));
+          if (j == resolution - i) {
+            /* Pole triangle. */
+            set_vert(prev_x, z, quarter);
+            set_vert(prev_x, prev_z, quarter);
+            set_vert(x, prev_z, quarter);
+          }
+          else {
+            /* Quad. */
+            set_vert(x, z, quarter);
+            set_vert(x, prev_z, quarter);
+            set_vert(prev_x, z, quarter);
+
+            set_vert(x, prev_z, quarter);
+            set_vert(prev_x, prev_z, quarter);
+            set_vert(prev_x, z, quarter);
+          }
+          prev_x = x;
+        }
+        prev_z = z;
+      }
+    }
+
+    bone_degrees_of_freedom = BatchPtr(
+        GPU_batch_create_ex(GPU_PRIM_TRIS, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+  {
+    constexpr int resolution = 16 * 4;
+    Vector<float2> ring = ring_vertices(1.0f, resolution);
+
+    Vector<Vertex> verts;
+    for (int a : IndexRange(resolution + 1)) {
+      float2 cv = ring[a % resolution];
+      verts.append({{cv.x, cv.y, 0.0f}, VCLASS_NONE});
+    }
+
+    bone_degrees_of_freedom_wire = BatchPtr(GPU_batch_create_ex(
+        GPU_PRIM_LINE_STRIP, vbo_from_vector(verts), nullptr, GPU_BATCH_OWNS_VBO));
+  }
+
   /* quad_wire */
   {
     Vector<Vertex> verts;

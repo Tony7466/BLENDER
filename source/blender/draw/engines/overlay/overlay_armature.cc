@@ -1853,10 +1853,6 @@ static void draw_bone_degrees_of_freedom(const Armatures::DrawContext *ctx,
   float xminmax[2], zminmax[2];
   float color[4];
 
-  if (ctx->dof_sphere == nullptr) {
-    return;
-  }
-
   /* *0.5f here comes from M_PI/360.0f when rotations were still in degrees */
   xminmax[0] = sinf(pchan->limitmin[0] * 0.5f);
   xminmax[1] = sinf(pchan->limitmax[0] * 0.5f);
@@ -1880,27 +1876,53 @@ static void draw_bone_degrees_of_freedom(const Armatures::DrawContext *ctx,
   mul_m4_m4m4(posetrans, posetrans, tmp);
 
   /* into world space. */
-  mul_m4_m4m4(inst_data.mat, ctx->ob->object_to_world().ptr(), posetrans);
+  inst_data.mat44 = ctx->ob->object_to_world() * float4x4(posetrans);
+
+  /* Not selectable. */
+  auto sel_id = draw::select::SelectMap::select_invalid_id();
 
   if ((pchan->ikflag & BONE_IK_XLIMIT) && (pchan->ikflag & BONE_IK_ZLIMIT)) {
-    bone_instance_data_set_angle_minmax(
-        &inst_data, xminmax[0], zminmax[0], xminmax[1], zminmax[1]);
+    if (ctx->bone_buf) {
+      ExtraInstanceData data(
+          inst_data.mat44, float4(0.25f), xminmax[0], zminmax[0], xminmax[1], zminmax[1]);
 
-    copy_v4_fl4(color, 0.25f, 0.25f, 0.25f, 0.25f);
-    DRW_buffer_add_entry(ctx->dof_sphere, color, &inst_data);
+      ctx->bone_buf->degrees_of_freedom_fill_buf.append(data, sel_id);
+      ctx->bone_buf->degrees_of_freedom_wire_buf.append(data.with_color({0.0f, 0.0f, 0.0f, 1.0f}),
+                                                        sel_id);
+    }
+    else if (ctx->dof_sphere) {
+      bone_instance_data_set_angle_minmax(
+          &inst_data, xminmax[0], zminmax[0], xminmax[1], zminmax[1]);
+      copy_v4_fl4(color, 0.25f, 0.25f, 0.25f, 0.25f);
+      DRW_buffer_add_entry(ctx->dof_sphere, color, &inst_data);
 
-    copy_v4_fl4(color, 0.0f, 0.0f, 0.0f, 1.0f);
-    DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+      copy_v4_fl4(color, 0.0f, 0.0f, 0.0f, 1.0f);
+      DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+    }
   }
   if (pchan->ikflag & BONE_IK_XLIMIT) {
-    bone_instance_data_set_angle_minmax(&inst_data, xminmax[0], 0.0f, xminmax[1], 0.0f);
-    copy_v4_fl4(color, 1.0f, 0.0f, 0.0f, 1.0f);
-    DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+    if (ctx->bone_buf) {
+      ExtraInstanceData data(
+          inst_data.mat44, float4(1.0f, 0.0f, 0.0f, 1.0f), xminmax[0], 0.0f, xminmax[1], 0.0f);
+      ctx->bone_buf->degrees_of_freedom_wire_buf.append(data, sel_id);
+    }
+    else if (ctx->dof_sphere) {
+      bone_instance_data_set_angle_minmax(&inst_data, xminmax[0], 0.0f, xminmax[1], 0.0f);
+      copy_v4_fl4(color, 1.0f, 0.0f, 0.0f, 1.0f);
+      DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+    }
   }
   if (pchan->ikflag & BONE_IK_ZLIMIT) {
-    bone_instance_data_set_angle_minmax(&inst_data, 0.0f, zminmax[0], 0.0f, zminmax[1]);
-    copy_v4_fl4(color, 0.0f, 0.0f, 1.0f, 1.0f);
-    DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+    if (ctx->bone_buf) {
+      ExtraInstanceData data(
+          inst_data.mat44, float4(0.0f, 0.0f, 1.0f, 1.0f), 0.0f, zminmax[0], 0.0f, zminmax[1]);
+      ctx->bone_buf->degrees_of_freedom_wire_buf.append(data, sel_id);
+    }
+    else if (ctx->dof_sphere) {
+      bone_instance_data_set_angle_minmax(&inst_data, 0.0f, zminmax[0], 0.0f, zminmax[1]);
+      copy_v4_fl4(color, 0.0f, 0.0f, 1.0f, 1.0f);
+      DRW_buffer_add_entry(ctx->dof_lines, color, &inst_data);
+    }
   }
 }
 

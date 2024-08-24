@@ -101,6 +101,9 @@ class ShapeCache {
   BatchPtr bone_sphere_wire;
   BatchPtr bone_stick;
 
+  BatchPtr bone_degrees_of_freedom;
+  BatchPtr bone_degrees_of_freedom_wire;
+
   BatchPtr quad_wire;
   BatchPtr quad_solid;
   BatchPtr plain_axes;
@@ -178,6 +181,7 @@ class ShaderModule {
  public:
   /** Shaders */
   ShaderPtr anti_aliasing = shader("overlay_antialiasing");
+  ShaderPtr armature_degrees_of_freedom;
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
   ShaderPtr grid = shader("overlay_grid");
