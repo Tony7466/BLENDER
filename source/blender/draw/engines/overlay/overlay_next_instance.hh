@@ -107,6 +107,7 @@ class Instance {
                                  bool in_edit_mode,
                                  bool in_paint_mode,
                                  bool in_sculpt_mode);
+  bool object_is_in_front(const Object *object, const State &state);
 };
 
 }  // namespace blender::draw::overlay

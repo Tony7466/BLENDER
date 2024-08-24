@@ -41,9 +41,6 @@ class Armatures {
   /* Show selection state. */
   bool show_outline = false;
 
-  bool do_pose_xray = false;
-  // bool do_pose_fade_geom = false;
-
   struct BoneBuffers {
     const SelectionType selection_type_;
 
@@ -126,9 +123,6 @@ class Armatures {
     draw_transparent = (state.v3d->shading.type == OB_WIRE) || XRAY_FLAG_ENABLED(state.v3d);
     show_relations = !((state.v3d->flag & V3D_HIDE_HELPLINES) || is_select_mode);
     show_outline = (state.v3d->flag & V3D_SELECT_OUTLINE);
-    do_pose_xray = (state.overlay.flag & V3D_OVERLAY_BONE_SELECT);
-    // do_pose_fade_geom = do_pose_xray && !(state.object_mode & OB_MODE_WEIGHT_PAINT) &&
-    //                     draw_ctx->object_pose != nullptr;
 
     const bool do_smooth_wire = U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE;
     const float wire_alpha = state.overlay.bone_wire_alpha;
@@ -606,7 +600,7 @@ class Armatures {
   static void draw_armature_pose(Armatures::DrawContext *ctx);
   static void draw_armature_edit(Armatures::DrawContext *ctx);
 
-  bool is_pose_mode(Object *armature_ob, const State &state)
+  static bool is_pose_mode(const Object *armature_ob, const State &state)
   {
     Object *active_ob = state.active_base->object;
 

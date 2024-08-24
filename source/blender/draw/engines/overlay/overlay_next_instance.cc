@@ -63,6 +63,10 @@ void Instance::init()
       state.overlay.wireframe_threshold = state.v3d->overlay.wireframe_threshold;
       state.overlay.wireframe_opacity = state.v3d->overlay.wireframe_opacity;
     }
+
+    state.do_pose_xray = (state.overlay.flag & V3D_OVERLAY_BONE_SELECT);
+    state.do_pose_fade_geom = state.do_pose_xray && !(state.object_mode & OB_MODE_WEIGHT_PAINT) &&
+                              ctx->object_pose != nullptr;
   }
 
   /* TODO(fclem): Remove DRW global usage. */
@@ -123,8 +127,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       ob_ref, in_edit_mode, in_paint_mode, in_sculpt_mode);
   const bool needs_prepass = !state.xray_enabled; /* TODO */
 
-  OverlayLayer &layer = (state.use_in_front && ob_ref.object->dtx & OB_DRAW_IN_FRONT) ? infront :
-                                                                                        regular;
+  OverlayLayer &layer = object_is_in_front(ob_ref.object, state) ? infront : regular;
 
   if (needs_prepass) {
     switch (ob_ref.object->type) {
@@ -463,6 +466,26 @@ bool Instance::object_is_edit_mode(const Object *object)
         /* No edit mode yet. */
         return false;
     }
+  }
+  return false;
+}
+
+bool Instance::object_is_in_front(const Object *object, const State &state)
+{
+  switch (object->type) {
+    case OB_ARMATURE:
+      return (object->dtx & OB_DRAW_IN_FRONT) ||
+             (state.do_pose_xray && Armatures::is_pose_mode(object, state));
+    case OB_MESH:
+    case OB_CURVES_LEGACY:
+    case OB_SURF:
+    case OB_LATTICE:
+    case OB_MBALL:
+    case OB_FONT:
+    case OB_CURVES:
+    case OB_POINTCLOUD:
+    case OB_VOLUME:
+      return state.use_in_front && (object->dtx & OB_DRAW_IN_FRONT);
   }
   return false;
 }

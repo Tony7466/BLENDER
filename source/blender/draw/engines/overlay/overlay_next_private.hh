@@ -53,6 +53,10 @@ struct State {
   bool hide_overlays;
   bool xray_enabled;
   bool xray_enabled_and_not_wire;
+  /* Brings the active pose armature in front of all objects. */
+  bool do_pose_xray;
+  /* Add a veil on top of all surfaces to make the active pose armature pop out. */
+  bool do_pose_fade_geom;
   float xray_opacity;
   short v3d_flag;     /* TODO: move to #View3DOverlay. */
   short v3d_gridflag; /* TODO: move to #View3DOverlay. */
