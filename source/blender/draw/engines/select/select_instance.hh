@@ -26,6 +26,8 @@
 
 namespace blender::draw::select {
 
+// #define DEBUG_PRINT
+
 enum class SelectionType { DISABLED = 0, ENABLED = 1 };
 
 class ID {
@@ -119,6 +121,18 @@ struct SelectMap {
 
     uint object_id = ob_ref.object->runtime->select_id;
     uint id = select_id_map.append_and_get_index(object_id | sub_object_id);
+
+#ifdef DEBUG_PRINT
+    /* Print mapping from object name, select id and the mapping to internal select id.
+     * If something is wrong at this stage, it indicates an error in the caller code. */
+    printf("%s : %u | %u = %u -> %u\n",
+           ob_ref.object->id.name,
+           object_id,
+           sub_object_id,
+           object_id | sub_object_id,
+           id);
+#endif
+
 #ifndef NDEBUG
     map_names.append(ob_ref.object->id.name);
 #endif
@@ -253,6 +267,13 @@ struct SelectMap {
         }
         break;
     }
+#ifdef DEBUG_PRINT
+    for (auto &hit : hit_results) {
+      /* Print hit results right out of the GPU selection buffer.
+       * If something is wrong at this stage, it indicates an error in the selection shaders. */
+      printf(" hit: %u: depth %u\n", hit_result.id, hit_result.depth);
+    }
+#endif
 
     gpu_select_next_set_result(hit_results.data(), hit_results.size());
   }
