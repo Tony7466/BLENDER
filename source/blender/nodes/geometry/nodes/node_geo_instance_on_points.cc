@@ -157,6 +157,7 @@ static bool add_instances_from_points(
     const GeometryComponent &src_component,
     const GeometrySet &instance,
     const Map<AttributeIDRef, AttributeKind> &attributes_to_propagate,
+    const Map<AttributeIDRef, AttributeKind> &instances_attributes_to_propagate,
     const Field<bool> &selection_field,
     const Field<bool> &pick_instance_field,
     const Field<int> &indices_field,
@@ -194,12 +195,29 @@ static bool add_instances_from_points(
   added_mapped_instances_from_component(
       instance, indices, picked_instances, top_level_instances, dst_component, dst_to_src_mapping);
 
+  Map<AttributeIDRef, AttributeKind> only_instances_attributes_to_propagate;
+  for (const AttributeIDRef id : instances_attributes_to_propagate.keys()) {
+    if (!attributes_to_propagate.contains(id)) {
+      only_instances_attributes_to_propagate.add(id);
+    }
+  }
+
   gather_attributes(*src_component.attributes(),
                     AttrDomain::Point,
                     AttrDomain::Instance,
                     attributes_to_propagate,
                     dst_to_src_mapping,
                     dst_component.attributes_for_write());
+
+  if (const bke::Instances *src_instances = instance.get_instances()) {
+    
+    gather_attributes(*src_instances->attributes(),
+                      AttrDomain::Instance,
+                      AttrDomain::Instance,
+                      attributes_to_propagate,
+                      top_level_instances,
+                      dst_component.attributes_for_write());
+  }
 
   MutableSpan<float4x4> dst_transforms = dst_component.transforms_for_write().take_back(
       selection.size());
@@ -232,6 +250,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<math::Quaternion> rotations_field = params.get_input<Field<math::Quaternion>>(
       "Rotation");
   const Field<float3> scales_field = params.get_input<Field<float3>>("Scale");
+
+  Map<AttributeIDRef, AttributeKind> instances_attributes_to_propagate;
+  geometry_set.gather_attributes_for_propagation(GeometryComponent::Type::Instance,
+                                                 GeometryComponent::Type::Instance,
+                                                 false,
+                                                 propagation_info,
+                                                 instances_attributes_to_propagate);
+  instances_attributes_to_propagate.remove("position");
+  instances_attributes_to_propagate.remove(".reference_index");
 
   std::atomic<bool> has_skiped_realized_instances = false;
 
@@ -266,6 +293,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (add_instances_from_points(component,
                                       instance,
                                       attributes_to_propagate,
+                                      instances_attributes_to_propagate,
                                       selection_field,
                                       pick_instance_field,
                                       indices_field,
