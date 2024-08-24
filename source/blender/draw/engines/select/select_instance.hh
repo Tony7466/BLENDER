@@ -111,6 +111,12 @@ struct SelectMap {
       return {0};
     }
 
+    if (sub_object_id == uint(-1)) {
+      /* WORKAROUND: Armature code set the sub_object_id to -1 when individual bones are not
+       * selectable (i.e. in object mode). */
+      sub_object_id = 0;
+    }
+
     uint object_id = ob_ref.object->runtime->select_id;
     uint id = select_id_map.append_and_get_index(object_id | sub_object_id);
 #ifndef NDEBUG
