@@ -23,6 +23,7 @@ enum eArmatureDrawMode {
 };
 
 class Armatures {
+  using EmptyInstanceBuf = ShapeInstanceBuf<ExtraInstanceData>;
   using BoneInstanceBuf = ShapeInstanceBuf<BoneInstanceData>;
   using BoneEnvelopeBuf = ShapeInstanceBuf<BoneEnvelopeData>;
   using BoneStickBuf = ShapeInstanceBuf<BoneStickData>;
@@ -63,6 +64,8 @@ class Armatures {
     /* Wire bones. */
     PassSimple::Sub *wire = nullptr;
 
+    /* Bone axes. */
+    PassSimple::Sub *arrows = nullptr;
     /* Degrees of freedom. */
     PassSimple::Sub *degrees_of_freedom_fill = nullptr;
     PassSimple::Sub *degrees_of_freedom_wire = nullptr;
@@ -83,6 +86,8 @@ class Armatures {
     BoneStickBuf stick_buf = {selection_type_, "stick_buf"};
 
     LinePrimitiveBuf wire_buf = {selection_type_, "wire_buf"};
+
+    EmptyInstanceBuf arrows_buf = {selection_type_, "arrows_buf"};
 
     DegreesOfFreedomBuf degrees_of_freedom_fill_buf = {SelectionType::DISABLED,
                                                        "degrees_of_freedom_buf"};
@@ -374,6 +379,14 @@ class Armatures {
       }
     }
 
+    {
+      auto &sub = armature_ps_.sub("opaque.arrow");
+      sub.shader_set(res.shaders.extra_shape.get());
+      sub.bind_ubo("globalsBlock", &res.globals_buf);
+      opaque.arrows = &sub;
+      transparent.arrows = opaque.arrows;
+    }
+
     auto clear_buffers = [](BoneBuffers &bb) {
       bb.envelope_fill_buf.clear();
       bb.envelope_outline_buf.clear();
@@ -386,6 +399,7 @@ class Armatures {
       bb.sphere_outline_buf.clear();
       bb.stick_buf.clear();
       bb.wire_buf.clear();
+      bb.arrows_buf.clear();
       bb.degrees_of_freedom_fill_buf.clear();
       bb.degrees_of_freedom_wire_buf.clear();
       /* TODO(fclem): Potentially expensive operation recreating a lot of gpu buffers.
@@ -537,6 +551,8 @@ class Armatures {
       bb.stick_buf.end_sync(*bb.stick, shapes.bone_stick.get());
 
       bb.wire_buf.end_sync(*bb.wire);
+
+      bb.arrows_buf.end_sync(*bb.arrows, shapes.arrows.get());
 
       bb.degrees_of_freedom_fill_buf.end_sync(*bb.degrees_of_freedom_fill,
                                               shapes.bone_degrees_of_freedom.get());

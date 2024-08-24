@@ -1199,11 +1199,15 @@ static void drw_shgroup_bone_axes(const Armatures::DrawContext *ctx,
                                   const float (*bone_mat)[4],
                                   const float color[4])
 {
-  float mat[4][4];
-  mul_m4_m4m4(mat, ctx->ob->object_to_world().ptr(), bone_mat);
+  float4x4 mat = ctx->ob->object_to_world() * float4x4(bone_mat);
   /* Move to bone tail. */
-  add_v3_v3(mat[3], mat[1]);
-  OVERLAY_empty_shape(ctx->extras, mat, 0.25f, OB_ARROWS, color);
+  mat[3] += mat[1];
+  if (ctx->bone_buf) {
+    ExtraInstanceData data(mat, color, 0.25f);
+    ctx->bone_buf->arrows_buf.append(data, draw::select::SelectMap::select_invalid_id());
+    return;
+  }
+  OVERLAY_empty_shape(ctx->extras, mat.ptr(), 0.25f, OB_ARROWS, color);
 }
 
 /* Relationship lines */
