@@ -80,7 +80,8 @@ static void calc_node(const Depsgraph &depsgraph,
         const int node_vert_index = node_start + offset;
         const int grid_vert_index = start + offset;
 
-        float3 interp_limit_surface_disp = cache.displacement_smear.prev_displacement[grid_vert_index];
+        float3 interp_limit_surface_disp =
+            cache.displacement_smear.prev_displacement[grid_vert_index];
 
         float3 current_disp;
         switch (brush.smear_deform_type) {
@@ -112,8 +113,9 @@ static void calc_node(const Depsgraph &depsgraph,
           const int neighbor_grid_vert_index = neighbor.grid_index * key.grid_area +
                                                CCG_grid_xy_to_index(
                                                    key.grid_size, neighbor.x, neighbor.y);
-          const float3 vert_disp = cache.displacement_smear.limit_surface_co[neighbor_grid_vert_index] -
-                                   cache.displacement_smear.limit_surface_co[grid_vert_index];
+          const float3 vert_disp =
+              cache.displacement_smear.limit_surface_co[neighbor_grid_vert_index] -
+              cache.displacement_smear.limit_surface_co[grid_vert_index];
           const float3 &neighbor_limit_surface_disp =
               cache.displacement_smear.prev_displacement[neighbor_grid_vert_index];
           const float3 vert_disp_norm = math::normalize(vert_disp);
@@ -130,7 +132,8 @@ static void calc_node(const Depsgraph &depsgraph,
 
         interp_limit_surface_disp *= math::rcp(weights_accum);
 
-        float3 new_co = cache.displacement_smear.limit_surface_co[grid_vert_index] + interp_limit_surface_disp;
+        float3 new_co = cache.displacement_smear.limit_surface_co[grid_vert_index] +
+                        interp_limit_surface_disp;
         CCG_elem_offset_co(key, elem, offset) = math::interpolate(
             positions[node_vert_index], new_co, factors[node_vert_index]);
       }
@@ -188,8 +191,11 @@ void do_displacement_smear_brush(const Depsgraph &depsgraph,
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      store_node_prev_displacement(
-          ss.cache->displacement_smear.limit_surface_co, elems, key, *nodes[i], ss.cache->displacement_smear.prev_displacement);
+      store_node_prev_displacement(ss.cache->displacement_smear.limit_surface_co,
+                                   elems,
+                                   key,
+                                   *nodes[i],
+                                   ss.cache->displacement_smear.prev_displacement);
     }
   });
 
