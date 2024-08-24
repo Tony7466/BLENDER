@@ -4019,7 +4019,8 @@ static void sculpt_init_mirror_clipping(const Object &ob, const SculptSession &s
       ss.cache->mirror_mod_clip.flag |= CLIP_X << i;
 
       /* Update the clip tolerance. */
-      ss.cache->mirror_mod_clip.tolerance[i] = std::max(mmd->tolerance, ss.cache->mirror_mod_clip.tolerance[i]);
+      ss.cache->mirror_mod_clip.tolerance[i] = std::max(mmd->tolerance,
+                                                        ss.cache->mirror_mod_clip.tolerance[i]);
 
       /* Store matrix for mirror object clipping. */
       if (mmd->mirror_ob) {
