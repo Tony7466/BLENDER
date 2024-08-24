@@ -24,7 +24,7 @@ CsvData::CsvData(const int64_t rows_num,
       column_types(column_types)
 {
   for (int i = 0; i < this->columns_num; i++) {
-    data[i] = create_garray_for_type(this->column_types[i]);
+    data[i] = GArray(*bke::custom_data_type_to_cpp_type(this->column_types[i]), rows_num);
   }
 }
 
@@ -47,38 +47,13 @@ PointCloud *CsvData::to_point_cloud() const
   return point_cloud;
 }
 
-GArray<> CsvData::create_garray_for_type(const eCustomDataType type) const
-{
-  switch (type) {
-    case CD_PROP_INT32: {
-      return GArray(CPPType::get<int>(), rows_num);
-    }
-    case CD_PROP_FLOAT: {
-      return GArray(CPPType::get<float>(), rows_num);
-    }
-    default: {
-      BLI_assert_unreachable();
-      return GArray<>();
-    }
-  }
-}
-
 void *CsvData::get_data_of_garray(const GArray<> array, const eCustomDataType type) const
 {
-  switch (type) {
-    case CD_PROP_INT32: {
-      Array<int> *data = new Array<int>(array.as_span().typed<int>());
-      return data->data();
-    }
-    case CD_PROP_FLOAT: {
-      Array<float> *data = new Array<float>(array.as_span().typed<float>());
-      return data->data();
-    }
-    default: {
-      BLI_assert_unreachable();
-      return nullptr;
-    }
-  }
+  const char *func = __func__;
+  const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
+  void *data = MEM_mallocN_aligned(rows_num * cpp_type->size(), cpp_type->alignment(), func);
+  std::memcpy(data, array.data(), rows_num * cpp_type->size());
+  return data;
 }
 
 }  // namespace blender::io::csv

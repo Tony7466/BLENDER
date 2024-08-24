@@ -29,8 +29,12 @@ StringRef read_next_line(StringRef &buffer)
     ++len;
   }
 
+  if (ptr != end) {
+    len--;
+  }
+
   buffer = StringRef(ptr, end);
-  return StringRef(start, len - 1);
+  return StringRef(start, len);
 }
 
 static bool is_whitespace(char c)
