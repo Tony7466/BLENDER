@@ -1405,10 +1405,12 @@ class GreasePencilDrawing(StructRNA):
         """
         Return a collection of all the Grease Pencil strokes in this drawing.
 
-        .. note:: This API should *not* be used for performance critical operations.
-        Use the :class:`GreasePencilDrawing.attributes` API instead.
+        .. note::
+
+           This API should *not* be used for performance critical operations.
+           Use the :class:`GreasePencilDrawing.attributes` API instead.
         """
-        from grease_pencil_python import GreasePencilStrokeSlice
+        from _bpy_internal.grease_pencil.stroke import GreasePencilStrokeSlice
         num_strokes = self.attributes.domain_size('CURVE')
         if num_strokes > 0:
             return GreasePencilStrokeSlice(self, 0, num_strokes)
