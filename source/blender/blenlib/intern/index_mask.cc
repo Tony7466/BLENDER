@@ -619,7 +619,16 @@ static void segments_from_predicate_filter(
   }
   const Span<int16_t> true_indices{indices_array.data(), true_indices_num};
   Vector<std::variant<IndexRange, Span<int16_t>>> true_segments;
-  unique_sorted_indices::split_to_ranges_and_spans<int16_t>(true_indices, 64, true_segments);
+
+  if (true_indices.size() == universe_segment.size()) {
+    /* It is possible that non-trivial filter will skip writing of the indices in case its known
+     * for whole segment that this is range. */
+    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(
+        universe_segment.base_span(), 64, true_segments);
+  }
+  else {
+    unique_sorted_indices::split_to_ranges_and_spans<int16_t>(true_indices, 64, true_segments);
+  }
 
   const Span<int16_t> static_indices = get_static_indices_array();
 
