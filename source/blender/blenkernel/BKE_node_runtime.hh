@@ -1003,3 +1003,14 @@ inline bool bNodePanelState::has_visible_content() const
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #bNode.storage Inline Methods
+ * \{ */
+
+inline void NodeReroute::set_socket_type(const blender::StringRefNull idname)
+{
+  idname.copy(this->type_idname);
+}
+
+/** \} */

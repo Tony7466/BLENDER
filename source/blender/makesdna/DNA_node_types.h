@@ -1006,6 +1006,15 @@ typedef struct NodeFrame {
   short label_size;
 } NodeFrame;
 
+typedef struct NodeReroute {
+  /* Idname of sockets type is used just to support custom socket types. */
+  char type_idname[64];
+
+#ifdef __cplusplus
+  void set_socket_type(blender::StringRefNull idname);
+#endif
+} NodeReroute;
+
 /** \note This one has been replaced with #ImageUser, keep it for do_versions(). */
 typedef struct NodeImageAnim {
   int frames DNA_DEPRECATED;
