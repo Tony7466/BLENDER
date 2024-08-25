@@ -45,24 +45,25 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *mesh = geometry_set.get_mesh();
     if (mesh != nullptr) {
+      /*
+            if (params.get_input<bool>("BMesh")) {
+              BMeshCreateParams create_params{false};
+              BMeshFromMeshParams from_mesh_params{};
+              from_mesh_params.calc_face_normal = true;
+              from_mesh_params.calc_vert_normal = true;
+              BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &create_params, &from_mesh_params);
+              auto tree = bke::pbvh::build_bmesh(bm);
+              BMLog *log = BM_log_create(bm);
+              const float3 normal(0,0,1);
+              bke::pbvh::bmesh_update_topology(*tree, *log, PBVH_Subdivide, position, normal,
+         radius, false, false);
 
-      if (params.get_input<bool>("BMesh")) {
-        BMeshCreateParams create_params{false};
-        BMeshFromMeshParams from_mesh_params{};
-        from_mesh_params.calc_face_normal = true;
-        from_mesh_params.calc_vert_normal = true;
-        BMesh *bm = BKE_mesh_to_bmesh_ex(mesh, &create_params, &from_mesh_params);
-        auto tree = bke::pbvh::build_bmesh(bm);
-        BMLog *log = BM_log_create(bm);
-        const float3 normal(0,0,1);
-        bke::pbvh::bmesh_update_topology(*tree, *log, PBVH_Subdivide, position, normal, radius, false, false);
-        
-        Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
-        BM_mesh_free(bm);
-        geometry_set.replace_mesh(result);
-        return;
-      }
-
+              Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
+              BM_mesh_free(bm);
+              geometry_set.replace_mesh(result);
+              return;
+            }
+      */
       bke::MeshFieldContext context(*mesh, bke::AttrDomain::Point);
       FieldEvaluator evaluator(context, mesh->verts_num);
       evaluator.add(uv_field_typed);
@@ -84,7 +85,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_DYNTOPO, "Dyntopo", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
