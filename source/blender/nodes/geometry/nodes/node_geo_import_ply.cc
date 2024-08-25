@@ -35,12 +35,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GeometrySet output;
-
-  if (geo_cache_contains(path)) {
-    output = geo_cache_get(path);
-  }
-  else {
+  GeometrySet output = geometry_cache::import_geometry_cached(path, [&path, &params]() {
     PLYImportParams import_params{};
     STRNCPY(import_params.filepath, path.c_str());
     import_params.import_attributes = true;
@@ -65,10 +60,11 @@ static void node_geo_exec(GeoNodeExecParams params)
       params.error_message_add(type, TIP_(report->message));
     }
 
-    output = GeometrySet::from_mesh(mesh);
+    GeometrySet geometry = GeometrySet::from_mesh(mesh);
 
-    geo_cache_set(path, output);
-  }
+    auto value = std::make_unique<geometry_cache::GeometryReadValue>(geometry);
+    return value;
+  });
 
   params.set_output("Mesh", output);
 

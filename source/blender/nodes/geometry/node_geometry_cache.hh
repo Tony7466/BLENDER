@@ -9,49 +9,25 @@
 
 #include "BKE_geometry_set.hh"
 
-#include "BLI_map.hh"
+#include "BLI_memory_cache.hh"
 #include "BLI_memory_counter.hh"
 
-// namespace blender::bke {
-// struct GeometrySet;
-// }
+namespace blender::nodes::geometry_cache {
 
-namespace blender::nodes {
-
-/**
- * LRU based geoemetry cache
- */
-class GeometryCache {
- private:
-  typedef std::pair<std::string, bke::GeometrySet> cache_entry;
-  typedef std::list<cache_entry>::iterator cache_node;
-
-  uint64_t capacity;
-  uint64_t size;
-
-  std::list<cache_entry> cache_list;
-  blender::Map<std::string, cache_node> cache_map;
-
-  MemoryCount memory_count;
-
+class GeometryReadValue : public memory_cache::CachedValue {
  public:
-  GeometryCache(uint64_t capacity);
+  bke::GeometrySet geometry;
 
-  void add(std::string key, bke::GeometrySet geometry);
-  bool contains(std::string key);
-  void remove(std::string key);
-  void clear();
-  bke::GeometrySet get(std::string key);
-  void resize(uint64_t capacity);
+  GeometryReadValue(bke::GeometrySet geometry) : geometry(geometry) {}
 
- private:
-  void balance();
-  uint64_t get_geometry_size_in_bytes(bke::GeometrySet &geometry);
+  void count_memory(MemoryCounter &memory) const override
+  {
+    geometry.count_memory(memory);
+  }
 };
 
-void geo_cache_set(std::string key, bke::GeometrySet geometry);
-bool geo_cache_contains(std::string key);
-void geo_cache_clear(std::string key);
-void geo_cache_clear_all();
-bke::GeometrySet geo_cache_get(std::string key);
-}  // namespace blender::nodes
+void import_geometry_cache_clear_all();
+bke::GeometrySet import_geometry_cached(
+    std::string key, FunctionRef<std::unique_ptr<GeometryReadValue>()> compute_fn);
+
+}  // namespace blender::nodes::geometry_cache

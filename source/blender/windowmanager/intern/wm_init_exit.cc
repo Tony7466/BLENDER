@@ -23,6 +23,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_memory_cache.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -113,8 +114,6 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "DRW_engine.hh"
-
-#include "node_geometry_cache.hh"
 
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_OPERATORS, "wm.operator");
 CLG_LOGREF_DECLARE_GLOBAL(WM_LOG_HANDLERS, "wm.handler");
@@ -468,7 +467,8 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
    * Saving #BLENDER_QUIT_FILE is also not likely to be desired either. */
   BLI_assert(G.background ? (do_user_exit_actions == false) : true);
 
-  blender::nodes::geo_cache_clear_all();
+  /* Clear cache before exit */
+  memory_cache::clear();
 
   /* First wrap up running stuff, we assume only the active WM is running. */
   /* Modal handlers are on window level freed, others too? */

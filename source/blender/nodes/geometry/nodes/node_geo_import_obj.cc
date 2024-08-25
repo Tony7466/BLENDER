@@ -36,15 +36,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  OBJImportParams import_params;
-  STRNCPY(import_params.filepath, path.c_str());
+  GeometrySet output = geometry_cache::import_geometry_cached(path, [&path, &params]() {
+    OBJImportParams import_params;
+    STRNCPY(import_params.filepath, path.c_str());
 
-  GeometrySet output;
-
-  if (geo_cache_contains(path)) {
-    output = geo_cache_get(path);
-  }
-  else {
     ReportList reports;
     BKE_reports_init(&reports, RPT_STORE);
     BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
@@ -68,7 +63,11 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     if (geometries.is_empty()) {
       params.set_default_remaining_outputs();
-      return;
+
+      GeometrySet geometry = GeometrySet();
+
+      auto value = std::make_unique<geometry_cache::GeometryReadValue>(geometry);
+      return value;
     }
 
     bke::Instances *instances = new bke::Instances();
@@ -77,10 +76,11 @@ static void node_geo_exec(GeoNodeExecParams params)
       instances->add_instance(handle, float4x4::identity());
     }
 
-    output = GeometrySet::from_instances(instances);
+    GeometrySet geometry = GeometrySet::from_instances(instances);
 
-    geo_cache_set(path, output);
-  }
+    auto value = std::make_unique<geometry_cache::GeometryReadValue>(geometry);
+    return value;
+  });
 
   params.set_output("Instances", output);
 #else
