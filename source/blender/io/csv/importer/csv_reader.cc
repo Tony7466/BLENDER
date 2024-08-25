@@ -22,23 +22,24 @@ namespace blender::io::csv {
 static Vector<std::string> get_columns(const StringRef line)
 {
   Vector<std::string> columns;
-  const char *p = line.begin(), *end = line.end();
-  const char *cell_start = p, *cell_end = p;
+  const char delim = ',';
+  const char *start = line.begin(), *end = line.end();
+  const char *cell_start = start, *cell_end = start;
 
-  while (p != end) {
-    while (*p != ',' && p != end) {
-      p++;
-    }
-    cell_end = p;
+  int64_t delim_index = line.find_first_of(delim);
+
+  while (delim_index != StringRef::not_found) {
+    cell_end = start + delim_index;
 
     columns.append(std::string(cell_start, cell_end));
 
-    if (p == end) {
-      break;
-    }
-    p++;
-    cell_start = p;
+    cell_start = cell_end + 1;
+    delim_index = line.find_first_of(delim, delim_index + 1);
   }
+
+  /* Hadnle last cell */
+  columns.append(std::string(cell_start, end));
+
   return columns;
 }
 
@@ -65,14 +66,14 @@ static std::optional<eCustomDataType> get_column_type(const char *start, const c
 
 static bool get_column_types(const StringRef line, Vector<eCustomDataType> &column_types)
 {
-  const char *p = line.begin(), *end = line.end();
-  const char *cell_start = p, *cell_end = p;
+  const char delim = ',';
+  const char *start = line.begin(), *end = line.end();
+  const char *cell_start = start, *cell_end = start;
 
-  while (p != end) {
-    while (*p != ',' && p != end) {
-      p++;
-    }
-    cell_end = p;
+  int64_t delim_index = line.find_first_of(delim);
+
+  while (delim_index != StringRef::not_found) {
+    cell_end = start + delim_index;
 
     std::optional<eCustomDataType> column_type = get_column_type(cell_start, cell_end);
     if (!column_type.has_value()) {
@@ -80,12 +81,16 @@ static bool get_column_types(const StringRef line, Vector<eCustomDataType> &colu
     }
     column_types.append(column_type.value());
 
-    if (p == end) {
-      break;
-    }
-    p++;
-    cell_start = p;
+    cell_start = cell_end + 1;
+    delim_index = line.find_first_of(delim, delim_index + 1);
   }
+
+  /* Hadnle last cell */
+  std::optional<eCustomDataType> column_type = get_column_type(cell_start, end);
+  if (!column_type.has_value()) {
+    return false;
+  }
+  column_types.append(column_type.value());
 
   return true;
 }
@@ -175,27 +180,29 @@ static bool parse_csv_line(CsvData &csv_data,
                            const StringRef line,
                            const CSVImportParams &import_params)
 {
-  const char *p = line.begin(), *end = line.end();
-  const char *cell_start = p, *cell_end = p;
+  const char delim = ',';
+  const char *start = line.begin(), *end = line.end();
+  const char *cell_start = start, *cell_end = start;
 
   int64_t col_index = 0;
 
-  while (p != end) {
-    while (*p != ',' && p != end) {
-      p++;
-    }
-    cell_end = p;
+  int64_t delim_index = line.find_first_of(delim);
+
+  while (delim_index != StringRef::not_found) {
+    cell_end = start + delim_index;
 
     if (!parse_csv_cell(csv_data, row_index, col_index, cell_start, cell_end, import_params)) {
       return false;
     }
     col_index++;
 
-    if (p == end) {
-      break;
-    }
-    p++;
-    cell_start = p;
+    cell_start = cell_end + 1;
+    delim_index = line.find_first_of(delim, delim_index + 1);
+  }
+
+  /* Hadnle last cell */
+  if (!parse_csv_cell(csv_data, row_index, col_index, cell_start, end, import_params)) {
+    return false;
   }
 
   return true;
