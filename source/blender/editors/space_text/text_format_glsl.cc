@@ -580,7 +580,7 @@ void ED_text_format_register_glsl()
   tft.format_identifier = txtfmt_glsl_format_identifier;
   tft.format_line = txtfmt_glsl_format_line;
   tft.ext = ext;
-  tft.comment_line = "//";
+  tft.comment_line = "//" or "/**/";
 
   ED_text_format_register(&tft);
 
@@ -589,5 +589,3 @@ void ED_text_format_register_glsl()
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
 }
-
-/** \} */
