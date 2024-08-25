@@ -1107,7 +1107,7 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
 {
   std::priority_queue<std::pair<int, int>> level_edge_queue;
 
-  Array<bool> visited_edges(edges.size(), false);
+  Array<bool> visited_edge(edge_to_face_map.size(), false);
 
   for (const int face_i : face_pre_subdiv_level.index_range()) {
     if (face_pre_subdiv_level[face_i] > 0) {
@@ -1121,15 +1121,16 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
     const auto [level, edge_index] = level_edge_queue.top();
     level_edge_queue.pop();
 
-    if (visited_edges[edge_index]) {
+    if (visited_edge[edge_index]) {
       continue;
     }
-    visited_edges[edge_index] = true;
+    visited_edge[edge_index] = true;
 
     for (const int face_i : edge_to_face_map[edge_index]) {
-      if (face_pre_subdiv_level[face_i] >= level / 2 + 1) {
+      if (face_pre_subdiv_level[face_i] >= level) {
         continue;
       }
+
       const int3 face_edges(
           faces_edges[face_i][0], faces_edges[face_i][1], faces_edges[face_i][2]);
       const int edge_i = topo_set::index_of(face_edges, edge_index);
@@ -1148,8 +1149,8 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
       const bool prev_affected = prev_edge_length > edge_length * threshold_factor;
       const bool next_affected = next_edge_length > edge_length * threshold_factor;
 
-      const int prev_level = prev_affected ? (level / 2 + 1) : (0);
-      const int next_level = next_affected ? (level / 2 + 1) : (0);
+      const int prev_level = (prev_affected) ? (level / 2 + 1) : (0);
+      const int next_level = (next_affected) ? (level / 2 + 1) : (0);
 
       face_pre_subdiv_level[face_i] = math::max(math::max(prev_level, next_level), level / 2);
 
@@ -1166,6 +1167,31 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
   // std::cout << "\n";
   // table_iota(face_pre_subdiv_level.size());
   // std::cout << face_pre_subdiv_level << ";\n";
+}
+
+static void blur_pre_subdiv_level(const GroupedSpan<int> faces_edges,
+                                  const GroupedSpan<int> edge_to_face_map,
+                                  Array<int> &r_face_pre_subdiv_level)
+{
+  Array<int> face_pre_subdiv_level_buffer(r_face_pre_subdiv_level.size(), 0);
+  threading::parallel_for(
+      r_face_pre_subdiv_level.index_range(), 4096, [&](const IndexRange range) {
+        for (const int face_i : range) {
+          int total_other_faces = 1;
+          for (const int edge_i : faces_edges[face_i]) {
+            for (const int other_face_i : edge_to_face_map[edge_i]) {
+              if (other_face_i != face_i) {
+                face_pre_subdiv_level_buffer[face_i] += r_face_pre_subdiv_level[other_face_i];
+                total_other_faces++;
+              }
+            }
+          }
+          face_pre_subdiv_level_buffer[face_i] = (r_face_pre_subdiv_level[face_i] +
+                                                  face_pre_subdiv_level_buffer[face_i] / 2) /
+                                                 total_other_faces;
+        }
+      });
+  r_face_pre_subdiv_level = std::move(face_pre_subdiv_level_buffer);
 }
 
 Mesh *subdivide(const Mesh &src_mesh,
@@ -1222,18 +1248,16 @@ Mesh *subdivide(const Mesh &src_mesh,
       const float3 b_point_3d = src_positions[b_vert];
       const float3 c_point_3d = src_positions[c_vert];
 
-      const float max_edge = std::max({math::distance(a_point_3d, b_point_3d),
-                                       math::distance(b_point_3d, c_point_3d),
-                                       math::distance(c_point_3d, a_point_3d)});
-
-      const int length = max_edge / max_length;
-
-      face_pre_subdiv_level[face_i] = log2(length) * 2;
+      face_pre_subdiv_level[face_i] = log2(math::distance(a_point_3d, b_point_3d) / max_length) +
+                                      log2(math::distance(b_point_3d, c_point_3d) / max_length) +
+                                      log2(math::distance(c_point_3d, a_point_3d) / max_length);
     }
   });
 
   smooth_propagate_pre_subdiv_level(
       {faces, corner_edges}, edge_to_face_map, edges, src_positions, face_pre_subdiv_level);
+
+  blur_pre_subdiv_level({faces, corner_edges}, edge_to_face_map, face_pre_subdiv_level);
 
   Array<int> edge_total_verts(src_mesh.edges_num + 1);
   Array<int> face_total_verts(src_mesh.faces_num + 1);
