@@ -139,6 +139,9 @@ set(SRC
   nodes/node_geo_material_selection.cc
   nodes/node_geo_menu_switch.cc
   nodes/node_geo_merge_by_distance.cc
+  nodes/node_geo_mesh_dissolve_boundary_vertices.cc
+  nodes/node_geo_mesh_dissolve_edges.cc
+  nodes/node_geo_mesh_dissolve_faces.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
   nodes/node_geo_mesh_primitive_cone.cc

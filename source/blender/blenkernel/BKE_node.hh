@@ -1375,6 +1375,10 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_GREASE_PENCIL_TO_CURVES 2145
 #define GEO_NODE_IMPORT_PLY 2146
 
+#define GEO_NODE_DISSOLVE_BOUNDARY_VERTICES 2147
+#define GEO_NODE_DISSOLVE_EDGES 2148
+#define GEO_NODE_DISSOLVE_FACES 2149
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
