@@ -14,8 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
-#include "RNA_types.hh"
+#include "RNA_prototypes.hh"
 
 static ListBase callback_slots[BKE_CB_EVT_TOT] = {{nullptr}};
 

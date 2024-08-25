@@ -20,12 +20,10 @@
 struct BLI_Iterator;
 struct Base;
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct Collection;
-struct Depsgraph;
 struct ID;
-struct Library;
+struct CollectionExport;
 struct Main;
 struct Object;
 struct Scene;
@@ -42,7 +40,9 @@ struct CollectionParent {
  * Add a collection to a collection ListBase and synchronize all render layers
  * The ListBase is NULL when the collection is to be added to the master collection
  */
-Collection *BKE_collection_add(Main *bmain, Collection *parent, const char *name);
+Collection *BKE_collection_add(Main *bmain,
+                               Collection *collection_parent,
+                               const char *name_custom);
 /**
  * Add \a collection_dst to all scene collections that reference object \a ob_src is in.
  * Used to replace an instance object with a collection (library override operator).
@@ -67,6 +67,19 @@ void BKE_collection_add_from_collection(Main *bmain,
  * Free (or release) any data used by this collection (does not free the collection itself).
  */
 void BKE_collection_free_data(Collection *collection);
+
+/**
+ * Assigns a unique name to the collection exporter.
+ */
+void BKE_collection_exporter_name_set(const ListBase *exporters,
+                                      CollectionExport *data,
+                                      const char *newname);
+
+/**
+ * Free all data owned by the collection exporter.
+ */
+void BKE_collection_exporter_free_data(CollectionExport *data);
+
 /**
  * Remove a collection, optionally removing its child objects or moving
  * them to parent collections.
@@ -97,6 +110,12 @@ Collection *BKE_collection_master_add(Scene *scene);
 bool BKE_collection_has_object(Collection *collection, const Object *ob);
 bool BKE_collection_has_object_recursive(Collection *collection, Object *ob);
 bool BKE_collection_has_object_recursive_instanced(Collection *collection, Object *ob);
+/**
+ * Find whether an evaluated object's original ID is contained or instanced by any object in this
+ * collection. The collection is expected to be an evaluated data-block too.
+ */
+bool BKE_collection_has_object_recursive_instanced_orig_id(Collection *collection_eval,
+                                                           Object *object_eval);
 Collection *BKE_collection_object_find(Main *bmain,
                                        Scene *scene,
                                        Collection *collection,
@@ -159,7 +178,7 @@ void BKE_collection_object_move(
 /**
  * Remove object from all collections of scene
  */
-bool BKE_scene_collections_object_remove(Main *bmain, Scene *scene, Object *object, bool free_us);
+bool BKE_scene_collections_object_remove(Main *bmain, Scene *scene, Object *ob, bool free_us);
 
 /**
  * Check all collections in \a bmain (including embedded ones in scenes) for invalid
@@ -277,6 +296,11 @@ bool BKE_collection_cycles_fix(Main *bmain, Collection *collection);
 bool BKE_collection_has_collection(const Collection *parent, const Collection *collection);
 
 /**
+ * Return parent collection which is not linked.
+ */
+Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
+                                                          Collection *collection);
+/**
  * Rebuild parent relationships from child ones, for all children of given \a collection.
  *
  * \note Given collection is assumed to already have valid parents.
@@ -305,8 +329,8 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
 /* Iteration callbacks. */
 
-typedef void (*BKE_scene_objects_Cb)(Object *ob, void *data);
-typedef void (*BKE_scene_collections_Cb)(Collection *ob, void *data);
+using BKE_scene_objects_Cb = void (*)(Object *ob, void *data);
+using BKE_scene_collections_Cb = void (*)(Collection *ob, void *data);
 
 /* Iteration over objects in collection. */
 

@@ -5,7 +5,7 @@
 #ifndef GPU_SHADER
 #  pragma once
 
-#  include "GPU_shader_shared_utils.h"
+#  include "GPU_shader_shared_utils.hh"
 
 #  include "DNA_action_types.h"
 #  include "DNA_view3d_types.h"
@@ -18,6 +18,7 @@ typedef enum OVERLAY_GridBits OVERLAY_GridBits;
 typedef struct OVERLAY_GridData OVERLAY_GridData;
 typedef struct ThemeColorData ThemeColorData;
 typedef struct ExtraInstanceData ExtraInstanceData;
+typedef struct VertexData VertexData;
 #endif
 
 /* TODO(fclem): Should eventually become OVERLAY_BackgroundType.
@@ -51,6 +52,9 @@ ENUM_OPERATORS(OVERLAY_GridBits, CUSTOM_GRID)
 /* Match: #SI_GRID_STEPS_LEN */
 #define OVERLAY_GRID_STEPS_LEN 8
 
+/* Due to the encoding clamping the passed in floats, the wire width needs to be scaled down. */
+#define WIRE_WIDTH_COMPRESSION 16
+
 struct OVERLAY_GridData {
   float4 steps[OVERLAY_GRID_STEPS_LEN]; /* float arrays are padded to float4 in std130. */
   float4 size;                          /* float3 padded to float4. */
@@ -62,6 +66,11 @@ struct OVERLAY_GridData {
 BLI_STATIC_ASSERT_ALIGN(OVERLAY_GridData, 16)
 
 #ifdef GPU_SHADER
+/* Keep the same values as in `draw_cache_impl_curves.cc` */
+#  define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
+#  define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
+#  define EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT (6u)
+#  define EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT (4u)
 /* Keep the same values as in `draw_cache_imp_curve.c` */
 #  define ACTIVE_NURB (1u << 2)
 #  define BEZIER_HANDLE (1u << 3)
@@ -205,15 +214,47 @@ struct ExtraInstanceData {
   float4x4 object_to_world_;
 
 #if !defined(GPU_SHADER) && defined(__cplusplus)
-  ExtraInstanceData(const float4x4 &object_to_world, float4 &color, float draw_size)
+  ExtraInstanceData(const float4x4 &object_to_world, const float4 &color, float draw_size)
   {
     this->color_ = color;
     this->object_to_world_ = object_to_world;
     this->object_to_world_[3][3] = draw_size;
   };
+
+  ExtraInstanceData with_color(const float4 &color) const
+  {
+    ExtraInstanceData copy = *this;
+    copy.color_ = color;
+    return copy;
+  }
+
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(ExtraInstanceData, 16)
+
+struct VertexData {
+  float4 pos_;
+  /* TODO: change to color_id. Idea expressed in #125894. */
+  float4 color_;
+};
+BLI_STATIC_ASSERT_ALIGN(VertexData, 16)
+
+/* Limited by expand_prim_len bit count. */
+#define PARTICLE_SHAPE_CIRCLE_RESOLUTION 7
+
+/* TODO(fclem): This should be a enum, but it breaks compilation on Metal for some reason. */
+#define PART_SHAPE_AXIS 1
+#define PART_SHAPE_CIRCLE 2
+#define PART_SHAPE_CROSS 3
+
+struct ParticlePointData {
+  packed_float3 position;
+  /* Can either be velocity or acceleration. */
+  float value;
+  /* Rotation encoded as quaternion. */
+  float4 rotation;
+};
+BLI_STATIC_ASSERT_ALIGN(ParticlePointData, 16)
 
 #ifndef GPU_SHADER
 #  ifdef __cplusplus

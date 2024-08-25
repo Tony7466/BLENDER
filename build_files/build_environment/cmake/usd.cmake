@@ -5,6 +5,9 @@
 if(WIN32)
   # OIIO and OSL are statically linked for us, but USD doesn't know
   set(USD_CXX_FLAGS "${CMAKE_CXX_FLAGS} /DOIIO_STATIC_DEFINE /DOSL_STATIC_DEFINE")
+  if(BLENDER_PLATFORM_ARM)
+    set(USD_CXX_FLAGS "${USD_CXX_FLAGS} /DOIIO_NO_SSE")
+  endif()
   if(BUILD_MODE STREQUAL Debug)
     # USD does not look for debug libs, nor does it link them
     # when building static, so this is just to keep find_package happy
@@ -116,9 +119,12 @@ ExternalProject_Add(external_usd
     ${PATCH_CMD} -p 1 -d
       ${BUILD_DIR}/usd/src/external_usd <
       ${PATCH_DIR}/usd.diff &&
-  ${PATCH_CMD} -p 1 -d
-    ${BUILD_DIR}/usd/src/external_usd <
-    ${PATCH_DIR}/usd_core_profile.diff
+    ${PATCH_CMD} -p 1 -d
+      ${BUILD_DIR}/usd/src/external_usd <
+      ${PATCH_DIR}/usd_core_profile.diff &&
+    ${PATCH_CMD} -p 1 -d
+      ${BUILD_DIR}/usd/src/external_usd <
+      ${PATCH_DIR}/usd_metal_edf.diff
 
   CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${LIBDIR}/usd
@@ -175,4 +181,16 @@ if(WIN32)
       DEPENDEES install
     )
   endif()
+else()
+  harvest(external_usd usd/include usd/include "*.h")
+  harvest(external_usd usd/include usd/include "*.hpp")
+  harvest_rpath_lib(external_usd usd/lib usd/lib "libusd_ms${SHAREDLIBEXT}")
+  harvest(external_usd usd/lib/usd usd/lib/usd "*")
+  harvest_rpath_python(
+    external_usd
+    usd/lib/python/pxr
+    python/lib/python${PYTHON_SHORT_VERSION}/site-packages/pxr
+    "*"
+  )
+  harvest(external_usd usd/plugin usd/plugin "*")
 endif()

@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
-#include "DNA_modifier_types.h"
 #include "usd_writer_abstract.hh"
 
 #include "BLI_map.hh"
@@ -11,6 +10,7 @@
 #include <pxr/usd/usdGeom/mesh.h>
 
 struct Key;
+struct SubsurfModifierData;
 
 namespace blender::bke {
 class AttributeIDRef;
@@ -40,33 +40,28 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   void write_mesh(HierarchyContext &context, Mesh *mesh, const SubsurfModifierData *subsurfData);
   pxr::TfToken get_subdiv_scheme(const SubsurfModifierData *subsurfData);
   void write_subdiv(const pxr::TfToken &subdiv_scheme,
-                    pxr::UsdGeomMesh &usd_mesh,
+                    const pxr::UsdGeomMesh &usd_mesh,
                     const SubsurfModifierData *subsurfData);
   void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);
   void assign_materials(const HierarchyContext &context,
-                        pxr::UsdGeomMesh usd_mesh,
+                        const pxr::UsdGeomMesh &usd_mesh,
                         const MaterialFaceGroups &usd_face_groups);
-  void write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
-  void write_surface_velocity(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
+  void write_normals(const Mesh *mesh, pxr::UsdGeomMesh &usd_mesh);
+  void write_surface_velocity(const Mesh *mesh, const pxr::UsdGeomMesh &usd_mesh);
 
-  void write_custom_data(const Object *obj, const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
+  void write_custom_data(const Object *obj, const Mesh *mesh, const pxr::UsdGeomMesh &usd_mesh);
   void write_generic_data(const Mesh *mesh,
-                          pxr::UsdGeomMesh usd_mesh,
+                          const pxr::UsdGeomMesh &usd_mesh,
                           const bke::AttributeIDRef &attribute_id,
                           const bke::AttributeMetaData &meta_data);
   void write_uv_data(const Mesh *mesh,
-                     pxr::UsdGeomMesh usd_mesh,
+                     const pxr::UsdGeomMesh &usd_mesh,
                      const bke::AttributeIDRef &attribute_id,
                      const char *active_set_name);
   void write_color_data(const Mesh *mesh,
-                        pxr::UsdGeomMesh usd_mesh,
+                        const pxr::UsdGeomMesh &usd_mesh,
                         const bke::AttributeIDRef &attribute_id,
                         const bke::AttributeMetaData &meta_data);
-
-  template<typename BlenderT, typename USDT>
-  void copy_blender_buffer_to_prim(const Span<BlenderT> buffer,
-                                   const pxr::UsdTimeCode timecode,
-                                   pxr::UsdGeomPrimvar attribute_pv);
 };
 
 class USDMeshWriter : public USDGenericMeshWriter {

@@ -23,7 +23,7 @@
 
 #include "BKE_blender_user_menu.hh"
 #include "BKE_context.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
@@ -36,7 +36,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities

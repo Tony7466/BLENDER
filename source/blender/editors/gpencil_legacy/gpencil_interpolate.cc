@@ -27,7 +27,6 @@
 
 #include "DNA_color_types.h"
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -48,14 +47,14 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* Temporary interpolate operation data */
 struct tGPDinterpolate_layer {

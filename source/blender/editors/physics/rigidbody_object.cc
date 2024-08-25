@@ -10,17 +10,13 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_blenlib.h"
-
 #include "BLT_translation.hh"
 
 #include "BKE_context.hh"
-#include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_rigidbody.h"
 
@@ -31,7 +27,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -40,16 +36,16 @@
 #include "ED_physics.hh"
 #include "ED_screen.hh"
 
-#include "physics_intern.h"
+#include "physics_intern.hh"
 
 /* ********************************************** */
 /* Helper API's for RigidBody Objects Editing */
 
 static bool operator_rigidbody_editable_poll(Scene *scene)
 {
-  if (scene == nullptr || ID_IS_LINKED(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
+  if (scene == nullptr || !ID_IS_EDITABLE(scene) || ID_IS_OVERRIDE_LIBRARY(scene) ||
       (scene->rigidbody_world != nullptr && scene->rigidbody_world->group != nullptr &&
-       (ID_IS_LINKED(scene->rigidbody_world->group) ||
+       (!ID_IS_EDITABLE(scene->rigidbody_world->group) ||
         ID_IS_OVERRIDE_LIBRARY(scene->rigidbody_world->group))))
   {
     return false;
@@ -65,7 +61,7 @@ static bool ED_operator_rigidbody_active_poll(bContext *C)
   }
 
   if (ED_operator_object_active_editable(C)) {
-    Object *ob = ED_object_active_context(C);
+    Object *ob = blender::ed::object::context_active_object(C);
     return (ob && ob->rigidbody_object);
   }
 
@@ -80,7 +76,7 @@ static bool ED_operator_rigidbody_add_poll(bContext *C)
   }
 
   if (ED_operator_object_active_editable(C)) {
-    Object *ob = ED_object_active_context(C);
+    Object *ob = blender::ed::object::context_active_object(C);
     return (ob && ob->type == OB_MESH);
   }
 
@@ -111,7 +107,7 @@ static int rigidbody_object_add_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   int type = RNA_enum_get(op->ptr, "type");
   bool changed;
 
@@ -158,7 +154,7 @@ static int rigidbody_object_remove_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   bool changed = false;
 
   /* apply to active object */

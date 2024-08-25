@@ -34,7 +34,7 @@
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 
-#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.hh"
 #include "interface_intern.hh"
 
 /* be sure to keep 'bThemeState' in sync */
@@ -505,6 +505,12 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_KEYTYPE_MOVEHOLD_SELECT:
           cp = ts->keytype_movehold_select;
           break;
+        case TH_KEYTYPE_GENERATED:
+          cp = ts->keytype_generated;
+          break;
+        case TH_KEYTYPE_GENERATED_SELECT:
+          cp = ts->keytype_generated_select;
+          break;
         case TH_KEYBORDER:
           cp = ts->keyborder;
           break;
@@ -513,6 +519,12 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           break;
         case TH_CFRAME:
           cp = ts->cframe;
+          break;
+        case TH_FRAME_BEFORE:
+          cp = ts->before_current_frame;
+          break;
+        case TH_FRAME_AFTER:
+          cp = ts->after_current_frame;
           break;
         case TH_TIME_KEYFRAME:
           cp = ts->time_keyframe;
@@ -1001,6 +1013,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_ICON_FOLDER:
           cp = btheme->tui.icon_folder;
           break;
+        case TH_ICON_AUTOKEY:
+          cp = btheme->tui.icon_autokey;
+          break;
         case TH_ICON_FUND: {
           /* Development fund icon color is not part of theme. */
           static const uchar red[4] = {204, 48, 72, 255};
@@ -1066,18 +1081,22 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
 
 void UI_theme_init_default()
 {
-  /* we search for the theme with name Default */
+  /* We search for the theme with the default name. */
   bTheme *btheme = static_cast<bTheme *>(
-      BLI_findstring(&U.themes, "Default", offsetof(bTheme, name)));
+      BLI_findstring(&U.themes, U_theme_default.name, offsetof(bTheme, name)));
   if (btheme == nullptr) {
     btheme = MEM_cnew<bTheme>(__func__);
-    BLI_addtail(&U.themes, btheme);
+    STRNCPY(btheme->name, U_theme_default.name);
+    BLI_addhead(&U.themes, btheme);
   }
+
+  /* Must be first, see `U.themes` doc-string. */
+  BLI_listbase_rotate_first(&U.themes, btheme);
 
   UI_SetTheme(0, 0); /* make sure the global used in this file is set */
 
   const int active_theme_area = btheme->active_theme_area;
-  memcpy(btheme, &U_theme_default, sizeof(*btheme));
+  MEMCPY_STRUCT_AFTER(btheme, &U_theme_default, name);
   btheme->active_theme_area = active_theme_area;
 }
 
@@ -1119,7 +1138,7 @@ void UI_Theme_Store(bThemeState *theme_state)
 {
   *theme_state = g_theme_state;
 }
-void UI_Theme_Restore(bThemeState *theme_state)
+void UI_Theme_Restore(const bThemeState *theme_state)
 {
   g_theme_state = *theme_state;
 }
@@ -1504,7 +1523,7 @@ void UI_ThemeClearColor(int colorid)
 
 int UI_ThemeMenuShadowWidth()
 {
-  bTheme *btheme = UI_GetTheme();
+  const bTheme *btheme = UI_GetTheme();
   return int(btheme->tui.menu_shadow_width * UI_SCALE_FAC);
 }
 

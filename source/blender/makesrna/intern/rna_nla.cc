@@ -76,8 +76,8 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
 #  include <stdio.h>
 
 /* needed for some of the validation stuff... */
-#  include "BKE_anim_data.h"
-#  include "BKE_fcurve.h"
+#  include "BKE_anim_data.hh"
+#  include "BKE_fcurve.hh"
 #  include "BKE_nla.h"
 
 #  include "DNA_object_types.h"
@@ -429,7 +429,7 @@ static void rna_NlaStrip_use_auto_blend_set(PointerRNA *ptr, bool value)
   }
 }
 
-static int rna_NlaStrip_action_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_NlaStrip_action_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   NlaStrip *strip = (NlaStrip *)ptr->data;
 
@@ -581,7 +581,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 
   return strip;
 }
@@ -602,7 +602,7 @@ static void rna_NlaStrip_remove(
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 }
 
 /* Set the 'solo' setting for the given NLA-track, making sure that it is the only one
@@ -783,7 +783,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
       "Start Frame (manipulated from UI)",
       "Start frame of the NLA strip. Note: changing this value also updates the value of "
       "the strip's end frame. If only the start frame should be changed, see the \"frame_start\" "
-      "property instead");
+      "property instead.");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
   /* The `..._ui` properties should NOT be considered for library overrides, as they are meant to
@@ -798,7 +798,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
       "End Frame (manipulated from UI)",
       "End frame of the NLA strip. Note: changing this value also updates the value of "
       "the strip's repeats or its action's end frame. If only the end frame should be "
-      "changed, see the \"frame_end\" property instead");
+      "changed, see the \"frame_end\" property instead.");
   RNA_def_property_update(
       prop, NC_ANIMATION | ND_NLA | NA_EDITED, "rna_NlaStrip_transform_update");
   /* The `..._ui` properties should NOT be considered for library overrides, as they are meant to

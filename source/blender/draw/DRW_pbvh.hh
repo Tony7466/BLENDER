@@ -8,7 +8,7 @@
 
 #pragma once
 
-/* Needed for BKE_ccg.h. */
+/* Needed for BKE_ccg.hh. */
 #include "BLI_assert.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
@@ -19,10 +19,12 @@
 
 #include "DNA_customdata_types.h"
 
-#include "BKE_ccg.h"
+#include "BKE_ccg.hh"
+#include "BKE_pbvh.hh"
 
-struct GPUBatch;
-struct PBVHNode;
+namespace blender::gpu {
+class Batch;
+}
 struct Mesh;
 struct CustomData;
 struct SubdivCCG;
@@ -30,7 +32,10 @@ struct BMesh;
 struct BMFace;
 namespace blender::bke {
 enum class AttrDomain : int8_t;
+namespace pbvh {
+class Node;
 }
+}  // namespace blender::bke
 
 namespace blender::draw::pbvh {
 
@@ -58,11 +63,11 @@ using AttributeRequest = std::variant<CustomRequest, GenericRequest>;
 struct PBVHBatches;
 
 struct PBVH_GPU_Args {
-  int pbvh_type;
+  bke::pbvh::Type pbvh_type;
 
   BMesh *bm;
   const Mesh *mesh;
-  MutableSpan<float3> vert_positions;
+  Span<float3> vert_positions;
   Span<int> corner_verts;
   Span<int> corner_edges;
   const CustomData *vert_data;
@@ -100,13 +105,13 @@ void update_pre(PBVHBatches *batches, const PBVH_GPU_Args &args);
 void node_gpu_flush(PBVHBatches *batches);
 PBVHBatches *node_create(const PBVH_GPU_Args &args);
 void node_free(PBVHBatches *batches);
-GPUBatch *tris_get(PBVHBatches *batches,
-                   Span<AttributeRequest> attrs,
-                   const PBVH_GPU_Args &args,
-                   bool do_coarse_grids);
-GPUBatch *lines_get(PBVHBatches *batches,
-                    Span<AttributeRequest> attrs,
-                    const PBVH_GPU_Args &args,
-                    bool do_coarse_grids);
+gpu::Batch *tris_get(PBVHBatches *batches,
+                     Span<AttributeRequest> attrs,
+                     const PBVH_GPU_Args &args,
+                     bool do_coarse_grids);
+gpu::Batch *lines_get(PBVHBatches *batches,
+                      Span<AttributeRequest> attrs,
+                      const PBVH_GPU_Args &args,
+                      bool do_coarse_grids);
 
 }  // namespace blender::draw::pbvh

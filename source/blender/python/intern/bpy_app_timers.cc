@@ -6,18 +6,13 @@
  * \ingroup pythonintern
  */
 
-#include "BLI_time.h"
 #include "BLI_timer.h"
-#include "BLI_utildefines.h"
 
 #include <Python.h>
 
-#include "BPY_extern.h"
 #include "bpy_app_timers.h"
 
-#include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
 
 static double handle_returned_value(PyObject *function, PyObject *ret)
 {
@@ -133,7 +128,7 @@ PyDoc_STRVAR(
     "   Unregister timer.\n"
     "\n"
     "   :arg function: Function to unregister.\n"
-    "   :type function: function\n");
+    "   :type function: Callable[[], Union[float, None]]\n");
 static PyObject *bpy_app_timers_unregister(PyObject * /*self*/, PyObject *function)
 {
   if (!BLI_timer_unregister(intptr_t(function))) {
@@ -151,7 +146,7 @@ PyDoc_STRVAR(
     "   Check if this function is registered as a timer.\n"
     "\n"
     "   :arg function: Function to check.\n"
-    "   :type function: int\n"
+    "   :type function: Callable[[], Union[float, None]]\n"
     "   :return: True when this function is registered, otherwise False.\n"
     "   :rtype: bool\n");
 static PyObject *bpy_app_timers_is_registered(PyObject * /*self*/, PyObject *function)

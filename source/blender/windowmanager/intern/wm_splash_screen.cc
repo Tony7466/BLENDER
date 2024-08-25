@@ -17,13 +17,13 @@
 #include <algorithm>
 #include <cstring>
 
-#include "CLG_log.h"
-
 #include "DNA_ID.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
+
+#include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
@@ -31,11 +31,8 @@
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
-#include "BKE_screen.hh"
 
 #include "BLT_translation.hh"
-
-#include "BLF_api.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -71,7 +68,7 @@ static void wm_block_splash_add_label(uiBlock *block, const char *label, int x, 
   UI_block_emboss_set(block, UI_EMBOSS_NONE);
 
   uiBut *but = uiDefBut(
-      block, UI_BTYPE_LABEL, 0, label, 0, y, x, UI_UNIT_Y, nullptr, 0, 0, 0, 0, nullptr);
+      block, UI_BTYPE_LABEL, 0, label, 0, y, x, UI_UNIT_Y, nullptr, 0, 0, nullptr);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_drawflag_enable(but, UI_BUT_TEXT_RIGHT);
 
@@ -158,9 +155,10 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   }
 
   if (ibuf) {
+    ibuf->planes = 32; /* The image might not have an alpha channel. */
     height = (width * ibuf->y) / ibuf->x;
     if (width != ibuf->x || height != ibuf->y) {
-      IMB_scaleImBuf(ibuf, width, height);
+      IMB_scale(ibuf, width, height, IMBScaleFilter::Box, false);
     }
 
     wm_block_splash_image_roundcorners_add(ibuf);
@@ -204,14 +202,13 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
 
   uiBlock *block = UI_block_begin(C, region, "splash", UI_EMBOSS);
 
-  /* note on UI_BLOCK_NO_WIN_CLIP, the window size is not always synchronized
+  /* Note on #UI_BLOCK_NO_WIN_CLIP, the window size is not always synchronized
    * with the OS when the splash shows, window clipping in this case gives
    * ugly results and clipping the splash isn't useful anyway, just disable it #32938. */
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN | UI_BLOCK_NO_WIN_CLIP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
-  int splash_width = text_points_max * 45 * UI_SCALE_FAC;
+  int splash_width = style->widget.points * 45 * UI_SCALE_FAC;
   CLAMP_MAX(splash_width, CTX_wm_window(C)->sizex * 0.7f);
   int splash_height;
 
@@ -249,9 +246,12 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
   if (cfgdir.has_value()) {
     BLI_path_join(userpref, sizeof(userpref), cfgdir->c_str(), BLENDER_USERPREF_FILE);
   }
+  else {
+    userpref[0] = '\0';
+  }
 
   /* Draw setup screen if no preferences have been saved yet. */
-  if (!BLI_exists(userpref)) {
+  if (!(userpref[0] && BLI_exists(userpref))) {
     mt = WM_menutype_find("WM_MT_splash_quick_setup", true);
 
     /* The #UI_BLOCK_QUICK_SETUP flag prevents the button text from being left-aligned,
@@ -298,9 +298,9 @@ void WM_OT_splash(wmOperatorType *ot)
 
 static uiBlock *wm_block_about_create(bContext *C, ARegion *region, void * /*arg*/)
 {
+  constexpr bool show_color = false;
   const uiStyle *style = UI_style_get_dpi();
-  const int text_points_max = std::max(style->widget.points, style->widgetlabel.points);
-  const int dialog_width = text_points_max * 42 * UI_SCALE_FAC;
+  const int dialog_width = style->widget.points * 42 * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, "about", UI_EMBOSS);
 
@@ -313,18 +313,11 @@ static uiBlock *wm_block_about_create(bContext *C, ARegion *region, void * /*arg
 /* Blender logo. */
 #ifndef WITH_HEADLESS
 
-  const uchar *blender_logo_data = (const uchar *)datatoc_blender_logo_png;
-  size_t blender_logo_data_size = datatoc_blender_logo_png_size;
-  ImBuf *ibuf = IMB_ibImageFromMemory(
-      blender_logo_data, blender_logo_data_size, IB_rect, nullptr, "blender_logo");
+  float size = 0.2f * dialog_width;
+
+  ImBuf *ibuf = UI_svg_icon_bitmap(ICON_BLENDER_LOGO_LARGE, size, show_color);
 
   if (ibuf) {
-    int width = 0.5 * dialog_width;
-    int height = (width * ibuf->y) / ibuf->x;
-
-    IMB_premultiply_alpha(ibuf);
-    IMB_scaleImBuf(ibuf, width, height);
-
     bTheme *btheme = UI_GetTheme();
     const uchar *color = btheme->tui.wcol_menu_back.text_sel;
 
@@ -335,7 +328,7 @@ static uiBlock *wm_block_about_create(bContext *C, ARegion *region, void * /*arg
     /* The logo image. */
     row = uiLayoutRow(layout, false);
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_LEFT);
-    uiDefButImage(block, ibuf, 0, U.widget_unit, width, height, color);
+    uiDefButImage(block, ibuf, 0, U.widget_unit, ibuf->x, ibuf->y, show_color ? nullptr : color);
 
     /* Padding below the logo. */
     row = uiLayoutRow(layout, false);

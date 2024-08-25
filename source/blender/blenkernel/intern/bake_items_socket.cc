@@ -6,6 +6,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_node.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_volume_grid.hh"
 
 namespace blender::bke::bake {
 
@@ -47,6 +48,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       case SOCK_INT:
       case SOCK_BOOLEAN:
       case SOCK_ROTATION:
+      case SOCK_MATRIX:
       case SOCK_RGBA: {
         auto &value_variant = *static_cast<SocketValueVariant *>(socket_value);
         if (value_variant.is_context_dependent_field()) {
@@ -71,6 +73,11 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
               CurveComponent &component = geometry.get_component_for_write<CurveComponent>();
               try_capture_field_on_geometry(component, attribute_name, domain, field);
             }
+            if (geometry.has_grease_pencil()) {
+              GreasePencilComponent &component =
+                  geometry.get_component_for_write<GreasePencilComponent>();
+              try_capture_field_on_geometry(component, attribute_name, domain, field);
+            }
             if (geometry.has_instances()) {
               InstancesComponent &component =
                   geometry.get_component_for_write<InstancesComponent>();
@@ -79,6 +86,14 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
           }
           bake_items[i] = std::make_unique<AttributeBakeItem>(attribute_name);
         }
+#ifdef WITH_OPENVDB
+        else if (value_variant.is_volume_grid()) {
+          bke::GVolumeGrid grid = value_variant.get<bke::GVolumeGrid>();
+          grid.get_for_write().set_name(config.names[i]);
+          bake_items[i] = std::make_unique<VolumeGridBakeItem>(
+              std::make_unique<bke::GVolumeGrid>(std::move(grid)));
+        }
+#endif
         else {
           value_variant.convert_to_single();
           GPointer value = value_variant.get_single_ptr();
@@ -131,6 +146,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     case SOCK_INT:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_RGBA: {
       const CPPType &base_type = *socket_type_to_geo_nodes_base_cpp_type(socket_type);
       if (const auto *item = dynamic_cast<const PrimitiveBakeItem *>(&bake_item)) {
@@ -150,6 +166,22 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         r_attribute_map.add(item->name(), attribute_id);
         return true;
       }
+#ifdef WITH_OPENVDB
+      if (const auto *item = dynamic_cast<const VolumeGridBakeItem *>(&bake_item)) {
+        const GVolumeGrid &grid = *item->grid;
+        const VolumeGridType grid_type = grid->grid_type();
+        const std::optional<eNodeSocketDatatype> grid_socket_type = grid_type_to_socket_type(
+            grid_type);
+        if (!grid_socket_type) {
+          return false;
+        }
+        if (grid_socket_type == socket_type) {
+          new (r_value) SocketValueVariant(*item->grid);
+          return true;
+        }
+        return false;
+      }
+#endif
       return false;
     }
     case SOCK_STRING: {
@@ -171,6 +203,7 @@ static void rename_attributes(const Span<GeometrySet *> geometries,
   for (GeometrySet *geometry : geometries) {
     for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
                                                GeometryComponent::Type::Curve,
+                                               GeometryComponent::Type::GreasePencil,
                                                GeometryComponent::Type::PointCloud,
                                                GeometryComponent::Type::Instance})
     {
@@ -207,8 +240,8 @@ static void restore_data_blocks(const Span<GeometrySet *> geometries,
 
 static void default_initialize_socket_value(const eNodeSocketDatatype socket_type, void *r_value)
 {
-  const char *socket_idname = nodeStaticSocketType(socket_type, 0);
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
+  const char *socket_idname = bke::node_static_socket_type(socket_type, 0);
+  const bke::bNodeSocketType *typeinfo = bke::node_socket_type_find(socket_idname);
   if (typeinfo->geometry_nodes_default_cpp_value) {
     typeinfo->geometry_nodes_cpp_type->copy_construct(typeinfo->geometry_nodes_default_cpp_value,
                                                       r_value);

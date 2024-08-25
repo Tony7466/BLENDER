@@ -32,6 +32,8 @@ if(WIN32)
     ac_cv_prog_YACC=:
     ac_cv_prog_ac_ct_STRIP=:
     ac_cv_prog_RANLIB=:
+    lt_cv_to_host_file_cmd=func_convert_file_noop
+    lt_cv_to_tool_file_cmd=func_convert_file_noop
   )
 
   if(BLENDER_PLATFORM_ARM)
@@ -158,5 +160,7 @@ if(WIN32)
 
     DEPENDEES install
   )
-
+else()
+  harvest(external_gmp gmp/include gmp/include "*.h")
+  harvest(external_gmp gmp/lib gmp/lib "*.a")
 endif()

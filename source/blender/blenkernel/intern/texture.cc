@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -29,31 +30,21 @@
 #include "DNA_brush_types.h"
 #include "DNA_color_types.h"
 #include "DNA_defaults.h"
-#include "DNA_key_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 
-#include "IMB_imbuf.hh"
-
-#include "BKE_main.hh"
-
-#include "BKE_anim_data.h"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
 #include "BKE_icons.h"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_material.h"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_preview_image.hh"
-#include "BKE_scene.hh"
 #include "BKE_texture.h"
 
 #include "NOD_texture.h"
@@ -75,7 +66,11 @@ static void texture_init_data(ID *id)
   BKE_imageuser_default(&texture->iuser);
 }
 
-static void texture_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void texture_copy_data(Main *bmain,
+                              std::optional<Library *> owner_library,
+                              ID *id_dst,
+                              const ID *id_src,
+                              const int flag)
 {
   Tex *texture_dst = (Tex *)id_dst;
   const Tex *texture_src = (const Tex *)id_src;
@@ -97,13 +92,17 @@ static void texture_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const i
     }
 
     if (is_localized) {
-      texture_dst->nodetree = ntreeLocalize(texture_src->nodetree);
+      texture_dst->nodetree = blender::bke::node_tree_localize(texture_src->nodetree,
+                                                               &texture_dst->id);
     }
     else {
-      BKE_id_copy_ex(
-          bmain, (ID *)texture_src->nodetree, (ID **)&texture_dst->nodetree, flag_private_id_data);
+      BKE_id_copy_in_lib(bmain,
+                         owner_library,
+                         &texture_src->nodetree->id,
+                         &texture_dst->id,
+                         reinterpret_cast<ID **>(&texture_dst->nodetree),
+                         flag_private_id_data);
     }
-    texture_dst->nodetree->owner_id = &texture_dst->id;
   }
 
   BLI_listbase_clear((ListBase *)&texture_dst->drawdata);
@@ -124,7 +123,7 @@ static void texture_free_data(ID *id)
 
   /* is no lib link block, but texture extension */
   if (texture->nodetree) {
-    ntreeFreeEmbeddedTree(texture->nodetree);
+    blender::bke::node_tree_free_embedded_tree(texture->nodetree);
     MEM_freeN(texture->nodetree);
     texture->nodetree = nullptr;
   }
@@ -174,7 +173,7 @@ static void texture_blend_write(BlendWriter *writer, ID *id, const void *id_addr
                                 bNodeTree,
                                 tex->nodetree,
                                 BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
-    ntreeBlendWrite(
+    blender::bke::node_tree_blend_write(
         writer,
         reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
     BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
@@ -187,9 +186,9 @@ static void texture_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Tex *tex = (Tex *)id;
 
-  BLO_read_data_address(reader, &tex->coba);
+  BLO_read_struct(reader, ColorBand, &tex->coba);
 
-  BLO_read_data_address(reader, &tex->preview);
+  BLO_read_struct(reader, PreviewImage, &tex->preview);
   BKE_previewimg_blend_read(reader, tex->preview);
 
   tex->iuser.scene = nullptr;
@@ -198,6 +197,7 @@ static void texture_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_TE = {
     /*id_code*/ ID_TE,
     /*id_filter*/ FILTER_ID_TE,
+    /*dependencies_id_types*/ FILTER_ID_IM | FILTER_ID_OB,
     /*main_listbase_index*/ INDEX_ID_TE,
     /*struct_size*/ sizeof(Tex),
     /*name*/ "Texture",

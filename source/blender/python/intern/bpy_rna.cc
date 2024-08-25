@@ -44,7 +44,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh" /* RNA_def_property_free_identifier */
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "CLG_log.h"
 
@@ -52,13 +52,13 @@
 
 #include "BKE_context.hh"
 #include "BKE_global.hh" /* evil G.* */
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_idtype.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 
 /* Only for types. */
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -102,17 +102,30 @@ static PyObject *pyrna_unregister_class(PyObject *self, PyObject *py_class);
   "      Only the :class:`bpy.types.ID`, :class:`bpy.types.Bone` and\n" \
   "      :class:`bpy.types.PoseBone` classes support custom properties.\n"
 
-int pyrna_struct_validity_check(BPy_StructRNA *pysrna)
+int pyrna_struct_validity_check_only(const BPy_StructRNA *pysrna)
 {
   if (pysrna->ptr.type) {
     return 0;
   }
-  PyErr_Format(
-      PyExc_ReferenceError, "StructRNA of type %.200s has been removed", Py_TYPE(pysrna)->tp_name);
   return -1;
 }
 
-int pyrna_prop_validity_check(BPy_PropertyRNA *self)
+void pyrna_struct_validity_exception_only(const BPy_StructRNA *pysrna)
+{
+  PyErr_Format(
+      PyExc_ReferenceError, "StructRNA of type %.200s has been removed", Py_TYPE(pysrna)->tp_name);
+}
+
+int pyrna_struct_validity_check(const BPy_StructRNA *pysrna)
+{
+  if (pysrna->ptr.type) {
+    return 0;
+  }
+  pyrna_struct_validity_exception_only(pysrna);
+  return -1;
+}
+
+int pyrna_prop_validity_check(const BPy_PropertyRNA *self)
 {
   if (self->ptr.type) {
     return 0;
@@ -919,7 +932,7 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
 
   tmp_str = PyUnicode_FromString(id->name + 2);
 
-  if (RNA_struct_is_ID(self->ptr.type) && (id->flag & LIB_EMBEDDED_DATA) == 0) {
+  if (RNA_struct_is_ID(self->ptr.type) && (id->flag & ID_FLAG_EMBEDDED_DATA) == 0) {
     ret = PyUnicode_FromFormat(
         "bpy.data.%s[%R]", BKE_idtype_idcode_to_name_plural(GS(id->name)), tmp_str);
   }
@@ -1159,6 +1172,14 @@ static void pyrna_struct_dealloc(BPy_StructRNA *self)
   if (self->reference) {
     PyObject_GC_UnTrack(self);
     pyrna_struct_clear(self);
+  }
+  else {
+    PyTypeObject *base = Py_TYPE(self)->tp_base;
+    /* Python temporarily tracks these types when freeing, see Python bug 26617. */
+    if (base && PyType_IS_GC(base)) {
+      PyObject_GC_UnTrack(self);
+    }
+    BLI_assert(!PyObject_GC_IsTracked((PyObject *)self));
   }
 #endif /* !USE_PYRNA_STRUCT_REFERENCE */
 
@@ -1475,10 +1496,8 @@ int pyrna_pydict_to_props(PointerRNA *ptr,
     }
 
     if (kw == nullptr) {
-      PyErr_Format(PyExc_TypeError,
-                   "%.200s: no keywords, expected \"%.200s\"",
-                   error_prefix,
-                   arg_name ? arg_name : "<UNKNOWN>");
+      PyErr_Format(
+          PyExc_TypeError, "%.200s: no keywords, expected \"%.200s\"", error_prefix, arg_name);
       error_val = -1;
       break;
     }
@@ -1898,7 +1917,7 @@ static int pyrna_py_to_prop(
               return -1;
             }
 
-            if (value_owner_id->tag & LIB_TAG_TEMP_MAIN) {
+            if (value_owner_id->tag & ID_TAG_TEMP_MAIN) {
               /* Allow passing temporary ID's to functions, but not attribute assignment. */
               if (ptr->type != &RNA_Function) {
                 PyErr_Format(PyExc_TypeError,
@@ -1998,10 +2017,9 @@ static int pyrna_py_to_prop(
         Py_ssize_t seq_len, i;
         PyObject *item;
         PointerRNA itemptr;
-        ListBase *lb;
-        CollectionPointerLink *link;
+        CollectionVector *lb;
 
-        lb = (data) ? (ListBase *)data : nullptr;
+        lb = (data) ? (CollectionVector *)data : nullptr;
 
         /* Convert a sequence of dict's into a collection. */
         if (!PySequence_Check(value)) {
@@ -2044,10 +2062,7 @@ static int pyrna_py_to_prop(
           }
 
           if (lb) {
-            link = static_cast<CollectionPointerLink *>(
-                MEM_callocN(sizeof(CollectionPointerLink), "PyCollectionPointerLink"));
-            link->ptr = itemptr;
-            BLI_addtail(lb, link);
+            lb->items.append(itemptr);
           }
           else {
             RNA_property_collection_add(ptr, prop, &itemptr);
@@ -2333,7 +2348,7 @@ static int pyrna_prop_collection_ass_subscript_int(BPy_PropertyRNA *self,
 
   PYRNA_PROP_COLLECTION_ABS_INDEX(-1);
 
-  if (RNA_property_collection_assign_int(&self->ptr, self->prop, keynum_abs, ptr) == 0) {
+  if (!RNA_property_collection_assign_int(&self->ptr, self->prop, keynum_abs, ptr)) {
     const int len = RNA_property_collection_length(&self->ptr, self->prop);
     if (keynum_abs >= len) {
       PyErr_Format(PyExc_IndexError,
@@ -2882,7 +2897,7 @@ static int pyrna_prop_collection_ass_subscript(BPy_PropertyRNA *self,
 
   PyErr_Format(PyExc_TypeError,
                "bpy_prop_collection[key]: invalid key, "
-               "must be a string or an int, not %.200s",
+               "must be an int, not %.200s",
                Py_TYPE(key)->tp_name);
   return -1;
 }
@@ -4123,9 +4138,9 @@ static PyObject *pyrna_struct_bl_rna_get_subclass(PyObject *cls, PyObject *args)
 
   if (srna_base == &RNA_Node) {
     /* If the given idname is an alias, translate it to the proper idname. */
-    id = nodeTypeFindAlias(id);
+    id = blender::bke::node_type_find_alias(id);
 
-    bNodeType *nt = nodeTypeFind(id);
+    blender::bke::bNodeType *nt = blender::bke::node_type_find(id);
     if (nt) {
       PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_Struct, nt->rna_ext.srna);
       return pyrna_struct_CreatePyObject(&ptr);
@@ -4382,7 +4397,8 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
   PropertyRNA *prop;
   FunctionRNA *func;
 
-  PYRNA_STRUCT_CHECK_OBJ(self);
+  /* Allow `__class__` so `isinstance(ob, cls)` can be used without raising an exception. */
+  PYRNA_STRUCT_CHECK_OBJ_UNLESS(self, name && STREQ(name, "__class__"));
 
   if (name == nullptr) {
     PyErr_SetString(PyExc_AttributeError, "bpy_struct: __getattr__ must be a string");
@@ -4419,9 +4435,10 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
     }
     else {
       PointerRNA newptr;
-      ListBase newlb;
+      blender::Vector<PointerRNA> newlb;
       PropertyRNA *newprop;
       int newindex;
+      blender::StringRef newstr;
       short newtype;
 
       /* An empty string is used to implement #CTX_data_dir_get,
@@ -4429,12 +4446,11 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
       eContextResult done;
       if (name[0]) {
         done = eContextResult(
-            CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype));
+            CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newstr, &newtype));
       }
       else {
         /* Fall through to built-in `getattr`. */
         done = CTX_RESULT_MEMBER_NOT_FOUND;
-        BLI_listbase_clear(&newlb);
       }
 
       if (done == CTX_RESULT_OK) {
@@ -4448,11 +4464,20 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
               ret = pyrna_struct_CreatePyObject(&newptr);
             }
             break;
+          case CTX_DATA_TYPE_STRING: {
+            if (newstr.is_empty()) {
+              ret = Py_None;
+              Py_INCREF(ret);
+            }
+            else {
+              ret = PyUnicode_FromStringAndSize(newstr.data(), newstr.size());
+            }
+            break;
+          }
           case CTX_DATA_TYPE_COLLECTION: {
             ret = PyList_New(0);
-
-            LISTBASE_FOREACH (CollectionPointerLink *, link, &newlb) {
-              PyList_APPEND(ret, pyrna_struct_CreatePyObject(&link->ptr));
+            for (PointerRNA &ptr : newlb) {
+              PyList_APPEND(ret, pyrna_struct_CreatePyObject(&ptr));
             }
             break;
           }
@@ -4512,8 +4537,6 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
         /* Lookup the subclass. raise an error if it's not found. */
         ret = PyObject_GenericGetAttr((PyObject *)self, pyname);
       }
-
-      BLI_freelistN(&newlb);
     }
   }
   else {
@@ -4687,22 +4710,20 @@ static int pyrna_struct_setattro(BPy_StructRNA *self, PyObject *pyname, PyObject
     }
 
     PointerRNA newptr;
-    ListBase newlb;
+    blender::Vector<PointerRNA> newlb;
     PropertyRNA *newprop;
     int newindex;
+    blender::StringRef newstr;
     short newtype;
 
     const eContextResult done = eContextResult(
-        CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newtype));
+        CTX_data_get(C, name, &newptr, &newlb, &newprop, &newindex, &newstr, &newtype));
 
     if (done == CTX_RESULT_OK) {
       PyErr_Format(
           PyExc_AttributeError, "bpy_struct: Context property \"%.200s\" is read-only", name);
-      BLI_freelistN(&newlb);
       return -1;
     }
-
-    BLI_freelistN(&newlb);
   }
 
   /* pyrna_py_to_prop sets its own exceptions */
@@ -5721,6 +5742,9 @@ static PyObject *foreach_getset(BPy_PropertyRNA *self, PyObject *args, int set)
     return nullptr;
   }
 
+  if (set) {
+    RNA_property_update(BPY_context_get(), &self->ptr, self->prop);
+  }
   Py_RETURN_NONE;
 }
 
@@ -6378,15 +6402,11 @@ static PyObject *pyrna_param_to_py(PointerRNA *ptr, PropertyRNA *prop, void *dat
         break;
       }
       case PROP_COLLECTION: {
-        CollectionListBase *lb = (CollectionListBase *)data;
-        CollectionPointerLink *link;
-
+        CollectionVector *lb = (CollectionVector *)data;
         ret = PyList_New(0);
-
-        for (link = lb->first; link; link = link->next) {
-          PyList_APPEND(ret, pyrna_struct_CreatePyObject(&link->ptr));
+        for (PointerRNA &ptr_iter : lb->items) {
+          PyList_APPEND(ret, pyrna_struct_CreatePyObject(&ptr_iter));
         }
-
         break;
       }
       default:
@@ -6852,7 +6872,7 @@ PyTypeObject pyrna_struct_Type = {
     /*tp_basicsize*/ sizeof(BPy_StructRNA),
     /*tp_itemsize*/ 0,
     /*tp_dealloc*/ (destructor)pyrna_struct_dealloc,
-    /*tp_vectorcall_offset */ 0,
+    /*tp_vectorcall_offset*/ 0,
     /*tp_getattr*/ nullptr,
     /*tp_setattr*/ nullptr,
     /*tp_as_async*/ nullptr,
@@ -7638,6 +7658,12 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
       pyrna = (BPy_StructRNA *)PyObject_GC_New(BPy_StructRNA, &pyrna_struct_Type);
 #else
       pyrna = (BPy_StructRNA *)PyObject_New(BPy_StructRNA, &pyrna_struct_Type);
+#endif
+
+#ifdef USE_PYRNA_STRUCT_REFERENCE
+      /* #PyType_GenericAlloc will have set tracking.
+       * We only want tracking when `StructRNA.reference` has been set. */
+      PyObject_GC_UnTrack(pyrna);
 #endif
 
 #ifdef USE_WEAKREFS
@@ -8646,7 +8672,7 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
   bpy_context_set(C, &gilstate);
 
   if (!(is_staticmethod || is_classmethod)) {
-    /* Some datatypes (operator, render engine) can store PyObjects for re-use. */
+    /* Some data-types (operator, render engine) can store PyObjects for re-use. */
     if (ptr->data) {
       void **instance = RNA_struct_instance(ptr);
 
