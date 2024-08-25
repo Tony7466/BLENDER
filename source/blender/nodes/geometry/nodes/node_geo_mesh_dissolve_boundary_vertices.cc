@@ -43,7 +43,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    geometry_set.replace_mesh(geometry::dissolve_boundary_verts(*src_mesh, mask, propagation_info));
+    geometry_set.replace_mesh(
+        geometry::dissolve_boundary_verts(*src_mesh, mask, propagation_info));
   });
 
   params.set_output("Mesh", std::move(geometry_set));
@@ -53,7 +54,10 @@ static void node_register()
 {
   static blender::bke::bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_DISSOLVE_BOUNDARY_VERTICES, "Dissolve Boundary Vertices", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(&ntype,
+                     GEO_NODE_DISSOLVE_BOUNDARY_VERTICES,
+                     "Dissolve Boundary Vertices",
+                     NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   blender::bke::node_register_type(&ntype);

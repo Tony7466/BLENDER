@@ -12,19 +12,16 @@ struct Mesh;
 
 namespace blender::geometry {
 
-Mesh *dissolve_boundary_verts(
-    const Mesh &src_mesh,
-    const IndexMask &vers_mask,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+Mesh *dissolve_boundary_verts(const Mesh &src_mesh,
+                              const IndexMask &vers_mask,
+                              const bke::AnonymousAttributePropagationInfo &propagation_info);
 
-Mesh *dissolve_edges(
-    const Mesh &src_mesh,
-    const IndexMask &edges_mask,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+Mesh *dissolve_edges(const Mesh &src_mesh,
+                     const IndexMask &edges_mask,
+                     const bke::AnonymousAttributePropagationInfo &propagation_info);
 
-Mesh *dissolve_faces(
-    const Mesh &src_mesh,
-    const IndexMask &faces_mask,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+Mesh *dissolve_faces(const Mesh &src_mesh,
+                     const IndexMask &faces_mask,
+                     const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 }  // namespace blender::geometry
