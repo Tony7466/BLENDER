@@ -278,6 +278,16 @@ class TEXT_MT_text(Menu):
             layout.separator()
             layout.operator("text.run_script")
 
+class TEXT_MT_templates_glsl(Menu):
+    bl_label = "openGL Shading Language"
+
+    def draw(self, _context):
+        self.path_menu(
+            bpy.utils.script_paths(subdir="templates_glsl"),
+            "text.open",
+            props_default={"internal": True},
+            filter_ext=lambda ext: (ext.lower() == ".glsl"),
+        )
 
 class TEXT_MT_templates_py(Menu):
     bl_label = "Python"
@@ -308,6 +318,7 @@ class TEXT_MT_templates(Menu):
 
     def draw(self, _context):
         layout = self.layout
+        layout.menu("TEXT_MT_templates_glsl")
         layout.menu("TEXT_MT_templates_py")
         layout.menu("TEXT_MT_templates_osl")
         # We only have one Blender Manifest template for now,
@@ -463,6 +474,7 @@ classes = (
     TEXT_MT_view_navigation,
     TEXT_MT_text,
     TEXT_MT_templates,
+    TEXT_MT_templates_glsl,
     TEXT_MT_templates_py,
     TEXT_MT_templates_osl,
     TEXT_MT_select,
