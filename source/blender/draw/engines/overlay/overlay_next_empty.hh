@@ -253,7 +253,7 @@ class Empties {
       CLAMP_MIN(size.y, 1);
 
       float2 image_aspect;
-      Images::overlay_image_calc_aspect(ima, size, image_aspect);
+      calc_image_aspect(ima, size, image_aspect);
 
       mat = ob->object_to_world();
       mat.x_axis() *= image_aspect.x * 0.5f * ob->empty_drawsize;
@@ -285,9 +285,9 @@ class Empties {
   }
 
   PassMain::Sub &create_subpass(const State &state,
-                             const Object &ob,
-                             const bool use_alpha_blend,
-                             const float4x4 &mat)
+                                const Object &ob,
+                                const bool use_alpha_blend,
+                                const float4x4 &mat)
   {
     const bool in_front = state.use_in_front && ob.dtx & OB_DRAW_IN_FRONT;
     if (in_front) {
@@ -314,6 +314,27 @@ class Empties {
     const float z = -math::dot(state.camera_forward, tmp);
     return parent.sub("Sub", z);
   };
+
+  static void calc_image_aspect(::Image *ima, const int2 &size, float2 &r_image_aspect)
+  {
+    /* if no image, make it a 1x1 empty square, honor scale & offset */
+    const float2 ima_dim = ima ? float2(size.x, size.y) : float2(1.0f);
+
+    /* Get the image aspect even if the buffer is invalid */
+    float2 sca(1.0f);
+    if (ima) {
+      if (ima->aspx > ima->aspy) {
+        sca.y = ima->aspy / ima->aspx;
+      }
+      else if (ima->aspx < ima->aspy) {
+        sca.x = ima->aspx / ima->aspy;
+      }
+    }
+
+    const float2 scale_inv(ima_dim.x * sca.x, ima_dim.y * sca.y);
+    r_image_aspect = (scale_inv.x > scale_inv.y) ? float2(1.0f, scale_inv.y / scale_inv.x) :
+                                                   float2(scale_inv.x / scale_inv.y, 1.0f);
+  }
 };
 
 }  // namespace blender::draw::overlay

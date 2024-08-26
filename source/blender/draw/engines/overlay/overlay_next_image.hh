@@ -15,27 +15,6 @@ namespace blender::draw::overlay {
 class Images {
 
  public:
-  static void overlay_image_calc_aspect(::Image *ima, const int2 &size, float2 &r_image_aspect)
-  {
-    /* if no image, make it a 1x1 empty square, honor scale & offset */
-    const float2 ima_dim = ima ? float2(size.x, size.y) : float2(1.0f);
-
-    /* Get the image aspect even if the buffer is invalid */
-    float2 sca(1.0f);
-    if (ima) {
-      if (ima->aspx > ima->aspy) {
-        sca.y = ima->aspy / ima->aspx;
-      }
-      else if (ima->aspx < ima->aspy) {
-        sca.x = ima->aspx / ima->aspy;
-      }
-    }
-
-    const float2 scale_inv(ima_dim.x * sca.x, ima_dim.y * sca.y);
-    r_image_aspect = (scale_inv.x > scale_inv.y) ? float2(1.0f, scale_inv.y / scale_inv.x) :
-                                                   float2(scale_inv.x / scale_inv.y, 1.0f);
-  }
-
   static eStereoViews camera_background_images_stereo_eye(const Scene *scene, const View3D *v3d)
   {
     if ((scene->r.scemode & R_MULTIVIEW) == 0) {
