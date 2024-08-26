@@ -614,12 +614,10 @@ class Cameras {
       return;
     }
 
-    if (DRW_state_is_fbo()) {
-      GPU_framebuffer_bind(framebuffer);
+    GPU_framebuffer_bind(framebuffer);
 
-      manager.submit(background_scene_ps_, view);
-      manager.submit(foreground_scene_ps_, view);
-    }
+    manager.submit(background_scene_ps_, view);
+    manager.submit(foreground_scene_ps_, view);
   }
 
   void draw_background_images(Framebuffer &framebuffer, Manager &manager, View &view)
