@@ -311,7 +311,7 @@ struct BoneEnvelopeData {
 BLI_STATIC_ASSERT_ALIGN(BoneEnvelopeData, 16)
 
 /* Keep in sync with armature_stick_vert.glsl. */
-enum StickBoneFlag : uint32_t {
+enum StickBoneFlag {
   COL_WIRE = (1u << 0u),
   COL_HEAD = (1u << 1u),
   COL_TAIL = (1u << 2u),

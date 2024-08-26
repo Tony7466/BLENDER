@@ -2,12 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(select_lib.glsl)
-
-#define is_head bool(flag & POS_HEAD)
-#define is_bone bool(flag & POS_BONE)
 
 /* project to screen space */
 vec2 proj(vec4 hs_P)
@@ -19,11 +17,15 @@ void main()
 {
   select_id_set(in_select_buf[gl_InstanceID]);
 
-  finalInnerColor = ((flag & COL_HEAD) != 0u) ? headColor : tailColor;
-  finalInnerColor = ((flag & COL_BONE) != 0u) ? boneColor : finalInnerColor;
+  StickBoneFlag bone_flag = StickBoneFlag(flag);
+  bool is_head = flag_test(bone_flag, COL_HEAD);
+  bool is_bone = flag_test(bone_flag, POS_BONE);
+
+  finalInnerColor = (is_head) ? headColor : tailColor;
+  finalInnerColor = (is_bone) ? boneColor : finalInnerColor;
   finalWireColor = (do_wire) ? wireColor : finalInnerColor;
   /* Make the color */
-  colorFac = ((flag & COL_WIRE) == 0u) ? ((flag & COL_BONE) != 0u) ? 1.0 : 2.0 : 0.0;
+  colorFac = flag_test(bone_flag, COL_WIRE) ? 0.0 : (flag_test(bone_flag, COL_BONE) ? 1.0 : 2.0);
 
   vec4 boneStart_4d = vec4(boneStart, 1.0);
   vec4 boneEnd_4d = vec4(boneEnd, 1.0);
