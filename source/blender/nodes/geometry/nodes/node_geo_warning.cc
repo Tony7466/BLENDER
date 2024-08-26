@@ -93,7 +93,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_WARNING, "Warning", NODE_CLASS_INTERFACE);
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
