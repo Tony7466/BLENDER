@@ -37,7 +37,9 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -55,6 +57,7 @@
 #include "BKE_curve.hh"
 #include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.h"
+#include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_displist.h"
 #include "BKE_duplilist.hh"
@@ -3489,6 +3492,14 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           for (const int i : drawings.index_range()) {
             Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
             curves_id->geometry.wrap() = drawings[i].drawing.strokes();
+            const int layer_index = drawings[i].layer_index;
+            const bke::greasepencil::Layer *layer = grease_pencil->layers()[layer_index];
+            blender::float4x4 to_object = layer->to_object_space(*ob);
+            bke::CurvesGeometry &new_curves = curves_id->geometry.wrap();
+            MutableSpan<blender::float3> positions = new_curves.positions_for_write();
+            for (const int point_i : new_curves.points_range()) {
+              positions[point_i] = blender::math::transform_point(to_object, positions[point_i]);
+            }
             geometries[i] = bke::GeometrySet::from_curves(curves_id);
           }
           if (geometries.size() > 0) {
