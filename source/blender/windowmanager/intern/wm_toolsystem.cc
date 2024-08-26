@@ -57,7 +57,7 @@ static void toolsystem_refresh_screen_from_active_tool(Main *bmain,
 /** \name Tool Reference API
  * \{ */
 
-bToolRef *WM_toolsystem_ref_from_context(bContext *C)
+bToolRef *WM_toolsystem_ref_from_context(const bContext *C)
 {
   WorkSpace *workspace = CTX_wm_workspace(C);
   const Scene *scene = CTX_data_scene(C);
@@ -77,7 +77,7 @@ bToolRef *WM_toolsystem_ref_from_context(bContext *C)
   return tref;
 }
 
-bToolRef_Runtime *WM_toolsystem_runtime_from_context(bContext *C)
+bToolRef_Runtime *WM_toolsystem_runtime_from_context(const bContext *C)
 {
   bToolRef *tref = WM_toolsystem_ref_from_context(C);
   return tref ? tref->runtime : nullptr;
@@ -248,7 +248,7 @@ void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
  * Pendant to #WM_toolsystem_activate_compatible_tool_for_brush_type(), which handles the binding
  * the other way (activate tool on active brush changes).
  */
-static void activate_compatible_brush_from_toolref(bContext *C,
+static void activate_compatible_brush_from_toolref(const bContext *C,
                                                    WorkSpace *workspace,
                                                    bToolRef *tref)
 {
@@ -353,7 +353,7 @@ static void activate_compatible_brush_from_toolref(bContext *C,
 
 /** \} */
 
-static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tref)
+static void toolsystem_ref_link(const bContext *C, WorkSpace *workspace, bToolRef *tref)
 {
   bToolRef_Runtime *tref_rt = tref->runtime;
   if (tref_rt->gizmo_group[0]) {
@@ -379,7 +379,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
   }
 }
 
-static void toolsystem_refresh_ref(bContext *C, WorkSpace *workspace, bToolRef *tref)
+static void toolsystem_refresh_ref(const bContext *C, WorkSpace *workspace, bToolRef *tref)
 {
   if (tref->runtime == nullptr) {
     return;
@@ -387,7 +387,7 @@ static void toolsystem_refresh_ref(bContext *C, WorkSpace *workspace, bToolRef *
   /* Currently same operation. */
   toolsystem_ref_link(C, workspace, tref);
 }
-void WM_toolsystem_refresh(bContext *C, WorkSpace *workspace, const bToolKey *tkey)
+void WM_toolsystem_refresh(const bContext *C, WorkSpace *workspace, const bToolKey *tkey)
 {
   bToolRef *tref = WM_toolsystem_ref_find(workspace, tkey);
   if (tref) {
@@ -423,7 +423,7 @@ void WM_toolsystem_unlink_all(bContext *C, WorkSpace *workspace)
   }
 }
 
-void WM_toolsystem_refresh_all(bContext *C, WorkSpace *workspace)
+void WM_toolsystem_refresh_all(const bContext *C, WorkSpace *workspace)
 {
   BLI_assert(0);
   LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
@@ -551,7 +551,7 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
   }
 }
 
-void WM_toolsystem_init(bContext *C)
+void WM_toolsystem_init(const bContext *C)
 {
   Main *bmain = CTX_data_main(C);
 
