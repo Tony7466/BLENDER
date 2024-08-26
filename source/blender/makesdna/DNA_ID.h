@@ -13,6 +13,8 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
+#include "BLI_compiler_compat.h"
+
 #ifdef __cplusplus
 namespace blender::bke {
 struct PreviewImageRuntime;
