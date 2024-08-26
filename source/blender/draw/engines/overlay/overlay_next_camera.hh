@@ -383,7 +383,7 @@ class Cameras {
     auto init_pass = [&](PassMain &pass, DRWState draw_state) {
       pass.init();
       pass.state_set(draw_state | state.clipping_state);
-      pass.shader_set(res.shaders.image.get());
+      pass.shader_set(res.shaders.image_plane.get());
       res.select_bind(pass);
     };
 
@@ -656,8 +656,7 @@ class Cameras {
       return;
     }
 
-    const bool stereo_eye = Images::images_stereo_eye(state.scene, state.v3d) ==
-                            STEREO_LEFT_ID;
+    const bool stereo_eye = Images::images_stereo_eye(state.scene, state.v3d) == STEREO_LEFT_ID;
     const char *viewname = (stereo_eye == STEREO_LEFT_ID) ? STEREO_RIGHT_NAME : STEREO_LEFT_NAME;
     float4x4 modelmat;
     BKE_camera_multiview_model_matrix(&state.scene->r, ob, viewname, modelmat.ptr());

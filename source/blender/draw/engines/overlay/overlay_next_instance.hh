@@ -53,7 +53,6 @@ class Instance {
 
   /** Overlay types. */
   Background background;
-
   Outline outline;
 
   struct OverlayLayer {

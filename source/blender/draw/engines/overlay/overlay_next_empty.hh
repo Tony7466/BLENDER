@@ -59,14 +59,14 @@ class Empties {
     auto init_pass = [&](PassMain &pass, DRWState draw_state) {
       pass.init();
       pass.state_set(draw_state | state.clipping_state);
-      pass.shader_set(res.shaders.image.get());
+      pass.shader_set(res.shaders.image_plane.get());
       res.select_bind(pass);
     };
 
     auto init_sortable = [&](PassSortable &pass, DRWState draw_state) {
       pass.init();
       pass.state_set(draw_state | state.clipping_state);
-      pass.shader_set(res.shaders.image.get());
+      pass.shader_set(res.shaders.image_plane.get());
       res.select_bind(pass);
     };
 
@@ -289,7 +289,7 @@ class Empties {
                                 const bool use_alpha_blend,
                                 const float4x4 &mat)
   {
-    const bool in_front = state.use_in_front && ob.dtx & OB_DRAW_IN_FRONT;
+    const bool in_front = state.use_in_front && (ob.dtx & OB_DRAW_IN_FRONT);
     if (in_front) {
       return create_subpass(state, mat, images_front_ps_);
     }

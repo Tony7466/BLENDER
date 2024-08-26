@@ -202,7 +202,7 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
-  ShaderPtr image;
+  ShaderPtr image_plane;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
   ShaderPtr particle_dot;
