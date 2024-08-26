@@ -191,6 +191,25 @@ struct SelectMap {
     pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
   }
 
+  /* TODO: Deduplicate. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
+  void select_bind(PassMain::Sub &pass)
+  {
+    if (selection_type == SelectionType::DISABLED) {
+      return;
+    }
+
+    pass.use_custom_ids = true;
+    if (disable_depth_test) {
+      /* TODO: clipping state. */
+      pass.state_set(DRW_STATE_WRITE_COLOR);
+    }
+    pass.bind_ubo(SELECT_DATA, &info_buf);
+    /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
+    pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
+    pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
+  }
+
   void end_sync()
   {
     if (selection_type == SelectionType::DISABLED) {
