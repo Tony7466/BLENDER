@@ -848,6 +848,7 @@ class NODE_PT_quality(bpy.types.Panel):
         col = layout.column()
         col.prop(tree, "use_viewer_border")
 
+
 class NODE_PT_compositor_debug(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
@@ -1019,6 +1020,9 @@ class NODE_PT_node_tree_properties(Panel):
             layout.prop(group, "description", text="Description")
 
         layout.prop(group, "color_tag")
+        row = layout.row(align=True)
+        row.prop(group, "default_group_node_width", text="Node Width")
+        row.operator("node.default_group_width_set", text="", icon='NODE')
 
         if group.bl_idname == "GeometryNodeTree":
             header, body = layout.panel("group_usage")
