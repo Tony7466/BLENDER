@@ -314,9 +314,11 @@ void GeoTreeLog::ensure_node_warnings(const bNodeTree *tree)
     if (tree && parent_node_id) {
       if (const bNode *node = tree->node_by_id(*parent_node_id)) {
         propagation = NodeWarningPropagation(node->warning_propagation);
-        if (node->id && GS(node->id->name) == ID_NT) {
-          /* TODO: Handle zone children. */
+        if (node->is_group() && node->id) {
           child_tree = reinterpret_cast<const bNodeTree *>(node->id);
+        }
+        else if (bke::all_zone_output_node_types().contains(node->type)) {
+          child_tree = tree;
         }
       }
     }
