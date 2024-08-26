@@ -467,7 +467,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
    * Saving #BLENDER_QUIT_FILE is also not likely to be desired either. */
   BLI_assert(G.background ? (do_user_exit_actions == false) : true);
 
-  /* Clear cache before exit */
+  /* Clear cache before GPU system exit to destroy GPU mesh buffers */
   memory_cache::clear();
 
   /* First wrap up running stuff, we assume only the active WM is running. */
