@@ -282,6 +282,7 @@ class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, GreasePencil_
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
+
 class DATA_PT_grease_pencil_layer_adjustments(LayerDataButtonsPanel, GreasePencil_LayerAdjustmentsPanel, Panel):
     bl_label = "Adjustments"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
