@@ -1401,17 +1401,52 @@ static void calc_material_indices(const Object &object,
   }
 }
 
-static void ensure_visible_tris_count(const Object &object,
-                                      const Span<bke::pbvh::Node> nodes,
-                                      DrawCache &draw_data)
-{
-}
+// static void count_nodes_visible_tris_mesh(const Span<bke::pbvh::Node> nodes,) {}
 
-static void ensure_use_flat_layout_check(const Object &object,
-                                         const Span<bke::pbvh::Node> nodes,
-                                         DrawCache &draw_data)
+static void ensure_visible_tris_count(const Object &object, DrawCache &draw_data)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
+  const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
+
+  switch (pbvh.type()) {
+    case bke::pbvh::Type::Mesh: {
+      if (draw_data.visible_tri_count.size() == nodes.size()) {
+      }
+      else {
+        draw_data.visible_tri_count.resize(nodes.size());
+      }
+      IndexMaskMemory memory;
+      const IndexMask nodes_to_recount = IndexMask::from_predicate(
+          nodes.index_range(), GrainSize(1024), memory, [&](const int i) {
+            return nodes[i].flag_ & PBVH_RebuildDrawBuffers;
+          });
+
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const Span<int> tri_faces = mesh.corner_tri_faces();
+
+      const IndexMask nodes_to_clear = IndexMask::from_predicate(
+          nodes_to_recount, GrainSize(1024), memory, [&](const int i) {
+            const int count = count_visible_tris_mesh(
+                bke::pbvh::node_tri_indices(nodes[i]), tri_faces, hide_poly);
+            return
+          });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+
+      break;
+    }
+  }
+}
+
+static void ensure_use_flat_layout_check(const Object &object, DrawCache &draw_data)
+{
+  const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
+  const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
       break;
@@ -1743,7 +1778,7 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
 
-  ensure_use_flat_layout_check(object, nodes, draw_data);
+  ensure_use_flat_layout_check(object, draw_data);
 
   const Span<gpu::IndexBuf *> ibos = ensure_tris_ibos(
       object, nodes, nodes_to_update, request.use_coarse_grids, draw_data);
