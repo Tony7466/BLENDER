@@ -34,12 +34,8 @@
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdShade/material.h>
 
-#if PXR_VERSION >= 2111
-#  include <pxr/usd/usdLux/boundableLightBase.h>
-#  include <pxr/usd/usdLux/nonboundableLightBase.h>
-#else
-#  include <pxr/usd/usdLux/light.h>
-#endif
+#include <pxr/usd/usdLux/boundableLightBase.h>
+#include <pxr/usd/usdLux/nonboundableLightBase.h>
 
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
@@ -186,13 +182,9 @@ USDPrimReader *USDStageReader::create_reader_if_allowed(const pxr::UsdPrim &prim
     /* Dome lights are handled elsewhere. */
     return nullptr;
   }
-#if PXR_VERSION >= 2111
   if (params_.import_lights &&
       (prim.IsA<pxr::UsdLuxBoundableLightBase>() || prim.IsA<pxr::UsdLuxNonboundableLightBase>()))
   {
-#else
-  if (params_.import_lights && prim.IsA<pxr::UsdLuxLight>()) {
-#endif
     return new USDLightReader(prim, params_, settings_);
   }
   if (params_.import_volumes && prim.IsA<pxr::UsdVolVolume>()) {
@@ -235,11 +227,7 @@ USDPrimReader *USDStageReader::create_reader(const pxr::UsdPrim &prim)
     /* We don't handle dome lights. */
     return nullptr;
   }
-#if PXR_VERSION >= 2111
   if (prim.IsA<pxr::UsdLuxBoundableLightBase>() || prim.IsA<pxr::UsdLuxNonboundableLightBase>()) {
-#else
-  if (prim.IsA<pxr::UsdLuxLight>()) {
-#endif
     return new USDLightReader(prim, params_, settings_);
   }
   if (prim.IsA<pxr::UsdVolVolume>()) {
