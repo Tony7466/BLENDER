@@ -3215,7 +3215,7 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
       runtime->line_witdths.append(char_position.x);
       int line_size = i - line_start_index;
       runtime->characters_per_line.append(blender::MutableSpan<blender::seq::CharInfo>(
-          characters_array + line_start_index, line_size + 1));
+          characters_array + line_start_index, line_size));
 
       line_start_index = i + 1;
       char_position.x = 0;
