@@ -990,7 +990,7 @@ class GlareOperation : public NodeOperation {
 
     GPU_texture_update(fog_glow_result, GPU_DATA_FLOAT, output.data());
 #else
-    GPU_texture_copy(fog_glow_result, highlights_result.texture());
+    GPU_texture_copy(fog_glow_result, highlights_result);
 #endif
 
     return fog_glow_result;
@@ -1096,5 +1096,5 @@ void register_node_type_cmp_glare()
       &ntype, "NodeGlare", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
