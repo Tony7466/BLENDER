@@ -8,20 +8,12 @@
 
 #pragma once
 
-/* Needed for BKE_ccg.hh. */
-#include "BLI_assert.h"
-#include "BLI_index_mask.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_map.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_offset_indices.hh"
-#include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_struct_equality_utils.hh"
-#include "BLI_virtual_array.hh"
 
-#include "DNA_customdata_types.h"
-
-#include "BKE_ccg.hh"
+// TODO: Remove this include
 #include "BKE_pbvh_api.hh"
 
 namespace blender::gpu {
