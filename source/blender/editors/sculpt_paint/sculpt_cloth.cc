@@ -177,7 +177,7 @@ static float3 cloth_brush_simulation_location_get(const SculptSession &ss, const
 Vector<bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss, const Brush &brush)
 {
   BLI_assert(ss.cache);
-  BLI_assert(brush.sculpt_tool == SCULPT_TOOL_CLOTH);
+  BLI_assert(brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_CLOTH);
 
   switch (brush.cloth_simulation_area_type) {
     case BRUSH_CLOTH_SIMULATION_AREA_LOCAL: {
@@ -203,11 +203,11 @@ Vector<bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss, const B
 
 bool is_cloth_deform_brush(const Brush &brush)
 {
-  return (brush.sculpt_tool == SCULPT_TOOL_CLOTH &&
+  return (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_CLOTH &&
           ELEM(brush.cloth_deform_type, BRUSH_CLOTH_DEFORM_GRAB, BRUSH_CLOTH_DEFORM_SNAKE_HOOK)) ||
          /* All brushes that are not the cloth brush deform the simulation using softbody
           * constraints instead of applying forces. */
-         (brush.sculpt_tool != SCULPT_TOOL_CLOTH &&
+         (brush.sculpt_brush_type != SCULPT_BRUSH_TYPE_CLOTH &&
           brush.deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM);
 }
 
@@ -216,7 +216,7 @@ static float cloth_brush_simulation_falloff_get(const Brush &brush,
                                                 const float3 &location,
                                                 const float3 &co)
 {
-  if (brush.sculpt_tool != SCULPT_TOOL_CLOTH) {
+  if (brush.sculpt_brush_type != SCULPT_BRUSH_TYPE_CLOTH) {
     /* All brushes that are not the cloth brush do not use simulation areas. */
     return 1.0f;
   }
@@ -426,7 +426,7 @@ static void add_constraints_for_verts(const Object &object,
       }
     }
 
-    if (is_brush_has_stroke_cache && brush->sculpt_tool == SCULPT_TOOL_CLOTH) {
+    if (is_brush_has_stroke_cache && brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_CLOTH) {
       /* The cloth brush works by applying forces in most of its modes, but some of them require
        * deformation coordinates to make the simulation stable. */
       if (brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
