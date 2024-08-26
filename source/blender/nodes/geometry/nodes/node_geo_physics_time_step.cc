@@ -26,7 +26,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
 
     if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
-      physics->step_simulation(delta_time);
+      physics->state_for_write().step_simulation(delta_time);
     }
   });
 

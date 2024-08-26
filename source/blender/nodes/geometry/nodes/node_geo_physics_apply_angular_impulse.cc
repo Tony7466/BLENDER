@@ -34,8 +34,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       evaluator.add(impulses_field);
       evaluator.evaluate();
 
-      physics->apply_angular_impulse(evaluator.get_evaluated_selection_as_mask(),
-                                     evaluator.get_evaluated<float3>(0));
+      physics->state_for_write().apply_angular_impulse(evaluator.get_evaluated_selection_as_mask(),
+                                                       evaluator.get_evaluated<float3>(0));
     }
   });
 

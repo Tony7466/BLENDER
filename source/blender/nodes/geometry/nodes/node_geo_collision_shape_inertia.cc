@@ -5,6 +5,7 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_collision_shape.hh"
+#include "BKE_physics_geometry.hh"
 
 namespace blender::nodes::node_geo_collision_shape_inertia_cc {
 
@@ -22,9 +23,9 @@ class ShapeInertiaFieldInput : public bke::PhysicsFieldInput {
                                  const IndexMask & /*mask*/) const override
   {
     if (domain == bke::AttrDomain::Instance) {
-      const Span<bke::CollisionShapePtr> shapes = physics.shapes();
+      const Span<bke::CollisionShape::Ptr> shapes = physics.state().shapes();
       return VArray<float3>::ForFunc(shapes.size(), [shapes](const int index) {
-        const bke::CollisionShapePtr &shape = shapes[index];
+        const bke::CollisionShape::Ptr &shape = shapes[index];
         return shape->calculate_local_inertia(1.0f);
       });
     }
@@ -41,7 +42,8 @@ class ShapeInertiaFieldInput : public bke::PhysicsFieldInput {
     return dynamic_cast<const ShapeInertiaFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<bke::AttrDomain> preferred_domain(const bke::PhysicsGeometry &curves) const final
+  std::optional<bke::AttrDomain> preferred_domain(
+      const bke::PhysicsGeometry & /*physics*/) const final
   {
     return bke::AttrDomain::Instance;
   }

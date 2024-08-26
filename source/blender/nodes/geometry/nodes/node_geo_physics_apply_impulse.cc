@@ -38,9 +38,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       evaluator.add(relative_positions_field);
       evaluator.evaluate();
 
-      physics->apply_force(evaluator.get_evaluated_selection_as_mask(),
-                           evaluator.get_evaluated<float3>(0),
-                           evaluator.get_evaluated<float3>(1));
+      physics->state_for_write().apply_force(evaluator.get_evaluated_selection_as_mask(),
+                                             evaluator.get_evaluated<float3>(0),
+                                             evaluator.get_evaluated<float3>(1));
     }
   });
 

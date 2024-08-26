@@ -152,7 +152,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
       body_mask.size(), constraint_mask.size(), shape_mask.size());
 
-  dst_physics->move_or_copy_selection(src_physics, body_mask, constraint_mask, propagation_info);
+  dst_physics->state_for_write().move_or_copy_selection(
+      src_physics.state(), body_mask, constraint_mask, propagation_info);
 
   return dst_physics;
 }
@@ -203,7 +204,8 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
   bke::PhysicsGeometry *dst_physics = new bke::PhysicsGeometry(
       src_physics.bodies_num(), constraint_mask.size(), src_physics.shapes_num());
 
-  dst_physics->move_or_copy_selection(src_physics, body_mask, constraint_mask, propagation_info);
+  dst_physics->state_for_write().move_or_copy_selection(
+      src_physics.state(), body_mask, constraint_mask, propagation_info);
 
   return dst_physics;
 }

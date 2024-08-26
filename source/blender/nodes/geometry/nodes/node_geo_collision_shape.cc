@@ -183,7 +183,7 @@ static bke::CollisionShape::Ptr get_convex_collision_shape(const bke::GeometrySe
   if (physics->shapes_num() == 0) {
     return nullptr;
   }
-  const bke::CollisionShape::Ptr child_shape = physics->shapes().first();
+  const bke::CollisionShape::Ptr child_shape = physics->state().shapes().first();
   if (!child_shape->is_convex()) {
     return nullptr;
   }
@@ -299,7 +299,9 @@ static bke::CollisionShape *make_collision_shape_from_type(
       child_shapes.reserve(num_shapes + num_instances);
       child_transforms.reserve(num_shapes + num_instances);
       if (geometry_set.has_physics()) {
-        for (const bke::CollisionShapePtr &child_shape : geometry_set.get_physics()->shapes()) {
+        for (const bke::CollisionShapePtr &child_shape :
+             geometry_set.get_physics()->state().shapes())
+        {
           child_shapes.append(child_shape);
           child_transforms.append(float4x4::identity());
         }
@@ -313,7 +315,7 @@ static bke::CollisionShape *make_collision_shape_from_type(
           const float4x4 &transform = transforms[ref_index];
           if (ref_geometry_set.has_physics()) {
             for (const bke::CollisionShapePtr &child_shape :
-                 ref_geometry_set.get_physics()->shapes())
+                 ref_geometry_set.get_physics()->state().shapes())
             {
               child_shapes.append(child_shape);
               child_transforms.append(transform);
@@ -333,7 +335,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const auto shape_type = bke::CollisionShape::ShapeType(params.node().custom1);
 
   bke::PhysicsGeometry *physics = new bke::PhysicsGeometry(0, 0, 1);
-  physics->shapes_for_write().first() = bke::CollisionShapePtr(
+  physics->state_for_write().shapes_for_write().first() = bke::CollisionShapePtr(
       make_collision_shape_from_type(shape_type, params));
 
   params.set_output("Shape", GeometrySet::from_physics(physics));

@@ -80,12 +80,12 @@ static void geometry_set_points_to_rigid_bodies(
   const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(7);
 
   const Span<CollisionShapePtr> shapes = shapes_geometry.has_physics() ?
-                                             shapes_geometry.get_physics()->shapes() :
+                                             shapes_geometry.get_physics()->state().shapes() :
                                              Span<CollisionShapePtr>{};
 
   const int num_bodies = selection.size();
   auto *physics = new bke::PhysicsGeometry(num_bodies, 0, shapes.size());
-  physics->shapes_for_write().copy_from(shapes);
+  physics->state_for_write().shapes_for_write().copy_from(shapes);
 
   // Array<int> body_shape_handles(num_bodies);
   // selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {

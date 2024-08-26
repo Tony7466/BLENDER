@@ -56,7 +56,7 @@ bool PhysicsComponent::has_physics() const
 
 bool PhysicsComponent::has_world() const
 {
-  return physics_ != nullptr && physics_->has_world();
+  return physics_ != nullptr && physics_->state().has_world_data();
 }
 
 void PhysicsComponent::replace(PhysicsGeometry *physics, GeometryOwnershipType ownership)
@@ -97,17 +97,17 @@ bool PhysicsComponent::is_empty() const
 
 int PhysicsComponent::bodies_num() const
 {
-  return physics_ ? physics_->bodies_num() : 0;
+  return physics_ ? physics_->state().bodies_num() : 0;
 }
 
 int PhysicsComponent::constraints_num() const
 {
-  return physics_ ? physics_->constraints_num() : 0;
+  return physics_ ? physics_->state().constraints_num() : 0;
 }
 
 int PhysicsComponent::shapes_num() const
 {
-  return physics_ ? physics_->shapes_num() : 0;
+  return physics_ ? physics_->state().shapes_num() : 0;
 }
 
 bool PhysicsComponent::owns_direct_data() const

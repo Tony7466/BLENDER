@@ -23,6 +23,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_object_types.hh"
+#include "BKE_physics_geometry.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_grid.hh"
 
@@ -322,7 +323,7 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
             static_cast<const bke::PhysicsComponent &>(*component_).get())
     {
       if (domain_ == bke::AttrDomain::Instance && STREQ(column_id.name, "Type")) {
-        const Span<bke::CollisionShapePtr> shapes = physics->shapes();
+        const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
         return std::make_unique<ColumnValues>(
             column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
               const bke::CollisionShapePtr &shape = shapes[index];

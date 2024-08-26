@@ -36,8 +36,6 @@ static void node_geo_exec(GeoNodeExecParams params)
                                          AttrDomain::Point,
                                          selection_field,
                                          kinematic_field);
-
-      physics->tag_physics_changed();
     }
   });
 

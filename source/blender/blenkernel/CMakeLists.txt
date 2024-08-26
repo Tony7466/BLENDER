@@ -267,6 +267,7 @@ set(SRC
   intern/pbvh_uv_islands.cc
   intern/physics_geometry.cc
   intern/physics_geometry_attributes.cc
+  intern/physics_geometry_world.cc
   intern/pointcache.cc
   intern/pointcloud.cc
   intern/pose_backup.cc
@@ -556,7 +557,8 @@ set(SRC
   intern/pbvh_pixels_copy.hh
   intern/pbvh_uv_islands.hh
   intern/physics_geometry_attributes.hh
-  intern/physics_geometry_impl.hh
+  intern/physics_geometry_intern.hh
+  intern/physics_geometry_world.hh
   intern/subdiv_converter.hh
   intern/subdiv_inline.hh
 )

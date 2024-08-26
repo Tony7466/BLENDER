@@ -8,17 +8,18 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.hh"
 
 #include "BKE_collision_shape.hh"
 #include "BKE_mesh.hh"
 
-#include "BLI_math_vector.hh"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "physics_geometry_impl.hh"
-#include <BulletCollision/CollisionShapes/btEmptyShape.h>
+#include "physics_geometry_intern.hh"
 
 #ifdef WITH_BULLET
+#  include <BulletCollision/CollisionShapes/btEmptyShape.h>
 #  include <BulletCollision/CollisionShapes/btTriangleShape.h>
 #  include <LinearMath/btDefaultMotionState.h>
 #  include <btBulletCollisionCommon.h>

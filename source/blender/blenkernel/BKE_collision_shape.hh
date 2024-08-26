@@ -8,13 +8,17 @@
 
 #pragma once
 
-#include "BKE_physics_geometry.hh"
-
+#include "BLI_array.hh"
+#include "BLI_implicit_sharing_ptr.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_utility_mixins.hh"
+#include "BLI_virtual_array_fwd.hh"
 
 #include <functional>
+
+struct Mesh;
 
 namespace blender::bke {
 
@@ -80,7 +84,7 @@ class CollisionShape : public ImplicitSharingMixin {
 
   ShapeType type() const;
 
-  static StringRef type_name(const CollisionShape::ShapeType type);
+  static StringRef type_name(const ShapeType type);
 
   /** Shape type is supported for dynamic bodies.
    *  Concave shapes and some other types can only be used for static bodies.
@@ -161,9 +165,9 @@ class CylinderCollisionShape : public CollisionShape {
 
 class UniformScalingCollisionShape : public CollisionShape {
  public:
-  CollisionShapePtr child_shape_;
+  CollisionShape::Ptr child_shape_;
 
-  UniformScalingCollisionShape(const CollisionShapePtr &child_shape, float scale);
+  UniformScalingCollisionShape(const CollisionShape::Ptr &child_shape, float scale);
 };
 
 class TriangleMeshCollisionShape : public CollisionShape {
@@ -189,9 +193,9 @@ class StaticPlaneCollisionShape : public CollisionShape {
 
 class CompoundCollisionShape : public CollisionShape {
  public:
-  Array<CollisionShapePtr> child_shapes_;
+  Array<CollisionShape::Ptr> child_shapes_;
 
-  CompoundCollisionShape(const VArray<CollisionShapePtr> &child_shapes,
+  CompoundCollisionShape(const VArray<CollisionShape::Ptr> &child_shapes,
                          const VArray<float4x4> &child_transforms);
 };
 

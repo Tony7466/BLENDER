@@ -44,16 +44,18 @@ class PhysicsGeometryTest : public testing::Test {
     CLG_exit();
   }
 
-  void test_data(bke::PhysicsGeometry &physics,
+  void test_data(PhysicsGeometry &physics,
                  const bool has_world,
                  const int bodies_num,
                  const int constraints_num,
                  const int shapes_num)
   {
-    EXPECT_EQ(physics.has_world(), has_world);
-    EXPECT_EQ(physics.bodies_num(), bodies_num);
-    EXPECT_EQ(physics.constraints_num(), constraints_num);
-    EXPECT_EQ(physics.shapes_num(), shapes_num);
+    bke::PhysicsWorldState &state = physics.state_for_write();
+
+    EXPECT_EQ(state.has_world_data(), has_world);
+    EXPECT_EQ(state.bodies_num(), bodies_num);
+    EXPECT_EQ(state.constraints_num(), constraints_num);
+    EXPECT_EQ(state.shapes_num(), shapes_num);
 
     // Strict shape index validity isn't guaranteed and not really necessary either.
     // const IndexRange shapes_range = physics.shapes_range();
@@ -63,7 +65,7 @@ class PhysicsGeometryTest : public testing::Test {
     //  EXPECT_TRUE(shape_index == -1 || shapes_range.contains(shape_index));
     //}
 
-    EXPECT_TRUE(physics.validate_world_data());
+    EXPECT_TRUE(state.validate_world_data());
   }
 
   void add_value_attribute(bke::PhysicsGeometry &physics,
@@ -282,8 +284,7 @@ TEST_F(PhysicsGeometryTest, custom_data_body_shapes)
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     body_shapes.varray.set_all({0, 1, -1});
     body_shapes.finish();
-    geo.tag_collision_shapes_changed();
-    geo.compute_local_inertia(geo.bodies_range());
+    geo.state_for_write().compute_local_inertia(geo.bodies_range());
   }
 }
 
@@ -292,15 +293,16 @@ TEST_F(PhysicsGeometryTest, copy_immutable_physics_geometry)
   AllShapesData all_shapes_data;
 
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(3, 2, 1);
-  geo.create_world();
+  geo.state_for_write().create_world();
   add_value_attribute(geo, bke::AttrDomain::Point, 1);
   all_shapes_data.box_shape->add_user();
-  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     body_shapes.varray.set_all({0, 1, -1});
     body_shapes.finish();
-    geo.tag_collision_shapes_changed();
   }
 
   /* Second geometry to make physics data immutable. */
@@ -312,13 +314,12 @@ TEST_F(PhysicsGeometryTest, copy_immutable_physics_geometry)
 
   /* Attribute caches should copy over dirty flags, so that the cache still gets updated correctly
    * after the copy. */
-  EXPECT_EQ(geo_copy.shapes().size(), 1);
-  EXPECT_EQ(all_shapes_data.box_shape, geo_copy.shapes()[0].get());
-  const VArray<int> result_body_shapes = geo_copy.body_shapes();
-  EXPECT_EQ(3, result_body_shapes.size());
-  EXPECT_EQ(0, result_body_shapes[0]);
-  EXPECT_EQ(1, result_body_shapes[1]);
-  EXPECT_EQ(-1, result_body_shapes[2]);
+  EXPECT_EQ(1, geo_copy.state().shapes().size());
+  EXPECT_EQ(all_shapes_data.box_shape, geo_copy.state().shapes()[0]);
+  EXPECT_EQ(3, geo_copy.body_shapes().size());
+  EXPECT_EQ_ARRAY(Span<int>{0, 1, -1}.data(),
+                  VArraySpan(geo_copy.body_shapes()).data(),
+                  geo_copy.body_shapes().size());
   test_data(geo_copy, true, 3, 2, 1);
   test_attribute(geo_copy, bke::AttrDomain::Point, VArray<int>::ForSpan(Array<int>{1, 1, 1}));
 }
@@ -328,10 +329,10 @@ TEST_F(PhysicsGeometryTest, create_and_remove_world)
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(5, 2, 3);
   test_data(geo, false, 5, 2, 3);
 
-  geo.create_world();
+  geo.state_for_write().create_world();
   test_data(geo, true, 5, 2, 3);
 
-  geo.destroy_world();
+  geo.state_for_write().destroy_world();
   test_data(geo, false, 5, 2, 3);
 }
 
@@ -360,9 +361,10 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
   /* Set actual shape pointers. */
   all_shapes_data.empty_shape->add_user();
   all_shapes_data.convex_hull_shape->add_user();
-  geo1.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.empty_shape),
-                                     CollisionShapePtr(all_shapes_data.convex_hull_shape)});
-  geo1.tag_collision_shapes_changed();
+  geo1.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.empty_shape),
+       CollisionShapePtr(all_shapes_data.convex_hull_shape)});
+  geo1.state_for_write().tag_shapes_changed();
   test_data(geo1, false, 4, 0, 2);
   {
     const VArray<int> body_shapes = geo1.body_shapes();
@@ -378,8 +380,7 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
     body_shapes.varray.set(1, 1);
     body_shapes.varray.set(3, 0);
     body_shapes.finish();
-    geo1.compute_local_inertia(geo1.bodies_range());
-    geo1.tag_collision_shapes_changed();
+    geo1.state_for_write().compute_local_inertia(geo1.bodies_range());
   }
   test_data(geo1, false, 4, 0, 2);
   {
@@ -391,7 +392,7 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
   }
 
   /* Should remain valid when creating a world. */
-  geo1.create_world();
+  geo1.state_for_write().create_world();
   test_data(geo1, true, 4, 0, 2);
   {
     const VArray<int> body_shapes = geo1.body_shapes();
@@ -402,7 +403,7 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
   }
 
   /* Should remain valid when destroying the world. */
-  geo1.destroy_world();
+  geo1.state_for_write().destroy_world();
   test_data(geo1, false, 4, 0, 2);
   {
     const VArray<int> body_shapes = geo1.body_shapes();
@@ -433,36 +434,38 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   all_shapes_data.box_shape->add_user();
   all_shapes_data.box_shape->add_user();
   all_shapes_data.box_shape->add_user();
-  geo1->shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape),
-                                      CollisionShapePtr(all_shapes_data.box_shape),
-                                      CollisionShapePtr(all_shapes_data.box_shape)});
-  geo1->tag_collision_shapes_changed();
+  geo1->state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape),
+       CollisionShapePtr(all_shapes_data.box_shape),
+       CollisionShapePtr(all_shapes_data.box_shape)});
+  geo1->state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo1->body_shapes_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
     body_shapes.finish();
-    geo1->compute_local_inertia(geo1->bodies_range());
+    geo1->state_for_write().compute_local_inertia(geo1->bodies_range());
   }
 
   bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(0, 0, 0);
-  geo2->create_world();
+  geo2->state_for_write().create_world();
   test_data(*geo2, true, 0, 0, 0);
   add_value_attribute(*geo2, bke::AttrDomain::Point, 2);
 
   bke::PhysicsGeometry *geo3 = new bke::PhysicsGeometry(2, 1, 1);
-  geo3->create_world();
+  geo3->state_for_write().create_world();
   test_data(*geo3, true, 2, 1, 1);
   add_value_attribute(*geo3, bke::AttrDomain::Point, 3);
   all_shapes_data.sphere_shape->add_user();
-  geo3->shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.sphere_shape)});
-  geo3->tag_collision_shapes_changed();
+  geo3->state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.sphere_shape)});
+  geo3->state_for_write().tag_shapes_changed();
   test_data(*geo3, true, 2, 1, 1);
   /* Invalid shape index should be handled fine. */
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
     body_shapes.varray.set_all({0, 100});
     body_shapes.finish();
-    geo3->compute_local_inertia(geo3->bodies_range());
+    geo3->state_for_write().compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
 
@@ -489,11 +492,11 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   /* Custom attribute stitched together from different input geometries. */
   test_attribute(
       geo_result, bke::AttrDomain::Point, VArray<int>::ForSpan(Array<int>{1, 1, 1, 1, 1, 3, 3}));
-  EXPECT_EQ(geo_result.shapes().size(), 4);
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[0].get());
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[1].get());
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[2].get());
-  EXPECT_EQ(all_shapes_data.sphere_shape, geo_result.shapes()[3].get());
+  EXPECT_EQ(geo_result.state().shapes().size(), 4);
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[0].get());
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[1].get());
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[2].get());
+  EXPECT_EQ(all_shapes_data.sphere_shape, geo_result.state().shapes()[3].get());
   const VArray<int> result_body_shapes = geo_result.body_shapes();
   EXPECT_EQ(7, result_body_shapes.size());
   EXPECT_EQ(2, result_body_shapes[0]);
@@ -536,10 +539,11 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   all_shapes_data.box_shape->add_user();
   all_shapes_data.box_shape->add_user();
   all_shapes_data.box_shape->add_user();
-  geo1->shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape),
-                                      CollisionShapePtr(all_shapes_data.box_shape),
-                                      CollisionShapePtr(all_shapes_data.box_shape)});
-  geo1->tag_collision_shapes_changed();
+  geo1->state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape),
+       CollisionShapePtr(all_shapes_data.box_shape),
+       CollisionShapePtr(all_shapes_data.box_shape)});
+  geo1->state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo1->body_shapes_for_write();
     AttributeWriter<float> masses = geo1->body_masses_for_write();
@@ -565,22 +569,22 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_frame1.finish();
     constraint_frame2.finish();
     disable_collision.finish();
-    geo1->compute_local_inertia(geo1->bodies_range());
+    geo1->state_for_write().compute_local_inertia(geo1->bodies_range());
   }
   test_data(*geo1, false, 5, 2, 3);
 
   bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(0, 0, 0);
-  geo2->create_world();
+  geo2->state_for_write().create_world();
   add_value_attribute(*geo2, bke::AttrDomain::Point, 2);
   test_data(*geo2, true, 0, 0, 0);
 
   bke::PhysicsGeometry *geo3 = new bke::PhysicsGeometry(2, 1, 1);
-  geo3->create_world();
+  geo3->state_for_write().create_world();
   add_value_attribute(*geo3, bke::AttrDomain::Point, 3);
   all_shapes_data.sphere_shape->add_user();
-  geo3->shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.sphere_shape)});
-  geo3->tag_collision_shapes_changed();
-  geo3->tag_collision_shapes_changed();
+  geo3->state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.sphere_shape)});
+  geo3->state_for_write().tag_shapes_changed();
   /* Invalid shape index should be handled fine. */
   {
     AttributeWriter<int> body_shapes = geo3->body_shapes_for_write();
@@ -607,7 +611,7 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_frame1.finish();
     constraint_frame2.finish();
     disable_collision.finish();
-    geo3->compute_local_inertia(geo3->bodies_range());
+    geo3->state_for_write().compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
 
@@ -622,11 +626,11 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   /* Custom attribute stitched together from different input geometries. */
   test_attribute(
       geo_result, bke::AttrDomain::Point, VArray<int>::ForSpan(Array<int>{1, 1, 1, 1, 1, 3, 3}));
-  EXPECT_EQ(geo_result.shapes().size(), 4);
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[0].get());
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[1].get());
-  EXPECT_EQ(all_shapes_data.box_shape, geo_result.shapes()[2].get());
-  EXPECT_EQ(all_shapes_data.sphere_shape, geo_result.shapes()[3].get());
+  EXPECT_EQ(geo_result.state().shapes().size(), 4);
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[0].get());
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[1].get());
+  EXPECT_EQ(all_shapes_data.box_shape, geo_result.state().shapes()[2].get());
+  EXPECT_EQ(all_shapes_data.sphere_shape, geo_result.state().shapes()[3].get());
   const VArray<int> result_body_shapes = geo_result.body_shapes();
   EXPECT_EQ(7, result_body_shapes.size());
   EXPECT_EQ(2, result_body_shapes[0]);
@@ -683,11 +687,12 @@ TEST_F(PhysicsGeometryTest, body_shapes_update)
   /* Change the body shape indices without(!) updating the internal pointers straight away. This
    * should return the same values when reading from the cache. */
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(8, 0, 1);
-  geo.create_world();
+  geo.state_for_write().create_world();
   /* Set actual shape pointers. */
   all_shapes_data.box_shape->add_user();
-  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
-  geo.tag_collision_shapes_changed();
+  geo.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     body_shapes.varray.set_all({0, 0, 0, 0, 0, 0, 0, 0});
@@ -696,10 +701,10 @@ TEST_F(PhysicsGeometryTest, body_shapes_update)
 
   /* Trigger a cache update, this should not change shape indices. */
   geo.body_positions_for_write().tag_modified_fn();
-  geo.ensure_read_cache();
+  geo.state().ensure_read_cache();
 
-  EXPECT_EQ(geo.shapes().size(), 1);
-  EXPECT_EQ(all_shapes_data.box_shape, geo.shapes()[0].get());
+  EXPECT_EQ(geo.state().shapes().size(), 1);
+  EXPECT_EQ(all_shapes_data.box_shape, geo.state().shapes()[0].get());
   const VArray<int> result_body_shapes = geo.body_shapes();
   EXPECT_EQ(8, result_body_shapes.size());
   EXPECT_EQ(0, result_body_shapes[0]);
@@ -717,7 +722,7 @@ TEST_F(PhysicsGeometryTest, body_shapes_update)
 TEST_F(PhysicsGeometryTest, update_read_cache)
 {
   bke::PhysicsGeometry *geo1 = new bke::PhysicsGeometry(0, 0, 0);
-  geo1->create_world();
+  geo1->state_for_write().create_world();
   test_data(*geo1, true, 0, 0, 0);
 
   bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(3, 2, 0);
@@ -784,17 +789,18 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   AllShapesData all_shapes_data;
 
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(9, 0, 3);
-  geo.create_world();
+  geo.state_for_write().create_world();
   test_data(geo, true, 9, 0, 3);
 
   /* Static plane is a non-moveable shape and makes any body using it static. */
   all_shapes_data.sphere_shape->add_user();
   all_shapes_data.box_shape->add_user();
   all_shapes_data.static_plane_shape->add_user();
-  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.static_plane_shape),
-                                    CollisionShapePtr(all_shapes_data.box_shape),
-                                    CollisionShapePtr(all_shapes_data.sphere_shape)});
-  geo.tag_collision_shapes_changed();
+  geo.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.static_plane_shape),
+       CollisionShapePtr(all_shapes_data.box_shape),
+       CollisionShapePtr(all_shapes_data.sphere_shape)});
+  geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     AttributeWriter<bool> is_static = geo.body_is_static_for_write();
@@ -892,10 +898,11 @@ TEST_F(PhysicsGeometryTest, change_constraint_types)
   AllShapesData all_shapes_data;
 
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(3, 2, 1);
-  geo.create_world();
+  geo.state_for_write().create_world();
   all_shapes_data.box_shape->add_user();
-  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
-  geo.tag_collision_shapes_changed();
+  geo.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     AttributeWriter<bool> is_static = geo.body_is_static_for_write();
@@ -937,12 +944,13 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   AllShapesData all_shapes_data;
 
   bke::PhysicsGeometry geo = bke::PhysicsGeometry(1, 0, 1);
-  geo.create_world();
+  geo.state_for_write().create_world();
   test_data(geo, true, 1, 0, 1);
 
   all_shapes_data.box_shape->add_user();
-  geo.shapes_for_write().copy_from({CollisionShapePtr(all_shapes_data.box_shape)});
-  geo.tag_collision_shapes_changed();
+  geo.state_for_write().shapes_for_write().copy_from(
+      {CollisionShapePtr(all_shapes_data.box_shape)});
+  geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
     AttributeWriter<bool> is_static = geo.body_is_static_for_write();
@@ -956,7 +964,7 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   }
 
   {
-    geo.ensure_read_cache();
+    geo.state().ensure_read_cache();
     const VArray<float3> positions = geo.body_positions();
     const VArray<float3> velocities = geo.body_velocities();
     EXPECT_EQ(float3(0.0f, 0.0f, 0.0f), positions[0]);
@@ -964,13 +972,13 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   }
 
   constexpr float g = -9.81f;
-  geo.set_gravity(float3(0, 0, g));
+  geo.state_for_write().set_gravity(float3(0, 0, g));
 
   constexpr float delta_time = 0.1f;
-  geo.step_simulation(delta_time);
+  geo.state_for_write().step_simulation(delta_time);
 
   {
-    geo.ensure_read_cache();
+    geo.state().ensure_read_cache();
     const VArray<float3> positions = geo.body_positions();
     const VArray<float3> velocities = geo.body_velocities();
     /* Not enough accuracy to meaningfully test for equality. */
