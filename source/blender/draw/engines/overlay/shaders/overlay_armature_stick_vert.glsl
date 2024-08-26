@@ -18,13 +18,9 @@ void main()
   select_id_set(in_select_buf[gl_InstanceID]);
 
   StickBoneFlag bone_flag = StickBoneFlag(flag);
-  bool is_head = flag_test(bone_flag, COL_HEAD);
-  bool is_bone = flag_test(bone_flag, POS_BONE);
-
-  finalInnerColor = (is_head) ? headColor : tailColor;
-  finalInnerColor = (is_bone) ? boneColor : finalInnerColor;
+  finalInnerColor = flag_test(bone_flag, COL_HEAD) ? headColor : tailColor;
+  finalInnerColor = flag_test(bone_flag, COL_BONE) ? boneColor : finalInnerColor;
   finalWireColor = (do_wire) ? wireColor : finalInnerColor;
-  /* Make the color */
   colorFac = flag_test(bone_flag, COL_WIRE) ? 0.0 : (flag_test(bone_flag, COL_BONE) ? 1.0 : 2.0);
 
   vec4 boneStart_4d = vec4(boneStart, 1.0);
@@ -48,6 +44,9 @@ void main()
 
   vec4 p0 = drw_view.winmat * v0;
   vec4 p1 = drw_view.winmat * v1;
+
+  bool is_head = flag_test(bone_flag, POS_HEAD);
+  bool is_bone = flag_test(bone_flag, POS_BONE);
 
   float h = (is_head) ? p0.w : p1.w;
 
