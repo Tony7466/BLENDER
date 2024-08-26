@@ -689,9 +689,13 @@ class NODE_PT_active_node_generic(Panel):
     def draw(self, context):
         layout = self.layout
         node = context.active_node
+        tree = node.id_data
 
         layout.prop(node, "name", icon='NODE')
         layout.prop(node, "label", icon='NODE')
+
+        if tree.type == "GEOMETRY":
+            layout.prop(node, "warning_propagation")
 
 
 class NODE_PT_active_node_color(Panel):
