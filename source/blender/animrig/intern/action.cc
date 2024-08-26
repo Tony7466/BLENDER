@@ -1232,8 +1232,8 @@ FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descripto
   bActionGroup *group = fcurve_descriptor.channel_group.has_value() ?
                             &this->channel_group_ensure(*fcurve_descriptor.channel_group) :
                             nullptr;
-  int insert_index = group ? group->fcurve_range_start + group->fcurve_range_length :
-                             this->fcurve_array_num;
+  const int insert_index = group ? group->fcurve_range_start + group->fcurve_range_length :
+                                   this->fcurve_array_num;
   BLI_assert(insert_index <= this->fcurve_array_num);
 
   grow_array_and_insert(&this->fcurve_array, &this->fcurve_array_num, insert_index, new_fcurve);
@@ -1264,7 +1264,7 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
 
   const int group_index = this->channel_group_containing_index(fcurve_index);
   if (group_index != -1) {
-    bActionGroup *group = this->channel_groups()[group_index];
+    bActionGroup *group = this->channel_group(group_index);
 
     group->fcurve_range_length -= 1;
     if (group->fcurve_range_length <= 0) {
@@ -1854,7 +1854,6 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
 
 bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group)
 {
-
   if (this->channel_groups().as_span().first_index_try(&to_group) == -1) {
     return false;
   }
@@ -1864,16 +1863,18 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
     return false;
   }
 
-  const int from_group_index = this->channel_group_containing_index(fcurve_index);
-  if (from_group_index != -1) {
-    bActionGroup *from_group = this->channel_groups()[from_group_index];
-    if (from_group == &to_group) {
-      return true;
-    }
+  if (fcurve.grp == &to_group) {
+    return true;
+  }
 
-    from_group->fcurve_range_length--;
-    if (from_group->fcurve_range_length == 0) {
-      this->channel_group_remove_raw(from_group_index);
+  /* Remove fcurve from old group, if it belongs to one. */
+  if (fcurve.grp != nullptr) {
+    bActionGroup *old_group = fcurve.grp;
+
+    old_group->fcurve_range_length--;
+    if (old_group->fcurve_range_length == 0) {
+      const int old_group_index = this->channel_groups().as_span().first_index_try(old_group);
+      this->channel_group_remove_raw(old_group_index);
     }
   }
 
