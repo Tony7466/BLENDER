@@ -50,10 +50,10 @@ class GreasePencilSculptAdvancedPanel:
 
         tool_settings = context.scene.tool_settings
         brush = tool_settings.gpencil_sculpt_paint.brush
-        tool = brush.gpencil_sculpt_tool
+        brush_type = brush.gpencil_sculpt_brush_type
         gp_settings = brush.gpencil_settings
 
-        if tool in {'SMOOTH', 'RANDOMIZE'}:
+        if brush_type in {'SMOOTH', 'RANDOMIZE'}:
             col = layout.column(heading="Affect", align=True)
             col.prop(gp_settings, "use_edit_position", text="Position")
             col.prop(gp_settings, "use_edit_strength", text="Strength")
@@ -127,7 +127,7 @@ class GreasePencilDisplayPanel:
                 row = layout.row(align=True)
                 row.prop(settings, "show_brush", text="Display Cursor")
 
-            if brush.gpencil_tool == 'DRAW':
+            if brush.gpencil_brush_type == 'DRAW':
                 row = layout.row(align=True)
                 row.active = settings.show_brush
                 row.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
@@ -137,7 +137,7 @@ class GreasePencilDisplayPanel:
             col.active = settings.show_brush
 
             col.prop(brush, "cursor_color_add", text="Cursor Color")
-            if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
+            if brush.gpencil_sculpt_brush_type in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
                 col.prop(brush, "cursor_color_subtract", text="Inverse Color")
 
         elif ob.mode == 'WEIGHT_GPENCIL' or ob.mode == 'WEIGHT_GREASE_PENCIL':
@@ -666,7 +666,7 @@ class GreasePencilVertexcolorPanel:
         gpencil_paint = tool_settings.gpencil_vertex_paint if is_vertex else tool_settings.gpencil_paint
         brush = gpencil_paint.brush
         gp_settings = brush.gpencil_settings
-        tool = brush.gpencil_vertex_tool if is_vertex else brush.gpencil_tool
+        brush_type = brush.gpencil_vertex_brush_type if is_vertex else brush.gpencil_brush_type
 
         ob = context.object
 
@@ -685,7 +685,7 @@ class GreasePencilVertexcolorPanel:
             if gpencil_paint.palette:
                 layout.template_palette(gpencil_paint, "palette", color=True)
 
-            if tool in {'DRAW', 'FILL'} and is_vertex is False:
+            if brush_type in {'DRAW', 'FILL'} and is_vertex is False:
                 row = layout.row(align=True)
                 row.prop(gp_settings, "vertex_mode", text="Mode")
                 row = layout.row(align=True)

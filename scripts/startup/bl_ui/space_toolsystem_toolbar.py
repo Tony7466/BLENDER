@@ -1400,18 +1400,18 @@ class _defs_sculpt:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.sculpt.brush
             if brush:
-                tool = brush.sculpt_tool
+                brush_type = brush.sculpt_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -1874,18 +1874,18 @@ class _defs_vertex_paint:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.vertex_paint.brush
             if brush:
-                tool = brush.vertex_tool
+                brush_type = brush.vertex_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -1905,11 +1905,11 @@ class _defs_texture_paint:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.image_paint.brush
             if brush:
-                tool = brush.image_tool
+                brush_type = brush.image_brush_type
         return [
             ToolDef.from_dict(
                 dict(
@@ -1917,7 +1917,7 @@ class _defs_texture_paint:
                     label="Brush",
                     icon="brush.sculpt.paint",
                     cursor='PAINT_CROSS',
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -1942,18 +1942,18 @@ class _defs_weight_paint:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.weight_paint.brush
             if brush:
-                tool = brush.weight_tool
+                brush_type = brush.weight_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -2035,18 +2035,18 @@ class _defs_grease_pencil_paint:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_paint.brush
             if brush:
-                tool = brush.gpencil_tool
+                brush_type = brush.gpencil_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -2554,18 +2554,18 @@ class _defs_gpencil_paint:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_paint.brush
             if brush:
-                tool = brush.gpencil_tool
+                brush_type = brush.gpencil_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -2926,18 +2926,18 @@ class _defs_gpencil_sculpt:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_sculpt_paint.brush
             if brush:
-                tool = brush.gpencil_sculpt_tool
+                brush_type = brush.gpencil_sculpt_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -2963,18 +2963,18 @@ class _defs_grease_pencil_sculpt:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_sculpt_paint.brush
             if brush:
-                tool = brush.gpencil_sculpt_tool
+                brush_type = brush.gpencil_sculpt_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -2986,18 +2986,18 @@ class _defs_gpencil_weight:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_weight_paint.brush
             if brush:
-                tool = brush.gpencil_weight_tool
+                brush_type = brush.gpencil_weight_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -3009,18 +3009,18 @@ class _defs_grease_pencil_weight:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_weight_paint.brush
             if brush:
-                tool = brush.gpencil_weight_tool
+                brush_type = brush.gpencil_weight_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -3032,18 +3032,18 @@ class _defs_curves_sculpt:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.curves_sculpt.brush
             if brush:
-                tool = brush.curves_sculpt_tool
+                brush_type = brush.curves_sculpt_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]
@@ -3070,18 +3070,18 @@ class _defs_gpencil_vertex:
     def generate_from_brushes(context):
         # Though `data_block` is conceptually unnecessary with a single brush tool,
         # it's still used because many areas assume that brush tools have it set #bToolRef.
-        tool = None
+        brush_type = None
         if context:
             brush = context.tool_settings.gpencil_vertex_paint.brush
             if brush:
-                tool = brush.gpencil_vertex_tool
+                brush_type = brush.gpencil_vertex_brush_type
         return [
             ToolDef.from_dict(
                 dict(
                     idname="builtin.brush",
                     label="Brush",
                     icon="brush.sculpt.paint",
-                    data_block=tool
+                    data_block=brush_type
                 )
             )
         ]

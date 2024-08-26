@@ -391,8 +391,8 @@ class VIEW3D_PT_tools_brush_settings_advanced(Panel, View3DPaintBrushPanel):
         mode = cls.get_brush_mode(context)
         if mode == 'SCULPT_GREASE_PENCIL':
             settings = cls.paint_settings(context)
-            tool = settings.brush.gpencil_sculpt_tool
-            return tool in {'SMOOTH', 'RANDOMIZE'}
+            brush_type = settings.brush.gpencil_sculpt_brush_type
+            return brush_type in {'SMOOTH', 'RANDOMIZE'}
 
         return mode is not None and mode != 'SCULPT_CURVES'
 
@@ -808,7 +808,7 @@ class VIEW3D_PT_tools_brush_texture(Panel, View3DPaintPanel):
             if context.sculpt_object or context.vertex_paint_object:
                 return True
             elif context.image_paint_object:
-                return (brush.image_tool == 'DRAW')
+                return (brush.image_brush_type == 'DRAW')
         return False
 
     def draw(self, context):
@@ -1010,7 +1010,7 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
         col.active = context.sculpt_object.use_dynamic_topology_sculpting
 
         sub = col.column()
-        sub.active = (brush and brush.sculpt_tool != 'MASK')
+        sub.active = (brush and brush.sculpt_brush_type != 'MASK')
         if sculpt.detail_type_method in {'CONSTANT', 'MANUAL'}:
             row = sub.row(align=True)
             row.prop(sculpt, "constant_detail_resolution")
@@ -1628,7 +1628,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_settings(Panel, View3DPanel, GreasePen
         if brush is not None:
             gp_settings = brush.gpencil_settings
 
-            if brush.gpencil_tool in {'DRAW', 'FILL'}:
+            if brush.gpencil_brush_type in {'DRAW', 'FILL'}:
                 row = layout.row(align=True)
                 row_mat = row.row()
                 if gp_settings.use_material_pin:
@@ -1657,7 +1657,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'TINT'}
 
     def draw(self, context):
         layout = self.layout
@@ -1671,7 +1671,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
 
         col = layout.column(align=True)
         if brush is not None:
-            if brush.gpencil_tool != 'FILL':
+            if brush.gpencil_brush_type != 'FILL':
                 col.prop(gp_settings, "input_samples")
                 col.separator()
 
@@ -1695,7 +1695,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
                     subcol.enabled = False
                 subcol.prop(gp_settings, "aspect")
 
-            elif brush.gpencil_tool == 'FILL':
+            elif brush.gpencil_brush_type == 'FILL':
                 row = col.row(align=True)
                 row.prop(gp_settings, "fill_draw_mode", text="Boundary", text_ctxt=i18n_contexts.id_gpencil)
                 row.prop(
@@ -1737,7 +1737,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_stroke(Panel, View3DPanel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
+        return brush is not None and brush.gpencil_brush_type == 'DRAW'
 
     def draw(self, _context):
         layout = self.layout
@@ -1755,7 +1755,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_stabilizer(Panel, View3DPanel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
+        return brush is not None and brush.gpencil_brush_type == 'DRAW'
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -1788,7 +1788,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_post_processing(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'FILL', 'TINT'}
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -1843,7 +1843,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_random(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'FILL', 'TINT'}
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -1937,7 +1937,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_paint_falloff(GreasePencilBrushFalloff
         if tool and tool.idname != "builtin_brush.Tint":
             return False
 
-        gptool = brush.gpencil_tool
+        gptool = brush.gpencil_brush_type
 
         return (settings and settings.brush and settings.brush.curve and gptool == 'TINT')
 
@@ -1951,7 +1951,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_gap_closure(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'FILL'
+        return brush is not None and brush.gpencil_brush_type == 'FILL'
 
     def draw(self, context):
         layout = self.layout
@@ -2040,8 +2040,8 @@ class VIEW3D_PT_tools_grease_pencil_sculpt_brush_advanced(GreasePencilSculptAdva
         if brush is None:
             return False
 
-        tool = brush.gpencil_sculpt_tool
-        return tool in {'SMOOTH', 'RANDOMIZE'}
+        brush_type = brush.gpencil_sculpt_brush_type
+        return brush_type in {'SMOOTH', 'RANDOMIZE'}
 
 
 class VIEW3D_PT_tools_grease_pencil_sculpt_brush_popover(GreasePencilSculptAdvancedPanel, View3DPanel, Panel):
@@ -2058,8 +2058,8 @@ class VIEW3D_PT_tools_grease_pencil_sculpt_brush_popover(GreasePencilSculptAdvan
         if brush is None:
             return False
 
-        tool = brush.gpencil_sculpt_tool
-        return tool in {'SMOOTH', 'RANDOMIZE'}
+        brush_type = brush.gpencil_sculpt_brush_type
+        return brush_type in {'SMOOTH', 'RANDOMIZE'}
 
 
 # Grease Pencil weight painting tools
@@ -2197,7 +2197,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_color(View3DPanel, Panel):
         if ob is None or brush is None:
             return False
 
-        if context.region.type == 'TOOL_HEADER' or brush.gpencil_vertex_tool in {'BLUR', 'AVERAGE', 'SMEAR'}:
+        if context.region.type == 'TOOL_HEADER' or brush.gpencil_vertex_brush_type in {'BLUR', 'AVERAGE', 'SMEAR'}:
             return False
 
         return True
@@ -2249,7 +2249,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_vertex_palette(View3DPanel, Panel):
         if ob is None or brush is None:
             return False
 
-        if brush.gpencil_vertex_tool in {'BLUR', 'AVERAGE', 'SMEAR'}:
+        if brush.gpencil_vertex_brush_type in {'BLUR', 'AVERAGE', 'SMEAR'}:
             return False
 
         return True
@@ -2292,10 +2292,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         if tool and tool.idname in {"builtin.cutter", "builtin.eyedropper", "builtin.interpolate"}:
             return False
 
-        if brush.gpencil_tool == 'TINT':
+        if brush.gpencil_brush_type == 'TINT':
             return True
 
-        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type not in {'DRAW', 'FILL'}:
             return False
 
         return True
@@ -2307,14 +2307,14 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
         brush = settings.brush
         gp_settings = brush.gpencil_settings
 
-        if brush.gpencil_tool != 'TINT':
+        if brush.gpencil_brush_type != 'TINT':
             row = layout.row()
             row.prop(settings, "color_mode", expand=True)
 
         layout.use_property_split = True
         layout.use_property_decorate = False
         col = layout.column()
-        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_brush_type == 'TINT'
 
         col.template_color_picker(brush, "color", value_slider=True)
 
@@ -2324,11 +2324,11 @@ class VIEW3D_PT_tools_grease_pencil_brush_mixcolor(View3DPanel, Panel):
 
         sub_row.operator("gpencil.tint_flip", icon='FILE_REFRESH', text="")
 
-        if brush.gpencil_tool in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type in {'DRAW', 'FILL'}:
             col.prop(gp_settings, "vertex_mode", text="Mode")
             col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
-        if brush.gpencil_tool == 'TINT':
+        if brush.gpencil_brush_type == 'TINT':
             col.prop(gp_settings, "vertex_mode", text="Mode")
 
 
@@ -2353,10 +2353,10 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         if tool and tool.idname in {"builtin.cutter", "builtin.eyedropper", "builtin.interpolate"}:
             return False
 
-        if brush.gpencil_tool == 'TINT':
+        if brush.gpencil_brush_type == 'TINT':
             return True
 
-        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type not in {'DRAW', 'FILL'}:
             return False
 
         return True
@@ -2370,7 +2370,7 @@ class VIEW3D_PT_tools_grease_pencil_brush_mix_palette(View3DPanel, Panel):
         brush = settings.brush
 
         col = layout.column()
-        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT'
+        col.enabled = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_brush_type == 'TINT'
 
         row = col.row(align=True)
         row.template_ID(settings, "palette", new="palette.new")
@@ -2486,7 +2486,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_settings(Panel, View3DPanel, Grease
         if brush is not None:
             gp_settings = brush.gpencil_settings
 
-            if brush.gpencil_tool in {'DRAW', 'FILL'}:
+            if brush.gpencil_brush_type in {'DRAW', 'FILL'}:
                 row = layout.row(align=True)
                 row_mat = row.row()
                 if gp_settings.use_material_pin:
@@ -2518,7 +2518,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_advanced(View3DPanel, Panel):
         if ob.type != 'GREASEPENCIL':
             return False
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'TINT'}
 
     def draw(self, context):
         layout = self.layout
@@ -2534,7 +2534,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_advanced(View3DPanel, Panel):
         col = layout.column(align=True)
         if brush is None:
             return
-        if brush.gpencil_tool != 'FILL':
+        if brush.gpencil_brush_type != 'FILL':
             row = col.row(align=True)
             row.prop(brush, "use_locked_size", expand=True)
             col.separator()
@@ -2561,7 +2561,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_advanced(View3DPanel, Panel):
             if ma and ma.grease_pencil.mode == 'LINE':
                 subcol.enabled = False
             subcol.prop(gp_settings, "aspect")
-        elif brush.gpencil_tool == 'FILL':
+        elif brush.gpencil_brush_type == 'FILL':
             row = col.row(align=True)
             row.prop(gp_settings, "fill_draw_mode", text="Boundary", text_ctxt=i18n_contexts.id_gpencil)
             row.prop(
@@ -2606,7 +2606,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_stroke(Panel, View3DPanel):
         if ob.type != 'GREASEPENCIL':
             return False
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
+        return brush is not None and brush.gpencil_brush_type == 'DRAW'
 
     def draw(self, _context):
         layout = self.layout
@@ -2627,7 +2627,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_post_processing(View3DPanel, Panel)
         if ob.type != 'GREASEPENCIL':
             return False
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'FILL', 'TINT'}
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -2685,7 +2685,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_random(View3DPanel, Panel):
         if ob.type != 'GREASEPENCIL':
             return False
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool not in {'ERASE', 'FILL', 'TINT'}
+        return brush is not None and brush.gpencil_brush_type not in {'ERASE', 'FILL', 'TINT'}
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -2774,7 +2774,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_stabilizer(Panel, View3DPanel):
         if ob.type != 'GREASEPENCIL':
             return False
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'DRAW'
+        return brush is not None and brush.gpencil_brush_type == 'DRAW'
 
     def draw_header(self, context):
         brush = context.tool_settings.gpencil_paint.brush
@@ -2818,10 +2818,10 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor(View3DPanel, Panel):
         if tool and tool.idname in {"builtin.cutter", "builtin.eyedropper", "builtin.interpolate"}:
             return False
 
-        if brush.gpencil_tool == 'TINT':
+        if brush.gpencil_brush_type == 'TINT':
             return True
 
-        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type not in {'DRAW', 'FILL'}:
             return False
 
         return True
@@ -2849,7 +2849,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor(View3DPanel, Panel):
 
         sub_row.operator("paint.brush_colors_flip", icon='FILE_REFRESH', text="")
 
-        if brush.gpencil_tool in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type in {'DRAW', 'FILL'}:
             col.prop(gp_settings, "vertex_mode", text="Mode")
             col.prop(gp_settings, "vertex_color_factor", slider=True, text="Mix Factor")
 
@@ -2875,10 +2875,10 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette(View3DPanel, Panel):
         if tool and tool.idname in {"builtin.cutter", "builtin.eyedropper", "builtin.interpolate"}:
             return False
 
-        if brush.gpencil_tool == 'TINT':
+        if brush.gpencil_brush_type == 'TINT':
             return True
 
-        if brush.gpencil_tool not in {'DRAW', 'FILL'}:
+        if brush.gpencil_brush_type not in {'DRAW', 'FILL'}:
             return False
 
         return True
@@ -2935,7 +2935,7 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_gap_closure(View3DPanel, Panel):
     @classmethod
     def poll(cls, context):
         brush = context.tool_settings.gpencil_paint.brush
-        return brush is not None and brush.gpencil_tool == 'FILL'
+        return brush is not None and brush.gpencil_brush_type == 'FILL'
 
     def draw(self, context):
         layout = self.layout

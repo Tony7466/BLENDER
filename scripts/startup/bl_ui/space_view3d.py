@@ -106,11 +106,11 @@ class VIEW3D_HT_tool_header(Header):
             if is_valid_context:
                 brush = context.tool_settings.gpencil_paint.brush
                 if brush:
-                    if brush.gpencil_tool != 'ERASE':
-                        if brush.gpencil_tool != 'TINT':
+                    if brush.gpencil_brush_type != 'ERASE':
+                        if brush.gpencil_brush_type != 'TINT':
                             layout.popover("VIEW3D_PT_tools_grease_pencil_brush_advanced")
 
-                        if brush.gpencil_tool not in {'FILL', 'TINT'}:
+                        if brush.gpencil_brush_type not in {'FILL', 'TINT'}:
                             layout.popover("VIEW3D_PT_tools_grease_pencil_brush_stroke")
 
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
@@ -118,27 +118,27 @@ class VIEW3D_HT_tool_header(Header):
             if is_valid_context:
                 brush = context.tool_settings.gpencil_paint.brush
                 if brush:
-                    if brush.gpencil_tool != 'ERASE':
-                        if brush.gpencil_tool != 'TINT':
+                    if brush.gpencil_brush_type != 'ERASE':
+                        if brush.gpencil_brush_type != 'TINT':
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_advanced")
 
-                        if brush.gpencil_tool not in {'FILL', 'TINT'}:
+                        if brush.gpencil_brush_type not in {'FILL', 'TINT'}:
                             layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
                     layout.popover("VIEW3D_PT_tools_grease_pencil_paint_appearance")
         elif tool_mode == 'SCULPT_GPENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
                 if brush:
-                    tool = brush.gpencil_sculpt_tool
-                    if tool in {'SMOOTH', 'RANDOMIZE'}:
+                    brush_type = brush.gpencil_sculpt_brush_type
+                    if brush_type in {'SMOOTH', 'RANDOMIZE'}:
                         layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_brush_popover")
                     layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'SCULPT_GREASE_PENCIL':
             if is_valid_context:
                 brush = context.tool_settings.gpencil_sculpt_paint.brush
                 if brush:
-                    tool = brush.gpencil_sculpt_tool
-                    if tool in {'SMOOTH', 'RANDOMIZE'}:
+                    brush_type = brush.gpencil_sculpt_brush_type
+                    if brush_type in {'SMOOTH', 'RANDOMIZE'}:
                         layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_brush_popover")
                     layout.popover("VIEW3D_PT_tools_grease_pencil_sculpt_appearance")
         elif tool_mode == 'WEIGHT_GPENCIL' or tool_mode == 'WEIGHT_GREASE_PENCIL':
@@ -411,13 +411,13 @@ class _draw_tool_settings_context_mode:
 
         BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
-        if ob and brush.gpencil_tool in {'FILL', 'DRAW'}:
+        if ob and brush.gpencil_brush_type in {'FILL', 'DRAW'}:
             from bl_ui.properties_paint_common import (
                 brush_basic__draw_color_selector,
             )
             brush_basic__draw_color_selector(context, layout, brush, gp_settings, None)
 
-        if ob and brush.gpencil_tool == 'TINT':
+        if ob and brush.gpencil_brush_type == 'TINT':
             row.separator(factor=0.4)
             row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
@@ -494,7 +494,7 @@ class _draw_tool_settings_context_mode:
         )
 
         # direction
-        if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
+        if brush.gpencil_sculpt_brush_type in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
             layout.row().prop(brush, "direction", expand=True, text="")
 
         # Brush falloff
@@ -555,7 +555,7 @@ class _draw_tool_settings_context_mode:
 
         BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
-        if brush.gpencil_vertex_tool not in {'BLUR', 'AVERAGE', 'SMEAR'}:
+        if brush.gpencil_vertex_brush_type not in {'BLUR', 'AVERAGE', 'SMEAR'}:
             row.separator(factor=0.4)
             row.prop_with_popover(brush, "color", text="", panel="TOPBAR_PT_gpencil_vertexcolor")
 
@@ -629,7 +629,7 @@ class _draw_tool_settings_context_mode:
             header=True,
         )
 
-        if brush.curves_sculpt_tool not in {'ADD', 'DELETE'}:
+        if brush.curves_sculpt_brush_type not in {'ADD', 'DELETE'}:
             UnifiedPaintPanel.prop_unified(
                 layout,
                 context,
@@ -640,42 +640,42 @@ class _draw_tool_settings_context_mode:
                 header=True,
             )
 
-        curves_tool = brush.curves_sculpt_tool
+        brush_type = brush.curves_sculpt_brush_type
 
-        if curves_tool == 'COMB':
+        if brush_type == 'COMB':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff", text="Brush Falloff")
             layout.popover("VIEW3D_PT_curves_sculpt_parameter_falloff", text="Curve Falloff")
-        elif curves_tool == 'ADD':
+        elif brush_type == 'ADD':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.prop(brush.curves_sculpt_settings, "add_amount")
             layout.popover("VIEW3D_PT_curves_sculpt_add_shape", text="Curve Shape")
             layout.prop(brush, "use_frontface", text="Front Faces Only")
-        elif curves_tool == 'GROW_SHRINK':
+        elif brush_type == 'GROW_SHRINK':
             layout.prop(brush, "direction", expand=True, text="")
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_curves_sculpt_grow_shrink_scaling", text="Scaling")
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'SNAKE_HOOK':
+        elif brush_type == 'SNAKE_HOOK':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'DELETE':
+        elif brush_type == 'DELETE':
             layout.prop(brush, "falloff_shape", expand=True)
-        elif curves_tool == 'SELECTION_PAINT':
+        elif brush_type == 'SELECTION_PAINT':
             layout.prop(brush, "direction", expand=True, text="")
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'PINCH':
+        elif brush_type == 'PINCH':
             layout.prop(brush, "direction", expand=True, text="")
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'SMOOTH':
+        elif brush_type == 'SMOOTH':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'PUFF':
+        elif brush_type == 'PUFF':
             layout.prop(brush, "falloff_shape", expand=True)
             layout.popover("VIEW3D_PT_tools_brush_falloff")
-        elif curves_tool == 'DENSITY':
+        elif brush_type == 'DENSITY':
             layout.prop(brush, "falloff_shape", expand=True)
             row = layout.row(align=True)
             row.prop(brush.curves_sculpt_settings, "density_mode", text="", expand=True)
@@ -688,7 +688,7 @@ class _draw_tool_settings_context_mode:
             row.prop(brush.curves_sculpt_settings, "density_add_attempts", text="Count Max")
             layout.popover("VIEW3D_PT_tools_brush_falloff")
             layout.popover("VIEW3D_PT_curves_sculpt_add_shape", text="Curve Shape")
-        elif curves_tool == 'SLIDE':
+        elif brush_type == 'SLIDE':
             layout.popover("VIEW3D_PT_tools_brush_falloff")
 
         return True
@@ -709,7 +709,7 @@ class _draw_tool_settings_context_mode:
 
         BrushAssetShelf.draw_popup_selector(layout, context, brush)
 
-        grease_pencil_tool = brush.gpencil_tool
+        grease_pencil_tool = brush.gpencil_brush_type
 
         if grease_pencil_tool in {'DRAW', 'FILL'}:
             from bl_ui.properties_paint_common import (
@@ -8766,9 +8766,9 @@ class VIEW3D_PT_greasepencil_draw_context_menu(Panel):
         gp_settings = brush.gpencil_settings
 
         is_pin_vertex = gp_settings.brush_draw_mode == 'VERTEXCOLOR'
-        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT' or is_pin_vertex
+        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_brush_type == 'TINT' or is_pin_vertex
 
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
+        if brush.gpencil_brush_type not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)
@@ -8778,9 +8778,9 @@ class VIEW3D_PT_greasepencil_draw_context_menu(Panel):
             col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
 
-        if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
+        if brush.gpencil_brush_type not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
-        if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
+        if brush.gpencil_brush_type not in {'ERASE', 'FILL', 'CUTTER'}:
             layout.prop(gp_settings, "pen_strength")
 
         layer = context.object.data.layers.active
@@ -8930,9 +8930,9 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
         gp_settings = brush.gpencil_settings
 
         is_pin_vertex = gp_settings.brush_draw_mode == 'VERTEXCOLOR'
-        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_tool == 'TINT' or is_pin_vertex
+        is_vertex = settings.color_mode == 'VERTEXCOLOR' or brush.gpencil_brush_type == 'TINT' or is_pin_vertex
 
-        if brush.gpencil_tool not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
+        if brush.gpencil_brush_type not in {'ERASE', 'CUTTER', 'EYEDROPPER'} and is_vertex:
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)
@@ -8942,9 +8942,9 @@ class VIEW3D_PT_gpencil_draw_context_menu(Panel):
             col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
             col.separator()
 
-        if brush.gpencil_tool not in {'FILL', 'CUTTER'}:
+        if brush.gpencil_brush_type not in {'FILL', 'CUTTER'}:
             layout.prop(brush, "size", slider=True)
-        if brush.gpencil_tool not in {'ERASE', 'FILL', 'CUTTER'}:
+        if brush.gpencil_brush_type not in {'ERASE', 'FILL', 'CUTTER'}:
             layout.prop(gp_settings, "pen_strength")
 
         # Layers
@@ -8969,7 +8969,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
 
         col = layout.column()
 
-        if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
+        if brush.gpencil_vertex_brush_type in {'DRAW', 'REPLACE'}:
             split = layout.split(factor=0.1)
             split.prop(brush, "color", text="")
             split.template_color_picker(brush, "color", value_slider=True)
@@ -8983,7 +8983,7 @@ class VIEW3D_PT_gpencil_vertex_context_menu(Panel):
         row.prop(brush, "size", text="Radius")
         row.prop(gp_settings, "use_pressure", text="", icon='STYLUS_PRESSURE')
 
-        if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
+        if brush.gpencil_vertex_brush_type in {'DRAW', 'BLUR', 'SMEAR'}:
             row = layout.row(align=True)
             row.prop(gp_settings, "pen_strength", slider=True)
             row.prop(gp_settings, "use_strength_pressure", text="", icon='STYLUS_PRESSURE')
@@ -9231,7 +9231,7 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
 
         if capabilities.has_pinch_factor:
             text = "Pinch"
-            if brush.sculpt_tool in {'BLOB', 'SNAKE_HOOK'}:
+            if brush.sculpt_brush_type in {'BLOB', 'SNAKE_HOOK'}:
                 text = "Magnify"
             layout.prop(brush, "crease_pinch_factor", slider=True, text=text)
 
