@@ -656,7 +656,7 @@ class Cameras {
       return;
     }
 
-    const bool stereo_eye = Images::camera_background_images_stereo_eye(state.scene, state.v3d) ==
+    const bool stereo_eye = Images::images_stereo_eye(state.scene, state.v3d) ==
                             STEREO_LEFT_ID;
     const char *viewname = (stereo_eye == STEREO_LEFT_ID) ? STEREO_RIGHT_NAME : STEREO_LEFT_NAME;
     float4x4 modelmat;
@@ -795,7 +795,7 @@ class Cameras {
           return nullptr;
         }
 
-        Images::camera_background_images_stereo_setup(state.scene, state.v3d, image, iuser);
+        Images::stereo_setup(state.scene, state.v3d, image, iuser);
 
         iuser->scene = (Scene *)state.scene;
         tex = BKE_image_get_gpu_viewer_texture(image, iuser);

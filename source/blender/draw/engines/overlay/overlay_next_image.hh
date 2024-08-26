@@ -15,7 +15,7 @@ namespace blender::draw::overlay {
 class Images {
 
  public:
-  static eStereoViews camera_background_images_stereo_eye(const Scene *scene, const View3D *v3d)
+  static eStereoViews images_stereo_eye(const Scene *scene, const View3D *v3d)
   {
     if ((scene->r.scemode & R_MULTIVIEW) == 0) {
       return STEREO_LEFT_ID;
@@ -28,14 +28,14 @@ class Images {
     return eStereoViews(v3d->multiview_eye);
   }
 
-  static void camera_background_images_stereo_setup(const Scene *scene,
+  static void stereo_setup(const Scene *scene,
                                                     const View3D *v3d,
                                                     ::Image *ima,
                                                     ImageUser *iuser)
   {
     if (BKE_image_is_stereo(ima)) {
       iuser->flag |= IMA_SHOW_STEREO;
-      iuser->multiview_eye = camera_background_images_stereo_eye(scene, v3d);
+      iuser->multiview_eye = images_stereo_eye(scene, v3d);
       BKE_image_multiview_index(ima, iuser);
     }
     else {

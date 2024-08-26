@@ -243,7 +243,7 @@ class Empties {
       int2 size = int2(0);
       if (ima != nullptr) {
         ImageUser iuser = *ob->iuser;
-        Images::camera_background_images_stereo_setup(state.scene, state.v3d, ima, &iuser);
+        Images::stereo_setup(state.scene, state.v3d, ima, &iuser);
         tex = BKE_image_get_gpu_texture(ima, &iuser);
         if (tex) {
           size = int2(GPU_texture_original_width(tex), GPU_texture_original_height(tex));
