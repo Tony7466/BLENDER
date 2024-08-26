@@ -1499,11 +1499,11 @@ static gpu::IndexBuf *create_lines_index_grids(const CCGKey &key,
   return GPU_indexbuf_build(&elb);
 }
 
-static Span<gpu::IndexBuf *> ensure_lines_ibos(const Object &object,
-                                               const Span<bke::pbvh::Node> nodes,
-                                               const IndexMask &nodes_to_update,
-                                               const bool coarse,
-                                               DrawCache &draw_data)
+static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
+                                             const Span<bke::pbvh::Node> nodes,
+                                             const IndexMask &nodes_to_update,
+                                             const bool coarse,
+                                             DrawCache &draw_data)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   draw_data.tris_ibos.resize(nodes.size(), nullptr);
@@ -1632,12 +1632,12 @@ BLI_NOINLINE static void ensure_vbos_allocated_bmesh(const GPUVertFormat &format
   });
 }
 
-static Span<gpu::VertBuf *> ensure_vbos(const Object &object,
-                                        const OrigMeshData &orig_mesh_data,
-                                        const Span<bke::pbvh::Node> nodes,
-                                        const IndexMask &nodes_to_update,
-                                        const AttributeRequest &attr,
-                                        DrawCache &draw_data)
+static Span<gpu::VertBuf *> calc_vbos(const Object &object,
+                                      const OrigMeshData &orig_mesh_data,
+                                      const Span<bke::pbvh::Node> nodes,
+                                      const IndexMask &nodes_to_update,
+                                      const AttributeRequest &attr,
+                                      DrawCache &draw_data)
 {
   if (!pbvh_attr_supported(attr)) {
     return {};
@@ -1683,7 +1683,9 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
       break;
     case bke::pbvh::Type::Grids: {
       draw_data.tris_ibos.resize(nodes.size(), nullptr);
-      const MutableSpan<gpu::IndexBuf *> ibos = draw_data.tris_ibos;
+      const MutableSpan<gpu::IndexBuf *> ibos = coarse ? draw_data.tris_ibos_coarse :
+                                                         draw_data.tris_ibos;
+
       IndexMaskMemory memory;
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
           nodes_to_update, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
@@ -1729,7 +1731,7 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
       object, nodes, nodes_to_update, request.use_coarse_grids, draw_data);
 
   for (const AttributeRequest &attr : request.attributes) {
-    ensure_vbos(object, orig_mesh_data, nodes, nodes_to_update, attr, draw_data);
+    calc_vbos(object, orig_mesh_data, nodes, nodes_to_update, attr, draw_data);
   }
 
   Vector<gpu::Batch *> &batches = draw_data.tris_batches.lookup_or_add_default(request);
@@ -1769,9 +1771,9 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
 
-  const Span<gpu::VertBuf *> position_vbos = ensure_vbos(
+  const Span<gpu::VertBuf *> position_vbos = calc_vbos(
       object, OrigMeshData{mesh_orig}, nodes, nodes_to_update, CustomRequest::Position, draw_data);
-  const Span<gpu::IndexBuf *> ibos = ensure_lines_ibos(
+  const Span<gpu::IndexBuf *> ibos = calc_lines_ibos(
       object, nodes, nodes_to_update, request.use_coarse_grids, draw_data);
 
   Vector<gpu::Batch *> &batches = request.use_coarse_grids ? draw_data.lines_batches_coarse :
