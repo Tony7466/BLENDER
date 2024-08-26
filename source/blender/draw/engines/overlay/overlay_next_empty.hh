@@ -66,7 +66,7 @@ class Empties {
     auto init_sortable = [&](PassSortable &pass) {
       pass.init();
       PassMain::Sub &sub = pass.sub("ResourceBind", -FLT_MAX);
-      res.select_bind(sub);
+      res.select_bind(pass, sub);
     };
 
     DRWState draw_state;
