@@ -1016,6 +1016,11 @@ static VArray<T> attribute_interpolate(const VArray<T> &input, const bke::Curves
   return VArray<T>::ForContainer(std::move(out));
 };
 
+static float4 mix_tint(const float4 base, const float4 tint)
+{
+  return base * (1.0 - tint.w) + tint * tint.w;
+}
+
 static void grease_pencil_geom_batch_ensure(Object &object,
                                             const GreasePencil &grease_pencil,
                                             const Scene &scene)
@@ -1113,10 +1118,15 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   /* Create IBO. */
   GPU_indexbuf_init(&ibo, GPU_PRIM_TRIS, total_triangles_num, 0xFFFFFFFFu);
 
+  const bke::AttributeAccessor layer_attributes = grease_pencil.attributes();
+  const VArray<ColorGeometry4f> tint_colors = *layer_attributes.lookup_or_default<ColorGeometry4f>(
+      "tint_color", bke::AttrDomain::Layer, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+
   /* Fill buffers with data. */
   for (const int drawing_i : drawings.index_range()) {
     const ed::greasepencil::DrawingInfo &info = drawings[drawing_i];
     const Layer &layer = *grease_pencil.layer(info.layer_index);
+    const float4 tint_color = float4(tint_colors[info.layer_index]);
     const float4x4 layer_space_to_object_space = layer.to_object_space(object);
     const float4x4 object_space_to_layer_space = math::invert(layer_space_to_object_space);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
@@ -1201,8 +1211,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       s_vert.u_stroke = u_stroke;
       copy_v2_v2(s_vert.uv_fill, texture_matrix * float4(pos, 1.0f));
 
-      copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);
-      copy_v4_v4(c_vert.fcol, stroke_fill_colors[curve_i]);
+      copy_v4_v4(c_vert.vcol, mix_tint(float4(vertex_colors[point_i]), tint_color));
+      copy_v4_v4(c_vert.fcol, mix_tint(float4(stroke_fill_colors[curve_i]), tint_color));
       c_vert.fcol[3] = (int(c_vert.fcol[3] * 10000.0f) * 10.0f) + fill_opacities[curve_i];
 
       int v_mat = (verts_range[idx] << GP_VERTEX_ID_SHIFT) | GP_IS_STROKE_VERTEX_BIT;

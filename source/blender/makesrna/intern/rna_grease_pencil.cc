@@ -357,6 +357,70 @@ static void rna_GreasePencilLayer_pass_index_set(PointerRNA *ptr, int value)
   layer_passes.finish();
 }
 
+static void rna_GreasePencilLayer_tint_color_get(PointerRNA *ptr, float *values)
+{
+  using namespace blender;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  const VArray tint_colors = *grease_pencil.attributes().lookup_or_default<ColorGeometry4f>(
+      "tint_color", bke::AttrDomain::Layer, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  copy_v4_v4(values, tint_colors[layer_idx]);
+}
+
+static void rna_GreasePencilLayer_tint_color_set(PointerRNA *ptr, const float *values)
+{
+  using namespace blender;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  bke::SpanAttributeWriter<ColorGeometry4f> tint_colors =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
+          "tint_color",
+          bke::AttrDomain::Layer,
+          bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
+              ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f), grease_pencil.layers().size())));
+
+  copy_v4_v4(tint_colors.span[layer_idx], values);
+  tint_colors.finish();
+}
+
+static float rna_GreasePencilLayer_tint_factor_get(PointerRNA *ptr)
+{
+  using namespace blender;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  const VArray tint_colors = *grease_pencil.attributes().lookup_or_default<ColorGeometry4f>(
+      "tint_color", bke::AttrDomain::Layer, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  return tint_colors[layer_idx][3];
+}
+
+static void rna_GreasePencilLayer_tint_factor_set(PointerRNA *ptr, const float value)
+{
+  using namespace blender;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  const bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  const int layer_idx = *grease_pencil.get_layer_index(layer);
+
+  bke::SpanAttributeWriter<ColorGeometry4f> tint_colors =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
+          "tint_color",
+          bke::AttrDomain::Layer,
+          bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
+              ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f), grease_pencil.layers().size())));
+
+  tint_colors.span[layer_idx][3] = value;
+  tint_colors.finish();
+}
+
 static void rna_GreasePencilLayer_matrix_local_get(PointerRNA *ptr, float *values)
 {
   const blender::bke::greasepencil::Layer &layer =
@@ -763,6 +827,27 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
   RNA_def_property_ui_text(
       prop, "Onion Skinning", "Display onion skins before and after the current frame");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Tint Color. */
+  prop = RNA_def_property(srna, "tint_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop,
+                               "rna_GreasePencilLayer_tint_color_get",
+                               "rna_GreasePencilLayer_tint_color_set",
+                               nullptr);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Tint Color", "Color for tinting stroke colors");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Tint Factor. */
+  prop = RNA_def_property(srna, "tint_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_funcs(prop,
+                               "rna_GreasePencilLayer_tint_factor_get",
+                               "rna_GreasePencilLayer_tint_factor_set",
+                               nullptr);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Tint Factor", "Factor of tinting color");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Use Masks. */

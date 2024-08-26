@@ -1258,7 +1258,7 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       conversion_data,
       dst_object.id,
       src_object_data.id,
-      {{".tint_color", ".color"}, {".tint_factor", ".factor"}});
+      {{".tint_color", ".tint_color"}, {".tint_factor", ".tint_factor"}});
 
   AnimDataConvertor animdata_thickness_transfer(
       conversion_data,
@@ -1266,9 +1266,19 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
       src_object_data.id,
       {{".line_change", "[\"Socket_2\"]", fcurve_convert_thickness_cb}});
 
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(dst_object.data);
+
+  bke::SpanAttributeWriter<ColorGeometry4f> tint_colors =
+      grease_pencil.attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(
+          "tint_color",
+          bke::AttrDomain::Layer,
+          bke::AttributeInitVArray(VArray<ColorGeometry4f>::ForSingle(
+              ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f), grease_pencil.layers().size())));
+
+  int layer_idx = 0;
   /* Replace layer adjustments with modifiers. */
   LISTBASE_FOREACH (bGPDlayer *, gpl, &src_object_data.layers) {
-    const float3 tint_color = float3(gpl->tintcolor);
+    const float4 tint_color = float4(gpl->tintcolor);
     const float tint_factor = gpl->tintcolor[3];
     const int thickness_px = gpl->line_change;
 
@@ -1288,29 +1298,15 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
 
     /* Tint adjustment. */
     if (has_tint_adjustment) {
-      ModifierData *md = BKE_modifier_new(eModifierType_GreasePencilTint);
-      GreasePencilTintModifierData *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
-
-      copy_v3_v3(tmd->color, tint_color);
-      tmd->factor = tint_factor;
-      STRNCPY(tmd->influence.layer_name, gpl->info);
-
-      char modifier_name[MAX_NAME];
-      SNPRINTF(modifier_name, "Tint %s", gpl->info);
-      STRNCPY(md->name, modifier_name);
-      BKE_modifier_unique_name(&dst_object.modifiers, md);
-
-      BLI_addtail(&dst_object.modifiers, md);
-      BKE_modifiers_persistent_uid_init(dst_object, *md);
+      copy_v4_v4(tint_colors.span[layer_idx], tint_color);
 
       if (has_tint_adjustment_animation) {
-        char modifier_name_esc[MAX_NAME * 2];
-        BLI_str_escape(modifier_name_esc, md->name, sizeof(modifier_name_esc));
-        animdata_tint_transfer.root_path_dst = fmt::format("modifiers[\"{}\"]", modifier_name_esc);
+        animdata_tint_transfer.root_path_dst = fmt::format("data.layers[\"{}\"]", layer_name_esc);
 
         animdata_tint_transfer.fcurves_convert();
       }
     }
+
     /* Thickness adjustment. */
     if (has_thickness_adjustment) {
       /* Convert the "pixel" offset value into a radius value.
@@ -1378,7 +1374,11 @@ static void layer_adjustments_to_modifiers(ConversionData &conversion_data,
         animdata_thickness_transfer.fcurves_convert();
       }
     }
+
+    layer_idx++;
   }
+
+  tint_colors.finish();
 
   animdata_tint_transfer.fcurves_convert_finalize();
   animdata_thickness_transfer.fcurves_convert_finalize();

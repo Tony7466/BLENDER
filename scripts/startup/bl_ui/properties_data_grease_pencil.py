@@ -99,6 +99,23 @@ class GreasePencil_LayerTransformPanel:
         row.prop(layer, "scale")
 
 
+class GreasePencil_LayerAdjustmentsPanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        # Layer options
+        col = layout.column(align=True)
+
+        col.prop(layer, "tint_color")
+        col.prop(layer, "tint_factor", text="Factor", slider=True)
+
+
 class GreasPencil_LayerRelationsPanel:
     def draw(self, context):
         layout = self.layout
@@ -265,6 +282,11 @@ class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, GreasePencil_
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
+class DATA_PT_grease_pencil_layer_adjustments(LayerDataButtonsPanel, GreasePencil_LayerAdjustmentsPanel, Panel):
+    bl_label = "Adjustments"
+    bl_parent_id = "DATA_PT_grease_pencil_layers"
+    bl_options = {'DEFAULT_CLOSED'}
+
 
 class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, GreasPencil_LayerRelationsPanel, Panel):
     bl_label = "Relations"
@@ -364,6 +386,7 @@ classes = (
     DATA_PT_grease_pencil_layers,
     DATA_PT_grease_pencil_layer_masks,
     DATA_PT_grease_pencil_layer_transform,
+    DATA_PT_grease_pencil_layer_adjustments,
     DATA_PT_grease_pencil_layer_relations,
     DATA_PT_grease_pencil_onion_skinning,
     DATA_PT_grease_pencil_onion_skinning_custom_colors,
