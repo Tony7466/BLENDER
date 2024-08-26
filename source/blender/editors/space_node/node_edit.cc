@@ -67,7 +67,7 @@
 #include "NOD_shader.h"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
-#include "node_geometry_cache.hh"
+#include "node_geometry_import_cache.hh"
 #include "node_intern.hh" /* own include */
 
 #include "COM_profiler.hh"
@@ -2492,7 +2492,7 @@ void NODE_OT_clear_viewer_border(wmOperatorType *ot)
 
 static int clear_geometry_cache_exec(bContext * /*c*/, wmOperator *op)
 {
-  nodes::geometry_cache::import_geometry_cache_clear_all();
+  nodes::geometry_import_cache::import_geometry_cache_clear_all();
   BKE_report(op->reports, RPT_INFO, "Geometry Cache Cleared");
   return OPERATOR_FINISHED;
 }

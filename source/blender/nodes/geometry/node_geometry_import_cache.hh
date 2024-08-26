@@ -12,7 +12,7 @@
 #include "BLI_memory_cache.hh"
 #include "BLI_memory_counter.hh"
 
-namespace blender::nodes::geometry_cache {
+namespace blender::nodes::geometry_import_cache {
 
 class GeometryReadValue : public memory_cache::CachedValue {
  public:
@@ -30,4 +30,4 @@ void import_geometry_cache_clear_all();
 bke::GeometrySet import_geometry_cached(
     std::string key, FunctionRef<std::unique_ptr<GeometryReadValue>()> compute_fn);
 
-}  // namespace blender::nodes::geometry_cache
+}  // namespace blender::nodes::geometry_import_cache

@@ -2,9 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "node_geometry_cache.hh"
+#include "node_geometry_import_cache.hh"
 
-namespace blender::nodes::geometry_cache {
+namespace blender::nodes::geometry_import_cache {
 
 class GeometryReadKey : public GenericKey {
  public:
@@ -48,4 +48,4 @@ bke::GeometrySet import_geometry_cached(
   return value->geometry;
 }
 
-}  // namespace blender::nodes::geometry_cache
+}  // namespace blender::nodes::geometry_import_cache

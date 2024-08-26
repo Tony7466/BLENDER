@@ -12,7 +12,7 @@
 
 #include "IO_ply.hh"
 
-#include "node_geometry_cache.hh"
+#include "node_geometry_import_cache.hh"
 
 namespace blender::nodes::nodes_geo_import_ply {
 
@@ -35,7 +35,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GeometrySet output = geometry_cache::import_geometry_cached(path, [&path, &params]() {
+  GeometrySet output = geometry_import_cache::import_geometry_cached(path, [&path, &params]() {
     PLYImportParams import_params{};
     STRNCPY(import_params.filepath, path.c_str());
     import_params.import_attributes = true;
@@ -62,7 +62,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     GeometrySet geometry = GeometrySet::from_mesh(mesh);
 
-    auto value = std::make_unique<geometry_cache::GeometryReadValue>(geometry);
+    auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(geometry);
     return value;
   });
 

@@ -11,7 +11,7 @@
 
 #include "IO_stl.hh"
 
-#include "node_geometry_cache.hh"
+#include "node_geometry_import_cache.hh"
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_import_stl {
@@ -35,7 +35,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GeometrySet output = geometry_cache::import_geometry_cached(path, [&path, &params]() {
+  GeometrySet output = geometry_import_cache::import_geometry_cached(path, [&path, &params]() {
     STLImportParams import_params;
     STRNCPY(import_params.filepath, path.c_str());
 
@@ -68,7 +68,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     GeometrySet geometry = GeometrySet::from_mesh(mesh);
 
-    auto value = std::make_unique<geometry_cache::GeometryReadValue>(geometry);
+    auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(geometry);
     return value;
   });
 
