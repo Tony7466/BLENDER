@@ -2,17 +2,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import math
 import pathlib
 import pprint
 import sys
 import tempfile
 import unittest
-from pxr import Usd
-from pxr import UsdUtils
-from pxr import UsdGeom
-from pxr import UsdShade
-from pxr import UsdSkel
-from pxr import Gf
+from pxr import Gf, Sdf, Usd, UsdGeom, UsdShade, UsdSkel, UsdUtils
 
 import bpy
 
@@ -79,6 +75,13 @@ class USDExportTest(AbstractUSDTest):
 
         self.assertFalse(failed_checks, pprint.pformat(failed_checks))
 
+    # Utility function to round each component of a vector to a few digits. The "+ 0" is to
+    # ensure that any negative zeros (-0.0) are converted to positive zeros (0.0).
+    @staticmethod
+    def round_vector(vector):
+        return [round(c, 4) + 0 for c in vector]
+
+    # Utility function to compare two Gf.Vec3d's
     def compareVec3d(self, first, second):
         places = 5
         self.assertAlmostEqual(first[0], second[0], places)
@@ -129,18 +132,68 @@ class USDExportTest(AbstractUSDTest):
             Gf.Vec3d(extent[1]), Gf.Vec3d(0.7515701, 0.5500924, 0.9027928)
         )
 
-    def test_opacity_threshold(self):
-        # Note that the scene file used here is shared with a different test.
-        # Here we assume that it has a Principled BSDF material with
-        # a texture connected to its Base Color input.
-        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+    def test_material_transforms(self):
+        """Validate correct export of image mapping parameters to the UsdTransform2d shader def"""
 
-        export_path = self.tempdir / "opaque_material.usda"
-        res = bpy.ops.wm.usd_export(
-            filepath=str(export_path),
-            export_materials=True,
-            evaluation_mode="RENDER",
-        )
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_transforms.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        # Inspect the UsdTransform2d prim on the "Transforms" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/Transforms/Mapping")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdTransform2d")
+        input_trans = shader.GetInput('translation')
+        input_rot = shader.GetInput('rotation')
+        input_scale = shader.GetInput('scale')
+        self.assertEqual(input_trans.Get(), [0.75, 0.75])
+        self.assertEqual(input_rot.Get(), 180)
+        self.assertEqual(input_scale.Get(), [0.5, 0.5])
+
+    def test_material_normal_maps(self):
+        """Validate correct export of typical normal map setups to the UsdUVTexture shader def.
+        Namely validate that scale, bias, and ColorSpace settings are correct"""
+
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_normalmaps.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        # Inspect the UsdUVTexture prim on the "typical" "NormalMap" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/NormalMap/Image_Texture")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdUVTexture")
+        input_scale = shader.GetInput('scale')
+        input_bias = shader.GetInput('bias')
+        input_colorspace = shader.GetInput('sourceColorSpace')
+        self.assertEqual(input_scale.Get(), [2, 2, 2, 2])
+        self.assertEqual(input_bias.Get(), [-1, -1, -1, -1])
+        self.assertEqual(input_colorspace.Get(), 'raw')
+
+        # Inspect the UsdUVTexture prim on the "inverted" "NormalMap_Scale_Bias" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/NormalMap_Scale_Bias/Image_Texture")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdUVTexture")
+        input_scale = shader.GetInput('scale')
+        input_bias = shader.GetInput('bias')
+        input_colorspace = shader.GetInput('sourceColorSpace')
+        self.assertEqual(input_scale.Get(), [2, -2, 2, 1])
+        self.assertEqual(input_bias.Get(), [-1, 1, -1, 0])
+        self.assertEqual(input_colorspace.Get(), 'raw')
+
+    def test_material_opacity_threshold(self):
+        """Validate correct export of opacity and opacity_threshold parameters to the UsdPreviewSurface shader def"""
+
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_opacities.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
         self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         # Inspect and validate the exported USD for the opaque blend case.
@@ -393,7 +446,58 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual(len([sharp for sharp in usd_crease_sharpness if sharp < 1]), 9)
         self.assertEqual(len([sharp for sharp in usd_crease_sharpness if sharp == 10]), 1)
 
-    def test_animation(self):
+    def test_export_mesh_triangulate(self):
+        """Test exporting with different triangulation options for meshes."""
+
+        # Use the current scene to create simple geometry to triangulate
+        bpy.ops.mesh.primitive_plane_add(size=1)
+        bpy.ops.mesh.primitive_circle_add(fill_type='NGON', radius=1, vertices=7)
+
+        # We assume that triangulation is thoroughly tested elsewhere. Here we are only interested
+        # in checking that USD passes its operator properties through correctly. We use a minimal
+        # combination of quad and ngon methods to test.
+        tri_export_path1 = self.tempdir / "usd_mesh_tri_setup1.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(tri_export_path1),
+            triangulate_meshes=True,
+            quad_method='FIXED',
+            ngon_method='BEAUTY',
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {tri_export_path1}")
+
+        tri_export_path2 = self.tempdir / "usd_mesh_tri_setup2.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(tri_export_path2),
+            triangulate_meshes=True,
+            quad_method='FIXED_ALTERNATE',
+            ngon_method='CLIP',
+            evaluation_mode="RENDER",
+        )
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {tri_export_path2}")
+
+        stage1 = Usd.Stage.Open(str(tri_export_path1))
+        stage2 = Usd.Stage.Open(str(tri_export_path2))
+
+        # The Plane should have different vertex ordering because of the quad methods chosen
+        plane1 = UsdGeom.Mesh(stage1.GetPrimAtPath("/root/Plane/Plane"))
+        plane2 = UsdGeom.Mesh(stage2.GetPrimAtPath("/root/Plane/Plane"))
+        indices1 = plane1.GetFaceVertexIndicesAttr().Get()
+        indices2 = plane2.GetFaceVertexIndicesAttr().Get()
+        self.assertEqual(len(indices1), 6)
+        self.assertEqual(len(indices2), 6)
+        self.assertNotEqual(indices1, indices2)
+
+        # The Circle should have different vertex ordering because of the ngon methods chosen
+        circle1 = UsdGeom.Mesh(stage1.GetPrimAtPath("/root/Circle/Circle"))
+        circle2 = UsdGeom.Mesh(stage2.GetPrimAtPath("/root/Circle/Circle"))
+        indices1 = circle1.GetFaceVertexIndicesAttr().Get()
+        indices2 = circle2.GetFaceVertexIndicesAttr().Get()
+        self.assertEqual(len(indices1), 15)
+        self.assertEqual(len(indices2), 15)
+        self.assertNotEqual(indices1, indices2)
+
+    def test_export_animation(self):
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_anim_test.blend"))
         export_path = self.tempdir / "usd_anim_test.usda"
         res = bpy.ops.wm.usd_export(
@@ -442,6 +546,93 @@ class USDExportTest(AbstractUSDTest):
         anim = UsdSkel.Animation(prim_skel.GetAnimationSource())
         weight_samples = anim.GetBlendShapeWeightsAttr().GetTimeSamples()
         self.assertEqual(weight_samples, [1.0, 2.0, 3.0, 4.0, 5.0])
+
+    def test_export_xform_ops(self):
+        """Test exporting different xform operation modes."""
+
+        # Create a simple scene and export using each of our xform op modes
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        loc = [1, 2, 3]
+        rot = [math.pi / 4, 0, math.pi / 8]
+        scale = [1, 2, 3]
+
+        bpy.ops.mesh.primitive_plane_add(location=loc, rotation=rot)
+        bpy.data.objects[0].scale = scale
+
+        test_path1 = self.tempdir / "temp_xform_trs_test.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(test_path1), xform_op_mode='TRS')
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path1}")
+
+        test_path2 = self.tempdir / "temp_xform_tos_test.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(test_path2), xform_op_mode='TOS')
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path2}")
+
+        test_path3 = self.tempdir / "temp_xform_mat_test.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(test_path3), xform_op_mode='MAT')
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path3}")
+
+        # Validate relevant details for each case
+        stage = Usd.Stage.Open(str(test_path1))
+        xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root/Plane"))
+        rot_degs = [math.degrees(rot[0]), math.degrees(rot[1]), math.degrees(rot[2])]
+        self.assertEqual(xf.GetXformOpOrderAttr().Get(), ['xformOp:translate', 'xformOp:rotateXYZ', 'xformOp:scale'])
+        self.assertEqual(self.round_vector(xf.GetTranslateOp().Get()), loc)
+        self.assertEqual(self.round_vector(xf.GetRotateXYZOp().Get()), rot_degs)
+        self.assertEqual(self.round_vector(xf.GetScaleOp().Get()), scale)
+
+        stage = Usd.Stage.Open(str(test_path2))
+        xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root/Plane"))
+        orient_quat = xf.GetOrientOp().Get()
+        self.assertEqual(xf.GetXformOpOrderAttr().Get(), ['xformOp:translate', 'xformOp:orient', 'xformOp:scale'])
+        self.assertEqual(self.round_vector(xf.GetTranslateOp().Get()), loc)
+        self.assertEqual(round(orient_quat.GetReal(), 4), 0.9061)
+        self.assertEqual(self.round_vector(orient_quat.GetImaginary()), [0.3753, 0.0747, 0.1802])
+        self.assertEqual(self.round_vector(xf.GetScaleOp().Get()), scale)
+
+        stage = Usd.Stage.Open(str(test_path3))
+        xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root/Plane"))
+        mat = xf.GetTransformOp().Get()
+        mat = [
+            self.round_vector(mat[0]), self.round_vector(mat[1]), self.round_vector(mat[2]), self.round_vector(mat[3])
+        ]
+        expected = [
+            [0.9239, 0.3827, 0.0, 0.0],
+            [-0.5412, 1.3066, 1.4142, 0.0],
+            [0.8118, -1.9598, 2.1213, 0.0],
+            [1.0, 2.0, 3.0, 1.0]
+        ]
+        self.assertEqual(xf.GetXformOpOrderAttr().Get(), ['xformOp:transform'])
+        self.assertEqual(mat, expected)
+
+    def test_export_orientation(self):
+        """Test exporting different orientation configurations."""
+
+        # Using the empty scene is fine for this
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+
+        test_path1 = self.tempdir / "temp_orientation_yup.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(test_path1),
+            convert_orientation=True,
+            export_global_forward_selection='NEGATIVE_Z',
+            export_global_up_selection='Y')
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path1}")
+
+        test_path2 = self.tempdir / "temp_orientation_zup_rev.usda"
+        res = bpy.ops.wm.usd_export(
+            filepath=str(test_path2),
+            convert_orientation=True,
+            export_global_forward_selection='NEGATIVE_Y',
+            export_global_up_selection='Z')
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {test_path2}")
+
+        stage = Usd.Stage.Open(str(test_path1))
+        xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root"))
+        self.assertEqual(self.round_vector(xf.GetRotateXYZOp().Get()), [-90, 0, 0])
+
+        stage = Usd.Stage.Open(str(test_path2))
+        xf = UsdGeom.Xformable(stage.GetPrimAtPath("/root"))
+        self.assertEqual(self.round_vector(xf.GetRotateXYZOp().Get()), [0, 0, 180])
 
     def test_materialx_network(self):
         """Test exporting that a MaterialX export makes it out alright"""

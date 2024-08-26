@@ -799,7 +799,7 @@ static void icon_verify_datatoc(IconImage *iimg)
         iimg->datatoc_rect, iimg->datatoc_size, IB_rect, nullptr, "<matcap icon>");
     /* w and h were set on initialize */
     if (bbuf->x != iimg->h && bbuf->y != iimg->w) {
-      IMB_scaleImBuf(bbuf, iimg->w, iimg->h);
+      IMB_scale(bbuf, iimg->w, iimg->h, IMBScaleFilter::Box, false);
     }
 
     iimg->rect = IMB_steal_byte_buffer(bbuf);
@@ -1323,33 +1323,34 @@ static void svg_replace_color_attributes(std::string &svg,
     int colorid = TH_UNDEFINED;
     int spacetype = SPACE_TYPE_ANY;
   } items[] = {
-      {"blender.white", white},
-      {"blender.black", black},
-      {"blender.logo_orange", logo_orange},
-      {"blender.logo_blue", logo_blue},
-      {"blender.selected", btheme->tui.wcol_regular.inner},
-      {"blender.mesh_selected", btheme->space_view3d.vertex_select},
-      {"blender.back", nullptr, TH_BACK},
-      {"blender.text", nullptr, TH_TEXT},
-      {"blender.text_hi", nullptr, TH_TEXT_HI},
-      {"blender.red_alert", nullptr, TH_REDALERT},
-      {"blender.error", nullptr, TH_INFO_ERROR, SPACE_INFO},
-      {"blender.warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
-      {"blender.info", nullptr, TH_INFO_INFO, SPACE_INFO},
-      {"blender.scene", nullptr, TH_ICON_SCENE},
-      {"blender.collection", nullptr, TH_ICON_COLLECTION},
-      {"blender.object", nullptr, TH_ICON_OBJECT},
-      {"blender.object_data", nullptr, TH_ICON_OBJECT_DATA},
-      {"blender.modifier", nullptr, TH_ICON_MODIFIER},
-      {"blender.shading", nullptr, TH_ICON_SHADING},
-      {"blender.folder", nullptr, TH_ICON_FOLDER},
-      {"blender.fund", nullptr, TH_ICON_FUND},
-      {"blender.tool_add", tool_add},
-      {"blender.tool_remove", tool_remove},
-      {"blender.tool_select", tool_select},
-      {"blender.tool_transform", tool_transform},
-      {"blender.tool_white", tool_white},
-      {"blender.tool_red", tool_red},
+      {"blender_white", white},
+      {"blender_black", black},
+      {"blender_logo_orange", logo_orange},
+      {"blender_logo_blue", logo_blue},
+      {"blender_selected", btheme->tui.wcol_regular.inner},
+      {"blender_mesh_selected", btheme->space_view3d.vertex_select},
+      {"blender_back", nullptr, TH_BACK},
+      {"blender_text", nullptr, TH_TEXT},
+      {"blender_text_hi", nullptr, TH_TEXT_HI},
+      {"blender_red_alert", nullptr, TH_REDALERT},
+      {"blender_error", nullptr, TH_INFO_ERROR, SPACE_INFO},
+      {"blender_warning", nullptr, TH_INFO_WARNING, SPACE_INFO},
+      {"blender_info", nullptr, TH_INFO_INFO, SPACE_INFO},
+      {"blender_scene", nullptr, TH_ICON_SCENE},
+      {"blender_collection", nullptr, TH_ICON_COLLECTION},
+      {"blender_object", nullptr, TH_ICON_OBJECT},
+      {"blender_object_data", nullptr, TH_ICON_OBJECT_DATA},
+      {"blender_modifier", nullptr, TH_ICON_MODIFIER},
+      {"blender_shading", nullptr, TH_ICON_SHADING},
+      {"blender_folder", nullptr, TH_ICON_FOLDER},
+      {"blender_fund", nullptr, TH_ICON_FUND},
+      {"blender_autokey", nullptr, TH_ICON_AUTOKEY},
+      {"blender_tool_add", tool_add},
+      {"blender_tool_remove", tool_remove},
+      {"blender_tool_select", tool_select},
+      {"blender_tool_transform", tool_transform},
+      {"blender_tool_white", tool_white},
+      {"blender_tool_red", tool_red},
   };
 
   for (const ColorItem &item : items) {
@@ -1377,7 +1378,7 @@ static void svg_replace_color_attributes(std::string &svg,
         "{:02x}{:02x}{:02x}{:02x}", color[0], color[1], color[2], color[3]);
 
     size_t att_start = start;
-    while (1) {
+    while (true) {
       constexpr static blender::StringRef key = "fill=\"";
       att_start = svg.find(key, att_start);
       if (att_start == std::string::npos || att_start > end) {
@@ -1391,7 +1392,7 @@ static void svg_replace_color_attributes(std::string &svg,
     }
 
     att_start = start;
-    while (1) {
+    while (true) {
       constexpr static blender::StringRef key = "fill:";
       att_start = svg.find(key, att_start);
       if (att_start == std::string::npos || att_start > end) {
@@ -1412,10 +1413,10 @@ static void icon_source_edit_cb(std::string &svg)
 
   /* Scan string, processing only groups with our keyword ids. */
 
-  while (1) {
+  while (true) {
     /* Look for a blender id, quick exit if not found. */
     constexpr static blender::StringRef key = "id=\"";
-    const size_t id_start = svg.find(key + "blender.", g_start);
+    const size_t id_start = svg.find(key + "blender_", g_start);
     if (id_start == std::string::npos) {
       return;
     }
@@ -1538,7 +1539,7 @@ static void icon_draw_size(float x,
   else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
     float outline_intensity = mono_border ? (btheme->tui.icon_border_intensity > 0.0f ?
                                                  btheme->tui.icon_border_intensity :
-                                                 0.5f) :
+                                                 0.3f) :
                                             0.0f;
     float color[4];
     if (mono_rgba) {
@@ -1580,10 +1581,11 @@ static void icon_draw_size(float x,
       else {
         UI_GetThemeColor4ubv(TH_TEXT, text_color);
       }
+      const bool is_light = rgb_to_grayscale_byte(text_color) > 96;
       const float zoom_factor = w / UI_ICON_SIZE;
       uiFontStyle fstyle_small = *UI_FSTYLE_WIDGET;
       fstyle_small.points *= zoom_factor * 0.8f;
-      fstyle_small.shadow = short(FontShadowType::Outline);
+      fstyle_small.shadow = short(is_light ? FontShadowType::Outline : FontShadowType::None);
       fstyle_small.shadx = 0;
       fstyle_small.shady = 0;
       rcti text_rect = {int(x), int(x + UI_UNIT_X * zoom_factor), int(y), int(y)};
@@ -2004,6 +2006,38 @@ void UI_icon_draw_ex(float x,
                  inverted);
 }
 
+ImBuf *UI_svg_icon_bitmap(uint icon_id, float size, bool multicolor)
+{
+  if (icon_id >= ICON_BLANK_LAST_SVG_ITEM) {
+    return nullptr;
+  }
+
+  ImBuf *ibuf = nullptr;
+  int width;
+  int height;
+  blender::Array<uchar> bitmap;
+
+  if (multicolor) {
+    bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, true, icon_source_edit_cb);
+  }
+  else {
+    bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, false, nullptr);
+  }
+
+  if (!bitmap.is_empty()) {
+    ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
+  }
+
+  if (ibuf) {
+    IMB_flipy(ibuf);
+    if (multicolor) {
+      IMB_premultiply_alpha(ibuf);
+    }
+  }
+
+  return ibuf;
+}
+
 void UI_icon_text_overlay_init_from_count(IconTextOverlay *text_overlay,
                                           const int icon_indicator_number)
 {
@@ -2023,8 +2057,6 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
   UNUSED_VARS(icon, size);
   return nullptr;
 #else
-
-  constexpr bool show_color = false;
 
   int icon_id = ICON_NONE;
   switch (icon) {
@@ -2048,17 +2080,6 @@ ImBuf *UI_icon_alert_imbuf_get(eAlertIcon icon, float size)
     return nullptr;
   }
 
-  int width;
-  int height;
-  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(icon_id, size, &width, &height, show_color);
-  if (bitmap.is_empty()) {
-    return nullptr;
-  }
-  ImBuf *ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
-  IMB_flipy(ibuf);
-  if (show_color) {
-    IMB_premultiply_alpha(ibuf);
-  }
-  return ibuf;
+  return UI_svg_icon_bitmap(icon_id, size, false);
 #endif
 }

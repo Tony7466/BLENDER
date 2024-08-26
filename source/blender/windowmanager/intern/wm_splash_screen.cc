@@ -158,7 +158,7 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
     ibuf->planes = 32; /* The image might not have an alpha channel. */
     height = (width * ibuf->y) / ibuf->x;
     if (width != ibuf->x || height != ibuf->y) {
-      IMB_scaleImBuf(ibuf, width, height);
+      IMB_scale(ibuf, width, height, IMBScaleFilter::Box, false);
     }
 
     wm_block_splash_image_roundcorners_add(ibuf);
@@ -314,21 +314,10 @@ static uiBlock *wm_block_about_create(bContext *C, ARegion *region, void * /*arg
 #ifndef WITH_HEADLESS
 
   float size = 0.2f * dialog_width;
-  ImBuf *ibuf = nullptr;
-  int width;
-  int height;
-  blender::Array<uchar> bitmap = BLF_svg_icon_bitmap(
-      ICON_BLENDER_LOGO_LARGE, size, &width, &height, show_color);
-  if (!bitmap.is_empty()) {
-    ibuf = IMB_allocFromBuffer(bitmap.data(), nullptr, width, height, 4);
-  }
+
+  ImBuf *ibuf = UI_svg_icon_bitmap(ICON_BLENDER_LOGO_LARGE, size, show_color);
 
   if (ibuf) {
-    IMB_flipy(ibuf);
-    if (show_color) {
-      IMB_premultiply_alpha(ibuf);
-    }
-
     bTheme *btheme = UI_GetTheme();
     const uchar *color = btheme->tui.wcol_menu_back.text_sel;
 
