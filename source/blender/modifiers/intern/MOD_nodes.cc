@@ -2551,7 +2551,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
       const auto read_bake_file = [&](NodesModifierBakeFile &bake_file) {
         BLO_read_string(reader, &bake_file.name);
         if (bake_file.packed_file) {
-          BKE_packedfile_blend_read(reader, &bake_file.packed_file);
+          BKE_packedfile_blend_read(reader, &bake_file.packed_file, "");
         }
       };
       for (NodesModifierBakeFile &meta_file :
