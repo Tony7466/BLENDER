@@ -1239,7 +1239,9 @@ static void drw_shgroup_bone_axes(const Armatures::DrawContext *ctx,
   mat[3] += mat[1];
   if (ctx->bone_buf) {
     ExtraInstanceData data(mat, color, 0.25f);
-    ctx->bone_buf->arrows_buf.append(data, draw::select::SelectMap::select_invalid_id());
+    /* NOTE: Axes are not drawn in bone selection (pose or edit mode).
+     * They are only drawn and selectable in object mode. So only load the object select ID. */
+    ctx->bone_buf->arrows_buf.append(data, ctx->res->select_id(*ctx->ob_ref));
     return;
   }
 #ifndef NO_LEGACY_OVERLAY
