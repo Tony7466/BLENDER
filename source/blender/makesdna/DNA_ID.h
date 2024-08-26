@@ -13,8 +13,6 @@
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 
-#include "BLI_compiler_compat.h"
-
 #ifdef __cplusplus
 namespace blender::bke {
 struct PreviewImageRuntime;
@@ -706,7 +704,7 @@ typedef struct PreviewImage {
  * Get the #ID_Type from its corresponding two-letter-code (e.g. `OB` = Object).
  * This two letter code is the prefix in #ID.name.
  */
-BLI_INLINE ID_Type GS(const char *id_code)
+inline ID_Type GS(const char *id_code)
 {
   return (ID_Type)(*(const short *)id_code);
 }
