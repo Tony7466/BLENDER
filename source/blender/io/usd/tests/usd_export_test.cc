@@ -265,7 +265,7 @@ TEST_F(UsdExportTest, usd_export_material)
 
   /* File sanity checks. */
   EXPECT_EQ(BLI_listbase_count(&bfile->main->objects), 6);
-  /* There 1 additional material because of the "Dots Stroke". */
+  /* There is 1 additional material because of the "Dots Stroke". */
   EXPECT_EQ(BLI_listbase_count(&bfile->main->materials), 7);
 
   Material *material = reinterpret_cast<Material *>(
