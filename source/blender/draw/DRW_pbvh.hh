@@ -82,6 +82,7 @@ struct ViewportRequest {
 // TODO: Try to move back to cc file.
 class DrawCache : public bke::pbvh::DrawCache {
  public:
+  Vector<int> visible_tri_count;
   Vector<bool> use_flat_layout;
   Vector<int> material_indices;
 
@@ -108,10 +109,6 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
                                         DrawCache &draw_data);
 
 Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data);
-
-IndexMask calc_visible_nodes(const bke::pbvh::Tree &pbvh,
-                             const RegionView3D &rv3d,
-                             IndexMaskMemory &memory);
 
 }  // namespace draw::pbvh
 }  // namespace blender

@@ -75,6 +75,18 @@ uint64_t DefaultHash<draw::pbvh::AttributeRequest>::operator()(
 
 namespace blender::draw::pbvh {
 
+BLI_NOINLINE static void clear_ibo_data(const MutableSpan<gpu::IndexBuf *> ibos,
+                                        const IndexMask &nodes_to_update)
+{
+  nodes_to_update.foreach_index([&](const int i) { GPU_INDEXBUF_DISCARD_SAFE(ibos[i]); });
+}
+
+BLI_NOINLINE static void clear_vbo_data(const MutableSpan<gpu::VertBuf *> vbos,
+                                        const IndexMask &nodes_to_update)
+{
+  nodes_to_update.foreach_index([&](const int i) { GPU_VERTBUF_DISCARD_SAFE(vbos[i]); });
+}
+
 struct OrigMeshData {
   StringRef active_color;
   StringRef default_color;
@@ -1389,6 +1401,12 @@ static void calc_material_indices(const Object &object,
   }
 }
 
+static void ensure_visible_tris_count(const Object &object,
+                                      const Span<bke::pbvh::Node> nodes,
+                                      DrawCache &draw_data)
+{
+}
+
 static void ensure_use_flat_layout_check(const Object &object,
                                          const Span<bke::pbvh::Node> nodes,
                                          DrawCache &draw_data)
@@ -1770,6 +1788,17 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
 
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   const Span<bke::pbvh::Node> nodes = pbvh.nodes_;
+
+  // IndexMaskMemory memory;
+  // const IndexMask nodes_to_clear = IndexMask::from_predicate(
+  //     nodes_to_update, GrainSize(8196), memory, [&](const int i) {
+  //       if (pbvh.type() == bke::pbvh::Type::BMesh) {
+  //         const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(
+  //             &const_cast<bke::pbvh::Node &>(nodes[i]));
+  //         if (count_visible_tris_bmesh(faces)) {
+  //         }
+  //       }
+  //     });
 
   const Span<gpu::VertBuf *> position_vbos = calc_vbos(
       object, OrigMeshData{mesh_orig}, nodes, nodes_to_update, CustomRequest::Position, draw_data);
