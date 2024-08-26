@@ -669,8 +669,7 @@ static void drw_shgroup_bone_stick(const Armatures::DrawContext *ctx,
   float3 tail = math::transform_point(ctx->ob->object_to_world(), bmat.location() + bmat.y_axis());
 
   if (ctx->bone_buf) {
-    auto sel_id = (select_id != -1) ? ctx->res->select_id(*ctx->ob_ref, select_id) :
-                                      draw::select::SelectMap::select_invalid_id();
+    auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id);
 
     ctx->bone_buf->stick_buf.append({head,
                                      tail,
@@ -2571,7 +2570,7 @@ class ArmatureBoneDrawStrategyLine : public ArmatureBoneDrawStrategy {
     }
 
     if (select_id == -1) {
-      /* Not in selection mode, draw everything at once. */
+      /* Not in bone selection mode (can still be object select mode), draw everything at once. */
       drw_shgroup_bone_stick(
           ctx, bone.disp_mat(), col_wire, col_bone, col_head, col_tail, select_id);
     }
