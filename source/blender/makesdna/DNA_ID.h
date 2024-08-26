@@ -700,10 +700,14 @@ typedef struct PreviewImage {
 
 #define ID_TYPE_IS_DEPRECATED(id_type) ELEM(id_type, ID_IP)
 
-#ifdef GS
-#  undef GS
-#endif
-#define GS(a) (CHECK_TYPE_ANY(a, char *, const char *), (ID_Type)(*((const short *)(a))))
+/**
+ * Get the #ID_Type from its corresponding two-letter-code (e.g. `OB` = Object).
+ * This two letter code is the prefix in #ID.name.
+ */
+BLI_INLINE ID_Type GS(const char *id_code)
+{
+  return (ID_Type)(*(const short *)id_code);
+}
 
 #define ID_NEW_SET(_id, _idn) \
   (((ID *)(_id))->newid = (ID *)(_idn), \
