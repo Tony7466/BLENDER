@@ -110,6 +110,7 @@ class SampleSoundFunction : public mf::MultiFunction {
   const NodeGeometrySampleSoundWindow window_;
   const NodeGeometrySampleSoundFFTSize fft_size_;
   const double frame_rate_;
+  const float length_;
 
   AUD_Device *device_;
   AUD_Handle *handle_;
@@ -118,8 +119,13 @@ class SampleSoundFunction : public mf::MultiFunction {
   SampleSoundFunction(bSound *sound,
                       const NodeGeometrySampleSoundWindow window,
                       const NodeGeometrySampleSoundFFTSize fft_size,
-                      const double frame_rate)
-      : sound_(sound), window_(window), fft_size_(fft_size), frame_rate_(frame_rate)
+                      const double frame_rate,
+                      const float length)
+      : sound_(sound),
+        window_(window),
+        fft_size_(fft_size),
+        frame_rate_(frame_rate),
+        length_(length)
   {
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -164,23 +170,20 @@ class SampleSoundFunction : public mf::MultiFunction {
     MutableSpan<float> dst = params.uninitialized_single_output<float>(5, "Amplitude");
 
     const int samples_per_frame = sound_->samplerate / frame_rate_;
-    int fft_size;
-    if (fft_size_ == GEO_NODE_SAMPLE_SOUND_FFT_SIZE_ADAPTIVE) {
-      fft_size = fftw::optimal_size_for_real_transform(samples_per_frame);
-    }
-    else {
-      fft_size = 1 << fft_size_;
-    }
+    const int fft_size = (fft_size_ == GEO_NODE_SAMPLE_SOUND_FFT_SIZE_ADAPTIVE) ?
+                             fftw::optimal_size_for_real_transform(samples_per_frame) :
+                             1 << fft_size_;
     const int bin_size = fft_size / 2;
 
     FFTCache &cache = *sound_->fft_cache->cache;
 
     mask.foreach_index([&](int64_t i) {
-      const int64_t sample_index = times[i] * sound_->samplerate;
-      if (sample_index < 0) {
+      if (times[i] < 0 || times[i] > length_ || lows[i] < 0 || highs[i] > sound_->samplerate / 2) {
         dst[i] = 0;
         return;
       }
+
+      const int64_t sample_index = times[i] * sound_->samplerate;
       const std::optional<int> channel = downmixes[i] ?
                                              std::nullopt :
                                              std::make_optional(math::clamp(
@@ -193,7 +196,7 @@ class SampleSoundFunction : public mf::MultiFunction {
                                     2 :
                                     (aligned_sample_index - aligned_leftmost) / fft_size + 1;
 
-      Array<std::shared_ptr<FFTResult>> results(smooth_radius);
+      Array<std::shared_ptr<const FFTResult>> results(smooth_radius);
       for (int j = 0; j < smooth_radius; ++j) {
         FFTParameter parameter{};
         parameter.aligned_sample_index = aligned_sample_index - fft_size * j;
@@ -202,15 +205,14 @@ class SampleSoundFunction : public mf::MultiFunction {
         parameter.window = window_;
 
         results[j] = cache.get_or_compute(parameter, [&]() {
-          return std::shared_ptr<FFTResult>(compute_fft(
-              parameter.aligned_sample_index, parameter.fft_size, parameter.channel));
+          return std::shared_ptr<FFTResult>(
+              compute_fft(parameter.aligned_sample_index, parameter.fft_size, parameter.channel));
         });
       }
 
-      const int low = math::clamp(
-          int(lows[i] / (sound_->samplerate / 2) * bin_size), 0, bin_size - 1);
-      const int high = math::clamp(
-          int(highs[i] / (sound_->samplerate / 2) * bin_size), 0, bin_size - 1);
+      const int low = math::min(int(lows[i] / (sound_->samplerate / 2) * bin_size), bin_size - 1);
+      const int high = math::min(int(highs[i] / (sound_->samplerate / 2) * bin_size),
+                                 bin_size - 1);
       const double factor_current = double(sample_index - aligned_sample_index) / double(fft_size);
       const double factor_leftmost = (fft_size > samples_per_frame) ?
                                          1 - factor_current :
@@ -260,10 +262,9 @@ class SampleSoundFunction : public mf::MultiFunction {
     }
   }
 
-  FFTResult *compute_fft(
-      const int64_t aligned_sample_index,
-      const int fft_size,
-      const std::optional<int> channel) const
+  FFTResult *compute_fft(const int64_t aligned_sample_index,
+                         const int fft_size,
+                         const std::optional<int> channel) const
   {
     using namespace bke::sound::fft_cache;
 
@@ -308,7 +309,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     return new FFTResult{Span<float>(buffer.begin(), bin_size)};
   }
 
-  inline int aligned(int sample_index, int fft_size) const
+  static int aligned(int sample_index, int fft_size)
   {
     return (sample_index / fft_size) * fft_size;
   }
@@ -328,6 +329,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const Scene *scene = DEG_get_input_scene(params.depsgraph());
   const double frame_rate = FPS;
+  const float length = BKE_sound_get_length(params.bmain(), sound);
 
   static std::mutex mutex;
   {
@@ -343,7 +345,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<float> lows = params.extract_input<Field<float>>("Low");
   Field<float> highs = params.extract_input<Field<float>>("High");
 
-  auto fn = std::make_shared<SampleSoundFunction>(sound, window, fft_size, frame_rate);
+  auto fn = std::make_shared<SampleSoundFunction>(sound, window, fft_size, frame_rate, length);
   auto op = FieldOperation::Create(std::move(fn),
                                    {std::move(times),
                                     std::move(downmixes),
