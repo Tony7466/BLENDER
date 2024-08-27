@@ -137,6 +137,14 @@ static BitVector<> build_bits_with_uniform_distribution(const int bits_num,
 /* The benchmark is too slow to run during normal test runs. */
 #if 1
 
+static IndexMask from_bits_with_predicate(const BitSpan bits, IndexMaskMemory &memory)
+{
+  return IndexMask::from_predicate(bits.index_range(),
+                                   GrainSize(1024),
+                                   memory,
+                                   [bits](const int64_t index) { return bits[index]; });
+}
+
 static void benchmark_uniform_bit_distribution(const int bits_num,
                                                const int set_bits_num,
                                                const int iterations)
@@ -145,19 +153,29 @@ static void benchmark_uniform_bit_distribution(const int bits_num,
   BitVector bit_vec = build_bits_with_uniform_distribution(bits_num, set_bits_num);
   std::locale loc("en_US.UTF-8");
   timeit::Nanoseconds duration_sum{};
+  timeit::Nanoseconds old_duration_sum{};
   for ([[maybe_unused]] const int64_t i : IndexRange(iterations)) {
-    IndexMaskMemory memory;
     {
+      IndexMaskMemory memory;
       timeit::TimePoint start = timeit::Clock::now();
       const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
       timeit::TimePoint end = timeit::Clock::now();
       duration_sum += (end - start);
       EXPECT_EQ(mask.size(), set_bits_num);
     }
+    {
+      IndexMaskMemory memory;
+      timeit::TimePoint start = timeit::Clock::now();
+      const IndexMask mask = from_bits_with_predicate(bit_vec, memory);
+      timeit::TimePoint end = timeit::Clock::now();
+      old_duration_sum += (end - start);
+      EXPECT_EQ(mask.size(), set_bits_num);
+    }
   }
   const double ms = double(duration_sum.count()) / 1'000'000.0 / double(iterations);
+  const double old_ms = double(old_duration_sum.count()) / 1'000'000.0 / double(iterations);
   if (machine_readable) {
-    std::cout << fmt::format("{},{:.6}\n", set_bits_num, ms);
+    std::cout << fmt::format("{},{:.6},{:.6}\n", set_bits_num, ms, old_ms);
   }
   else {
     std::cout << fmt::format(loc, "{:15L} / {:L}: {:.4} ms\n", set_bits_num, bits_num, ms);
