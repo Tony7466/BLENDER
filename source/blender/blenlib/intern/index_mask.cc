@@ -468,21 +468,23 @@ static void bits_to_indices(const BitSpan bits,
     r_segments.append(range);
   };
 
-  Vector<int64_t> current_indices;
+  Array<int64_t, max_segment_size> current_indices_buffer(max_segment_size);
+  int64_t *current_indices = current_indices_buffer.data();
 
   auto append_current_indices = [&]() {
-    if (current_indices.is_empty()) {
+    const int64_t current_indices_num = current_indices - current_indices_buffer.data();
+    if (current_indices_num == 0) {
       return;
     }
-    const int64_t offset = current_indices.first();
-    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(current_indices.size());
-    for (const int64_t i : current_indices.index_range()) {
+    current_indices = current_indices_buffer.data();
+    const int64_t offset = current_indices_buffer.first();
+    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(current_indices_num);
+    for (const int64_t i : IndexRange(current_indices_num)) {
       const int64_t index = current_indices[i] - offset;
       BLI_assert(index >= 0 && index < max_segment_size);
       indices[i] = int16_t(index);
     }
     r_segments.append(IndexMaskSegment{offset, indices});
-    current_indices.clear();
   };
 
   auto append_int = [&](const BitInt value,
@@ -505,15 +507,15 @@ static void bits_to_indices(const BitSpan bits,
     switch (bit_count) {
       case 1: {
         const int64_t set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
-        current_indices.append(set_bit_i + bit_i_to_mask_index_offset);
+        *current_indices++ = set_bit_i + bit_i_to_mask_index_offset;
         return;
       }
       case 2: {
         const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
         const int64_t second_set_bit_i = BitsPerInt - 1 -
                                          int64_t(bitscan_reverse_uint64(masked_value));
-        current_indices.append(first_set_bit_i + bit_i_to_mask_index_offset);
-        current_indices.append(second_set_bit_i + bit_i_to_mask_index_offset);
+        *current_indices++ = first_set_bit_i + bit_i_to_mask_index_offset;
+        *current_indices++ = second_set_bit_i + bit_i_to_mask_index_offset;
         return;
       }
       case 3:
@@ -527,7 +529,7 @@ static void bits_to_indices(const BitSpan bits,
         BitInt current_value = masked_value;
         while (current_value != 0) {
           const int64_t set_bit_i = int64_t(bitscan_forward_uint64(current_value));
-          current_indices.append(set_bit_i + bit_i_to_mask_index_offset);
+          *current_indices++ = set_bit_i + bit_i_to_mask_index_offset;
           current_value &= ~mask_single_bit(set_bit_i);
         }
         return;
@@ -536,9 +538,11 @@ static void bits_to_indices(const BitSpan bits,
         const int64_t end_bit = start_bit + bits_num;
         for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
           const bool is_set = mask_single_bit(bit_i) & value;
-          if (is_set) {
-            current_indices.append(bit_i + bit_i_to_mask_index_offset);
-          }
+          /* This appends the index only if the bit is set. This is intentionally branchless,
+           * because a condition here may be very hard to predict for the CPU if the set bits are
+           * somewhat randomly distributed. */
+          *current_indices = bit_i + bit_i_to_mask_index_offset;
+          current_indices += is_set;
         }
         return;
       }
@@ -571,8 +575,8 @@ static void bits_to_indices(const BitSpan bits,
     for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
       const BitInt value = start[int_i];
       append_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
-      if (!current_indices.is_empty()) {
-        if (int_i * BitsPerInt - current_indices.first() > max_segment_size - 200) {
+      if (current_indices != current_indices_buffer.data()) {
+        if (int_i * BitsPerInt - current_indices_buffer.first() > max_segment_size - 200) {
           append_current_indices();
         }
       }
