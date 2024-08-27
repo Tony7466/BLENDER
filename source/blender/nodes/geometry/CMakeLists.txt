@@ -255,11 +255,13 @@ set(LIB
   PRIVATE bf::extern::fmtlib
 )
 
-# TODO: WITH_IO_CSV Check
-list(APPEND LIB
-  PRIVATE bf_io_common
-  PRIVATE bf_io_csv
-)
+if(WITH_IO_CSV)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_csv
+  )
+  add_definitions(-DWITH_IO_CSV)
+endif()
 
 if(WITH_IO_STL)
   list(APPEND LIB
