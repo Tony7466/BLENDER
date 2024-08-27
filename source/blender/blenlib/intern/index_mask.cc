@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_bit_span_ops.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
@@ -444,53 +445,59 @@ IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory)
   return IndexMask::from_bits(bits.index_range(), bits, memory);
 }
 
-static void bits_to_indices(const BitSpan bits,
-                            LinearAllocator<> &allocator,
-                            Vector<std::variant<IndexRange, IndexMaskSegment>> &r_segments)
+struct IndexRangeInSpan {
+  int64_t slice_start;
+  int64_t size;
+  int64_t begin;
+};
+
+template<typename T>
+static int64_t bits_to_indices(const BitSpan bits,
+                               MutableSpan<T> r_indices,
+                               Vector<IndexRangeInSpan, 256> &r_ranges)
 {
   using namespace bits;
+  BLI_assert(r_indices.size() >= bits.size());
   if (bits.is_empty()) {
-    return;
+    return 0;
   }
 
+  T *r_indices_begin = r_indices.data();
+  T *next_index = r_indices.data();
+
   auto append_range = [&](const IndexRange range) {
-    if (r_segments.is_empty()) {
-      r_segments.append(range);
-      return;
-    }
-    std::variant<IndexRange, IndexMaskSegment> &last_segment = r_segments.last();
-    if (IndexRange *last_range = std::get_if<IndexRange>(&last_segment)) {
-      if (last_range->one_after_last() == range.start()) {
-        *last_range = IndexRange::from_begin_end_inclusive(last_range->first(), range.last());
+    BLI_SCOPED_DEFER([&]() { next_index += range.size(); });
+    if (!r_ranges.is_empty()) {
+      IndexRangeInSpan &last_segment = r_ranges.last();
+      if (last_segment.begin + last_segment.size == range.start()) {
+        last_segment.size += range.size();
         return;
       }
     }
-    r_segments.append(range);
+    r_ranges.append(IndexRangeInSpan{next_index - r_indices_begin, range.size(), range.first()});
   };
 
-  Array<int64_t, max_segment_size> current_indices_buffer(max_segment_size);
-  int64_t *current_indices = current_indices_buffer.data();
-
-  auto append_current_indices = [&]() {
-    const int64_t current_indices_num = current_indices - current_indices_buffer.data();
-    if (current_indices_num == 0) {
-      return;
-    }
-    current_indices = current_indices_buffer.data();
-    const int64_t offset = current_indices_buffer.first();
-    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(current_indices_num);
-    for (const int64_t i : IndexRange(current_indices_num)) {
-      const int64_t index = current_indices[i] - offset;
-      BLI_assert(index >= 0 && index < max_segment_size);
-      indices[i] = int16_t(index);
-    }
-    r_segments.append(IndexMaskSegment{offset, indices});
+  auto append_index = [&](const int64_t index) {
+    BLI_assert(index >= 0);
+    BLI_assert(index < bits.size());
+    *next_index = T(index);
+    next_index++;
   };
 
-  auto append_int = [&](const BitInt value,
-                        const int64_t start_bit,
-                        const int64_t bits_num,
-                        const int64_t start) {
+  auto append_index_conditional = [&](const int64_t index, const bool condition) {
+    BLI_assert(index >= 0);
+    BLI_assert(index < bits.size());
+    /* This appends the index only if the bit is set. This is intentionally branchless,
+     * because a condition here may be very hard to predict for the CPU if the set bits
+     * are somewhat randomly distributed. */
+    *next_index = T(index);
+    next_index += condition;
+  };
+
+  auto process_bit_int = [&](const BitInt value,
+                             const int64_t start_bit,
+                             const int64_t bits_num,
+                             const int64_t start) {
     const BitInt mask = mask_range_bits(start_bit, bits_num);
     const BitInt masked_value = mask & value;
     if (masked_value == 0) {
@@ -498,24 +505,23 @@ static void bits_to_indices(const BitSpan bits,
       return;
     }
     if (masked_value == mask) {
-      append_current_indices();
       append_range(IndexRange::from_begin_size(start, bits_num));
       return;
     }
-    const int64_t bit_i_to_mask_index_offset = start - start_bit;
+    const int64_t bit_i_to_output_offset = start - start_bit;
     const int bit_count = count_bits_uint64(masked_value);
     switch (bit_count) {
       case 1: {
         const int64_t set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
-        *current_indices++ = set_bit_i + bit_i_to_mask_index_offset;
+        append_index(set_bit_i + bit_i_to_output_offset);
         return;
       }
       case 2: {
         const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
         const int64_t second_set_bit_i = BitsPerInt - 1 -
                                          int64_t(bitscan_reverse_uint64(masked_value));
-        *current_indices++ = first_set_bit_i + bit_i_to_mask_index_offset;
-        *current_indices++ = second_set_bit_i + bit_i_to_mask_index_offset;
+        append_index(first_set_bit_i + bit_i_to_output_offset);
+        append_index(second_set_bit_i + bit_i_to_output_offset);
         return;
       }
       case 3:
@@ -529,7 +535,7 @@ static void bits_to_indices(const BitSpan bits,
         BitInt current_value = masked_value;
         while (current_value != 0) {
           const int64_t set_bit_i = int64_t(bitscan_forward_uint64(current_value));
-          *current_indices++ = set_bit_i + bit_i_to_mask_index_offset;
+          append_index(set_bit_i + bit_i_to_output_offset);
           current_value &= ~mask_single_bit(set_bit_i);
         }
         return;
@@ -538,23 +544,19 @@ static void bits_to_indices(const BitSpan bits,
         const int64_t end_bit = start_bit + bits_num;
         for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
           const bool is_set = mask_single_bit(bit_i) & value;
-          /* This appends the index only if the bit is set. This is intentionally branchless,
-           * because a condition here may be very hard to predict for the CPU if the set bits are
-           * somewhat randomly distributed. */
-          *current_indices = bit_i + bit_i_to_mask_index_offset;
-          current_indices += is_set;
+          append_index_conditional(bit_i + bit_i_to_output_offset, is_set);
         }
         return;
       }
       case 63: {
         const int64_t unset_bit_i = bitscan_forward_uint64(~masked_value);
-        const IndexRange before = IndexRange::from_begin_size(start_bit, unset_bit_i);
+        const IndexRange before = IndexRange::from_begin_end(start_bit, unset_bit_i);
         const IndexRange after = IndexRange::from_begin_end(unset_bit_i + 1, start_bit + bits_num);
         if (!before.is_empty()) {
-          append_range(before.shift(bit_i_to_mask_index_offset));
+          append_range(before.shift(bit_i_to_output_offset));
         }
         if (!after.is_empty()) {
-          append_range(after.shift(bit_i_to_mask_index_offset));
+          append_range(after.shift(bit_i_to_output_offset));
         }
         return;
       }
@@ -567,26 +569,25 @@ static void bits_to_indices(const BitSpan bits,
   const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range, bits::BitsPerInt);
   if (!ranges.prefix.is_empty()) {
     const BitInt first_int = *int_containing_bit(data, bit_range.start());
-    append_int(first_int, BitInt(ranges.prefix.start()) & BitIndexMask, ranges.prefix.size(), 0);
+    process_bit_int(
+        first_int, BitInt(ranges.prefix.start()) & BitIndexMask, ranges.prefix.size(), 0);
   }
   if (!ranges.aligned.is_empty()) {
     const BitInt *start = int_containing_bit(data, ranges.aligned.start());
     const int64_t ints_to_check = ranges.aligned.size() / BitsPerInt;
     for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
       const BitInt value = start[int_i];
-      append_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
-      if (current_indices != current_indices_buffer.data()) {
-        if (int_i * BitsPerInt - current_indices_buffer.first() > max_segment_size - 200) {
-          append_current_indices();
-        }
-      }
+      process_bit_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
     }
   }
   if (!ranges.suffix.is_empty()) {
     const BitInt last_int = *int_containing_bit(data, bit_range.last());
-    append_int(last_int, 0, ranges.suffix.size(), ranges.prefix.size() + ranges.aligned.size());
+    process_bit_int(
+        last_int, 0, ranges.suffix.size(), ranges.prefix.size() + ranges.aligned.size());
   }
-  append_current_indices();
+
+  const int64_t indices_num = next_index - r_indices_begin;
+  return indices_num;
 }
 
 IndexMask IndexMask::from_bits(const IndexMask &universe,
@@ -597,11 +598,15 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
   universe.foreach_segment(
       GrainSize(max_segment_size), [&](const IndexMaskSegment universe_segment) {
         ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
-        Vector<std::variant<IndexRange, IndexMaskSegment>> set_bit_segments;
+        std::array<int16_t, max_segment_size> tmp_indices_buffer;
+        MutableSpan<int16_t> tmp_indices = tmp_indices_buffer;
+        Vector<IndexRangeInSpan, 256> range_segments;
+        int64_t indices_num = 0;
         int64_t extra_shift = 0;
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
           const IndexRange universe_range{universe_segment[0], universe_segment.size()};
-          bits_to_indices(bits.slice(universe_range), data.allocator, set_bit_segments);
+          indices_num = bits_to_indices<int16_t>(
+              bits.slice(universe_range), tmp_indices, range_segments);
           extra_shift = universe_range.start();
         }
         else {
@@ -614,23 +619,71 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
               local_bits[local_index].set();
             }
           }
-          bits_to_indices(local_bits, data.allocator, set_bit_segments);
+          indices_num = bits_to_indices<int16_t>(local_bits, tmp_indices, range_segments);
           extra_shift = universe_segment.offset();
         }
-
+        if (indices_num == 0) {
+          return;
+        }
         const Span<int16_t> static_indices = get_static_indices_array();
-        for (const auto &set_bit_segment : set_bit_segments) {
-          if (const IndexRange *range = std::get_if<IndexRange>(&set_bit_segment)) {
-            for (int64_t slice_start = 0; slice_start < range->size();
-                 slice_start += max_segment_size) {
-              data.segments.append_as(range->start() + slice_start + extra_shift,
-                                      static_indices.take_front(range->size() - slice_start));
+
+        const int64_t threshold = 10000;
+
+        int64_t parts_indices_num = 0;
+        Vector<std::variant<Span<int16_t>, IndexRange>> parts;
+
+        auto finish_parts = [&]() {
+          if (parts_indices_num == 0) {
+            return;
+          }
+          MutableSpan<int16_t> indices_copy = data.allocator.allocate_array<int16_t>(
+              parts_indices_num);
+
+          int64_t counter = 0;
+          for (const std::variant<Span<int16_t>, IndexRange> &part : parts) {
+            if (const IndexRange *range = std::get_if<IndexRange>(&part)) {
+              array_utils::fill_index_range<int16_t>(indices_copy.slice(counter, range->size()),
+                                                     int16_t(range->start()));
+              counter += range->size();
+            }
+            else {
+              const Span<int16_t> indices = std::get<Span<int16_t>>(part);
+              uninitialized_copy_n(indices.data(), indices.size(), indices_copy.data() + counter);
+              counter += indices.size();
             }
           }
-          else {
-            data.segments.append(std::get<IndexMaskSegment>(set_bit_segment).shift(extra_shift));
+
+          data.segments.append(IndexMaskSegment(extra_shift, indices_copy));
+          parts_indices_num = 0;
+          parts.clear();
+        };
+
+        int64_t last_range_segment_end = 0;
+        for (const IndexRangeInSpan &range_segment : range_segments) {
+          if (last_range_segment_end < range_segment.slice_start) {
+            Span<int16_t> tmp_indices_slice = tmp_indices.slice(
+                IndexRange::from_begin_end(last_range_segment_end, range_segment.slice_start));
+            parts.append(tmp_indices_slice);
+            parts_indices_num += tmp_indices_slice.size();
           }
+          if (range_segment.size >= threshold) {
+            finish_parts();
+            data.segments.append(IndexMaskSegment(
+                extra_shift, static_indices.slice(range_segment.begin, range_segment.size)));
+          }
+          else {
+            parts.append(IndexRange(range_segment.begin, range_segment.size));
+            parts_indices_num += range_segment.size;
+          }
+          last_range_segment_end = range_segment.slice_start + range_segment.size;
         }
+        if (last_range_segment_end < indices_num) {
+          Span<int16_t> tmp_indices_slice = tmp_indices.slice(
+              IndexRange::from_begin_end(last_range_segment_end, indices_num));
+          parts.append(tmp_indices_slice);
+          parts_indices_num += tmp_indices_slice.size();
+        }
+        finish_parts();
       });
   Vector<IndexMaskSegment, 16> segments;
   segments_collector.reduce(memory, segments);
