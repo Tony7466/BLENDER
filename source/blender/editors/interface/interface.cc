@@ -3362,26 +3362,46 @@ void ui_but_range_set_soft(uiBut *but)
 
 /* ******************* Free ********************/
 
-/**
- * Free data specific to a certain button type.
- * For now just do in a switch-case, we could instead have a callback stored in #uiBut and set that
- * in #ui_but_alloc_info().
- */
-static void ui_but_free_type_specific(uiBut *but)
+uiBut::~uiBut()
 {
-  switch (but->type) {
-    case UI_BTYPE_SEARCH_MENU: {
-      uiButSearch *search_but = (uiButSearch *)but;
-      MEM_SAFE_FREE(search_but->item_active_str);
+  if (this->opptr) {
+    WM_operator_properties_free(this->opptr);
+    MEM_freeN(this->opptr);
+  }
 
-      if (search_but->arg_free_fn) {
-        search_but->arg_free_fn(search_but->arg);
-        search_but->arg = nullptr;
-      }
-      break;
-    }
-    default:
-      break;
+  if (this->func_argN) {
+    this->func_argN_free_fn(this->func_argN);
+  }
+
+  if (this->tip_arg_free) {
+    this->tip_arg_free(this->tip_arg);
+  }
+
+  if (this->hold_argN) {
+    MEM_freeN(this->hold_argN);
+  }
+
+  if (this->placeholder) {
+    MEM_freeN(this->placeholder);
+  }
+
+  if ((this->type == UI_BTYPE_IMAGE) && this->poin) {
+    IMB_freeImBuf(reinterpret_cast<ImBuf *>(this->poin));
+  }
+
+  ui_but_drag_free(this);
+  ui_but_extra_operator_icons_free(this);
+
+  BLI_assert(UI_butstore_is_registered(this->block, this) == false);
+}
+
+uiButSearch::~uiButSearch()
+{
+  MEM_SAFE_FREE(this->item_active_str);
+
+  if (this->arg_free_fn) {
+    this->arg_free_fn(this->arg);
+    this->arg = nullptr;
   }
 }
 
@@ -3451,29 +3471,6 @@ static void ui_but_mem_delete(const uiBut *but)
 /* can be called with C==nullptr */
 static void ui_but_free(const bContext *C, uiBut *but)
 {
-  if (but->opptr) {
-    WM_operator_properties_free(but->opptr);
-    MEM_freeN(but->opptr);
-  }
-
-  if (but->func_argN) {
-    but->func_argN_free_fn(but->func_argN);
-  }
-
-  if (but->tip_arg_free) {
-    but->tip_arg_free(but->tip_arg);
-  }
-
-  if (but->hold_argN) {
-    MEM_freeN(but->hold_argN);
-  }
-
-  if (but->placeholder) {
-    MEM_freeN(but->placeholder);
-  }
-
-  ui_but_free_type_specific(but);
-
   if (but->semi_modal_state && but->semi_modal_state != but->active) {
     if (C) {
       /* XXX without this we're stuck in modal state with text edit cursor after closing popup.
@@ -3495,15 +3492,6 @@ static void ui_but_free(const bContext *C, uiBut *but)
       MEM_freeN(but->active);
     }
   }
-
-  if ((but->type == UI_BTYPE_IMAGE) && but->poin) {
-    IMB_freeImBuf((ImBuf *)but->poin);
-  }
-
-  ui_but_drag_free(but);
-  ui_but_extra_operator_icons_free(but);
-
-  BLI_assert(UI_butstore_is_registered(but->block, but) == false);
 
   ui_but_mem_delete(but);
 }

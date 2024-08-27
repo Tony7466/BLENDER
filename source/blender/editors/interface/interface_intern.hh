@@ -321,6 +321,7 @@ struct uiBut {
   uiBlock *block = nullptr;
 
   uiBut() = default;
+  ~uiBut();
   /** Performs a mostly shallow copy for now. Only contained C++ types are deep copied. */
   uiBut(const uiBut &other) = default;
   /** Mostly shallow copy, just like copy constructor above. */
@@ -378,6 +379,8 @@ struct uiButSearch : public uiBut {
    * the string to match one of the search items when applying.
    */
   bool results_are_suggestions = false;
+
+  ~uiButSearch();
 };
 
 /**
