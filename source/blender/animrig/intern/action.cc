@@ -2001,4 +2001,11 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   return &converted_action;
 }
 
+bool merge_actions(Action &source, Action &target)
+{
+  if (!source.is_action_layered() || !target.is_action_layered()) {
+    return false;
+  }
+}
+
 }  // namespace blender::animrig

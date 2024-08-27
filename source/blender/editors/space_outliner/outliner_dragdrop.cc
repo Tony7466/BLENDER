@@ -7,6 +7,7 @@
  */
 
 #include <cstring>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -43,6 +44,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+#include "ANIM_action.hh"
 
 #include "outliner_intern.hh"
 
@@ -662,6 +665,44 @@ void OUTLINER_OT_material_drop(wmOperatorType *ot)
 
   /* api callbacks */
   ot->invoke = material_drop_invoke;
+
+  ot->poll = ED_operator_region_outliner_active;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Action Drop Operator
+ * \{ */
+
+static bool action_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
+{
+  /* Ensure item under cursor is valid drop target */
+  bAction *dna_action = (bAction *)WM_drag_get_local_ID(drag, ID_AC);
+  blender::animrig::Action &action = dna_action->wrap();
+  if (!action.is_action_layered()) {
+    return false;
+  }
+  return (dna_action && (outliner_ID_drop_find(C, event, ID_AC) != nullptr));
+}
+
+static int action_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /* event */)
+{
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_action_drop(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Drop Action to merge";
+  ot->description = "Drag action to action in the Outliner";
+  ot->idname = "OUTLINER_OT_action_drop";
+
+  /* api callbacks */
+  ot->invoke = action_drop_invoke;
 
   ot->poll = ED_operator_region_outliner_active;
 
@@ -1570,6 +1611,7 @@ void outliner_dropboxes()
   WM_dropbox_add(lb, "OUTLINER_OT_parent_clear", parent_clear_poll, nullptr, nullptr, nullptr);
   WM_dropbox_add(lb, "OUTLINER_OT_scene_drop", scene_drop_poll, nullptr, nullptr, nullptr);
   WM_dropbox_add(lb, "OUTLINER_OT_material_drop", material_drop_poll, nullptr, nullptr, nullptr);
+  WM_dropbox_add(lb, "OUTLINER_OT_action_drop", action_drop_poll, nullptr, nullptr, nullptr);
   WM_dropbox_add(lb,
                  "OUTLINER_OT_datastack_drop",
                  datastack_drop_poll,
