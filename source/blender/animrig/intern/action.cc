@@ -1474,7 +1474,12 @@ bActionGroup &ChannelBag::channel_group_create(StringRefNull name)
   /* Make it selected. */
   new_group->flag = AGRP_SELECTED;
 
-  /* Ensure it has a unique name. */
+  /* Ensure it has a unique name.
+   *
+   * Note that this only happens here (upon creation). The user can later rename
+   * groups to have duplicate names. This is stupid, but it's how the legacy
+   * system worked, and at the time of writing this code we're just trying to
+   * match that system's behavior, even when it's goofy.*/
   std::string unique_name = BLI_uniquename_cb(
       [&](const StringRef name) {
         for (bActionGroup *group : this->channel_groups()) {
