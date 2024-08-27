@@ -1599,28 +1599,6 @@ animrig::ChannelBag *channelbag_for_action_slot(Action &action, const slot_handl
   return const_cast<animrig::ChannelBag *>(const_bag);
 }
 
-Span<bActionGroup *> channel_groups_for_action_slot(Action &action,
-                                                    const slot_handle_t slot_handle)
-{
-  assert_baklava_phase_1_invariants(action);
-  animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
-  if (!bag) {
-    return {};
-  }
-  return bag->channel_groups();
-}
-
-Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
-                                                          const slot_handle_t slot_handle)
-{
-  assert_baklava_phase_1_invariants(action);
-  const animrig::ChannelBag *bag = channelbag_for_action_slot(action, slot_handle);
-  if (!bag) {
-    return {};
-  }
-  return bag->channel_groups();
-}
-
 Span<FCurve *> fcurves_for_action_slot(Action &action, const slot_handle_t slot_handle)
 {
   assert_baklava_phase_1_invariants(action);

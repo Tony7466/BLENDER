@@ -484,11 +484,11 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
      * forward-compat legacy data is also written, and vice-versa. Both have
      * pointers to each other that won't resolve properly when loaded in older
      * Blender versions if only one is written. */
-    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
-    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
-    Span<bActionGroup *> channel_groups = channel_groups_for_action_slot(action,
-                                                                         first_slot.handle);
-    action_blend_write_make_legacy_channel_groups_listbase(action.groups, channel_groups);
+    animrig::ChannelBag *bag = channelbag_for_action_slot(action, first_slot.handle);
+    if (bag) {
+      action_blend_write_make_legacy_fcurves_listbase(action.curves, bag->fcurves());
+      action_blend_write_make_legacy_channel_groups_listbase(action.groups, bag->channel_groups());
+    }
   }
 #else
   /* Built without Baklava, so ensure that the written data is clean. This should not change

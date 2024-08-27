@@ -973,20 +973,6 @@ const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
 animrig::ChannelBag *channelbag_for_action_slot(Action &action, slot_handle_t slot_handle);
 
 /**
- * Return the channel groups for this specific slot handle.
- *
- * This is just a utility function, that's intended to become obsolete when multi-layer Actions
- * are introduced. However, since Blender currently only supports a single layer with a single
- * strip, of a single type, this function can be used.
- *
- * The use of this function is also an indicator for code that will have to be altered when
- * multi-layered Actions are getting implemented.
- */
-Span<bActionGroup *> channel_groups_for_action_slot(Action &action, slot_handle_t slot_handle);
-Span<const bActionGroup *> channel_groups_for_action_slot(const Action &action,
-                                                          slot_handle_t slot_handle);
-
-/**
  * Return the F-Curves for this specific slot handle.
  *
  * This is just a utility function, that's intended to become obsolete when multi-layer Actions
