@@ -7,6 +7,7 @@
 #include <array>
 
 #include "BLI_index_range.hh"
+#include "BLI_index_ranges_builder_fwd.hh"
 #include "BLI_utility_mixins.hh"
 
 namespace blender {

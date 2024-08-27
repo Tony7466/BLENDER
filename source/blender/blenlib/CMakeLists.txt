@@ -265,6 +265,7 @@ set(SRC
   BLI_index_mask_fwd.hh
   BLI_index_range.hh
   BLI_index_ranges_builder.hh
+  BLI_index_ranges_builder_fwd.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
   BLI_jitter_2d.h

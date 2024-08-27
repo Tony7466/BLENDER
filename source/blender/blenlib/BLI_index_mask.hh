@@ -12,7 +12,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask_fwd.hh"
-#include "BLI_index_ranges_builder.hh"
+#include "BLI_index_ranges_builder_fwd.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_task.hh"
