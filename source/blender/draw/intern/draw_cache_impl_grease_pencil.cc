@@ -1043,7 +1043,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   int total_triangles_num = 0;
   int v_offset = 0;
   Vector<Array<int>> verts_start_offsets_per_visible_drawing;
-  Vector<Array<int>> tris_start_offsets_per_visible_drawing;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
@@ -1054,23 +1053,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     const int num_curves = visible_strokes.size();
     const int verts_start_offsets_size = num_curves;
-    const int tris_start_offsets_size = num_curves;
     Array<int> verts_start_offsets(verts_start_offsets_size);
-    Array<int> tris_start_offsets(tris_start_offsets_size);
-
-    /* Calculate the triangle offsets for all the visible curves. */
-    int t_offset = 0;
-    int pos = 0;
-    for (const int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      if (visible_strokes.contains(curve_i)) {
-        tris_start_offsets[pos] = t_offset;
-        pos++;
-      }
-      if (points.size() >= 3) {
-        t_offset += points.size() - 2;
-      }
-    }
 
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
@@ -1091,10 +1074,12 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex. */
     total_verts_num += num_points + num_cyclic + num_curves * 2;
     total_triangles_num += (num_points + num_cyclic) * 2;
-    total_triangles_num += info.drawing.triangles().size();
+
+    for (const int curve_i : curves.curves_range()) {
+      total_triangles_num += info.drawing.triangles()[curve_i].size();
+    }
 
     verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
-    tris_start_offsets_per_visible_drawing.append(std::move(tris_start_offsets));
   }
 
   GPUUsageType vbo_flag = GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY;
@@ -1161,10 +1146,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const VArray<float> fill_opacities = *attributes.lookup_or_default<float>(
         "fill_opacity", bke::AttrDomain::Curve, 1.0f);
 
-    const Span<uint3> triangles = info.drawing.triangles();
+    const Span<Vector<uint3>> triangles = info.drawing.triangles();
     const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
-    const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
@@ -1214,7 +1198,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       const IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
       const int verts_start_offset = verts_start_offsets[pos];
-      const int tris_start_offset = tris_start_offsets[pos];
       const int num_verts = 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
       const IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
@@ -1228,12 +1211,13 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
       /* If the stroke has more than 2 points, add the triangle indices to the index buffer. */
       if (points.size() >= 3) {
-        const Span<uint3> tris_slice = triangles.slice(tris_start_offset, points.size() - 2);
+        const Span<uint3> tris_slice = triangles[curve_i];
         for (const uint3 tri : tris_slice) {
-          GPU_indexbuf_add_tri_verts(&ibo,
-                                     (verts_range[1] + tri.x) << GP_VERTEX_ID_SHIFT,
-                                     (verts_range[1] + tri.y) << GP_VERTEX_ID_SHIFT,
-                                     (verts_range[1] + tri.z) << GP_VERTEX_ID_SHIFT);
+          GPU_indexbuf_add_tri_verts(
+              &ibo,
+              (verts_range.first() + tri.x - points.first() + 1) << GP_VERTEX_ID_SHIFT,
+              (verts_range.first() + tri.y - points.first() + 1) << GP_VERTEX_ID_SHIFT,
+              (verts_range.first() + tri.z - points.first() + 1) << GP_VERTEX_ID_SHIFT);
         }
       }
 

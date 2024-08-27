@@ -54,7 +54,7 @@ class DrawingRuntime {
   /**
    * Triangle cache for all the strokes in the drawing.
    */
-  mutable SharedCache<Vector<uint3>> triangles_cache;
+  mutable SharedCache<Vector<Vector<uint3>>> triangles_cache;
 
   /**
    * Normal vector cache for every stroke. Computed using Newell's method.
@@ -89,7 +89,7 @@ class Drawing : public ::GreasePencilDrawing {
   /**
    * The triangles for all the fills in the geometry.
    */
-  Span<uint3> triangles() const;
+  Span<Vector<uint3>> triangles() const;
   /**
    * Normal vectors for a plane that fits the stroke.
    */

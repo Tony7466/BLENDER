@@ -366,7 +366,7 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
-Span<uint3> Drawing::triangles() const
+Span<Vector<uint3>> Drawing::triangles() const
 {
   struct LocalMemArena {
     MemArena *pf_arena = nullptr;
@@ -379,24 +379,14 @@ Span<uint3> Drawing::triangles() const
       }
     }
   };
-  this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
+  this->runtime->triangles_cache.ensure([&](Vector<Vector<uint3>> &r_data) {
     const CurvesGeometry &curves = this->strokes();
     const Span<float3> positions = curves.evaluated_positions();
     const Span<float3> normals = this->curve_plane_normals();
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
 
-    int total_triangles = 0;
-    Array<int> tris_offests(curves.curves_num());
-    for (int curve_i : curves.curves_range()) {
-      IndexRange points = points_by_curve[curve_i];
-      if (points.size() > 2) {
-        tris_offests[curve_i] = total_triangles;
-        total_triangles += points.size() - 2;
-      }
-    }
-
-    r_data.resize(total_triangles);
-    MutableSpan<uint3> triangles = r_data.as_mutable_span();
+    r_data.resize(curves.curves_num());
+    MutableSpan<Vector<uint3>> strokes_triangles = r_data.as_mutable_span();
     threading::EnumerableThreadSpecific<LocalMemArena> all_local_mem_arenas;
     threading::parallel_for(curves.curves_range(), 32, [&](const IndexRange range) {
       MemArena *pf_arena = all_local_mem_arenas.local().pf_arena;
@@ -407,7 +397,8 @@ Span<uint3> Drawing::triangles() const
         }
 
         const int num_triangles = points.size() - 2;
-        MutableSpan<uint3> r_tris = triangles.slice(tris_offests[curve_i], num_triangles);
+        strokes_triangles[curve_i].resize(num_triangles);
+        MutableSpan<uint3> r_tris = strokes_triangles[curve_i];
 
         float(*projverts)[2] = static_cast<float(*)[2]>(
             BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(points.size())));
@@ -415,7 +406,7 @@ Span<uint3> Drawing::triangles() const
         float3x3 axis_mat;
         axis_dominant_v3_to_m3(axis_mat.ptr(), normals[curve_i]);
 
-        for (const int i : IndexRange(points.size())) {
+        for (const int i : points.index_range()) {
           mul_v2_m3v3(projverts[i], axis_mat.ptr(), positions[points[i]]);
         }
 
@@ -424,6 +415,11 @@ Span<uint3> Drawing::triangles() const
                                 0,
                                 reinterpret_cast<uint32_t(*)[3]>(r_tris.data()),
                                 pf_arena);
+
+        for (const int i : r_tris.index_range()) {
+          r_tris[i] += uint3(points.first());
+        }
+
         BLI_memarena_clear(pf_arena);
       }
     });

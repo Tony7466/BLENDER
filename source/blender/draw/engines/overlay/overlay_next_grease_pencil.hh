@@ -90,6 +90,8 @@ class GreasePencil {
       const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
           *ob, info.drawing, memory);
 
+      const Span<Vector<uint3>> triangles = info.drawing.triangles();
+
       visible_strokes.foreach_index([&](const int stroke_i) {
         const IndexRange points = points_by_curve[stroke_i];
         const int material_index = stroke_materials[stroke_i];
@@ -98,7 +100,7 @@ class GreasePencil {
         const bool hide_onion = info.onion_id != 0;
         const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
 
-        const int num_stroke_triangles = (points.size() >= 3) ? (points.size() - 2) : 0;
+        const int num_stroke_triangles = triangles[stroke_i].size();
         const int num_stroke_vertices = (points.size() +
                                          int(cyclic[stroke_i] && (points.size() >= 3)));
 
