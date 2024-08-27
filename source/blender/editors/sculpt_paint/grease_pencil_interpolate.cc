@@ -464,10 +464,19 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
       interpolated_curves.tag_positions_changed();
     }
 
+    /* Copy stroke mateirals to the new drawing. */
+     Drawing *src_drawing = grease_pencil.get_editable_drawing_at(
+        layer, layer_data.curve_pairs.from_frames[0]);
+
+     const VArraySpan<int> src_materials =
+         *src_drawing->strokes().attributes().lookup_or_default<int>(
+             "material_index", bke::AttrDomain::Curve, 0);
+
     bke::SpanAttributeWriter<int> materials =
         interpolated_curves.attributes_for_write().lookup_or_add_for_write_span<int>(
             "material_index", bke::AttrDomain::Curve);
-    materials.span.fill(material_index);
+
+    materials.span.copy_from(src_materials.take_front(materials.span.size()));
     materials.finish();
 
     dst_drawing->strokes_for_write() = std::move(interpolated_curves);
