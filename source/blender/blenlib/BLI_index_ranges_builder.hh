@@ -7,6 +7,7 @@
 #include <array>
 
 #include "BLI_index_range.hh"
+#include "BLI_utility_mixins.hh"
 
 namespace blender {
 
@@ -37,6 +38,7 @@ template<typename T, int64_t MaxRangesNum> class IndexRangesBuilder : NonCopyabl
     *c_ = start;
     c_ += is_new_range;
     *c_ = end;
+    BLI_assert(c_ < data_.end());
     return is_new_range;
   }
 

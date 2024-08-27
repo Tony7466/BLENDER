@@ -541,6 +541,7 @@ if(WITH_GTESTS)
     tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
+    tests/BLI_index_ranges_builder_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
