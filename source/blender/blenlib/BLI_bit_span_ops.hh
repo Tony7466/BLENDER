@@ -191,15 +191,17 @@ inline void foreach_1_index_expr(ExprFn &&expr,
       expr, handle, to_best_bit_span(first_arg), to_best_bit_span(args)...);
 }
 
-template<typename BitSpanT> inline void invert(const BitSpanT &data)
+template<typename BitSpanT> inline void invert(BitSpanT &data)
 {
-  mix_into_first_expr([](const BitInt x) { return ~x; }, data);
+  mix_into_first_expr([](const BitInt x) { return ~x; }, to_best_bit_span(data));
 }
 
 template<typename FirstBitSpanT, typename... BitSpanT>
 inline void inplace_or(FirstBitSpanT &first_arg, const BitSpanT &...args)
 {
-  mix_into_first_expr([](const auto... x) { return (x | ...); }, first_arg, args...);
+  mix_into_first_expr([](const auto... x) { return (x | ...); },
+                      to_best_bit_span(first_arg),
+                      to_best_bit_span(args)...);
 }
 
 template<typename FirstBitSpanT, typename MaskBitSpanT, typename... BitSpanT>
@@ -210,65 +212,68 @@ inline void inplace_or_masked(FirstBitSpanT &first_arg,
   mix_into_first_expr(
       [](const BitInt a, const BitInt mask, const auto... x) { return a | ((x | ...) & mask); },
       first_arg,
-      mask,
-      args...);
+      to_best_bit_span(mask),
+      to_best_bit_span(args)...);
 }
 
 template<typename FirstBitSpanT, typename... BitSpanT>
 inline void copy_from_or(FirstBitSpanT &first_arg, const BitSpanT &...args)
 {
-  mix_into_first_expr(
-      [](auto /*first*/, auto... rest) { return (rest | ...); }, first_arg, args...);
+  mix_into_first_expr([](auto /*first*/, auto... rest) { return (rest | ...); },
+                      to_best_bit_span(first_arg),
+                      to_best_bit_span(args)...);
 }
 
 template<typename FirstBitSpanT, typename... BitSpanT>
 inline void inplace_and(FirstBitSpanT &first_arg, const BitSpanT &...args)
 {
-  mix_into_first_expr([](const auto... x) { return (x & ...); }, first_arg, args...);
+  mix_into_first_expr([](const auto... x) { return (x & ...); },
+                      to_best_bit_span(first_arg),
+                      to_best_bit_span(args)...);
 }
 
 template<typename... BitSpanT>
 inline void operator|=(MutableBitSpan first_arg, const BitSpanT &...args)
 {
-  inplace_or(first_arg, args...);
+  inplace_or(first_arg, to_best_bit_span(args)...);
 }
 
 template<typename... BitSpanT>
 inline void operator|=(MutableBoundedBitSpan first_arg, const BitSpanT &...args)
 {
-  inplace_or(first_arg, args...);
+  inplace_or(first_arg, to_best_bit_span(args)...);
 }
 
 template<typename... BitSpanT>
 inline void operator&=(MutableBitSpan first_arg, const BitSpanT &...args)
 {
-  inplace_and(first_arg, args...);
+  inplace_and(first_arg, to_best_bit_span(args)...);
 }
 
 template<typename... BitSpanT>
 inline void operator&=(MutableBoundedBitSpan first_arg, const BitSpanT &...args)
 {
-  inplace_and(first_arg, args...);
+  inplace_and(first_arg, to_best_bit_span(args)...);
 }
 
 template<typename... BitSpanT> inline bool has_common_set_bits(const BitSpanT &...args)
 {
-  return any_set_expr([](const auto... x) { return (x & ...); }, args...);
+  return any_set_expr([](const auto... x) { return (x & ...); }, to_best_bit_span(args)...);
 }
 
 template<typename BitSpanT> inline bool any_bit_set(const BitSpanT &arg)
 {
-  return has_common_set_bits(arg);
+  return has_common_set_bits(to_best_bit_span(arg));
 }
 
 template<typename... BitSpanT> inline bool has_common_unset_bits(const BitSpanT &...args)
 {
-  return any_set_expr([](const auto... x) { return ~(x | ...); }, args...);
+  return any_set_expr([](const auto... x) { return ~(x | ...); }, to_best_bit_span(args)...);
 }
 
 template<typename BitSpanT> inline bool any_bit_unset(const BitSpanT &arg)
 {
-  return has_common_unset_bits(arg);
+  return has_common_unset_bits(to_best_bit_span(arg));
 }
 
 template<typename BitSpanT, typename Fn> inline void foreach_1_index(const BitSpanT &data, Fn &&fn)

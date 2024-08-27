@@ -48,6 +48,8 @@ MINLINE unsigned short highest_order_bit_s(unsigned short n);
 MINLINE int count_bits_i(unsigned int n);
 #endif
 
+MINLINE int count_bits_uint64(uint64_t a);
+
 MINLINE int float_as_int(float f);
 MINLINE unsigned int float_as_uint(float f);
 MINLINE float int_as_float(int i);

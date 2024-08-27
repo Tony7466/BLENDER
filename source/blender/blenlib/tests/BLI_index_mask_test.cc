@@ -5,6 +5,7 @@
 #include "testing/testing.h"
 
 #include "BLI_array.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
@@ -40,6 +41,37 @@ TEST(index_mask, FromBits)
   EXPECT_EQ(indices[2], 7);
   EXPECT_EQ(indices[3], 8);
   EXPECT_EQ(indices[4], 9);
+}
+
+TEST(index_mask, FromBits2)
+{
+  IndexMaskMemory memory;
+  BitVector bit_vec(200, true);
+  bit_vec[0].reset();
+  bit_vec[100].reset();
+  const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
+
+  EXPECT_EQ(mask.size(), 198);
+  EXPECT_FALSE(mask.contains(0));
+  EXPECT_FALSE(mask.contains(100));
+}
+
+TEST(index_mask, FromBitsWithUniverse)
+{
+  IndexMaskMemory memory;
+  BitVector bit_vec(200, true);
+  bit_vec[6].reset();
+  bit_vec[100].reset();
+
+  const IndexMask universe = IndexMask::from_indices<int>({4, 6, 7, 8, 9, 100, 101, 102}, memory);
+  const IndexMask mask = IndexMask::from_bits(universe, bit_vec, memory);
+  EXPECT_EQ(mask.size(), 6);
+  EXPECT_EQ(mask[0], 4);
+  EXPECT_EQ(mask[1], 7);
+  EXPECT_EQ(mask[2], 8);
+  EXPECT_EQ(mask[3], 9);
+  EXPECT_EQ(mask[4], 101);
+  EXPECT_EQ(mask[5], 102);
 }
 
 TEST(index_mask, FromSize)

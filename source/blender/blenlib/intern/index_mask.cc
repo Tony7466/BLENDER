@@ -7,11 +7,13 @@
 #include <mutex>
 
 #include "BLI_array.hh"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_mask_expression.hh"
 #include "BLI_math_base.hh"
+#include "BLI_math_bits.h"
 #include "BLI_set.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
@@ -442,13 +444,100 @@ IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory)
   return IndexMask::from_bits(bits.index_range(), bits, memory);
 }
 
+static void bits_to_indices(const BitSpan bits,
+                            LinearAllocator<> &allocator,
+                            Vector<std::variant<IndexRange, IndexMaskSegment>> &r_segments)
+{
+  using namespace bits;
+  if (bits.is_empty()) {
+    return;
+  }
+
+  auto append_range = [&](const IndexRange range) {
+    if (r_segments.is_empty()) {
+      r_segments.append(range);
+      return;
+    }
+    std::variant<IndexRange, IndexMaskSegment> &last_segment = r_segments.last();
+    if (IndexRange *last_range = std::get_if<IndexRange>(&last_segment)) {
+      if (last_range->one_after_last() == range.start()) {
+        *last_range = IndexRange::from_begin_end_inclusive(last_range->first(), range.last());
+        return;
+      }
+    }
+    r_segments.append(range);
+  };
+
+  auto append_int = [&](const BitInt value,
+                        const int64_t start_bit,
+                        const int64_t bits_num,
+                        const int64_t start) {
+    const BitInt mask = mask_range_bits(start_bit, bits_num);
+    const BitInt masked_value = mask & value;
+    if (masked_value == 0) {
+      /* Do nothing. */
+      return;
+    }
+    if (masked_value == mask) {
+      append_range(IndexRange::from_begin_size(start, bits_num));
+      return;
+    }
+    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(bits_num);
+    int64_t counter = 0;
+    const int64_t end_bit = start_bit + bits_num;
+    for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
+      const bool is_set = mask_single_bit(bit_i) & value;
+      indices[counter] = int16_t(bit_i);
+      counter += int64_t(is_set);
+    }
+    allocator.free_end_of_previous_allocation(indices.size_in_bytes(), indices.data() + counter);
+    r_segments.append(IndexMaskSegment(start - start_bit, indices.take_front(counter)));
+  };
+
+  const BitInt *data = bits.data();
+  const IndexRange bit_range = bits.bit_range();
+
+  const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range, bits::BitsPerInt);
+  if (!ranges.prefix.is_empty()) {
+    const BitInt first_int = *int_containing_bit(data, bit_range.start());
+    append_int(first_int, BitInt(ranges.prefix.start()) & BitIndexMask, ranges.prefix.size(), 0);
+  }
+  if (!ranges.aligned.is_empty()) {
+    const BitInt *start = int_containing_bit(data, ranges.aligned.start());
+    const int64_t ints_to_check = ranges.aligned.size() / BitsPerInt;
+    for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
+      const BitInt value = start[int_i];
+      append_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
+    }
+  }
+  if (!ranges.suffix.is_empty()) {
+    const BitInt last_int = *int_containing_bit(data, bit_range.last());
+    append_int(last_int, 0, ranges.suffix.size(), ranges.prefix.size() + ranges.aligned.size());
+  }
+}
+
 IndexMask IndexMask::from_bits(const IndexMask &universe,
                                const BitSpan bits,
                                IndexMaskMemory &memory)
 {
-  return IndexMask::from_predicate(universe, GrainSize(1024), memory, [bits](const int64_t index) {
-    return bits[index].test();
-  });
+  Vector<std::variant<IndexRange, IndexMaskSegment>> segments;
+  bits_to_indices(bits, memory, segments);
+
+  const Span<int16_t> static_indices = get_static_indices_array();
+  Vector<IndexMaskSegment> mask_segments;
+  for (const auto &segment : segments) {
+    if (const IndexRange *range = std::get_if<IndexRange>(&segment)) {
+      for (int64_t slice_start = 0; slice_start < range->size(); slice_start += max_segment_size) {
+        mask_segments.append_as(range->start() + slice_start,
+                                static_indices.take_front(range->size() - slice_start));
+      }
+    }
+    else {
+      mask_segments.append(std::get<IndexMaskSegment>(segment));
+    }
+  }
+  IndexMask mask = IndexMask::from_segments(mask_segments, memory);
+  return IndexMask::from_intersection(universe, mask, memory);
 }
 
 IndexMask IndexMask::from_bools(Span<bool> bools, IndexMaskMemory &memory)
@@ -465,16 +554,17 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
                                 Span<bool> bools,
                                 IndexMaskMemory &memory)
 {
-  return IndexMask::from_predicate(
-      universe, GrainSize(1024), memory, [bools](const int64_t index) { return bools[index]; });
+  BitVector bits(bools);
+  return IndexMask::from_bits(universe, bits, memory);
 }
 
 IndexMask IndexMask::from_bools_inverse(const IndexMask &universe,
                                         Span<bool> bools,
                                         IndexMaskMemory &memory)
 {
-  return IndexMask::from_predicate(
-      universe, GrainSize(1024), memory, [bools](const int64_t index) { return !bools[index]; });
+  BitVector bits(bools);
+  bits::invert(bits);
+  return IndexMask::from_bits(universe, bits, memory);
 }
 
 IndexMask IndexMask::from_bools(const IndexMask &universe,
