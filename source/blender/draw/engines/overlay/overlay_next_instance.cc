@@ -95,6 +95,7 @@ void Instance::begin_sync()
     layer.empties.begin_sync();
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
+    layer.fluids.begin_sync(resources, state);
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.light_probes.begin_sync(resources, state);
@@ -190,11 +191,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
+    layer.bounds.object_sync(ob_ref, resources, state);
     layer.facing.object_sync(manager, ob_ref, state);
     layer.force_fields.object_sync(ob_ref, resources, state);
-    layer.bounds.object_sync(ob_ref, resources, state);
-    layer.relations.object_sync(ob_ref, resources, state);
+    layer.fluids.object_sync(manager, ob_ref, resources, state);
     layer.particles.object_sync(manager, ob_ref, resources, state);
+    layer.relations.object_sync(ob_ref, resources, state);
 
     if (object_is_selected(ob_ref) && !in_edit_paint_mode) {
       outline.object_sync(manager, ob_ref, state);
@@ -340,6 +342,7 @@ void Instance::draw(Manager &manager)
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
+    layer.fluids.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 

@@ -56,10 +56,10 @@ class Prepass {
     gpu::Batch *geom = nullptr;
     switch (ob_ref.object->type) {
       case OB_MESH:
-        geom = DRW_cache_mesh_surface_get(ob_ref.object);
+        // geom = DRW_cache_mesh_surface_get(ob_ref.object);
         break;
       case OB_VOLUME:
-        geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
+        // geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
         break;
       default:
         break;
