@@ -4,7 +4,10 @@
 
 #include "testing/testing.h"
 
+#include <fmt/format.h>
+
 #include "BLI_array.hh"
+#include "BLI_bit_span_ops.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
@@ -105,6 +108,65 @@ TEST(index_mask, FromBitsSparse)
   EXPECT_EQ(mask[9], 70'002);
   EXPECT_EQ(mask[10], 70'004);
   EXPECT_EQ(mask[11], 70'005);
+}
+
+static BitVector<> build_bits_with_uniform_distribution(const int bits_num,
+                                                        const int set_bits_num,
+                                                        const uint32_t seed = 0)
+{
+  if (set_bits_num > bits_num / 2) {
+    BitVector bit_vec = build_bits_with_uniform_distribution(bits_num, bits_num - set_bits_num);
+    bits::invert(bit_vec);
+    return bit_vec;
+  }
+  BitVector bit_vec(bits_num, false);
+  RandomNumberGenerator rng(seed);
+  int counter = 0;
+  while (counter < set_bits_num) {
+    const int i = rng.get_int32(int(bits_num));
+    MutableBitRef bit = bit_vec[i];
+    if (!bit) {
+      bit.set();
+      counter++;
+    }
+  }
+  return bit_vec;
+}
+
+static void benchmark_uniform_bit_distribution(const int bits_num,
+                                               const int set_bits_num,
+                                               const int iterations)
+{
+  BitVector bit_vec = build_bits_with_uniform_distribution(bits_num, set_bits_num);
+  std::locale loc("en_US.UTF-8");
+  for ([[maybe_unused]] const int64_t i : IndexRange(iterations)) {
+    IndexMaskMemory memory;
+    {
+      SCOPED_TIMER(fmt::format(loc, "{:15L} / {:L}", set_bits_num, bits_num));
+      const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
+      EXPECT_EQ(mask.size(), set_bits_num);
+    }
+  }
+}
+
+TEST(index_mask, FromBitsBenchmark)
+{
+  const int size = 100'000'000;
+  const int iterations = 3;
+  Vector<int> set_bit_nums;
+  set_bit_nums.append(0);
+  int current = 100;
+  while (current < size / 2) {
+    set_bit_nums.append(current);
+    set_bit_nums.append(size - current);
+    current = int(current * 1.5);
+  }
+  set_bit_nums.append(size);
+  std::sort(set_bit_nums.begin(), set_bit_nums.end());
+
+  for (const int set_bit_num : set_bit_nums) {
+    benchmark_uniform_bit_distribution(size, set_bit_num, iterations);
+  }
 }
 
 TEST(index_mask, FromBitsDense)
