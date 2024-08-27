@@ -328,6 +328,7 @@ static void rna_AnimData_action_slot_set(PointerRNA *ptr, PointerRNA value, Repo
     BKE_report(reports, RPT_ERROR, "Cannot set slot without an assigned Action.");
     return;
   }
+  BLI_assert(BKE_animdata_from_id(animated_id) == &adt);
 
   Action &action = adt.action->wrap();
   Slot &slot = dna_slot->wrap();
@@ -1586,6 +1587,7 @@ static void rna_def_animdata(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "Action");
   /* this flag as well as the dynamic test must be defined for this to be editable... */
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_pointer_funcs(
       prop,
       /* Define a getter that is NULL-safe, so that an RNA_AnimData prop with `ptr->data = nullptr`
