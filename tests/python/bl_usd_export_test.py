@@ -777,6 +777,7 @@ class USDHookBase():
 
         return USDHookBase.follow_instructions(name, "on_import")
 
+
 class USDHook1(USDHookBase, bpy.types.USDHook):
     bl_idname = "usd_hook_1"
     bl_label = "Hook 1"
@@ -792,6 +793,7 @@ class USDHook1(USDHookBase, bpy.types.USDHook):
     @staticmethod
     def on_import(import_context):
         return USDHookBase.do_on_import(USDHook1.bl_label, import_context)
+
 
 class USDHook2(USDHookBase, bpy.types.USDHook):
     bl_idname = "usd_hook_2"
