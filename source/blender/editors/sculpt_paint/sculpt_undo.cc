@@ -76,6 +76,7 @@
 #include "ED_undo.hh"
 
 #include "bmesh.hh"
+#include "paint_hide.hh"
 #include "paint_intern.hh"
 #include "sculpt_color.hh"
 #include "sculpt_dyntopo.hh"
@@ -604,8 +605,7 @@ static void bmesh_restore_generic(StepData &step_data, Object &object, SculptSes
   }
 
   if (step_data.type == Type::Mask) {
-    Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
-    for (bke::pbvh::Node *node : nodes) {
+    for (bke::pbvh::Node *node : bke::pbvh::all_leaf_nodes(*ss.pbvh)) {
       BKE_pbvh_node_mark_redraw(*node);
     }
   }
@@ -680,11 +680,14 @@ static void store_geometry_data(NodeGeometry *geometry, const Object &object)
   BLI_assert(!geometry->is_initialized);
   geometry->is_initialized = true;
 
-  CustomData_copy(&mesh->vert_data, &geometry->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
-  CustomData_copy(&mesh->edge_data, &geometry->edge_data, CD_MASK_MESH.emask, mesh->edges_num);
-  CustomData_copy(
+  CustomData_init_from(
+      &mesh->vert_data, &geometry->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
+  CustomData_init_from(
+      &mesh->edge_data, &geometry->edge_data, CD_MASK_MESH.emask, mesh->edges_num);
+  CustomData_init_from(
       &mesh->corner_data, &geometry->corner_data, CD_MASK_MESH.lmask, mesh->corners_num);
-  CustomData_copy(&mesh->face_data, &geometry->face_data, CD_MASK_MESH.pmask, mesh->faces_num);
+  CustomData_init_from(
+      &mesh->face_data, &geometry->face_data, CD_MASK_MESH.pmask, mesh->faces_num);
   implicit_sharing::copy_shared_pointer(mesh->face_offset_indices,
                                         mesh->runtime->face_offsets_sharing_info,
                                         &geometry->face_offset_indices,
@@ -708,11 +711,14 @@ static void restore_geometry_data(const NodeGeometry *geometry, Mesh *mesh)
   mesh->faces_num = geometry->faces_num;
   mesh->totface_legacy = 0;
 
-  CustomData_copy(&geometry->vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, geometry->totvert);
-  CustomData_copy(&geometry->edge_data, &mesh->edge_data, CD_MASK_MESH.emask, geometry->totedge);
-  CustomData_copy(
+  CustomData_init_from(
+      &geometry->vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, geometry->totvert);
+  CustomData_init_from(
+      &geometry->edge_data, &mesh->edge_data, CD_MASK_MESH.emask, geometry->totedge);
+  CustomData_init_from(
       &geometry->corner_data, &mesh->corner_data, CD_MASK_MESH.lmask, geometry->totloop);
-  CustomData_copy(&geometry->face_data, &mesh->face_data, CD_MASK_MESH.pmask, geometry->faces_num);
+  CustomData_init_from(
+      &geometry->face_data, &mesh->face_data, CD_MASK_MESH.pmask, geometry->faces_num);
   implicit_sharing::copy_shared_pointer(geometry->face_offset_indices,
                                         geometry->face_offsets_sharing_info,
                                         &mesh->face_offset_indices,
@@ -856,7 +862,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Position: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -903,7 +909,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideVert: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -942,7 +948,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::HideFace: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -955,11 +961,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
 
       if (use_multires_undo(step_data, ss)) {
+        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
         Vector<int> faces_vector;
         for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, *node, faces_vector);
+              subdiv_ccg, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_visibility(*node);
           }
@@ -983,7 +990,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Mask: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -1017,7 +1024,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::FaceSet: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -1029,11 +1036,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         restore_face_sets(object, *unode, modified_faces);
       }
       if (use_multires_undo(step_data, ss)) {
+        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
         Vector<int> faces_vector;
         for (bke::pbvh::Node *node : nodes) {
           faces_vector.clear();
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
-              *ss.pbvh, *node, faces_vector);
+              subdiv_ccg, *node, faces_vector);
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_face_sets(*node);
           }
@@ -1054,7 +1062,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       break;
     }
     case Type::Color: {
-      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+      const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
       BKE_sculpt_update_object_for_edit(depsgraph, &object, false);
       if (!topology_matches(step_data, object)) {
@@ -1346,7 +1354,8 @@ static void fill_node_data(const Depsgraph &depsgraph,
       bke::pbvh::node_face_indices_calc_mesh(mesh.corner_tri_faces(), *node, unode.face_indices);
     }
     else {
-      bke::pbvh::node_face_indices_calc_grids(*ss.pbvh, *node, unode.face_indices);
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      bke::pbvh::node_face_indices_calc_grids(subdiv_ccg, *node, unode.face_indices);
     }
   }
 
@@ -2027,7 +2036,7 @@ static void push_all_grids(const Depsgraph &depsgraph, Object *object)
     return;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
   push_nodes(depsgraph, *object, nodes, Type::Position);
 }
 
