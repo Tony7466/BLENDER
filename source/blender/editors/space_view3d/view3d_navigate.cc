@@ -537,19 +537,9 @@ static eV3D_OpEvent view3d_navigate_event(ViewOpsData *vod, const wmEvent *event
         U.uiflag ^= USER_ORBIT_SELECTION;
         U.runtime.is_dirty = true;
       }
-      if (event->type == EVT_DKEY) {
-        vod->viewops_flag ^= VIEWOPS_FLAG_DEPTH_NAVIGATE;
-        U.uiflag ^= USER_DEPTH_NAVIGATE;
-        U.runtime.is_dirty = true;
-      }
       if (event->type == EVT_PKEY) {
         vod->viewops_flag ^= VIEWOPS_FLAG_PERSP_ENSURE;
         U.uiflag ^= USER_AUTOPERSP;
-        U.runtime.is_dirty = true;
-      }
-      if (event->type == EVT_ZKEY) {
-        vod->viewops_flag ^= VIEWOPS_FLAG_ZOOM_TO_MOUSE;
-        U.uiflag ^= USER_ZOOM_TO_MOUSEPOS;
         U.runtime.is_dirty = true;
       }
     }
@@ -630,17 +620,13 @@ static void view3d_navigate_update_status(bContext *C, wmOperator *op, ViewOpsDa
   status.opmodal(IFACE_("Move"), op->type, VIEWROT_MODAL_SWITCH_MOVE);
   status.opmodal(IFACE_("Rotate"), op->type, VIEWROT_MODAL_SWITCH_ROTATE);
 
-  status.item_bool(
-      IFACE_("Orbit Selection"), vod->viewops_flag & VIEWOPS_FLAG_ORBIT_SELECT, ICON_EVENT_S);
+  if (vod->nav_type == &ViewOpsType_rotate) {
+    status.item_bool(
+        IFACE_("Orbit Selection"), vod->viewops_flag & VIEWOPS_FLAG_ORBIT_SELECT, ICON_EVENT_S);
 
-  status.item_bool(
-      IFACE_("Use Depth"), vod->viewops_flag & VIEWOPS_FLAG_DEPTH_NAVIGATE, ICON_EVENT_D);
-
-  status.item_bool(
-      IFACE_("Auto Perspective"), vod->viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE, ICON_EVENT_P);
-
-  status.item_bool(
-      IFACE_("Zoom to Mouse"), vod->viewops_flag & VIEWOPS_FLAG_ZOOM_TO_MOUSE, ICON_EVENT_Z);
+    status.item_bool(
+        IFACE_("Auto Perspective"), vod->viewops_flag & VIEWOPS_FLAG_PERSP_ENSURE, ICON_EVENT_P);
+  }
 }
 
 int view3d_navigate_modal_fn(bContext *C, wmOperator *op, const wmEvent *event)
