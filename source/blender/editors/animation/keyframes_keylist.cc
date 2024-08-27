@@ -1200,8 +1200,11 @@ void action_group_to_keylist(AnimData *adt,
     return;
   }
 
+  /* Layered and legacy data shouldn't both exist at the same time. */
+  BLI_assert(agrp->channel_bag == nullptr || agrp->channels.first == nullptr);
+
   /* Legacy actions. */
-  if (agrp->channels.first && agrp->channels.last) {
+  if (agrp->channel_bag == nullptr) {
     LISTBASE_FOREACH (FCurve *, fcu, &agrp->channels) {
       if (fcu->grp != agrp) {
         break;
@@ -1212,9 +1215,6 @@ void action_group_to_keylist(AnimData *adt,
   }
 
   /* Layered actions. */
-  if (agrp->channel_bag == nullptr) {
-    return;
-  }
   animrig::ChannelBag channel_bag = agrp->channel_bag->wrap();
   Span<FCurve *> fcurves = channel_bag.fcurves().slice(agrp->fcurve_range_start,
                                                        agrp->fcurve_range_length);
