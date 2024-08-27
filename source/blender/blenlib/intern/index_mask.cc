@@ -589,24 +589,48 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
                                const BitSpan bits,
                                IndexMaskMemory &memory)
 {
-  Vector<std::variant<IndexRange, IndexMaskSegment>> segments;
-  bits_to_indices(bits, memory, segments);
+  ParallelSegmentsCollector segments_collector;
+  universe.foreach_segment(
+      GrainSize(max_segment_size), [&](const IndexMaskSegment universe_segment) {
+        ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
+        Vector<std::variant<IndexRange, IndexMaskSegment>> set_bit_segments;
+        int64_t extra_shift = 0;
+        if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
+          const IndexRange universe_range{universe_segment[0], universe_segment.size()};
+          bits_to_indices(bits.slice(universe_range), data.allocator, set_bit_segments);
+          extra_shift = universe_range.start();
+        }
+        else {
+          /* TODO: Do less unnecessary work. */
+          BitVector<max_segment_size> local_bits(max_segment_size, false);
+          for (const int64_t i : universe_segment.index_range()) {
+            const int64_t global_index = universe_segment[i];
+            const int16_t local_index = universe_segment.base_span()[i];
+            if (bits[global_index]) {
+              local_bits[local_index].set();
+            }
+          }
+          bits_to_indices(local_bits, data.allocator, set_bit_segments);
+          extra_shift = universe_segment.offset();
+        }
 
-  const Span<int16_t> static_indices = get_static_indices_array();
-  Vector<IndexMaskSegment> mask_segments;
-  for (const auto &segment : segments) {
-    if (const IndexRange *range = std::get_if<IndexRange>(&segment)) {
-      for (int64_t slice_start = 0; slice_start < range->size(); slice_start += max_segment_size) {
-        mask_segments.append_as(range->start() + slice_start,
-                                static_indices.take_front(range->size() - slice_start));
-      }
-    }
-    else {
-      mask_segments.append(std::get<IndexMaskSegment>(segment));
-    }
-  }
-  IndexMask mask = IndexMask::from_segments(mask_segments, memory);
-  return IndexMask::from_intersection(universe, mask, memory);
+        const Span<int16_t> static_indices = get_static_indices_array();
+        for (const auto &set_bit_segment : set_bit_segments) {
+          if (const IndexRange *range = std::get_if<IndexRange>(&set_bit_segment)) {
+            for (int64_t slice_start = 0; slice_start < range->size();
+                 slice_start += max_segment_size) {
+              data.segments.append_as(range->start() + slice_start + extra_shift,
+                                      static_indices.take_front(range->size() - slice_start));
+            }
+          }
+          else {
+            data.segments.append(std::get<IndexMaskSegment>(set_bit_segment).shift(extra_shift));
+          }
+        }
+      });
+  Vector<IndexMaskSegment, 16> segments;
+  segments_collector.reduce(memory, segments);
+  return IndexMask::from_segments(segments, memory);
 }
 
 IndexMask IndexMask::from_bools(Span<bool> bools, IndexMaskMemory &memory)
