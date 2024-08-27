@@ -74,6 +74,25 @@ TEST(index_mask, FromBitsWithUniverse)
   EXPECT_EQ(mask[5], 102);
 }
 
+TEST(index_mask, FromBitsApart)
+{
+  BitVector bit_vec(1000, false);
+  bit_vec[5].set();
+  bit_vec[100].set();
+  bit_vec[200].set();
+  bit_vec[500].set();
+  bit_vec[800].set();
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
+  EXPECT_EQ(mask.size(), 5);
+  EXPECT_EQ(mask[0], 5);
+  EXPECT_EQ(mask[1], 100);
+  EXPECT_EQ(mask[2], 200);
+  EXPECT_EQ(mask[3], 500);
+  EXPECT_EQ(mask[4], 800);
+}
+
 TEST(index_mask, FromSize)
 {
   {

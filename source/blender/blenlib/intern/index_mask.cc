@@ -468,6 +468,23 @@ static void bits_to_indices(const BitSpan bits,
     r_segments.append(range);
   };
 
+  Vector<int64_t> current_indices;
+
+  auto append_current_indices = [&]() {
+    if (current_indices.is_empty()) {
+      return;
+    }
+    const int64_t offset = current_indices.first();
+    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(current_indices.size());
+    for (const int64_t i : current_indices.index_range()) {
+      const int64_t index = current_indices[i] - offset;
+      BLI_assert(index >= 0 && index < max_segment_size);
+      indices[i] = int16_t(index);
+    }
+    r_segments.append(IndexMaskSegment{offset, indices});
+    current_indices.clear();
+  };
+
   auto append_int = [&](const BitInt value,
                         const int64_t start_bit,
                         const int64_t bits_num,
@@ -479,19 +496,17 @@ static void bits_to_indices(const BitSpan bits,
       return;
     }
     if (masked_value == mask) {
+      append_current_indices();
       append_range(IndexRange::from_begin_size(start, bits_num));
       return;
     }
-    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(bits_num);
-    int64_t counter = 0;
     const int64_t end_bit = start_bit + bits_num;
     for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
       const bool is_set = mask_single_bit(bit_i) & value;
-      indices[counter] = int16_t(bit_i);
-      counter += int64_t(is_set);
+      if (is_set) {
+        current_indices.append(bit_i + start - start_bit);
+      }
     }
-    allocator.free_end_of_previous_allocation(indices.size_in_bytes(), indices.data() + counter);
-    r_segments.append(IndexMaskSegment(start - start_bit, indices.take_front(counter)));
   };
 
   const BitInt *data = bits.data();
@@ -508,12 +523,18 @@ static void bits_to_indices(const BitSpan bits,
     for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
       const BitInt value = start[int_i];
       append_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
+      if (!current_indices.is_empty()) {
+        if (current_indices.last() - current_indices.first() > max_segment_size - BitsPerInt) {
+          append_current_indices();
+        }
+      }
     }
   }
   if (!ranges.suffix.is_empty()) {
     const BitInt last_int = *int_containing_bit(data, bit_range.last());
     append_int(last_int, 0, ranges.suffix.size(), ranges.prefix.size() + ranges.aligned.size());
   }
+  append_current_indices();
 }
 
 IndexMask IndexMask::from_bits(const IndexMask &universe,
