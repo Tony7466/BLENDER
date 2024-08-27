@@ -319,7 +319,7 @@ static void sculpt_color_presmooth_init(const Mesh &mesh, SculptSession &ss)
   const GVArraySpan colors = *color_attribute;
 
   if (ss.filter_cache->pre_smoothed_color.is_empty()) {
-    ss.filter_cache->pre_smoothed_color = Array<float4>(SCULPT_vertex_count_get(ss));
+    ss.filter_cache->pre_smoothed_color = Array<float4>(mesh.verts_num);
   }
   const MutableSpan<float4> pre_smoothed_color = ss.filter_cache->pre_smoothed_color;
 
@@ -401,7 +401,7 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object &ob)
                         *nodes[i],
                         tls,
                         color_attribute);
-      BKE_pbvh_node_mark_update_color(nodes[i]);
+      BKE_pbvh_node_mark_update_color(*nodes[i]);
     }
   });
   color_attribute.finish();
