@@ -921,8 +921,12 @@ class VIEW3D_HT_header(Header):
                     icon='GP_SELECT_STROKES',
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
-
-                # TODO: Segment selection
+                row.operator(
+                    "grease_pencil.set_selection_mode",
+                    text="",
+                    icon='GP_SELECT_BETWEEN_STROKES',
+                    depress=(tool_settings.gpencil_selectmode_edit == 'SEGMENT'),
+                ).mode = 'SEGMENT'
 
             if object_mode == 'PAINT_GPENCIL':
                 row = layout.row(align=True)
@@ -1282,7 +1286,9 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_select_paint_mask")
             elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
                 layout.menu("VIEW3D_MT_select_paint_mask_vertex")
-        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL'}:
+        elif mode_string not in {
+                'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GREASE_PENCIL',
+        }:
             layout.menu("VIEW3D_MT_select_" + mode_string.lower())
 
         if gp_edit:

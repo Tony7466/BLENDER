@@ -13,10 +13,11 @@
 
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_base.hh"
-#include "BLI_task.h"
 #include "BLI_task.hh"
 
+#include "editors/sculpt_paint/sculpt_face_set.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "editors/sculpt_paint/sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint {
 inline namespace draw_face_sets_cc {

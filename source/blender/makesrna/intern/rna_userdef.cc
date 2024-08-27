@@ -19,6 +19,7 @@
 
 #include "BLI_math_base.h"
 #include "BLI_math_rotation.h"
+#include "BLI_memory_cache.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
@@ -894,7 +895,9 @@ static void rna_UserDef_audio_update(Main *bmain, Scene * /*scene*/, PointerRNA 
 
 static void rna_Userdef_memcache_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
-  MEM_CacheLimiter_set_maximum(size_t(U.memcachelimit) * 1024 * 1024);
+  const int64_t new_limit = int64_t(U.memcachelimit) * 1024 * 1024;
+  MEM_CacheLimiter_set_maximum(new_limit);
+  blender::memory_cache::set_approximate_size_limit(new_limit);
   USERDEF_TAG_DIRTY;
 }
 
@@ -5749,6 +5752,14 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_SIMPLE_TWEAKING);
   RNA_def_property_ui_text(
       prop, "Tweak Handles", "Allows dragging handles without selecting them first");
+
+  prop = RNA_def_property(srna, "connect_strips_by_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT);
+  RNA_def_property_ui_text(
+      prop,
+      "Connect Movie Strips by Default",
+      "Connect newly added movie strips by default if they have multiple channels");
 
   /* duplication linking */
   prop = RNA_def_property(srna, "use_duplicate_mesh", PROP_BOOLEAN, PROP_NONE);
