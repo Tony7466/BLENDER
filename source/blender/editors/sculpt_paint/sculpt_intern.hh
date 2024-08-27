@@ -142,7 +142,7 @@ struct StrokeCache {
     float3 tolerance;
     float4x4 mat;
     float4x4 mat_inv;
-  } mirror_mod_clip;
+  } mirror_modifier_clip;
   float2 initial_mouse;
 
   /* Variants */

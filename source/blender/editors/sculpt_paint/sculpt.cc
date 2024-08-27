@@ -3999,7 +3999,7 @@ namespace blender::ed::sculpt_paint {
 /* Initialize mirror modifier clipping. */
 static void sculpt_init_mirror_clipping(const Object &ob, const SculptSession &ss)
 {
-  ss.cache->mirror_mod_clip.mat = float4x4::identity();
+  ss.cache->mirror_modifier_clip.mat = float4x4::identity();
 
   LISTBASE_FOREACH (ModifierData *, md, &ob.modifiers) {
     if (!(md->type == eModifierType_Mirror && (md->mode & eModifierMode_Realtime))) {
@@ -4016,21 +4016,22 @@ static void sculpt_init_mirror_clipping(const Object &ob, const SculptSession &s
         continue;
       }
       /* Enable sculpt clipping. */
-      ss.cache->mirror_mod_clip.flag |= CLIP_X << i;
+      ss.cache->mirror_modifier_clip.flag |= CLIP_X << i;
 
       /* Update the clip tolerance. */
-      ss.cache->mirror_mod_clip.tolerance[i] = std::max(mmd->tolerance,
-                                                        ss.cache->mirror_mod_clip.tolerance[i]);
+      ss.cache->mirror_modifier_clip.tolerance[i] = std::max(
+          mmd->tolerance, ss.cache->mirror_modifier_clip.tolerance[i]);
 
       /* Store matrix for mirror object clipping. */
       if (mmd->mirror_ob) {
         const float4x4 mirror_ob_inv = math::invert(mmd->mirror_ob->object_to_world());
-        mul_m4_m4m4(
-            ss.cache->mirror_mod_clip.mat.ptr(), mirror_ob_inv.ptr(), ob.object_to_world().ptr());
+        mul_m4_m4m4(ss.cache->mirror_modifier_clip.mat.ptr(),
+                    mirror_ob_inv.ptr(),
+                    ob.object_to_world().ptr());
       }
     }
   }
-  ss.cache->mirror_mod_clip.mat_inv = math::invert(ss.cache->mirror_mod_clip.mat);
+  ss.cache->mirror_modifier_clip.mat_inv = math::invert(ss.cache->mirror_modifier_clip.mat);
 }
 
 static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
@@ -4132,7 +4133,7 @@ static void sculpt_update_cache_invariants(
 
   cache->plane_trim_squared = brush->plane_trim * brush->plane_trim;
 
-  cache->mirror_mod_clip.flag = 0;
+  cache->mirror_modifier_clip.flag = 0;
 
   sculpt_init_mirror_clipping(ob, ss);
 
@@ -7063,18 +7064,18 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->mirror_mod_clip.flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
       continue;
     }
 
-    const float4x4 mirror(cache->mirror_mod_clip.mat);
-    const float4x4 mirror_inverse(cache->mirror_mod_clip.mat_inv);
+    const float4x4 mirror(cache->mirror_modifier_clip.mat);
+    const float4x4 mirror_inverse(cache->mirror_modifier_clip.mat_inv);
     for (const int i : verts.index_range()) {
       const int vert = verts[i];
 
       /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, positions[vert]);
-      if (math::abs(co_mirror[axis]) > cache->mirror_mod_clip.tolerance[axis]) {
+      if (math::abs(co_mirror[axis]) > cache->mirror_modifier_clip.tolerance[axis]) {
         continue;
       }
       /* Clear the translation in the local space of the mirror object. */
@@ -7104,16 +7105,16 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->mirror_mod_clip.flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
       continue;
     }
 
-    const float4x4 mirror(cache->mirror_mod_clip.mat);
-    const float4x4 mirror_inverse(cache->mirror_mod_clip.mat_inv);
+    const float4x4 mirror(cache->mirror_modifier_clip.mat);
+    const float4x4 mirror_inverse(cache->mirror_modifier_clip.mat_inv);
     for (const int i : positions.index_range()) {
       /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, positions[i]);
-      if (math::abs(co_mirror[axis]) > cache->mirror_mod_clip.tolerance[axis]) {
+      if (math::abs(co_mirror[axis]) > cache->mirror_modifier_clip.tolerance[axis]) {
         continue;
       }
       /* Clear the translation in the local space of the mirror object. */
