@@ -3691,7 +3691,10 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
 
   if (cache.rake_rotation) {
     float4 new_quat;
-    float4 existing(cache.rake_rotation->w, cache.rake_rotation->x, cache.rake_rotation->y, cache.rake_rotation->z);
+    float4 existing(cache.rake_rotation->w,
+                    cache.rake_rotation->x,
+                    cache.rake_rotation->y,
+                    cache.rake_rotation->z);
     flip_qt_qt(new_quat, existing, symm);
     cache.rake_rotation_symmetry = math::Quaternion(existing);
   }
@@ -4457,7 +4460,8 @@ static void brush_delta_update(const Depsgraph &depsgraph,
                                   sqrtf(rake_dist_sq) / cache->rake_data.follow_dist;
 
       const math::AxisAngle between_vecs(v1, v2);
-      const math::AxisAngle rotated(between_vecs.axis(), between_vecs.angle() * brush.rake_factor * rake_fade);
+      const math::AxisAngle rotated(between_vecs.axis(),
+                                    between_vecs.angle() * brush.rake_factor * rake_fade);
       cache->rake_rotation = math::to_quaternion(rotated);
     }
   }
