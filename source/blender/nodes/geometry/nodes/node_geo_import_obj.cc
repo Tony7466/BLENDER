@@ -36,53 +36,59 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GeometrySet output = geometry_import_cache::import_geometry_cached(path, [&path, &params]() {
-    OBJImportParams import_params;
-    STRNCPY(import_params.filepath, path.c_str());
+  std::shared_ptr<const geometry_import_cache::GeometryReadValue> output =
+      geometry_import_cache::import_geometry_cached(path, [&path]() {
+        OBJImportParams import_params;
+        STRNCPY(import_params.filepath, path.c_str());
 
-    ReportList reports;
-    BKE_reports_init(&reports, RPT_STORE);
-    BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
-    import_params.reports = &reports;
+        ReportList reports;
+        BKE_reports_init(&reports, RPT_STORE);
+        BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
+        import_params.reports = &reports;
 
-    Vector<bke::GeometrySet> geometries;
-    OBJ_import_geometries(&import_params, geometries);
+        Vector<bke::GeometrySet> geometries;
+        OBJ_import_geometries(&import_params, geometries);
 
-    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-      NodeWarningType type;
-      switch (report->type) {
-        case RPT_ERROR:
-          type = NodeWarningType::Error;
-          break;
-        default:
-          type = NodeWarningType::Info;
-          break;
-      }
-      params.error_message_add(type, TIP_(report->message));
+        if (geometries.is_empty()) {
+          GeometrySet geometry = GeometrySet();
+
+          auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+              geometry, import_params.reports);
+          return value;
+        }
+
+        bke::Instances *instances = new bke::Instances();
+        for (GeometrySet geometry : geometries) {
+          const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
+          instances->add_instance(handle, float4x4::identity());
+        }
+
+        GeometrySet geometry = GeometrySet::from_instances(instances);
+
+        auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+            geometry, import_params.reports);
+        return value;
+      });
+
+  LISTBASE_FOREACH (Report *, report, &(&output->reports)->list) {
+    NodeWarningType type;
+    switch (report->type) {
+      case RPT_ERROR:
+        type = NodeWarningType::Error;
+        break;
+      default:
+        type = NodeWarningType::Info;
+        break;
     }
+    params.error_message_add(type, TIP_(report->message));
+  }
 
-    if (geometries.is_empty()) {
-      params.set_default_remaining_outputs();
+  if (!output->geometry.has_component<InstancesComponent>()) {
+    params.set_default_remaining_outputs();
+    return;
+  }
 
-      GeometrySet geometry = GeometrySet();
-
-      auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(geometry);
-      return value;
-    }
-
-    bke::Instances *instances = new bke::Instances();
-    for (GeometrySet geometry : geometries) {
-      const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
-      instances->add_instance(handle, float4x4::identity());
-    }
-
-    GeometrySet geometry = GeometrySet::from_instances(instances);
-
-    auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(geometry);
-    return value;
-  });
-
-  params.set_output("Instances", output);
+  params.set_output("Instances", output->geometry);
 #else
   params.error_message_add(NodeWarningType::Error,
                            TIP_("Disabled, Blender was compiled without OBJ I/O"));

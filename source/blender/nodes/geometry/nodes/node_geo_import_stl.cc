@@ -35,44 +35,46 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  GeometrySet output = geometry_import_cache::import_geometry_cached(path, [&path, &params]() {
-    STLImportParams import_params;
-    STRNCPY(import_params.filepath, path.c_str());
+  std::shared_ptr<const geometry_import_cache::GeometryReadValue> output =
+      geometry_import_cache::import_geometry_cached(path, [&path]() {
+        STLImportParams import_params;
+        STRNCPY(import_params.filepath, path.c_str());
 
-    import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
-    import_params.up_axis = IO_AXIS_Y;
-    import_params.use_facet_normal = false;
-    import_params.use_scene_unit = false;
-    import_params.global_scale = 1.0f;
-    import_params.use_mesh_validate = true;
+        import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
+        import_params.up_axis = IO_AXIS_Y;
+        import_params.use_facet_normal = false;
+        import_params.use_scene_unit = false;
+        import_params.global_scale = 1.0f;
+        import_params.use_mesh_validate = true;
 
-    ReportList reports;
-    BKE_reports_init(&reports, RPT_STORE);
-    BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
-    import_params.reports = &reports;
+        ReportList reports;
+        BKE_reports_init(&reports, RPT_STORE);
+        BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
+        import_params.reports = &reports;
 
-    Mesh *mesh = STL_import_mesh(&import_params);
+        Mesh *mesh = STL_import_mesh(&import_params);
 
-    LISTBASE_FOREACH (Report *, report, &(import_params.reports)->list) {
-      NodeWarningType type;
-      switch (report->type) {
-        case RPT_ERROR:
-          type = NodeWarningType::Error;
-          break;
-        default:
-          type = NodeWarningType::Info;
-          break;
-      }
-      params.error_message_add(type, TIP_(report->message));
+        GeometrySet geometry = GeometrySet::from_mesh(mesh);
+
+        auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+            geometry, import_params.reports);
+        return value;
+      });
+
+  LISTBASE_FOREACH (Report *, report, &(&output->reports)->list) {
+    NodeWarningType type;
+    switch (report->type) {
+      case RPT_ERROR:
+        type = NodeWarningType::Error;
+        break;
+      default:
+        type = NodeWarningType::Info;
+        break;
     }
+    params.error_message_add(type, TIP_(report->message));
+  }
 
-    GeometrySet geometry = GeometrySet::from_mesh(mesh);
-
-    auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(geometry);
-    return value;
-  });
-
-  params.set_output("Mesh", output);
+  params.set_output("Mesh", output->geometry);
 
 #else
   params.error_message_add(NodeWarningType::Error,

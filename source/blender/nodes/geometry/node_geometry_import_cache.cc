@@ -8,14 +8,14 @@ namespace blender::nodes::geometry_import_cache {
 
 class GeometryReadKey : public GenericKey {
  public:
-  std::string file_path;
+  std::string absolute_file_path;
 
   uint64_t hash() const override
   {
-    return get_default_hash(this->file_path);
+    return get_default_hash(this->absolute_file_path);
   }
 
-  BLI_STRUCT_EQUALITY_OPERATORS_1(GeometryReadKey, file_path)
+  BLI_STRUCT_EQUALITY_OPERATORS_1(GeometryReadKey, absolute_file_path)
 
   bool equal_to(const GenericKey &other) const override
   {
@@ -36,16 +36,14 @@ void import_geometry_cache_clear_all()
   memory_cache::clear();
 }
 
-bke::GeometrySet import_geometry_cached(
-    std::string key, FunctionRef<std::unique_ptr<GeometryReadValue>()> compute_fn)
+std::shared_ptr<const GeometryReadValue> import_geometry_cached(
+    const StringRef absolute_file_path,
+    FunctionRef<std::unique_ptr<GeometryReadValue>()> compute_fn)
 {
   GeometryReadKey cache_key;
-  cache_key.file_path = key;
+  cache_key.absolute_file_path = absolute_file_path;
 
-  std::shared_ptr<const GeometryReadValue> value = memory_cache::get<GeometryReadValue>(
-      std::move(cache_key), compute_fn);
-
-  return value->geometry;
+  return memory_cache::get<GeometryReadValue>(std::move(cache_key), compute_fn);
 }
 
 }  // namespace blender::nodes::geometry_import_cache
