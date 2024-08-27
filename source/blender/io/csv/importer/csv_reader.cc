@@ -37,7 +37,7 @@ static Vector<std::string> get_columns(const StringRef line)
     delim_index = line.find_first_of(delim, delim_index + 1);
   }
 
-  /* Hadnle last cell */
+  /* Handle last cell */
   columns.append(std::string(cell_start, end));
 
   return columns;
@@ -51,14 +51,14 @@ static std::optional<eCustomDataType> get_column_type(const char *start, const c
   parse_int(start, end, success, _val_int);
 
   if (success) {
-    return eCustomDataType::CD_PROP_INT32;
+    return CD_PROP_INT32;
   }
 
   float _val_float = 0.0f;
   parse_float(start, end, success, _val_float);
 
   if (success) {
-    return eCustomDataType::CD_PROP_FLOAT;
+    return CD_PROP_FLOAT;
   }
 
   return std::nullopt;
@@ -85,7 +85,7 @@ static bool get_column_types(const StringRef line, Vector<eCustomDataType> &colu
     delim_index = line.find_first_of(delim, delim_index + 1);
   }
 
-  /* Hadnle last cell */
+  /* Handle last cell */
   std::optional<eCustomDataType> column_type = get_column_type(cell_start, end);
   if (!column_type.has_value()) {
     return false;
@@ -200,7 +200,7 @@ static bool parse_csv_line(CsvData &csv_data,
     delim_index = line.find_first_of(delim, delim_index + 1);
   }
 
-  /* Hadnle last cell */
+  /* Handle last cell */
   if (!parse_csv_cell(csv_data, row_index, col_index, cell_start, end, import_params)) {
     return false;
   }

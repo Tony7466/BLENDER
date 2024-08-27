@@ -53,7 +53,7 @@ class CsvData {
   }
 
  private:
-  void *get_data_of_garray(const GArray<> array, eCustomDataType type) const;
+  void *get_data_of_garray(const GSpan span, eCustomDataType type) const;
 };
 
 }  // namespace blender::io::csv

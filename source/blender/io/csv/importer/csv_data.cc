@@ -47,12 +47,12 @@ PointCloud *CsvData::to_point_cloud() const
   return point_cloud;
 }
 
-void *CsvData::get_data_of_garray(const GArray<> array, const eCustomDataType type) const
+void *CsvData::get_data_of_garray(const GSpan span, const eCustomDataType type) const
 {
   const char *func = __func__;
   const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(type);
   void *data = MEM_mallocN_aligned(rows_num * cpp_type->size(), cpp_type->alignment(), func);
-  std::memcpy(data, array.data(), rows_num * cpp_type->size());
+  std::memcpy(data, span.data(), rows_num * cpp_type->size());
   return data;
 }
 

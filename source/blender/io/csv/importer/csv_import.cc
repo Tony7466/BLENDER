@@ -6,10 +6,6 @@
  * \ingroup csv
  */
 
-#include "BKE_report.hh"
-
-#include "BLI_fileops.hh"
-
 #include "csv_reader.hh"
 
 #include "csv_import.hh"
