@@ -1584,6 +1584,7 @@ static size_t animfilter_action_slot(bAnimContext *ac,
   const bool is_action_mode = (ac->spacetype == SPACE_ACTION &&
                                ac->dopesheet_mode == SACTCONT_ACTION);
   const bool show_fcurves_only = (filter_mode & ANIMFILTER_FCURVESONLY);
+  const bool show_active_group_only = filter_mode & ANIMFILTER_ACTGROUPED;
   const bool include_summary_channels = (filter_mode & ANIMFILTER_LIST_CHANNELS);
   const bool show_slot_channel = (is_action_mode && selection_ok_for_slot && !show_fcurves_only &&
                                   include_summary_channels);
@@ -1610,7 +1611,7 @@ static size_t animfilter_action_slot(bAnimContext *ac,
     }
 
     /* Add ungrouped channels. */
-    if (!(filter_mode & ANIMFILTER_ACTGROUPED)) {
+    if (!show_active_group_only) {
       int first_ungrouped_fcurve_index = 0;
       if (!channel_bag->channel_groups().is_empty()) {
         const bActionGroup *last_group = channel_bag->channel_groups().last();
