@@ -549,20 +549,13 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
 #ifdef WITH_ANIM_BAKLAVA
 
-static void read_channel_group(BlendDataReader *reader, bActionGroup &channel_group)
-{
-  /* Remap non-owning pointer. */
-  channel_group.channel_bag = static_cast<ActionChannelBag *>(BLO_read_get_new_data_address_no_us(
-      reader, channel_group.channel_bag, sizeof(ActionChannelBag)));
-}
-
 static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channelbag)
 {
   BLO_read_pointer_array(
       reader, channelbag.group_array_num, reinterpret_cast<void **>(&channelbag.group_array));
   for (int i = 0; i < channelbag.group_array_num; i++) {
     BLO_read_struct(reader, bActionGroup, &channelbag.group_array[i]);
-    read_channel_group(reader, *channelbag.group_array[i]);
+    channelbag.group_array[i]->channel_bag = &channelbag;
   }
 
   BLO_read_pointer_array(
