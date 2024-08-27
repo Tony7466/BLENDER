@@ -185,12 +185,23 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetActive(sub, has_bisect);
   uiItemR(sub, ptr, "bisect_threshold", UI_ITEM_NONE, IFACE_("Bisect Distance"), ICON_NONE);
 
-  bool no_merge = mmd->flag & (MOD_MIR_NO_MERGE);
-  bool no_previous = mmd->modifier.prev;
-  if (!no_merge && no_previous) {
-    uiItemL(layout,
-            RPT_("Apply mirror first to ensure proper merging at mirror plane"),
-            ICON_INFO);
+  bool no_merge = mmd->flag & MOD_MIR_NO_MERGE;
+  if (!no_merge) {
+    ModifierData *md = mmd->modifier.prev;
+    for (; md; md = md->prev) {
+      if (md->type == eModifierType_Subsurf) {
+        uiItemL(layout,
+                RPT_("Applying Subdivision before mirror breaks symmetry"),
+                ICON_INFO);
+        break;
+      }
+      else if (md->type == eModifierType_Solidify) {
+        uiItemL(layout,
+                RPT_("Applying Solidify before mirror breaks symmetry"),
+                ICON_INFO);
+        break;
+      }
+    }
   }
 
   modifier_panel_end(layout, ptr);
