@@ -500,11 +500,59 @@ static void bits_to_indices(const BitSpan bits,
       append_range(IndexRange::from_begin_size(start, bits_num));
       return;
     }
-    const int64_t end_bit = start_bit + bits_num;
-    for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
-      const bool is_set = mask_single_bit(bit_i) & value;
-      if (is_set) {
-        current_indices.append(bit_i + start - start_bit);
+    const int64_t bit_i_to_mask_index_offset = start - start_bit;
+    const int bit_count = count_bits_uint64(masked_value);
+    switch (bit_count) {
+      case 1: {
+        const int64_t set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
+        current_indices.append(set_bit_i + bit_i_to_mask_index_offset);
+        return;
+      }
+      case 2: {
+        const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
+        const int64_t second_set_bit_i = BitsPerInt - 1 -
+                                         int64_t(bitscan_reverse_uint64(masked_value));
+        current_indices.append(first_set_bit_i + bit_i_to_mask_index_offset);
+        current_indices.append(second_set_bit_i + bit_i_to_mask_index_offset);
+        return;
+      }
+      case 3:
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
+      case 9:
+      case 10: {
+        BitInt current_value = masked_value;
+        while (current_value != 0) {
+          const int64_t set_bit_i = int64_t(bitscan_forward_uint64(current_value));
+          current_indices.append(set_bit_i + bit_i_to_mask_index_offset);
+          current_value &= ~mask_single_bit(set_bit_i);
+        }
+        return;
+      }
+      default: {
+        const int64_t end_bit = start_bit + bits_num;
+        for (int64_t bit_i = start_bit; bit_i < end_bit; bit_i++) {
+          const bool is_set = mask_single_bit(bit_i) & value;
+          if (is_set) {
+            current_indices.append(bit_i + bit_i_to_mask_index_offset);
+          }
+        }
+        return;
+      }
+      case 63: {
+        const int64_t unset_bit_i = bitscan_forward_uint64(~masked_value);
+        const IndexRange before = IndexRange::from_begin_size(start_bit, unset_bit_i);
+        const IndexRange after = IndexRange::from_begin_end(unset_bit_i + 1, start_bit + bits_num);
+        if (!before.is_empty()) {
+          append_range(before.shift(bit_i_to_mask_index_offset));
+        }
+        if (!after.is_empty()) {
+          append_range(after.shift(bit_i_to_mask_index_offset));
+        }
+        return;
       }
     }
   };
@@ -524,7 +572,7 @@ static void bits_to_indices(const BitSpan bits,
       const BitInt value = start[int_i];
       append_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
       if (!current_indices.is_empty()) {
-        if (current_indices.last() - current_indices.first() > max_segment_size - BitsPerInt) {
+        if (int_i * BitsPerInt - current_indices.first() > max_segment_size - 200) {
           append_current_indices();
         }
       }

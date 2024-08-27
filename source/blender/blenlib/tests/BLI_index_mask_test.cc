@@ -74,23 +74,60 @@ TEST(index_mask, FromBitsWithUniverse)
   EXPECT_EQ(mask[5], 102);
 }
 
-TEST(index_mask, FromBitsApart)
+TEST(index_mask, FromBitsSparse)
 {
-  BitVector bit_vec(1000, false);
+  BitVector bit_vec(100'000, false);
   bit_vec[5].set();
   bit_vec[100].set();
   bit_vec[200].set();
   bit_vec[500].set();
   bit_vec[800].set();
+  bit_vec[10'000].set();
+  bit_vec[10'002].set();
+  bit_vec[50'000].set();
+  bit_vec[70'000].set();
+  bit_vec[70'002].set();
+  bit_vec[70'004].set();
+  bit_vec[70'005].set();
 
   IndexMaskMemory memory;
   const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
-  EXPECT_EQ(mask.size(), 5);
+  EXPECT_EQ(mask.size(), 12);
   EXPECT_EQ(mask[0], 5);
   EXPECT_EQ(mask[1], 100);
   EXPECT_EQ(mask[2], 200);
   EXPECT_EQ(mask[3], 500);
   EXPECT_EQ(mask[4], 800);
+  EXPECT_EQ(mask[5], 10'000);
+  EXPECT_EQ(mask[6], 10'002);
+  EXPECT_EQ(mask[7], 50'000);
+  EXPECT_EQ(mask[8], 70'000);
+  EXPECT_EQ(mask[9], 70'002);
+  EXPECT_EQ(mask[10], 70'004);
+  EXPECT_EQ(mask[11], 70'005);
+}
+
+TEST(index_mask, FromBitsDense)
+{
+  BitVector bit_vec(1'000, true);
+  bit_vec[5].reset();
+  bit_vec[200].reset();
+  bit_vec[201].reset();
+  bit_vec[500].reset();
+  bit_vec[502].reset();
+  bit_vec[504].reset();
+  bit_vec[506].reset();
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
+  EXPECT_EQ(mask.size(), 993);
+  EXPECT_FALSE(mask.contains(5));
+  EXPECT_FALSE(mask.contains(200));
+  EXPECT_FALSE(mask.contains(201));
+  EXPECT_FALSE(mask.contains(500));
+  EXPECT_FALSE(mask.contains(502));
+  EXPECT_FALSE(mask.contains(504));
+  EXPECT_FALSE(mask.contains(506));
 }
 
 TEST(index_mask, FromSize)
