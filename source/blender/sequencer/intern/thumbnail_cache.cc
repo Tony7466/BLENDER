@@ -116,8 +116,8 @@ struct ThumbnailCache {
 
   void clear()
   {
-    for (const auto &kvp : map_.items()) {
-      for (const auto &thumb : kvp.value.frames) {
+    for (const auto &item : map_.items()) {
+      for (const auto &thumb : item.value.frames) {
         IMB_freeImBuf(thumb.thumb);
       }
     }
@@ -557,12 +557,12 @@ void thumbnail_cache_maintain_capacity(Scene *scene)
     /* Do not remove thumbnails for files used within last 10 updates. */
     int64_t oldest_time = cache->logical_time_ - 10;
     int64_t oldest_entries = 0;
-    for (const auto &kvp : cache->map_.items()) {
-      entries += kvp.value.frames.size();
-      if (kvp.value.used_at < oldest_time) {
-        oldest_file = kvp.key;
-        oldest_time = kvp.value.used_at;
-        oldest_entries = kvp.value.frames.size();
+    for (const auto &item : cache->map_.items()) {
+      entries += item.value.frames.size();
+      if (item.value.used_at < oldest_time) {
+        oldest_file = item.key;
+        oldest_time = item.value.used_at;
+        oldest_entries = item.value.frames.size();
       }
     }
 
@@ -575,11 +575,11 @@ void thumbnail_cache_maintain_capacity(Scene *scene)
     /* If we're still beyond capacity, remove individual long-unused (but not within
      * last 100 updates) individual frames. */
     if (entries > MAX_THUMBNAILS) {
-      for (const auto &kvp : cache->map_.items()) {
-        for (int64_t i = 0; i < kvp.value.frames.size(); i++) {
-          if (kvp.value.frames[i].used_at < cache->logical_time_ - 100) {
-            IMB_freeImBuf(kvp.value.frames[i].thumb);
-            kvp.value.frames.remove_and_reorder(i);
+      for (const auto &item : cache->map_.items()) {
+        for (int64_t i = 0; i < item.value.frames.size(); i++) {
+          if (item.value.frames[i].used_at < cache->logical_time_ - 100) {
+            IMB_freeImBuf(item.value.frames[i].thumb);
+            item.value.frames.remove_and_reorder(i);
           }
         }
       }
