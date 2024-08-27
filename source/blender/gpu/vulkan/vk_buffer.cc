@@ -175,4 +175,16 @@ bool VKBuffer::free()
   return true;
 }
 
+void VKBuffer::free_immediately(VKDevice &device)
+{
+  if (is_mapped()) {
+    unmap();
+  }
+  device.resources.remove_buffer(vk_buffer_);
+  vmaDestroyBuffer(device.mem_allocator_get(), vk_buffer_, allocation_);
+
+  allocation_ = VK_NULL_HANDLE;
+  vk_buffer_ = VK_NULL_HANDLE;
+}
+
 }  // namespace blender::gpu

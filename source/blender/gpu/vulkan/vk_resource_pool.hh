@@ -10,6 +10,7 @@
 
 #include "vk_common.hh"
 
+#include "vk_buffer_pool.hh"
 #include "vk_descriptor_pools.hh"
 
 namespace blender::gpu {
@@ -57,6 +58,7 @@ class VKResourcePool {
  public:
   VKDescriptorPools descriptor_pools;
   VKDescriptorSetTracker descriptor_set;
+  VKBufferPool staging_buffers;
   VKDiscardPool discard_pool;
 
   void init(VKDevice &device);

@@ -43,10 +43,11 @@ class VKStagingBuffer {
   /**
    * The temporary buffer on host for the transfer. Also called the staging buffer.
    */
-  VKBuffer host_buffer_;
+  VKBuffer *host_buffer_ = nullptr;
 
  public:
   VKStagingBuffer(const VKBuffer &device_buffer, Direction direction);
+  ~VKStagingBuffer();
 
   /**
    * Copy the content of the host buffer to the device buffer.
@@ -63,7 +64,7 @@ class VKStagingBuffer {
    */
   const VKBuffer &host_buffer_get() const
   {
-    return host_buffer_;
+    return *host_buffer_;
   }
 
   /**

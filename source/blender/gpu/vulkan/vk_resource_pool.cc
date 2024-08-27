@@ -20,11 +20,13 @@ void VKResourcePool::init(VKDevice &device)
 void VKResourcePool::deinit(VKDevice &device)
 {
   discard_pool.deinit(device);
+  staging_buffers.free_data(device);
 }
 
 void VKResourcePool::reset()
 {
   descriptor_pools.reset();
+  staging_buffers.reset();
 }
 
 void VKDiscardPool::deinit(VKDevice &device)

@@ -198,6 +198,7 @@ set(VULKAN_SRC
   vulkan/vk_backend.cc
   vulkan/vk_batch.cc
   vulkan/vk_bindable_resource.cc
+  vulkan/vk_buffer_pool.cc
   vulkan/vk_buffer.cc
   vulkan/vk_common.cc
   vulkan/vk_context.cc
@@ -246,6 +247,7 @@ set(VULKAN_SRC
   vulkan/vk_backend.hh
   vulkan/vk_batch.hh
   vulkan/vk_bindable_resource.hh
+  vulkan/vk_buffer_pool.hh
   vulkan/vk_buffer.hh
   vulkan/vk_common.hh
   vulkan/vk_context.hh

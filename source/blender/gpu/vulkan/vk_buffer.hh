@@ -14,6 +14,7 @@
 
 namespace blender::gpu {
 class VKContext;
+class VKDevice;
 
 /**
  * Class for handing vulkan buffers (allocation/updating/binding).
@@ -47,6 +48,7 @@ class VKBuffer {
    * rendering so we can only destroy them after the rendering is completed.
    */
   bool free();
+  void free_immediately(VKDevice &device);
 
   int64_t size_in_bytes() const
   {

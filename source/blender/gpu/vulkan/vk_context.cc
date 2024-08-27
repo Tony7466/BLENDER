@@ -362,10 +362,7 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
 #endif
 }
 
-void VKContext::swap_buffers_post_handler()
-{
-  sync_backbuffer();
-}
+void VKContext::swap_buffers_post_handler() {}
 
 /** \} */
 
