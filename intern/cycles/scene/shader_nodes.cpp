@@ -2445,7 +2445,7 @@ void BsdfNode::compile(OSLCompiler & /*compiler*/)
 
 NODE_DEFINE(MetallicBsdfNode)
 {
-  NodeType *type = NodeType::add("Metallic_bsdf", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("metallic_bsdf", create, NodeType::SHADER);
 
   SOCKET_IN_COLOR(color, "Base Color", make_float3(0.617f, 0.577f, 0.540f));
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);

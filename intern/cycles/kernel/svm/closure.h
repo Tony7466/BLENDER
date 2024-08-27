@@ -488,7 +488,7 @@ ccl_device
       ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
           sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(make_float3(mix_weight)));
 
-      if (!(bsdf == NULL)) {
+      if (bsdf != NULL) {
         uint base_ior_offset, edge_tint_k_offset, rotation_offset, tangent_offset;
         svm_unpack_node_uchar4(
             node.z, &base_ior_offset, &edge_tint_k_offset, &rotation_offset, &tangent_offset);
