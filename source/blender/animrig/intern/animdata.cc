@@ -26,6 +26,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_key_types.h"
+#include "DNA_material_types.h"
 
 #include "ED_anim_api.hh"
 
@@ -39,7 +40,8 @@ namespace blender::animrig {
  * \{ */
 
 /* Find an action that is related to the given ID. Either on the data if the ID is an Object or a
- * user of the ID. */
+ * user of the ID. If the possibility for multiple users exists, only return an action if the ID is
+ * used exactly once. */
 static bAction *find_related_action(const Main &bmain, const ID &id)
 {
   switch (GS(id.name)) {
@@ -63,6 +65,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       return adt->action;
       break;
     }
+
     case ID_KE: {
       /* Shapekeys.  */
       Key *shapekey = (Key *)(&id);
@@ -71,6 +74,29 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
         return nullptr;
       }
       return adt->action;
+      break;
+    }
+
+    case ID_NT: {
+      /* bNodeTree. */
+      if (ID_REAL_USERS(&id) != 0) {
+        /* When a bNodeTree is used by a material directly, the user count is at 0. This means
+         * action re-use is currently only supported by the first layer of a material, not node
+         * groups. */
+        return nullptr;
+      }
+      for (Material *material = static_cast<Material *>(bmain.materials.first); material;
+           material = static_cast<Material *>(material->id.next))
+      {
+        if (&material->nodetree->id != &id) {
+          continue;
+        }
+        AnimData *adt = BKE_animdata_from_id(&material->id);
+        if (!adt || !adt->action) {
+          return nullptr;
+        }
+        return adt->action;
+      }
       break;
     }
 
