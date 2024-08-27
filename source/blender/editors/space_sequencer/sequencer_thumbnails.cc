@@ -188,10 +188,6 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     return;
   }
 
-  if ((seq->flag & SEQ_FLAG_SKIP_THUMBNAILS) != 0) {
-    return;
-  }
-
   Editing *ed = SEQ_editing_get(scene);
   ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
 

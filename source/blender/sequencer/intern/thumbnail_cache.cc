@@ -163,9 +163,6 @@ static bool can_have_thumbnail(Scene *scene, const Sequence *seq)
   if (!ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     return false;
   }
-  if ((seq->flag & SEQ_FLAG_SKIP_THUMBNAILS) != 0) {
-    return false;
-  }
   const StripElem *se = seq->strip->stripdata;
   if (se->orig_height == 0 || se->orig_width == 0) {
     return false;
@@ -435,18 +432,16 @@ static ImBuf *query_thumbnail(ThumbnailCache &cache,
     cache.map_.add_new(key, value);
     val = cache.map_.lookup_ptr(key);
   }
-
-  if (val == nullptr) {
-    return nullptr;
-  }
+  BLI_assert_msg(val != nullptr, "Thumbnail cache value should never be null here");
 
   /* Search thumbnail entries of this file for closest match to the frame we want. */
   int64_t best_index = -1;
   int best_score = INT_MAX;
   for (int64_t index = 0; index < val->frames.size(); index++) {
-    /* Make video stream mismatch count way more than a frame mismatch. */
-    int score = math::abs(frame_index - val->frames[index].frame_index) +
-                math::abs(seq->streamindex - val->frames[index].stream_index) * 1024;
+    if (seq->streamindex != val->frames[index].stream_index) {
+      continue; /* Different video stream than what we need, ignore. */
+    }
+    int score = math::abs(frame_index - val->frames[index].frame_index);
     if (score < best_score) {
       best_score = score;
       best_index = index;
