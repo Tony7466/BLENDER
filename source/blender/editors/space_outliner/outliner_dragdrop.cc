@@ -7,7 +7,6 @@
  */
 
 #include <cstring>
-#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -689,9 +688,17 @@ static bool action_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
   return (dna_action && (outliner_ID_drop_find(C, event, ID_AC) != nullptr));
 }
 
-static int action_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent * /* event */)
+static int action_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
-  return OPERATOR_FINISHED;
+  bAction *dna_action_target = (bAction *)outliner_ID_drop_find(C, event, ID_AC);
+  bAction *dna_action_source = (bAction *)WM_drag_get_local_ID_from_event(event, ID_AC);
+  BLI_assert(dna_action_source != nullptr);
+  BLI_assert(dna_action_target != nullptr);
+
+  const bool success = blender::animrig::merge_actions(dna_action_source->wrap(),
+                                                       dna_action_target->wrap());
+
+  return success ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void OUTLINER_OT_action_drop(wmOperatorType *ot)

@@ -2006,6 +2006,28 @@ bool merge_actions(Action &source, Action &target)
   if (!source.is_action_layered() || !target.is_action_layered()) {
     return false;
   }
+
+  /* No merging of strips or layers is handled. All data is put into the assumed single strip. */
+  assert_baklava_phase_1_invariants(source);
+  assert_baklava_phase_1_invariants(target);
+
+  KeyframeStrip &source_strip = source.layer(0)->strip(0)->as<KeyframeStrip>();
+  KeyframeStrip &target_strip = target.layer(0)->strip(0)->as<KeyframeStrip>();
+
+  for (Slot *source_slot : source.slots()) {
+    Slot &target_slot = target.slot_add();
+    STRNCPY(target_slot.name, source_slot->name);
+    ChannelBag *channel_bag = source_strip.channelbag_for_slot(source_slot->handle);
+    BLI_assert(channel_bag != nullptr);
+    channel_bag->slot_handle = target_slot.handle;
+    grow_array_and_append<ActionChannelBag *>(
+        &target_strip.channelbag_array, &target_strip.channelbag_array_num, channel_bag);
+    int index = source_strip.find_channelbag_index(*channel_bag);
+    shrink_array_and_remove<ActionChannelBag *>(
+        &source_strip.channelbag_array, &source_strip.channelbag_array_num, index);
+  }
+
+  return true;
 }
 
 }  // namespace blender::animrig

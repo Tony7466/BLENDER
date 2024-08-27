@@ -1144,6 +1144,13 @@ void assert_baklava_phase_1_invariants(const Strip &strip);
 Action *convert_to_layered_action(Main &bmain, const Action &legacy_action);
 
 /**
+ * Moves all animation data from `source` to `target` and reassigns users of those actions to the
+ * `target`. Will only work with layered actions.
+ * \returns true if merging was successful.
+ */
+bool merge_actions(Action &source, Action &target);
+
+/**
  * Deselect the keys of all actions in the Span. Duplicate entries are only visited once.
  */
 void deselect_keys_actions(blender::Span<bAction *> actions);
