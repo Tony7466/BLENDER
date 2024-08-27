@@ -563,12 +563,13 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
                                const BitSpan bits,
                                IndexMaskMemory &memory)
 {
-  ParallelSegmentsCollector segments_collector;
-  universe.foreach_segment(
-      GrainSize(max_segment_size), [&](const IndexMaskSegment universe_segment) {
-        ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
+  return IndexMask::from_batch_predicate(
+      universe,
+      GrainSize(max_segment_size),
+      memory,
+      [&](const IndexMaskSegment universe_segment,
+          IndexRangesBuilder<int16_t, max_segment_size> &builder) {
         int64_t extra_shift = 0;
-        IndexRangesBuilder<int16_t, max_segment_size> builder;
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
           const IndexRange universe_range{universe_segment[0], universe_segment.size()};
           bits_to_index_ranges(bits.slice(universe_range), builder);
@@ -587,45 +588,60 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
           bits_to_index_ranges(local_bits, builder);
           extra_shift = universe_segment.offset();
         }
-        if (builder.is_empty()) {
-          return;
-        }
-        const Span<int16_t> static_indices = get_static_indices_array();
-
-        const int64_t threshold = 128;
-        int64_t next_range_to_process = 0;
-        int64_t skipped_indices_num = 0;
-
-        auto consolidate_skipped_ranges = [&](int64_t end_range_i) {
-          if (skipped_indices_num == 0) {
-            return;
-          }
-          MutableSpan<int16_t> indices = data.allocator.allocate_array<int16_t>(
-              skipped_indices_num);
-          int64_t counter = 0;
-          for (const int64_t i : IndexRange::from_begin_end(next_range_to_process, end_range_i)) {
-            const IndexRange range = builder[i];
-            array_utils::fill_index_range(indices.slice(counter, range.size()),
-                                          int16_t(range.first()));
-            counter += range.size();
-          }
-          data.segments.append(IndexMaskSegment{extra_shift, indices});
-        };
-
-        for (const int64_t i : builder.index_range()) {
-          const IndexRange range = builder[i];
-          if (range.size() > threshold || builder.size() == 1) {
-            consolidate_skipped_ranges(i);
-            data.segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
-            next_range_to_process = i + 1;
-            skipped_indices_num = 0;
-          }
-          else {
-            skipped_indices_num += range.size();
-          }
-        }
-        consolidate_skipped_ranges(builder.size());
+        return extra_shift;
       });
+}
+
+IndexMask IndexMask::from_batch_predicate(
+    const IndexMask &universe,
+    GrainSize grain_size,
+    IndexMaskMemory &memory,
+    FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                        IndexRangesBuilder<int16_t, max_segment_size> &builder)> batch_predicate)
+{
+  ParallelSegmentsCollector segments_collector;
+  universe.foreach_segment(grain_size, [&](const IndexMaskSegment universe_segment) {
+    ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
+    IndexRangesBuilder<int16_t, max_segment_size> builder;
+    const int64_t extra_shift = batch_predicate(universe_segment, builder);
+    if (builder.is_empty()) {
+      return;
+    }
+    const Span<int16_t> static_indices = get_static_indices_array();
+
+    const int64_t threshold = 128;
+    int64_t next_range_to_process = 0;
+    int64_t skipped_indices_num = 0;
+
+    auto consolidate_skipped_ranges = [&](int64_t end_range_i) {
+      if (skipped_indices_num == 0) {
+        return;
+      }
+      MutableSpan<int16_t> indices = data.allocator.allocate_array<int16_t>(skipped_indices_num);
+      int64_t counter = 0;
+      for (const int64_t i : IndexRange::from_begin_end(next_range_to_process, end_range_i)) {
+        const IndexRange range = builder[i];
+        array_utils::fill_index_range(indices.slice(counter, range.size()),
+                                      int16_t(range.first()));
+        counter += range.size();
+      }
+      data.segments.append(IndexMaskSegment{extra_shift, indices});
+    };
+
+    for (const int64_t i : builder.index_range()) {
+      const IndexRange range = builder[i];
+      if (range.size() > threshold || builder.size() == 1) {
+        consolidate_skipped_ranges(i);
+        data.segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
+        next_range_to_process = i + 1;
+        skipped_indices_num = 0;
+      }
+      else {
+        skipped_indices_num += range.size();
+      }
+    }
+    consolidate_skipped_ranges(builder.size());
+  });
   Vector<IndexMaskSegment, 16> segments;
   segments_collector.reduce(memory, segments);
   return IndexMask::from_segments(segments, memory);

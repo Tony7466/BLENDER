@@ -12,6 +12,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask_fwd.hh"
+#include "BLI_index_ranges_builder.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_task.hh"
@@ -255,6 +256,13 @@ class IndexMask : private IndexMaskData {
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+  static IndexMask from_batch_predicate(
+      const IndexMask &universe,
+      GrainSize grain_size,
+      IndexMaskMemory &memory,
+      FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                          IndexRangesBuilder<int16_t, max_segment_size> &builder)>
+          batch_predicate);
   /** Sorts all indices from #universe into the different output masks. */
   template<typename T, typename Fn>
   static void from_groups(const IndexMask &universe,
