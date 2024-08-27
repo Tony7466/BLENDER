@@ -614,7 +614,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
 
         for (const int64_t i : builder.index_range()) {
           const IndexRange range = builder[i];
-          if (range.size() > threshold) {
+          if (range.size() > threshold || builder.size() == 1) {
             consolidate_skipped_ranges(i);
             data.segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
             next_range_to_process = i + 1;
