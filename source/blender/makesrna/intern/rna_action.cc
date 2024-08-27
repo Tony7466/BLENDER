@@ -711,32 +711,31 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
 
   iter->internal.custom = custom_iter;
 
-  /* We handle both the array (layered action) and listbase (legacy action)
+  /* We handle both the listbase (legacy action) and array (layered action)
    * cases below. The code for each is based on the code in
-   * `rna_iterator_array_begin()` and `rna_iterator_listbase_begin()`,
+   * `rna_iterator_listbase_begin()` and `rna_iterator_array_begin()`,
    * respectively. */
 
-  /* Group from a layered action. */
-  if (group->channel_bag != nullptr) {
-    MutableSpan<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
+  /* Group from a legacy action. */
+  if (group->channel_bag == nullptr) {
+    custom_iter->tag = ActionGroupChannelsIterator::LISTBASE;
+    custom_iter->listbase.link = static_cast<Link *>(group->channels.first);
 
-    custom_iter->tag = ActionGroupChannelsIterator::ARRAY;
-    custom_iter->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start);
-    custom_iter->array.endptr = reinterpret_cast<char *>(
-        fcurves.data() + group->fcurve_range_start + group->fcurve_range_length);
-    custom_iter->array.itemsize = sizeof(FCurve *);
-    custom_iter->array.length = group->fcurve_range_length;
-
-    iter->valid = group->fcurve_range_length != 0;
-
+    iter->valid = custom_iter->listbase.link != nullptr;
     return;
   }
 
-  /* Group from a legacy action. */
-  custom_iter->tag = ActionGroupChannelsIterator::LISTBASE;
-  custom_iter->listbase.link = static_cast<Link *>(group->channels.first);
+  /* Group from a layered action. */
+  MutableSpan<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
 
-  iter->valid = custom_iter->listbase.link != nullptr;
+  custom_iter->tag = ActionGroupChannelsIterator::ARRAY;
+  custom_iter->array.ptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start);
+  custom_iter->array.endptr = reinterpret_cast<char *>(fcurves.data() + group->fcurve_range_start +
+                                                       group->fcurve_range_length);
+  custom_iter->array.itemsize = sizeof(FCurve *);
+  custom_iter->array.length = group->fcurve_range_length;
+
+  iter->valid = group->fcurve_range_length != 0;
 }
 
 static void rna_ActionGroup_channels_end(CollectionPropertyIterator *iter)
