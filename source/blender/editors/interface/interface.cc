@@ -3437,6 +3437,8 @@ static void ui_but_mem_delete(const uiBut *but)
       MEM_delete(reinterpret_cast<const uiButScrollBar *>(but));
       break;
     default:
+      BLI_assert_msg(MEM_allocN_len(but) == sizeof(uiBut),
+                     "Derived button type needs type specific deletion");
       MEM_delete(but);
       break;
   }
