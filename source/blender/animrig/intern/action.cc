@@ -1239,8 +1239,7 @@ FCurve &ChannelBag::fcurve_create(Main *bmain, FCurveDescriptor fcurve_descripto
   grow_array_and_insert(&this->fcurve_array, &this->fcurve_array_num, insert_index, new_fcurve);
   if (group) {
     group->fcurve_range_length += 1;
-    this->collapse_channel_group_gaps();
-    this->update_fcurve_channel_group_pointers();
+    this->restore_channel_group_invariants();
   }
 
   if (bmain) {
@@ -1271,8 +1270,7 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
       const int group_index = this->channel_groups().as_span().first_index_try(group);
       this->channel_group_remove_raw(group_index);
     }
-    this->collapse_channel_group_gaps();
-    this->update_fcurve_channel_group_pointers();
+    this->restore_channel_group_invariants();
   }
 
   dna::array::remove_index(
@@ -1526,8 +1524,7 @@ bool ChannelBag::channel_group_remove(bActionGroup &group)
                     to_index);
 
   this->channel_group_remove_raw(group_index);
-  this->collapse_channel_group_gaps();
-  this->update_fcurve_channel_group_pointers();
+  this->restore_channel_group_invariants();
 
   return true;
 }
@@ -1540,37 +1537,25 @@ void ChannelBag::channel_group_remove_raw(const int group_index)
   shrink_array_and_remove(&this->group_array, &this->group_array_num, group_index);
 }
 
-void ChannelBag::collapse_channel_group_gaps()
+void ChannelBag::restore_channel_group_invariants()
 {
-  int index = 0;
-
+  /* Shift channel groups. */
+  int start_index = 0;
   for (bActionGroup *group : this->channel_groups()) {
-    group->fcurve_range_start = index;
-    index += group->fcurve_range_length;
+    group->fcurve_range_start = start_index;
+    start_index += group->fcurve_range_length;
   }
 
-  BLI_assert(index <= this->fcurve_array_num);
-}
-
-void ChannelBag::update_fcurve_channel_group_pointers()
-{
-  Span<bActionGroup *> groups = this->channel_groups();
-  for (bActionGroup *group : groups) {
+  /* Recompute fcurves' group pointers. */
+  for (FCurve *fcurve : this->fcurves()) {
+    fcurve->grp = nullptr;
+  }
+  for (bActionGroup *group : this->channel_groups()) {
     for (FCurve *fcurve :
          this->fcurves().slice(group->fcurve_range_start, group->fcurve_range_length))
     {
       fcurve->grp = group;
     }
-  }
-
-  int first_ungrouped_fcurve_index = 0;
-  if (!groups.is_empty()) {
-    first_ungrouped_fcurve_index = groups.last()->fcurve_range_start +
-                                   groups.last()->fcurve_range_length;
-  }
-
-  for (FCurve *fcurve : this->fcurves().drop_front(first_ungrouped_fcurve_index)) {
-    fcurve->grp = nullptr;
   }
 }
 
@@ -1885,8 +1870,7 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
                     to_group.fcurve_range_start + to_group.fcurve_range_length);
   to_group.fcurve_range_length++;
 
-  this->collapse_channel_group_gaps();
-  this->update_fcurve_channel_group_pointers();
+  this->restore_channel_group_invariants();
 
   return true;
 }

@@ -847,67 +847,63 @@ class ChannelBag : public ::ActionChannelBag {
    * It specifically does *not* maintain any of the semantic invariants of the
    * group array or its relationship to the fcurves.
    *
-   * Both `collapse_channel_group_gaps()` and
-   * `update_fcurve_channel_group_pointers()` should be called at some point
-   * after this to restore the semantic invariants.
+   * `restore_channel_group_invariants()` should be called at some point after
+   * this to restore the semantic invariants.
    *
-   * \see `collapse_channel_group_gaps()`
-   *
-   * \see `update_fcurve_channel_group_pointers()`
+   * \see `restore_channel_group_invariants()`
    */
   void channel_group_remove_raw(int channel_group_index);
 
   /**
-   * Move channel groups' fcurve spans so that there are no gaps between them,
-   * and to start at the first fcurve.
+   * Restore invariants related to channel groups.
    *
-   * This does *not* alter the order of the channel groups nor the number of
-   * fcurves in each group. It simply changes the start indices of each group so
-   * that the groups are packed together at the start of the fcurves.
+   * This restores critical invariants and should be called (at some point) any
+   * time that groups are explicitly modified or that group membership of
+   * fcurves might change implicitly (e.g. due to moving/adding/removing
+   * fcurves).
+   *
+   * The specific invariants restored by this method are:
+   * 1. All grouped fcurves should come before all non-grouped fcurves.
+   * 2. All fcurves should point back to the group they belong to (if any) via
+   *    their `grp` pointer.
+   *
+   * The way this method restores those invariants is very specific.  First, it
+   * shifts which fcurves each group covers such that the groups are exactly
+   * abutting and start at the beginning of the fcurve array.  Second, it
+   * recomputes the fcurve `grp` pointers, using the groups as the source of
+   * truth for membership.
+   *
+   * The group shifting step does *not* alter the order of the channel groups
+   * nor the number of fcurves in each group. It simply changes the start
+   * indices of each group so that the groups are packed together at the start
+   * of the fcurves.
    *
    * For example, if the mapping of groups to fcurves looks like this (g* are
    * the groups, dots indicate ungrouped areas, and f* are the fcurves, so e.g.
    * f1 and f2 are part of group g0):
    *
    * ```
-   *  ..| g0  |..|g1|.....| g2  |..
+   * |..| g0  |..|g1|.....| g2  |..|
    * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
    * ```
    *
    * Then after calling this function they will look like this:
    *
    * ```
-   * | g0  |g1| g2  |..............
+   * | g0  |g1| g2  |..............|
    * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
    * ```
    *
    * Note that this specifically does *not* move the fcurves, and therefore this
    * alters fcurve membership in a way that depends on how the groups are
-   * shifted. It also does not update the group pointers inside the fcurves, so
-   * `update_fcurve_channel_group_pointers()` must be called at some point after
-   * this to fix those up.
+   * shifted.
    *
-   * This upholds critical invariants and should be called any time gaps might
-   * be introduced (changing the fcurve span of or removing a group).
-   *
-   * \see `update_fcurve_channel_group_pointers()`
+   * The `grp` pointer recomputing step simply takes the groups as the source of
+   * truth, and sets the `grp` pointers to be consistent with that.
    */
-  void collapse_channel_group_gaps();
-
-  /**
-   * Updates all fcurves to point at the channel group that they belong to.
-   *
-   * The indices in the channel groups are considered the source of truth, and
-   * the pointers in the fcurves are simply updated to match those.  Fcurves
-   * that don't belong to a group will have their group pointer set to null.
-   *
-   * This upholds critical invariants and should always be called after
-   * modifications to either the array of fcurves (changing the array position
-   * of, adding, or removing fcurves) or to the array of groups (changing the
-   * fcurve span of, removing, or adding groups).
-   */
-  void update_fcurve_channel_group_pointers();
+  void restore_channel_group_invariants();
 };
+
 static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
 
