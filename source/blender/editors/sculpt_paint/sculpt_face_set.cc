@@ -1367,6 +1367,9 @@ static void edit_modify_geometry(bContext *C,
       BLI_assert_unreachable();
   }
   undo::geometry_end(ob);
+  if (SculptSession *ss = ob.sculpt) {
+    BKE_sculptsession_free_pbvh(ss);
+  }
   BKE_mesh_batch_cache_dirty_tag(mesh, BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);

@@ -35,6 +35,7 @@
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
+#include "BKE_paint.hh"
 #include "BKE_pointcloud.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -274,6 +275,9 @@ static void store_result_geometry(
 
       if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(object);
+        if (SculptSession *ss = object.sculpt) {
+          BKE_sculptsession_free_pbvh(ss);
+        }
       }
       break;
     }

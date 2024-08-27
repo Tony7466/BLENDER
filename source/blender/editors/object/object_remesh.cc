@@ -159,6 +159,9 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
   if (ob->mode == OB_MODE_SCULPT) {
     sculpt_paint::undo::geometry_end(*ob);
   }
+  if (SculptSession *ss = ob->sculpt) {
+    BKE_sculptsession_free_pbvh(ss);
+  }
 
   BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -903,6 +906,9 @@ static void quadriflow_start_job(void *customdata, wmJobWorkerStatus *worker_sta
 
   if (ob->mode == OB_MODE_SCULPT) {
     sculpt_paint::undo::geometry_end(*ob);
+  }
+  if (SculptSession *ss = ob->sculpt) {
+    BKE_sculptsession_free_pbvh(ss);
   }
 
   BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
