@@ -127,15 +127,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
                                                                                         regular;
 
   if (needs_prepass) {
-    switch (ob_ref.object->type) {
-      case OB_MESH:
-      case OB_SURF:
-      case OB_CURVES:
-      case OB_FONT:
-      case OB_CURVES_LEGACY:
-        layer.prepass.object_sync(manager, ob_ref, resources);
-        break;
-    }
+    layer.prepass.object_sync(manager, ob_ref, resources);
   }
 
   if (in_edit_mode && !state.hide_overlays) {
