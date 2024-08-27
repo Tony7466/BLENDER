@@ -735,7 +735,7 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
   custom_iter->array.itemsize = sizeof(FCurve *);
   custom_iter->array.length = group->fcurve_range_length;
 
-  iter->valid = group->fcurve_range_length != 0;
+  iter->valid = group->fcurve_range_length > 0;
 }
 
 static void rna_ActionGroup_channels_end(CollectionPropertyIterator *iter)
