@@ -1315,16 +1315,16 @@ static void rna_def_vertex_paint_capabilities(BlenderRNA *brna)
   RNA_def_struct_ui_text(
       srna, "Vertex Paint Capabilities", "Read-only indications of supported operations");
 
-#  define VPAINT_BRUSH_TYPE_CAPABILITY(prop_name_, ui_name_) \
+#  define VPAINT_BRUSH_CAPABILITY(prop_name_, ui_name_) \
     prop = RNA_def_property(srna, #prop_name_, PROP_BOOLEAN, PROP_NONE); \
     RNA_def_property_clear_flag(prop, PROP_EDITABLE); \
     RNA_def_property_boolean_funcs( \
         prop, "rna_BrushCapabilitiesVertexPaint_" #prop_name_ "_get", nullptr); \
     RNA_def_property_ui_text(prop, ui_name_, nullptr)
 
-  VPAINT_BRUSH_TYPE_CAPABILITY(has_color, "Has Color");
+  VPAINT_BRUSH_CAPABILITY(has_color, "Has Color");
 
-#  undef VPAINT_BRUSH_TYPE_CAPABILITY
+#  undef VPAINT_BRUSH_CAPABILITY
 }
 
 static void rna_def_weight_paint_capabilities(BlenderRNA *brna)
@@ -1338,16 +1338,16 @@ static void rna_def_weight_paint_capabilities(BlenderRNA *brna)
   RNA_def_struct_ui_text(
       srna, "Weight Paint Capabilities", "Read-only indications of supported operations");
 
-#  define WPAINT_BRUSH_TYPE_CAPABILITY(prop_name_, ui_name_) \
+#  define WPAINT_BRUSH_CAPABILITY(prop_name_, ui_name_) \
     prop = RNA_def_property(srna, #prop_name_, PROP_BOOLEAN, PROP_NONE); \
     RNA_def_property_clear_flag(prop, PROP_EDITABLE); \
     RNA_def_property_boolean_funcs( \
         prop, "rna_BrushCapabilitiesWeightPaint_" #prop_name_ "_get", nullptr); \
     RNA_def_property_ui_text(prop, ui_name_, nullptr)
 
-  WPAINT_BRUSH_TYPE_CAPABILITY(has_weight, "Has Weight");
+  WPAINT_BRUSH_CAPABILITY(has_weight, "Has Weight");
 
-#  undef WPAINT_BRUSH_TYPE_CAPABILITY
+#  undef WPAINT_BRUSH_CAPABILITY
 }
 
 static void rna_def_gpencil_options(BlenderRNA *brna)
