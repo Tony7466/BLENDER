@@ -1577,7 +1577,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx, StripsDrawBatch &
     return;
   }
 
-  /* Discard thumbnail requests that are far enough from viewing area. */
+  /* Discard thumbnail requests that are far enough from viewing area:
+   * by +- 30 frames and +-2 channels outside of current view. */
   rctf rect = timeline_ctx->v2d->cur;
   rect.xmin -= 30;
   rect.xmax += 30;

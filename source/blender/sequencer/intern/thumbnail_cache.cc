@@ -11,7 +11,6 @@
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
-#include "BLI_threads.h"
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
@@ -36,7 +35,7 @@ static constexpr int MAX_THUMBNAILS = 5000;
 
 // #define DEBUG_PRINT_THUMB_JOB_TIMES
 
-static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
+static std::mutex thumb_cache_mutex;
 
 /* Thumbnail cache is a map keyed by media file path, with values being
  * the various thumbnails that are loaded for it (mostly images would contain just
@@ -49,8 +48,8 @@ static ThreadMutex thumb_cache_lock = BLI_MUTEX_INITIALIZER;
  * to the "requests" set. The requests are processed in the background by a WM job. */
 struct ThumbnailCache {
   struct FrameEntry {
-    int frame_index = 0;
-    int stream_index = 0;
+    int frame_index = 0;  /* Frame index (for movies) or image index (for image sequences). */
+    int stream_index = 0; /* Stream index (only for multi-stream movies). */
     ImBuf *thumb = nullptr;
     int64_t used_at = 0;
   };
@@ -83,8 +82,8 @@ struct ThumbnailCache {
     }
     /* These determine request uniqueness (for equality/hash in a Set). */
     std::string file_path;
-    int frame_index = 0;
-    int stream_index = 0;
+    int frame_index = 0;  /* Frame index (for movies) or image index (for image sequences). */
+    int stream_index = 0; /* Stream index (only for multi-stream movies). */
     SequenceType seq_type = SEQ_TYPE_IMAGE;
 
     /* The following members are payload and do not contribute to uniqueness. */
@@ -289,13 +288,14 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
      * Note: keep the requests set intact! We don't want to add new requests for same
      * items while we are processing them. They will be removed from the set once
      * they are finished, one by one. */
-    BLI_mutex_lock(&thumb_cache_lock);
-    requests.clear();
-    requests.reserve(job->cache_->requests_.size());
-    for (const auto &request : job->cache_->requests_) {
-      requests.append(request);
+    {
+      std::scoped_lock lock(thumb_cache_mutex);
+      requests.clear();
+      requests.reserve(job->cache_->requests_.size());
+      for (const auto &request : job->cache_->requests_) {
+        requests.append(request);
+      }
     }
-    BLI_mutex_unlock(&thumb_cache_lock);
 
     if (requests.is_empty()) {
       break;
@@ -376,19 +376,20 @@ void ThumbGenerationJob::run_fn(void *customdata, wmJobWorkerStatus *worker_stat
         scale_to_thumbnail_size(thumb);
 
         /* Add result into the cache (under cache mutex lock). */
-        BLI_mutex_lock(&thumb_cache_lock);
-        ThumbnailCache::FileEntry *val = job->cache_->map_.lookup_ptr(request.file_path);
-        if (val != nullptr) {
-          val->used_at = math::max(val->used_at, request.requested_at);
-          val->frames.append(
-              {request.frame_index, request.stream_index, thumb, request.requested_at});
+        {
+          std::scoped_lock lock(thumb_cache_mutex);
+          ThumbnailCache::FileEntry *val = job->cache_->map_.lookup_ptr(request.file_path);
+          if (val != nullptr) {
+            val->used_at = math::max(val->used_at, request.requested_at);
+            val->frames.append(
+                {request.frame_index, request.stream_index, thumb, request.requested_at});
+          }
+          else {
+            IMB_freeImBuf(thumb);
+          }
+          /* Remove the request from original set. */
+          job->cache_->requests_.remove(request);
         }
-        else {
-          IMB_freeImBuf(thumb);
-        }
-        /* Remove the request from original set. */
-        job->cache_->requests_.remove(request);
-        BLI_mutex_unlock(&thumb_cache_lock);
 
         if (thumb) {
           worker_status->do_update = true;
@@ -500,10 +501,12 @@ ImBuf *thumbnail_cache_get(const bContext *C,
     frame_index += seq->anim_startofs;
   }
 
-  BLI_mutex_lock(&thumb_cache_lock);
-  ThumbnailCache *cache = ensure_thumbnail_cache(scene);
-  ImBuf *res = query_thumbnail(*cache, key, frame_index, timeline_frame, C, seq);
-  BLI_mutex_unlock(&thumb_cache_lock);
+  ImBuf *res = nullptr;
+  {
+    std::scoped_lock lock(thumb_cache_mutex);
+    ThumbnailCache *cache = ensure_thumbnail_cache(scene);
+    res = query_thumbnail(*cache, key, frame_index, timeline_frame, C, seq);
+  }
 
   if (res) {
     IMB_refImBuf(res);
@@ -517,7 +520,7 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
     return;
   }
 
-  BLI_mutex_lock(&thumb_cache_lock);
+  std::scoped_lock lock(thumb_cache_mutex);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
     if (ELEM((seq)->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
@@ -539,12 +542,11 @@ void thumbnail_cache_invalidate_strip(Scene *scene, const Sequence *seq)
       }
     }
   }
-  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_maintain_capacity(Scene *scene)
 {
-  BLI_mutex_lock(&thumb_cache_lock);
+  std::scoped_lock lock(thumb_cache_mutex);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
     cache->logical_time_++;
@@ -583,12 +585,11 @@ void thumbnail_cache_maintain_capacity(Scene *scene)
       }
     }
   }
-  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect)
 {
-  BLI_mutex_lock(&thumb_cache_lock);
+  std::scoped_lock lock(thumb_cache_mutex);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
     cache->requests_.remove_if([&](const ThumbnailCache::Request &request) {
@@ -596,29 +597,26 @@ void thumbnail_cache_discard_requests_outside(Scene *scene, const rctf &rect)
              request.channel < rect.ymin || request.channel > rect.ymax;
     });
   }
-  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_clear(Scene *scene)
 {
-  BLI_mutex_lock(&thumb_cache_lock);
+  std::scoped_lock lock(thumb_cache_mutex);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
     scene->ed->runtime.thumbnail_cache->clear();
   }
-  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 void thumbnail_cache_destroy(Scene *scene)
 {
-  BLI_mutex_lock(&thumb_cache_lock);
+  std::scoped_lock lock(thumb_cache_mutex);
   ThumbnailCache *cache = query_thumbnail_cache(scene);
   if (cache != nullptr) {
     BLI_assert(cache == scene->ed->runtime.thumbnail_cache);
     MEM_delete(scene->ed->runtime.thumbnail_cache);
     scene->ed->runtime.thumbnail_cache = nullptr;
   }
-  BLI_mutex_unlock(&thumb_cache_lock);
 }
 
 }  // namespace blender::seq
