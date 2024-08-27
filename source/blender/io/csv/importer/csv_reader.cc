@@ -244,7 +244,7 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
 
   StringRef buffer_str{(const char *)buffer, int64_t(buffer_len)};
 
-  /* get row count and columns */
+  /* Get row count and columns */
   if (buffer_str.is_empty()) {
     fprintf(stderr, "CSV file: '%s', Is empty.\n", import_params.filepath);
     BKE_reportf(
@@ -264,7 +264,7 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
     return nullptr;
   }
 
-  /* shallow copy buffer to preserve pointers from first row for parsing */
+  /* Shallow copy buffer to preserve pointers from first row for parsing */
   StringRef data_buffer(buffer_str.begin(), buffer_str.end());
 
   const StringRef first_row = read_next_line(buffer_str);
@@ -286,10 +286,10 @@ PointCloud *read_csv_file(const CSVImportParams &import_params)
 
   const int64_t row_count = get_row_count(buffer_str);
 
-  /* create csv data */
+  /* Create csv data */
   CsvData csv_data(row_count, columns, column_types);
 
-  /* fill csv data while seeking over the file */
+  /* Fill csv data while seeking over the file */
   if (parse_csv_data(csv_data, data_buffer, import_params)) {
     return csv_data.to_point_cloud();
   }
