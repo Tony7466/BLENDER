@@ -3997,9 +3997,9 @@ StrokeCache::~StrokeCache()
 namespace blender::ed::sculpt_paint {
 
 /* Initialize mirror modifier clipping. */
-static void sculpt_init_mirror_clipping(Object &ob, SculptSession &ss)
+static void sculpt_init_mirror_clipping(const Object &ob, const SculptSession &ss)
 {
-  ss.cache->clip_mirror_mtx = float4x4::identity();
+  ss.cache->mirror_modifier_clip.mat = float4x4::identity();
 
   LISTBASE_FOREACH (ModifierData *, md, &ob.modifiers) {
     if (!(md->type == eModifierType_Mirror && (md->mode & eModifierMode_Realtime))) {
@@ -4016,21 +4016,22 @@ static void sculpt_init_mirror_clipping(Object &ob, SculptSession &ss)
         continue;
       }
       /* Enable sculpt clipping. */
-      ss.cache->flag |= CLIP_X << i;
+      ss.cache->mirror_modifier_clip.flag |= CLIP_X << i;
 
       /* Update the clip tolerance. */
-      if (mmd->tolerance > ss.cache->clip_tolerance[i]) {
-        ss.cache->clip_tolerance[i] = mmd->tolerance;
-      }
+      ss.cache->mirror_modifier_clip.tolerance[i] = std::max(
+          mmd->tolerance, ss.cache->mirror_modifier_clip.tolerance[i]);
 
       /* Store matrix for mirror object clipping. */
       if (mmd->mirror_ob) {
-        float imtx_mirror_ob[4][4];
-        invert_m4_m4(imtx_mirror_ob, mmd->mirror_ob->object_to_world().ptr());
-        mul_m4_m4m4(ss.cache->clip_mirror_mtx.ptr(), imtx_mirror_ob, ob.object_to_world().ptr());
+        const float4x4 mirror_ob_inv = math::invert(mmd->mirror_ob->object_to_world());
+        mul_m4_m4m4(ss.cache->mirror_modifier_clip.mat.ptr(),
+                    mirror_ob_inv.ptr(),
+                    ob.object_to_world().ptr());
       }
     }
   }
+  ss.cache->mirror_modifier_clip.mat_inv = math::invert(ss.cache->mirror_modifier_clip.mat);
 }
 
 static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
@@ -4132,7 +4133,7 @@ static void sculpt_update_cache_invariants(
 
   cache->plane_trim_squared = brush->plane_trim * brush->plane_trim;
 
-  cache->flag = 0;
+  cache->mirror_modifier_clip.flag = 0;
 
   sculpt_init_mirror_clipping(ob, ss);
 
@@ -4473,11 +4474,11 @@ static void brush_delta_update(const Depsgraph &depsgraph,
 
 static void cache_paint_invariants_update(StrokeCache &cache, const Brush &brush)
 {
-  cache.paint_brush.hardness = brush.hardness;
+  cache.hardness = brush.hardness;
   if (brush.paint_flags & BRUSH_PAINT_HARDNESS_PRESSURE) {
-    cache.paint_brush.hardness *= brush.paint_flags & BRUSH_PAINT_HARDNESS_PRESSURE_INVERT ?
-                                      1.0f - cache.pressure :
-                                      cache.pressure;
+    cache.hardness *= brush.paint_flags & BRUSH_PAINT_HARDNESS_PRESSURE_INVERT ?
+                          1.0f - cache.pressure :
+                          cache.pressure;
   }
 
   cache.paint_brush.flow = brush.flow;
@@ -4558,16 +4559,17 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, Po
   /* Clay stabilized pressure. */
   if (brush.sculpt_tool == SCULPT_TOOL_CLAY_THUMB) {
     if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
-      for (int i = 0; i < SCULPT_CLAY_STABILIZER_LEN; i++) {
-        ss.cache->clay_pressure_stabilizer[i] = 0.0f;
-      }
-      ss.cache->clay_pressure_stabilizer_index = 0;
+      ss.cache->clay_thumb_brush.pressure_stabilizer.fill(0.0f);
+      ss.cache->clay_thumb_brush.stabilizer_index = 0;
     }
     else {
-      cache.clay_pressure_stabilizer[cache.clay_pressure_stabilizer_index] = cache.pressure;
-      cache.clay_pressure_stabilizer_index += 1;
-      if (cache.clay_pressure_stabilizer_index >= SCULPT_CLAY_STABILIZER_LEN) {
-        cache.clay_pressure_stabilizer_index = 0;
+      cache.clay_thumb_brush.pressure_stabilizer[cache.clay_thumb_brush.stabilizer_index] =
+          cache.pressure;
+      cache.clay_thumb_brush.stabilizer_index += 1;
+      if (cache.clay_thumb_brush.stabilizer_index >=
+          ss.cache->clay_thumb_brush.pressure_stabilizer.size())
+      {
+        cache.clay_thumb_brush.stabilizer_index = 0;
       }
     }
   }
@@ -5809,7 +5811,8 @@ static void fake_neighbor_search_grids(const SculptSession &ss,
       const float distance_sq = math::distance_squared(CCG_elem_offset_co(key, elem, offset),
                                                        location);
       if (distance_sq < max_distance_sq && distance_sq < nvtd.distance_sq) {
-        nvtd.vert = verts_start + offset;
+        nvtd.vert = vert;
+        BLI_assert(nvtd.vert < key.grid_area * elems.size());
         nvtd.distance_sq = distance_sq;
       }
     });
@@ -5844,8 +5847,8 @@ static void fake_neighbor_search_bmesh(const SculptSession &ss,
 
 static void fake_neighbor_search(const Depsgraph &depsgraph,
                                  const Object &ob,
-                                 float max_distance_sq,
-                                 const MutableSpan<int> fake_neighbors)
+                                 const float max_distance_sq,
+                                 MutableSpan<int> fake_neighbors)
 {
   /* NOTE: This algorithm is extremely slow, it has O(n^2) runtime for the entire mesh. This looks
    * like the "closest pair of points" problem which should have far better solutions. */
@@ -5859,7 +5862,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
       const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert",
                                                                   bke::AttrDomain::Point);
       for (const int vert : vert_positions.index_range()) {
-        if (fake_neighbors[vert] == FAKE_NEIGHBOR_NONE) {
+        if (fake_neighbors[vert] != FAKE_NEIGHBOR_NONE) {
           continue;
         }
         const int island_id = islands::vert_id_get(ss, vert);
@@ -5903,7 +5906,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
       const Span<CCGElem *> elems = subdiv_ccg.grids;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       for (const int vert : IndexRange(elems.size() * key.grid_area)) {
-        if (fake_neighbors[vert] == FAKE_NEIGHBOR_NONE) {
+        if (fake_neighbors[vert] != FAKE_NEIGHBOR_NONE) {
           continue;
         }
         const int island_id = islands::vert_id_get(ss, vert);
@@ -5919,7 +5922,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
         const NearestVertData nvtd = threading::parallel_reduce(
             nodes.index_range(),
             1,
-            nvtd,
+            NearestVertData(),
             [&](const IndexRange range, NearestVertData nvtd) {
               for (const int i : range) {
                 fake_neighbor_search_grids(ss,
@@ -5946,7 +5949,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
     case bke::pbvh::Type::BMesh: {
       const BMesh &bm = *ss.bm;
       for (const int vert : IndexRange(bm.totvert)) {
-        if (fake_neighbors[vert] == FAKE_NEIGHBOR_NONE) {
+        if (fake_neighbors[vert] != FAKE_NEIGHBOR_NONE) {
           continue;
         }
         const int island_id = islands::vert_id_get(ss, vert);
@@ -5961,7 +5964,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
         const NearestVertData nvtd = threading::parallel_reduce(
             nodes.index_range(),
             1,
-            nvtd,
+            NearestVertData(),
             [&](const IndexRange range, NearestVertData nvtd) {
               for (const int i : range) {
                 fake_neighbor_search_bmesh(
@@ -7081,18 +7084,18 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
       continue;
     }
 
-    const float4x4 mirror(cache->clip_mirror_mtx);
-    const float4x4 mirror_inverse = math::invert(mirror);
+    const float4x4 mirror(cache->mirror_modifier_clip.mat);
+    const float4x4 mirror_inverse(cache->mirror_modifier_clip.mat_inv);
     for (const int i : verts.index_range()) {
       const int vert = verts[i];
 
       /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, positions[vert]);
-      if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
+      if (math::abs(co_mirror[axis]) > cache->mirror_modifier_clip.tolerance[axis]) {
         continue;
       }
       /* Clear the translation in the local space of the mirror object. */
@@ -7122,16 +7125,16 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
       continue;
     }
 
-    const float4x4 mirror(cache->clip_mirror_mtx);
-    const float4x4 mirror_inverse = math::invert(mirror);
+    const float4x4 mirror(cache->mirror_modifier_clip.mat);
+    const float4x4 mirror_inverse(cache->mirror_modifier_clip.mat_inv);
     for (const int i : positions.index_range()) {
       /* Transform into the space of the mirror plane, check translations, then transform back. */
       float3 co_mirror = math::transform_point(mirror, positions[i]);
-      if (math::abs(co_mirror[axis]) > cache->clip_tolerance[axis]) {
+      if (math::abs(co_mirror[axis]) > cache->mirror_modifier_clip.tolerance[axis]) {
         continue;
       }
       /* Clear the translation in the local space of the mirror object. */
