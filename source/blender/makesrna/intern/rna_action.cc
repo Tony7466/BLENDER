@@ -1304,6 +1304,38 @@ static std::optional<std::string> rna_DopeSheet_path(const PointerRNA *ptr)
   return "dopesheet";
 }
 
+static const EnumPropertyItem *rna_id_root_itemf(bContext *C,
+                                                 PointerRNA *ptr,
+                                                 PropertyRNA *prop,
+                                                 bool *r_free)
+{
+  int totitem = 0;
+  EnumPropertyItem *items = nullptr;
+  for (int i = 0; i < 39; i++) {
+    EnumPropertyItem item;
+
+    item.value = rna_enum_id_type_items[i].value;
+    item.name = rna_enum_id_type_items[i].name;
+    item.identifier = rna_enum_id_type_items[i].identifier;
+    item.icon = rna_enum_id_type_items[i].icon;
+    item.description = rna_enum_id_type_items[i].description;
+    RNA_enum_item_add(&items, &totitem, &item);
+  }
+
+  EnumPropertyItem item;
+
+  item.value = 0;
+  item.name = "None";
+  item.identifier = "None";
+  item.icon = ICON_NONE;
+  item.description = "";
+  RNA_enum_item_add(&items, &totitem, &item);
+
+  RNA_enum_item_end(&items, &totitem);
+  *r_free = true;
+  return items;
+}
+
 #else
 
 static void rna_def_dopesheet(BlenderRNA *brna)
@@ -2404,9 +2436,14 @@ static void rna_def_action_legacy(BlenderRNA *brna, StructRNA *srna)
 
   /* special "type" limiter - should not really be edited in general,
    * but is still available/editable in 'emergencies' */
+  static const EnumPropertyItem id_root_items[] = {
+      {0, "NONE", 0, "None", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
   prop = RNA_def_property(srna, "id_root", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "idroot");
-  RNA_def_property_enum_items(prop, rna_enum_id_type_items);
+  RNA_def_property_enum_items(prop, id_root_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_id_root_itemf");
   RNA_def_property_ui_text(prop,
                            "ID Root Type",
                            "Type of ID block that action can be used on - "
