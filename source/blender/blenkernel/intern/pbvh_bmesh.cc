@@ -2245,6 +2245,7 @@ std::unique_ptr<Tree> build_bmesh(BMesh *bm)
   /* Start with all faces in the root node. */
   /* Take root node and visit and populate children recursively. */
   Vector<BMeshNode> &nodes = std::get<Vector<BMeshNode>>(pbvh->nodes_);
+  nodes.resize(1);
   pbvh_bmesh_create_nodes_fast_recursive(
       nodes, cd_vert_node_offset, cd_face_node_offset, nodeinfo, face_bounds, &rootnode, 0);
 
