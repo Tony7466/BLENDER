@@ -256,6 +256,14 @@ class IndexMask : private IndexMaskData {
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+  /**
+   * This is a variant of #from_predicate that is more efficient if the predicate for many indices
+   * can be evaluated at once.
+   *
+   * \param batch_predicate: A function that finds indices in a certain segment that should become
+   * part of the mask. To efficiently handle ranges, this function uses #IndexRangesBuilder. It
+   * returns an index offset that should be applied to each index in the builder.
+   */
   static IndexMask from_batch_predicate(
       const IndexMask &universe,
       GrainSize grain_size,

@@ -452,6 +452,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
                                IndexMaskMemory &memory)
 {
   BLI_assert(bits.size() >= universe.min_array_size());
+  /* Use #from_batch_predicate because we can process many bits at once. */
   return IndexMask::from_batch_predicate(
       universe,
       GrainSize(max_segment_size),
@@ -463,6 +464,8 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
           bits::bits_to_index_ranges<int16_t>(bits.slice(universe_range), builder);
         }
         else {
+          /* If the universe is not a range, we need to create a new bit span first. In it, bits
+           * that are not part of the universe are set to 0. */
           const int64_t segment_end = universe_segment.last() + 1;
           BitVector<max_segment_size> local_bits(segment_end - segment_start, false);
           for (const int64_t i : universe_segment.index_range()) {
@@ -490,13 +493,17 @@ static void segments_from_batch_predicate(
 {
   IndexRangesBuilderBuffer<int16_t, max_segment_size> builder_buffer;
   IndexRangesBuilder<int16_t> builder{builder_buffer};
-  const int64_t extra_shift = batch_predicate(universe_segment, builder);
+  const int64_t segment_shift = batch_predicate(universe_segment, builder);
   if (builder.is_empty()) {
     return;
   }
   const Span<int16_t> static_indices = get_static_indices_array();
 
-  const int64_t threshold = 128;
+  /* This threshold trades off the number of segments and the number of ranges. In some cases,
+   * masks with fewer segments can be build more efficiently, but when iterating over a mask it may
+   * be benefitial to have more ranges if that means that there are more ranges which can be
+   * processed more efficiently. This could be exposed to the caller in the future. */
+  const int64_t threshold = 64;
   int64_t next_range_to_process = 0;
   int64_t skipped_indices_num = 0;
 
@@ -511,14 +518,14 @@ static void segments_from_batch_predicate(
       array_utils::fill_index_range(indices.slice(counter, range.size()), int16_t(range.first()));
       counter += range.size();
     }
-    r_segments.append(IndexMaskSegment{extra_shift, indices});
+    r_segments.append(IndexMaskSegment{segment_shift, indices});
   };
 
   for (const int64_t i : builder.index_range()) {
     const IndexRange range = builder[i];
     if (range.size() > threshold || builder.size() == 1) {
       consolidate_skipped_ranges(i);
-      r_segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
+      r_segments.append(IndexMaskSegment{segment_shift, static_indices.slice(range)});
       next_range_to_process = i + 1;
       skipped_indices_num = 0;
     }

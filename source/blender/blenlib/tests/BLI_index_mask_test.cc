@@ -32,7 +32,7 @@ TEST(index_mask, IndicesToMask)
   EXPECT_EQ(mask.bounds(), IndexRange::from_begin_end_inclusive(5, 101000));
 }
 
-TEST(index_mask, FromBits)
+TEST(index_mask, FromBitsManual)
 {
   IndexMaskMemory memory;
   const uint64_t bits =
@@ -47,7 +47,7 @@ TEST(index_mask, FromBits)
   EXPECT_EQ(indices[4], 9);
 }
 
-TEST(index_mask, FromBits2)
+TEST(index_mask, FromBitsSimple)
 {
   IndexMaskMemory memory;
   BitVector bit_vec(200, true);

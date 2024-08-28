@@ -159,7 +159,7 @@ class BitVector {
   explicit BitVector(const Span<bool> values, Allocator allocator = {})
       : BitVector(NoExceptConstructor(), allocator)
   {
-    this->resize(values.size());
+    this->resize(values.size(), false);
     bools_to_zeroed_bits(values, *this);
   }
 
