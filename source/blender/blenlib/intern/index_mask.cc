@@ -451,6 +451,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
                                const BitSpan bits,
                                IndexMaskMemory &memory)
 {
+  BLI_assert(bits.size() >= universe.min_array_size());
   return IndexMask::from_batch_predicate(
       universe,
       GrainSize(max_segment_size),
