@@ -105,7 +105,7 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<IntT> &b
 #if BLI_HAVE_SSE2
     for (; int_i + 1 < ints_to_check; int_i += 2) {
       /* Loads the next 128 bit. */
-      const __m128i_u group = _mm_loadu_si128(reinterpret_cast<const __m128i_u *>(start + int_i));
+      const __m128i group = _mm_loadu_si128(reinterpret_cast<const __m128i *>(start + int_i));
       /* Checks if all the 128 bits are zero. */
       const bool group_is_zero = _mm_testz_si128(group, group);
       if (group_is_zero) {

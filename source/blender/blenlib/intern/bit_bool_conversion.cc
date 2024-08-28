@@ -34,7 +34,7 @@ void bools_to_zeroed_bits(const Span<bool> bools, MutableBitSpan r_bits)
   /* Iterate over chunks of booleans. */
   for (; bool_i + 16 < bools.size(); bool_i += 16) {
     /* Load 16 bools at once. */
-    const __m128i group = _mm_loadu_si128(reinterpret_cast<const __m128i_u *>(bools_ + bool_i));
+    const __m128i group = _mm_loadu_si128(reinterpret_cast<const __m128i *>(bools_ + bool_i));
     /* Compare them all against zero. The result is a mask of the form [0x00, 0xff, 0xff, ...]. */
     const __m128i is_false_byte_mask = _mm_cmpeq_epi8(group, zero_bytes);
     /* Compress the byte-mask into a bit mask. This takes one bit from each byte. */
