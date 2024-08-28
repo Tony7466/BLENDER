@@ -634,6 +634,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_particle_strand)
     .vertex_in(1, Type::FLOAT, "selection")
     .sampler(0, ImageType::FLOAT_1D, "weightTex")
     .push_constant(Type::BOOL, "useWeight")
+    .push_constant(Type::BOOL, "useGreasePencil")
     .vertex_out(overlay_edit_smooth_color_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_edit_particle_strand_vert.glsl")
@@ -651,6 +652,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_particle_point)
     .vertex_out(overlay_edit_flat_color_iface)
     .sampler(0, ImageType::FLOAT_1D, "weightTex")
     .push_constant(Type::BOOL, "useWeight")
+    .push_constant(Type::BOOL, "useGreasePencil")
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_edit_particle_point_vert.glsl")
     .fragment_source("overlay_point_varying_color_frag.glsl")
@@ -722,46 +724,6 @@ GPU_SHADER_CREATE_INFO(overlay_edit_gpencil_guide_point)
 GPU_SHADER_CREATE_INFO(overlay_edit_gpencil_guide_point_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_edit_gpencil_guide_point", "drw_clipped");
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Edit Grease Pencil v3
- *
- * New Grease Pencil v3 shaders
- * \{ */
-
-GPU_SHADER_CREATE_INFO(overlay_edit_grease_pencil_wire)
-    .do_static_compilation(true)
-    .vertex_in(0, Type::VEC3, "pos")
-    .vertex_in(1, Type::FLOAT, "selection")
-    .sampler(0, ImageType::FLOAT_1D, "weightTex")
-    .push_constant(Type::BOOL, "useWeight")
-    .vertex_out(overlay_edit_smooth_color_iface)
-    .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_edit_grease_pencil_wire_vert.glsl")
-    .fragment_source("overlay_varying_color.glsl")
-    .additional_info("draw_mesh", "draw_globals");
-
-GPU_SHADER_CREATE_INFO(overlay_edit_grease_pencil_wire_clipped)
-    .do_static_compilation(true)
-    .additional_info("overlay_edit_grease_pencil_wire", "drw_clipped");
-
-GPU_SHADER_CREATE_INFO(overlay_edit_grease_pencil_point)
-    .do_static_compilation(true)
-    .vertex_in(0, Type::VEC3, "pos")
-    .vertex_in(1, Type::FLOAT, "selection")
-    .vertex_out(overlay_edit_flat_color_iface)
-    .sampler(0, ImageType::FLOAT_1D, "weightTex")
-    .push_constant(Type::BOOL, "useWeight")
-    .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_edit_grease_pencil_point_vert.glsl")
-    .fragment_source("overlay_point_varying_color_frag.glsl")
-    .additional_info("draw_mesh", "draw_globals");
-
-GPU_SHADER_CREATE_INFO(overlay_edit_grease_pencil_point_clipped)
-    .do_static_compilation(true)
-    .additional_info("overlay_edit_grease_pencil_point", "drw_clipped");
 
 /** \} */
 
