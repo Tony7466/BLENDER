@@ -6,6 +6,7 @@
 
 #include "BLI_bit_span.hh"
 #include "BLI_bit_span_ops.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_timeit.hh"
 #include "BLI_vector.hh"
 
@@ -246,6 +247,31 @@ TEST(bit_span, ForEach1)
   foreach_1_index(span.slice({4, span.size() - 4}), [&](const int i) { indices_test.append(i); });
 
   EXPECT_EQ(indices_test.as_span(), Span({24, 33, 82}));
+}
+
+TEST(bit_span, bools_to_bits)
+{
+  {
+    Vector<bool> bools(5, false);
+    bools[2] = true;
+    BitVector<> bits(bools.size());
+    bits::bools_to_bits(bools, bits);
+    EXPECT_FALSE(bits[0]);
+    EXPECT_FALSE(bits[1]);
+    EXPECT_TRUE(bits[2]);
+    EXPECT_FALSE(bits[3]);
+    EXPECT_FALSE(bits[4]);
+  }
+  {
+    Vector<bool> bools(100, true);
+    BitVector<> bits(1000, false);
+    bits::bools_to_bits(bools, MutableBitSpan(bits).slice(IndexRange::from_begin_size(100, 500)));
+    EXPECT_FALSE(bits[99]);
+    EXPECT_TRUE(bits[100]);
+    EXPECT_TRUE(bits[101]);
+    EXPECT_TRUE(bits[199]);
+    EXPECT_FALSE(bits[200]);
+  }
 }
 
 }  // namespace blender::bits::tests
