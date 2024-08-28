@@ -114,7 +114,7 @@ MINLINE unsigned short highest_order_bit_s(unsigned short n)
   return (unsigned short)(n - (n >> 1));
 }
 
-#ifndef __GNUC__
+#if !(COMPILER_GCC || COMPILER_CLANG || COMPILER_MSVC)
 MINLINE int count_bits_i(unsigned int i)
 {
   /* variable-precision SWAR algorithm. */
