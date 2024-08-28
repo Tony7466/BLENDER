@@ -53,7 +53,7 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     commit_time_match = re.search(r"^\s+build commit time: (.*)", text, flags=re.MULTILINE)
     build_hash_match = re.search(r"^\s+build hash: (.*)", text, flags=re.MULTILINE)
 
-    if not (version_match and branch_match and commit_date_match and commit_time_match and build_hash_match):
+    if not (version_match or branch_match or commit_date_match or commit_time_match or build_hash_match):
         # No valid Blender info could be found.
         print("Blender did not provide any build information. Blender may be corrupt or blocked from running.")
         print("Please try reinstalling Blender and double check your anti-virus isn't blocking it from running.")
