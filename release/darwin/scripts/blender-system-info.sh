@@ -8,6 +8,7 @@ for directory in "$script_dir"/*; do
             for file in "$directory/python/bin"/*; do
                 if grep -i "python" "$file" > /dev/null; then # Search for Python executable
                     "$file" "$directory/scripts/system_info/system_info.py" # Run Python script
+                    exit 0
                 fi
             done
         fi
