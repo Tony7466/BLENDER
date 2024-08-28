@@ -57,7 +57,6 @@ GPU_SHADER_CREATE_INFO(overlay_volume_velocity_needle)
 GPU_SHADER_INTERFACE_INFO(overlay_volume_gridlines_iface, "").flat(Type::VEC4, "finalColor");
 
 GPU_SHADER_CREATE_INFO(overlay_volume_gridlines)
-    .do_static_compilation(true)
     .push_constant(Type::FLOAT, "slicePosition")
     .push_constant(Type::INT, "sliceAxis")
     /* FluidDomainSettings.res */
@@ -68,17 +67,21 @@ GPU_SHADER_CREATE_INFO(overlay_volume_gridlines)
     .push_constant(Type::VEC3, "domainOriginOffset")
     /* FluidDomainSettings.res_min */
     .push_constant(Type::IVEC3, "adaptiveCellOffset")
+    .push_constant(Type::INT, "in_select_id")
     .vertex_out(overlay_volume_gridlines_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_volume_gridlines_vert.glsl")
-    .fragment_source("overlay_varying_color.glsl")
-    .additional_info("draw_volume");
+    .fragment_source("overlay_varying_color.glsl");
+
+GPU_SHADER_CREATE_INFO(overlay_volume_gridlines_flat)
+    .do_static_compilation(true)
+    .additional_info("draw_volume", "overlay_volume_gridlines");
 
 GPU_SHADER_CREATE_INFO(overlay_volume_gridlines_flags)
     .do_static_compilation(true)
     .define("SHOW_FLAGS")
     .sampler(0, ImageType::UINT_3D, "flagTexture")
-    .additional_info("overlay_volume_gridlines");
+    .additional_info("draw_volume", "overlay_volume_gridlines");
 
 GPU_SHADER_CREATE_INFO(overlay_volume_gridlines_range)
     .do_static_compilation(true)
@@ -89,6 +92,6 @@ GPU_SHADER_CREATE_INFO(overlay_volume_gridlines_range)
     .push_constant(Type::INT, "cellFilter")
     .sampler(0, ImageType::UINT_3D, "flagTexture")
     .sampler(1, ImageType::FLOAT_3D, "fieldTexture")
-    .additional_info("overlay_volume_gridlines");
+    .additional_info("draw_volume", "overlay_volume_gridlines");
 
 /** \} */

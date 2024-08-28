@@ -25,6 +25,9 @@ class Fluids {
   PassSimple::Sub *velocity_needle_ps_ = nullptr;
   PassSimple::Sub *velocity_mac_ps_ = nullptr;
   PassSimple::Sub *velocity_streamline_ps_ = nullptr;
+  PassSimple::Sub *grid_lines_flags_ps_ = nullptr;
+  PassSimple::Sub *grid_lines_flat_ps_ = nullptr;
+  PassSimple::Sub *grid_lines_range_ps_ = nullptr;
 
   ShapeInstanceBuf<ExtraInstanceData> cube_buf_ = {selection_type_, "cube_buf_"};
 
@@ -35,7 +38,9 @@ class Fluids {
 
   void begin_sync(Resources &res, const State &state)
   {
-    // dominant_axis = /* TODO */
+    /* Against design. Should not sync depending on view. */
+    float3 camera_direction = View("WorkaroundView", DRW_view_default_get()).viewinv().z_axis();
+    dominant_axis = math::dominant_axis(camera_direction);
 
     {
       auto &pass = fluid_ps_;
@@ -54,6 +59,15 @@ class Fluids {
 
       velocity_streamline_ps_ = &fluid_ps_.sub("Velocity Line");
       velocity_streamline_ps_->shader_set(res.shaders.fluid_velocity_streamline.get());
+
+      grid_lines_flags_ps_ = &fluid_ps_.sub("Velocity Mac");
+      grid_lines_flags_ps_->shader_set(res.shaders.fluid_grid_lines_flags.get());
+
+      grid_lines_flat_ps_ = &fluid_ps_.sub("Velocity Needles");
+      grid_lines_flat_ps_->shader_set(res.shaders.fluid_grid_lines_flat.get());
+
+      grid_lines_range_ps_ = &fluid_ps_.sub("Velocity Line");
+      grid_lines_range_ps_->shader_set(res.shaders.fluid_grid_lines_range.get());
     }
 
     cube_buf_.clear();
@@ -102,7 +116,6 @@ class Fluids {
       voxel_cube_mat = ob->object_to_world() * voxel_cube_mat;
 
       const float4 &color = res.object_wire_color(ob_ref, state);
-
       cube_buf_.append({voxel_cube_mat, color, 1.0f}, sel_id);
     }
 
@@ -168,40 +181,50 @@ class Fluids {
                                 (fds->interp_method == FLUID_DISPLAY_INTERP_CLOSEST ||
                                  fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS);
     if (show_gridlines) {
-      const bool color_with_flags = fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_FLAGS;
-      const bool color_range = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_RANGE) &&
-                               fds->use_coba && (fds->coba_field != FLUID_DOMAIN_FIELD_FLAGS);
-    }
+      PassSimple::Sub *sub_pass = nullptr;
+      switch (fds->gridlines_color_field) {
+        default:
+        case FLUID_GRIDLINE_COLOR_TYPE_FLAGS:
+          DRW_fluid_ensure_flags(fmd);
 
-#if 0
-    if (show_gridlines) {
-      GPUShader *sh = OVERLAY_shader_volume_gridlines(color_with_flags, color_range);
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
-      DRW_shgroup_uniform_ivec3_copy(grp, "volumeSize", fds->res);
-      DRW_shgroup_uniform_float_copy(grp, "slicePosition", fds->slice_depth);
-      DRW_shgroup_uniform_vec3_copy(grp, "cellSize", fds->cell_size);
-      DRW_shgroup_uniform_vec3_copy(grp, "domainOriginOffset", fds->p0);
-      DRW_shgroup_uniform_ivec3_copy(grp, "adaptiveCellOffset", fds->res_min);
-      DRW_shgroup_uniform_int_copy(grp, "sliceAxis", slice_axis);
+          sub_pass = grid_lines_flags_ps_;
+          sub_pass->bind_texture("flagTexture", fds->tex_flags);
+          break;
+        case FLUID_GRIDLINE_COLOR_TYPE_RANGE:
+          if (fds->use_coba && (fds->coba_field != FLUID_DOMAIN_FIELD_FLAGS)) {
+            DRW_fluid_ensure_flags(fmd);
+            DRW_fluid_ensure_range_field(fmd);
 
-      if (color_with_flags || color_range) {
-        DRW_fluid_ensure_flags(fmd);
-        DRW_shgroup_uniform_texture(grp, "flagTexture", fds->tex_flags);
+            sub_pass = grid_lines_range_ps_;
+            sub_pass->bind_texture("flagTexture", fds->tex_flags);
+            sub_pass->bind_texture("fieldTexture", fds->tex_range_field);
+            sub_pass->push_constant("lowerBound", fds->gridlines_lower_bound);
+            sub_pass->push_constant("upperBound", fds->gridlines_upper_bound);
+            sub_pass->push_constant("rangeColor", float4(fds->gridlines_range_color));
+            sub_pass->push_constant("cellFilter", int(fds->gridlines_cell_filter));
+            break;
+          }
+          /* Otherwise, fallback to none color type. */
+          ATTR_FALLTHROUGH;
+        case FLUID_GRIDLINE_COLOR_TYPE_NONE:
+          sub_pass = grid_lines_flat_ps_;
+          break;
       }
 
-      if (color_range) {
-        DRW_fluid_ensure_range_field(fmd);
-        DRW_shgroup_uniform_texture(grp, "fieldTexture", fds->tex_range_field);
-        DRW_shgroup_uniform_float_copy(grp, "lowerBound", fds->gridlines_lower_bound);
-        DRW_shgroup_uniform_float_copy(grp, "upperBound", fds->gridlines_upper_bound);
-        DRW_shgroup_uniform_vec4_copy(grp, "rangeColor", fds->gridlines_range_color);
-        DRW_shgroup_uniform_int_copy(grp, "cellFilter", fds->gridlines_cell_filter);
-      }
+      PassSimple::Sub &sub = *sub_pass;
+      sub.push_constant("volumeSize", int3(fds->res));
+      sub.push_constant("slicePosition", fds->slice_depth);
+      sub.push_constant("cellSize", float3(fds->cell_size));
+      sub.push_constant("domainOriginOffset", float3(fds->p0));
+      sub.push_constant("adaptiveCellOffset", int3(fds->res_min));
+      sub.push_constant("sliceAxis", slice_axis);
+      sub.push_constant("in_select_id", int(sel_id.get()));
 
-      const int line_count = 4 * (fds->res)[0] * fds->res[1] * fds->res[2] / fds->res[slice_axis];
-      DRW_shgroup_call_procedural_lines(grp, ob, line_count);
+      BLI_assert(slice_axis != -1);
+      int lines_per_voxel = 4;
+      int total_lines = lines_per_voxel * math::reduce_mul(int3(fds->res)) / fds->res[slice_axis];
+      sub.draw_procedural(GPU_PRIM_LINES, 1, total_lines * 2, -1, res_handle);
     }
-#endif
   }
 
   void end_sync(Resources &res, ShapeCache &shapes, const State & /*state*/)

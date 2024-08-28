@@ -198,6 +198,9 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
+  ShaderPtr fluid_grid_lines_flags;
+  ShaderPtr fluid_grid_lines_flat;
+  ShaderPtr fluid_grid_lines_range;
   ShaderPtr fluid_velocity_streamline;
   ShaderPtr fluid_velocity_mac;
   ShaderPtr fluid_velocity_needle;

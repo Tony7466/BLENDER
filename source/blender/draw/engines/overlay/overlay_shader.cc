@@ -1008,7 +1008,8 @@ GPUShader *OVERLAY_shader_volume_gridlines(bool color_with_flags, bool color_ran
         "overlay_volume_gridlines_range");
   }
   else if (!sh_data->volume_gridlines_sh) {
-    sh_data->volume_gridlines_sh = GPU_shader_create_from_info_name("overlay_volume_gridlines");
+    sh_data->volume_gridlines_sh = GPU_shader_create_from_info_name(
+        "overlay_volume_gridlines_flat");
   }
 
   if (color_with_flags) {
