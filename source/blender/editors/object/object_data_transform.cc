@@ -15,15 +15,12 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
@@ -31,28 +28,26 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_armature.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
+#include "BKE_armature.hh"
+#include "BKE_curve.hh"
+#include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
-#include "BKE_key.h"
-#include "BKE_lattice.h"
-#include "BKE_mball.h"
-#include "BKE_mesh.hh"
-#include "BKE_scene.h"
+#include "BKE_key.hh"
+#include "BKE_lattice.hh"
+#include "BKE_mball.hh"
+#include "BKE_mesh_types.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
-
-#include "WM_types.hh"
+#include "DEG_depsgraph.hh"
 
 #include "ED_armature.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 
 #include "MEM_guardedalloc.h"
+
+namespace blender::ed::object {
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Transform Get/Apply
@@ -307,7 +302,7 @@ struct XFormObjectData_GPencil {
   GPencilPointCoordinates elem_array[0];
 };
 
-XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
+XFormObjectData *data_xform_create_ex(ID *id, bool is_edit_mode)
 {
   XFormObjectData *xod_base = nullptr;
   if (id == nullptr) {
@@ -316,12 +311,12 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
 
   switch (GS(id->name)) {
     case ID_ME: {
-      Mesh *me = (Mesh *)id;
-      Key *key = me->key;
+      Mesh *mesh = (Mesh *)id;
+      Key *key = mesh->key;
       const int key_index = -1;
 
       if (is_edit_mode) {
-        BMesh *bm = me->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
         const int elem_array_len = bm->totvert;
@@ -329,7 +324,8 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
             MEM_mallocN(sizeof(*xod) + (sizeof(*xod->elem_array) * elem_array_len), __func__));
         memset(xod, 0x0, sizeof(*xod));
 
-        BM_mesh_vert_coords_get(bm, xod->elem_array);
+        BM_mesh_vert_coords_get(
+            bm, MutableSpan(reinterpret_cast<float3 *>(xod->elem_array), elem_array_len));
         xod_base = &xod->base;
 
         if (key != nullptr) {
@@ -342,12 +338,12 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
         }
       }
       else {
-        const int elem_array_len = me->totvert;
+        const int elem_array_len = mesh->verts_num;
         XFormObjectData_Mesh *xod = static_cast<XFormObjectData_Mesh *>(
             MEM_mallocN(sizeof(*xod) + (sizeof(*xod->elem_array) * elem_array_len), __func__));
         memset(xod, 0x0, sizeof(*xod));
-        blender::MutableSpan(reinterpret_cast<blender::float3 *>(xod->elem_array), me->totvert)
-            .copy_from(me->vert_positions());
+        MutableSpan(reinterpret_cast<float3 *>(xod->elem_array), mesh->verts_num)
+            .copy_from(mesh->vert_positions());
 
         xod_base = &xod->base;
 
@@ -489,17 +485,17 @@ XFormObjectData *ED_object_data_xform_create_ex(ID *id, bool is_edit_mode)
   return xod_base;
 }
 
-XFormObjectData *ED_object_data_xform_create(ID *id)
+XFormObjectData *data_xform_create(ID *id)
 {
-  return ED_object_data_xform_create_ex(id, false);
+  return data_xform_create_ex(id, false);
 }
 
-XFormObjectData *ED_object_data_xform_create_from_edit_mode(ID *id)
+XFormObjectData *data_xform_create_from_edit_mode(ID *id)
 {
-  return ED_object_data_xform_create_ex(id, true);
+  return data_xform_create_ex(id, true);
 }
 
-void ED_object_data_xform_destroy(XFormObjectData *xod_base)
+void data_xform_destroy(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
@@ -530,24 +526,35 @@ void ED_object_data_xform_destroy(XFormObjectData *xod_base)
   MEM_freeN(xod_base);
 }
 
-void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][4])
+void data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][4])
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
-      Mesh *me = (Mesh *)xod_base->id;
+      Mesh *mesh = (Mesh *)xod_base->id;
 
-      Key *key = me->key;
+      Key *key = mesh->key;
       const int key_index = -1;
 
       XFormObjectData_Mesh *xod = (XFormObjectData_Mesh *)xod_base;
       if (xod_base->is_edit_mode) {
-        BMesh *bm = me->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         BM_mesh_vert_coords_apply_with_mat4(bm, xod->elem_array, mat);
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
       }
       else {
-        BKE_mesh_vert_coords_apply_with_mat4(me, xod->elem_array, mat);
+        MutableSpan<float3> positions = mesh->vert_positions_for_write();
+#ifdef __GNUC__ /* Invalid `xod->elem_array` warning with GCC 13.2.1. */
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+        for (const int i : positions.index_range()) {
+          mul_v3_m4v3(positions[i], mat, xod->elem_array[i]);
+        }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
+        mesh->tag_positions_changed();
       }
 
       if (key != nullptr) {
@@ -637,24 +644,26 @@ void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][
   }
 }
 
-void ED_object_data_xform_restore(XFormObjectData *xod_base)
+void data_xform_restore(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
-      Mesh *me = (Mesh *)xod_base->id;
+      Mesh *mesh = (Mesh *)xod_base->id;
 
-      Key *key = me->key;
+      Key *key = mesh->key;
       const int key_index = -1;
 
       XFormObjectData_Mesh *xod = (XFormObjectData_Mesh *)xod_base;
       if (xod_base->is_edit_mode) {
-        BMesh *bm = me->edit_mesh->bm;
+        BMesh *bm = mesh->runtime->edit_mesh->bm;
         BM_mesh_vert_coords_apply(bm, xod->elem_array);
         /* Always operate on all keys for the moment. */
         // key_index = bm->shapenr - 1;
       }
       else {
-        BKE_mesh_vert_coords_apply(me, xod->elem_array);
+        mesh->vert_positions_for_write().copy_from(
+            {reinterpret_cast<const float3 *>(xod->elem_array), mesh->verts_num});
+        mesh->tag_positions_changed();
       }
 
       if ((key != nullptr) && (xod->key_data != nullptr)) {
@@ -736,19 +745,19 @@ void ED_object_data_xform_restore(XFormObjectData *xod_base)
   }
 }
 
-void ED_object_data_xform_tag_update(XFormObjectData *xod_base)
+void data_xform_tag_update(XFormObjectData *xod_base)
 {
   switch (GS(xod_base->id->name)) {
     case ID_ME: {
-      Mesh *me = (Mesh *)xod_base->id;
+      Mesh *mesh = (Mesh *)xod_base->id;
       if (xod_base->is_edit_mode) {
         EDBMUpdate_Params params{};
-        params.calc_looptri = true;
+        params.calc_looptris = true;
         params.calc_normals = true;
         params.is_destructive = false;
-        EDBM_update(me, &params);
+        EDBM_update(mesh, &params);
       }
-      DEG_id_tag_update(&me->id, ID_RECALC_GEOMETRY);
+      DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
       break;
     }
     case ID_LT: {
@@ -773,13 +782,13 @@ void ED_object_data_xform_tag_update(XFormObjectData *xod_base)
     case ID_MB: {
       /* Generic update. */
       MetaBall *mb = (MetaBall *)xod_base->id;
-      DEG_id_tag_update(&mb->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&mb->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
       break;
     }
     case ID_GD_LEGACY: {
       /* Generic update. */
       bGPdata *gpd = (bGPdata *)xod_base->id;
-      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
       break;
     }
 
@@ -790,3 +799,5 @@ void ED_object_data_xform_tag_update(XFormObjectData *xod_base)
 }
 
 /** \} */
+
+}  // namespace blender::ed::object

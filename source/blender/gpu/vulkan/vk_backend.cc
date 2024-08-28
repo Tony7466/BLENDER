@@ -50,7 +50,8 @@ void VKBackend::platform_init()
            GPU_BACKEND_VULKAN,
            "",
            "",
-           "");
+           "",
+           GPU_ARCHITECTURE_IMR);
 }
 
 void VKBackend::platform_init(const VKDevice &device)
@@ -72,17 +73,47 @@ void VKBackend::platform_init(const VKDevice &device)
            GPU_BACKEND_VULKAN,
            vendor_name.c_str(),
            properties.deviceName,
-           driver_version.c_str());
+           driver_version.c_str(),
+           GPU_ARCHITECTURE_IMR);
 }
 
 void VKBackend::detect_workarounds(VKDevice &device)
 {
   VKWorkarounds workarounds;
 
+  if (G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS) {
+    printf("\n");
+    printf("VK: Forcing workaround usage and disabling features and extensions.\n");
+    printf("    Vendor: %s\n", device.vendor_name().c_str());
+    printf("    Device: %s\n", device.physical_device_properties_get().deviceName);
+    printf("    Driver: %s\n", device.driver_version().c_str());
+    /* Force workarounds. */
+    workarounds.not_aligned_pixel_formats = true;
+    workarounds.shader_output_layer = true;
+    workarounds.shader_output_viewport_index = true;
+    workarounds.vertex_formats.r8g8b8 = true;
+
+    device.workarounds_ = workarounds;
+    return;
+  }
+
+  workarounds.shader_output_layer =
+      !device.physical_device_vulkan_12_features_get().shaderOutputLayer;
+  workarounds.shader_output_viewport_index =
+      !device.physical_device_vulkan_12_features_get().shaderOutputViewportIndex;
+
   /* AMD GPUs don't support texture formats that use are aligned to 24 or 48 bits. */
-  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY)) {
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_ANY) ||
+      GPU_type_matches(GPU_DEVICE_APPLE, GPU_OS_MAC, GPU_DRIVER_ANY))
+  {
     workarounds.not_aligned_pixel_formats = true;
   }
+
+  VkFormatProperties format_properties = {};
+  vkGetPhysicalDeviceFormatProperties(
+      device.physical_device_get(), VK_FORMAT_R8G8B8_UNORM, &format_properties);
+  workarounds.vertex_formats.r8g8b8 = (format_properties.bufferFeatures &
+                                       VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT) == 0;
 
   device.workarounds_ = workarounds;
 }
@@ -90,7 +121,7 @@ void VKBackend::detect_workarounds(VKDevice &device)
 void VKBackend::platform_exit()
 {
   GPG.clear();
-  VKDevice &device = VKBackend::get().device_;
+  VKDevice &device = VKBackend::get().device;
   if (device.is_initialized()) {
     device.deinit();
   }
@@ -98,28 +129,37 @@ void VKBackend::platform_exit()
 
 void VKBackend::delete_resources() {}
 
-void VKBackend::samplers_update() {}
+void VKBackend::samplers_update()
+{
+  VKDevice &device = VKBackend::get().device;
+  if (device.is_initialized()) {
+    device.reinit();
+  }
+}
 
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   VKContext &context = *VKContext::get();
-  context.state_manager_get().apply_bindings();
-  context.bind_compute_pipeline();
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.dispatch(groups_x_len, groups_y_len, groups_z_len);
-  command_buffer.submit();
+  render_graph::VKResourceAccessInfo &resources = context.update_and_get_access_info();
+  render_graph::VKDispatchNode::CreateInfo dispatch_info(resources);
+  context.update_pipeline_data(dispatch_info.dispatch_node.pipeline_data);
+  dispatch_info.dispatch_node.group_count_x = groups_x_len;
+  dispatch_info.dispatch_node.group_count_y = groups_y_len;
+  dispatch_info.dispatch_node.group_count_z = groups_z_len;
+  context.render_graph.add_node(dispatch_info);
 }
 
 void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
   BLI_assert(indirect_buf);
   VKContext &context = *VKContext::get();
-  context.state_manager_get().apply_bindings();
-  context.bind_compute_pipeline();
   VKStorageBuffer &indirect_buffer = *unwrap(indirect_buf);
-  VKCommandBuffer &command_buffer = context.command_buffer_get();
-  command_buffer.dispatch(indirect_buffer);
-  command_buffer.submit();
+  render_graph::VKResourceAccessInfo &resources = context.update_and_get_access_info();
+  render_graph::VKDispatchIndirectNode::CreateInfo dispatch_indirect_info(resources);
+  context.update_pipeline_data(dispatch_indirect_info.dispatch_indirect_node.pipeline_data);
+  dispatch_indirect_info.dispatch_indirect_node.buffer = indirect_buffer.vk_handle();
+  dispatch_indirect_info.dispatch_indirect_node.offset = 0;
+  context.render_graph.add_node(dispatch_indirect_info);
 }
 
 Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
@@ -130,12 +170,12 @@ Context *VKBackend::context_alloc(void *ghost_window, void *ghost_context)
   }
 
   BLI_assert(ghost_context != nullptr);
-  if (!device_.is_initialized()) {
-    device_.init(ghost_context);
+  if (!device.is_initialized()) {
+    device.init(ghost_context);
   }
 
-  VKContext *context = new VKContext(ghost_window, ghost_context);
-  device_.context_register(*context);
+  VKContext *context = new VKContext(ghost_window, ghost_context, device.current_thread_data());
+  device.context_register(*context);
   GHOST_SetVulkanSwapBuffersCallbacks((GHOST_ContextHandle)ghost_context,
                                       VKContext::swap_buffers_pre_callback,
                                       VKContext::swap_buffers_post_callback);
@@ -147,9 +187,9 @@ Batch *VKBackend::batch_alloc()
   return new VKBatch();
 }
 
-DrawList *VKBackend::drawlist_alloc(int /*list_length*/)
+DrawList *VKBackend::drawlist_alloc(int list_length)
 {
-  return new VKDrawList();
+  return new VKDrawList(list_length);
 }
 
 Fence *VKBackend::fence_alloc()
@@ -167,7 +207,7 @@ IndexBuf *VKBackend::indexbuf_alloc()
   return new VKIndexBuffer();
 }
 
-PixelBuffer *VKBackend::pixelbuf_alloc(uint size)
+PixelBuffer *VKBackend::pixelbuf_alloc(size_t size)
 {
   return new VKPixelBuffer(size);
 }
@@ -187,12 +227,12 @@ Texture *VKBackend::texture_alloc(const char *name)
   return new VKTexture(name);
 }
 
-UniformBuf *VKBackend::uniformbuf_alloc(int size, const char *name)
+UniformBuf *VKBackend::uniformbuf_alloc(size_t size, const char *name)
 {
   return new VKUniformBuffer(size, name);
 }
 
-StorageBuf *VKBackend::storagebuf_alloc(int size, GPUUsageType usage, const char *name)
+StorageBuf *VKBackend::storagebuf_alloc(size_t size, GPUUsageType usage, const char *name)
 {
   return new VKStorageBuffer(size, usage, name);
 }
@@ -202,9 +242,30 @@ VertBuf *VKBackend::vertbuf_alloc()
   return new VKVertexBuffer();
 }
 
-void VKBackend::render_begin() {}
+void VKBackend::render_begin()
+{
+  VKThreadData &thread_data = device.current_thread_data();
+  BLI_assert_msg(thread_data.rendering_depth >= 0, "Inconsistent `GPU_render_begin/end`");
+  thread_data.rendering_depth += 1;
+}
 
-void VKBackend::render_end() {}
+void VKBackend::render_end()
+{
+  VKThreadData &thread_data = device.current_thread_data();
+  thread_data.rendering_depth -= 1;
+  BLI_assert_msg(thread_data.rendering_depth >= 0, "Inconsistent `GPU_render_begin/end`");
+
+  if (G.background) {
+    if (thread_data.rendering_depth == 0) {
+      thread_data.resource_pool_next();
+
+      VKResourcePool &resource_pool = thread_data.resource_pool_get();
+      resource_pool.discard_pool.destroy_discarded_resources(device);
+      resource_pool.reset();
+      resource_pool.discard_pool.move_data(device.orphaned_data);
+    }
+  }
+}
 
 void VKBackend::render_step() {}
 
@@ -220,10 +281,10 @@ void VKBackend::capabilities_init(VKDevice &device)
 
   /* Reset all capabilities from previous context. */
   GCaps = {};
-  GCaps.compute_shader_support = true;
   GCaps.geometry_shader_support = true;
-  GCaps.shader_storage_buffer_objects_support = true;
-  GCaps.shader_image_load_store_support = true;
+  GCaps.texture_view_support = true;
+  GCaps.stencil_export_support = device.supports_extension(
+      VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
   GCaps.shader_draw_parameters_support =
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;
 
@@ -235,6 +296,7 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps.max_textures_geom = limits.maxPerStageDescriptorSampledImages;
   GCaps.max_textures_frag = limits.maxPerStageDescriptorSampledImages;
   GCaps.max_samplers = limits.maxSamplerAllocationCount;
+  GCaps.max_images = limits.maxPerStageDescriptorStorageImages;
   for (int i = 0; i < 3; i++) {
     GCaps.max_work_group_count[i] = limits.maxComputeWorkGroupCount[i];
     GCaps.max_work_group_size[i] = limits.maxComputeWorkGroupSize[i];
@@ -247,6 +309,9 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps.max_varying_floats = limits.maxVertexOutputComponents;
   GCaps.max_shader_storage_buffer_bindings = limits.maxPerStageDescriptorStorageBuffers;
   GCaps.max_compute_shader_storage_blocks = limits.maxPerStageDescriptorStorageBuffers;
+  GCaps.max_storage_buffer_size = size_t(limits.maxStorageBufferRange);
+
+  GCaps.mem_stats_support = true;
 
   detect_workarounds(device);
 }

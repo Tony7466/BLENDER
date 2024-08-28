@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "CLG_log.h"
 
@@ -19,12 +20,11 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_interp.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -35,31 +35,32 @@
 #include "DNA_space_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
-#include "BKE_collection.h"
-#include "BKE_colortools.h"
-#include "BKE_deform.h"
+#include "BKE_anim_data.hh"
+#include "BKE_collection.hh"
+#include "BKE_colortools.hh"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
 
 #include "BLI_math_color.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.gpencil"};
 
 static void greasepencil_copy_data(Main * /*bmain*/,
+                                   std::optional<Library *> /*owner_library*/,
                                    ID *id_dst,
                                    const ID *id_src,
                                    const int /*flag*/)
@@ -203,52 +204,54 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   gpd->runtime.update_cache = nullptr;
 
   /* Relink palettes (old palettes deprecated, only to convert old files). */
-  BLO_read_list(reader, &gpd->palettes);
+  BLO_read_struct_list(reader, bGPDpalette, &gpd->palettes);
   if (gpd->palettes.first != nullptr) {
     LISTBASE_FOREACH (bGPDpalette *, palette, &gpd->palettes) {
-      BLO_read_list(reader, &palette->colors);
+      BLO_read_struct_list(reader, PaletteColor, &palette->colors);
     }
   }
 
-  BLO_read_list(reader, &gpd->vertex_group_names);
+  BLO_read_struct_list(reader, bDeformGroup, &gpd->vertex_group_names);
 
   /* Materials. */
-  BLO_read_pointer_array(reader, (void **)&gpd->mat);
+  BLO_read_pointer_array(reader, gpd->totcol, (void **)&gpd->mat);
 
   /* Relink layers. */
-  BLO_read_list(reader, &gpd->layers);
+  BLO_read_struct_list(reader, bGPDlayer, &gpd->layers);
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* Relink frames. */
-    BLO_read_list(reader, &gpl->frames);
+    BLO_read_struct_list(reader, bGPDframe, &gpl->frames);
 
-    BLO_read_data_address(reader, &gpl->actframe);
+    BLO_read_struct(reader, bGPDframe, &gpl->actframe);
 
     gpl->runtime.icon_id = 0;
 
     /* Relink masks. */
-    BLO_read_list(reader, &gpl->mask_layers);
+    BLO_read_struct_list(reader, bGPDlayer_Mask, &gpl->mask_layers);
 
     LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
       /* Relink strokes (and their points). */
-      BLO_read_list(reader, &gpf->strokes);
+      BLO_read_struct_list(reader, bGPDstroke, &gpf->strokes);
 
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         /* Relink stroke points array. */
-        BLO_read_data_address(reader, &gps->points);
+        BLO_read_struct_array(reader, bGPDspoint, gps->totpoints, &gps->points);
         /* Relink geometry. */
-        BLO_read_data_address(reader, &gps->triangles);
+        BLO_read_struct_array(reader, bGPDtriangle, gps->tot_triangles, &gps->triangles);
 
         /* Relink stroke edit curve. */
-        BLO_read_data_address(reader, &gps->editcurve);
+        BLO_read_struct(reader, bGPDcurve, &gps->editcurve);
         if (gps->editcurve != nullptr) {
           /* Relink curve point array. */
-          BLO_read_data_address(reader, &gps->editcurve->curve_points);
+          bGPDcurve *gpc = gps->editcurve;
+          BLO_read_struct_array(
+              reader, bGPDcurve_point, gpc->tot_curve_points, &gps->editcurve->curve_points);
         }
 
         /* Relink weight data. */
         if (gps->dvert) {
-          BLO_read_data_address(reader, &gps->dvert);
+          BLO_read_struct_array(reader, MDeformVert, gps->totpoints, &gps->dvert);
           BKE_defvert_blend_read(reader, gps->totpoints, gps->dvert);
         }
       }
@@ -265,10 +268,11 @@ static void greasepencil_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_GD_LEGACY = {
     /*id_code*/ ID_GD_LEGACY,
     /*id_filter*/ FILTER_ID_GD_LEGACY,
+    /*dependencies_id_types*/ FILTER_ID_MA,
     /*main_listbase_index*/ INDEX_ID_GD_LEGACY,
     /*struct_size*/ sizeof(bGPdata),
     /*name*/ "GPencil",
-    /*name_plural*/ "grease_pencils",
+    /*name_plural*/ N_("grease_pencils"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_GPENCIL,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -443,10 +447,21 @@ void BKE_gpencil_free_layers(ListBase *list)
   }
 }
 
+/* Free all of the gp-palettes and colors. */
+void BKE_gpencil_free_legacy_palette_data(ListBase *list)
+{
+  LISTBASE_FOREACH_MUTABLE (bGPDpalette *, palette, list) {
+    BLI_freelistN(&palette->colors);
+    MEM_freeN(palette);
+  }
+  BLI_listbase_clear(list);
+}
+
 void BKE_gpencil_free_data(bGPdata *gpd, bool free_all)
 {
   /* free layers */
   BKE_gpencil_free_layers(&gpd->layers);
+  BKE_gpencil_free_legacy_palette_data(&gpd->palettes);
 
   /* materials */
   MEM_SAFE_FREE(gpd->mat);
@@ -727,7 +742,7 @@ bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thickness)
 
   gps->thickness = thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
 
   gps->uv_scale = 1.0f;
@@ -1013,9 +1028,9 @@ void BKE_gpencil_stroke_copy_settings(const bGPDstroke *gps_src, bGPDstroke *gps
   gps_dst->inittime = gps_src->inittime;
   gps_dst->mat_nr = gps_src->mat_nr;
   copy_v2_v2_short(gps_dst->caps, gps_src->caps);
-  gps_dst->hardeness = gps_src->hardeness;
+  gps_dst->hardness = gps_src->hardness;
   copy_v2_v2(gps_dst->aspect_ratio, gps_src->aspect_ratio);
-  gps_dst->fill_opacity_fac = gps_dst->fill_opacity_fac;
+  gps_dst->fill_opacity_fac = gps_src->fill_opacity_fac;
   copy_v3_v3(gps_dst->boundbox_min, gps_src->boundbox_min);
   copy_v3_v3(gps_dst->boundbox_max, gps_src->boundbox_max);
   gps_dst->uv_rotation = gps_src->uv_rotation;
@@ -1048,7 +1063,7 @@ bGPdata *BKE_gpencil_data_duplicate(Main *bmain, const bGPdata *gpd_src, bool in
   }
 
   /* Copy internal data (layers, etc.) */
-  greasepencil_copy_data(bmain, &gpd_dst->id, &gpd_src->id, 0);
+  greasepencil_copy_data(bmain, std::nullopt, &gpd_dst->id, &gpd_src->id, 0);
 
   /* return new */
   return gpd_dst;
@@ -1736,9 +1751,9 @@ Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main
                                                                             Object *ob,
                                                                             ToolSettings *ts)
 {
-  if (ts && ts->gp_paint && ts->gp_paint->paint.brush) {
+  if (ts && ts->gp_paint && BKE_paint_brush(&ts->gp_paint->paint)) {
     return BKE_gpencil_object_material_ensure_from_active_input_brush(
-        bmain, ob, ts->gp_paint->paint.brush);
+        bmain, ob, BKE_paint_brush(&ts->gp_paint->paint));
   }
 
   return BKE_gpencil_object_material_ensure_from_active_input_brush(bmain, ob, nullptr);
@@ -2006,7 +2021,8 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
       /* Read secondary material to compare with primary material. */
       ma_secondary = BKE_gpencil_material(ob, idx_secondary + 1);
       if ((ma_secondary == nullptr) ||
-          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary))) {
+          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))
+      {
         continue;
       }
       gp_style_primary = ma_primary->gp_style;
@@ -2131,7 +2147,8 @@ bool BKE_gpencil_merge_materials(Object *ob,
               continue;
             }
             if (((gpl->flag & GP_LAYER_UNLOCK_COLOR) == 0) &&
-                (gp_style->flag & GP_MATERIAL_LOCKED)) {
+                (gp_style->flag & GP_MATERIAL_LOCKED))
+            {
               continue;
             }
           }
@@ -2484,7 +2501,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
       /* Special cases when cframe is before first frame. */
       bGPDframe *gpf_first = static_cast<bGPDframe *>(gpl->frames.first);
       if ((gpf_first != nullptr) && (act_gpf != nullptr) &&
-          (gpf_first->framenum > act_gpf->framenum)) {
+          (gpf_first->framenum > act_gpf->framenum))
+      {
         is_before_first = true;
       }
       if ((gpf_first != nullptr) && (act_gpf == nullptr)) {
@@ -2585,7 +2603,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
 
       /* If layer solo mode and Paint mode, only keyframes with data are displayed. */
       if (GPENCIL_PAINT_MODE(gpd) && (gpl->flag & GP_LAYER_SOLO_MODE) &&
-          (act_gpf->framenum != cfra)) {
+          (act_gpf->framenum != cfra))
+      {
         gpl->opacity = prev_opacity;
         continue;
       }
@@ -2682,7 +2701,7 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
   /* if not layer parented, try with object parented */
   if (obparent_eval == nullptr) {
     if ((ob_eval != nullptr) && (ob_eval->type == OB_GPENCIL_LEGACY)) {
-      copy_m4_m4(diff_mat, ob_eval->object_to_world);
+      copy_m4_m4(diff_mat, ob_eval->object_to_world().ptr());
       mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
       return;
     }
@@ -2692,8 +2711,8 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
   }
 
   if (ELEM(gpl->partype, PAROBJECT, PARSKEL)) {
-    mul_m4_m4m4(diff_mat, obparent_eval->object_to_world, gpl->inverse);
-    add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+    mul_m4_m4m4(diff_mat, obparent_eval->object_to_world().ptr(), gpl->inverse);
+    add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
     return;
   }
@@ -2701,14 +2720,14 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
     bPoseChannel *pchan = BKE_pose_channel_find_name(obparent_eval->pose, gpl->parsubstr);
     if (pchan) {
       float tmp_mat[4][4];
-      mul_m4_m4m4(tmp_mat, obparent_eval->object_to_world, pchan->pose_mat);
+      mul_m4_m4m4(tmp_mat, obparent_eval->object_to_world().ptr(), pchan->pose_mat);
       mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
-      add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+      add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     }
     else {
       /* if bone not found use object (armature) */
-      mul_m4_m4m4(diff_mat, obparent_eval->object_to_world, gpl->inverse);
-      add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+      mul_m4_m4m4(diff_mat, obparent_eval->object_to_world().ptr(), gpl->inverse);
+      add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     }
     mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
     return;
@@ -2762,12 +2781,15 @@ void BKE_gpencil_update_layer_transforms(const Depsgraph *depsgraph, Object *ob)
       Object *ob_parent = DEG_get_evaluated_object(depsgraph, gpl->parent);
       /* calculate new matrix */
       if (ELEM(gpl->partype, PAROBJECT, PARSKEL)) {
-        mul_m4_m4m4(cur_mat, ob->world_to_object, ob_parent->object_to_world);
+        mul_m4_m4m4(cur_mat, ob->world_to_object().ptr(), ob_parent->object_to_world().ptr());
       }
       else if (gpl->partype == PARBONE) {
         bPoseChannel *pchan = BKE_pose_channel_find_name(ob_parent->pose, gpl->parsubstr);
         if (pchan != nullptr) {
-          mul_m4_series(cur_mat, ob->world_to_object, ob_parent->object_to_world, pchan->pose_mat);
+          mul_m4_series(cur_mat,
+                        ob->world_to_object().ptr(),
+                        ob_parent->object_to_world().ptr(),
+                        pchan->pose_mat);
         }
         else {
           unit_m4(cur_mat);

@@ -86,7 +86,7 @@ class ParamType {
     return ParamType(InterfaceType::Mutable, DataType::ForVector(base_type));
   }
 
-  DataType data_type() const
+  const DataType &data_type() const
   {
     return data_type_;
   }
@@ -141,18 +141,7 @@ class ParamType {
     return interface_type_ == Output;
   }
 
-  friend bool operator==(const ParamType &a, const ParamType &b);
-  friend bool operator!=(const ParamType &a, const ParamType &b);
+  BLI_STRUCT_EQUALITY_OPERATORS_2(ParamType, interface_type_, data_type_)
 };
-
-inline bool operator==(const ParamType &a, const ParamType &b)
-{
-  return a.interface_type_ == b.interface_type_ && a.data_type_ == b.data_type_;
-}
-
-inline bool operator!=(const ParamType &a, const ParamType &b)
-{
-  return !(a == b);
-}
 
 }  // namespace blender::fn::multi_function

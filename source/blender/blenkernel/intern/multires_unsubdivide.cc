@@ -19,19 +19,12 @@
 #include "BLI_gsqueue.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_customdata.h"
-#include "BKE_lib_id.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.h"
 #include "BKE_multires.hh"
-#include "BKE_subdiv.hh"
 #include "BKE_subsurf.hh"
 
-#include "bmesh.h"
-
-#include "DEG_depsgraph_query.h"
+#include "bmesh.hh"
 
 #include "multires_reshape.hh"
 #include "multires_unsubdivide.hh"
@@ -163,8 +156,7 @@ static bool is_vertex_diagonal(BMVert *from_v, BMVert *to_v)
  */
 static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex)
 {
-  bool *visited_verts = static_cast<bool *>(
-      MEM_calloc_arrayN(bm->totvert, sizeof(bool), "visited vertices"));
+  blender::BitVector<> visited_verts(bm->totvert);
   GSQueue *queue;
   queue = BLI_gsqueue_new(sizeof(BMVert *));
 
@@ -180,7 +172,7 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
       int neighbor_vertex_index = BM_elem_index_get(neighbor_v);
       if (neighbor_v != initial_vertex && is_vertex_diagonal(neighbor_v, initial_vertex)) {
         BLI_gsqueue_push(queue, &neighbor_v);
-        visited_verts[neighbor_vertex_index] = true;
+        visited_verts[neighbor_vertex_index].set();
         BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
       }
     }
@@ -218,7 +210,7 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
               is_vertex_diagonal(neighbor_v, diagonal_v))
           {
             BLI_gsqueue_push(queue, &neighbor_v);
-            visited_verts[neighbor_vertex_index] = true;
+            visited_verts[neighbor_vertex_index].set(true);
             BM_elem_flag_set(neighbor_v, BM_ELEM_TAG, true);
           }
         }
@@ -228,7 +220,6 @@ static void unsubdivide_face_center_vertex_tag(BMesh *bm, BMVert *initial_vertex
   }
 
   BLI_gsqueue_free(queue);
-  MEM_freeN(visited_verts);
 }
 
 /**
@@ -850,17 +841,17 @@ static void multires_unsubdivide_get_grid_corners_on_base_mesh(BMFace *f1,
   /* Do an edge step until it finds a tagged vertex, which is part of the base mesh. */
   /* x axis */
   edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
-  while (!BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
+  while (edge_x && !BM_elem_flag_test(current_vertex_x, BM_ELEM_TAG)) {
     edge_x = edge_step(current_vertex_x, edge_x, &current_vertex_x);
   }
-  (*r_corner_x) = current_vertex_x;
+  *r_corner_x = current_vertex_x;
 
   /* Same for y axis */
   edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
-  while (!BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
+  while (edge_y && !BM_elem_flag_test(current_vertex_y, BM_ELEM_TAG)) {
     edge_y = edge_step(current_vertex_y, edge_y, &current_vertex_y);
   }
-  (*r_corner_y) = current_vertex_y;
+  *r_corner_y = current_vertex_y;
 }
 
 static BMesh *get_bmesh_from_mesh(Mesh *mesh)
@@ -886,15 +877,15 @@ static const char vname[] = "v_remap_index";
 static void multires_unsubdivide_free_original_datalayers(Mesh *mesh)
 {
   const int l_layer_index = CustomData_get_named_layer_index(
-      &mesh->loop_data, CD_PROP_INT32, lname);
+      &mesh->corner_data, CD_PROP_INT32, lname);
   if (l_layer_index != -1) {
-    CustomData_free_layer(&mesh->loop_data, CD_PROP_INT32, mesh->totloop, l_layer_index);
+    CustomData_free_layer(&mesh->corner_data, CD_PROP_INT32, mesh->corners_num, l_layer_index);
   }
 
   const int v_layer_index = CustomData_get_named_layer_index(
       &mesh->vert_data, CD_PROP_INT32, vname);
   if (v_layer_index != -1) {
-    CustomData_free_layer(&mesh->vert_data, CD_PROP_INT32, mesh->totvert, v_layer_index);
+    CustomData_free_layer(&mesh->vert_data, CD_PROP_INT32, mesh->verts_num, v_layer_index);
   }
 }
 
@@ -907,16 +898,16 @@ static void multires_unsubdivide_add_original_index_datalayers(Mesh *mesh)
   multires_unsubdivide_free_original_datalayers(mesh);
 
   int *l_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->loop_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totloop, lname));
+      &mesh->corner_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->corners_num, lname));
 
   int *v_index = static_cast<int *>(CustomData_add_layer_named(
-      &mesh->vert_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->totvert, vname));
+      &mesh->vert_data, CD_PROP_INT32, CD_SET_DEFAULT, mesh->verts_num, vname));
 
   /* Initialize these data-layer with the indices in the current mesh. */
-  for (int i = 0; i < mesh->totloop; i++) {
+  for (int i = 0; i < mesh->corners_num; i++) {
     l_index[i] = i;
   }
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
     v_index[i] = i;
   }
 }
@@ -946,7 +937,7 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
       CustomData_get_layer_named(&base_mesh->vert_data, CD_PROP_INT32, vname));
 
   /* Tag the base mesh vertices in the original mesh. */
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     int vert_basemesh_index = context->base_to_orig_vmap[i];
     BMVert *v = BM_vert_at_index(bm_original_mesh, vert_basemesh_index);
     BM_elem_flag_set(v, BM_ELEM_TAG, true);
@@ -990,9 +981,9 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
 
   BMesh *bm_original_mesh = context->bm_original_mesh;
 
-  context->num_grids = base_mesh->totloop;
+  context->num_grids = base_mesh->corners_num;
   context->base_mesh_grids = static_cast<MultiresUnsubdivideGrid *>(
-      MEM_calloc_arrayN(base_mesh->totloop, sizeof(MultiresUnsubdivideGrid), "grids"));
+      MEM_calloc_arrayN(base_mesh->corners_num, sizeof(MultiresUnsubdivideGrid), "grids"));
 
   /* Based on the existing indices in the data-layers, generate two vertex indices maps. */
   /* From vertex index in original to vertex index in base and from vertex index in base to vertex
@@ -1000,21 +991,21 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
   int *orig_to_base_vmap = static_cast<int *>(
       MEM_calloc_arrayN(bm_original_mesh->totvert, sizeof(int), "orig vmap"));
   int *base_to_orig_vmap = static_cast<int *>(
-      MEM_calloc_arrayN(base_mesh->totvert, sizeof(int), "base vmap"));
+      MEM_calloc_arrayN(base_mesh->verts_num, sizeof(int), "base vmap"));
 
   context->base_to_orig_vmap = static_cast<const int *>(
       CustomData_get_layer_named(&base_mesh->vert_data, CD_PROP_INT32, vname));
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     base_to_orig_vmap[i] = context->base_to_orig_vmap[i];
   }
 
   /* If an index in original does not exist in base (it was dissolved when creating the new base
    * mesh, return -1. */
-  for (int i = 0; i < original_mesh->totvert; i++) {
+  for (int i = 0; i < original_mesh->verts_num; i++) {
     orig_to_base_vmap[i] = -1;
   }
 
-  for (int i = 0; i < base_mesh->totvert; i++) {
+  for (int i = 0; i < base_mesh->verts_num; i++) {
     const int orig_vertex_index = context->base_to_orig_vmap[i];
     orig_to_base_vmap[orig_vertex_index] = i;
   }
@@ -1052,10 +1043,16 @@ static void multires_unsubdivide_extract_grids(MultiresUnsubdivideContext *conte
        * base mesh of the face of grid that is going to be extracted. */
       BMVert *corner_x, *corner_y;
       multires_unsubdivide_get_grid_corners_on_base_mesh(l->f, l->e, &corner_x, &corner_y);
+      if (!corner_x || !corner_y) {
+        continue;
+      }
 
       /* Map the two obtained vertices to the base mesh. */
       const int corner_x_index = orig_to_base_vmap[BM_elem_index_get(corner_x)];
       const int corner_y_index = orig_to_base_vmap[BM_elem_index_get(corner_y)];
+      if (corner_x_index < 0 || corner_y_index < 0) {
+        continue;
+      }
 
       /* Iterate over the loops of the same vertex in the base mesh. With the previously obtained
        * vertices and the current vertex it is possible to get the index of the loop in the base
@@ -1173,16 +1170,16 @@ static void multires_create_grids_in_unsubdivided_base_mesh(MultiresUnsubdivideC
                                                             Mesh *base_mesh)
 {
   /* Free the current MDISPS and create a new ones. */
-  if (CustomData_has_layer(&base_mesh->loop_data, CD_MDISPS)) {
-    CustomData_free_layers(&base_mesh->loop_data, CD_MDISPS, base_mesh->totloop);
+  if (CustomData_has_layer(&base_mesh->corner_data, CD_MDISPS)) {
+    CustomData_free_layers(&base_mesh->corner_data, CD_MDISPS, base_mesh->corners_num);
   }
-  MDisps *mdisps = static_cast<MDisps *>(
-      CustomData_add_layer(&base_mesh->loop_data, CD_MDISPS, CD_SET_DEFAULT, base_mesh->totloop));
+  MDisps *mdisps = static_cast<MDisps *>(CustomData_add_layer(
+      &base_mesh->corner_data, CD_MDISPS, CD_SET_DEFAULT, base_mesh->corners_num));
 
   const int totdisp = pow_i(BKE_ccg_gridsize(context->num_total_levels), 2);
-  const int totloop = base_mesh->totloop;
+  const int totloop = base_mesh->corners_num;
 
-  BLI_assert(base_mesh->totloop == context->num_grids);
+  BLI_assert(base_mesh->corners_num == context->num_grids);
 
   /* Allocate the MDISPS grids and copy the extracted data from context. */
   for (int i = 0; i < totloop; i++) {

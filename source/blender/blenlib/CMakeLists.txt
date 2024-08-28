@@ -26,12 +26,11 @@ set(SRC
   intern/BLI_color.cc
   intern/BLI_dial_2d.c
   intern/BLI_dynstr.c
-  intern/BLI_filelist.c
+  intern/BLI_filelist.cc
   intern/BLI_ghash.c
-  intern/BLI_ghash_utils.c
+  intern/BLI_ghash_utils.cc
   intern/BLI_heap.c
   intern/BLI_heap_simple.c
-  intern/BLI_index_range.cc
   intern/BLI_kdopbvh.c
   intern/BLI_linklist.c
   intern/BLI_linklist_lockfree.c
@@ -40,10 +39,11 @@ set(SRC
   intern/BLI_memiter.c
   intern/BLI_mempool.c
   intern/BLI_mmap.c
+  intern/BLI_subprocess.cc
   intern/BLI_timer.c
   intern/DLRB_tree.c
-  intern/array_store.c
-  intern/array_store_utils.c
+  intern/array_store.cc
+  intern/array_store_utils.cc
   intern/array_utils.c
   intern/array_utils.cc
   intern/astar.c
@@ -51,22 +51,23 @@ set(SRC
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
-  intern/bitmap_draw_2d.c
+  intern/bitmap_draw_2d.cc
   intern/boxpack_2d.c
   intern/buffer.c
   intern/cache_mutex.cc
   intern/compute_context.cc
-  intern/convexhull_2d.c
+  intern/convexhull_2d.cc
   intern/cpp_type.cc
   intern/cpp_types.cc
   intern/delaunay_2d.cc
   intern/dot_export.cc
-  intern/dynlib.c
+  intern/dynlib.cc
   intern/easing.c
   intern/endian_switch.c
   intern/expr_pylike_eval.c
-  intern/fileops.c
+  intern/fftw.cc
   intern/fileops.cc
+  intern/fileops_c.cc
   intern/filereader_file.c
   intern/filereader_gzip.c
   intern/filereader_memory.c
@@ -76,19 +77,20 @@ set(SRC
   intern/generic_virtual_array.cc
   intern/generic_virtual_vector_array.cc
   intern/gsqueue.c
-  intern/hash_md5.c
-  intern/hash_mm2a.c
-  intern/hash_mm3.c
+  intern/hash_md5.cc
+  intern/hash_mm2a.cc
+  intern/hash_mm3.cc
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
+  intern/index_mask_expression.cc
   intern/index_range.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c
   intern/kdtree_3d.c
   intern/kdtree_4d.c
-  intern/lasso_2d.c
+  intern/lasso_2d.cc
   intern/lazy_threading.cc
   intern/length_parameterize.cc
   intern/listbase.cc
@@ -98,14 +100,14 @@ set(SRC
   intern/math_basis_types.cc
   intern/math_bits_inline.c
   intern/math_boolean.cc
-  intern/math_color.c
+  intern/math_color.cc
   intern/math_color_blend_inline.c
   intern/math_color_inline.c
-  intern/math_geom.c
+  intern/math_geom.cc
   intern/math_geom_inline.c
-  intern/math_interp.c
-  intern/math_matrix.c
+  intern/math_interp.cc
   intern/math_matrix.cc
+  intern/math_matrix_c.cc
   intern/math_rotation.c
   intern/math_rotation.cc
   intern/math_solvers.c
@@ -114,13 +116,16 @@ set(SRC
   intern/math_vec.cc
   intern/math_vector.c
   intern/math_vector_inline.c
+  intern/memory_cache.cc
+  intern/memory_counter.cc
   intern/memory_utils.c
   intern/mesh_boolean.cc
   intern/mesh_intersect.cc
   intern/noise.c
   intern/noise.cc
   intern/offset_indices.cc
-  intern/path_util.c
+  intern/ordered_edge.cc
+  intern/path_util.cc
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
   intern/quadric.c
@@ -130,19 +135,18 @@ set(SRC
   intern/scanfill.c
   intern/scanfill_utils.c
   intern/serialize.cc
-  intern/session_uuid.c
+  intern/session_uid.c
   intern/smaa_textures.c
-  intern/smallhash.c
   intern/sort.c
   intern/sort_utils.c
   intern/stack.c
-  intern/storage.c
+  intern/storage.cc
   intern/string.c
   intern/string_cursor_utf8.c
   intern/string_ref.cc
   intern/string_search.cc
-  intern/string_utf8.c
-  intern/string_utils.c
+  intern/string_utf8.cc
+  intern/string_utils.cc
   intern/system.c
   intern/task_graph.cc
   intern/task_iterator.c
@@ -155,14 +159,13 @@ set(SRC
   intern/timecode.c
   intern/timeit.cc
   intern/uuid.cc
-  intern/uvproject.c
+  intern/uvproject.cc
   intern/vector.cc
   intern/virtual_array.cc
-  intern/voronoi_2d.c
   intern/voxel.c
-  intern/winstuff.c
-  intern/winstuff_dir.c
-
+  intern/winstuff.cc
+  intern/winstuff_dir.cc
+  intern/winstuff_registration.cc
   # Private headers.
   intern/BLI_mempool_private.h
 
@@ -197,6 +200,7 @@ set(SRC
   BLI_bounds_types.hh
   BLI_boxpack_2d.h
   BLI_buffer.h
+  BLI_build_config.h
   BLI_cache_mutex.hh
   BLI_color.hh
   BLI_color_mix.hh
@@ -204,13 +208,14 @@ set(SRC
   BLI_compiler_compat.h
   BLI_compiler_typecheck.h
   BLI_compute_context.hh
+  BLI_concurrent_map.hh
   BLI_console.h
   BLI_convexhull_2d.h
   BLI_cpp_type.hh
   BLI_cpp_type_make.hh
   BLI_cpp_types.hh
   BLI_cpp_types_make.hh
-  BLI_delaunay_2d.h
+  BLI_delaunay_2d.hh
   BLI_devirtualize_parameters.hh
   BLI_dial_2d.h
   BLI_disjoint_set.hh
@@ -225,13 +230,17 @@ set(SRC
   BLI_endian_switch_inline.h
   BLI_enumerable_thread_specific.hh
   BLI_expr_pylike_eval.h
+  BLI_fftw.hh
   BLI_fileops.h
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
+  BLI_fixed_width_int.hh
+  BLI_fixed_width_int_str.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
+  BLI_generic_key.hh
   BLI_generic_pointer.hh
   BLI_generic_span.hh
   BLI_generic_value_map.hh
@@ -242,9 +251,9 @@ set(SRC
   BLI_gsqueue.h
   BLI_hash.h
   BLI_hash.hh
-  BLI_hash_md5.h
-  BLI_hash_mm2a.h
-  BLI_hash_mm3.h
+  BLI_hash_md5.hh
+  BLI_hash_mm2a.hh
+  BLI_hash_mm3.hh
   BLI_hash_tables.hh
   BLI_heap.h
   BLI_heap_simple.h
@@ -252,6 +261,8 @@ set(SRC
   BLI_implicit_sharing.hh
   BLI_implicit_sharing_ptr.hh
   BLI_index_mask.hh
+  BLI_index_mask_expression.hh
+  BLI_index_mask_fwd.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
@@ -259,10 +270,11 @@ set(SRC
   BLI_kdopbvh.h
   BLI_kdtree.h
   BLI_kdtree_impl.h
-  BLI_lasso_2d.h
+  BLI_lasso_2d.hh
   BLI_lazy_threading.hh
   BLI_length_parameterize.hh
   BLI_linear_allocator.hh
+  BLI_linear_allocator_chunked_list.hh
   BLI_link_utils.h
   BLI_linklist.h
   BLI_linklist_lockfree.h
@@ -287,11 +299,12 @@ set(SRC
   BLI_math_euler_types.hh
   BLI_math_geom.h
   BLI_math_inline.h
-  BLI_math_interp.h
+  BLI_math_interp.hh
   BLI_math_matrix.h
   BLI_math_matrix.hh
   BLI_math_matrix_types.hh
   BLI_math_mpq.hh
+  BLI_math_numbers.hh
   BLI_math_quaternion.hh
   BLI_math_quaternion_types.hh
   BLI_math_rotation.h
@@ -308,6 +321,9 @@ set(SRC
   BLI_memarena.h
   BLI_memblock.h
   BLI_memiter.h
+  BLI_memory_cache.hh
+  BLI_memory_counter.hh
+  BLI_memory_counter_fwd.hh
   BLI_memory_utils.h
   BLI_memory_utils.hh
   BLI_mempool.h
@@ -329,18 +345,18 @@ set(SRC
   BLI_quadric.h
   BLI_rand.h
   BLI_rand.hh
+  BLI_random_access_iterator_mixin.hh
   BLI_range.h
   BLI_rect.h
   BLI_resource_scope.hh
   BLI_scanfill.h
   BLI_serialize.hh
-  BLI_session_uuid.h
+  BLI_session_uid.h
   BLI_set.hh
   BLI_set_slots.hh
   BLI_shared_cache.hh
-  BLI_simd.h
+  BLI_simd.hh
   BLI_smaa_textures.h
-  BLI_smallhash.h
   BLI_sort.h
   BLI_sort.hh
   BLI_sort_utils.h
@@ -354,18 +370,24 @@ set(SRC
   BLI_string_search.hh
   BLI_string_utf8.h
   BLI_string_utf8_symbols.h
-  BLI_string_utils.h
+  BLI_string_utils.hh
+  BLI_struct_equality_utils.hh
   BLI_sub_frame.hh
+  BLI_subprocess.hh
   BLI_sys_types.h
   BLI_system.h
   BLI_task.h
   BLI_task.hh
+  BLI_task_size_hints.hh
   BLI_tempfile.h
   BLI_threads.h
+  BLI_time.h
+  BLI_time_utildefines.h
   BLI_timecode.h
   BLI_timeit.hh
   BLI_timer.h
   BLI_unique_sorted_indices.hh
+  BLI_unroll.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
@@ -378,12 +400,11 @@ set(SRC
   BLI_vector_set.hh
   BLI_vector_set_slots.hh
   BLI_virtual_array.hh
+  BLI_virtual_array_fwd.hh
   BLI_virtual_vector_array.hh
-  BLI_voronoi_2d.h
   BLI_voxel.h
   BLI_winstuff.h
-  PIL_time.h
-  PIL_time_utildefines.h
+  BLI_winstuff_com.hh
 
   # Without these files listed, they aren't known to CMake.
   ../../../extern/json/include/json.hpp
@@ -391,10 +412,14 @@ set(SRC
 
 set(LIB
   PUBLIC bf::dna
+  PRIVATE bf::extern::fmtlib
+  PRIVATE bf::extern::xxhash
   bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
   PRIVATE bf::intern::atomic
+  PRIVATE extern_fmtlib
+  PUBLIC bf::dependencies::optional::tbb
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -411,18 +436,6 @@ if(WITH_MEM_VALGRIND)
   add_definitions(-DWITH_MEM_VALGRIND)
 endif()
 
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
-endif()
-
 if(WITH_GMP)
   add_definitions(-DWITH_GMP)
 
@@ -435,6 +448,19 @@ if(WITH_GMP)
   )
 endif()
 
+if(WITH_FFTW3)
+  list(APPEND INC_SYS
+    ${FFTW3_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${FFTW3_LIBRARIES}
+  )
+  add_definitions(-DWITH_FFTW3)
+  if(WITH_FFTW3_THREADS_F_SUPPORT)
+    add_definitions(-DWITH_FFTW3_THREADS_F_SUPPORT)
+  endif()
+endif()
+
 if(WIN32)
   if(WITH_BLENDER_THUMBNAILER)
     # Needed for querying the `thumbnailer .dll` in `winstuff.c`.
@@ -445,6 +471,7 @@ if(WIN32)
   )
   list(APPEND LIB
     bf_intern_utfconv
+    dxgi
   )
   list(APPEND SRC
     intern/system_win32.c
@@ -492,12 +519,15 @@ if(WITH_GTESTS)
     tests/BLI_bit_vector_test.cc
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
+    tests/BLI_build_config_test.cc
     tests/BLI_color_test.cc
+    tests/BLI_convexhull_2d_test.cc
     tests/BLI_cpp_type_test.cc
     tests/BLI_delaunay_2d_test.cc
     tests/BLI_disjoint_set_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
+    tests/BLI_fixed_width_int_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc
@@ -507,12 +537,14 @@ if(WITH_GTESTS)
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
     tests/BLI_implicit_sharing_test.cc
+    tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
     tests/BLI_length_parameterize_test.cc
+    tests/BLI_linear_allocator_chunked_list_test.cc
     tests/BLI_linear_allocator_test.cc
     tests/BLI_linklist_lockfree_test.cc
     tests/BLI_listbase_test.cc
@@ -522,6 +554,7 @@ if(WITH_GTESTS)
     tests/BLI_math_bits_test.cc
     tests/BLI_math_color_test.cc
     tests/BLI_math_geom_test.cc
+    tests/BLI_math_interp_test.cc
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
     tests/BLI_math_rotation_test.cc
@@ -531,6 +564,8 @@ if(WITH_GTESTS)
     tests/BLI_math_vector_test.cc
     tests/BLI_math_vector_types_test.cc
     tests/BLI_memiter_test.cc
+    tests/BLI_memory_cache_test.cc
+    tests/BLI_memory_counter_test.cc
     tests/BLI_memory_utils_test.cc
     tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
@@ -538,9 +573,10 @@ if(WITH_GTESTS)
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
     tests/BLI_pool_test.cc
+    tests/BLI_random_access_iterator_mixin_test.cc
     tests/BLI_ressource_strings.h
     tests/BLI_serialize_test.cc
-    tests/BLI_session_uuid_test.cc
+    tests/BLI_session_uid_test.cc
     tests/BLI_set_test.cc
     tests/BLI_span_test.cc
     tests/BLI_stack_cxx_test.cc
@@ -549,6 +585,7 @@ if(WITH_GTESTS)
     tests/BLI_string_search_test.cc
     tests/BLI_string_test.cc
     tests/BLI_string_utf8_test.cc
+    tests/BLI_string_utils_test.cc
     tests/BLI_task_graph_test.cc
     tests/BLI_task_test.cc
     tests/BLI_tempfile_test.cc
@@ -567,8 +604,7 @@ if(WITH_GTESTS)
   set(TEST_LIB
     bf_blenlib
   )
-  include(GTestTesting)
-  blender_add_test_executable(blenlib "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_executable(BLI "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 
   add_subdirectory(tests/performance)
 endif()

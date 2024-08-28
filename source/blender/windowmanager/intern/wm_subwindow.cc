@@ -15,8 +15,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "GPU_matrix.h"
-#include "GPU_viewport.h"
+#include "GPU_matrix.hh"
+#include "GPU_viewport.hh"
 
 #include "WM_api.hh"
 
@@ -73,8 +73,8 @@ void wmPartialViewport(rcti *drawrct, const rcti *winrct, const rcti *partialrct
 
 void wmWindowViewport(wmWindow *win)
 {
-  int width = WM_window_pixels_x(win);
-  int height = WM_window_pixels_y(win);
+  int width = WM_window_native_pixel_x(win);
+  int height = WM_window_native_pixel_y(win);
 
   GPU_viewport(0, 0, width, height);
   GPU_scissor(0, 0, width, height);
@@ -85,7 +85,7 @@ void wmWindowViewport(wmWindow *win)
 
 void wmOrtho2(float x1, float x2, float y1, float y2)
 {
-  /* prevent opengl from generating errors */
+  /* Prevent opengl from generating errors. */
   if (x2 == x1) {
     x2 += 1.0f;
   }

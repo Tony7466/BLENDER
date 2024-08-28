@@ -19,21 +19,20 @@
 
 #include "BLI_blenlib.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_fcurve.h"
+#include "BKE_context.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_anim_api.hh"
-#include "ED_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -161,6 +160,30 @@ bool nla_panel_context(const bContext *C,
        */
       case ANIMTYPE_NLAACTION:
         break;
+
+      case ANIMTYPE_NONE:
+      case ANIMTYPE_ANIMDATA:
+      case ANIMTYPE_SPECIALDATA__UNUSED:
+      case ANIMTYPE_SUMMARY:
+      case ANIMTYPE_GROUP:
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACONTROLS:
+      case ANIMTYPE_NLACURVE:
+      case ANIMTYPE_FILLACT_LAYERED:
+      case ANIMTYPE_ACTION_SLOT:
+      case ANIMTYPE_FILLACTD:
+      case ANIMTYPE_FILLDRIVERS:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_SHAPEKEY:
+      case ANIMTYPE_GPDATABLOCK:
+      case ANIMTYPE_GPLAYER:
+      case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+      case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+      case ANIMTYPE_GREASE_PENCIL_LAYER:
+      case ANIMTYPE_MASKDATABLOCK:
+      case ANIMTYPE_MASKLAYER:
+      case ANIMTYPE_NUM_TYPES:
+        break;
     }
 
     if (found > 0) {
@@ -265,7 +288,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
 {
   PointerRNA adt_ptr;
   PointerRNA strip_ptr;
-  /* AnimData *adt; */
+  // AnimData *adt;
   uiLayout *layout = panel->layout;
   uiLayout *row;
   uiBlock *block;
@@ -279,7 +302,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
     return;
   }
 
-  /* adt = adt_ptr.data; */
+  // adt = adt_ptr.data;
 
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, nullptr);

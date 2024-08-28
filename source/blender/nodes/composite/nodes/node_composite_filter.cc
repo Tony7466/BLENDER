@@ -47,7 +47,7 @@ class FilterOperation : public NodeOperation {
 
   void execute() override
   {
-    GPUShader *shader = shader_manager().get(get_shader_name());
+    GPUShader *shader = context().get_shader(get_shader_name());
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_mat3_as_mat4(shader, "ukernel", get_filter_kernel().ptr());
@@ -158,7 +158,7 @@ void register_node_type_cmp_filter()
 {
   namespace file_ns = blender::nodes::node_composite_filter_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_FILTER, "Filter", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_filter_declare;
@@ -167,5 +167,5 @@ void register_node_type_cmp_filter()
   ntype.flag |= NODE_PREVIEW;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

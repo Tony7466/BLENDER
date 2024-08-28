@@ -94,7 +94,8 @@ class VKDescriptorSet : NonCopyable {
     BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
-    other.mark_freed();
+    other.vk_descriptor_set_ = VK_NULL_HANDLE;
+    other.vk_descriptor_pool_ = VK_NULL_HANDLE;
     return *this;
   }
 
@@ -107,11 +108,14 @@ class VKDescriptorSet : NonCopyable {
   {
     return vk_descriptor_pool_;
   }
-  void mark_freed();
 };
 
 class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   friend class VKDescriptorSet;
+
+  Vector<VkDescriptorBufferInfo> vk_descriptor_buffer_infos_;
+  Vector<VkDescriptorImageInfo> vk_descriptor_image_infos_;
+  Vector<VkWriteDescriptorSet> vk_write_descriptor_sets_;
 
  public:
   struct Binding {
@@ -125,6 +129,7 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
     VKTexture *texture = nullptr;
     VkSampler vk_sampler = VK_NULL_HANDLE;
+    VKImageViewArrayed arrayed = VKImageViewArrayed::DONT_CARE;
 
     Binding()
     {
@@ -155,12 +160,11 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
  private:
   /** A list of bindings that needs to be updated. */
   Vector<Binding> bindings_;
-  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+
+  VkDescriptorSetLayout active_vk_descriptor_set_layout = VK_NULL_HANDLE;
 
  public:
   VKDescriptorSetTracker() {}
-
-  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
 
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
@@ -168,30 +172,25 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   /* TODO: bind as image */
-  void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
-  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
+  void image_bind(VKTexture &texture,
+                  VKDescriptorSet::Location location,
+                  VKImageViewArrayed arrayed);
+  void bind(VKTexture &texture,
+            VKDescriptorSet::Location location,
+            const VKSampler &sampler,
+            VKImageViewArrayed);
   /* Bind as uniform texel buffer. */
   void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
-  /**
-   * Some shaders don't need any descriptor sets so we don't need to bind them.
-   *
-   * The result of this function determines if the descriptor set has any layout assigned.
-   * TODO: we might want to make descriptor sets optional for pipelines.
-   */
-  bool has_layout() const
+
+  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
-    return layout_ != VK_NULL_HANDLE;
+    return active_resource();
   }
 
   /**
    * Update the descriptor set on the device.
    */
   void update(VKContext &context);
-
-  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
-  {
-    return active_resource();
-  }
 
   void debug_print() const;
 

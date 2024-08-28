@@ -66,9 +66,9 @@ static std::optional<Mesh *> mesh_merge_by_distance_connected(const Mesh &mesh,
                                                               const float merge_distance,
                                                               const Field<bool> &selection_field)
 {
-  Array<bool> selection(mesh.totvert);
-  const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_POINT};
-  FieldEvaluator evaluator{context, mesh.totvert};
+  Array<bool> selection(mesh.verts_num);
+  const bke::MeshFieldContext context{mesh, AttrDomain::Point};
+  FieldEvaluator evaluator{context, mesh.verts_num};
   evaluator.add_with_destination(selection_field, selection.as_mutable_span());
   evaluator.evaluate();
 
@@ -79,8 +79,8 @@ static std::optional<Mesh *> mesh_merge_by_distance_all(const Mesh &mesh,
                                                         const float merge_distance,
                                                         const Field<bool> &selection_field)
 {
-  const bke::MeshFieldContext context{mesh, ATTR_DOMAIN_POINT};
-  FieldEvaluator evaluator{context, mesh.totvert};
+  const bke::MeshFieldContext context{mesh, AttrDomain::Point};
+  FieldEvaluator evaluator{context, mesh.verts_num};
   evaluator.add(selection_field);
   evaluator.evaluate();
 
@@ -158,18 +158,18 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MERGE_BY_DISTANCE, "Merge by Distance", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
-                    "NodeGeometryMergeByDistance",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryMergeByDistance",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
