@@ -33,11 +33,11 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     os_type = platform.system()
     script_directory = Path(__file__).parent.resolve()
     if os_type == "Darwin":  # macOS
-        blender_dir = script_directory.joinpath("../../../../MacOS/Blender")
+        blender_dir = script_directory.joinpath("../../../../../../MacOS/Blender")
     elif os_type == "Windows":
-        blender_dir = script_directory.joinpath("../../../Blender.exe")
+        blender_dir = script_directory.joinpath("../../../../../Blender.exe")
     else:  # Linux & other Unix systems
-        blender_dir = script_directory.joinpath("../../../blender")
+        blender_dir = script_directory.joinpath("../../../../../blender")
 
     try:
         blender_output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE, errors="surrogateescape")

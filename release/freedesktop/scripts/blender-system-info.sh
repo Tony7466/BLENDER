@@ -7,7 +7,7 @@ for directory in "$script_dir"/*; do
         if test -d "$directory/python/bin"; then # If Python bin directory exists
             for file in "$directory/python/bin"/*; do
                 if grep -i "python" "$file" > /dev/null; then # Search for Python executable
-                    "$file" "$directory/scripts/system_info/system_info.py" # Run Python script
+                    "$file" "$directory/scripts/modules/_bpy_internal/system_info/startup.py" # Run Python script
                     exit 0
                 fi
             done
