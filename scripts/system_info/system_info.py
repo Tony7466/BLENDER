@@ -39,8 +39,13 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     else:  # Linux & other Unix systems
         blender_dir = script_directory.joinpath("../../../blender")
 
-    output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE)
-    text = output.stdout.decode("utf-8")
+    try:
+        blender_output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE, errors="surrogateescape")
+    except Exception as ex:
+        sys.stderr.write("{:s}\n".format(str(ex)))
+        return 1
+
+    text = blender_output.stdout
 
     # Gather version number and type (Alpha, Beta, etc)
     version_match = re.search(r"Blender (.*)", text)
