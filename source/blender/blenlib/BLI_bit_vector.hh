@@ -160,7 +160,7 @@ class BitVector {
       : BitVector(NoExceptConstructor(), allocator)
   {
     this->resize(values.size());
-    bools_to_bits(values, *this);
+    bools_to_zeroed_bits(values, *this);
   }
 
   ~BitVector()

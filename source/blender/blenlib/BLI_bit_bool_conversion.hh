@@ -9,6 +9,11 @@
 
 namespace blender::bits {
 
-void bools_to_bits(Span<bool> bools, MutableBitSpan r_bits);
+/**
+ * Convert the bools to bits. E.g. [true, false, true, true] becomes 1011.
+ *
+ * \note The caller is responsible for setting the bits to zero before calling this function.
+ */
+void bools_to_zeroed_bits(Span<bool> bools, MutableBitSpan r_bits);
 
-}
+}  // namespace blender::bits
