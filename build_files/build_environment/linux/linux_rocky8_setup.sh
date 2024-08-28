@@ -9,8 +9,8 @@
 set -e
 
 if [ `id -u` -ne 0 ]; then
-   echo "This script must be run as root"
-   exit 1
+  echo "This script must be run as root"
+  exit 1
 fi
 
 # Required by: config manager command below to enable powertools.
@@ -46,8 +46,7 @@ dnf config-manager --add-repo http://developer.download.nvidia.com/compute/cuda/
 PACKAGES_FOR_LIBS=(
     # Used to checkout Blender's code.
     git
-    # Used to checkout Blender's `../lib/` directory.
-    subversion
+    git-lfs
     # Used to extract packages.
     bzip2
     # Used to extract packages.
@@ -91,6 +90,11 @@ PACKAGES_FOR_LIBS=(
     texinfo
 
     # NOTE(@ideasman42): `nvcc` will *not* be added to the `PATH`, must be done manually.
+    # Commands from:
+    # https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#environment-setup
+    # Can be added to `~/.bash_profile`.
+    # `export LD_LIBRARY_PATH=/usr/local/cuda-12.5/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}`
+    # `export PATH=/usr/local/cuda-12.5/bin${PATH:+:${PATH}}`
     # Required by `external_openimagedenoise` (`nvcc` command)
     cuda-toolkit
 
@@ -176,3 +180,24 @@ yum -y install -y  \
 
 # Required by Blender build option: `WITH_JACK`.
 yum -y install jack-audio-connection-kit-devel
+
+# AMD's ROCM
+# Based on instructions from:
+# https://rocm.docs.amd.com/projects/install-on-linux/en/latest/how-to/native-install/rhel.html
+# NOTE: the following steps have intentionally been skipped as they aren't needed:
+# - "Register kernel-mode driver".
+# - "Install kernel driver".
+
+# Register ROCm packages
+rm -f /etc/yum.repos.d/rocm.repo
+tee --append /etc/yum.repos.d/rocm.repo <<EOF
+[ROCm-6.1.2]
+name=ROCm6.1.2
+baseurl=https://repo.radeon.com/rocm/rhel8/6.1.2/main
+enabled=1
+priority=50
+gpgcheck=1
+gpgkey=https://repo.radeon.com/rocm/rocm.gpg.key
+EOF
+yum -y update
+yum -y install rocm

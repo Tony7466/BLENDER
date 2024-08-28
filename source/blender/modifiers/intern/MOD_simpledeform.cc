@@ -24,14 +24,14 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 
 #define BEND_EPS 0.000001f
 
-ALIGN_STRUCT struct DeformUserData {
+BLI_ALIGN_STRUCT struct DeformUserData {
   bool invert_vgroup;
   char mode;
   char deform_axis;

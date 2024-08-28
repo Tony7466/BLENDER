@@ -48,7 +48,6 @@ DEF_ENUM(rna_enum_boidrule_type_items)
 DEF_ENUM(rna_enum_sequence_modifier_type_items)
 DEF_ENUM(rna_enum_sequence_video_modifier_type_items)
 DEF_ENUM(rna_enum_sequence_sound_modifier_type_items)
-DEF_ENUM(rna_enum_object_greasepencil_modifier_type_items)
 DEF_ENUM(rna_enum_object_shaderfx_type_items)
 
 DEF_ENUM(rna_enum_modifier_triangulate_quad_method_items)
@@ -109,7 +108,6 @@ DEF_ENUM(rna_enum_operator_property_tag_items)
 
 DEF_ENUM(rna_enum_brush_automasking_flag_items)
 DEF_ENUM(rna_enum_brush_sculpt_tool_items)
-DEF_ENUM(rna_enum_brush_uv_sculpt_tool_items)
 DEF_ENUM(rna_enum_brush_vertex_tool_items)
 DEF_ENUM(rna_enum_brush_weight_tool_items)
 DEF_ENUM(rna_enum_brush_gpencil_types_items)
@@ -118,6 +116,7 @@ DEF_ENUM(rna_enum_brush_gpencil_sculpt_types_items)
 DEF_ENUM(rna_enum_brush_gpencil_weight_types_items)
 DEF_ENUM(rna_enum_brush_curves_sculpt_tool_items)
 DEF_ENUM(rna_enum_brush_image_tool_items)
+DEF_ENUM(rna_enum_brush_curve_preset_items)
 
 DEF_ENUM(rna_enum_grease_pencil_selectmode_items)
 
@@ -226,6 +225,7 @@ DEF_ENUM(rna_enum_attribute_domain_items)
 DEF_ENUM(rna_enum_attribute_domain_edge_face_items)
 DEF_ENUM(rna_enum_attribute_domain_only_mesh_items)
 DEF_ENUM(rna_enum_attribute_domain_only_mesh_no_edge_items)
+DEF_ENUM(rna_enum_attribute_domain_only_mesh_no_corner_items)
 DEF_ENUM(rna_enum_attribute_domain_point_face_curve_items)
 DEF_ENUM(rna_enum_attribute_domain_point_edge_face_curve_items)
 DEF_ENUM(rna_enum_attribute_curves_domain_items)
@@ -252,7 +252,11 @@ DEF_ENUM(rna_enum_transform_orientation_items)
 DEF_ENUM(rna_enum_velocity_unit_items)
 
 DEF_ENUM(rna_enum_curves_type_items)
+DEF_ENUM(rna_enum_curves_handle_type_items)
 DEF_ENUM(rna_enum_curve_normal_mode_items)
+
+DEF_ENUM(rna_enum_geometry_nodes_gizmo_color_items)
+DEF_ENUM(rna_enum_geometry_nodes_linear_gizmo_draw_style_items)
 
 /* Not available to RNA pre-processing (`makesrna`).
  * Defined in editors for example. */

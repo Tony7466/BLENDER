@@ -23,7 +23,7 @@
 
 #  include "DNA_mesh_types.h"
 
-#  include "BKE_anim_data.h"
+#  include "BKE_anim_data.hh"
 #  include "BKE_attribute.hh"
 #  include "BKE_mesh.h"
 #  include "BKE_mesh.hh"
@@ -201,6 +201,8 @@ static void rna_Mesh_clear_geometry(Mesh *mesh)
   BKE_mesh_clear_geometry_and_metadata(mesh);
   BKE_animdata_free(&mesh->id, false);
 
+  blender::bke::mesh_ensure_required_data_layers(*mesh);
+
   DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY_ALL_MODES);
   WM_main_add_notifier(NC_GEOM | ND_DATA, mesh);
 }
@@ -328,7 +330,7 @@ void RNA_api_mesh(StructRNA *srna)
   func = RNA_def_function(srna, "clear_geometry", "rna_Mesh_clear_geometry");
   RNA_def_function_ui_description(
       func,
-      "Remove all geometry from the mesh. Note that this does not free shape keys or materials");
+      "Remove all geometry from the mesh. Note that this does not free shape keys or materials.");
 
   func = RNA_def_function(srna, "validate", "BKE_mesh_validate");
   RNA_def_function_ui_description(func,

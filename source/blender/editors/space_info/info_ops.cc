@@ -25,7 +25,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
@@ -494,6 +494,8 @@ static int report_missing_files_exec(bContext *C, wmOperator *op)
 
   /* run the missing file check */
   BKE_bpath_missing_files_check(bmain, op->reports);
+  /* Redraw sequencer since media presence cache might have changed. */
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -526,6 +528,8 @@ static int find_missing_files_exec(bContext *C, wmOperator *op)
 
   BKE_bpath_missing_files_find(bmain, searchpath, op->reports, find_all);
   MEM_freeN((void *)searchpath);
+  /* Redraw sequencer since media presence cache might have changed. */
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
 
   return OPERATOR_FINISHED;
 }

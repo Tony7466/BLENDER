@@ -151,8 +151,7 @@ class VIEWLAYER_PT_eevee_layer_passes_light(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer, "use_pass_emit", text="Emission")
         col.prop(view_layer, "use_pass_environment")
         col.prop(view_layer, "use_pass_shadow")
-        col.prop(view_layer, "use_pass_ambient_occlusion",
-                 text="Ambient Occlusion")
+        col.prop(view_layer, "use_pass_ambient_occlusion", text="Ambient Occlusion")
 
 
 class VIEWLAYER_PT_eevee_next_layer_passes_light(ViewLayerButtonsPanel, Panel):
@@ -184,8 +183,8 @@ class VIEWLAYER_PT_eevee_next_layer_passes_light(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer, "use_pass_emit", text="Emission")
         col.prop(view_layer, "use_pass_environment")
         col.prop(view_layer, "use_pass_shadow")
-        col.prop(view_layer, "use_pass_ambient_occlusion",
-                 text="Ambient Occlusion")
+        col.prop(view_layer, "use_pass_ambient_occlusion", text="Ambient Occlusion")
+        col.prop(view_layer_eevee, "use_pass_transparent", text="Transparent")
 
         col = layout.column()
         col.active = view_layer.use_pass_ambient_occlusion
@@ -217,7 +216,7 @@ class VIEWLAYER_PT_eevee_layer_passes_effects(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer_eevee, "use_pass_transparent")
 
 
-class ViewLayerAOVPanel(ViewLayerButtonsPanel, Panel):
+class ViewLayerAOVPanelHelper(ViewLayerButtonsPanel):
     bl_label = "Shader AOV"
 
     def draw(self, context):
@@ -230,8 +229,7 @@ class ViewLayerAOVPanel(ViewLayerButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_list("VIEWLAYER_UL_aov", "aovs", view_layer,
-                          "aovs", view_layer, "active_aov_index", rows=3)
+        col.template_list("VIEWLAYER_UL_aov", "aovs", view_layer, "aovs", view_layer, "active_aov_index", rows=3)
 
         col = row.column()
         sub = col.column(align=True)
@@ -240,16 +238,15 @@ class ViewLayerAOVPanel(ViewLayerButtonsPanel, Panel):
 
         aov = view_layer.active_aov
         if aov and not aov.is_valid:
-            layout.label(
-                text="Conflicts with another render pass with the same name", icon='ERROR')
+            layout.label(text="Conflicts with another render pass with the same name", icon='ERROR')
 
 
-class VIEWLAYER_PT_layer_passes_aov(ViewLayerAOVPanel):
+class VIEWLAYER_PT_layer_passes_aov(ViewLayerAOVPanelHelper, Panel):
     bl_parent_id = "VIEWLAYER_PT_layer_passes"
     COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
 
-class ViewLayerCryptomattePanel(ViewLayerButtonsPanel, Panel):
+class ViewLayerCryptomattePanelHelper(ViewLayerButtonsPanel):
     bl_label = "Cryptomatte"
 
     def draw(self, context):
@@ -265,17 +262,18 @@ class ViewLayerCryptomattePanel(ViewLayerButtonsPanel, Panel):
         col.prop(view_layer, "use_pass_cryptomatte_material", text="Material")
         col.prop(view_layer, "use_pass_cryptomatte_asset", text="Asset")
         col = layout.column()
-        col.active = any((view_layer.use_pass_cryptomatte_object,
-                          view_layer.use_pass_cryptomatte_material,
-                          view_layer.use_pass_cryptomatte_asset))
+        col.active = any((
+            view_layer.use_pass_cryptomatte_object,
+            view_layer.use_pass_cryptomatte_material,
+            view_layer.use_pass_cryptomatte_asset,
+        ))
         col.prop(view_layer, "pass_cryptomatte_depth", text="Levels")
 
         if context.engine == 'BLENDER_EEVEE':
-            col.prop(view_layer, "use_pass_cryptomatte_accurate",
-                     text="Accurate Mode")
+            col.prop(view_layer, "use_pass_cryptomatte_accurate", text="Accurate Mode")
 
 
-class VIEWLAYER_PT_layer_passes_cryptomatte(ViewLayerCryptomattePanel, Panel):
+class VIEWLAYER_PT_layer_passes_cryptomatte(ViewLayerCryptomattePanelHelper, Panel):
     bl_parent_id = "VIEWLAYER_PT_layer_passes"
     COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
 
@@ -290,7 +288,7 @@ class VIEWLAYER_MT_lightgroup_sync(Menu):
         layout.operator("scene.view_layer_remove_unused_lightgroups", icon='REMOVE')
 
 
-class ViewLayerLightgroupsPanel(ViewLayerButtonsPanel, Panel):
+class ViewLayerLightgroupsPanelHelper(ViewLayerButtonsPanel):
     bl_label = "Light Groups"
 
     def draw(self, context):
@@ -303,8 +301,10 @@ class ViewLayerLightgroupsPanel(ViewLayerButtonsPanel, Panel):
 
         row = layout.row()
         col = row.column()
-        col.template_list("UI_UL_list", "lightgroups", view_layer,
-                          "lightgroups", view_layer, "active_lightgroup_index", rows=3)
+        col.template_list(
+            "UI_UL_list", "lightgroups", view_layer,
+            "lightgroups", view_layer, "active_lightgroup_index", rows=3,
+        )
 
         col = row.column()
         sub = col.column(align=True)
@@ -314,7 +314,7 @@ class ViewLayerLightgroupsPanel(ViewLayerButtonsPanel, Panel):
         sub.menu("VIEWLAYER_MT_lightgroup_sync", icon='DOWNARROW_HLT', text="")
 
 
-class VIEWLAYER_PT_layer_passes_lightgroups(ViewLayerLightgroupsPanel):
+class VIEWLAYER_PT_layer_passes_lightgroups(ViewLayerLightgroupsPanelHelper, Panel):
     bl_parent_id = "VIEWLAYER_PT_layer_passes"
     COMPAT_ENGINES = {'CYCLES'}
 
@@ -330,7 +330,6 @@ class VIEWLAYER_PT_filter(ViewLayerButtonsPanel, Panel):
         layout.use_property_decorate = False
 
         scene = context.scene
-        rd = scene.render
         view_layer = context.view_layer
 
         col = layout.column(heading="Include")

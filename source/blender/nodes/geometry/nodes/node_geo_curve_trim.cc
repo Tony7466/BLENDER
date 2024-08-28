@@ -76,10 +76,10 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *start_len = end_fac->next;
   bNodeSocket *end_len = start_len->next;
 
-  bke::nodeSetSocketAvailability(ntree, start_fac, mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
-  bke::nodeSetSocketAvailability(ntree, end_fac, mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
-  bke::nodeSetSocketAvailability(ntree, start_len, mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
-  bke::nodeSetSocketAvailability(ntree, end_len, mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
+  bke::node_set_socket_availability(ntree, start_fac, mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
+  bke::node_set_socket_availability(ntree, end_fac, mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
+  bke::node_set_socket_availability(ntree, start_len, mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
+  bke::node_set_socket_availability(ntree, end_len, mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
 }
 
 class SocketSearchOp {
@@ -175,8 +175,7 @@ static void geometry_set_curve_trim(GeometrySet &geometry_set,
     using namespace bke::greasepencil;
     GreasePencil &grease_pencil = *geometry_set.get_grease_pencil_for_write();
     for (const int layer_index : grease_pencil.layers().index_range()) {
-      Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil,
-                                                                        layer_index);
+      Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
       if (drawing == nullptr) {
         continue;
       }
@@ -258,17 +257,17 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_TRIM_CURVE, "Trim Curve", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryCurveTrim", node_free_standard_storage, node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

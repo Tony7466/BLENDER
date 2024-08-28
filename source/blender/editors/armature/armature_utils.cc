@@ -18,7 +18,7 @@
 
 #include "BKE_armature.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 
@@ -56,17 +56,6 @@ void ED_armature_edit_sync_selection(ListBase *edbo)
       else {
         ebo->flag &= ~BONE_SELECTED;
       }
-    }
-  }
-}
-
-void ED_armature_edit_validate_active(bArmature *arm)
-{
-  EditBone *ebone = arm->act_edbone;
-
-  if (ebone) {
-    if (ebone->flag & BONE_HIDDEN_A) {
-      arm->act_edbone = nullptr;
     }
   }
 }
@@ -129,6 +118,7 @@ void bone_free(bArmature *arm, EditBone *bone)
     }
   }
 
+  BLI_freelistN(&bone->bone_collections);
   BLI_freelinkN(arm->edbo, bone);
 }
 

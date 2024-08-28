@@ -14,9 +14,9 @@
 
 CCL_NAMESPACE_BEGIN
 
-Device *device_cpu_create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
+Device *device_cpu_create(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
 {
-  return new CPUDevice(info, stats, profiler);
+  return new CPUDevice(info, stats, profiler, headless);
 }
 
 void device_cpu_info(vector<DeviceInfo> &devices)
@@ -46,7 +46,6 @@ void device_cpu_info(vector<DeviceInfo> &devices)
 string device_cpu_capabilities()
 {
   string capabilities = "";
-  capabilities += system_cpu_support_sse2() ? "SSE2 " : "";
   capabilities += system_cpu_support_sse42() ? "SSE42 " : "";
   capabilities += system_cpu_support_avx2() ? "AVX2" : "";
   if (capabilities[capabilities.size() - 1] == ' ') {

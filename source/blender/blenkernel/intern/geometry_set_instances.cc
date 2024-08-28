@@ -13,6 +13,8 @@
 #include "DNA_layer_types.h"
 #include "DNA_object_types.h"
 
+#include "DEG_depsgraph_query.hh"
+
 namespace blender::bke {
 
 static void add_final_mesh_as_geometry_component(const Object &object, GeometrySet &geometry_set)
@@ -28,6 +30,9 @@ static void add_final_mesh_as_geometry_component(const Object &object, GeometryS
 
 GeometrySet object_get_evaluated_geometry_set(const Object &object)
 {
+  if (!DEG_object_geometry_is_evaluated(object)) {
+    return {};
+  }
   if (object.type == OB_MESH && object.mode == OB_MODE_EDIT) {
     GeometrySet geometry_set;
     if (object.runtime->geometry_set_eval != nullptr) {
@@ -114,7 +119,11 @@ void Instances::ensure_geometry_instances()
       case InstanceReference::Type::Object: {
         /* Create a new reference that contains the geometry set of the object. We may want to
          * treat e.g. lamps and similar object types separately here. */
-        const Object &object = reference.object();
+        Object &object = reference.object();
+        if (ELEM(object.type, OB_LAMP, OB_CAMERA, OB_SPEAKER, OB_ARMATURE, OB_GPENCIL_LEGACY)) {
+          new_references.append(InstanceReference(object));
+          break;
+        }
         GeometrySet object_geometry_set = object_get_evaluated_geometry_set(object);
         if (object_geometry_set.has_instances()) {
           object_geometry_set.get_instances_for_write()->ensure_geometry_instances();

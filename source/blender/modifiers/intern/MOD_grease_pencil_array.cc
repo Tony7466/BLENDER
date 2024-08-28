@@ -35,7 +35,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -99,7 +99,7 @@ static float4x4 get_array_matrix(const Object &ob,
     if (mmd.flag & MOD_GREASE_PENCIL_ARRAY_USE_OFFSET) {
       mat_offset[3] += mmd.offset;
     }
-    const float4x4 obinv = ob.world_to_object();
+    const float4x4 &obinv = ob.world_to_object();
 
     return mat_offset * obinv * mmd.object->object_to_world();
   }

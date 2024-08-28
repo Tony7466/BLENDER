@@ -276,6 +276,11 @@ typedef enum NodeNoiseType {
   NODE_NOISE_HETERO_TERRAIN
 } NodeNoiseType;
 
+typedef enum NodeGaborType {
+  NODE_GABOR_TYPE_2D,
+  NODE_GABOR_TYPE_3D,
+} NodeGaborType;
+
 typedef enum NodeWaveType { NODE_WAVE_BANDS, NODE_WAVE_RINGS } NodeWaveType;
 
 typedef enum NodeWaveBandsDirection {
@@ -426,6 +431,8 @@ typedef enum ClosureType {
   CLOSURE_BSDF_TRANSLUCENT_ID,
 
   /* Glossy */
+  CLOSURE_BSDF_PHYSICAL_CONDUCTOR, /* virtual closure */
+  CLOSURE_BSDF_F82_CONDUCTOR,      /* virtual closure */
   CLOSURE_BSDF_MICROFACET_GGX_ID,
   CLOSURE_BSDF_MICROFACET_BECKMANN_ID,
   CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID, /* virtual closure */
@@ -448,6 +455,7 @@ typedef enum ClosureType {
   CLOSURE_BSDF_HAIR_HUANG_ID,
 
   /* Special cases */
+  CLOSURE_BSDF_RAY_PORTAL_ID,
   CLOSURE_BSDF_TRANSPARENT_ID,
 
   /* BSSRDF */
@@ -478,7 +486,8 @@ typedef enum ClosureType {
 #define CLOSURE_IS_BSDF_TRANSMISSION(type) \
   (type >= CLOSURE_BSDF_MICROFACET_BECKMANN_REFRACTION_ID && \
    type <= CLOSURE_BSDF_HAIR_TRANSMISSION_ID)
-#define CLOSURE_IS_BSDF_SINGULAR(type) (type == CLOSURE_BSDF_TRANSPARENT_ID)
+#define CLOSURE_IS_BSDF_SINGULAR(type) \
+  (type == CLOSURE_BSDF_TRANSPARENT_ID || type == CLOSURE_BSDF_RAY_PORTAL_ID)
 #define CLOSURE_IS_BSDF_TRANSPARENT(type) (type == CLOSURE_BSDF_TRANSPARENT_ID)
 #define CLOSURE_IS_BSDF_MULTISCATTER(type) \
   (type == CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID || \
@@ -506,9 +515,10 @@ typedef enum ClosureType {
   (type >= CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID && \
    type <= CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID)
 #define CLOSURE_IS_PRINCIPLED(type) (type == CLOSURE_BSDF_PRINCIPLED_ID)
+#define CLOSURE_IS_RAY_PORTAL(type) (type == CLOSURE_BSDF_RAY_PORTAL_ID)
 
 #define CLOSURE_WEIGHT_CUTOFF 1e-5f
 /* Treat closure as singular if the squared roughness is below this threshold. */
-#define BSDF_ROUGHNESS_SQ_THRESH 5e-7f
+#define BSDF_ROUGHNESS_SQ_THRESH 2e-10f
 
 CCL_NAMESPACE_END

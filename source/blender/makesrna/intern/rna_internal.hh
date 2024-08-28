@@ -18,6 +18,8 @@
 
 #define RNA_MAGIC ((int)~0)
 
+enum class AttributeOwnerType;
+
 struct FreestyleSettings;
 struct ID;
 struct IDOverrideLibrary;
@@ -156,11 +158,8 @@ void RNA_def_curve(BlenderRNA *brna);
 void RNA_def_depsgraph(BlenderRNA *brna);
 void RNA_def_dynamic_paint(BlenderRNA *brna);
 void RNA_def_fcurve(BlenderRNA *brna);
-void RNA_def_gpencil(BlenderRNA *brna);
-#ifdef WITH_GREASE_PENCIL_V3
+void RNA_def_annotations(BlenderRNA *brna);
 void RNA_def_grease_pencil(BlenderRNA *brna);
-#endif
-void RNA_def_greasepencil_modifier(BlenderRNA *brna);
 void RNA_def_shader_fx(BlenderRNA *brna);
 void RNA_def_curves(BlenderRNA *brna);
 void RNA_def_image(BlenderRNA *brna);
@@ -219,7 +218,7 @@ void RNA_def_xr(BlenderRNA *brna);
 
 /* Common Define functions */
 
-void rna_def_attributes_common(StructRNA *srna);
+void rna_def_attributes_common(StructRNA *srna, AttributeOwnerType type);
 
 void rna_AttributeGroup_iterator_begin(CollectionPropertyIterator *iter, PointerRNA *ptr);
 void rna_AttributeGroup_iterator_next(CollectionPropertyIterator *iter);
@@ -259,7 +258,7 @@ void rna_def_mtex_common(BlenderRNA *brna,
 void rna_def_texpaint_slots(BlenderRNA *brna, StructRNA *srna);
 void rna_def_view_layer_common(BlenderRNA *brna, StructRNA *srna, bool scene);
 
-int rna_AssetMetaData_editable(PointerRNA *ptr, const char **r_info);
+int rna_AssetMetaData_editable(const PointerRNA *ptr, const char **r_info);
 /**
  * \note the UI text and updating has to be set by the caller.
  */
@@ -417,6 +416,7 @@ void RNA_api_bone(StructRNA *srna);
 void RNA_api_bonecollection(StructRNA *srna);
 void RNA_api_camera(StructRNA *srna);
 void RNA_api_curve(StructRNA *srna);
+void RNA_api_curves(StructRNA *srna);
 void RNA_api_curve_nurb(StructRNA *srna);
 void RNA_api_fcurves(StructRNA *srna);
 void RNA_api_drivers(StructRNA *srna);
@@ -427,6 +427,11 @@ void RNA_api_operator(StructRNA *srna);
 void RNA_api_macro(StructRNA *srna);
 void RNA_api_gizmo(StructRNA *srna);
 void RNA_api_gizmogroup(StructRNA *srna);
+void RNA_api_grease_pencil_drawing(StructRNA *srna);
+void RNA_api_grease_pencil_frames(StructRNA *srna);
+void RNA_api_grease_pencil_layer(StructRNA *srna);
+void RNA_api_grease_pencil_layers(StructRNA *srna);
+void RNA_api_grease_pencil_layer_groups(StructRNA *srna);
 void RNA_api_keyconfig(StructRNA *srna);
 void RNA_api_keyconfigs(StructRNA *srna);
 void RNA_api_keyingset(StructRNA *srna);
@@ -488,10 +493,8 @@ void RNA_def_main_armatures(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_actions(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_particles(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_palettes(BlenderRNA *brna, PropertyRNA *cprop);
-void RNA_def_main_gpencil_legacy(BlenderRNA *brna, PropertyRNA *cprop);
-#ifdef WITH_GREASE_PENCIL_V3
+void RNA_def_main_annotations(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_grease_pencil(BlenderRNA *brna, PropertyRNA *cprop);
-#endif
 void RNA_def_main_movieclips(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_masks(BlenderRNA *brna, PropertyRNA *cprop);
 void RNA_def_main_linestyles(BlenderRNA *brna, PropertyRNA *cprop);
@@ -515,12 +518,6 @@ extern StructRNA RNA_PropertyGroup;
  * or NULL (in case IDProp could not be found, or prop is a real RNA property).
  */
 IDProperty *rna_idproperty_check(PropertyRNA **prop, PointerRNA *ptr) ATTR_WARN_UNUSED_RESULT;
-/**
- * This function always return the valid, real data pointer, be it a regular RNA property one,
- * or an #IDProperty one.
- */
-PropertyRNA *rna_ensure_property_realdata(PropertyRNA **prop,
-                                          PointerRNA *ptr) ATTR_WARN_UNUSED_RESULT;
 PropertyRNA *rna_ensure_property(PropertyRNA *prop) ATTR_WARN_UNUSED_RESULT;
 
 /* Override default callbacks. */
@@ -552,7 +549,7 @@ void rna_builtin_properties_begin(CollectionPropertyIterator *iter, PointerRNA *
 void rna_builtin_properties_next(CollectionPropertyIterator *iter);
 PointerRNA rna_builtin_properties_get(CollectionPropertyIterator *iter);
 PointerRNA rna_builtin_type_get(PointerRNA *ptr);
-int rna_builtin_properties_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr);
+bool rna_builtin_properties_lookup_string(PointerRNA *ptr, const char *key, PointerRNA *r_ptr);
 
 /* Iterators */
 
@@ -596,7 +593,7 @@ PropertyDefRNA *rna_find_struct_property_def(StructRNA *srna, PropertyRNA *prop)
 
 /* Pointer Handling */
 
-PointerRNA rna_pointer_inherit_refine(PointerRNA *ptr, StructRNA *type, void *data);
+PointerRNA rna_pointer_inherit_refine(const PointerRNA *ptr, StructRNA *type, void *data);
 
 /* Functions */
 
@@ -608,7 +605,7 @@ MTex *rna_mtex_texture_slots_add(ID *self, bContext *C, ReportList *reports);
 MTex *rna_mtex_texture_slots_create(ID *self, bContext *C, ReportList *reports, int index);
 void rna_mtex_texture_slots_clear(ID *self, bContext *C, ReportList *reports, int index);
 
-int rna_IDMaterials_assign_int(PointerRNA *ptr, int key, const PointerRNA *assign_ptr);
+bool rna_IDMaterials_assign_int(PointerRNA *ptr, int key, const PointerRNA *assign_ptr);
 
 const char *rna_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, bool translate);
