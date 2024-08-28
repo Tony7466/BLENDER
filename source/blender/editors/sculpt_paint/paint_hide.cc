@@ -6,7 +6,7 @@
  * \ingroup edsculpt
  * Implements the bke::pbvh::Tree node hiding operator.
  */
-#include "sculpt_hide.hh"
+#include "paint_hide.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -54,25 +54,6 @@ namespace blender::ed::sculpt_paint::hide {
 /* -------------------------------------------------------------------- */
 /** \name Public API
  * \{ */
-
-Span<int> node_visible_verts(const bke::pbvh::Node &node,
-                             const Span<bool> hide_vert,
-                             Vector<int> &indices)
-{
-  if (BKE_pbvh_node_fully_hidden_get(node)) {
-    return {};
-  }
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
-  if (hide_vert.is_empty()) {
-    return verts;
-  }
-  indices.resize(verts.size());
-  const int *end = std::copy_if(verts.begin(), verts.end(), indices.begin(), [&](const int vert) {
-    return !hide_vert[vert];
-  });
-  indices.resize(end - indices.begin());
-  return indices;
-}
 
 void sync_all_from_faces(Object &object)
 {
@@ -251,7 +232,7 @@ static void flush_face_changes_node(Mesh &mesh,
     TLS &tls = all_tls.local();
     for (bke::pbvh::Node *node : nodes.slice(range)) {
       const Span<int> node_faces = bke::pbvh::node_face_indices_calc_mesh(
-          tri_faces, *node, tls.face_indices);
+          tri_faces, static_cast<bke::pbvh::MeshNode &>(*node), tls.face_indices);
 
       tls.new_hide.resize(node_faces.size());
       gather_data_mesh(hide_poly.span.as_span(), node_faces, tls.new_hide.as_mutable_span());
@@ -264,7 +245,7 @@ static void flush_face_changes_node(Mesh &mesh,
 
       scatter_data_mesh(tls.new_hide.as_span(), node_faces, hide_poly.span);
       BKE_pbvh_node_mark_update_visibility(*node);
-      bke::pbvh::node_update_visibility_mesh(hide_vert, *node);
+      bke::pbvh::node_update_visibility_mesh(hide_vert, static_cast<bke::pbvh::MeshNode &>(*node));
     }
   });
   hide_poly.finish();
@@ -369,7 +350,8 @@ static void grid_hide_update(Depsgraph &depsgraph,
       }
 
       BKE_pbvh_node_mark_update_visibility(*node);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden,
+                                              static_cast<bke::pbvh::GridsNode &>(*node));
     }
   });
 
@@ -521,7 +503,7 @@ static int hide_show_all_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*pbvh);
 
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -639,7 +621,7 @@ static int hide_show_masked_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*pbvh);
 
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -724,7 +706,8 @@ static void invert_visibility_mesh(const Depsgraph &depsgraph,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &faces = all_index_data.local();
     for (bke::pbvh::Node *node : nodes.slice(range)) {
-      bke::pbvh::node_face_indices_calc_mesh(tri_faces, *node, faces);
+      bke::pbvh::node_face_indices_calc_mesh(
+          tri_faces, static_cast<bke::pbvh::MeshNode &>(*node), faces);
       for (const int face : faces) {
         hide_poly.span[face] = !hide_poly.span[face];
       }
@@ -752,7 +735,8 @@ static void invert_visibility_grids(Depsgraph &depsgraph,
         bits::invert(grid_hidden[i]);
       }
       BKE_pbvh_node_mark_update_visibility(*node);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden,
+                                              static_cast<bke::pbvh::GridsNode &>(*node));
     }
   });
 
@@ -792,7 +776,7 @@ static int visibility_invert_exec(bContext *C, wmOperator *op)
   bke::pbvh::Tree *pbvh = BKE_sculpt_object_pbvh_ensure(&depsgraph, &object);
   BLI_assert(BKE_object_sculpt_pbvh_get(&object) == pbvh);
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*pbvh);
   undo::push_begin(object, op);
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -929,7 +913,7 @@ static void update_node_visibility_from_face_changes(const Span<bke::pbvh::Node 
     for (bke::pbvh::Node *node : nodes.slice(range)) {
       bool any_changed = false;
       const Span<int> indices = bke::pbvh::node_face_indices_calc_mesh(
-          tri_faces, *node, face_indices);
+          tri_faces, static_cast<bke::pbvh::MeshNode &>(*node), face_indices);
       for (const int face_index : indices) {
         if (orig_hide_poly[face_index] != new_hide_poly[face_index]) {
           any_changed = true;
@@ -939,7 +923,8 @@ static void update_node_visibility_from_face_changes(const Span<bke::pbvh::Node 
 
       if (any_changed) {
         BKE_pbvh_node_mark_update_visibility(*node);
-        bke::pbvh::node_update_visibility_mesh(hide_vert, *node);
+        bke::pbvh::node_update_visibility_mesh(hide_vert,
+                                               static_cast<bke::pbvh::MeshNode &>(*node));
       }
     }
   });
@@ -1077,7 +1062,8 @@ static void grow_shrink_visibility_grid(Depsgraph &depsgraph,
       bke::pbvh::Node *node = nodes[node_index];
 
       BKE_pbvh_node_mark_update_visibility(*node);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, *node);
+      bke::pbvh::node_update_visibility_grids(grid_hidden,
+                                              static_cast<bke::pbvh::GridsNode &>(*node));
     }
   });
 
@@ -1128,10 +1114,9 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
 
   const VisAction mode = VisAction(RNA_enum_get(op->ptr, "action"));
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
 
-  const SculptSession &ss = *object.sculpt;
-  int num_verts = SCULPT_vertex_count_get(ss);
+  int num_verts = SCULPT_vertex_count_get(object);
 
   int iterations = RNA_int_get(op->ptr, "iterations");
 
