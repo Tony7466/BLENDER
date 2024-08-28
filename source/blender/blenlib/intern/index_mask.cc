@@ -479,59 +479,82 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
       });
 }
 
+static void segments_from_batch_predicate(
+    const IndexMaskSegment universe_segment,
+    LinearAllocator<> &allocator,
+    const FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                              IndexRangesBuilder<int16_t> &builder)> batch_predicate,
+    Vector<IndexMaskSegment, 16> &r_segments)
+{
+  IndexRangesBuilderBuffer<int16_t, max_segment_size> builder_buffer;
+  IndexRangesBuilder<int16_t> builder{builder_buffer};
+  const int64_t extra_shift = batch_predicate(universe_segment, builder);
+  if (builder.is_empty()) {
+    return;
+  }
+  const Span<int16_t> static_indices = get_static_indices_array();
+
+  const int64_t threshold = 128;
+  int64_t next_range_to_process = 0;
+  int64_t skipped_indices_num = 0;
+
+  auto consolidate_skipped_ranges = [&](int64_t end_range_i) {
+    if (skipped_indices_num == 0) {
+      return;
+    }
+    MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(skipped_indices_num);
+    int64_t counter = 0;
+    for (const int64_t i : IndexRange::from_begin_end(next_range_to_process, end_range_i)) {
+      const IndexRange range = builder[i];
+      array_utils::fill_index_range(indices.slice(counter, range.size()), int16_t(range.first()));
+      counter += range.size();
+    }
+    r_segments.append(IndexMaskSegment{extra_shift, indices});
+  };
+
+  for (const int64_t i : builder.index_range()) {
+    const IndexRange range = builder[i];
+    if (range.size() > threshold || builder.size() == 1) {
+      consolidate_skipped_ranges(i);
+      r_segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
+      next_range_to_process = i + 1;
+      skipped_indices_num = 0;
+    }
+    else {
+      skipped_indices_num += range.size();
+    }
+  }
+  consolidate_skipped_ranges(builder.size());
+}
+
 IndexMask IndexMask::from_batch_predicate(
     const IndexMask &universe,
     GrainSize grain_size,
     IndexMaskMemory &memory,
-    FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
-                        IndexRangesBuilder<int16_t> &builder)> batch_predicate)
+    const FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                              IndexRangesBuilder<int16_t> &builder)> batch_predicate)
 {
-  ParallelSegmentsCollector segments_collector;
-  universe.foreach_segment(grain_size, [&](const IndexMaskSegment universe_segment) {
-    ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
-    IndexRangesBuilderBuffer<int16_t, max_segment_size> builder_buffer;
-    IndexRangesBuilder<int16_t> builder{builder_buffer};
-    const int64_t extra_shift = batch_predicate(universe_segment, builder);
-    if (builder.is_empty()) {
-      return;
-    }
-    const Span<int16_t> static_indices = get_static_indices_array();
+  if (universe.is_empty()) {
+    return {};
+  }
 
-    const int64_t threshold = 128;
-    int64_t next_range_to_process = 0;
-    int64_t skipped_indices_num = 0;
-
-    auto consolidate_skipped_ranges = [&](int64_t end_range_i) {
-      if (skipped_indices_num == 0) {
-        return;
-      }
-      MutableSpan<int16_t> indices = data.allocator.allocate_array<int16_t>(skipped_indices_num);
-      int64_t counter = 0;
-      for (const int64_t i : IndexRange::from_begin_end(next_range_to_process, end_range_i)) {
-        const IndexRange range = builder[i];
-        array_utils::fill_index_range(indices.slice(counter, range.size()),
-                                      int16_t(range.first()));
-        counter += range.size();
-      }
-      data.segments.append(IndexMaskSegment{extra_shift, indices});
-    };
-
-    for (const int64_t i : builder.index_range()) {
-      const IndexRange range = builder[i];
-      if (range.size() > threshold || builder.size() == 1) {
-        consolidate_skipped_ranges(i);
-        data.segments.append(IndexMaskSegment{extra_shift, static_indices.slice(range)});
-        next_range_to_process = i + 1;
-        skipped_indices_num = 0;
-      }
-      else {
-        skipped_indices_num += range.size();
-      }
-    }
-    consolidate_skipped_ranges(builder.size());
-  });
   Vector<IndexMaskSegment, 16> segments;
-  segments_collector.reduce(memory, segments);
+  if (universe.size() <= grain_size.value || true) {
+    for (const int64_t segment_i : IndexRange(universe.segments_num())) {
+      const IndexMaskSegment universe_segment = universe.segment(segment_i);
+      segments_from_batch_predicate(universe_segment, memory, batch_predicate, segments);
+    }
+  }
+  else {
+    ParallelSegmentsCollector segments_collector;
+    universe.foreach_segment(grain_size, [&](const IndexMaskSegment universe_segment) {
+      ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
+      segments_from_batch_predicate(
+          universe_segment, data.allocator, batch_predicate, data.segments);
+    });
+    segments_collector.reduce(memory, segments);
+  }
+
   return IndexMask::from_segments(segments, memory);
 }
 
