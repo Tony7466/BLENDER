@@ -392,8 +392,8 @@ static void unsubdivide_build_base_mesh_from_tags(BMesh *bm)
   BMVert *v;
   BMIter iter;
 
-  /* Stores the vertices which correspond to (1, 0) and (0, 1) of the grids in the select flag. */
-  BM_mesh_elem_hflag_enable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
+  /* Stores the vertices which correspond to (1, 0) and (0, 1) of the grids in the alt tag flag. */
+  BM_mesh_elem_hflag_enable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG_ALT, false);
   BMVert *v_neighbor;
   BMIter iter_a;
   BMEdge *ed;
@@ -401,7 +401,7 @@ static void unsubdivide_build_base_mesh_from_tags(BMesh *bm)
     BM_ITER_ELEM (ed, &iter_a, v, BM_EDGES_OF_VERT) {
       v_neighbor = BM_edge_other_vert(ed, v);
       if (BM_elem_flag_test(v_neighbor, BM_ELEM_TAG)) {
-        BM_elem_flag_set(v, BM_ELEM_SELECT, false);
+        BM_elem_flag_set(v, BM_ELEM_TAG_ALT, false);
       }
     }
   }
@@ -416,9 +416,9 @@ static void unsubdivide_build_base_mesh_from_tags(BMesh *bm)
 
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
 
-  /* Copy the select flag to the tag flag. */
+  /* Copy the alt tag flag to the tag flag. */
   BM_ITER_MESH (v, &iter, bm, BM_VERTS_OF_MESH) {
-    if (!BM_elem_flag_test(v, BM_ELEM_SELECT)) {
+    if (!BM_elem_flag_test(v, BM_ELEM_TAG_ALT)) {
       BM_elem_flag_set(v, BM_ELEM_TAG, true);
     }
   }
@@ -462,7 +462,7 @@ static bool multires_unsubdivide_single_level(BMesh *bm)
 
   /* Reset the #BMesh flags as they are used to store data during the un-subdivide process. */
   BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
-  BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
+  BM_mesh_elem_hflag_disable_all(bm, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG_ALT, false);
 
   /* For each disconnected mesh element ID, search if an un-subdivide solution is possible. The
    * whole un-subdivide process fails if a single disconnected mesh element fails. */
@@ -929,6 +929,8 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
   /* Disable all flags. */
   BM_mesh_elem_hflag_disable_all(
       bm_original_mesh, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG, false);
+  BM_mesh_elem_hflag_disable_all(
+      bm_original_mesh, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_TAG_ALT, false);
   BM_mesh_elem_hflag_disable_all(
       bm_original_mesh, BM_VERT | BM_EDGE | BM_FACE, BM_ELEM_SELECT, false);
 
