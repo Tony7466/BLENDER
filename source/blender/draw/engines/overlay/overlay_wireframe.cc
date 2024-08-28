@@ -59,7 +59,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   /* The maximum value (255 in the VBO) is used to force hide the edge. */
   pd->shdata.wire_step_param = interpolate(0.0f, 1.0f - (1.0f / 255), pd->shdata.wire_step_param);
 
-  pd->shdata.wire_opacity = pd->overlay.wireframe_opacity;
+  pd->shdata.wire_opacity = (shading->type != OB_WIRE ? pd->overlay.wireframe_opacity : 1.0);
 
   bool is_material_shmode = (shading->type > OB_SOLID);
 
