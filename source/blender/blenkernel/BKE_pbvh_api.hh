@@ -94,12 +94,12 @@ class Node {
   /* Used for ray-casting: how close the bounding-box is to the ray point. */
   float tmin_ = 0.0f;
 
-  pixels::NodeData *pixels_ = nullptr;
-
   /* Used to flash colors of updated node bounding boxes in
    * debug draw mode (when G.debug_value / bpy.app.debug_value is 889).
    */
   int debug_draw_gen_ = 0;
+
+  pixels::NodeData *pixels_ = nullptr;
 };
 
 struct MeshNode : public Node {
@@ -122,6 +122,8 @@ struct MeshNode : public Node {
    * vertices might not be truly unique to this node, but if
    * they appear in another node's vert_indices array, they will
    * be above that node's 'uniq_verts' value.
+   *
+   * Used for leaf nodes.
    */
   Array<int, 0> vert_indices_;
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
@@ -130,10 +132,13 @@ struct MeshNode : public Node {
   /** Array of indices into the Mesh's corner array. */
   Array<int, 0> corner_indices_;
 
-  /**
-   * An array mapping face corners into the vert_indices array. The array is sized to match
-   * 'totprim', and each of the face's corners gets an index into the vert_indices array, in the
-   * same order as the corners in the original triangle.
+  /* An array mapping face corners into the vert_indices
+   * array. The array is sized to match 'totprim', and each of
+   * the face's corners gets an index into the vert_indices
+   * array, in the same order as the corners in the original
+   * triangle.
+   *
+   * Used for leaf nodes.
    */
   Array<int3, 0> face_vert_indices_;
 };
@@ -474,7 +479,8 @@ void update_normals_from_eval(Object &object_eval, Tree &pbvh);
 blender::Bounds<blender::float3> BKE_pbvh_redraw_BB(blender::bke::pbvh::Tree &pbvh);
 namespace blender::bke::pbvh {
 IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
-                                        Span<const Node *> nodes,
+                                        Span<GridsNode> nodes,
+                                        const IndexMask &nodes_mask,
                                         IndexMaskMemory &memory);
 }
 

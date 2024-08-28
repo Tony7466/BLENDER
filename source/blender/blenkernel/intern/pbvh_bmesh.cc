@@ -2334,8 +2334,6 @@ bool bmesh_update_topology(BMesh &bm,
     BLI_mempool_destroy(queue_pool);
   }
 
-  MutableSpan<BMeshNode> nodes = pbvh.nodes<BMeshNode>();
-
   /* Unmark nodes. */
   for (Node &node : nodes) {
     if (node.flag_ & PBVH_Leaf && node.flag_ & PBVH_UpdateTopology) {

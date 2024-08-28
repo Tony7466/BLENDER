@@ -1000,7 +1000,7 @@ static void calc_node_face_normals(const Span<float3> positions,
                                    MutableSpan<float3> face_normals)
 {
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(nodes_to_update.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &node_faces = all_index_data.local();
     nodes_to_update.slice(range).foreach_index([&](const int i) {
       normals_calc_faces(positions,
@@ -1079,8 +1079,8 @@ static void update_normals_mesh(Object &object_orig,
 
   VectorSet<int> boundary_faces;
   nodes_to_update.foreach_index([&](const int i) {
-    for (const int vert : nodes[i].vert_indices_.as_span().drop_front(nodes[i].unique_verts_num_))
-    {
+    const MeshNode &node = nodes[i];
+    for (const int vert : node.vert_indices_.as_span().drop_front(node.unique_verts_num_)) {
       boundary_faces.add_multiple(vert_to_face_map[vert]);
     }
   });
@@ -1137,10 +1137,10 @@ static void update_normals(Object &object_orig, Object &object_eval, Tree &pbvh)
     case Type::Mesh: {
       update_normals_mesh(object_orig, object_eval, pbvh.nodes<MeshNode>(), nodes_to_update);
       MutableSpan<MeshNode> nodes = pbvh.nodes<MeshNode>();
+      nodes_to_update.foreach_index([&](const int i) { nodes[i].flag_ &= ~PBVH_UpdateNormals; });
       break;
     }
     case Type::Grids: {
-
       SculptSession &ss = *object_orig.sculpt;
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       MutableSpan<GridsNode> nodes = pbvh.nodes<GridsNode>();
@@ -3060,7 +3060,7 @@ namespace blender::bke::pbvh {
 Vector<Node *> all_leaf_nodes(Tree &pbvh)
 {
   Vector<Node *> leaf_nodes;
-  std::visit(
+  return std::visit(
       [&](auto &nodes) {
         leaf_nodes.reserve(nodes.size());
         for (Node &node : nodes) {
@@ -3104,9 +3104,10 @@ IndexMask search_nodes(const Tree &pbvh,
                                        [&](Node &node) { return filter_fn(node); });
   Array<int> indices(nodes.size());
   std::visit(
-      [&](auto &pbvh_nodes) {
+      [&](const auto &pbvh_nodes) {
+        using VectorT = std::decay_t<decltype(pbvh_nodes)>;
         for (const int i : nodes.index_range()) {
-          indices[i] = nodes[i] - pbvh_nodes.data();
+          indices[i] = static_cast<typename VectorT::value_type *>(nodes[i]) - pbvh_nodes.data();
         }
       },
       pbvh.nodes_);
