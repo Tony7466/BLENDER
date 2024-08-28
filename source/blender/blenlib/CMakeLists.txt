@@ -48,6 +48,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_bool_conversion.cc
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
@@ -188,6 +189,7 @@ set(SRC
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
   BLI_binary_search.hh
+  BLI_bit_bool_conversion.hh
   BLI_bit_group_vector.hh
   BLI_bit_ref.hh
   BLI_bit_span.hh

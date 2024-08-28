@@ -38,6 +38,7 @@
  */
 
 #include "BLI_allocator.hh"
+#include "BLI_bit_bool_conversion.hh"
 #include "BLI_bit_span.hh"
 #include "BLI_span.hh"
 
@@ -159,9 +160,7 @@ class BitVector {
       : BitVector(NoExceptConstructor(), allocator)
   {
     this->resize(values.size());
-    for (const int64_t i : this->index_range()) {
-      (*this)[i].set(values[i]);
-    }
+    bools_to_bits(values, *this);
   }
 
   ~BitVector()
