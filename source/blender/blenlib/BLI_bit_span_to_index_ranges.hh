@@ -113,10 +113,18 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t>
     const int64_t ints_to_check = ranges.aligned.size() / BitsPerInt;
     int64_t int_i = 0;
 #if BLI_HAVE_SSE2
+    __m128i_u all_ones = _mm_set1_epi8((char)0xFF);
     for (; int_i + 1 < ints_to_check; int_i += 2) {
       const __m128i_u group = _mm_loadu_si128(reinterpret_cast<const __m128i_u *>(start + int_i));
       const bool group_is_zero = _mm_testz_si128(group, group);
       if (group_is_zero) {
+        continue;
+      }
+      const __m128i_u inverted_group = _mm_xor_si128(group, all_ones);
+      const bool group_is_all_one = _mm_testz_si128(inverted_group, inverted_group);
+      if (group_is_all_one) {
+        append_range(IndexRange::from_begin_size(ranges.prefix.size() + int_i * BitsPerInt,
+                                                 2 * BitsPerInt));
         continue;
       }
       for (int j = 0; j < 2; j++) {
