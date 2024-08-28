@@ -192,6 +192,7 @@ set(SRC
   BLI_bit_ref.hh
   BLI_bit_span.hh
   BLI_bit_span_ops.hh
+  BLI_bit_span_to_index_ranges.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h

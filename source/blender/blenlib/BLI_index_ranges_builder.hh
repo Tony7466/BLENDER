@@ -55,6 +55,11 @@ template<typename T> class IndexRangesBuilder : NonCopyable, NonMovable {
     return (c_ - data_.data()) / 2;
   }
 
+  int64_t capacity() const
+  {
+    return data_.size() / 2;
+  }
+
   bool is_empty() const
   {
     return c_ == data_.data();

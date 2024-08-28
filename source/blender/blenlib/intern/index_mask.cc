@@ -9,6 +9,7 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_bit_span_ops.hh"
+#include "BLI_bit_span_to_index_ranges.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
@@ -446,118 +447,6 @@ IndexMask IndexMask::from_bits(const BitSpan bits, IndexMaskMemory &memory)
   return IndexMask::from_bits(bits.index_range(), bits, memory);
 }
 
-struct IndexRangeInSpan {
-  int64_t slice_start;
-  int64_t size;
-  int64_t begin;
-};
-
-static void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t> &builder)
-{
-  using namespace bits;
-  BLI_assert(bits.size() <= max_segment_size);
-  if (bits.is_empty()) {
-    return;
-  }
-
-  auto append_range = [&](const IndexRange range) {
-    builder.add_range(int16_t(range.start()), int16_t(range.one_after_last()));
-  };
-
-  auto append_index = [&](const int64_t index) {
-    BLI_assert(index >= 0);
-    BLI_assert(index < bits.size());
-    builder.add(int16_t(index));
-  };
-
-  auto process_bit_int = [&](const BitInt value,
-                             const int64_t start_bit,
-                             const int64_t bits_num,
-                             const int64_t start) {
-    const BitInt mask = mask_range_bits(start_bit, bits_num);
-    const BitInt masked_value = mask & value;
-    if (masked_value == 0) {
-      /* Do nothing. */
-      return;
-    }
-    if (masked_value == mask) {
-      append_range(IndexRange::from_begin_size(start, bits_num));
-      return;
-    }
-    const int64_t bit_i_to_output_offset = start - start_bit;
-    const int bit_count = count_bits_uint64(masked_value);
-    switch (bit_count) {
-      case 1: {
-        const int64_t set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
-        append_index(set_bit_i + bit_i_to_output_offset);
-        return;
-      }
-      case 2: {
-        const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
-        const int64_t second_set_bit_i = BitsPerInt - 1 -
-                                         int64_t(bitscan_reverse_uint64(masked_value));
-        append_index(first_set_bit_i + bit_i_to_output_offset);
-        append_index(second_set_bit_i + bit_i_to_output_offset);
-        return;
-      }
-      default: {
-        BitInt current_value = masked_value;
-        while (current_value != 0) {
-          const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(current_value));
-          const BitInt find_unset_value = ~(current_value | mask_first_n_bits(first_set_bit_i) |
-                                            ~mask);
-          if (find_unset_value == 0) {
-            const IndexRange range = IndexRange::from_begin_end(first_set_bit_i,
-                                                                start_bit + bits_num);
-            append_range(range.shift(bit_i_to_output_offset));
-            break;
-          }
-          const int64_t next_unset_bit_i = int64_t(bitscan_forward_uint64(find_unset_value));
-          const IndexRange range = IndexRange::from_begin_end(first_set_bit_i, next_unset_bit_i);
-          append_range(range.shift(bit_i_to_output_offset));
-          current_value &= ~mask_first_n_bits(next_unset_bit_i);
-        }
-        return;
-      }
-      case 63: {
-        const int64_t unset_bit_i = bitscan_forward_uint64(~masked_value);
-        const IndexRange before = IndexRange::from_begin_end(start_bit, unset_bit_i);
-        const IndexRange after = IndexRange::from_begin_end(unset_bit_i + 1, start_bit + bits_num);
-        if (!before.is_empty()) {
-          append_range(before.shift(bit_i_to_output_offset));
-        }
-        if (!after.is_empty()) {
-          append_range(after.shift(bit_i_to_output_offset));
-        }
-        return;
-      }
-    }
-  };
-
-  const BitInt *data = bits.data();
-  const IndexRange bit_range = bits.bit_range();
-
-  const AlignedIndexRanges ranges = split_index_range_by_alignment(bit_range, bits::BitsPerInt);
-  if (!ranges.prefix.is_empty()) {
-    const BitInt first_int = *int_containing_bit(data, bit_range.start());
-    process_bit_int(
-        first_int, BitInt(ranges.prefix.start()) & BitIndexMask, ranges.prefix.size(), 0);
-  }
-  if (!ranges.aligned.is_empty()) {
-    const BitInt *start = int_containing_bit(data, ranges.aligned.start());
-    const int64_t ints_to_check = ranges.aligned.size() / BitsPerInt;
-    for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
-      const BitInt value = start[int_i];
-      process_bit_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
-    }
-  }
-  if (!ranges.suffix.is_empty()) {
-    const BitInt last_int = *int_containing_bit(data, bit_range.last());
-    process_bit_int(
-        last_int, 0, ranges.suffix.size(), ranges.prefix.size() + ranges.aligned.size());
-  }
-}
-
 IndexMask IndexMask::from_bits(const IndexMask &universe,
                                const BitSpan bits,
                                IndexMaskMemory &memory)
@@ -570,7 +459,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
         int64_t extra_shift = 0;
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
           const IndexRange universe_range{universe_segment[0], universe_segment.size()};
-          bits_to_index_ranges(bits.slice(universe_range), builder);
+          bits::bits_to_index_ranges(bits.slice(universe_range), builder);
           extra_shift = universe_range.start();
         }
         else {
@@ -583,7 +472,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
               local_bits[local_index].set();
             }
           }
-          bits_to_index_ranges(local_bits, builder);
+          bits::bits_to_index_ranges(local_bits, builder);
           extra_shift = universe_segment.offset();
         }
         return extra_shift;
