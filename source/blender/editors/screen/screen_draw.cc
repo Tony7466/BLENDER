@@ -225,16 +225,17 @@ static void screen_draw_area_icon(int x, int y, int icon)
     return;
   }
 
-  const float bg_width = UI_SCALE_FAC * 35.0f;
-  const float bg_height = UI_SCALE_FAC * 40.0f;
+  const float bg_width = UI_SCALE_FAC * 30.0f;
+  const float bg_height = UI_SCALE_FAC * 30.0f;
+  const float offset = UI_SCALE_FAC * 3.0f;
 
   const float bg_color[4] = {0.9f, 0.9f, 0.9f, 1.0f};
   const float outline[4] = {0.0f, 0.0f, 0.0f, 0.4f};
   const rctf bg_rect = {
-      /*xmin*/ x - (bg_width / 2.0f),
-      /*xmax*/ x + bg_width - (bg_width / 2.0f),
-      /*ymin*/ y - (bg_height / 2.0f),
-      /*ymax*/ y + bg_height - (bg_height / 2.0f),
+      /*xmin*/ x + offset,
+      /*xmax*/ x + bg_width + offset,
+      /*ymin*/ y - bg_height - offset,
+      /*ymax*/ y - offset,
   };
 
   ui_draw_dropshadow(&bg_rect, 4 * U.pixelsize, 6 * U.pixelsize, 1.0f, 0.3f);
@@ -242,10 +243,10 @@ static void screen_draw_area_icon(int x, int y, int icon)
   UI_draw_roundbox_4fv_ex(
       &bg_rect, bg_color, nullptr, 1.0f, outline, U.pixelsize, 4 * U.pixelsize);
 
-  const float icon_size = 24.0f * UI_SCALE_FAC;
+  const float icon_size = 16.0f * UI_SCALE_FAC;
   const uchar color[4] = {0, 0, 0, 220};
-  UI_icon_draw_ex(x - (icon_size / 2.0f),
-                  y - (icon_size / 2.0f),
+  UI_icon_draw_ex(x + UI_SCALE_FAC * 10.0f,
+                  y - UI_SCALE_FAC * 26.0f,
                   icon,
                   16.0f / icon_size,
                   float(color[3]) / 255.0f,
