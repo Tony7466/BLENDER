@@ -1331,7 +1331,8 @@ typedef struct NodeTexNoise {
   int dimensions;
   uint8_t type;
   uint8_t normalize;
-  char _pad[2];
+  uint8_t hard;
+  char _pad[1];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {

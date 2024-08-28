@@ -50,14 +50,15 @@ ccl_device float noise_select(T p,
                               float offset,
                               float gain,
                               int type,
-                              bool normalize)
+                              bool normalize,
+                              bool hard)
 {
   switch ((NodeNoiseType)type) {
     case NODE_NOISE_MULTIFRACTAL: {
       return noise_multi_fractal(p, detail, roughness, lacunarity);
     }
     case NODE_NOISE_FBM: {
-      return noise_fbm(p, detail, roughness, lacunarity, normalize);
+      return noise_fbm(p, detail, roughness, lacunarity, normalize, hard);
     }
     case NODE_NOISE_HYBRID_MULTIFRACTAL: {
       return noise_hybrid_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
@@ -84,6 +85,7 @@ ccl_device void noise_texture_1d(float co,
                                  float distortion,
                                  int type,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -93,7 +95,7 @@ ccl_device void noise_texture_1d(float co,
     p += snoise_1d(p + random_float_offset(0.0f)) * distortion;
   }
 
-  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize);
+  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(*value,
                          noise_select(p + random_float_offset(1.0f),
@@ -103,7 +105,8 @@ ccl_device void noise_texture_1d(float co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize),
+                                      normalize,
+                                      hard),
                          noise_select(p + random_float_offset(2.0f),
                                       detail,
                                       roughness,
@@ -111,7 +114,8 @@ ccl_device void noise_texture_1d(float co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize));
+                                      normalize,
+                                      hard));
   }
 }
 
@@ -124,6 +128,7 @@ ccl_device void noise_texture_2d(float2 co,
                                  float distortion,
                                  int type,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -134,7 +139,7 @@ ccl_device void noise_texture_2d(float2 co,
                      snoise_2d(p + random_float2_offset(1.0f)) * distortion);
   }
 
-  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize);
+  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(*value,
                          noise_select(p + random_float2_offset(2.0f),
@@ -144,7 +149,8 @@ ccl_device void noise_texture_2d(float2 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize),
+                                      normalize,
+                                      hard),
                          noise_select(p + random_float2_offset(3.0f),
                                       detail,
                                       roughness,
@@ -152,7 +158,8 @@ ccl_device void noise_texture_2d(float2 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize));
+                                      normalize,
+                                      hard));
   }
 }
 
@@ -165,6 +172,7 @@ ccl_device void noise_texture_3d(float3 co,
                                  float distortion,
                                  int type,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -176,7 +184,7 @@ ccl_device void noise_texture_3d(float3 co,
                      snoise_3d(p + random_float3_offset(2.0f)) * distortion);
   }
 
-  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize);
+  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(*value,
                          noise_select(p + random_float3_offset(3.0f),
@@ -186,7 +194,8 @@ ccl_device void noise_texture_3d(float3 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize),
+                                      normalize,
+                                      hard),
                          noise_select(p + random_float3_offset(4.0f),
                                       detail,
                                       roughness,
@@ -194,7 +203,8 @@ ccl_device void noise_texture_3d(float3 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize));
+                                      normalize,
+                                      hard));
   }
 }
 
@@ -207,6 +217,7 @@ ccl_device void noise_texture_4d(float4 co,
                                  float distortion,
                                  int type,
                                  bool normalize,
+                                 bool hard,
                                  bool color_is_needed,
                                  ccl_private float *value,
                                  ccl_private float3 *color)
@@ -219,7 +230,7 @@ ccl_device void noise_texture_4d(float4 co,
                      snoise_4d(p + random_float4_offset(3.0f)) * distortion);
   }
 
-  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize);
+  *value = noise_select(p, detail, roughness, lacunarity, offset, gain, type, normalize, hard);
   if (color_is_needed) {
     *color = make_float3(*value,
                          noise_select(p + random_float4_offset(4.0f),
@@ -229,7 +240,8 @@ ccl_device void noise_texture_4d(float4 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize),
+                                      normalize,
+                                      hard),
                          noise_select(p + random_float4_offset(5.0f),
                                       detail,
                                       roughness,
@@ -237,7 +249,8 @@ ccl_device void noise_texture_4d(float4 co,
                                       offset,
                                       gain,
                                       type,
-                                      normalize));
+                                      normalize,
+                                      hard));
   }
 }
 
@@ -270,6 +283,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   uint dimensions = properties.x;
   uint type = properties.y;
   uint normalize = properties.z;
+  uint hard = properties.w;
 
   float3 vector = stack_load_float3(stack, vector_stack_offset);
   float w = stack_load_float_default(stack, w_stack_offset, defaults1.x);
@@ -300,6 +314,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        distortion,
                        type,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -314,6 +329,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        distortion,
                        type,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -328,6 +344,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        distortion,
                        type,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);
@@ -342,6 +359,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                        distortion,
                        type,
                        normalize,
+                       hard,
                        stack_valid(color_stack_offset),
                        &value,
                        &color);

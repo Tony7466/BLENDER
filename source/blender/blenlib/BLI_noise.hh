@@ -77,7 +77,7 @@ float perlin(float4 position);
 /* Perlin fractal Brownian motion. */
 
 template<typename T>
-float perlin_fbm(T p, float detail, float roughness, float lacunarity, bool normalize);
+float perlin_fbm(T p, float detail, float roughness, float lacunarity, bool normalize, bool hard);
 
 /* Distorted fractal perlin noise. */
 
@@ -90,7 +90,8 @@ float perlin_fractal_distorted(T position,
                                float gain,
                                float distortion,
                                int type,
-                               bool normalize);
+                               bool normalize,
+                               bool hard);
 
 /* Distorted fractal perlin noise that outputs a float3. */
 
@@ -102,7 +103,8 @@ float3 perlin_float3_fractal_distorted(float position,
                                        float gain,
                                        float distortion,
                                        int type,
-                                       bool normalize);
+                                       bool normalize,
+                                       bool hard);
 float3 perlin_float3_fractal_distorted(float2 position,
                                        float detail,
                                        float roughness,
@@ -111,7 +113,8 @@ float3 perlin_float3_fractal_distorted(float2 position,
                                        float gain,
                                        float distortion,
                                        int type,
-                                       bool normalize);
+                                       bool normalize,
+                                       bool hard);
 float3 perlin_float3_fractal_distorted(float3 position,
                                        float detail,
                                        float roughness,
@@ -120,7 +123,8 @@ float3 perlin_float3_fractal_distorted(float3 position,
                                        float gain,
                                        float distortion,
                                        int type,
-                                       bool normalize);
+                                       bool normalize,
+                                       bool hard);
 float3 perlin_float3_fractal_distorted(float4 position,
                                        float detail,
                                        float roughness,
@@ -129,7 +133,8 @@ float3 perlin_float3_fractal_distorted(float4 position,
                                        float gain,
                                        float distortion,
                                        int type,
-                                       bool normalize);
+                                       bool normalize,
+                                       bool hard);
 
 /** \} */
 

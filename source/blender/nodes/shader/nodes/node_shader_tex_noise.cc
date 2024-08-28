@@ -77,6 +77,7 @@ static void node_shader_buts_tex_noise(uiLayout *layout, bContext * /*C*/, Point
   uiItemR(layout, ptr, "noise_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   if (ELEM(RNA_enum_get(ptr, "noise_type"), SHD_NOISE_FBM)) {
     uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "hard", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
   }
 }
 
@@ -88,6 +89,7 @@ static void node_shader_init_tex_noise(bNodeTree * /*ntree*/, bNode *node)
   tex->dimensions = 3;
   tex->type = SHD_NOISE_FBM;
   tex->normalize = true;
+  tex->hard = false;
 
   node->storage = tex;
 }
@@ -138,9 +140,10 @@ static int node_shader_gpu_tex_noise(GPUMaterial *mat,
 
   const NodeTexNoise &storage = node_storage(*node);
   float normalize = storage.normalize;
+  float hard = storage.hard;
 
   const char *name = gpu_shader_get_name(storage.dimensions, storage.type);
-  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&normalize));
+  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&normalize), GPU_constant(&hard));
 }
 
 static void node_shader_update_tex_noise(bNodeTree *ntree, bNode *node)
@@ -169,10 +172,11 @@ class NoiseFunction : public mf::MultiFunction {
   int dimensions_;
   int type_;
   bool normalize_;
+  bool hard_;
 
  public:
-  NoiseFunction(int dimensions, int type, bool normalize)
-      : dimensions_(dimensions), type_(type), normalize_(normalize)
+  NoiseFunction(int dimensions, int type, bool normalize, bool hard)
+      : dimensions_(dimensions), type_(type), normalize_(normalize), hard_(hard)
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(type >= 0 && type <= 4);
@@ -283,7 +287,8 @@ class NoiseFunction : public mf::MultiFunction {
                                                           gain[i],
                                                           distortion[i],
                                                           type_,
-                                                          normalize_);
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
@@ -298,7 +303,8 @@ class NoiseFunction : public mf::MultiFunction {
                 gain[i],
                 distortion[i],
                 type_,
-                normalize_);
+                normalize_,
+                hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -317,7 +323,8 @@ class NoiseFunction : public mf::MultiFunction {
                                                           gain[i],
                                                           distortion[i],
                                                           type_,
-                                                          normalize_);
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
@@ -332,7 +339,8 @@ class NoiseFunction : public mf::MultiFunction {
                 gain[i],
                 distortion[i],
                 type_,
-                normalize_);
+                normalize_,
+                hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -351,7 +359,8 @@ class NoiseFunction : public mf::MultiFunction {
                                                           gain[i],
                                                           distortion[i],
                                                           type_,
-                                                          normalize_);
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
@@ -366,7 +375,8 @@ class NoiseFunction : public mf::MultiFunction {
                 gain[i],
                 distortion[i],
                 type_,
-                normalize_);
+                normalize_,
+                hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -389,7 +399,8 @@ class NoiseFunction : public mf::MultiFunction {
                                                           gain[i],
                                                           distortion[i],
                                                           type_,
-                                                          normalize_);
+                                                          normalize_,
+                                                          hard_);
           });
         }
         if (compute_color) {
@@ -407,7 +418,8 @@ class NoiseFunction : public mf::MultiFunction {
                 gain[i],
                 distortion[i],
                 type_,
-                normalize_);
+                normalize_,
+                hard_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -429,7 +441,7 @@ static void sh_node_noise_build_multi_function(NodeMultiFunctionBuilder &builder
 {
   const NodeTexNoise &storage = node_storage(builder.node());
   builder.construct_and_set_matching_fn<NoiseFunction>(
-      storage.dimensions, storage.type, storage.normalize);
+      storage.dimensions, storage.type, storage.normalize, storage.hard);
 }
 
 NODE_SHADER_MATERIALX_BEGIN

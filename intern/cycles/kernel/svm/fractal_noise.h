@@ -11,7 +11,7 @@ CCL_NAMESPACE_BEGIN
 /* Fractal Brownian motion. */
 
 ccl_device_noinline float noise_fbm(
-    float p, float detail, float roughness, float lacunarity, bool normalize)
+    float p, float detail, float roughness, float lacunarity, bool normalize, bool hard)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -20,6 +20,7 @@ ccl_device_noinline float noise_fbm(
 
   for (int i = 0; i <= float_to_int(detail); i++) {
     float t = snoise_1d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     sum += t * amp;
     maxamp += amp;
     amp *= roughness;
@@ -28,6 +29,7 @@ ccl_device_noinline float noise_fbm(
   float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     float t = snoise_1d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
@@ -38,7 +40,7 @@ ccl_device_noinline float noise_fbm(
 }
 
 ccl_device_noinline float noise_fbm(
-    float2 p, float detail, float roughness, float lacunarity, bool normalize)
+    float2 p, float detail, float roughness, float lacunarity, bool normalize, bool hard)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -47,6 +49,7 @@ ccl_device_noinline float noise_fbm(
 
   for (int i = 0; i <= float_to_int(detail); i++) {
     float t = snoise_2d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     sum += t * amp;
     maxamp += amp;
     amp *= roughness;
@@ -55,6 +58,7 @@ ccl_device_noinline float noise_fbm(
   float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     float t = snoise_2d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
@@ -65,7 +69,7 @@ ccl_device_noinline float noise_fbm(
 }
 
 ccl_device_noinline float noise_fbm(
-    float3 p, float detail, float roughness, float lacunarity, bool normalize)
+    float3 p, float detail, float roughness, float lacunarity, bool normalize, bool hard)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -74,6 +78,7 @@ ccl_device_noinline float noise_fbm(
 
   for (int i = 0; i <= float_to_int(detail); i++) {
     float t = snoise_3d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     sum += t * amp;
     maxamp += amp;
     amp *= roughness;
@@ -82,6 +87,7 @@ ccl_device_noinline float noise_fbm(
   float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     float t = snoise_3d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
@@ -92,7 +98,7 @@ ccl_device_noinline float noise_fbm(
 }
 
 ccl_device_noinline float noise_fbm(
-    float4 p, float detail, float roughness, float lacunarity, bool normalize)
+    float4 p, float detail, float roughness, float lacunarity, bool normalize, bool hard)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
@@ -101,6 +107,7 @@ ccl_device_noinline float noise_fbm(
 
   for (int i = 0; i <= float_to_int(detail); i++) {
     float t = snoise_4d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     sum += t * amp;
     maxamp += amp;
     amp *= roughness;
@@ -109,6 +116,7 @@ ccl_device_noinline float noise_fbm(
   float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     float t = snoise_4d(fscale * p);
+    t = hard ? fabsf(t) * 2.0f - 1.0f : t;
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);

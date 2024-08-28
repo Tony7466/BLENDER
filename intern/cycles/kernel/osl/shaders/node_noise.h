@@ -106,7 +106,8 @@ float safe_snoise(vector4 co)
 }
 
 #define NOISE_FBM(T) \
-  float noise_fbm(T co, float detail, float roughness, float lacunarity, int use_normalize) \
+  float noise_fbm( \
+      T co, float detail, float roughness, float lacunarity, int use_normalize, int hard) \
   { \
     T p = co; \
     float fscale = 1.0; \
@@ -116,6 +117,7 @@ float safe_snoise(vector4 co)
 \
     for (int i = 0; i <= int(detail); i++) { \
       float t = safe_snoise(fscale * p); \
+      t = hard ? abs(t) * 2.0 - 1.0 : t; \
       sum += t * amp; \
       maxamp += amp; \
       amp *= roughness; \

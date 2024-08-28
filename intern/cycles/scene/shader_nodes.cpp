@@ -1146,6 +1146,7 @@ NODE_DEFINE(NoiseTextureNode)
   SOCKET_ENUM(type, "Type", type_enum, NODE_NOISE_FBM);
 
   SOCKET_BOOLEAN(use_normalize, "Normalize", true);
+  SOCKET_BOOLEAN(hard, "Hard", false);
 
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
@@ -1206,7 +1207,7 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
                     __float_as_int(offset),
                     __float_as_int(gain),
                     __float_as_int(distortion));
-  compiler.add_node(dimensions, type, use_normalize, SVM_STACK_INVALID);
+  compiler.add_node(dimensions, type, use_normalize, hard);
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
@@ -1217,6 +1218,7 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
   compiler.parameter(this, "dimensions");
   compiler.parameter(this, "type");
   compiler.parameter(this, "use_normalize");
+  compiler.parameter(this, "hard");
   compiler.add(this, "node_noise_texture");
 }
 

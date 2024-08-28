@@ -19,7 +19,8 @@
     p += snoise(p + random_float_offset(0.0)) * distortion; \
   } \
 \
-  value = NOISE_TYPE(p, detail, roughness, lacunarity, offset, gain, normalize != 0.0); \
+  value = NOISE_TYPE( \
+      p, detail, roughness, lacunarity, offset, gain, normalize != 0.0, hard != 0.0); \
   color = vec4(value, \
                NOISE_TYPE(p + random_float_offset(1.0), \
                           detail, \
@@ -27,14 +28,16 @@
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                NOISE_TYPE(p + random_float_offset(2.0), \
                           detail, \
                           roughness, \
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                1.0);
 
 #define NOISE_FRACTAL_DISTORTED_2D(NOISE_TYPE) \
@@ -43,7 +46,8 @@
               snoise(p + random_vec2_offset(1.0)) * distortion); \
   } \
 \
-  value = NOISE_TYPE(p, detail, roughness, lacunarity, offset, gain, normalize != 0.0); \
+  value = NOISE_TYPE( \
+      p, detail, roughness, lacunarity, offset, gain, normalize != 0.0, hard != 0.0); \
   color = vec4(value, \
                NOISE_TYPE(p + random_vec2_offset(2.0), \
                           detail, \
@@ -51,14 +55,16 @@
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                NOISE_TYPE(p + random_vec2_offset(3.0), \
                           detail, \
                           roughness, \
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                1.0);
 
 #define NOISE_FRACTAL_DISTORTED_3D(NOISE_TYPE) \
@@ -68,7 +74,8 @@
               snoise(p + random_vec3_offset(2.0)) * distortion); \
   } \
 \
-  value = NOISE_TYPE(p, detail, roughness, lacunarity, offset, gain, normalize != 0.0); \
+  value = NOISE_TYPE( \
+      p, detail, roughness, lacunarity, offset, gain, normalize != 0.0, hard != 0.0); \
   color = vec4(value, \
                NOISE_TYPE(p + random_vec3_offset(3.0), \
                           detail, \
@@ -76,14 +83,16 @@
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                NOISE_TYPE(p + random_vec3_offset(4.0), \
                           detail, \
                           roughness, \
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                1.0);
 
 #define NOISE_FRACTAL_DISTORTED_4D(NOISE_TYPE) \
@@ -94,7 +103,8 @@
               snoise(p + random_vec4_offset(3.0)) * distortion); \
   } \
 \
-  value = NOISE_TYPE(p, detail, roughness, lacunarity, offset, gain, normalize != 0.0); \
+  value = NOISE_TYPE( \
+      p, detail, roughness, lacunarity, offset, gain, normalize != 0.0, hard != 0.0); \
   color = vec4(value, \
                NOISE_TYPE(p + random_vec4_offset(4.0), \
                           detail, \
@@ -102,14 +112,16 @@
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                NOISE_TYPE(p + random_vec4_offset(5.0), \
                           detail, \
                           roughness, \
                           lacunarity, \
                           offset, \
                           gain, \
-                          normalize != 0.0), \
+                          normalize != 0.0, \
+                          hard != 0.0), \
                1.0);
 
 float random_float_offset(float seed)
@@ -150,6 +162,7 @@ void node_noise_tex_fbm_1d(vec3 co,
                            float gain,
                            float distortion,
                            float normalize,
+                           float hard,
                            out float value,
                            out vec4 color)
 {
@@ -171,6 +184,7 @@ void node_noise_tex_fbm_2d(vec3 co,
                            float gain,
                            float distortion,
                            float normalize,
+                           float hard,
                            out float value,
                            out vec4 color)
 {
@@ -192,6 +206,7 @@ void node_noise_tex_fbm_3d(vec3 co,
                            float gain,
                            float distortion,
                            float normalize,
+                           float hard,
                            out float value,
                            out vec4 color)
 {
@@ -213,6 +228,7 @@ void node_noise_tex_fbm_4d(vec3 co,
                            float gain,
                            float distortion,
                            float normalize,
+                           float hard,
                            out float value,
                            out vec4 color)
 {
@@ -236,6 +252,7 @@ void node_noise_tex_multi_fractal_1d(vec3 co,
                                      float gain,
                                      float distortion,
                                      float normalize,
+                                     float hard,
                                      out float value,
                                      out vec4 color)
 {
@@ -257,6 +274,7 @@ void node_noise_tex_multi_fractal_2d(vec3 co,
                                      float gain,
                                      float distortion,
                                      float normalize,
+                                     float hard,
                                      out float value,
                                      out vec4 color)
 {
@@ -278,6 +296,7 @@ void node_noise_tex_multi_fractal_3d(vec3 co,
                                      float gain,
                                      float distortion,
                                      float normalize,
+                                     float hard,
                                      out float value,
                                      out vec4 color)
 {
@@ -299,6 +318,7 @@ void node_noise_tex_multi_fractal_4d(vec3 co,
                                      float gain,
                                      float distortion,
                                      float normalize,
+                                     float hard,
                                      out float value,
                                      out vec4 color)
 {
@@ -322,6 +342,7 @@ void node_noise_tex_hetero_terrain_1d(vec3 co,
                                       float gain,
                                       float distortion,
                                       float normalize,
+                                      float hard,
                                       out float value,
                                       out vec4 color)
 {
@@ -343,6 +364,7 @@ void node_noise_tex_hetero_terrain_2d(vec3 co,
                                       float gain,
                                       float distortion,
                                       float normalize,
+                                      float hard,
                                       out float value,
                                       out vec4 color)
 {
@@ -364,6 +386,7 @@ void node_noise_tex_hetero_terrain_3d(vec3 co,
                                       float gain,
                                       float distortion,
                                       float normalize,
+                                      float hard,
                                       out float value,
                                       out vec4 color)
 {
@@ -385,6 +408,7 @@ void node_noise_tex_hetero_terrain_4d(vec3 co,
                                       float gain,
                                       float distortion,
                                       float normalize,
+                                      float hard,
                                       out float value,
                                       out vec4 color)
 {
@@ -408,6 +432,7 @@ void node_noise_tex_hybrid_multi_fractal_1d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -429,6 +454,7 @@ void node_noise_tex_hybrid_multi_fractal_2d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -450,6 +476,7 @@ void node_noise_tex_hybrid_multi_fractal_3d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -471,6 +498,7 @@ void node_noise_tex_hybrid_multi_fractal_4d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -494,6 +522,7 @@ void node_noise_tex_ridged_multi_fractal_1d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -515,6 +544,7 @@ void node_noise_tex_ridged_multi_fractal_2d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -536,6 +566,7 @@ void node_noise_tex_ridged_multi_fractal_3d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {
@@ -557,6 +588,7 @@ void node_noise_tex_ridged_multi_fractal_4d(vec3 co,
                                             float gain,
                                             float distortion,
                                             float normalize,
+                                            float hard,
                                             out float value,
                                             out vec4 color)
 {

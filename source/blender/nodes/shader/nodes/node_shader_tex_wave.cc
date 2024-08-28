@@ -199,10 +199,10 @@ class WaveFunction : public mf::MultiFunction {
       n += phase[i];
 
       if (distortion[i] != 0.0f) {
-        n += distortion[i] *
-             (noise::perlin_fbm<float3>(p * dscale[i], detail[i], droughness[i], 2.0f, true) *
-                  2.0f -
-              1.0f);
+        n += distortion[i] * (noise::perlin_fbm<float3>(
+                                  p * dscale[i], detail[i], droughness[i], 2.0f, true, false) *
+                                  2.0f -
+                              1.0f);
       }
 
       switch (wave_profile_) {

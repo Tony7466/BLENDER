@@ -12,7 +12,8 @@
                   float lacunarity, \
                   float offset, \
                   float gain, \
-                  bool normalize) \
+                  bool normalize, \
+                  bool hard) \
   { \
     T p = co; \
     float fscale = 1.0; \
@@ -22,6 +23,7 @@
 \
     for (int i = 0; i <= int(detail); i++) { \
       float t = snoise(fscale * p); \
+      t = hard ? abs(t) * 2.0 - 1.0 : t; \
       sum += t * amp; \
       maxamp += amp; \
       amp *= roughness; \
@@ -30,6 +32,7 @@
     float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       float t = snoise(fscale * p); \
+      t = hard ? abs(t) * 2.0 - 1.0 : t; \
       float sum2 = sum + t * amp; \
       return normalize ? mix(0.5 * sum / maxamp + 0.5, 0.5 * sum2 / (maxamp + amp) + 0.5, rmd) : \
                          mix(sum, sum2, rmd); \
@@ -46,7 +49,8 @@
                             float lacunarity, \
                             float offset, \
                             float gain, \
-                            bool normalize) \
+                            bool normalize, \
+                            bool hard) \
   { \
     T p = co; \
     float value = 1.0; \
@@ -73,7 +77,8 @@
                              float lacunarity, \
                              float offset, \
                              float gain, \
-                             bool normalize) \
+                             bool normalize, \
+                             bool hard) \
   { \
     T p = co; \
     float pwr = roughness; \
@@ -105,7 +110,8 @@
                                    float lacunarity, \
                                    float offset, \
                                    float gain, \
-                                   bool normalize) \
+                                   bool normalize, \
+                                   bool hard) \
   { \
     T p = co; \
     float pwr = 1.0; \
@@ -143,7 +149,8 @@
                                    float lacunarity, \
                                    float offset, \
                                    float gain, \
-                                   bool normalize) \
+                                   bool normalize, \
+                                   bool hard) \
   { \
     T p = co; \
     float pwr = roughness; \
