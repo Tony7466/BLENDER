@@ -9,6 +9,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_index_ranges_builder.hh"
 #include "BLI_math_bits.h"
+#include "BLI_simd.hh"
 
 namespace blender::bits {
 
@@ -21,6 +22,7 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t>
 
   /* -1 because we also need to store the end of the last range. */
   constexpr int64_t max_index = std::numeric_limits<IntT>::max() - 1;
+  UNUSED_VARS_NDEBUG(max_index);
 
   auto append_range = [&](const IndexRange range) {
     BLI_assert(range.last() <= max_index);
@@ -109,9 +111,22 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t>
   if (!ranges.aligned.is_empty()) {
     const BitInt *start = int_containing_bit(data, ranges.aligned.start());
     const int64_t ints_to_check = ranges.aligned.size() / BitsPerInt;
-    for (int64_t int_i = 0; int_i < ints_to_check; int_i++) {
-      const BitInt value = start[int_i];
-      process_bit_int(value, 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
+    int64_t int_i = 0;
+#if BLI_HAVE_SSE2
+    for (; int_i + 1 < ints_to_check; int_i += 2) {
+      const __m128i_u group = _mm_loadu_si128(reinterpret_cast<const __m128i_u *>(start + int_i));
+      const bool group_is_zero = _mm_testz_si128(group, group);
+      if (group_is_zero) {
+        continue;
+      }
+      for (int j = 0; j < 2; j++) {
+        process_bit_int(
+            start[int_i + j], 0, BitsPerInt, ranges.prefix.size() + (int_i + j) * BitsPerInt);
+      }
+    }
+#endif
+    for (; int_i < ints_to_check; int_i++) {
+      process_bit_int(start[int_i], 0, BitsPerInt, ranges.prefix.size() + int_i * BitsPerInt);
     }
   }
   if (!ranges.suffix.is_empty()) {
