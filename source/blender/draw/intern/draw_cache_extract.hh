@@ -15,10 +15,10 @@
 
 #include "draw_attributes.hh"
 
-struct GPUBatch;
 namespace blender::gpu {
+class Batch;
 class IndexBuf;
-}
+}  // namespace blender::gpu
 struct TaskGraph;
 
 namespace blender::draw {
@@ -50,27 +50,7 @@ enum {
   DRW_MESH_WEIGHT_STATE_LOCK_RELATIVE = (1 << 2),
 };
 
-enum eMRIterType {
-  MR_ITER_CORNER_TRI = 1 << 0,
-  MR_ITER_POLY = 1 << 1,
-  MR_ITER_LOOSE_EDGE = 1 << 2,
-  MR_ITER_LOOSE_VERT = 1 << 3,
-};
-ENUM_OPERATORS(eMRIterType, MR_ITER_LOOSE_VERT)
-
-enum eMRDataType {
-  MR_DATA_NONE = 0,
-  MR_DATA_POLY_NOR = 1 << 1,
-  MR_DATA_LOOP_NOR = 1 << 2,
-  MR_DATA_CORNER_TRI = 1 << 3,
-  MR_DATA_LOOSE_GEOM = 1 << 4,
-  /** Force loop normals calculation. */
-  MR_DATA_TAN_LOOP_NOR = 1 << 5,
-  MR_DATA_POLYS_SORTED = 1 << 6,
-};
-ENUM_OPERATORS(eMRDataType, MR_DATA_POLYS_SORTED)
-
-int mesh_render_mat_len_get(const Object *object, const Mesh *mesh);
+int mesh_render_mat_len_get(const Object &object, const Mesh &mesh);
 
 struct MeshBufferList {
   /* Every VBO below contains at least enough data for every loop in the mesh
@@ -113,7 +93,7 @@ struct MeshBufferList {
     gpu::IndexBuf *tris;
     /* Loose edges last. */
     gpu::IndexBuf *lines;
-    /* Sub buffer of `lines` only containing the loose edges. */
+    /* Potentially a sub buffer of `lines` only containing the loose edges. */
     gpu::IndexBuf *lines_loose;
     gpu::IndexBuf *points;
     gpu::IndexBuf *fdots;
@@ -131,42 +111,42 @@ struct MeshBufferList {
 
 struct MeshBatchList {
   /* Surfaces / Render */
-  GPUBatch *surface;
-  GPUBatch *surface_weights;
+  gpu::Batch *surface;
+  gpu::Batch *surface_weights;
   /* Edit mode */
-  GPUBatch *edit_triangles;
-  GPUBatch *edit_vertices;
-  GPUBatch *edit_edges;
-  GPUBatch *edit_vnor;
-  GPUBatch *edit_lnor;
-  GPUBatch *edit_fdots;
-  GPUBatch *edit_mesh_analysis;
-  GPUBatch *edit_skin_roots;
+  gpu::Batch *edit_triangles;
+  gpu::Batch *edit_vertices;
+  gpu::Batch *edit_edges;
+  gpu::Batch *edit_vnor;
+  gpu::Batch *edit_lnor;
+  gpu::Batch *edit_fdots;
+  gpu::Batch *edit_mesh_analysis;
+  gpu::Batch *edit_skin_roots;
   /* Edit UVs */
-  GPUBatch *edituv_faces_stretch_area;
-  GPUBatch *edituv_faces_stretch_angle;
-  GPUBatch *edituv_faces;
-  GPUBatch *edituv_edges;
-  GPUBatch *edituv_verts;
-  GPUBatch *edituv_fdots;
+  gpu::Batch *edituv_faces_stretch_area;
+  gpu::Batch *edituv_faces_stretch_angle;
+  gpu::Batch *edituv_faces;
+  gpu::Batch *edituv_edges;
+  gpu::Batch *edituv_verts;
+  gpu::Batch *edituv_fdots;
   /* Edit selection */
-  GPUBatch *edit_selection_verts;
-  GPUBatch *edit_selection_edges;
-  GPUBatch *edit_selection_faces;
-  GPUBatch *edit_selection_fdots;
+  gpu::Batch *edit_selection_verts;
+  gpu::Batch *edit_selection_edges;
+  gpu::Batch *edit_selection_faces;
+  gpu::Batch *edit_selection_fdots;
   /* Common display / Other */
-  GPUBatch *all_verts;
-  GPUBatch *all_edges;
-  GPUBatch *loose_edges;
-  GPUBatch *edge_detection;
+  gpu::Batch *all_verts;
+  gpu::Batch *all_edges;
+  gpu::Batch *loose_edges;
+  gpu::Batch *edge_detection;
   /* Individual edges with face normals. */
-  GPUBatch *wire_edges;
+  gpu::Batch *wire_edges;
   /* Loops around faces. no edges between selected faces */
-  GPUBatch *wire_loops;
+  gpu::Batch *wire_loops;
   /* Same as wire_loops but only has uvs. */
-  GPUBatch *wire_loops_uvs;
-  GPUBatch *sculpt_overlays;
-  GPUBatch *surface_viewer_attribute;
+  gpu::Batch *wire_loops_uvs;
+  gpu::Batch *sculpt_overlays;
+  gpu::Batch *surface_viewer_attribute;
 };
 
 #define MBC_BATCH_LEN (sizeof(MeshBatchList) / sizeof(void *))
@@ -225,8 +205,9 @@ struct SortedFaceData {
   Array<int> tris_num_by_material;
   /**
    * The first triangle index for each face, sorted into slices by material.
+   * May be empty if the mesh only has a single material.
    */
-  Array<int> face_tri_offsets;
+  std::optional<Array<int>> face_tri_offsets;
 };
 
 /**
@@ -255,9 +236,8 @@ struct MeshBatchCache {
   MeshBatchList batch;
 
   /* Index buffer per material. These are sub-ranges of `ibo.tris`. */
-  gpu::IndexBuf **tris_per_mat;
-
-  GPUBatch **surface_per_mat;
+  Array<gpu::IndexBuf *> tris_per_mat;
+  Array<gpu::Batch *> surface_per_mat;
 
   DRWSubdivCache *subdiv_cache;
 
@@ -295,25 +275,24 @@ struct MeshBatchCache {
   bool no_loose_wire;
 
   eV3DShadingColorType color_type;
-  bool pbvh_is_drawing;
 };
 
 #define MBC_EDITUV \
   (MBC_EDITUV_FACES_STRETCH_AREA | MBC_EDITUV_FACES_STRETCH_ANGLE | MBC_EDITUV_FACES | \
    MBC_EDITUV_EDGES | MBC_EDITUV_VERTS | MBC_EDITUV_FACEDOTS | MBC_WIRE_LOOPS_UVS)
 
-void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
+void mesh_buffer_cache_create_requested(TaskGraph &task_graph,
                                         MeshBatchCache &cache,
                                         MeshBufferCache &mbc,
-                                        Object *object,
-                                        Mesh *mesh,
+                                        Object &object,
+                                        Mesh &mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
-                                        bool is_mode_active,
+                                        bool edit_mode_active,
                                         const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
-                                        const Scene *scene,
+                                        const Scene &scene,
                                         const ToolSettings *ts,
                                         bool use_hide);
 

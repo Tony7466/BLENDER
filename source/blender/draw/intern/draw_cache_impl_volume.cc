@@ -14,6 +14,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -41,7 +42,7 @@ namespace blender::draw {
 static void volume_batch_cache_clear(Volume *volume);
 
 /* ---------------------------------------------------------------------- */
-/* Volume GPUBatch Cache */
+/* Volume gpu::Batch Cache */
 
 struct VolumeBatchCache {
   /* 3D textures */
@@ -50,17 +51,17 @@ struct VolumeBatchCache {
   /* Wireframe */
   struct {
     gpu::VertBuf *pos_nor_in_order;
-    GPUBatch *batch;
+    gpu::Batch *batch;
   } face_wire;
 
   /* Surface for selection */
-  GPUBatch *selection_surface;
+  gpu::Batch *selection_surface;
 
   /* settings to determine if cache is invalid */
   bool is_dirty;
 };
 
-/* GPUBatch cache management. */
+/* gpu::Batch cache management. */
 
 static bool volume_batch_cache_valid(Volume *volume)
 {
@@ -172,9 +173,9 @@ static void drw_volume_wireframe_cb(
   uint pos_id = do_hq_normals ? attr_id.pos_hq_id : attr_id.pos_id;
   uint nor_id = do_hq_normals ? attr_id.nor_hq_id : attr_id.nor_id;
 
-  cache->face_wire.pos_nor_in_order = GPU_vertbuf_create_with_format(do_hq_normals ? &format_hq :
-                                                                                     &format);
-  GPU_vertbuf_data_alloc(cache->face_wire.pos_nor_in_order, totvert);
+  cache->face_wire.pos_nor_in_order = GPU_vertbuf_create_with_format(do_hq_normals ? format_hq :
+                                                                                     format);
+  GPU_vertbuf_data_alloc(*cache->face_wire.pos_nor_in_order, totvert);
   GPU_vertbuf_attr_fill(cache->face_wire.pos_nor_in_order, pos_id, verts);
   GPU_vertbuf_attr_fill_stride(cache->face_wire.pos_nor_in_order, nor_id, 0, &packed_normal);
 
@@ -204,7 +205,7 @@ static void drw_volume_wireframe_cb(
   GPU_batch_vertbuf_add(cache->face_wire.batch, vbo_wiredata, true);
 }
 
-GPUBatch *DRW_volume_batch_cache_get_wireframes_face(Volume *volume)
+gpu::Batch *DRW_volume_batch_cache_get_wireframes_face(Volume *volume)
 {
   if (volume->display.wireframe_type == VOLUME_WIREFRAME_NONE) {
     return nullptr;
@@ -242,8 +243,8 @@ static void drw_volume_selection_surface_cb(
   }
 
   /* Create vertex buffer. */
-  gpu::VertBuf *vbo_surface = GPU_vertbuf_create_with_format(&format);
-  GPU_vertbuf_data_alloc(vbo_surface, totvert);
+  gpu::VertBuf *vbo_surface = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo_surface, totvert);
   GPU_vertbuf_attr_fill(vbo_surface, pos_id, verts);
 
   /* Create index buffer. */
@@ -258,7 +259,7 @@ static void drw_volume_selection_surface_cb(
       GPU_PRIM_TRIS, vbo_surface, ibo_surface, GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
 }
 
-GPUBatch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
+gpu::Batch *DRW_volume_batch_cache_get_selection_surface(Volume *volume)
 {
   VolumeBatchCache *cache = volume_batch_cache_get(volume);
   if (cache->selection_surface == nullptr) {
@@ -300,12 +301,10 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
     return cache_grid;
   }
 
-  const bool was_loaded = bke::volume_grid::is_loaded(*grid);
-
   DenseFloatVolumeGrid dense_grid;
   if (BKE_volume_grid_dense_floats(volume, grid, &dense_grid)) {
-    copy_m4_m4(cache_grid->texture_to_object, dense_grid.texture_to_object);
-    invert_m4_m4(cache_grid->object_to_texture, dense_grid.texture_to_object);
+    cache_grid->texture_to_object = float4x4(dense_grid.texture_to_object);
+    cache_grid->object_to_texture = math::invert(cache_grid->texture_to_object);
 
     /* Create GPU texture. */
     eGPUTextureFormat format = (channels == 3) ? GPU_RGB16F : GPU_R16F;
@@ -326,11 +325,6 @@ static DRWVolumeGrid *volume_grid_cache_get(const Volume *volume,
       MEM_freeN(dense_grid.voxels);
       printf("Error: Could not allocate 3D texture for volume.\n");
     }
-  }
-
-  /* Free grid from memory if it wasn't previously loaded. */
-  if (!was_loaded) {
-    bke::volume_grid::unload_tree_if_possible(*grid);
   }
 
   return cache_grid;

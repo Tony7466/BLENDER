@@ -11,14 +11,16 @@
 
 #pragma once
 
-struct GPUBatch;
+namespace blender::gpu {
+class Batch;
+}
 
 /** Opaque type hiding blender::gpu::DrawList. */
 struct GPUDrawList;
 
 /* Create a list with at least length drawcalls. Length can affect performance. */
-GPUDrawList *GPU_draw_list_create(int length);
+GPUDrawList *GPU_draw_list_create(int list_length);
 void GPU_draw_list_discard(GPUDrawList *list);
 
-void GPU_draw_list_append(GPUDrawList *list, GPUBatch *batch, int i_first, int i_count);
+void GPU_draw_list_append(GPUDrawList *list, blender::gpu::Batch *batch, int i_first, int i_count);
 void GPU_draw_list_submit(GPUDrawList *list);

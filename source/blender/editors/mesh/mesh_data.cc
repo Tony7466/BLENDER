@@ -26,7 +26,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -175,9 +175,7 @@ static void mesh_uv_reset_mface(const blender::IndexRange face, float2 *mloopuv)
 
 void ED_mesh_uv_loop_reset_ex(Mesh *mesh, const int layernum)
 {
-  BMEditMesh *em = mesh->runtime->edit_mesh;
-
-  if (em) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     /* Collect BMesh UVs */
     const int cd_loop_uv_offset = CustomData_get_n_offset(
         &em->bm->ldata, CD_PROP_FLOAT2, layernum);
@@ -225,19 +223,17 @@ int ED_mesh_uv_add(
 {
   /* NOTE: keep in sync with #ED_mesh_color_add. */
 
-  BMEditMesh *em;
   int layernum_dst;
 
   if (!name) {
     name = DATA_("UVMap");
   }
 
-  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const std::string unique_name = BKE_attribute_calc_unique_name(owner, name);
   bool is_init = false;
 
-  if (mesh->runtime->edit_mesh) {
-    em = mesh->runtime->edit_mesh;
-
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     layernum_dst = CustomData_number_of_layers(&em->bm->ldata, CD_PROP_FLOAT2);
     if (layernum_dst >= MAX_MTFACE) {
       BKE_reportf(reports, RPT_WARNING, "Cannot add more than %i UV maps", MAX_MTFACE);
@@ -366,12 +362,9 @@ bool *ED_mesh_uv_map_pin_layer_ensure(Mesh *mesh, const int uv_index)
 
 void ED_mesh_uv_ensure(Mesh *mesh, const char *name)
 {
-  BMEditMesh *em;
   int layernum_dst;
 
-  if (mesh->runtime->edit_mesh) {
-    em = mesh->runtime->edit_mesh;
-
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     layernum_dst = CustomData_number_of_layers(&em->bm->ldata, CD_PROP_FLOAT2);
     if (layernum_dst == 0) {
       ED_mesh_uv_add(mesh, name, true, true, nullptr);
@@ -394,14 +387,15 @@ int ED_mesh_color_add(
     name = "Col";
   }
 
-  CustomDataLayer *layer = BKE_id_attribute_new(
-      &mesh->id, name, CD_PROP_BYTE_COLOR, bke::AttrDomain::Corner, reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  CustomDataLayer *layer = BKE_attribute_new(
+      owner, name, CD_PROP_BYTE_COLOR, bke::AttrDomain::Corner, reports);
 
   if (do_init) {
     const char *active_name = mesh->active_color_attribute;
     if (const CustomDataLayer *active_layer = BKE_id_attributes_color_find(&mesh->id, active_name))
     {
-      if (const BMEditMesh *em = mesh->runtime->edit_mesh) {
+      if (const BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
         BMesh &bm = *em->bm;
         const int src_i = CustomData_get_named_layer(&bm.ldata, CD_PROP_BYTE_COLOR, active_name);
         const int dst_i = CustomData_get_named_layer(&bm.ldata, CD_PROP_BYTE_COLOR, layer->name);
@@ -430,18 +424,12 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
 {
   using namespace blender;
   BLI_assert(mesh->runtime->edit_mesh == nullptr);
-  const bke::AttributeAccessor attributes = mesh->attributes();
-  if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
-          mesh->active_color_attribute))
-  {
-    if ((ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) &&
-        (CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
-    {
-      return true;
-    }
+  if (BKE_color_attribute_supported(*mesh, mesh->active_color_attribute)) {
+    return true;
   }
 
-  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const std::string unique_name = BKE_attribute_calc_unique_name(owner, name);
   if (!mesh->attributes_for_write().add(unique_name,
                                         bke::AttrDomain::Corner,
                                         CD_PROP_BYTE_COLOR,
@@ -462,10 +450,10 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
 
 static bool layers_poll(bContext *C)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   ID *data = (ob) ? static_cast<ID *>(ob->data) : nullptr;
-  return (ob && !ID_IS_LINKED(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && ob->type == OB_MESH && data &&
-          !ID_IS_LINKED(data) && !ID_IS_OVERRIDE_LIBRARY(data));
+  return (ob && ID_IS_EDITABLE(ob) && !ID_IS_OVERRIDE_LIBRARY(ob) && ob->type == OB_MESH && data &&
+          ID_IS_EDITABLE(data) && !ID_IS_OVERRIDE_LIBRARY(data));
 }
 
 /*********************** UV texture operators ************************/
@@ -476,7 +464,7 @@ static bool uv_texture_remove_poll(bContext *C)
     return false;
   }
 
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   CustomData *ldata = mesh_customdata_get_type(mesh, BM_LOOP, nullptr);
   const int active = CustomData_get_active_layer(ldata, CD_PROP_FLOAT2);
@@ -489,7 +477,7 @@ static bool uv_texture_remove_poll(bContext *C)
 
 static int mesh_uv_texture_add_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   if (ED_mesh_uv_add(mesh, nullptr, true, true, op->reports) == -1) {
@@ -498,7 +486,7 @@ static int mesh_uv_texture_add_exec(bContext *C, wmOperator *op)
 
   if (ob->mode & OB_MODE_TEXTURE_PAINT) {
     Scene *scene = CTX_data_scene(C);
-    ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+    ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
     WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   }
 
@@ -522,18 +510,19 @@ void MESH_OT_uv_texture_add(wmOperatorType *ot)
 
 static int mesh_uv_texture_remove_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
   CustomData *ldata = mesh_customdata_get_type(mesh, BM_LOOP, nullptr);
   const char *name = CustomData_get_active_layer_name(ldata, CD_PROP_FLOAT2);
-  if (!BKE_id_attribute_remove(&mesh->id, name, op->reports)) {
+  if (!BKE_attribute_remove(owner, name, op->reports)) {
     return OPERATOR_CANCELLED;
   }
 
   if (ob->mode & OB_MODE_TEXTURE_PAINT) {
     Scene *scene = CTX_data_scene(C);
-    ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+    ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
     WM_event_add_notifier(C, NC_SCENE | ND_TOOLSETTINGS, nullptr);
   }
 
@@ -590,7 +579,7 @@ static int mesh_customdata_clear_exec__internal(bContext *C,
 /* Clear Mask */
 static bool mesh_customdata_mask_clear_poll(bContext *C)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   if (ob && ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
@@ -599,7 +588,7 @@ static bool mesh_customdata_mask_clear_poll(bContext *C)
       return false;
     }
 
-    if (!ID_IS_LINKED(mesh) && !ID_IS_OVERRIDE_LIBRARY(mesh)) {
+    if (ID_IS_EDITABLE(mesh) && !ID_IS_OVERRIDE_LIBRARY(mesh)) {
       CustomData *data = mesh_customdata_get_type(mesh, BM_VERT, nullptr);
       if (CustomData_has_layer_named(data, CD_PROP_FLOAT, ".sculpt_mask")) {
         return true;
@@ -614,9 +603,10 @@ static bool mesh_customdata_mask_clear_poll(bContext *C)
 }
 static int mesh_customdata_mask_clear_exec(bContext *C, wmOperator *op)
 {
-  Object *object = ED_object_context(C);
+  Object *object = blender::ed::object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(object->data);
-  const bool ret_a = BKE_id_attribute_remove(&mesh->id, ".sculpt_mask", op->reports);
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  const bool ret_a = BKE_attribute_remove(owner, ".sculpt_mask", op->reports);
   int ret_b = mesh_customdata_clear_exec__internal(C, BM_LOOP, CD_GRID_PAINT_MASK);
 
   if (ret_a || ret_b == OPERATOR_FINISHED) {
@@ -648,11 +638,11 @@ void MESH_OT_customdata_mask_clear(wmOperatorType *ot)
  */
 static int mesh_customdata_skin_state(bContext *C)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
 
   if (ob && ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    if (!ID_IS_LINKED(mesh) && !ID_IS_OVERRIDE_LIBRARY(mesh)) {
+    if (ID_IS_EDITABLE(mesh) && !ID_IS_OVERRIDE_LIBRARY(mesh)) {
       CustomData *data = mesh_customdata_get_type(mesh, BM_VERT, nullptr);
       return CustomData_has_layer(data, CD_MVERT_SKIN);
     }
@@ -667,7 +657,7 @@ static bool mesh_customdata_skin_add_poll(bContext *C)
 
 static int mesh_customdata_skin_add_exec(bContext *C, wmOperator * /*op*/)
 {
-  Object *ob = ED_object_context(C);
+  Object *ob = blender::ed::object::context_object(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   BKE_mesh_ensure_skin_customdata(mesh);
@@ -761,7 +751,7 @@ static int mesh_customdata_custom_splitnormals_clear_exec(bContext *C, wmOperato
 {
   Mesh *mesh = ED_mesh_context(C);
 
-  if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMesh &bm = *em->bm;
     if (!CustomData_has_layer(&bm.ldata, CD_CUSTOMLOOPNORMAL)) {
       return OPERATOR_CANCELLED;
@@ -1140,7 +1130,7 @@ Mesh *ED_mesh_context(bContext *C)
     return mesh;
   }
 
-  Object *ob = ED_object_active_context(C);
+  Object *ob = blender::ed::object::context_active_object(C);
   if (ob == nullptr) {
     return nullptr;
   }
@@ -1161,15 +1151,15 @@ void ED_mesh_split_faces(Mesh *mesh)
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", bke::AttrDomain::Edge, false);
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
+  const VArraySpan<bool> sharp_faces = *attributes.lookup<bool>("sharp_face",
+                                                                bke::AttrDomain::Face);
 
   Array<bool> sharp_edges(mesh->edges_num);
   mesh_sharp_edges.materialize(sharp_edges);
 
   threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
-      if (sharp_faces && sharp_faces[face_i]) {
+      if (!sharp_faces.is_empty() && sharp_faces[face_i]) {
         for (const int edge : corner_edges.slice(polys[face_i])) {
           sharp_edges[edge] = true;
         }

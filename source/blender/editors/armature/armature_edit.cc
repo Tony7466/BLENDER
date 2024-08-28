@@ -35,7 +35,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface_icons.hh"
 
@@ -66,7 +66,7 @@ bArmature *ED_armature_context(const bContext *C)
       CTX_data_pointer_get_type(C, "armature", &RNA_Armature).data);
 
   if (armature == nullptr) {
-    Object *object = ED_object_active_context(C);
+    Object *object = blender::ed::object::context_active_object(C);
     if (object && object->type == OB_ARMATURE) {
       armature = static_cast<bArmature *>(object->data);
     }
@@ -1523,7 +1523,6 @@ static int armature_hide_exec(bContext *C, wmOperator *op)
     if (!changed) {
       continue;
     }
-    ED_armature_edit_validate_active(arm);
     ED_armature_edit_sync_selection(arm->edbo);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
@@ -1581,7 +1580,6 @@ static int armature_reveal_exec(bContext *C, wmOperator *op)
     }
 
     if (changed) {
-      ED_armature_edit_validate_active(arm);
       ED_armature_edit_sync_selection(arm->edbo);
 
       WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);

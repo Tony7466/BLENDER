@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,13 @@
  * \ingroup RNA
  */
 
+#include "BKE_attribute.h"
+#include "BKE_global.hh"
+
 #include "BLI_string.h"
 
 #include "DNA_grease_pencil_types.h"
+#include "DNA_scene_types.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -23,8 +27,10 @@
 #  include <fmt/format.h>
 
 #  include "BKE_attribute.hh"
+#  include "BKE_curves.hh"
 #  include "BKE_grease_pencil.hh"
 
+#  include "BLI_math_matrix.hh"
 #  include "BLI_span.hh"
 
 #  include "DEG_depsgraph.hh"
@@ -64,6 +70,139 @@ static void rna_grease_pencil_dependency_update(Main *bmain, Scene * /*scene*/, 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, rna_grease_pencil(ptr));
 }
 
+static int rna_Drawing_user_count_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencilDrawing *drawing = static_cast<const GreasePencilDrawing *>(ptr->data);
+  return drawing->wrap().user_count();
+}
+
+static int rna_GreasePencilDrawing_curve_offset_data_length(PointerRNA *ptr)
+{
+  const GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  return drawing->geometry.curve_num + 1;
+}
+
+static void rna_GreasePencilDrawing_curve_offset_data_begin(CollectionPropertyIterator *iter,
+                                                            PointerRNA *ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  rna_iterator_array_begin(iter,
+                           drawing->geometry.wrap().offsets_for_write().data(),
+                           sizeof(int),
+                           drawing->geometry.curve_num + 1,
+                           false,
+                           nullptr);
+}
+
+static bool rna_GreasePencilDrawing_curve_offset_data_lookup_int(PointerRNA *ptr,
+                                                                 int index,
+                                                                 PointerRNA *r_ptr)
+{
+  GreasePencilDrawing *drawing = static_cast<GreasePencilDrawing *>(ptr->data);
+  if (index < 0 || index >= drawing->geometry.curve_num + 1) {
+    return false;
+  }
+  r_ptr->owner_id = ptr->owner_id;
+  r_ptr->type = &RNA_IntAttributeValue;
+  r_ptr->data = &drawing->geometry.wrap().offsets_for_write()[index];
+  return true;
+}
+
+static void rna_GreasePencilLayer_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  blender::Span<FramesMapKeyT> sorted_keys = layer.sorted_keys();
+
+  rna_iterator_array_begin(
+      iter, (void *)sorted_keys.data(), sizeof(FramesMapKeyT), sorted_keys.size(), false, nullptr);
+}
+
+static PointerRNA rna_GreasePencilLayer_frames_get(CollectionPropertyIterator *iter)
+{
+  using namespace blender::bke::greasepencil;
+  const FramesMapKeyT frame_key = *static_cast<FramesMapKeyT *>(rna_iterator_array_get(iter));
+  const Layer &layer = static_cast<GreasePencilLayer *>(iter->parent.data)->wrap();
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+  return rna_pointer_inherit_refine(&iter->parent,
+                                    &RNA_GreasePencilFrame,
+                                    static_cast<void *>(const_cast<GreasePencilFrame *>(frame)));
+}
+
+static int rna_GreasePencilLayer_frames_length(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  return layer.frames().size();
+}
+
+static bool rna_GreasePencilLayer_frames_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  if (index < 0 || index >= layer.sorted_keys().size()) {
+    return false;
+  }
+  const FramesMapKeyT frame_key = layer.sorted_keys()[index];
+  const GreasePencilFrame *frame = layer.frames().lookup_ptr(frame_key);
+
+  r_ptr->owner_id = &grease_pencil.id;
+  r_ptr->type = &RNA_GreasePencilFrame;
+  r_ptr->data = static_cast<void *>(const_cast<GreasePencilFrame *>(frame));
+  return true;
+}
+
+static std::pair<int, const blender::bke::greasepencil::Layer *> find_layer_of_frame(
+    const GreasePencil &grease_pencil, const GreasePencilFrame &find_frame)
+{
+  using namespace blender::bke::greasepencil;
+  for (const Layer *layer : grease_pencil.layers()) {
+    for (const auto &[key, frame] : layer->frames().items()) {
+      if (&frame == &find_frame) {
+        return {int(key), layer};
+      }
+    }
+  }
+  return {0, nullptr};
+}
+
+static PointerRNA rna_Frame_drawing_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &frame_to_find = *static_cast<GreasePencilFrame *>(ptr->data);
+  if (frame_to_find.is_end()) {
+    return PointerRNA_NULL;
+  }
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  auto [frame_number, this_layer] = find_layer_of_frame(grease_pencil, frame_to_find);
+  if (this_layer == nullptr) {
+    return PointerRNA_NULL;
+  }
+
+  const Drawing *drawing = grease_pencil.get_drawing_at(*this_layer, frame_number);
+  return rna_pointer_inherit_refine(
+      ptr, &RNA_GreasePencilDrawing, static_cast<void *>(const_cast<Drawing *>(drawing)));
+}
+
+static int rna_Frame_frame_number_get(PointerRNA *ptr)
+{
+  using namespace blender::bke::greasepencil;
+  const GreasePencil &grease_pencil = *rna_grease_pencil(ptr);
+  GreasePencilFrame &frame_to_find = *static_cast<GreasePencilFrame *>(ptr->data);
+
+  /* RNA doesn't give access to the parented layer object, so we have to iterate over all layers
+   * and search for the matching GreasePencilFrame pointer in the frames collection. */
+  auto [frame_number, this_layer] = find_layer_of_frame(grease_pencil, frame_to_find);
+  /* Layer should exist. */
+  BLI_assert(this_layer != nullptr);
+  return frame_number;
+}
+
 static void rna_grease_pencil_layer_mask_name_get(PointerRNA *ptr, char *dst)
 {
   using namespace blender;
@@ -94,7 +233,7 @@ static void rna_grease_pencil_layer_mask_name_set(PointerRNA *ptr, const char *v
 
   const std::string oldname(mask->layer_name);
   if (bke::greasepencil::TreeNode *node = grease_pencil->find_node_by_name(oldname)) {
-    grease_pencil->rename_node(*node, value);
+    grease_pencil->rename_node(*G_MAIN, *node, value);
   }
 }
 
@@ -187,7 +326,7 @@ static void rna_GreasePencilLayer_name_set(PointerRNA *ptr, const char *value)
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ptr->data);
 
-  grease_pencil->rename_node(layer->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, layer->wrap().as_node(), value);
 }
 
 static int rna_GreasePencilLayer_pass_index_get(PointerRNA *ptr)
@@ -218,6 +357,32 @@ static void rna_GreasePencilLayer_pass_index_set(PointerRNA *ptr, int value)
   layer_passes.finish();
 }
 
+static void rna_GreasePencilLayer_matrix_local_get(PointerRNA *ptr, float *values)
+{
+  const blender::bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  std::copy_n(layer.local_transform().base_ptr(), 16, values);
+}
+
+static void rna_GreasePencilLayer_matrix_parent_inverse_get(PointerRNA *ptr, float *values)
+{
+  const blender::bke::greasepencil::Layer &layer =
+      static_cast<const GreasePencilLayer *>(ptr->data)->wrap();
+  std::copy_n(layer.parent_inverse().base_ptr(), 16, values);
+}
+
+static PointerRNA rna_GreasePencilLayer_parent_layer_group_get(PointerRNA *ptr)
+{
+  blender::bke::greasepencil::Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  blender::bke::greasepencil::LayerGroup *layer_group = &layer.parent_group();
+  /* Return None when layer is in the root group. */
+  if (!layer_group->as_node().parent_group()) {
+    return PointerRNA_NULL;
+  }
+  return rna_pointer_inherit_refine(
+      ptr, &RNA_GreasePencilLayerGroup, static_cast<void *>(layer_group));
+}
+
 static PointerRNA rna_GreasePencil_active_layer_get(PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
@@ -234,7 +399,30 @@ static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   grease_pencil->set_active_layer(static_cast<blender::bke::greasepencil::Layer *>(value.data));
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED | NA_SELECTED, grease_pencil);
+}
+
+static PointerRNA rna_GreasePencil_active_group_get(PointerRNA *ptr)
+{
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  if (grease_pencil->has_active_group()) {
+    return rna_pointer_inherit_refine(
+        ptr, &RNA_GreasePencilLayerGroup, static_cast<void *>(grease_pencil->get_active_group()));
+  }
+  return rna_pointer_inherit_refine(ptr, nullptr, nullptr);
+}
+
+static void rna_GreasePencil_active_group_set(PointerRNA *ptr,
+                                              PointerRNA value,
+                                              ReportList * /*reports*/)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  TreeNode *node = static_cast<TreeNode *>(value.data);
+  if (node->is_group()) {
+    grease_pencil->set_active_node(node);
+    WM_main_add_notifier(NC_GPENCIL | NA_EDITED | NA_SELECTED, grease_pencil);
+  }
 }
 
 static std::optional<std::string> rna_GreasePencilLayerGroup_path(const PointerRNA *ptr)
@@ -260,7 +448,7 @@ static void rna_GreasePencilLayerGroup_name_set(PointerRNA *ptr, const char *val
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   GreasePencilLayerTreeGroup *group = static_cast<GreasePencilLayerTreeGroup *>(ptr->data);
 
-  grease_pencil->rename_node(group->wrap().as_node(), value);
+  grease_pencil->rename_node(*G_MAIN, group->wrap().as_node(), value);
 }
 
 static void rna_iterator_grease_pencil_layer_groups_begin(CollectionPropertyIterator *iter,
@@ -283,24 +471,143 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
 
 #else
 
-static void rna_def_grease_pencil_layers_mask_api(BlenderRNA *brna, PropertyRNA *cprop)
+static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  RNA_def_property_srna(cprop, "GreasePencilLayerMasks");
-  srna = RNA_def_struct(brna, "GreasePencilLayerMasks", nullptr);
-  RNA_def_struct_sdna(srna, "GreasePencilLayer");
-  RNA_def_struct_ui_text(
-      srna, "Grease Pencil Mask Layers", "Collection of grease pencil masking layers");
+  static const EnumPropertyItem rna_enum_drawing_type_items[] = {
+      {GP_DRAWING, "DRAWING", 0, "Drawing", ""},
+      {GP_DRAWING_REFERENCE, "REFERENCE", 0, "Reference", ""},
+      {0, nullptr, 0, nullptr, nullptr}};
 
-  prop = RNA_def_property(srna, "active_mask_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_int_funcs(prop,
-                             "rna_grease_pencil_active_mask_index_get",
-                             "rna_grease_pencil_active_mask_index_set",
-                             "rna_grease_pencil_active_mask_index_range");
-  RNA_def_property_ui_text(prop, "Active Layer Mask Index", "Active index in layer mask array");
+  srna = RNA_def_struct(brna, "GreasePencilDrawing", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilDrawing");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Drawing", "A Grease Pencil drawing");
+
+  /* Type. */
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "base.type");
+  RNA_def_property_enum_items(prop, rna_enum_drawing_type_items);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Type", "Drawing type");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* User Count. */
+  prop = RNA_def_property(srna, "user_count", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_Drawing_user_count_get", nullptr, nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "User Count", "The number of keyframes this drawing is used by");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Curve offsets. */
+  prop = RNA_def_property(srna, "curve_offsets", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "IntAttributeValue");
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_IGNORE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilDrawing_curve_offset_data_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    "rna_GreasePencilDrawing_curve_offset_data_length",
+                                    "rna_GreasePencilDrawing_curve_offset_data_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  RNA_def_parameter_clear_flags(prop, PROP_EDITABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Curve Offsets", "Offset indices of the first point of each curve");
+  RNA_def_property_update(prop, 0, "rna_grease_pencil_update");
+
+  RNA_api_grease_pencil_drawing(srna);
+
+  /* Attributes. */
+  rna_def_attributes_common(srna, AttributeOwnerType::GreasePencilDrawing);
+}
+
+static void rna_def_grease_pencil_frame(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem rna_enum_keyframe_type_items[] = {
+      {BEZT_KEYTYPE_KEYFRAME,
+       "KEYFRAME",
+       ICON_KEYTYPE_KEYFRAME_VEC,
+       "Keyframe",
+       "Normal keyframe, e.g. for key poses"},
+      {BEZT_KEYTYPE_BREAKDOWN,
+       "BREAKDOWN",
+       ICON_KEYTYPE_BREAKDOWN_VEC,
+       "Breakdown",
+       "A breakdown pose, e.g. for transitions between key poses"},
+      {BEZT_KEYTYPE_MOVEHOLD,
+       "MOVING_HOLD",
+       ICON_KEYTYPE_MOVING_HOLD_VEC,
+       "Moving Hold",
+       "A keyframe that is part of a moving hold"},
+      {BEZT_KEYTYPE_EXTREME,
+       "EXTREME",
+       ICON_KEYTYPE_EXTREME_VEC,
+       "Extreme",
+       "An 'extreme' pose, or some other purpose as needed"},
+      {BEZT_KEYTYPE_JITTER,
+       "JITTER",
+       ICON_KEYTYPE_JITTER_VEC,
+       "Jitter",
+       "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+      {BEZT_KEYTYPE_GENERATED,
+       "GENERATED",
+       ICON_KEYTYPE_GENERATED_VEC,
+       "Generated",
+       "A key generated automatically by a tool, not manually created"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "GreasePencilFrame", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilFrame");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
+
+  /* Drawing. */
+  prop = RNA_def_property(srna, "drawing", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilDrawing");
+  RNA_def_property_pointer_funcs(prop, "rna_Frame_drawing_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop, "Drawing", "A Grease Pencil drawing");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Frame number. */
+  prop = RNA_def_property(srna, "frame_number", PROP_INT, PROP_NONE);
+  /* TODO: Make property editable, ensure frame number isn't already in use. */
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_int_funcs(prop, "rna_Frame_frame_number_get", nullptr, nullptr);
+  RNA_def_property_range(prop, MINAFRAME, MAXFRAME);
+  RNA_def_property_ui_text(prop, "Frame Number", "The frame number in the scene");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Selection status. */
+  prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
+  RNA_def_property_ui_text(prop, "Select", "Frame Selection in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Keyframe type. */
+  prop = RNA_def_property(srna, "keyframe_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_enum_items(prop, rna_enum_keyframe_type_items);
+  RNA_def_property_ui_text(prop, "Keyframe Type", "Type of keyframe");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+}
+
+static void rna_def_grease_pencil_frames(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+
+  RNA_def_property_srna(cprop, "GreasePencilFrames");
+  srna = RNA_def_struct(brna, "GreasePencilFrames", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilLayer");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frames", "Collection of Grease Pencil frames");
+
+  RNA_api_grease_pencil_frames(srna);
 }
 
 static void rna_def_grease_pencil_layer_mask(BlenderRNA *brna)
@@ -337,6 +644,26 @@ static void rna_def_grease_pencil_layer_mask(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
+static void rna_def_grease_pencil_layer_masks(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  RNA_def_property_srna(cprop, "GreasePencilLayerMasks");
+  srna = RNA_def_struct(brna, "GreasePencilLayerMasks", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilLayer");
+  RNA_def_struct_ui_text(
+      srna, "Grease Pencil Mask Layers", "Collection of grease pencil masking layers");
+
+  prop = RNA_def_property(srna, "active_mask_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_funcs(prop,
+                             "rna_grease_pencil_active_mask_index_get",
+                             "rna_grease_pencil_active_mask_index_set",
+                             "rna_grease_pencil_active_mask_index_range");
+  RNA_def_property_ui_text(prop, "Active Layer Mask Index", "Active index in layer mask array");
+}
+
 static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -368,12 +695,27 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_update");
 
+  /* Frames. */
+  prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilFrame");
+  RNA_def_property_ui_text(prop, "Frames", "Grease Pencil frames");
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilLayer_frames_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_GreasePencilLayer_frames_get",
+                                    "rna_GreasePencilLayer_frames_length",
+                                    "rna_GreasePencilLayer_frames_lookup_int",
+                                    nullptr,
+                                    nullptr);
+  rna_def_grease_pencil_frames(brna, prop);
+
   /* Mask Layers */
   prop = RNA_def_property(srna, "mask_layers", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "masks", nullptr);
   RNA_def_property_struct_type(prop, "GreasePencilLayerMask");
   RNA_def_property_ui_text(prop, "Masks", "List of Masking Layers");
-  rna_def_grease_pencil_layers_mask_api(brna, prop);
+  rna_def_grease_pencil_layer_masks(brna, prop);
 
   /* Visibility */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
@@ -392,6 +734,22 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
+  /* Select. */
+  prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_SELECT);
+  RNA_def_property_ui_text(prop, "Select", "Layer is selected for editing in the Dope Sheet");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Lock Frame. */
+  prop = RNA_def_property(srna, "lock_frame", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_MUTE);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Frame Locked", "Lock current frame displayed by layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
   /* Opacity */
   prop = RNA_def_property(srna, "opacity", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, "GreasePencilLayer", "opacity");
@@ -400,20 +758,29 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Onion Skinning. */
   prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
+  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, 1);
+  RNA_def_property_boolean_negative_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
   RNA_def_property_ui_text(
       prop, "Onion Skinning", "Display onion skins before and after the current frame");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Use Masks. */
   prop = RNA_def_property(srna, "use_masks", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, -1);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_MASKS);
   RNA_def_property_ui_text(
       prop,
       "Use Masks",
       "The visibility of drawings on this layer is affected by the layers in its masks list");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_lights", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LIGHTS);
+  RNA_def_property_ui_text(
+      prop, "Use Lights", "Enable the use of lights on stroke and fill materials");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* pass index for compositing and modifiers */
@@ -435,7 +802,9 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "parent_bone", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "parsubstr");
   RNA_def_property_ui_text(
-      prop, "Parent Bone", "Name of parent bone. Only used when the parent object is an armature");
+      prop,
+      "Parent Bone",
+      "Name of parent bone. Only used when the parent object is an armature.");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_dependency_update");
 
   prop = RNA_def_property(srna, "translation", PROP_FLOAT, PROP_TRANSLATION);
@@ -467,14 +836,55 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
       "ViewLayer",
       "Only include Layer in this View Layer render output (leave blank to include always)");
 
+  prop = RNA_def_property(srna, "use_viewlayer_masks", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_DISABLE_MASKS_IN_VIEWLAYER);
+  RNA_def_property_ui_text(
+      prop, "Use Masks in Render", "Include the mask layers when rendering the view-layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
   prop = RNA_def_property(srna, "blend_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
   RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_locked_material", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(
+      prop, "Use Locked Materials Editing", "Allow editing locked materials in the layer");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
+  /* Local transformation matrix. */
+  prop = RNA_def_property(srna, "matrix_local", PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Local Matrix", "Local transformation matrix of the layer");
+  RNA_def_property_float_funcs(prop, "rna_GreasePencilLayer_matrix_local_get", nullptr, nullptr);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Inverse transform of layer's parent. */
+  prop = RNA_def_property(srna, "matrix_parent_inverse", PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_multi_array(prop, 2, rna_matrix_dimsize_4x4);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Inverse Parent Matrix", "Inverse of layer's parent transformation matrix");
+  RNA_def_property_float_funcs(
+      prop, "rna_GreasePencilLayer_matrix_parent_inverse_get", nullptr, nullptr);
+
+  /* Parent layer group. */
+  prop = RNA_def_property(srna, "parent_group", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilLayerGroup");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_GreasePencilLayer_parent_layer_group_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Parent Layer Group", "The parent layer group this layer is part of");
+
+  RNA_api_grease_pencil_layer(srna);
 }
 
-static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
+static void rna_def_grease_pencil_layers(BlenderRNA *brna, PropertyRNA *cprop)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -494,6 +904,8 @@ static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cpro
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active Layer", "Active Grease Pencil layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+
+  RNA_api_grease_pencil_layers(srna);
 }
 
 static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
@@ -542,6 +954,177 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
                            "The visibility of drawings in the layers in this group is affected by "
                            "the layers in the masks lists");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, 1);
+  RNA_def_property_boolean_negative_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
+  RNA_def_property_ui_text(
+      prop, "Onion Skinning", "Display onion skins before and after the current frame");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+}
+
+static void rna_def_grease_pencil_layer_groups(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  RNA_def_property_srna(cprop, "GreasePencilv3LayerGroup");
+  srna = RNA_def_struct(brna, "GreasePencilv3LayerGroup", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencil");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Group", "Collection of Grease Pencil layers");
+
+  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilLayerGroup");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_GreasePencil_active_group_get",
+                                 "rna_GreasePencil_active_group_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Active Layer Group", "Active Grease Pencil layer group");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+
+  RNA_api_grease_pencil_layer_groups(srna);
+}
+
+static void rna_def_grease_pencil_onion_skinning(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static EnumPropertyItem prop_enum_onion_modes_items[] = {
+      {GP_ONION_SKINNING_MODE_ABSOLUTE,
+       "ABSOLUTE",
+       0,
+       "Frames",
+       "Frames in absolute range of the scene frame"},
+      {GP_ONION_SKINNING_MODE_RELATIVE,
+       "RELATIVE",
+       0,
+       "Keyframes",
+       "Frames in relative range of the Grease Pencil keyframes"},
+      {GP_ONION_SKINNING_MODE_SELECTED, "SELECTED", 0, "Selected", "Only selected keyframes"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static EnumPropertyItem prop_enum_onion_keyframe_type_items[] = {
+      {GREASE_PENCIL_ONION_SKINNING_FILTER_ALL, "ALL", 0, "All", "Include all Keyframe types"},
+      {GP_ONION_SKINNING_FILTER_KEYTYPE_KEYFRAME,
+       "KEYFRAME",
+       ICON_KEYTYPE_KEYFRAME_VEC,
+       "Keyframe",
+       "Normal keyframe, e.g. for key poses"},
+      {GP_ONION_SKINNING_FILTER_KEYTYPE_BREAKDOWN,
+       "BREAKDOWN",
+       ICON_KEYTYPE_BREAKDOWN_VEC,
+       "Breakdown",
+       "A breakdown pose, e.g. for transitions between key poses"},
+      {GP_ONION_SKINNING_FILTER_KEYTYPE_MOVEHOLD,
+       "MOVING_HOLD",
+       ICON_KEYTYPE_MOVING_HOLD_VEC,
+       "Moving Hold",
+       "A keyframe that is part of a moving hold"},
+      {GP_ONION_SKINNING_FILTER_KEYTYPE_EXTREME,
+       "EXTREME",
+       ICON_KEYTYPE_EXTREME_VEC,
+       "Extreme",
+       "An 'extreme' pose, or some other purpose as needed"},
+      {GP_ONION_SKINNING_FILTER_KEYTYPE_JITTER,
+       "JITTER",
+       ICON_KEYTYPE_JITTER_VEC,
+       "Jitter",
+       "A filler or baked keyframe for keying on ones, or some other purpose as needed"},
+      {BEZT_KEYTYPE_GENERATED,
+       "GENERATED",
+       ICON_KEYTYPE_GENERATED_VEC,
+       "Generated",
+       "A key generated automatically by a tool, not manually created"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "ghost_before_range", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "onion_skinning_settings.num_frames_before");
+  RNA_def_property_range(prop, 0, 120);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop,
+                           "Frames Before",
+                           "Maximum number of frames to show before current frame "
+                           "(0 = don't show any frames before current)");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "ghost_after_range", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "onion_skinning_settings.num_frames_after");
+  RNA_def_property_range(prop, 0, 120);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop,
+                           "Frames After",
+                           "Maximum number of frames to show after current frame "
+                           "(0 = don't show any frames after current)");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_ghost_custom_colors", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "onion_skinning_settings.flag", GP_ONION_SKINNING_USE_CUSTOM_COLORS);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Use Custom Ghost Colors", "Use custom colors for ghost frames");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "before_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "onion_skinning_settings.color_before");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Before Color", "Base color for ghosts before the active frame");
+  RNA_def_property_update(prop,
+                          NC_SCREEN | NC_SCENE | ND_TOOLSETTINGS | ND_DATA | NC_GPENCIL,
+                          "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "after_color", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "onion_skinning_settings.color_after");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "After Color", "Base color for ghosts after the active frame");
+  RNA_def_property_update(prop,
+                          NC_SCREEN | NC_SCENE | ND_TOOLSETTINGS | ND_DATA | NC_GPENCIL,
+                          "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "onion_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "onion_skinning_settings.mode");
+  RNA_def_property_enum_items(prop, prop_enum_onion_modes_items);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Mode", "Mode to display frames");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "onion_keyframe_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "onion_skinning_settings.filter");
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_enum_items(prop, prop_enum_onion_keyframe_type_items);
+  RNA_def_property_ui_text(prop, "Filter by Type", "Type of keyframe (for filtering)");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_onion_fade", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "onion_skinning_settings.flag", GP_ONION_SKINNING_USE_FADE);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Fade", "Display onion keyframes with a fade in color transparency");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "use_onion_loop", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "onion_skinning_settings.flag", GP_ONION_SKINNING_SHOW_LOOP);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(
+      prop, "Show Start Frame", "Display onion keyframes for looping animations");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  prop = RNA_def_property(srna, "onion_factor", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "onion_skinning_settings.opacity");
+  RNA_def_property_range(prop, 0.0, 1.0f);
+  RNA_def_parameter_clear_flags(prop, PROP_ANIMATABLE, ParameterFlag(0));
+  RNA_def_property_ui_text(prop, "Onion Opacity", "Change fade opacity of displayed onion frames");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_data(BlenderRNA *brna)
@@ -565,7 +1148,7 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
   RNA_def_struct_ui_icon(srna, ICON_OUTLINER_DATA_GREASEPENCIL);
 
   /* attributes */
-  rna_def_attributes_common(srna);
+  rna_def_attributes_common(srna, AttributeOwnerType::GreasePencil);
 
   /* Animation Data */
   rna_def_animdata_common(srna);
@@ -599,7 +1182,7 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
                                     nullptr, /* TODO */
                                     nullptr);
   RNA_def_property_ui_text(prop, "Layers", "Grease Pencil layers");
-  rna_def_grease_pencil_layers_api(brna, prop);
+  rna_def_grease_pencil_layers(brna, prop);
 
   /* Layer Groups */
   prop = RNA_def_property(srna, "layer_groups", PROP_COLLECTION, PROP_NONE);
@@ -614,6 +1197,7 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
                                     nullptr, /* TODO */
                                     nullptr);
   RNA_def_property_ui_text(prop, "Layer Groups", "Grease Pencil layer groups");
+  rna_def_grease_pencil_layer_groups(brna, prop);
 
   prop = RNA_def_property(srna, "use_autolock_layers", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GREASE_PENCIL_AUTOLOCK_LAYERS);
@@ -632,6 +1216,9 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
       "Stroke Depth Order",
       "Defines how the strokes are ordered in 3D space (for objects not displayed 'In Front')");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Onion skinning. */
+  rna_def_grease_pencil_onion_skinning(srna);
 }
 
 void RNA_def_grease_pencil(BlenderRNA *brna)
@@ -640,6 +1227,8 @@ void RNA_def_grease_pencil(BlenderRNA *brna)
   rna_def_grease_pencil_layer(brna);
   rna_def_grease_pencil_layer_mask(brna);
   rna_def_grease_pencil_layer_group(brna);
+  rna_def_grease_pencil_frame(brna);
+  rna_def_grease_pencil_drawing(brna);
 }
 
 #endif

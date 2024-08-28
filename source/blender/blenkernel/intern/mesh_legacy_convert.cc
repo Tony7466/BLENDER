@@ -1766,7 +1766,8 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 
     CustomData_free_layer_named(&mesh->corner_data, uv_names[i], mesh->corners_num);
 
-    const std::string new_name = BKE_id_attribute_calc_unique_name(mesh->id, uv_names[i].c_str());
+    AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+    const std::string new_name = BKE_attribute_calc_unique_name(owner, uv_names[i].c_str());
     uv_names[i] = new_name;
 
     CustomData_add_layer_named_with_data(
@@ -2120,11 +2121,12 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 
 namespace blender::bke {
 
-static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
+static bNodeTree *add_auto_smooth_node_tree(Main &bmain, Library *owner_library)
 {
-  bNodeTree *group = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
+  bNodeTree *group = node_tree_add_in_lib(
+      &bmain, owner_library, DATA_("Auto Smooth"), "GeometryNodeTree");
   if (!group->geometry_node_asset_traits) {
-    group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
+    group->geometry_node_asset_traits = MEM_cnew<GeometryNodeAssetTraits>(__func__);
   }
   group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
 
@@ -2139,10 +2141,10 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   angle_data.max = DEG2RADF(180.0f);
   angle_data.subtype = PROP_ANGLE;
 
-  bNode *group_output = nodeAddNode(nullptr, group, "NodeGroupOutput");
+  bNode *group_output = node_add_node(nullptr, group, "NodeGroupOutput");
   group_output->locx = 480.0f;
   group_output->locy = -100.0f;
-  bNode *group_input_angle = nodeAddNode(nullptr, group, "NodeGroupInput");
+  bNode *group_input_angle = node_add_node(nullptr, group, "NodeGroupInput");
   group_input_angle->locx = -420.0f;
   group_input_angle->locy = -300.0f;
   LISTBASE_FOREACH (bNodeSocket *, socket, &group_input_angle->outputs) {
@@ -2150,7 +2152,7 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
       socket->flag |= SOCK_HIDDEN;
     }
   }
-  bNode *group_input_mesh = nodeAddNode(nullptr, group, "NodeGroupInput");
+  bNode *group_input_mesh = node_add_node(nullptr, group, "NodeGroupInput");
   group_input_mesh->locx = -60.0f;
   group_input_mesh->locy = -100.0f;
   LISTBASE_FOREACH (bNodeSocket *, socket, &group_input_mesh->outputs) {
@@ -2158,81 +2160,81 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
       socket->flag |= SOCK_HIDDEN;
     }
   }
-  bNode *shade_smooth_edge = nodeAddNode(nullptr, group, "GeometryNodeSetShadeSmooth");
+  bNode *shade_smooth_edge = node_add_node(nullptr, group, "GeometryNodeSetShadeSmooth");
   shade_smooth_edge->custom1 = int16_t(bke::AttrDomain::Edge);
   shade_smooth_edge->locx = 120.0f;
   shade_smooth_edge->locy = -100.0f;
-  bNode *shade_smooth_face = nodeAddNode(nullptr, group, "GeometryNodeSetShadeSmooth");
+  bNode *shade_smooth_face = node_add_node(nullptr, group, "GeometryNodeSetShadeSmooth");
   shade_smooth_face->custom1 = int16_t(bke::AttrDomain::Face);
   shade_smooth_face->locx = 300.0f;
   shade_smooth_face->locy = -100.0f;
-  bNode *edge_angle = nodeAddNode(nullptr, group, "GeometryNodeInputMeshEdgeAngle");
+  bNode *edge_angle = node_add_node(nullptr, group, "GeometryNodeInputMeshEdgeAngle");
   edge_angle->locx = -420.0f;
   edge_angle->locy = -220.0f;
-  bNode *edge_smooth = nodeAddNode(nullptr, group, "GeometryNodeInputEdgeSmooth");
+  bNode *edge_smooth = node_add_node(nullptr, group, "GeometryNodeInputEdgeSmooth");
   edge_smooth->locx = -60.0f;
   edge_smooth->locy = -160.0f;
-  bNode *face_smooth = nodeAddNode(nullptr, group, "GeometryNodeInputShadeSmooth");
+  bNode *face_smooth = node_add_node(nullptr, group, "GeometryNodeInputShadeSmooth");
   face_smooth->locx = -240.0f;
   face_smooth->locy = -340.0f;
-  bNode *boolean_and = nodeAddNode(nullptr, group, "FunctionNodeBooleanMath");
+  bNode *boolean_and = node_add_node(nullptr, group, "FunctionNodeBooleanMath");
   boolean_and->custom1 = NODE_BOOLEAN_MATH_AND;
   boolean_and->locx = -60.0f;
   boolean_and->locy = -220.0f;
-  bNode *less_than_or_equal = nodeAddNode(nullptr, group, "FunctionNodeCompare");
+  bNode *less_than_or_equal = node_add_node(nullptr, group, "FunctionNodeCompare");
   static_cast<NodeFunctionCompare *>(less_than_or_equal->storage)->operation =
       NODE_COMPARE_LESS_EQUAL;
   less_than_or_equal->locx = -240.0f;
   less_than_or_equal->locy = -180.0f;
 
-  nodeAddLink(group,
-              edge_angle,
-              nodeFindSocket(edge_angle, SOCK_OUT, "Unsigned Angle"),
-              less_than_or_equal,
-              nodeFindSocket(less_than_or_equal, SOCK_IN, "A"));
-  nodeAddLink(group,
-              shade_smooth_face,
-              nodeFindSocket(shade_smooth_face, SOCK_OUT, "Geometry"),
-              group_output,
-              nodeFindSocket(group_output, SOCK_IN, "Socket_0"));
-  nodeAddLink(group,
-              group_input_angle,
-              nodeFindSocket(group_input_angle, SOCK_OUT, "Socket_2"),
-              less_than_or_equal,
-              nodeFindSocket(less_than_or_equal, SOCK_IN, "B"));
-  nodeAddLink(group,
-              less_than_or_equal,
-              nodeFindSocket(less_than_or_equal, SOCK_OUT, "Result"),
-              boolean_and,
-              nodeFindSocket(boolean_and, SOCK_IN, "Boolean"));
-  nodeAddLink(group,
-              face_smooth,
-              nodeFindSocket(face_smooth, SOCK_OUT, "Smooth"),
-              boolean_and,
-              nodeFindSocket(boolean_and, SOCK_IN, "Boolean_001"));
-  nodeAddLink(group,
-              group_input_mesh,
-              nodeFindSocket(group_input_mesh, SOCK_OUT, "Socket_1"),
-              shade_smooth_edge,
-              nodeFindSocket(shade_smooth_edge, SOCK_IN, "Geometry"));
-  nodeAddLink(group,
-              edge_smooth,
-              nodeFindSocket(edge_smooth, SOCK_OUT, "Smooth"),
-              shade_smooth_edge,
-              nodeFindSocket(shade_smooth_edge, SOCK_IN, "Selection"));
-  nodeAddLink(group,
-              shade_smooth_edge,
-              nodeFindSocket(shade_smooth_edge, SOCK_OUT, "Geometry"),
-              shade_smooth_face,
-              nodeFindSocket(shade_smooth_face, SOCK_IN, "Geometry"));
-  nodeAddLink(group,
-              boolean_and,
-              nodeFindSocket(boolean_and, SOCK_OUT, "Boolean"),
-              shade_smooth_edge,
-              nodeFindSocket(shade_smooth_edge, SOCK_IN, "Shade Smooth"));
+  node_add_link(group,
+                edge_angle,
+                node_find_socket(edge_angle, SOCK_OUT, "Unsigned Angle"),
+                less_than_or_equal,
+                node_find_socket(less_than_or_equal, SOCK_IN, "A"));
+  node_add_link(group,
+                shade_smooth_face,
+                node_find_socket(shade_smooth_face, SOCK_OUT, "Geometry"),
+                group_output,
+                node_find_socket(group_output, SOCK_IN, "Socket_0"));
+  node_add_link(group,
+                group_input_angle,
+                node_find_socket(group_input_angle, SOCK_OUT, "Socket_2"),
+                less_than_or_equal,
+                node_find_socket(less_than_or_equal, SOCK_IN, "B"));
+  node_add_link(group,
+                less_than_or_equal,
+                node_find_socket(less_than_or_equal, SOCK_OUT, "Result"),
+                boolean_and,
+                node_find_socket(boolean_and, SOCK_IN, "Boolean"));
+  node_add_link(group,
+                face_smooth,
+                node_find_socket(face_smooth, SOCK_OUT, "Smooth"),
+                boolean_and,
+                node_find_socket(boolean_and, SOCK_IN, "Boolean_001"));
+  node_add_link(group,
+                group_input_mesh,
+                node_find_socket(group_input_mesh, SOCK_OUT, "Socket_1"),
+                shade_smooth_edge,
+                node_find_socket(shade_smooth_edge, SOCK_IN, "Geometry"));
+  node_add_link(group,
+                edge_smooth,
+                node_find_socket(edge_smooth, SOCK_OUT, "Smooth"),
+                shade_smooth_edge,
+                node_find_socket(shade_smooth_edge, SOCK_IN, "Selection"));
+  node_add_link(group,
+                shade_smooth_edge,
+                node_find_socket(shade_smooth_edge, SOCK_OUT, "Geometry"),
+                shade_smooth_face,
+                node_find_socket(shade_smooth_face, SOCK_IN, "Geometry"));
+  node_add_link(group,
+                boolean_and,
+                node_find_socket(boolean_and, SOCK_OUT, "Boolean"),
+                shade_smooth_edge,
+                node_find_socket(shade_smooth_edge, SOCK_IN, "Shade Smooth"));
 
   LISTBASE_FOREACH (bNode *, node, &group->nodes) {
-    nodeSetSelected(node, false);
+    node_set_selected(node, false);
   }
 
   BKE_ntree_update_main_tree(&bmain, group, nullptr);
@@ -2290,7 +2292,7 @@ static bool is_auto_smooth_node_tree(const bNodeTree &group)
   }
   if (static_cast<bNodeSocket *>(nodes[4]->inputs.last)
           ->default_value_typed<bNodeSocketValueBoolean>()
-          ->value != true)
+          ->value != 1)
   {
     return false;
   }
@@ -2326,7 +2328,7 @@ static bool is_auto_smooth_node_tree(const bNodeTree &group)
 
 static ModifierData *create_auto_smooth_modifier(
     Object &object,
-    const FunctionRef<bNodeTree *(Library *library)> get_node_group,
+    const FunctionRef<bNodeTree *(Library *owner_library)> get_node_group,
     const float angle)
 {
   auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
@@ -2358,38 +2360,25 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
 
   /* Add the node group lazily and share it among all objects in the same library. */
   Map<Library *, bNodeTree *> group_by_library;
-  const auto add_node_group = [&](Library *library) {
-    if (bNodeTree **group = group_by_library.lookup_ptr(library)) {
+  const auto add_node_group = [&](Library *owner_library) {
+    if (bNodeTree **group = group_by_library.lookup_ptr(owner_library)) {
       /* Node tree has already been found/created for this versioning call. */
       return *group;
     }
     /* Try to find an existing group added by previous versioning to avoid adding duplicates. */
     LISTBASE_FOREACH (bNodeTree *, existing_group, &bmain.nodetrees) {
-      if (existing_group->id.lib != library) {
+      if (existing_group->id.lib != owner_library) {
         continue;
       }
       if (is_auto_smooth_node_tree(*existing_group)) {
-        group_by_library.add_new(library, existing_group);
+        group_by_library.add_new(owner_library, existing_group);
         return existing_group;
       }
     }
-    bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
+    bNodeTree *new_group = add_auto_smooth_node_tree(bmain, owner_library);
     /* Remove the default user. The count is tracked manually when assigning to modifiers. */
     id_us_min(&new_group->id);
-
-    if (new_group->id.lib != library) {
-      /* Move the node group to the requested library so that library data-blocks don't point to
-       * local data-blocks. This requires making sure the name is unique in that library and
-       * changing the name maps to be consistent with the new state. */
-      BKE_main_namemap_remove_name(&bmain, &new_group->id, new_group->id.name + 2);
-      new_group->id.lib = library;
-      BKE_id_new_name_validate(&bmain, &bmain.nodetrees, &new_group->id, nullptr, false);
-      if (library) {
-        new_group->id.tag |= LIB_TAG_INDIRECT;
-      }
-    }
-
-    group_by_library.add_new(library, new_group);
+    group_by_library.add_new(owner_library, new_group);
     return new_group;
   };
 
@@ -2429,6 +2418,16 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
         if ((nmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0) {
           ModifierData *new_md = create_auto_smooth_modifier(*object, add_node_group, angle);
           BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, new_md);
+        }
+      }
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (nmd->node_group && is_auto_smooth_node_tree(*nmd->node_group)) {
+          /* This object has already been processed by versioning. If the mesh is linked from
+           * another file its auto-smooth flag may not be cleared, so this check is necessary to
+           * avoid adding a duplicate modifier. */
+          has_custom_normals = true;
+          break;
         }
       }
     }

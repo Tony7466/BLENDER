@@ -29,7 +29,7 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_fcurve.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_object_types.hh"
@@ -390,46 +390,44 @@ static void updateDuplicateSubtarget(EditBone *dup_bone,
    */
   EditBone *oldtarget, *newtarget;
   bPoseChannel *pchan;
-  ListBase *conlist;
 
   if ((pchan = BKE_pose_channel_ensure(ob->pose, dup_bone->name))) {
-    if ((conlist = &pchan->constraints)) {
-      LISTBASE_FOREACH (bConstraint *, curcon, conlist) {
-        /* does this constraint have a subtarget in
-         * this armature?
-         */
-        ListBase targets = {nullptr, nullptr};
+    ListBase *conlist = &pchan->constraints;
+    LISTBASE_FOREACH (bConstraint *, curcon, conlist) {
+      /* does this constraint have a subtarget in
+       * this armature?
+       */
+      ListBase targets = {nullptr, nullptr};
 
-        if (BKE_constraint_targets_get(curcon, &targets)) {
-          LISTBASE_FOREACH (bConstraintTarget *, ct, &targets) {
-            if ((ct->tar == ob) && (ct->subtarget[0])) {
-              oldtarget = get_named_editbone(editbones, ct->subtarget);
-              if (oldtarget) {
-                /* was the subtarget bone duplicated too? If
-                 * so, update the constraint to point at the
-                 * duplicate of the old subtarget.
-                 */
-                if (oldtarget->temp.ebone) {
-                  newtarget = oldtarget->temp.ebone;
+      if (BKE_constraint_targets_get(curcon, &targets)) {
+        LISTBASE_FOREACH (bConstraintTarget *, ct, &targets) {
+          if ((ct->tar == ob) && (ct->subtarget[0])) {
+            oldtarget = get_named_editbone(editbones, ct->subtarget);
+            if (oldtarget) {
+              /* was the subtarget bone duplicated too? If
+               * so, update the constraint to point at the
+               * duplicate of the old subtarget.
+               */
+              if (oldtarget->temp.ebone) {
+                newtarget = oldtarget->temp.ebone;
+                STRNCPY(ct->subtarget, newtarget->name);
+              }
+              else if (lookup_mirror_subtarget) {
+                /* The subtarget was not selected for duplication, try to see if a mirror bone of
+                 * the current target exists */
+                char name_flip[MAXBONENAME];
+
+                BLI_string_flip_side_name(name_flip, oldtarget->name, false, sizeof(name_flip));
+                newtarget = get_named_editbone(editbones, name_flip);
+                if (newtarget) {
                   STRNCPY(ct->subtarget, newtarget->name);
-                }
-                else if (lookup_mirror_subtarget) {
-                  /* The subtarget was not selected for duplication, try to see if a mirror bone of
-                   * the current target exists */
-                  char name_flip[MAXBONENAME];
-
-                  BLI_string_flip_side_name(name_flip, oldtarget->name, false, sizeof(name_flip));
-                  newtarget = get_named_editbone(editbones, name_flip);
-                  if (newtarget) {
-                    STRNCPY(ct->subtarget, newtarget->name);
-                  }
                 }
               }
             }
           }
-
-          BKE_constraint_targets_flush(curcon, &targets, false);
         }
+
+        BKE_constraint_targets_flush(curcon, &targets, false);
       }
     }
   }
@@ -836,6 +834,52 @@ static void updateDuplicateTransformConstraintSettings(Object *ob,
   mul_m4_v3(imat, trans->to_max_scale);
 }
 
+static void track_axis_x_swap(int &value)
+{
+  /* Swap track axis X <> -X. */
+  if (value == TRACK_X) {
+    value = TRACK_nX;
+  }
+  else if (value == TRACK_nX) {
+    value = TRACK_X;
+  }
+}
+
+static void track_axis_x_swap(char &value)
+{
+  /* Swap track axis X <> -X. */
+  if (value == TRACK_X) {
+    value = TRACK_nX;
+  }
+  else if (value == TRACK_nX) {
+    value = TRACK_X;
+  }
+}
+
+static void updateDuplicateConstraintTrackToSettings(bConstraint *curcon)
+{
+  bTrackToConstraint *data = static_cast<bTrackToConstraint *>(curcon->data);
+  track_axis_x_swap(data->reserved1);
+}
+
+static void updateDuplicateConstraintLockTrackSettings(bConstraint *curcon)
+{
+  bLockTrackConstraint *data = static_cast<bLockTrackConstraint *>(curcon->data);
+  track_axis_x_swap(data->trackflag);
+}
+
+static void updateDuplicateConstraintDampTrackSettings(bConstraint *curcon)
+{
+  bDampTrackConstraint *data = static_cast<bDampTrackConstraint *>(curcon->data);
+  track_axis_x_swap(data->trackflag);
+}
+
+static void updateDuplicateConstraintShrinkwrapSettings(bConstraint *curcon)
+{
+  bShrinkwrapConstraint *data = static_cast<bShrinkwrapConstraint *>(curcon->data);
+  track_axis_x_swap(data->trackAxis);
+}
+
 static void updateDuplicateConstraintSettings(EditBone *dup_bone, EditBone *orig_bone, Object *ob)
 {
   /* If an edit bone has been duplicated, lets update its constraints if the
@@ -864,6 +908,18 @@ static void updateDuplicateConstraintSettings(EditBone *dup_bone, EditBone *orig
         break;
       case CONSTRAINT_TYPE_TRANSFORM:
         updateDuplicateTransformConstraintSettings(ob, pchan, curcon);
+        break;
+      case CONSTRAINT_TYPE_TRACKTO:
+        updateDuplicateConstraintTrackToSettings(curcon);
+        break;
+      case CONSTRAINT_TYPE_LOCKTRACK:
+        updateDuplicateConstraintLockTrackSettings(curcon);
+        break;
+      case CONSTRAINT_TYPE_DAMPTRACK:
+        updateDuplicateConstraintDampTrackSettings(curcon);
+        break;
+      case CONSTRAINT_TYPE_SHRINKWRAP:
+        updateDuplicateConstraintShrinkwrapSettings(curcon);
         break;
     }
   }
@@ -1091,8 +1147,6 @@ static int armature_duplicate_selected_exec(bContext *C, wmOperator *op)
     }
 
     postEditBoneDuplicate(arm->edbo, ob);
-
-    ED_armature_edit_validate_active(arm);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
     DEG_id_tag_update(&ob->id, ID_RECALC_SELECT);
@@ -1367,8 +1421,6 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
     }
 
     postEditBoneDuplicate(arm->edbo, obedit);
-
-    ED_armature_edit_validate_active(arm);
 
     WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, obedit);
     DEG_id_tag_update(&obedit->id, ID_RECALC_SELECT);

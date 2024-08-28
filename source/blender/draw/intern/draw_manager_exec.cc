@@ -34,7 +34,7 @@ void DRW_select_load_id(uint id)
 #define DEBUG_UBO_BINDING
 
 struct DRWCommandsState {
-  GPUBatch *batch;
+  blender::gpu::Batch *batch;
   int resource_chunk;
   int resource_id;
   int base_inst;
@@ -320,8 +320,8 @@ void DRW_state_reset()
 
   GPU_texture_unbind_all();
   GPU_texture_image_unbind_all();
-  GPU_uniformbuf_unbind_all();
-  GPU_storagebuf_unbind_all();
+  GPU_uniformbuf_debug_unbind_all();
+  GPU_storagebuf_debug_unbind_all();
 
   /* Should stay constant during the whole rendering. */
   GPU_point_size(5);
@@ -531,7 +531,7 @@ BLI_INLINE void draw_legacy_matrix_update(DRWShadingGroup *shgroup,
   }
 }
 
-BLI_INLINE void draw_geometry_bind(DRWShadingGroup *shgroup, GPUBatch *geom)
+BLI_INLINE void draw_geometry_bind(DRWShadingGroup *shgroup, blender::gpu::Batch *geom)
 {
   DST.batch = geom;
 
@@ -539,7 +539,7 @@ BLI_INLINE void draw_geometry_bind(DRWShadingGroup *shgroup, GPUBatch *geom)
 }
 
 BLI_INLINE void draw_geometry_execute(DRWShadingGroup *shgroup,
-                                      GPUBatch *geom,
+                                      blender::gpu::Batch *geom,
                                       int vert_first,
                                       int vert_count,
                                       int inst_first,
@@ -742,7 +742,7 @@ static void draw_update_uniforms(DRWShadingGroup *shgroup,
 
 BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
                                    DRWCommandsState *state,
-                                   GPUBatch *batch,
+                                   blender::gpu::Batch *batch,
                                    const DRWResourceHandle *handle)
 {
   const bool is_instancing = (batch->inst[0] != nullptr);
@@ -751,8 +751,7 @@ BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
   int tot = is_instancing ? GPU_vertbuf_get_vertex_len(batch->inst[0]) :
                             GPU_vertbuf_get_vertex_len(batch->verts[0]);
   /* HACK: get VBO data without actually drawing. */
-  int *select_id = static_cast<int *>(
-      (void *)static_cast<int *>(GPU_vertbuf_get_data(state->select_buf)));
+  int *select_id = state->select_buf->data<int>().data();
 
   /* Batching */
   if (!is_instancing) {
@@ -856,7 +855,7 @@ static void draw_call_batching_flush(DRWShadingGroup *shgroup, DRWCommandsState 
 
 static void draw_call_single_do(DRWShadingGroup *shgroup,
                                 DRWCommandsState *state,
-                                GPUBatch *batch,
+                                blender::gpu::Batch *batch,
                                 DRWResourceHandle handle,
                                 int vert_first,
                                 int vert_count,
@@ -895,7 +894,7 @@ static void draw_call_single_do(DRWShadingGroup *shgroup,
  * only execute an indirect drawcall with user indirect buffer. */
 static void draw_call_indirect(DRWShadingGroup *shgroup,
                                DRWCommandsState *state,
-                               GPUBatch *batch,
+                               blender::gpu::Batch *batch,
                                DRWResourceHandle handle,
                                GPUStorageBuf *indirect_buf)
 {
@@ -1011,8 +1010,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       if (G.debug & G_DEBUG_GPU) {
         GPU_texture_unbind_all();
         GPU_texture_image_unbind_all();
-        GPU_uniformbuf_unbind_all();
-        GPU_storagebuf_unbind_all();
+        GPU_uniformbuf_debug_unbind_all();
+        GPU_storagebuf_debug_unbind_all();
       }
     }
     GPU_shader_bind(shgroup->shader);
@@ -1191,8 +1190,8 @@ static void drw_draw_pass_ex(DRWPass *pass,
 
   DST.shader = nullptr;
 
-  BLI_assert(DST.buffer_finish_called &&
-             "DRW_render_instance_buffer_finish had not been called before drawing");
+  BLI_assert_msg(DST.buffer_finish_called,
+                 "DRW_render_instance_buffer_finish had not been called before drawing");
 
   if (DST.view_previous != DST.view_active || DST.view_active->is_dirty) {
     drw_update_view();

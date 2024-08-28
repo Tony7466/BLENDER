@@ -22,7 +22,7 @@
 #include "DNA_rigidbody_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 namespace blender::animrig {
 
@@ -73,7 +73,8 @@ bool visualkey_can_use(PointerRNA *ptr, PropertyRNA *prop)
     has_parent = (pchan->parent != nullptr);
   }
   else {
-    BLI_assert(!"visualkey_can_use called for data-block that is not an Object or PoseBone.");
+    BLI_assert_msg(false,
+                   "visualkey_can_use called for data-block that is not an Object or PoseBone.");
     return false;
   }
 

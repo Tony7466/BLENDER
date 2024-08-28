@@ -283,7 +283,7 @@ void BKE_scene_multiview_view_filepath_get(const RenderData *rd,
 const char *BKE_scene_multiview_view_suffix_get(const RenderData *rd, const char *viewname);
 const char *BKE_scene_multiview_view_id_suffix_get(const RenderData *rd, int view_id);
 void BKE_scene_multiview_view_prefix_get(Scene *scene,
-                                         const char *name,
+                                         const char *filepath,
                                          char *r_prefix,
                                          const char **r_ext);
 void BKE_scene_multiview_videos_dimensions_get(
@@ -316,12 +316,3 @@ TransformOrientation *BKE_scene_transform_orientation_find(const Scene *scene, i
  */
 int BKE_scene_transform_orientation_get_index(const Scene *scene,
                                               const TransformOrientation *orientation);
-
-void BKE_scene_cursor_rot_to_mat3(const View3DCursor *cursor, float mat[3][3]);
-void BKE_scene_cursor_mat3_to_rot(View3DCursor *cursor, const float mat[3][3], bool use_compat);
-
-void BKE_scene_cursor_rot_to_quat(const View3DCursor *cursor, float quat[4]);
-void BKE_scene_cursor_quat_to_rot(View3DCursor *cursor, const float quat[4], bool use_compat);
-
-void BKE_scene_cursor_to_mat4(const View3DCursor *cursor, float mat[4][4]);
-void BKE_scene_cursor_from_mat4(View3DCursor *cursor, const float mat[4][4], bool use_compat);

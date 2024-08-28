@@ -34,7 +34,7 @@
 #include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "RE_texture.h"
 
@@ -455,7 +455,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   WarpModifierData *wmd = (WarpModifierData *)md;
 
-  BLO_read_data_address(reader, &wmd->curfalloff);
+  BLO_read_struct(reader, CurveMapping, &wmd->curfalloff);
   if (wmd->curfalloff) {
     BKE_curvemapping_blend_read(reader, wmd->curfalloff);
   }

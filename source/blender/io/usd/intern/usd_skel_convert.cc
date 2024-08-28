@@ -19,6 +19,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_key_types.h"
+#include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BKE_action.h"
@@ -26,7 +27,6 @@
 #include "BKE_deform.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_key.hh"
-#include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
 #include "BKE_report.hh"
@@ -39,7 +39,7 @@
 #include "BLI_vector.hh"
 
 #include "ED_armature.hh"
-#include "ED_mesh.hh"
+#include "ED_object_vgroup.hh"
 
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
@@ -142,7 +142,7 @@ void import_skeleton_curves(Main *bmain,
   const size_t num_samples = samples.size();
 
   /* Create the action on the armature. */
-  bAction *act = blender::animrig::id_action_ensure(bmain, (ID *)&arm_obj->id);
+  bAction *act = blender::animrig::id_action_ensure(bmain, &arm_obj->id);
 
   /* Create the curves. */
 
@@ -340,7 +340,7 @@ void import_skeleton_curves(Main *bmain,
 
 /* Set the skeleton path and bind transform on the given mesh. */
 void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
-                               pxr::UsdPrim &mesh_prim,
+                               const pxr::UsdPrim &mesh_prim,
                                pxr::UsdGeomXformCache &xf_cache)
 {
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
@@ -371,7 +371,7 @@ void add_skinned_mesh_bindings(const pxr::UsdSkelSkeleton &skel,
   }
 }
 
-}  // End anonymous namespace.
+}  // namespace
 
 namespace blender::io::usd {
 
@@ -535,11 +535,11 @@ void import_blendshapes(Main *bmain,
       /* Iterate over the point indices and add the offset to the corresponding
        * key block point. */
       int a = 0;
-      for (int i : point_indices) {
-        if (i < 0 || i > kb->totelem) {
+      for (const int point : point_indices) {
+        if (point < 0 || point > kb->totelem) {
           CLOG_WARN(&LOG,
                     "Out of bounds point index %d for blendshape %s",
-                    i,
+                    point,
                     path.GetAsString().c_str());
           ++a;
           continue;
@@ -553,7 +553,7 @@ void import_blendshapes(Main *bmain,
               path.GetAsString().c_str());
           break;
         }
-        add_v3_v3(&fp[3 * i], offsets[a].data());
+        add_v3_v3(&fp[3 * point], offsets[a].data());
         ++a;
       }
     }
@@ -625,7 +625,7 @@ void import_blendshapes(Main *bmain,
   const size_t num_samples = times.size();
 
   /* Create the animation and curves. */
-  bAction *act = blender::animrig::id_action_ensure(bmain, (ID *)&key->id);
+  bAction *act = blender::animrig::id_action_ensure(bmain, &key->id);
   blender::Vector<FCurve *> curves;
 
   for (auto blendshape_name : blendshapes) {
@@ -762,7 +762,7 @@ void import_skeleton(Main *bmain,
   if (bind_xforms.size() != num_joints) {
     BKE_reportf(reports,
                 RPT_WARNING,
-                "%s:  Mismatch in bind xforms and joint counts for skeleton %s",
+                "%s: Mismatch in bind xforms and joint counts for skeleton %s",
                 __func__,
                 skel.GetPath().GetAsString().c_str());
     return;
@@ -1102,7 +1102,7 @@ void import_mesh_skel_bindings(Main *bmain,
       }
       const int joint_idx = joint_indices[k];
       if (bDeformGroup *def_grp = joint_def_grps[joint_idx]) {
-        ED_vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
+        blender::ed::object::vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
       }
     }
   }
@@ -1231,7 +1231,7 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
   }
 
   /* Finally, delete the temp blendshape weights attributes. */
-  for (pxr::UsdPrim &prim : mesh_prims) {
+  for (const pxr::UsdPrim &prim : mesh_prims) {
     pxr::UsdGeomPrimvarsAPI(prim).RemovePrimvar(TempBlendShapeWeightsPrimvarName);
   }
 }

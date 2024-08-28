@@ -117,12 +117,12 @@ static void ipo_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Ipo *ipo = (Ipo *)id;
 
-  BLO_read_list(reader, &(ipo->curve));
+  BLO_read_struct_list(reader, IpoCurve, &(ipo->curve));
 
   LISTBASE_FOREACH (IpoCurve *, icu, &ipo->curve) {
-    BLO_read_data_address(reader, &icu->bezt);
-    BLO_read_data_address(reader, &icu->bp);
-    BLO_read_data_address(reader, &icu->driver);
+    BLO_read_struct_array(reader, BezTriple, icu->totvert, &icu->bezt);
+    BLO_read_struct_array(reader, BPoint, icu->totvert, &icu->bp);
+    BLO_read_struct(reader, IpoDriver, &icu->driver);
 
     /* Undo generic endian switching. */
     if (BLO_read_requires_endian_switch(reader)) {
@@ -1022,8 +1022,8 @@ static const char *particle_adrcodes_to_paths(int adrcode, int *r_array_index)
 static char *get_rna_access(ID *id,
                             int blocktype,
                             int adrcode,
-                            char actname[],
-                            char constname[],
+                            const char actname[],
+                            const char constname[],
                             Sequence *seq,
                             int *r_array_index)
 {
@@ -2460,7 +2460,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 
     /* clear fake-users, and set user-count to zero to make sure it is cleared on file-save */
     ipo->id.us = 0;
-    ipo->id.flag &= ~LIB_FAKEUSER;
+    ipo->id.flag &= ~ID_FLAG_FAKEUSER;
   }
 
   /* free unused drivers from actions + ipos */

@@ -119,6 +119,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilOutline = 82,
   eModifierType_GreasePencilShrinkwrap = 83,
   eModifierType_GreasePencilBuild = 84,
+  eModifierType_GreasePencilSimplify = 85,
+  eModifierType_GreasePencilTexture = 86,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -189,6 +191,11 @@ typedef enum {
    * to the modifier which might invalidate simulation caches.
    */
   eModifierFlag_UserModified = (1 << 3),
+  /**
+   * New modifiers are added before this modifier, and dragging non-pinned modifiers after is
+   * disabled.
+   */
+  eModifierFlag_PinLast = (1 << 4),
 } ModifierFlag;
 
 /**
@@ -3063,15 +3070,6 @@ struct LineartCache;
 typedef struct GreasePencilLineartModifierData {
   ModifierData modifier;
 
-  /* [Important] Note on legacy material/layer selection variables:
-   *
-   * Now uses the layer/material variables in the `influence`
-   * field above, thus old layer/material fields are obsolete.
-   *
-   * Do not change any of the data below since the layout of these
-   * data is currently shared with the old line art modifier.
-   * See `BKE_grease_pencil_lineart_wrap_v3` for how it works. */
-
   uint16_t edge_types; /* line type enable flags, bits in eLineartEdgeFlag */
 
   /** Object or Collection, from #eGreasePencilLineartSource. */
@@ -3087,15 +3085,12 @@ typedef struct GreasePencilLineartModifierData {
   struct Object *source_object;
   struct Collection *source_collection;
 
-  /* These are redundant in GPv3, see above for explanations. */
   struct Material *target_material;
   char target_layer[64];
 
   /**
    * These two variables are to pass on vertex group information from mesh to strokes.
    * `vgname` specifies which vertex groups our strokes from source_vertex_group will go to.
-   *
-   * These are redundant in GPv3, see above for explanations.
    */
   char source_vertex_group[64];
   char vgname[64];
@@ -3404,3 +3399,60 @@ typedef enum GreasePencilBuildFlag {
   MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME = (1 << 0),
   MOD_GREASE_PENCIL_BUILD_USE_FADING = (1 << 14),
 } GreasePencilBuildFlag;
+
+typedef struct GreasePencilSimplifyModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /** #GreasePencilSimplifyModifierMode. */
+  short mode;
+  char _pad[4];
+  /** Every n vertex to keep. */
+  short step;
+  float factor;
+  /** For sampling. */
+  float length;
+  float sharp_threshold;
+
+  /** Merge distance */
+  float distance;
+} GreasePencilSimplifyModifierData;
+
+typedef enum GreasePencilSimplifyModifierMode {
+  MOD_GREASE_PENCIL_SIMPLIFY_FIXED = 0,
+  MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE = 1,
+  MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE = 2,
+  MOD_GREASE_PENCIL_SIMPLIFY_MERGE = 3,
+} GreasePencilSimplifyModifierMode;
+
+typedef struct GreasePencilTextureModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /* Offset value to add to uv_fac. */
+  float uv_offset;
+  float uv_scale;
+  float fill_rotation;
+  float fill_offset[2];
+  float fill_scale;
+  /* Custom index for passes. */
+  int layer_pass;
+  /* Texture fit options. */
+  short fit_method;
+  short mode;
+  /* Dot texture rotation. */
+  float alignment_rotation;
+  char _pad[4];
+} GreasePencilTextureModifierData;
+
+/* Texture->fit_method */
+typedef enum GreasePencilTextureModifierFit {
+  MOD_GREASE_PENCIL_TEXTURE_FIT_STROKE = 0,
+  MOD_GREASE_PENCIL_TEXTURE_CONSTANT_LENGTH = 1,
+} GreasePencilTextureModifierFit;
+
+/* Texture->mode */
+typedef enum GreasePencilTextureModifierMode {
+  MOD_GREASE_PENCIL_TEXTURE_STROKE = 0,
+  MOD_GREASE_PENCIL_TEXTURE_FILL = 1,
+  MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL = 2,
+} GreasePencilTextureModifierMode;

@@ -50,7 +50,7 @@
 #include "IMB_imbuf_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "libmv-capi.h"
 #include "tracking_private.h"
@@ -367,7 +367,7 @@ void BKE_tracking_settings_init(MovieTracking *tracking)
   BKE_tracking_object_add(tracking, DATA_("Camera"));
 }
 
-void BKE_tracking_get_camera_object_matrix(Object *camera_object, float mat[4][4])
+void BKE_tracking_get_camera_object_matrix(const Object *camera_object, float mat[4][4])
 {
   BLI_assert(camera_object != nullptr);
   /* NOTE: Construct matrix from scratch rather than using obmat because the camera object here
@@ -1173,7 +1173,7 @@ float BKE_tracking_track_get_weight_for_marker(MovieClip *clip,
                                                MovieTrackingTrack *track,
                                                MovieTrackingMarker *marker)
 {
-  FCurve *weight_fcurve;
+  const FCurve *weight_fcurve;
   float weight = track->weight;
 
   weight_fcurve = id_data_find_fcurve(
@@ -1574,7 +1574,7 @@ MovieTrackingPlaneTrack *BKE_tracking_plane_track_add(MovieTracking *tracking,
   plane_track = MEM_cnew<MovieTrackingPlaneTrack>("new plane track");
 
   /* Use some default name. */
-  STRNCPY(plane_track->name, "Plane Track");
+  STRNCPY(plane_track->name, DATA_("Plane Track"));
 
   plane_track->image_opacity = 1.0f;
 
@@ -2158,7 +2158,7 @@ void BKE_tracking_camera_get_reconstructed_interpolate(MovieTracking * /*trackin
     return;
   }
 
-  if (cameras[a].framenr != framenr && a < reconstruction->camnr - 1) {
+  if ((a < reconstruction->camnr - 1) && (cameras[a].framenr != framenr)) {
     float t = (float(framenr) - cameras[a].framenr) /
               (cameras[a + 1].framenr - cameras[a].framenr);
     blend_m4_m4m4(mat, cameras[a].mat, cameras[a + 1].mat, t);

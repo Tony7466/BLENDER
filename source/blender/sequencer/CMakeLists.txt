@@ -13,7 +13,7 @@ set(INC
   ../render
   ../windowmanager
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -25,6 +25,7 @@ set(SRC
   SEQ_add.hh
   SEQ_animation.hh
   SEQ_channels.hh
+  SEQ_connect.hh
   SEQ_edit.hh
   SEQ_effects.hh
   SEQ_iterator.hh
@@ -50,6 +51,7 @@ set(SRC
   intern/image_cache.cc
   intern/image_cache.hh
   intern/iterator.cc
+  intern/media_presence.cc
   intern/modifier.cc
   intern/multiview.cc
   intern/multiview.hh
@@ -65,6 +67,7 @@ set(SRC
   intern/sequencer.hh
   intern/sound.cc
   intern/strip_add.cc
+  intern/strip_connect.cc
   intern/strip_edit.cc
   intern/strip_relations.cc
   intern/strip_retiming.cc
@@ -106,5 +109,5 @@ endif()
 
 blender_add_lib(bf_sequencer "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_sequencer bf_rna)

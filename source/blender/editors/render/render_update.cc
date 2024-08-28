@@ -177,8 +177,8 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
       ED_render_engine_area_exit(bmain, area);
     }
   }
-  /* Invalidate all shader previews. */
-  blender::ed::space_node::stop_preview_job(*static_cast<wmWindowManager *>(bmain->wm.first));
+  /* Stop and invalidate all shader previews. */
+  ED_preview_kill_jobs(static_cast<wmWindowManager *>(bmain->wm.first), bmain);
   LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
     BKE_material_make_node_previews_dirty(ma);
   }
@@ -303,7 +303,7 @@ static void scene_changed(Main *bmain, Scene *scene)
   {
     if (ob->mode & OB_MODE_TEXTURE_PAINT) {
       BKE_texpaint_slots_refresh_object(scene, ob);
-      ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+      ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
     }
   }
 }

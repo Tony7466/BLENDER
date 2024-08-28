@@ -102,6 +102,7 @@ struct OVERLAY_PassList {
   DRWPass *extra_centers_ps;
   DRWPass *extra_grid_ps;
   DRWPass *gpencil_canvas_ps;
+  DRWPass *grease_pencil_canvas_ps;
   DRWPass *facing_ps[2];
   DRWPass *fade_ps[2];
   DRWPass *mode_transfer_ps[2];
@@ -455,9 +456,9 @@ struct OVERLAY_DupliData {
   DRWShadingGroup *wire_shgrp;
   DRWShadingGroup *outline_shgrp;
   DRWShadingGroup *extra_shgrp;
-  GPUBatch *wire_geom;
-  GPUBatch *outline_geom;
-  GPUBatch *extra_geom;
+  blender::gpu::Batch *wire_geom;
+  blender::gpu::Batch *outline_geom;
+  blender::gpu::Batch *extra_geom;
   short base_flag;
 };
 
@@ -562,8 +563,12 @@ void OVERLAY_gpencil_legacy_cache_populate(OVERLAY_Data *vedata, Object *ob);
 void OVERLAY_gpencil_legacy_draw(OVERLAY_Data *vedata);
 void OVERLAY_edit_gpencil_legacy_draw(OVERLAY_Data *vedata);
 
+void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata);
 void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_sculpt_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_weight_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob);
+void OVERLAY_grease_pencil_draw(OVERLAY_Data *vedata);
 void OVERLAY_edit_grease_pencil_draw(OVERLAY_Data *vedata);
 
 void OVERLAY_edit_lattice_cache_init(OVERLAY_Data *vedata);
@@ -622,11 +627,11 @@ void OVERLAY_empty_shape(OVERLAY_ExtraCallBuffers *cb,
                          char draw_type,
                          const float color[4]);
 void OVERLAY_extra_loose_points(OVERLAY_ExtraCallBuffers *cb,
-                                GPUBatch *geom,
+                                blender::gpu::Batch *geom,
                                 const float mat[4][4],
                                 const float color[4]);
 void OVERLAY_extra_wire(OVERLAY_ExtraCallBuffers *cb,
-                        GPUBatch *geom,
+                        blender::gpu::Batch *geom,
                         const float mat[4][4],
                         const float color[4]);
 

@@ -41,7 +41,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_curve.hh"
 #include "ED_mesh.hh"
@@ -52,7 +52,9 @@
 
 #include "UI_resources.hh"
 
-#include "object_intern.h"
+#include "object_intern.hh"
+
+namespace blender::ed::object {
 
 static int return_editmesh_indexar(BMEditMesh *em,
                                    int *r_indexar_num,
@@ -130,7 +132,7 @@ static bool return_editmesh_vgroup(Object *obedit, BMEditMesh *em, char *r_name,
 static void select_editbmesh_hook(Object *ob, HookModifierData *hmd)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh.get();
   BMVert *eve;
   BMIter iter;
   int index = 0, nr = 0;
@@ -338,7 +340,7 @@ static bool object_hook_index_array(Main *bmain,
 
       DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
 
-      BMEditMesh *em = mesh->runtime->edit_mesh;
+      BMEditMesh *em = mesh->runtime->edit_mesh.get();
 
       BKE_editmesh_looptris_and_normals_calc(em);
 
@@ -717,6 +719,7 @@ static int object_hook_remove_exec(bContext *C, wmOperator *op)
   BKE_modifier_remove_from_list(ob, (ModifierData *)hmd);
   BKE_modifier_free((ModifierData *)hmd);
 
+  DEG_relations_tag_update(CTX_data_main(C));
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
 
@@ -995,3 +998,5 @@ void OBJECT_OT_hook_select(wmOperatorType *ot)
   RNA_def_enum_funcs(prop, hook_mod_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
 }
+
+}  // namespace blender::ed::object

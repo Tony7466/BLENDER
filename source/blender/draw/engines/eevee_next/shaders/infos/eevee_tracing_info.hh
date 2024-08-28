@@ -58,6 +58,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_fallback)
     .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
+                     "eevee_gbuffer_data",
                      "eevee_global_ubo",
                      "draw_view",
                      "eevee_sampling_data",
@@ -67,6 +68,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_trace_fallback)
     .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_radiance_img")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
     .storage_buf(5, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_ray_trace_fallback_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_trace_planar)
@@ -196,6 +198,9 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
                      "eevee_utility_texture",
                      "eevee_hiz_data",
                      "draw_view")
+    .specialization_constant(Type::INT, "fast_gi_slice_count", 2)
+    .specialization_constant(Type::INT, "fast_gi_step_count", 8)
+    .specialization_constant(Type::BOOL, "fast_gi_ao_only", false)
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .sampler(1, ImageType::FLOAT_2D, "screen_normal_tx")
     .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_0_img")
@@ -203,6 +208,8 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
     .image(4, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_2_img")
     .image(5, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_3_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    /* Metal: Provide compiler with hint to tune per-thread resource allocation. */
+    .mtl_max_total_threads_per_threadgroup(400)
     .compute_source("eevee_horizon_scan_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
@@ -241,6 +248,8 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_resolve)
     .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure1_img")
     .image(5, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure2_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    /* Metal: Provide compiler with hint to tune per-thread resource allocation. */
+    .mtl_max_total_threads_per_threadgroup(400)
     .compute_source("eevee_horizon_resolve_comp.glsl");
 
 #undef image_out

@@ -223,8 +223,8 @@ static void join_mesh_single(Depsgraph *depsgraph,
       multiresModifier_prepare_join(depsgraph, scene, ob_src, ob_dst);
 
       if ((mmd = get_multires_modifier(scene, ob_src, true))) {
-        ED_object_iter_other(
-            bmain, ob_src, true, ED_object_multires_update_totlevels_cb, &mmd->totlvl);
+        blender::ed::object::iter_other(
+            bmain, ob_src, true, blender::ed::object::multires_update_totlevels, &mmd->totlvl);
       }
     }
 
@@ -312,6 +312,7 @@ static void mesh_join_offset_face_sets_ID(Mesh *mesh, int *face_set_offset)
     max_face_set = max_ii(max_face_set, face_sets.span[i]);
   }
   *face_set_offset = max_face_set;
+  face_sets.finish();
 }
 
 int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
@@ -640,7 +641,7 @@ int ED_mesh_join_objects_exec(bContext *C, wmOperator *op)
 
       /* free base, now that data is merged */
       if (ob_iter != ob) {
-        ED_object_base_free_and_unlink(bmain, scene, ob_iter);
+        blender::ed::object::base_free_and_unlink(bmain, scene, ob_iter);
       }
     }
   }
@@ -792,7 +793,8 @@ int ED_mesh_shapes_join_objects_exec(bContext *C, wmOperator *op)
         Scene *scene_eval = DEG_get_evaluated_scene(depsgraph);
         Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_iter);
 
-        me_deformed = mesh_get_eval_deform(depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
+        me_deformed = blender::bke::mesh_get_eval_deform(
+            depsgraph, scene_eval, ob_eval, &CD_MASK_BAREMESH);
 
         if (!me_deformed) {
           continue;
@@ -800,7 +802,7 @@ int ED_mesh_shapes_join_objects_exec(bContext *C, wmOperator *op)
 
         kb = BKE_keyblock_add(key, ob_iter->id.name + 2);
 
-        BKE_mesh_runtime_eval_to_meshkey(me_deformed, mesh, kb);
+        blender::bke::mesh_eval_to_meshkey(me_deformed, mesh, kb);
       }
     }
   }
@@ -832,7 +834,7 @@ BLI_INLINE void mesh_mirror_topo_table_get_meshes(Object *ob,
   if (mesh_eval != nullptr) {
     mesh_mirror = mesh_eval;
   }
-  else if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+  else if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     em_mirror = em;
   }
   else {
@@ -972,7 +974,7 @@ int ED_mesh_mirror_get_vert(Object *ob, int index)
   bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
   int index_mirr;
 
-  if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMVert *eve, *eve_mirr;
     eve = BM_vert_at_index(em->bm, index);
     eve_mirr = editbmesh_get_x_mirror_vert(ob, em, eve, eve->co, index, use_topology);

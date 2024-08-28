@@ -42,7 +42,9 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "graph_intern.h"
+#include "ANIM_fcurve.hh"
+
+#include "graph_intern.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Struct & Defines
@@ -157,7 +159,7 @@ static void store_original_bezt_arrays(tGraphSliderOp *gso)
 
   /* Loop through filtered data and copy the curves. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
+    const FCurve *fcu = (const FCurve *)ale->key_data;
 
     if (fcu->bezt == nullptr) {
       /* This curve is baked, skip it. */
@@ -338,6 +340,12 @@ static int graph_slider_modal(bContext *C, wmOperator *op, const wmEvent *event)
       }
       break;
     }
+
+    case EVT_TABKEY:
+      /* Switch between acting on different properties. If this is not handled
+       * by the caller, it's explicitly gobbled up here to avoid it being passed
+       * through via the 'default' case. */
+      break;
 
     /* When the mouse is moved, the percentage and the keyframes update. */
     case MOUSEMOVE: {
@@ -557,7 +565,9 @@ static bool decimate_poll_property(const bContext * /*C*/, wmOperator *op, const
   return true;
 }
 
-static std::string decimate_desc(bContext * /*C*/, wmOperatorType * /*ot*/, PointerRNA *ptr)
+static std::string decimate_get_description(bContext * /*C*/,
+                                            wmOperatorType * /*ot*/,
+                                            PointerRNA *ptr)
 {
 
   if (RNA_enum_get(ptr, "mode") == DECIM_ERROR) {
@@ -594,7 +604,7 @@ void GRAPH_OT_decimate(wmOperatorType *ot)
 
   /* API callbacks */
   ot->poll_property = decimate_poll_property;
-  ot->get_description = decimate_desc;
+  ot->get_description = decimate_get_description;
   ot->invoke = decimate_invoke;
   ot->modal = graph_slider_modal;
   ot->exec = decimate_exec;
@@ -920,7 +930,7 @@ void GRAPH_OT_blend_to_default(wmOperatorType *ot)
 
 static void ease_graph_keys(bAnimContext *ac, const float factor, const float width)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
 
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
@@ -951,7 +961,7 @@ static void ease_draw_status_header(bContext *C, wmOperator *op)
 
   /* Operator specific functionality that extends beyond the slider. */
   char op_slider_string[UI_MAX_DRAW_STR];
-  if (strcmp(RNA_property_identifier(gso->factor_prop), "factor") == 0) {
+  if (STREQ(RNA_property_identifier(gso->factor_prop), "factor")) {
     SNPRINTF(op_slider_string, "%s | %s", slider_string, IFACE_("[TAB] - Modify Sharpness"));
   }
   else {
@@ -984,7 +994,7 @@ static void ease_modal_update(bContext *C, wmOperator *op)
   reset_bezts(gso);
   float factor;
   float width;
-  if (strcmp(RNA_property_identifier(gso->factor_prop), "factor") == 0) {
+  if (STREQ(RNA_property_identifier(gso->factor_prop), "factor")) {
     factor = slider_factor_get_and_remember(op);
     width = RNA_float_get(op->ptr, "sharpness");
   }
@@ -994,7 +1004,7 @@ static void ease_modal_update(bContext *C, wmOperator *op)
   }
 
   ease_graph_keys(&gso->ac, factor, width);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1006,7 +1016,7 @@ static int ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
   switch (event->type) {
     case EVT_TABKEY: {
       tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
-      if (strcmp(RNA_property_identifier(gso->factor_prop), "factor") == 0) {
+      if (STREQ(RNA_property_identifier(gso->factor_prop), "factor")) {
         /* Switch to sharpness. */
         ED_slider_allow_overshoot_set(gso->slider, false, true);
         ED_slider_factor_bounds_set(gso->slider, 0.001f, 10);
@@ -1024,6 +1034,7 @@ static int ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
         ED_slider_unit_set(gso->slider, "%");
         gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
       }
+      ED_slider_property_label_set(gso->slider, RNA_property_ui_name(gso->factor_prop));
       ease_modal_update(C, op);
       break;
     }
@@ -1049,6 +1060,7 @@ static int ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   ED_slider_allow_overshoot_set(gso->slider, false, false);
   ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
+  ED_slider_property_label_set(gso->slider, RNA_property_ui_name(gso->factor_prop));
 
   return invoke_result;
 }
@@ -1066,7 +1078,7 @@ static int ease_exec(bContext *C, wmOperator *op)
 
   ease_graph_keys(&ac, factor, width);
 
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1828,7 +1840,8 @@ static void gaussian_smooth_allocate_operator_data(tGraphSliderOp *gso,
                                (filter_width * 2 + 1);
       float *samples = static_cast<float *>(
           MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples"));
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
+      blender::animrig::sample_fcurve_segment(
+          fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
       segment_link->samples = samples;
       BLI_addtail(&segment_links, segment_link);
     }
@@ -1930,7 +1943,8 @@ static void gaussian_smooth_graph_keys(bAnimContext *ac,
                                (filter_width * 2 + 1);
       float *samples = static_cast<float *>(
           MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples"));
-      sample_fcurve_segment(fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
+      blender::animrig::sample_fcurve_segment(
+          fcu, left_bezt.vec[1][0] - filter_width, 1, samples, sample_count);
       smooth_fcurve_segment(fcu, segment, samples, factor, filter_width, kernel);
       MEM_freeN(samples);
     }
@@ -2025,8 +2039,8 @@ struct tBtwOperatorData {
   ListBase anim_data;     /* bAnimListElem */
 };
 
-static int btw_calculate_sample_count(BezTriple *right_bezt,
-                                      BezTriple *left_bezt,
+static int btw_calculate_sample_count(const BezTriple *right_bezt,
+                                      const BezTriple *left_bezt,
                                       const int filter_order,
                                       const int samples_per_frame)
 {
@@ -2069,7 +2083,7 @@ static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
           &right_bezt, &left_bezt, filter_order, samples_per_frame);
       float *samples = static_cast<float *>(
           MEM_callocN(sizeof(float) * sample_count, "Btw Smooth FCurve Op Samples"));
-      sample_fcurve_segment(
+      blender::animrig::sample_fcurve_segment(
           fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       segment_link->samples = samples;
       segment_link->sample_count = sample_count;
@@ -2198,7 +2212,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
           &right_bezt, &left_bezt, filter_order, samples_per_frame);
       float *samples = static_cast<float *>(
           MEM_callocN(sizeof(float) * sample_count, "Smooth FCurve Op Samples"));
-      sample_fcurve_segment(
+      blender::animrig::sample_fcurve_segment(
           fcu, left_bezt.vec[1][0] - filter_order, samples_per_frame, samples, sample_count);
       butterworth_smooth_fcurve_segment(
           fcu, segment, samples, sample_count, factor, blend_in_out, samples_per_frame, bw_coeff);

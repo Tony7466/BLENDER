@@ -50,6 +50,7 @@
 #include "BKE_material.h"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
@@ -59,7 +60,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
@@ -78,7 +79,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************************** */
 /* Context Wrangling... */
@@ -123,21 +124,19 @@ bGPdata **ED_annotation_data_get_pointers_direct(ID *screen_id,
     SpaceLink *sl = static_cast<SpaceLink *>(area->spacedata.first);
 
     switch (area->spacetype) {
-      case SPACE_PROPERTIES: /* properties */
-      case SPACE_INFO:       /* header info */
+      case SPACE_INFO: /* header info */
       {
         return nullptr;
       }
 
-      case SPACE_TOPBAR: /* Top-bar */
-      case SPACE_VIEW3D: /* 3D-View */
+      case SPACE_TOPBAR:     /* Top-bar */
+      case SPACE_VIEW3D:     /* 3D-View */
+      case SPACE_PROPERTIES: /* properties */
       {
         if (r_ptr) {
           *r_ptr = RNA_id_pointer_create(&scene->id);
         }
         return &scene->gpd;
-
-        break;
       }
       case SPACE_NODE: /* Nodes Editor */
       {
@@ -447,7 +446,7 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
       item_tmp.identifier = ma->id.name + 2;
       item_tmp.name = ma->id.name + 2;
       item_tmp.value = i;
-      item_tmp.icon = ma->preview ? ma->preview->icon_id : ICON_NONE;
+      item_tmp.icon = ma->preview ? ma->preview->runtime->icon_id : ICON_NONE;
 
       RNA_enum_item_add(&item, &totitem, &item_tmp);
     }
@@ -1416,7 +1415,8 @@ Object *ED_gpencil_add_object(bContext *C, const float loc[3], ushort local_view
 {
   const float rot[3] = {0.0f};
 
-  Object *ob = ED_object_add_type(C, OB_GPENCIL_LEGACY, nullptr, loc, rot, false, local_view_bits);
+  Object *ob = blender::ed::object::add_type(
+      C, OB_GPENCIL_LEGACY, nullptr, loc, rot, false, local_view_bits);
 
   /* create default brushes and colors */
   ED_gpencil_add_defaults(C, ob);
@@ -1429,14 +1429,7 @@ void ED_gpencil_add_defaults(bContext *C, Object *ob)
   Main *bmain = CTX_data_main(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
-  BKE_paint_ensure(ts, (Paint **)&ts->gp_paint);
-  Paint *paint = &ts->gp_paint->paint;
-  Brush *brush = BKE_paint_brush(paint);
-  /* if not exist, create a new one */
-  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-    /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
-  }
+  BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
 
   /* ensure a color exists and is assigned to object */
   BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, ob, ts);
@@ -1727,7 +1720,7 @@ void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y)
   GPU_line_smooth(false);
 }
 
-static bool gpencil_brush_cursor_poll(bContext *C)
+bool ED_gpencil_brush_cursor_poll(bContext *C)
 {
   if (WM_toolsystem_active_tool_is_brush(C)) {
     return true;
@@ -2018,7 +2011,7 @@ void ED_gpencil_toggle_brush_cursor(bContext *C, bool enable, void *customdata)
     /* enable cursor */
     gset->paintcursor = WM_paint_cursor_activate(SPACE_TYPE_ANY,
                                                  RGN_TYPE_ANY,
-                                                 gpencil_brush_cursor_poll,
+                                                 ED_gpencil_brush_cursor_poll,
                                                  gpencil_brush_cursor_draw,
                                                  (lastpost) ? customdata : nullptr);
   }
@@ -3020,6 +3013,7 @@ void ED_gpencil_sbuffer_vertex_color_set(Depsgraph *depsgraph,
   if (gpd_eval != nullptr) {
     copy_v4_v4(gpd_eval->runtime.vert_color_fill, gpd->runtime.vert_color_fill);
     gpd_eval->runtime.matid = gpd->runtime.matid;
+    gpd_eval->runtime.fill_opacity_fac = gpd->runtime.fill_opacity_fac;
   }
 }
 
@@ -3429,7 +3423,11 @@ int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       gpencil_layer_new_name_get(gpd, name, sizeof(name));
       RNA_property_string_set(op->ptr, prop, name);
-      return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Add New Layer"), IFACE_("Add"));
+      return WM_operator_props_dialog_popup(C,
+                                            op,
+                                            200,
+                                            IFACE_("Add New Layer"),
+                                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
     }
   }
   return 0;

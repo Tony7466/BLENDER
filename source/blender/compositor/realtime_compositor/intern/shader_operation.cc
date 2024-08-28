@@ -73,7 +73,7 @@ void ShaderOperation::execute()
 
   GPU_texture_unbind_all();
   GPU_texture_image_unbind_all();
-  GPU_uniformbuf_unbind_all();
+  GPU_uniformbuf_debug_unbind_all();
   GPU_shader_unbind();
 }
 
@@ -441,7 +441,7 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
 
     /* Add a write-only image for this output where its values will be written. */
     shader_create_info.image(0,
-                             result.get_texture_format(),
+                             result.get_gpu_texture_format(),
                              Qualifier::WRITE,
                              ImageType::FLOAT_2D,
                              output_identifier,
