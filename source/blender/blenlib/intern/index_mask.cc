@@ -457,26 +457,27 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
       GrainSize(max_segment_size),
       memory,
       [&](const IndexMaskSegment universe_segment, IndexRangesBuilder<int16_t> &builder) {
-        int64_t extra_shift = 0;
+        const int64_t segment_start = universe_segment[0];
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
-          const IndexRange universe_range{universe_segment[0], universe_segment.size()};
+          const IndexRange universe_range{segment_start, universe_segment.size()};
           bits::bits_to_index_ranges<int16_t>(bits.slice(universe_range), builder);
-          extra_shift = universe_range.start();
         }
         else {
-          /* TODO: Do less unnecessary work. */
-          BitVector<max_segment_size> local_bits(max_segment_size, false);
+          const int64_t segment_end = universe_segment.last() + 1;
+          BitVector<max_segment_size> local_bits(segment_end - segment_start, false);
           for (const int64_t i : universe_segment.index_range()) {
             const int64_t global_index = universe_segment[i];
-            const int16_t local_index = universe_segment.base_span()[i];
+            const int64_t local_index = global_index - segment_start;
+            BLI_assert(local_index < max_segment_size);
+            /* It's not great to handle each index separately instead of working with bigger
+             * chunks, but that works well enough for now. */
             if (bits[global_index]) {
               local_bits[local_index].set();
             }
           }
           bits::bits_to_index_ranges<int16_t>(local_bits, builder);
-          extra_shift = universe_segment.offset();
         }
-        return extra_shift;
+        return segment_start;
       });
 }
 

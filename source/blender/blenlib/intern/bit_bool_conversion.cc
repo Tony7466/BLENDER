@@ -10,7 +10,6 @@ namespace blender::bits {
 
 void bools_to_zeroed_bits(const Span<bool> bools, MutableBitSpan r_bits)
 {
-  SCOPED_TIMER(__func__);
   BLI_assert(r_bits.size() >= bools.size());
   if (bools.is_empty()) {
     return;
