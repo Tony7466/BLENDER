@@ -49,16 +49,20 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     commit_time_match = re.search(r"build commit time: (.*)", text)
     build_hash_match = re.search(r"build hash: (.*)", text)
 
-    # TODO: Replace with something else?
-    # Error on failure?
-    failed_string = "Script failed"
+    if not (version_match and branch_match and commit_date_match and commit_time_match and build_hash_match):
+        # No valid Blender info could be found.
+        print("Blender did not provide any build information. Blender may be corrupt or blocked from running.")
+        print("Please try reinstalling Blender and double check your anti-virus isn't blocking it from running.")
+        return 1
+
+    missing_string = "<unknown>"
 
     query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash `{:s}`".format(
-        version_match.group(1).strip() if version_match else failed_string,
-        branch_match.group(1).strip() if branch_match else failed_string,
-        commit_date_match.group(1).strip() if commit_date_match else failed_string,
-        commit_time_match.group(1).strip() if commit_time_match else failed_string,
-        build_hash_match.group(1).strip() if build_hash_match else failed_string,
+        version_match.group(1).strip() if version_match else missing_string,
+        branch_match.group(1).strip() if branch_match else missing_string,
+        commit_date_match.group(1).strip() if commit_date_match else missing_string,
+        commit_time_match.group(1).strip() if commit_time_match else missing_string,
+        build_hash_match.group(1).strip() if build_hash_match else missing_string,
     )
 
     query_str = urllib.parse.urlencode(query_params)
