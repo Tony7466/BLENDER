@@ -459,7 +459,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
         int64_t extra_shift = 0;
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
           const IndexRange universe_range{universe_segment[0], universe_segment.size()};
-          bits::bits_to_index_ranges(bits.slice(universe_range), builder);
+          bits::bits_to_index_ranges<int16_t>(bits.slice(universe_range), builder);
           extra_shift = universe_range.start();
         }
         else {
@@ -472,7 +472,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
               local_bits[local_index].set();
             }
           }
-          bits::bits_to_index_ranges(local_bits, builder);
+          bits::bits_to_index_ranges<int16_t>(local_bits, builder);
           extra_shift = universe_segment.offset();
         }
         return extra_shift;

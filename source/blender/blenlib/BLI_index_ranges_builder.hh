@@ -40,13 +40,21 @@ template<typename T> class IndexRangesBuilder : NonCopyable, NonMovable {
 
   bool add_range(const T start, const T end)
   {
-    /* This is intentionally branchless. */
+    /* Indices have to be added in ascending order. */
+    BLI_assert(start >= *c_);
+
     const bool is_new_range = start > *c_;
+
+    /* Check that the capacity is not overflown. */
+    BLI_assert(!is_new_range || this->size() < this->capacity());
+
+    /* This is designed to either append to the last range or start a new range.
+     * It is intentionally branchless for more predictable performance on unpredictable data. */
     c_ += is_new_range;
     *c_ = start;
     c_ += is_new_range;
     *c_ = end;
-    BLI_assert(c_ < data_.end());
+
     return is_new_range;
   }
 

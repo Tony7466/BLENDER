@@ -4,26 +4,33 @@
 
 #pragma once
 
+#include <numeric>
+
 #include "BLI_bit_span.hh"
 #include "BLI_index_ranges_builder.hh"
 #include "BLI_math_bits.h"
 
 namespace blender::bits {
 
+template<typename IntT>
 inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t> &builder)
 {
   if (bits.is_empty()) {
     return;
   }
 
+  /* -1 because we also need to store the end of the last range. */
+  constexpr int64_t max_index = std::numeric_limits<IntT>::max() - 1;
+
   auto append_range = [&](const IndexRange range) {
-    builder.add_range(int16_t(range.start()), int16_t(range.one_after_last()));
+    BLI_assert(range.last() <= max_index);
+    builder.add_range(IntT(range.start()), IntT(range.one_after_last()));
   };
 
   auto append_index = [&](const int64_t index) {
     BLI_assert(index >= 0);
-    BLI_assert(index < bits.size());
-    builder.add(int16_t(index));
+    BLI_assert(index <= max_index);
+    builder.add(IntT(index));
   };
 
   auto process_bit_int = [&](const BitInt value,
