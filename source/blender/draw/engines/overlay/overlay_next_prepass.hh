@@ -64,6 +64,11 @@ class Prepass {
         geom = DRW_cache_mesh_surface_get(ob_ref.object);
         break;
       case OB_VOLUME:
+        if (selection_type_ == SelectionType::DISABLED) {
+          /* Disable during display, only enable for selection. */
+          /* TODO(fclem): Would be nice to have even when not selecting to occlude overlays. */
+          return;
+        }
         geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
         break;
       default:
