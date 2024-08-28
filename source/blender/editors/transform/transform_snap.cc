@@ -464,13 +464,6 @@ int transform_snap_project(const TransInfo *t,
   return 1;
 }
 
-static bool is_point_occluded(const TransInfo *t, float3 &loc, const float4 &plane_near)
-{
-  float3 dummy_loc, dummy_nor;
-  return transform_snap_project(
-             t, t->tsnap.object_context, loc, plane_near, dummy_loc, dummy_nor) == -1;
-}
-
 static bool snap_nearest(
     const TransInfo *t, float3 &init_loc, float3 &prev_loc, float3 &r_loc, float3 &r_no)
 {
@@ -500,8 +493,9 @@ static bool snap_nearest(
 
 static void snap_individual(const TransInfo *t,
                             const TransDataContainer *tc,
-                            TransData *td,
-                            const float4 &plane_near)
+                            const eSnapMode snap_mode,
+                            const float4 &plane_near,
+                            TransData *td)
 {
   float3 loc_init;
   float3 loc_curr;
@@ -522,17 +516,13 @@ static void snap_individual(const TransInfo *t,
   bool has_nearest = false;
   bool has_project = false;
 
-  if (t->tsnap.mode & SCE_SNAP_INDIVIDUAL_NEAREST) {
+  if (snap_mode & SCE_SNAP_INDIVIDUAL_NEAREST) {
     has_nearest = snap_nearest(t, loc_init, loc_curr, loc_near, no_near);
   }
 
-  if (t->tsnap.mode & SCE_SNAP_INDIVIDUAL_PROJECT) {
-    /* Only try projecting if the nearest snap is not occluded.
-     * Using the nearest snap for what is not visible is usually more desirable. */
-    if (!has_nearest || !is_point_occluded(t, loc_near, plane_near)) {
-      has_project = transform_snap_project(
-                        t, t->tsnap.object_context, loc_curr, plane_near, loc_proj, no_proj) != 0;
-    }
+  if (snap_mode & SCE_SNAP_INDIVIDUAL_PROJECT) {
+    has_project = transform_snap_project(
+                      t, t->tsnap.object_context, loc_curr, plane_near, loc_proj, no_proj) != 0;
   }
 
   if (!has_project && !has_nearest) {
@@ -604,6 +594,16 @@ void transform_snap_project_individual_apply(TransInfo *t)
 
   /* XXX: flickers in object mode. */
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+    eSnapMode snap_mode = t->tsnap.mode &
+                          (SCE_SNAP_INDIVIDUAL_NEAREST | SCE_SNAP_INDIVIDUAL_PROJECT);
+
+    if ((tc->data_len > 1) &&
+        (snap_mode == (SCE_SNAP_INDIVIDUAL_NEAREST | SCE_SNAP_INDIVIDUAL_PROJECT)))
+    {
+      /* Project only to nearest if we have more than one element being transformed. */
+      snap_mode = SCE_SNAP_INDIVIDUAL_NEAREST;
+    }
+
     TransData *td = tc->data;
     for (int i = 0; i < tc->data_len; i++, td++) {
       if (td->flag & TD_SKIP) {
@@ -616,7 +616,7 @@ void transform_snap_project_individual_apply(TransInfo *t)
 
       /* If both face ray-cast and face nearest methods are enabled, start with face ray-cast and
        * fallback to face nearest ray-cast does not hit. */
-      snap_individual(t, tc, td, plane_near);
+      snap_individual(t, tc, snap_mode, plane_near, td);
 #if 0 /* TODO: support this? */
       constraintTransLim(t, td);
 #endif
