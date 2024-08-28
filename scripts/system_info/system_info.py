@@ -48,11 +48,11 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     text = blender_output.stdout
 
     # Gather version number and type (Alpha, Beta, etc)
-    version_match = re.search(r"Blender (.*)", text)
-    branch_match = re.search(r"build branch: (.*)", text)
-    commit_date_match = re.search(r"build commit date: (.*)", text)
-    commit_time_match = re.search(r"build commit time: (.*)", text)
-    build_hash_match = re.search(r"build hash: (.*)", text)
+    version_match = re.search(r"^Blender (.*)", text, flags=re.MULTILINE)
+    branch_match = re.search(r"^\s+build branch: (.*)", text, flags=re.MULTILINE)
+    commit_date_match = re.search(r"^\s+build commit date: (.*)", text, flags=re.MULTILINE)
+    commit_time_match = re.search(r"^\s+build commit time: (.*)", text, flags=re.MULTILINE)
+    build_hash_match = re.search(r"^\s+build hash: (.*)", text, flags=re.MULTILINE)
 
     if not (version_match and branch_match and commit_date_match and commit_time_match and build_hash_match):
         # No valid Blender info could be found.
@@ -63,11 +63,11 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     missing_string = "<unknown>"
 
     query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash `{:s}`".format(
-        version_match.group(1).strip() if version_match else missing_string,
-        branch_match.group(1).strip() if branch_match else missing_string,
-        commit_date_match.group(1).strip() if commit_date_match else missing_string,
-        commit_time_match.group(1).strip() if commit_time_match else missing_string,
-        build_hash_match.group(1).strip() if build_hash_match else missing_string,
+        version_match.group(1) if version_match else missing_string,
+        branch_match.group(1) if branch_match else missing_string,
+        commit_date_match.group(1) if commit_date_match else missing_string,
+        commit_time_match.group(1) if commit_time_match else missing_string,
+        build_hash_match.group(1) if build_hash_match else missing_string,
     )
 
     query_str = urllib.parse.urlencode(query_params)
