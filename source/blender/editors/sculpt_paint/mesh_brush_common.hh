@@ -272,7 +272,7 @@ void apply_hardness_to_distances(float radius, float hardness, MutableSpan<float
 inline void apply_hardness_to_distances(const StrokeCache &cache,
                                         const MutableSpan<float> distances)
 {
-  apply_hardness_to_distances(cache.radius, cache.paint_brush.hardness, distances);
+  apply_hardness_to_distances(cache.radius, cache.hardness, distances);
 }
 
 /**
@@ -429,17 +429,6 @@ void update_shape_keys(Object &object,
                        Span<int> verts,
                        Span<float3> translations,
                        Span<float3> positions_orig);
-
-/**
- * Currently the pbvh::Tree owns its own copy of deformed positions that needs to be updated to
- * stay in sync with brush deformations.
- * \todo This should be removed one the pbvh::Tree no longer stores this copy of deformed
- * positions.
- */
-void apply_translations_to_pbvh(const Depsgraph &depsgraph,
-                                Object &object,
-                                Span<int> verts,
-                                Span<float3> translations);
 
 /**
  * Write the new translated positions to the original mesh, taking into account inverse

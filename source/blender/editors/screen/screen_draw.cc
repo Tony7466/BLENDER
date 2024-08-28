@@ -359,11 +359,8 @@ void screen_draw_join_highlight(const wmWindow *win, ScrArea *sa1, ScrArea *sa2,
   screen_draw_area_icon(win->eventstate->xy[0], win->eventstate->xy[1], ED_area_icon(sa1));
 }
 
-void screen_draw_dock_preview(const wmWindow *win,
-                              ScrArea *source,
-                              ScrArea *target,
-                              AreaDockTarget dock_target,
-                              float factor)
+void screen_draw_dock_preview(
+    ScrArea *source, ScrArea *target, AreaDockTarget dock_target, float factor, int x, int y)
 {
   if (dock_target == AreaDockTarget::None) {
     return;
@@ -410,7 +407,7 @@ void screen_draw_dock_preview(const wmWindow *win,
 
   UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
 
-  screen_draw_area_icon(win->eventstate->xy[0], win->eventstate->xy[1], ED_area_icon(source));
+  screen_draw_area_icon(x, y, ED_area_icon(source));
 
   if (dock_target != AreaDockTarget::Center) {
     /* Darken the split position itself. */
@@ -445,8 +442,8 @@ void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const 
 
   float x = (1 - fac) * rect.xmin + fac * rect.xmax;
   float y = (1 - fac) * rect.ymin + fac * rect.ymax;
-  x = std::clamp(x, rect.xmin + (AREAMINX * UI_SCALE_FAC), rect.xmax - (AREAMINX * UI_SCALE_FAC));
-  y = std::clamp(y, rect.ymin + (HEADERY * UI_SCALE_FAC), rect.ymax - (HEADERY * UI_SCALE_FAC));
+  x = std::clamp(x, rect.xmin, rect.xmax);
+  y = std::clamp(y, rect.ymin, rect.ymax);
   float half_line_width = 2.0f * U.pixelsize;
 
   /* Outlined rectangle to left/above split position. */

@@ -108,7 +108,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
@@ -133,7 +133,8 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
 
   const double start_time = BLI_time_now_seconds();
 
-  while (bke::pbvh::bmesh_update_topology(*ss.pbvh,
+  while (bke::pbvh::bmesh_update_topology(*ss.bm,
+                                          *ss.pbvh,
                                           *ss.bm_log,
                                           PBVH_Collapse | PBVH_Subdivide,
                                           min_edge_len,
