@@ -198,6 +198,9 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
+  ShaderPtr fluid_velocity_streamline;
+  ShaderPtr fluid_velocity_mac;
+  ShaderPtr fluid_velocity_needle;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
   ShaderPtr particle_dot;

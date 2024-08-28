@@ -983,7 +983,8 @@ GPUShader *OVERLAY_shader_volume_velocity(bool use_needle, bool use_mac)
         "overlay_volume_velocity_mac");
   }
   else if (!sh_data->volume_velocity_sh) {
-    sh_data->volume_velocity_sh = GPU_shader_create_from_info_name("overlay_volume_velocity");
+    sh_data->volume_velocity_sh = GPU_shader_create_from_info_name(
+        "overlay_volume_velocity_streamline");
   }
 
   if (use_needle) {

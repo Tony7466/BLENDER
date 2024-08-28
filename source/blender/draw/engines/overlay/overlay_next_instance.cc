@@ -217,6 +217,7 @@ void Instance::end_sync()
     layer.light_probes.end_sync(resources, shapes, state);
     layer.metaballs.end_sync(resources, shapes, state);
     layer.relations.end_sync(resources, state);
+    layer.fluids.end_sync(resources, shapes, state);
     layer.speakers.end_sync(resources, shapes, state);
   };
   end_sync_layer(regular);
@@ -341,8 +342,8 @@ void Instance::draw(Manager &manager)
     layer.lattices.draw(framebuffer, manager, view);
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
-    layer.particles.draw(framebuffer, manager, view);
     layer.fluids.draw(framebuffer, manager, view);
+    layer.particles.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 

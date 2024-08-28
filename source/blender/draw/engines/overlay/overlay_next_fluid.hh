@@ -22,6 +22,9 @@ class Fluids {
   const SelectionType selection_type_;
 
   PassSimple fluid_ps_ = {"fluid_ps_"};
+  PassSimple::Sub *velocity_needle_ps_ = nullptr;
+  PassSimple::Sub *velocity_mac_ps_ = nullptr;
+  PassSimple::Sub *velocity_streamline_ps_ = nullptr;
 
   ShapeInstanceBuf<ExtraInstanceData> cube_buf_ = {selection_type_, "cube_buf_"};
 
@@ -40,6 +43,17 @@ class Fluids {
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      state.clipping_state);
       res.select_bind(pass);
+
+      /* TODO(fclem): Use either specialization constants or push constants to reduce the amount of
+       * shader variants. */
+      velocity_needle_ps_ = &fluid_ps_.sub("Velocity Needles");
+      velocity_needle_ps_->shader_set(res.shaders.fluid_velocity_needle.get());
+
+      velocity_mac_ps_ = &fluid_ps_.sub("Velocity Mac");
+      velocity_mac_ps_->shader_set(res.shaders.fluid_velocity_mac.get());
+
+      velocity_streamline_ps_ = &fluid_ps_.sub("Velocity Line");
+      velocity_streamline_ps_->shader_set(res.shaders.fluid_velocity_streamline.get());
     }
 
     cube_buf_.clear();
@@ -76,6 +90,9 @@ class Fluids {
       return;
     }
 
+    ResourceHandle res_handle = manager.resource_handle(ob_ref);
+    select::ID sel_id = res.select_id(ob_ref);
+
     /* Small cube showing voxel size. */
     {
       float3 min = float3(fds->p0) + float3(fds->cell_size) * float3(int3(fds->res_min));
@@ -86,74 +103,77 @@ class Fluids {
 
       const float4 &color = res.object_wire_color(ob_ref, state);
 
-      cube_buf_.append({voxel_cube_mat, color, 1.0f}, res.select_id(ob_ref));
+      cube_buf_.append({voxel_cube_mat, color, 1.0f}, sel_id);
     }
 
-    /* Don't show smoke before simulation starts, this could be made an option in the future. */
-    const bool draw_velocity = (fds->draw_velocity && fds->fluid &&
-                                is_active_frame_after_cache_start);
+    /* No volume data to display. */
+    if (fds->fluid == nullptr) {
+      return;
+    }
 
-#if 0
-    /* Show gridlines only for slices with no interpolation. */
-    const bool show_gridlines = (fds->show_gridlines && fds->fluid &&
-                                 fds->axis_slice_method == AXIS_SLICE_SINGLE &&
-                                 (fds->interp_method == FLUID_DISPLAY_INTERP_CLOSEST ||
-                                  fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS));
+    int slice_axis = slide_axis_get(*fds);
 
-    const bool color_with_flags = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_FLAGS);
-
-    const bool color_range = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_RANGE &&
-                              fds->use_coba && fds->coba_field != FLUID_DOMAIN_FIELD_FLAGS);
-
-
-    int slice_axis = slide_axis_get(*fsd);
-
+    const bool draw_velocity = (fds->draw_velocity && is_active_frame_after_cache_start);
     if (draw_velocity) {
-      const bool use_needle = (fds->vector_draw_type == VECTOR_DRAW_NEEDLE);
-      const bool use_mac = (fds->vector_draw_type == VECTOR_DRAW_MAC);
-      const bool draw_mac_x = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_X);
-      const bool draw_mac_y = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Y);
-      const bool draw_mac_z = (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Z);
-      const bool cell_centered = (fds->vector_field == FLUID_DOMAIN_VECTOR_FIELD_FORCE);
-      int line_count = 1;
-      if (use_needle) {
-        line_count = 6;
-      }
-      else if (use_mac) {
-        line_count = 3;
+      int lines_per_voxel = -1;
+      PassSimple::Sub *sub_pass = nullptr;
+      switch (fds->vector_draw_type) {
+        default:
+        case VECTOR_DRAW_STREAMLINE:
+          sub_pass = velocity_streamline_ps_;
+          lines_per_voxel = 1;
+          break;
+        case VECTOR_DRAW_NEEDLE:
+          sub_pass = velocity_needle_ps_;
+          lines_per_voxel = 6;
+          break;
+        case VECTOR_DRAW_MAC:
+          sub_pass = velocity_mac_ps_;
+          lines_per_voxel = 3;
+          break;
       }
 
-      line_count *= fds->res[0] * fds->res[1] * fds->res[2];
+      int total_lines = lines_per_voxel * math::reduce_mul(int3(fds->res));
       if (slice_axis != -1) {
         /* Remove the sliced dimension. */
-        line_count /= fds->res[slice_axis];
+        total_lines /= fds->res[slice_axis];
       }
 
       DRW_smoke_ensure_velocity(fmd);
 
-      GPUShader *sh = OVERLAY_shader_volume_velocity(use_needle, use_mac);
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
-      DRW_shgroup_uniform_texture(grp, "velocityX", fds->tex_velocity_x);
-      DRW_shgroup_uniform_texture(grp, "velocityY", fds->tex_velocity_y);
-      DRW_shgroup_uniform_texture(grp, "velocityZ", fds->tex_velocity_z);
-      sub.push_constant("displaySize", fds->vector_scale);                       /* float_copy */
-      sub.push_constant("slicePosition", fds->slice_depth);                      /* float_copy */
-      sub.push_constant("cellSize", float3(fds->cell_size));                     /* vec3_copy */
-      sub.push_constant("domainOriginOffset", float3(fds->p0));                  /* vec3_copy */
-      sub.push_constant("adaptiveCellOffset", int3(fds->res_min));               /* ivec3_copy */
-      sub.push_constant("sliceAxis", slice_axis);                                /* int_copy */
-      sub.push_constant("scaleWithMagnitude", fds->vector_scale_with_magnitude); /* bool_copy */
-      sub.push_constant("isCellCentered", cell_centered);                        /* bool_copy */
-
-      if (use_mac) {
-        DRW_shgroup_uniform_bool_copy(grp, "drawMACX", draw_mac_x);
-        DRW_shgroup_uniform_bool_copy(grp, "drawMACY", draw_mac_y);
-        DRW_shgroup_uniform_bool_copy(grp, "drawMACZ", draw_mac_z);
+      PassSimple::Sub &sub = *sub_pass;
+      sub.bind_texture("velocityX", fds->tex_velocity_x);
+      sub.bind_texture("velocityY", fds->tex_velocity_y);
+      sub.bind_texture("velocityZ", fds->tex_velocity_z);
+      sub.push_constant("displaySize", fds->vector_scale);
+      sub.push_constant("slicePosition", fds->slice_depth);
+      sub.push_constant("cellSize", float3(fds->cell_size));
+      sub.push_constant("domainOriginOffset", float3(fds->p0));
+      sub.push_constant("adaptiveCellOffset", int3(fds->res_min));
+      sub.push_constant("sliceAxis", slice_axis);
+      sub.push_constant("scaleWithMagnitude", bool(fds->vector_scale_with_magnitude));
+      sub.push_constant("isCellCentered", (fds->vector_field == FLUID_DOMAIN_VECTOR_FIELD_FORCE));
+      if (fds->vector_draw_type == VECTOR_DRAW_MAC) {
+        sub.push_constant("drawMACX", (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_X));
+        sub.push_constant("drawMACY", (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Y));
+        sub.push_constant("drawMACZ", (fds->vector_draw_mac_components & VECTOR_DRAW_MAC_Z));
       }
-
-      DRW_shgroup_call_procedural_lines(grp, ob, line_count);
+      sub.push_constant("in_select_id", int(sel_id.get()));
+      sub.draw_procedural(GPU_PRIM_LINES, 1, total_lines * 2, -1, res_handle);
     }
 
+    /* Show gridlines only for slices with no interpolation. */
+    const bool show_gridlines = fds->show_gridlines &&
+                                (fds->axis_slice_method == AXIS_SLICE_SINGLE) &&
+                                (fds->interp_method == FLUID_DISPLAY_INTERP_CLOSEST ||
+                                 fds->coba_field == FLUID_DOMAIN_FIELD_FLAGS);
+    if (show_gridlines) {
+      const bool color_with_flags = fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_FLAGS;
+      const bool color_range = (fds->gridlines_color_field == FLUID_GRIDLINE_COLOR_TYPE_RANGE) &&
+                               fds->use_coba && (fds->coba_field != FLUID_DOMAIN_FIELD_FLAGS);
+    }
+
+#if 0
     if (show_gridlines) {
       GPUShader *sh = OVERLAY_shader_volume_gridlines(color_with_flags, color_range);
       DRWShadingGroup *grp = DRW_shgroup_create(sh, data->psl->extra_ps[0]);
@@ -178,15 +198,18 @@ class Fluids {
         DRW_shgroup_uniform_int_copy(grp, "cellFilter", fds->gridlines_cell_filter);
       }
 
-      const int line_count = 4 * fds->res[0] * fds->res[1] * fds->res[2] / fds->res[slice_axis];
+      const int line_count = 4 * (fds->res)[0] * fds->res[1] * fds->res[2] / fds->res[slice_axis];
       DRW_shgroup_call_procedural_lines(grp, ob, line_count);
     }
 #endif
   }
 
-  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
+  void end_sync(Resources &res, ShapeCache &shapes, const State & /*state*/)
   {
-    cube_buf_.end_sync(fluid_ps_, shapes.quad_wire.get());
+    fluid_ps_.shader_set(res.shaders.extra_shape.get());
+    fluid_ps_.bind_ubo("globalsBlock", &res.globals_buf);
+
+    cube_buf_.end_sync(fluid_ps_, shapes.cube.get());
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
