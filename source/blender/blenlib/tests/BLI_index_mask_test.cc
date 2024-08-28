@@ -111,6 +111,39 @@ TEST(index_mask, FromBitsSparse)
   EXPECT_EQ(mask[11], 70'005);
 }
 
+TEST(index_mask, FromBoolsSparse)
+{
+  Vector<bool> bools(10'000'000, false);
+  bools[5] = true;
+  bools[100] = true;
+  bools[200] = true;
+  bools[500] = true;
+  bools[800] = true;
+  bools[10'000] = true;
+  bools[10'002] = true;
+  bools[50'000] = true;
+  bools[70'000] = true;
+  bools[70'002] = true;
+  bools[70'004] = true;
+  bools[70'005] = true;
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_bools(bools, memory);
+  EXPECT_EQ(mask.size(), 12);
+  EXPECT_EQ(mask[0], 5);
+  EXPECT_EQ(mask[1], 100);
+  EXPECT_EQ(mask[2], 200);
+  EXPECT_EQ(mask[3], 500);
+  EXPECT_EQ(mask[4], 800);
+  EXPECT_EQ(mask[5], 10'000);
+  EXPECT_EQ(mask[6], 10'002);
+  EXPECT_EQ(mask[7], 50'000);
+  EXPECT_EQ(mask[8], 70'000);
+  EXPECT_EQ(mask[9], 70'002);
+  EXPECT_EQ(mask[10], 70'004);
+  EXPECT_EQ(mask[11], 70'005);
+}
+
 static BitVector<> build_bits_with_uniform_distribution(const int bits_num,
                                                         const int set_bits_num,
                                                         const uint32_t seed = 0)
