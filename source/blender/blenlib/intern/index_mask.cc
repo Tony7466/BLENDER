@@ -539,7 +539,7 @@ IndexMask IndexMask::from_batch_predicate(
   }
 
   Vector<IndexMaskSegment, 16> segments;
-  if (universe.size() <= grain_size.value || true) {
+  if (universe.size() <= grain_size.value) {
     for (const int64_t segment_i : IndexRange(universe.segments_num())) {
       const IndexMaskSegment universe_segment = universe.segment(segment_i);
       segments_from_batch_predicate(universe_segment, memory, batch_predicate, segments);
