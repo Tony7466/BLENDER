@@ -64,6 +64,7 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
     query_str = urllib.parse.urlencode(query_params)
     webbrowser.open(f"https://redirect.blender.org/?{query_str}")
 
+    return 0
 
 if __name__ == "__main__":
-    prefill_bug_report_info()
+    sys.exit(prefill_bug_report_info())
