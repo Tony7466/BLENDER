@@ -300,9 +300,9 @@ static void face_sets_update(const Depsgraph &depsgraph,
   };
 
   threading::EnumerableThreadSpecific<TLS> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     TLS &tls = all_tls.local();
-    for (bke::pbvh::Node *node : nodes.slice(range)) {
+    node_mask.slice(range).foreach_index([&](const int i) {
       const Span<int> faces =
           pbvh.type() == bke::pbvh::Type::Mesh ?
               bke::pbvh::node_face_indices_calc_mesh(
@@ -315,13 +315,14 @@ static void face_sets_update(const Depsgraph &depsgraph,
       array_utils::gather(face_sets.span.as_span(), faces, new_face_sets);
       calc_face_sets(faces, new_face_sets);
       if (array_utils::indexed_data_equal<int>(face_sets.span, faces, new_face_sets)) {
-        continue;
+        return;
+        ;
       }
 
       undo::push_node(depsgraph, object, node, undo::Type::FaceSet);
       array_utils::scatter(new_face_sets.as_span(), faces, face_sets.span);
       BKE_pbvh_node_mark_update_face_sets(*node);
-    }
+    });
   });
 
   face_sets.finish();
@@ -347,9 +348,9 @@ static void clear_face_sets(const Depsgraph &depsgraph, Object &object, const In
   const int default_face_set = mesh.face_sets_color_default;
   const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
   threading::EnumerableThreadSpecific<Vector<int>> all_face_indices;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &face_indices = all_face_indices.local();
-    for (bke::pbvh::Node *node : nodes.slice(range)) {
+    node_mask.slice(range).foreach_index([&](const int i) {
       const Span<int> faces =
           pbvh.type() == bke::pbvh::Type::Mesh ?
               bke::pbvh::node_face_indices_calc_mesh(
@@ -846,9 +847,9 @@ static void face_hide_update(const Depsgraph &depsgraph,
 
   bool any_changed = false;
   threading::EnumerableThreadSpecific<TLS> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     TLS &tls = all_tls.local();
-    for (bke::pbvh::Node *node : nodes.slice(range)) {
+    node_mask.slice(range).foreach_index([&](const int i) {
       const Span<int> faces =
           pbvh.type() == bke::pbvh::Type::Mesh ?
               bke::pbvh::node_face_indices_calc_mesh(
@@ -1296,7 +1297,7 @@ static void edit_fairing(const Depsgraph &depsgraph,
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(const_cast<bke::pbvh::Tree &>(pbvh));
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
     for (const int i : range) {
       const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
@@ -1632,7 +1633,7 @@ static void gesture_apply_bmesh(gesture::GestureData &gesture_data, const IndexM
   const int offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
 
   threading::parallel_for(gesture_data.nodes.index_range(), 1, [&](const IndexRange range) {
-    for (bke::pbvh::Node *node : nodes.slice(range)) {
+    node_mask.slice(range).foreach_index([&](const int i) {
       undo::push_node(depsgraph, *gesture_data.vc.obact, node, undo::Type::FaceSet);
 
       bool any_updated = false;

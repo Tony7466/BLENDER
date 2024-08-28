@@ -521,17 +521,17 @@ static int hide_show_all_exec(bContext *C, wmOperator *op)
   }
 
   IndexMaskMemory memory;
-  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh);
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh, memory);
 
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
-      partialvis_all_update_mesh(*depsgraph, ob, action, nodes);
+      partialvis_all_update_mesh(*depsgraph, ob, action, node_mask);
       break;
     case bke::pbvh::Type::Grids:
-      partialvis_all_update_grids(*depsgraph, ob, action, nodes);
+      partialvis_all_update_grids(*depsgraph, ob, action, node_mask);
       break;
     case bke::pbvh::Type::BMesh:
-      partialvis_all_update_bmesh(*depsgraph, ob, action, nodes);
+      partialvis_all_update_bmesh(*depsgraph, ob, action, node_mask);
       break;
   }
 
@@ -641,17 +641,17 @@ static int hide_show_masked_exec(bContext *C, wmOperator *op)
   }
 
   IndexMaskMemory memory;
-  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh);
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh, memory);
 
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
-      partialvis_masked_update_mesh(*depsgraph, ob, action, nodes);
+      partialvis_masked_update_mesh(*depsgraph, ob, action, node_mask);
       break;
     case bke::pbvh::Type::Grids:
-      partialvis_masked_update_grids(*depsgraph, ob, action, nodes);
+      partialvis_masked_update_grids(*depsgraph, ob, action, node_mask);
       break;
     case bke::pbvh::Type::BMesh:
-      partialvis_masked_update_bmesh(*depsgraph, ob, action, nodes);
+      partialvis_masked_update_bmesh(*depsgraph, ob, action, node_mask);
       break;
   }
 
@@ -801,17 +801,17 @@ static int visibility_invert_exec(bContext *C, wmOperator *op)
   BLI_assert(BKE_object_sculpt_pbvh_get(&object) == pbvh);
 
   IndexMaskMemory memory;
-  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh);
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh, memory);
   undo::push_begin(object, op);
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
-      invert_visibility_mesh(depsgraph, object, nodes);
+      invert_visibility_mesh(depsgraph, object, node_mask);
       break;
     case bke::pbvh::Type::Grids:
-      invert_visibility_grids(depsgraph, object, nodes);
+      invert_visibility_grids(depsgraph, object, node_mask);
       break;
     case bke::pbvh::Type::BMesh:
-      invert_visibility_bmesh(depsgraph, object, nodes);
+      invert_visibility_bmesh(depsgraph, object, node_mask);
       break;
   }
 
@@ -1152,13 +1152,13 @@ static int visibility_filter_exec(bContext *C, wmOperator *op)
   undo::push_begin(object, op);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
-      grow_shrink_visibility_mesh(depsgraph, object, nodes, mode, iterations);
+      grow_shrink_visibility_mesh(depsgraph, object, node_mask, mode, iterations);
       break;
     case bke::pbvh::Type::Grids:
-      grow_shrink_visibility_grid(depsgraph, object, nodes, mode, iterations);
+      grow_shrink_visibility_grid(depsgraph, object, node_mask, mode, iterations);
       break;
     case bke::pbvh::Type::BMesh:
-      grow_shrink_visibility_bmesh(depsgraph, object, nodes, mode, iterations);
+      grow_shrink_visibility_bmesh(depsgraph, object, node_mask, mode, iterations);
       break;
   }
   undo::push_end(object);
