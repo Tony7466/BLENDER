@@ -232,7 +232,7 @@ static void flush_face_changes_node(Mesh &mesh,
     TLS &tls = all_tls.local();
     for (bke::pbvh::Node *node : nodes.slice(range)) {
       const Span<int> node_faces = bke::pbvh::node_face_indices_calc_mesh(
-          tri_faces, *node, tls.face_indices);
+          tri_faces, (*node), tls.face_indices);
 
       tls.new_hide.resize(node_faces.size());
       gather_data_mesh(hide_poly.span.as_span(), node_faces, tls.new_hide.as_mutable_span());
@@ -245,7 +245,7 @@ static void flush_face_changes_node(Mesh &mesh,
 
       scatter_data_mesh(tls.new_hide.as_span(), node_faces, hide_poly.span);
       BKE_pbvh_node_mark_update_visibility(*node);
-      bke::pbvh::node_update_visibility_mesh(hide_vert, *node);
+      bke::pbvh::node_update_visibility_mesh(hide_vert, static_cast<bke::pbvh::MeshNode &>(*node));
     }
   });
   hide_poly.finish();
