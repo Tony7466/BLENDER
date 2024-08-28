@@ -2114,7 +2114,8 @@ enum {
 /* Conductive fresnel types */
 enum {
   SHD_PHYSICAL_CONDUCTOR = 0,
-  SHD_CONDUCTOR_F82 = 1,
+  SHD_ARTISTIC_CONDUCTOR = 1,
+  SHD_CONDUCTOR_F82 = 2,
 };
 
 /* glossy distributions */
