@@ -168,7 +168,7 @@ static BitVector<> build_bits_with_uniform_distribution(const int bits_num,
 }
 
 /* The benchmark is too slow to run during normal test runs. */
-#if 1
+#if 0
 
 static void benchmark_uniform_bit_distribution(const int bits_num,
                                                const int set_bits_num,
@@ -212,9 +212,6 @@ TEST(index_mask, FromBitsBenchmark)
   }
   set_bit_nums.append(size);
   std::sort(set_bit_nums.begin(), set_bit_nums.end());
-
-  // set_bit_nums.clear();
-  // set_bit_nums.append(size);
 
   for (const int set_bit_num : set_bit_nums) {
     benchmark_uniform_bit_distribution(size, set_bit_num, iterations);

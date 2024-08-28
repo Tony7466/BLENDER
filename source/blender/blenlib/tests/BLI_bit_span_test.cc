@@ -6,6 +6,7 @@
 
 #include "BLI_bit_span.hh"
 #include "BLI_bit_span_ops.hh"
+#include "BLI_bit_span_to_index_ranges.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_timeit.hh"
 #include "BLI_vector.hh"
@@ -273,6 +274,36 @@ TEST(bit_span, bools_to_zeroed_bits)
     EXPECT_TRUE(bits[199]);
     EXPECT_FALSE(bits[200]);
   }
+}
+
+TEST(bit_span, to_index_ranges_small)
+{
+  BitVector<> bits(10, false);
+  bits[2].set();
+  bits[3].set();
+  bits[4].set();
+  bits[6].set();
+  bits[7].set();
+
+  IndexRangesBuilderBuffer<int, 10> builder_buffer;
+  IndexRangesBuilder<int> builder(builder_buffer);
+  bits_to_index_ranges(bits, builder);
+
+  EXPECT_EQ(builder.size(), 2);
+  EXPECT_EQ(builder[0], IndexRange::from_begin_end_inclusive(2, 4));
+  EXPECT_EQ(builder[1], IndexRange::from_begin_end_inclusive(6, 7));
+}
+
+TEST(bit_span, to_index_ranges_all_ones)
+{
+  BitVector<> bits(10000, true);
+
+  IndexRangesBuilderBuffer<int, 10> builder_buffer;
+  IndexRangesBuilder<int> builder(builder_buffer);
+  bits_to_index_ranges(BitSpan(bits).take_back(8765), builder);
+
+  EXPECT_EQ(builder.size(), 1);
+  EXPECT_EQ(builder[0], IndexRange(8765));
 }
 
 }  // namespace blender::bits::tests

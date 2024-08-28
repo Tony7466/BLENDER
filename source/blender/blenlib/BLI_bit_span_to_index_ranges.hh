@@ -13,8 +13,12 @@
 
 namespace blender::bits {
 
+/**
+ * Extracts index ranges from the given bits.
+ * For example 00111011 would result in two ranges: [2-4], [6-7].
+ */
 template<typename IntT>
-inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t> &builder)
+inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<IntT> &builder)
 {
   if (bits.is_empty()) {
     return;
