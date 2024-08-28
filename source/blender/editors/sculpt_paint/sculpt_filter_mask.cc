@@ -109,7 +109,7 @@ struct FilterLocalData {
 static void apply_new_mask_mesh(const Depsgraph &depsgraph,
                                 Object &object,
                                 const Span<bool> hide_vert,
-                                const Span<bke::pbvh::Node *> nodes,
+                                const IndexMask &node_mask,
                                 const OffsetIndices<int> node_verts,
                                 const Span<float> new_mask,
                                 MutableSpan<float> mask)
@@ -287,7 +287,7 @@ BLI_NOINLINE static void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
 
 static void apply_new_mask_grids(const Depsgraph &depsgraph,
                                  Object &object,
-                                 const Span<bke::pbvh::Node *> nodes,
+                                 const IndexMask &node_mask,
                                  const OffsetIndices<int> node_verts,
                                  const Span<float> new_mask)
 {
@@ -490,7 +490,7 @@ BLI_NOINLINE static void copy_old_hidden_mask_bmesh(const int mask_offset,
 static void apply_new_mask_bmesh(const Depsgraph &depsgraph,
                                  Object &object,
                                  const int mask_offset,
-                                 const Span<bke::pbvh::Node *> nodes,
+                                 const IndexMask &node_mask,
                                  const OffsetIndices<int> node_verts,
                                  const Span<float> new_mask)
 {
@@ -660,7 +660,8 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   SculptSession &ss = *ob.sculpt;
   bke::pbvh::Tree &pbvh = *ob.sculpt->pbvh;
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   undo::push_begin(ob, op);
 
   int iterations = RNA_int_get(op->ptr, "iterations");

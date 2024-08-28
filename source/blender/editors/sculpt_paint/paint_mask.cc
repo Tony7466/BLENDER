@@ -251,7 +251,7 @@ void average_neighbor_mask_bmesh(const int mask_offset,
 
 void update_mask_mesh(const Depsgraph &depsgraph,
                       Object &object,
-                      const Span<bke::pbvh::Node *> nodes,
+                      const IndexMask &node_mask,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -384,7 +384,7 @@ static Span<int> get_hidden_verts(const bke::pbvh::Node &node,
 
 static bool try_remove_mask_mesh(const Depsgraph &depsgraph,
                                  Object &object,
-                                 const Span<bke::pbvh::Node *> nodes)
+                                 const IndexMask &node_mask)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
@@ -439,7 +439,7 @@ static bool try_remove_mask_mesh(const Depsgraph &depsgraph,
 static void fill_mask_mesh(const Depsgraph &depsgraph,
                            Object &object,
                            const float value,
-                           const Span<bke::pbvh::Node *> nodes)
+                           const IndexMask &node_mask)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
@@ -475,7 +475,7 @@ static void fill_mask_grids(Main &bmain,
                             Depsgraph &depsgraph,
                             Object &object,
                             const float value,
-                            const Span<bke::pbvh::Node *> nodes)
+                            const IndexMask &node_mask)
 {
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
@@ -537,7 +537,7 @@ static void fill_mask_grids(Main &bmain,
 static void fill_mask_bmesh(const Depsgraph &depsgraph,
                             Object &object,
                             const float value,
-                            const Span<bke::pbvh::Node *> nodes)
+                            const IndexMask &node_mask)
 {
   BMesh &bm = *object.sculpt->bm;
   const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
@@ -573,7 +573,8 @@ static void fill_mask(
     Main &bmain, const Scene &scene, Depsgraph &depsgraph, Object &object, const float value)
 {
   bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
       fill_mask_mesh(depsgraph, object, value, nodes);
@@ -596,7 +597,7 @@ static void invert_mask_grids(Main &bmain,
                               const Scene &scene,
                               Depsgraph &depsgraph,
                               Object &object,
-                              const Span<bke::pbvh::Node *> nodes)
+                              const IndexMask &node_mask)
 {
   SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
 
@@ -639,7 +640,7 @@ static void invert_mask_grids(Main &bmain,
 
 static void invert_mask_bmesh(const Depsgraph &depsgraph,
                               Object &object,
-                              const Span<bke::pbvh::Node *> nodes)
+                              const IndexMask &node_mask)
 {
   BMesh &bm = *object.sculpt->bm;
   const int offset = CustomData_get_offset_named(&bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
@@ -664,7 +665,8 @@ static void invert_mask_bmesh(const Depsgraph &depsgraph,
 
 static void invert_mask(Main &bmain, const Scene &scene, Depsgraph &depsgraph, Object &object)
 {
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*object.sculpt->pbvh, {});
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*object.sculpt->pbvh);
   switch (object.sculpt->pbvh->type()) {
     case bke::pbvh::Type::Mesh:
       write_mask_mesh(
@@ -779,7 +781,7 @@ static float mask_gesture_get_new_value(const float elem, FloodFillMode mode, fl
 
 static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureData &gesture_data)
 {
-  const Span<bke::pbvh::Node *> nodes = gesture_data.nodes;
+  const IndexMask &node_mask = gesture_data.nodes;
   const MaskOperation &op = *reinterpret_cast<const MaskOperation *>(gesture_data.operation);
   Object &object = *gesture_data.vc.obact;
   const Depsgraph &depsgraph = *gesture_data.vc.depsgraph;

@@ -266,7 +266,7 @@ static void do_color_smooth_task(const Depsgraph &depsgraph,
                                  const GroupedSpan<int> vert_to_face_map,
                                  const Span<bool> hide_poly,
                                  const Brush &brush,
-                                 const bke::pbvh::Node &node,
+                                 const bke::pbvh::MeshNode &node,
                                  ColorPaintLocalData &tls,
                                  bke::GSpanAttributeWriter &color_attribute)
 {
@@ -347,7 +347,7 @@ static void do_paint_brush_task(const Depsgraph &depsgraph,
                                 const Brush &brush,
                                 const float4x4 &mat,
                                 const float4 wet_mix_sampled_color,
-                                bke::pbvh::Node &node,
+                                bke::pbvh::MeshNode &node,
                                 ColorPaintLocalData &tls,
                                 const MutableSpan<float4> mix_colors,
                                 bke::GSpanAttributeWriter &color_attribute)
@@ -491,7 +491,7 @@ static void do_sample_wet_paint_task(const Object &object,
                                      const GSpan color_attribute,
                                      const bke::AttrDomain color_domain,
                                      const Brush &brush,
-                                     const bke::pbvh::Node &node,
+                                     const bke::pbvh::MeshNode &node,
                                      ColorPaintLocalData &tls,
                                      SampleWetPaintData &swptd)
 {
@@ -524,11 +524,11 @@ void do_paint_brush(const Depsgraph &depsgraph,
                     PaintModeSettings &paint_mode_settings,
                     const Sculpt &sd,
                     Object &ob,
-                    Span<bke::pbvh::Node *> nodes,
-                    Span<bke::pbvh::Node *> texnodes)
+                    const IndexMask &node_mask,
+                    const IndexMask &texnode_mask)
 {
   if (SCULPT_use_image_paint_brush(paint_mode_settings, ob)) {
-    SCULPT_do_paint_brush_image(depsgraph, paint_mode_settings, sd, ob, texnodes);
+    SCULPT_do_paint_brush_image(depsgraph, paint_mode_settings, sd, ob, texnode_mask);
     return;
   }
 
@@ -678,7 +678,7 @@ static void do_smear_brush_task(const Depsgraph &depsgraph,
                                 const GroupedSpan<int> vert_to_face_map,
                                 const Span<bool> hide_poly,
                                 const Brush &brush,
-                                bke::pbvh::Node &node,
+                                bke::pbvh::MeshNode &node,
                                 ColorPaintLocalData &tls,
                                 bke::GSpanAttributeWriter &color_attribute)
 {
@@ -828,7 +828,7 @@ static void do_smear_brush_task(const Depsgraph &depsgraph,
 void do_smear_brush(const Depsgraph &depsgraph,
                     const Sculpt &sd,
                     Object &ob,
-                    Span<bke::pbvh::Node *> nodes)
+                    const IndexMask &node_mask)
 {
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   SculptSession &ss = *ob.sculpt;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "BLI_array.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
@@ -127,7 +128,7 @@ void do_simulation_step(const Depsgraph &depsgraph,
 
 void ensure_nodes_constraints(const Sculpt &sd,
                               const Object &ob,
-                              Span<bke::pbvh::Node *> nodes,
+                              const IndexMask &node_mask,
                               SimulationData &cloth_sim,
                               const float3 &initial_location,
                               float radius);
@@ -148,8 +149,9 @@ void plane_falloff_preview_draw(uint gpuattr,
                                 const float outline_col[3],
                                 float outline_alpha);
 
-Vector<blender::bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss,
-                                                               const Brush &brush);
+IndexMask brush_affected_nodes_gather(SculptSession &ss,
+                                      const Brush &brush,
+                                      IndexMaskMemory &memory);
 
 bool is_cloth_deform_brush(const Brush &brush);
 

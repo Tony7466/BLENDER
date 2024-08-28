@@ -783,7 +783,8 @@ static void sculpt_mask_by_color_contiguous_mesh(const Depsgraph &depsgraph,
     return len <= threshold;
   });
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
 
   update_mask_mesh(
       depsgraph, object, nodes, [&](MutableSpan<float> node_mask, const Span<int> verts) {
@@ -808,7 +809,8 @@ static void sculpt_mask_by_color_full_mesh(const Depsgraph &depsgraph,
       mesh.active_color_attribute, bke::AttrDomain::Point, {});
   const float4 active_color = float4(colors[vert]);
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
 
   update_mask_mesh(
       depsgraph, object, nodes, [&](MutableSpan<float> node_mask, const Span<int> verts) {
@@ -1085,7 +1087,8 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   CavityBakeMixMode mode = CavityBakeMixMode(RNA_enum_get(op->ptr, "mix_mode"));
   float factor = RNA_float_get(op->ptr, "mix_factor");
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
 
   /* Set up automasking settings. */
   Sculpt sd2 = sd;

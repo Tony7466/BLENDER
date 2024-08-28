@@ -488,7 +488,8 @@ static void grow_pose_factor(const Depsgraph &depsgraph,
   bke::pbvh::Tree &pbvh = *ob.sculpt->pbvh;
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   const Span<int> fake_neighbors = ss.fake_neighbors.fake_neighbor_index;
 
   bool grow_next_iteration = true;
@@ -1386,7 +1387,7 @@ static void align_pivot_local_space(float r_mat[4][4],
 void do_pose_brush(const Depsgraph &depsgraph,
                    const Sculpt &sd,
                    Object &ob,
-                   Span<bke::pbvh::Node *> nodes)
+                   const IndexMask &node_mask)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);

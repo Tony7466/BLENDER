@@ -50,7 +50,7 @@ enum class InitMode {
 
 void write_mask_mesh(const Depsgraph &depsgraph,
                      Object &object,
-                     const Span<bke::pbvh::Node *> nodes,
+                     const IndexMask &node_mask,
                      FunctionRef<void(MutableSpan<float>, Span<int>)> write_fn)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -80,7 +80,7 @@ static void init_mask_grids(Main &bmain,
                             Scene &scene,
                             Depsgraph &depsgraph,
                             Object &object,
-                            const Span<bke::pbvh::Node *> nodes,
+                            const IndexMask &node_mask,
                             FunctionRef<void(const BitGroupVector<> &, int, CCGElem *)> write_fn)
 {
   MultiresModifierData *mmd = BKE_sculpt_multires_active(&scene, &object);
@@ -119,7 +119,8 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(&depsgraph, &ob, false);
 
   bke::pbvh::Tree &pbvh = *ob.sculpt->pbvh;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }

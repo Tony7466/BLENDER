@@ -737,11 +737,14 @@ void blur_geometry_data_array(const Object &object,
     Vector<float> new_factors;
   };
   const SculptSession &ss = *object.sculpt;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
@@ -756,7 +759,7 @@ void blur_geometry_data_array(const Object &object,
           LocalData &tls = all_tls.local();
           for (const int i : range) {
             const Span<int> verts = hide::node_visible_verts(
-                *nodes[i], hide_vert, tls.vert_indices);
+                nodes[i], hide_vert, tls.vert_indices);
 
             tls.vert_neighbors.resize(verts.size());
             const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
@@ -774,6 +777,7 @@ void blur_geometry_data_array(const Object &object,
       break;
     }
     case bke::pbvh::Type::Grids: {
+      MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
       const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
@@ -806,6 +810,7 @@ void blur_geometry_data_array(const Object &object,
       break;
     }
     case bke::pbvh::Type::BMesh: {
+      MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
       for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
         threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();

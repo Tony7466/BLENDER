@@ -638,6 +638,26 @@ static void segments_from_predicate_filter(
 
 IndexMask from_predicate_impl(
     const IndexMask &universe,
+    IndexMaskMemory &memory,
+    const FunctionRef<int64_t(IndexMaskSegment indices, int16_t *r_true_indices)> filter_indices)
+{
+  if (universe.is_empty()) {
+    return {};
+  }
+
+  Vector<IndexMaskSegment, 16> segments;
+  for (const int64_t segment_i : IndexRange(universe.segments_num())) {
+    const IndexMaskSegment universe_segment = universe.segment(segment_i);
+    segments_from_predicate_filter(universe_segment, memory, filter_indices, segments);
+  }
+
+  const int64_t consolidated_segments_num = consolidate_index_mask_segments(segments, memory);
+  segments.resize(consolidated_segments_num);
+  return IndexMask::from_segments(segments, memory);
+}
+
+IndexMask from_predicate_impl(
+    const IndexMask &universe,
     const GrainSize grain_size,
     IndexMaskMemory &memory,
     const FunctionRef<int64_t(IndexMaskSegment indices, int16_t *r_true_indices)> filter_indices)

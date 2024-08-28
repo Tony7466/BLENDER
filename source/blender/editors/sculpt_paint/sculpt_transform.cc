@@ -293,7 +293,7 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
   /* Regular transform applies all symmetry passes at once as it is split by symmetry areas
    * (each vertex can only be transformed once by the transform matrix of its area). */
   bke::pbvh::Tree &pbvh = *ss.pbvh;
-  const Span<bke::pbvh::Node *> nodes = ss.filter_cache->nodes;
+  const IndexMask &node_mask = ss.filter_cache->node_mask;
 
   threading::EnumerableThreadSpecific<TransformLocalData> all_tls;
   switch (pbvh.type()) {
@@ -462,7 +462,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
       ss, symm, ss.filter_cache->transform_displacement_mode);
 
   bke::pbvh::Tree &pbvh = *ss.pbvh;
-  const Span<bke::pbvh::Node *> nodes = ss.filter_cache->nodes;
+  const IndexMask &node_mask = ss.filter_cache->node_mask;
 
   KelvinletParams params;
   /* TODO(pablodp606): These parameters can be exposed if needed as transform strength and volume

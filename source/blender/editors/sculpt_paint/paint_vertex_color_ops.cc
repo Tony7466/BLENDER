@@ -322,7 +322,8 @@ static void transform_active_color(bContext *C,
    * attributes. */
   BKE_pbvh_ensure_node_face_corners(pbvh, mesh.corner_tris());
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   undo::push_nodes(depsgraph, obact, nodes, undo::Type::Color);
 
   transform_active_color_data(*BKE_mesh_from_object(&obact), transform_fn);

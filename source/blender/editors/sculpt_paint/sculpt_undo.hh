@@ -174,7 +174,7 @@ void push_node(const Depsgraph &depsgraph,
                undo::Type type);
 void push_nodes(const Depsgraph &depsgraph,
                 Object &object,
-                Span<const bke::pbvh::Node *> nodes,
+                const IndexMask &node_mask,
                 undo::Type type);
 
 /**

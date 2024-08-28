@@ -311,7 +311,7 @@ static void color_filter_task(const Depsgraph &depsgraph,
 
 static void sculpt_color_presmooth_init(const Mesh &mesh, SculptSession &ss)
 {
-  const Span<bke::pbvh::Node *> nodes = ss.filter_cache->nodes;
+  const IndexMask &node_mask = ss.filter_cache->node_mask;
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
@@ -379,7 +379,7 @@ static void sculpt_color_filter_apply(bContext *C, wmOperator *op, Object &ob)
     sculpt_color_presmooth_init(mesh, ss);
   }
 
-  const Span<bke::pbvh::Node *> nodes = ss.filter_cache->nodes;
+  const IndexMask &node_mask = ss.filter_cache->node_mask;
 
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();

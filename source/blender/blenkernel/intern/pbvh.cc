@@ -410,7 +410,7 @@ std::unique_ptr<Tree> build_mesh(Mesh *mesh)
   store_bounds_orig(*pbvh);
 
   if (!hide_vert.is_empty()) {
-        threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
+    threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
       for (const int i : range) {
         const Span<int> verts = node_verts(nodes[i]);
         if (std::all_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
@@ -592,7 +592,7 @@ std::unique_ptr<Tree> build_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
 
   const BitGroupVector<> &grid_hidden = subdiv_ccg->grid_hidden;
   if (!grid_hidden.is_empty()) {
-        threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
+    threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
       for (const int i : range) {
         const Span<int> grids = node_grid_indices(nodes[i]);
         if (std::all_of(grids.begin(), grids.end(), [&](const int i) {
@@ -3055,18 +3055,14 @@ void BKE_pbvh_sync_visibility_from_verts(Object &object)
 
 namespace blender::bke::pbvh {
 
-Vector<Node *> all_leaf_nodes(Tree &pbvh)
+IndexMask all_leaf_nodes(const Tree &pbvh, IndexMaskMemory &memory)
 {
-  Vector<Node *> leaf_nodes;
   return std::visit(
-      [&](auto &nodes) {
-        leaf_nodes.reserve(nodes.size());
-        for (Node &node : nodes) {
-          if (node.flag_ & PBVH_Leaf) {
-            leaf_nodes.append(&node);
-          }
-        }
-        return leaf_nodes;
+      [&](const auto &nodes) {
+        return IndexMask::from_predicate(
+            nodes.index_range(), GrainSize(1024), memory, [&](const int i) {
+              return (nodes[i].flag_ & PBVH_Leaf) != 0;
+            });
       },
       pbvh.nodes_);
 }

@@ -284,7 +284,7 @@ void filter_verts_with_unique_face_sets_bmesh(const bool unique,
 
 static void face_sets_update(const Depsgraph &depsgraph,
                              Object &object,
-                             const Span<bke::pbvh::Node *> nodes,
+                             const IndexMask &node_mask,
                              const FunctionRef<void(Span<int>, MutableSpan<int>)> calc_face_sets)
 {
   SculptSession &ss = *object.sculpt;
@@ -334,9 +334,7 @@ enum class CreateMode {
   Selection = 3,
 };
 
-static void clear_face_sets(const Depsgraph &depsgraph,
-                            Object &object,
-                            const Span<bke::pbvh::Node *> nodes)
+static void clear_face_sets(const Depsgraph &depsgraph, Object &object, const IndexMask &node_mask)
 {
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
@@ -398,7 +396,8 @@ static int create_op_exec(bContext *C, wmOperator *op)
 
   const int next_face_set = find_next_available_id(object);
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
   switch (mode) {
     case CreateMode::Masked: {
       const OffsetIndices faces = mesh.faces();
@@ -648,7 +647,8 @@ static int init_op_exec(bContext *C, wmOperator *op)
   }
 
   bke::pbvh::Tree &pbvh = *ob.sculpt->pbvh;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
@@ -828,7 +828,7 @@ enum class VisibilityMode {
 
 static void face_hide_update(const Depsgraph &depsgraph,
                              Object &object,
-                             const Span<bke::pbvh::Node *> nodes,
+                             const IndexMask &node_mask,
                              const FunctionRef<void(Span<int>, MutableSpan<bool>)> calc_hide)
 {
   SculptSession &ss = *object.sculpt;
@@ -877,7 +877,7 @@ static void face_hide_update(const Depsgraph &depsgraph,
   }
 }
 
-static void show_all(Depsgraph &depsgraph, Object &object, const Span<bke::pbvh::Node *> nodes)
+static void show_all(Depsgraph &depsgraph, Object &object, const IndexMask &node_mask)
 {
   switch (object.sculpt->pbvh->type()) {
     case bke::pbvh::Type::Mesh:
@@ -912,7 +912,8 @@ static int change_visibility_exec(bContext *C, wmOperator *op)
   undo::push_begin(object, op);
 
   bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
@@ -1078,7 +1079,8 @@ static int randomize_colors_exec(bContext *C, wmOperator * /*op*/)
 
   mesh->face_sets_color_seed += 1;
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   for (bke::pbvh::Node *node : nodes) {
     BKE_pbvh_node_mark_redraw(*node);
   }
@@ -1129,9 +1131,10 @@ static void edit_grow_shrink(const Depsgraph &depsgraph,
 
   undo::push_begin(object, op);
 
-  const Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(*ss.pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
   face_sets_update(
-      depsgraph, object, nodes, [&](const Span<int> indices, MutableSpan<int> face_sets) {
+      depsgraph, object, node_mask, [&](const Span<int> indices, MutableSpan<int> face_sets) {
         for (const int i : indices.index_range()) {
           const int face = indices[i];
           if (!modify_hidden && !hide_poly.is_empty() && hide_poly[face]) {
@@ -1289,8 +1292,8 @@ static void edit_fairing(const Depsgraph &depsgraph,
     Vector<float3> translations;
   };
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(const_cast<bke::pbvh::Tree &>(pbvh),
-                                                             {});
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(const_cast<bke::pbvh::Tree &>(pbvh));
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1385,7 +1388,8 @@ static void edit_modify_coordinates(
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   SculptSession &ss = *ob.sculpt;
   bke::pbvh::Tree &pbvh = *ss.pbvh;
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::all_leaf_nodes(pbvh);
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
   const float strength = RNA_float_get(op->ptr, "strength");
 
@@ -1561,8 +1565,7 @@ static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &ges
   undo::push_begin(*gesture_data.vc.obact, &op);
 }
 
-static void gesture_apply_mesh(gesture::GestureData &gesture_data,
-                               const Span<bke::pbvh::Node *> nodes)
+static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMask &node_mask)
 {
   FaceSetOperation *face_set_operation = (FaceSetOperation *)gesture_data.operation;
   const int new_face_set = face_set_operation->new_face_set_id;
@@ -1585,10 +1588,10 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data,
   };
 
   threading::EnumerableThreadSpecific<TLS> all_tls;
-  threading::parallel_for(gesture_data.nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(gesture_data.node_mask.index_range(), 1, [&](const IndexRange range) {
     TLS &tls = all_tls.local();
-    for (bke::pbvh::Node *node : nodes.slice(range)) {
-      undo::push_node(depsgraph, *gesture_data.vc.obact, node, undo::Type::FaceSet);
+    gesture_data.node_mask.slice(range).foreach_index([&](const int i) {
+      undo::push_node(depsgraph, *gesture_data.vc.obact, nodes[i], undo::Type::FaceSet);
       const Span<int> node_faces =
           pbvh.type() == bke::pbvh::Type::Mesh ?
               bke::pbvh::node_face_indices_calc_mesh(
@@ -1613,14 +1616,13 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data,
       if (any_updated) {
         BKE_pbvh_node_mark_update_face_sets(*node);
       }
-    }
+    });
   });
 
   face_sets.finish();
 }
 
-static void gesture_apply_bmesh(gesture::GestureData &gesture_data,
-                                const Span<bke::pbvh::Node *> nodes)
+static void gesture_apply_bmesh(gesture::GestureData &gesture_data, const IndexMask &node_mask)
 {
   FaceSetOperation *face_set_operation = (FaceSetOperation *)gesture_data.operation;
   const Depsgraph &depsgraph = *gesture_data.vc.depsgraph;

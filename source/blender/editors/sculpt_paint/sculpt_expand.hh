@@ -117,7 +117,8 @@ struct Cache {
 
   /* Cached pbvh::Tree nodes. This allows to skip gathering all nodes from the pbvh::Tree each time
    * expand needs to update the state of the elements. */
-  Vector<bke::pbvh::Node *> nodes;
+  IndexMaskMemory node_mask_memory;
+  IndexMask node_mask;
 
   /* Expand state options. */
 

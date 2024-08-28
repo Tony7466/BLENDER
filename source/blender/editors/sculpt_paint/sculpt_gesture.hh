@@ -111,7 +111,8 @@ struct GestureData {
   LineData line;
 
   /* Task Callback Data. */
-  Vector<bke::pbvh::Node *> nodes;
+  IndexMaskMemory node_mask_memory;
+  IndexMask node_mask;
 
   ~GestureData();
 };
