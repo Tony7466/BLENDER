@@ -170,6 +170,9 @@ class ShaderModule {
   ShaderPtr anti_aliasing = shader("overlay_antialiasing");
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
+  ShaderPtr curve_edit_points;
+  ShaderPtr curve_edit_line;
+  ShaderPtr curve_edit_handles;
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_edit_depth;

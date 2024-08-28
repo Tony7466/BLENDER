@@ -92,6 +92,7 @@ void Instance::begin_sync()
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
     layer.cameras.begin_sync();
+    layer.curves.begin_sync(resources, state, view);
     layer.empties.begin_sync();
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
@@ -147,6 +148,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_CURVES_LEGACY:
         break;
+      case OB_CURVES:
+        layer.curves.edit_object_sync(manager, ob_ref, resources);
+        break;
       case OB_SURF:
         break;
       case OB_LATTICE:
@@ -156,8 +160,6 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.metaballs.edit_object_sync(ob_ref, resources);
         break;
       case OB_FONT:
-        break;
-      case OB_CURVES:
         break;
     }
   }
@@ -349,6 +351,7 @@ void Instance::draw(Manager &manager)
     layer.relations.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
+    layer.curves.draw(framebuffer, manager, view);
   };
 
   draw_layer(regular, resources.overlay_line_fb);
