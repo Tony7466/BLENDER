@@ -50,18 +50,24 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<IntT> &b
       return;
     }
     if (masked_value == mask) {
+      /* All bits are set. */
       append_range(IndexRange::from_begin_size(start, bits_num));
       return;
     }
     const int64_t bit_i_to_output_offset = start - start_bit;
+
+    /* Based on how many set bits there are, different algorithms are most efficient for extracting
+     * the indices. */
     const int bit_count = count_bits_uint64(masked_value);
     switch (bit_count) {
       case 1: {
+        /* Directly detect the set bit. */
         const int64_t set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
         append_index(set_bit_i + bit_i_to_output_offset);
         return;
       }
       case 2: {
+        /* Directly detect the two set bits. */
         const int64_t first_set_bit_i = int64_t(bitscan_forward_uint64(masked_value));
         const int64_t second_set_bit_i = BitsPerInt - 1 -
                                          int64_t(bitscan_reverse_uint64(masked_value));
@@ -89,6 +95,7 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<IntT> &b
         return;
       }
       case 63: {
+        /* Directly detect the one bit that is not set. */
         const int64_t unset_bit_i = bitscan_forward_uint64(~masked_value);
         const IndexRange before = IndexRange::from_begin_end(start_bit, unset_bit_i);
         const IndexRange after = IndexRange::from_begin_end(unset_bit_i + 1, start_bit + bits_num);
