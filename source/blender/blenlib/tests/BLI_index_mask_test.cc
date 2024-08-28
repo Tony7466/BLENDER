@@ -144,6 +144,23 @@ TEST(index_mask, FromBoolsSparse)
   EXPECT_EQ(mask[11], 70'005);
 }
 
+TEST(index_mask, FromBitsAlternating)
+{
+  int64_t size = 100'000;
+  BitVector<> bits(size, false);
+  for (const int64_t i : IndexRange(size / 2)) {
+    bits[i * 2].set();
+  }
+
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_bits(bits, memory);
+  EXPECT_EQ(mask.size(), size / 2);
+  EXPECT_EQ(mask[0], 0);
+  EXPECT_EQ(mask[1], 2);
+  EXPECT_EQ(mask[2], 4);
+  EXPECT_EQ(mask[3], 6);
+}
+
 static BitVector<> build_bits_with_uniform_distribution(const int bits_num,
                                                         const int set_bits_num,
                                                         const uint32_t seed = 0)
@@ -208,7 +225,7 @@ TEST(index_mask, FromBitsBenchmark)
   while (current < size / 2) {
     set_bit_nums.append(current);
     set_bit_nums.append(size - current);
-    current = int(current * 1.5);
+    current = int(current * 1.3);
   }
   set_bit_nums.append(size);
   std::sort(set_bit_nums.begin(), set_bit_nums.end());
@@ -220,6 +237,55 @@ TEST(index_mask, FromBitsBenchmark)
 
 /* Benchmark. */
 #endif
+
+TEST(index_mask, FromBitsFuzzy)
+{
+  RandomNumberGenerator rng(0);
+  for ([[maybe_unused]] const int64_t iteration : IndexRange(10)) {
+    const int size = rng.get_int32(100'000) + 1;
+    const int set_bits = rng.get_int32(size);
+
+    /* Remove part of the beginning and end of the bits to test unaligned bit spans. */
+    const int64_t slice_inset = rng.get_int32(size / 10);
+    const IndexRange slice = IndexRange::from_begin_end(slice_inset, size - slice_inset);
+
+    BitVector<> bits(size, false);
+    for ([[maybe_unused]] const int64_t set_bit_i : IndexRange(set_bits)) {
+      int index = rng.get_int32(size);
+      /* This is like linear probing which results in a somewhat random distribution but also leads
+       * to having longer ranges every now and then. */
+      while (true) {
+        if (!bits[index]) {
+          bits[index].set();
+          break;
+        }
+        index = (index + 1) % size;
+      }
+    }
+
+    IndexMaskMemory memory;
+
+    /* The universe is partially a range and partially only even/odd indices.
+     * For example: [1, 2, 3, 4, 6, 8, 10, 12]. */
+    const int64_t slice_half_size = slice.size() / 2;
+    const IndexMask universe = IndexMask::from_union(
+                                   IndexRange(slice_half_size),
+                                   IndexMask::from_repeating(
+                                       IndexRange(1), slice_half_size, 2, slice_half_size, memory),
+                                   memory)
+                                   .slice_content(slice.index_range());
+
+    const IndexMask mask = IndexMask::from_bits(universe, BitSpan(bits).slice(slice), memory);
+
+    BitVector<> inverted_bits{bits};
+    bits::invert(inverted_bits);
+    const IndexMask inverted_mask = IndexMask::from_bits(
+        universe, BitSpan(inverted_bits).slice(slice), memory);
+
+    const IndexMask double_inverted_mask = inverted_mask.complement(universe, memory);
+    EXPECT_EQ(mask, double_inverted_mask);
+  }
+}
 
 TEST(index_mask, FromBitsDense)
 {
