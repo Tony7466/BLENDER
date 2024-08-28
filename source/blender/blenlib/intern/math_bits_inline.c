@@ -122,12 +122,11 @@ MINLINE int count_bits_i(unsigned int i)
   i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
   return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
-#endif
-
 MINLINE int count_bits_uint64(const uint64_t a)
 {
   return count_bits_i((uint32_t)a) + count_bits_i((uint32_t)(a >> 32));
 }
+#endif
 
 MINLINE int float_as_int(float f)
 {
