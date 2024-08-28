@@ -51,15 +51,20 @@ class Prepass {
     if (!enabled) {
       return;
     }
+
+    if (ob_ref.object->dt < OB_SOLID) {
+      return;
+    }
+
     /* TODO(fclem) This function should contain what `basic_cache_populate` contained. */
 
     gpu::Batch *geom = nullptr;
     switch (ob_ref.object->type) {
       case OB_MESH:
-        // geom = DRW_cache_mesh_surface_get(ob_ref.object);
+        geom = DRW_cache_mesh_surface_get(ob_ref.object);
         break;
       case OB_VOLUME:
-        // geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
+        geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
         break;
       default:
         break;
