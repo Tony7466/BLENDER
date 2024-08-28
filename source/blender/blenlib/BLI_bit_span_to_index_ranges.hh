@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <numeric>
+#include <limits>
 
 #include "BLI_bit_span.hh"
 #include "BLI_index_ranges_builder.hh"
