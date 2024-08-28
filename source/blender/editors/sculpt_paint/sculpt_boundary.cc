@@ -2898,10 +2898,11 @@ static float displacement_from_grab_delta_get(const SculptSession &ss,
                                               const SculptBoundary &boundary)
 {
   float4 plane;
-  const float3 normal = math::normalize(ss.cache->initial_location - boundary.pivot_position);
-  plane_from_point_normal_v3(plane, ss.cache->initial_location, normal);
+  const float3 normal = math::normalize(ss.cache->initial_location_symmetry -
+                                        boundary.pivot_position);
+  plane_from_point_normal_v3(plane, ss.cache->initial_location_symmetry, normal);
 
-  const float3 pos = ss.cache->initial_location + ss.cache->grab_delta_symmetry;
+  const float3 pos = ss.cache->initial_location_symmetry + ss.cache->grab_delta_symmetry;
   return dist_signed_to_plane_v3(pos, plane);
 }
 

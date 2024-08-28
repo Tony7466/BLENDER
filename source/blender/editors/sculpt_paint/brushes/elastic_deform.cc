@@ -111,8 +111,13 @@ static void calc_faces(const Depsgraph &depsgraph,
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  calc_translations(
-      brush, cache, kelvinet_params, cache.location, offset, orig_data.positions, translations);
+  calc_translations(brush,
+                    cache,
+                    kelvinet_params,
+                    cache.location_symmetry,
+                    offset,
+                    orig_data.positions,
+                    translations);
 
   scale_translations(translations, factors);
 
@@ -146,8 +151,13 @@ static void calc_grids(const Depsgraph &depsgraph,
 
   tls.translations.resize(grid_verts_num);
   const MutableSpan<float3> translations = tls.translations;
-  calc_translations(
-      brush, cache, kelvinet_params, cache.location, offset, orig_data.positions, translations);
+  calc_translations(brush,
+                    cache,
+                    kelvinet_params,
+                    cache.location_symmetry,
+                    offset,
+                    orig_data.positions,
+                    translations);
 
   scale_translations(translations, factors);
 
@@ -182,8 +192,13 @@ static void calc_bmesh(const Depsgraph &depsgraph,
 
   tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
-  calc_translations(
-      brush, cache, kelvinet_params, cache.location, offset, orig_positions, translations);
+  calc_translations(brush,
+                    cache,
+                    kelvinet_params,
+                    cache.location_symmetry,
+                    offset,
+                    orig_positions,
+                    translations);
 
   scale_translations(translations, factors);
 

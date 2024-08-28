@@ -822,7 +822,7 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
   {
     float view_aligned_normal[3];
     project_plane_v3_v3v3(
-        view_aligned_normal, ss.cache->sculpt_normal_symm, ss.cache->view_normal);
+        view_aligned_normal, ss.cache->sculpt_normal_symm, ss.cache->view_normal_symmetry);
     len_view_scale = fabsf(dot_v3v3(view_aligned_normal, ss.cache->sculpt_normal_symm));
     len_view_scale = (len_view_scale > FLT_EPSILON) ? 1.0f / len_view_scale : 1.0f;
   }
@@ -1475,7 +1475,7 @@ const float *SCULPT_brush_frontface_normal_from_falloff_shape(const SculptSessio
     return ss.cache->sculpt_normal_symm;
   }
   BLI_assert(falloff_shape == PAINT_FALLOFF_SHAPE_TUBE);
-  return ss.cache->view_normal;
+  return ss.cache->view_normal_symmetry;
 }
 
 /* ===== Sculpting =====
@@ -1486,7 +1486,7 @@ static float calc_overlap(const blender::ed::sculpt_paint::StrokeCache &cache,
                           const char axis,
                           const float angle)
 {
-  float3 mirror = blender::ed::sculpt_paint::symmetry_flip(cache.true_location, symm);
+  float3 mirror = blender::ed::sculpt_paint::symmetry_flip(cache.location, symm);
 
   if (axis != 0) {
     float mat[3][3];
@@ -1494,7 +1494,7 @@ static float calc_overlap(const blender::ed::sculpt_paint::StrokeCache &cache,
     mul_m3_v3(mat, mirror);
   }
 
-  const float distsq = len_squared_v3v3(mirror, cache.true_location);
+  const float distsq = len_squared_v3v3(mirror, cache.location);
 
   if (distsq <= 4.0f * (cache.radius_squared)) {
     return (2.0f * (cache.radius) - sqrtf(distsq)) / (2.0f * (cache.radius));
@@ -1659,8 +1659,8 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
                                                   AreaNormalCenterData &anctd)
 {
   const SculptSession &ss = *object.sculpt;
-  const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
-  const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
+  const float3 &location = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
+  const float3 &view_normal = ss.cache ? ss.cache->view_normal_symmetry : ss.cursor_view_normal;
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -1742,8 +1742,8 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
                                                    AreaNormalCenterData &anctd)
 {
   const SculptSession &ss = *object.sculpt;
-  const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
-  const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
+  const float3 &location = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
+  const float3 &view_normal = ss.cache ? ss.cache->view_normal_symmetry : ss.cursor_view_normal;
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -1846,8 +1846,8 @@ static void calc_area_normal_and_center_node_bmesh(const Object &object,
                                                    AreaNormalCenterData &anctd)
 {
   const SculptSession &ss = *object.sculpt;
-  const float3 &location = ss.cache ? ss.cache->location : ss.cursor_location;
-  const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.cursor_view_normal;
+  const float3 &location = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
+  const float3 &view_normal = ss.cache ? ss.cache->view_normal_symmetry : ss.cursor_view_normal;
   const float position_radius = area_normal_and_center_get_position_radius(ss, brush);
   const float position_radius_sq = position_radius * position_radius;
   const float position_radius_inv = math::rcp(position_radius);
@@ -2107,7 +2107,7 @@ void calc_area_center(const Depsgraph &depsgraph,
 
   if (anctd.count_co[0] == 0 && anctd.count_co[1] == 0) {
     if (ss.cache) {
-      copy_v3_v3(r_area_co, ss.cache->location);
+      copy_v3_v3(r_area_co, ss.cache->location_symmetry);
     }
   }
 }
@@ -2306,7 +2306,7 @@ void calc_area_normal_and_center(const Depsgraph &depsgraph,
 
   if (anctd.count_co[0] == 0 && anctd.count_co[1] == 0) {
     if (ss.cache) {
-      copy_v3_v3(r_area_co, ss.cache->location);
+      copy_v3_v3(r_area_co, ss.cache->location_symmetry);
     }
   }
 
@@ -2619,7 +2619,7 @@ bool node_in_cylinder(const DistRayAABB_Precalc &ray_dist_precalc,
 static Vector<bke::pbvh::Node *> pbvh_gather_cursor_update(Object &ob, bool use_original)
 {
   SculptSession &ss = *ob.sculpt;
-  const float3 center = ss.cache ? ss.cache->location : ss.cursor_location;
+  const float3 center = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
   return bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
     return node_in_sphere(node, center, ss.cursor_radius, use_original);
   });
@@ -2636,7 +2636,7 @@ static Vector<bke::pbvh::Node *> pbvh_gather_generic(
     leaf_flag = PBVH_TexLeaf;
   }
 
-  const float3 center = ss.cache->location;
+  const float3 center = ss.cache->location_symmetry;
   const float radius_sq = math::square(ss.cache->radius * radius_scale);
   const bool ignore_ineffective = brush.sculpt_tool != SCULPT_TOOL_MASK;
   switch (brush.falloff_shape) {
@@ -2654,7 +2654,7 @@ static Vector<bke::pbvh::Node *> pbvh_gather_generic(
 
     case PAINT_FALLOFF_SHAPE_TUBE: {
       const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(
-          center, ss.cache->view_normal);
+          center, ss.cache->view_normal_symmetry);
       return bke::pbvh::search_gather(
           *ss.pbvh,
           [&](bke::pbvh::Node &node) {
@@ -2698,7 +2698,7 @@ static float3 calc_sculpt_normal(const Depsgraph &depsgraph,
     case SCULPT_DISP_DIR_AREA:
       return calc_area_normal(depsgraph, brush, ob, nodes).value_or(float3(0));
     case SCULPT_DISP_DIR_VIEW:
-      return ss.cache->true_view_normal;
+      return ss.cache->view_normal;
     case SCULPT_DISP_DIR_X:
       return float3(1, 0, 0);
     case SCULPT_DISP_DIR_Y:
@@ -2729,7 +2729,7 @@ static void update_sculpt_normal(const Depsgraph &depsgraph,
   {
     cache.sculpt_normal = calc_sculpt_normal(depsgraph, sd, ob, nodes);
     if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-      project_plane_v3_v3v3(cache.sculpt_normal, cache.sculpt_normal, cache.view_normal);
+      project_plane_v3_v3v3(cache.sculpt_normal, cache.sculpt_normal, cache.view_normal_symmetry);
       normalize_v3(cache.sculpt_normal);
     }
     copy_v3_v3(cache.sculpt_normal_symm, cache.sculpt_normal);
@@ -2789,7 +2789,8 @@ static void calc_brush_local_mat(const float rotation,
   /* Convert view's brush transverse direction to object-space,
    * i.e. the normal of the plane described by the motion */
   float motion_normal_local[3];
-  calc_local_from_screen(*cache->vc, cache->location, motion_normal_screen, motion_normal_local);
+  calc_local_from_screen(
+      *cache->vc, cache->location_symmetry, motion_normal_screen, motion_normal_local);
 
   /* Calculate the movement direction for the local matrix.
    * Note that there is a deliberate prioritization here: Our calculations are
@@ -2808,7 +2809,7 @@ static void calc_brush_local_mat(const float rotation,
   copy_v3_v3(mat[2], cache->sculpt_normal);
 
   /* Set location. */
-  copy_v3_v3(mat[3], cache->location);
+  copy_v3_v3(mat[3], cache->location_symmetry);
 
   /* Scale by brush radius. */
   float radius = cache->radius;
@@ -3079,7 +3080,7 @@ void calc_brush_plane(const Depsgraph &depsgraph,
   {
     switch (brush.sculpt_plane) {
       case SCULPT_DISP_DIR_VIEW:
-        copy_v3_v3(r_area_no, ss.cache->true_view_normal);
+        copy_v3_v3(r_area_no, ss.cache->view_normal);
         break;
 
       case SCULPT_DISP_DIR_X:
@@ -3097,7 +3098,7 @@ void calc_brush_plane(const Depsgraph &depsgraph,
       case SCULPT_DISP_DIR_AREA:
         calc_area_normal_and_center(depsgraph, brush, ob, nodes, r_area_no, r_area_co);
         if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-          project_plane_v3_v3v3(r_area_no, r_area_no, ss.cache->view_normal);
+          project_plane_v3_v3v3(r_area_no, r_area_no, ss.cache->view_normal_symmetry);
           normalize_v3(r_area_no);
         }
         break;
@@ -3285,14 +3286,14 @@ static void dynamic_topology_update(const Depsgraph &depsgraph,
                                    mode,
                                    min_edge_len,
                                    max_edge_len,
-                                   ss.cache->location,
-                                   ss.cache->view_normal,
+                                   ss.cache->location_symmetry,
+                                   ss.cache->view_normal_symmetry,
                                    ss.cache->radius,
                                    (brush.flag & BRUSH_FRONTFACE) != 0,
                                    (brush.falloff_shape != PAINT_FALLOFF_SHAPE_SPHERE));
 
   /* Update average stroke position. */
-  copy_v3_v3(location, ss.cache->true_location);
+  copy_v3_v3(location, ss.cache->location);
   mul_m4_v3(ob.object_to_world().ptr(), location);
 }
 
@@ -3463,7 +3464,7 @@ static void do_brush_action(const Depsgraph &depsgraph,
     }
     cloth::brush_store_simulation_state(depsgraph, ob, *ss.cache->cloth_sim);
     cloth::ensure_nodes_constraints(
-        sd, ob, nodes, *ss.cache->cloth_sim, ss.cache->location, FLT_MAX);
+        sd, ob, nodes, *ss.cache->cloth_sim, ss.cache->location_symmetry, FLT_MAX);
   }
 
   bool invert = ss.cache->pen_flip || ss.cache->invert;
@@ -3657,7 +3658,7 @@ static void do_brush_action(const Depsgraph &depsgraph,
   }
 
   /* Update average stroke position. */
-  copy_v3_v3(location, ss.cache->true_location);
+  copy_v3_v3(location, ss.cache->location);
   mul_m4_v3(ob.object_to_world().ptr(), location);
 
   add_v3_v3(ups.average_stroke_accum, location);
@@ -3674,13 +3675,13 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
                                       const float angle)
 {
   using namespace blender;
-  cache.location = ed::sculpt_paint::symmetry_flip(cache.true_location, symm);
-  cache.last_location = ed::sculpt_paint::symmetry_flip(cache.true_last_location, symm);
+  cache.location_symmetry = ed::sculpt_paint::symmetry_flip(cache.location, symm);
+  cache.last_location_symmetry = ed::sculpt_paint::symmetry_flip(cache.last_location, symm);
   cache.grab_delta_symmetry = ed::sculpt_paint::symmetry_flip(cache.grab_delta, symm);
-  cache.view_normal = ed::sculpt_paint::symmetry_flip(cache.true_view_normal, symm);
+  cache.view_normal_symmetry = ed::sculpt_paint::symmetry_flip(cache.view_normal, symm);
 
-  cache.initial_location = ed::sculpt_paint::symmetry_flip(cache.true_initial_location, symm);
-  cache.initial_normal = ed::sculpt_paint::symmetry_flip(cache.true_initial_normal, symm);
+  cache.initial_location_symmetry = ed::sculpt_paint::symmetry_flip(cache.initial_location, symm);
+  cache.initial_normal_symmetry = ed::sculpt_paint::symmetry_flip(cache.initial_normal, symm);
 
   /* XXX This reduces the length of the grab delta if it approaches the line of symmetry
    * XXX However, a different approach appears to be needed. */
@@ -3707,12 +3708,13 @@ void SCULPT_cache_calc_brushdata_symm(blender::ed::sculpt_paint::StrokeCache &ca
     rotate_m4(cache.symm_rot_mat_inv.ptr(), axis, -angle);
   }
 
-  mul_m4_v3(cache.symm_rot_mat.ptr(), cache.location);
+  mul_m4_v3(cache.symm_rot_mat.ptr(), cache.location_symmetry);
   mul_m4_v3(cache.symm_rot_mat.ptr(), cache.grab_delta_symmetry);
 
   if (cache.supports_gravity) {
-    cache.gravity_direction = ed::sculpt_paint::symmetry_flip(cache.true_gravity_direction, symm);
-    mul_m4_v3(cache.symm_rot_mat.ptr(), cache.gravity_direction);
+    cache.gravity_direction_symmetry = ed::sculpt_paint::symmetry_flip(cache.gravity_direction,
+                                                                       symm);
+    mul_m4_v3(cache.symm_rot_mat.ptr(), cache.gravity_direction_symmetry);
   }
 
   if (cache.rake_rotation) {
@@ -3762,8 +3764,8 @@ static void do_tiled(const Depsgraph &depsgraph,
   /* Position of the "prototype" stroke for tiling. */
   float orgLoc[3];
   float original_initial_location[3];
-  copy_v3_v3(orgLoc, cache->location);
-  copy_v3_v3(original_initial_location, cache->initial_location);
+  copy_v3_v3(orgLoc, cache->location_symmetry);
+  copy_v3_v3(original_initial_location, cache->initial_location_symmetry);
 
   for (int dim = 0; dim < 3; dim++) {
     if ((sd.paint.symmetry_flags & (PAINT_TILE_X << dim)) && step[dim] > 0) {
@@ -3792,9 +3794,10 @@ static void do_tiled(const Depsgraph &depsgraph,
         ++cache->tile_pass;
 
         for (int dim = 0; dim < 3; dim++) {
-          cache->location[dim] = cur[dim] * step[dim] + orgLoc[dim];
+          cache->location_symmetry[dim] = cur[dim] * step[dim] + orgLoc[dim];
           cache->plane_offset[dim] = cur[dim] * step[dim];
-          cache->initial_location[dim] = cur[dim] * step[dim] + original_initial_location[dim];
+          cache->initial_location_symmetry[dim] = cur[dim] * step[dim] +
+                                                  original_initial_location[dim];
         }
         action(depsgraph, scene, sd, ob, brush, ups, paint_mode_settings);
       }
@@ -4178,11 +4181,11 @@ static void sculpt_update_cache_invariants(
     zero_v2(cache->initial_mouse);
   }
 
+  copy_v3_v3(cache->initial_location_symmetry, ss.cursor_location);
   copy_v3_v3(cache->initial_location, ss.cursor_location);
-  copy_v3_v3(cache->true_initial_location, ss.cursor_location);
 
+  copy_v3_v3(cache->initial_normal_symmetry, ss.cursor_normal);
   copy_v3_v3(cache->initial_normal, ss.cursor_normal);
-  copy_v3_v3(cache->true_initial_normal, ss.cursor_normal);
 
   mode = RNA_enum_get(op->ptr, "mode");
   cache->invert = mode == BRUSH_STROKE_INVERT;
@@ -4229,7 +4232,7 @@ static void sculpt_update_cache_invariants(
   mul_m3_v3(mat, viewDir);
   copy_m3_m4(mat, ob.world_to_object().ptr());
   mul_m3_v3(mat, viewDir);
-  normalize_v3_v3(cache->true_view_normal, viewDir);
+  normalize_v3_v3(cache->view_normal, viewDir);
 
   cache->supports_gravity = (!ELEM(brush->sculpt_tool,
                                    SCULPT_TOOL_MASK,
@@ -4243,16 +4246,16 @@ static void sculpt_update_cache_invariants(
     if (sd.gravity_object) {
       Object *gravity_object = sd.gravity_object;
 
-      copy_v3_v3(cache->true_gravity_direction, gravity_object->object_to_world().ptr()[2]);
+      copy_v3_v3(cache->gravity_direction, gravity_object->object_to_world().ptr()[2]);
     }
     else {
-      cache->true_gravity_direction[0] = cache->true_gravity_direction[1] = 0.0f;
-      cache->true_gravity_direction[2] = 1.0f;
+      cache->gravity_direction[0] = cache->gravity_direction[1] = 0.0f;
+      cache->gravity_direction[2] = 1.0f;
     }
 
     /* Transform to sculpted object space. */
-    mul_m3_v3(mat, cache->true_gravity_direction);
-    normalize_v3(cache->true_gravity_direction);
+    mul_m3_v3(mat, cache->gravity_direction);
+    normalize_v3(cache->gravity_direction);
   }
 
   cache->accum = true;
@@ -4398,13 +4401,13 @@ static void brush_delta_update(const Depsgraph &depsgraph,
       }
     }
     else {
-      copy_v3_v3(cache->orig_grab_location, cache->true_location);
+      copy_v3_v3(cache->orig_grab_location, cache->location);
     }
   }
   else if (tool == SCULPT_TOOL_SNAKE_HOOK ||
            (tool == SCULPT_TOOL_CLOTH && brush.cloth_deform_type == BRUSH_CLOTH_DEFORM_SNAKE_HOOK))
   {
-    add_v3_v3(cache->true_location, cache->grab_delta);
+    add_v3_v3(cache->location, cache->grab_delta);
   }
 
   /* Compute 3d coordinate at same z from original location + mval. */
@@ -4441,14 +4444,14 @@ static void brush_delta_update(const Depsgraph &depsgraph,
   }
 
   if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
-    project_plane_v3_v3v3(cache->grab_delta, cache->grab_delta, ss.cache->true_view_normal);
+    project_plane_v3_v3v3(cache->grab_delta, cache->grab_delta, ss.cache->view_normal);
   }
 
   copy_v3_v3(cache->old_grab_location, grab_location);
 
   if (need_delta_from_anchored_origin(brush)) {
     /* Location stays the same for finding vertices in brush radius. */
-    copy_v3_v3(cache->true_location, cache->orig_grab_location);
+    copy_v3_v3(cache->location, cache->orig_grab_location);
 
     ups.draw_anchored = true;
     copy_v2_v2(ups.anchored_initial_mouse, cache->initial_mouse);
@@ -4553,7 +4556,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, Po
       !((brush.flag & BRUSH_ANCHORED) || (brush.sculpt_tool == SCULPT_TOOL_SNAKE_HOOK) ||
         (brush.sculpt_tool == SCULPT_TOOL_ROTATE) || cloth::is_cloth_deform_brush(brush)))
   {
-    RNA_float_get_array(ptr, "location", cache.true_location);
+    RNA_float_get_array(ptr, "location", cache.location);
   }
 
   cache.pen_flip = RNA_boolean_get(ptr, "pen_flip");
@@ -4572,7 +4575,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, Po
 
   /* Truly temporary data that isn't stored in properties. */
   if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(*ss.cache)) {
-    cache.initial_radius = sculpt_calc_radius(*cache.vc, brush, scene, cache.true_location);
+    cache.initial_radius = sculpt_calc_radius(*cache.vc, brush, scene, cache.location);
 
     if (!BKE_brush_use_locked_size(&scene, &brush)) {
       BKE_brush_unprojected_radius_set(&scene, &brush, cache.initial_radius);
@@ -4614,11 +4617,10 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt &sd, Object &ob, Po
   if (brush.flag & BRUSH_ANCHORED) {
     /* True location has been calculated as part of the stroke system already here. */
     if (brush.flag & BRUSH_EDGE_TO_EDGE) {
-      RNA_float_get_array(ptr, "location", cache.true_location);
+      RNA_float_get_array(ptr, "location", cache.location);
     }
 
-    cache.radius = paint_calc_object_space_radius(
-        *cache.vc, cache.true_location, ups.pixel_radius);
+    cache.radius = paint_calc_object_space_radius(*cache.vc, cache.location, ups.pixel_radius);
     cache.radius_squared = cache.radius * cache.radius;
   }
 
@@ -5489,7 +5491,7 @@ static void stroke_update_step(bContext *C,
   sculpt_fix_noise_tear(sd, ob);
 
   ss.cache->first_time = false;
-  copy_v3_v3(ss.cache->true_last_location, ss.cache->true_location);
+  copy_v3_v3(ss.cache->last_location, ss.cache->location);
 
   /* Cleanup. */
   if (brush.sculpt_tool == SCULPT_TOOL_MASK) {
@@ -6767,10 +6769,11 @@ void calc_brush_distances_squared(const SculptSession &ss,
 {
   BLI_assert(verts.size() == r_distances.size());
 
-  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
+  const float3 &test_location = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
   if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
     /* The tube falloff shape requires the cached view normal. */
-    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
+    const float3 &view_normal = ss.cache ? ss.cache->view_normal_symmetry :
+                                           ss.filter_cache->view_normal;
     float4 test_plane;
     plane_from_point_normal_v3(test_plane, test_location, view_normal);
     for (const int i : verts.index_range()) {
@@ -6805,10 +6808,11 @@ void calc_brush_distances_squared(const SculptSession &ss,
 {
   BLI_assert(positions.size() == r_distances.size());
 
-  const float3 &test_location = ss.cache ? ss.cache->location : ss.cursor_location;
+  const float3 &test_location = ss.cache ? ss.cache->location_symmetry : ss.cursor_location;
   if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE && (ss.cache || ss.filter_cache)) {
     /* The tube falloff shape requires the cached view normal. */
-    const float3 &view_normal = ss.cache ? ss.cache->view_normal : ss.filter_cache->view_normal;
+    const float3 &view_normal = ss.cache ? ss.cache->view_normal_symmetry :
+                                           ss.filter_cache->view_normal;
     float4 test_plane;
     plane_from_point_normal_v3(test_plane, test_location, view_normal);
     for (const int i : positions.index_range()) {

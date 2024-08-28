@@ -58,7 +58,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   filter_region_clip_factors(ss, orig_data.positions, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_data.normals, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -103,7 +103,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   filter_region_clip_factors(ss, orig_data.positions, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_data.normals, factors);
   }
 
   tls.distances.resize(grid_verts_num);
@@ -149,7 +149,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   filter_region_clip_factors(ss, orig_positions, factors);
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_normals, factors);
   }
 
   tls.distances.resize(verts.size());

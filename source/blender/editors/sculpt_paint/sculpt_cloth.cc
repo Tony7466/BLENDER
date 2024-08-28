@@ -169,9 +169,9 @@ static float3 cloth_brush_simulation_location_get(const SculptSession &ss, const
     return float3(0);
   }
   if (brush->cloth_simulation_area_type == BRUSH_CLOTH_SIMULATION_AREA_LOCAL) {
-    return ss.cache->initial_location;
+    return ss.cache->initial_location_symmetry;
   }
-  return ss.cache->location;
+  return ss.cache->location_symmetry;
 }
 
 Vector<bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss, const Brush &brush)
@@ -184,7 +184,7 @@ Vector<bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss, const B
       const float radius_squared = math::square(ss.cache->initial_radius *
                                                 (1.0 + brush.cloth_sim_limit));
       return bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
-        return node_in_sphere(node, ss.cache->initial_location, radius_squared, false);
+        return node_in_sphere(node, ss.cache->initial_location_symmetry, radius_squared, false);
       });
     }
     case BRUSH_CLOTH_SIMULATION_AREA_GLOBAL:
@@ -192,7 +192,7 @@ Vector<bke::pbvh::Node *> brush_affected_nodes_gather(SculptSession &ss, const B
     case BRUSH_CLOTH_SIMULATION_AREA_DYNAMIC: {
       const float radius_squared = math::square(ss.cache->radius * (1.0 + brush.cloth_sim_limit));
       return bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
-        return node_in_sphere(node, ss.cache->location, radius_squared, false);
+        return node_in_sphere(node, ss.cache->location_symmetry, radius_squared, false);
       });
     }
   }
@@ -462,7 +462,7 @@ static void add_constraints_for_verts(const Object &object,
 
     if (pin_simulation_boundary) {
       const float sim_falloff = cloth_brush_simulation_falloff_get(
-          *brush, ss.cache->initial_radius, ss.cache->location, init_positions[vert]);
+          *brush, ss.cache->initial_radius, ss.cache->location_symmetry, init_positions[vert]);
       /* Vertex is inside the area of the simulation without any falloff applied. */
       if (sim_falloff < 1.0f) {
         /* Create constraints with more strength the closer the vertex is to the simulation
@@ -751,7 +751,7 @@ static void calc_forces_mesh(const Depsgraph &depsgraph,
   }
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal_symmetry, vert_normals, verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -776,7 +776,9 @@ static void calc_forces_mesh(const Depsgraph &depsgraph,
   switch (brush.cloth_deform_type) {
     case BRUSH_CLOTH_DEFORM_DRAG:
       translations_from_offset_and_factors(
-          math::normalize(cache.location - cache.last_location), factors, forces);
+          math::normalize(cache.location_symmetry - cache.last_location_symmetry),
+          factors,
+          forces);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PUSH:
@@ -795,13 +797,13 @@ static void calc_forces_mesh(const Depsgraph &depsgraph,
         calc_plane_pinch_forces(positions, falloff_plane->plane, falloff_plane->normal, forces);
       }
       else {
-        calc_pinch_forces(positions, cache.location, forces);
+        calc_pinch_forces(positions, cache.location_symmetry, forces);
       }
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR: {
-      calc_perpendicular_pinch_forces(positions, imat, cache.location, forces);
+      calc_perpendicular_pinch_forces(positions, imat, cache.location_symmetry, forces);
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
@@ -861,7 +863,7 @@ static void calc_forces_grids(const Depsgraph &depsgraph,
   }
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symmetry, subdiv_ccg, grids, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -886,7 +888,9 @@ static void calc_forces_grids(const Depsgraph &depsgraph,
   switch (brush.cloth_deform_type) {
     case BRUSH_CLOTH_DEFORM_DRAG:
       translations_from_offset_and_factors(
-          math::normalize(cache.location - cache.last_location), factors, forces);
+          math::normalize(cache.location_symmetry - cache.last_location_symmetry),
+          factors,
+          forces);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PUSH:
@@ -905,13 +909,13 @@ static void calc_forces_grids(const Depsgraph &depsgraph,
         calc_plane_pinch_forces(positions, falloff_plane->plane, falloff_plane->normal, forces);
       }
       else {
-        calc_pinch_forces(positions, cache.location, forces);
+        calc_pinch_forces(positions, cache.location_symmetry, forces);
       }
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR: {
-      calc_perpendicular_pinch_forces(positions, imat, cache.location, forces);
+      calc_perpendicular_pinch_forces(positions, imat, cache.location_symmetry, forces);
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
@@ -969,7 +973,7 @@ static void calc_forces_bmesh(const Depsgraph &depsgraph,
   }
 
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, bm_verts, factors);
+    calc_front_face(cache.view_normal_symmetry, bm_verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -994,7 +998,9 @@ static void calc_forces_bmesh(const Depsgraph &depsgraph,
   switch (brush.cloth_deform_type) {
     case BRUSH_CLOTH_DEFORM_DRAG:
       translations_from_offset_and_factors(
-          math::normalize(cache.location - cache.last_location), factors, forces);
+          math::normalize(cache.location_symmetry - cache.last_location_symmetry),
+          factors,
+          forces);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PUSH:
@@ -1013,13 +1019,13 @@ static void calc_forces_bmesh(const Depsgraph &depsgraph,
         calc_plane_pinch_forces(positions, falloff_plane->plane, falloff_plane->normal, forces);
       }
       else {
-        calc_pinch_forces(positions, cache.location, forces);
+        calc_pinch_forces(positions, cache.location_symmetry, forces);
       }
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
     case BRUSH_CLOTH_DEFORM_PINCH_PERPENDICULAR: {
-      calc_perpendicular_pinch_forces(positions, imat, cache.location, forces);
+      calc_perpendicular_pinch_forces(positions, imat, cache.location_symmetry, forces);
       scale_translations(forces, factors);
       apply_forces(cloth_sim, forces, verts);
       break;
@@ -1510,7 +1516,7 @@ static void cloth_brush_apply_brush_foces(const Depsgraph &depsgraph,
     mat.x_axis() = math::cross(area_no, cache.grab_delta_symmetry);
     mat.y_axis() = math::cross(area_no, mat.x_axis());
     mat.z_axis() = area_no;
-    mat.location() = cache.location;
+    mat.location() = cache.location_symmetry;
     normalize_m4(mat.ptr());
 
     /* Update matrix for the cursor preview. */
@@ -1530,7 +1536,7 @@ static void cloth_brush_apply_brush_foces(const Depsgraph &depsgraph,
   /* Gravity */
   float3 gravity(0);
   if (cache.supports_gravity) {
-    gravity += cache.gravity_direction * -sd.gravity_factor;
+    gravity += cache.gravity_direction_symmetry * -sd.gravity_factor;
   }
 
   std::optional<FalloffPlane> falloff_plane;
@@ -1851,7 +1857,7 @@ void plane_falloff_preview_draw(const uint gpuattr,
   float4x4 local_mat = ss.cache->stroke_local_mat;
 
   if (ss.cache->brush->cloth_deform_type == BRUSH_CLOTH_DEFORM_GRAB) {
-    add_v3_v3v3(local_mat[3], ss.cache->true_location, ss.cache->grab_delta);
+    add_v3_v3v3(local_mat[3], ss.cache->location, ss.cache->grab_delta);
   }
 
   GPU_matrix_mul(local_mat.ptr());

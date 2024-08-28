@@ -42,7 +42,8 @@ BLI_NOINLINE static void calc_silhouette_factors(const StrokeCache &cache,
 {
   BLI_assert(normals.size() == factors.size());
 
-  const float sign = math::sign(math::dot(cache.initial_normal, cache.grab_delta_symmetry));
+  const float sign = math::sign(
+      math::dot(cache.initial_normal_symmetry, cache.grab_delta_symmetry));
   const float3 test_dir = math::normalize(offset) * sign;
   for (const int i : factors.index_range()) {
     factors[i] *= std::max(math::dot(test_dir, normals[i]), 0.0f);
@@ -71,7 +72,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(mesh, verts, factors);
   filter_region_clip_factors(ss, orig_data.positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_data.normals, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -119,7 +120,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, orig_data.positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_data.normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_data.normals, factors);
   }
 
   tls.distances.resize(grid_verts_num);
@@ -168,7 +169,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
   filter_region_clip_factors(ss, orig_positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, orig_normals, factors);
+    calc_front_face(cache.view_normal_symmetry, orig_normals, factors);
   }
 
   tls.distances.resize(verts.size());

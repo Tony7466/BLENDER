@@ -1222,8 +1222,8 @@ static void do_wpaint_brush_smear(const Depsgraph &depsgraph,
   const bool use_vert_sel = (mesh.editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
   float brush_dir[3];
 
-  sub_v3_v3v3(brush_dir, cache.location, cache.last_location);
-  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal);
+  sub_v3_v3v3(brush_dir, cache.location_symmetry, cache.last_location_symmetry);
+  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal_symmetry);
   if (normalize_v3(brush_dir) == 0.0f) {
     return;
   }
@@ -1298,7 +1298,7 @@ static void do_wpaint_brush_smear(const Depsgraph &depsgraph,
             /* Get the direction from the selected vert to the neighbor. */
             float other_dir[3];
             sub_v3_v3v3(other_dir, vert_positions[vert], vert_positions[vert_other]);
-            project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal);
+            project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal_symmetry);
 
             normalize_v3(other_dir);
 
@@ -1746,7 +1746,7 @@ static void wpaint_do_symmetrical_brush_actions(
 
   if (mesh.editflag & ME_EDIT_MIRROR_VERTEX_GROUPS) {
     /* We don't do any symmetry strokes when mirroring vertex groups. */
-    copy_v3_v3(cache.true_last_location, cache.true_location);
+    copy_v3_v3(cache.last_location, cache.location);
     cache.is_last_valid = true;
     return;
   }
@@ -1774,7 +1774,7 @@ static void wpaint_do_symmetrical_brush_actions(
       }
     }
   }
-  copy_v3_v3(cache.true_last_location, cache.true_location);
+  copy_v3_v3(cache.last_location, cache.location);
   cache.is_last_valid = true;
 }
 
@@ -1852,7 +1852,7 @@ static void wpaint_stroke_update_step(bContext *C,
   /* Calculate pivot for rotation around selection if needed.
    * also needed for "Frame Selected" on last stroke. */
   float loc_world[3];
-  mul_v3_m4v3(loc_world, ob->object_to_world().ptr(), ss.cache->true_location);
+  mul_v3_m4v3(loc_world, ob->object_to_world().ptr(), ss.cache->location);
   vwpaint::last_stroke_update(scene, loc_world);
 
   BKE_mesh_batch_cache_dirty_tag(&mesh, BKE_MESH_BATCH_DIRTY_ALL);

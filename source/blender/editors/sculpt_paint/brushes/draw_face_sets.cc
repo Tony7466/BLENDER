@@ -143,7 +143,7 @@ static void calc_faces(const Depsgraph &depsgraph,
 
   filter_region_clip_factors(ss, face_centers, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, face_normals, factors);
+    calc_front_face(cache.view_normal_symmetry, face_normals, factors);
   }
 
   tls.distances.resize(face_indices.size());
@@ -248,7 +248,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   blender::ed::sculpt_paint::fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symmetry, subdiv_ccg, grids, factors);
   }
 
   tls.distances.resize(positions.size());
@@ -387,7 +387,7 @@ static void calc_bmesh(Object &object,
   fill_factor_from_hide_and_mask(*ss.bm, faces, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, faces, factors);
+    calc_front_face(cache.view_normal_symmetry, faces, factors);
   }
 
   tls.distances.resize(faces.size());
