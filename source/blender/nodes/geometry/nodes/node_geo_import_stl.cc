@@ -36,30 +36,31 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   std::shared_ptr<const geometry_import_cache::GeometryReadValue> output =
-      geometry_import_cache::import_geometry_cached(path, [&path]() {
-        STLImportParams import_params;
-        STRNCPY(import_params.filepath, path.c_str());
+      geometry_import_cache::import_geometry_cached(
+          geometry_import_cache::FileType::STL, path, [&path]() {
+            STLImportParams import_params;
+            STRNCPY(import_params.filepath, path.c_str());
 
-        import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
-        import_params.up_axis = IO_AXIS_Y;
-        import_params.use_facet_normal = false;
-        import_params.use_scene_unit = false;
-        import_params.global_scale = 1.0f;
-        import_params.use_mesh_validate = true;
+            import_params.forward_axis = IO_AXIS_NEGATIVE_Z;
+            import_params.up_axis = IO_AXIS_Y;
+            import_params.use_facet_normal = false;
+            import_params.use_scene_unit = false;
+            import_params.global_scale = 1.0f;
+            import_params.use_mesh_validate = true;
 
-        ReportList reports;
-        BKE_reports_init(&reports, RPT_STORE);
-        BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
-        import_params.reports = &reports;
+            ReportList reports;
+            BKE_reports_init(&reports, RPT_STORE);
+            BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); })
+            import_params.reports = &reports;
 
-        Mesh *mesh = STL_import_mesh(&import_params);
+            Mesh *mesh = STL_import_mesh(&import_params);
 
-        GeometrySet geometry = GeometrySet::from_mesh(mesh);
+            GeometrySet geometry = GeometrySet::from_mesh(mesh);
 
-        auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
-            geometry, import_params.reports);
-        return value;
-      });
+            auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+                geometry, import_params.reports);
+            return value;
+          });
 
   LISTBASE_FOREACH (Report *, report, &(&output->reports)->list) {
     NodeWarningType type;

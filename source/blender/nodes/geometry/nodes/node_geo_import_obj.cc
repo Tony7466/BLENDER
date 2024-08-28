@@ -37,38 +37,40 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   std::shared_ptr<const geometry_import_cache::GeometryReadValue> output =
-      geometry_import_cache::import_geometry_cached(path, [&path]() {
-        OBJImportParams import_params;
-        STRNCPY(import_params.filepath, path.c_str());
+      geometry_import_cache::import_geometry_cached(
+          geometry_import_cache::FileType::OBJ, path, [&path]() {
+            OBJImportParams import_params;
+            STRNCPY(import_params.filepath, path.c_str());
 
-        ReportList reports;
-        BKE_reports_init(&reports, RPT_STORE);
-        BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
-        import_params.reports = &reports;
+            ReportList reports;
+            BKE_reports_init(&reports, RPT_STORE);
+            BLI_SCOPED_DEFER([&]() { BKE_reports_free(&reports); });
+            import_params.reports = &reports;
 
-        Vector<bke::GeometrySet> geometries;
-        OBJ_import_geometries(&import_params, geometries);
+            Vector<bke::GeometrySet> geometries;
+            OBJ_import_geometries(&import_params, geometries);
 
-        if (geometries.is_empty()) {
-          GeometrySet geometry = GeometrySet();
+            if (geometries.is_empty()) {
+              GeometrySet geometry = GeometrySet();
 
-          auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
-              geometry, import_params.reports);
-          return value;
-        }
+              auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+                  geometry, import_params.reports);
+              return value;
+            }
 
-        bke::Instances *instances = new bke::Instances();
-        for (GeometrySet geometry : geometries) {
-          const int handle = instances->add_reference(bke::InstanceReference{std::move(geometry)});
-          instances->add_instance(handle, float4x4::identity());
-        }
+            bke::Instances *instances = new bke::Instances();
+            for (GeometrySet geometry : geometries) {
+              const int handle = instances->add_reference(
+                  bke::InstanceReference{std::move(geometry)});
+              instances->add_instance(handle, float4x4::identity());
+            }
 
-        GeometrySet geometry = GeometrySet::from_instances(instances);
+            GeometrySet geometry = GeometrySet::from_instances(instances);
 
-        auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
-            geometry, import_params.reports);
-        return value;
-      });
+            auto value = std::make_unique<geometry_import_cache::GeometryReadValue>(
+                geometry, import_params.reports);
+            return value;
+          });
 
   LISTBASE_FOREACH (Report *, report, &(&output->reports)->list) {
     NodeWarningType type;
