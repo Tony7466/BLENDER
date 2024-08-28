@@ -8,22 +8,29 @@
 
 #include "BLI_index_range.hh"
 #include "BLI_index_ranges_builder_fwd.hh"
+#include "BLI_span.hh"
 #include "BLI_utility_mixins.hh"
 
 namespace blender {
 
-template<typename T, int64_t MaxRangesNum> class IndexRangesBuilder : NonCopyable, NonMovable {
+template<typename T> class IndexRangesBuilder : NonCopyable, NonMovable {
  private:
   T *c_;
   /** Structure: [-1, start, end, start, end, start, end, ...]. */
-  std::array<T, size_t(1) + size_t(MaxRangesNum) * 2> data_;
+  MutableSpan<T> data_;
 
  public:
-  IndexRangesBuilder()
+  IndexRangesBuilder(MutableSpan<T> data) : data_(data)
   {
     static_assert(std::is_signed_v<T>);
     data_[0] = -1;
     c_ = data_.data();
+  }
+
+  static constexpr int64_t buffer_size_for_ranges_num(const int64_t ranges_num)
+  {
+    /* Two values for each range (start, end) and the dummy prefix value. */
+    return ranges_num * 2 + 1;
   }
 
   bool add(const T index)
@@ -64,6 +71,12 @@ template<typename T, int64_t MaxRangesNum> class IndexRangesBuilder : NonCopyabl
     const T end = data_[size_t(2) + 2 * size_t(i)];
     return IndexRange::from_begin_end(start, end);
   }
+};
+
+template<typename T, int64_t MaxRangesNum>
+struct IndexRangesBuilderBuffer
+    : public std::array<T,
+                        size_t(IndexRangesBuilder<T>::buffer_size_for_ranges_num(MaxRangesNum))> {
 };
 
 }  // namespace blender

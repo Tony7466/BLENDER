@@ -261,8 +261,7 @@ class IndexMask : private IndexMaskData {
       GrainSize grain_size,
       IndexMaskMemory &memory,
       FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
-                          IndexRangesBuilder<int16_t, max_segment_size> &builder)>
-          batch_predicate);
+                          IndexRangesBuilder<int16_t> &builder)> batch_predicate);
   /** Sorts all indices from #universe into the different output masks. */
   template<typename T, typename Fn>
   static void from_groups(const IndexMask &universe,

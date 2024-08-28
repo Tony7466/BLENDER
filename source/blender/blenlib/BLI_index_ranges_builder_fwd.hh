@@ -8,6 +8,6 @@
 
 namespace blender {
 
-template<typename T, int64_t MaxRangesNum> class IndexRangesBuilder;
+template<typename T> class IndexRangesBuilder;
 
 }

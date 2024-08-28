@@ -452,8 +452,7 @@ struct IndexRangeInSpan {
   int64_t begin;
 };
 
-static void bits_to_index_ranges(const BitSpan bits,
-                                 IndexRangesBuilder<int16_t, max_segment_size> &builder)
+static void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<int16_t> &builder)
 {
   using namespace bits;
   BLI_assert(bits.size() <= max_segment_size);
@@ -567,8 +566,7 @@ IndexMask IndexMask::from_bits(const IndexMask &universe,
       universe,
       GrainSize(max_segment_size),
       memory,
-      [&](const IndexMaskSegment universe_segment,
-          IndexRangesBuilder<int16_t, max_segment_size> &builder) {
+      [&](const IndexMaskSegment universe_segment, IndexRangesBuilder<int16_t> &builder) {
         int64_t extra_shift = 0;
         if (unique_sorted_indices::non_empty_is_range(universe_segment.base_span())) {
           const IndexRange universe_range{universe_segment[0], universe_segment.size()};
@@ -597,12 +595,13 @@ IndexMask IndexMask::from_batch_predicate(
     GrainSize grain_size,
     IndexMaskMemory &memory,
     FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
-                        IndexRangesBuilder<int16_t, max_segment_size> &builder)> batch_predicate)
+                        IndexRangesBuilder<int16_t> &builder)> batch_predicate)
 {
   ParallelSegmentsCollector segments_collector;
   universe.foreach_segment(grain_size, [&](const IndexMaskSegment universe_segment) {
     ParallelSegmentsCollector::LocalData &data = segments_collector.data_by_thread.local();
-    IndexRangesBuilder<int16_t, max_segment_size> builder;
+    IndexRangesBuilderBuffer<int16_t, max_segment_size> builder_buffer;
+    IndexRangesBuilder<int16_t> builder{builder_buffer};
     const int64_t extra_shift = batch_predicate(universe_segment, builder);
     if (builder.is_empty()) {
       return;
