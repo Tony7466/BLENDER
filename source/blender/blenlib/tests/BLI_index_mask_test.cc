@@ -179,17 +179,15 @@ static void benchmark_uniform_bit_distribution(const int bits_num,
   std::locale loc("en_US.UTF-8");
   timeit::Nanoseconds min_duration{INT64_MAX};
   for ([[maybe_unused]] const int64_t i : IndexRange(iterations)) {
-    {
-      IndexMaskMemory memory;
-      timeit::TimePoint start = timeit::Clock::now();
-      const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
-      timeit::TimePoint end = timeit::Clock::now();
-      const timeit::Nanoseconds duration = end - start;
-      // const double ms = double(duration.count()) / 1'000'000.0;
-      // std::cout << fmt::format(loc, "{:15L} / {:L}: {:.4} ms\n", set_bits_num, bits_num, ms);
-      min_duration = std::min(min_duration, duration);
-      EXPECT_EQ(mask.size(), set_bits_num);
-    }
+    IndexMaskMemory memory;
+    timeit::TimePoint start = timeit::Clock::now();
+    const IndexMask mask = IndexMask::from_bits(bit_vec, memory);
+    timeit::TimePoint end = timeit::Clock::now();
+    const timeit::Nanoseconds duration = end - start;
+    // const double ms = double(duration.count()) / 1'000'000.0;
+    // std::cout << fmt::format(loc, "{:15L} / {:L}: {:.4} ms\n", set_bits_num, bits_num, ms);
+    min_duration = std::min(min_duration, duration);
+    EXPECT_EQ(mask.size(), set_bits_num);
   }
   const double ms = double(min_duration.count()) / 1'000'000.0;
   if (machine_readable) {
