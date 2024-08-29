@@ -1424,19 +1424,35 @@ static void expand_cache_free(SculptSession &ss)
  */
 static void restore_face_set_data(Object &object, Cache &expand_cache)
 {
+  SculptSession &ss = *object.sculpt;
   bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
   face_sets.span.copy_from(expand_cache.original_face_sets);
   face_sets.finish();
 
   IndexMaskMemory memory;
-  for (bke::pbvh::Node *node : bke::pbvh::all_leaf_nodes(*object.sculpt->pbvh)) {
-    BKE_pbvh_node_mark_update_face_sets(*node);
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+      node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+      BLI_assert_unreachable();
+      break;
+    }
   }
 }
 
 static void restore_color_data(Object &ob, Cache &expand_cache)
 {
   SculptSession &ss = *ob.sculpt;
+  MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
   Mesh &mesh = *static_cast<Mesh *>(ob.data);
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
@@ -1445,8 +1461,8 @@ static void restore_color_data(Object &ob, Cache &expand_cache)
   const Span<int> corner_verts = mesh.corner_verts();
   const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
   bke::GSpanAttributeWriter color_attribute = color::active_color_attribute_for_write(mesh);
-  for (bke::pbvh::Node *node : nodes) {
-    for (const int vert : bke::pbvh::node_unique_verts(*node)) {
+  node_mask.foreach_index([&](const int i) {
+    for (const int vert : bke::pbvh::node_unique_verts(nodes[i])) {
       color::color_vert_set(faces,
                             corner_verts,
                             vert_to_face_map,
@@ -1455,14 +1471,16 @@ static void restore_color_data(Object &ob, Cache &expand_cache)
                             expand_cache.original_colors[vert],
                             color_attribute.span);
     }
-    BKE_pbvh_node_mark_redraw(*node);
-  }
+    BKE_pbvh_node_mark_redraw(nodes[i]);
+  });
   color_attribute.finish();
 }
 
 static void write_mask_data(Object &object, const Span<float> mask)
 {
   SculptSession &ss = *object.sculpt;
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -1471,6 +1489,8 @@ static void write_mask_data(Object &object, const Span<float> mask)
       attributes.add<float>(".sculpt_mask",
                             bke::AttrDomain::Point,
                             bke::AttributeInitVArray(VArray<float>::ForSpan(mask)));
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
       break;
     }
     case bke::pbvh::Type::BMesh: {
@@ -1481,6 +1501,8 @@ static void write_mask_data(Object &object, const Span<float> mask)
       for (const int i : mask.index_range()) {
         BM_ELEM_CD_SET_FLOAT(BM_vert_at_index(&bm, i), offset, mask[i]);
       }
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
       break;
     }
     case bke::pbvh::Type::Grids: {
@@ -1496,13 +1518,10 @@ static void write_mask_data(Object &object, const Span<float> mask)
           index++;
         }
       }
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
       break;
     }
-  }
-
-  IndexMaskMemory memory;
-  for (bke::pbvh::Node *node : bke::pbvh::all_leaf_nodes(*ss.pbvh)) {
-    BKE_pbvh_node_mark_update_mask(*node);
   }
 }
 
@@ -2017,13 +2036,6 @@ static void finish(bContext *C)
   SculptSession &ss = *ob.sculpt;
   undo::push_end(ob);
 
-  /* Tag all nodes to redraw to avoid artifacts after the fast partial updates. */
-  IndexMaskMemory memory;
-  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
-  for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_update_mask(*node);
-  }
-
   switch (ss.expand_cache->target) {
     case TargetType::Mask:
       flush_update_done(C, ob, UpdateType::Mask);
@@ -2491,16 +2503,16 @@ static void undo_push(const Depsgraph &depsgraph, Object &ob, Cache &expand_cach
 
   switch (expand_cache.target) {
     case TargetType::Mask:
-      undo::push_nodes(depsgraph, ob, nodes, undo::Type::Mask);
+      undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Mask);
       break;
     case TargetType::FaceSets:
-      undo::push_nodes(depsgraph, ob, nodes, undo::Type::FaceSet);
+      undo::push_nodes(depsgraph, ob, node_mask, undo::Type::FaceSet);
       break;
     case TargetType::Colors: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
       /* The sculpt undo system needs corner indices for corner domain color attributes. */
       BKE_pbvh_ensure_node_face_corners(*ss.pbvh, mesh.corner_tris());
-      undo::push_nodes(depsgraph, ob, nodes, undo::Type::Color);
+      undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
       break;
     }
   }

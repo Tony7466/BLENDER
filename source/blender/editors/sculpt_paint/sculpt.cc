@@ -3322,7 +3322,26 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
   bool need_coords = ss.cache->supports_gravity;
 
   if (brush.sculpt_tool == SCULPT_TOOL_DRAW_FACE_SETS) {
-    node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+    switch (ss.pbvh->type()) {
+      case bke::pbvh::Type::Mesh: {
+        MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::Grids: {
+        MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::BMesh: {
+        MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_update_face_sets(nodes[i]); });
+        break;
+      }
+    }
 
     /* Draw face sets in smooth mode moves the vertices. */
     if (ss.cache->alt_smooth) {
@@ -3334,7 +3353,23 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
   }
   else if (brush.sculpt_tool == SCULPT_TOOL_MASK) {
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Mask);
-    node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
+    switch (ss.pbvh->type()) {
+      case bke::pbvh::Type::Mesh: {
+        MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::Grids: {
+        MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::BMesh: {
+        MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
+        break;
+      }
+    }
   }
   else if (SCULPT_tool_is_paint(brush.sculpt_tool)) {
     const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
@@ -3344,7 +3379,23 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
       }
     }
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
-    node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_color(nodes[i]); });
+    switch (ss.pbvh->type()) {
+      case bke::pbvh::Type::Mesh: {
+        MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_color(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::Grids: {
+        MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_color(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::BMesh: {
+        MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+        node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_color(nodes[i]); });
+        break;
+      }
+    }
   }
   else {
     need_coords = true;
@@ -3352,8 +3403,25 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
 
   if (need_coords) {
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Position);
-    node_mask.foreach_index([&](const int i) {
-      BKE_pbvh_node_mark_positions_update(nodes[i]);
+    switch (ss.pbvh->type()) {
+      case bke::pbvh::Type::Mesh: {
+        MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_positions_update(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::Grids: {
+        MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_positions_update(nodes[i]); });
+        break;
+      }
+      case bke::pbvh::Type::BMesh: {
+        MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+        node_mask.foreach_index(
+            [&](const int i) { BKE_pbvh_node_mark_positions_update(nodes[i]); });
+        break;
+      }
     }
   }
 }
@@ -3367,7 +3435,8 @@ static void do_brush_action(const Depsgraph &depsgraph,
                             PaintModeSettings &paint_mode_settings)
 {
   SculptSession &ss = *ob.sculpt;
-  IndexMask node_mask, texnodes;
+  IndexMaskMemory memory;
+  IndexMask node_mask, texnode_mask;
 
   const bool use_original = tool_needs_original(brush.sculpt_tool) ? true : !ss.cache->accum;
   const bool use_pixels = sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob);
@@ -3375,14 +3444,12 @@ static void do_brush_action(const Depsgraph &depsgraph,
   if (sculpt_needs_pbvh_pixels(paint_mode_settings, brush, ob)) {
     sculpt_pbvh_update_pixels(depsgraph, paint_mode_settings, ob);
 
-    texnodes = pbvh_gather_texpaint(ob, brush, use_original, 1.0f);
+    texnode_mask = pbvh_gather_texpaint(ob, brush, use_original, 1.0f, memory);
 
-    if (texnodes.is_empty()) {
+    if (texnode_mask.is_empty()) {
       return;
     }
   }
-
-  IndexMaskMemory memory;
 
   /* Build a list of all nodes that are potentially within the brush's area of influence */
 
@@ -6272,24 +6339,23 @@ static SculptTopologyIslandCache calc_topology_islands_grids(const Object &objec
 static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
+  MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
   BMesh &bm = *ss.bm;
   BM_mesh_elem_index_ensure(&bm, BM_VERT);
 
   bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  const IndexMaskMemory memory;
+  IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
   AtomicDisjointSet disjoint_set(bm.totvert);
-  threading::parallel_for(nodes.index_range(), 1024, [&](const IndexRange range) {
-    for (bke::pbvh::Node nodes[i] : nodes.as_span().slice(range)) {
-      for (const BMFace *face : BKE_pbvh_bmesh_node_faces(node)) {
-        if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
-          continue;
-        }
-        disjoint_set.join(BM_elem_index_get(face->l_first->v),
-                          BM_elem_index_get(face->l_first->next->v));
-        disjoint_set.join(BM_elem_index_get(face->l_first->v),
-                          BM_elem_index_get(face->l_first->next->next->v));
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    for (const BMFace *face : BKE_pbvh_bmesh_node_faces(&nodes[i])) {
+      if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
+        continue;
       }
+      disjoint_set.join(BM_elem_index_get(face->l_first->v),
+                        BM_elem_index_get(face->l_first->next->v));
+      disjoint_set.join(BM_elem_index_get(face->l_first->v),
+                        BM_elem_index_get(face->l_first->next->next->v));
     }
   });
 

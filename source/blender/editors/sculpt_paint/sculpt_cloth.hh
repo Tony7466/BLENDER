@@ -114,7 +114,7 @@ std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgra
                                                         bool use_collisions,
                                                         bool needs_deform_coords);
 
-void sim_activate_nodes(SimulationData &cloth_sim, Span<blender::bke::pbvh::Node *> nodes);
+void sim_activate_nodes(SimulationData &cloth_sim, const IndexMask &node_mask);
 
 void brush_store_simulation_state(const Depsgraph &depsgraph,
                                   const Object &object,
@@ -124,7 +124,7 @@ void do_simulation_step(const Depsgraph &depsgraph,
                         const Sculpt &sd,
                         Object &ob,
                         SimulationData &cloth_sim,
-                        Span<blender::bke::pbvh::Node *> nodes);
+                        const IndexMask &node_mask);
 
 void ensure_nodes_constraints(const Sculpt &sd,
                               const Object &ob,

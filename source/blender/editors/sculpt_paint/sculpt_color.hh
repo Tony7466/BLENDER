@@ -65,10 +65,10 @@ void do_paint_brush(const Depsgraph &depsgraph,
                     PaintModeSettings &paint_mode_settings,
                     const Sculpt &sd,
                     Object &ob,
-                    const IndexMask &node_mask nodes,
-                    const IndexMask &node_mask texnodes);
+                    const IndexMask &node_mask,
+                    const IndexMask &texnode_mask);
 void do_smear_brush(const Depsgraph &depsgraph,
                     const Sculpt &sd,
                     Object &ob,
-                    const IndexMask &node_mask nodes);
+                    const IndexMask &node_mask);
 }  // namespace blender::ed::sculpt_paint::color
