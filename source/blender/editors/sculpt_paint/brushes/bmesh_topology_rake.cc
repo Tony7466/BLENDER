@@ -5,22 +5,19 @@
 #include "editors/sculpt_paint/brushes/types.hh"
 
 #include "DNA_brush_types.h"
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
-#include "BKE_pbvh.hh"
 
-#include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "editors/sculpt_paint/sculpt_smooth.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -46,7 +43,8 @@ BLI_NOINLINE static void calc_translations(const Set<BMVert *, 0> &verts,
   }
 }
 
-static void calc_bmesh(const Sculpt &sd,
+static void calc_bmesh(const Depsgraph &depsgraph,
+                       const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
                        const float3 &direction,
@@ -60,7 +58,7 @@ static void calc_bmesh(const Sculpt &sd,
   const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&node);
   const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-  tls.factors.reinitialize(verts.size());
+  tls.factors.resize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
@@ -68,22 +66,20 @@ static void calc_bmesh(const Sculpt &sd,
     calc_front_face(cache.view_normal, verts, factors);
   }
 
-  tls.distances.reinitialize(verts.size());
+  tls.distances.resize(verts.size());
   const MutableSpan<float> distances = tls.distances;
   calc_brush_distances(ss, positions, eBrushFalloffShape(brush.falloff_shape), distances);
   filter_distances_with_radius(cache.radius, distances, factors);
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
   scale_factors(factors, strength);
 
-  tls.translations.reinitialize(verts.size());
+  tls.translations.resize(verts.size());
   const MutableSpan<float3> translations = tls.translations;
   calc_translations(verts, direction, translations);
   scale_translations(translations, factors);
@@ -94,7 +90,8 @@ static void calc_bmesh(const Sculpt &sd,
 
 }  // namespace bmesh_topology_rake_cc
 
-void do_bmesh_topology_rake_brush(const Sculpt &sd,
+void do_bmesh_topology_rake_brush(const Depsgraph &depsgraph,
+                                  const Sculpt &sd,
                                   Object &object,
                                   Span<bke::pbvh::Node *> nodes,
                                   const float input_strength)
@@ -126,7 +123,8 @@ void do_bmesh_topology_rake_brush(const Sculpt &sd,
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
       for (const int i : range) {
-        calc_bmesh(sd, object, brush, direction, factor * ss.cache->pressure, *nodes[i], tls);
+        calc_bmesh(
+            depsgraph, sd, object, brush, direction, factor * ss.cache->pressure, *nodes[i], tls);
       }
     });
   }

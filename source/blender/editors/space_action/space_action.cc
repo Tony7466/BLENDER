@@ -13,6 +13,7 @@
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
+#include "DNA_screen_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -247,7 +248,9 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   ED_time_scrub_draw_current_frame(region, scene, saction->flag & SACTION_DRAWTIME);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, nullptr);
+  if (region->winy > HEADERY * UI_SCALE_FAC) {
+    UI_view2d_scrollers_draw(v2d, nullptr);
+  }
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -271,7 +274,9 @@ static void action_channel_region_init(wmWindowManager *wm, ARegion *region)
 static void set_v2d_height(View2D *v2d, const size_t item_count, const bool add_marker_padding)
 {
   const int height = ANIM_UI_get_channels_total_height(v2d, item_count);
-  const float pad_bottom = add_marker_padding ? UI_MARKER_MARGIN_Y : 0;
+  float pad_bottom = add_marker_padding ? UI_MARKER_MARGIN_Y : 0;
+  /* Add padding for the collapsed redo panel. */
+  pad_bottom += HEADERY;
   v2d->tot.ymin = -(height + pad_bottom);
   UI_view2d_curRect_clamp_y(v2d);
 }

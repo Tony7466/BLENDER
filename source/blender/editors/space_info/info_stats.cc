@@ -377,8 +377,8 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
       stats->tottri = ob->sculpt->bm->totface;
       break;
     case blender::bke::pbvh::Type::Grids:
-      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(*ss->pbvh);
-      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(*ss->pbvh);
+      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(*ob);
+      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(*ob);
       break;
   }
 }
@@ -716,7 +716,8 @@ const char *ED_info_statusbar_string_ex(Main *bmain,
     if (info[0]) {
       ofs += BLI_snprintf_rlen(info + ofs, len - ofs, " | ");
     }
-    ofs += BLI_snprintf_rlen(info + ofs, len - ofs, IFACE_("%s"), BKE_blender_version_string());
+    ofs += BLI_snprintf_rlen(
+        info + ofs, len - ofs, IFACE_("%s"), BKE_blender_version_string_compact());
   }
 
   return info;

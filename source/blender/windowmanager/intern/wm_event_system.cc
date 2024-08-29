@@ -2721,8 +2721,8 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
     case EVT_FILESELECT_FULL_OPEN: {
       wmWindow *win = CTX_wm_window(C);
       const int window_center[2] = {
-          WM_window_pixels_x(win) / 2,
-          WM_window_pixels_y(win) / 2,
+          WM_window_native_pixel_x(win) / 2,
+          WM_window_native_pixel_y(win) / 2,
       };
 
       const rcti window_rect = {
@@ -4987,18 +4987,19 @@ void WM_event_add_mousemove(wmWindow *win)
 /** \name Ghost Event Conversion
  * \{ */
 
+#ifdef WITH_INPUT_NDOF
 /**
  * \return The WM enum for NDOF button or #EVENT_NONE (which should be ignored)
  */
 static int wm_event_type_from_ndof_button(GHOST_NDOF_ButtonT button)
 {
-#define CASE_NDOF_BUTTON(button) \
-  case GHOST_NDOF_BUTTON_##button: \
-    return NDOF_BUTTON_##button
+#  define CASE_NDOF_BUTTON(button) \
+    case GHOST_NDOF_BUTTON_##button: \
+      return NDOF_BUTTON_##button
 
-#define CASE_NDOF_BUTTON_IGNORE(button) \
-  case GHOST_NDOF_BUTTON_##button: \
-    break;
+#  define CASE_NDOF_BUTTON_IGNORE(button) \
+    case GHOST_NDOF_BUTTON_##button: \
+      break;
 
   switch (button) {
     CASE_NDOF_BUTTON(MENU);
@@ -5077,12 +5078,14 @@ static int wm_event_type_from_ndof_button(GHOST_NDOF_ButtonT button)
     CASE_NDOF_BUTTON_IGNORE(USER);
   }
 
-#undef CASE_NDOF_BUTTON
-#undef CASE_NDOF_BUTTON_IGNORE
+#  undef CASE_NDOF_BUTTON
+#  undef CASE_NDOF_BUTTON_IGNORE
 
   CLOG_WARN(WM_LOG_EVENTS, "unknown event type %d from ndof button", int(button));
   return EVENT_NONE;
 }
+
+#endif /* WITH_INPUT_NDOF */
 
 /**
  * \return The WM enum for key or #EVENT_NONE (which should be ignored).
@@ -5416,8 +5419,8 @@ static wmWindow *wm_event_cursor_other_windows(wmWindowManager *wm, wmWindow *wi
 
   /* Check if outside, include top window bar. */
   int event_xy[2] = {UNPACK2(event->xy)};
-  if (event_xy[0] < 0 || event_xy[1] < 0 || event_xy[0] > WM_window_pixels_x(win) ||
-      event_xy[1] > WM_window_pixels_y(win) + 30)
+  if (event_xy[0] < 0 || event_xy[1] < 0 || event_xy[0] > WM_window_native_pixel_x(win) ||
+      event_xy[1] > WM_window_native_pixel_y(win) + 30)
   {
     /* Let's skip windows having modal handlers now. */
     /* Potential XXX ugly... I wouldn't have added a `modalhandlers` list

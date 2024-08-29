@@ -864,7 +864,7 @@ GPUTexture *Film::get_pass_texture(eViewLayerEEVEEPassType pass_type, int layer_
 
 bool Film::is_viewport_compositor_enabled() const
 {
-  return DRW_is_viewport_compositor_enabled();
+  return inst_.is_viewport() && DRW_is_viewport_compositor_enabled();
 }
 
 /* Gets the appropriate shader to write the given pass type. This is because passes of different
@@ -914,6 +914,13 @@ void Film::write_viewport_compositor_passes()
     const eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(
         viewport_compositor_enabled_passes_ & (1 << i));
     if (pass_type == 0) {
+      continue;
+    }
+
+    /* The compositor will use the viewport color texture as the combined pass because the viewport
+     * texture will include Grease Pencil, so no need to write the combined pass from the engine
+     * side. */
+    if (pass_type == EEVEE_RENDER_PASS_COMBINED) {
       continue;
     }
 
