@@ -1,3 +1,4 @@
 Referenced by issue #125490, Adding a Scene to VSE always rendered as sold view (or what ever the "scene strip display" is)
 Referenced by issue #126826, VSE: Video rendering extremely slow with effects in 4.3
 Referenced by pull request #126911, Fix #126826: Regression in VSE movie rendering performance
+Referenced by commit 1e6f21c34d1681f9d03f27b304e2dfdb3277de92, Fix #126826: Regression in VSE movie rendering performance
