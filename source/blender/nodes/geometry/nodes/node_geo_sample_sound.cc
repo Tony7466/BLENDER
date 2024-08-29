@@ -178,7 +178,7 @@ class SampleSoundFunction : public mf::MultiFunction {
     FFTCache &cache = *sound_->fft_cache->cache;
 
     mask.foreach_index([&](int64_t i) {
-      if (times[i] < 0 || times[i] > length_ || lows[i] < 0 || highs[i] > sound_->samplerate / 2) {
+      if (times[i] < 0 || times[i] > length_) {
         dst[i] = 0;
         return;
       }
@@ -189,12 +189,12 @@ class SampleSoundFunction : public mf::MultiFunction {
                                              std::make_optional(math::clamp(
                                                  channels[i], 0, sound_->audio_channels - 1));
 
-      const int leftmost = sample_index - samples_per_frame;
+      const int leftmost_index = sample_index - samples_per_frame;
       const int aligned_sample_index = aligned(sample_index, fft_size);
-      const int aligned_leftmost = aligned(leftmost, fft_size);
+      const int aligned_leftmost_index = aligned(leftmost_index, fft_size);
       const int smooth_radius = (fft_size > samples_per_frame) ?
                                     2 :
-                                    (aligned_sample_index - aligned_leftmost) / fft_size + 1;
+                                    (aligned_sample_index - aligned_leftmost_index) / fft_size + 1;
 
       Array<std::shared_ptr<const FFTResult>> results(smooth_radius);
       for (int j = 0; j < smooth_radius; ++j) {
@@ -210,20 +210,33 @@ class SampleSoundFunction : public mf::MultiFunction {
         });
       }
 
-      const int low = math::min(int(lows[i] / (sound_->samplerate / 2) * bin_size), bin_size - 1);
-      const int high = math::min(int(highs[i] / (sound_->samplerate / 2) * bin_size),
-                                 bin_size - 1);
       const double factor_current = double(sample_index - aligned_sample_index) / double(fft_size);
       const double factor_leftmost = (fft_size > samples_per_frame) ?
                                          1 - factor_current :
-                                         1 - double(leftmost - aligned_leftmost) /
+                                         1 - double(leftmost_index - aligned_leftmost_index) /
                                                  double(fft_size);
+      const float low = math::clamp(
+          lows[i] / (sound_->samplerate / 2) * bin_size, 0.0f, float(bin_size - 1));
+      const float high = math::clamp(
+          highs[i] / (sound_->samplerate / 2) * bin_size, 0.0f, float(bin_size - 1));
 
       double smoothed = 0;
       for (int j = 0; j < smooth_radius; ++j) {
-        double value = (results[j]->bins[high + (high == low && high != bin_size - 1)] -
-                        results[j]->bins[low]) /
-                       math::sqrt(fft_size);
+        double value;
+        if (high - low < 1.0f) {
+          const float mid = (low + high) / 2;
+          const float progress = mid - int(mid);
+          const double right = (results[j]->bins[(mid + 1 >= bin_size) ? bin_size - 1 : mid + 1] -
+                                results[j]->bins[mid]);
+          const double left = (results[j]->bins[mid] -
+                               results[j]->bins[(mid - 1 <= 0) ? 0 : mid - 1]);
+          value = (right * progress + left * (1 - progress)) * (high - low);
+        }
+        else {
+          value = results[j]->bins[high] - results[j]->bins[low];
+        }
+        value = value / math::sqrt(fft_size);
+
         if (j == 0) {
           smoothed += value * factor_current;
         }
