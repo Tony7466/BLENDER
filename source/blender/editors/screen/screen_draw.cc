@@ -15,9 +15,13 @@
 
 #include "BKE_screen.hh"
 
+#include "BLF_api.hh"
+
 #include "BLI_listbase.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
+
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 
@@ -219,41 +223,48 @@ void ED_screen_draw_edges(wmWindow *win)
   }
 }
 
-static void screen_draw_area_icon(int x, int y, int icon)
+static void screen_draw_area_drag_info(
+    int x, int y, int icon, std::string area_name, std::string hint)
 {
   if (!U.experimental.use_docking) {
     return;
   }
 
-  const float bg_width = UI_SCALE_FAC * 30.0f;
-  const float bg_height = UI_SCALE_FAC * 30.0f;
-  const float offset = UI_SCALE_FAC * 3.0f;
-
-  const float bg_color[4] = {0.9f, 0.9f, 0.9f, 1.0f};
-  const float outline[4] = {0.0f, 0.0f, 0.0f, 0.4f};
-  const rctf bg_rect = {
-      /*xmin*/ x + offset,
-      /*xmax*/ x + bg_width + offset,
-      /*ymin*/ y - bg_height - offset,
-      /*ymax*/ y - offset,
-  };
-
-  ui_draw_dropshadow(&bg_rect, 4 * U.pixelsize, 6 * U.pixelsize, 1.0f, 0.3f);
-
-  UI_draw_roundbox_4fv_ex(
-      &bg_rect, bg_color, nullptr, 1.0f, outline, U.pixelsize, 4 * U.pixelsize);
-
-  const float icon_size = 16.0f * UI_SCALE_FAC;
-  const uchar color[4] = {0, 0, 0, 220};
-  UI_icon_draw_ex(x + UI_SCALE_FAC * 10.0f,
-                  y - UI_SCALE_FAC * 26.0f,
+  const uchar text_col[] = {255, 255, 255, 255};
+  UI_icon_draw_ex(x - 8.0f * UI_SCALE_FAC,
+                  y - 2.0f * UI_SCALE_FAC,
                   icon,
-                  16.0f / icon_size,
-                  float(color[3]) / 255.0f,
+                  UI_INV_SCALE_FAC,
+                  1.0f,
                   0.0f,
-                  color,
-                  false,
+                  text_col,
+                  true,
                   UI_NO_ICON_OVERLAY_TEXT);
+
+  const int font_id = BLF_default();
+  float text_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float shadow_color[4] = {0.0f, 0.0f, 0.0f, 0.5f};
+  BLF_color4fv(font_id, text_color);
+  BLF_enable(font_id, BLF_SHADOW);
+  BLF_shadow_offset(font_id, 0, 0);
+  BLF_shadow(font_id, FontShadowType::Outline, shadow_color);
+  BLF_draw_default(x + 12.0f * UI_SCALE_FAC,
+                   y + 1.0f * UI_SCALE_FAC,
+                   0.0f,
+                   area_name.c_str(),
+                   area_name.size());
+  BLF_disable(font_id, BLF_SHADOW);
+
+  /* Use the theme settings from tooltips. */
+
+  const uiFontStyle *fstyle = UI_FSTYLE_TOOLTIP;
+  const bTheme *btheme = UI_GetTheme();
+  const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
+  float col_fg[4], col_bg[4];
+  rgba_uchar_to_float(col_fg, wcol->text);
+  rgba_uchar_to_float(col_bg, wcol->inner);
+  UI_fontstyle_draw_simple_backdrop(
+      fstyle, x - 5.0f * UI_SCALE_FAC, y + 22.0f * UI_SCALE_FAC, hint, col_fg, col_bg);
 }
 
 static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
@@ -357,7 +368,11 @@ void screen_draw_join_highlight(const wmWindow *win, ScrArea *sa1, ScrArea *sa2,
   float inner[4] = {1.0f, 1.0f, 1.0f, 0.10f};
   UI_draw_roundbox_4fv_ex(&combined, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
 
-  screen_draw_area_icon(win->eventstate->xy[0], win->eventstate->xy[1], ED_area_icon(sa1));
+  screen_draw_area_drag_info(win->eventstate->xy[0],
+                             win->eventstate->xy[1],
+                             ED_area_icon(sa1),
+                             IFACE_(ED_area_name(sa1).c_str()),
+                             IFACE_("Join Areas"));
 }
 
 void screen_draw_dock_preview(
@@ -408,7 +423,12 @@ void screen_draw_dock_preview(
 
   UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
 
-  screen_draw_area_icon(x, y, ED_area_icon(source));
+  screen_draw_area_drag_info(x,
+                             y,
+                             ED_area_icon(source),
+                             IFACE_(ED_area_name(source).c_str()),
+                             dock_target == AreaDockTarget::Center ? IFACE_("Replace Area") :
+                                                                     IFACE_("Split Area"));
 
   if (dock_target != AreaDockTarget::Center) {
     /* Darken the split position itself. */
