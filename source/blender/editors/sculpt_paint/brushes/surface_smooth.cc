@@ -17,12 +17,12 @@
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
+#include "editors/sculpt_paint/sculpt_smooth.hh"
 
 namespace blender::ed::sculpt_paint {
 
@@ -45,9 +45,10 @@ BLI_NOINLINE static void clamp_factors(const MutableSpan<float> factors)
   }
 }
 
-BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
+BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Depsgraph &depsgraph,
+                                                      const Sculpt &sd,
                                                       const Brush &brush,
-                                                      const Span<bke::pbvh::Node *> nodes,
+                                                      const IndexMask &node_mask,
                                                       Object &object,
                                                       const MutableSpan<float3> all_laplacian_disp)
 {
@@ -55,6 +56,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
   const StrokeCache &cache = *ss.cache;
   const float alpha = brush.surface_smooth_shape_preservation;
   const float beta = brush.surface_smooth_current_vertex;
+  MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
@@ -62,23 +64,21 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
-  const bke::pbvh::Tree &pbvh = *ss.pbvh;
-
-  const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-  const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+  const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
+  const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, object);
   MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
 
   Array<int> node_offset_data;
-  const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_offset_data);
+  const OffsetIndices node_offsets = create_node_vert_offsets(nodes, node_mask, node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
-    for (const int i : range) {
-      const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
+    node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+      const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
 
-      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
+      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[pos]);
       fill_factor_from_hide_and_mask(mesh, verts, factors);
       filter_region_clip_factors(ss, positions_eval, verts, factors);
       if (brush.flag & BRUSH_FRONTFACE) {
@@ -93,25 +93,24 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
       apply_hardness_to_distances(cache, distances);
       calc_brush_strength_factors(cache, brush, distances, factors);
 
-      if (cache.automasking) {
-        auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
-      }
+      auto_mask::calc_vert_factors(
+          depsgraph, object, cache.automasking.get(), nodes[i], verts, factors);
 
       calc_brush_texture_factors(ss, brush, positions_eval, verts, factors);
 
       scale_factors(factors, cache.bstrength);
       clamp_factors(factors);
-    }
+    });
   });
 
   for ([[maybe_unused]] const int iteration : IndexRange(brush.surface_smooth_iterations)) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
         const MutableSpan positions = gather_data_mesh(positions_eval, verts, tls.positions);
-        const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+        const OrigPositionData orig_data = orig_position_data_get_mesh(object, nodes[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         tls.vert_neighbors.resize(verts.size());
         calc_vert_neighbors(
@@ -135,15 +134,16 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
 
         scatter_data_mesh(laplacian_disp.as_span(), verts, all_laplacian_disp);
 
-        write_translations(sd, object, positions_eval, verts, translations, positions_orig);
-      }
+        write_translations(
+            depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      });
     });
 
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         const MutableSpan<float3> laplacian_disp = gather_data_mesh(
             all_laplacian_disp.as_span(), verts, tls.laplacian_disp);
@@ -163,16 +163,18 @@ BLI_NOINLINE static void do_surface_smooth_brush_mesh(const Sculpt &sd,
             laplacian_disp, average_laplacian_disps, beta, translations);
         scale_translations(translations, factors);
 
-        write_translations(sd, object, positions_eval, verts, translations, positions_orig);
-      }
+        write_translations(
+            depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      });
     });
   }
 }
 
 BLI_NOINLINE static void do_surface_smooth_brush_grids(
+    const Depsgraph &depsgraph,
     const Sculpt &sd,
     const Brush &brush,
-    const Span<bke::pbvh::Node *> nodes,
+    const IndexMask &node_mask,
     Object &object,
     const MutableSpan<float3> all_laplacian_disp)
 {
@@ -180,22 +182,23 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
   const StrokeCache &cache = *ss.cache;
   const float alpha = brush.surface_smooth_shape_preservation;
   const float beta = brush.surface_smooth_current_vertex;
+  MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
 
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
   Array<int> node_offset_data;
   const OffsetIndices node_offsets = create_node_vert_offsets(
-      nodes, BKE_subdiv_ccg_key_top_level(subdiv_ccg), node_offset_data);
+      BKE_subdiv_ccg_key_top_level(subdiv_ccg), nodes, node_mask, node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
-    for (const int i : range) {
-      const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+    node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+      const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
       const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
-      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
+      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[pos]);
       fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
       filter_region_clip_factors(ss, positions, factors);
       if (brush.flag & BRUSH_FRONTFACE) {
@@ -209,25 +212,24 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
       apply_hardness_to_distances(cache, distances);
       calc_brush_strength_factors(cache, brush, distances, factors);
 
-      if (cache.automasking) {
-        auto_mask::calc_grids_factors(object, *cache.automasking, *nodes[i], grids, factors);
-      }
+      auto_mask::calc_grids_factors(
+          depsgraph, object, cache.automasking.get(), nodes[i], grids, factors);
 
       calc_brush_texture_factors(ss, brush, positions, factors);
 
       scale_factors(factors, cache.bstrength);
       clamp_factors(factors);
-    }
+    });
   });
 
   for ([[maybe_unused]] const int iteration : IndexRange(brush.surface_smooth_iterations)) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
         const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-        const OrigPositionData orig_data = orig_position_data_get_mesh(object, *nodes[i]);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+        const OrigPositionData orig_data = orig_position_data_get_mesh(object, nodes[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         tls.average_positions.resize(positions.size());
         const MutableSpan<float3> average_positions = tls.average_positions;
@@ -249,15 +251,15 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
 
         clip_and_lock_translations(sd, ss, positions, translations);
         apply_translations(translations, grids, subdiv_ccg);
-      }
+      });
     });
 
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
         const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         const MutableSpan<float3> laplacian_disp = gather_data_grids(
             subdiv_ccg, all_laplacian_disp.as_span(), grids, tls.laplacian_disp);
@@ -275,15 +277,16 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
 
         clip_and_lock_translations(sd, ss, positions, translations);
         apply_translations(translations, grids, subdiv_ccg);
-      }
+      });
     });
   }
 }
 
 BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
+    const Depsgraph &depsgraph,
     const Sculpt &sd,
     const Brush &brush,
-    const Span<bke::pbvh::Node *> nodes,
+    const IndexMask &node_mask,
     Object &object,
     const MutableSpan<float3> all_laplacian_disp)
 {
@@ -291,19 +294,21 @@ BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
   const StrokeCache &cache = *ss.cache;
   const float alpha = brush.surface_smooth_shape_preservation;
   const float beta = brush.surface_smooth_current_vertex;
+  MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
 
   Array<int> node_offset_data;
-  const OffsetIndices node_offsets = create_node_vert_offsets_bmesh(nodes, node_offset_data);
+  const OffsetIndices node_offsets = create_node_vert_offsets_bmesh(
+      nodes, node_mask, node_offset_data);
   Array<float> all_factors(node_offsets.total_size());
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     LocalData &tls = all_tls.local();
-    for (const int i : range) {
-      const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
+    node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+      const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&nodes[i]);
       const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
 
-      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[i]);
+      const MutableSpan<float> factors = all_factors.as_mutable_span().slice(node_offsets[pos]);
       fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
       filter_region_clip_factors(ss, positions, factors);
       if (brush.flag & BRUSH_FRONTFACE) {
@@ -317,27 +322,26 @@ BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
       apply_hardness_to_distances(cache, distances);
       calc_brush_strength_factors(cache, brush, distances, factors);
 
-      if (cache.automasking) {
-        auto_mask::calc_vert_factors(object, *cache.automasking, *nodes[i], verts, factors);
-      }
+      auto_mask::calc_vert_factors(
+          depsgraph, object, cache.automasking.get(), nodes[i], verts, factors);
 
       calc_brush_texture_factors(ss, brush, positions, factors);
 
       scale_factors(factors, cache.bstrength);
       clamp_factors(factors);
-    }
+    });
   });
 
   for ([[maybe_unused]] const int iteration : IndexRange(brush.surface_smooth_iterations)) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&nodes[i]);
         const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
         Array<float3> orig_positions(verts.size());
         Array<float3> orig_normals(verts.size());
         orig_position_data_gather_bmesh(*ss.bm_log, verts, orig_positions, orig_normals);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         tls.average_positions.resize(positions.size());
         const MutableSpan<float3> average_positions = tls.average_positions;
@@ -355,15 +359,15 @@ BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
 
         clip_and_lock_translations(sd, ss, positions, translations);
         apply_translations(translations, verts);
-      }
+      });
     });
 
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       LocalData &tls = all_tls.local();
-      for (const int i : range) {
-        const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[i]);
+      node_mask.slice(range).foreach_index([&](const int i, const int pos) {
+        const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&nodes[i]);
         const MutableSpan positions = gather_bmesh_positions(verts, tls.positions);
-        const Span<float> factors = all_factors.as_span().slice(node_offsets[i]);
+        const Span<float> factors = all_factors.as_span().slice(node_offsets[pos]);
 
         const MutableSpan<float3> laplacian_disp = gather_data_vert_bmesh(
             all_laplacian_disp.as_span(), verts, tls.laplacian_disp);
@@ -380,14 +384,17 @@ BLI_NOINLINE static void do_surface_smooth_brush_bmesh(
 
         clip_and_lock_translations(sd, ss, positions, translations);
         apply_translations(translations, verts);
-      }
+      });
     });
   }
 }
 
 }  // namespace surface_smooth_cc
 
-void do_surface_smooth_brush(const Sculpt &sd, Object &object, const Span<bke::pbvh::Node *> nodes)
+void do_surface_smooth_brush(const Depsgraph &depsgraph,
+                             const Sculpt &sd,
+                             Object &object,
+                             const IndexMask &node_mask)
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
@@ -395,17 +402,17 @@ void do_surface_smooth_brush(const Sculpt &sd, Object &object, const Span<bke::p
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
       do_surface_smooth_brush_mesh(
-          sd, brush, nodes, object, ss.cache->surface_smooth_laplacian_disp);
+          depsgraph, sd, brush, node_mask, object, ss.cache->surface_smooth_laplacian_disp);
       break;
     case bke::pbvh::Type::Grids: {
       do_surface_smooth_brush_grids(
-          sd, brush, nodes, object, ss.cache->surface_smooth_laplacian_disp);
+          depsgraph, sd, brush, node_mask, object, ss.cache->surface_smooth_laplacian_disp);
       break;
     }
     case bke::pbvh::Type::BMesh: {
       BM_mesh_elem_index_ensure(ss.bm, BM_VERT);
       do_surface_smooth_brush_bmesh(
-          sd, brush, nodes, object, ss.cache->surface_smooth_laplacian_disp);
+          depsgraph, sd, brush, node_mask, object, ss.cache->surface_smooth_laplacian_disp);
       break;
     }
   }
