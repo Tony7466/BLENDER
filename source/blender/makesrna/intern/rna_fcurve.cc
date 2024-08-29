@@ -680,9 +680,11 @@ static void rna_FCurve_group_set(PointerRNA *ptr, PointerRNA value, ReportList *
   blender::animrig::ChannelBag &channel_bag = group->channel_bag->wrap();
 
   if (!channel_bag.fcurve_assign_to_channel_group(*fcu, *group)) {
-    printf("ERROR: F-Curve (%p) doesn't belong to the same channel bag as channel group '%s'\n",
-           fcu,
-           group->name);
+    printf(
+        "ERROR: F-Curve (datapath: '%s') doesn't belong to the same channel bag as "
+        "channel group '%s'\n",
+        fcu->rna_path,
+        group->name);
     return;
   }
 }
