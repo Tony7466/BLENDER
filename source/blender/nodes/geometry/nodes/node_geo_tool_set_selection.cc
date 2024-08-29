@@ -154,7 +154,7 @@ static void node_rna(StructRNA *srna)
        "Store true or false selection values. For mesh geometry, only used in edit mode and paint "
        "modes."},
       {int(SelectionType::Float),
-       "SOFT",
+       "FLOAT",
        0,
        "Float",
        "Store floating point selection values, intended to be clamped between zero and one. "
