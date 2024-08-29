@@ -867,20 +867,15 @@ class ChannelBag : public ::ActionChannelBag {
    * 2. All fcurves should point back to the group they belong to (if any) via
    *    their `grp` pointer.
    *
-   * The way this method restores those invariants is very specific. First, it
-   * shifts which fcurves each group covers such that the groups are exactly
-   * abutting and start at the beginning of the fcurve array. Second, it
-   * recomputes the fcurve `grp` pointers, using the groups as the source of
-   * truth for membership.
-   *
-   * The group shifting step does *not* alter the order of the channel groups in
-   * the group array, nor the number of fcurves in each group. It simply changes
-   * the start indices of each group so that the groups are packed together at
-   * the start of the fcurves.
+   * This function assumes that the fcurves are already in the correct group
+   * order (so the first N belong to the first group, which is also of length N,
+   * etc.). The groups are then updated so their starting index matches this.
+   * Then the fcurves' `grp` pointer is updated, so that any changes in group
+   * membership is correctly reflected.
    *
    * For example, if the mapping of groups to fcurves looks like this (g* are
    * the groups, dots indicate ungrouped areas, and f* are the fcurves, so e.g.
-   * f1 and f2 are part of group g0):
+   * group g0 currently contains f1 and f2, but ought to contain f0 and f1):
    *
    * ```
    * |..| g0  |..|g1|.....| g2  |..|
@@ -894,13 +889,11 @@ class ChannelBag : public ::ActionChannelBag {
    * |f0|f1|f2|f3|f4|f5|f6|f7|f8|f9|
    * ```
    *
-   * Note that this specifically does *not* move the fcurves, and therefore this
-   * alters fcurve membership in a way that depends on how the groups are
-   * shifted.
+   * Note that this specifically does *not* move the fcurves, but rather moves
+   * the groups *over* the fcurves, changing membership.
    *
-   * The `grp` pointer recomputing step simply takes the groups as the source of
-   * truth for membership, and updates the `grp` pointers in the fcurves to be
-   * consistent with that.
+   * The `grp` pointers in the fcurves are then updated to reflect their new
+   * group membership, using the groups as the source of truth.
    */
   void restore_channel_group_invariants();
 };
