@@ -306,8 +306,8 @@ struct CollectionEditData {
   /* Whether the processed operation should be allowed on hierarchy roots of liboverride
    * collections, or not. */
   bool is_liboverride_hierarchy_root_allowed;
-  /* When true, walk to the child collections. This is useful for deleting selected child
-   * collections, see: #126860. */
+  /* When true, do not skip the hierarchy of children when a parent collection is selected. This is
+   * useful for deleting selected child collections, see: #126860. */
   bool is_recursive = false;
 };
 
