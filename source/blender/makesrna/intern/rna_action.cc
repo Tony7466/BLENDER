@@ -716,11 +716,8 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
    * `rna_iterator_listbase_begin()` and `rna_iterator_array_begin()`,
    * respectively. */
 
-  /* Layered and legacy data shouldn't both exist at the same time. */
-  BLI_assert(group->channel_bag == nullptr || group->channels.first == nullptr);
-
   /* Group from a legacy action. */
-  if (group->channel_bag == nullptr) {
+  if (animrig::channel_group_is_legacy(*group)) {
     custom_iter->tag = ActionGroupChannelsIterator::LISTBASE;
     custom_iter->listbase.link = static_cast<Link *>(group->channels.first);
 

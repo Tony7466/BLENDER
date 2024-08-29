@@ -1090,6 +1090,13 @@ ID *action_slot_get_id_for_keying(Main &bmain,
 ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
 
 /**
+ * Determine whether a channel group is from a legacy action or a layered action.
+ *
+ * \return True if it's from a legacy action, false if it's from a layered action.
+ */
+bool channel_group_is_legacy(const bActionGroup &group);
+
+/**
  * Assert the invariants of Project Baklava phase 1.
  *
  * For an action the invariants are that it:

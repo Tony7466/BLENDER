@@ -1912,6 +1912,14 @@ ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id)
   return users[0];
 }
 
+bool channel_group_is_legacy(const bActionGroup &group)
+{
+  /* Layered and legacy data shouldn't both exist at the same time. */
+  BLI_assert(group.channel_bag == nullptr || group.channels.first == nullptr);
+
+  return group.channel_bag == nullptr;
+}
+
 void assert_baklava_phase_1_invariants(const Action &action)
 {
   if (action.is_action_legacy()) {
