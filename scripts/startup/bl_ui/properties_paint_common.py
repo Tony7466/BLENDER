@@ -15,7 +15,6 @@ class BrushAssetShelf:
     def poll(cls, context):
         return hasattr(context, "object") and context.object and context.object.mode == cls.mode
 
-
     @classmethod
     def brush_type_poll(cls, context, asset):
         from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
@@ -34,7 +33,6 @@ class BrushAssetShelf:
         brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
 
         return brush_type_items[asset_brush_type].identifier == tool.brush_type
-
 
     @classmethod
     def asset_poll(cls, asset):
