@@ -1899,7 +1899,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
 
   if (!(bone.has_parent() && (boneflag & BONE_CONNECTED))) {
 #ifndef NO_LEGACY_OVERLAY
-    if (select_id != -1 && !ctx->is_overlay_next()) {
+    if (!ctx->is_overlay_next() && select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_ROOT);
     }
 #endif
@@ -1922,7 +1922,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
 
   /*  Draw tip point */
 #ifndef NO_LEGACY_OVERLAY
-  if (select_id != -1 && !ctx->is_overlay_next()) {
+  if (!ctx->is_overlay_next() && select_id != -1) {
     DRW_select_load_id(select_id | BONESEL_TIP);
   }
 #endif
@@ -1947,7 +1947,7 @@ static void draw_points(const Armatures::DrawContext *ctx,
   }
 
 #ifndef NO_LEGACY_OVERLAY
-  if (select_id != -1 && !ctx->is_overlay_next()) {
+  if (!ctx->is_overlay_next() && select_id != -1) {
     DRW_select_load_id(-1);
   }
 #endif
@@ -2868,7 +2868,7 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
     const float *col_wire = get_bone_wire_color(ctx, boneflag);
 
 #ifndef NO_LEGACY_OVERLAY
-    if (select_id != -1 && !ctx->is_overlay_next()) {
+    if (!ctx->is_overlay_next() && select_id != -1) {
       DRW_select_load_id(select_id | BONESEL_BONE);
     }
 #endif
@@ -2902,7 +2902,7 @@ class ArmatureBoneDrawStrategyWire : public ArmatureBoneDrawStrategy {
     }
 
 #ifndef NO_LEGACY_OVERLAY
-    if (select_id != -1 && !ctx->is_overlay_next()) {
+    if (!ctx->is_overlay_next() && select_id != -1) {
       DRW_select_load_id(-1);
     }
 #endif
