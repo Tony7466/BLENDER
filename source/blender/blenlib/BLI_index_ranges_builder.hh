@@ -109,10 +109,13 @@ template<typename T> class IndexRangesBuilder : NonCopyable, NonMovable {
   }
 };
 
-template<typename T, int64_t MaxRangesNum>
-struct IndexRangesBuilderBuffer
-    : public std::array<T,
-                        size_t(IndexRangesBuilder<T>::buffer_size_for_ranges_num(MaxRangesNum))> {
+template<typename T, int64_t MaxRangesNum> struct IndexRangesBuilderBuffer {
+  std::array<T, size_t(IndexRangesBuilder<T>::buffer_size_for_ranges_num(MaxRangesNum))> data;
+
+  operator MutableSpan<T>()
+  {
+    return this->data;
+  }
 };
 
 }  // namespace blender
