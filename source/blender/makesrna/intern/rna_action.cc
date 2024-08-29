@@ -1311,22 +1311,24 @@ static const EnumPropertyItem *rna_id_root_itemf(bContext *C,
 {
   int totitem = 0;
   EnumPropertyItem *items = nullptr;
-  for (int i = 0; i < 39; i++) {
-    EnumPropertyItem item;
 
+  int i = 0;
+  while (rna_enum_id_type_items[i].identifier != nullptr) {
+    EnumPropertyItem item;
     item.value = rna_enum_id_type_items[i].value;
     item.name = rna_enum_id_type_items[i].name;
     item.identifier = rna_enum_id_type_items[i].identifier;
     item.icon = rna_enum_id_type_items[i].icon;
     item.description = rna_enum_id_type_items[i].description;
     RNA_enum_item_add(&items, &totitem, &item);
+    i++;
   }
 
   EnumPropertyItem item;
 
   item.value = 0;
-  item.name = "None";
-  item.identifier = "None";
+  item.name = "ANY";
+  item.identifier = "Any";
   item.icon = ICON_NONE;
   item.description = "";
   RNA_enum_item_add(&items, &totitem, &item);
