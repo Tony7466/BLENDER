@@ -32,6 +32,8 @@
 
 using namespace blender;
 
+static EnumPropertyItem id_root_any = {0, "ANY", ICON_NONE, "Any", ""};
+
 #ifdef WITH_ANIM_BAKLAVA
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
     {int(animrig::Layer::MixMode::Replace),
@@ -1304,9 +1306,9 @@ static std::optional<std::string> rna_DopeSheet_path(const PointerRNA *ptr)
   return "dopesheet";
 }
 
-static const EnumPropertyItem *rna_id_root_itemf(bContext *C,
-                                                 PointerRNA *ptr,
-                                                 PropertyRNA *prop,
+static const EnumPropertyItem *rna_id_root_itemf(bContext * /* C */,
+                                                 PointerRNA * /* ptr */,
+                                                 PropertyRNA * /* prop */,
                                                  bool *r_free)
 {
   int totitem = 0;
@@ -1324,14 +1326,7 @@ static const EnumPropertyItem *rna_id_root_itemf(bContext *C,
     i++;
   }
 
-  EnumPropertyItem item;
-
-  item.value = 0;
-  item.name = "ANY";
-  item.identifier = "Any";
-  item.icon = ICON_NONE;
-  item.description = "";
-  RNA_enum_item_add(&items, &totitem, &item);
+  RNA_enum_item_add(&items, &totitem, &id_root_any);
 
   RNA_enum_item_end(&items, &totitem);
   *r_free = true;
@@ -2441,7 +2436,7 @@ static void rna_def_action_legacy(BlenderRNA *brna, StructRNA *srna)
   /* special "type" limiter - should not really be edited in general,
    * but is still available/editable in 'emergencies' */
   static const EnumPropertyItem id_root_items[] = {
-      {0, "NONE", 0, "None", ""},
+      id_root_any,
       {0, nullptr, 0, nullptr, nullptr},
   };
   prop = RNA_def_property(srna, "id_root", PROP_ENUM, PROP_NONE);
