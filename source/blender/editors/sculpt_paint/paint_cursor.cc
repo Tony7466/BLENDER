@@ -1413,6 +1413,8 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
       float(pcontext->y - pcontext->region->winrct.ymin),
   };
 
+  BKE_sculpt_object_pbvh_ensure(pcontext->depsgraph, pcontext->vc.obact);
+
   /* This updates the active vertex, which is needed for most of the Sculpt/Vertex Colors tools to
    * work correctly */
   pcontext->prev_active_vert_ref = ss.active_vert_ref();
