@@ -292,8 +292,8 @@ set(SRC
   engines/overlay/overlay_next_antialiasing.hh
   engines/overlay/overlay_next_background.hh
   engines/overlay/overlay_next_bounds.hh
-  engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_camera.hh
+  engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_facing.hh
   engines/overlay/overlay_next_force_field.hh
   engines/overlay/overlay_next_grease_pencil.hh
@@ -305,10 +305,12 @@ set(SRC
   engines/overlay/overlay_next_mesh.hh
   engines/overlay/overlay_next_metaball.hh
   engines/overlay/overlay_next_outline.hh
+  engines/overlay/overlay_next_particle.hh
   engines/overlay/overlay_next_prepass.hh
   engines/overlay/overlay_next_private.hh
   engines/overlay/overlay_next_relation.hh
   engines/overlay/overlay_next_speaker.hh
+  engines/overlay/overlay_next_wireframe.hh
   engines/overlay/overlay_private.hh
   engines/select/select_defines.hh
   engines/select/select_engine.hh
@@ -736,6 +738,9 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_paint_wire_vert.glsl
   engines/overlay/shaders/overlay_particle_frag.glsl
   engines/overlay/shaders/overlay_particle_vert.glsl
+  engines/overlay/shaders/overlay_particle_hair_vert.glsl
+  engines/overlay/shaders/overlay_particle_shape_vert.glsl
+  engines/overlay/shaders/overlay_particle_shape_frag.glsl
   engines/overlay/shaders/overlay_point_varying_color_frag.glsl
   engines/overlay/shaders/overlay_point_varying_color_varying_outline_aa_frag.glsl
   engines/overlay/shaders/overlay_pointcloud_only_vert.glsl

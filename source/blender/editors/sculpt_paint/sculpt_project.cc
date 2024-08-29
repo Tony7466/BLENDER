@@ -8,9 +8,6 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
-#include "BLI_math_geom.h"
-#include "BLI_math_matrix.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -21,7 +18,9 @@
 #include "WM_types.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_gesture.hh"
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 namespace blender::ed::sculpt_paint::project {
 
@@ -167,7 +166,7 @@ static void gesture_apply_for_symmetry_pass(bContext &C, gesture::GestureData &g
                                     object,
                                     tls,
                                     positions_orig);
-              BKE_pbvh_node_mark_positions_update(nodes[i]);
+              BKE_pbvh_node_mark_positions_update(*nodes[i]);
             }
           });
           break;
@@ -178,7 +177,7 @@ static void gesture_apply_for_symmetry_pass(bContext &C, gesture::GestureData &g
             LocalData &tls = all_tls.local();
             for (const int i : range) {
               apply_projection_grids(sd, gesture_data, *nodes[i], object, tls);
-              BKE_pbvh_node_mark_positions_update(nodes[i]);
+              BKE_pbvh_node_mark_positions_update(*nodes[i]);
             }
           });
           break;
@@ -189,7 +188,7 @@ static void gesture_apply_for_symmetry_pass(bContext &C, gesture::GestureData &g
             LocalData &tls = all_tls.local();
             for (const int i : range) {
               apply_projection_bmesh(sd, gesture_data, *nodes[i], object, tls);
-              BKE_pbvh_node_mark_positions_update(nodes[i]);
+              BKE_pbvh_node_mark_positions_update(*nodes[i]);
             }
           });
           break;
