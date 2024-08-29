@@ -1587,13 +1587,16 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
     dst->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(
         __func__, *src->eraser_brush_asset_reference);
   }
-  dst->tool_brushes = MEM_cnew_array<PaintToolSlot>(src->tool_brushes_len, "tool slot copy");
-  for (int i = 0; i < src->tool_brushes_len; i++) {
-    if (src->tool_brushes[i].brush_asset_reference) {
-      dst->tool_brushes[i].brush_asset_reference = MEM_new<AssetWeakReference>(
-          "tool slot asset reference copy", *src->tool_brushes[i].brush_asset_reference);
+  if (src->tool_brushes_len > 0) {
+    dst->tool_brushes = MEM_cnew_array<PaintToolSlot>(src->tool_brushes_len, "tool slot copy");
+    for (int i = 0; i < src->tool_brushes_len; i++) {
+      if (src->tool_brushes[i].brush_asset_reference) {
+        dst->tool_brushes[i].brush_asset_reference = MEM_new<AssetWeakReference>(
+            "tool slot asset reference copy", *src->tool_brushes[i].brush_asset_reference);
+      }
     }
   }
+  dst->tool_brushes_len = src->tool_brushes_len;
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     id_us_plus((ID *)dst->palette);
