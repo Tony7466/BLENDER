@@ -619,7 +619,7 @@ class Armatures {
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
-    if (!enabled) {
+    if (!enabled_) {
       return;
     }
 
