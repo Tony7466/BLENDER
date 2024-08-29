@@ -418,7 +418,7 @@ class Armatures {
       transparent_.relations = opaque_.relations;
     }
 
-    auto clear_buffers = [](BoneBuffers &bb) {
+    auto shape_instance_bufs_begin_sync = [](BoneBuffers &bb) {
       bb.envelope_fill_buf.clear();
       bb.envelope_outline_buf.clear();
       bb.envelope_distance_buf.clear();
@@ -441,8 +441,8 @@ class Armatures {
       bb.custom_shape_wire.clear();
     };
 
-    clear_buffers(transparent_);
-    clear_buffers(opaque_);
+    shape_instance_bufs_begin_sync(transparent_);
+    shape_instance_bufs_begin_sync(opaque_);
   }
 
   struct DrawContext {
