@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "BLI_hash.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_quaternion.hh"
 #include "BLI_noise.hh"
 
@@ -74,8 +75,14 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       "Hash Rotation",
       [](math::Quaternion a, int seed) { return noise::hash(noise::hash_float(float4(a)), seed); },
       exec_preset);
+  static auto fn_hash_matrix = mf::build::SI2_SO<float4x4, int, int>(
+      "Hash Matrix",
+      [](float4x4 a, int seed) { return noise::hash(noise::hash_float(a), seed); },
+      exec_preset);
 
   switch (socket_type) {
+    case SOCK_MATRIX:
+      return &fn_hash_matrix;
     case SOCK_ROTATION:
       return &fn_hash_rotation;
     case SOCK_STRING:
@@ -114,6 +121,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
             SOCK_FLOAT,
             SOCK_INT,
             SOCK_ROTATION,
+            SOCK_MATRIX,
             SOCK_VECTOR,
             SOCK_STRING,
             SOCK_RGBA))
@@ -159,6 +167,7 @@ static void node_rna(StructRNA *srna)
                                    return ELEM(item.value,
                                                SOCK_FLOAT,
                                                SOCK_INT,
+                                               SOCK_MATRIX,
                                                SOCK_ROTATION,
                                                SOCK_VECTOR,
                                                SOCK_STRING,
