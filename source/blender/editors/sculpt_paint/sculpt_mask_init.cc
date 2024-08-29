@@ -228,7 +228,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     case bke::pbvh::Type::BMesh: {
       MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
       const int offset = CustomData_get_offset_named(&ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
-      node_mask.foreach_index([&](const int i) {
+      node_mask.foreach_index(GrainSize(1), [&](const int i) {
         for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&nodes[i])) {
           if (BM_elem_flag_test(vert, BM_ELEM_HIDDEN)) {
             continue;

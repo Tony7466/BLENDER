@@ -1174,7 +1174,6 @@ static void restore_mask_from_undo_step(Object &object)
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
       bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
@@ -1191,7 +1190,6 @@ static void restore_mask_from_undo_step(Object &object)
     }
     case bke::pbvh::Type::BMesh: {
       MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
-
       const int offset = CustomData_get_offset_named(&ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
       if (offset != -1) {
         node_mask.foreach_index([&](const int i) {
@@ -1208,7 +1206,6 @@ static void restore_mask_from_undo_step(Object &object)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
-
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -1272,7 +1269,6 @@ static void restore_face_set_from_undo_step(Object &object)
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-
       bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         if (const undo::Node *unode = undo::get_node(&nodes[i], undo::Type::FaceSet)) {
@@ -1287,7 +1283,6 @@ static void restore_face_set_from_undo_step(Object &object)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
-
       bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         if (const undo::Node *unode = undo::get_node(&nodes[i], undo::Type::FaceSet)) {
@@ -1314,7 +1309,6 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       MutableSpan positions_eval = bke::pbvh::vert_positions_eval_for_write(depsgraph, object);
       MutableSpan positions_orig = mesh.vert_positions_for_write();
@@ -1373,7 +1367,6 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
     }
     case bke::pbvh::Type::BMesh: {
       MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
-
       if (!undo::get_bmesh_log_entry()) {
         return;
       }
@@ -1389,7 +1382,6 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
-
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -3236,8 +3228,6 @@ static void dynamic_topology_update(const Depsgraph &depsgraph,
 
   IndexMaskMemory memory;
   const IndexMask node_mask = pbvh_gather_generic(ob, brush, use_original, radius_scale, memory);
-
-  /* Only act if some verts are inside the brush area. */
   if (node_mask.is_empty()) {
     return;
   }

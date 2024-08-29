@@ -204,16 +204,14 @@ static void do_relax_face_sets_brush_mesh(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_faces(depsgraph,
-                            sd,
-                            positions_eval,
-                            bke::pbvh::node_unique_verts(nodes[i]),
-                            object,
-                            translations.as_mutable_span().slice(node_vert_offsets[i]),
-                            positions_orig);
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_faces(depsgraph,
+                          sd,
+                          positions_eval,
+                          bke::pbvh::node_unique_verts(nodes[i]),
+                          object,
+                          translations.as_mutable_span().slice(node_vert_offsets[i]),
+                          positions_orig);
   });
 }
 
@@ -332,14 +330,12 @@ static void do_relax_face_sets_brush_grids(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_grids(sd,
-                            bke::pbvh::node_grid_indices(nodes[i]),
-                            object,
-                            current_positions.as_mutable_span().slice(node_vert_offsets[i]),
-                            translations.as_mutable_span().slice(node_vert_offsets[i]));
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_grids(sd,
+                          bke::pbvh::node_grid_indices(nodes[i]),
+                          object,
+                          current_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                          translations.as_mutable_span().slice(node_vert_offsets[i]));
   });
 }
 
@@ -428,14 +424,12 @@ static void do_relax_face_sets_brush_bmesh(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_bmesh(sd,
-                            BKE_pbvh_bmesh_node_unique_verts(&nodes[i]),
-                            object,
-                            translations.as_mutable_span().slice(node_vert_offsets[i]),
-                            current_positions.as_span().slice(node_vert_offsets[i]));
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_bmesh(sd,
+                          BKE_pbvh_bmesh_node_unique_verts(&nodes[i]),
+                          object,
+                          translations.as_mutable_span().slice(node_vert_offsets[i]),
+                          current_positions.as_span().slice(node_vert_offsets[i]));
   });
 }
 
@@ -540,16 +534,14 @@ static void do_topology_relax_brush_mesh(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_faces(depsgraph,
-                            sd,
-                            positions_eval,
-                            bke::pbvh::node_unique_verts(nodes[i]),
-                            object,
-                            translations.as_mutable_span().slice(node_vert_offsets[i]),
-                            positions_orig);
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_faces(depsgraph,
+                          sd,
+                          positions_eval,
+                          bke::pbvh::node_unique_verts(nodes[i]),
+                          object,
+                          translations.as_mutable_span().slice(node_vert_offsets[i]),
+                          positions_orig);
   });
 }
 
@@ -655,14 +647,12 @@ static void do_topology_relax_brush_grids(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_grids(sd,
-                            bke::pbvh::node_grid_indices(nodes[i]),
-                            object,
-                            current_positions.as_mutable_span().slice(node_vert_offsets[i]),
-                            translations.as_mutable_span().slice(node_vert_offsets[i]));
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_grids(sd,
+                          bke::pbvh::node_grid_indices(nodes[i]),
+                          object,
+                          current_positions.as_mutable_span().slice(node_vert_offsets[i]),
+                          translations.as_mutable_span().slice(node_vert_offsets[i]));
   });
 }
 
@@ -753,14 +743,12 @@ static void do_topology_relax_brush_bmesh(const Depsgraph &depsgraph,
     });
   });
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      apply_positions_bmesh(sd,
-                            BKE_pbvh_bmesh_node_unique_verts(&nodes[i]),
-                            object,
-                            translations.as_mutable_span().slice(node_vert_offsets[i]),
-                            current_positions.as_span().slice(node_vert_offsets[i]));
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    apply_positions_bmesh(sd,
+                          BKE_pbvh_bmesh_node_unique_verts(&nodes[i]),
+                          object,
+                          translations.as_mutable_span().slice(node_vert_offsets[i]),
+                          current_positions.as_span().slice(node_vert_offsets[i]));
   });
 }
 /** \} */

@@ -1612,7 +1612,6 @@ void push_nodes(const Depsgraph &depsgraph,
           nodes_to_fill.append({&nodes[i], unode});
         }
       });
-
       break;
     }
     case bke::pbvh::Type::BMesh: {

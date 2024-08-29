@@ -892,8 +892,7 @@ void do_smear_brush(const Depsgraph &depsgraph,
   }
   else {
     /* Smear mode. */
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-      node_mask.slice(range).foreach_index([&](const int i) {
+      node_mask.foreach_index(GrainSize(1),[&](const int i) {
         for (const int vert : bke::pbvh::node_unique_verts(nodes[i])) {
           ss.cache->paint_brush.prev_colors[vert] = color_vert_get(faces,
                                                                    corner_verts,
@@ -902,7 +901,6 @@ void do_smear_brush(const Depsgraph &depsgraph,
                                                                    color_attribute.domain,
                                                                    vert);
         }
-      });
     });
     threading::EnumerableThreadSpecific<ColorPaintLocalData> all_tls;
     threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {

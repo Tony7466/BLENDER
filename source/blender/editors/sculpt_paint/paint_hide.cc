@@ -132,14 +132,12 @@ void mesh_show_all(const Depsgraph &depsgraph, Object &object, const IndexMask &
                                                               bke::AttrDomain::Point))
   {
     const VArraySpan hide_vert(attribute);
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-      node_mask.slice(range).foreach_index([&](const int i) {
-        const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
-        if (std::any_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
-          undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
-          BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
-        }
-      });
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
+      const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
+      if (std::any_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
+        undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
+        BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
+      }
     });
   }
   node_mask.foreach_index([&](const int i) { BKE_pbvh_node_fully_hidden_set(nodes[i], false); });
@@ -156,18 +154,16 @@ void grids_show_all(Depsgraph &depsgraph, Object &object, const IndexMask &node_
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   bool any_changed = false;
   if (!grid_hidden.is_empty()) {
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-      node_mask.slice(range).foreach_index([&](const int i) {
-        const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
-        if (std::any_of(grids.begin(), grids.end(), [&](const int i) {
-              return bits::any_bit_set(grid_hidden[i]);
-            }))
-        {
-          any_changed = true;
-          undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
-          BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
-        }
-      });
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
+      const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
+      if (std::any_of(grids.begin(), grids.end(), [&](const int i) {
+            return bits::any_bit_set(grid_hidden[i]);
+          }))
+      {
+        any_changed = true;
+        undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
+        BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
+      }
     });
   }
   if (!any_changed) {
@@ -753,14 +749,12 @@ static void invert_visibility_grids(Depsgraph &depsgraph,
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::HideVert);
 
   BitGroupVector<> &grid_hidden = BKE_subdiv_ccg_grid_hidden_ensure(subdiv_ccg);
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      for (const int i : bke::pbvh::node_grid_indices(nodes[i])) {
-        bits::invert(grid_hidden[i]);
-      }
-      BKE_pbvh_node_mark_update_visibility(nodes[i]);
-      bke::pbvh::node_update_visibility_grids(grid_hidden, nodes[i]);
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    for (const int i : bke::pbvh::node_grid_indices(nodes[i])) {
+      bits::invert(grid_hidden[i]);
+    }
+    BKE_pbvh_node_mark_update_visibility(nodes[i]);
+    bke::pbvh::node_update_visibility_grids(grid_hidden, nodes[i]);
   });
 
   multires_mark_as_modified(&depsgraph, &object, MULTIRES_HIDDEN_MODIFIED);
@@ -775,20 +769,17 @@ static void invert_visibility_bmesh(const Depsgraph &depsgraph,
   MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::HideVert);
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      bool fully_hidden = true;
-      for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&nodes[i])) {
-        BM_elem_flag_toggle(vert, BM_ELEM_HIDDEN);
-        fully_hidden &= BM_elem_flag_test_bool(vert, BM_ELEM_HIDDEN);
-      }
-      BKE_pbvh_node_fully_hidden_set(nodes[i], fully_hidden);
-      BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
-    });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    bool fully_hidden = true;
+    for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&nodes[i])) {
+      BM_elem_flag_toggle(vert, BM_ELEM_HIDDEN);
+      fully_hidden &= BM_elem_flag_test_bool(vert, BM_ELEM_HIDDEN);
+    }
+    BKE_pbvh_node_fully_hidden_set(nodes[i], fully_hidden);
+    BKE_pbvh_node_mark_rebuild_draw(nodes[i]);
   });
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index(
-        [&](const int i) { partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(&nodes[i])); });
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(&nodes[i]));
   });
 }
 
@@ -917,15 +908,13 @@ static void update_undo_state(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
   const Span<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
 
-  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-    node_mask.slice(range).foreach_index([&](const int i) {
-      for (const int vert : bke::pbvh::node_unique_verts(nodes[i])) {
-        if (old_hide_vert[vert] != new_hide_vert[vert]) {
-          undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
-          break;
-        }
+  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+    for (const int vert : bke::pbvh::node_unique_verts(nodes[i])) {
+      if (old_hide_vert[vert] != new_hide_vert[vert]) {
+        undo::push_node(depsgraph, object, &nodes[i], undo::Type::HideVert);
+        break;
       }
-    });
+    }
   });
 }
 
