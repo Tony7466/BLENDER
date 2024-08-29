@@ -909,6 +909,35 @@ static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
+ * A group of channels within a ChannelBag.
+ *
+ * This does *not* own the fcurves--the ChannelBag does. This just groups
+ * fcurves for organizational purposes, e.g. for use in the channel list in the
+ * animation editors.
+ *
+ * This wrapper typically indicates that the group is part of a layered action.
+ * However, the underlying `bActionGroup` struct is also used by legacy actions.
+ */
+class ChannelGroup : public ::bActionGroup {
+ public:
+  /**
+   * Determine whether this channel group is from a legacy action or a layered action.
+   *
+   * \return True if it's from a legacy action, false if it's from a layered action.
+   */
+  bool is_legacy() const;
+
+  /**
+   * Get the fcurves in this channel group.
+   */
+  Span<FCurve *> fcurves();
+  Span<const FCurve *> fcurves() const;
+};
+
+static_assert(sizeof(ChannelGroup) == sizeof(::bActionGroup),
+              "DNA struct and its C++ wrapper must have the same size");
+
+/**
  * Assign the Action to the ID.
  *
  * This will make a best-effort guess as to which slot to use, in this
@@ -1090,24 +1119,6 @@ ID *action_slot_get_id_for_keying(Main &bmain,
 ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
 
 /**
- * Determine whether a channel group is from a legacy action or a layered action.
- *
- * TODO: create a wrapper class for `bActionGroup` and make this a method.
- *
- * \return True if it's from a legacy action, false if it's from a layered action.
- */
-bool channel_group_is_legacy(const bActionGroup &group);
-
-/**
- * Get the fcurves that belong to the given channel group.
- *
- * TODO: create a wrapper class for `bActionGroup` and make this a method.
- *
- * NOTE: only works for channel groups that are part of a layered action.
- */
-Span<FCurve *> channel_group_fcurves(bActionGroup &group);
-
-/**
  * Assert the invariants of Project Baklava phase 1.
  *
  * For an action the invariants are that it:
@@ -1157,6 +1168,15 @@ void action_deselect_keys(Action &action);
 }  // namespace blender::animrig
 
 /* Wrap functions for the DNA structs. */
+
+inline blender::animrig::ChannelGroup &bActionGroup::wrap()
+{
+  return *reinterpret_cast<blender::animrig::ChannelGroup *>(this);
+}
+inline const blender::animrig::ChannelGroup &bActionGroup::wrap() const
+{
+  return *reinterpret_cast<const blender::animrig::ChannelGroup *>(this);
+}
 
 inline blender::animrig::Action &bAction::wrap()
 {

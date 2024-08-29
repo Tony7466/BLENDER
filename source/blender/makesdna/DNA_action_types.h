@@ -56,6 +56,7 @@ class Action;
 class Slot;
 class SlotRuntime;
 class ChannelBag;
+class ChannelGroup;
 class KeyframeStrip;
 class Layer;
 class Strip;
@@ -719,6 +720,11 @@ typedef struct bActionGroup {
 
   /** Color set to use when customCol == -1. */
   ThemeWireColor cs;
+
+#ifdef __cplusplus
+  blender::animrig::ChannelGroup &wrap();
+  const blender::animrig::ChannelGroup &wrap() const;
+#endif
 } bActionGroup;
 
 /* Action Group flags */

@@ -1515,7 +1515,7 @@ static size_t animfilter_act_group(bAnimContext *ac,
           }
           else {
             BLI_assert(agrp->channel_bag != nullptr);
-            Span<FCurve *> fcurves = animrig::channel_group_fcurves(*agrp);
+            Span<FCurve *> fcurves = agrp->wrap().fcurves();
             tmp_items += animfilter_fcurves_span(
                 ac, &tmp_data, fcurves, slot_handle, filter_mode, owner_id, &act->id);
           }

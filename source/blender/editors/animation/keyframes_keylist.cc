@@ -1201,7 +1201,7 @@ void action_group_to_keylist(AnimData *adt,
   }
 
   /* Legacy actions. */
-  if (animrig::channel_group_is_legacy(*agrp)) {
+  if (agrp->wrap().is_legacy()) {
     LISTBASE_FOREACH (FCurve *, fcu, &agrp->channels) {
       if (fcu->grp != agrp) {
         break;

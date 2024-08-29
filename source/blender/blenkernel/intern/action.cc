@@ -386,7 +386,7 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
    * `action_blend_write_make_legacy_fcurves_listbase()`, so that they function
    * properly as a list. */
   for (bActionGroup *group : channel_groups) {
-    Span<FCurve *> fcurves = animrig::channel_group_fcurves(*group);
+    Span<FCurve *> fcurves = group->wrap().fcurves();
     if (fcurves.is_empty()) {
       group->channels = {nullptr, nullptr};
     }

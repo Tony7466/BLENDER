@@ -717,7 +717,7 @@ static void rna_ActionGroup_channels_begin(CollectionPropertyIterator *iter, Poi
    * respectively. */
 
   /* Group from a legacy action. */
-  if (animrig::channel_group_is_legacy(*group)) {
+  if (group->wrap().is_legacy()) {
     custom_iter->tag = ActionGroupChannelsIterator::LISTBASE;
     custom_iter->listbase.link = static_cast<Link *>(group->channels.first);
 

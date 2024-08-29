@@ -155,7 +155,7 @@ static short agrp_keyframes_loop(KeyframeEditData *ked,
   }
 
   /* Legacy actions. */
-  if (animrig::channel_group_is_legacy(*agrp)) {
+  if (agrp->wrap().is_legacy()) {
     LISTBASE_FOREACH (FCurve *, fcu, &agrp->channels) {
       if (fcu->grp == agrp) {
         if (ANIM_fcurve_keyframes_loop(ked, fcu, key_ok, key_cb, fcu_cb)) {

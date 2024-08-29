@@ -1563,11 +1563,43 @@ void ChannelBag::restore_channel_group_invariants()
       fcurve->grp = nullptr;
     }
     for (bActionGroup *group : this->channel_groups()) {
-      for (FCurve *fcurve : channel_group_fcurves(*group)) {
+      for (FCurve *fcurve : group->wrap().fcurves()) {
         fcurve->grp = group;
       }
     }
   }
+}
+
+bool ChannelGroup::is_legacy() const
+{
+  /* Layered and legacy data shouldn't both exist at the same time. */
+  BLI_assert(this->channel_bag == nullptr || this->channels.first == nullptr);
+
+  return this->channel_bag == nullptr;
+}
+
+Span<FCurve *> ChannelGroup::fcurves()
+{
+  BLI_assert(!this->is_legacy());
+
+  if (this->fcurve_range_length == 0) {
+    return {};
+  }
+
+  return this->channel_bag->wrap().fcurves().slice(this->fcurve_range_start,
+                                                   this->fcurve_range_length);
+}
+
+Span<const FCurve *> ChannelGroup::fcurves() const
+{
+  BLI_assert(!this->is_legacy());
+
+  if (this->fcurve_range_length == 0) {
+    return {};
+  }
+
+  return this->channel_bag->wrap().fcurves().slice(this->fcurve_range_start,
+                                                   this->fcurve_range_length);
 }
 
 /* Utility function implementations. */
@@ -1908,26 +1940,6 @@ ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id)
     return primary_id;
   }
   return users[0];
-}
-
-bool channel_group_is_legacy(const bActionGroup &group)
-{
-  /* Layered and legacy data shouldn't both exist at the same time. */
-  BLI_assert(group.channel_bag == nullptr || group.channels.first == nullptr);
-
-  return group.channel_bag == nullptr;
-}
-
-Span<FCurve *> channel_group_fcurves(bActionGroup &group)
-{
-  BLI_assert(!channel_group_is_legacy(group));
-
-  if (group.fcurve_range_length == 0) {
-    return {};
-  }
-
-  return group.channel_bag->wrap().fcurves().slice(group.fcurve_range_start,
-                                                   group.fcurve_range_length);
 }
 
 void assert_baklava_phase_1_invariants(const Action &action)
