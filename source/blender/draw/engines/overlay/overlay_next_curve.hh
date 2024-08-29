@@ -109,22 +109,23 @@ class Curves {
         edit_legacy_curve_normals_ = nullptr;
       }
       {
-        auto &sub = pass.sub("Points");
-        pass.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
+        auto &sub = pass.sub("Handles");
+        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_handles.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
         sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
-        edit_legacy_curve_points_ = &sub;
+        edit_legacy_curve_handles_ = &sub;
       }
+      /* Points need to be rendered after handles. */
       {
-        auto &sub = pass.sub("Handles");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | state.clipping_state);
+        auto &sub = pass.sub("Points");
+        pass.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
         sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
-        edit_legacy_curve_handles_ = &sub;
+        edit_legacy_curve_points_ = &sub;
       }
     }
   }
