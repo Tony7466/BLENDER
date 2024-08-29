@@ -3012,8 +3012,7 @@ void Armatures::draw_armature_pose(Armatures::DrawContext *ctx)
     return;
   }
 
-  ctx->draw_mode = ARM_DRAW_MODE_OBJECT; /* Will likely be set to
-                                                            ARM_DRAW_MODE_POSE below. */
+  ctx->draw_mode = ARM_DRAW_MODE_OBJECT; /* Will likely be set to ARM_DRAW_MODE_POSE below. */
 
   bool is_pose_select = false;
   /* Object can be edited in the scene. */
