@@ -740,7 +740,6 @@ if(UNIX AND NOT APPLE)
         PROGRAMS
         ${CMAKE_SOURCE_DIR}/release/bin/blender-launcher
         ${CMAKE_SOURCE_DIR}/release/bin/blender-softwaregl
-        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh
         DESTINATION "."
       )
 
@@ -962,6 +961,17 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
       endif()
       unset(_target_LIB)
     endif()
+
+    # The script uses the version of Python installed with Blender
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh
+      ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+      @ONLY
+    )
+    install(
+      PROGRAMS ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+      DESTINATION "."
+    )
   endif()
 
   if(WITH_DRACO)
@@ -1615,10 +1625,14 @@ elseif(APPLE)
     )
   endif()
 
-  if(NOT WITH_PYTHON_MODULE)
+  if(NOT WITH_PYTHON_MODULE AND WITH_PYTHON AND WITH_PYTHON_INSTALL)
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh
+      ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
+      @ONLY
+    )
     install(
-      PROGRAMS
-        ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh
+      PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
       DESTINATION "./Blender.app/Contents/Resources"
     )
   endif()

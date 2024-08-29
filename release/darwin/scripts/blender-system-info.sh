@@ -1,19 +1,15 @@
 #!/bin/sh
 
-script_dir=$(dirname "$0") # Directory to this sh file
+# Directory to this SH file.
+BASE_DIR=$(dirname "$0")
 
-for directory in "$script_dir"/*; do
-    if test -d "$directory"; then
-        if test -d "$directory/python/bin"; then # If Python bin directory exists
-            for file in "$directory/python/bin"/*; do
-                if grep -i "python" "$file" > /dev/null; then # Search for Python executable
-                    "$file" "$directory/scripts/modules/_bpy_internal/system_info/startup.py" # Run Python script
-                    exit 0
-                fi
-            done
-        fi
-    fi
-done
+PYTHON_EXECUTABLE=$(basename "@PYTHON_EXECUTABLE@")
+PYTHON_BIN="$BASE_DIR/@BLENDER_VERSION@/python/bin/$PYTHON_EXECUTABLE"
+SYSTEM_INFO_STARTUP_PY="$BASE_DIR/@BLENDER_VERSION@/scripts/modules/_bpy_internal/system_info/startup.py"
+if test -f "$PYTHON_BIN"; then
+  "$PYTHON_BIN" "$SYSTEM_INFO_STARTUP_PY"
+  exit 0
+fi
 
 echo "ERROR: Failed to find python executable. Possible causes include:"
 echo "- Your Blender installation is corrupt or missing python."
