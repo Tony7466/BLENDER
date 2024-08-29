@@ -467,6 +467,13 @@ class Armatures {
     const ThemeWireColor *bcolor = nullptr; /* pchan color */
 
     DrawContext() = default;
+
+    /* Runtime switch between legacy and new overlay codebase.
+     * Should be removed once the legacy code is removed. */
+    bool is_overlay_next() const
+    {
+      return this->bone_buf != nullptr;
+    }
   };
 
   DrawContext create_draw_context(const ObjectRef &ob_ref,
