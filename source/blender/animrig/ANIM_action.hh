@@ -915,8 +915,9 @@ static_assert(sizeof(ChannelBag) == sizeof(::ActionChannelBag),
  * fcurves for organizational purposes, e.g. for use in the channel list in the
  * animation editors.
  *
- * This wrapper typically indicates that the group is part of a layered action.
- * However, the underlying `bActionGroup` struct is also used by legacy actions.
+ * Usage of this wrapper typically indicates that the group is part of a layered
+ * action. However, the underlying `bActionGroup` struct is also used by legacy
+ * actions.
  */
 class ChannelGroup : public ::bActionGroup {
  public:
