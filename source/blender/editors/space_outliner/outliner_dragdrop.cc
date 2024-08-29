@@ -677,6 +677,17 @@ void OUTLINER_OT_material_drop(wmOperatorType *ot)
 /** \name Action Drop Operator
  * \{ */
 
+static bAction *outliner_action_drop_find(bContext *C, const wmEvent *event)
+{
+  TreeElement *te = outliner_drop_find(C, event);
+  TreeStoreElem *tselem = (te) ? TREESTORE(te) : nullptr;
+
+  if (te && (te->idcode == ID_AC) && (tselem->type == TSE_ACTION)) {
+    return (bAction *)te->directdata;
+  }
+  return nullptr;
+}
+
 static bool action_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   /* Ensure item under cursor is valid drop target */
@@ -688,12 +699,12 @@ static bool action_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
   if (!action.is_action_layered()) {
     return false;
   }
-  return (dna_action && (outliner_ID_drop_find(C, event, ID_AC) != nullptr));
+  return (dna_action && (outliner_action_drop_find(C, event) != nullptr));
 }
 
 static int action_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
-  bAction *dna_action_target = (bAction *)outliner_ID_drop_find(C, event, ID_AC);
+  bAction *dna_action_target = outliner_action_drop_find(C, event);
   bAction *dna_action_source = (bAction *)WM_drag_get_local_ID_from_event(event, ID_AC);
   BLI_assert(dna_action_source != nullptr);
   BLI_assert(dna_action_target != nullptr);

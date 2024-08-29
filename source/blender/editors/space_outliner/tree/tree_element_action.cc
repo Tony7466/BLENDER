@@ -22,6 +22,7 @@ TreeElementAction::TreeElementAction(TreeElement &legacy_te, bAction &action)
 {
   legacy_te.name = action.id.name + 2;
   legacy_te.directdata = &action;
+  legacy_te.idcode = ID_AC;
 }
 
 void TreeElementAction::expand(SpaceOutliner & /* space_outliner */) const
