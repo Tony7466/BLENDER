@@ -700,7 +700,12 @@ typedef struct bNodeTree {
 
   /** #blender::bke::NodeGroupColorTag. */
   int color_tag;
-  char _pad[4];
+
+  /**
+   * Default width of a group node created for this group. May be zero, in which case this value
+   * should be ignored.
+   */
+  int default_group_node_width;
 
   rctf viewer_border;
 
@@ -2104,6 +2109,12 @@ enum {
   CMP_NODE_CHANNEL_MATTE_CS_HSV = 2,
   CMP_NODE_CHANNEL_MATTE_CS_YUV = 3,
   CMP_NODE_CHANNEL_MATTE_CS_YCC = 4,
+};
+
+/* Conductive fresnel types */
+enum {
+  SHD_PHYSICAL_CONDUCTOR = 0,
+  SHD_CONDUCTOR_F82 = 1,
 };
 
 /* glossy distributions */

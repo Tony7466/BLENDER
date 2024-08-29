@@ -12,6 +12,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask_fwd.hh"
+#include "BLI_index_ranges_builder_fwd.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_offset_span.hh"
@@ -256,6 +257,7 @@ class IndexMask : private IndexMaskData {
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+<<<<<<< HEAD
 
   /** Construct a mask with using std::any_of for indices in range of each group of #groups. */
   IndexMask any_of(OffsetIndices<int> groups, IndexMaskMemory &memory) const;
@@ -266,6 +268,24 @@ class IndexMask : private IndexMaskData {
    * groups. */
   // IndexMask propagate_on_all(OffsetIndices<int> groups, IndexMaskMemory &memory) const;
 
+  == == == =
+               /**
+                * This is a variant of #from_predicate that is more efficient if the predicate for
+                * many indices can be evaluated at once.
+                *
+                * \param batch_predicate: A function that finds indices in a certain segment that
+                * should become part of the mask. To efficiently handle ranges, this function uses
+                * #IndexRangesBuilder. It returns an index offset that should be applied to each
+                * index in the builder.
+                */
+      static IndexMask
+      from_batch_predicate(
+          const IndexMask &universe,
+          GrainSize grain_size,
+          IndexMaskMemory &memory,
+          FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                              IndexRangesBuilder<int16_t> &builder)> batch_predicate);
+>>>>>>> main
   /** Sorts all indices from #universe into the different output masks. */
   template<typename T, typename Fn>
   static void from_groups(const IndexMask &universe,

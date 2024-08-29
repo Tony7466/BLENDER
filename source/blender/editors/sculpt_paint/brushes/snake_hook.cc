@@ -19,6 +19,7 @@
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
@@ -75,12 +76,9 @@ static float3 sculpt_rake_rotate(const StrokeCache &cache,
                                  const float3 &v_co,
                                  float factor)
 {
-  float q_interp[4];
   float3 vec_rot = v_co - sculpt_co;
-
-  copy_qt_qt(q_interp, cache.rake_rotation_symmetry);
-  pow_qt_fl_normalized(q_interp, factor);
-  mul_qt_v3(q_interp, vec_rot);
+  const math::Quaternion rotation = math::pow(*cache.rake_rotation_symmetry, factor);
+  vec_rot = math::transform_point(rotation, vec_rot);
 
   vec_rot += sculpt_co;
   return vec_rot - v_co;
@@ -135,7 +133,7 @@ BLI_NOINLINE static void calc_rake_rotation_influence(const StrokeCache &cache,
                                                       const Span<float> factors,
                                                       const MutableSpan<float3> translations)
 {
-  if (!cache.is_rake_rotation_valid) {
+  if (!cache.rake_rotation_symmetry) {
     return;
   }
   for (const int i : positions.index_range()) {
@@ -157,7 +155,8 @@ BLI_NOINLINE static void calc_kelvinet_translation(const StrokeCache &cache,
   }
 }
 
-static void calc_faces(const Sculpt &sd,
+static void calc_faces(const Depsgraph &depsgraph,
+                       const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
                        const SculptProjectVector *spvc,
@@ -196,9 +195,7 @@ static void calc_faces(const Sculpt &sd,
     apply_hardness_to_distances(cache, distances);
     calc_brush_strength_factors(cache, brush, distances, factors);
 
-    if (cache.automasking) {
-      auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-    }
+    auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
     scale_factors(factors, cache.bstrength);
   }
 
@@ -214,17 +211,16 @@ static void calc_faces(const Sculpt &sd,
   if (do_elastic) {
     fill_factor_from_hide_and_mask(mesh, verts, factors);
     scale_factors(factors, cache.bstrength * 20.0f);
-    if (cache.automasking) {
-      auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-    }
+    auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
     calc_kelvinet_translation(cache, positions, factors, translations);
   }
 
-  write_translations(sd, object, positions_eval, verts, translations, positions_orig);
+  write_translations(depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 }
 
-static void calc_grids(const Sculpt &sd,
+static void calc_grids(const Depsgraph &depsgraph,
+                       const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
                        SculptProjectVector *spvc,
@@ -260,9 +256,8 @@ static void calc_grids(const Sculpt &sd,
     apply_hardness_to_distances(cache, distances);
     calc_brush_strength_factors(cache, brush, distances, factors);
 
-    if (cache.automasking) {
-      auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-    }
+    auto_mask::calc_grids_factors(
+        depsgraph, object, cache.automasking.get(), node, grids, factors);
     scale_factors(factors, cache.bstrength);
   }
 
@@ -278,9 +273,8 @@ static void calc_grids(const Sculpt &sd,
   if (do_elastic) {
     fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
     scale_factors(factors, cache.bstrength * 20.0f);
-    if (cache.automasking) {
-      auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-    }
+    auto_mask::calc_grids_factors(
+        depsgraph, object, cache.automasking.get(), node, grids, factors);
 
     calc_kelvinet_translation(cache, positions, factors, translations);
   }
@@ -289,7 +283,8 @@ static void calc_grids(const Sculpt &sd,
   apply_translations(translations, grids, subdiv_ccg);
 }
 
-static void calc_bmesh(const Sculpt &sd,
+static void calc_bmesh(const Depsgraph &depsgraph,
+                       const Sculpt &sd,
                        Object &object,
                        const Brush &brush,
                        SculptProjectVector *spvc,
@@ -324,9 +319,7 @@ static void calc_bmesh(const Sculpt &sd,
     apply_hardness_to_distances(cache, distances);
     calc_brush_strength_factors(cache, brush, distances, factors);
 
-    if (cache.automasking) {
-      auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-    }
+    auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
     scale_factors(factors, cache.bstrength);
   }
 
@@ -342,9 +335,7 @@ static void calc_bmesh(const Sculpt &sd,
   if (do_elastic) {
     fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
     scale_factors(factors, cache.bstrength * 20.0f);
-    if (cache.automasking) {
-      auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-    }
+    auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
     calc_kelvinet_translation(cache, positions, factors, translations);
   }
@@ -355,7 +346,10 @@ static void calc_bmesh(const Sculpt &sd,
 
 }  // namespace snake_hook_cc
 
-void do_snake_hook_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node *> nodes)
+void do_snake_hook_brush(const Depsgraph &depsgraph,
+                         const Sculpt &sd,
+                         Object &object,
+                         Span<bke::pbvh::Node *> nodes)
 {
   SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
@@ -382,14 +376,14 @@ void do_snake_hook_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node 
   switch (object.sculpt->pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      const bke::pbvh::Tree &pbvh = *ss.pbvh;
-      const Span<float3> positions_eval = BKE_pbvh_get_vert_positions(pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+      const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
+      const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, object);
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_faces(sd,
+          calc_faces(depsgraph,
+                     sd,
                      object,
                      brush,
                      &spvc,
@@ -399,7 +393,7 @@ void do_snake_hook_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node 
                      *nodes[i],
                      tls,
                      positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+          BKE_pbvh_node_mark_positions_update(*nodes[i]);
         }
       });
       break;
@@ -408,7 +402,7 @@ void do_snake_hook_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node 
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_grids(sd, object, brush, &spvc, grab_delta, *nodes[i], tls);
+          calc_grids(depsgraph, sd, object, brush, &spvc, grab_delta, *nodes[i], tls);
         }
       });
       break;
@@ -416,7 +410,7 @@ void do_snake_hook_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node 
       threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         for (const int i : range) {
-          calc_bmesh(sd, object, brush, &spvc, grab_delta, *nodes[i], tls);
+          calc_bmesh(depsgraph, sd, object, brush, &spvc, grab_delta, *nodes[i], tls);
         }
       });
       break;
