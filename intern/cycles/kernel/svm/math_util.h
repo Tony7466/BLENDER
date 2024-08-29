@@ -174,14 +174,7 @@ ccl_device float svm_math(NodeMathType type, float a, float b, float c)
     case NODE_MATH_ARCTANGENT:
       return atanf(a);
     case NODE_MATH_ARCTAN2:
-#ifdef __KERNEL_METAL__
-      /* To ensure consistent behavior across platforms, we handle this special case following
-       * https://en.cppreference.com/w/c/numeric/math/atan2, instead of the native implementation
-       * on Metal, which handles this case differently. See #126799. */
-      return (a == 0.0f ? copysign(signbit(b) * M_PI_F, a) : atan2(a, b));
-#else
-      return atan2f(a, b);
-#endif
+      return compatible_atan2(a, b);
     case NODE_MATH_SIGN:
       return compatible_signf(a);
     case NODE_MATH_EXPONENT:
