@@ -919,14 +919,15 @@ bool assign_action(Action &action, ID &animated_id);
  * Assign the Action, ensuring that a Slot is also assigned.
  *
  * If this Action happens to already be assigned, and a Slot is assigned too, that Slot is
- * returned. Otherwise a new Slot is created.
+ * returned. Otherwise a new Slot is created + assigned.
  *
  * \returns the assigned slot if the assignment was succesful, or `nullptr` otherwise. The only
  * reason the assignment can fail is when the given ID is of an animatable type.
  *
- * \note Contrary to `assign_action()` this skips the search by slot name. It should be possible
- * for an animator to un-assign a slot, then create a new slot by inserting a new key. This
- * shouldn't auto-assign the old slot (by name) and _then_ insert the key.
+ * \note Contrary to `assign_action()` this skips the search by slot name when the Action is
+ * already assigned. It should be possible for an animator to un-assign a slot, then create a new
+ * slot by inserting a new key. This shouldn't auto-assign the old slot (by name) and _then_ insert
+ * the key.
  *
  * \see assign_action()
  */
