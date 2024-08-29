@@ -485,7 +485,7 @@ struct BoneInstanceData {
   BoneInstanceData() = default;
 
   /* Constructor used by metaball overlays and expected to be used for drawing
-   * metaball_wire_sphere with armature wire shader that produces wide-lines. */
+   * metaball edit circles with armature wire shader that produces wide-lines. */
   BoneInstanceData(const float4x4 &ob_mat,
                    const float3 &pos,
                    const float radius,
