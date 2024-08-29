@@ -1786,7 +1786,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
       return nullptr;
     }
     ID &animated_id = *ptr->owner_id;
-    BLI_assert(get_action(animated_id) == action);
+    BLI_assert(get_action(animated_id) == &action);
     if (get_action(animated_id) != &action) {
       return nullptr;
     }
