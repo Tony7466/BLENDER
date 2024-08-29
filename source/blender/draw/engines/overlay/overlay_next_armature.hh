@@ -99,6 +99,27 @@ class Armatures {
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_outline;
     Map<gpu::Batch *, std::unique_ptr<BoneInstanceBuf>> custom_shape_wire;
 
+    BoneInstanceBuf &custom_shape_fill_get_buffer(gpu::Batch *geom)
+    {
+      return *custom_shape_fill.lookup_or_add_cb(geom, [this]() {
+        return std::make_unique<BoneInstanceBuf>(this->selection_type_, "CustomBoneSolid");
+      });
+    }
+
+    BoneInstanceBuf &custom_shape_outline_get_buffer(gpu::Batch *geom)
+    {
+      return *custom_shape_outline.lookup_or_add_cb(geom, [this]() {
+        return std::make_unique<BoneInstanceBuf>(this->selection_type_, "CustomBoneOutline");
+      });
+    }
+
+    BoneInstanceBuf &custom_shape_wire_get_buffer(gpu::Batch *geom)
+    {
+      return *custom_shape_wire.lookup_or_add_cb(geom, [this]() {
+        return std::make_unique<BoneInstanceBuf>(this->selection_type_, "CustomBoneWire");
+      });
+    }
+
     BoneBuffers(const SelectionType selection_type) : selection_type_(selection_type){};
   };
 

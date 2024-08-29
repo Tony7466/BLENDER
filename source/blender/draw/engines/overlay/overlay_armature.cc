@@ -904,13 +904,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
     inst_data.set_hint_color(hint_color);
     inst_data.set_color(bone_color);
     if (ctx->is_overlay_next() && ctx->is_filled) {
-      ctx->bone_buf->custom_shape_fill
-          .lookup_or_add_cb(surf,
-                            [ctx]() {
-                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                       "CustomBoneSolid");
-                            })
-          ->append(inst_data, select_id);
+      ctx->bone_buf->custom_shape_fill_get_buffer(surf).append(inst_data, select_id);
     }
 #ifndef NO_LEGACY_OVERLAY
     else if (ctx->custom_solid) {
@@ -923,13 +917,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
   if (edges) {
     inst_data.set_color(outline_color);
     if (ctx->is_overlay_next()) {
-      ctx->bone_buf->custom_shape_outline
-          .lookup_or_add_cb(edges,
-                            [ctx]() {
-                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                       "CustomBoneOutline");
-                            })
-          ->append(inst_data, select_id);
+      ctx->bone_buf->custom_shape_outline_get_buffer(edges).append(inst_data, select_id);
     }
 #ifndef NO_LEGACY_OVERLAY
     else if (ctx->custom_outline) {
@@ -943,13 +931,7 @@ static void drw_shgroup_bone_custom_solid_mesh(const Armatures::DrawContext *ctx
     inst_data.set_hint_color(outline_color);
     inst_data.set_color(float4(UNPACK3(outline_color), wire_width / WIRE_WIDTH_COMPRESSION));
     if (ctx->is_overlay_next()) {
-      ctx->bone_buf->custom_shape_wire
-          .lookup_or_add_cb(loose_edges,
-                            [ctx]() {
-                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                       "CustomBoneWire");
-                            })
-          ->append(inst_data, select_id);
+      ctx->bone_buf->custom_shape_wire_get_buffer(loose_edges).append(inst_data, select_id);
     }
 #ifndef NO_LEGACY_OVERLAY
     else {
@@ -985,13 +967,7 @@ static void drw_shgroup_bone_custom_mesh_wire(const Armatures::DrawContext *ctx,
     inst_data.set_color(float4(UNPACK3(color), wire_width / WIRE_WIDTH_COMPRESSION));
 
     if (ctx->is_overlay_next()) {
-      ctx->bone_buf->custom_shape_wire
-          .lookup_or_add_cb(geom,
-                            [ctx]() {
-                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                       "CustomBoneWire");
-                            })
-          ->append(inst_data, select_id);
+      ctx->bone_buf->custom_shape_wire_get_buffer(geom).append(inst_data, select_id);
     }
 #ifndef NO_LEGACY_OVERLAY
     else {
@@ -1036,13 +1012,7 @@ static void drw_shgroup_custom_bone_curve(const Armatures::DrawContext *ctx,
     inst_data.set_color(float4(UNPACK3(outline_color), wire_width / WIRE_WIDTH_COMPRESSION));
 
     if (ctx->is_overlay_next()) {
-      ctx->bone_buf->custom_shape_wire
-          .lookup_or_add_cb(loose_edges,
-                            [ctx]() {
-                              return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                       "CustomBoneWire");
-                            })
-          ->append(inst_data, select_id);
+      ctx->bone_buf->custom_shape_wire_get_buffer(loose_edges).append(inst_data, select_id);
     }
 #ifndef NO_LEGACY_OVERLAY
     else {
@@ -1161,13 +1131,7 @@ static void drw_shgroup_bone_custom_empty(const Armatures::DrawContext *ctx,
     inst_data.set_hint_color(final_color);
     inst_data.set_color(float4(UNPACK3(final_color), wire_width / WIRE_WIDTH_COMPRESSION));
 
-    ctx->bone_buf->custom_shape_wire
-        .lookup_or_add_cb(geom,
-                          [ctx]() {
-                            return std::make_unique<BoneInstanceBuf>(ctx->res->selection_type,
-                                                                     "CustomBoneEmpty");
-                          })
-        ->append(inst_data, select_id);
+    ctx->bone_buf->custom_shape_wire_get_buffer(geom).append(inst_data, select_id);
     return;
   }
 
