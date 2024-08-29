@@ -7,8 +7,7 @@ PYTHON_EXECUTABLE=$(basename "@PYTHON_EXECUTABLE@")
 PYTHON_BIN="$BASE_DIR/@BLENDER_VERSION@/python/bin/$PYTHON_EXECUTABLE"
 SYSTEM_INFO_STARTUP_PY="$BASE_DIR/@BLENDER_VERSION@/scripts/modules/_bpy_internal/system_info/startup.py"
 if test -f "$PYTHON_BIN"; then
-  "$PYTHON_BIN" "$SYSTEM_INFO_STARTUP_PY"
-  exit 0
+  exec "$PYTHON_BIN" -I "$SYSTEM_INFO_STARTUP_PY"
 fi
 
 echo "ERROR: Failed to find python executable. Possible causes include:"
