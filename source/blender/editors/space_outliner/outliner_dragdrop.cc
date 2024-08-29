@@ -681,6 +681,9 @@ static bool action_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   /* Ensure item under cursor is valid drop target */
   bAction *dna_action = (bAction *)WM_drag_get_local_ID(drag, ID_AC);
+  if (dna_action == nullptr) {
+    return false;
+  }
   blender::animrig::Action &action = dna_action->wrap();
   if (!action.is_action_layered()) {
     return false;

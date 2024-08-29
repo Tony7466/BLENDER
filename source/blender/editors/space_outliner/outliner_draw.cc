@@ -2562,6 +2562,12 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
 
   if (tselem->type != TSE_SOME_ID) {
     switch (tselem->type) {
+      case TSE_ACTION:
+        data.icon = ICON_ACTION;
+        break;
+      case TSE_ACTION_SLOT:
+        data.icon = ICON_ANIM;
+        break;
       case TSE_ANIM_DATA:
         data.icon = ICON_ANIM_DATA; /* XXX */
         break;

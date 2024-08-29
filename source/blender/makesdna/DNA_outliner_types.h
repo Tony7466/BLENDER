@@ -115,6 +115,8 @@ typedef enum eTreeStoreElemType {
   TSE_GENERIC_LABEL = 47, /* No ID */
   TSE_GREASE_PENCIL_NODE = 48,
   TSE_LINKED_NODE_TREE = 49,
+  TSE_ACTION = 50,
+  TSE_ACTION_SLOT = 51,
 } eTreeStoreElemType;
 
 /** Check whether given #TreeStoreElem should have a real ID in #TreeStoreElem.id member. */
