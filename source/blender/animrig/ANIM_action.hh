@@ -1097,6 +1097,13 @@ ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
 bool channel_group_is_legacy(const bActionGroup &group);
 
 /**
+ * Get the fcurves that belong to the given channel group.
+ *
+ * NOTE: only works for channel groups that are part of a layered action.
+ */
+Span<FCurve *> channel_group_fcurves(bActionGroup &group);
+
+/**
  * Assert the invariants of Project Baklava phase 1.
  *
  * For an action the invariants are that it:

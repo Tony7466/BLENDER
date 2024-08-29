@@ -1563,9 +1563,7 @@ void ChannelBag::restore_channel_group_invariants()
       fcurve->grp = nullptr;
     }
     for (bActionGroup *group : this->channel_groups()) {
-      for (FCurve *fcurve :
-           this->fcurves().slice(group->fcurve_range_start, group->fcurve_range_length))
-      {
+      for (FCurve *fcurve : channel_group_fcurves(*group)) {
         fcurve->grp = group;
       }
     }
@@ -1918,6 +1916,18 @@ bool channel_group_is_legacy(const bActionGroup &group)
   BLI_assert(group.channel_bag == nullptr || group.channels.first == nullptr);
 
   return group.channel_bag == nullptr;
+}
+
+Span<FCurve *> channel_group_fcurves(bActionGroup &group)
+{
+  BLI_assert(!channel_group_is_legacy(group));
+
+  if (group.fcurve_range_length == 0) {
+    return {};
+  }
+
+  return group.channel_bag->wrap().fcurves().slice(group.fcurve_range_start,
+                                                   group.fcurve_range_length);
 }
 
 void assert_baklava_phase_1_invariants(const Action &action)

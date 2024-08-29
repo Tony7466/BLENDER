@@ -386,15 +386,11 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
    * `action_blend_write_make_legacy_fcurves_listbase()`, so that they function
    * properly as a list. */
   for (bActionGroup *group : channel_groups) {
-    if (group->fcurve_range_length == 0) {
+    Span<FCurve *> fcurves = animrig::channel_group_fcurves(*group);
+    if (fcurves.is_empty()) {
       group->channels = {nullptr, nullptr};
-      continue;
     }
-    Span<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
-    group->channels = {
-        fcurves[group->fcurve_range_start],
-        fcurves[group->fcurve_range_start + group->fcurve_range_length - 1],
-    };
+    group->channels = {fcurves.first(), fcurves.last()};
   }
 
   /* Determine the prev/next pointers on the elements. */
