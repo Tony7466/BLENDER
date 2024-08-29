@@ -112,6 +112,13 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
       "overlay_edit_curves_handle",
       [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
+  legacy_curve_edit_wires = shader(
+      "overlay_edit_curve_wire",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  legacy_curve_edit_points = shader(
+      "overlay_edit_curve_point",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
