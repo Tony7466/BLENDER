@@ -74,6 +74,7 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
 
     return 0
 
+
 if __name__ == "__main__":
     import sys
     sys.exit(prefill_bug_report_info())
