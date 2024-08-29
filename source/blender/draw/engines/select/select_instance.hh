@@ -101,7 +101,7 @@ struct SelectMap {
   /** Uniform buffer to bind to all passes to pass information about the selection state. */
   UniformBuffer<SelectInfoData> info_buf;
   /** Will remove the depth test state from any pass drawing objects with select id. */
-  bool disable_depth_test;
+  bool disable_depth_test = false;
 
   SelectMap(const SelectionType selection_type) : selection_type(selection_type){};
 
