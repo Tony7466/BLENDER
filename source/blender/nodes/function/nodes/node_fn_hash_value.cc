@@ -1,8 +1,6 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-
-#include <cmath>
 
 #include "BLI_hash.h"
 #include "BLI_math_matrix_types.hh"
@@ -28,8 +26,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   const bNode *node = b.node_or_null();
   if (node) {
-    const eNodeSocketDatatype input_type = eNodeSocketDatatype(node->custom1);
-    b.add_input(input_type, "Value");
+    const eNodeSocketDatatype data_type = eNodeSocketDatatype(node->custom1);
+    b.add_input(data_type, "Value");
   }
   b.add_input<decl::Int>("Seed", "Seed");
   b.add_output<decl::Int>("Hash");
@@ -37,7 +35,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "input_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -113,6 +111,12 @@ class SocketSearchOp {
   }
 };
 
+static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
+{
+  const mf::MultiFunction *fn = get_multi_function(builder.node());
+  builder.set_matching_fn(fn);
+}
+
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
   eNodeSocketDatatype socket_type = eNodeSocketDatatype(params.other_socket().type);
@@ -144,18 +148,12 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
-{
-  const mf::MultiFunction *fn = get_multi_function(builder.node());
-  builder.set_matching_fn(fn);
-}
-
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(
       srna,
-      "input_type",
-      "Input Type",
+      "data_type",
+      "Data Type",
       "",
       rna_enum_node_socket_data_type_items,
       NOD_inline_enum_accessors(custom1),

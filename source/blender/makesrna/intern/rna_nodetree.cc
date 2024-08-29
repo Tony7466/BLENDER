@@ -1972,17 +1972,6 @@ static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext *
   return itemf_function_check(rna_enum_attribute_type_items, random_value_type_supported);
 }
 
-static bool hash_value_type_supported(const EnumPropertyItem *item)
-{
-  return ELEM(item->value,
-              CD_PROP_FLOAT,
-              CD_PROP_FLOAT3,
-              CD_PROP_STRING,
-              CD_PROP_COLOR,
-              CD_PROP_INT32,
-              CD_PROP_QUATERNION);
-}
-
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value,
