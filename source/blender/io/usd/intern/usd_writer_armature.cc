@@ -72,9 +72,7 @@ static void initialize(const Object *obj,
     }
 
     /* Store Blender bone lengths to facilitate better roundtripping. */
-    pxr::GfVec3f head(bone->head);
-    pxr::GfVec3f tail(bone->tail);
-    bone_lengths.push_back((tail - head).GetLength());
+    bone_lengths.push_back(bone->length);
 
     joints.push_back(build_usd_joint_path(bone, allow_unicode));
     const pxr::GfMatrix4f arm_mat(bone->arm_mat);
