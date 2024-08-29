@@ -2530,11 +2530,6 @@ static void widget_state(uiWidgetType *wt, const uiWidgetStateInfo *state, eUIEm
     }
   }
 
-  if (state->but_drawflag & UI_BUT_TEXT_WHITE) {
-    const uchar white[4] = {255, 255, 255, 255};
-    copy_v4_v4_uchar(wt->wcol.text, white);
-  }
-
   if (state->but_flag & UI_BUT_DRAG_MULTI) {
     /* the button isn't SELECT but we're editing this so draw with sel color */
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
@@ -4344,11 +4339,6 @@ static void widget_state_label(uiWidgetType *wt,
     const uchar red[4] = {255, 0, 0};
     color_blend_v3_v3(wt->wcol.text, red, 0.4f);
   }
-
-  if (state->but_drawflag & UI_BUT_TEXT_WHITE) {
-    const uchar white[4] = {255, 255, 255, 255};
-    copy_v4_v4_uchar(wt->wcol.text, white);
-  }
 }
 
 static void widget_radiobut(uiWidgetColors *wcol,
@@ -5150,6 +5140,10 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
   if (wt->text) {
     if (use_alpha_blend) {
       GPU_blend(GPU_BLEND_ALPHA);
+    }
+
+    if (but->type == UI_BTYPE_LABEL && !(but->flag & UI_HAS_ICON) && but->col[3] != 0) {
+      copy_v4_v4_uchar(wt->wcol.text, but->col);
     }
 
     wt->text(fstyle, &wt->wcol, but, rect);
