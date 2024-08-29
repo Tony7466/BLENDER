@@ -1254,8 +1254,14 @@ static void draw_pbvh_nodes(const Object &object,
                             const blender::IndexMask &nodes_to_draw)
 {
   nodes_to_draw.foreach_index([&](const int i) {
+    if (!batches[i]) {
+      return;
+    }
     const int material_index = material_indices.is_empty() ? 0 : material_indices[i];
     DRWShadingGroup *shgrp = shading_groups[material_index];
+    if (!shgrp) {
+      return;
+    }
     if (SCULPT_DEBUG_BUFFERS) {
       /* Color each buffers in different colors. Only work in solid/X-ray mode. */
       shgrp = DRW_shgroup_create_sub(shgrp);
@@ -1381,30 +1387,30 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
       *pbvh, memory, [&](const bke::pbvh::Node &node) {
         return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
       });
+  const Object &object = *scd->ob;
 
-  const IndexMask nodes_to_update = IndexMask::from_predicate(
-      update_only_visible ? visible_nodes : IndexMask(pbvh->nodes_.size()),
-      GrainSize(64),
-      memory,
-      [&](const int i) {
-        return (pbvh->nodes_[i].flag_ & (PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers)) != 0;
-      });
+  const IndexMask nodes_to_update = draw::pbvh::calc_nodes_to_update(
+      object, update_only_visible ? visible_nodes : IndexMask(pbvh->nodes_num()), memory);
+
+  draw::pbvh::free_stale_node_data(object, nodes_to_update, draw_data);
 
   const draw::pbvh::ViewportRequest request{scd->attrs, scd->fast_mode};
   Span<gpu::Batch *> batches;
   if (scd->use_wire) {
-    batches = draw::pbvh::ensure_lines_batches(*scd->ob, request, nodes_to_update, draw_data);
+    batches = draw::pbvh::ensure_lines_batches(object, request, nodes_to_update, draw_data);
   }
   else {
-    batches = draw::pbvh::ensure_tris_batches(*scd->ob, request, nodes_to_update, draw_data);
+    batches = draw::pbvh::ensure_tris_batches(object, request, nodes_to_update, draw_data);
   }
 
   Span<int> material_indices;
   if (scd->use_mats) {
-    material_indices = draw::pbvh::ensure_material_indices(*scd->ob, draw_data);
+    material_indices = draw::pbvh::ensure_material_indices(object, draw_data);
   }
 
-  draw_pbvh_nodes(*scd->ob,
+  draw::pbvh::remove_node_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
+
+  draw_pbvh_nodes(object,
                   batches,
                   material_indices,
                   {scd->shading_groups, scd->num_shading_groups},

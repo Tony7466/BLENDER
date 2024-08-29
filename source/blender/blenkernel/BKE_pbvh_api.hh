@@ -187,6 +187,7 @@ class Tree {
   explicit Tree(Type type);
   ~Tree();
 
+  int nodes_num() const;
   template<typename NodeT> Span<NodeT> nodes() const;
   template<typename NodeT> MutableSpan<NodeT> nodes();
 

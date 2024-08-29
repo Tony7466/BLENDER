@@ -99,7 +99,13 @@ class DrawCache : public bke::pbvh::DrawCache {
   ~DrawCache() override = default;
 };
 
-void free_stale_node_data(const Object &object, DrawCache &draw_data);
+IndexMask calc_nodes_to_update(const Object &object,
+                               const IndexMask &node_mask,
+                               IndexMaskMemory &memory);
+
+void free_stale_node_data(const Object &object,
+                          const IndexMask &nodes_to_update,
+                          DrawCache &draw_data);
 
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
                                        const ViewportRequest &request,
@@ -111,6 +117,8 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
                                         DrawCache &draw_data);
 
 Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data);
+
+void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask);
 
 }  // namespace draw::pbvh
 }  // namespace blender

@@ -623,6 +623,11 @@ Tree::Tree(const Type type) : type_(type)
   }
 }
 
+int Tree::nodes_num() const
+{
+  return std::visit([](const auto &nodes) { return nodes.size(); }, this->nodes_);
+}
+
 template<> Span<MeshNode> Tree::nodes() const
 {
   return std::get<Vector<MeshNode>>(this->nodes_);
