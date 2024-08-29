@@ -188,7 +188,14 @@ void math_arctangent(float a, float b, float c, out float result)
 
 void math_arctan2(float a, float b, float c, out float result)
 {
+#ifdef GPU_METAL
+  /* To ensure consistent behavior across platforms, we handle this special case following
+   * https://en.cppreference.com/w/c/numeric/math/atan2, instead of the native implementation on
+   * Metal, which handles this case differently. See #126799. */
+  result = (a == 0.0f ? copysign(signbit(b) * M_PI_F, a) : atan(a, b));
+#else
   result = atan(a, b);
+#endif
 }
 
 void math_sign(float a, float b, float c, out float result)
