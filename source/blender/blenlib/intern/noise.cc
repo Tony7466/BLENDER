@@ -10,8 +10,8 @@
 
 #include "BLI_math_base.hh"
 #include "BLI_math_base_safe.h"
-#include "BLI_math_numbers.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_numbers.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_noise.hh"
 #include "BLI_utildefines.h"
