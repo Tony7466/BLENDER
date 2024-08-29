@@ -73,7 +73,7 @@ class SoftSelectionFieldInput final : public bke::GeometryFieldInput {
       case GeometryComponent::Type::Mesh: {
         Array<float> selection(attributes.domain_size(domain));
         const VArraySpan<float> mask = *attributes.lookup_or_default<float>(
-            ".sculpt_mask", domain, 1.0f);
+            ".sculpt_mask", domain, 0.0f);
         threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
           for (const int i : range) {
             selection[i] = 1.0f - mask[i];
