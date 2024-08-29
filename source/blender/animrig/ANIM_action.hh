@@ -1092,12 +1092,16 @@ ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
 /**
  * Determine whether a channel group is from a legacy action or a layered action.
  *
+ * TODO: create a wrapper class for `bActionGroup` and make this a method.
+ *
  * \return True if it's from a legacy action, false if it's from a layered action.
  */
 bool channel_group_is_legacy(const bActionGroup &group);
 
 /**
  * Get the fcurves that belong to the given channel group.
+ *
+ * TODO: create a wrapper class for `bActionGroup` and make this a method.
  *
  * NOTE: only works for channel groups that are part of a layered action.
  */
