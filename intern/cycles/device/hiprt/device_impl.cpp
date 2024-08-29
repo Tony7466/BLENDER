@@ -216,7 +216,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   path_create_directories(fatbin);
 
-  std::string rtc_options;
+  string rtc_options;
   rtc_options.append(" --offload-arch=").append(arch.c_str());
   rtc_options.append(" -D __HIPRT__");
   rtc_options.append(" -ffast-math -O3 -std=c++17");
