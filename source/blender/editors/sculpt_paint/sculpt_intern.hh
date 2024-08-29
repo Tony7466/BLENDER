@@ -149,8 +149,8 @@ struct StrokeCache {
   float radius_squared;
   float3 location;
   float3 last_location;
-  float3 location_symmetry;
-  float3 last_location_symmetry;
+  float3 location_symm;
+  float3 last_location_symm;
   float stroke_distance;
 
   /* Used for alternating between deformation in brushes that need to apply different ones to
@@ -208,12 +208,12 @@ struct StrokeCache {
   const Brush *brush;
 
   float special_rotation;
-  float3 grab_delta, grab_delta_symmetry;
+  float3 grab_delta, grab_delta_symm;
   float3 old_grab_location, orig_grab_location;
 
   /* screen-space rotation defined by mouse motion */
   std::optional<math::Quaternion> rake_rotation;
-  std::optional<math::Quaternion> rake_rotation_symmetry;
+  std::optional<math::Quaternion> rake_rotation_symm;
   SculptRakeData rake_data;
 
   /* Face Sets */
@@ -225,7 +225,7 @@ struct StrokeCache {
   /* The symmetry pass we are currently on between 0 and 7. */
   ePaintSymmetryFlags mirror_symmetry_pass;
   float3 view_normal;
-  float3 view_normal_symmetry;
+  float3 view_normal_symm;
 
   /* sculpt_normal gets calculated by calc_sculpt_normal(), then the
    * sculpt_normal_symm gets updated quickly with the usual symmetry
@@ -293,9 +293,9 @@ struct StrokeCache {
 
   /* Cloth brush */
   std::unique_ptr<cloth::SimulationData> cloth_sim;
-  float3 initial_location_symmetry;
+  float3 initial_location_symm;
   float3 initial_location;
-  float3 initial_normal_symmetry;
+  float3 initial_normal_symm;
   float3 initial_normal;
 
   /* Boundary brush */
@@ -327,7 +327,7 @@ struct StrokeCache {
 
   bool supports_gravity;
   float3 gravity_direction;
-  float3 gravity_direction_symmetry;
+  float3 gravity_direction_symm;
 
   std::unique_ptr<auto_mask::Cache> automasking;
 

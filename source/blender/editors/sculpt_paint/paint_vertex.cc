@@ -309,7 +309,7 @@ Vector<bke::pbvh::Node *> pbvh_gather_generic(const Depsgraph &depsgraph,
   /* Build a list of all nodes that are potentially within the brush's area of influence */
   if (brush.falloff_shape == PAINT_FALLOFF_SHAPE_SPHERE) {
     nodes = bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
-      return node_in_sphere(node, ss.cache->location_symmetry, ss.cache->radius_squared, true);
+      return node_in_sphere(node, ss.cache->location_symm, ss.cache->radius_squared, true);
     });
 
     ss.cache->sculpt_normal_symm =
@@ -317,12 +317,12 @@ Vector<bke::pbvh::Node *> pbvh_gather_generic(const Depsgraph &depsgraph,
   }
   else {
     const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(
-        ss.cache->location_symmetry, ss.cache->view_normal_symmetry);
+        ss.cache->location_symm, ss.cache->view_normal_symm);
     nodes = bke::pbvh::search_gather(*ss.pbvh, [&](bke::pbvh::Node &node) {
       return node_in_cylinder(ray_dist_precalc, node, ss.cache->radius_squared, true);
     });
 
-    ss.cache->sculpt_normal_symm = use_normal ? ss.cache->view_normal_symmetry : float3(0);
+    ss.cache->sculpt_normal_symm = use_normal ? ss.cache->view_normal_symm : float3(0);
   }
   return nodes;
 }
@@ -514,7 +514,7 @@ void update_cache_invariants(
   mul_m3_v3(mat, view_dir);
   normalize_v3_v3(cache->view_normal, view_dir);
 
-  cache->view_normal_symmetry = cache->view_normal;
+  cache->view_normal_symm = cache->view_normal;
   cache->bstrength = BKE_brush_alpha_get(scene, brush);
   cache->is_last_valid = false;
 
@@ -1376,8 +1376,8 @@ static void do_vpaint_brush_smear(const bContext *C,
   const bool use_face_sel = (mesh.editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
 
   float brush_dir[3];
-  sub_v3_v3v3(brush_dir, cache.location_symmetry, cache.last_location_symmetry);
-  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal_symmetry);
+  sub_v3_v3v3(brush_dir, cache.location_symm, cache.last_location_symm);
+  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal_symm);
   if (normalize_v3(brush_dir) == 0.0f) {
     return;
   }
@@ -1477,7 +1477,7 @@ static void do_vpaint_brush_smear(const bContext *C,
                * selected vert to the neighbor. */
               float other_dir[3];
               sub_v3_v3v3(other_dir, vert_positions[vert], vert_positions[v_other_index]);
-              project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal_symmetry);
+              project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal_symm);
 
               normalize_v3(other_dir);
 

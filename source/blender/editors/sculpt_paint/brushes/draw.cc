@@ -58,7 +58,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(mesh, verts, factors);
   filter_region_clip_factors(ss, positions_eval, verts, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal_symm, vert_normals, verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -100,7 +100,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symm, subdiv_ccg, grids, factors);
   }
 
   tls.distances.resize(positions.size());
@@ -141,7 +141,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, verts, factors);
+    calc_front_face(cache.view_normal_symm, verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -242,7 +242,7 @@ void do_nudge_brush(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
 
   const float3 offset = math::cross(
-      math::cross(ss.cache->sculpt_normal_symm, ss.cache->grab_delta_symmetry),
+      math::cross(ss.cache->sculpt_normal_symm, ss.cache->grab_delta_symm),
       ss.cache->sculpt_normal_symm);
 
   offset_positions(depsgraph, sd, object, offset * ss.cache->bstrength, nodes);
@@ -255,7 +255,7 @@ void do_gravity_brush(const Depsgraph &depsgraph,
 {
   const SculptSession &ss = *object.sculpt;
 
-  const float3 offset = ss.cache->gravity_direction_symmetry * -ss.cache->radius_squared *
+  const float3 offset = ss.cache->gravity_direction_symm * -ss.cache->radius_squared *
                         ss.cache->scale * sd.gravity_factor;
 
   offset_positions(depsgraph, sd, object, offset, nodes);

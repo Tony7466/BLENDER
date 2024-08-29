@@ -1222,8 +1222,8 @@ static void do_wpaint_brush_smear(const Depsgraph &depsgraph,
   const bool use_vert_sel = (mesh.editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
   float brush_dir[3];
 
-  sub_v3_v3v3(brush_dir, cache.location_symmetry, cache.last_location_symmetry);
-  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal_symmetry);
+  sub_v3_v3v3(brush_dir, cache.location_symm, cache.last_location_symm);
+  project_plane_v3_v3v3(brush_dir, brush_dir, cache.view_normal_symm);
   if (normalize_v3(brush_dir) == 0.0f) {
     return;
   }
@@ -1298,7 +1298,7 @@ static void do_wpaint_brush_smear(const Depsgraph &depsgraph,
             /* Get the direction from the selected vert to the neighbor. */
             float other_dir[3];
             sub_v3_v3v3(other_dir, vert_positions[vert], vert_positions[vert_other]);
-            project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal_symmetry);
+            project_plane_v3_v3v3(other_dir, other_dir, cache.view_normal_symm);
 
             normalize_v3(other_dir);
 

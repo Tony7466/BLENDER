@@ -147,7 +147,7 @@ static void sample_node_surface_mesh(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(mesh, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal_symm, vert_normals, verts, factors);
   }
   auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
@@ -190,7 +190,7 @@ static void sample_node_surface_grids(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symm, subdiv_ccg, grids, factors);
   }
   auto_mask::calc_grids_factors(depsgraph, object, cache.automasking.get(), node, grids, factors);
 
@@ -235,7 +235,7 @@ static void sample_node_surface_bmesh(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, verts, factors);
+    calc_front_face(cache.view_normal_symm, verts, factors);
   }
   auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
@@ -356,7 +356,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(mesh, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal_symm, vert_normals, verts, factors);
   }
   auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
@@ -414,7 +414,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symm, subdiv_ccg, grids, factors);
   }
   auto_mask::calc_grids_factors(depsgraph, object, cache.automasking.get(), node, grids, factors);
 
@@ -472,7 +472,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   fill_factor_from_hide_and_mask(*ss.bm, verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal_symmetry, verts, factors);
+    calc_front_face(cache.view_normal_symm, verts, factors);
   }
   auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
@@ -539,7 +539,7 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
     return;
   }
 
-  if (is_zero_v3(ss.cache->grab_delta_symmetry)) {
+  if (is_zero_v3(ss.cache->grab_delta_symm)) {
     return;
   }
 
@@ -547,10 +547,10 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
 
   /* Init brush local space matrix. */
   float4x4 mat = float4x4::identity();
-  mat.x_axis() = math::cross(area_no, ss.cache->grab_delta_symmetry);
+  mat.x_axis() = math::cross(area_no, ss.cache->grab_delta_symm);
   mat.y_axis() = math::cross(area_no, mat.x_axis());
   mat.z_axis() = area_no;
-  mat.location() = ss.cache->location_symmetry;
+  mat.location() = ss.cache->location_symm;
   /* NOTE: #math::normalize behaves differently for some reason. */
   normalize_m4(mat.ptr());
   mat = math::invert(mat);
@@ -578,7 +578,7 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
         math::normalize(sample.area_nos[1] * 1.0f / float(sample.area_count[1]))};
 
     float sampled_angle = angle_v3v3(sampled_plane_normals[0], sampled_plane_normals[1]);
-    const std::array<float3, 2> sampled_cv{area_no, ss.cache->location_symmetry - mid_co};
+    const std::array<float3, 2> sampled_cv{area_no, ss.cache->location_symm - mid_co};
 
     sampled_angle += DEG2RADF(brush.multiplane_scrape_angle) * ss.cache->pressure;
 
@@ -593,7 +593,7 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
       sampled_angle = 0.0f;
     }
     else {
-      area_co = ss.cache->location_symmetry;
+      area_co = ss.cache->location_symm;
     }
 
     /* Interpolate between the previous and new sampled angles to avoid artifacts when if angle
@@ -603,7 +603,7 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
   }
   else {
     /* Standard mode: Scrape with the brush property fixed angle. */
-    area_co = ss.cache->location_symmetry;
+    area_co = ss.cache->location_symm;
     ss.cache->multiplane_scrape_angle = brush.multiplane_scrape_angle;
     if (flip) {
       ss.cache->multiplane_scrape_angle *= -1.0f;
