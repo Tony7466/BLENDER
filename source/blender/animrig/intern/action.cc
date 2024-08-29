@@ -1572,10 +1572,12 @@ void ChannelBag::restore_channel_group_invariants()
 
 bool ChannelGroup::is_legacy() const
 {
-  /* Layered and legacy data shouldn't both exist at the same time. */
-  BLI_assert(this->channel_bag == nullptr || this->channels.first == nullptr);
+  const bool group_is_legacy = this->channel_bag == nullptr;
 
-  return this->channel_bag == nullptr;
+  /* Non-legacy groups should never have legacy data (`channels`). */
+  BLI_assert(group_is_legacy || this->channels.first == nullptr);
+
+  return group_is_legacy;
 }
 
 Span<FCurve *> ChannelGroup::fcurves()
