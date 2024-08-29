@@ -2,7 +2,7 @@
 
 For /D %%d in (*) do (
   if exist "%%d\python\bin\python.exe" (
-    "%%d\python\bin\python.exe" "%%d\scripts\modules\_bpy_internal\system_info\startup.py"
+    "%%d\python\bin\python.exe" "-I" "%%d\scripts\modules\_bpy_internal\system_info\startup.py"
     exit /b
   )
 )
