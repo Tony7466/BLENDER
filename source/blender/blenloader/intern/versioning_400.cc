@@ -4585,6 +4585,22 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 21)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_CLIP) {
+            ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+            if (region != nullptr) {
+              View2D *v2d = &region->v2d;
+              v2d->flag &= ~V2D_VIEWSYNC_SCREEN_TIME;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 22)) {
     LISTBASE_FOREACH (Object *, object, &bmain->objects) {
       LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
         if (md->type != eModifierType_Nodes) {
