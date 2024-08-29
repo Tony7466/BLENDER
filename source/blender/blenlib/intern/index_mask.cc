@@ -516,6 +516,8 @@ static void segments_from_batch_predicate(
   int64_t next_range_to_process = 0;
   int64_t skipped_indices_num = 0;
 
+  /* Builds an index mask segment from a bunch of smaller ranges (which could be individual
+   * indices). */
   auto consolidate_skipped_ranges = [&](int64_t end_range_i) {
     if (skipped_indices_num == 0) {
       return;

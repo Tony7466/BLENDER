@@ -53,9 +53,9 @@ inline void bits_to_index_ranges(const BitSpan bits, IndexRangesBuilder<IntT> &b
     }
     const int64_t bit_i_to_output_offset = start - start_bit;
 
-    /* Iterate over ranges of 1s. For example, the the bits are 0b000111110001111000, the loop
+    /* Iterate over ranges of 1s. For example, if the bits are 0b000111110001111000, the loop
      * below requires two iterations. The worst case for this is when the there are very many small
-     * ranges of 1s (e.g. 0b10101010101). So far it seemed like the overhead of detecting such
+     * ranges of 1s (e.g. 0b10101010101). So far it seems like the overhead of detecting such
      * cases is higher than the potential benefit of using another algorithm. */
     BitInt current_value = masked_value;
     while (current_value != 0) {
