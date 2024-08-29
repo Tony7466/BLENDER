@@ -8,6 +8,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
+#include "BLI_bit_bool_conversion.hh"
 #include "BLI_bit_span_ops.hh"
 #include "BLI_bit_span_to_index_ranges.hh"
 #include "BLI_bit_vector.hh"
@@ -594,9 +595,20 @@ IndexMask IndexMask::from_bools(const IndexMask &universe,
       universe,
       GrainSize(max_segment_size),
       memory,
-      [&](const IndexMaskSegment universe_segment, IndexRangesBuilder<int16_t> &builder) {
-        BitVector<max_segment_size> bits(bools.slice(
-            IndexRange::from_begin_end_inclusive(universe_segment[0], universe_segment.last())));
+      [&](const IndexMaskSegment universe_segment,
+          IndexRangesBuilder<int16_t> &builder) -> int64_t {
+        const IndexRange slice = IndexRange::from_begin_end_inclusive(universe_segment[0],
+                                                                      universe_segment.last());
+        /* +16 to allow for some overshoot when converting bools to bits. */
+        BitVector<max_segment_size + 16> bits;
+        bits.resize(slice.size(), false);
+        const int64_t allowed_overshoot = std::min<int64_t>(bits.capacity() - slice.size(),
+                                                            bools.size() - slice.one_after_last());
+        const bool any_true = bits::or_bools_into_bits(
+            bools.slice(slice), bits, allowed_overshoot);
+        if (!any_true) {
+          return 0;
+        }
         return from_bits_batch_predicate(universe_segment, builder, bits);
       });
   BitVector bits(bools);

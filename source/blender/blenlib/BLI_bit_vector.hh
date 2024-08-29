@@ -198,6 +198,14 @@ class BitVector {
     return size_in_bits_;
   }
 
+  /**
+   * Number of bits that can be stored before the BitVector has to grow.
+   */
+  int64_t capacity() const
+  {
+    return capacity_in_bits_;
+  }
+
   bool is_empty() const
   {
     return size_in_bits_ == 0;
