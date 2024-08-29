@@ -10,10 +10,9 @@
 namespace blender::bits {
 
 /**
- * Convert the bools to bits. E.g. [true, false, true, true] becomes 1011.
- *
- * \note The caller is responsible for setting the bits to zero before calling this function.
+ * Converts the bools to bits and `or`s them into the given bits. For pure conversion, the bits
+ * should therefore be zero initialized before they are passed into this function.
  */
-void bools_to_zeroed_bits(Span<bool> bools, MutableBitSpan r_bits);
+void or_bools_into_bits(Span<bool> bools, MutableBitSpan r_bits);
 
 }  // namespace blender::bits

@@ -250,14 +250,15 @@ TEST(bit_span, ForEach1)
   EXPECT_EQ(indices_test.as_span(), Span({24, 33, 82}));
 }
 
-TEST(bit_span, bools_to_zeroed_bits)
+TEST(bit_span, or_bools_into_bits)
 {
   {
     Vector<bool> bools(5, false);
     bools[2] = true;
     BitVector<> bits(bools.size());
-    bits::bools_to_zeroed_bits(bools, bits);
-    EXPECT_FALSE(bits[0]);
+    bits[0].set();
+    bits::or_bools_into_bits(bools, bits);
+    EXPECT_TRUE(bits[0]);
     EXPECT_FALSE(bits[1]);
     EXPECT_TRUE(bits[2]);
     EXPECT_FALSE(bits[3]);
@@ -266,8 +267,8 @@ TEST(bit_span, bools_to_zeroed_bits)
   {
     Vector<bool> bools(100, true);
     BitVector<> bits(1000, false);
-    bits::bools_to_zeroed_bits(bools,
-                               MutableBitSpan(bits).slice(IndexRange::from_begin_size(100, 500)));
+    bits::or_bools_into_bits(bools,
+                             MutableBitSpan(bits).slice(IndexRange::from_begin_size(100, 500)));
     EXPECT_FALSE(bits[99]);
     EXPECT_TRUE(bits[100]);
     EXPECT_TRUE(bits[101]);

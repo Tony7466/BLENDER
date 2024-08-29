@@ -8,20 +8,12 @@
 
 namespace blender::bits {
 
-void bools_to_zeroed_bits(const Span<bool> bools, MutableBitSpan r_bits)
+void or_bools_into_bits(const Span<bool> bools, MutableBitSpan r_bits)
 {
   BLI_assert(r_bits.size() >= bools.size());
   if (bools.is_empty()) {
     return;
   }
-
-#ifndef NDEBUG
-  /* Assert that all bits are zero. This is often already the case and simplifies the code below.
-   * So it's good if the caller is responsible for zeroing the bits. */
-  for (const int64_t i : bools.index_range()) {
-    BLI_assert(!r_bits[i]);
-  }
-#endif
 
   int64_t bool_i = 0;
   const bool *bools_ = bools.data();
