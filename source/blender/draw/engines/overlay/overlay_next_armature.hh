@@ -123,19 +123,19 @@ class Armatures {
     BoneBuffers(const SelectionType selection_type) : selection_type_(selection_type){};
   };
 
-  BoneBuffers opaque = {selection_type_};
-  BoneBuffers transparent = {selection_type_};
+  BoneBuffers opaque_ = {selection_type_};
+  BoneBuffers transparent_ = {selection_type_};
 
-  bool enabled = false;
+  bool enabled_ = false;
 
  public:
   Armatures(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync(Resources &res, const State &state)
   {
-    enabled = !(state.overlay.flag & V3D_OVERLAY_HIDE_BONES);
+    enabled_ = !(state.overlay.flag & V3D_OVERLAY_HIDE_BONES);
 
-    if (!enabled) {
+    if (!enabled_) {
       return;
     }
 
@@ -166,7 +166,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", 1.0f);
         sub.push_constant("isDistance", true);
-        opaque.envelope_distance = &sub;
+        opaque_.envelope_distance = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.envelope_distance");
@@ -174,10 +174,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", wire_alpha);
         sub.push_constant("isDistance", true);
-        transparent.envelope_distance = &sub;
+        transparent_.envelope_distance = &sub;
       }
       else {
-        transparent.envelope_distance = opaque.envelope_distance;
+        transparent_.envelope_distance = opaque_.envelope_distance;
       }
 
       {
@@ -186,7 +186,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", 1.0f);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
-        opaque.degrees_of_freedom_fill = &sub;
+        opaque_.degrees_of_freedom_fill = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.degrees_of_freedom_fill");
@@ -194,10 +194,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", wire_alpha);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
-        transparent.degrees_of_freedom_fill = &sub;
+        transparent_.degrees_of_freedom_fill = &sub;
       }
       else {
-        transparent.degrees_of_freedom_fill = opaque.degrees_of_freedom_fill;
+        transparent_.degrees_of_freedom_fill = opaque_.degrees_of_freedom_fill;
       }
     }
 
@@ -210,14 +210,14 @@ class Armatures {
         sub.state_set(default_state);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", 1.0f);
-        opaque.sphere_fill = &sub;
+        opaque_.sphere_fill = &sub;
       }
       {
         auto &sub = armature_ps_.sub("transparent.sphere_fill");
         sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.4f);
-        transparent.sphere_fill = &sub;
+        transparent_.sphere_fill = &sub;
       }
 
       {
@@ -225,14 +225,14 @@ class Armatures {
         sub.state_set(default_state);
         sub.shader_set(res.shaders.armature_shape_fill.get());
         sub.push_constant("alpha", 1.0f);
-        opaque.shape_fill = &sub;
+        opaque_.shape_fill = &sub;
       }
       {
         auto &sub = armature_ps_.sub("transparent.shape_fill");
         sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA);
         sub.shader_set(res.shaders.armature_shape_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.6f);
-        transparent.shape_fill = &sub;
+        transparent_.shape_fill = &sub;
       }
 
       {
@@ -241,7 +241,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.sphere_outline = &sub;
+        opaque_.sphere_outline = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.sphere_outline");
@@ -249,10 +249,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
-        transparent.sphere_outline = &sub;
+        transparent_.sphere_outline = &sub;
       }
       else {
-        transparent.sphere_outline = opaque.sphere_outline;
+        transparent_.sphere_outline = opaque_.sphere_outline;
       }
 
       {
@@ -261,7 +261,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_shape_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.shape_outline = &sub;
+        opaque_.shape_outline = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.shape_outline");
@@ -271,10 +271,10 @@ class Armatures {
         sub.bind_texture("depthTex", depth_tex);
         sub.push_constant("alpha", wire_alpha * 0.6f);
         sub.push_constant("do_smooth_wire", do_smooth_wire);
-        transparent.shape_outline = &sub;
+        transparent_.shape_outline = &sub;
       }
       else {
-        transparent.shape_outline = opaque.shape_outline;
+        transparent_.shape_outline = opaque_.shape_outline;
       }
 
       {
@@ -283,7 +283,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_shape_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.shape_wire = &sub;
+        opaque_.shape_wire = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.shape_wire");
@@ -293,10 +293,10 @@ class Armatures {
         sub.bind_texture("depthTex", depth_tex);
         sub.push_constant("alpha", wire_alpha * 0.6f);
         sub.push_constant("do_smooth_wire", do_smooth_wire);
-        transparent.shape_wire = &sub;
+        transparent_.shape_wire = &sub;
       }
       else {
-        transparent.shape_wire = opaque.shape_wire;
+        transparent_.shape_wire = opaque_.shape_wire;
       }
     }
     {
@@ -305,17 +305,17 @@ class Armatures {
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", 1.0f);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
-        opaque.degrees_of_freedom_wire = &sub;
+        opaque_.degrees_of_freedom_wire = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.degrees_of_freedom_wire");
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", wire_alpha);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
-        transparent.degrees_of_freedom_wire = &sub;
+        transparent_.degrees_of_freedom_wire = &sub;
       }
       else {
-        transparent.degrees_of_freedom_wire = opaque.degrees_of_freedom_wire;
+        transparent_.degrees_of_freedom_wire = opaque_.degrees_of_freedom_wire;
       }
     }
     {
@@ -324,7 +324,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_stick.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.stick = &sub;
+        opaque_.stick = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.stick");
@@ -332,10 +332,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_stick.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
-        transparent.stick = &sub;
+        transparent_.stick = &sub;
       }
       else {
-        transparent.stick = opaque.stick;
+        transparent_.stick = opaque_.stick;
       }
     }
     {
@@ -345,7 +345,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("isDistance", false);
         sub.push_constant("alpha", 1.0f);
-        opaque.envelope_fill = &sub;
+        opaque_.envelope_fill = &sub;
       }
       {
         auto &sub = armature_ps_.sub("transparent.envelope_fill");
@@ -353,7 +353,7 @@ class Armatures {
                       (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.6f);
-        transparent.envelope_fill = &sub;
+        transparent_.envelope_fill = &sub;
       }
 
       {
@@ -362,7 +362,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_envelope_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.envelope_outline = &sub;
+        opaque_.envelope_outline = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.envelope_outline");
@@ -371,10 +371,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_envelope_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
-        transparent.envelope_outline = &sub;
+        transparent_.envelope_outline = &sub;
       }
       else {
-        transparent.envelope_outline = opaque.envelope_outline;
+        transparent_.envelope_outline = opaque_.envelope_outline;
       }
     }
     {
@@ -383,7 +383,7 @@ class Armatures {
         sub.shader_set(res.shaders.armature_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
-        opaque.wire = &sub;
+        opaque_.wire = &sub;
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.wire");
@@ -391,10 +391,10 @@ class Armatures {
         sub.shader_set(res.shaders.armature_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
-        transparent.wire = &sub;
+        transparent_.wire = &sub;
       }
       else {
-        transparent.wire = opaque.wire;
+        transparent_.wire = opaque_.wire;
       }
     }
 
@@ -402,16 +402,16 @@ class Armatures {
       auto &sub = armature_ps_.sub("opaque.arrow");
       sub.shader_set(res.shaders.extra_shape.get());
       sub.bind_ubo("globalsBlock", &res.globals_buf);
-      opaque.arrows = &sub;
-      transparent.arrows = opaque.arrows;
+      opaque_.arrows = &sub;
+      transparent_.arrows = opaque_.arrows;
     }
 
     {
       auto &sub = armature_ps_.sub("opaque.relations");
       sub.shader_set(res.shaders.extra_wire.get());
       sub.bind_ubo("globalsBlock", &res.globals_buf);
-      opaque.relations = &sub;
-      transparent.relations = opaque.relations;
+      opaque_.relations = &sub;
+      transparent_.relations = opaque_.relations;
     }
 
     auto clear_buffers = [](BoneBuffers &bb) {
@@ -437,8 +437,8 @@ class Armatures {
       bb.custom_shape_wire.clear();
     };
 
-    clear_buffers(transparent);
-    clear_buffers(opaque);
+    clear_buffers(transparent_);
+    clear_buffers(opaque_);
   }
 
   struct DrawContext {
@@ -517,7 +517,7 @@ class Armatures {
     const bool draw_as_wire = (ctx.ob->dt < OB_SOLID);
     const bool is_transparent = draw_transparent || (draw_as_wire && is_edit_or_pose_mode);
 
-    ctx.bone_buf = is_transparent ? &transparent : &opaque;
+    ctx.bone_buf = is_transparent ? &transparent_ : &opaque_;
 
     ctx.is_filled = (!draw_transparent && !draw_as_wire) || is_edit_or_pose_mode;
     ctx.show_relations = show_relations;
@@ -537,7 +537,7 @@ class Armatures {
                         ShapeCache &shapes,
                         const State &state)
   {
-    if (!enabled) {
+    if (!enabled_) {
       return;
     }
 
@@ -550,7 +550,7 @@ class Armatures {
                    const ShapeCache &shapes,
                    const State &state)
   {
-    if (!enabled || ob_ref.object->dt == OB_BOUNDBOX) {
+    if (!enabled_ || ob_ref.object->dt == OB_BOUNDBOX) {
       return;
     }
 
@@ -563,7 +563,7 @@ class Armatures {
 
   void end_sync(Resources & /*res*/, const ShapeCache &shapes, const State & /*state*/)
   {
-    if (!enabled) {
+    if (!enabled_) {
       return;
     }
 
@@ -609,8 +609,8 @@ class Armatures {
       }
     };
 
-    end_sync(transparent);
-    end_sync(opaque);
+    end_sync(transparent_);
+    end_sync(opaque_);
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
