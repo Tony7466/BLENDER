@@ -1097,8 +1097,8 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     }
   }
 
-  /* Expose id specific operators in context menu when button. Otherwise they would appear in
-   * nested context menus, see: #126006. */
+  /* Expose id specific operators in context menu when button has no operator associated. Otherwise
+   * they would appear in nested context menus, see: #126006. */
   if ((but->optype == nullptr) && (but->apply_func == nullptr)) {
     /* If the button represents an id, it can set the "id" context pointer. */
     if (asset::can_mark_single_from_context(C)) {
@@ -1128,24 +1128,25 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
       uiItemM_ptr(layout, mt_idtemplate_liboverride, IFACE_("Library Override"), ICON_NONE);
       uiItemS(layout);
     }
+  }
 
-    /* Pointer properties and string properties with
-     * prop_search support jumping to target object/bone. */
-    if (but->rnapoin.data && but->rnaprop) {
-      const PropertyType prop_type = RNA_property_type(but->rnaprop);
-      if (((prop_type == PROP_POINTER) ||
-           (prop_type == PROP_STRING && but->type == UI_BTYPE_SEARCH_MENU &&
-            ((uiButSearch *)but)->items_update_fn == ui_rna_collection_search_update_fn)) &&
-          ui_jump_to_target_button_poll(C))
-      {
-        uiItemO(layout,
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Jump to Target"),
-                ICON_NONE,
-                "UI_OT_jump_to_target_button");
-        uiItemS(layout);
-      }
+  /* Pointer properties and string properties with
+   * prop_search support jumping to target object/bone. */
+  if (but->rnapoin.data && but->rnaprop) {
+    const PropertyType prop_type = RNA_property_type(but->rnaprop);
+    if (((prop_type == PROP_POINTER) ||
+         (prop_type == PROP_STRING && but->type == UI_BTYPE_SEARCH_MENU &&
+          ((uiButSearch *)but)->items_update_fn == ui_rna_collection_search_update_fn)) &&
+        ui_jump_to_target_button_poll(C))
+    {
+      uiItemO(layout,
+              CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Jump to Target"),
+              ICON_NONE,
+              "UI_OT_jump_to_target_button");
+      uiItemS(layout);
     }
   }
+
   /* Favorites Menu */
   if (ui_but_is_user_menu_compatible(C, but)) {
     uiBlock *block = uiLayoutGetBlock(layout);
