@@ -62,7 +62,7 @@ static void node_geo_exec(GeoNodeExecParams params)
             return value;
           });
 
-  LISTBASE_FOREACH (Report *, report, &(&output->reports)->list) {
+  LISTBASE_FOREACH (Report *, report, &output->reports.list) {
     NodeWarningType type;
     switch (report->type) {
       case RPT_ERROR:

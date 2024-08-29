@@ -29,7 +29,7 @@ class GeometryReadValue : public memory_cache::CachedValue {
 
   ~GeometryReadValue()
   {
-    BKE_reports_free(&reports);
+    BKE_reports_free(&this->reports);
   }
 
   void count_memory(MemoryCounter &memory) const override
