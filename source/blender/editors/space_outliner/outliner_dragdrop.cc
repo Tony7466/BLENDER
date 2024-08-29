@@ -712,6 +712,9 @@ static int action_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *e
   const bool success = blender::animrig::merge_actions(dna_action_source->wrap(),
                                                        dna_action_target->wrap());
 
+  WM_event_add_notifier(C, NC_SCENE | ND_LAYER, CTX_data_scene(C));
+  WM_event_add_notifier(C, NC_ANIMATION | ND_SPACE_OUTLINER, nullptr);
+
   return success ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
