@@ -2127,14 +2127,17 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
         case bke::pbvh::Type::Mesh: {
           MutableSpan<bke::pbvh::MeshNode> nodes = ss->pbvh->nodes<bke::pbvh::MeshNode>();
           node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
         }
         case bke::pbvh::Type::Grids: {
           MutableSpan<bke::pbvh::GridsNode> nodes = ss->pbvh->nodes<bke::pbvh::GridsNode>();
           node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
         }
         case bke::pbvh::Type::BMesh: {
           MutableSpan<bke::pbvh::BMeshNode> nodes = ss->pbvh->nodes<bke::pbvh::BMeshNode>();
           node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
         }
       }
     }
