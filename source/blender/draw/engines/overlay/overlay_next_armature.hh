@@ -204,6 +204,7 @@ class Armatures {
     DRWState default_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
                              DRW_STATE_WRITE_DEPTH | state.clipping_state;
 
+    /* Bone Shapes (Octahedral, Box, Custom Shapes, Spheres). */
     {
       {
         auto &sub = armature_ps_.sub("opaque.sphere_fill");
@@ -299,6 +300,7 @@ class Armatures {
         transparent_.shape_wire = opaque_.shape_wire;
       }
     }
+    /* Degrees of freedom. */
     {
       {
         auto &sub = armature_ps_.sub("opaque.degrees_of_freedom_wire");
@@ -318,6 +320,7 @@ class Armatures {
         transparent_.degrees_of_freedom_wire = opaque_.degrees_of_freedom_wire;
       }
     }
+    /* Stick bones. */
     {
       {
         auto &sub = armature_ps_.sub("opaque.stick");
@@ -338,6 +341,7 @@ class Armatures {
         transparent_.stick = opaque_.stick;
       }
     }
+    /* Envelopes. */
     {
       {
         auto &sub = armature_ps_.sub("opaque.envelope_fill");
