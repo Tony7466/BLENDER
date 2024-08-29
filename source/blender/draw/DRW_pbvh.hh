@@ -99,6 +99,8 @@ class DrawCache : public bke::pbvh::DrawCache {
   ~DrawCache() override = default;
 };
 
+void free_stale_node_data(const Object &object, DrawCache &draw_data);
+
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
                                        const ViewportRequest &request,
                                        const IndexMask &nodes_to_update,
