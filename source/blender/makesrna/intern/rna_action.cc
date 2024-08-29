@@ -32,8 +32,6 @@
 
 using namespace blender;
 
-static EnumPropertyItem id_root_any = {0, "ANY", ICON_NONE, "Any", ""};
-
 #ifdef WITH_ANIM_BAKLAVA
 const EnumPropertyItem rna_enum_layer_mix_mode_items[] = {
     {int(animrig::Layer::MixMode::Replace),
@@ -1316,7 +1314,7 @@ static const EnumPropertyItem *rna_id_root_itemf(bContext * /* C */,
 
   int i = 0;
   while (rna_enum_id_type_items[i].identifier != nullptr) {
-    EnumPropertyItem item;
+    EnumPropertyItem item = {0};
     item.value = rna_enum_id_type_items[i].value;
     item.name = rna_enum_id_type_items[i].name;
     item.identifier = rna_enum_id_type_items[i].identifier;
@@ -1326,6 +1324,7 @@ static const EnumPropertyItem *rna_id_root_itemf(bContext * /* C */,
     i++;
   }
 
+  const EnumPropertyItem id_root_any = {0, "ANY", ICON_NONE, "Any", ""};
   RNA_enum_item_add(&items, &totitem, &id_root_any);
 
   RNA_enum_item_end(&items, &totitem);
@@ -2435,13 +2434,9 @@ static void rna_def_action_legacy(BlenderRNA *brna, StructRNA *srna)
 
   /* special "type" limiter - should not really be edited in general,
    * but is still available/editable in 'emergencies' */
-  static const EnumPropertyItem id_root_items[] = {
-      id_root_any,
-      {0, nullptr, 0, nullptr, nullptr},
-  };
   prop = RNA_def_property(srna, "id_root", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "idroot");
-  RNA_def_property_enum_items(prop, id_root_items);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_DEFAULT_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_id_root_itemf");
   RNA_def_property_ui_text(prop,
                            "ID Root Type",
