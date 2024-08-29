@@ -867,16 +867,16 @@ class ChannelBag : public ::ActionChannelBag {
    * 2. All fcurves should point back to the group they belong to (if any) via
    *    their `grp` pointer.
    *
-   * The way this method restores those invariants is very specific.  First, it
+   * The way this method restores those invariants is very specific. First, it
    * shifts which fcurves each group covers such that the groups are exactly
-   * abutting and start at the beginning of the fcurve array.  Second, it
+   * abutting and start at the beginning of the fcurve array. Second, it
    * recomputes the fcurve `grp` pointers, using the groups as the source of
    * truth for membership.
    *
-   * The group shifting step does *not* alter the order of the channel groups
-   * nor the number of fcurves in each group. It simply changes the start
-   * indices of each group so that the groups are packed together at the start
-   * of the fcurves.
+   * The group shifting step does *not* alter the order of the channel groups in
+   * the group array, nor the number of fcurves in each group. It simply changes
+   * the start indices of each group so that the groups are packed together at
+   * the start of the fcurves.
    *
    * For example, if the mapping of groups to fcurves looks like this (g* are
    * the groups, dots indicate ungrouped areas, and f* are the fcurves, so e.g.
@@ -899,7 +899,8 @@ class ChannelBag : public ::ActionChannelBag {
    * shifted.
    *
    * The `grp` pointer recomputing step simply takes the groups as the source of
-   * truth, and sets the `grp` pointers to be consistent with that.
+   * truth for membership, and updates the `grp` pointers in the fcurves to be
+   * consistent with that.
    */
   void restore_channel_group_invariants();
 };

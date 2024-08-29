@@ -693,8 +693,8 @@ typedef struct bActionGroup {
    * Note that empty groups (`fcurve_range_length == 0`) are allowed, and they
    * still have a position in the fcurves array, as specified by
    * `fcurve_range_start`. You can imagine these cases as a zero-width range
-   * that sits between the element at `fcurve_range_start` and the element just
-   * before it.
+   * that sits at the border between the element at `fcurve_range_start` and the
+   * element just before it.
    */
   int fcurve_range_start;
   int fcurve_range_length;

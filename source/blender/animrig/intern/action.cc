@@ -1545,21 +1545,29 @@ void ChannelBag::channel_group_remove_raw(const int group_index)
 void ChannelBag::restore_channel_group_invariants()
 {
   /* Shift channel groups. */
-  int start_index = 0;
-  for (bActionGroup *group : this->channel_groups()) {
-    group->fcurve_range_start = start_index;
-    start_index += group->fcurve_range_length;
+  {
+    int start_index = 0;
+    for (bActionGroup *group : this->channel_groups()) {
+      group->fcurve_range_start = start_index;
+      start_index += group->fcurve_range_length;
+    }
+
+    /* Double-check that this didn't push any of the groups off the end of the
+     * fcurve array. */
+    BLI_assert(start_index <= this->fcurve_array_num);
   }
 
   /* Recompute fcurves' group pointers. */
-  for (FCurve *fcurve : this->fcurves()) {
-    fcurve->grp = nullptr;
-  }
-  for (bActionGroup *group : this->channel_groups()) {
-    for (FCurve *fcurve :
-         this->fcurves().slice(group->fcurve_range_start, group->fcurve_range_length))
-    {
-      fcurve->grp = group;
+  {
+    for (FCurve *fcurve : this->fcurves()) {
+      fcurve->grp = nullptr;
+    }
+    for (bActionGroup *group : this->channel_groups()) {
+      for (FCurve *fcurve :
+           this->fcurves().slice(group->fcurve_range_start, group->fcurve_range_length))
+      {
+        fcurve->grp = group;
+      }
     }
   }
 }
