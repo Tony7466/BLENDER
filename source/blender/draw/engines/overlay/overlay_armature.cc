@@ -2366,7 +2366,7 @@ class ArmatureBoneDrawStrategyCustomShape : public ArmatureBoneDrawStrategy {
     const float(*disp_mat)[4] = bone.disp_mat();
 
     if (ctx->is_overlay_next()) {
-      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      /* TODO(fclem): Code after this scope should be removed when we remove the legacy code. */
       auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
 
       /* Custom bone shapes are only supported in pose mode for now. */
@@ -2482,7 +2482,7 @@ class ArmatureBoneDrawStrategyOcta : public ArmatureBoneDrawStrategy {
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
     if (ctx->is_overlay_next()) {
-      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      /* TODO(fclem): Code after this scope should be removed when we remove the legacy code. */
       auto sel_id = ctx->res->select_id(*ctx->ob_ref, select_id | BONESEL_BONE);
       float4x4 bone_mat = ctx->ob->object_to_world() * float4x4(bone.disp_mat());
 
@@ -2678,7 +2678,7 @@ class ArmatureBoneDrawStrategyBBone : public ArmatureBoneDrawStrategy {
     const float *col_hint = get_bone_hint_color(ctx, boneflag);
 
     if (ctx->is_overlay_next()) {
-      /* TODO(fclem): This is the new pipeline. The code below it should then be removed. */
+      /* TODO(fclem): Code after this scope should be removed when we remove the legacy code. */
 
       /* NOTE: Cannot reinterpret as float4x4 because of alignment requirement of float4x4.
        * This would require a deeper refactor. */
