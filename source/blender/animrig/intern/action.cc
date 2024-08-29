@@ -1574,8 +1574,8 @@ bool ChannelGroup::is_legacy() const
 {
   const bool group_is_legacy = this->channel_bag == nullptr;
 
-  /* Non-legacy groups should never have legacy data (`channels`). */
-  BLI_assert(group_is_legacy || this->channels.first == nullptr);
+  BLI_assert_msg(group_is_legacy || this->channels.first == nullptr,
+                 "Layered-action channel group has legacy-action data.");
 
   return group_is_legacy;
 }
