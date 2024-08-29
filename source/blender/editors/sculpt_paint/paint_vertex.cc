@@ -1599,7 +1599,7 @@ static void calculate_average_color(VPaintData &vpd,
         accum2.len = 0;
         memset(accum2.value, 0, sizeof(accum2.value));
 
-        const Span<int> verts = bke::pbvh::node_unique_verts(*nodes[i]);
+        const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
         tls.factors.resize(verts.size());
         const MutableSpan<float> factors = tls.factors;
         fill_factor_from_hide(mesh, verts, factors);

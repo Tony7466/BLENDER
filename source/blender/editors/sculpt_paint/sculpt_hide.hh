@@ -18,7 +18,7 @@ struct PBVHVertRef;
 struct SubdivCCG;
 struct SubdivCCGCoord;
 namespace blender::bke::pbvh {
-class Node;
+class MeshNode;
 }
 
 namespace blender::ed::sculpt_paint::hide {

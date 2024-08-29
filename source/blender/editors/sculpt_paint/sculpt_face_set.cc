@@ -1673,9 +1673,9 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMa
   threading::EnumerableThreadSpecific<TLS> all_tls;
   if (pbvh.type() == bke::pbvh::Type::Mesh) {
     MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-    threading::parallel_for(gesture_data.node_mask.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       TLS &tls = all_tls.local();
-      gesture_data.node_mask.slice(range).foreach_index([&](const int i) {
+      node_mask.slice(range).foreach_index([&](const int i) {
         undo::push_node(depsgraph, *gesture_data.vc.obact, &nodes[i], undo::Type::FaceSet);
         const Span<int> node_faces = bke::pbvh::node_face_indices_calc_mesh(
             tri_faces, nodes[i], tls.face_indices);
@@ -1702,9 +1702,9 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMa
   }
   else if (pbvh.type() == bke::pbvh::Type::Grids) {
     MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
-    threading::parallel_for(gesture_data.node_mask.index_range(), 1, [&](const IndexRange range) {
+    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
       TLS &tls = all_tls.local();
-      gesture_data.node_mask.slice(range).foreach_index([&](const int i) {
+      node_mask.slice(range).foreach_index([&](const int i) {
         undo::push_node(depsgraph, *gesture_data.vc.obact, &nodes[i], undo::Type::FaceSet);
         const Span<int> node_faces = bke::pbvh::node_face_indices_calc_grids(
             *ss.subdiv_ccg, nodes[i], tls.face_indices);
@@ -1743,7 +1743,7 @@ static void gesture_apply_bmesh(gesture::GestureData &gesture_data, const IndexM
   BMesh *bm = ss.bm;
   const int offset = CustomData_get_offset_named(&bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
 
-  threading::parallel_for(gesture_data.node_mask.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     node_mask.slice(range).foreach_index([&](const int i) {
       undo::push_node(depsgraph, *gesture_data.vc.obact, &nodes[i], undo::Type::FaceSet);
 
@@ -1764,7 +1764,7 @@ static void gesture_apply_bmesh(gesture::GestureData &gesture_data, const IndexM
       if (any_updated) {
         BKE_pbvh_node_mark_update_visibility(nodes[i]);
       }
-    }
+    });
   });
 }
 

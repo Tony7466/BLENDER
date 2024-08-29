@@ -755,9 +755,9 @@ void blur_geometry_data_array(const Object &object,
       const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly",
                                                                   bke::AttrDomain::Face);
       for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
-          for (const int i : range) {
+          node_mask.slice(range).foreach_index([&](const int i) {
             const Span<int> verts = hide::node_visible_verts(
                 nodes[i], hide_vert, tls.vert_indices);
 
@@ -771,7 +771,7 @@ void blur_geometry_data_array(const Object &object,
             smooth::neighbor_data_average_mesh(data.as_span(), neighbors, new_factors);
 
             scatter_data_mesh(new_factors.as_span(), verts, data);
-          }
+          });
         });
       }
       break;
@@ -782,10 +782,10 @@ void blur_geometry_data_array(const Object &object,
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
       for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
-          for (const int i : range) {
-            const Span<int> grids = bke::pbvh::node_grid_indices(*nodes[i]);
+          node_mask.slice(range).foreach_index([&](const int i) {
+            const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
             const int grid_verts_num = key.grid_area * grids.size();
 
             tls.new_factors.resize(grid_verts_num);
@@ -804,7 +804,7 @@ void blur_geometry_data_array(const Object &object,
                     });
               }
             }
-          }
+          });
         });
       }
       break;
@@ -812,10 +812,10 @@ void blur_geometry_data_array(const Object &object,
     case bke::pbvh::Type::BMesh: {
       MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
       for ([[maybe_unused]] const int _ : IndexRange(iterations)) {
-        threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
-          for (const int node_index : range) {
-            const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(nodes[node_index]);
+          node_mask.slice(range).foreach_index([&](const int node_index) {
+            const Set<BMVert *, 0> &verts = BKE_pbvh_bmesh_node_unique_verts(&nodes[node_index]);
 
             tls.new_factors.resize(verts.size());
             const MutableSpan<float> new_factors = tls.new_factors;
@@ -830,7 +830,7 @@ void blur_geometry_data_array(const Object &object,
               data[BM_elem_index_get(vert)] = new_factors[i];
               i++;
             }
-          }
+          });
         });
       }
       break;

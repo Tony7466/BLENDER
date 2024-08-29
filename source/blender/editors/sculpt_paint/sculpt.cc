@@ -2681,15 +2681,6 @@ static IndexMask pbvh_gather_generic(
   return {};
 }
 
-static IndexMask pbvh_gather_generic(Object &ob,
-                                     const Brush &brush,
-                                     const bool use_original,
-                                     const float radius_scale,
-                                     IndexMaskMemory &memory)
-{
-  return pbvh_gather_generic(ob, brush, use_original, radius_scale, memory);
-}
-
 static IndexMask pbvh_gather_texpaint(Object &ob,
                                       const Brush &brush,
                                       const bool use_original,
@@ -3731,7 +3722,7 @@ static void do_brush_action(const Depsgraph &depsgraph,
 
   if (brush.deform_target == BRUSH_DEFORM_TARGET_CLOTH_SIM) {
     if (SCULPT_stroke_is_main_symmetry_pass(*ss.cache)) {
-      cloth::sim_activate_nodes(*ss.cache->cloth_sim, node_mask);
+      cloth::sim_activate_nodes(ob, *ss.cache->cloth_sim, node_mask);
       cloth::do_simulation_step(depsgraph, sd, ob, *ss.cache->cloth_sim, node_mask);
     }
   }

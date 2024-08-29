@@ -364,7 +364,7 @@ void calc_face_factors(const Depsgraph &depsgraph,
                        OffsetIndices<int> faces,
                        Span<int> corner_verts,
                        const Cache &cache,
-                       const bke::pbvh::Node &node,
+                       const bke::pbvh::MeshNode &node,
                        Span<int> face_indices,
                        MutableSpan<float> factors);
 

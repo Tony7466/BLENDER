@@ -10,6 +10,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_set.hh"
 
 struct BMesh;

@@ -249,7 +249,7 @@ void do_draw_vector_displacement_brush(const Depsgraph &depsgraph,
       });
       break;
     }
-    case bke::pbvh::Type::Grids:
+    case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
@@ -257,7 +257,8 @@ void do_draw_vector_displacement_brush(const Depsgraph &depsgraph,
             [&](const int i) { calc_grids(depsgraph, sd, object, brush, nodes[i], tls); });
       });
       break;
-    case bke::pbvh::Type::BMesh:
+    }
+    case bke::pbvh::Type::BMesh: {
       MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
@@ -265,6 +266,7 @@ void do_draw_vector_displacement_brush(const Depsgraph &depsgraph,
             [&](const int i) { calc_bmesh(depsgraph, sd, object, brush, nodes[i], tls); });
       });
       break;
+    }
   }
 }
 

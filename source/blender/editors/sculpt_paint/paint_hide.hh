@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_span.hh"
 
 struct bContext;

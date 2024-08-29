@@ -114,7 +114,9 @@ std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgra
                                                         bool use_collisions,
                                                         bool needs_deform_coords);
 
-void sim_activate_nodes(SimulationData &cloth_sim, const IndexMask &node_mask);
+void sim_activate_nodes(const Object &object,
+                        SimulationData &cloth_sim,
+                        const IndexMask &node_mask);
 
 void brush_store_simulation_state(const Depsgraph &depsgraph,
                                   const Object &object,

@@ -997,7 +997,7 @@ static void calc_forces_bmesh(const Depsgraph &depsgraph,
   calc_brush_strength_factors(cache, brush, distances, factors);
 
   const auto_mask::Cache *automask = auto_mask::active_cache_get(ss);
-  auto_mask::calc_vert_factors(depsgraph, ob, automask, node, verts, factors);
+  auto_mask::calc_vert_factors(depsgraph, ob, automask, node, bm_verts, factors);
 
   calc_brush_texture_factors(ss, brush, current_positions, factors);
 
@@ -1226,7 +1226,7 @@ static void calc_constraint_factors(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *ss.pbvh;
   IndexMaskMemory memory;
-  const const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
   const auto_mask::Cache *automasking = auto_mask::active_cache_get(ss);
 
@@ -1646,24 +1646,33 @@ static void cloth_sim_initialize_default_node_state(SculptSession &ss, Simulatio
 {
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss.pbvh, memory);
+  cloth_sim.node_state = Array<NodeSimState>(node_mask.size());
 
-  switch (pbvh.type()) {
+  switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) {
+        cloth_sim.node_state[i] = SCULPT_CLOTH_NODE_UNINITIALIZED;
+        cloth_sim.node_state_index.add(&nodes[i], i);
+      });
       break;
     }
     case bke::pbvh::Type::Grids: {
-
+      MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+      node_mask.foreach_index([&](const int i) {
+        cloth_sim.node_state[i] = SCULPT_CLOTH_NODE_UNINITIALIZED;
+        cloth_sim.node_state_index.add(&nodes[i], i);
+      });
       break;
     }
     case bke::pbvh::Type::BMesh: {
+      MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+      node_mask.foreach_index([&](const int i) {
+        cloth_sim.node_state[i] = SCULPT_CLOTH_NODE_UNINITIALIZED;
+        cloth_sim.node_state_index.add(&nodes[i], i);
+      });
       break;
     }
-  }
-
-  cloth_sim.node_state = Array<NodeSimState>(nodes.size());
-  for (const int i : nodes.index_range()) {
-    cloth_sim.node_state[i] = SCULPT_CLOTH_NODE_UNINITIALIZED;
-    cloth_sim.node_state_index.add(nodes[i], i);
   }
 }
 
@@ -1789,12 +1798,38 @@ void brush_store_simulation_state(const Depsgraph &depsgraph,
   copy_positions_to_array(depsgraph, object, cloth_sim.pos);
 }
 
-void sim_activate_nodes(SimulationData &cloth_sim, const IndexMask &node_mask)
+void sim_activate_nodes(const Object &object,
+                        SimulationData &cloth_sim,
+                        const IndexMask &node_mask)
 {
+  const SculptSession &ss = *object.sculpt;
+
   /* Activate the nodes inside the simulation area. */
-  for (bke::pbvh::Node *node : nodes) {
-    const int node_index = cloth_sim.node_state_index.lookup(node);
-    cloth_sim.node_state[node_index] = SCULPT_CLOTH_NODE_ACTIVE;
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh: {
+      MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+      node_mask.foreach_index([&](const int i) {
+        const int node_index = cloth_sim.node_state_index.lookup(&nodes[i]);
+        cloth_sim.node_state[node_index] = SCULPT_CLOTH_NODE_ACTIVE;
+      });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+      node_mask.foreach_index([&](const int i) {
+        const int node_index = cloth_sim.node_state_index.lookup(&nodes[i]);
+        cloth_sim.node_state[node_index] = SCULPT_CLOTH_NODE_ACTIVE;
+      });
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+      MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+      node_mask.foreach_index([&](const int i) {
+        const int node_index = cloth_sim.node_state_index.lookup(&nodes[i]);
+        cloth_sim.node_state[node_index] = SCULPT_CLOTH_NODE_ACTIVE;
+      });
+      break;
+    }
   }
 }
 
@@ -1858,7 +1893,7 @@ void do_cloth_brush(const Depsgraph &depsgraph,
   brush_store_simulation_state(depsgraph, ob, *ss.cache->cloth_sim);
 
   /* Enable the nodes that should be simulated. */
-  sim_activate_nodes(*ss.cache->cloth_sim, node_mask);
+  sim_activate_nodes(ob, *ss.cache->cloth_sim, node_mask);
 
   /* Apply forces to the vertices. */
   cloth_brush_apply_brush_foces(depsgraph, sd, ob, node_mask);
@@ -2343,7 +2378,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
   }
 
   /* Activate all nodes. */
-  sim_activate_nodes(*ss.filter_cache->cloth_sim, node_mask);
+  sim_activate_nodes(object, *ss.filter_cache->cloth_sim, node_mask);
 
   /* Update and write the simulation to the nodes. */
   do_simulation_step(*depsgraph, sd, object, *ss.filter_cache->cloth_sim, node_mask);

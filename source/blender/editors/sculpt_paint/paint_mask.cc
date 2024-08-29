@@ -406,18 +406,22 @@ static bool try_remove_mask_mesh(const Depsgraph &depsgraph,
       node_mask.index_range(),
       1,
       false,
-      [&](const IndexRange range, bool init) {
-        if (init) {
-          return init;
+      [&](const IndexRange range, bool value) {
+        if (value) {
+          return value;
         }
         Vector<int> &index_data = all_index_data.local();
         node_mask.slice(range).foreach_index([&](const int i) {
+          if (value) {
+            return;
+          }
           const Span<int> verts = get_hidden_verts(nodes[i], hide_vert, index_data);
           if (std::any_of(verts.begin(), verts.end(), [&](int i) { return mask[i] > 0.0f; })) {
-            return true;
+            value = true;
+            return;
           }
         });
-        return false;
+        return value;
       },
       std::logical_or());
   if (hidden_masked_verts) {
