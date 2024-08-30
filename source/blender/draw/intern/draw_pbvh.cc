@@ -1546,35 +1546,6 @@ static void ensure_use_flat_layout_check(const Object &object, DrawCache &draw_d
   }
 }
 
-// static void ensure_visible_tris_count(const Object &object, DrawCache &draw_data)
-// {
-//   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-
-//   switch (pbvh.type()) {
-//     case bke::pbvh::Type::Mesh: {
-//       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-//       if (draw_data.visible_tri_count.size() == nodes.size()) {
-//       }
-//       else {
-//         draw_data.visible_tri_count.resize(nodes.size());
-//       }
-//       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-//       const Span<int> tri_faces = mesh.corner_tri_faces();
-//       const bke::AttributeAccessor attributes = mesh.attributes();
-//       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly",
-//       bke::AttrDomain::Face); break;
-//     }
-//     case bke::pbvh::Type::Grids: {
-
-//       break;
-//     }
-//     case bke::pbvh::Type::BMesh: {
-
-//       break;
-//     }
-//   }
-// }
-
 static gpu::IndexBuf *create_tri_index_grids(const CCGKey &key,
                                              const BitGroupVector<> &grid_hidden,
                                              const bool do_coarse,
