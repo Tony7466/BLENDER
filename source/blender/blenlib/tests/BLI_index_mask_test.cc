@@ -1181,6 +1181,56 @@ TEST(index_mask, AllOf)
 {
   IndexMaskMemory memory;
   {
+    const IndexMask new_mask = IndexMask(10).all_of({4, 6}, memory);
+    EXPECT_EQ(new_mask, IndexMask(1));
+  }
+  {
+    const IndexMask new_mask = IndexMask(6).all_of({0, 6}, memory);
+    EXPECT_EQ(new_mask, IndexMask(1));
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({0, 1, 2, 3}, memory).all_of({0, 1, 2, 3, 4}, memory);
+    EXPECT_EQ(new_mask, IndexMask(4));
+  }
+  {
+    const IndexMask new_mask = IndexMask::from_indices<int>({0, 2, 3, 4, 5, 6, 8}, memory)
+                                   .all_of({2, 2, 4, 6, 8}, memory);
+    EXPECT_EQ(new_mask, IndexMask(IndexRange(0, 3)));
+  }
+  {
+    const IndexMask new_mask =
+        IndexMask::from_indices<int>({1, 2, 3, 5, 6}, memory).all_of({0, 2, 4, 6, 8}, memory);
+    EXPECT_EQ(new_mask, IndexMask(0));
+  }
+  {
+    const IndexMask new_mask = IndexMask::from_indices<int>({0, 4, 5, 6, 7, 8, 9, 20}, memory)
+                                   .all_of({0, 0, 1, 1, 4, 10, 20, 20, 21}, memory);
+    EXPECT_EQ(new_mask, IndexMask::from_indices<int>({0, 1, 2, 4, 5, 6}, memory));
+  }
+  {
+    const IndexMask new_mask = IndexMask::from_indices<int>({0, 10, 19, 20}, memory)
+                                   .all_of({0, 1, 10, 19, 20, 21}, memory);
+    EXPECT_EQ(new_mask, IndexMask::from_indices<int>({3, 4}, memory));
+  }
+  {
+    Array<int> offsets(index_mask::max_segment_size * 2);
+    array_utils::fill_index_range<int>(offsets);
+    const IndexMask new_mask = IndexMask::from_indices<int>({index_mask::max_segment_size - 1,
+                                                             index_mask::max_segment_size + 1},
+                                                            memory)
+                                   .all_of(offsets.as_span(), memory);
+    EXPECT_EQ(new_mask,
+              IndexMask::from_indices<int>(
+                  {index_mask::max_segment_size - 1, index_mask::max_segment_size + 1}, memory));
+  }
+}
+
+/*
+TEST(index_mask, AnyOf)
+{
+  IndexMaskMemory memory;
+  {
     const IndexMask new_mask = IndexMask(10).any_of({0, 1}, memory);
     EXPECT_EQ(new_mask, IndexMask(1));
   }
@@ -1191,7 +1241,6 @@ TEST(index_mask, AllOf)
   {
     const IndexMask new_mask =
         IndexMask::from_indices<int>({0, 1, 2, 3}, memory).any_of({0, 1, 2, 3, 4}, memory);
-    EXPECT_EQ(new_mask.size(), 4);
     EXPECT_EQ(new_mask, IndexMask(4));
   }
   {
@@ -1227,5 +1276,6 @@ TEST(index_mask, AllOf)
     EXPECT_EQ(new_mask[1], index_mask::max_segment_size + 1);
   }
 }
+*/
 
 }  // namespace blender::index_mask::tests

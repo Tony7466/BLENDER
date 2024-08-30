@@ -28,6 +28,39 @@
 
 namespace blender::index_mask {
 
+template<typename T> std::ostream &operator<<(std::ostream &stream, Vector<T> data);
+
+template<typename T, int num>
+std::ostream &operator<<(std::ostream &stream, const std::array<T, num> &data)
+{
+  stream << "{";
+  for (const int64_t i : IndexRange(num)) {
+    stream << data[i] << (num - 1 == i ? "" : " ");
+  }
+  stream << "}";
+  return stream;
+}
+
+template<typename T> std::ostream &operator<<(std::ostream &stream, const Span<T> span)
+{
+  for (const int64_t i : span.index_range()) {
+    stream << span[i] << (span.size() - 1 == i ? "" : " ");
+  }
+  return stream;
+}
+
+template<typename T> std::ostream &operator<<(std::ostream &stream, MutableSpan<T> span)
+{
+  stream << span.as_span();
+  return stream;
+}
+
+template<typename T> std::ostream &operator<<(std::ostream &stream, Vector<T> data)
+{
+  stream << data.as_span();
+  return stream;
+}
+
 template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map)
 {
 #ifndef NDEBUG
@@ -106,7 +139,7 @@ std::ostream &operator<<(std::ostream &stream, const IndexMask &mask)
   for (const std::variant<IndexRange, Span<int64_t>> &segment : segments) {
     if (std::holds_alternative<IndexRange>(segment)) {
       const IndexRange range = std::get<IndexRange>(segment);
-      parts.append(fmt::format("{}-{}", range.first(), range.last()));
+      parts.append(fmt::format("[{}, {})", range.first(), range.one_after_last()));
     }
     else {
       const Span<int64_t> segment_indices = std::get<Span<int64_t>>(segment);
@@ -715,7 +748,8 @@ IndexMask IndexMask::from_initializers(const Span<Initializer> initializers,
   return IndexMask::from_indices(values_vec.as_span(), memory);
 }
 
-static std::optional<RawMaskIterator> iterator_decrement(const IndexMask mask, const RawMaskIterator iterator)
+static std::optional<RawMaskIterator> iterator_decrement(const IndexMask mask,
+                                                         const RawMaskIterator iterator)
 {
   const IndexMaskData &data = const_cast<IndexMask &>(mask).data_for_inplace_construction();
   if (iterator.segment_i > 0) {
@@ -768,19 +802,25 @@ IndexMask IndexMask::any_of(const OffsetIndices<int> groups, IndexMaskMemory &me
           }
         }
 
-        std::optional<RawMaskIterator> begin_iter = local_mask.find_larger_equal(groups[range.start() + indices.offset()].first());
+        std::optional<RawMaskIterator> begin_iter = local_mask.find_larger_equal(
+            groups[range.start() + indices.offset()].first());
 
         int16_t *r_current = r_true_indices;
         for (const int64_t index : range) {
           const IndexRange content = groups[index + indices.offset()];
           const std::optional<RawMaskIterator> first_iter = begin_iter;
-          const std::optional<RawMaskIterator> end_iter = local_mask.find_larger_equal(content.one_after_last());
+          const std::optional<RawMaskIterator> end_iter = local_mask.find_larger_equal(
+              content.one_after_last());
           begin_iter = end_iter;
           if (!first_iter || !end_iter) {
             continue;
           }
 
-          const std::optional<RawMaskIterator> last_iter = local_mask[*end_iter] >= content.one_after_last() ? iterator_decrement(local_mask, *end_iter) : end_iter;
+          const std::optional<RawMaskIterator> last_iter = local_mask[*end_iter] >=
+                                                                   content.one_after_last() ?
+                                                               iterator_decrement(local_mask,
+                                                                                  *end_iter) :
+                                                               end_iter;
           if (!last_iter) {
             continue;
           }
@@ -820,36 +860,74 @@ IndexMask IndexMask::all_of(const OffsetIndices<int> groups, IndexMaskMemory &me
       groups.index_range(),
       GrainSize(1024),
       memory,
-      [&](const IndexMaskSegment &universe_segment, IndexRangesBuilder<int16_t> &builder) -> int64_t {
+      [&](const IndexMaskSegment &universe_segment,
+          IndexRangesBuilder<int16_t> &builder) -> int64_t {
         const int64_t indices_offset = universe_segment.offset();
-        const IndexRange groups_range = unique_sorted_indices::non_empty_as_range(universe_segment.base_span());
-        const IndexRange content_range = groups[groups_range.shift(indices_offset)];
-        const OffsetIndices<int> local_groups = groups.slice(content_range);
+        const IndexRange groups_range = unique_sorted_indices::non_empty_as_range(
+            universe_segment.base_span());
+        const OffsetIndices<int> local_groups = groups.slice(groups_range.shift(indices_offset));
+        const IndexRange content_bound = local_groups.bounds();
+
+        std::cout << "\n";
+
+        std::cout << "\t local_groups: " << local_groups.data() << ";\n";
+        std::cout << "\t groups_range: " << groups_range << ";\n";
+        std::cout << "\t content_bound: " << content_bound << ";\n";
 
         const int expected_local_size = local_groups.total_size();
         if (expected_local_size == 0) {
           return indices_offset;
         }
 
-        const IndexMask local_mask = this->slice_content(content_range);
-        if (const std::optional<IndexRange> local_range = local_mask.to_range()) {
-          const int64_t pre_first_group_i = binary_search::find_predicate_begin(groups_range, [&](const int64_t group_i) {
-            return local_groups[group_i].last() < local_range->first();
-          });
-          const int64_t end_group_i = binary_search::find_predicate_begin(groups_range, [&](const int64_t group_i) {
-            return local_groups[group_i].start() < local_range->one_after_last();
-          });
-          builder.add_range(0, int16_t(end_group_i - pre_first_group_i));
-          return indices_offset + pre_first_group_i;
+        const IndexMask local_mask = this->slice_content(content_bound);
+
+        std::cout << "\t local_mask: " << local_mask << ";\n";
+
+        const int64_t first_group_i = std::lower_bound(local_groups.data().begin(),
+                                                       local_groups.data().end() - 1,
+                                                       local_mask.first()) -
+                                      local_groups.data().begin();
+        const int64_t end_group_i = std::upper_bound(local_groups.data().begin(),
+                                                     local_groups.data().end(),
+                                                     local_mask.last()) -
+                                    local_groups.data().begin();
+
+        std::cout << "\n";
+        std::cout << "\t local_mask.first(): " << local_mask.first() << ";\n";
+        std::cout << "\t first_group_i: " << first_group_i << ";\n";
+        std::cout << "\n";
+        std::cout << "\t local_mask.last(): " << local_mask.last() << ";\n";
+        std::cout << "\t end_group_i: " << end_group_i << ";\n";
+
+        if (first_group_i >= end_group_i) {
+          return 0;
         }
-/*
+
+        if (const std::optional<IndexRange> local_range = local_mask.to_range()) {
+          std::cout << "\t End as range;\n";
+          std::cout << "\t 0, int16_t(end_group_i - first_group_i): "
+                    << int16_t(end_group_i - first_group_i) << ";\n";
+          std::cout << "\t indices_offset + first_group_i: " << indices_offset + first_group_i
+                    << ";\n";
+          builder.add_range(0, int16_t(end_group_i - first_group_i));
+          return indices_offset + first_group_i;
+        }
+
+        int64_t group_i = 0;
+        RawMaskIterator mask_i = {0, 0};
+
+        // while (true) {
+        // }
+
         for (const int64_t group_i : groups_range) {
           const IndexRange content = local_groups[group_i];
           if (UNLIKELY(content.is_empty())) {
             continue;
           }
-          const std::optional<RawMaskIterator> first_it = local_mask.find_larger_equal(content.start());
-          const std::optional<RawMaskIterator> last_it = local_mask.find_smaller_equal(content.last());
+          const std::optional<RawMaskIterator> first_it = local_mask.find_larger_equal(
+              content.start());
+          const std::optional<RawMaskIterator> last_it = local_mask.find_smaller_equal(
+              content.last());
           if (UNLIKELY(!first_it || !last_it)) {
             return {};
           }
@@ -859,9 +937,11 @@ IndexMask IndexMask::all_of(const OffsetIndices<int> groups, IndexMaskMemory &me
             return {};
           }
           const int64_t sliced_mask_size = last_index - first_index + 1;
-          builder.add_range(last_group_i - first_group_i);
+          if (sliced_mask_size == content.size()) {
+            builder.add(int16_t(group_i));
+          }
         }
-*/
+
         return 0;
       });
 }
