@@ -537,10 +537,6 @@ IndexMask node_draw_update_mask(const Tree &pbvh,
                                 const IndexMask &node_mask,
                                 IndexMaskMemory &memory);
 
-Vector<Node *> search_gather(Tree &pbvh,
-                             FunctionRef<bool(Node &)> scb,
-                             PBVHNodeFlags leaf_flag = PBVH_Leaf);
-
 void node_update_mask_mesh(Span<float> mask, MeshNode &node);
 void node_update_mask_grids(const CCGKey &key, Span<CCGElem *> grids, GridsNode &node);
 void node_update_mask_bmesh(int mask_offset, BMeshNode &node);

@@ -2902,9 +2902,9 @@ IndexMask all_leaf_nodes(const Tree &pbvh, IndexMaskMemory &memory)
       pbvh.nodes_);
 }
 
-Vector<Node *> search_gather(Tree &pbvh,
-                             const FunctionRef<bool(Node &)> scb,
-                             PBVHNodeFlags leaf_flag)
+static Vector<Node *> search_gather(Tree &pbvh,
+                                    const FunctionRef<bool(Node &)> scb,
+                                    PBVHNodeFlags leaf_flag)
 {
   if (tree_is_empty(pbvh)) {
     return {};
