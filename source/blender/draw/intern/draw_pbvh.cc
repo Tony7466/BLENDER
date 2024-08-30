@@ -83,18 +83,18 @@ class DrawCacheImpl : public DrawCache {
     BitVector<> dirty_nodes;
     void tag_dirty(const IndexMask &node_mask);
   };
-  BitVector<> use_flat_layout;
-  Array<int> material_indices;
+  BitVector<> use_flat_layout_;
+  Array<int> material_indices_;
 
-  Vector<gpu::IndexBuf *> lines_ibos;
-  Vector<gpu::IndexBuf *> lines_ibos_coarse;
-  Vector<gpu::IndexBuf *> tris_ibos;
-  Vector<gpu::IndexBuf *> tris_ibos_coarse;
-  Map<AttributeRequest, AttributeData> attribute_vbos;
+  Vector<gpu::IndexBuf *> lines_ibos_;
+  Vector<gpu::IndexBuf *> lines_ibos_coarse_;
+  Vector<gpu::IndexBuf *> tris_ibos_;
+  Vector<gpu::IndexBuf *> tris_ibos_coarse_;
+  Map<AttributeRequest, AttributeData> attribute_vbos_;
 
-  Vector<gpu::Batch *> lines_batches;
-  Vector<gpu::Batch *> lines_batches_coarse;
-  Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches;
+  Vector<gpu::Batch *> lines_batches_;
+  Vector<gpu::Batch *> lines_batches_coarse_;
+  Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches_;
 
  public:
   virtual ~DrawCacheImpl() override;
@@ -144,7 +144,7 @@ void DrawCacheImpl::AttributeData::tag_dirty(const IndexMask &node_mask)
 
 void DrawCacheImpl::tag_all_attributes_dirty(const IndexMask &node_mask)
 {
-  for (DrawCacheImpl::AttributeData &data : this->attribute_vbos.values()) {
+  for (DrawCacheImpl::AttributeData &data : attribute_vbos_.values()) {
     data.tag_dirty(node_mask);
   }
 }
@@ -515,17 +515,17 @@ static IndexMask calc_topology_changed_nodes(const Object &object,
 
 DrawCacheImpl::~DrawCacheImpl()
 {
-  free_ibos(this->lines_ibos, this->lines_ibos.index_range());
-  free_ibos(this->lines_ibos_coarse, this->lines_ibos_coarse.index_range());
-  free_ibos(this->tris_ibos, this->tris_ibos.index_range());
-  free_ibos(this->tris_ibos_coarse, this->tris_ibos_coarse.index_range());
-  for (DrawCacheImpl::AttributeData &data : this->attribute_vbos.values()) {
+  free_ibos(lines_ibos_, lines_ibos_.index_range());
+  free_ibos(lines_ibos_coarse_, lines_ibos_coarse_.index_range());
+  free_ibos(tris_ibos_, tris_ibos_.index_range());
+  free_ibos(tris_ibos_coarse_, tris_ibos_coarse_.index_range());
+  for (DrawCacheImpl::AttributeData &data : attribute_vbos_.values()) {
     free_vbos(data.vbos, data.vbos.index_range());
   }
 
-  free_batches(this->lines_batches, this->lines_batches.index_range());
-  free_batches(this->lines_batches_coarse, this->lines_batches_coarse.index_range());
-  for (MutableSpan<gpu::Batch *> batches : this->tris_batches.values()) {
+  free_batches(lines_batches_, lines_batches_.index_range());
+  free_batches(lines_batches_coarse_, lines_batches_coarse_.index_range());
+  for (MutableSpan<gpu::Batch *> batches : tris_batches_.values()) {
     free_batches(batches, batches.index_range());
   }
 }
@@ -536,17 +536,17 @@ void DrawCacheImpl::free_nodes_with_changed_topology(const Object &object,
   IndexMaskMemory memory;
   const IndexMask nodes_to_free = calc_topology_changed_nodes(object, node_mask, memory);
 
-  free_ibos(this->lines_ibos, nodes_to_free);
-  free_ibos(this->lines_ibos_coarse, nodes_to_free);
-  free_ibos(this->tris_ibos, nodes_to_free);
-  free_ibos(this->tris_ibos_coarse, nodes_to_free);
-  for (AttributeData &data : this->attribute_vbos.values()) {
+  free_ibos(lines_ibos_, nodes_to_free);
+  free_ibos(lines_ibos_coarse_, nodes_to_free);
+  free_ibos(tris_ibos_, nodes_to_free);
+  free_ibos(tris_ibos_coarse_, nodes_to_free);
+  for (AttributeData &data : attribute_vbos_.values()) {
     free_vbos(data.vbos, nodes_to_free);
   }
 
-  free_batches(this->lines_batches, nodes_to_free);
-  free_batches(this->lines_batches_coarse, nodes_to_free);
-  for (MutableSpan<gpu::Batch *> batches : this->tris_batches.values()) {
+  free_batches(lines_batches_, nodes_to_free);
+  free_batches(lines_batches_coarse_, nodes_to_free);
+  for (MutableSpan<gpu::Batch *> batches : tris_batches_.values()) {
     free_batches(batches, nodes_to_free);
   }
 }
@@ -1667,7 +1667,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
                                                           const bool coarse)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<gpu::IndexBuf *> &ibos = coarse ? this->lines_ibos_coarse : this->lines_ibos;
+  Vector<gpu::IndexBuf *> &ibos = coarse ? lines_ibos_coarse_ : lines_ibos_;
   ibos.resize(pbvh.nodes_num(), nullptr);
 
   IndexMaskMemory memory;
@@ -1705,7 +1705,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
                                            subdiv_ccg.grid_hidden,
                                            coarse,
                                            bke::pbvh::node_grid_indices(nodes[i]),
-                                           this->use_flat_layout[i]);
+                                           use_flat_layout_[i]);
       });
       break;
     }
@@ -1801,7 +1801,7 @@ Span<gpu::VertBuf *> DrawCacheImpl::ensure_attribute_data(const Object &object,
     return {};
   }
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  AttributeData &data = this->attribute_vbos.lookup_or_add_default(attr);
+  AttributeData &data = attribute_vbos_.lookup_or_add_default(attr);
   Vector<gpu::VertBuf *> &vbos = data.vbos;
   vbos.resize(pbvh.nodes_num(), nullptr);
 
@@ -1821,8 +1821,8 @@ Span<gpu::VertBuf *> DrawCacheImpl::ensure_attribute_data(const Object &object,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      ensure_vbos_allocated_grids(object, format, this->use_flat_layout, mask, vbos);
-      fill_vbos_grids(object, orig_mesh_data, this->use_flat_layout, mask, attr, vbos);
+      ensure_vbos_allocated_grids(object, format, use_flat_layout_, mask, vbos);
+      fill_vbos_grids(object, orig_mesh_data, use_flat_layout_, mask, attr, vbos);
       break;
     }
     case bke::pbvh::Type::BMesh: {
@@ -1850,7 +1850,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_tri_indices(const Object &object,
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-      Vector<gpu::IndexBuf *> &ibos = coarse ? this->tris_ibos_coarse : this->tris_ibos;
+      Vector<gpu::IndexBuf *> &ibos = coarse ? tris_ibos_coarse_ : tris_ibos_;
       ibos.resize(nodes.size(), nullptr);
 
       IndexMaskMemory memory;
@@ -1865,7 +1865,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_tri_indices(const Object &object,
                                          subdiv_ccg.grid_hidden,
                                          coarse,
                                          bke::pbvh::node_grid_indices(nodes[i]),
-                                         this->use_flat_layout[i]);
+                                         use_flat_layout_[i]);
       });
       return ibos;
     }
@@ -1895,14 +1895,14 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_tris_batches(const Object &object,
 
   Vector<Span<gpu::VertBuf *>> attr_vbos;
   for (const AttributeRequest &attr : request.attributes) {
-    const Span<gpu::VertBuf *> vbos = this->attribute_vbos.lookup(attr).vbos;
+    const Span<gpu::VertBuf *> vbos = attribute_vbos_.lookup(attr).vbos;
     if (!vbos.is_empty()) {
       attr_vbos.append(vbos);
     }
   }
 
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<gpu::Batch *> &batches = this->tris_batches.lookup_or_add_default(request);
+  Vector<gpu::Batch *> &batches = tris_batches_.lookup_or_add_default(request);
   batches.resize(pbvh.nodes_num(), nullptr);
   nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
     if (!batches[i]) {
@@ -1932,8 +1932,8 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_lines_batches(const Object &object,
       object, orig_mesh_data, nodes_to_update, request.use_coarse_grids);
 
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<gpu::Batch *> &batches = request.use_coarse_grids ? this->lines_batches_coarse :
-                                                             this->lines_batches;
+  Vector<gpu::Batch *> &batches = request.use_coarse_grids ? lines_batches_coarse_ :
+                                                             lines_batches_;
   batches.resize(pbvh.nodes_num(), nullptr);
   nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
     if (!batches[i]) {
@@ -1948,19 +1948,19 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_lines_batches(const Object &object,
 BitSpan DrawCacheImpl::ensure_use_flat_layout(const Object &object)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  if (this->use_flat_layout.size() != pbvh.nodes_num()) {
-    this->use_flat_layout = calc_use_flat_layout(object);
+  if (use_flat_layout_.size() != pbvh.nodes_num()) {
+    use_flat_layout_ = calc_use_flat_layout(object);
   }
-  return this->use_flat_layout;
+  return use_flat_layout_;
 }
 
 Span<int> DrawCacheImpl::ensure_material_indices(const Object &object)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  if (this->material_indices.size() != pbvh.nodes_num()) {
-    this->material_indices = calc_material_indices(object);
+  if (material_indices_.size() != pbvh.nodes_num()) {
+    material_indices_ = calc_material_indices(object);
   }
-  return this->material_indices;
+  return material_indices_;
 }
 
 }  // namespace blender::draw::pbvh
