@@ -706,6 +706,16 @@ static void get_angular_velocity_vector(short avemode, ParticleKey *state, float
   }
 }
 
+/* recursively evaluate emitter parent anim at cfra */
+static void evaluate_emitter_anim(Depsgraph *depsgraph, Scene *scene, Object *ob, float cfra)
+{
+  if (ob->parent) {
+    evaluate_emitter_anim(depsgraph, scene, ob->parent, cfra);
+  }
+
+  BKE_object_where_is_calc_time(depsgraph, scene, ob, cfra);
+}
+
 void psys_get_birth_coords(
     ParticleSimulationData *sim, ParticleData *pa, ParticleKey *state, float dtime, float cfra)
 {
@@ -713,7 +723,7 @@ void psys_get_birth_coords(
   ParticleSystem *psys = sim->psys;
   ParticleSettings *part = psys->part;
   ParticleTexture ptex;
-  float fac, phasefac, nor[3] = {0, 0, 0}, loc[3], vel[3] = {0.0, 0.0, 0.0}, rot[4], q2[4];
+  float fac, phasefac, nor[3] = {0, 0, 0}, loc_prev[3], loc_local[3], loc[3], vel[3] = {0.0, 0.0, 0.0}, rot[4], q2[4];
   float r_vel[3], r_ave[3], r_rot[4], vec[3], p_vel[3] = {0.0, 0.0, 0.0};
   float x_vec[3] = {1.0, 0.0, 0.0}, utan[3] = {0.0, 1.0, 0.0}, vtan[3] = {0.0, 0.0, 1.0},
         rot_vec[3] = {0.0, 0.0, 0.0};
@@ -733,7 +743,7 @@ void psys_get_birth_coords(
                              pa->num_dmcache,
                              pa->fuv,
                              pa->foffset,
-                             loc,
+                             loc_local,
                              nor,
                              utan,
                              vtan,
@@ -746,7 +756,7 @@ void psys_get_birth_coords(
                              pa->num_dmcache,
                              pa->fuv,
                              pa->foffset,
-                             loc,
+                             loc_local,
                              nor,
                              nullptr,
                              nullptr,
@@ -759,6 +769,7 @@ void psys_get_birth_coords(
   /* particles live in global space so    */
   /* let's convert:                       */
   /* -location                            */
+  copy_v3_v3(loc, loc_local);
   mul_m4_v3(ob->object_to_world().ptr(), loc);
 
   /* -normal                              */
@@ -861,8 +872,14 @@ void psys_get_birth_coords(
 
     /*      *emitter velocity               */
     if (dtime != 0.0f && part->obfac != 0.0f) {
-      sub_v3_v3v3(vel, loc, state->co);
+      copy_v3_v3(loc_prev, loc_local);
+      evaluate_emitter_anim(sim->depsgraph, sim->scene, ob, pa->time - 1.0f);
+      mul_m4_v3(ob->object_to_world().ptr(), loc_prev);
+      sim->psys->flag |= PSYS_OB_ANIM_RESTORE;
+      sub_v3_v3v3(vel, loc, loc_prev);
       mul_v3_fl(vel, part->obfac / dtime);
+      /* Take integration subframes into account. */
+      mul_v3_fl(vel, pa->state.time);
     }
 
     /*      *emitter normal                 */
@@ -1043,16 +1060,6 @@ void psys_get_birth_coords(
       mul_v3_fl(state->ave, part->avefac);
     }
   }
-}
-
-/* recursively evaluate emitter parent anim at cfra */
-static void evaluate_emitter_anim(Depsgraph *depsgraph, Scene *scene, Object *ob, float cfra)
-{
-  if (ob->parent) {
-    evaluate_emitter_anim(depsgraph, scene, ob->parent, cfra);
-  }
-
-  BKE_object_where_is_calc_time(depsgraph, scene, ob, cfra);
 }
 
 void reset_particle(ParticleSimulationData *sim, ParticleData *pa, float dtime, float cfra)
