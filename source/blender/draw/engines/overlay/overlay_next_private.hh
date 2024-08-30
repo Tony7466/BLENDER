@@ -206,6 +206,7 @@ class ShaderModule {
   ShaderPtr edit_text_cursor;
   ShaderPtr edit_text_selection;
   ShaderPtr edit_text_wire;
+  ShaderPtr edit_text_highlight;
   ShaderPtr extra_grid;
   ShaderPtr extra_shape;
   ShaderPtr extra_wire_object;

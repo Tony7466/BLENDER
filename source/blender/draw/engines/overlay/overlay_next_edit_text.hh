@@ -27,9 +27,9 @@ class Text {
    PassMain ps_ = {"Text"};
 
    PassMain::Sub * uniform_color;
-   PassMaun
    PassMain::Sub * edit_text_wire_ps;
    PassMain::Sub * edit_text_selection_ps;
+   PassMain::Sub * edit_text_highlight_ps;
    PassMain::Sub * edit_text_cursor_ps;
   }
     public:
@@ -44,7 +44,7 @@ class Text {
           sub_pass.state_set(pass_state);
           sub_pass.shader_set(shader);
           sub_pass.bind_ubo("ucolor", &res.globals_buf);
-}
+        }
 
 /* Use 2D quad corners to create a matrix that set
  * a [-1..1] quad at the right position. */
@@ -66,7 +66,7 @@ static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
   const Curve *cu = static_cast<Curve *>(ob->data);
   EditFont *ef = cu->editfont;
   float final_mat[4][4], box[4][2];
-  gpu::Batch *geom = DRW_cache_quad_get();
+  gpu::Batch *geom = DRW_cache_text_edit_selection();
 
   for (int i = 0; i < ef->selboxes_len; i++) {
     EditFontSelBox *sb = &ef->selboxes[i];
@@ -116,7 +116,7 @@ static void edit_text_cache_populate_cursor(OVERLAY_Data *vedata, Object *ob)
   v2_quad_corners_to_mat4(cursor, mat);
   mul_m4_m4m4(mat, ob->object_to_world().ptr(), mat);
 
-  blender::gpu::Batch *geom = DRW_cache_quad_get();
+  gpu::Batch *geom = DRW_cache_edit_text_cursor();
   DRW_shgroup_call_obmat(pd->edit_text_cursor_grp, geom, mat);
 }
 
@@ -154,7 +154,7 @@ static void edit_text_cache_populate_boxes(OVERLAY_Data *vedata, Object *ob)
 void OVERLAY_edit_text_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   OVERLAY_PrivateData *pd = vedata->stl->pd;
-  blender::gpu::Batch *geom;
+  gpu::Batch *geom;
   bool do_in_front = (ob->dtx & OB_DRAW_IN_FRONT) != 0;
 
   geom = DRW_cache_text_edge_wire_get(ob);
@@ -196,5 +196,8 @@ void OVERLAY_edit_text_draw(OVERLAY_Data *vedata)
   UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR, pd->edit_text.cursor_color);
   srgb_to_linearrgb_v4(pd->edit_text.cursor_color, pd->edit_text.cursor_color);
   DRW_draw_pass(psl->edit_text_cursor_ps);
+
+  UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR | TH_WIDGET_TEXT_HIGHLIGHT | TH_WIDGET_TEXT_SELECTION)
 }
+};
 }
