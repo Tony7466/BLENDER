@@ -42,6 +42,7 @@ class NodeMultiFunctionBuilder : NonCopyable, NonMovable {
 
   const bNode &node();
   const bNodeTree &tree();
+  const mf::MultiFunction &function();
 };
 
 /**
@@ -80,6 +81,11 @@ inline const bNode &NodeMultiFunctionBuilder::node()
 inline const bNodeTree &NodeMultiFunctionBuilder::tree()
 {
   return tree_;
+}
+
+inline const mf::MultiFunction &NodeMultiFunctionBuilder::function()
+{
+  return *built_fn_;
 }
 
 inline void NodeMultiFunctionBuilder::set_matching_fn(const mf::MultiFunction *fn)

@@ -25,7 +25,6 @@
 #include "NOD_node_declaration.hh"
 
 #include "COM_context.hh"
-#include "COM_operation.hh"
 #include "COM_pixel_operation.hh"
 #include "COM_result.hh"
 #include "COM_scheduler.hh"
