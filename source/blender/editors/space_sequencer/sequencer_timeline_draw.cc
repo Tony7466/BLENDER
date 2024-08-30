@@ -36,6 +36,8 @@
 
 #include "GPU_matrix.hh"
 
+#include "IMB_imbuf.hh"
+
 #include "RNA_prototypes.hh"
 
 #include "SEQ_channels.hh"
@@ -1494,6 +1496,107 @@ static void draw_strips_foreground(TimelineDrawContext *timeline_ctx,
   GPU_matrix_pop_projection();
 }
 
+static void draw_strips_thumbnails(TimelineDrawContext *timeline_ctx,
+                                   StripsDrawBatch &strips_batch,
+                                   const Vector<StripDrawContext> &strips,
+                                   float round_radius)
+{
+  /* Gather information for all thumbnails. */
+  Vector<SeqThumbInfo> thumbs;
+  for (const StripDrawContext &strip_ctx : strips) {
+    get_seq_strip_thumbnails(timeline_ctx->v2d,
+                             timeline_ctx->C,
+                             timeline_ctx->scene,
+                             strip_ctx.seq,
+                             strip_ctx.bottom,
+                             strip_ctx.strip_content_top,
+                             strip_ctx.top,
+                             timeline_ctx->pixelx,
+                             timeline_ctx->pixely,
+                             thumbs);
+  }
+  if (thumbs.is_empty()) {
+    return;
+  }
+
+  /* Create the GPU textures for thumbnails. */
+  Vector<GPUTexture *> textures(thumbs.size());
+  for (int64_t i = 0; i < thumbs.size(); i++) {
+    SeqThumbInfo &info = thumbs[i];
+    textures[i] = GPU_texture_create_2d("thumb",
+                                        info.cropx_max - info.cropx_min + 1,
+                                        info.ibuf->y,
+                                        1,
+                                        GPU_RGBA8,
+                                        GPU_TEXTURE_USAGE_SHADER_READ,
+                                        nullptr);
+    GPU_texture_filter_mode(textures[i], true);
+    GPU_texture_extend_mode(textures[i], GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    GPU_unpack_row_length_set(info.ibuf->x);
+    //@TODO: use proper color management here?
+    // uchar *display_buffer;
+    // void *cache_handle;
+    // display_buffer = IMB_display_buffer_acquire(ibuf, view_settings, display_settings,
+    // &cache_handle);
+    //
+    // and then
+    // IMB_display_buffer_release(cache_handle);
+
+    GPU_texture_update(
+        textures[i], GPU_DATA_UBYTE, info.ibuf->byte_buffer.data + info.cropx_min * 4);
+    IMB_freeImBuf(info.ibuf); /* Release image reference. */
+    info.ibuf = nullptr;
+  }
+  GPU_unpack_row_length_set(0);
+
+  /* Draw all thumbnails. */
+  GPU_matrix_push_projection();
+  wmOrtho2_region_pixelspace(timeline_ctx->region);
+
+  GPUVertFormat *vert_format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_SEQUENCER_THUMBS);
+
+  immUniform1f("round_radius", round_radius);
+  for (int64_t i = 0; i < thumbs.size(); i++) {
+    const SeqThumbInfo &info = thumbs[i];
+    immUniform4f("strip_rect",
+                 strips_batch.pos_to_pixel_space_x(info.left_handle),
+                 strips_batch.pos_to_pixel_space_x(info.right_handle),
+                 strips_batch.pos_to_pixel_space_y(info.bottom),
+                 strips_batch.pos_to_pixel_space_y(info.top));
+    immUniform4f("color", 1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
+    GPU_texture_bind(textures[i], 0);
+
+    float x1 = strips_batch.pos_to_pixel_space_x(info.x1);
+    float x2 = strips_batch.pos_to_pixel_space_x(info.x2);
+    float y1 = strips_batch.pos_to_pixel_space_y(info.y1);
+    float y2 = strips_batch.pos_to_pixel_space_y(info.y2);
+
+    immBegin(GPU_PRIM_TRI_FAN, 4);
+    immAttr2f(texco, 0.0f, 0.0f);
+    immVertex2f(pos, x1, y1);
+    immAttr2f(texco, 1.0f, 0.0f);
+    immVertex2f(pos, x2, y1);
+    immAttr2f(texco, 1.0f, 1.0f);
+    immVertex2f(pos, x2, y2);
+    immAttr2f(texco, 0.0f, 1.0f);
+    immVertex2f(pos, x1, y2);
+    immEnd();
+
+    GPU_texture_unbind(textures[i]);
+  }
+
+  immUnbindProgram();
+  GPU_matrix_pop_projection();
+
+  /* Release the GPU textures. */
+  for (GPUTexture *tex : textures) {
+    GPU_texture_free(tex);
+  }
+}
+
 static void draw_retiming_continuity_ranges(TimelineDrawContext *timeline_ctx,
                                             const Vector<StripDrawContext> &strips)
 {
@@ -1519,9 +1622,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   UI_view2d_view_ortho(timeline_ctx->v2d);
 
   /* Draw parts of strips below thumbnails. */
-  GPU_blend(GPU_BLEND_ALPHA);
   draw_strips_background(timeline_ctx, strips_batch, strips);
 
+  GPU_blend(GPU_BLEND_ALPHA);
   const float round_radius = calc_strip_round_radius(timeline_ctx->pixely);
   for (const StripDrawContext &strip_ctx : strips) {
     draw_strip_offsets(timeline_ctx, &strip_ctx);
@@ -1529,20 +1632,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   }
   timeline_ctx->quads->draw();
 
-  /* Draw all thumbnails and retiming continuity. */
-  GPU_blend(GPU_BLEND_ALPHA);
-  for (const StripDrawContext &strip_ctx : strips) {
-    draw_seq_strip_thumbnail(timeline_ctx->v2d,
-                             timeline_ctx->C,
-                             timeline_ctx->scene,
-                             strip_ctx.seq,
-                             strip_ctx.bottom,
-                             strip_ctx.strip_content_top,
-                             strip_ctx.top,
-                             timeline_ctx->pixelx,
-                             timeline_ctx->pixely,
-                             round_radius);
-  }
+  /* Draw thumbnails. */
+  draw_strips_thumbnails(timeline_ctx, strips_batch, strips, round_radius);
   /* Draw retiming continuity ranges. */
   draw_retiming_continuity_ranges(timeline_ctx, strips);
 

@@ -511,6 +511,8 @@ set(GLSL_SRC
 
   shaders/gpu_shader_sequencer_strips_vert.glsl
   shaders/gpu_shader_sequencer_strips_frag.glsl
+  shaders/gpu_shader_sequencer_thumbs_vert.glsl
+  shaders/gpu_shader_sequencer_thumbs_frag.glsl
 
   shaders/gpu_shader_codegen_lib.glsl
 

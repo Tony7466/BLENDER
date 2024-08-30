@@ -103,6 +103,14 @@ struct StripDrawContext {
   bool is_connected;
 };
 
+struct SeqThumbInfo {
+  ImBuf *ibuf;
+  float left_handle, right_handle, bottom, top;
+  float x1, x2, y1, y2;
+  int cropx_min, cropx_max;
+  bool muted;
+};
+
 struct TimelineDrawContext {
   const bContext *C;
   ARegion *region;
@@ -158,7 +166,7 @@ ImBuf *sequencer_ibuf_get(const bContext *C,
 
 /* `sequencer_thumbnails.cc` */
 
-void draw_seq_strip_thumbnail(View2D *v2d,
+void get_seq_strip_thumbnails(View2D *v2d,
                               const bContext *C,
                               Scene *scene,
                               Sequence *seq,
@@ -167,7 +175,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               float y_top,
                               float pixelx,
                               float pixely,
-                              float round_radius);
+                              blender::Vector<SeqThumbInfo> &r_thumbs);
 
 /* sequencer_draw_channels.c */
 

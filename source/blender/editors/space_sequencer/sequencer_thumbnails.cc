@@ -6,21 +6,12 @@
  * \ingroup spseq
  */
 
-#include "BLI_math_base.h"
-#include "BLI_math_base.hh"
-#include "BLI_math_vector.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_rect.h"
-
 #include "BKE_context.hh"
 
 #include "IMB_imbuf.hh"
 
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
-#include "DNA_view2d_types.h"
-
-#include "BIF_glutil.hh"
 
 #include "SEQ_channels.hh"
 #include "SEQ_render.hh"
@@ -98,70 +89,7 @@ static void seq_get_thumb_image_dimensions(Sequence *seq,
   }
 }
 
-static void make_ibuf_semitransparent(ImBuf *ibuf)
-{
-  const uchar alpha = 120;
-  if (ibuf->byte_buffer.data) {
-    uchar *buf = ibuf->byte_buffer.data;
-    for (int pixel = ibuf->x * ibuf->y; pixel--; buf += 4) {
-      buf[3] = alpha;
-    }
-  }
-  if (ibuf->float_buffer.data) {
-    float *buf = ibuf->float_buffer.data;
-    for (int pixel = ibuf->x * ibuf->y; pixel--; buf += ibuf->channels) {
-      buf[3] = (alpha / 255.0f);
-    }
-  }
-}
-
-/* Signed distance to rounded box, centered at origin.
- * Reference: https://iquilezles.org/articles/distfunctions2d/ */
-static float sdf_rounded_box(float2 pos, float2 size, float radius)
-{
-  float2 q = math::abs(pos) - size + radius;
-  return math::min(math::max(q.x, q.y), 0.0f) + math::length(math::max(q, float2(0.0f))) - radius;
-}
-
-static void eval_round_corners_pixel(
-    ImBuf *ibuf, float radius, float2 bmin, float2 bmax, float2 pos)
-{
-  int ix = int(pos.x);
-  int iy = int(pos.y);
-  if (ix < 0 || ix >= ibuf->x || iy < 0 || iy >= ibuf->y) {
-    return;
-  }
-  float2 center = (bmin + bmax) * 0.5f;
-  float2 size = (bmax - bmin) * 0.5f;
-  float d = sdf_rounded_box(pos - center, size, radius);
-  if (d <= 0.0f) {
-    return;
-  }
-  /* Outside of rounded rectangle, set pixel alpha to zero. */
-  if (ibuf->byte_buffer.data != nullptr) {
-    int64_t ofs = (int64_t(iy) * ibuf->x + ix) * 4;
-    ibuf->byte_buffer.data[ofs + 3] = 0;
-  }
-  if (ibuf->float_buffer.data != nullptr) {
-    int64_t ofs = (int64_t(iy) * ibuf->x + ix) * ibuf->channels;
-    ibuf->float_buffer.data[ofs + 3] = 0.0f;
-  }
-}
-
-static void make_ibuf_round_corners(ImBuf *ibuf, float radius, float2 bmin, float2 bmax)
-{
-  /* Evaluate radius*radius squares at corners. */
-  for (int by = 0; by < radius; by++) {
-    for (int bx = 0; bx < radius; bx++) {
-      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmin.x + bx, bmin.y + by));
-      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmax.x - bx, bmin.y + by));
-      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmin.x + bx, bmax.y - by));
-      eval_round_corners_pixel(ibuf, radius, bmin, bmax, float2(bmax.x - bx, bmax.y - by));
-    }
-  }
-}
-
-void draw_seq_strip_thumbnail(View2D *v2d,
+void get_seq_strip_thumbnails(View2D *v2d,
                               const bContext *C,
                               Scene *scene,
                               Sequence *seq,
@@ -170,7 +98,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
                               float y_top,
                               float pixelx,
                               float pixely,
-                              float round_radius)
+                              Vector<SeqThumbInfo> &r_thumbs)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if ((sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
@@ -200,8 +128,6 @@ void draw_seq_strip_thumbnail(View2D *v2d,
 
   const float zoom_y = thumb_height / image_height;
   const float crop_x_multiplier = 1.0f / pixelx / (zoom_y / pixely);
-
-  float thumb_y_end = y1 + thumb_height;
 
   const float seq_left_handle = SEQ_time_left_handle_frame_get(scene, seq);
   const float seq_right_handle = SEQ_time_right_handle_frame_get(scene, seq);
@@ -245,74 +171,33 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     if (cropx_max < 1) {
       break;
     }
-    rcti crop;
-    BLI_rcti_init(&crop, cropx_min, cropx_max - 1, 0, int(image_height) - 1);
 
     /* Get the thumbnail image. */
     ImBuf *ibuf = seq::thumbnail_cache_get(C, scene, seq, timeline_frame);
-    if (ibuf && clipped) {
-      /* Crop it to the part needed by the timeline view. */
-      ImBuf *ibuf_cropped = IMB_dupImBuf(ibuf);
-      if (crop.xmin < 0 || crop.ymin < 0) {
-        crop.xmin = 0;
-        crop.ymin = 0;
-      }
-      if (crop.xmax >= ibuf->x || crop.ymax >= ibuf->y) {
-        crop.xmax = ibuf->x - 1;
-        crop.ymax = ibuf->y - 1;
-      }
-      IMB_rect_crop(ibuf_cropped, &crop);
-      IMB_freeImBuf(ibuf);
-      ibuf = ibuf_cropped;
-    }
-
-    /* If there is no image still, abort. */
-    if (!ibuf) {
+    if (ibuf == nullptr) {
       break;
     }
 
-    /* Transparency on mute. */
-    bool muted = channels ? SEQ_render_is_muted(channels, seq) : false;
-    if (muted) {
-      /* Work on a copy of the thumbnail image, so that transparency
-       * is not stored into the thumbnail cache. */
-      ImBuf *copy = IMB_dupImBuf(ibuf);
-      IMB_freeImBuf(ibuf);
-      ibuf = copy;
-      make_ibuf_semitransparent(ibuf);
+    SeqThumbInfo thumb = {};
+    thumb.ibuf = ibuf;
+    thumb.cropx_min = 0;
+    thumb.cropx_max = ibuf->x - 1;
+    if (clipped) {
+      thumb.cropx_min = clamp_i(cropx_min, 0, ibuf->x - 1);
+      thumb.cropx_max = clamp_i(cropx_max - 1, 0, ibuf->x - 1);
     }
+    thumb.left_handle = seq_left_handle;
+    thumb.right_handle = seq_right_handle;
+    thumb.muted = channels ? SEQ_render_is_muted(channels, seq) :
+                             false;  //@TODO: do this once per strip
+    thumb.bottom = y1;
+    thumb.top = y_top;
+    thumb.x1 = timeline_frame + cut_off;
+    thumb.x2 = thumb_x_end;
+    thumb.y1 = y1;
+    thumb.y2 = y2;
+    r_thumbs.append(thumb);
 
-    /* If thumbnail start or end falls within strip corner rounding area,
-     * we need to manually set thumbnail pixels that are outside of rounded
-     * rectangle to be transparent. Ideally this would be done on the GPU
-     * while drawing, but since rendering is done through OCIO shaders that
-     * is hard to do. */
-    const float xpos = timeline_frame + cut_off;
-
-    const float zoom_x = (thumb_x_end - xpos) / ibuf->x;
-
-    const float radius = ibuf->y * round_radius * pixely / (y2 - y1);
-    if (radius > 0.9f) {
-      if (xpos < seq_left_handle + round_radius * pixelx ||
-          thumb_x_end > seq_right_handle - round_radius * pixelx)
-      {
-        /* Work on a copy of the thumbnail image, so that corner rounding
-         * is not stored into thumbnail cache. */
-        ImBuf *copy = IMB_dupImBuf(ibuf);
-        IMB_freeImBuf(ibuf);
-        ibuf = copy;
-
-        float round_y_top = ibuf->y * (y_top - y1) / (y2 - y1);
-        make_ibuf_round_corners(ibuf,
-                                radius,
-                                float2((seq_left_handle - xpos) / zoom_x, 0),
-                                float2((seq_right_handle - xpos) / zoom_x, round_y_top));
-      }
-    }
-
-    ED_draw_imbuf_ctx_clipping(
-        C, ibuf, xpos, y1, true, xpos, y1, thumb_x_end, thumb_y_end, zoom_x, zoom_y);
-    IMB_freeImBuf(ibuf);
     timeline_frame = thumb_calc_next_timeline_frame(scene, seq, timeline_frame, thumb_width);
   }
 }
