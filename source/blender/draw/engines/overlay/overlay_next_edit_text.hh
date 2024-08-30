@@ -5,39 +5,47 @@
 /** \file
  * \ingroup draw_engine
  */
+#pragma once
 
-#include "DRW_render.hh"
+#include "draw_cache_impl.hh"
+#include "draw_common_c.hh"
 
 #include "UI_resources.hh"
 
 #include "BLI_math_color.h"
-#include "BLI_math_rotation.h"
 
 #include "BKE_vfont.hh"
 
 #include "DNA_curve_types.h"
 
-#include "overlay_private.hh"
+#include "overlay_next_private.hh"
 
-void OVERLAY_edit_text_cache_init(OVERLAY_Data *vedata)
-{
-  OVERLAY_PassList *psl = vedata->psl;
-  OVERLAY_PrivateData *pd = vedata->stl->pd;
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  View3D *v3d = draw_ctx->v3d;
-  DRWShadingGroup *grp;
-  GPUShader *sh;
-  DRWState state;
+namespace blender::draw::overlay{
 
-  pd->edit_curve.show_handles = v3d->overlay.handle_display != CURVE_HANDLE_NONE;
-  pd->edit_curve.handle_display = v3d->overlay.handle_display;
-  pd->shdata.edit_curve_normal_length = v3d->overlay.normals_length;
+class Text {
+  private :
+   PassMain ps_ = {"Text"};
 
-  /* Run Twice for in-front passes. */
-  for (int i = 0; i < 2; i++) {
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH;
-    state |= ((i == 0) ? DRW_STATE_DEPTH_LESS_EQUAL : DRW_STATE_DEPTH_ALWAYS);
-    DRW_PASS_CREATE(psl->edit_text_wire_ps[i], state | pd->clipping_state);
+   PassMain::Sub * uniform_color;
+   PassMaun
+   PassMain::Sub * edit_text_wire_ps;
+   PassMain::Sub * edit_text_selection_ps;
+   PassMain::Sub * edit_text_cursor_ps;
+  }
+    public:
+      void begin_sync(Resources &res, const State &state, const View &view)
+      {
+        const DrawState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                     DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_DEPTH_ALWAYS |
+                                     DRW_STATE_BLEND_ALPHA | state.clipping_state ;
+
+        auto create_sub_pass = [&](const char *name, GPUShader *shader, bool add_weight_tex) {
+          PassMain::Sub &sub_pass = ps_.sub(name);
+          sub_pass.state_set(pass_state);
+          sub_pass.shader_set(shader);
+          sub_pass.bind_ubo("ucolor", &res.globals_buf);
+
+
 
     sh = OVERLAY_shader_uniform_color();
     pd->edit_text_wire_grp[i] = grp = DRW_shgroup_create(sh, psl->edit_text_wire_ps[i]);
@@ -90,7 +98,7 @@ static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
   const Curve *cu = static_cast<Curve *>(ob->data);
   EditFont *ef = cu->editfont;
   float final_mat[4][4], box[4][2];
-  blender::gpu::Batch *geom = DRW_cache_quad_get();
+  gpu::Batch *geom = DRW_cache_quad_get();
 
   for (int i = 0; i < ef->selboxes_len; i++) {
     EditFontSelBox *sb = &ef->selboxes[i];
@@ -220,4 +228,5 @@ void OVERLAY_edit_text_draw(OVERLAY_Data *vedata)
   UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR, pd->edit_text.cursor_color);
   srgb_to_linearrgb_v4(pd->edit_text.cursor_color, pd->edit_text.cursor_color);
   DRW_draw_pass(psl->edit_text_cursor_ps);
+}
 }
