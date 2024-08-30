@@ -29,7 +29,7 @@ uint32_t hash_float(float kx);
 uint32_t hash_float(float2 k);
 uint32_t hash_float(float3 k);
 uint32_t hash_float(float4 k);
-uint32_t hash_float(float4x4 k);
+uint32_t hash_float(const float4x4 &k);
 
 /* Hash integers to `float` between 0 and 1. */
 

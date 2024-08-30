@@ -137,8 +137,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     if (socket_type == SOCK_BOOLEAN) {
       socket_type = SOCK_INT;
     }
-    params.add_item(IFACE_("Seed"), SocketSearchOp{"Seed", SOCK_INT});
     params.add_item(IFACE_("Value"), SocketSearchOp{"Value", socket_type});
+    params.add_item(IFACE_("Seed"), SocketSearchOp{"Seed", SOCK_INT});
   }
   else {
     if (!ELEM(socket_type, SOCK_STRING)) {

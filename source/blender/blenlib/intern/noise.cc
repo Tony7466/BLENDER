@@ -151,7 +151,7 @@ uint32_t hash_float(float4 k)
   return hash(float_as_uint(k.x), float_as_uint(k.y), float_as_uint(k.z), float_as_uint(k.w));
 }
 
-uint32_t hash_float(float4x4 k)
+uint32_t hash_float(const float4x4 &k)
 {
   return hash(hash_float(k.x), hash_float(k.y), hash_float(k.z), hash_float(k.w));
 }
