@@ -73,15 +73,32 @@ struct ViewportRequest {
 class DrawCache : public bke::pbvh::DrawCache {
  public:
   virtual ~DrawCache() = default;
+  /**
+   * Tag all attribute values dirty for the selected nodes.
+   * \todo It is inefficient to tag all attributes dirty when only one has changed. It would be
+   *   more efficient for sculpt mode operations to tag the specific attribute that they're
+   *   modifying.
+   */
   virtual void tag_all_attributes_dirty(const IndexMask &node_mask) = 0;
+  /**
+   * Recalculate and copy data as necessary to prepare batches for drawing triangles for a
+   * specific combination of attributes.
+   */
   virtual Span<gpu::Batch *> ensure_tris_batches(const Object &object,
                                                  const ViewportRequest &request,
                                                  const IndexMask &nodes_to_update) = 0;
-
+  /**
+   * Recalculate and copy data as necessary to prepare batches for drawing wireframe geometry for a
+   * specific combination of attributes.
+   */
   virtual Span<gpu::Batch *> ensure_lines_batches(const Object &object,
                                                   const ViewportRequest &request,
                                                   const IndexMask &nodes_to_update) = 0;
 
+  /**
+   * Return the material index for each node (all faces in a node should have the same material
+   * index, as ensured by the BVH building process).
+   */
   virtual Span<int> ensure_material_indices(const Object &object) = 0;
 };
 

@@ -57,6 +57,11 @@ uint64_t ViewportRequest::hash() const
   return get_default_hash(attributes, use_coarse_grids);
 }
 
+/**
+ * Because many sculpt mode operations skip tagging dependency graph for reevaluation for
+ * performance reasons, the relevant data must be retrieved directly from the original mesh rather
+ * than the evaluated copy.
+ */
 struct OrigMeshData {
   StringRef active_color;
   StringRef default_color;
@@ -77,23 +82,57 @@ struct OrigMeshData {
   }
 };
 
+/**
+ * Stores the data necessary to draw the PBVH geometry. A separate "Impl" class is used to hide
+ * implementation details from the public header.
+ */
 class DrawCacheImpl : public DrawCache {
   struct AttributeData {
+    /** A vertex buffer for each BVH node. If null, the draw data for the node must be created. */
     Vector<gpu::VertBuf *> vbos;
+    /**
+     * A separate "dirty" bit per node. We track the dirty value separately from deleting the VBO
+     * for a node in order to avoid recreating batches with new VBOs. It's also a necessary
+     * addition to the flags stored in the PBVH which are cleared after it's used for drawing
+     * (those aren't sufficient when multiple viewports are drawing with the same PBVH but request
+     * different sets of attributes).
+     */
     BitVector<> dirty_nodes;
+    /**
+     * Mark attribute values dirty for specific nodes. The next time the attribute is requested,
+     * the values will be extracted again.
+     */
     void tag_dirty(const IndexMask &node_mask);
   };
+
+  /** Used to determine whether to used indexed VBO layouts for multires grids. */
   BitVector<> use_flat_layout_;
+  /** The material index for each node. */
   Array<int> material_indices_;
 
+  /** Index buffers for wireframe geometry for each node. */
   Vector<gpu::IndexBuf *> lines_ibos_;
+  /** Index buffers for coarse "fast navigate" wireframe geometry for each node. */
   Vector<gpu::IndexBuf *> lines_ibos_coarse_;
+  /** Index buffers for triangles for each node, only used for grids. */
   Vector<gpu::IndexBuf *> tris_ibos_;
+  /** Index buffers for coarse "fast navigate" triangles for each node, only used for grids. */
   Vector<gpu::IndexBuf *> tris_ibos_coarse_;
+  /**
+   * GPU data and per-node dirty status for all requested attributes.
+   * \note Currently we do not remove "stale" attributes that haven't been requested in a while.
+   */
   Map<AttributeRequest, AttributeData> attribute_vbos_;
 
+  /** Batches for drawing wireframe geometry. */
   Vector<gpu::Batch *> lines_batches_;
+  /** Batches for drawing coarse "fast navigate" wireframe geometry. */
   Vector<gpu::Batch *> lines_batches_coarse_;
+  /**
+   * Batches for drawing triangles, stored separately for each combination of attributes and
+   * coarse-ness. Different viewports might request different sets of attributes, and we don't want
+   * to recreate the batches on every redraw.
+   */
   Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches_;
 
  public:
@@ -112,6 +151,10 @@ class DrawCacheImpl : public DrawCache {
   Span<int> ensure_material_indices(const Object &object) override;
 
  private:
+  /**
+   * Free all GPU data for nodes with a changed visible triangle count. The next time the data is
+   * requested it will be rebuilt.
+   */
   void free_nodes_with_changed_topology(const Object &object, const IndexMask &node_mask);
 
   BitSpan ensure_use_flat_layout(const Object &object);
@@ -137,7 +180,7 @@ void DrawCacheImpl::AttributeData::tag_dirty(const IndexMask &node_mask)
   if (this->dirty_nodes.size() < mask_size) {
     this->dirty_nodes.resize(mask_size);
   }
-  /* TODO: Use IndexMask::from_bits with the `reset_all` at the beginning disabled. */
+  /* TODO: Somehow use IndexMask::from_bits with the `reset_all` at the beginning disabled. */
   node_mask.foreach_index_optimized<int>(GrainSize(4096),
                                          [&](const int i) { this->dirty_nodes[i].set(); });
 }
@@ -484,6 +527,14 @@ static int count_visible_tris_bmesh(const Set<BMFace *, 0> &faces)
   });
 }
 
+/**
+ * Find nodes which (might) have a different number of visible faces.
+ *
+ * \note Theoreticaly the #PBVH_RebuildDrawBuffers flag is redundant with checking for a different
+ * number of visible triangles in the PBVH node on every redraw. We could do that too, but it's
+ * simpler overall to just tag the node whenever there is such a topology change, and for now there
+ * is no real downside.
+ */
 static IndexMask calc_topology_changed_nodes(const Object &object,
                                              const IndexMask &node_mask,
                                              IndexMaskMemory &memory)
@@ -515,6 +566,9 @@ static IndexMask calc_topology_changed_nodes(const Object &object,
 
 DrawCacheImpl::~DrawCacheImpl()
 {
+  /* This destructor should support inconsistent vector lengths between attributes and index
+   * buffers. That's why the implementation isn't shared with #free_nodes_with_changed_topology.
+   * Also the gpu buffers and batches should just use RAII anyway. */
   free_ibos(lines_ibos_, lines_ibos_.index_range());
   free_ibos(lines_ibos_coarse_, lines_ibos_coarse_.index_range());
   free_ibos(tris_ibos_, tris_ibos_.index_range());
@@ -533,6 +587,9 @@ DrawCacheImpl::~DrawCacheImpl()
 void DrawCacheImpl::free_nodes_with_changed_topology(const Object &object,
                                                      const IndexMask &node_mask)
 {
+  /* NOTE: Theoretically we shouldn't need to free batches with a changed triangle count, but
+   * currently it's the simplest way to reallocate all the GPU data while keeping everything in a
+   * consistent state. */
   IndexMaskMemory memory;
   const IndexMask nodes_to_free = calc_topology_changed_nodes(object, node_mask, memory);
 
@@ -1570,7 +1627,7 @@ static BitVector<> calc_use_flat_layout(const Object &object)
       const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
       const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
 
-      /* Use boolean array instead of BitVector for parallelized writing. */
+      /* Use boolean array instead of #BitVector for parallelized writing. */
       Array<bool> use_flat_layout(nodes.size());
       threading::parallel_for(nodes.index_range(), 4, [&](const IndexRange range) {
         for (const int i : range) {
@@ -1714,7 +1771,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
         const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(
             &const_cast<bke::pbvh::BMeshNode &>(nodes[i]));
-        const int visible_faces_num = count_visible_tris_bmesh(faces);  // TODO
+        const int visible_faces_num = count_visible_tris_bmesh(faces);
         ibos[i] = create_index_bmesh(faces, visible_faces_num);
       });
       break;
@@ -1722,6 +1779,15 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
   }
 
   return ibos;
+}
+
+BitSpan DrawCacheImpl::ensure_use_flat_layout(const Object &object)
+{
+  const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
+  if (use_flat_layout_.size() != pbvh.nodes_num()) {
+    use_flat_layout_ = calc_use_flat_layout(object);
+  }
+  return use_flat_layout_;
 }
 
 BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
@@ -1805,6 +1871,12 @@ Span<gpu::VertBuf *> DrawCacheImpl::ensure_attribute_data(const Object &object,
   Vector<gpu::VertBuf *> &vbos = data.vbos;
   vbos.resize(pbvh.nodes_num(), nullptr);
 
+  /* The nodes we recompute here are a combination of:
+   *   1. null VBOs, which correspond to nodes that either haven't been drawn before, or have been
+   *      cleared completely by #free_nodes_with_changed_topology.
+   *   2. Nodes that have been tagged dirty as their values are changed.
+   * We also only process a subset of the nodes referenced by the caller, for example to only
+   * recompute visible nodes. */
   IndexMaskMemory memory;
   const IndexMask empty_mask = IndexMask::from_predicate(
       node_mask, GrainSize(8196), memory, [&](const int i) { return !vbos[i]; });
@@ -1853,6 +1925,9 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_tri_indices(const Object &object,
       Vector<gpu::IndexBuf *> &ibos = coarse ? tris_ibos_coarse_ : tris_ibos_;
       ibos.resize(nodes.size(), nullptr);
 
+      /* Whenever a node's visible triangle count has changed the index buffers are freed, so we
+       * only recalculate null IBOs here. A new mask is recalculated for more even task
+       * distribution between threads. */
       IndexMaskMemory memory;
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
           node_mask, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
@@ -1893,6 +1968,8 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_tris_batches(const Object &object,
     this->ensure_attribute_data(object, orig_mesh_data, attr, nodes_to_update);
   }
 
+  /* Collect VBO spans in a different loop because #ensure_attribute_data invalidates the allocated
+   * arrays when its map is changed. */
   Vector<Span<gpu::VertBuf *>> attr_vbos;
   for (const AttributeRequest &attr : request.attributes) {
     const Span<gpu::VertBuf *> vbos = attribute_vbos_.lookup(attr).vbos;
@@ -1901,6 +1978,8 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_tris_batches(const Object &object,
     }
   }
 
+  /* Except for the first iteration of the draw loop, we only need to rebuild batches for nodes
+   * with changed topology (visible triangle count). */
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   Vector<gpu::Batch *> &batches = tris_batches_.lookup_or_add_default(request);
   batches.resize(pbvh.nodes_num(), nullptr);
@@ -1931,6 +2010,8 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_lines_batches(const Object &object,
   const Span<gpu::IndexBuf *> lines = this->ensure_lines_indices(
       object, orig_mesh_data, nodes_to_update, request.use_coarse_grids);
 
+  /* Except for the first iteration of the draw loop, we only need to rebuild batches for nodes
+   * with changed topology (visible triangle count). */
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   Vector<gpu::Batch *> &batches = request.use_coarse_grids ? lines_batches_coarse_ :
                                                              lines_batches_;
@@ -1943,15 +2024,6 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_lines_batches(const Object &object,
   });
 
   return batches;
-}
-
-BitSpan DrawCacheImpl::ensure_use_flat_layout(const Object &object)
-{
-  const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  if (use_flat_layout_.size() != pbvh.nodes_num()) {
-    use_flat_layout_ = calc_use_flat_layout(object);
-  }
-  return use_flat_layout_;
 }
 
 Span<int> DrawCacheImpl::ensure_material_indices(const Object &object)
