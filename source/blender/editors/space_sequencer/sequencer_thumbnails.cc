@@ -13,15 +13,31 @@
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
+#include "GPU_matrix.hh"
+#include "GPU_texture.hh"
+
+#include "IMB_colormanagement.hh"
+
 #include "SEQ_channels.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_thumbnail_cache.hh"
 #include "SEQ_time.hh"
 
-#include "sequencer_intern.hh" /* Own include. */
+#include "WM_api.hh"
+
+#include "sequencer_intern.hh"
+#include "sequencer_strips_batch.hh"
 
 using namespace blender;
+
+struct SeqThumbInfo {
+  ImBuf *ibuf;
+  float left_handle, right_handle, bottom, top;
+  float x1, x2, y1, y2;
+  int cropx_min, cropx_max;
+  bool muted;
+};
 
 static float thumb_calc_first_timeline_frame(const Scene *scene,
                                              Sequence *seq,
@@ -89,45 +105,33 @@ static void seq_get_thumb_image_dimensions(Sequence *seq,
   }
 }
 
-void get_seq_strip_thumbnails(View2D *v2d,
-                              const bContext *C,
-                              Scene *scene,
-                              Sequence *seq,
-                              float y1,
-                              float y2,
-                              float y_top,
-                              float pixelx,
-                              float pixely,
-                              Vector<SeqThumbInfo> &r_thumbs)
+static void get_seq_strip_thumbnails(View2D *v2d,
+                                     const bContext *C,
+                                     Scene *scene,
+                                     Sequence *seq,
+                                     float y1,
+                                     float y2,
+                                     float y_top,
+                                     float pixelx,
+                                     float pixely,
+                                     bool muted,
+                                     Vector<SeqThumbInfo> &r_thumbs)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
-  if ((sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
-      (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_THUMBNAILS) == 0 ||
-      !ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE))
-  {
+  if (!seq::strip_can_have_thumbnail(scene, seq)) {
     return;
   }
 
-  StripElem *se = seq->strip->stripdata;
-  if (se->orig_height == 0 || se->orig_width == 0) {
-    return;
-  }
-
-  /* If width of the strip too small ignore drawing thumbnails. */
+  /* No thumbnails is height of the strip is too small. */
   if ((y2 - y1) / pixely <= 20 * UI_SCALE_FAC) {
     return;
   }
-
-  Editing *ed = SEQ_editing_get(scene);
-  ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
 
   float thumb_width, image_width, image_height;
   const float thumb_height = y2 - y1;
   seq_get_thumb_image_dimensions(
       seq, pixelx, pixely, &thumb_width, thumb_height, &image_width, &image_height);
 
-  const float zoom_y = thumb_height / image_height;
-  const float crop_x_multiplier = 1.0f / pixelx / (zoom_y / pixely);
+  const float crop_x_multiplier = 1.0f / pixelx / (thumb_height / image_height / pixely);
 
   const float seq_left_handle = SEQ_time_left_handle_frame_get(scene, seq);
   const float seq_right_handle = SEQ_time_right_handle_frame_get(scene, seq);
@@ -141,14 +145,12 @@ void get_seq_strip_thumbnails(View2D *v2d,
 
   float timeline_frame = thumb_calc_first_timeline_frame(scene, seq, thumb_width, &v2d->cur);
 
-  /* Start drawing. */
+  /* Start going over the strip length. */
   while (timeline_frame < upper_thumb_bound) {
     float thumb_x_end = timeline_frame + thumb_width;
     bool clipped = false;
 
-    /* Checks to make sure that thumbs are loaded only when in view and within the confines of the
-     * strip. Some may not be required but better to have conditions for safety as x1 here is
-     * point to start caching from and not drawing. */
+    /* Reached end of view, no more thumbnails needed. */
     if (timeline_frame > v2d->cur.xmax) {
       break;
     }
@@ -188,8 +190,7 @@ void get_seq_strip_thumbnails(View2D *v2d,
     }
     thumb.left_handle = seq_left_handle;
     thumb.right_handle = seq_right_handle;
-    thumb.muted = channels ? SEQ_render_is_muted(channels, seq) :
-                             false;  //@TODO: do this once per strip
+    thumb.muted = muted;
     thumb.bottom = y1;
     thumb.top = y_top;
     thumb.x1 = timeline_frame + cut_off;
@@ -200,4 +201,159 @@ void get_seq_strip_thumbnails(View2D *v2d,
 
     timeline_frame = thumb_calc_next_timeline_frame(scene, seq, timeline_frame, thumb_width);
   }
+}
+
+void draw_strip_thumbnails(TimelineDrawContext *ctx,
+                           blender::ed::seq::StripsDrawBatch &strips_batch,
+                           const Vector<StripDrawContext> &strips,
+                           float round_radius)
+{
+  /* Nothing to do if we're not showing thumbnails overall. */
+  if ((ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
+      (ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_THUMBNAILS) == 0)
+  {
+    return;
+  }
+
+  /* Gather information for all thumbnails. */
+  ListBase *channels = ctx->channels;
+  Vector<SeqThumbInfo> thumbs;
+  for (const StripDrawContext &strip : strips) {
+    bool muted = channels ? SEQ_render_is_muted(channels, strip.seq) : false;
+    get_seq_strip_thumbnails(ctx->v2d,
+                             ctx->C,
+                             ctx->scene,
+                             strip.seq,
+                             strip.bottom,
+                             strip.strip_content_top,
+                             strip.top,
+                             ctx->pixelx,
+                             ctx->pixely,
+                             muted,
+                             thumbs);
+  }
+  if (thumbs.is_empty()) {
+    return;
+  }
+
+  ColorManagedViewSettings *view_settings;
+  ColorManagedDisplaySettings *display_settings;
+  IMB_colormanagement_display_settings_from_ctx(ctx->C, &view_settings, &display_settings);
+
+  /* Arrange thumbnail images into a texture atlas, using a simple
+   * "add to current row until end, then start a new row". Thumbnail
+   * images are most often same height (but varying width due to horizontal
+   * cropping), so this simple algorithm works well enough. */
+  constexpr int ATLAS_WIDTH = 4096;
+  constexpr int ATLAS_MAX_HEIGHT = 4096;
+  int cur_row_x = 0;
+  int cur_row_y = 0;
+  int cur_row_height = 0;
+  Vector<rcti> rects;
+  rects.reserve(thumbs.size());
+  for (const SeqThumbInfo &info : thumbs) {
+    int width = info.cropx_max - info.cropx_min + 1;
+    int height = info.ibuf->y;
+    cur_row_height = math::max(cur_row_height, height);
+
+    /* If this thumb would not fit onto current row, start a new row. */
+    if (cur_row_x + width > ATLAS_WIDTH) {
+      cur_row_y += cur_row_height + 1; /* +1 empty pixel for bilinear filter. */
+      cur_row_height = height;
+      cur_row_x = 0;
+      if (cur_row_y > ATLAS_MAX_HEIGHT) {
+        break;
+      }
+    }
+
+    /* Record our rect. */
+    rcti rect{cur_row_x, cur_row_x + width, cur_row_y, cur_row_y + height};
+    rects.append(rect);
+
+    /* Advance to next item inside row. */
+    cur_row_x += width + 1; /* +1 empty pixel for bilinear filter. */
+  }
+
+  /* Create the atlas GPU texture. */
+  const int tex_width = ATLAS_WIDTH;
+  const int tex_height = cur_row_y + cur_row_height;
+  Array<uchar> tex_data(tex_width * tex_height * 4);
+  for (int64_t i = 0; i < rects.size(); i++) {
+    /* Copy one thumbnail into atlas. */
+    const rcti &rect = rects[i];
+    SeqThumbInfo &info = thumbs[i];
+
+    void *cache_handle = nullptr;
+    uchar *display_buffer = IMB_display_buffer_acquire(
+        info.ibuf, view_settings, display_settings, &cache_handle);
+    if (display_buffer != nullptr) {
+      int width = info.cropx_max - info.cropx_min + 1;
+      int height = info.ibuf->y;
+      const uchar *src = display_buffer + info.cropx_min * 4;
+      uchar *dst = &tex_data[(rect.ymin * ATLAS_WIDTH + rect.xmin) * 4];
+      for (int y = 0; y < height; y++) {
+        memcpy(dst, src, width * 4);
+        src += info.ibuf->x * 4;
+        dst += ATLAS_WIDTH * 4;
+      }
+    }
+    IMB_display_buffer_release(cache_handle);
+
+    /* Release thumb image reference. */
+    IMB_freeImBuf(info.ibuf);
+    info.ibuf = nullptr;
+  }
+  GPUTexture *atlas = GPU_texture_create_2d(
+      "thumb_atlas", tex_width, tex_height, 1, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
+  GPU_texture_update(atlas, GPU_DATA_UBYTE, tex_data.data());
+  GPU_texture_filter_mode(atlas, true);
+  GPU_texture_extend_mode(atlas, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+
+  /* Draw all thumbnails. */
+  GPU_matrix_push_projection();
+  wmOrtho2_region_pixelspace(ctx->region);
+
+  GPUVertFormat *vert_format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_SEQUENCER_THUMBS);
+
+  immUniform1f("round_radius", round_radius);
+  immBindTexture("image", atlas);
+  for (int64_t i = 0; i < rects.size(); i++) {
+    const rcti &rect = rects[i];
+    const SeqThumbInfo &info = thumbs[i];
+    immUniform4f("strip_rect",
+                 strips_batch.pos_to_pixel_space_x(info.left_handle),
+                 strips_batch.pos_to_pixel_space_x(info.right_handle),
+                 strips_batch.pos_to_pixel_space_y(info.bottom),
+                 strips_batch.pos_to_pixel_space_y(info.top));
+    immUniform4f("color", 1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
+
+    float x1 = strips_batch.pos_to_pixel_space_x(info.x1);
+    float x2 = strips_batch.pos_to_pixel_space_x(info.x2);
+    float y1 = strips_batch.pos_to_pixel_space_y(info.y1);
+    float y2 = strips_batch.pos_to_pixel_space_y(info.y2);
+    float u1 = float(rect.xmin) / float(tex_width);
+    float u2 = float(rect.xmax) / float(tex_width);
+    float v1 = float(rect.ymin) / float(tex_height);
+    float v2 = float(rect.ymax) / float(tex_height);
+
+    immBegin(GPU_PRIM_TRI_FAN, 4);
+    immAttr2f(texco, u1, v1);
+    immVertex2f(pos, x1, y1);
+    immAttr2f(texco, u2, v1);
+    immVertex2f(pos, x2, y1);
+    immAttr2f(texco, u2, v2);
+    immVertex2f(pos, x2, y2);
+    immAttr2f(texco, u1, v2);
+    immVertex2f(pos, x1, y2);
+    immEnd();
+  }
+
+  immUnbindProgram();
+  GPU_matrix_pop_projection();
+
+  GPU_texture_unbind(atlas);
+  GPU_texture_free(atlas);
 }
