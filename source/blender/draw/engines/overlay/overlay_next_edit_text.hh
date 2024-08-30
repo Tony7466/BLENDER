@@ -44,38 +44,6 @@ class Text {
           sub_pass.state_set(pass_state);
           sub_pass.shader_set(shader);
           sub_pass.bind_ubo("ucolor", &res.globals_buf);
-
-
-
-    sh = OVERLAY_shader_uniform_color();
-    pd->edit_text_wire_grp[i] = grp = DRW_shgroup_create(sh, psl->edit_text_wire_ps[i]);
-    DRW_shgroup_uniform_vec4_copy(grp, "ucolor", G_draw.block.color_wire);
-  }
-  {
-    /* Cursor (text caret). */
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
-    DRW_PASS_CREATE(psl->edit_text_cursor_ps, state | pd->clipping_state);
-    sh = OVERLAY_shader_uniform_color();
-    pd->edit_text_cursor_grp = grp = DRW_shgroup_create(sh, psl->edit_text_cursor_ps);
-    DRW_shgroup_uniform_vec4(grp, "ucolor", pd->edit_text.cursor_color, 1);
-
-    /* Selection boxes. */
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
-    DRW_PASS_CREATE(psl->edit_text_selection_ps, state | pd->clipping_state);
-    sh = OVERLAY_shader_uniform_color();
-    pd->edit_text_selection_grp = grp = DRW_shgroup_create(sh, psl->edit_text_selection_ps);
-    DRW_shgroup_uniform_vec4(grp, "ucolor", pd->edit_text.selection_color, 1);
-
-    /* Highlight text within selection boxes. */
-    state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | DRW_STATE_DEPTH_GREATER_EQUAL |
-            pd->clipping_state;
-    DRW_PASS_INSTANCE_CREATE(psl->edit_text_highlight_ps, psl->edit_text_selection_ps, state);
-  }
-  {
-    /* Create view which will render everything (hopefully) behind the text geometry. */
-    DRWView *default_view = (DRWView *)DRW_view_default_get();
-    pd->view_edit_text = DRW_view_create_with_zoffset(default_view, draw_ctx->rv3d, -5.0f);
-  }
 }
 
 /* Use 2D quad corners to create a matrix that set
