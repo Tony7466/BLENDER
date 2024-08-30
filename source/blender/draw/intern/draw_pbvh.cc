@@ -87,7 +87,6 @@ class DrawCache : public bke::pbvh::DrawCache {
     Vector<gpu::VertBuf *> vbos;
     BitVector<> dirty_nodes;
   };
-  // Vector<int> visible_tri_count;
   Vector<bool> use_flat_layout;
   Vector<int> material_indices;
 
@@ -529,10 +528,9 @@ void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
   }
 }
 
-static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object,
-                                                            const IndexMask &node_mask,
-                                                            IndexMaskMemory &memory,
-                                                            DrawCache &draw_data)
+static IndexMask calc_topology_changed_nodes(const Object &object,
+                                             const IndexMask &node_mask,
+                                             IndexMaskMemory &memory)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   switch (pbvh.type()) {
@@ -549,19 +547,9 @@ static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object
       });
     }
     case bke::pbvh::Type::BMesh: {
-      // MutableSpan<int> node_visible_count = draw_data.visible_tri_count;
-      const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
-      return IndexMask::from_predicate(node_mask, GrainSize(32), memory, [&](const int i) {
-        if (nodes[i].flag_ & PBVH_RebuildDrawBuffers) {
-          return true;
-        }
-        // const int old_size = node_visible_count[i];
-        // node_visible_count[i] = count_visible_tris_bmesh(
-        // BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])));
-        // if (old_size != node_visible_count[i]) {
-        // return true;
-        // }
-        return false;
+      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      return IndexMask::from_predicate(node_mask, GrainSize(1024), memory, [&](const int i) {
+        return nodes[i].flag_ & PBVH_RebuildDrawBuffers;
       });
     }
   }
@@ -569,13 +557,12 @@ static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object
   return {};
 }
 
-static void free_stale_node_data(const Object &object,
-                                 const IndexMask &node_mask,
-                                 DrawCache &draw_data)
+static void free_nodes_with_changed_topology(const Object &object,
+                                             const IndexMask &node_mask,
+                                             DrawCache &draw_data)
 {
   IndexMaskMemory memory;
-  const IndexMask nodes_to_free = calc_nodes_to_free_and_update_dyntopo_size(
-      object, node_mask, memory, draw_data);
+  const IndexMask nodes_to_free = calc_topology_changed_nodes(object, node_mask, memory);
 
   free_ibos(draw_data.lines_ibos, nodes_to_free);
   free_ibos(draw_data.lines_ibos_coarse, nodes_to_free);
@@ -1954,7 +1941,7 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
 
   ensure_use_flat_layout_check(object, draw_data);
 
-  free_stale_node_data(object, nodes_to_update, draw_data);
+  free_nodes_with_changed_topology(object, nodes_to_update, draw_data);
 
   Vector<gpu::Batch *> &batches = draw_data.tris_batches.lookup_or_add_default(request);
   batches.resize(pbvh.nodes_num(), nullptr);
@@ -1999,7 +1986,7 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
 
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
 
-  free_stale_node_data(object, nodes_to_update, draw_data);
+  free_nodes_with_changed_topology(object, nodes_to_update, draw_data);
 
   Vector<gpu::Batch *> &batches = request.use_coarse_grids ? draw_data.lines_batches_coarse :
                                                              draw_data.lines_batches;
