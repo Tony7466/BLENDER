@@ -1519,20 +1519,47 @@ static void draw_strips_thumbnails(TimelineDrawContext *timeline_ctx,
     return;
   }
 
-  /* Create the GPU textures for thumbnails. */
-  Vector<GPUTexture *> textures(thumbs.size());
-  for (int64_t i = 0; i < thumbs.size(); i++) {
-    SeqThumbInfo &info = thumbs[i];
-    textures[i] = GPU_texture_create_2d("thumb",
-                                        info.cropx_max - info.cropx_min + 1,
-                                        info.ibuf->y,
-                                        1,
-                                        GPU_RGBA8,
-                                        GPU_TEXTURE_USAGE_SHADER_READ,
-                                        nullptr);
-    GPU_texture_filter_mode(textures[i], true);
-    GPU_texture_extend_mode(textures[i], GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
-    GPU_unpack_row_length_set(info.ibuf->x);
+  /* Arrange thumbnail images into a texture atlas, using a simple
+   * "add to current row until end, then start a new row". Thumbnail
+   * images are most often same height (but varying width due to horizontal
+   * cropping), so this simple algorithm works well enough. */
+  constexpr int ATLAS_WIDTH = 4096;
+  constexpr int ATLAS_MAX_HEIGHT = 4096;
+  int cur_row_x = 0;
+  int cur_row_y = 0;
+  int cur_row_height = 0;
+  Vector<rcti> rects;
+  rects.reserve(thumbs.size());
+  for (const SeqThumbInfo &info : thumbs) {
+    int width = info.cropx_max - info.cropx_min + 1;
+    int height = info.ibuf->y;
+    cur_row_height = math::max(cur_row_height, height);
+
+    /* If this thumb would not fit onto current row, start a new row. */
+    if (cur_row_x + width > ATLAS_WIDTH) {
+      cur_row_y += cur_row_height + 1; /* +1 empty pixel for bilinear filter. */
+      cur_row_height = height;
+      cur_row_x = 0;
+      if (cur_row_y > ATLAS_MAX_HEIGHT) {
+        break;
+      }
+    }
+
+    /* Record our rect. */
+    rcti rect{cur_row_x, cur_row_x + width, cur_row_y, cur_row_y + height};
+    rects.append(rect);
+
+    /* Advance to next item inside row. */
+    cur_row_x += width + 1; /* +1 empty pixel for bilinear filter. */
+  }
+
+  /* Create the atlas GPU texture. */
+  const int tex_width = ATLAS_WIDTH;
+  const int tex_height = cur_row_y + cur_row_height;
+  Array<uchar> tex_data(tex_width * tex_height * 4);
+  for (int64_t i = 0; i < rects.size(); i++) {
+    /* Copy one thumbnail into atlas. */
+
     //@TODO: use proper color management here?
     // uchar *display_buffer;
     // void *cache_handle;
@@ -1542,12 +1569,27 @@ static void draw_strips_thumbnails(TimelineDrawContext *timeline_ctx,
     // and then
     // IMB_display_buffer_release(cache_handle);
 
-    GPU_texture_update(
-        textures[i], GPU_DATA_UBYTE, info.ibuf->byte_buffer.data + info.cropx_min * 4);
-    IMB_freeImBuf(info.ibuf); /* Release image reference. */
+    const rcti &rect = rects[i];
+    SeqThumbInfo &info = thumbs[i];
+    int width = info.cropx_max - info.cropx_min + 1;
+    int height = info.ibuf->y;
+    const uchar *src = info.ibuf->byte_buffer.data + info.cropx_min * 4;
+    uchar *dst = &tex_data[(rect.ymin * ATLAS_WIDTH + rect.xmin) * 4];
+    for (int y = 0; y < height; y++) {
+      memcpy(dst, src, width * 4);
+      src += info.ibuf->x * 4;
+      dst += ATLAS_WIDTH * 4;
+    }
+
+    /* Release thumb image reference. */
+    IMB_freeImBuf(info.ibuf);
     info.ibuf = nullptr;
   }
-  GPU_unpack_row_length_set(0);
+  GPUTexture *atlas = GPU_texture_create_2d(
+      "thumb_atlas", tex_width, tex_height, 1, GPU_RGBA8, GPU_TEXTURE_USAGE_SHADER_READ, nullptr);
+  GPU_texture_update(atlas, GPU_DATA_UBYTE, tex_data.data());
+  GPU_texture_filter_mode(atlas, true);
+  GPU_texture_extend_mode(atlas, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
 
   /* Draw all thumbnails. */
   GPU_matrix_push_projection();
@@ -1559,7 +1601,9 @@ static void draw_strips_thumbnails(TimelineDrawContext *timeline_ctx,
   immBindBuiltinProgram(GPU_SHADER_SEQUENCER_THUMBS);
 
   immUniform1f("round_radius", round_radius);
-  for (int64_t i = 0; i < thumbs.size(); i++) {
+  immBindTexture("image", atlas);
+  for (int64_t i = 0; i < rects.size(); i++) {
+    const rcti &rect = rects[i];
     const SeqThumbInfo &info = thumbs[i];
     immUniform4f("strip_rect",
                  strips_batch.pos_to_pixel_space_x(info.left_handle),
@@ -1567,34 +1611,33 @@ static void draw_strips_thumbnails(TimelineDrawContext *timeline_ctx,
                  strips_batch.pos_to_pixel_space_y(info.bottom),
                  strips_batch.pos_to_pixel_space_y(info.top));
     immUniform4f("color", 1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
-    GPU_texture_bind(textures[i], 0);
 
     float x1 = strips_batch.pos_to_pixel_space_x(info.x1);
     float x2 = strips_batch.pos_to_pixel_space_x(info.x2);
     float y1 = strips_batch.pos_to_pixel_space_y(info.y1);
     float y2 = strips_batch.pos_to_pixel_space_y(info.y2);
+    float u1 = float(rect.xmin) / float(tex_width);
+    float u2 = float(rect.xmax) / float(tex_width);
+    float v1 = float(rect.ymin) / float(tex_height);
+    float v2 = float(rect.ymax) / float(tex_height);
 
     immBegin(GPU_PRIM_TRI_FAN, 4);
-    immAttr2f(texco, 0.0f, 0.0f);
+    immAttr2f(texco, u1, v1);
     immVertex2f(pos, x1, y1);
-    immAttr2f(texco, 1.0f, 0.0f);
+    immAttr2f(texco, u2, v1);
     immVertex2f(pos, x2, y1);
-    immAttr2f(texco, 1.0f, 1.0f);
+    immAttr2f(texco, u2, v2);
     immVertex2f(pos, x2, y2);
-    immAttr2f(texco, 0.0f, 1.0f);
+    immAttr2f(texco, u1, v2);
     immVertex2f(pos, x1, y2);
     immEnd();
-
-    GPU_texture_unbind(textures[i]);
   }
 
   immUnbindProgram();
   GPU_matrix_pop_projection();
 
-  /* Release the GPU textures. */
-  for (GPUTexture *tex : textures) {
-    GPU_texture_free(tex);
-  }
+  GPU_texture_unbind(atlas);
+  GPU_texture_free(atlas);
 }
 
 static void draw_retiming_continuity_ranges(TimelineDrawContext *timeline_ctx,
