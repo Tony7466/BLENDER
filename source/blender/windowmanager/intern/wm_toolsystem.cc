@@ -224,29 +224,8 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
   }
 }
 
-#if 0
-void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
-                                                           const int brush_type,
-                                                           const PaintMode paint_mode)
-{
-
-  if (brush_type_is_compatible_with_active_tool(C, brush_type, paint_mode)) {
-    /* Active tool is already compatible, nothing to do. */
-    return;
-  }
-
-  blender::StringRef brush_type_id = brush_type_identifier_get(brush_type, paint_mode);
-  std::optional<blender::StringRefNull> compatible_tool = find_tool_id_from_brush_type_id(
-      C, brush_type_id);
-  WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
-}
-#endif
-
 /**
  * Activate a brush compatible with \a tref, call when the active tool changes.
- *
- * Pendant to #WM_toolsystem_activate_compatible_tool_for_brush_type(), which handles the binding
- * the other way (activate tool on active brush changes).
  */
 static void activate_compatible_brush_from_toolref(const bContext *C,
                                                    WorkSpace *workspace,

@@ -66,23 +66,9 @@ static int brush_asset_activate_exec(bContext *C, wmOperator *op)
 
   Paint *paint = BKE_paint_get_active_from_context(C);
 
-#if 0
-  if (!BKE_paint_brush_set(paint, brush)) {
-    /* Note brush datablock was still added, so was not a no-op. */
-    BKE_report(op->reports, RPT_WARNING, "Unable to activate brush, wrong object mode");
-    return OPERATOR_FINISHED;
-  }
-
-  const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-  std::optional<int> brush_type = BKE_paint_get_brush_tool_from_paintmode(brush, paint_mode);
-
-  if (brush_type) {
-    WM_toolsystem_activate_compatible_tool_for_brush_type(C, *brush_type, paint_mode);
-  }
-  else {
-    BLI_assert_unreachable();
-  }
-#endif
+  /* Activate brush through tool system rather than calling #BKE_paint_brush_set() directly, to let
+   * the tool system switch tools if necessary, and update which brush was the last recently used
+   * one for the current tool. */
   if (!WM_toolsystem_activate_brush_and_tool(C, paint, brush)) {
     /* Note brush datablock was still added, so was not a no-op. */
     BKE_report(op->reports, RPT_WARNING, "Unable to activate brush, wrong object mode");

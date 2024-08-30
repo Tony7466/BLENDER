@@ -64,18 +64,13 @@ bToolRef_Runtime *WM_toolsystem_runtime_from_context(const bContext *C);
 bToolRef_Runtime *WM_toolsystem_runtime_find(WorkSpace *workspace, const bToolKey *tkey);
 
 /**
+ * Activate the brush through the tool system. This will call #BKE_paint_brush_set() with \a brush,
+ * but it will also switch to the tool appropriate for this brush type (if necessary) and update
+ * the current tool-brush references to remember the last used brush for that tool.
+ *
  * \return True if the brush was successfully activated.
  */
 bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *brush);
-/**
- * Activate a tool appropriate for a certain brush type, call when changing the active brush.
- *
- * The tool system handles the other way internally, that is, changing the active brush when a
- * different brush based tool gets activated.
- */
-void WM_toolsystem_activate_compatible_tool_for_brush_type(bContext *C,
-                                                           const int brush_type,
-                                                           const PaintMode paint_mode);
 
 void WM_toolsystem_unlink(bContext *C, WorkSpace *workspace, const bToolKey *tkey);
 void WM_toolsystem_refresh(const bContext *C, WorkSpace *workspace, const bToolKey *tkey);

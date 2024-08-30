@@ -222,9 +222,14 @@ void BKE_paint_brush_asset_reference_from_essentials(const char *name,
  *
  * \return True on success. If \a brush is already active, this is considered a success (the brush
  * asset reference will still be updated).
+ *
+ * \note #WM_toolsystem_activate_brush_and_tool() might be the preferable way to change the active
+ * brush. It also lets the toolsystem decide if the active tool should be changed given the type of
+ * brush, and it updates the "last used brush" for the previous tool. #BKE_paint_brush_set() should
+ * only be called to force a brush to be active, circumventing the tool system.
  */
 bool BKE_paint_brush_set(Paint *paint, Brush *brush);
-/* Makes \a brush the active brush, and updates the main brush reference. */
+/** Makes \a brush the active brush, and updates the main brush reference. */
 bool BKE_paint_main_brush_set(Paint *paint, Brush *brush);
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
