@@ -772,7 +772,10 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               editable ? TIP_("Double click to rename") : "");
+                               editable ? TIP_("Select List Item "
+                                               "(Double click to rename)") :
+                                          TIP_("Select List Item"));
+
           if ((dyntip_data = uilist_item_use_dynamic_tooltip(itemptr,
                                                              input_data->item_dyntip_propname)))
           {
@@ -1209,7 +1212,7 @@ uiList *uiTemplateList_ex(uiLayout *layout,
                           enum uiTemplateListFlags flags,
                           void *customdata)
 {
-  TemplateListInputData input_data = {{nullptr}};
+  TemplateListInputData input_data = {};
   uiListType *ui_list_type;
   if (!ui_template_list_data_retrieve(listtype_name,
                                       list_id,
