@@ -1,9 +1,9 @@
-/* SPDX-FileCopyrightText: 2019 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
- * \ingroup draw_engine
+ * \ingroup overlay
  */
 #pragma once
 
@@ -13,8 +13,6 @@
 #include "UI_resources.hh"
 
 #include "BLI_math_color.h"
-
-#include "BKE_vfont.hh"
 
 #include "DNA_curve_types.h"
 
