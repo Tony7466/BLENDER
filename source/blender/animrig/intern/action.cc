@@ -1604,16 +1604,7 @@ void ChannelBag::restore_channel_group_invariants()
 
 bool ChannelGroup::is_legacy() const
 {
-  const bool group_is_legacy = this->channel_bag == nullptr;
-
-  /* This assert is just a sanity check: failing it is benign since
-   * layered-action groups never access the `channels` listbase anyway.
-   * Nevertheless, despite being benign on its own, it should still hold true,
-   * and failure may indicate issues elsewhere. */
-  BLI_assert_msg(group_is_legacy || this->channels.first == nullptr,
-                 "Layered-action channel group has legacy-action data.");
-
-  return group_is_legacy;
+  return this->channel_bag == nullptr;
 }
 
 Span<FCurve *> ChannelGroup::fcurves()
