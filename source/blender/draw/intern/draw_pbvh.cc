@@ -1694,7 +1694,6 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
-    // TODO: Split VBO size calculation and VBO reallocation.
     const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
     const int verts_num = count_visible_tris_mesh(tris, tri_faces, hide_poly) * 3;
 
