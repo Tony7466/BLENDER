@@ -2929,8 +2929,8 @@ IndexMask search_nodes(const Tree &pbvh,
                        IndexMaskMemory &memory,
                        FunctionRef<bool(const Node &)> filter_fn)
 {
-  Vector<Node *> nodes = search_gather(const_cast<Tree &>(pbvh),
-                                       [&](Node &node) { return filter_fn(node); });
+  Vector<Node *> nodes = search_gather(
+      const_cast<Tree &>(pbvh), [&](Node &node) { return filter_fn(node); }, PBVH_Leaf);
   Array<int> indices(nodes.size());
   std::visit(
       [&](const auto &pbvh_nodes) {
