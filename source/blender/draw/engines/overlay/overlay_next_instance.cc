@@ -96,6 +96,7 @@ void Instance::begin_sync()
     layer.bounds.begin_sync();
     layer.cameras.begin_sync(resources, state, view);
     layer.curves.begin_sync(resources, state, view);
+    layer.edit_text.begin_sync(resources, state, view);
     layer.empties.begin_sync(resources, state, view);
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
