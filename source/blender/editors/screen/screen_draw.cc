@@ -280,9 +280,7 @@ static void screen_draw_area_drag_info(
   BLF_color4fv(fstyle->uifont_id, col_fg);
   BLF_draw(fstyle->uifont_id, area_name.c_str(), area_name.size());
 
-  BLF_position(fstyle->uifont_id,
-               left + margin, top - height + margin - descent,
-               0.0f);
+  BLF_position(fstyle->uifont_id, left + margin, top - height + margin - descent, 0.0f);
   BLF_draw(fstyle->uifont_id, hint.c_str(), hint.size());
 }
 
