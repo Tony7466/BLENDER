@@ -2471,150 +2471,64 @@ static void rna_def_brush(BlenderRNA *brna)
    *
    * keep in sync with #BKE_paint_get_tool_prop_id_from_paintmode
    */
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "sculpt_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "sculpt_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_sculpt_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
+  prop = RNA_def_property(srna, "sculpt_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "sculpt_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_sculpt_brush_type_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
+  RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
 
-    /* New name */
-    prop = RNA_def_property(srna, "sculpt_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_sculpt_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
-  }
+  prop = RNA_def_property(srna, "vertex_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "vertex_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_vertex_brush_type_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
 
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "vertex_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "vertex_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_vertex_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
+  prop = RNA_def_property(srna, "weight_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "weight_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_weight_brush_type_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
 
-    /* New name */
-    prop = RNA_def_property(srna, "vertex_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_vertex_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
-  }
+  prop = RNA_def_property(srna, "image_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "image_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_image_brush_type_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, "rna_Brush_update_and_reset_icon");
 
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "weight_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "weight_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_weight_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
+  prop = RNA_def_property(srna, "gpencil_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "gpencil_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
-    /* New name */
-    prop = RNA_def_property(srna, "weight_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_weight_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_update(prop, 0, "rna_Brush_update_and_reset_icon");
-  }
+  prop = RNA_def_property(srna, "gpencil_vertex_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "gpencil_vertex_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_vertex_types_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "image_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "image_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_image_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, "rna_Brush_update_and_reset_icon");
+  prop = RNA_def_property(srna, "gpencil_sculpt_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "gpencil_sculpt_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_sculpt_types_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
-    /* New name */
-    prop = RNA_def_property(srna, "image_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_image_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, "rna_Brush_update_and_reset_icon");
-  }
+  prop = RNA_def_property(srna, "gpencil_weight_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "gpencil_weight_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_weight_types_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "gpencil_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "gpencil_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-    /* New name */
-    prop = RNA_def_property(srna, "gpencil_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_BRUSH);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  }
-
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "gpencil_vertex_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "gpencil_vertex_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_vertex_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-    /* New name */
-    prop = RNA_def_property(srna, "gpencil_vertex_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_vertex_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  }
-
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "gpencil_sculpt_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "gpencil_sculpt_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_sculpt_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-    /* New name */
-    prop = RNA_def_property(srna, "gpencil_sculpt_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_sculpt_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  }
-
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "gpencil_weight_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "gpencil_weight_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_weight_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-    /* New name */
-    prop = RNA_def_property(srna, "gpencil_weight_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_gpencil_weight_types_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  }
-
-  {
-    /* Legacy name */
-    prop = RNA_def_property(srna, "curves_sculpt_tool", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_sdna(prop, nullptr, "curves_sculpt_brush_type");
-    RNA_def_property_enum_items(prop, rna_enum_brush_curves_sculpt_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVES);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-
-    /* New name */
-    prop = RNA_def_property(srna, "curves_sculpt_brush_type", PROP_ENUM, PROP_NONE);
-    RNA_def_property_enum_items(prop, rna_enum_brush_curves_sculpt_brush_type_items);
-    RNA_def_property_ui_text(prop, "Brush Type", "");
-    RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVES);
-    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  }
+  prop = RNA_def_property(srna, "curves_sculpt_tool", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "curves_sculpt_brush_type");
+  RNA_def_property_enum_items(prop, rna_enum_brush_curves_sculpt_brush_type_items);
+  RNA_def_property_ui_text(prop, "Brush Type", "");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_CURVES);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 
   /** End per mode brush type properties. */
 
