@@ -547,7 +547,7 @@ static IndexMask calc_topology_changed_nodes(const Object &object,
       });
     }
     case bke::pbvh::Type::BMesh: {
-      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
       return IndexMask::from_predicate(node_mask, GrainSize(1024), memory, [&](const int i) {
         return nodes[i].flag_ & PBVH_RebuildDrawBuffers;
       });
@@ -1780,12 +1780,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
     }
     const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
     const int verts_num = count_visible_tris_mesh(tris, tri_faces, hide_poly) * 3;
-
-    if (vbos[i]->data<uchar>().data() == nullptr ||
-        GPU_vertbuf_get_vertex_len(vbos[i]) != verts_num)
-    {
-      GPU_vertbuf_data_alloc(*vbos[i], verts_num);
-    }
+    GPU_vertbuf_data_alloc(*vbos[i], verts_num);
   });
 }
 
@@ -1806,11 +1801,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_grids(const Object &object,
     const int verts_per_grid = use_flat_layout[i] ? square_i(key.grid_size - 1) * 4 :
                                                     square_i(key.grid_size);
     const int verts_num = bke::pbvh::node_grid_indices(nodes[i]).size() * verts_per_grid;
-    if (vbos[i]->data<uchar>().data() == nullptr ||
-        GPU_vertbuf_get_vertex_len(vbos[i]) != verts_num)
-    {
-      GPU_vertbuf_data_alloc(*vbos[i], verts_num);
-    }
+    GPU_vertbuf_data_alloc(*vbos[i], verts_num);
   });
 }
 
@@ -1829,11 +1820,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_bmesh(const Object &object,
     const Set<BMFace *, 0> &faces = BKE_pbvh_bmesh_node_faces(
         &const_cast<bke::pbvh::BMeshNode &>(nodes[i]));
     const int verts_num = count_visible_tris_bmesh(faces) * 3;
-    if (vbos[i]->data<uchar>().data() == nullptr ||
-        GPU_vertbuf_get_vertex_len(vbos[i]) != verts_num)
-    {
-      GPU_vertbuf_data_alloc(*vbos[i], verts_num);
-    }
+    GPU_vertbuf_data_alloc(*vbos[i], verts_num);
   });
 }
 
