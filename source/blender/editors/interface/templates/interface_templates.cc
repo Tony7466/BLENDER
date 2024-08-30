@@ -1437,7 +1437,7 @@ static void template_ID(const bContext *C,
           /* This property is annoying, because it's stored on the object, but when setting it, it
            * may change object->data. */
           if (GS(idfrom->name) == ID_OB &&
-              RNA_property_identifier(template_ui->prop) == StringRef("active_material"))
+              RNA_property_identifier(template_ui.prop) == StringRef("active_material"))
           {
             Object *object = reinterpret_cast<Object *>(idfrom);
             const int slot_index = object->actcol - 1;
@@ -1468,8 +1468,10 @@ static void template_ID(const bContext *C,
         else {
           UI_but_funcN_set(but,
                            template_id_cb,
-                           MEM_dupallocN(template_ui),
-                           POINTER_FROM_INT(UI_ID_REALIZE_LOCKED));
+                           MEM_new<TemplateID>(__func__, template_ui),
+                           POINTER_FROM_INT(UI_ID_REALIZE_LOCKED),
+                           but_func_argN_free<TemplateID>,
+                           but_func_argN_copy<TemplateID>);
         }
       }
       else if (ID_IS_LINKED(id)) {
