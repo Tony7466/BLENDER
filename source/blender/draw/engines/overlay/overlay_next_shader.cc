@@ -226,6 +226,42 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
   });
 
+  fluid_grid_lines_flags = selectable_shader(
+      "overlay_volume_gridlines_flags", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_flat = selectable_shader(
+      "overlay_volume_gridlines_flat", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_range = selectable_shader(
+      "overlay_volume_gridlines_range", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_velocity_streamline = selectable_shader(
+      "overlay_volume_velocity_streamline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_mac = selectable_shader(
+      "overlay_volume_velocity_mac", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_needle = selectable_shader(
+      "overlay_volume_velocity_needle", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
   extra_shape = selectable_shader("overlay_extra", [](gpu::shader::ShaderCreateInfo &info) {
     info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
     info.define("color", "data_buf[gl_InstanceID].color_");
@@ -294,6 +330,11 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.define("inst_pos", "data_buf[gl_InstanceID].xyz");
         info.vertex_inputs_.pop_last();
       });
+
+  image_plane = selectable_shader("overlay_image", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new");
+  });
 
   particle_dot = selectable_shader("overlay_particle_dot",
                                    [](gpu::shader::ShaderCreateInfo &info) {

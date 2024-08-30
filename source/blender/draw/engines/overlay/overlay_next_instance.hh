@@ -17,6 +17,7 @@
 #include "overlay_next_curve.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_facing.hh"
+#include "overlay_next_fluid.hh"
 #include "overlay_next_force_field.hh"
 #include "overlay_next_grease_pencil.hh"
 #include "overlay_next_grid.hh"
@@ -31,6 +32,7 @@
 #include "overlay_next_relation.hh"
 #include "overlay_next_speaker.hh"
 #include "overlay_next_wireframe.hh"
+#include "overlay_next_xray_fade.hh"
 
 namespace blender::draw::overlay {
 
@@ -58,11 +60,13 @@ class Instance {
 
   struct OverlayLayer {
     const SelectionType selection_type_;
+
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Curves curves;
     Empties empties = {selection_type_};
     Facing facing = {selection_type_};
+    Fluids fluids = {selection_type_};
     ForceFields force_fields = {selection_type_};
     GreasePencil grease_pencil;
     Lattices lattices;
@@ -80,6 +84,7 @@ class Instance {
   Grid grid;
 
   AntiAliasing anti_aliasing;
+  XrayFade xray_fade;
 
   Instance(const SelectionType selection_type) : selection_type_(selection_type){};
 
