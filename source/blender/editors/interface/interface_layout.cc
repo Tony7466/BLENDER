@@ -3459,8 +3459,8 @@ void uiItemProgressIndicator(uiLayout *layout,
                         0.0,
                         "");
 
-  if (has_text && (progress_type == UI_BUT_PROGRESS_TYPE_RING)) {
-    /* For progress bar, centered is okay, left aligned for ring/pie. */
+  if (has_text && (ELEM(progress_type, UI_BUT_PROGRESS_TYPE_RING, UI_BUT_PROGRESS_TYPE_SPINNER))) {
+    /* For progress bar, centered is okay, left aligned for ring/spinner. */
     but->drawflag |= UI_BUT_TEXT_LEFT;
   }
 

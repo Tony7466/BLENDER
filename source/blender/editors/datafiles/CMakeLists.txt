@@ -798,6 +798,18 @@ if(WITH_BLENDER)
       speaker
       sphere
       spherecurve
+      spinner_01
+      spinner_02
+      spinner_03
+      spinner_04
+      spinner_05
+      spinner_06
+      spinner_07
+      spinner_08
+      spinner_09
+      spinner_10
+      spinner_11
+      spinner_12
       split_horizontal
       split_vertical
       spreadsheet

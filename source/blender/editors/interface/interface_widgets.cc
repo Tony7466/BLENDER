@@ -3745,6 +3745,31 @@ static void widget_progress_type_ring(uiButProgress *but_progress,
   }
 }
 
+static void widget_progress_type_spinner(uiButProgress *but_progress,
+                                         uiWidgetColors *wcol,
+                                         rcti *rect)
+{
+  GPU_blend(GPU_BLEND_ALPHA);
+  UI_widgetbase_draw_cache_flush();
+  GPU_blend(GPU_BLEND_NONE);
+
+  const int frame = int(but_progress->progress_factor * 12.0f);
+  const float end = but_progress->progress_factor * 360.0f;
+
+  BLF_draw_svg_icon(ICON_SPINNER_01 + frame,
+                    rect->xmin,
+                    rect->ymin,
+                    (rect->ymax - rect->ymin) * 1.1f,
+                    nullptr,
+                    0.0f,
+                    false,
+                    nullptr);
+
+  if (but_progress->drawstr[0]) {
+    rect->xmin += UI_UNIT_X;
+  }
+}
+
 static void widget_progress_indicator(uiBut *but,
                                       uiWidgetColors *wcol,
                                       rcti *rect,
@@ -3760,6 +3785,10 @@ static void widget_progress_indicator(uiBut *but,
     }
     case UI_BUT_PROGRESS_TYPE_RING: {
       widget_progress_type_ring(but_progress, wcol, rect);
+      break;
+    }
+    case UI_BUT_PROGRESS_TYPE_SPINNER: {
+      widget_progress_type_spinner(but_progress, wcol, rect);
       break;
     }
   }

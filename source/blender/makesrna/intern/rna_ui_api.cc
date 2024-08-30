@@ -1127,6 +1127,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   static const EnumPropertyItem progress_type_items[] = {
       {UI_BUT_PROGRESS_TYPE_BAR, "BAR", 0, "Bar", ""},
       {UI_BUT_PROGRESS_TYPE_RING, "RING", 0, "Ring", ""},
+      {UI_BUT_PROGRESS_TYPE_SPINNER, "SPINNER", 0, "Spinner", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
