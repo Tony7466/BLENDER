@@ -80,10 +80,13 @@ bool VKContext::debug_capture_scope_begin(void *scope)
   return false;
 }
 
-void VKContext::debug_capture_scope_end(void * /*scope*/)
+void VKContext::debug_capture_scope_end(void *scope)
 {
 #ifdef WITH_RENDERDOC
-  GLBackend::get()->debug_capture_end();
+  const char *title = (const char *)scope;
+  if (StringRefNull(title) == StringRefNull(G.gpu_debug_scope_name)) {
+    GLBackend::get()->debug_capture_end();
+  }
 #endif
 }
 
