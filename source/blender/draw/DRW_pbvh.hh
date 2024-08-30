@@ -15,6 +15,8 @@
 #include "BLI_struct_equality_utils.hh"
 #include "BLI_vector.hh"
 
+#include "BKE_pbvh_api.hh"
+
 #include "DNA_customdata_types.h"
 
 namespace blender::gpu {
@@ -39,8 +41,6 @@ class Tree;
 }  // namespace blender::bke
 
 namespace blender::draw::pbvh {
-
-class DrawCache;
 
 class GenericRequest {
  public:
@@ -70,20 +70,21 @@ struct ViewportRequest {
   uint64_t hash() const;
 };
 
+class DrawCache : public bke::pbvh::DrawCache {
+ public:
+  virtual ~DrawCache() = default;
+  virtual void tag_all_attributes_dirty(const IndexMask &node_mask) = 0;
+  virtual Span<gpu::Batch *> ensure_tris_batches(const Object &object,
+                                                 const ViewportRequest &request,
+                                                 const IndexMask &nodes_to_update) = 0;
+
+  virtual Span<gpu::Batch *> ensure_lines_batches(const Object &object,
+                                                  const ViewportRequest &request,
+                                                  const IndexMask &nodes_to_update) = 0;
+
+  virtual Span<int> ensure_material_indices(const Object &object) = 0;
+};
+
 DrawCache &ensure_draw_data(std::unique_ptr<bke::pbvh::DrawCache> &ptr);
-
-void mark_attributes_dirty(const Object &object, const IndexMask &node_mask, DrawCache &draw_data);
-void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask);
-
-Span<gpu::Batch *> ensure_tris_batches(const Object &object,
-                                       const ViewportRequest &request,
-                                       const IndexMask &nodes_to_update,
-                                       DrawCache &draw_data);
-Span<gpu::Batch *> ensure_lines_batches(const Object &object,
-                                        const ViewportRequest &request,
-                                        const IndexMask &nodes_to_update,
-                                        DrawCache &draw_data);
-
-Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data);
 
 }  // namespace blender::draw::pbvh

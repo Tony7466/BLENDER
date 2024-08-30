@@ -19,7 +19,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_pbvh_api.hh"
 #include "BKE_volume.hh"
 
 /* For debug cursor position. */
@@ -1389,22 +1388,23 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   const IndexMask nodes_to_update = update_only_visible ? visible_nodes :
                                                           bke::pbvh::all_leaf_nodes(*pbvh, memory);
 
-  draw::pbvh::mark_attributes_dirty(object, nodes_to_update, draw_data);
+  draw_data.tag_all_attributes_dirty(
+      bke::pbvh::node_draw_update_mask(*pbvh, nodes_to_update, memory));
 
   const draw::pbvh::ViewportRequest request{scd->attrs, scd->fast_mode};
   Span<gpu::Batch *> batches;
   if (scd->use_wire) {
-    batches = draw::pbvh::ensure_lines_batches(object, request, nodes_to_update, draw_data);
+    batches = draw_data.ensure_lines_batches(object, request, nodes_to_update);
   }
   else {
-    batches = draw::pbvh::ensure_tris_batches(object, request, nodes_to_update, draw_data);
+    batches = draw_data.ensure_tris_batches(object, request, nodes_to_update);
   }
 
-  draw::pbvh::remove_node_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
+  bke::pbvh::remove_node_draw_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
 
   Span<int> material_indices;
   if (scd->use_mats) {
-    material_indices = draw::pbvh::ensure_material_indices(object, draw_data);
+    material_indices = draw_data.ensure_material_indices(object);
   }
 
   draw_pbvh_nodes(object,

@@ -22,8 +22,6 @@
 #include "BKE_ccg.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "DRW_pbvh.hh"
-
 #include "bmesh.hh"
 #include "pbvh_intern.hh"
 

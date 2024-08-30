@@ -383,6 +383,8 @@ void BKE_pbvh_mark_rebuild_pixels(blender::bke::pbvh::Tree &pbvh);
 
 namespace blender::bke::pbvh {
 
+void remove_node_draw_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask);
+
 Span<int> node_grid_indices(const GridsNode &node);
 
 Span<int> node_tri_indices(const MeshNode &node);
@@ -530,6 +532,10 @@ IndexMask all_leaf_nodes(const Tree &pbvh, IndexMaskMemory &memory);
 IndexMask search_nodes(const Tree &pbvh,
                        IndexMaskMemory &memory,
                        FunctionRef<bool(const Node &)> filter_fn);
+
+IndexMask node_draw_update_mask(const Tree &pbvh,
+                                const IndexMask &node_mask,
+                                IndexMaskMemory &memory);
 
 Vector<Node *> search_gather(Tree &pbvh,
                              FunctionRef<bool(Node &)> scb,
