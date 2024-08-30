@@ -4960,9 +4960,6 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     case bke::pbvh::Type::BMesh:
       active_vert = reinterpret_cast<BMVert *>(active_vertex.i);
       break;
-    default:
-      BLI_assert_unreachable();
-      break;
   }
 
   ss.set_active_vert(active_vert);
