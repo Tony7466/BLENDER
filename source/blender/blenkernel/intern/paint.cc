@@ -977,6 +977,34 @@ uint BKE_paint_get_brush_tool_offset_from_paintmode(const PaintMode mode)
   return 0;
 }
 
+std::optional<int> BKE_paint_get_brush_tool_from_obmode(const Brush *brush,
+                                                        const eObjectMode ob_mode)
+{
+  switch (ob_mode) {
+    case OB_MODE_TEXTURE_PAINT:
+    case OB_MODE_EDIT:
+      return brush->imagepaint_tool;
+    case OB_MODE_SCULPT:
+      return brush->sculpt_tool;
+    case OB_MODE_VERTEX_PAINT:
+      return brush->vertexpaint_tool;
+    case OB_MODE_WEIGHT_PAINT:
+      return brush->weightpaint_tool;
+    case OB_MODE_PAINT_GPENCIL_LEGACY:
+      return brush->gpencil_tool;
+    case OB_MODE_VERTEX_GPENCIL_LEGACY:
+      return brush->gpencil_vertex_tool;
+    case OB_MODE_SCULPT_GPENCIL_LEGACY:
+      return brush->gpencil_sculpt_tool;
+    case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+      return brush->gpencil_weight_tool;
+    case OB_MODE_SCULPT_CURVES:
+      return brush->curves_sculpt_tool;
+    default:
+      return {};
+  }
+}
+
 PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name)
 {
   PaintCurve *pc = static_cast<PaintCurve *>(BKE_id_new(bmain, ID_PC, name));
@@ -1734,19 +1762,27 @@ SculptSession::~SculptSession()
 
 PBVHVertRef SculptSession::active_vert_ref() const
 {
-  if (ELEM(this->pbvh->type(),
-           blender::bke::pbvh::Type::Mesh,
-           blender::bke::pbvh::Type::Grids,
-           blender::bke::pbvh::Type::BMesh))
-  {
-    return active_vert_;
+  /* Here to prevent possible crashes like #126914. This should be removed
+   * eventually once all of these situations are found. The PBVH should never be
+   * in an uninitialized state when calling this function. */
+  if (!this->pbvh) {
+    BLI_assert_unreachable();
+    return {PBVH_REF_NONE};
   }
 
-  return {PBVH_REF_NONE};
+  return active_vert_;
 }
 
 ActiveVert SculptSession::active_vert() const
 {
+  /* Here to prevent possible crashes like #126914. This should be removed
+   * eventually once all of these situations are found. The PBVH should never be
+   * in an uninitialized state when calling this function. */
+  if (!this->pbvh) {
+    BLI_assert_unreachable();
+    return {};
+  }
+
   /* TODO: While this code currently translates the stored PBVHVertRef into the given type, once
    * we stored the actual field as ActiveVertex, this call can replace #active_vertex. */
   switch (this->pbvh->type()) {
