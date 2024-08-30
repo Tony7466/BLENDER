@@ -259,7 +259,7 @@ void Instance::draw(Manager &manager)
 
   if (state.xray_enabled) {
     /* For X-ray we render the scene to a separate depth buffer. */
-    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
+    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
     resources.depth_target_tx.wrap(resources.xray_depth_tx);
   }
   else {
@@ -268,7 +268,7 @@ void Instance::draw(Manager &manager)
 
   /* TODO(fclem): Remove mandatory allocation. */
   if (!resources.depth_in_front_tx.is_valid()) {
-    resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
+    resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
     resources.depth_in_front_tx.wrap(resources.depth_in_front_alloc_tx);
   }
 
