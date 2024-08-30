@@ -977,6 +977,34 @@ uint BKE_paint_get_brush_tool_offset_from_paintmode(const PaintMode mode)
   return 0;
 }
 
+std::optional<int> BKE_paint_get_brush_tool_from_obmode(const Brush *brush,
+                                                        const eObjectMode ob_mode)
+{
+  switch (ob_mode) {
+    case OB_MODE_TEXTURE_PAINT:
+    case OB_MODE_EDIT:
+      return brush->imagepaint_tool;
+    case OB_MODE_SCULPT:
+      return brush->sculpt_tool;
+    case OB_MODE_VERTEX_PAINT:
+      return brush->vertexpaint_tool;
+    case OB_MODE_WEIGHT_PAINT:
+      return brush->weightpaint_tool;
+    case OB_MODE_PAINT_GPENCIL_LEGACY:
+      return brush->gpencil_tool;
+    case OB_MODE_VERTEX_GPENCIL_LEGACY:
+      return brush->gpencil_vertex_tool;
+    case OB_MODE_SCULPT_GPENCIL_LEGACY:
+      return brush->gpencil_sculpt_tool;
+    case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+      return brush->gpencil_weight_tool;
+    case OB_MODE_SCULPT_CURVES:
+      return brush->curves_sculpt_tool;
+    default:
+      return {};
+  }
+}
+
 PaintCurve *BKE_paint_curve_add(Main *bmain, const char *name)
 {
   PaintCurve *pc = static_cast<PaintCurve *>(BKE_id_new(bmain, ID_PC, name));
@@ -2081,6 +2109,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
 void BKE_sculpt_update_object_before_eval(Object *ob_eval)
 {
+  using namespace blender;
   /* Update before mesh evaluation in the dependency graph. */
   SculptSession *ss = ob_eval->sculpt;
 
@@ -2106,8 +2135,24 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
       BKE_sculptsession_free_vwpaint_data(ob_eval->sculpt);
     }
     else if (ss->pbvh) {
-      for (blender::bke::pbvh::Node *node : blender::bke::pbvh::all_leaf_nodes(*ss->pbvh)) {
-        BKE_pbvh_node_mark_update(*node);
+      IndexMaskMemory memory;
+      const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*ss->pbvh, memory);
+      switch (ss->pbvh->type()) {
+        case bke::pbvh::Type::Mesh: {
+          MutableSpan<bke::pbvh::MeshNode> nodes = ss->pbvh->nodes<bke::pbvh::MeshNode>();
+          node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
+        }
+        case bke::pbvh::Type::Grids: {
+          MutableSpan<bke::pbvh::GridsNode> nodes = ss->pbvh->nodes<bke::pbvh::GridsNode>();
+          node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
+        }
+        case bke::pbvh::Type::BMesh: {
+          MutableSpan<bke::pbvh::BMeshNode> nodes = ss->pbvh->nodes<bke::pbvh::BMeshNode>();
+          node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+          break;
+        }
       }
     }
   }
