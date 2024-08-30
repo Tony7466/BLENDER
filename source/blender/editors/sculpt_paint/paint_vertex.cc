@@ -1875,7 +1875,7 @@ static void vpaint_paint_leaves(bContext *C,
 
   const Brush &brush = *ob.sculpt->cache->brush;
 
-  switch ((eBrushVertexPaintTool)brush.vertexpaint_tool) {
+  switch ((eBrushVertexPaintType)brush.vertex_brush_type) {
     case VPAINT_BRUSH_TYPE_AVERAGE:
       calculate_average_color(vpd, ob, mesh, brush, attribute, nodes, node_mask);
       vpaint_do_draw(C, vp, vpd, ob, mesh, nodes, node_mask, attribute);

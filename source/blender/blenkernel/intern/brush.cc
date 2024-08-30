@@ -417,7 +417,7 @@ static void brush_asset_metadata_ensure(void *asset_ptr, AssetMetaData *asset_da
     auto mode_property = idprop::create_bool(prop_name, true);
     BKE_asset_metadata_idprop_ensure(asset_data, mode_property.release());
 
-    if (std::optional<int> brush_tool = BKE_paint_get_brush_tool_from_obmode(brush, mode)) {
+    if (std::optional<int> brush_tool = BKE_paint_get_brush_type_from_obmode(brush, mode)) {
       auto type_property = idprop::create(tool_prop_name, *brush_tool);
       BKE_asset_metadata_idprop_ensure(asset_data, type_property.release());
     }

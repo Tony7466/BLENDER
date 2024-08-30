@@ -1508,7 +1508,7 @@ static void wpaint_paint_leaves(bContext *C,
   const Brush &brush = *ob.sculpt->cache->brush;
   const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
 
-  switch ((eBrushWeightPaintTool)brush.weightpaint_tool) {
+  switch ((eBrushWeightPaintType)brush.weight_brush_type) {
     case WPAINT_BRUSH_TYPE_AVERAGE: {
       do_wpaint_brush_draw(
           depsgraph,
