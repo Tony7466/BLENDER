@@ -186,16 +186,11 @@ void math_arctangent(float a, float b, float c, out float result)
   result = atan(a);
 }
 
+/* The behavior of `atan2(0, 0)` is undefined on many platforms, to ensure consistent behavior, we
+ * return 0 in this case. See !126951. */
 void math_arctan2(float a, float b, float c, out float result)
 {
-#ifdef GPU_METAL
-  /* To ensure consistent behavior across platforms, we handle this special case following
-   * https://en.cppreference.com/w/c/numeric/math/atan2, instead of the native implementation on
-   * Metal, which handles this case differently. See #126799. */
-  result = (a == 0.0 ? copysign(signbit(b) * M_PI_F, a) : atan(a, b));
-#else
-  result = atan(a, b);
-#endif
+  result = ((a == 0.0 && b == 0.0) ? 0.0 : atan(a, b));
 }
 
 void math_sign(float a, float b, float c, out float result)

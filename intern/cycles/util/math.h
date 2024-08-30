@@ -480,16 +480,11 @@ ccl_device_inline float nonzerof(float f, float eps)
   }
 }
 
-/* To ensure consistent behavior across platforms, we handle this special case following
- * https://en.cppreference.com/w/c/numeric/math/atan2, instead of the native implementation
- * on Metal, which handles this case differently. See #126799. */
-ccl_device_inline float compatible_atan2(float a, float b)
+/* The behavior of `atan2(0, 0)` is undefined on many platforms, to ensure consistent behavior, we
+ * return 0 in this case. See !126951. */
+ccl_device_inline float compatible_atan2(const float a, const float b)
 {
-#ifdef __KERNEL_METAL__
-  return (a == 0.0f ? copysign(signbit(b) * M_PI_F, a) : atan2(a, b));
-#else
-  return atan2f(a, b);
-#endif
+  return (a == 0.0f && b == 0.0f) ? 0.0f : atan2f(a, b);
 }
 
 /* `signum` function testing for zero. Matches GLSL and OSL functions. */
