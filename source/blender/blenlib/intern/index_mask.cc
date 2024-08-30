@@ -816,57 +816,53 @@ IndexMask IndexMask::all_of(const OffsetIndices<int> groups, IndexMaskMemory &me
     }
   }
 
-  return detail::from_predicate_impl(
+  return IndexMask::from_batch_predicate(
       groups.index_range(),
       GrainSize(1024),
       memory,
-      [&](const IndexMaskSegment indices, int16_t *__restrict r_true_indices) -> int64_t {
-        const IndexRange range = unique_sorted_indices::non_empty_as_range(indices.base_span());
-        const IndexRange content_range = groups[range.shift(indices.offset())];
-        IndexMask local_mask = this->slice_content(content_range);
+      [&](const IndexMaskSegment &universe_segment, IndexRangesBuilder<int16_t> &builder) -> int64_t {
+        const int64_t indices_offset = universe_segment.offset();
+        const IndexRange groups_range = unique_sorted_indices::non_empty_as_range(universe_segment.base_span());
+        const IndexRange content_range = groups[groups_range.shift(indices_offset)];
+        const OffsetIndices<int> local_groups = groups.slice(content_range);
 
-        if (const std::optional<IndexRange> local_mask_range = local_mask.to_range()) {
-          /* TODO: Use binary search in offset indices for such case. */
-          if (content_range == *local_mask_range) {
-            return indices.size();
-          }
+        const int expected_local_size = local_groups.total_size();
+        if (expected_local_size == 0) {
+          return indices_offset;
         }
 
-        int16_t *r_current = r_true_indices;
-        for (const int64_t index : range) {
-          *r_current = int16_t(index);
-          if (UNLIKELY(local_mask.is_empty())) {
-            break;
-          }
-          const IndexRange content = groups[index + indices.offset()];
-          BLI_assert(this->slice_content(content).is_empty() || local_mask.first() == this->slice_content(content).first());
-
-          const std::optional<RawMaskIterator> last_iter = local_mask.find_smaller_equal(content.last());
-          const std::optional<RawMaskIterator> end_iter = local_mask.find_larger_equal(content.one_after_last());
-          if (!end_iter || !last_iter) {
-            if (end_iter) {
-              local_mask = drop_front(local_mask, *end_iter, local_mask.iterator_to_index(*end_iter));
-            } else if (last_iter) {
-              if (local_mask[*last_iter] >= content.start()) {
-                const int64_t current_size = local_mask.iterator_to_index(*last_iter);
-                BLI_assert(current_size + 1 == this->slice_content(content).size());
-                r_current += bool(current_size + 1 == content.size());
-              }
-            }
+        const IndexMask local_mask = this->slice_content(content_range);
+        if (const std::optional<IndexRange> local_range = local_mask.to_range()) {
+          const int64_t pre_first_group_i = binary_search::find_predicate_begin(groups_range, [&](const int64_t group_i) {
+            return local_groups[group_i].last() < local_range->first();
+          });
+          const int64_t end_group_i = binary_search::find_predicate_begin(groups_range, [&](const int64_t group_i) {
+            return local_groups[group_i].start() < local_range->one_after_last();
+          });
+          builder.add_range(0, int16_t(end_group_i - pre_first_group_i));
+          return indices_offset + pre_first_group_i;
+        }
+/*
+        for (const int64_t group_i : groups_range) {
+          const IndexRange content = local_groups[group_i];
+          if (UNLIKELY(content.is_empty())) {
             continue;
           }
-          BLI_assert(this->slice_content(content).is_empty() || local_mask[*last_iter] == this->slice_content(content).last());
-
-          if (local_mask[*last_iter] >= content.start()) {
-            const int64_t current_size = local_mask.iterator_to_index(*last_iter);
-            local_mask = drop_front(local_mask, *end_iter, local_mask.iterator_to_index(*end_iter));
-            BLI_assert(current_size + 1 == this->slice_content(content).size());
-
-            r_current += bool(current_size + 1 == content.size());
+          const std::optional<RawMaskIterator> first_it = local_mask.find_larger_equal(content.start());
+          const std::optional<RawMaskIterator> last_it = local_mask.find_smaller_equal(content.last());
+          if (UNLIKELY(!first_it || !last_it)) {
+            return {};
           }
+          const int64_t first_index = this->iterator_to_index(*first_it);
+          const int64_t last_index = this->iterator_to_index(*last_it);
+          if (UNLIKELY(last_index < first_index)) {
+            return {};
+          }
+          const int64_t sliced_mask_size = last_index - first_index + 1;
+          builder.add_range(last_group_i - first_group_i);
         }
-        const int16_t true_indices_num = int16_t(r_current - r_true_indices);
-        return true_indices_num;
+*/
+        return 0;
       });
 }
 
