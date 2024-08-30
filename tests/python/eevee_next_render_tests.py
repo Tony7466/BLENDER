@@ -10,7 +10,17 @@ import subprocess
 import sys
 from pathlib import Path
 try:
+    # Render report is not always available and leads to errors in the console logs that can be ignored.
     from modules import render_report
+
+    class EEVEEReport(render_report.Report):
+        def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[]):
+            super().__init__(title, output_dir, oiiotool, device=device, blocklist=blocklist)
+            self.gpu_backend = device
+
+        def _get_render_arguments(self, arguments_cb, filepath, base_output_filepath):
+            return arguments_cb(filepath, base_output_filepath, gpu_backend=self.device)
+
 except ImportError:
     # render_report can only be loaded when running the render tests. It errors when
     # this script is run during preparation steps.
@@ -147,15 +157,6 @@ def get_gpu_device_type(blender):
     except BaseException as e:
         return None
     return None
-
-
-class EEVEEReport(render_report.Report):
-    def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[]):
-        super().__init__(title, output_dir, oiiotool, device=device, blocklist=blocklist)
-        self.gpu_backend = device
-
-    def _get_render_arguments(self, arguments_cb, filepath, base_output_filepath):
-        return arguments_cb(filepath, base_output_filepath, gpu_backend=self.device)
 
 
 def get_arguments(filepath, output_filepath, gpu_backend):
