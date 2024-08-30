@@ -87,7 +87,7 @@ class DrawCache : public bke::pbvh::DrawCache {
     Vector<gpu::VertBuf *> vbos;
     BitVector<> dirty_nodes;
   };
-  Vector<int> visible_tri_count;
+  // Vector<int> visible_tri_count;
   Vector<bool> use_flat_layout;
   Vector<int> material_indices;
 
@@ -549,18 +549,18 @@ static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object
       });
     }
     case bke::pbvh::Type::BMesh: {
-      MutableSpan<int> node_visible_count = draw_data.visible_tri_count;
+      // MutableSpan<int> node_visible_count = draw_data.visible_tri_count;
       const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
       return IndexMask::from_predicate(node_mask, GrainSize(32), memory, [&](const int i) {
         if (nodes[i].flag_ & PBVH_RebuildDrawBuffers) {
           return true;
         }
-        const int old_size = node_visible_count[i];
-        node_visible_count[i] = count_visible_tris_bmesh(
-            BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])));
-        if (old_size != node_visible_count[i]) {
-          return true;
-        }
+        // const int old_size = node_visible_count[i];
+        // node_visible_count[i] = count_visible_tris_bmesh(
+        // BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])));
+        // if (old_size != node_visible_count[i]) {
+        // return true;
+        // }
         return false;
       });
     }
@@ -1719,7 +1719,7 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   Vector<gpu::IndexBuf *> &ibos = coarse ? draw_data.lines_ibos_coarse : draw_data.lines_ibos;
-ibos.resize(pbvh.nodes_num(), nullptr);
+  ibos.resize(pbvh.nodes_num(), nullptr);
 
   IndexMaskMemory memory;
   const IndexMask nodes_to_calculate = IndexMask::from_predicate(
@@ -1917,7 +1917,7 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
       Vector<gpu::IndexBuf *> &ibos = coarse ? draw_data.tris_ibos_coarse : draw_data.tris_ibos;
-ibos.resize(nodes.size(), nullptr);
+      ibos.resize(nodes.size(), nullptr);
 
       IndexMaskMemory memory;
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
@@ -1938,7 +1938,7 @@ ibos.resize(nodes.size(), nullptr);
     case bke::pbvh::Type::BMesh:
       return {};
   }
-BLI_assert_unreachable();
+  BLI_assert_unreachable();
   return {};
 }
 
