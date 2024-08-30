@@ -203,6 +203,9 @@ class ShaderModule {
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
   ShaderPtr depth_mesh;
+  ShaderPtr edit_text_cursor;
+  ShaderPtr edit_text_selection;
+  ShaderPtr edit_text_wire;
   ShaderPtr extra_grid;
   ShaderPtr extra_shape;
   ShaderPtr extra_wire_object;
