@@ -464,6 +464,10 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
       interpolated_curves.tag_positions_changed();
     }
 
+    if (layer_data.curve_pairs.from_frames.size() == 0) {
+      return;
+    }
+
     /* Copy stroke mateirals to the new drawing. */
     Drawing *src_drawing = grease_pencil.get_editable_drawing_at(
         layer, layer_data.curve_pairs.from_frames[0]);
