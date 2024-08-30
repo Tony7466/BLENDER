@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,35 +9,15 @@
  * Embeds GPU meshes inside of bke::pbvh::Tree nodes, used by mesh sculpt mode.
  */
 
-#include <algorithm>
-#include <climits>
-#include <cstddef>
-#include <cstdlib>
-#include <cstring>
-#include <string>
-#include <vector>
-
-#include "MEM_guardedalloc.h"
-
-#include "BLI_bitmap.h"
-#include "BLI_function_ref.hh"
-#include "BLI_ghash.h"
-#include "BLI_index_range.hh"
 #include "BLI_map.hh"
-#include "BLI_math_color.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string.h"
-#include "BLI_string_ref.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
-#include "BKE_ccg.hh"
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_paint.hh"
@@ -53,10 +33,6 @@
 
 #include "attribute_convert.hh"
 #include "bmesh.hh"
-#include "gpu_private.hh"
-
-#define MAX_PBVH_BATCH_KEY 512
-#define MAX_PBVH_VBOS 16
 
 namespace blender {
 
