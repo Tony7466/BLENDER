@@ -87,7 +87,7 @@ class DrawCache : public bke::pbvh::DrawCache {
     Vector<gpu::VertBuf *> vbos;
     BitVector<> dirty_nodes;
   };
-  Vector<bool> use_flat_layout;
+  BitVector<> use_flat_layout;
   Vector<int> material_indices;
 
   Vector<gpu::IndexBuf *> lines_ibos;
@@ -879,7 +879,7 @@ static void fill_vbo_face_set_grids(const CCGKey &key,
 
 static void fill_vbos_grids(const Object &object,
                             const OrigMeshData &orig_mesh_data,
-                            const Span<bool> use_flat_layout,
+                            const BitSpan use_flat_layout,
                             const IndexMask &node_mask,
                             const AttributeRequest &request,
                             const MutableSpan<gpu::VertBuf *> vbos)
@@ -1601,27 +1601,28 @@ static void ensure_use_flat_layout_check(const Object &object, DrawCache &draw_d
       if (draw_data.use_flat_layout.size() == nodes.size()) {
         return;
       }
-      draw_data.use_flat_layout.resize(nodes.size());
-      const MutableSpan<bool> use_flat_layout = draw_data.use_flat_layout;
 
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
       if (sharp_faces.is_empty()) {
-        use_flat_layout.fill(false);
+        draw_data.use_flat_layout = BitVector<>(nodes.size(), false);
+        return;
       }
-      else {
-        const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
-        const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
-        threading::parallel_for(nodes.index_range(), 4, [&](const IndexRange range) {
-          for (const int i : range) {
-            const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
-            use_flat_layout[i] = std::any_of(grids.begin(), grids.end(), [&](const int grid) {
-              return sharp_faces[grid_to_face_map[grid]];
-            });
-          }
-        });
-      }
+      const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
+
+      /* Use boolean array instead of BitVector for parallelized writing. */
+      Array<bool> use_flat_layout(nodes.size());
+      threading::parallel_for(nodes.index_range(), 4, [&](const IndexRange range) {
+        for (const int i : range) {
+          const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
+          use_flat_layout[i] = std::any_of(grids.begin(), grids.end(), [&](const int grid) {
+            return sharp_faces[grid_to_face_map[grid]];
+          });
+        }
+      });
+      draw_data.use_flat_layout = BitVector<>(use_flat_layout);
       break;
     }
     case bke::pbvh::Type::BMesh:
@@ -1786,7 +1787,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
 
 BLI_NOINLINE static void ensure_vbos_allocated_grids(const Object &object,
                                                      const GPUVertFormat &format,
-                                                     const Span<bool> use_flat_layout,
+                                                     const BitSpan use_flat_layout,
                                                      const IndexMask &node_mask,
                                                      const MutableSpan<gpu::VertBuf *> vbos)
 {
