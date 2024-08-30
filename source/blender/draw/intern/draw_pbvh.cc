@@ -1718,8 +1718,8 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
                                              DrawCache &draw_data)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  draw_data.tris_ibos.resize(pbvh.nodes_num(), nullptr);
-  MutableSpan<gpu::IndexBuf *> ibos = coarse ? draw_data.tris_ibos_coarse : draw_data.tris_ibos;
+  Vector<gpu::IndexBuf *> &ibos = coarse ? draw_data.lines_ibos_coarse : draw_data.lines_ibos;
+ibos.resize(pbvh.nodes_num(), nullptr);
 
   IndexMaskMemory memory;
   const IndexMask nodes_to_calculate = IndexMask::from_predicate(
@@ -1772,7 +1772,7 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
     }
   }
 
-  return draw_data.tris_ibos;
+  return ibos;
 }
 
 BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
@@ -1912,13 +1912,12 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
-      break;
+      return {};
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-      draw_data.tris_ibos.resize(nodes.size(), nullptr);
-      const MutableSpan<gpu::IndexBuf *> ibos = coarse ? draw_data.tris_ibos_coarse :
-                                                         draw_data.tris_ibos;
+      Vector<gpu::IndexBuf *> &ibos = coarse ? draw_data.tris_ibos_coarse : draw_data.tris_ibos;
+ibos.resize(nodes.size(), nullptr);
 
       IndexMaskMemory memory;
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
@@ -1934,12 +1933,13 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
                                          bke::pbvh::node_grid_indices(nodes[i]),
                                          draw_data.use_flat_layout[i]);
       });
-      break;
+      return ibos;
     }
     case bke::pbvh::Type::BMesh:
-      break;
+      return {};
   }
-  return draw_data.tris_ibos;
+BLI_assert_unreachable();
+  return {};
 }
 
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
