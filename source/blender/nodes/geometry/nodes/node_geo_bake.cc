@@ -13,12 +13,14 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_main.hh"
 #include "BKE_screen.hh"
 
 #include "ED_node.hh"
@@ -863,8 +865,20 @@ void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layo
     uiLayout *subcol = uiLayoutColumn(col, true);
     const bool use_custom_path = ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH;
     uiLayoutSetActive(subcol, use_custom_path);
-    auto bake_path = bke::bake::get_node_bake_path(
-        *CTX_data_main(C), *ctx.object, *ctx.nmd, ctx.bake->id);
+    Main *bmain = CTX_data_main(C);
+    auto bake_path = bke::bake::get_node_bake_path(*bmain, *ctx.object, *ctx.nmd, ctx.bake->id);
+
+    char placeholder_path[FILE_MAX] = "";
+    if (StringRef(ctx.bake->directory).is_empty() &&
+        !(ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH) && bake_path.has_value() &&
+        bake_path->bake_dir.has_value())
+    {
+      STRNCPY(placeholder_path, bake_path->bake_dir->c_str());
+      if (BLI_path_is_rel(ctx.nmd->bake_directory)) {
+        BLI_path_rel(placeholder_path, BKE_main_blendfile_path(bmain));
+      }
+    }
+
     uiItemFullR(subcol,
                 &ctx.bake_rna,
                 RNA_struct_find_property(&ctx.bake_rna, "directory"),
@@ -873,9 +887,7 @@ void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layo
                 UI_ITEM_NONE,
                 IFACE_("Path"),
                 ICON_NONE,
-                bake_path.has_value() ?
-                    (bake_path->bake_dir.has_value() ? bake_path->bake_dir->c_str() : nullptr) :
-                    nullptr);
+                placeholder_path);
   }
   {
     uiLayout *col = uiLayoutColumn(settings_col, true);
