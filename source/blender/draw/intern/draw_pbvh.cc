@@ -1566,7 +1566,6 @@ static gpu::IndexBuf *create_tri_index_grids(const CCGKey &key,
 
   GPUIndexBufBuilder elb;
 
-  // TODO
   uint visible_quad_len = bke::pbvh::count_grid_quads(
       grid_hidden, grid_indices, key.grid_size, display_gridsize);
 
