@@ -255,13 +255,57 @@ void *BKE_libblock_copy(Main *bmain, const ID *id) ATTR_WARN_UNUSED_RESULT ATTR_
  */
 void BKE_id_move_to_same_lib(Main &bmain, ID &id, const ID &owner_id);
 
+enum class IDNewNameMode {
+  /**
+   * Never rename another existing ID if the target name is already in use. The renamed ID will get
+   * a name modified with a numerical suffix instead.
+   */
+  RenameExistingNever = 0,
+  /**
+   * Always rename another existing ID if the target name is already in use. The renamed ID will
+   * get the requested unmodified name.
+   */
+  RenameExistingAlways = 1,
+  /**
+   * Only rename another existing ID if the target name is already in use, when the current name of
+   * the renamed ID has the same root as the other ID name (i.e. they have the same name, besides
+   * the numeric suffix).
+   * E.g. Assuming there is already an existing ID named `Object`:
+   *   - Renaming `Object.001` to `Object`: rename to `Object`, the existing `Object` ID is renamed
+   *     to e.g. `Object.001`
+   *   - Renaming `Cube` to `Object`: rename to `Object.001`,  the existing `Object` ID is not
+   *     renamed.
+   */
+  RenameExistingSameRoot = 2,
+};
+
 /**
  * Sets the name of a block to name, suitably adjusted for uniqueness.
+ *
+ * \return true if the name of the ID was actually modified.
  */
-void BKE_libblock_rename(Main *bmain, ID *id, const char *name) ATTR_NONNULL();
-
-ID *BKE_libblock_find_name(Main *bmain, short type, const char *name) ATTR_WARN_UNUSED_RESULT
+bool BKE_libblock_rename(Main *bmain,
+                         ID *id,
+                         const char *name,
+                         const IDNewNameMode mode = IDNewNameMode::RenameExistingNever)
     ATTR_NONNULL();
+
+/**
+ * Like #BKE_libblock_rename, but also performs additional higher-level updates like depsgraph
+ * tagging when renaming Metaball objects, etc.
+ *
+ * \return true if the name of the ID was actually modified.
+ */
+bool BKE_id_rename(Main *bmain,
+                   ID *id,
+                   const char *name,
+                   const IDNewNameMode mode = IDNewNameMode::RenameExistingNever) ATTR_NONNULL();
+
+ID *BKE_libblock_find_name(Main *bmain,
+                           short type,
+                           const char *name,
+                           const std::optional<Library *> lib = std::nullopt)
+    ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 ID *BKE_libblock_find_session_uid(Main *bmain, short type, uint32_t session_uid);
 ID *BKE_libblock_find_name_and_library(Main *bmain,
                                        short type,
@@ -625,6 +669,7 @@ bool BKE_id_new_name_validate(Main *bmain,
                               ListBase *lb,
                               ID *id,
                               const char *newname,
+                              IDNewNameMode mode,
                               bool do_linked_data) ATTR_NONNULL(1, 2, 3);
 
 /**
@@ -734,6 +779,8 @@ void BKE_library_make_local(Main *bmain,
 void BKE_id_tag_set_atomic(ID *id, int tag);
 void BKE_id_tag_clear_atomic(ID *id, int tag);
 
+/** Check that given ID pointer actually is in given `bmain`. */
+bool BKE_id_is_in_main(Main *bmain, ID *id);
 /**
  * Check that given ID pointer actually is in G_MAIN.
  * Main intended use is for debug asserts in places we cannot easily get rid of #G_MAIN.

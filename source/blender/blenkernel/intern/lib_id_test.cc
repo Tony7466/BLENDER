@@ -75,7 +75,8 @@ static void change_name(Main *bmain, ID *id, const char *name)
 {
   BKE_main_namemap_remove_name(bmain, id, id->name + 2);
   BLI_strncpy(id->name + 2, name, MAX_NAME);
-  BKE_id_new_name_validate(bmain, &bmain->objects, id, nullptr, true);
+  BKE_id_new_name_validate(
+      bmain, &bmain->objects, id, nullptr, IDNewNameMode::RenameExistingNever, true);
 }
 
 TEST(lib_id_main_sort, linked_ids_1)
