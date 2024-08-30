@@ -103,6 +103,22 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 {
   /** Shaders */
 
+  curve_edit_points = shader(
+      "overlay_edit_particle_point",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  curve_edit_line = shader("overlay_edit_particle_strand",
+                           [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  curve_edit_handles = shader(
+      "overlay_edit_curves_handle",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
+  legacy_curve_edit_wires = shader(
+      "overlay_edit_curve_wire",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  legacy_curve_edit_points = shader(
+      "overlay_edit_curve_point",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
@@ -209,6 +225,42 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.additional_info(
         "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
   });
+
+  fluid_grid_lines_flags = selectable_shader(
+      "overlay_volume_gridlines_flags", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_flat = selectable_shader(
+      "overlay_volume_gridlines_flat", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_range = selectable_shader(
+      "overlay_volume_gridlines_range", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_velocity_streamline = selectable_shader(
+      "overlay_volume_velocity_streamline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_mac = selectable_shader(
+      "overlay_volume_velocity_mac", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_needle = selectable_shader(
+      "overlay_volume_velocity_needle", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
 
   extra_shape = selectable_shader("overlay_extra", [](gpu::shader::ShaderCreateInfo &info) {
     info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
