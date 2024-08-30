@@ -1435,11 +1435,8 @@ static bool edit_is_operation_valid(const Object &object,
   return true;
 }
 
-static void edit_modify_geometry(bContext *C,
-                                 Object &ob,
-                                 const int active_face_set,
-                                 const bool modify_hidden,
-                                 wmOperator *op)
+static void edit_modify_geometry(
+    bContext *C, Object &ob, const int active_face_set, const bool modify_hidden, wmOperator *op)
 {
   Mesh *mesh = static_cast<Mesh *>(ob.data);
   undo::geometry_begin(ob, op);
