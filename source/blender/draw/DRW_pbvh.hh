@@ -96,7 +96,7 @@ class DrawCache : public bke::pbvh::DrawCache {
   Vector<gpu::Batch *> lines_batches_coarse;
   Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches;
 
-  ~DrawCache() override = default;
+  ~DrawCache() override;
 };
 
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,

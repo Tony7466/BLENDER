@@ -513,6 +513,23 @@ static void free_stale_node_data(const Object &object,
   }
 }
 
+DrawCache::~DrawCache()
+{
+  free_ibos(this->lines_ibos, this->lines_ibos.index_range());
+  free_ibos(this->lines_ibos_coarse, this->lines_ibos_coarse.index_range());
+  free_ibos(this->tris_ibos, this->tris_ibos.index_range());
+  free_ibos(this->tris_ibos_coarse, this->tris_ibos_coarse.index_range());
+  for (MutableSpan<gpu::VertBuf *> vbos : this->attribute_vbos.values()) {
+    free_vbos(vbos, vbos.index_range());
+  }
+
+  free_batches(this->lines_batches, this->lines_batches.index_range());
+  free_batches(this->lines_batches_coarse, this->lines_batches_coarse.index_range());
+  for (MutableSpan<gpu::Batch *> batches : this->tris_batches.values()) {
+    free_batches(batches, batches.index_range());
+  }
+}
+
 static void fill_vbo_normal_mesh(const Span<int> corner_verts,
                                  const Span<int3> corner_tris,
                                  const Span<int> tri_faces,
