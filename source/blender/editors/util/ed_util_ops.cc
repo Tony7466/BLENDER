@@ -143,8 +143,9 @@ static bool lib_id_generate_preview_poll(bContext *C)
 
   const PointerRNA idptr = CTX_data_pointer_get(C, "id");
   const ID *id = (ID *)idptr.data;
-  if (!ED_preview_id_is_supported(id)) {
-    CTX_wm_operator_poll_msg_set(C, "Object type does not support previews");
+
+  if (std::string *disabled_hint = ED_preview_id_is_supported_message(id)) {
+    CTX_wm_operator_poll_msg_set(C, disabled_hint->c_str());
     return false;
   }
 

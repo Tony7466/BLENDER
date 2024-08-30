@@ -1892,22 +1892,40 @@ static void icon_preview_free(void *customdata)
   MEM_freeN(ip);
 }
 
-bool ED_preview_id_is_supported(const ID *id)
+std::string *ED_preview_id_is_supported_message(const ID *id)
+{
+  std::string *r_disabled_hint = nullptr;
+
+  if (id == nullptr) {
+    return nullptr;
+  }
+
+  if (GS(id->name) == ID_NT) {
+    /* Node groups don't support standard preview generation. */
+    r_disabled_hint = new std::string("Can't generate automatic preview for node group");
+  }
+  if ((GS(id->name) == ID_OB) && !object_preview_is_type_supported((const Object *)id)) {
+    r_disabled_hint = new std::string("Object type does not support previews");
+  }
+  if ((GS(id->name) == ID_GR) &&
+      !collection_preview_contains_geometry_recursive((const Collection *)id))
+  {
+    r_disabled_hint = new std::string("Collection is empty, nothing to generate in preview");
+  }
+
+  if (BKE_previewimg_id_get_p(id) == nullptr) {
+    r_disabled_hint = new std::string("Preview not supported");
+  }
+
+  return r_disabled_hint;
+}
+
+bool ED_preview_id_is_supported(const ID* id)
 {
   if (id == nullptr) {
     return false;
   }
-  if (GS(id->name) == ID_NT) {
-    /* Node groups don't support standard preview generation. */
-    return false;
-  }
-  if (GS(id->name) == ID_OB) {
-    return object_preview_is_type_supported((const Object *)id);
-  }
-  if (GS(id->name) == ID_GR) {
-    return collection_preview_contains_geometry_recursive((const Collection *)id);
-  }
-  return BKE_previewimg_id_get_p(id) != nullptr;
+  return ED_preview_id_is_supported_message(id) == nullptr;
 }
 
 void ED_preview_icon_render(

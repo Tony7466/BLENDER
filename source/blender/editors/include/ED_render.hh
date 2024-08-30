@@ -12,6 +12,8 @@
 #include "DNA_material_types.h"
 #include "DNA_vec_types.h"
 
+#include <string>
+
 struct DEGEditorUpdateContext;
 struct Depsgraph;
 struct ID;
@@ -76,6 +78,7 @@ void ED_preview_free_dbase();
  * Check if \a id is supported by the automatic preview render.
  */
 bool ED_preview_id_is_supported(const ID *id);
+std::string *ED_preview_id_is_supported_message(const ID *id);
 
 void ED_preview_set_visibility(Main *pr_main,
                                Scene *scene,
