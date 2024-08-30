@@ -1389,10 +1389,8 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
       });
   const Object &object = *scd->ob;
 
-  const IndexMask nodes_to_update = draw::pbvh::calc_nodes_to_update(
-      object, update_only_visible ? visible_nodes : IndexMask(pbvh->nodes_num()), memory);
-
-  draw::pbvh::free_stale_node_data(object, nodes_to_update, draw_data);
+  const IndexMask nodes_to_update = update_only_visible ? visible_nodes :
+                                                          IndexMask(pbvh->nodes_num());
 
   const draw::pbvh::ViewportRequest request{scd->attrs, scd->fast_mode};
   Span<gpu::Batch *> batches;
@@ -1407,8 +1405,6 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   if (scd->use_mats) {
     material_indices = draw::pbvh::ensure_material_indices(object, draw_data);
   }
-
-  draw::pbvh::remove_node_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
 
   draw_pbvh_nodes(object,
                   batches,

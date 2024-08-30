@@ -108,10 +108,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
         return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
       });
 
-  const IndexMask nodes_to_update = draw::pbvh::calc_nodes_to_update(
-      *ob, update_only_visible ? visible_nodes : IndexMask(pbvh->nodes_num()), memory);
-
-  draw::pbvh::free_stale_node_data(*ob, nodes_to_update, draw_data);
+  const IndexMask nodes_to_update = update_only_visible ? visible_nodes :
+                                                          IndexMask(pbvh->nodes_num());
 
   Span<gpu::Batch *> batches;
   if (use_wire) {
@@ -122,8 +120,6 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
   }
 
   const Span<int> material_indices = draw::pbvh::ensure_material_indices(*ob, draw_data);
-
-  draw::pbvh::remove_node_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
 
   Vector<SculptBatch> result_batches(visible_nodes.size());
   visible_nodes.foreach_index([&](const int i, const int pos) {
