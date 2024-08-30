@@ -509,8 +509,10 @@ struct ScaleUpX {
           float4 val = load_pixel(src_ptr);
           float4 nval = load_pixel(src_ptr + 1);
           float4 diff = nval - val;
-          src_ptr += 2;
-          counter += 2;
+          if (ibufx > 2) {
+            src_ptr += 2;
+            counter += 2;
+          }
           for (int x = 0; x < newx; x++) {
             if (sample >= 1.0f) {
               sample -= 1.0f;
@@ -558,8 +560,10 @@ struct ScaleUpY {
           float4 val = load_pixel(src_ptr);
           float4 nval = load_pixel(src_ptr + ibufx);
           float4 diff = nval - val;
-          src_ptr += ibufx * 2;
-          counter += 2;
+          if (ibufy > 2) {
+            src_ptr += ibufx * 2;
+            counter += 2;
+          }
 
           for (int y = 0; y < newy; y++) {
             if (sample >= 1.0f) {
@@ -772,8 +776,7 @@ static void scale_bilinear_func(
   });
 }
 
-bool IMB_scale(
-    ImBuf *ibuf, unsigned int newx, unsigned int newy, IMBScaleFilter filter, bool threaded)
+bool IMB_scale(ImBuf *ibuf, uint newx, uint newy, IMBScaleFilter filter, bool threaded)
 {
   BLI_assert_msg(newx > 0 && newy > 0, "Images must be at least 1 on both dimensions!");
   if (ibuf == nullptr) {

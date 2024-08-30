@@ -174,7 +174,14 @@ class ShaderModule {
   ShaderPtr anti_aliasing = shader("overlay_antialiasing");
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
+  ShaderPtr curve_edit_points;
+  ShaderPtr curve_edit_line;
+  ShaderPtr curve_edit_handles;
   ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr legacy_curve_edit_wires;
+  ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
+  ShaderPtr legacy_curve_edit_handles = shader("overlay_edit_curve_handle_next");
+  ShaderPtr legacy_curve_edit_points;
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_edit_depth;
   ShaderPtr mesh_edit_edge = shader("overlay_edit_mesh_edge_next");
@@ -191,6 +198,7 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr xray_fade = shader("overlay_xray_fade");
 
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
@@ -202,6 +210,12 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
+  ShaderPtr fluid_grid_lines_flags;
+  ShaderPtr fluid_grid_lines_flat;
+  ShaderPtr fluid_grid_lines_range;
+  ShaderPtr fluid_velocity_streamline;
+  ShaderPtr fluid_velocity_mac;
+  ShaderPtr fluid_velocity_needle;
   ShaderPtr image_plane;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
@@ -286,7 +300,7 @@ struct Resources : public select::SelectMap {
   /**
    * Depth target.
    * Can either be default depth buffer texture from #DefaultTextureList
-   * or `xray_depth_tx` if Xray is enabled.
+   * or `xray_depth_tx` if X-ray is enabled.
    */
   TextureRef depth_target_tx;
 
