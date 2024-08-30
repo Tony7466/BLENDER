@@ -1730,6 +1730,7 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
 }
 
 BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
+                                                    const OrigMeshData &orig_mesh_data,
                                                     const GPUVertFormat &format,
                                                     const IndexMask &nodes_to_update,
                                                     const MutableSpan<gpu::VertBuf *> vbos)
@@ -1738,7 +1739,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
   const Span<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
   const Span<int> tri_faces = mesh.corner_tri_faces();
-  const bke::AttributeAccessor attributes = mesh.attributes();
+  const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
@@ -1820,7 +1821,7 @@ static Span<gpu::VertBuf *> calc_vbos(const Object &object,
 
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      ensure_vbos_allocated_mesh(object, format, nodes_to_update, vbos);
+      ensure_vbos_allocated_mesh(object, orig_mesh_data, format, nodes_to_update, vbos);
       fill_vbos_mesh(object, orig_mesh_data, nodes_to_update, attr, vbos);
       break;
     }
