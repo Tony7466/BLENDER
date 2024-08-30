@@ -60,20 +60,53 @@
 
 namespace blender {
 
-uint64_t DefaultHash<draw::pbvh::AttributeRequest>::operator()(
-    const draw::pbvh::AttributeRequest &value) const
-{
-  using namespace draw::pbvh;
-  if (const CustomRequest *request_type = std::get_if<CustomRequest>(&value)) {
-    return get_default_hash(*request_type);
+template<> struct DefaultHash<draw::pbvh::AttributeRequest> {
+  uint64_t operator()(const draw::pbvh::AttributeRequest &value) const
+  {
+    using namespace draw::pbvh;
+    if (const CustomRequest *request_type = std::get_if<CustomRequest>(&value)) {
+      return get_default_hash(*request_type);
+    }
+    const GenericRequest &attr = std::get<GenericRequest>(value);
+    return get_default_hash(attr.name);
   }
-  const GenericRequest &attr = std::get<GenericRequest>(value);
-  return get_default_hash(attr.name);
-}
+};
 
 }  // namespace blender
 
 namespace blender::draw::pbvh {
+
+uint64_t ViewportRequest::hash() const
+{
+  return get_default_hash(attributes, use_coarse_grids);
+}
+
+class DrawCache : public bke::pbvh::DrawCache {
+ public:
+  Vector<int> visible_tri_count;
+  Vector<bool> use_flat_layout;
+  Vector<int> material_indices;
+
+  Vector<gpu::IndexBuf *> lines_ibos;
+  Vector<gpu::IndexBuf *> lines_ibos_coarse;
+  Vector<gpu::IndexBuf *> tris_ibos;
+  Vector<gpu::IndexBuf *> tris_ibos_coarse;
+  Map<AttributeRequest, Vector<gpu::VertBuf *>> attribute_vbos;
+
+  Vector<gpu::Batch *> lines_batches;
+  Vector<gpu::Batch *> lines_batches_coarse;
+  Map<ViewportRequest, Vector<gpu::Batch *>> tris_batches;
+
+  ~DrawCache() override;
+};
+
+DrawCache &ensure_draw_data(std::unique_ptr<bke::pbvh::DrawCache> &ptr)
+{
+  if (!ptr) {
+    ptr = std::make_unique<DrawCache>();
+  }
+  return dynamic_cast<DrawCache &>(*ptr);
+}
 
 BLI_NOINLINE static void free_ibos(const MutableSpan<gpu::IndexBuf *> ibos,
                                    const IndexMask &nodes_to_update)
