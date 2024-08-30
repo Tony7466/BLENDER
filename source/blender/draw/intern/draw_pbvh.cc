@@ -1991,7 +1991,7 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
     }
   });
 
-  return draw_data.lines_batches;
+  return batches;
 }
 
 Span<int> ensure_material_indices(const Object &object, DrawCache &draw_data)
