@@ -30,6 +30,8 @@
 
 #include "ED_view3d.hh"
 
+#include "DEG_depsgraph_query.hh"
+
 #include "overlay_private.hh"
 
 using namespace blender::math;
@@ -51,6 +53,7 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   DRWShadingGroup *grp = nullptr;
 
   View3DShading *shading = &draw_ctx->v3d->shading;
+  const Object *obact = DEG_get_original_object(draw_ctx->obact);
 
   /* Use `sqrt` since the value stored in the edge is a variation of the cosine, so its square
    * becomes more proportional with a variation of angle. */
@@ -59,7 +62,10 @@ void OVERLAY_wireframe_cache_init(OVERLAY_Data *vedata)
   /* The maximum value (255 in the VBO) is used to force hide the edge. */
   pd->shdata.wire_step_param = interpolate(0.0f, 1.0f - (1.0f / 255), pd->shdata.wire_step_param);
 
-  pd->shdata.wire_opacity = (shading->type != OB_WIRE ? pd->overlay.wireframe_opacity : 1.0);
+  /* Ignore wire opacity when in wireframe shading and object mode. */
+  pd->shdata.wire_opacity = ((shading->type > OB_WIRE || obact->mode != OB_MODE_OBJECT) ?
+                                 pd->overlay.wireframe_opacity :
+                                 1.0);
 
   bool is_material_shmode = (shading->type > OB_SOLID);
 
