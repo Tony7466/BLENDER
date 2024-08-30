@@ -242,7 +242,7 @@ static void screen_draw_area_drag_info(
 
   const float margin = scale * 4.0f;
   const float icon_width = (scale * 16.0f);
-  const float icon_gap = scale * 4.0f;
+  const float icon_gap = scale * 3.0f;
   const int lheight = BLF_height_max(fstyle->uifont_id);
   const int descent = BLF_descender(fstyle->uifont_id);
   const float line1_len = BLF_width(fstyle->uifont_id, area_name.c_str(), area_name.size());
@@ -250,8 +250,8 @@ static void screen_draw_area_drag_info(
   const float width = margin + std::max(line1_len + icon_width + icon_gap, line2_len) + margin;
   const float height = margin + icon_width + lheight + margin - descent;
 
-  int left = x - margin - margin;
-  int top = y + height - margin;
+  int left = x - int(width * 0.25f);
+  int top = y + int(height - margin);
 
   rctf rect;
   rect.xmin = left;
