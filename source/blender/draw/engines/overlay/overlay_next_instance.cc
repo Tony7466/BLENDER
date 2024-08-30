@@ -112,6 +112,7 @@ void Instance::begin_sync()
   grid.begin_sync(resources, state, view);
 
   anti_aliasing.begin_sync(resources);
+  xray_fade.begin_sync(resources, state);
 }
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
@@ -352,6 +353,8 @@ void Instance::draw(Manager &manager)
   };
 
   draw_layer(regular, resources.overlay_line_fb);
+
+  xray_fade.draw(manager);
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
