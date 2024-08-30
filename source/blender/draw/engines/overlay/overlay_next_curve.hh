@@ -52,8 +52,8 @@ class Curves {
       pass.init();
       {
         auto &sub = pass.sub("Points");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                       DRW_STATE_WRITE_DEPTH | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
         sub.shader_set(res.shaders.curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("useWeight", false);
@@ -62,8 +62,8 @@ class Curves {
       }
       {
         auto &sub = pass.sub("Lines");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                       DRW_STATE_WRITE_DEPTH | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
         sub.shader_set(res.shaders.curve_edit_line.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("useWeight", false);
@@ -72,7 +72,7 @@ class Curves {
       }
       {
         auto &sub = pass.sub("Handles");
-        pass.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
         sub.shader_set(res.shaders.curve_edit_handles.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         edit_curves_handles_ = &sub;
@@ -88,8 +88,8 @@ class Curves {
       pass.init();
       {
         auto &sub = pass.sub("Wires");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
-                       state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
+                      state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_wires.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("normalSize", 0.0f);
@@ -97,8 +97,8 @@ class Curves {
       }
       if (show_normals) {
         auto &sub = pass.sub("Normals");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
-                       state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
+                      state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_normals.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("normalSize", state.overlay.normals_length);
@@ -110,7 +110,7 @@ class Curves {
       }
       {
         auto &sub = pass.sub("Handles");
-        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_handles.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
@@ -120,7 +120,7 @@ class Curves {
       /* Points need to be rendered after handles. */
       {
         auto &sub = pass.sub("Points");
-        pass.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
         sub.shader_set(res.shaders.legacy_curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
@@ -182,7 +182,7 @@ class Curves {
     }
   }
 
-  void draw(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
 

@@ -352,7 +352,6 @@ void Instance::draw(Manager &manager)
     layer.relations.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
-    layer.curves.draw(framebuffer, manager, view);
   };
 
   draw_layer(regular, resources.overlay_line_fb);
@@ -360,6 +359,7 @@ void Instance::draw(Manager &manager)
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
     layer.meshes.draw_color_only(framebuffer, manager, view);
+    layer.curves.draw_color_only(framebuffer, manager, view);
   };
 
   draw_layer_color_only(regular, resources.overlay_color_only_fb);
