@@ -230,41 +230,60 @@ static void screen_draw_area_drag_info(
     return;
   }
 
-  const uchar text_col[] = {255, 255, 255, 255};
-  UI_icon_draw_ex(x - 8.0f * UI_SCALE_FAC,
-                  y - 2.0f * UI_SCALE_FAC,
-                  icon,
-                  UI_INV_SCALE_FAC,
-                  1.0f,
-                  0.0f,
-                  text_col,
-                  true,
-                  UI_NO_ICON_OVERLAY_TEXT);
-
-  const int font_id = BLF_default();
-  float text_color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  float shadow_color[4] = {0.0f, 0.0f, 0.0f, 0.5f};
-  BLF_color4fv(font_id, text_color);
-  BLF_enable(font_id, BLF_SHADOW);
-  BLF_shadow_offset(font_id, 0, 0);
-  BLF_shadow(font_id, FontShadowType::Outline, shadow_color);
-  BLF_draw_default(x + 12.0f * UI_SCALE_FAC,
-                   y + 1.0f * UI_SCALE_FAC,
-                   0.0f,
-                   area_name.c_str(),
-                   area_name.size());
-  BLF_disable(font_id, BLF_SHADOW);
-
-  /* Use the theme settings from tooltips. */
-
   const uiFontStyle *fstyle = UI_FSTYLE_TOOLTIP;
   const bTheme *btheme = UI_GetTheme();
   const uiWidgetColors *wcol = &btheme->tui.wcol_tooltip;
   float col_fg[4], col_bg[4];
   rgba_uchar_to_float(col_fg, wcol->text);
   rgba_uchar_to_float(col_bg, wcol->inner);
-  UI_fontstyle_draw_simple_backdrop(
-      fstyle, x - 5.0f * UI_SCALE_FAC, y + 22.0f * UI_SCALE_FAC, hint, col_fg, col_bg);
+
+  float scale = fstyle->points * UI_SCALE_FAC / UI_DEFAULT_TOOLTIP_POINTS;
+  BLF_size(fstyle->uifont_id, UI_DEFAULT_TOOLTIP_POINTS * scale);
+
+  const float margin = scale * 4.0f;
+  const float icon_width = (scale * 16.0f);
+  const float icon_gap = scale * 4.0f;
+  const int lheight = BLF_height_max(fstyle->uifont_id);
+  const int descent = BLF_descender(fstyle->uifont_id);
+  const float line1_len = BLF_width(fstyle->uifont_id, area_name.c_str(), area_name.size());
+  const float line2_len = BLF_width(fstyle->uifont_id, hint.c_str(), hint.size());
+  const float width = margin + std::max(line1_len + icon_width + icon_gap, line2_len) + margin;
+  const float height = margin + icon_width + lheight + margin - descent;
+
+  int left = x - margin - margin;
+  int top = y + height - margin;
+
+  rctf rect;
+  rect.xmin = left;
+  rect.xmax = left + width;
+  rect.ymax = top;
+  rect.ymin = top - height;
+  UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  UI_draw_roundbox_4fv(&rect, true, wcol->roundness * U.widget_unit, col_bg);
+
+  UI_icon_draw_ex(left + margin,
+                  top - margin - icon_width,
+                  icon,
+                  1.0f / scale,
+                  1.0f,
+                  0.0f,
+                  wcol->text,
+                  true,
+                  UI_NO_ICON_OVERLAY_TEXT);
+
+  BLF_size(fstyle->uifont_id, UI_DEFAULT_TOOLTIP_POINTS * scale);
+
+  BLF_position(fstyle->uifont_id,
+               left + margin + icon_width + icon_gap,
+               top - margin - lheight + (2.0f * scale),
+               0.0f);
+  BLF_color4fv(fstyle->uifont_id, col_fg);
+  BLF_draw(fstyle->uifont_id, area_name.c_str(), area_name.size());
+
+  BLF_position(fstyle->uifont_id,
+               left + margin, top - height + margin - descent,
+               0.0f);
+  BLF_draw(fstyle->uifont_id, hint.c_str(), hint.size());
 }
 
 static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
@@ -423,13 +442,6 @@ void screen_draw_dock_preview(
 
   UI_draw_roundbox_4fv_ex(&dest, inner, nullptr, 1.0f, outline, U.pixelsize, 6 * U.pixelsize);
 
-  screen_draw_area_drag_info(x,
-                             y,
-                             ED_area_icon(source),
-                             IFACE_(ED_area_name(source).c_str()),
-                             dock_target == AreaDockTarget::Center ? IFACE_("Replace Area") :
-                                                                     IFACE_("Split Area"));
-
   if (dock_target != AreaDockTarget::Center) {
     /* Darken the split position itself. */
     if (ELEM(dock_target, AreaDockTarget::Right, AreaDockTarget::Left)) {
@@ -442,6 +454,13 @@ void screen_draw_dock_preview(
     }
     UI_draw_roundbox_4fv(&dest, true, 0.0f, border);
   }
+
+  screen_draw_area_drag_info(x,
+                             y,
+                             ED_area_icon(source),
+                             IFACE_(ED_area_name(source).c_str()),
+                             dock_target == AreaDockTarget::Center ? IFACE_("Replace Area") :
+                                                                     IFACE_("Split Area"));
 }
 
 void screen_draw_split_preview(ScrArea *area, const eScreenAxis dir_axis, const float fac)
