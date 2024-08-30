@@ -83,6 +83,10 @@ uint64_t ViewportRequest::hash() const
 
 class DrawCache : public bke::pbvh::DrawCache {
  public:
+  struct AttributeData {
+    Vector<gpu::VertBuf *> vbos;
+    BitVector<> dirty_nodes;
+  };
   Vector<int> visible_tri_count;
   Vector<bool> use_flat_layout;
   Vector<int> material_indices;
@@ -91,7 +95,7 @@ class DrawCache : public bke::pbvh::DrawCache {
   Vector<gpu::IndexBuf *> lines_ibos_coarse;
   Vector<gpu::IndexBuf *> tris_ibos;
   Vector<gpu::IndexBuf *> tris_ibos_coarse;
-  Map<AttributeRequest, Vector<gpu::VertBuf *>> attribute_vbos;
+  Map<AttributeRequest, AttributeData> attribute_vbos;
 
   Vector<gpu::Batch *> lines_batches;
   Vector<gpu::Batch *> lines_batches_coarse;
@@ -99,6 +103,49 @@ class DrawCache : public bke::pbvh::DrawCache {
 
   ~DrawCache() override;
 };
+
+void mark_attributes_dirty(const Object &object, const IndexMask &node_mask, DrawCache &draw_data)
+{
+  const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
+
+  IndexMaskMemory memory;
+  IndexMask update_mask;
+  switch (pbvh.type()) {
+    case bke::pbvh::Type::Mesh: {
+      const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
+      update_mask = IndexMask::from_predicate(
+          node_mask, GrainSize(1024), memory, [&](const int i) {
+            return (nodes[i].flag_ & PBVH_UpdateDrawBuffers) != 0;
+          });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      update_mask = IndexMask::from_predicate(
+          node_mask, GrainSize(1024), memory, [&](const int i) {
+            return (nodes[i].flag_ & PBVH_UpdateDrawBuffers) != 0;
+          });
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+      const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
+      update_mask = IndexMask::from_predicate(
+          node_mask, GrainSize(1024), memory, [&](const int i) {
+            return (nodes[i].flag_ & PBVH_UpdateDrawBuffers) != 0;
+          });
+      break;
+    }
+  }
+  if (update_mask.is_empty()) {
+    return;
+  }
+  for (DrawCache::AttributeData &data : draw_data.attribute_vbos.values()) {
+    data.dirty_nodes.resize(update_mask.min_array_size());
+    // TODO: Use IndexMask::from_bits with the `reset_all` at the beginning disabled.
+    update_mask.foreach_index_optimized<int>(GrainSize(4096),
+                                             [&](const int i) { data.dirty_nodes[i].set(); });
+  }
+}
 
 DrawCache &ensure_draw_data(std::unique_ptr<bke::pbvh::DrawCache> &ptr)
 {
@@ -109,27 +156,26 @@ DrawCache &ensure_draw_data(std::unique_ptr<bke::pbvh::DrawCache> &ptr)
 }
 
 BLI_NOINLINE static void free_ibos(const MutableSpan<gpu::IndexBuf *> ibos,
-                                   const IndexMask &nodes_to_update)
+                                   const IndexMask &node_mask)
 {
   IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_intersection(nodes_to_update, ibos.index_range(), memory);
+  const IndexMask mask = IndexMask::from_intersection(node_mask, ibos.index_range(), memory);
   mask.foreach_index([&](const int i) { GPU_INDEXBUF_DISCARD_SAFE(ibos[i]); });
 }
 
 BLI_NOINLINE static void free_vbos(const MutableSpan<gpu::VertBuf *> vbos,
-                                   const IndexMask &nodes_to_update)
+                                   const IndexMask &node_mask)
 {
   IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_intersection(nodes_to_update, vbos.index_range(), memory);
+  const IndexMask mask = IndexMask::from_intersection(node_mask, vbos.index_range(), memory);
   mask.foreach_index([&](const int i) { GPU_VERTBUF_DISCARD_SAFE(vbos[i]); });
 }
 
 BLI_NOINLINE static void free_batches(const MutableSpan<gpu::Batch *> batches,
-                                      const IndexMask &nodes_to_update)
+                                      const IndexMask &node_mask)
 {
   IndexMaskMemory memory;
-  const IndexMask mask = IndexMask::from_intersection(
-      nodes_to_update, batches.index_range(), memory);
+  const IndexMask mask = IndexMask::from_intersection(node_mask, batches.index_range(), memory);
   mask.foreach_index([&](const int i) { GPU_BATCH_DISCARD_SAFE(batches[i]); });
 }
 
@@ -456,7 +502,7 @@ static int count_visible_tris_bmesh(const Set<BMFace *, 0> &faces)
   });
 }
 
-static void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
+void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
 {
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
@@ -484,7 +530,7 @@ static void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
 }
 
 static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object,
-                                                            const IndexMask &nodes_to_update,
+                                                            const IndexMask &node_mask,
                                                             IndexMaskMemory &memory,
                                                             DrawCache &draw_data)
 {
@@ -492,20 +538,20 @@ static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-      return IndexMask::from_predicate(nodes_to_update, GrainSize(1024), memory, [&](const int i) {
+      return IndexMask::from_predicate(node_mask, GrainSize(1024), memory, [&](const int i) {
         return nodes[i].flag_ & PBVH_RebuildDrawBuffers;
       });
     }
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      return IndexMask::from_predicate(nodes_to_update, GrainSize(1024), memory, [&](const int i) {
+      return IndexMask::from_predicate(node_mask, GrainSize(1024), memory, [&](const int i) {
         return nodes[i].flag_ & PBVH_RebuildDrawBuffers;
       });
     }
     case bke::pbvh::Type::BMesh: {
       MutableSpan<int> node_visible_count = draw_data.visible_tri_count;
       const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
-      return IndexMask::from_predicate(nodes_to_update, GrainSize(32), memory, [&](const int i) {
+      return IndexMask::from_predicate(node_mask, GrainSize(32), memory, [&](const int i) {
         if (nodes[i].flag_ & PBVH_RebuildDrawBuffers) {
           return true;
         }
@@ -524,19 +570,19 @@ static IndexMask calc_nodes_to_free_and_update_dyntopo_size(const Object &object
 }
 
 static void free_stale_node_data(const Object &object,
-                                 const IndexMask &nodes_to_update,
+                                 const IndexMask &node_mask,
                                  DrawCache &draw_data)
 {
   IndexMaskMemory memory;
   const IndexMask nodes_to_free = calc_nodes_to_free_and_update_dyntopo_size(
-      object, nodes_to_update, memory, draw_data);
+      object, node_mask, memory, draw_data);
 
   free_ibos(draw_data.lines_ibos, nodes_to_free);
   free_ibos(draw_data.lines_ibos_coarse, nodes_to_free);
   free_ibos(draw_data.tris_ibos, nodes_to_free);
   free_ibos(draw_data.tris_ibos_coarse, nodes_to_free);
-  for (MutableSpan<gpu::VertBuf *> vbos : draw_data.attribute_vbos.values()) {
-    free_vbos(vbos, nodes_to_free);
+  for (DrawCache::AttributeData &data : draw_data.attribute_vbos.values()) {
+    free_vbos(data.vbos, nodes_to_free);
   }
 
   free_batches(draw_data.lines_batches, nodes_to_free);
@@ -552,8 +598,8 @@ DrawCache::~DrawCache()
   free_ibos(this->lines_ibos_coarse, this->lines_ibos_coarse.index_range());
   free_ibos(this->tris_ibos, this->tris_ibos.index_range());
   free_ibos(this->tris_ibos_coarse, this->tris_ibos_coarse.index_range());
-  for (MutableSpan<gpu::VertBuf *> vbos : this->attribute_vbos.values()) {
-    free_vbos(vbos, vbos.index_range());
+  for (DrawCache::AttributeData &data : this->attribute_vbos.values()) {
+    free_vbos(data.vbos, data.vbos.index_range());
   }
 
   free_batches(this->lines_batches, this->lines_batches.index_range());
@@ -847,7 +893,7 @@ static void fill_vbo_face_set_grids(const CCGKey &key,
 static void fill_vbos_grids(const Object &object,
                             const OrigMeshData &orig_mesh_data,
                             const Span<bool> use_flat_layout,
-                            const IndexMask &nodes_to_update,
+                            const IndexMask &node_mask,
                             const AttributeRequest &request,
                             const MutableSpan<gpu::VertBuf *> vbos)
 {
@@ -860,7 +906,7 @@ static void fill_vbos_grids(const Object &object,
   if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
     switch (*request_type) {
       case CustomRequest::Position: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_position_grids(
               key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
         });
@@ -872,7 +918,7 @@ static void fill_vbos_grids(const Object &object,
         const bke::AttributeAccessor attributes = mesh.attributes();
         const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_normal_grids(key,
                                 grids,
                                 grid_to_face_map,
@@ -885,7 +931,7 @@ static void fill_vbos_grids(const Object &object,
         break;
       }
       case CustomRequest::Mask: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_mask_grids(
               key, grids, use_flat_layout[i], bke::pbvh::node_grid_indices(nodes[i]), *vbos[i]);
         });
@@ -900,7 +946,7 @@ static void fill_vbos_grids(const Object &object,
                                                                   bke::AttrDomain::Face))
         {
           const VArraySpan<int> face_sets_span(face_sets);
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          node_mask.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_face_set_grids(key,
                                     grid_to_face_map,
                                     face_sets_span,
@@ -912,7 +958,7 @@ static void fill_vbos_grids(const Object &object,
           });
         }
         else {
-          nodes_to_update.foreach_index(
+          node_mask.foreach_index(
               GrainSize(1), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4{UCHAR_MAX}); });
         }
         break;
@@ -921,7 +967,7 @@ static void fill_vbos_grids(const Object &object,
   }
   else {
     const eCustomDataType type = std::get<GenericRequest>(request).type;
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
       bke::attribute_math::convert_to_static_type(type, [&](auto dummy) {
         using T = decltype(dummy);
         using Converter = AttributeConverter<T>;
@@ -936,7 +982,7 @@ static void fill_vbos_grids(const Object &object,
 
 static void fill_vbos_mesh(const Object &object,
                            const OrigMeshData &orig_mesh_data,
-                           const IndexMask &nodes_to_update,
+                           const IndexMask &node_mask,
                            const AttributeRequest &request,
                            const MutableSpan<gpu::VertBuf *> vbos)
 {
@@ -954,7 +1000,7 @@ static void fill_vbos_mesh(const Object &object,
     switch (*request_type) {
       case CustomRequest::Position: {
         const Span<float3> vert_positions = bke::pbvh::vert_positions_eval_from_eval(object);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           extract_data_vert_mesh<float3>(corner_verts,
                                          corner_tris,
                                          tri_faces,
@@ -970,7 +1016,7 @@ static void fill_vbos_mesh(const Object &object,
         const Span<float3> face_normals = bke::pbvh::face_normals_eval_from_eval(object);
         const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_normal_mesh(corner_verts,
                                corner_tris,
                                tri_faces,
@@ -987,7 +1033,7 @@ static void fill_vbos_mesh(const Object &object,
         const VArraySpan mask = *orig_mesh_data.attributes.lookup<float>(".sculpt_mask",
                                                                          bke::AttrDomain::Point);
         if (!mask.is_empty()) {
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          node_mask.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_mask_mesh(corner_verts,
                                corner_tris,
                                tri_faces,
@@ -998,8 +1044,8 @@ static void fill_vbos_mesh(const Object &object,
           });
         }
         else {
-          nodes_to_update.foreach_index(GrainSize(64),
-                                        [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
+          node_mask.foreach_index(GrainSize(64),
+                                  [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
         }
         break;
       }
@@ -1009,7 +1055,7 @@ static void fill_vbos_mesh(const Object &object,
         const VArraySpan face_sets = *orig_mesh_data.attributes.lookup<int>(".sculpt_face_set",
                                                                             bke::AttrDomain::Face);
         if (!face_sets.is_empty()) {
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          node_mask.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_face_set_mesh(tri_faces,
                                    hide_poly,
                                    face_sets,
@@ -1020,8 +1066,8 @@ static void fill_vbos_mesh(const Object &object,
           });
         }
         else {
-          nodes_to_update.foreach_index(
-              GrainSize(64), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
+          node_mask.foreach_index(GrainSize(64),
+                                  [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
         }
         break;
       }
@@ -1033,7 +1079,7 @@ static void fill_vbos_mesh(const Object &object,
     const bke::AttrDomain domain = attr.domain;
     const eCustomDataType data_type = attr.type;
     const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
       fill_vbo_attribute_mesh(corner_verts,
                               corner_tris,
                               tri_faces,
@@ -1154,7 +1200,7 @@ static void fill_vbo_attribute_bmesh(const Set<BMFace *, 0> &faces,
 
 static void fill_vbos_bmesh(const Object &object,
                             const OrigMeshData &orig_mesh_data,
-                            const IndexMask &nodes_to_update,
+                            const IndexMask &node_mask,
                             const AttributeRequest &request,
                             const MutableSpan<gpu::VertBuf *> vbos)
 {
@@ -1164,14 +1210,14 @@ static void fill_vbos_bmesh(const Object &object,
   if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
     switch (*request_type) {
       case CustomRequest::Position: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_position_bmesh(
               BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])), *vbos[i]);
         });
         break;
       }
       case CustomRequest::Normal: {
-        nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+        node_mask.foreach_index(GrainSize(1), [&](const int i) {
           fill_vbo_normal_bmesh(
               BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])), *vbos[i]);
         });
@@ -1181,7 +1227,7 @@ static void fill_vbos_bmesh(const Object &object,
         const int cd_offset = CustomData_get_offset_named(
             &bm.vdata, CD_PROP_FLOAT, ".sculpt_mask");
         if (cd_offset != -1) {
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          node_mask.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_mask_bmesh(
                 BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])),
                 cd_offset,
@@ -1189,8 +1235,8 @@ static void fill_vbos_bmesh(const Object &object,
           });
         }
         else {
-          nodes_to_update.foreach_index(GrainSize(64),
-                                        [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
+          node_mask.foreach_index(GrainSize(64),
+                                  [&](const int i) { vbos[i]->data<float>().fill(0.0f); });
         }
         break;
       }
@@ -1200,7 +1246,7 @@ static void fill_vbos_bmesh(const Object &object,
         const int cd_offset = CustomData_get_offset_named(
             &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
         if (cd_offset != -1) {
-          nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+          node_mask.foreach_index(GrainSize(1), [&](const int i) {
             fill_vbo_face_set_bmesh(
                 BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])),
                 face_set_default,
@@ -1210,8 +1256,8 @@ static void fill_vbos_bmesh(const Object &object,
           });
         }
         else {
-          nodes_to_update.foreach_index(
-              GrainSize(64), [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
+          node_mask.foreach_index(GrainSize(64),
+                                  [&](const int i) { vbos[i]->data<uchar4>().fill(uchar4(255)); });
         }
         break;
       }
@@ -1223,7 +1269,7 @@ static void fill_vbos_bmesh(const Object &object,
     const eCustomDataType data_type = attr.type;
     const CustomData &custom_data = *get_cdata(bm, domain);
     const int offset = CustomData_get_offset_named(&custom_data, data_type, attr.name);
-    nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
       fill_vbo_attribute_bmesh(
           BKE_pbvh_bmesh_node_faces(&const_cast<bke::pbvh::BMeshNode &>(nodes[i])),
           data_type,
@@ -1508,7 +1554,7 @@ static void create_lines_index_grids_flat_layout(const Span<int> grid_indices,
 }
 
 static void calc_material_indices(const Object &object,
-                                  const IndexMask &nodes_to_update,
+                                  const IndexMask &node_mask,
                                   MutableSpan<int> node_materials)
 {
   const SculptSession &ss = *object.sculpt;
@@ -1521,7 +1567,7 @@ static void calc_material_indices(const Object &object,
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray material_indices = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Face, 0);
-      nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
+      node_mask.foreach_index(GrainSize(64), [&](const int i) {
         const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
         if (tris.is_empty()) {
           node_materials[i] = 0;
@@ -1540,7 +1586,7 @@ static void calc_material_indices(const Object &object,
           "material_index", bke::AttrDomain::Face, 0);
       const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const Span<int> grid_faces = subdiv_ccg.grid_to_face_map;
-      nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
+      node_mask.foreach_index(GrainSize(64), [&](const int i) {
         const Span<int> grids = bke::pbvh::node_grid_indices(nodes[i]);
         if (grids.is_empty()) {
           node_materials[i] = 0;
@@ -1667,7 +1713,7 @@ static gpu::IndexBuf *create_lines_index_grids(const CCGKey &key,
 
 static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
                                              const OrigMeshData &orig_mesh_data,
-                                             const IndexMask &nodes_to_update,
+                                             const IndexMask &node_mask,
                                              const bool coarse,
                                              DrawCache &draw_data)
 {
@@ -1677,7 +1723,7 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
 
   IndexMaskMemory memory;
   const IndexMask nodes_to_calculate = IndexMask::from_predicate(
-      nodes_to_update, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
+      node_mask, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
 
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1732,7 +1778,7 @@ static Span<gpu::IndexBuf *> calc_lines_ibos(const Object &object,
 BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
                                                     const OrigMeshData &orig_mesh_data,
                                                     const GPUVertFormat &format,
-                                                    const IndexMask &nodes_to_update,
+                                                    const IndexMask &node_mask,
                                                     const MutableSpan<gpu::VertBuf *> vbos)
 {
   const SculptSession &ss = *object.sculpt;
@@ -1741,7 +1787,7 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
   const Span<int> tri_faces = mesh.corner_tri_faces();
   const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-  nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
+  node_mask.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
@@ -1759,14 +1805,14 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
 BLI_NOINLINE static void ensure_vbos_allocated_grids(const Object &object,
                                                      const GPUVertFormat &format,
                                                      const Span<bool> use_flat_layout,
-                                                     const IndexMask &nodes_to_update,
+                                                     const IndexMask &node_mask,
                                                      const MutableSpan<gpu::VertBuf *> vbos)
 {
   const SculptSession &ss = *object.sculpt;
   const Span<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
+  node_mask.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
@@ -1783,13 +1829,13 @@ BLI_NOINLINE static void ensure_vbos_allocated_grids(const Object &object,
 
 BLI_NOINLINE static void ensure_vbos_allocated_bmesh(const Object &object,
                                                      const GPUVertFormat &format,
-                                                     const IndexMask &nodes_to_update,
+                                                     const IndexMask &node_mask,
                                                      const MutableSpan<gpu::VertBuf *> vbos)
 {
   SculptSession &ss = *object.sculpt;
   const Span<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
 
-  nodes_to_update.foreach_index(GrainSize(64), [&](const int i) {
+  node_mask.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
@@ -1804,9 +1850,15 @@ BLI_NOINLINE static void ensure_vbos_allocated_bmesh(const Object &object,
   });
 }
 
+BLI_NOINLINE static void flush_vbo_data(const Span<gpu::VertBuf *> vbos,
+                                        const IndexMask &node_mask)
+{
+  node_mask.foreach_index([&](const int i) { GPU_vertbuf_use(vbos[i]); });
+}
+
 static Span<gpu::VertBuf *> calc_vbos(const Object &object,
                                       const OrigMeshData &orig_mesh_data,
-                                      const IndexMask &nodes_to_update,
+                                      const IndexMask &node_mask,
                                       const AttributeRequest &attr,
                                       DrawCache &draw_data)
 {
@@ -1814,36 +1866,46 @@ static Span<gpu::VertBuf *> calc_vbos(const Object &object,
     return {};
   }
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
-  Vector<gpu::VertBuf *> &vbos = draw_data.attribute_vbos.lookup_or_add_default(attr);
+  DrawCache::AttributeData &data = draw_data.attribute_vbos.lookup_or_add_default(attr);
+  Vector<gpu::VertBuf *> &vbos = data.vbos;
   vbos.resize(pbvh.nodes_num(), nullptr);
+
+  IndexMaskMemory memory;
+  const IndexMask empty_mask = IndexMask::from_predicate(
+      node_mask, GrainSize(8196), memory, [&](const int i) { return !vbos[i]; });
+  const IndexMask dirty_mask = IndexMask::from_bits(
+      node_mask.slice_content(data.dirty_nodes.index_range()), data.dirty_nodes, memory);
+  const IndexMask mask = IndexMask::from_union(empty_mask, dirty_mask, memory);
 
   const GPUVertFormat format = format_for_request(orig_mesh_data, attr);
 
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      ensure_vbos_allocated_mesh(object, orig_mesh_data, format, nodes_to_update, vbos);
-      fill_vbos_mesh(object, orig_mesh_data, nodes_to_update, attr, vbos);
+      ensure_vbos_allocated_mesh(object, orig_mesh_data, format, mask, vbos);
+      fill_vbos_mesh(object, orig_mesh_data, mask, attr, vbos);
       break;
     }
     case bke::pbvh::Type::Grids: {
-      ensure_vbos_allocated_grids(
-          object, format, draw_data.use_flat_layout, nodes_to_update, vbos);
-      fill_vbos_grids(
-          object, orig_mesh_data, draw_data.use_flat_layout, nodes_to_update, attr, vbos);
+      ensure_vbos_allocated_grids(object, format, draw_data.use_flat_layout, mask, vbos);
+      fill_vbos_grids(object, orig_mesh_data, draw_data.use_flat_layout, mask, attr, vbos);
       break;
     }
     case bke::pbvh::Type::BMesh: {
-      ensure_vbos_allocated_bmesh(object, format, nodes_to_update, vbos);
-      fill_vbos_bmesh(object, orig_mesh_data, nodes_to_update, attr, vbos);
+      ensure_vbos_allocated_bmesh(object, format, mask, vbos);
+      fill_vbos_bmesh(object, orig_mesh_data, mask, attr, vbos);
       break;
     }
   }
+
+  data.dirty_nodes.clear_and_shrink();
+
+  flush_vbo_data(vbos, mask);
 
   return vbos;
 }
 
 BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
-                                                           const IndexMask &nodes_to_update,
+                                                           const IndexMask &node_mask,
                                                            const bool coarse,
                                                            DrawCache &draw_data)
 {
@@ -1860,7 +1922,7 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
 
       IndexMaskMemory memory;
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
+          node_mask, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
 
       const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -1880,12 +1942,6 @@ BLI_NOINLINE static Span<gpu::IndexBuf *> ensure_tris_ibos(const Object &object,
   return draw_data.tris_ibos;
 }
 
-BLI_NOINLINE static void flush_vbo_data(const Span<gpu::VertBuf *> vbos,
-                                        const IndexMask &nodes_to_update)
-{
-  nodes_to_update.foreach_index([&](const int i) { GPU_vertbuf_use(vbos[i]); });
-}
-
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
                                        const ViewportRequest &request,
                                        const IndexMask &nodes_to_update,
@@ -1898,65 +1954,37 @@ Span<gpu::Batch *> ensure_tris_batches(const Object &object,
 
   ensure_use_flat_layout_check(object, draw_data);
 
+  free_stale_node_data(object, nodes_to_update, draw_data);
+
   Vector<gpu::Batch *> &batches = draw_data.tris_batches.lookup_or_add_default(request);
   batches.resize(pbvh.nodes_num(), nullptr);
 
-  IndexMaskMemory memory;
-  IndexMask node_mask;
-  switch (pbvh.type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-    case bke::pbvh::Type::Grids: {
-      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-    case bke::pbvh::Type::BMesh: {
-      const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-  }
-
   const Span<gpu::IndexBuf *> ibos = ensure_tris_ibos(
-      object, node_mask, request.use_coarse_grids, draw_data);
+      object, nodes_to_update, request.use_coarse_grids, draw_data);
 
   for (const AttributeRequest &attr : request.attributes) {
-    calc_vbos(object, orig_mesh_data, node_mask, attr, draw_data);
+    calc_vbos(object, orig_mesh_data, nodes_to_update, attr, draw_data);
   }
 
+  IndexMaskMemory memory;
   const IndexMask batches_to_create = IndexMask::from_predicate(
-      node_mask, GrainSize(8196), memory, [&](const int i) { return !batches[i]; });
-  batches_to_create.foreach_index(GrainSize(64), [&](const int i) {
-    batches[i] = GPU_batch_create(GPU_PRIM_TRIS, nullptr, ibos.is_empty() ? nullptr : ibos[i]);
-  });
-
-  for (const AttributeRequest &attr : request.attributes) {
-    Span<gpu::VertBuf *> vbos = draw_data.attribute_vbos.lookup(attr);
-    if (vbos.is_empty()) {
-      continue;
+      nodes_to_update, GrainSize(8196), memory, [&](const int i) { return !batches[i]; });
+  if (!batches_to_create.is_empty()) {
+    Vector<Span<gpu::VertBuf *>> attr_vbos;
+    for (const AttributeRequest &attr : request.attributes) {
+      const Span<gpu::VertBuf *> vbos = draw_data.attribute_vbos.lookup(attr).vbos;
+      if (!vbos.is_empty()) {
+        attr_vbos.append(vbos);
+      }
     }
-    batches_to_create.foreach_index(
-        GrainSize(64), [&](const int i) { GPU_batch_vertbuf_add(batches[i], vbos[i], false); });
-  }
 
-  for (const AttributeRequest &attr : request.attributes) {
-    flush_vbo_data(draw_data.attribute_vbos.lookup(attr), node_mask);
+    batches_to_create.foreach_index(GrainSize(64), [&](const int i) {
+      batches[i] = GPU_batch_create(GPU_PRIM_TRIS, nullptr, ibos.is_empty() ? nullptr : ibos[i]);
+      for (const Span<gpu::VertBuf *> vbos : attr_vbos) {
+        GPU_batch_vertbuf_add(batches[i], vbos[i], false);
+      }
+    });
   }
-
-  remove_node_tags(const_cast<bke::pbvh::Tree &>(pbvh), node_mask);
 
   return batches;
 }
@@ -1971,56 +1999,23 @@ Span<gpu::Batch *> ensure_lines_batches(const Object &object,
 
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
 
+  free_stale_node_data(object, nodes_to_update, draw_data);
+
   Vector<gpu::Batch *> &batches = request.use_coarse_grids ? draw_data.lines_batches_coarse :
                                                              draw_data.lines_batches;
   batches.resize(pbvh.nodes_num(), nullptr);
 
-  free_stale_node_data(object, nodes_to_update, draw_data);
-
-  IndexMaskMemory memory;
-  IndexMask node_mask;
-  switch (pbvh.type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-    case bke::pbvh::Type::Grids: {
-      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-    case bke::pbvh::Type::BMesh: {
-      const Span<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
-      node_mask = IndexMask::from_predicate(
-          nodes_to_update, GrainSize(1024), memory, [&](const int i) {
-            return nodes[i].flag_ & PBVH_UpdateDrawBuffers || batches[i] == nullptr;
-          });
-      break;
-    }
-  }
-
   const Span<gpu::VertBuf *> position_vbos = calc_vbos(
-      object, orig_mesh_data, node_mask, CustomRequest::Position, draw_data);
+      object, orig_mesh_data, nodes_to_update, CustomRequest::Position, draw_data);
   const Span<gpu::IndexBuf *> ibos = calc_lines_ibos(
-      object, orig_mesh_data, node_mask, request.use_coarse_grids, draw_data);
+      object, orig_mesh_data, nodes_to_update, request.use_coarse_grids, draw_data);
 
-  node_mask.foreach_index(GrainSize(1), [&](const int i) {
+  nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
     if (!batches[i]) {
       batches[i] = GPU_batch_create(GPU_PRIM_LINES, nullptr, ibos[i]);
       GPU_batch_vertbuf_add(batches[i], position_vbos[i], false);
     }
   });
-
-  flush_vbo_data(position_vbos, node_mask);
-
-  remove_node_tags(const_cast<bke::pbvh::Tree &>(pbvh), node_mask);
 
   return draw_data.lines_batches;
 }

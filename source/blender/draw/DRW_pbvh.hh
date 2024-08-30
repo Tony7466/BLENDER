@@ -72,6 +72,9 @@ struct ViewportRequest {
 
 DrawCache &ensure_draw_data(std::unique_ptr<bke::pbvh::DrawCache> &ptr);
 
+void mark_attributes_dirty(const Object &object, const IndexMask &node_mask, DrawCache &draw_data);
+void remove_node_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask);
+
 Span<gpu::Batch *> ensure_tris_batches(const Object &object,
                                        const ViewportRequest &request,
                                        const IndexMask &nodes_to_update,

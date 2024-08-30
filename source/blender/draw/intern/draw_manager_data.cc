@@ -1387,7 +1387,9 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   const Object &object = *scd->ob;
 
   const IndexMask nodes_to_update = update_only_visible ? visible_nodes :
-                                                          IndexMask(pbvh->nodes_num());
+                                                          bke::pbvh::all_leaf_nodes(*pbvh, memory);
+
+  draw::pbvh::mark_attributes_dirty(object, nodes_to_update, draw_data);
 
   const draw::pbvh::ViewportRequest request{scd->attrs, scd->fast_mode};
   Span<gpu::Batch *> batches;
@@ -1397,6 +1399,8 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   else {
     batches = draw::pbvh::ensure_tris_batches(object, request, nodes_to_update, draw_data);
   }
+
+  draw::pbvh::remove_node_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
 
   Span<int> material_indices;
   if (scd->use_mats) {
