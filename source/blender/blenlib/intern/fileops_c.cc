@@ -1203,7 +1203,7 @@ int BLI_delete(const char *path, bool dir, bool recursive)
 
 /* Apple version is defined in fileops_apple.mm */
 #ifndef __APPLE__
-int BLI_delete_soft(const char *filepath, const char **error_message)
+int BLI_delete_soft(const char *filepath, const char **r_error_message)
 {
   BLI_assert(!BLI_path_is_rel(filepath));
 
