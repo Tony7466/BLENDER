@@ -346,8 +346,6 @@ void Instance::draw(Manager &manager)
     layer.facing.draw(framebuffer, manager, view);
   };
 
-  overlay_fb_draw(regular, resources.overlay_fb);
-
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.bounds.draw(framebuffer, manager, view);
     layer.wireframe.draw(framebuffer, manager, view);
@@ -365,25 +363,27 @@ void Instance::draw(Manager &manager)
     layer.meshes.draw(framebuffer, manager, view);
   };
 
-  draw_layer(regular, resources.overlay_line_fb);
-
-  xray_fade.draw(manager);
-
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
     layer.meshes.draw_color_only(framebuffer, manager, view);
     layer.curves.draw_color_only(framebuffer, manager, view);
   };
 
-  draw_layer_color_only(regular, resources.overlay_color_only_fb);
+  overlay_fb_draw(regular, resources.overlay_fb);
+  draw_layer(regular, resources.overlay_line_fb);
 
+  overlay_fb_draw(infront, resources.overlay_in_front_fb);
+  draw_layer(infront, resources.overlay_line_in_front_fb);
+
+  draw_layer_color_only(regular, resources.overlay_color_only_fb);
+  draw_layer_color_only(infront, resources.overlay_color_only_fb);
+
+  xray_fade.draw(manager);
   grid.draw(resources, manager, view);
 
-  /* TODO(: Breaks selection on M1 Max. */
-  // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
-  // infront.empties.draw_in_front_images(resources.overlay_in_front_fb, manager, view);
-  // regular.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
-  // infront.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
+  infront.empties.draw_in_front_images(resources.overlay_color_only_fb, manager, view);
+  regular.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
 
   /* Drawn onto the output framebuffer. */
   background.draw(manager);
