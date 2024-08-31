@@ -289,4 +289,5 @@ gpu::VertBuf *DRW_cache_grease_pencil_position_buffer_get(const Scene *scene, Ob
 gpu::VertBuf *DRW_cache_grease_pencil_color_buffer_get(const Scene *scene, Object *ob);
 blender::gpu::Batch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *ob);
 blender::gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object *ob);
+blender::gpu::Batch *DRW_cache_grease_pencil_wireframe_get(Object *ob);
 }  // namespace blender::draw

@@ -903,6 +903,8 @@ blender::gpu::Batch *DRW_cache_object_face_wireframe_get(Object *ob)
       return DRW_cache_volume_face_wireframe_get(ob);
     case OB_GPENCIL_LEGACY:
       return DRW_cache_gpencil_face_wireframe_get(ob);
+    case OB_GREASE_PENCIL:
+      return DRW_cache_grease_pencil_wireframe_get(ob);
     default:
       return nullptr;
   }

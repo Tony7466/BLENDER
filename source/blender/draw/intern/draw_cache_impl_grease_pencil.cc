@@ -39,6 +39,7 @@ struct GreasePencilBatchCache {
   gpu::VertBuf *vbo_col;
   /** Indices in material order, then stroke order with fill first. */
   gpu::IndexBuf *ibo;
+  gpu::IndexBuf *ibo_wireframe;
   /** Batches */
   gpu::Batch *geom_batch;
   gpu::Batch *edit_points;
@@ -57,6 +58,7 @@ struct GreasePencilBatchCache {
   gpu::VertBuf *edit_line_selection;
   /* Indices for lines segments. */
   gpu::IndexBuf *edit_line_indices;
+  gpu::Batch *wireframe_lines;
 
   /** Cache is dirty. */
   bool is_dirty;
@@ -1041,6 +1043,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
    * offsets into the curves for the vertices and triangles. */
   int total_verts_num = 0;
   int total_triangles_num = 0;
+  int total_wire_verts_num = 0;
   int v_offset = 0;
   Vector<Array<int>> verts_start_offsets_per_visible_drawing;
   Vector<Array<int>> tris_start_offsets_per_visible_drawing;
@@ -1090,6 +1093,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex. */
     total_verts_num += num_points + num_cyclic + num_curves * 2;
+    total_wire_verts_num += num_points + num_cyclic + num_curves * 2;;
     total_triangles_num += (num_points + num_cyclic) * 2;
     total_triangles_num += info.drawing.triangles().size();
 
@@ -1110,8 +1114,16 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   GPUIndexBufBuilder ibo;
   MutableSpan<GreasePencilStrokeVert> verts = cache->vbo->data<GreasePencilStrokeVert>();
   MutableSpan<GreasePencilColorVert> cols = cache->vbo_col->data<GreasePencilColorVert>();
+  GPUIndexBufBuilder ibo_wireframe;
+  MutableSpan<GreasePencilStrokeVert> verts = {
+      static_cast<GreasePencilStrokeVert *>(GPU_vertbuf_get_data(cache->vbo)),
+      GPU_vertbuf_get_vertex_len(cache->vbo)};
+  MutableSpan<GreasePencilColorVert> cols = {
+      static_cast<GreasePencilColorVert *>(GPU_vertbuf_get_data(cache->vbo_col)),
+      GPU_vertbuf_get_vertex_len(cache->vbo_col)};
   /* Create IBO. */
   GPU_indexbuf_init(&ibo, GPU_PRIM_TRIS, total_triangles_num, 0xFFFFFFFFu);
+  GPU_indexbuf_init_ex(&ibo_wireframe, GPU_PRIM_LINE_STRIP, total_wire_verts_num, 0xFFFFFFFFu);
 
   /* Fill buffers with data. */
   for (const int drawing_i : drawings.index_range()) {
@@ -1253,6 +1265,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                        texture_matrix,
                        verts_slice[idx],
                        cols_slice[idx]);
+        GPU_indexbuf_add_generic_vert(&ibo_wireframe, idx);
       }
 
       if (is_cyclic) {
@@ -1269,7 +1282,13 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                        texture_matrix,
                        verts_slice[idx],
                        cols_slice[idx]);
+        GPU_indexbuf_add_generic_vert(&ibo_wireframe, points.first()+1);
+        //GPU_indexbuf_add_primitive_restart(&ibo_wireframe);
       }
+
+      /* Since it's 2 points padding. */
+
+      GPU_indexbuf_add_primitive_restart(&ibo_wireframe);
 
       /* Last vertex is not drawn. */
       verts_slice.last().mat = -1;
@@ -1284,8 +1303,12 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
   /* Finish the IBO. */
   cache->ibo = GPU_indexbuf_build(&ibo);
+  cache->ibo_wireframe = GPU_indexbuf_build(&ibo_wireframe);
   /* Create the batches */
   cache->geom_batch = GPU_batch_create(GPU_PRIM_TRIS, cache->vbo, cache->ibo);
+
+  cache->wireframe_lines = GPU_batch_create(GPU_PRIM_LINE_STRIP, cache->vbo, cache->ibo_wireframe);
+
   /* Allow creation of buffer texture. */
   GPU_vertbuf_use(cache->vbo);
   GPU_vertbuf_use(cache->vbo_col);
@@ -1389,6 +1412,24 @@ gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object 
   grease_pencil_weight_batch_ensure(*ob, grease_pencil, *scene);
 
   return cache->edit_lines;
+}
+
+blender::gpu::Batch *DRW_cache_grease_pencil_wireframe_get(Object *ob)
+{
+  using namespace blender::bke::greasepencil;
+
+  BLI_assert(ob->type == OB_GREASE_PENCIL);
+  GreasePencil grease_pencil=*reinterpret_cast<GreasePencil*>(ob->data); 
+
+  const DRWContextState* draw_context=DRW_context_state_get();
+  if(!draw_context || !draw_context->scene){ return nullptr; }
+
+  grease_pencil_geom_batch_ensure(*ob,grease_pencil,*draw_context->scene);
+
+  GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
+      grease_pencil.runtime->batch_cache);
+
+  return cache->wireframe_lines;
 }
 
 }  // namespace blender::draw
