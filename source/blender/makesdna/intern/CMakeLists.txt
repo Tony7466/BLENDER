@@ -47,7 +47,7 @@ file(GENERATE OUTPUT ${dna_header_string_file} CONTENT "${DNA_FILE_LIST}")
 # Build makesdna executable
 
 # Subset of blenlib used by makesdna.
-set(SRC_BLENLIB
+set(BLENLIB_SRC
   ../../blenlib/intern/BLI_assert.c
   ../../blenlib/intern/BLI_ghash.c
   ../../blenlib/intern/BLI_ghash_utils.cc
@@ -72,7 +72,7 @@ set(SRC
   dna_lexer.cc
   dna_parser.cc
   makesdna.cc
-  ${SRC_BLENLIB}
+  ${BLENLIB_SRC}
   ${dna_header_include_file}
   ${dna_header_string_file}
 )
@@ -161,7 +161,7 @@ set(INC_SYS
 )
 
 set(SRC
-  ${SRC_BLENLIB}
+  ${BLENLIB_SRC}
   ${SRC_DNA_DEFAULTS_INC}
   ${SRC_DNA_OTHER_INC}
 )

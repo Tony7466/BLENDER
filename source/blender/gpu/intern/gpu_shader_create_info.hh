@@ -270,22 +270,22 @@ enum class Qualifier {
 };
 ENUM_OPERATORS(Qualifier, Qualifier::QUALIFIER_MAX);
 
-/* Maps to different descriptor sets. */
+/** Maps to different descriptor sets. */
 enum class Frequency {
   BATCH = 0,
   PASS,
-  /* Special freqency tag that will automatically source storage buffers from GPUBatch. */
+  /** Special frequency tag that will automatically source storage buffers from GPUBatch. */
   GEOMETRY,
 };
 
-/* Dual Source Blending Index. */
+/** Dual Source Blending Index. */
 enum class DualBlend {
   NONE = 0,
   SRC_0,
   SRC_1,
 };
 
-/* Interpolation qualifiers. */
+/** Interpolation qualifiers. */
 enum class Interpolation {
   SMOOTH = 0,
   FLAT,
@@ -426,7 +426,7 @@ struct ShaderCreateInfo {
     /** Set to -1 by default to check if used. */
     int max_vertices = -1;
 
-    bool operator==(const GeometryStageLayout &b)
+    bool operator==(const GeometryStageLayout &b) const
     {
       TEST_EQUAL(*this, b, primitive_in);
       TEST_EQUAL(*this, b, invocations);
@@ -442,7 +442,7 @@ struct ShaderCreateInfo {
     int local_size_y = -1;
     int local_size_z = -1;
 
-    bool operator==(const ComputeStageLayout &b)
+    bool operator==(const ComputeStageLayout &b) const
     {
       TEST_EQUAL(*this, b, local_size_x);
       TEST_EQUAL(*this, b, local_size_y);
@@ -553,8 +553,8 @@ struct ShaderCreateInfo {
    * Resources are grouped by frequency of change.
    * Pass resources are meant to be valid for the whole pass.
    * Batch resources can be changed in a more granular manner (per object/material).
-   * Geometry resources can be changed in a very granular manner (per drawcall).
-   * Mis-usage will only produce suboptimal performance.
+   * Geometry resources can be changed in a very granular manner (per draw-call).
+   * Misuse will only produce suboptimal performance.
    */
   Vector<Resource> pass_resources_, batch_resources_, geometry_resources_;
 
@@ -1056,7 +1056,7 @@ struct ShaderCreateInfo {
 
   /* Comparison operator for GPUPass cache. We only compare if it will create the same shader
    * code. So we do not compare name and some other internal stuff. */
-  bool operator==(const ShaderCreateInfo &b)
+  bool operator==(const ShaderCreateInfo &b) const
   {
     TEST_EQUAL(*this, b, builtins_);
     TEST_EQUAL(*this, b, vertex_source_generated);
