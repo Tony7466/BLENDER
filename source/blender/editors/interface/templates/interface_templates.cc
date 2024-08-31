@@ -7539,6 +7539,7 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
     }
 
     const char *filename = BLI_path_basename(recent->filepath);
+    bool exists = BLI_exists(recent->filepath);
     PointerRNA ptr;
     uiItemFullO(layout,
                 "WM_OT_open_mainfile",
@@ -7555,6 +7556,9 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
     uiBut *but = ui_but_last(block);
     UI_but_func_tooltip_custom_set(
         but, uiTemplateRecentFiles_tooltip_func, BLI_strdup(recent->filepath), MEM_freeN);
+    if (!exists) {
+      but->icon_overlay_text.icon = ICON_ERROR_OVERLAY;
+    }
   }
 
   return i;

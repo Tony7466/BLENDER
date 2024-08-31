@@ -1578,7 +1578,8 @@ static void icon_draw_size(float x,
                         y + (float(draw_size) * 0.35f / aspect),
                         float(draw_size) * 0.75f / aspect,
                         nullptr,
-                        outline_intensity);
+                        outline_intensity,
+                        true);
     }
 
     if (text_overlay && text_overlay->text[0] != '\0') {
