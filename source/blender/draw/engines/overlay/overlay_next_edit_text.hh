@@ -31,7 +31,7 @@ class Text {
    PassMain::Sub * edit_text_cursor_ps;
   }
     public:
-      void begin_sync(Resources &res, const State &state, const View &view)
+      void begin_sync(Resources &res, const State &state, const View &view, const Color &color)
       {
         const DrawState pass_state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
                                      DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_DEPTH_ALWAYS |
