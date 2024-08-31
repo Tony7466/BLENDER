@@ -265,6 +265,22 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
     bcam->passepartout_alpha = b_camera.show_passepartout() ? b_camera.passepartout_alpha() : 0.0f;
 
+    bcam->sensor_width = b_camera.sensor_width();
+    bcam->sensor_height = b_camera.sensor_height();
+
+    float current_sensor_size = bcam->sensor_width;
+    if (b_camera.sensor_fit() == BL::Camera::sensor_fit_AUTO) {
+      bcam->sensor_fit = BlenderCamera::AUTO;
+    }
+    else if (b_camera.sensor_fit() == BL::Camera::sensor_fit_HORIZONTAL) {
+      bcam->sensor_fit = BlenderCamera::HORIZONTAL;
+      current_sensor_size = bcam->sensor_width;
+    }
+    else {
+      bcam->sensor_fit = BlenderCamera::VERTICAL;
+      current_sensor_size = bcam->sensor_height;
+    }
+
     if (b_camera.dof().use_dof()) {
       /* allow f/stop number to change aperture_size but still
        * give manual control over aperture radius */
@@ -273,6 +289,15 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
       if (bcam->type == CAMERA_ORTHOGRAPHIC) {
         bcam->aperturesize = 1.0f / (2.0f * fstop);
+      }
+      else if (bcam->type == CAMERA_PANORAMA) {
+        float implicit_focal = bcam->lens;
+        switch (bcam->panorama_type) {
+          case PANORAMA_FISHEYE_EQUIDISTANT:
+            implicit_focal = current_sensor_size / (bcam->fisheye_fov);
+            break;
+        }
+        bcam->aperturesize = (implicit_focal * 1e-3f) / (2.0f * fstop);
       }
       else {
         bcam->aperturesize = (bcam->lens * 1e-3f) / (2.0f * fstop);
@@ -294,19 +319,6 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
     bcam->shift.x = b_engine.camera_shift_x(b_ob, bcam->use_spherical_stereo);
     bcam->shift.y = b_camera.shift_y();
-
-    bcam->sensor_width = b_camera.sensor_width();
-    bcam->sensor_height = b_camera.sensor_height();
-
-    if (b_camera.sensor_fit() == BL::Camera::sensor_fit_AUTO) {
-      bcam->sensor_fit = BlenderCamera::AUTO;
-    }
-    else if (b_camera.sensor_fit() == BL::Camera::sensor_fit_HORIZONTAL) {
-      bcam->sensor_fit = BlenderCamera::HORIZONTAL;
-    }
-    else {
-      bcam->sensor_fit = BlenderCamera::VERTICAL;
-    }
   }
   else if (b_ob_data.is_a(&RNA_Light)) {
     /* Can also look through spot light. */
