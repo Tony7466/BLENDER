@@ -47,7 +47,6 @@
 #include "BLI_system.h"    /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
 
-#include "dna_parser.hh"
 #include "DNA_sdna_types.h"
 #include "dna_utils.h"
 

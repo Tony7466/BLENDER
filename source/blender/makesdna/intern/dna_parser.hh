@@ -22,7 +22,6 @@ struct DefineInt {
   std::string_view name;
   int32_t value{0};
 
-  static std::optional<DefineInt> parse(TokenIterator &token_iterator);
   bool operator==(const DefineInt &other) const;
 };
 
@@ -35,7 +34,7 @@ struct Variable {
     std::optional<std::string> ptr;
     std::string_view name;
     /** Item array size definition, empty for not arrays items. */
-    Vector<std::variant<std::string_view, int32_t>> size;
+    Vector<std::variant<std::string_view, int32_t>> array_size;
 
     bool operator==(const Item &other) const;
   };
@@ -44,7 +43,6 @@ struct Variable {
   Vector<Item> items;
 
   bool operator==(const Variable &other) const;
-  static std::optional<Variable> parse(TokenIterator &token_iterator);
 };
 
 /** Function pointer declaration. */
@@ -54,7 +52,6 @@ struct FunctionPtr {
   std::string_view name;
 
   bool operator==(const FunctionPtr &other) const;
-  static std::optional<FunctionPtr> parse(TokenIterator &token_iterator);
 };
 
 /** Pointer to array declaration. */
@@ -64,7 +61,6 @@ struct PointerToArray {
   int32_t size;
 
   bool operator==(const PointerToArray &other) const;
-  static std::optional<PointerToArray> parse(TokenIterator &token_iterator);
 };
 
 /** Struct declaration.*/
@@ -75,7 +71,6 @@ struct Struct {
   /** Name set if struct is declared as member variable. */
   std::string_view member_name;
 
-  static std::optional<Struct> parse(TokenIterator &token_iterator);
   bool operator==(const Struct &other) const;
 };
 
@@ -87,7 +82,6 @@ struct Enum {
   std::optional<std::string_view> type;
 
   bool operator==(const Enum &other) const;
-  static std::optional<Enum> parse(TokenIterator &token_iterator);
 };
 
 using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
