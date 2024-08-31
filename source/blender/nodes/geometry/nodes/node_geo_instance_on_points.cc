@@ -255,12 +255,13 @@ static void node_geo_exec(GeoNodeExecParams params)
         dst_instances->add_instance(handle, float4x4::identity());
       }
       if (geometry_set.has_instances()) {
-        GeometrySet::propagate_attributes_from_layer_to_instances(
-            geometry_set.get_grease_pencil()->attributes(),
-            geometry_set.get_instances_for_write()->attributes_for_write(),
-            propagation_info);
+        bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
+                             bke::AttrDomain::Layer,
+                             bke::AttrDomain::Instance,
+                             propagation_info,
+                             {},
+                             geometry_set.get_instances_for_write()->attributes_for_write());
       }
-      geometry_set.replace_grease_pencil(nullptr);
     }
     geometry_set.remove_geometry_during_modify();
   });
