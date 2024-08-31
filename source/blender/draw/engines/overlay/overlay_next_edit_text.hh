@@ -41,22 +41,24 @@ class Text {
           PassMain::Sub &sub_pass = ps_.sub(name);
           sub_pass.state_set(pass_state);
           sub_pass.shader_set(shader);
-          sub_pass.bind_ubo("ucolor", &res.globals_buf);
+          sub_pass.push_constant("ucolor", color);
         }
 
 /* Use 2D quad corners to create a matrix that set
  * a [-1..1] quad at the right position. */
-static void v2_quad_corners_to_mat4(const float corners[4][2], float r_mat[4][4])
+static void v3_quad_corners(const float corners[4][2])
 {
-  unit_m4(r_mat);
-  sub_v2_v2v2(r_mat[0], corners[1], corners[0]);
-  sub_v2_v2v2(r_mat[1], corners[3], corners[0]);
-  mul_v2_fl(r_mat[0], 0.5f);
-  mul_v2_fl(r_mat[1], 0.5f);
-  copy_v2_v2(r_mat[3], corners[0]);
-  add_v2_v2(r_mat[3], r_mat[0]);
-  add_v2_v2(r_mat[3], r_mat[1]);
+  float2 origin = float2(corners[0]);
+  float2 half_size_x = (float2(corners[1]) - float2(corners[0])) * 0.5f;
+  float2 half_size_y = (float2(corners[3]) - float2(corners[0])) * 0.5f;
+  float2 half_size_xy = (half_size_x + half_size_y);
+
+  return float4x4(float4(half_size_x, 0.0f, 0.0f),
+                  float4(half_size_y, 0.0f, 0.0f),
+                  float4(0.0f, 0.0f, 0.0f, 0.0f),
+                  float4(origin + half_size_x + half_size_y, 0.0f, 1.0f));
 }
+
 
 static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
 {
@@ -81,22 +83,22 @@ static void edit_text_cache_populate_select(OVERLAY_Data *vedata, Object *ob)
     else {
       selboxw = sb->w;
     }
-    /* NOTE: v2_quad_corners_to_mat4 don't need the 3rd corner. */
+    /* NOTE: v3_quad_corners don't need the 3rd corner. */
     if (sb->rot == 0.0f) {
-      copy_v2_fl2(box[0], sb->x, sb->y);
-      copy_v2_fl2(box[1], sb->x + selboxw, sb->y);
-      copy_v2_fl2(box[3], sb->x, sb->y + sb->h);
+      half_size_y2(box[0], sb->x, sb->y);
+      half_size_y2(box[1], sb->x + selboxw, sb->y);
+      half_size_y2(box[3], sb->x, sb->y + sb->h);
     }
     else {
       float mat[2][2];
       angle_to_mat2(mat, sb->rot);
-      copy_v2_fl2(box[0], sb->x, sb->y);
+      half_size_y2(box[0], sb->x, sb->y);
       mul_v2_v2fl(box[1], mat[0], selboxw);
-      add_v2_v2(box[1], &sb->x);
+      half_size_xy(box[1], &sb->x);
       mul_v2_v2fl(box[3], mat[1], sb->h);
-      add_v2_v2(box[3], &sb->x);
+      half_size_xy(box[3], &sb->x);
     }
-    v2_quad_corners_to_mat4(box, final_mat);
+    v3_quad_corners(box, final_mat);
     mul_m4_m4m4(final_mat, ob->object_to_world().ptr(), final_mat);
 
     DRW_shgroup_call_obmat(pd->edit_text_selection_grp, geom, final_mat);
@@ -111,7 +113,7 @@ static void edit_text_cache_populate_cursor(OVERLAY_Data *vedata, Object *ob)
   float(*cursor)[2] = edit_font->textcurs;
   float mat[4][4];
 
-  v2_quad_corners_to_mat4(cursor, mat);
+  v3_quad_corners(cursor, mat);
   mul_m4_m4m4(mat, ob->object_to_world().ptr(), mat);
 
   gpu::Batch *geom = DRW_cache_edit_text_cursor();
@@ -180,22 +182,9 @@ void OVERLAY_edit_text_draw(OVERLAY_Data *vedata)
 
   DRW_view_set_active(pd->view_edit_text);
 
-  /* Selection Boxes. */
-  UI_GetThemeColor4fv(TH_WIDGET_TEXT_SELECTION, pd->edit_text.selection_color);
-  srgb_to_linearrgb_v4(pd->edit_text.selection_color, pd->edit_text.selection_color);
-  DRW_draw_pass(psl->edit_text_selection_ps);
-
-  /* Highlight text within selection boxes. */
-  UI_GetThemeColor4fv(TH_WIDGET_TEXT_HIGHLIGHT, pd->edit_text.selection_color);
-  srgb_to_linearrgb_v4(pd->edit_text.selection_color, pd->edit_text.selection_color);
-  DRW_draw_pass(psl->edit_text_highlight_ps);
-
-  /* Cursor (text caret). */
-  UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR, pd->edit_text.cursor_color);
-  srgb_to_linearrgb_v4(pd->edit_text.cursor_color, pd->edit_text.cursor_color);
-  DRW_draw_pass(psl->edit_text_cursor_ps);
-
-  UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR | TH_WIDGET_TEXT_HIGHLIGHT | TH_WIDGET_TEXT_SELECTION)
+  UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR | TH_WIDGET_TEXT_HIGHLIGHT | TH_WIDGET_TEXT_SELECTION, pd->edit_text.selection_color, edit_text.cursor_color);
+  srgb_to_linearrgb_v4(pd->edit_text.cursor_color, pd->edit_text.selection_color);
+  DRW_draw_pass(psl-> edit_text_cursor_ps, edit_text_highlight_ps, edit_text_selection_ps);
 }
 };
 }
