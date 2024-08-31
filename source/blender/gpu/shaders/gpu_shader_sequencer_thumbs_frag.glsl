@@ -28,8 +28,8 @@ void main()
     radius = 0.0;
   }
 
-  /* Sample thumbnail texture, modulate with uniform color. */
-  vec4 col = texture(image, texCoord_interp) * thumb.color;
+  /* Sample thumbnail texture, modulate with color. */
+  vec4 col = texture(image, texCoord_interp) * thumb.tint_color;
 
   /* Outside of strip rounded rectangle? */
   float sdf = sdf_rounded_box(pos - center, size, radius);

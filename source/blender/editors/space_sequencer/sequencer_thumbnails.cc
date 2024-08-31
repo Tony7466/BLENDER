@@ -241,7 +241,7 @@ struct ThumbsDrawBatch {
     res.right = strips_batch_.pos_to_pixel_space_x(info.right_handle);
     res.bottom = strips_batch_.pos_to_pixel_space_y(info.bottom);
     res.top = strips_batch_.pos_to_pixel_space_y(info.top);
-    res.color = float4(1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
+    res.tint_color = float4(1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
     res.x1 = strips_batch_.pos_to_pixel_space_x(info.x1);
     res.x2 = strips_batch_.pos_to_pixel_space_x(info.x2);
     res.y1 = strips_batch_.pos_to_pixel_space_y(info.y1);
