@@ -1532,7 +1532,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   timeline_ctx->quads->draw();
 
   /* Draw thumbnails. */
-  draw_strip_thumbnails(timeline_ctx, strips_batch, strips, round_radius);
+  draw_strip_thumbnails(timeline_ctx, strips_batch, strips);
   /* Draw retiming continuity ranges. */
   draw_retiming_continuity_ranges(timeline_ctx, strips);
 

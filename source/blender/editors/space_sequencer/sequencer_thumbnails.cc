@@ -8,12 +8,16 @@
 
 #include "BKE_context.hh"
 
+#include "BLI_array.hh"
+
 #include "IMB_imbuf.hh"
 
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
+#include "GPU_batch_presets.hh"
 #include "GPU_matrix.hh"
+#include "GPU_shader_shared.hh"
 #include "GPU_texture.hh"
 
 #include "IMB_colormanagement.hh"
@@ -192,10 +196,84 @@ static void get_seq_strip_thumbnails(const View2D *v2d,
   }
 }
 
+struct ThumbsDrawBatch {
+  ed::seq::StripsDrawBatch &strips_batch_;
+  Array<SeqStripThumbData> thumbs_;
+  GPUUniformBuf *ubo_thumbs_ = nullptr;
+  GPUShader *shader_ = nullptr;
+  gpu::Batch *batch_ = nullptr;
+  GPUTexture *atlas_ = nullptr;
+  int binding_context_ = 0;
+  int binding_thumbs_ = 0;
+  int binding_image_ = 0;
+  int thumbs_count_ = 0;
+
+  ThumbsDrawBatch(ed::seq::StripsDrawBatch &strips_batch, GPUTexture *atlas)
+      : strips_batch_(strips_batch), thumbs_(GPU_SEQ_STRIP_DRAW_DATA_LEN), atlas_(atlas)
+  {
+    shader_ = GPU_shader_get_builtin_shader(GPU_SHADER_SEQUENCER_THUMBS);
+    binding_thumbs_ = GPU_shader_get_ubo_binding(shader_, "thumb_data");
+    binding_context_ = GPU_shader_get_ubo_binding(shader_, "context_data");
+    binding_image_ = GPU_shader_get_sampler_binding(shader_, "image");
+
+    ubo_thumbs_ = GPU_uniformbuf_create(sizeof(SeqStripThumbData) * GPU_SEQ_STRIP_DRAW_DATA_LEN);
+
+    batch_ = GPU_batch_preset_quad();
+  }
+
+  ~ThumbsDrawBatch()
+  {
+    flush_batch();
+    GPU_uniformbuf_unbind(ubo_thumbs_);
+    GPU_uniformbuf_free(ubo_thumbs_);
+  }
+
+  void add_thumb(const SeqThumbInfo &info, const rcti &rect, int tex_width, int tex_height)
+  {
+    if (thumbs_count_ == GPU_SEQ_STRIP_DRAW_DATA_LEN) {
+      flush_batch();
+    }
+
+    SeqStripThumbData &res = thumbs_[thumbs_count_];
+    thumbs_count_++;
+
+    res.left = strips_batch_.pos_to_pixel_space_x(info.left_handle);
+    res.right = strips_batch_.pos_to_pixel_space_x(info.right_handle);
+    res.bottom = strips_batch_.pos_to_pixel_space_y(info.bottom);
+    res.top = strips_batch_.pos_to_pixel_space_y(info.top);
+    res.color = float4(1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
+    res.x1 = strips_batch_.pos_to_pixel_space_x(info.x1);
+    res.x2 = strips_batch_.pos_to_pixel_space_x(info.x2);
+    res.y1 = strips_batch_.pos_to_pixel_space_y(info.y1);
+    res.y2 = strips_batch_.pos_to_pixel_space_y(info.y2);
+    res.u1 = float(rect.xmin) / float(tex_width);
+    res.u2 = float(rect.xmax) / float(tex_width);
+    res.v1 = float(rect.ymin) / float(tex_height);
+    res.v2 = float(rect.ymax) / float(tex_height);
+  }
+
+  void flush_batch()
+  {
+    if (thumbs_count_ == 0) {
+      return;
+    }
+
+    GPU_uniformbuf_update(ubo_thumbs_, thumbs_.data());
+
+    GPU_shader_bind(shader_);
+    GPU_uniformbuf_bind(ubo_thumbs_, binding_thumbs_);
+    GPU_uniformbuf_bind(strips_batch_.get_ubo_context(), binding_context_);
+    GPU_texture_bind(atlas_, binding_image_);
+
+    GPU_batch_set_shader(batch_, shader_);
+    GPU_batch_draw_instance_range(batch_, 0, thumbs_count_);
+    thumbs_count_ = 0;
+  }
+};
+
 void draw_strip_thumbnails(TimelineDrawContext *ctx,
-                           blender::ed::seq::StripsDrawBatch &strips_batch,
-                           const Vector<StripDrawContext> &strips,
-                           float round_radius)
+                           ed::seq::StripsDrawBatch &strips_batch,
+                           const Vector<StripDrawContext> &strips)
 {
   /* Nothing to do if we're not showing thumbnails overall. */
   if ((ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 ||
@@ -293,45 +371,14 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
   GPU_matrix_push_projection();
   wmOrtho2_region_pixelspace(ctx->region);
 
-  GPUVertFormat *vert_format = immVertexFormat();
-  uint pos = GPU_vertformat_attr_add(vert_format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  uint texco = GPU_vertformat_attr_add(vert_format, "texCoord", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  immBindBuiltinProgram(GPU_SHADER_SEQUENCER_THUMBS);
-
-  immUniform1f("round_radius", round_radius);
-  immBindTexture("image", atlas);
+  ThumbsDrawBatch batch(strips_batch, atlas);
   for (int64_t i = 0; i < rects.size(); i++) {
     const rcti &rect = rects[i];
     const SeqThumbInfo &info = thumbs[i];
-    immUniform4f("strip_rect",
-                 strips_batch.pos_to_pixel_space_x(info.left_handle),
-                 strips_batch.pos_to_pixel_space_x(info.right_handle),
-                 strips_batch.pos_to_pixel_space_y(info.bottom),
-                 strips_batch.pos_to_pixel_space_y(info.top));
-    immUniform4f("color", 1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
-
-    float x1 = strips_batch.pos_to_pixel_space_x(info.x1);
-    float x2 = strips_batch.pos_to_pixel_space_x(info.x2);
-    float y1 = strips_batch.pos_to_pixel_space_y(info.y1);
-    float y2 = strips_batch.pos_to_pixel_space_y(info.y2);
-    float u1 = float(rect.xmin) / float(tex_width);
-    float u2 = float(rect.xmax) / float(tex_width);
-    float v1 = float(rect.ymin) / float(tex_height);
-    float v2 = float(rect.ymax) / float(tex_height);
-
-    immBegin(GPU_PRIM_TRI_FAN, 4);
-    immAttr2f(texco, u1, v1);
-    immVertex2f(pos, x1, y1);
-    immAttr2f(texco, u2, v1);
-    immVertex2f(pos, x2, y1);
-    immAttr2f(texco, u2, v2);
-    immVertex2f(pos, x2, y2);
-    immAttr2f(texco, u1, v2);
-    immVertex2f(pos, x1, y2);
-    immEnd();
+    batch.add_thumb(info, rect, tex_width, tex_height);
   }
+  batch.flush_batch();
 
-  immUnbindProgram();
   GPU_matrix_pop_projection();
 
   GPU_texture_unbind(atlas);

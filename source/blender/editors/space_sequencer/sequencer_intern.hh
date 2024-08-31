@@ -162,8 +162,7 @@ ImBuf *sequencer_ibuf_get(const bContext *C,
 
 void draw_strip_thumbnails(TimelineDrawContext *ctx,
                            blender::ed::seq::StripsDrawBatch &strips_batch,
-                           const blender::Vector<StripDrawContext> &strips,
-                           float round_radius);
+                           const blender::Vector<StripDrawContext> &strips);
 
 /* sequencer_draw_channels.c */
 

@@ -73,6 +73,11 @@ class StripsDrawBatch {
   {
     return x * view_cur_inv_size_.x * view_mask_size_.x;
   }
+
+  GPUUniformBuf *get_ubo_context() const
+  {
+    return ubo_context_;
+  }
 };
 
 uint color_pack(const uchar rgba[4]);
