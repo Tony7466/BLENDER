@@ -127,10 +127,10 @@ GHOST_TSuccess GHOST_DisplayManagerCocoa::setCurrentDisplaySetting(
 #if 0
   CFDictionaryRef displayModeValues = ::CGDisplayBestModeForParametersAndRefreshRate(
       m_displayIDs[display],
-      (size_t)setting.bpp,
-      (size_t)setting.xPixels,
-      (size_t)setting.yPixels,
-      (CGRefreshRate)setting.frequency,
+      size_t(setting.bpp),
+      size_t(setting.xPixels),
+      size_t(setting.yPixels),
+      CGRefreshRate(setting.frequency),
       nullptr);
 #endif
 

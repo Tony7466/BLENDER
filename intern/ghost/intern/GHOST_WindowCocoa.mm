@@ -615,7 +615,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientWidth(uint32_t width)
     GHOST_Rect cBnds;
     getClientBounds(cBnds);
 
-    if (((uint32_t)cBnds.getWidth()) != width) {
+    if ((uint32_t(cBnds.getWidth())) != width) {
       const NSSize size = {(CGFloat)width, (CGFloat)cBnds.getHeight()};
       [m_window setContentSize:size];
     }
@@ -631,7 +631,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
     GHOST_Rect cBnds;
     getClientBounds(cBnds);
 
-    if (((uint32_t)cBnds.getHeight()) != height) {
+    if ((uint32_t(cBnds.getHeight())) != height) {
       const NSSize size = {(CGFloat)cBnds.getWidth(), (CGFloat)height};
       [m_window setContentSize:size];
     }
@@ -646,7 +646,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientSize(uint32_t width, uint32_t height)
   @autoreleasepool {
     GHOST_Rect cBnds;
     getClientBounds(cBnds);
-    if ((((uint32_t)cBnds.getWidth()) != width) || (((uint32_t)cBnds.getHeight()) != height)) {
+    if (((uint32_t(cBnds.getWidth())) != width) || ((uint32_t(cBnds.getHeight())) != height)) {
       const NSSize size = {(CGFloat)width, (CGFloat)height};
       [m_window setContentSize:size];
     }
@@ -753,7 +753,7 @@ void GHOST_WindowCocoa::setNativePixelSize()
   GHOST_Rect rect;
   getClientBounds(rect);
 
-  m_nativePixelSize = (float)backingBounds.size.width / (float)rect.getWidth();
+  m_nativePixelSize = float(backingBounds.size.width) / float(rect.getWidth());
 }
 
 /**
@@ -959,10 +959,10 @@ GHOST_TSuccess GHOST_WindowCocoa::endProgressBar()
 
 static NSCursor *getImageCursor(GHOST_TStandardCursor shape, NSString *name, NSPoint hotspot)
 {
-  static NSCursor *cursors[(int)GHOST_kStandardCursorNumCursors] = {nullptr};
-  static bool loaded[(int)GHOST_kStandardCursorNumCursors] = {false};
+  static NSCursor *cursors[GHOST_kStandardCursorNumCursors] = {nullptr};
+  static bool loaded[GHOST_kStandardCursorNumCursors] = {false};
 
-  const int index = (int)shape;
+  const int index = int(shape);
   if (!loaded[index]) {
     /* Load image from file in application Resources folder. */
     @autoreleasepool {

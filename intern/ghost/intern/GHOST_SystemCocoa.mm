@@ -277,8 +277,8 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar)
         /* Leopard and Snow Leopard 64bit compatible API. */
         const TISInputSourceRef kbdTISHandle = TISCopyCurrentKeyboardLayoutInputSource();
         /* The keyboard layout. */
-        const CFDataRef uchrHandle = (CFDataRef)TISGetInputSourceProperty(
-            kbdTISHandle, kTISPropertyUnicodeKeyLayoutData);
+        const CFDataRef uchrHandle = static_cast<CFDataRef>(
+            TISGetInputSourceProperty(kbdTISHandle, kTISPropertyUnicodeKeyLayoutData));
         CFRelease(kbdTISHandle);
 
         /* Get actual character value of the "remappable" keys in international keyboards,
@@ -855,8 +855,8 @@ GHOST_TSuccess GHOST_SystemCocoa::getCursorPosition(int32_t &x, int32_t &y) cons
   const NSPoint mouseLoc = [NSEvent mouseLocation];
 
   /* Returns the mouse location in screen coordinates. */
-  x = (int32_t)mouseLoc.x;
-  y = (int32_t)mouseLoc.y;
+  x = int32_t(mouseLoc.x);
+  y = int32_t(mouseLoc.y);
   return GHOST_kSuccess;
 }
 
@@ -944,7 +944,7 @@ GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const
 
 GHOST_TSuccess GHOST_SystemCocoa::setMouseCursorPosition(int32_t x, int32_t y)
 {
-  float xf = (float)x, yf = (float)y;
+  float xf = float(x), yf = float(y);
   GHOST_WindowCocoa *window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
   if (!window) {
     return GHOST_kFailure;
@@ -1314,7 +1314,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
               strArray->strings[i] = temp_buff;
             }
 
-            eventData = (GHOST_TDragnDropDataPtr)strArray;
+            eventData = static_cast<GHOST_TDragnDropDataPtr>(strArray);
             break;
           }
           case GHOST_kDragnDropTypeString: {
@@ -1331,7 +1331,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
                 temp_buff, [droppedStr cStringUsingEncoding:NSUTF8StringEncoding], pastedTextSize);
             temp_buff[pastedTextSize] = '\0';
 
-            eventData = (GHOST_TDragnDropDataPtr)temp_buff;
+            eventData = static_cast<GHOST_TDragnDropDataPtr>(temp_buff);
             break;
           }
           case GHOST_kDragnDropTypeBitmap: {
@@ -1457,7 +1457,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleDraggingEvent(GHOST_TEventType eventType
               [droppedImg release];
             }
 
-            eventData = (GHOST_TDragnDropDataPtr)ibuf;
+            eventData = static_cast<GHOST_TDragnDropDataPtr>(ibuf);
 
             break;
           }
@@ -1531,8 +1531,10 @@ bool GHOST_SystemCocoa::handleOpenDocumentRequest(void *filepathStr)
     memcpy(temp_buff, [filepath cStringUsingEncoding:NSUTF8StringEncoding], filenameTextSize);
     temp_buff[filenameTextSize] = '\0';
 
-    pushEvent(new GHOST_EventString(
-        getMilliSeconds(), GHOST_kEventOpenMainFile, window, (GHOST_TEventDataPtr)temp_buff));
+    pushEvent(new GHOST_EventString(getMilliSeconds(),
+                                    GHOST_kEventOpenMainFile,
+                                    window,
+                                    static_cast<GHOST_TEventDataPtr>(temp_buff)));
   }
   return YES;
 }
