@@ -222,17 +222,11 @@ PBVHVertRef BKE_pbvh_index_to_vertex(const Object &object, int index);
 
 namespace blender::bke::pbvh {
 
-/**
- * Do a full rebuild with on Mesh data structure.
- */
-std::unique_ptr<Tree> build_mesh(Mesh *mesh);
-/**
- * Do a full rebuild with on Grids data structure.
- */
-std::unique_ptr<Tree> build_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
-/**
- * Build a Tree from a BMesh.
- */
+/** Build a BVH tree from base mesh triangles. */
+std::unique_ptr<Tree> build_mesh(const Mesh &mesh);
+/** Build a BVH tree from grids geometry. */
+std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv_ccg);
+/** Build a BVH tree from a triangle BMesh. */
 std::unique_ptr<Tree> build_bmesh(BMesh *bm);
 
 void build_pixels(const Depsgraph &depsgraph, Object &object, Image &image, ImageUser &image_user);
@@ -391,6 +385,7 @@ namespace blender::bke::pbvh {
 
 Span<int> node_grid_indices(const GridsNode &node);
 
+Span<int> node_tri_indices(const MeshNode &node);
 Span<int> node_verts(const MeshNode &node);
 Span<int> node_unique_verts(const MeshNode &node);
 Span<int> node_corners(const MeshNode &node);
