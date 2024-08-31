@@ -904,8 +904,10 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        MutableAttributeAccessor dst_attributes)
 {
   BLI_assert(src_attributes.domain_size(src_domain) == dst_attributes.domain_size(dst_domain));
-  if (array_utils::indices_are_range(indices, IndexRange(src_attributes.domain_size(src_domain)))) {
-    copy_attributes(src_attributes, src_domain, dst_domain, propagation_info, skip, dst_attributes);
+  if (array_utils::indices_are_range(indices, IndexRange(src_attributes.domain_size(src_domain))))
+  {
+    copy_attributes(
+        src_attributes, src_domain, dst_domain, propagation_info, skip, dst_attributes);
   }
   else {
     src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
@@ -922,7 +924,8 @@ void gather_attributes(const AttributeAccessor src_attributes,
         return true;
       }
       const GAttributeReader src = src_attributes.lookup(id, src_domain);
-      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, dst_domain, meta_data.data_type);
+      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+          id, dst_domain, meta_data.data_type);
       if (!dst) {
         return true;
       }
@@ -958,7 +961,8 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, src_domain);
-    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, dst_domain, meta_data.data_type);
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, dst_domain, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -992,7 +996,8 @@ void gather_attributes_to_groups(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, src_domain);
-    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, dst_domain, meta_data.data_type);
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, dst_domain, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -1047,7 +1052,8 @@ void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, src_domain);
-    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, dst_domain, meta_data.data_type);
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, dst_domain, meta_data.data_type);
     if (!dst) {
       return true;
     }
