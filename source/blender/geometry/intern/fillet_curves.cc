@@ -504,6 +504,7 @@ static bke::CurvesGeometry fillet_curves(
 
   bke::copy_attributes_group_to_group(src_attributes,
                                       bke::AttrDomain::Point,
+                                      bke::AttrDomain::Point,
                                       propagation_info,
                                       {},
                                       src_points_by_curve,

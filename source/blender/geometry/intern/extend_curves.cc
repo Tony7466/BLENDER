@@ -302,6 +302,7 @@ bke::CurvesGeometry extend_curves(bke::CurvesGeometry &src_curves,
     /* Transfer point attributes. */
     gather_attributes(src_attributes,
                       bke::AttrDomain::Point,
+                      bke::AttrDomain::Point,
                       propagation_info,
                       {},
                       dst_to_src_point,

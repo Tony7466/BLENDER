@@ -808,11 +808,13 @@ bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &draw
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
                          {},
                          {"position", "radius"},
                          dst_point_map,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Curve,
                          bke::AttrDomain::Curve,
                          {},
                          {"cyclic", "material_index"},

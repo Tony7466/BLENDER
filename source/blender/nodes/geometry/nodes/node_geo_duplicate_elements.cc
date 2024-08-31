@@ -730,6 +730,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
 
   bke::gather_attributes_to_groups(src_curves.attributes(),
                                    AttrDomain::Point,
+                                   AttrDomain::Point,
                                    propagation_info,
                                    {},
                                    duplicates,
@@ -797,6 +798,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
 
   bke::gather_attributes_to_groups(mesh.attributes(),
                                    AttrDomain::Point,
+                                   AttrDomain::Point,
                                    propagation_info,
                                    {"id"},
                                    duplicates,
@@ -847,6 +849,7 @@ static void duplicate_points_pointcloud(GeometrySet &geometry_set,
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(duplicates.total_size());
 
   bke::gather_attributes_to_groups(src_points.attributes(),
+                                   AttrDomain::Point,
                                    AttrDomain::Point,
                                    propagation_info,
                                    {"id"},
@@ -958,6 +961,7 @@ static void duplicate_instances(GeometrySet &geometry_set,
   }
 
   bke::gather_attributes_to_groups(src_instances.attributes(),
+                                   AttrDomain::Instance,
                                    AttrDomain::Instance,
                                    propagation_info,
                                    {"id", ".reference_index"},

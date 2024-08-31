@@ -902,7 +902,8 @@ inline const AnonymousAttributeID &AttributeIDRef::anonymous_id() const
 }
 
 void gather_attributes(AttributeAccessor src_attributes,
-                       AttrDomain domain,
+                       AttrDomain src_domain,
+                       AttrDomain dst_domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
                        const Set<std::string> &skip,
                        const IndexMask &selection,
@@ -912,7 +913,8 @@ void gather_attributes(AttributeAccessor src_attributes,
  * Fill the destination attribute by gathering indexed values from src attributes.
  */
 void gather_attributes(AttributeAccessor src_attributes,
-                       AttrDomain domain,
+                       AttrDomain src_domain,
+                       AttrDomain dst_domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
                        const Set<std::string> &skip,
                        Span<int> indices,
@@ -924,7 +926,8 @@ void gather_attributes(AttributeAccessor src_attributes,
  * source and result group must be the same.
  */
 void gather_attributes_group_to_group(AttributeAccessor src_attributes,
-                                      AttrDomain domain,
+                                      AttrDomain src_domain,
+                                      AttrDomain dst_domain,
                                       const AnonymousAttributePropagationInfo &propagation_info,
                                       const Set<std::string> &skip,
                                       OffsetIndices<int> src_offsets,
@@ -933,7 +936,8 @@ void gather_attributes_group_to_group(AttributeAccessor src_attributes,
                                       MutableAttributeAccessor dst_attributes);
 
 void gather_attributes_to_groups(AttributeAccessor src_attributes,
-                                 AttrDomain domain,
+                                 AttrDomain src_domain,
+                                 AttrDomain dst_domain,
                                  const AnonymousAttributePropagationInfo &propagation_info,
                                  const Set<std::string> &skip,
                                  OffsetIndices<int> dst_offsets,
@@ -941,13 +945,15 @@ void gather_attributes_to_groups(AttributeAccessor src_attributes,
                                  MutableAttributeAccessor dst_attributes);
 
 void copy_attributes(const AttributeAccessor src_attributes,
-                     const AttrDomain domain,
+                     AttrDomain src_domain,
+                     AttrDomain dst_domain,
                      const AnonymousAttributePropagationInfo &propagation_info,
                      const Set<std::string> &skip,
                      MutableAttributeAccessor dst_attributes);
 
 void copy_attributes_group_to_group(AttributeAccessor src_attributes,
-                                    AttrDomain domain,
+                                    AttrDomain src_domain,
+                                    AttrDomain dst_domain,
                                     const AnonymousAttributePropagationInfo &propagation_info,
                                     const Set<std::string> &skip,
                                     OffsetIndices<int> src_offsets,

@@ -259,9 +259,9 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
   gather_attributes(
-      src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
   gather_attributes(
-      src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
+      src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
 
   dst_curves.update_curve_types();
 
@@ -414,9 +414,9 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
   gather_attributes(
-      src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
   gather_attributes(
-      src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
+      src_attributes, bke::AttrDomain::Curve, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
 
   dst_curves.update_curve_types();
 
