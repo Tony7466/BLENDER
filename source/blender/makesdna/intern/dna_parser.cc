@@ -4,106 +4,85 @@
 
 #include "dna_parser.hh"
 #include <fmt/format.h>
+#include <sstream>
 
 // #define DEBUG_PRINT_DNA_PARSER
 
 #ifdef DEBUG_PRINT_DNA_PARSER
 namespace blender::dna::parser {
 
-void printf_struct(const ast::Struct &val, size_t padding);
-
-struct StructMemberPrinter {
-  size_t padding;
-
-  void operator()(const ast::Variable &var) const
-  {
-    const std::string const_tag = var.const_tag ? "const " : "";
-    fmt::print("{}{} ", const_tag, var.type);
-
-    bool first = true;
-    for (auto &variable_item : var.items) {
-      if (!first) {
-        printf(",");
-      }
-      first = false;
-      fmt::print("{}{}", variable_item.ptr.value_or(""), variable_item.name);
-      for (auto &size : variable_item.size) {
-        if (std::holds_alternative<std::string_view>(size)) {
-          fmt::print("[{}]", std::get<std::string_view>(size));
-        }
-        else {
-          fmt::print("[{}]", std::get<int32_t>(size));
-        }
-      }
-    }
-  }
-
-  void operator()(const ast::FunctionPtr &fn) const
-  {
-    const std::string const_tag = fn.const_tag ? "const " : "";
-    fmt::print("{}{} (*{})(...)", const_tag, fn.type, fn.name);
-  }
-
-  void operator()(const ast::PointerToArray &ptr) const
-  {
-    fmt::print("{} (*{})[{}]", ptr.type, ptr.name, ptr.size);
-  }
-
-  void operator()(const ast::Struct &val) const
-  {
-    printf_struct(val, padding);
-  }
-};
-
-struct ParserDebugPrinter {
-  size_t padding;
-
-  void operator()(const ast::DefineInt &val) const
-  {
-    fmt::print("#define {} {}\n", val.name, val.value);
-  }
-
-  void operator()(const ast::Enum &val) const
-  {
-    fmt::print("enum {}", val.name.value_or("unnamed"));
-    if (val.type) {
-      fmt::print(": {}", val.type.value());
-    }
-    printf(" {...};\n");
-  }
-
-  void operator()(const ast::Struct &val) const
-  {
-    printf_struct(val, padding);
-    printf(";\n");
-  }
-
-  void operator()(const ast::FunctionPtr &fn) const
-  {
-    StructMemberPrinter{padding + 1}.operator()(fn);
-    printf("\n");
-  }
-
-  void operator()(const ast::Variable &var) const
-  {
-    StructMemberPrinter{padding + 1}.operator()(var);
-    printf("\n");
-  }
-};
-
-void printf_struct(const ast::Struct &val, size_t padding)
+void to_string(std::stringstream &ss, const ast::Variable &var, size_t /*padding*/)
 {
-  const auto print_padding = [](size_t padding) { fmt::print("{: >{}}", "", padding * 4); };
+  ss << fmt::format("{}{} ", var.const_tag ? "const " : "", var.type);
 
-  fmt::print("struct {} {{\n", val.name);
-  for (auto &item : val.items) {
-    print_padding(padding + 1);
-    std::visit(StructMemberPrinter{padding + 1}, item);
-    printf(";\n");
+  bool first = true;
+  for (auto &item : var.items) {
+    if (!first) {
+      ss << ',';
+    }
+    first = false;
+    ss << fmt::format("{}{}", item.ptr.value_or(""), item.name);
+    for (auto &size : item.array_size) {
+      std::visit([&ss](auto &&val) { ss << fmt::format("[{}]", val); }, size);
+    }
   }
-  print_padding(padding);
-  printf("}");
-};
+}
+
+void to_string(std::stringstream &ss, const ast::FunctionPtr &fn, size_t /*padding*/)
+{
+  const std::string const_tag = fn.const_tag ? "const " : "";
+  ss << fmt::format("{}{} (*{})(...)", const_tag, fn.type, fn.name);
+}
+
+void to_string(std::stringstream &ss, const ast::PointerToArray &ptr, size_t /*padding*/)
+{
+  ss << fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size);
+}
+
+void to_string(std::stringstream &ss, const ast::DefineInt &val, size_t /*padding*/)
+{
+  ss << fmt::format("#define {} {}", val.name, val.value);
+}
+
+void to_string(std::stringstream &ss, const ast::Enum &val, size_t /*padding*/)
+{
+  ss << fmt::format("enum {}", val.name.value_or("unnamed"));
+  if (val.type) {
+    ss << fmt::format(": {}", val.type.value());
+  }
+  ss << " {...}";
+}
+
+void to_string(std::stringstream &ss, const ast::Struct &val, size_t padding)
+{
+  const auto add_padding = [&ss](size_t padding) {
+    ss << fmt::format("{: >{}}", "", padding * 4);
+  };
+
+  ss << fmt::format("struct {} {{\n", val.name);
+  for (auto &item : val.items) {
+    add_padding(padding + 1);
+    std::visit([&ss, padding](auto &&val) { to_string(ss, val, padding + 1); }, item);
+    ss << ";\n";
+  }
+  add_padding(padding);
+  ss << '}';
+}
+
+std::string cpp_types_to_string(blender::Span<ast::CppType> cpp_defs)
+{
+  std::stringstream ss;
+  for (auto &cpp_def : cpp_defs) {
+    std::visit([&ss](auto &&cpp_def) { to_string(ss, cpp_def, 0); }, cpp_def);
+    ss << ";\n";
+  }
+  return ss.str();
+}
+
+void print_cpp_types(blender::Span<ast::CppType> cpp_defs)
+{
+  printf("%s", cpp_types_to_string(cpp_defs).c_str());
+}
 
 }  // namespace blender::dna::parser
 #endif
@@ -847,8 +826,7 @@ bool parse_include(std::string_view filepath,
 #ifdef DEBUG_PRINT_DNA_PARSER
   constexpr std::string_view debug_file{"DNA_action_types.h"};
   if (!debug_file.empty() && filepath.find(debug_file) != filepath.npos) {
-    for (auto &val : dest) {
-      std::visit(ParserDebugPrinter{}, val);
+    print_cpp_types(cpp_defs);
     }
   }
 #endif
