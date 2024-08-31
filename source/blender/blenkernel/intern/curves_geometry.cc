@@ -1238,11 +1238,13 @@ CurvesGeometry curves_copy_point_selection(
       [&]() {
         gather_attributes(curves.attributes(),
                           AttrDomain::Point,
+                          AttrDomain::Point,
                           propagation_info,
                           {},
                           points_to_copy,
                           dst_curves.attributes_for_write());
         gather_attributes(curves.attributes(),
+                          AttrDomain::Curve,
                           AttrDomain::Curve,
                           propagation_info,
                           {},
@@ -1293,6 +1295,7 @@ CurvesGeometry curves_copy_curve_selection(
 
   gather_attributes_group_to_group(src_attributes,
                                    AttrDomain::Point,
+                                   AttrDomain::Point,
                                    propagation_info,
                                    {},
                                    points_by_curve,
@@ -1300,8 +1303,13 @@ CurvesGeometry curves_copy_curve_selection(
                                    curves_to_copy,
                                    dst_attributes);
 
-  gather_attributes(
-      src_attributes, AttrDomain::Curve, propagation_info, {}, curves_to_copy, dst_attributes);
+  gather_attributes(src_attributes,
+                    AttrDomain::Curve,
+                    AttrDomain::Curve,
+                    propagation_info,
+                    {},
+                    curves_to_copy,
+                    dst_attributes);
 
   dst_curves.update_curve_types();
   dst_curves.remove_attributes_based_on_types();

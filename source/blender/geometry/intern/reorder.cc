@@ -92,6 +92,7 @@ static void reorder_mesh_verts_exec(const Mesh &src_mesh,
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
                          {},
                          {},
                          old_by_new_map,
@@ -110,6 +111,7 @@ static void reorder_mesh_edges_exec(const Mesh &src_mesh,
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Edge,
+                         bke::AttrDomain::Edge,
                          {},
                          {},
                          old_by_new_map,
@@ -124,6 +126,7 @@ static void reorder_mesh_faces_exec(const Mesh &src_mesh,
                                     Mesh &dst_mesh)
 {
   bke::gather_attributes(src_mesh.attributes(),
+                         bke::AttrDomain::Face,
                          bke::AttrDomain::Face,
                          {},
                          {},
@@ -169,6 +172,7 @@ static void reorder_points_exec(const PointCloud &src_pointcloud,
 {
   bke::gather_attributes(src_pointcloud.attributes(),
                          bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
                          {},
                          {},
                          old_by_new_map,
@@ -182,6 +186,7 @@ static void reorder_curves_exec(const bke::CurvesGeometry &src_curves,
                                 bke::CurvesGeometry &dst_curves)
 {
   bke::gather_attributes(src_curves.attributes(),
+                         bke::AttrDomain::Curve,
                          bke::AttrDomain::Curve,
                          {},
                          {},
@@ -207,6 +212,7 @@ static void reorder_instaces_exec(const bke::Instances &src_instances,
                                   bke::Instances &dst_instances)
 {
   bke::gather_attributes(src_instances.attributes(),
+                         bke::AttrDomain::Instance,
                          bke::AttrDomain::Instance,
                          {},
                          {},

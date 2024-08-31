@@ -45,6 +45,7 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
 
   bke::gather_attributes(mesh_attributes,
                          bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
                          propagation_info,
                          skip,
                          vert_indices,

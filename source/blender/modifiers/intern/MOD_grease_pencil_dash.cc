@@ -303,11 +303,13 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
                          {},
                          {"radius", "opacity"},
                          src_point_indices,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Curve,
                          bke::AttrDomain::Curve,
                          {},
                          {"cyclic", "material_index"},

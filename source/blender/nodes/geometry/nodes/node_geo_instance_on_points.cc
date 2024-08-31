@@ -279,7 +279,6 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     if (geometry_set.has_grease_pencil()) {
       using namespace bke::greasepencil;
-      /*
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       for (const int layer_index : grease_pencil.layers().index_range()) {
         const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
@@ -290,12 +289,12 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (src_curves.curves_num() == 0) {
           /* Add an empty reference so the number of layers and instances match.
            * This makes it easy to reconstruct the layers afterwards and keep their attributes.
-           * Although in this particular case we don't propagate the attributes. */ /*
+           * Although in this particular case we don't propagate the attributes. */
           const int handle = dst_instances->add_reference(bke::InstanceReference());
           dst_instances->add_instance(handle, float4x4::identity());
           continue;
         }
-        /* TODO: Attributes are not propagating from the curves or the points. */ /*
+        /* TODO: Attributes are not propagating from the curves or the points. */
         bke::Instances *instances = new bke::Instances();
         const bke::GreasePencilLayerFieldContext field_context(
             grease_pencil, AttrDomain::Point, layer_index);
@@ -310,14 +309,13 @@ static void node_geo_exec(GeoNodeExecParams params)
         dst_instances->add_instance(handle, float4x4::identity());
       }
       if (geometry_set.has_instances()) {
-        GeometrySet::propagate_attributes_from_layer_to_instances(
-            geometry_set.get_grease_pencil()->attributes(),
-            geometry_set.get_instances_for_write()->attributes_for_write(),
-            propagation_info);
+        bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
+                             bke::AttrDomain::Layer,
+                             bke::AttrDomain::Instance,
+                             propagation_info,
+                             {},
+                             geometry_set.get_instances_for_write()->attributes_for_write());
       }
-      geometry_set.replace_grease_pencil(nullptr);
-      
-      */
     }
     geometry_set.remove_geometry_during_modify();
   });

@@ -175,8 +175,13 @@ static void split_pointcloud_groups(const PointCloudComponent &component,
 
       const AttributeAccessor src_attributes = src_pointcloud.attributes();
       MutableAttributeAccessor dst_attributes = group_pointcloud->attributes_for_write();
-      bke::gather_attributes(
-          src_attributes, AttrDomain::Point, propagation_info, {}, mask, dst_attributes);
+      bke::gather_attributes(src_attributes,
+                             AttrDomain::Point,
+                             AttrDomain::Point,
+                             propagation_info,
+                             {},
+                             mask,
+                             dst_attributes);
 
       GeometrySet &group_geometry = *geometry_by_group_id.lookup(group_id);
       group_geometry.replace_pointcloud(group_pointcloud);
@@ -247,6 +252,7 @@ static void split_instance_groups(const InstancesComponent &component,
       }
 
       bke::gather_attributes(src_instances.attributes(),
+                             AttrDomain::Instance,
                              AttrDomain::Instance,
                              propagation_info,
                              {},

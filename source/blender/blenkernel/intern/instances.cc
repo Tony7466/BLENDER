@@ -290,6 +290,7 @@ void Instances::remove(const IndexMask &mask,
 
   gather_attributes(this->attributes(),
                     AttrDomain::Instance,
+                    AttrDomain::Instance,
                     propagation_info,
                     {},
                     mask,

@@ -1295,6 +1295,7 @@ Array<PointTransferData> compute_topology_change(
   /* Copy curves attributes. */
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
+                         bke::AttrDomain::Curve,
                          propagation_info,
                          {"cyclic"},
                          dst_to_src_curve,
