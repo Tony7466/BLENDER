@@ -48,7 +48,7 @@
 
 #include <mach/mach_time.h>
 
-/**
+/* --------------------------------------------------------------------
  * Keymaps, mouse converters.
  */
 
@@ -335,7 +335,7 @@ static GHOST_TKey convertKey(int rawCode, unichar recvChar)
   return GHOST_kKeyUnknown;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Utility functions.
  */
 
@@ -355,7 +355,7 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
   return 0;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Cocoa objects.
  */
 
@@ -532,7 +532,7 @@ extern "C" int GHOST_HACK_getFirstFile(char buf[FIRSTFILEBUFLG])
 
 @end
 
-/**
+/* --------------------------------------------------------------------
  * Initialization / Finalization.
  */
 
@@ -678,7 +678,7 @@ GHOST_TSuccess GHOST_SystemCocoa::init()
   return success;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Window management.
  */
 
@@ -1011,7 +1011,7 @@ GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
           GHOST_kCapabilityClipboardImages));
 }
 
-/**
+/* --------------------------------------------------------------------
  * Event handlers.
  */
 
@@ -2052,7 +2052,7 @@ GHOST_TSuccess GHOST_SystemCocoa::handleKeyEvent(void *eventPtr)
   return GHOST_kSuccess;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Clipboard get/set.
  */
 

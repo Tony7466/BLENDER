@@ -27,7 +27,7 @@
 
 #include <sys/sysctl.h>
 
-/**
+/* --------------------------------------------------------------------
  * Blender window delegate object.
  */
 
@@ -317,7 +317,7 @@
 #undef COCOA_VIEW_CLASS
 #undef COCOA_VIEW_BASE_CLASS
 
-/**
+/* --------------------------------------------------------------------
  * Initialization / Finalization.
  */
 
@@ -507,7 +507,7 @@ GHOST_WindowCocoa::~GHOST_WindowCocoa()
   }
 }
 
-/**
+/* --------------------------------------------------------------------
  * Accessors.
  */
 
@@ -838,7 +838,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setOrder(GHOST_TWindowOrder order)
   return GHOST_kSuccess;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Drawing context.
  */
 
@@ -874,7 +874,7 @@ GHOST_Context *GHOST_WindowCocoa::newDrawingContext(GHOST_TDrawingContextType ty
   }
 }
 
-/**
+/* --------------------------------------------------------------------
  * Invalidate.
  */
 
@@ -889,7 +889,7 @@ GHOST_TSuccess GHOST_WindowCocoa::invalidate()
   return GHOST_kSuccess;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Progress bar.
  */
 
@@ -953,7 +953,7 @@ GHOST_TSuccess GHOST_WindowCocoa::endProgressBar()
   return GHOST_kSuccess;
 }
 
-/**
+/* --------------------------------------------------------------------
  * Cursor handling.
  */
 

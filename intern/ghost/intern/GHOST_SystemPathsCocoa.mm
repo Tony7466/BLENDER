@@ -8,7 +8,7 @@
 #include "GHOST_Debug.hh"
 #include "GHOST_SystemPathsCocoa.hh"
 
-/**
+/* --------------------------------------------------------------------
  * Base directories retrieval.
  */
 
