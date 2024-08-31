@@ -2014,10 +2014,12 @@ static int area_move_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_PASS_THROUGH;
   }
 
+  sAreaMoveData *md = static_cast<sAreaMoveData *>(op->customdata);
+
   WorkspaceStatus status(C);
   status.item(IFACE_("Confirm"), ICON_MOUSE_LMB);
   status.item(IFACE_("Cancel"), ICON_EVENT_ESC);
-  status.item(IFACE_("Snap"), ICON_EVENT_CTRL);
+  status.item_bool(IFACE_("Snap"), md->snap_type == SNAP_FRACTION_AND_ADJACENT, ICON_EVENT_CTRL);
 
   /* add temp handler */
   G.moving |= G_TRANSFORM_WM;
@@ -3598,7 +3600,7 @@ static void area_join_dock_cb(const wmWindow * /*win*/, void *userdata)
 
 static void area_join_dock_cb_window(sAreaJoinData *jd, wmOperator *op)
 {
-  if (jd->sa2 && jd->win2 != jd->draw_dock_win) {
+  if (jd->sa2 && jd->win2 && jd->win2 != jd->draw_dock_win) {
     /* Change of highlight window. */
     if (jd->draw_dock_callback) {
       WM_draw_cb_exit(jd->draw_dock_win, jd->draw_dock_callback);
@@ -3983,12 +3985,30 @@ static AreaDockTarget area_docking_target(sAreaJoinData *jd, const wmEvent *even
 
   /* if the area is narrow then there are only two docking targets. */
   if (jd->sa2->winx < min_x) {
-    jd->factor = area_docking_snap(float(y) / float(jd->sa2->winy), event);
-    return (y < jd->sa2->winy / 2) ? AreaDockTarget::Bottom : AreaDockTarget::Top;
+    if (fac_y > 0.4f && fac_y < 0.6f) {
+      return AreaDockTarget::Center;
+    }
+    if ((float(y) > float(jd->sa2->winy) / 2.0f)) {
+      jd->factor = area_docking_snap(1.0f - float(y) / float(jd->sa2->winy), event);
+      return AreaDockTarget::Top;
+    }
+    else {
+      jd->factor = area_docking_snap(float(y) / float(jd->sa2->winy), event);
+      return AreaDockTarget::Bottom;
+    }
   }
   if (jd->sa2->winy < min_y) {
-    jd->factor = area_docking_snap(float(x) / float(jd->sa2->winx), event);
-    return (x < jd->sa2->winx / 2) ? AreaDockTarget::Left : AreaDockTarget::Right;
+    if (fac_x > 0.4f && fac_x < 0.6f) {
+      return AreaDockTarget::Center;
+    }
+    if ((float(x) > float(jd->sa2->winx) / 2.0f)) {
+      jd->factor = area_docking_snap(1.0f - float(x) / float(jd->sa2->winx), event);
+      return AreaDockTarget::Right;
+    }
+    else {
+      jd->factor = area_docking_snap(float(x) / float(jd->sa2->winx), event);
+      return AreaDockTarget::Left;
+    }
   }
 
   /* Are we in the center? But not in same area! */
@@ -4138,11 +4158,14 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
       else {
         if (jd->dock_target == AreaDockTarget::None) {
           status.item(IFACE_("Select Area"), ICON_MOUSE_LMB);
+          status.item(IFACE_("Cancel"), ICON_EVENT_ESC);
         }
         else {
           status.item(IFACE_("Select Location"), ICON_MOUSE_LMB);
+          status.item(IFACE_("Cancel"), ICON_EVENT_ESC);
+          status.item_bool(IFACE_("Precision"), event->modifier & KM_ALT, ICON_EVENT_ALT);
+          status.item_bool(IFACE_("Snap"), event->modifier & KM_CTRL, ICON_EVENT_CTRL);
         }
-        status.item(IFACE_("Cancel"), ICON_EVENT_ESC);
       }
       break;
     }
@@ -4221,6 +4244,14 @@ static int area_join_modal(bContext *C, wmOperator *op, const wmEvent *event)
           return OPERATOR_CANCELLED;
         }
 
+        /* Areas changed, update window titles. */
+        if (jd->win2 && jd->win2 != jd->win1) {
+          WM_window_title(CTX_wm_manager(C), jd->win2);
+        }
+        if (jd->win1 && !jd->close_win) {
+          WM_window_title(CTX_wm_manager(C), jd->win1);
+        }
+
         const bool do_close_win = jd->close_win;
         wmWindow *close_win = jd->win1;
         area_join_exit(C, op);
@@ -4258,7 +4289,7 @@ static void SCREEN_OT_area_join(wmOperatorType *ot)
   ot->cancel = area_join_cancel;
 
   /* flags */
-  ot->flag = OPTYPE_BLOCKING | OPTYPE_INTERNAL;
+  ot->flag = OPTYPE_BLOCKING;
 
   /* rna */
   RNA_def_int_vector(ot->srna,
