@@ -48,6 +48,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_sdna_types.h"
+#include "dna_parser.hh"
 #include "dna_utils.h"
 
 #define SDNA_MAX_FILENAME_LENGTH 255
@@ -684,7 +685,7 @@ struct StrucMemberRegister {
     }
     for (auto &var_item : var.items) {
       std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
-      for (auto &size : var_item.size) {
+      for (auto &size : var_item.array_size) {
         if (std::holds_alternative<std::string_view>(size)) {
           /* TODO: Add support to looking through detected #defines to find const int values. */
           BLI_assert_unreachable();

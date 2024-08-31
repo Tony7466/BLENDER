@@ -15,6 +15,7 @@
 namespace blender::dna::parser {
 
 namespace ast {
+
 using namespace lex;
 
 /** Constant int defined value. */

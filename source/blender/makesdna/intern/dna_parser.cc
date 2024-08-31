@@ -926,12 +926,10 @@ bool parse_include(std::string_view filepath,
       BLI_assert(dna_deprecated_allow_count >= 0);
     }
   }
-#ifdef DEBUG_PRINT_DNA_PARSER
   constexpr std::string_view debug_file{"DNA_action_types.h"};
   if (!debug_file.empty() && filepath.find(debug_file) != filepath.npos) {
     print_cpp_types(cpp_defs);
   }
-#endif
   return true;
 }
 
