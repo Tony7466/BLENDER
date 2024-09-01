@@ -617,6 +617,75 @@ static void GREASE_PENCIL_OT_select_ends(wmOperatorType *ot)
               INT32_MAX);
 }
 
+static int select_shape_exec(bContext *C, wmOperator * /*op*/)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+      scene->toolsettings);
+
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    IndexMaskMemory memory;
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, info.layer_index, memory);
+    if (strokes.is_empty()) {
+      return;
+    }
+
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", bke::AttrDomain::Curve);
+
+    /* If the attribute does not exist then each curves is it's own shape. */
+    if (!shape_ids) {
+      const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
+          *object, info.drawing, info.layer_index, memory);
+      blender::ed::curves::select_linked(curves, selectable_strokes);
+      return;
+    }
+
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+        curves, selection_domain, CD_PROP_BOOL);
+
+    strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
+      const int shape_id = shape_ids[curve_i];
+      for (const int curve_i2 : curves.curves_range()) {
+        if (shape_ids[curve_i2] != shape_id) {
+          continue;
+        }
+        GMutableSpan selection_curve = selection.span.slice(
+            selection_domain == bke::AttrDomain::Point ? points_by_curve[curve_i2] :
+                                                         IndexRange(curve_i2, 1));
+        ed::curves::fill_selection_true(selection_curve);
+      }
+    });
+
+    selection.finish();
+  });
+
+  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
+   * attribute for now. */
+  DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_select_shape(wmOperatorType *ot)
+{
+  ot->name = "Select Shape";
+  ot->idname = "GREASE_PENCIL_OT_select_shape";
+  ot->description = "Select all curves in the shape";
+
+  ot->exec = select_shape_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 static int select_set_mode_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
@@ -796,6 +865,7 @@ void ED_operatortypes_grease_pencil_select()
   WM_operatortype_append(GREASE_PENCIL_OT_select_random);
   WM_operatortype_append(GREASE_PENCIL_OT_select_alternate);
   WM_operatortype_append(GREASE_PENCIL_OT_select_ends);
+  WM_operatortype_append(GREASE_PENCIL_OT_select_shape);
   WM_operatortype_append(GREASE_PENCIL_OT_set_selection_mode);
   WM_operatortype_append(GREASE_PENCIL_OT_material_select);
 }
