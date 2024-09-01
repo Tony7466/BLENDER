@@ -27,7 +27,7 @@
 
 #include <sys/sysctl.h>
 
-#pragma mark Cocoa window delegate object
+#pragma mark Blender window delegate object
 
 @interface BlenderWindowDelegate : NSObject <NSWindowDelegate>
 
