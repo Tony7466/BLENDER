@@ -141,7 +141,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
   const std::string arch = hipDeviceArch(hipDevId);
 
   if (!use_adaptive_compilation()) {
-    const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb", name));
+    const string fatbin = path_get(string_printf("lib/%s_rt_gfx.hipfb.zst", name));
     VLOG(1) << "Testing for pre-compiled kernel " << fatbin << ".";
     if (path_exists(fatbin)) {
       VLOG(1) << "Using precompiled kernel.";
@@ -309,8 +309,7 @@ bool HIPRTDevice::load_kernels(const uint kernel_features)
   string fatbin_data;
   hipError_t result;
 
-  if (path_read_text(fatbin, fatbin_data)) {
-
+  if (path_read_compressed_text(fatbin, fatbin_data)) {
     result = hipModuleLoadData(&hipModule, fatbin_data.c_str());
   }
   else
@@ -418,6 +417,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
 
       bvh->custom_primitive_bound.alloc(num_triangles * num_bvh_steps);
       bvh->custom_prim_info.resize(num_triangles * num_bvh_steps);
+      bvh->prims_time.resize(num_triangles * num_bvh_steps);
 
       for (uint j = 0; j < num_triangles; j++) {
         Mesh::Triangle t = mesh->get_triangle(j);
@@ -889,6 +889,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
             int time_offset = bvh->prims_time.size();
             prim_time_map[geom] = time_offset;
 
+            bvh->prims_time.resize(time_offset + current_bvh->prims_time.size());
             memcpy(bvh->prims_time.data() + time_offset,
                    current_bvh->prims_time.data(),
                    current_bvh->prims_time.size() * sizeof(float2));
@@ -952,6 +953,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   transform_headers.copy_to_device();
   {
     instance_transform_matrix.alloc(frame_count);
+    instance_transform_matrix.host_free();
     instance_transform_matrix.host_pointer = transform_matrix.data();
     instance_transform_matrix.data_elements = sizeof(hiprtFrameMatrix);
     instance_transform_matrix.data_type = TYPE_UCHAR;
@@ -1004,6 +1006,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   if (bvh->custom_prim_info.size()) {
     size_t data_size = bvh->custom_prim_info.size();
     custom_prim_info.alloc(data_size);
+    custom_prim_info.host_free();
     custom_prim_info.host_pointer = bvh->custom_prim_info.data();
     custom_prim_info.data_elements = 2;
     custom_prim_info.data_type = TYPE_INT;
@@ -1017,6 +1020,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   if (bvh->prims_time.size()) {
     size_t data_size = bvh->prims_time.size();
     prims_time.alloc(data_size);
+    prims_time.host_free();
     prims_time.host_pointer = bvh->prims_time.data();
     prims_time.data_elements = 2;
     prims_time.data_type = TYPE_FLOAT;

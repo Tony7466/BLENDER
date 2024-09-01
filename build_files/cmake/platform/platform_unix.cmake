@@ -312,14 +312,16 @@ if(WITH_CODEC_FFMPEG)
       theora theoradec theoraenc
       vorbis vorbisenc vorbisfile ogg
       vpx
-      x264)
-    if(DEFINED LIBDIR)
-      if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
-        list(APPEND FFMPEG_FIND_COMPONENTS aom)
-      endif()
-      if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
-        list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
-      endif()
+      x264
+    )
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libx265.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS x265)
+    endif()
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libaom.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS aom)
+    endif()
+    if(EXISTS ${LIBDIR}/ffmpeg/lib/libxvidcore.a)
+      list(APPEND FFMPEG_FIND_COMPONENTS xvidcore)
     endif()
   elseif(FFMPEG)
     # Old cache variable used for root dir, convert to new standard.
@@ -397,7 +399,7 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
 endif()
 add_bundled_libraries(osl/lib)
 
-if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI AND DEFINED LIBDIR)
+if(WITH_CYCLES AND DEFINED LIBDIR)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
   mark_as_advanced(CYCLES_LEVEL_ZERO)
   if(EXISTS ${CYCLES_LEVEL_ZERO} AND NOT LEVEL_ZERO_ROOT_DIR)
@@ -762,7 +764,7 @@ if(WITH_GHOST_WAYLAND)
     find_path(WAYLAND_PROTOCOLS_DIR
       NAMES ${_wayland_protocols_reference_file}
       PATH_SUFFIXES share/wayland-protocols
-      PATHS ${LIBDIR}/wayland-protocols
+      HINTS ${LIBDIR}/wayland-protocols
     )
     unset(_wayland_protocols_reference_file)
 
@@ -810,6 +812,10 @@ if(WITH_GHOST_WAYLAND)
       endif()
     else()
       pkg_get_variable(WAYLAND_SCANNER wayland-scanner wayland_scanner)
+      # Check the variable is set, otherwise an empty command will attempt to be executed.
+      if(NOT WAYLAND_SCANNER)
+        message(FATAL_ERROR "\"wayland-scanner\" could not be found!")
+      endif()
     endif()
     mark_as_advanced(WAYLAND_SCANNER)
 
@@ -1143,11 +1149,12 @@ if(PLATFORM_BUNDLED_LIBRARIES)
 
   # Environment variables to run precompiled executables that needed libraries.
   list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ":" _library_paths)
+  # Intentionally double "$$" which expands into "$" when instantiated.
   set(PLATFORM_ENV_BUILD
-    "LD_LIBRARY_PATH=\"${_library_paths}:$LD_LIBRARY_PATH\""
+    "LD_LIBRARY_PATH=\"${_library_paths}:$$LD_LIBRARY_PATH\""
   )
   set(PLATFORM_ENV_INSTALL
-    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$LD_LIBRARY_PATH"
+    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/lib/;$$LD_LIBRARY_PATH"
   )
   unset(_library_paths)
 else()

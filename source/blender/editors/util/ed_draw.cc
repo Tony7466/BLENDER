@@ -883,7 +883,7 @@ void ED_region_image_overlay_text_draw(const char *title,
   char text[32];
   SNPRINTF(text, "%s: %d x %d", title, render_size_x, render_size_y);
 
-  int overlay_lineheight = (UI_style_get()->widgetlabel.points * UI_SCALE_FAC * 1.6f);
+  int overlay_lineheight = (UI_style_get()->widget.points * UI_SCALE_FAC * 1.6f);
 
   BLF_draw_default(xoffset, yoffset - overlay_lineheight * line_pos, 0.0f, text, sizeof(text));
 }
@@ -949,7 +949,7 @@ void ED_region_image_metadata_draw(
   GPU_matrix_translate_2f(x, y);
   GPU_matrix_scale_2f(zoomx, zoomy);
 
-  BLF_size(blf_mono_font, style->widgetlabel.points * UI_SCALE_FAC);
+  BLF_size(blf_mono_font, style->widget.points * UI_SCALE_FAC);
 
   /* *** upper box*** */
 

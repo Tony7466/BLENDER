@@ -598,6 +598,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
     # Tuples of (module name, (short names, ...)).
     pgettext_variants = (
         ("pgettext", ("_",)),
+        ("pgettext_n", ("n_",)),
         ("pgettext_iface", ("iface_",)),
         ("pgettext_tip", ("tip_",)),
         ("pgettext_rpt", ("rpt_",)),
@@ -660,7 +661,7 @@ def dump_py_messages_from_files(msgs, reports, files, settings):
         for arg_pos, (arg_kw, arg) in enumerate(func.parameters.items()):
             if ((arg_kw in translate_kw) and (not arg.is_output) and (arg.type == 'STRING')):
                 func_translate_args.setdefault(func_id, {})[arg_kw] = (arg_pos, {})
-    # We manually add funcs from bpy.app.translations
+    # We manually add functions from `bpy.app.translations`.
     for func_id, func_ids in pgettext_variants:
         func_translate_args[func_id] = pgettext_variants_args
         for sub_func_id in func_ids:
@@ -895,6 +896,7 @@ def dump_src_messages(msgs, reports, settings):
                 rel_path = os.path.relpath(path, settings.SOURCE_DIR)
             except ValueError:
                 rel_path = path
+            rel_path = PurePath(rel_path).as_posix()
             if rel_path in forbidden:
                 continue
             elif rel_path not in forced:
@@ -1021,7 +1023,9 @@ def dump_asset_messages(msgs, reports, settings):
 
 
 def dump_addon_bl_info(msgs, reports, module, settings):
-    for prop in ('name', 'location', 'description', 'warning'):
+    for prop in ('name', 'description'):
+        if prop not in module.bl_info:
+            continue
         process_msg(
             msgs,
             settings.DEFAULT_CONTEXT,
@@ -1034,6 +1038,24 @@ def dump_addon_bl_info(msgs, reports, module, settings):
             None,
             settings,
         )
+
+
+def dump_extension_metadata(msgs, reports, settings):
+    from _bpy_internal.extensions import (
+        tags,
+        permissions,
+    )
+    i18n_contexts = bpy.app.translations.contexts
+
+    # Extract tags for add-on and theme extensions.
+    for tag in sorted(tags.addons):
+        process_msg(msgs, i18n_contexts.editor_preferences, tag, "Add-on extension tag", reports, None, settings)
+    for tag in sorted(tags.themes):
+        process_msg(msgs, i18n_contexts.editor_preferences, tag, "Theme extension tag", reports, None, settings)
+
+    # Extract extension permissions.
+    for permission in sorted(permissions.permissions):
+        process_msg(msgs, settings.DEFAULT_CONTEXT, permission, "Extension permission", reports, None, settings)
 
 
 ##### Main functions! #####
@@ -1077,10 +1099,8 @@ def dump_messages(do_messages, do_checks, settings):
     # Get strings from addons' bl_info.
     import addon_utils
     for module in addon_utils.modules():
-        # Only process official add-ons, i.e. those marked as 'OFFICIAL' and
-        # existing in the system add-ons directory (not user-installed ones).
-        if (module.bl_info['support'] != 'OFFICIAL'
-                or not bpy.path.is_subdir(module.__file__, bpy.utils.system_resource('SCRIPTS'))):
+        # Only process official add-ons, i.e. those in the system directory (not user-installed ones).
+        if not bpy.path.is_subdir(module.__file__, bpy.utils.system_resource('SCRIPTS')):
             continue
         dump_addon_bl_info(msgs, reports, module, settings)
 
@@ -1102,6 +1122,9 @@ def dump_messages(do_messages, do_checks, settings):
             # Only special categories get a tip (All and User).
             process_msg(msgs, settings.DEFAULT_CONTEXT, label, "Add-ons' categories", reports, None, settings)
             process_msg(msgs, settings.DEFAULT_CONTEXT, tip, "Add-ons' categories", reports, None, settings)
+
+    # Get strings from extension tags and permissions.
+    dump_extension_metadata(msgs, reports, settings)
 
     # Get strings specific to translations' menu.
     for lng in settings.LANGUAGES:
