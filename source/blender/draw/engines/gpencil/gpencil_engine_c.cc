@@ -725,24 +725,32 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         *ob, info.drawing, memory);
+    const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
 
     /* Precompute all the triangle and vertex counts.
      * In case the drawing should not be rendered, we need to compute the offset where the next
      * drawing begins. */
-    Array<int> num_triangles_per_stroke(visible_strokes.size());
+    Array<int> num_triangles_per_stroke(groups.size());
     Array<int> num_vertices_per_stroke(visible_strokes.size());
     int total_num_triangles = 0;
     int total_num_vertices = 0;
-    visible_strokes.foreach_index([&](const int stroke_i, const int pos) {
-      const IndexRange points = points_by_curve[stroke_i];
-      const int num_stroke_triangles = triangles[stroke_i].size();
-      const int num_stroke_vertices = (points.size() +
-                                       int(cyclic[stroke_i] && (points.size() >= 3)));
-      num_triangles_per_stroke[pos] = num_stroke_triangles;
-      num_vertices_per_stroke[pos] = num_stroke_vertices;
+    int current_curve = 0;
+    for (const int group_id : groups.index_range()) {
+      const IndexMask &group = groups[group_id];
+
+      const int num_stroke_triangles = triangles[group_id].size();
+      num_triangles_per_stroke[group_id] = num_stroke_triangles;
       total_num_triangles += num_stroke_triangles;
-      total_num_vertices += num_stroke_vertices;
-    });
+
+      group.foreach_index([&](const int curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        const int num_stroke_vertices = (points.size() +
+                                         int(cyclic[curve_i] && (points.size() >= 3)));
+        num_vertices_per_stroke[current_curve] = num_stroke_vertices;
+        total_num_vertices += num_stroke_vertices;
+        current_curve++;
+      });
+    }
 
     bool is_layer_used_as_mask = false;
     const bool show_drawing_in_render = use_layer_in_render(
@@ -789,17 +797,21 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                             info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
     const bool is_onion = info.onion_id != 0;
 
-    visible_strokes.foreach_index([&](const int stroke_i, const int pos) {
-      const IndexRange points = points_by_curve[stroke_i];
+    current_curve = 0;
+    for (const int group_id : groups.index_range()) {
+      const IndexMask &group = groups[group_id];
+
+      const int curve_i = group.first();
+
       /* The material index is allowed to be negative as it's stored as a generic attribute. We
-       * clamp it here to avoid crashing in the rendering code. Any stroke with a material < 0 will
-       * use the first material in the first material slot.*/
-      const int material_index = std::max(stroke_materials[stroke_i], 0);
+       * clamp it here to avoid crashing in the rendering code. Any stroke with a material < 0
+       * will use the first material in the first material slot.*/
+      const int material_index = std::max(stroke_materials[curve_i], 0);
       const MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);
 
       const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
       const bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
-      const bool show_fill = (points.size() >= 3) &&
+      const bool show_fill = (!triangles[group_id].is_empty()) &&
                              ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
                              (!pd->simplify_fill);
       const bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0 ||
@@ -808,9 +820,12 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                                (only_lines && !is_onion) || hide_onion;
 
       if (skip_stroke) {
-        t_offset += num_triangles_per_stroke[pos];
-        t_offset += num_vertices_per_stroke[pos] * 2;
-        return;
+        t_offset += num_triangles_per_stroke[group_id];
+        for (const int i : group.index_range()) {
+          t_offset += num_vertices_per_stroke[current_curve + i] * 2;
+        };
+        current_curve += group.size();
+        continue;
       }
 
       GPUUniformBuf *new_ubo_mat;
@@ -855,20 +870,25 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
       if (show_fill) {
         const int v_first = t_offset * 3;
-        const int v_count = num_triangles_per_stroke[pos] * 3;
+        const int v_count = num_triangles_per_stroke[group_id] * 3;
         drawcall_add(geom, v_first, v_count);
       }
 
-      t_offset += num_triangles_per_stroke[pos];
+      t_offset += num_triangles_per_stroke[group_id];
 
-      if (show_stroke) {
-        const int v_first = t_offset * 3;
-        const int v_count = num_vertices_per_stroke[pos] * 2 * 3;
-        drawcall_add(geom, v_first, v_count);
-      }
+      group.foreach_index([&](const int curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
 
-      t_offset += num_vertices_per_stroke[pos] * 2;
-    });
+        if (show_stroke) {
+          const int v_first = t_offset * 3;
+          const int v_count = num_vertices_per_stroke[current_curve] * 2 * 3;
+          drawcall_add(geom, v_first, v_count);
+        }
+
+        t_offset += num_vertices_per_stroke[current_curve] * 2;
+        current_curve++;
+      });
+    }
   }
 
   drawcall_flush();

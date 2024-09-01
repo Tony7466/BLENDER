@@ -86,6 +86,9 @@ class Drawing : public ::GreasePencilDrawing {
 
   const bke::CurvesGeometry &strokes() const;
   bke::CurvesGeometry &strokes_for_write();
+
+  Array<IndexMask> get_shapes_index_masks(IndexMaskMemory &memory) const;
+
   /**
    * The triangles for all the fills in the geometry.
    */

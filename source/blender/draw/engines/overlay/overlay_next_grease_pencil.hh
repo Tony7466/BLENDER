@@ -89,32 +89,31 @@ class GreasePencil {
       IndexMaskMemory memory;
       const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
           *ob, info.drawing, memory);
+      const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
 
       const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
-      visible_strokes.foreach_index([&](const int stroke_i) {
-        const IndexRange points = points_by_curve[stroke_i];
-        const int material_index = stroke_materials[stroke_i];
+      const bool hide_onion = info.onion_id != 0;
+
+      for (const int group_id : groups.index_range()) {
+        const IndexMask &group = groups[group_id];
+
+        const int material_index = stroke_materials[group.first()];
         MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);
 
-        const bool hide_onion = info.onion_id != 0;
         const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
 
-        const int num_stroke_triangles = triangles[stroke_i].size();
-        const int num_stroke_vertices = (points.size() +
-                                         int(cyclic[stroke_i] && (points.size() >= 3)));
+        const int num_stroke_triangles = triangles[group_id].size();
 
         if (hide_material || hide_onion) {
           t_offset += num_stroke_triangles;
-          t_offset += num_stroke_vertices * 2;
-          return;
         }
 
-        blender::gpu::Batch *geom = draw::DRW_cache_grease_pencil_get(scene, ob);
-
         const bool show_stroke = (gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0;
-        const bool show_fill = (points.size() >= 3) &&
+        const bool show_fill = (num_stroke_triangles != 0) &&
                                (gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0;
+
+        blender::gpu::Batch *geom = draw::DRW_cache_grease_pencil_get(scene, ob);
 
         if (show_fill) {
           int v_first = t_offset * 3;
@@ -124,13 +123,25 @@ class GreasePencil {
 
         t_offset += num_stroke_triangles;
 
-        if (show_stroke) {
-          int v_first = t_offset * 3;
-          int v_count = num_stroke_vertices * 2 * 3;
-          pass.draw(geom, 1, v_count, v_first, res_handle);
-        }
-        t_offset += num_stroke_vertices * 2;
-      });
+        group.foreach_index([&](const int curve_i) {
+          const IndexRange points = points_by_curve[curve_i];
+
+          const int num_stroke_vertices = (points.size() +
+                                           int(cyclic[curve_i] && (points.size() >= 3)));
+
+          if (hide_material || hide_onion) {
+            t_offset += num_stroke_vertices * 2;
+            return;
+          }
+
+          if (show_stroke) {
+            int v_first = t_offset * 3;
+            int v_count = num_stroke_vertices * 2 * 3;
+            pass.draw(geom, 1, v_count, v_first, res_handle);
+          }
+          t_offset += num_stroke_vertices * 2;
+        });
+      }
     }
   }
 
