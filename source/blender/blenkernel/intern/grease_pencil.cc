@@ -367,32 +367,27 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
-Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
+Vector<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
 {
   const CurvesGeometry &curves = this->strokes();
   const bke::AttributeAccessor attributes = curves.attributes();
-
-  const int num_curves = curves.curves_num();
 
   const VArray<int> shape_ids = *attributes.lookup<int>("shape_id", bke::AttrDomain::Curve);
 
   if (!shape_ids) {
     /* If the attribute does not exist then the default is each shape containing one curve. */
-    Array<IndexMask> data(num_curves);
-    IndexMask::from_groups<int>(
-        IndexMask(num_curves), memory, [&](const int i) { return i; }, data);
+    Vector<IndexMask> shapes;
+    for (const int i : curves.curves_range()) {
+      shapes.append(IndexRange::from_single(i));
+    }
 
-    return data;
+    return shapes;
   }
 
-  const int max_shape_id = *std::max_element(shape_ids.get_internal_span().begin(),
-                                             shape_ids.get_internal_span().end());
+  VectorSet<int> shape_indexing;
+  const Vector<IndexMask> shapes = IndexMask::from_group_ids(shape_ids, memory, shape_indexing);
 
-  Array<IndexMask> data(max_shape_id + 1);
-  IndexMask::from_groups<int>(
-      IndexRange(num_curves), memory, [&](const int i) { return shape_ids[i]; }, data);
-
-  return data;
+  return shapes;
 }
 
 static bool check_self_intersections(Span<float2> projverts)
@@ -530,7 +525,7 @@ Span<Vector<uint3>> Drawing::triangles() const
     const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
     IndexMaskMemory memory;
-    const Array<IndexMask> groups = this->get_shapes_index_masks(memory);
+    const Vector<IndexMask> groups = this->get_shapes_index_masks(memory);
 
     r_data.resize(groups.size() + 1);
     MutableSpan<Vector<uint3>> strokes_triangles = r_data.as_mutable_span();

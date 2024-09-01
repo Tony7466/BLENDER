@@ -725,7 +725,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         *ob, info.drawing, memory);
-    const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
 
     /* Precompute all the triangle and vertex counts.
      * In case the drawing should not be rendered, we need to compute the offset where the next

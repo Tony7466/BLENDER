@@ -1194,7 +1194,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
-    const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
     const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
     auto point_to_id = [&](uint32_t p) {

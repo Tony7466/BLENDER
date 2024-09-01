@@ -323,7 +323,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         *ob, info.drawing, memory);
-    const Array<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
 
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
