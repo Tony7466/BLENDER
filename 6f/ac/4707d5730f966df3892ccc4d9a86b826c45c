@@ -1,1 +1,2 @@
 Referenced by commit ca0d7d3afcbe2c5969d1ffb59267b23e012f2e55, Fix: Curves: Crash in `resize_curves`
+Referenced by pull request #127040, Fix: Curves: Extra copy call
