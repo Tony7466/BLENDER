@@ -432,8 +432,8 @@ HANDLE_TABLET_EVENT(tabletProximity)
 {
   @autoreleasepool {
     std::string str(inString.UTF8String);
+    return str;
   }
-  return str;
 }
 
 - (void)setImeComposition:(NSString *)inString selectedRange:(NSRange)range
