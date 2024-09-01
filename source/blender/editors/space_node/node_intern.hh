@@ -46,6 +46,7 @@ struct NestedTreePreviews;
 struct bNodeLinkDrag {
   /** Links dragged by the operator. */
   Vector<bNodeLink> links;
+  /** Which side of the links is fixed. */
   eNodeSocketInOut in_out;
 
   /** Draw handler for the tooltip icon when dragging a link in empty space. */
@@ -300,6 +301,8 @@ void NODE_OT_group_insert(wmOperatorType *ot);
 void NODE_OT_group_ungroup(wmOperatorType *ot);
 void NODE_OT_group_separate(wmOperatorType *ot);
 void NODE_OT_group_edit(wmOperatorType *ot);
+
+void NODE_OT_default_group_width_set(wmOperatorType *ot);
 
 /* `node_relationships.cc` */
 

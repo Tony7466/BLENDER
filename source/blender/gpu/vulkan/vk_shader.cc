@@ -580,29 +580,30 @@ void VKShader::init(const shader::ShaderCreateInfo &info, bool /*is_batch_compil
 
 VKShader::~VKShader()
 {
-  VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device;
+  VKDevice &device = VKBackend::get().device;
+  VKDiscardPool &discard_pool = device.discard_pool_for_current_thread();
+
   if (vertex_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), vertex_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(vertex_module_);
     vertex_module_ = VK_NULL_HANDLE;
   }
   if (geometry_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), geometry_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(geometry_module_);
     geometry_module_ = VK_NULL_HANDLE;
   }
   if (fragment_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), fragment_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(fragment_module_);
     fragment_module_ = VK_NULL_HANDLE;
   }
   if (compute_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), compute_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(compute_module_);
     compute_module_ = VK_NULL_HANDLE;
   }
   if (vk_pipeline_layout != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(device.vk_handle(), vk_pipeline_layout, vk_allocation_callbacks);
+    discard_pool.discard_pipeline_layout(vk_pipeline_layout);
     vk_pipeline_layout = VK_NULL_HANDLE;
   }
-  /* Reset not owning handles. */
+  /* Unset not owning handles. */
   vk_descriptor_set_layout_ = VK_NULL_HANDLE;
 }
 
@@ -811,6 +812,11 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
     print_resource(ss, vk_interface, res);
   }
 
+  ss << "\n/* Geometry Resources. */\n";
+  for (const ShaderCreateInfo::Resource &res : info.geometry_resources_) {
+    print_resource(ss, vk_interface, res);
+  }
+
   /* Push constants. */
   const VKPushConstants::Layout &push_constants_layout = vk_interface.push_constants_layout_get();
   const VKPushConstants::StorageType push_constants_storage =
@@ -868,8 +874,8 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
   }
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
     /* Need this for stable barycentric. */
-    ss << "flat out vec4 gpu_pos_flat;\n";
-    ss << "out vec4 gpu_pos;\n";
+    ss << "layout(location=" << (location++) << ") flat out vec4 gpu_pos_flat;\n";
+    ss << "layout(location=" << (location++) << ") out vec4 gpu_pos;\n";
 
     post_main += "  gpu_pos = gpu_pos_flat = gl_Position;\n";
   }
@@ -877,7 +883,11 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
 
   /* Retarget depth from -1..1 to 0..1. This will be done by geometry stage, when geometry shaders
    * are used. */
-  const bool has_geometry_stage = bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD) ||
+  const bool has_geometry_stage = bool(info.builtins_ & (BuiltinBits::BARYCENTRIC_COORD)) ||
+                                  (bool(info.builtins_ & (BuiltinBits::LAYER)) &&
+                                   workarounds.shader_output_layer) ||
+                                  (bool(info.builtins_ & (BuiltinBits::VIEWPORT_INDEX)) &&
+                                   workarounds.shader_output_viewport_index) ||
                                   !info.geometry_source_.is_empty();
   const bool retarget_depth = !has_geometry_stage;
   if (retarget_depth) {
@@ -962,6 +972,16 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
   }
 
   if (bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD)) {
+    /* TODO: add support for
+     * https://docs.vulkan.org/features/latest/features/proposals/VK_KHR_fragment_shader_barycentric.html
+     */
+    ss << "layout(location=" << (location) << ") flat in vec4 gpu_pos[3];\n";
+    location += 3;
+    ss << "layout(location=" << (location++) << ") smooth in vec3 gpu_BaryCoord;\n";
+    ss << "layout(location=" << (location++) << ") noperspective in vec3 gpu_BaryCoordNoPersp;\n";
+    ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
+
+#if 0
     std::cout << "native" << std::endl;
     /* NOTE(fclem): This won't work with geometry shader. Hopefully, we don't need geometry
      * shader workaround if this extension/feature is detected. */
@@ -987,6 +1007,7 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
 
     pre_main += "  gpu_BaryCoord = stable_bary_(gl_BaryCoordSmoothAMD);\n";
     pre_main += "  gpu_BaryCoordNoPersp = stable_bary_(gl_BaryCoordNoPerspAMD);\n";
+#endif
   }
   if (info.early_fragment_test_) {
     ss << "layout(early_fragment_tests) in;\n";
@@ -1192,9 +1213,10 @@ std::string VKShader::workaround_geometry_shader_source_create(
     ss << "layout(location=" << (location++) << ") in int gpu_ViewportIndex[];\n";
   }
   if (do_barycentric_workaround) {
-    ss << "flat out vec4 gpu_pos[3];\n";
-    ss << "smooth out vec3 gpu_BaryCoord;\n";
-    ss << "noperspective out vec3 gpu_BaryCoordNoPersp;\n";
+    ss << "layout(location=" << (location) << ") flat out vec4 gpu_pos[3];\n";
+    location += 3;
+    ss << "layout(location=" << (location++) << ") smooth out vec3 gpu_BaryCoord;\n";
+    ss << "layout(location=" << (location++) << ") noperspective out vec3 gpu_BaryCoordNoPersp;\n";
   }
   ss << "\n";
 
@@ -1223,7 +1245,7 @@ std::string VKShader::workaround_geometry_shader_source_create(
       ss << " vec3(" << int(i == 0) << ", " << int(i == 1) << ", " << int(i == 2) << ");\n";
     }
     ss << "  gl_Position = gl_in[" << i << "].gl_Position;\n";
-    ss << "  EmitVertex();\n";
+    ss << "  gpu_EmitVertex();\n";
   }
   ss << "}\n";
   return ss.str();

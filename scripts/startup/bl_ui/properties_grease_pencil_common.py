@@ -69,7 +69,14 @@ class GreasePencilDisplayPanel:
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        brush = context.tool_settings.gpencil_paint.brush
+
+        if context.mode == 'SCULPT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_sculpt_paint.brush
+        elif context.mode == 'WEIGHT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_weight_paint.brush
+        else:
+            brush = context.tool_settings.gpencil_paint.brush
+
         if ob and ob.type in {'GPENCIL', 'GREASEPENCIL'} and brush:
             return True
 
@@ -98,9 +105,9 @@ class GreasePencilDisplayPanel:
         layout.use_property_decorate = False
 
         tool_settings = context.tool_settings
-        if context.mode == 'PAINT_GPENCIL':
+        if context.mode == 'PAINT_GPENCIL' or context.mode == 'PAINT_GREASE_PENCIL':
             settings = tool_settings.gpencil_paint
-        elif context.mode == 'SCULPT_GPENCIL':
+        elif context.mode == 'SCULPT_GPENCIL' or context.mode == 'SCULPT_GREASE_PENCIL':
             settings = tool_settings.gpencil_sculpt_paint
         elif context.mode == 'WEIGHT_GPENCIL' or context.mode == 'WEIGHT_GREASE_PENCIL':
             settings = tool_settings.gpencil_weight_paint
@@ -115,7 +122,7 @@ class GreasePencilDisplayPanel:
             row.use_property_split = False
             row.prop(settings, "show_brush", text="Display Cursor")
 
-        if ob.mode == 'PAINT_GPENCIL':
+        if ob.mode == 'PAINT_GPENCIL' or ob.mode == 'PAINT_GREASE_PENCIL':
             if self.is_popover:
                 row = layout.row(align=True)
                 row.prop(settings, "show_brush", text="Display Cursor")
@@ -125,7 +132,7 @@ class GreasePencilDisplayPanel:
                 row.active = settings.show_brush
                 row.prop(gp_settings, "show_lasso", text="Show Fill Color While Drawing")
 
-        elif ob.mode == 'SCULPT_GPENCIL':
+        elif ob.mode == 'SCULPT_GPENCIL' or ob.mode == 'SCULPT_GREASE_PENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 
@@ -133,7 +140,7 @@ class GreasePencilDisplayPanel:
             if brush.gpencil_sculpt_tool in {'THICKNESS', 'STRENGTH', 'PINCH', 'TWIST'}:
                 col.prop(brush, "cursor_color_subtract", text="Inverse Color")
 
-        elif ob.mode == 'WEIGHT_GPENCIL':
+        elif ob.mode == 'WEIGHT_GPENCIL' or ob.mode == 'WEIGHT_GREASE_PENCIL':
             col = layout.column(align=True)
             col.active = settings.show_brush
 
@@ -291,7 +298,7 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
 
         for i in range(len(grease_pencil.layers) - 1, -1, -1):
             layer = grease_pencil.layers[i]
-            if layer == grease_pencil.layers.active_layer:
+            if layer == grease_pencil.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -316,7 +323,7 @@ class GREASE_PENCIL_MT_layer_active(Menu):
 
         for i in range(len(obd.layers) - 1, -1, -1):
             layer = obd.layers[i]
-            if layer == obd.layers.active_layer:
+            if layer == obd.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -539,19 +546,22 @@ class AnnotationOnionSkin:
 
         gpl = context.active_annotation_layer
         col = layout.column()
+        col.prop(gpl, "annotation_onion_use_custom_color")
         split = col.split(factor=0.5)
         split.active = gpl.use_annotation_onion_skinning
 
         # - Before Frames
         sub = split.column(align=True)
         row = sub.row(align=True)
-        row.prop(gpl, "annotation_onion_before_color", text="")
+        if gpl.annotation_onion_use_custom_color:
+            row.prop(gpl, "annotation_onion_before_color", text="")
         sub.prop(gpl, "annotation_onion_before_range", text="Before")
 
         # - After Frames
         sub = split.column(align=True)
         row = sub.row(align=True)
-        row.prop(gpl, "annotation_onion_after_color", text="")
+        if gpl.annotation_onion_use_custom_color:
+            row.prop(gpl, "annotation_onion_after_color", text="")
         sub.prop(gpl, "annotation_onion_after_range", text="After")
 
 

@@ -82,8 +82,7 @@ ccl_device_inline bool shadow_volume_shader_sample(KernelGlobals kg,
     return false;
   }
 
-  const float density = object_volume_density(kg, sd->object);
-  *extinction = sd->closure_transparent_extinction * density;
+  *extinction = sd->closure_transparent_extinction;
   return true;
 }
 
@@ -115,11 +114,6 @@ ccl_device_inline bool volume_shader_sample(KernelGlobals kg,
       }
     }
   }
-
-  const float density = object_volume_density(kg, sd->object);
-  coeff->sigma_s *= density;
-  coeff->sigma_t *= density;
-  coeff->emission *= density;
 
   return true;
 }
@@ -995,11 +989,12 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
                                                  IntegratorState state,
                                                  ccl_private Ray *ccl_restrict ray,
-                                                 const int object,
                                                  ccl_global float *ccl_restrict render_buffer)
 {
   ShaderData sd;
-  shader_setup_from_volume(kg, &sd, ray, object);
+  /* FIXME: `object` is used for light linking. We read the bottom of the stack for simplicity, but
+   * this does not work for overlapping volumes. */
+  shader_setup_from_volume(kg, &sd, ray, INTEGRATOR_STATE_ARRAY(state, volume_stack, 0, object));
 
   /* Load random number state. */
   RNGState rng_state;
@@ -1192,8 +1187,7 @@ ccl_device void integrator_shade_volume(KernelGlobals kg,
     volume_stack_clean(kg, state);
   }
 
-  const VolumeIntegrateEvent event = volume_integrate(
-      kg, state, &ray, isect.object, render_buffer);
+  const VolumeIntegrateEvent event = volume_integrate(kg, state, &ray, render_buffer);
   if (event == VOLUME_PATH_MISSED) {
     /* End path. */
     integrator_path_terminate(kg, state, DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME);
