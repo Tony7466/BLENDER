@@ -68,7 +68,10 @@ def pkg_repo_and_id_from_theme_path(repos_all, filepath):
     dirpath = os.path.dirname(filepath)
     repo_directory, pkg_id = os.path.split(dirpath)
     for repo_index, repo in enumerate(repos_all):
-        if not os.path.samefile(repo_directory, repo.directory):
+        # Avoid `os.path.samefile` because this relies on file-system checks which aren't always reliable.
+        # Some directories might not exist or have permission issues accessing, see #123657.
+        # No need to normalize the path as the themes path will have been created from `repo.directory`.
+        if repo_directory != repo.directory:
             continue
         return repo_index, pkg_id
     return None
@@ -864,6 +867,45 @@ def extensions_panel_draw_impl(
         nonlocal remote_ex
         remote_ex = ex
 
+    # NOTE: regarding local/remote data.
+    # The simple cases are when only one is available.
+    # - When the extension is not installed, there is only "remote" data.
+    # - When the extension is part of the users local repository, there is no "remote" data.
+    # - When the extension is part of a remote repository but has no remote data,
+    #   this is considered "orphaned", there is also no "remote" data in this case.
+    #
+    # When both remote and local data is available, fields from the manifest are selectively taken
+    # from remote and local data based on the following rationale.
+    # In the general case the "local" data is what the user is running so they
+    # will want to see this even if it no longer matches the remote data.
+    # Unless there is a good reason to do otherwise, this is the rule of thumb.
+    #
+    # Exceptions to this rule:
+    # - *version*: when outdated, it's useful to show both versions as the user may wish to upgrade.
+    #   Otherwise it's typically not useful to attempt to make the user aware of other minor discrepancies.
+    #   (changes to the description or maintainer for e.g.).
+    #
+    # - *website*: the host of the remote repository may wish to override the website with a landing page for
+    #   each extension, this page can show information managed by the organization hosting repository,
+    #   information such access to older versions, reviews, ratings etc.
+    #   Such a page can also link to the authors website (the "local" value of the website).
+
+    #   While this is an opinionated decision it doesn't have significant down-sides:
+    #   - Remote hosts that don't override this value will point to the same URL.
+    #   - Remote hosts that change the value benefit from prioritizing the remote data.
+    #
+    #   The one potential down-side is that the user may have intentionally down-graded an extension,
+    #   then wish to visit the website of that older extension which may point to older documentation
+    #   that no longer applies to the newer version, while this is a corner case, it's possible users hit this.
+    #   We *could* support a "Visit Website" and "Visit Authors Website" in this case,
+    #   however it seems enough of a corner case we can simply expose one.
+    #
+    # - *permissions*: while we only need to show the local value, users need to be aware when upgrading
+    #   an extension results in it having additional permissions.
+    #   This may be a special case - as it can be handled when upgrading instead of the UI.
+    #
+    #   TODO(@ideasman42): handle permissions on upgrade.
+
     for repo_index, (
             pkg_manifest_local,
             pkg_manifest_remote,
@@ -903,11 +945,35 @@ def extensions_panel_draw_impl(
                 # NOTE: it would be nice to detect when the repository ran sync and it failed.
                 # This isn't such an important distinction though, the main thing users should be aware of
                 # is that a "sync" is required.
-                errors_on_draw.append(
-                    "Repository: \"{:s}\" must sync with the remote repository.".format(
-                        repos_all[repo_index].name,
+                if bpy.app.online_access:
+                    errors_on_draw.append(
+                        (
+                            "Repository: \"{:s}\" remote data unavailable, "
+                            "sync with the remote repository."
+                        ).format(
+                            repos_all[repo_index].name,
+                        )
                     )
-                )
+                elif prefs.extensions.use_online_access_handled is False:
+                    # Hide this message when online access hasn't been handled
+                    # as it's unnecessarily noisy to show both messages at once.
+                    pass
+                else:
+                    # This message could also be suppressed when offline after all it is not a surprise that
+                    # the remote data is not available when offline. Don't do this for the following reasons.
+                    #
+                    # - Keeping a remote repository enable when offline, while supported is likely to cause
+                    #   errors/reports elsewhere and this is a hint that data which is expected to display is missing.
+                    # - It's possible to use remote `file://` URL's when offline.
+                    #   Repositories which don't require online access shouldn't have their errors suppressed.
+                    errors_on_draw.append(
+                        (
+                            "Repository: \"{:s}\" remote data unavailable, "
+                            "either allow \"Online Access\" or disable the repository to suppress this message"
+                        ).format(
+                            repos_all[repo_index].name,
+                        )
+                    )
                 continue
 
         repo_module_prefix = pkg_repo_module_prefix(repos_all[repo_index])
@@ -1336,7 +1402,9 @@ class USERPREF_MT_extensions_item(Menu):
                     props.pkg_id = pkg_id
                     del props
 
-        if value := item.website:
+        # Unlike most other value, prioritize the remote website,
+        # see code comments in `extensions_panel_draw_impl`.
+        if value := ((item_remote or item_local).website):
             layout.operator("wm.url_open", text="Visit Website", icon='URL').url = value
         else:
             # Without this, the menu may sometimes be empty (which seems like a bug).
