@@ -37,6 +37,7 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
+#include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 #include "BLI_time.h"
 #include "BLI_timecode.h"
@@ -409,18 +410,33 @@ static bool id_search_add(const bContext *C, TemplateID *template_ui, uiSearchIt
 
   /* When using previews, the library hint (linked, overridden, missing) is added with a
    * character prefix, otherwise we can use a icon. */
-  int name_prefix_offset;
-  BKE_id_full_name_ui_prefix_get(name_ui, id, use_lib_prefix, UI_SEP_CHAR, &name_prefix_offset);
+  int i = 0;
+
+  if (use_lib_prefix) {
+    int icon = id->lib ? (ID_MISSING(id) ? ICON_LIBRARY_DATA_BROKEN : ICON_LINKED) :
+               ID_IS_OVERRIDE_LIBRARY(id) ? ICON_LIBRARY_DATA_OVERRIDE :
+                                            ICON_NONE;
+    if (icon != ICON_NONE) {
+      i += BLI_str_utf8_from_unicode(icon + 0x100000L, &name_ui[i], 4);
+      name_ui[i++] = ' ';
+    }
+  }
+  if (id->flag & ID_FLAG_FAKEUSER) {
+    i += BLI_str_utf8_from_unicode(ICON_FAKE_USER_ON + 0x100000L, &name_ui[i], 4);
+    name_ui[i++] = ' ';
+  }
+  else {
+    name_ui[i++] = (id->us == 0) ? '0' : ' ';
+  }
+
+  BKE_id_full_name_get(name_ui + i, id, UI_SEP_CHAR);
+
   if (!use_lib_prefix) {
     iconid = UI_icon_from_library(id);
   }
 
-  if (!UI_search_item_add(items,
-                          name_ui,
-                          id,
-                          iconid,
-                          has_sep_char ? int(UI_BUT_HAS_SEP_CHAR) : 0,
-                          name_prefix_offset))
+  if (!UI_search_item_add(
+          items, name_ui, id, iconid, has_sep_char ? int(UI_BUT_HAS_SEP_CHAR) : 0, i))
   {
     return false;
   }
