@@ -9,6 +9,7 @@
 #include "BKE_pbvh_pixels.hh"
 
 #include "DNA_image_types.h"
+#include "DNA_object_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
@@ -17,6 +18,7 @@
 
 #include "BKE_global.hh"
 #include "BKE_image_wrappers.hh"
+#include "BKE_paint.hh"
 
 #include "pbvh_intern.hh"
 #include "pbvh_pixels_copy.hh"
@@ -145,7 +147,7 @@ static void do_encode_pixels(const uv_islands::MeshData &mesh_data,
                              const UVPrimitiveLookup &uv_prim_lookup,
                              Image &image,
                              ImageUser &image_user,
-                             Node &node)
+                             MeshNode &node)
 {
   NodeData *node_data = static_cast<NodeData *>(node.pixels_);
 
@@ -232,7 +234,7 @@ static bool should_pixels_be_updated(const Node &node)
 static int count_nodes_to_update(Tree &pbvh)
 {
   int result = 0;
-  for (Node &node : pbvh.nodes_) {
+  for (Node &node : pbvh.nodes<MeshNode>()) {
     if (should_pixels_be_updated(node)) {
       result++;
     }
@@ -249,7 +251,7 @@ static int count_nodes_to_update(Tree &pbvh)
  *
  * returns if there were any nodes found (true).
  */
-static bool find_nodes_to_update(Tree &pbvh, Vector<Node *> &r_nodes_to_update)
+static bool find_nodes_to_update(Tree &pbvh, Vector<MeshNode *> &r_nodes_to_update)
 {
   int nodes_to_update_len = count_nodes_to_update(pbvh);
   if (nodes_to_update_len == 0) {
@@ -268,7 +270,7 @@ static bool find_nodes_to_update(Tree &pbvh, Vector<Node *> &r_nodes_to_update)
 
   r_nodes_to_update.reserve(nodes_to_update_len);
 
-  for (Node &node : pbvh.nodes_) {
+  for (MeshNode &node : pbvh.nodes<MeshNode>()) {
     if (!should_pixels_be_updated(node)) {
       continue;
     }
@@ -298,7 +300,7 @@ static void apply_watertight_check(Tree &pbvh, Image &image, ImageUser &image_us
     if (image_buffer == nullptr) {
       continue;
     }
-    for (Node &node : pbvh.nodes_) {
+    for (Node &node : pbvh.nodes<MeshNode>()) {
       if ((node.flag_ & PBVH_Leaf) == 0) {
         continue;
       }
@@ -328,13 +330,18 @@ static void apply_watertight_check(Tree &pbvh, Image &image, ImageUser &image_us
   BKE_image_partial_update_mark_full_update(&image);
 }
 
-static bool update_pixels(Tree &pbvh, const Mesh &mesh, Image &image, ImageUser &image_user)
+static bool update_pixels(const Depsgraph &depsgraph,
+                          const Object &object,
+                          Tree &pbvh,
+                          Image &image,
+                          ImageUser &image_user)
 {
-  Vector<Node *> nodes_to_update;
+  Vector<MeshNode *> nodes_to_update;
   if (!find_nodes_to_update(pbvh, nodes_to_update)) {
     return false;
   }
 
+  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
   const StringRef active_uv_name = CustomData_get_active_layer_name(&mesh.corner_data,
                                                                     CD_PROP_FLOAT2);
   if (active_uv_name.is_empty()) {
@@ -344,8 +351,10 @@ static bool update_pixels(Tree &pbvh, const Mesh &mesh, Image &image, ImageUser 
   const AttributeAccessor attributes = mesh.attributes();
   const VArraySpan uv_map = *attributes.lookup<float2>(active_uv_name, AttrDomain::Corner);
 
-  uv_islands::MeshData mesh_data(
-      mesh.corner_tris(), mesh.corner_verts(), uv_map, pbvh.vert_positions_);
+  uv_islands::MeshData mesh_data(mesh.corner_tris(),
+                                 mesh.corner_verts(),
+                                 uv_map,
+                                 bke::pbvh::vert_positions_eval(depsgraph, object));
   uv_islands::UVIslands islands(mesh_data);
 
   uv_islands::UVIslandsMask uv_masks;
@@ -395,7 +404,7 @@ static bool update_pixels(Tree &pbvh, const Mesh &mesh, Image &image, ImageUser 
   }
 
   /* Add PBVH_TexLeaf flag */
-  for (Node &node : pbvh.nodes_) {
+  for (Node &node : pbvh.nodes<MeshNode>()) {
     if (node.flag_ & PBVH_Leaf) {
       node.flag_ = (PBVHNodeFlags)(int(node.flag_) | int(PBVH_TexLeaf));
     }
@@ -475,9 +484,11 @@ void collect_dirty_tiles(Node &node, Vector<image::TileNumber> &r_dirty_tiles)
 
 namespace blender::bke::pbvh {
 
-void build_pixels(Tree &pbvh, const Mesh &mesh, Image &image, ImageUser &image_user)
+void build_pixels(const Depsgraph &depsgraph, Object &object, Image &image, ImageUser &image_user)
 {
-  pixels::update_pixels(pbvh, mesh, image, image_user);
+  SculptSession &ss = *object.sculpt;
+  Tree &pbvh = *ss.pbvh;
+  pixels::update_pixels(depsgraph, object, pbvh, image, image_user);
 }
 
 void node_pixels_free(Node *node)

@@ -689,9 +689,16 @@ class NODE_PT_active_node_generic(Panel):
     def draw(self, context):
         layout = self.layout
         node = context.active_node
+        tree = node.id_data
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
 
         layout.prop(node, "name", icon='NODE')
         layout.prop(node, "label", icon='NODE')
+
+        if tree.type == "GEOMETRY":
+            layout.prop(node, "warning_propagation")
 
 
 class NODE_PT_active_node_color(Panel):
@@ -1020,7 +1027,9 @@ class NODE_PT_node_tree_properties(Panel):
             layout.prop(group, "description", text="Description")
 
         layout.prop(group, "color_tag")
-        layout.prop(group, "default_group_node_width", text="Node Width")
+        row = layout.row(align=True)
+        row.prop(group, "default_group_node_width", text="Node Width")
+        row.operator("node.default_group_width_set", text="", icon='NODE')
 
         if group.bl_idname == "GeometryNodeTree":
             header, body = layout.panel("group_usage")

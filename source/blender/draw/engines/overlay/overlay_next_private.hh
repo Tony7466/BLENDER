@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_movieclip.h"
+
 #include "BLI_function_ref.hh"
 
 #include "GPU_matrix.hh"
@@ -57,6 +59,8 @@ struct State {
   short v3d_flag;     /* TODO: move to #View3DOverlay. */
   short v3d_gridflag; /* TODO: move to #View3DOverlay. */
   int cfra;
+  float3 camera_position;
+  float3 camera_forward;
   DRWState clipping_state;
 
   float view_dist_get(const float4x4 &winmat) const
@@ -170,7 +174,14 @@ class ShaderModule {
   ShaderPtr anti_aliasing = shader("overlay_antialiasing");
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
+  ShaderPtr curve_edit_points;
+  ShaderPtr curve_edit_line;
+  ShaderPtr curve_edit_handles;
   ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr legacy_curve_edit_wires;
+  ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
+  ShaderPtr legacy_curve_edit_handles = shader("overlay_edit_curve_handle_next");
+  ShaderPtr legacy_curve_edit_points;
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_edit_depth;
   ShaderPtr mesh_edit_edge = shader("overlay_edit_mesh_edge_next");
@@ -187,6 +198,7 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr xray_fade = shader("overlay_xray_fade");
 
   /** Selectable Shaders */
   ShaderPtr armature_sphere_outline;
@@ -198,8 +210,21 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
+  ShaderPtr fluid_grid_lines_flags;
+  ShaderPtr fluid_grid_lines_flat;
+  ShaderPtr fluid_grid_lines_range;
+  ShaderPtr fluid_velocity_streamline;
+  ShaderPtr fluid_velocity_mac;
+  ShaderPtr fluid_velocity_needle;
+  ShaderPtr image_plane;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
+  ShaderPtr particle_dot;
+  ShaderPtr particle_shape;
+  ShaderPtr particle_hair;
+  ShaderPtr wireframe_mesh;
+  ShaderPtr wireframe_curve;
+  ShaderPtr wireframe_points; /* Draw objects without edges for the wireframe overlay. */
 
   ShaderModule(const SelectionType selection_type, const bool clipping_enabled);
 
@@ -243,6 +268,8 @@ struct Resources : public select::SelectMap {
   TextureFromPool line_tx = {"line_tx"};
   /* Target containing overlay color before anti-aliasing. */
   TextureFromPool overlay_tx = {"overlay_tx"};
+  /* Target containing depth of overlays when xray is enabled. */
+  TextureFromPool xray_depth_tx = {"xray_depth_tx"};
 
   /* Texture that are usually allocated inside. These are fallback when they aren't.
    * They are then wrapped inside the #TextureRefs below. */
@@ -259,13 +286,39 @@ struct Resources : public select::SelectMap {
   GPUUniformBuf *globals_buf;
   TextureRef weight_ramp_tx;
   /* Wrappers around #DefaultTextureList members. */
-  TextureRef depth_tx;
   TextureRef depth_in_front_tx;
   TextureRef color_overlay_tx;
   TextureRef color_render_tx;
+  /**
+   * Scene depth buffer that can also be used as render target for overlays.
+   *
+   * Can only be bound as a texture if either:
+   * - the current frame-buffer has no depth buffer attached.
+   * - `state.xray_enabled` is true.
+   */
+  TextureRef depth_tx;
+  /**
+   * Depth target.
+   * Can either be default depth buffer texture from #DefaultTextureList
+   * or `xray_depth_tx` if X-ray is enabled.
+   */
+  TextureRef depth_target_tx;
+
+  Vector<MovieClip *> bg_movie_clips;
 
   Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
+
+  ~Resources()
+  {
+    free_movieclips_textures();
+  }
+
+  void begin_sync()
+  {
+    SelectMap::begin_sync();
+    free_movieclips_textures();
+  }
 
   ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const
   {
@@ -350,6 +403,14 @@ struct Resources : public select::SelectMap {
   {
     ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
     return background_blend_color(theme_id);
+  }
+
+  void free_movieclips_textures()
+  {
+    /* Free Movie clip textures after rendering */
+    for (MovieClip *clip : bg_movie_clips) {
+      BKE_movieclip_free_gputexture(clip);
+    }
   }
 };
 
