@@ -312,7 +312,6 @@ void resize_curves(bke::CurvesGeometry &curves,
             type.value_initialize_n(dst_end_slice.data(), dst_end_slice.size());
           }
         });
-        array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
         dst.finish();
         return true;
       });
