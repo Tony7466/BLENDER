@@ -335,8 +335,8 @@ static void ui_colorpicker_create_mode_cb(bContext * /*C*/, void *bt1, void * /*
   ui_colorpicker_hide_reveal(bt->block, (ePickerType)colormode);
 }
 
-#define PICKER_TOTAL_W (200.0f * UI_SCALE_FAC)
-#define PICKER_BAR ((10.0f * UI_SCALE_FAC) + (6 * U.pixelsize))
+#define PICKER_TOTAL_W (180.0f * UI_SCALE_FAC)
+#define PICKER_BAR ((8.0f * UI_SCALE_FAC) + (6 * U.pixelsize))
 #define PICKER_SPACE (8.0f * UI_SCALE_FAC)
 #define PICKER_W (PICKER_TOTAL_W - PICKER_BAR - PICKER_SPACE)
 #define PICKER_H PICKER_W
