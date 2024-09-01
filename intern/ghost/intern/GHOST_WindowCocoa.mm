@@ -44,6 +44,7 @@
 - (void)windowWillMove:(NSNotification *)notification;
 - (BOOL)windowShouldClose:(id)sender;
 - (void)windowDidChangeBackingProperties:(NSNotification *)notification;
+
 @end
 
 @implementation BlenderWindowDelegate : NSObject
