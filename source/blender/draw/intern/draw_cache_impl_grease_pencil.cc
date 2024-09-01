@@ -1038,10 +1038,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, true);
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
-   * offsets into the curves for the vertices and triangles. */
+   * offsets into the curves for the vertices. */
   int total_verts_num = 0;
   int total_triangles_num = 0;
-  int v_offset = 0;
   Vector<Array<int>> verts_start_offsets_per_visible_drawing;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
     const bke::CurvesGeometry &curves = info.drawing.strokes();
@@ -1050,34 +1049,36 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
+    const Span<Vector<uint3>> triangles = info.drawing.triangles();
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
-    const int num_curves = visible_strokes.size();
-    const int verts_start_offsets_size = num_curves;
-    Array<int> verts_start_offsets(verts_start_offsets_size);
+    Array<int> verts_start_offsets(curves.curves_num(), 0);
 
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
     int num_points = 0;
-    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
-      IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
+    for (const int shape_index : shapes.index_range()) {
+      const IndexMask &shape = shapes[shape_index];
 
-      if (is_cyclic) {
-        num_cyclic++;
-      }
+      total_triangles_num += triangles[shape_index].size();
 
-      verts_start_offsets[pos] = v_offset;
-      v_offset += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
-      num_points += points.size();
-    });
+      shape.foreach_index([&](const int curve_i) {
+        IndexRange points = points_by_curve[curve_i];
+        const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
 
-    /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex. */
-    total_verts_num += num_points + num_cyclic + num_curves * 2;
-    total_triangles_num += (num_points + num_cyclic) * 2;
+        if (is_cyclic) {
+          num_cyclic++;
+        }
 
-    for (const int group_id : info.drawing.triangles().index_range()) {
-      total_triangles_num += info.drawing.triangles()[group_id].size();
+        verts_start_offsets[curve_i] = total_verts_num;
+        /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex.
+         */
+        total_verts_num += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
+        num_points += points.size();
+      });
     }
+
+    total_triangles_num += (num_points + num_cyclic) * 2;
 
     verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
   }
