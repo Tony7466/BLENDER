@@ -8,6 +8,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
+#include "BLI_linear_allocator.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -218,6 +219,14 @@ static bool add_instances_from_points(
          instance.has_realized_data();
 }
 
+struct InstancesPart {
+  VArray<float3> scales;
+  VArray<math::Quaternion> rotations;
+  std::optional<VArray<int>> pick_instance;
+  bke::AttributeAccessor attributes;
+  bke::AttrDomain attributes_domain;
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
@@ -238,13 +247,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
-    InstancesComponent &instances_component =
-        geometry_set.get_component_for_write<InstancesComponent>();
+    InstancesComponent &instances_component =geometry_set.get_component_for_write<InstancesComponent>();
     bke::Instances *dst_instances = instances_component.get_for_write();
     if (dst_instances == nullptr) {
       dst_instances = new bke::Instances();
       instances_component.replace(dst_instances);
     }
+
+    LinearAllocator allocator;
+    Vector<InstancesPart> instances_parts;
 
     const static std::array<GeometryComponent::Type, 3> types = {
         GeometryComponent::Type::Mesh,
@@ -262,6 +273,11 @@ static void node_geo_exec(GeoNodeExecParams params)
 
     for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
+        
+        fn::FieldEvaluator &evaluator = *new (allocator.allocate<fn::FieldEvaluator>()) fn::FieldEvaluator();
+        
+        // component_to_instances_part()
+        
         const GeometryComponent &component = *geometry_set.get_component(type);
         if (add_instances_from_points(component,
                                       instance,
@@ -278,6 +294,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
     }
     if (geometry_set.has_grease_pencil()) {
+      /*
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       for (const int layer_index : grease_pencil.layers().index_range()) {
@@ -289,12 +306,12 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (src_curves.curves_num() == 0) {
           /* Add an empty reference so the number of layers and instances match.
            * This makes it easy to reconstruct the layers afterwards and keep their attributes.
-           * Although in this particular case we don't propagate the attributes. */
+           * Although in this particular case we don't propagate the attributes. */ /*
           const int handle = dst_instances->add_reference(bke::InstanceReference());
           dst_instances->add_instance(handle, float4x4::identity());
           continue;
         }
-        /* TODO: Attributes are not propagating from the curves or the points. */
+        /* TODO: Attributes are not propagating from the curves or the points. */ /*
         bke::Instances *instances = new bke::Instances();
         const bke::GreasePencilLayerFieldContext field_context(
             grease_pencil, AttrDomain::Point, layer_index);
@@ -316,6 +333,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                              {},
                              geometry_set.get_instances_for_write()->attributes_for_write());
       }
+      */
     }
     geometry_set.remove_geometry_during_modify();
   });
