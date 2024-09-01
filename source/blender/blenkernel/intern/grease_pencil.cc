@@ -367,7 +367,7 @@ Drawing::~Drawing()
   this->runtime = nullptr;
 }
 
-Vector<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
+Vector<IndexMask> Drawing::shapes(IndexMaskMemory &memory) const
 {
   const CurvesGeometry &curves = this->strokes();
   const bke::AttributeAccessor attributes = curves.attributes();
@@ -525,23 +525,23 @@ Span<Vector<uint3>> Drawing::triangles() const
     const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
     IndexMaskMemory memory;
-    const Vector<IndexMask> groups = this->get_shapes_index_masks(memory);
+    const Vector<IndexMask> shapes = this->shapes(memory);
 
-    r_data.resize(groups.size() + 1);
+    r_data.resize(shapes.size() + 1);
     MutableSpan<Vector<uint3>> strokes_triangles = r_data.as_mutable_span();
 
     threading::EnumerableThreadSpecific<LocalMemArena> all_local_mem_arenas;
-    threading::parallel_for(groups.index_range(), 32, [&](const IndexRange group_range) {
+    threading::parallel_for(shapes.index_range(), 32, [&](const IndexRange shape_range) {
       MemArena *pf_arena = all_local_mem_arenas.local().pf_arena;
-      for (const int group_id : group_range) {
-        const IndexMask &group = groups[group_id];
+      for (const int shape_index : shape_range) {
+        const IndexMask &shape = shapes[shape_index];
 
         float3x3 axis_mat;
-        axis_dominant_v3_to_m3(axis_mat.ptr(), normals[group.first()]);
+        axis_dominant_v3_to_m3(axis_mat.ptr(), normals[shape.first()]);
 
-        Array<int> offsets_data(group.size() + 1);
+        Array<int> offsets_data(shape.size() + 1);
         offset_indices::gather_group_sizes(
-            points_by_curve, group, offsets_data.as_mutable_span().drop_back(1));
+            points_by_curve, shape, offsets_data.as_mutable_span().drop_back(1));
         offset_indices::accumulate_counts_to_offsets(offsets_data);
         const OffsetIndices<int> points_by_group = OffsetIndices<int>(offsets_data);
 
@@ -550,7 +550,7 @@ Span<Vector<uint3>> Drawing::triangles() const
         float(*projverts)[2] = static_cast<float(*)[2]>(
             BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(num_points)));
 
-        group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
+        shape.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
           const IndexRange point_group = points_by_group[pos];
           const IndexRange points = points_by_curve[curve_i];
           threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
@@ -562,14 +562,14 @@ Span<Vector<uint3>> Drawing::triangles() const
 
         /* If there is only on stroke or the geometry can not meshed then use simple poly fill
          * using the first curve in the group. */
-        if (group.size() == 1 ||
+        if (shape.size() == 1 ||
             !check_valid_curves({reinterpret_cast<float2 *>(projverts), num_points},
                                 points_by_group))
         {
-          const IndexRange points = points_by_curve[group.first()];
+          const IndexRange points = points_by_curve[shape.first()];
 
-          strokes_triangles[group_id].resize(points.size() - 2);
-          MutableSpan<uint3> r_tris = strokes_triangles[group_id];
+          strokes_triangles[shape_index].resize(points.size() - 2);
+          MutableSpan<uint3> r_tris = strokes_triangles[shape_index];
           BLI_polyfill_calc_arena(projverts,
                                   points.size(),
                                   0,
@@ -584,11 +584,11 @@ Span<Vector<uint3>> Drawing::triangles() const
 
         Array<double2> verts(num_points);
         Array<std::pair<int, int>> edges(num_points);
-        Array<Vector<int>> faces(group.size());
+        Array<Vector<int>> faces(shape.size());
 
         Array<int> vert_to_point_map(num_points);
 
-        group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
+        shape.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
           const IndexRange point_group = points_by_group[pos];
           const IndexRange points = points_by_curve[curve_i];
           faces[pos].resize(points.size());
@@ -611,8 +611,8 @@ Span<Vector<uint3>> Drawing::triangles() const
 
         meshintersect::CDT_result<double> result = delaunay_2d_calc(input, CDT_INSIDE_WITH_HOLES);
 
-        strokes_triangles[group_id].resize(result.face.size());
-        MutableSpan<uint3> r_tris = strokes_triangles[group_id];
+        strokes_triangles[shape_index].resize(result.face.size());
+        MutableSpan<uint3> r_tris = strokes_triangles[shape_index];
 
         threading::parallel_for(result.face.index_range(), 512, [&](const IndexRange range) {
           for (const int i : range) {

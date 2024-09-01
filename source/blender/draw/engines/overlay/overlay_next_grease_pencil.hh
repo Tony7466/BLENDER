@@ -89,21 +89,21 @@ class GreasePencil {
       IndexMaskMemory memory;
       const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
           *ob, info.drawing, memory);
-      const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+      const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
       const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
       const bool hide_onion = info.onion_id != 0;
 
-      for (const int group_id : groups.index_range()) {
-        const IndexMask &group = groups[group_id];
+      for (const int shape_index : shapes.index_range()) {
+        const IndexMask &shape = shapes[shape_index];
 
-        const int material_index = stroke_materials[group.first()];
+        const int material_index = stroke_materials[shape.first()];
         MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);
 
         const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
 
-        const int num_stroke_triangles = triangles[group_id].size();
+        const int num_stroke_triangles = triangles[shape_index].size();
 
         if (hide_material || hide_onion) {
           t_offset += num_stroke_triangles;
@@ -123,7 +123,7 @@ class GreasePencil {
 
         t_offset += num_stroke_triangles;
 
-        group.foreach_index([&](const int curve_i) {
+        shape.foreach_index([&](const int curve_i) {
           const IndexRange points = points_by_curve[curve_i];
 
           const int num_stroke_vertices = (points.size() +

@@ -1194,7 +1194,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
-    const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
     const Array<int> point_to_curve_map = curves.point_to_curve_map();
 
     auto point_to_id = [&](uint32_t p) {
@@ -1203,9 +1203,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       return (1 + (p - points_.first()) + verts_start_offsets[curve_]) << GP_VERTEX_ID_SHIFT;
     };
 
-    for (const int group_id : groups.index_range()) {
-      const IndexMask &group = groups[group_id];
-      const Span<uint3> tris_slice = triangles[group_id];
+    for (const int shape_index : shapes.index_range()) {
+      const IndexMask &shape = shapes[shape_index];
+      const Span<uint3> tris_slice = triangles[shape_index];
 
       /* Add the triangle indices to the index buffer. */
       for (const uint3 tri : tris_slice) {
@@ -1213,10 +1213,10 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         GPU_indexbuf_add_tri_verts(&ibo, tri_verts.x, tri_verts.y, tri_verts.z);
       }
 
-      const float4x2 texture_matrix = texture_matrices[group.first()] *
+      const float4x2 texture_matrix = texture_matrices[shape.first()] *
                                       object_space_to_layer_space;
 
-      group.foreach_index([&](const int curve_i) {
+      shape.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
         const int verts_start_offset = verts_start_offsets[curve_i];

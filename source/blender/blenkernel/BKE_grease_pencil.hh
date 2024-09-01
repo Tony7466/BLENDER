@@ -87,10 +87,11 @@ class Drawing : public ::GreasePencilDrawing {
   const bke::CurvesGeometry &strokes() const;
   bke::CurvesGeometry &strokes_for_write();
 
-  Vector<IndexMask> get_shapes_index_masks(IndexMaskMemory &memory) const;
+  Vector<IndexMask> shapes(IndexMaskMemory &memory) const;
 
   /**
    * The triangles for all the fills in the geometry.
+   * Stored per shape and indexing into points.
    */
   Span<Vector<uint3>> triangles() const;
   /**

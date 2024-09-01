@@ -725,24 +725,24 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         *ob, info.drawing, memory);
-    const Vector<IndexMask> groups = info.drawing.get_shapes_index_masks(memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     /* Precompute all the triangle and vertex counts.
      * In case the drawing should not be rendered, we need to compute the offset where the next
      * drawing begins. */
-    Array<int> num_triangles_per_stroke(groups.size());
+    Array<int> num_triangles_per_stroke(shapes.size());
     Array<int> num_vertices_per_stroke(visible_strokes.size());
     int total_num_triangles = 0;
     int total_num_vertices = 0;
     int current_curve = 0;
-    for (const int group_id : groups.index_range()) {
-      const IndexMask &group = groups[group_id];
+    for (const int shape_index : shapes.index_range()) {
+      const IndexMask &shape = shapes[shape_index];
 
-      const int num_stroke_triangles = triangles[group_id].size();
-      num_triangles_per_stroke[group_id] = num_stroke_triangles;
+      const int num_stroke_triangles = triangles[shape_index].size();
+      num_triangles_per_stroke[shape_index] = num_stroke_triangles;
       total_num_triangles += num_stroke_triangles;
 
-      group.foreach_index([&](const int curve_i) {
+      shape.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         const int num_stroke_vertices = (points.size() +
                                          int(cyclic[curve_i] && (points.size() >= 3)));
@@ -798,10 +798,10 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     const bool is_onion = info.onion_id != 0;
 
     current_curve = 0;
-    for (const int group_id : groups.index_range()) {
-      const IndexMask &group = groups[group_id];
+    for (const int shape_index : shapes.index_range()) {
+      const IndexMask &shape = shapes[shape_index];
 
-      const int curve_i = group.first();
+      const int curve_i = shape.first();
 
       /* The material index is allowed to be negative as it's stored as a generic attribute. We
        * clamp it here to avoid crashing in the rendering code. Any stroke with a material < 0
@@ -811,7 +811,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
       const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
       const bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
-      const bool show_fill = (!triangles[group_id].is_empty()) &&
+      const bool show_fill = (!triangles[shape_index].is_empty()) &&
                              ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
                              (!pd->simplify_fill);
       const bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0 ||
@@ -820,11 +820,11 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                                (only_lines && !is_onion) || hide_onion;
 
       if (skip_stroke) {
-        t_offset += num_triangles_per_stroke[group_id];
-        for (const int i : group.index_range()) {
+        t_offset += num_triangles_per_stroke[shape_index];
+        for (const int i : shape.index_range()) {
           t_offset += num_vertices_per_stroke[current_curve + i] * 2;
         };
-        current_curve += group.size();
+        current_curve += shape.size();
         continue;
       }
 
@@ -870,13 +870,13 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
       if (show_fill) {
         const int v_first = t_offset * 3;
-        const int v_count = num_triangles_per_stroke[group_id] * 3;
+        const int v_count = num_triangles_per_stroke[shape_index] * 3;
         drawcall_add(geom, v_first, v_count);
       }
 
-      t_offset += num_triangles_per_stroke[group_id];
+      t_offset += num_triangles_per_stroke[shape_index];
 
-      group.foreach_index([&](const int curve_i) {
+      shape.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
 
         if (show_stroke) {
