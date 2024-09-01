@@ -37,7 +37,7 @@ struct SeqThumbInfo {
   ImBuf *ibuf;
   float left_handle, right_handle, bottom, top;
   float x1, x2, y1, y2;
-  int cropx_min, cropx_max;
+  float cropx_min, cropx_max;
   bool muted;
 };
 
@@ -160,9 +160,9 @@ static void get_seq_strip_thumbnails(const View2D *v2d,
       clipped = true;
     }
 
-    int cropx_min = int(cut_off * crop_x_multiplier);
-    int cropx_max = int((thumb_x_end - timeline_frame) * crop_x_multiplier);
-    if (cropx_max < 1) {
+    float cropx_min = cut_off * crop_x_multiplier;
+    float cropx_max = (thumb_x_end - timeline_frame) * crop_x_multiplier;
+    if (cropx_max < 1.0f) {
       break;
     }
 
@@ -177,8 +177,8 @@ static void get_seq_strip_thumbnails(const View2D *v2d,
     thumb.cropx_min = 0;
     thumb.cropx_max = ibuf->x - 1;
     if (clipped) {
-      thumb.cropx_min = clamp_i(cropx_min, 0, ibuf->x - 1);
-      thumb.cropx_max = clamp_i(cropx_max - 1, 0, ibuf->x - 1);
+      thumb.cropx_min = clamp_f(cropx_min, 0, ibuf->x - 1);
+      thumb.cropx_max = clamp_f(cropx_max - 1 * 0, 0, ibuf->x - 1);
     }
     thumb.left_handle = strip.left_handle;
     thumb.right_handle = strip.right_handle;
@@ -228,7 +228,8 @@ struct ThumbsDrawBatch {
     GPU_uniformbuf_free(ubo_thumbs_);
   }
 
-  void add_thumb(const SeqThumbInfo &info, const rcti &rect, int tex_width, int tex_height)
+  void add_thumb(
+      const SeqThumbInfo &info, float width, const rcti &rect, int tex_width, int tex_height)
   {
     if (thumbs_count_ == GPU_SEQ_STRIP_DRAW_DATA_LEN) {
       flush_batch();
@@ -247,7 +248,7 @@ struct ThumbsDrawBatch {
     res.y1 = strips_batch_.pos_to_pixel_space_y(info.y1);
     res.y2 = strips_batch_.pos_to_pixel_space_y(info.y2);
     res.u1 = float(rect.xmin) / float(tex_width);
-    res.u2 = float(rect.xmax) / float(tex_width);
+    res.u2 = float(rect.xmin + width) / float(tex_width);
     res.v1 = float(rect.ymin) / float(tex_height);
     res.v2 = float(rect.ymax) / float(tex_height);
   }
@@ -310,7 +311,9 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
   Vector<rcti> rects;
   rects.reserve(thumbs.size());
   for (const SeqThumbInfo &info : thumbs) {
-    int width = info.cropx_max - info.cropx_min + 1;
+    int cropx_min = int(info.cropx_min);
+    int cropx_max = int(math::ceil(info.cropx_max));
+    int width = cropx_max - cropx_min + 1;
     int height = info.ibuf->y;
     cur_row_height = math::max(cur_row_height, height);
 
@@ -344,10 +347,12 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
     void *cache_handle = nullptr;
     uchar *display_buffer = IMB_display_buffer_acquire(
         info.ibuf, view_settings, display_settings, &cache_handle);
-    if (display_buffer != nullptr) {
-      int width = info.cropx_max - info.cropx_min + 1;
+    if (display_buffer != nullptr && info.ibuf != nullptr) {
+      int cropx_min = int(info.cropx_min);
+      int cropx_max = int(math::ceil(info.cropx_max));
+      int width = cropx_max - cropx_min + 1;
       int height = info.ibuf->y;
-      const uchar *src = display_buffer + info.cropx_min * 4;
+      const uchar *src = display_buffer + cropx_min * 4;
       uchar *dst = &tex_data[(rect.ymin * ATLAS_WIDTH + rect.xmin) * 4];
       for (int y = 0; y < height; y++) {
         memcpy(dst, src, width * 4);
@@ -375,7 +380,7 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
   for (int64_t i = 0; i < rects.size(); i++) {
     const rcti &rect = rects[i];
     const SeqThumbInfo &info = thumbs[i];
-    batch.add_thumb(info, rect, tex_width, tex_height);
+    batch.add_thumb(info, info.cropx_max - info.cropx_min + 1, rect, tex_width, tex_height);
   }
   batch.flush_batch();
 
