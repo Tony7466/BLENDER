@@ -658,7 +658,7 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
         }
         GMutableSpan selection_curve = selection.span.slice(
             selection_domain == bke::AttrDomain::Point ? points_by_curve[curve_i2] :
-                                                         IndexRange(curve_i2, 1));
+                                                         IndexRange::from_single(curve_i2));
         ed::curves::fill_selection_true(selection_curve);
       }
     });
