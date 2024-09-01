@@ -1208,12 +1208,13 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       const Span<uint3> tris_slice = triangles[group_id];
 
       /* Add the triangle indices to the index buffer. */
-      // if (tris_slice.size() != 0) {
       for (const uint3 tri : tris_slice) {
         const uint3 tri_verts = uint3(point_to_id(tri.x), point_to_id(tri.y), point_to_id(tri.z));
         GPU_indexbuf_add_tri_verts(&ibo, tri_verts.x, tri_verts.y, tri_verts.z);
       }
-      // }
+
+      const float4x2 texture_matrix = texture_matrices[group.first()] *
+                                      object_space_to_layer_space;
 
       group.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
@@ -1223,7 +1224,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         const IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
         MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
         MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-        const float4x2 texture_matrix = texture_matrices[curve_i] * object_space_to_layer_space;
 
         const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
 
