@@ -335,7 +335,7 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
   /* Create the atlas GPU texture. */
   const int tex_width = ATLAS_WIDTH;
   const int tex_height = cur_row_y + cur_row_height;
-  Array<uchar> tex_data(tex_width * tex_height * 4);
+  Array<uchar> tex_data(tex_width * tex_height * 4, 0);
   for (int64_t i = 0; i < rects.size(); i++) {
     /* Copy one thumbnail into atlas. */
     const rcti &rect = rects[i];
