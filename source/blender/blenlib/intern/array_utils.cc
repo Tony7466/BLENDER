@@ -5,62 +5,395 @@
 #include <functional>
 
 #include "BLI_array_utils.hh"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_quaternion_types.hh"
+#include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 
 #include "atomic_ops.h"
 
 namespace blender::array_utils {
 
-void copy(const GVArray &src, GMutableSpan dst, const int64_t grain_size)
-{
-  BLI_assert(src.type() == dst.type());
-  BLI_assert(src.size() == dst.size());
-  threading::parallel_for(src.index_range(), grain_size, [&](const IndexRange range) {
-    src.materialize_to_uninitialized(range, dst.data());
-  });
-}
-
-void copy(const GVArray &src,
-          const IndexMask &selection,
+void copy(const IndexMask &src_mask,
+          const IndexMask &dst_mask,
+          const GVArray &src,
           GMutableSpan dst,
           const int64_t grain_size)
 {
-  BLI_assert(src.type() == dst.type());
-  BLI_assert(src.size() >= selection.min_array_size());
-  BLI_assert(dst.size() >= selection.min_array_size());
-  threading::parallel_for(selection.index_range(), grain_size, [&](const IndexRange range) {
-    src.materialize_to_uninitialized(selection.slice(range), dst.data());
+  BLI_assert(src_mask.size() == dst_mask.size());
+  BLI_assert(src_mask.min_array_size() <= src.size());
+  BLI_assert(dst_mask.min_array_size() <= dst.size());
+  threading::parallel_for(src_mask.index_range(), grain_size, [&](const IndexRange range) {
+    const IndexMask src_local_mask = src_mask.slice(range);
+    const IndexMask dst_local_mask = dst_mask.slice(range);
+
+    const std::optional<IndexRange> src_range = src_local_mask.to_range();
+    const std::optional<IndexRange> dst_range = dst_local_mask.to_range();
+    if (src_range.has_value() && dst_range.has_value()) {
+      src.materialize(IndexMask(*src_range), dst[dst_range->start()]);
+      return;
+    }
+    if (dst_range.has_value()) {
+      src.materialize_compressed(src_local_mask, dst[dst_range->start()]);
+      return;
+    }
+    IndexMask::foreach_segment_zipped({src_local_mask, dst_local_mask},
+                                      [&](const Span<IndexMaskSegment> segments) {
+                                        const IndexMaskSegment src_segment = segments[0];
+                                        const IndexMaskSegment dst_segment = segments[1];
+                                        for (const int64_t i : src_segment.index_range()) {
+                                          src.get(src_segment[i], dst[dst_segment[i]]);
+                                        }
+                                        return true;
+                                      });
   });
 }
 
-void gather(const GVArray &src,
-            const IndexMask &indices,
-            GMutableSpan dst,
-            const int64_t grain_size)
+void copy_groups(const IndexMask &src_mask,
+                 const IndexMask &dst_mask,
+                 const OffsetIndices<int> src_offsets,
+                 const OffsetIndices<int> dst_offsets,
+                 const GVArray &src,
+                 GMutableSpan dst,
+                 const int64_t grain_size)
 {
-  BLI_assert(src.type() == dst.type());
-  BLI_assert(indices.size() == dst.size());
-  threading::parallel_for(indices.index_range(), grain_size, [&](const IndexRange range) {
-    src.materialize_compressed_to_uninitialized(indices.slice(range), dst.slice(range).data());
-  });
+  BLI_assert(src_mask.size() == dst_mask.size());
+  [[maybe_unused]] const IndexRange mask_range = src_mask.index_range();
+  BLI_assert(std::all_of(mask_range.begin(), mask_range.end(), [&](const int64_t index) {
+    return src_offsets[src_mask[index]].size() == dst_offsets[dst_mask[index]].size();
+  }));
+  BLI_assert(std::all_of(mask_range.begin(), mask_range.end(), [&](const int64_t index) {
+    return src_offsets[src_mask[index]].last() < src.size();
+  }));
+  BLI_assert(std::all_of(mask_range.begin(), mask_range.end(), [&](const int64_t index) {
+    return dst_offsets[dst_mask[index]].last() < dst.size();
+  }));
+  threading::parallel_for(
+      src_mask.index_range(),
+      grain_size,
+      [&](const IndexRange range) {
+        const IndexMask src_local_mask = src_mask.slice(range);
+        const IndexMask dst_local_mask = dst_mask.slice(range);
+
+        const std::optional<IndexRange> src_range = src_local_mask.to_range();
+        const std::optional<IndexRange> dst_range = dst_local_mask.to_range();
+        if (src_range.has_value() && dst_range.has_value()) {
+          const IndexRange src_values = src_offsets[*src_range];
+          const IndexRange dst_values = dst_offsets[*dst_range];
+          src.materialize(IndexMask(src_values), dst[dst_values.start()]);
+          return;
+        }
+
+        IndexMask::foreach_segment_zipped(
+            {src_local_mask, dst_local_mask}, [&](const Span<IndexMaskSegment> segments) {
+              const IndexMaskSegment src_segment = segments[0];
+              const IndexMaskSegment dst_segment = segments[1];
+              for (const int64_t i : src_segment.index_range()) {
+                const IndexRange src_values = src_offsets[src_segment[i]];
+                const IndexRange dst_values = dst_offsets[dst_segment[i]];
+                src.materialize(IndexMask(src_values), dst[dst_values.start()]);
+              }
+              return true;
+            });
+      },
+      threading::accumulated_task_sizes([&](const IndexRange range) -> int64_t {
+        const IndexMask src_local_mask = src_mask.slice(range);
+        const std::optional<IndexRange> src_range = src_local_mask.to_range();
+        if (src_range.has_value()) {
+          return src_offsets[*src_range].size();
+        }
+        const IndexMask dst_local_mask = dst_mask.slice(range);
+        const std::optional<IndexRange> dst_range = dst_local_mask.to_range();
+        if (dst_range.has_value()) {
+          return dst_offsets[*dst_range].size();
+        }
+        const int64_t src_max_bound = src_offsets[src_local_mask.bounds()].size();
+        const int64_t dst_max_bound = dst_offsets[dst_local_mask.bounds()].size();
+        return std::min(src_max_bound, dst_max_bound);
+      }));
 }
 
-void gather(const GSpan src, const IndexMask &indices, GMutableSpan dst, const int64_t grain_size)
+void copy(const GVArray &src, GMutableSpan dst, const int64_t grain_size)
 {
-  gather(GVArray::ForSpan(src), indices, dst, grain_size);
+  copy(IndexMask(src.size()), IndexMask(dst.size()), src, dst, grain_size);
+}
+
+void copy(GSpan src, GMutableSpan dst, const int64_t grain_size)
+{
+  copy(GVArray::ForSpan(src), dst, grain_size);
+}
+
+void copy(const GVArray &src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  copy(mask, mask, src, dst, grain_size);
+}
+
+void copy(GSpan src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  copy(GVArray::ForSpan(src), mask, dst, grain_size);
+}
+
+void gather(const GVArray &src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  copy(mask, IndexMask(dst.size()), src, dst, grain_size);
+}
+
+void gather(GSpan src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  gather(GVArray::ForSpan(src), mask, dst, grain_size);
+}
+
+void scatter(const GVArray &src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  copy(IndexMask(src.size()), mask, src, dst, grain_size);
+}
+
+void scatter(GSpan src, const IndexMask &mask, GMutableSpan dst, const int64_t grain_size)
+{
+  scatter(GVArray::ForSpan(src), mask, dst, grain_size);
 }
 
 void copy_group_to_group(const OffsetIndices<int> src_offsets,
                          const OffsetIndices<int> dst_offsets,
-                         const IndexMask &selection,
-                         const GSpan src,
-                         GMutableSpan dst)
+                         const IndexMask &mask,
+                         const GVArray &src,
+                         GMutableSpan dst,
+                         const int64_t grain_size)
 {
-  /* Each group might be large, so a threaded copy might make sense here too. */
-  selection.foreach_index(GrainSize(512), [&](const int i) {
-    dst.slice(dst_offsets[i]).copy_from(src.slice(src_offsets[i]));
-  });
+  copy_groups(mask, mask, src_offsets, dst_offsets, src, dst, grain_size);
 }
+
+void copy_group_to_group(const OffsetIndices<int> src_offsets,
+                         const OffsetIndices<int> dst_offsets,
+                         const IndexMask &mask,
+                         GSpan src,
+                         GMutableSpan dst,
+                         const int64_t grain_size)
+{
+  copy_group_to_group(src_offsets, dst_offsets, mask, GVArray::ForSpan(src), dst, grain_size);
+}
+
+void gather_group_to_group(const OffsetIndices<int> src_offsets,
+                           const OffsetIndices<int> dst_offsets,
+                           const IndexMask &mask,
+                           const GVArray &src,
+                           GMutableSpan dst,
+                           const int64_t grain_size)
+{
+  copy_groups(mask, IndexMask(dst.size()), src_offsets, dst_offsets, src, dst, grain_size);
+}
+
+void gather_group_to_group(const OffsetIndices<int> src_offsets,
+                           const OffsetIndices<int> dst_offsets,
+                           const IndexMask &mask,
+                           GSpan src,
+                           GMutableSpan dst,
+                           const int64_t grain_size)
+{
+  gather_group_to_group(src_offsets, dst_offsets, mask, GVArray::ForSpan(src), dst, grain_size);
+}
+
+void scatter_group_to_group(const OffsetIndices<int> src_offsets,
+                            const OffsetIndices<int> dst_offsets,
+                            const IndexMask &mask,
+                            const GVArray &src,
+                            GMutableSpan dst,
+                            const int64_t grain_size)
+{
+  copy_groups(IndexMask(src.size()), mask, src_offsets, dst_offsets, src, dst, grain_size);
+}
+
+void scatter_group_to_group(const OffsetIndices<int> src_offsets,
+                            const OffsetIndices<int> dst_offsets,
+                            const IndexMask &mask,
+                            GSpan src,
+                            GMutableSpan dst,
+                            const int64_t grain_size)
+{
+  scatter_group_to_group(src_offsets, dst_offsets, mask, GVArray::ForSpan(src), dst, grain_size);
+}
+
+template void copy<bool>(const IndexMask &src_mask,
+                         const IndexMask &dst_mask,
+                         const VArray<bool> &src,
+                         MutableSpan<bool> dst,
+                         int64_t grain_size);
+template void copy<int>(const IndexMask &src_mask,
+                        const IndexMask &dst_mask,
+                        const VArray<int> &src,
+                        MutableSpan<int> dst,
+                        int64_t grain_size);
+template void copy<int2>(const IndexMask &src_mask,
+                         const IndexMask &dst_mask,
+                         const VArray<int2> &src,
+                         MutableSpan<int2> dst,
+                         int64_t grain_size);
+template void copy<int3>(const IndexMask &src_mask,
+                         const IndexMask &dst_mask,
+                         const VArray<int3> &src,
+                         MutableSpan<int3> dst,
+                         int64_t grain_size);
+template void copy<int8_t>(const IndexMask &src_mask,
+                           const IndexMask &dst_mask,
+                           const VArray<int8_t> &src,
+                           MutableSpan<int8_t> dst,
+                           int64_t grain_size);
+template void copy<int64_t>(const IndexMask &src_mask,
+                            const IndexMask &dst_mask,
+                            const VArray<int64_t> &src,
+                            MutableSpan<int64_t> dst,
+                            int64_t grain_size);
+template void copy<float>(const IndexMask &src_mask,
+                          const IndexMask &dst_mask,
+                          const VArray<float> &src,
+                          MutableSpan<float> dst,
+                          int64_t grain_size);
+template void copy<float2>(const IndexMask &src_mask,
+                           const IndexMask &dst_mask,
+                           const VArray<float2> &src,
+                           MutableSpan<float2> dst,
+                           int64_t grain_size);
+template void copy<float3>(const IndexMask &src_mask,
+                           const IndexMask &dst_mask,
+                           const VArray<float3> &src,
+                           MutableSpan<float3> dst,
+                           int64_t grain_size);
+template void copy<float4>(const IndexMask &src_mask,
+                           const IndexMask &dst_mask,
+                           const VArray<float4> &src,
+                           MutableSpan<float4> dst,
+                           int64_t grain_size);
+template void copy<float2x2>(const IndexMask &src_mask,
+                             const IndexMask &dst_mask,
+                             const VArray<float2x2> &src,
+                             MutableSpan<float2x2> dst,
+                             int64_t grain_size);
+template void copy<float3x3>(const IndexMask &src_mask,
+                             const IndexMask &dst_mask,
+                             const VArray<float3x3> &src,
+                             MutableSpan<float3x3> dst,
+                             int64_t grain_size);
+template void copy<float4x4>(const IndexMask &src_mask,
+                             const IndexMask &dst_mask,
+                             const VArray<float4x4> &src,
+                             MutableSpan<float4x4> dst,
+                             int64_t grain_size);
+template void copy<math::Quaternion>(const IndexMask &src_mask,
+                                     const IndexMask &dst_mask,
+                                     const VArray<math::Quaternion> &src,
+                                     MutableSpan<math::Quaternion> dst,
+                                     int64_t grain_size);
+template void copy<std::string>(const IndexMask &src_mask,
+                                const IndexMask &dst_mask,
+                                const VArray<std::string> &src,
+                                MutableSpan<std::string> dst,
+                                int64_t grain_size);
+
+template void copy_groups<bool>(const IndexMask &src_mask,
+                                const IndexMask &dst_mask,
+                                const OffsetIndices<int> src_offsets,
+                                const OffsetIndices<int> dst_offsets,
+                                const VArray<bool> &src,
+                                MutableSpan<bool> dst,
+                                int64_t grain_size);
+template void copy_groups<int>(const IndexMask &src_mask,
+                               const IndexMask &dst_mask,
+                               const OffsetIndices<int> src_offsets,
+                               const OffsetIndices<int> dst_offsets,
+                               const VArray<int> &src,
+                               MutableSpan<int> dst,
+                               int64_t grain_size);
+template void copy_groups<int2>(const IndexMask &src_mask,
+                                const IndexMask &dst_mask,
+                                const OffsetIndices<int> src_offsets,
+                                const OffsetIndices<int> dst_offsets,
+                                const VArray<int2> &src,
+                                MutableSpan<int2> dst,
+                                int64_t grain_size);
+template void copy_groups<int3>(const IndexMask &src_mask,
+                                const IndexMask &dst_mask,
+                                const OffsetIndices<int> src_offsets,
+                                const OffsetIndices<int> dst_offsets,
+                                const VArray<int3> &src,
+                                MutableSpan<int3> dst,
+                                int64_t grain_size);
+template void copy_groups<int8_t>(const IndexMask &src_mask,
+                                  const IndexMask &dst_mask,
+                                  const OffsetIndices<int> src_offsets,
+                                  const OffsetIndices<int> dst_offsets,
+                                  const VArray<int8_t> &src,
+                                  MutableSpan<int8_t> dst,
+                                  int64_t grain_size);
+template void copy_groups<int64_t>(const IndexMask &src_mask,
+                                   const IndexMask &dst_mask,
+                                   const OffsetIndices<int> src_offsets,
+                                   const OffsetIndices<int> dst_offsets,
+                                   const VArray<int64_t> &src,
+                                   MutableSpan<int64_t> dst,
+                                   int64_t grain_size);
+template void copy_groups<float>(const IndexMask &src_mask,
+                                 const IndexMask &dst_mask,
+                                 const OffsetIndices<int> src_offsets,
+                                 const OffsetIndices<int> dst_offsets,
+                                 const VArray<float> &src,
+                                 MutableSpan<float> dst,
+                                 int64_t grain_size);
+template void copy_groups<float2>(const IndexMask &src_mask,
+                                  const IndexMask &dst_mask,
+                                  const OffsetIndices<int> src_offsets,
+                                  const OffsetIndices<int> dst_offsets,
+                                  const VArray<float2> &src,
+                                  MutableSpan<float2> dst,
+                                  int64_t grain_size);
+template void copy_groups<float3>(const IndexMask &src_mask,
+                                  const IndexMask &dst_mask,
+                                  const OffsetIndices<int> src_offsets,
+                                  const OffsetIndices<int> dst_offsets,
+                                  const VArray<float3> &src,
+                                  MutableSpan<float3> dst,
+                                  int64_t grain_size);
+template void copy_groups<float4>(const IndexMask &src_mask,
+                                  const IndexMask &dst_mask,
+                                  const OffsetIndices<int> src_offsets,
+                                  const OffsetIndices<int> dst_offsets,
+                                  const VArray<float4> &src,
+                                  MutableSpan<float4> dst,
+                                  int64_t grain_size);
+template void copy_groups<float2x2>(const IndexMask &src_mask,
+                                    const IndexMask &dst_mask,
+                                    const OffsetIndices<int> src_offsets,
+                                    const OffsetIndices<int> dst_offsets,
+                                    const VArray<float2x2> &src,
+                                    MutableSpan<float2x2> dst,
+                                    int64_t grain_size);
+template void copy_groups<float3x3>(const IndexMask &src_mask,
+                                    const IndexMask &dst_mask,
+                                    const OffsetIndices<int> src_offsets,
+                                    const OffsetIndices<int> dst_offsets,
+                                    const VArray<float3x3> &src,
+                                    MutableSpan<float3x3> dst,
+                                    int64_t grain_size);
+template void copy_groups<float4x4>(const IndexMask &src_mask,
+                                    const IndexMask &dst_mask,
+                                    const OffsetIndices<int> src_offsets,
+                                    const OffsetIndices<int> dst_offsets,
+                                    const VArray<float4x4> &src,
+                                    MutableSpan<float4x4> dst,
+                                    int64_t grain_size);
+template void copy_groups<math::Quaternion>(const IndexMask &src_mask,
+                                            const IndexMask &dst_mask,
+                                            const OffsetIndices<int> src_offsets,
+                                            const OffsetIndices<int> dst_offsets,
+                                            const VArray<math::Quaternion> &src,
+                                            MutableSpan<math::Quaternion> dst,
+                                            int64_t grain_size);
+template void copy_groups<std::string>(const IndexMask &src_mask,
+                                       const IndexMask &dst_mask,
+                                       const OffsetIndices<int> src_offsets,
+                                       const OffsetIndices<int> dst_offsets,
+                                       const VArray<std::string> &src,
+                                       MutableSpan<std::string> dst,
+                                       int64_t grain_size);
 
 void count_indices(const Span<int> indices, MutableSpan<int> counts)
 {
