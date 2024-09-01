@@ -628,9 +628,11 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+    const IndexMask selected_strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, info.layer_index, memory);
-    if (strokes.is_empty()) {
+    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+        *object, info.drawing, info.layer_index, memory);
+    if (selected_strokes.is_empty()) {
       return;
     }
 
@@ -640,9 +642,7 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
 
     /* If the attribute does not exist then each curves is it's own shape. */
     if (!shape_ids) {
-      const IndexMask selectable_strokes = ed::greasepencil::retrieve_editable_strokes(
-          *object, info.drawing, info.layer_index, memory);
-      blender::ed::curves::select_linked(curves, selectable_strokes);
+      blender::ed::curves::select_linked(curves, editable_strokes);
       return;
     }
 
@@ -650,17 +650,17 @@ static int select_shape_exec(bContext *C, wmOperator * /*op*/)
     bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
         curves, selection_domain, CD_PROP_BOOL);
 
-    strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
+    selected_strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
       const int shape_id = shape_ids[curve_i];
-      for (const int curve_i2 : curves.curves_range()) {
+      editable_strokes.foreach_index(GrainSize(256), [&](const int64_t curve_i2) {
         if (shape_ids[curve_i2] != shape_id) {
-          continue;
+          return;
         }
         GMutableSpan selection_curve = selection.span.slice(
             selection_domain == bke::AttrDomain::Point ? points_by_curve[curve_i2] :
                                                          IndexRange::from_single(curve_i2));
         ed::curves::fill_selection_true(selection_curve);
-      }
+      });
     });
 
     selection.finish();
