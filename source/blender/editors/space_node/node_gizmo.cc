@@ -110,7 +110,7 @@ static bool WIDGETGROUP_node_transform_poll(const bContext *C, wmGizmoGroupType 
   }
 
   if (node_gizmo_is_set_visible(C)) {
-    bNode *node = bke::nodeGetActive(snode->edittree);
+    bNode *node = bke::node_get_active(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_VIEWER)) {
       return true;
@@ -315,7 +315,7 @@ static bool WIDGETGROUP_node_crop_poll(const bContext *C, wmGizmoGroupType * /*g
   }
 
   if (node_gizmo_is_set_visible(C)) {
-    bNode *node = bke::nodeGetActive(snode->edittree);
+    bNode *node = bke::node_get_active(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_CROP)) {
       /* ignore 'use_crop_size', we can't usefully edit the crop in this case. */
@@ -432,7 +432,7 @@ static bool WIDGETGROUP_node_sbeam_poll(const bContext *C, wmGizmoGroupType * /*
   }
 
   if (node_gizmo_is_set_visible(C)) {
-    bNode *node = bke::nodeGetActive(snode->edittree);
+    bNode *node = bke::node_get_active(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_SUNBEAMS)) {
       return true;
@@ -539,7 +539,7 @@ static bool WIDGETGROUP_node_corner_pin_poll(const bContext *C, wmGizmoGroupType
   }
 
   if (node_gizmo_is_set_visible(C)) {
-    bNode *node = bke::nodeGetActive(snode->edittree);
+    bNode *node = bke::node_get_active(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_CORNERPIN)) {
       return true;
