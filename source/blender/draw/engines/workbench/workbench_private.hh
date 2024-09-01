@@ -172,8 +172,6 @@ struct SceneState {
   bool reset_taa_next_sample = false;
   bool render_finished = false;
 
-  bool overlays_enabled = false;
-
   /* Used when material_type == eMaterialType::SINGLE */
   Material material_override = Material(float3(1.0f));
   /* When r == -1.0 the shader uses the vertex color */
@@ -281,6 +279,7 @@ struct SceneResources {
   TextureRef depth_in_front_tx;
 
   Framebuffer clear_fb = {"Clear Main"};
+  Framebuffer clear_depth_only_fb = {"Clear Depth"};
   Framebuffer clear_in_front_fb = {"Clear In Front"};
 
   StorageVectorBuffer<Material> material_buf = {"material_buf"};

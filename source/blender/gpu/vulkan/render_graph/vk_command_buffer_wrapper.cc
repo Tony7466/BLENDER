@@ -73,9 +73,14 @@ void VKCommandBufferWrapper::begin_recording()
   if (vk_fence_ == VK_NULL_HANDLE) {
     vkCreateFence(device.vk_handle(), &vk_fence_create_info_, vk_allocation_callbacks, &vk_fence_);
   }
-  BLI_assert(vk_command_buffer_ == VK_NULL_HANDLE);
-  vkAllocateCommandBuffers(
-      device.vk_handle(), &vk_command_buffer_allocate_info_, &vk_command_buffer_);
+
+  if (vk_command_buffer_ == VK_NULL_HANDLE) {
+    vkAllocateCommandBuffers(
+        device.vk_handle(), &vk_command_buffer_allocate_info_, &vk_command_buffer_);
+  }
+  else {
+    vkResetCommandBuffer(vk_command_buffer_, 0);
+  }
 
   vkBeginCommandBuffer(vk_command_buffer_, &vk_command_buffer_begin_info_);
 }
@@ -90,7 +95,6 @@ void VKCommandBufferWrapper::submit_with_cpu_synchronization()
   VKDevice &device = VKBackend::get().device;
   vkResetFences(device.vk_handle(), 1, &vk_fence_);
   vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence_);
-  vk_command_buffer_ = VK_NULL_HANDLE;
 }
 
 void VKCommandBufferWrapper::wait_for_cpu_synchronization()
@@ -326,6 +330,25 @@ void VKCommandBufferWrapper::end_rendering()
   const VKDevice &device = VKBackend::get().device;
   BLI_assert(device.functions.vkCmdEndRendering);
   device.functions.vkCmdEndRendering(vk_command_buffer_);
+}
+
+void VKCommandBufferWrapper::begin_query(VkQueryPool vk_query_pool,
+                                         uint32_t query_index,
+                                         VkQueryControlFlags vk_query_control_flags)
+{
+  vkCmdBeginQuery(vk_command_buffer_, vk_query_pool, query_index, vk_query_control_flags);
+}
+
+void VKCommandBufferWrapper::end_query(VkQueryPool vk_query_pool, uint32_t query_index)
+{
+  vkCmdEndQuery(vk_command_buffer_, vk_query_pool, query_index);
+}
+
+void VKCommandBufferWrapper::reset_query_pool(VkQueryPool vk_query_pool,
+                                              uint32_t first_query,
+                                              uint32_t query_count)
+{
+  vkCmdResetQueryPool(vk_command_buffer_, vk_query_pool, first_query, query_count);
 }
 
 void VKCommandBufferWrapper::begin_debug_utils_label(
