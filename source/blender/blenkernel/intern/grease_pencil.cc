@@ -510,6 +510,18 @@ static bool check_valid_curves(Span<float2> projverts, const OffsetIndices<int> 
 
 Span<Vector<uint3>> Drawing::triangles() const
 {
+  struct LocalMemArena {
+    MemArena *pf_arena = nullptr;
+    LocalMemArena() : pf_arena(BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, "Drawing::triangles")) {}
+
+    ~LocalMemArena()
+    {
+      if (pf_arena != nullptr) {
+        BLI_memarena_free(pf_arena);
+      }
+    }
+  };
+
   this->runtime->triangles_cache.ensure([&](Vector<Vector<uint3>> &r_data) {
     const CurvesGeometry &curves = this->strokes();
     const Span<float3> positions = curves.evaluated_positions();
@@ -521,11 +533,11 @@ Span<Vector<uint3>> Drawing::triangles() const
     const Array<IndexMask> groups = this->get_shapes_index_masks(memory);
 
     r_data.resize(groups.size() + 1);
-
-    // r_data.resize(curves.curves_num());
     MutableSpan<Vector<uint3>> strokes_triangles = r_data.as_mutable_span();
 
+    threading::EnumerableThreadSpecific<LocalMemArena> all_local_mem_arenas;
     threading::parallel_for(groups.index_range(), 32, [&](const IndexRange group_range) {
+      MemArena *pf_arena = all_local_mem_arenas.local().pf_arena;
       for (const int group_id : group_range) {
         const IndexMask &group = groups[group_id];
 
@@ -540,18 +552,38 @@ Span<Vector<uint3>> Drawing::triangles() const
 
         const int num_points = points_by_group.total_size();
 
-        Array<float2> projverts2(num_points);
+        float(*projverts)[2] = static_cast<float(*)[2]>(
+            BLI_memarena_alloc(pf_arena, sizeof(*projverts) * size_t(num_points)));
+
         group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
           const IndexRange point_group = points_by_group[pos];
           const IndexRange points = points_by_curve[curve_i];
           threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
             for (const int p_id : range) {
-              mul_v2_m3v3(projverts2[point_group[p_id]], axis_mat.ptr(), positions[points[p_id]]);
+              mul_v2_m3v3(projverts[point_group[p_id]], axis_mat.ptr(), positions[points[p_id]]);
             }
           });
         });
 
-        if (!check_valid_curves(projverts2, points_by_group)) {
+        /* If there is only on stroke or the geometry can not meshed then use simple poly fill
+         * using the first curve in the group. */
+        if (group.size() == 1 ||
+            !check_valid_curves({reinterpret_cast<float2 *>(projverts), num_points},
+                                points_by_group))
+        {
+          const IndexRange points = points_by_curve[group.first()];
+
+          strokes_triangles[group_id].resize(points.size() - 2);
+          MutableSpan<uint3> r_tris = strokes_triangles[group_id];
+          BLI_polyfill_calc_arena(projverts,
+                                  points.size(),
+                                  0,
+                                  reinterpret_cast<uint32_t(*)[3]>(r_tris.data()),
+                                  pf_arena);
+          for (const int i : r_tris.index_range()) {
+            r_tris[i] += points.first();
+          }
+          BLI_memarena_clear(pf_arena);
           continue;
         }
 
@@ -568,7 +600,7 @@ Span<Vector<uint3>> Drawing::triangles() const
           threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
             for (const int p_id : range) {
               vert_to_point_map[point_group[p_id]] = points[p_id];
-              verts[point_group[p_id]] = double2(projverts2[point_group[p_id]]);
+              verts[point_group[p_id]] = double2(projverts[point_group[p_id]]);
               edges[point_group[p_id]] = std::pair<int, int>(
                   point_group[p_id], point_group[(p_id + 1) % points.size()]);
               faces[pos][p_id] = point_group[p_id];
