@@ -271,7 +271,8 @@ class AttributeFieldInput : public GeometryFieldInput {
         name_(std::move(name)),
         socket_inspection_name_(std::move(socket_inspection_name))
   {
-    category_ = Category::NamedAttribute;
+    category_ = attribute_name_is_anonymous(name_) ? Category::AnonymousAttribute :
+                                                     Category::NamedAttribute;
   }
 
   static fn::GField Create(std::string name,
