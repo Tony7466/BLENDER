@@ -4,14 +4,12 @@
 
 #pragma once
 
-
 #include <functional>
 #include <optional>
 
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
-
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_struct_equality_utils.hh"
@@ -75,6 +73,13 @@ class AttributeIDRef {
   friend std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_id);
 };
 
+/**
+ * Checks if the attribute name has the `.a_` prefix which indicates that it is an anonymous
+ * attribute. I.e. it is just internally used by Blender and the name should not be exposed to the
+ * user.
+ *
+ * Use #hash_to_anonymous_attribute_name to generate names for anonymous attributes.
+ */
 inline bool attribute_name_is_anonymous(const StringRef name)
 {
   return name.startswith(".a_");
