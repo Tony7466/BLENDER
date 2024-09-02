@@ -96,8 +96,8 @@ class Node {
 };
 
 struct MeshNode : public Node {
-  /** Indices into the #Mesh::corner_tris() array. Refers to a subset of Tree::prim_indices_. */
-  Span<int> prim_indices_;
+  /** Indices into the #Mesh::faces() array. Refers to a subset of Tree::prim_indices_. */
+  Span<int> face_indices_;
 
   /* Array of indices into the mesh's vertex array. Contains the
    * indices of all vertices used by faces that are within this
@@ -122,9 +122,6 @@ struct MeshNode : public Node {
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
   int unique_verts_num_ = 0;
 
-  /** Array of indices into the Mesh's corner array. */
-  Array<int, 0> corner_indices_;
-
   /* An array mapping face corners into the vert_indices
    * array. The array is sized to match 'totprim', and each of
    * the face's corners gets an index into the vert_indices
@@ -133,7 +130,7 @@ struct MeshNode : public Node {
    *
    * Used for leaf nodes.
    */
-  Array<int3, 0> face_vert_indices_;
+  Array<int, 0> face_vert_indices_;
 };
 
 struct GridsNode : public Node {
@@ -251,7 +248,6 @@ bool raycast_node(Tree &pbvh,
                   Span<float3> vert_positions,
                   Span<int> corner_verts,
                   Span<int3> corner_tris,
-                  Span<int> corner_tri_faces,
                   Span<bool> hide_poly,
                   const SubdivCCG *subdiv_ccg,
                   const float ray_start[3],
@@ -294,7 +290,6 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                               Span<float3> vert_positions,
                               Span<int> corner_verts,
                               Span<int3> corner_tris,
-                              Span<int> corner_tri_faces,
                               Span<bool> hide_poly,
                               const SubdivCCG *subdiv_ccg,
                               const float ray_start[3],
@@ -381,18 +376,9 @@ void remove_node_draw_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask);
 
 Span<int> node_grid_indices(const GridsNode &node);
 
-Span<int> node_tri_indices(const MeshNode &node);
+Span<int> node_faces(const MeshNode &node);
 Span<int> node_verts(const MeshNode &node);
 Span<int> node_unique_verts(const MeshNode &node);
-Span<int> node_corners(const MeshNode &node);
-
-/**
- * Gather the indices of all faces (not triangles) used by the node.
- * For convenience, pass a reference to the data in the result.
- */
-Span<int> node_face_indices_calc_mesh(Span<int> corner_tri_faces,
-                                      const MeshNode &node,
-                                      Vector<int> &faces);
 
 /**
  * Gather the indices of all base mesh faces in the node.
@@ -513,8 +499,6 @@ Span<float3> face_normals_eval_from_eval(const Object &object_eval);
 
 }  // namespace blender::bke::pbvh
 
-void BKE_pbvh_ensure_node_face_corners(blender::bke::pbvh::Tree &pbvh,
-                                       blender::Span<blender::int3> corner_tris);
 int BKE_pbvh_debug_draw_gen_get(blender::bke::pbvh::Node &node);
 
 namespace blender::bke::pbvh {

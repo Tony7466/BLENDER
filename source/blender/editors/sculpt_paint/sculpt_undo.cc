@@ -520,6 +520,7 @@ static void restore_color(Object &object, StepData &step_data, MutableSpan<bool>
           unode->col);
     }
     else if (color_attribute.domain == bke::AttrDomain::Corner && !unode->loop_col.is_empty()) {
+      const Span<int> face_indices = unode->face_indices;
       color::swap_gathered_colors(unode->corner_indices, color_attribute.span, unode->loop_col);
     }
 
@@ -983,12 +984,9 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-        const Span<int> tri_faces = mesh.corner_tri_faces();
-        Vector<int> faces_vector;
         node_mask.foreach_index([&](const int i) {
-          faces_vector.clear();
-          const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, static_cast<bke::pbvh::MeshNode &>(nodes[i]), faces_vector);
+          const Span<int> faces = bke::pbvh::node_faces(
+              static_cast<bke::pbvh::MeshNode &>(nodes[i]));
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_visibility(nodes[i]);
           }
@@ -1064,12 +1062,9 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-        const Span<int> tri_faces = mesh.corner_tri_faces();
-        Vector<int> faces_vector;
         node_mask.foreach_index([&](const int i) {
-          faces_vector.clear();
-          const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-              tri_faces, static_cast<bke::pbvh::MeshNode &>(nodes[i]), faces_vector);
+          const Span<int> faces = bke::pbvh::node_faces(
+              static_cast<bke::pbvh::MeshNode &>(nodes[i]));
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_face_sets(nodes[i]);
           }
@@ -1299,7 +1294,7 @@ static void store_color(const Object &object, const bke::pbvh::Node &node, Node 
       faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, verts, unode.col);
 
   if (color_attribute.domain == bke::AttrDomain::Corner) {
-    unode.corner_indices = bke::pbvh::node_corners(static_cast<const bke::pbvh::MeshNode &>(node));
+    const Span<int> face_indices = unode.face_indices;
     unode.loop_col.reinitialize(unode.corner_indices.size());
     color::gather_colors(colors, unode.corner_indices, unode.loop_col);
   }
@@ -1362,19 +1357,11 @@ static void fill_node_data(const Depsgraph &depsgraph,
     verts_num = unode.vert_indices.size();
   }
 
-  bool need_loops = type == Type::Color;
-  const bool need_faces = ELEM(type, Type::FaceSet, Type::HideFace);
-
-  if (need_loops) {
-    unode.corner_indices = bke::pbvh::node_corners(
-        static_cast<const bke::pbvh::MeshNode &>(*node));
-  }
+  const bool need_faces = ELEM(type, Type::FaceSet, Type::HideFace, Type::Color);
 
   if (need_faces) {
     if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
-      bke::pbvh::node_face_indices_calc_mesh(mesh.corner_tri_faces(),
-                                             static_cast<const bke::pbvh::MeshNode &>(*node),
-                                             unode.face_indices);
+      unode.face_indices = bke::pbvh::node_faces(static_cast<const bke::pbvh::MeshNode &>(*node));
     }
     else {
       const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -1730,7 +1717,6 @@ static size_t node_size_in_bytes(const Node &node)
   size += node.mask.as_span().size_in_bytes();
   size += node.loop_col.as_span().size_in_bytes();
   size += node.vert_indices.as_span().size_in_bytes();
-  size += node.corner_indices.as_span().size_in_bytes();
   size += node.vert_hidden.size() / 8;
   size += node.face_hidden.size() / 8;
   size += node.grids.as_span().size_in_bytes();

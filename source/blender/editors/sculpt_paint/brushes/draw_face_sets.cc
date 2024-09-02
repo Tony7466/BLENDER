@@ -175,7 +175,6 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
   const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const Span<int> corner_tris = mesh.corner_tri_faces();
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;
@@ -185,8 +184,7 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
   threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     MeshLocalData &tls = all_tls.local();
     node_mask.slice(range).foreach_index([&](const int i) {
-      const Span<int> face_indices = bke::pbvh::node_face_indices_calc_mesh(
-          corner_tris, nodes[i], tls.face_indices);
+      const Span<int> face_indices = bke::pbvh::node_faces(nodes[i]);
 
       undo::push_node(depsgraph, object, &nodes[i], undo::Type::FaceSet);
 

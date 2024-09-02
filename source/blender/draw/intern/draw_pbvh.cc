@@ -337,23 +337,21 @@ inline short4 normal_float_to_short(const float3 &value)
 }
 
 template<typename T>
-void extract_data_vert_mesh(const Span<int> corner_verts,
-                            const Span<int3> corner_tris,
-                            const Span<int> tri_faces,
+void extract_data_vert_mesh(const OffsetIndices<int> faces,
+                            const Span<int> corner_verts,
                             const Span<bool> hide_poly,
                             const Span<T> attribute,
-                            const Span<int> tris,
+                            const Span<int> face_indices,
                             gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
   VBOType *data = vbo.data<VBOType>().data();
-  for (const int tri : tris) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri]]) {
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    for (int i : IndexRange(3)) {
-      const int vert = corner_verts[corner_tris[tri][i]];
+    for (const int vert : corner_verts.slice(faces[face])) {
       *data = Converter::convert(attribute[vert]);
       data++;
     }
@@ -361,44 +359,42 @@ void extract_data_vert_mesh(const Span<int> corner_verts,
 }
 
 template<typename T>
-void extract_data_face_mesh(const Span<int> tri_faces,
+void extract_data_face_mesh(const OffsetIndices<int> faces,
                             const Span<bool> hide_poly,
                             const Span<T> attribute,
-                            const Span<int> tris,
+                            const Span<int> face_indices,
                             gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
 
   VBOType *data = vbo.data<VBOType>().data();
-  for (const int tri : tris) {
-    const int face = tri_faces[tri];
+  for (const int face : face_indices) {
     if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    std::fill_n(data, 3, Converter::convert(attribute[face]));
-    data += 3;
+    const int tris_num = bke::mesh::face_triangles_num(faces[face].size());
+    std::fill_n(data, tris_num * 3, Converter::convert(attribute[face]));
+    data += tris_num * 3;
   }
 }
 
 template<typename T>
-void extract_data_corner_mesh(const Span<int3> corner_tris,
-                              const Span<int> tri_faces,
+void extract_data_corner_mesh(const OffsetIndices<int> faces,
                               const Span<bool> hide_poly,
                               const Span<T> attribute,
-                              const Span<int> tris,
+                              const Span<int> face_indices,
                               gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
 
   VBOType *data = vbo.data<VBOType>().data();
-  for (const int tri : tris) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri]]) {
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    for (int i : IndexRange(3)) {
-      const int corner = corner_tris[tri][i];
+    for (const int corner : faces[face]) {
       *data = Converter::convert(attribute[corner]);
       data++;
     }
@@ -509,15 +505,18 @@ template<> ColorGeometry4b fallback_value_for_fill()
   return fallback_value_for_fill<ColorGeometry4f>().encode();
 }
 
-static int count_visible_tris_mesh(const Span<int> tris,
-                                   const Span<int> tri_faces,
+static int count_visible_tris_mesh(const OffsetIndices<int> faces,
+                                   const Span<int> face_indices,
                                    const Span<bool> hide_poly)
 {
-  if (hide_poly.is_empty()) {
-    return tris.size();
+  int tris_count = 0;
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
+      continue;
+    }
+    tris_count += bke::mesh::face_triangles_num(faces[face].size());
   }
-  return std::count_if(
-      tris.begin(), tris.end(), [&](const int tri) { return !hide_poly[tri_faces[tri]]; });
+  return tris_count;
 }
 
 static int count_visible_tris_bmesh(const Set<BMFace *, 0> &faces)
@@ -608,36 +607,29 @@ void DrawCacheImpl::free_nodes_with_changed_topology(const Object &object,
   }
 }
 
-static void fill_vbo_normal_mesh(const Span<int> corner_verts,
-                                 const Span<int3> corner_tris,
-                                 const Span<int> tri_faces,
+static void fill_vbo_normal_mesh(const OffsetIndices<int> faces,
+                                 const Span<int> corner_verts,
                                  const Span<bool> sharp_faces,
                                  const Span<bool> hide_poly,
                                  const Span<float3> vert_normals,
                                  const Span<float3> face_normals,
-                                 const Span<int> tris,
+                                 const Span<int> face_indices,
                                  gpu::VertBuf &vert_buf)
 {
   short4 *data = vert_buf.data<short4>().data();
 
-  short4 face_no;
-  int last_face = -1;
-  for (const int tri : tris) {
-    const int face = tri_faces[tri];
+  for (const int face : face_indices) {
     if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
     if (!sharp_faces.is_empty() && sharp_faces[face]) {
-      if (face != last_face) {
-        face_no = normal_float_to_short(face_normals[face]);
-        last_face = face;
-      }
-      std::fill_n(data, 3, face_no);
-      data += 3;
+      const int tris_num = bke::mesh::face_triangles_num(faces[face].size());
+      const short4 face_no = normal_float_to_short(face_normals[face]);
+      std::fill_n(data, tris_num * 3, face_no);
+      data += tris_num * 3;
     }
     else {
-      for (const int i : IndexRange(3)) {
-        const int vert = corner_verts[corner_tris[tri][i]];
+      for (const int vert : corner_verts.slice(faces[face])) {
         *data = normal_float_to_short(vert_normals[vert]);
         data++;
       }
@@ -645,68 +637,62 @@ static void fill_vbo_normal_mesh(const Span<int> corner_verts,
   }
 }
 
-static void fill_vbo_mask_mesh(const Span<int> corner_verts,
-                               const Span<int3> corner_tris,
-                               const Span<int> tri_faces,
+static void fill_vbo_mask_mesh(const OffsetIndices<int> faces,
+                               const Span<int> corner_verts,
                                const Span<bool> hide_poly,
                                const Span<float> mask,
-                               const Span<int> tris,
+                               const Span<int> face_indices,
                                gpu::VertBuf &vbo)
 {
   float *data = vbo.data<float>().data();
-  for (const int tri : tris) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri]]) {
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    for (int i : IndexRange(3)) {
-      const int vert = corner_verts[corner_tris[tri][i]];
+    for (const int vert : corner_verts.slice(faces[face])) {
       *data = mask[vert];
       data++;
     }
   }
 }
 
-static void fill_vbo_face_set_mesh(const Span<int> tri_faces,
+static void fill_vbo_face_set_mesh(const OffsetIndices<int> faces,
                                    const Span<bool> hide_poly,
                                    const Span<int> face_sets,
                                    const int color_default,
                                    const int color_seed,
-                                   const Span<int> tris,
+                                   const Span<int> face_indices,
                                    gpu::VertBuf &vert_buf)
 {
   uchar4 *data = vert_buf.data<uchar4>().data();
-  int last_face = -1;
-  uchar4 fset_color(UCHAR_MAX);
-  for (const int tri : tris) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri]]) {
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    const int face = tri_faces[tri];
-    if (last_face != face) {
-      last_face = face;
 
-      const int id = face_sets[face];
+    const int id = face_sets[face];
 
-      if (id != color_default) {
-        BKE_paint_face_set_overlay_color_get(id, color_seed, fset_color);
-      }
-      else {
-        /* Skip for the default color face set to render it white. */
-        fset_color[0] = fset_color[1] = fset_color[2] = UCHAR_MAX;
-      }
+    uchar4 fset_color(UCHAR_MAX);
+    if (id != color_default) {
+      BKE_paint_face_set_overlay_color_get(id, color_seed, fset_color);
     }
-    std::fill_n(data, 3, fset_color);
-    data += 3;
+    else {
+      /* Skip for the default color face set to render it white. */
+      fset_color[0] = fset_color[1] = fset_color[2] = UCHAR_MAX;
+    }
+
+    const int tris_num = bke::mesh::face_triangles_num(faces[face].size());
+    std::fill_n(data, tris_num * 3, fset_color);
+    data += tris_num * 3;
   }
 }
 
-static void fill_vbo_attribute_mesh(const Span<int> corner_verts,
-                                    const Span<int3> corner_tris,
-                                    const Span<int> tri_faces,
+static void fill_vbo_attribute_mesh(const OffsetIndices<int> faces,
+                                    const Span<int> corner_verts,
                                     const Span<bool> hide_poly,
                                     const GSpan attribute,
                                     const bke::AttrDomain domain,
-                                    const Span<int> tris,
+                                    const Span<int> face_indices,
                                     gpu::VertBuf &vert_buf)
 {
   bke::attribute_math::convert_to_static_type(attribute.type(), [&](auto dummy) {
@@ -714,20 +700,14 @@ static void fill_vbo_attribute_mesh(const Span<int> corner_verts,
     if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
       switch (domain) {
         case bke::AttrDomain::Point:
-          extract_data_vert_mesh<T>(corner_verts,
-                                    corner_tris,
-                                    tri_faces,
-                                    hide_poly,
-                                    attribute.typed<T>(),
-                                    tris,
-                                    vert_buf);
+          extract_data_vert_mesh<T>(
+              corner_verts, hide_poly, attribute.typed<T>(), face_indices, vert_buf);
           break;
         case bke::AttrDomain::Face:
-          extract_data_face_mesh<T>(tri_faces, hide_poly, attribute.typed<T>(), tris, vert_buf);
+          extract_data_face_mesh<T>(hide_poly, attribute.typed<T>(), face_indices, vert_buf);
           break;
         case bke::AttrDomain::Corner:
-          extract_data_corner_mesh<T>(
-              corner_tris, tri_faces, hide_poly, attribute.typed<T>(), tris, vert_buf);
+          extract_data_corner_mesh<T>(hide_poly, attribute.typed<T>(), face_indices, vert_buf);
           break;
         default:
           BLI_assert_unreachable();
@@ -988,9 +968,9 @@ static void fill_vbos_mesh(const Object &object,
   SculptSession &ss = *object.sculpt;
   const Span<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+  const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int3> corner_tris = mesh.corner_tris();
-  const Span<int> tri_faces = mesh.corner_tri_faces();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *orig_mesh_data.attributes.lookup<bool>(".hide_poly",
                                                                        bke::AttrDomain::Face);
@@ -1000,12 +980,11 @@ static void fill_vbos_mesh(const Object &object,
       case CustomRequest::Position: {
         const Span<float3> vert_positions = bke::pbvh::vert_positions_eval_from_eval(object);
         node_mask.foreach_index(GrainSize(1), [&](const int i) {
-          extract_data_vert_mesh<float3>(corner_verts,
-                                         corner_tris,
-                                         tri_faces,
+          extract_data_vert_mesh<float3>(faces,
+                                         corner_verts,
                                          hide_poly,
                                          vert_positions,
-                                         bke::pbvh::node_tri_indices(nodes[i]),
+                                         bke::pbvh::node_faces(nodes[i]),
                                          *vbos[i]);
         });
         break;
@@ -1016,14 +995,13 @@ static void fill_vbos_mesh(const Object &object,
         const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
         node_mask.foreach_index(GrainSize(1), [&](const int i) {
-          fill_vbo_normal_mesh(corner_verts,
-                               corner_tris,
-                               tri_faces,
+          fill_vbo_normal_mesh(faces,
+                               corner_verts,
                                sharp_faces,
                                hide_poly,
                                vert_normals,
                                face_normals,
-                               bke::pbvh::node_tri_indices(nodes[i]),
+                               bke::pbvh::node_faces(nodes[i]),
                                *vbos[i]);
         });
         break;
@@ -1033,13 +1011,8 @@ static void fill_vbos_mesh(const Object &object,
                                                                          bke::AttrDomain::Point);
         if (!mask.is_empty()) {
           node_mask.foreach_index(GrainSize(1), [&](const int i) {
-            fill_vbo_mask_mesh(corner_verts,
-                               corner_tris,
-                               tri_faces,
-                               hide_poly,
-                               mask,
-                               bke::pbvh::node_tri_indices(nodes[i]),
-                               *vbos[i]);
+            fill_vbo_mask_mesh(
+                faces, corner_verts, hide_poly, mask, bke::pbvh::node_faces(nodes[i]), *vbos[i]);
           });
         }
         else {
@@ -1055,12 +1028,12 @@ static void fill_vbos_mesh(const Object &object,
                                                                             bke::AttrDomain::Face);
         if (!face_sets.is_empty()) {
           node_mask.foreach_index(GrainSize(1), [&](const int i) {
-            fill_vbo_face_set_mesh(tri_faces,
+            fill_vbo_face_set_mesh(faces,
                                    hide_poly,
                                    face_sets,
                                    face_set_default,
                                    face_set_seed,
-                                   bke::pbvh::node_tri_indices(nodes[i]),
+                                   bke::pbvh::node_faces(nodes[i]),
                                    *vbos[i]);
           });
         }
@@ -1079,13 +1052,12 @@ static void fill_vbos_mesh(const Object &object,
     const eCustomDataType data_type = attr.type;
     const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
     node_mask.foreach_index(GrainSize(1), [&](const int i) {
-      fill_vbo_attribute_mesh(corner_verts,
-                              corner_tris,
-                              tri_faces,
+      fill_vbo_attribute_mesh(faces,
+                              corner_verts,
                               hide_poly,
                               attribute,
                               domain,
-                              bke::pbvh::node_tri_indices(nodes[i]),
+                              bke::pbvh::node_faces(nodes[i]),
                               *vbos[i]);
     });
   }
@@ -1279,41 +1251,39 @@ static void fill_vbos_bmesh(const Object &object,
   }
 }
 
-static gpu::IndexBuf *create_index_faces(const Span<int2> edges,
+static gpu::IndexBuf *create_index_faces(const OffsetIndices<int> faces,
                                          const Span<int> corner_verts,
-                                         const Span<int> corner_edges,
-                                         const Span<int3> corner_tris,
-                                         const Span<int> tri_faces,
                                          const Span<bool> hide_poly,
-                                         const Span<int> tri_indices)
+                                         const Span<int> face_indices)
 {
-  /* Calculate number of edges. */
-  int edge_count = 0;
-  for (const int tri_i : tri_indices) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri_i]]) {
+  int corners_count = 0;
+  for (const int face : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
-    const int3 real_edges = bke::mesh::corner_tri_get_real_edges(
-        edges, corner_verts, corner_edges, corner_tris[tri_i]);
-    if (real_edges[0] != -1) {
-      edge_count++;
-    }
-    if (real_edges[1] != -1) {
-      edge_count++;
-    }
-    if (real_edges[2] != -1) {
-      edge_count++;
-    }
+
+    corners_count += faces[face].size();
   }
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, edge_count, INT_MAX);
+  GPU_indexbuf_init(&builder, GPU_PRIM_LINES, corners_count, INT_MAX);
   MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
+
+  int edge_index = 0;
+  for (const int face_index : face_indices) {
+    if (!hide_poly.is_empty() && hide_poly[face_index]) {
+      continue;
+    }
+    const IndexRange face = faces[face_index];
+    for (const int corner : face) {
+      // data[corner] = uint2()
+    }
+  }
 
   int edge_i = 0;
   int vert_i = 0;
   for (const int tri_i : tri_indices) {
-    if (!hide_poly.is_empty() && hide_poly[tri_faces[tri_i]]) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
       continue;
     }
 
@@ -1560,7 +1530,6 @@ static Array<int> calc_material_indices(const Object &object)
     case bke::pbvh::Type::Mesh: {
       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const Span<int> tri_faces = mesh.corner_tri_faces();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray material_indices = *attributes.lookup<int>("material_index",
                                                               bke::AttrDomain::Face);
@@ -1570,11 +1539,11 @@ static Array<int> calc_material_indices(const Object &object)
       Array<int> node_materials(nodes.size());
       threading::parallel_for(nodes.index_range(), 64, [&](const IndexRange range) {
         for (const int i : range) {
-          const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
-          if (tris.is_empty()) {
+          const Span<int> face_indices = bke::pbvh::node_faces(nodes[i]);
+          if (face_indices.is_empty()) {
             continue;
           }
-          node_materials[i] = material_indices[tri_faces[tris.first()]];
+          node_materials[i] = material_indices[face_indices.first()];
         }
       });
       return node_materials;
@@ -1735,21 +1704,13 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
     case bke::pbvh::Type::Mesh: {
       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const Span<int2> edges = mesh.edges();
+      const OffsetIndices<int> faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      const Span<int> corner_edges = mesh.corner_edges();
-      const Span<int3> corner_tris = mesh.corner_tris();
-      const Span<int> tri_faces = mesh.corner_tri_faces();
       const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
-        ibos[i] = create_index_faces(edges,
-                                     corner_verts,
-                                     corner_edges,
-                                     corner_tris,
-                                     tri_faces,
-                                     hide_poly,
-                                     bke::pbvh::node_tri_indices(nodes[i]));
+        ibos[i] = create_index_faces(
+            faces, corner_verts, hide_poly, bke::pbvh::node_faces(nodes[i]));
       });
       break;
     }
@@ -1799,15 +1760,15 @@ BLI_NOINLINE static void ensure_vbos_allocated_mesh(const Object &object,
   const SculptSession &ss = *object.sculpt;
   const Span<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const Span<int> tri_faces = mesh.corner_tri_faces();
+  const OffsetIndices<int> faces = mesh.faces();
   const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   node_mask.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
       vbos[i] = GPU_vertbuf_create_with_format(format);
     }
-    const Span<int> tris = bke::pbvh::node_tri_indices(nodes[i]);
-    const int verts_num = count_visible_tris_mesh(tris, tri_faces, hide_poly) * 3;
+    const Span<int> face_indices = bke::pbvh::node_faces(nodes[i]);
+    const int verts_num = count_visible_tris_mesh(faces, face_indices, hide_poly) * 3;
     GPU_vertbuf_data_alloc(*vbos[i], verts_num);
   });
 }

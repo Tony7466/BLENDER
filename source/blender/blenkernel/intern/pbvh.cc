@@ -110,6 +110,36 @@ static int partition_prim_indices(MutableSpan<int> prim_indices,
   return lo2;
 }
 
+static int partition_prim_indices(MutableSpan<int> face_indices,
+                                  MutableSpan<int> prim_scratch,
+                                  int lo,
+                                  int hi,
+                                  int axis,
+                                  float mid,
+                                  const Span<Bounds<float3>> face_bounds)
+{
+  for (int i = lo; i < hi; i++) {
+    prim_scratch[i - lo] = face_indices[i];
+  }
+
+  int lo2 = lo, hi2 = hi - 1;
+  int i1 = lo, i2 = 0;
+
+  while (i1 < hi) {
+    const int face_i = prim_scratch[i2];
+    const Bounds<float3> &bounds = face_bounds[prim_scratch[i2]];
+    const bool side = math::midpoint(bounds.min[axis], bounds.max[axis]) >= mid;
+
+    while (i1 < hi && prim_scratch[i2] == face_i) {
+      face_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
+      i1++;
+      i2++;
+    }
+  }
+
+  return lo2;
+}
+
 /* Returns the index of the first element on the right of the partition */
 static int partition_indices_material_faces(MutableSpan<int> indices,
                                             const Span<int> prim_to_face_map,
@@ -141,6 +171,28 @@ static int partition_indices_material_faces(MutableSpan<int> indices,
   }
 }
 
+static int partition_indices_material_faces(MutableSpan<int> face_indices,
+                                            const Span<int> material_indices,
+                                            const int lo,
+                                            const int hi)
+{
+  int i = lo, j = hi;
+  for (;;) {
+    const int first = face_indices[lo];
+    for (; face_materials_match(material_indices, {}, first, face_indices[i]); i++) {
+      /* pass */
+    }
+    for (; !face_materials_match(material_indices, {}, first, face_indices[j]); j--) {
+      /* pass */
+    }
+    if (!(i < j)) {
+      return i;
+    }
+    std::swap(face_indices[i], face_indices[j]);
+    i++;
+  }
+}
+
 /* Add a vertex to the map, with a positive value for unique vertices and
  * a negative value for additional vertices */
 static int map_insert_vert(Map<int, int> &map,
@@ -165,26 +217,32 @@ static int map_insert_vert(Map<int, int> &map,
 }
 
 /* Find vertices used by the faces in this node and update the draw buffers */
-static void build_mesh_leaf_node(const Span<int> corner_verts,
-                                 const Span<int3> corner_tris,
+static void build_mesh_leaf_node(const OffsetIndices<int> faces,
+                                 const Span<int> corner_verts,
                                  MutableSpan<bool> vert_bitmap,
                                  MeshNode &node)
 {
   node.unique_verts_num_ = 0;
   int shared_verts = 0;
-  const Span<int> prim_indices = node.prim_indices_;
+  const Span<int> node_faces = node.face_indices_;
 
   /* reserve size is rough guess */
   Map<int, int> map;
-  map.reserve(prim_indices.size());
+  map.reserve(node_faces.size());
 
-  node.face_vert_indices_.reinitialize(prim_indices.size());
+  int corner_count = 0;
+  for (const int face : node_faces) {
+    corner_count += faces[face].size();
+  }
 
-  for (const int i : prim_indices.index_range()) {
-    const int3 &tri = corner_tris[prim_indices[i]];
-    for (int j = 0; j < 3; j++) {
-      node.face_vert_indices_[i][j] = map_insert_vert(
-          map, vert_bitmap, &shared_verts, &node.unique_verts_num_, corner_verts[tri[j]]);
+  node.face_vert_indices_.reinitialize(node_faces.size());
+
+  int node_vert_i = 0;
+  for (const int face : node_faces) {
+    for (const int vert : corner_verts.slice(faces[face])) {
+      node.face_vert_indices_[node_vert_i] = map_insert_vert(
+          map, vert_bitmap, &shared_verts, &node.unique_verts_num_, vert);
+      node_vert_i++;
     }
   }
 
@@ -200,12 +258,9 @@ static void build_mesh_leaf_node(const Span<int> corner_verts,
     node.vert_indices_[value] = item.key;
   }
 
-  for (const int i : prim_indices.index_range()) {
-    for (int j = 0; j < 3; j++) {
-      if (node.face_vert_indices_[i][j] < 0) {
-        node.face_vert_indices_[i][j] = -node.face_vert_indices_[i][j] + node.unique_verts_num_ -
-                                        1;
-      }
+  for (int &value : node.face_vert_indices_) {
+    if (value < 0) {
+      value = -value + node.unique_verts_num_ - 1;
     }
   }
 }
@@ -234,11 +289,28 @@ static bool leaf_needs_material_split(const Span<int> prim_indices,
   return false;
 }
 
-static void build_nodes_recursive_mesh(const Span<int> corner_verts,
-                                       const Span<int3> corner_tris,
-                                       const Span<int> tri_faces,
+static bool leaf_needs_material_split(const Span<int> face_indices,
+                                      const Span<int> material_indices,
+                                      int offset,
+                                      int count)
+{
+  if (count <= 1) {
+    return false;
+  }
+
+  const int first = face_indices[offset];
+  for (int i = offset + count - 1; i > offset; i--) {
+    if (material_indices[face_indices[i]] != material_indices[first]) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static void build_nodes_recursive_mesh(const OffsetIndices<int> faces,
+                                       const Span<int> corner_verts,
                                        const Span<int> material_indices,
-                                       const Span<bool> sharp_faces,
                                        const int leaf_limit,
                                        MutableSpan<bool> vert_bitmap,
                                        const int node_index,
@@ -256,13 +328,11 @@ static void build_nodes_recursive_mesh(const Span<int> corner_verts,
   /* Decide whether this is a leaf or not */
   const bool below_leaf_limit = prims_num <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
   if (below_leaf_limit) {
-    if (!leaf_needs_material_split(
-            prim_indices, tri_faces, material_indices, sharp_faces, prim_offset, prims_num))
-    {
+    if (!leaf_needs_material_split(prim_indices, material_indices, prim_offset, prims_num)) {
       MeshNode &node = nodes[node_index];
       node.flag_ |= PBVH_Leaf;
-      node.prim_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
-      build_mesh_leaf_node(corner_verts, corner_tris, vert_bitmap, node);
+      node.face_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
+      build_mesh_leaf_node(faces, corner_verts, vert_bitmap, node);
       return;
     }
   }
@@ -292,25 +362,18 @@ static void build_nodes_recursive_mesh(const Span<int> corner_verts,
                                  prim_offset + prims_num,
                                  axis,
                                  math::midpoint(cb->min[axis], cb->max[axis]),
-                                 prim_bounds,
-                                 tri_faces);
+                                 prim_bounds);
   }
   else {
     /* Partition primitives by material */
-    end = partition_indices_material_faces(prim_indices,
-                                           tri_faces,
-                                           material_indices,
-                                           sharp_faces,
-                                           prim_offset,
-                                           prim_offset + prims_num - 1);
+    end = partition_indices_material_faces(
+        prim_indices, material_indices, prim_offset, prim_offset + prims_num - 1);
   }
 
   /* Build children */
-  build_nodes_recursive_mesh(corner_verts,
-                             corner_tris,
-                             tri_faces,
+  build_nodes_recursive_mesh(faces,
+                             corner_verts,
                              material_indices,
-                             sharp_faces,
                              leaf_limit,
                              vert_bitmap,
                              nodes[node_index].children_offset_,
@@ -322,11 +385,9 @@ static void build_nodes_recursive_mesh(const Span<int> corner_verts,
                              depth + 1,
                              prim_indices,
                              nodes);
-  build_nodes_recursive_mesh(corner_verts,
-                             corner_tris,
-                             tri_faces,
+  build_nodes_recursive_mesh(faces,
+                             corner_verts,
                              material_indices,
-                             sharp_faces,
                              leaf_limit,
                              vert_bitmap,
                              nodes[node_index].children_offset_ + 1,
@@ -344,32 +405,31 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
 {
   std::unique_ptr<Tree> pbvh = std::make_unique<Tree>(Type::Mesh);
   const Span<float3> vert_positions = mesh.vert_positions();
+  const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int3> corner_tris = mesh.corner_tris();
-  if (corner_tris.is_empty()) {
+  if (faces.is_empty()) {
     return pbvh;
   }
-
-  const Span<int> tri_faces = mesh.corner_tri_faces();
 
   Array<bool> vert_bitmap(mesh.verts_num, false);
 
   const int leaf_limit = LEAF_LIMIT;
 
   /* For each face, store the AABB and the AABB centroid */
-  Array<Bounds<float3>> prim_bounds(corner_tris.size());
+  Array<Bounds<float3>> prim_bounds(faces.size());
   const Bounds<float3> cb = threading::parallel_reduce(
-      corner_tris.index_range(),
+      faces.index_range(),
       1024,
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
         for (const int i : range) {
-          const int3 &tri = corner_tris[i];
+          const Span<int> face_verts = corner_verts.slice(faces[i]);
           Bounds<float3> &bounds = prim_bounds[i];
-          bounds = {vert_positions[corner_verts[tri[0]]]};
-          math::min_max(vert_positions[corner_verts[tri[1]]], bounds.min, bounds.max);
-          math::min_max(vert_positions[corner_verts[tri[2]]], bounds.min, bounds.max);
+          bounds = {vert_positions[face_verts.first()]};
+          for (const int vert : face_verts.slice(1, face_verts.size() - 1)) {
+            math::min_max(vert_positions[vert], bounds.min, bounds.max);
+          }
           const float3 center = math::midpoint(prim_bounds[i].min, prim_bounds[i].max);
           math::min_max(center, current.min, current.max);
         }
@@ -380,25 +440,22 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
   const AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", AttrDomain::Point);
   const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
-  const VArraySpan sharp_face = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
 
-  pbvh->prim_indices_.reinitialize(corner_tris.size());
+  pbvh->prim_indices_.reinitialize(faces.size());
   array_utils::fill_index_range<int>(pbvh->prim_indices_);
 
   Vector<MeshNode> &nodes = std::get<Vector<MeshNode>>(pbvh->nodes_);
   nodes.resize(1);
-  build_nodes_recursive_mesh(corner_verts,
-                             corner_tris,
-                             tri_faces,
+  build_nodes_recursive_mesh(faces,
+                             corner_verts,
                              material_index,
-                             sharp_face,
                              leaf_limit,
                              vert_bitmap,
                              0,
                              &cb,
                              prim_bounds,
                              0,
-                             corner_tris.size(),
+                             faces.size(),
                              Array<int>(pbvh->prim_indices_.size()),
                              0,
                              pbvh->prim_indices_,
@@ -989,21 +1046,12 @@ static void calc_boundary_face_normals(const Span<float3> positions,
 static void calc_node_face_normals(const Span<float3> positions,
                                    const OffsetIndices<int> faces,
                                    const Span<int> corner_verts,
-                                   const Span<int> corner_tri_faces,
                                    const Span<MeshNode> nodes,
                                    const IndexMask &nodes_to_update,
                                    MutableSpan<float3> face_normals)
 {
-  threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
-  threading::parallel_for(nodes_to_update.index_range(), 1, [&](const IndexRange range) {
-    Vector<int> &node_faces = all_index_data.local();
-    nodes_to_update.slice(range).foreach_index([&](const int i) {
-      normals_calc_faces(positions,
-                         faces,
-                         corner_verts,
-                         node_face_indices_calc_mesh(corner_tri_faces, nodes[i], node_faces),
-                         face_normals);
-    });
+  nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+    normals_calc_faces(positions, faces, corner_verts, node_faces(nodes[i]), face_normals);
   });
 }
 
@@ -1064,7 +1112,6 @@ static void update_normals_mesh(Object &object_orig,
   const Span<float3> positions = bke::pbvh::vert_positions_eval_from_eval(object_eval);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int> tri_faces = mesh.corner_tri_faces();
   const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
 
   SharedCache<Vector<float3>> &vert_normals_cache = vert_normals_cache_eval_for_write(object_orig,
@@ -1092,8 +1139,7 @@ static void update_normals_mesh(Object &object_orig,
         }
         else {
           face_normals_cache.update([&](Vector<float3> &r_data) {
-            calc_node_face_normals(
-                positions, faces, corner_verts, tri_faces, nodes, nodes_to_update, r_data);
+            calc_node_face_normals(positions, faces, corner_verts, nodes, nodes_to_update, r_data);
             calc_boundary_face_normals(positions, faces, corner_verts, boundary_faces, r_data);
           });
         }
@@ -1790,11 +1836,6 @@ void remove_node_draw_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
   }
 }
 
-Span<int> node_corners(const MeshNode &node)
-{
-  return node.corner_indices_;
-}
-
 Span<int> node_verts(const MeshNode &node)
 {
   return node.vert_indices_;
@@ -1803,22 +1844,6 @@ Span<int> node_verts(const MeshNode &node)
 Span<int> node_unique_verts(const MeshNode &node)
 {
   return node.vert_indices_.as_span().take_front(node.unique_verts_num_);
-}
-
-Span<int> node_face_indices_calc_mesh(const Span<int> corner_tri_faces,
-                                      const MeshNode &node,
-                                      Vector<int> &faces)
-{
-  faces.clear();
-  int prev_face = -1;
-  for (const int tri : node_tri_indices(node)) {
-    const int face = corner_tri_faces[tri];
-    if (face != prev_face) {
-      faces.append(face);
-      prev_face = face;
-    }
-  }
-  return faces.as_span();
 }
 
 Span<int> node_face_indices_calc_grids(const SubdivCCG &subdiv_ccg,
@@ -1838,9 +1863,9 @@ Span<int> node_face_indices_calc_grids(const SubdivCCG &subdiv_ccg,
   return faces.as_span();
 }
 
-Span<int> node_tri_indices(const MeshNode &node)
+Span<int> node_faces(const MeshNode &node)
 {
-  return node.prim_indices_;
+  return node.face_indices_;
 }
 
 Span<int> node_grid_indices(const GridsNode &node)
@@ -2031,9 +2056,9 @@ bool ray_face_nearest_tri(const float ray_start[3],
 static bool pbvh_faces_node_raycast(const MeshNode &node,
                                     const float (*origco)[3],
                                     const Span<float3> vert_positions,
+                                    const OffsetIndices<int> faces,
                                     const Span<int> corner_verts,
                                     const Span<int3> corner_tris,
-                                    const Span<int> corner_tri_faces,
                                     const Span<bool> hide_poly,
                                     const float ray_start[3],
                                     const float ray_normal[3],
@@ -2046,51 +2071,54 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
   using namespace blender;
   bool hit = false;
   float nearest_vertex_co[3] = {0.0f};
-  const Span<int> tris = node_tri_indices(node);
+  const Span<int> face_indices = node_faces(node);
 
-  for (const int i : tris.index_range()) {
-    const int tri_i = tris[i];
-    const int3 &tri = corner_tris[tri_i];
-    const int3 face_verts = node.face_vert_indices_[i];
-
-    if (!hide_poly.is_empty() && hide_poly[corner_tri_faces[tri_i]]) {
+  int node_vert_i = 0;
+  for (const int i : face_indices.index_range()) {
+    const int face_i = face_indices[i];
+    if (!hide_poly.is_empty() && hide_poly[face_i]) {
       continue;
     }
 
-    const float *co[3];
-    if (origco) {
-      /* Intersect with backed up original coordinates. */
-      co[0] = origco[face_verts[0]];
-      co[1] = origco[face_verts[1]];
-      co[2] = origco[face_verts[2]];
-    }
-    else {
-      /* intersect with current coordinates */
-      co[0] = vert_positions[corner_verts[tri[0]]];
-      co[1] = vert_positions[corner_verts[tri[1]]];
-      co[2] = vert_positions[corner_verts[tri[2]]];
-    }
+    for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
+      const int3 &tri = corner_tris[tri_i];
+      const int3 face_verts = node.face_vert_indices_[i];
 
-    if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
-      hit = true;
-
-      if (r_face_normal) {
-        normal_tri_v3(r_face_normal, co[0], co[1], co[2]);
+      const float *co[3];
+      if (origco) {
+        /* Intersect with backed up original coordinates. */
+        co[0] = origco[face_verts[0]];
+        co[1] = origco[face_verts[1]];
+        co[2] = origco[face_verts[2]];
+      }
+      else {
+        /* intersect with current coordinates */
+        co[0] = vert_positions[corner_verts[tri[0]]];
+        co[1] = vert_positions[corner_verts[tri[1]]];
+        co[2] = vert_positions[corner_verts[tri[2]]];
       }
 
-      if (r_active_vertex) {
-        float location[3] = {0.0f};
-        madd_v3_v3v3fl(location, ray_start, ray_normal, *depth);
-        for (int j = 0; j < 3; j++) {
-          /* Always assign nearest_vertex_co in the first iteration to avoid comparison against
-           * uninitialized values. This stores the closest vertex in the current intersecting
-           * triangle. */
-          if (j == 0 ||
-              len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
-          {
-            copy_v3_v3(nearest_vertex_co, co[j]);
-            r_active_vertex->i = corner_verts[tri[j]];
-            *r_active_face_index = corner_tri_faces[tri_i];
+      if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
+        hit = true;
+
+        if (r_face_normal) {
+          normal_tri_v3(r_face_normal, co[0], co[1], co[2]);
+        }
+
+        if (r_active_vertex) {
+          float location[3] = {0.0f};
+          madd_v3_v3v3fl(location, ray_start, ray_normal, *depth);
+          for (int j = 0; j < 3; j++) {
+            /* Always assign nearest_vertex_co in the first iteration to avoid comparison against
+             * uninitialized values. This stores the closest vertex in the current intersecting
+             * triangle. */
+            if (j == 0 ||
+                len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+            {
+              copy_v3_v3(nearest_vertex_co, co[j]);
+              r_active_vertex->i = corner_verts[tri[j]];
+              *r_active_face_index = face_i;
+            }
           }
         }
       }
@@ -2197,7 +2225,6 @@ bool raycast_node(Tree &pbvh,
                   const Span<float3> vert_positions,
                   const Span<int> corner_verts,
                   const Span<int3> corner_tris,
-                  const Span<int> corner_tri_faces,
                   const Span<bool> hide_poly,
                   const SubdivCCG *subdiv_ccg,
                   const float ray_start[3],
@@ -2221,7 +2248,6 @@ bool raycast_node(Tree &pbvh,
                                      vert_positions,
                                      corner_verts,
                                      corner_tris,
-                                     corner_tri_faces,
                                      hide_poly,
                                      ray_start,
                                      ray_normal,
@@ -2390,7 +2416,6 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                            const Span<float3> vert_positions,
                                            const Span<int> corner_verts,
                                            const Span<int3> corner_tris,
-                                           const Span<int> corner_tri_faces,
                                            const Span<bool> hide_poly,
                                            const float ray_start[3],
                                            const float ray_normal[3],
@@ -2398,36 +2423,39 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                            float *dist_sq)
 {
   bool hit = false;
-  const Span<int> tris = node_tri_indices(node);
+  const Span<int> face_indices = node_faces(node);
 
-  for (const int i : tris.index_range()) {
-    const int tri_i = tris[i];
-    const int3 &corner_tri = corner_tris[tri_i];
-    const int3 face_verts = node.face_vert_indices_[i];
-
-    if (!hide_poly.is_empty() && hide_poly[corner_tri_faces[tri_i]]) {
+  int node_vert_i = 0;
+  for (const int i : face_indices.index_range()) {
+    const int face_i = face_indices[i];
+    if (!hide_poly.is_empty() && hide_poly[face_i]) {
       continue;
     }
 
-    if (origco) {
-      /* Intersect with backed-up original coordinates. */
-      hit |= ray_face_nearest_tri(ray_start,
-                                  ray_normal,
-                                  origco[face_verts[0]],
-                                  origco[face_verts[1]],
-                                  origco[face_verts[2]],
-                                  depth,
-                                  dist_sq);
-    }
-    else {
-      /* intersect with current coordinates */
-      hit |= ray_face_nearest_tri(ray_start,
-                                  ray_normal,
-                                  vert_positions[corner_verts[corner_tri[0]]],
-                                  vert_positions[corner_verts[corner_tri[1]]],
-                                  vert_positions[corner_verts[corner_tri[2]]],
-                                  depth,
-                                  dist_sq);
+    for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
+      const int3 &corner_tri = corner_tris[tri_i];
+      const int3 face_verts = node.face_vert_indices_[i];
+
+      if (origco) {
+        /* Intersect with backed-up original coordinates. */
+        hit |= ray_face_nearest_tri(ray_start,
+                                    ray_normal,
+                                    origco[face_verts[0]],
+                                    origco[face_verts[1]],
+                                    origco[face_verts[2]],
+                                    depth,
+                                    dist_sq);
+      }
+      else {
+        /* intersect with current coordinates */
+        hit |= ray_face_nearest_tri(ray_start,
+                                    ray_normal,
+                                    vert_positions[corner_verts[corner_tri[0]]],
+                                    vert_positions[corner_verts[corner_tri[1]]],
+                                    vert_positions[corner_verts[corner_tri[2]]],
+                                    depth,
+                                    dist_sq);
+      }
     }
   }
 
@@ -2499,7 +2527,6 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                               const Span<float3> vert_positions,
                               const Span<int> corner_verts,
                               const Span<int3> corner_tris,
-                              const Span<int> corner_tri_faces,
                               const Span<bool> hide_poly,
                               const SubdivCCG *subdiv_ccg,
                               const float ray_start[3],
@@ -2520,7 +2547,6 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                                             vert_positions,
                                             corner_verts,
                                             corner_tris,
-                                            corner_tri_faces,
                                             hide_poly,
                                             ray_start,
                                             ray_normal,
@@ -2753,55 +2779,6 @@ Span<float3> face_normals_eval_from_eval(const Object &object_eval)
 }
 
 }  // namespace blender::bke::pbvh
-
-void BKE_pbvh_ensure_node_face_corners(blender::bke::pbvh::Tree &pbvh,
-                                       const blender::Span<blender::int3> corner_tris)
-{
-  using namespace blender;
-  BLI_assert(pbvh.type() == blender::bke::pbvh::Type::Mesh);
-
-  int totloop = 0;
-
-  /* Check if nodes already have loop indices. */
-  for (blender::bke::pbvh::MeshNode &node : pbvh.nodes<blender::bke::pbvh::MeshNode>()) {
-    if (!(node.flag_ & PBVH_Leaf)) {
-      continue;
-    }
-
-    if (!node.corner_indices_.is_empty()) {
-      return;
-    }
-
-    totloop += node.prim_indices_.size() * 3;
-  }
-
-  BLI_bitmap *visit = BLI_BITMAP_NEW(totloop, __func__);
-
-  /* Create loop indices from node loop triangles. */
-  Vector<int> corner_indices;
-  for (blender::bke::pbvh::MeshNode &node : pbvh.nodes<blender::bke::pbvh::MeshNode>()) {
-    if (!(node.flag_ & PBVH_Leaf)) {
-      continue;
-    }
-
-    corner_indices.clear();
-
-    for (const int i : node.prim_indices_) {
-      const int3 &tri = corner_tris[i];
-
-      for (int k = 0; k < 3; k++) {
-        if (!BLI_BITMAP_TEST(visit, tri[k])) {
-          corner_indices.append(tri[k]);
-          BLI_BITMAP_ENABLE(visit, tri[k]);
-        }
-      }
-    }
-
-    node.corner_indices_ = corner_indices.as_span();
-  }
-
-  MEM_SAFE_FREE(visit);
-}
 
 int BKE_pbvh_debug_draw_gen_get(blender::bke::pbvh::Node &node)
 {

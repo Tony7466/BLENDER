@@ -13,6 +13,7 @@
 #include "BLI_array.hh"
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bit_vector.hh"
+#include "BLI_generic_array.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector.hh"
@@ -52,14 +53,12 @@ struct Node {
   Array<float4, 0> col;
   Array<float, 0> mask;
 
-  Array<float4, 0> loop_col;
+  GArray<> loop_col;
 
   /* Mesh. */
 
   Array<int, 0> vert_indices;
   int unique_verts_num;
-
-  Array<int, 0> corner_indices;
 
   BitVector<0> vert_hidden;
   BitVector<0> face_hidden;

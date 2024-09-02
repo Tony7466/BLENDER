@@ -3348,12 +3348,6 @@ static void push_undo_nodes(const Depsgraph &depsgraph,
     }
   }
   else if (SCULPT_tool_is_paint(brush.sculpt_tool)) {
-    const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-    if (const bke::GAttributeReader attr = color::active_color_attribute(mesh)) {
-      if (attr.domain == bke::AttrDomain::Corner) {
-        BKE_pbvh_ensure_node_face_corners(*ss.pbvh, mesh.corner_tris());
-      }
-    }
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
     switch (ss.pbvh->type()) {
       case bke::pbvh::Type::Mesh: {
@@ -4763,7 +4757,6 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
                               srd.vert_positions,
                               srd.corner_verts,
                               srd.corner_tris,
-                              srd.corner_tri_faces,
                               srd.hide_poly,
                               srd.subdiv_ccg,
                               srd.ray_start,
@@ -4810,7 +4803,6 @@ static void sculpt_find_nearest_to_ray_cb(blender::bke::pbvh::Node &node,
                                           srd.vert_positions,
                                           srd.corner_verts,
                                           srd.corner_tris,
-                                          srd.corner_tri_faces,
                                           srd.hide_poly,
                                           srd.subdiv_ccg,
                                           srd.ray_start,
