@@ -1047,4 +1047,70 @@ TEST_F(ChannelBagTest, channel_group_fcurve_removal)
   ASSERT_EQ(0, channel_bag->channel_groups().size());
 }
 
+TEST_F(ChannelBagTest, channel_group_move_fcurve_into)
+{
+  FCurve *fcu0 = &channel_bag->fcurve_ensure(nullptr, {"fcu0", 0, std::nullopt, std::nullopt});
+  FCurve *fcu1 = &channel_bag->fcurve_ensure(nullptr, {"fcu1", 0, std::nullopt, std::nullopt});
+  FCurve *fcu2 = &channel_bag->fcurve_ensure(nullptr, {"fcu2", 0, std::nullopt, std::nullopt});
+  bActionGroup *group0 = &channel_bag->channel_group_create("group0");
+  bActionGroup *group1 = &channel_bag->channel_group_create("group1");
+
+  ASSERT_EQ(3, channel_bag->fcurves().size());
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  ASSERT_EQ(2, channel_bag->channel_groups().size());
+  EXPECT_EQ(group0, channel_bag->channel_group(0));
+  EXPECT_EQ(group1, channel_bag->channel_group(1));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(0, group0->fcurve_range_length);
+  EXPECT_EQ(0, group1->fcurve_range_start);
+  EXPECT_EQ(0, group1->fcurve_range_length);
+
+  channel_bag->fcurve_assign_to_channel_group(*fcu2, *group1);
+  EXPECT_EQ(fcu2, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(2));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(0, group0->fcurve_range_length);
+  EXPECT_EQ(0, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
+
+  channel_bag->fcurve_assign_to_channel_group(*fcu1, *group0);
+  EXPECT_EQ(fcu1, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
+
+  channel_bag->fcurve_assign_to_channel_group(*fcu0, *group1);
+  EXPECT_EQ(fcu1, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+
+  channel_bag->fcurve_assign_to_channel_group(*fcu0, *group0);
+  EXPECT_EQ(fcu1, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
+
+  channel_bag->fcurve_assign_to_channel_group(*fcu1, *group1);
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(2));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+}
+
 }  // namespace blender::animrig::tests

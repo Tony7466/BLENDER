@@ -1914,6 +1914,7 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
       const int old_group_index = this->channel_groups().as_span().first_index_try(old_group);
       this->channel_group_remove_raw(old_group_index);
     }
+    this->restore_channel_group_invariants();
   }
 
   array_shift_range(this->fcurve_array,
