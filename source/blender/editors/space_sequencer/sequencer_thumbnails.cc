@@ -33,12 +33,18 @@
 
 using namespace blender;
 
+/* Information for one thumbnail picture in the timeline. Note that a single
+ * strip could have multiple thumbnails. */
 struct SeqThumbInfo {
   ImBuf *ibuf;
+  /* Strip coordinates in timeline space (X: frames, Y: channels). */
   float left_handle, right_handle, bottom, top;
+  /* Thumbnail coordinates in timeline space. */
   float x1, x2, y1, y2;
+  /* Horizontal cropping of thumbnail image, in pixels. Often a thumbnail
+   * does not have to be cropped, in which case these are 0 and ibuf->x-1. */
   float cropx_min, cropx_max;
-  bool muted;
+  bool is_muted;
 };
 
 static float thumb_calc_first_timeline_frame(const Sequence *seq,
@@ -110,7 +116,7 @@ static void get_seq_strip_thumbnails(const View2D *v2d,
                                      const StripDrawContext &strip,
                                      float pixelx,
                                      float pixely,
-                                     bool muted,
+                                     bool is_muted,
                                      Vector<SeqThumbInfo> &r_thumbs)
 {
   if (!seq::strip_can_have_thumbnail(scene, strip.seq)) {
@@ -182,7 +188,7 @@ static void get_seq_strip_thumbnails(const View2D *v2d,
     }
     thumb.left_handle = strip.left_handle;
     thumb.right_handle = strip.right_handle;
-    thumb.muted = muted;
+    thumb.is_muted = is_muted;
     thumb.bottom = strip.bottom;
     thumb.top = strip.top;
     thumb.x1 = timeline_frame + cut_off;
@@ -242,7 +248,7 @@ struct ThumbsDrawBatch {
     res.right = strips_batch_.pos_to_pixel_space_x(info.right_handle);
     res.bottom = strips_batch_.pos_to_pixel_space_y(info.bottom);
     res.top = strips_batch_.pos_to_pixel_space_y(info.top);
-    res.tint_color = float4(1.0f, 1.0f, 1.0f, info.muted ? 0.47f : 1.0f);
+    res.tint_color = float4(1.0f, 1.0f, 1.0f, info.is_muted ? 0.47f : 1.0f);
     res.x1 = strips_batch_.pos_to_pixel_space_x(info.x1);
     res.x2 = strips_batch_.pos_to_pixel_space_x(info.x2);
     res.y1 = strips_batch_.pos_to_pixel_space_y(info.y1);
@@ -287,9 +293,9 @@ void draw_strip_thumbnails(TimelineDrawContext *ctx,
   ListBase *channels = ctx->channels;
   Vector<SeqThumbInfo> thumbs;
   for (const StripDrawContext &strip : strips) {
-    bool muted = channels ? SEQ_render_is_muted(channels, strip.seq) : false;
+    bool is_muted = channels ? SEQ_render_is_muted(channels, strip.seq) : false;
     get_seq_strip_thumbnails(
-        ctx->v2d, ctx->C, ctx->scene, strip, ctx->pixelx, ctx->pixely, muted, thumbs);
+        ctx->v2d, ctx->C, ctx->scene, strip, ctx->pixelx, ctx->pixely, is_muted, thumbs);
   }
   if (thumbs.is_empty()) {
     return;
