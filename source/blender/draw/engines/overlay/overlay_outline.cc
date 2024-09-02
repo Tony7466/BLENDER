@@ -321,13 +321,14 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
         "cyclic", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory memory;
-    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
+    const IndexMask visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         *ob, info.drawing, memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
-    for (const int shape_index : visible_shapes.index_range()) {
-      const IndexMask &shape = visible_shapes[shape_index];
+    visible_shapes.foreach_index([&](const int shape_index) {
+      const IndexMask &shape = shapes[shape_index];
 
       const int material_index = stroke_materials[shape.first()];
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);
@@ -368,7 +369,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
         }
         t_offset += num_stroke_vertices * 2;
       });
-    }
+    });
   }
 }
 

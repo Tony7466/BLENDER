@@ -723,18 +723,19 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
         "cyclic", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory memory;
-    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
+    const IndexMask visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         *ob, info.drawing, memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     /* Precompute all the triangle and vertex counts.
      * In case the drawing should not be rendered, we need to compute the offset where the next
      * drawing begins. */
-    Array<int> num_triangles_per_shape(visible_shapes.size());
+    Array<int> num_triangles_per_shape(shapes.size());
     Array<int> num_vertices_per_stroke(curves.curves_num());
     int total_num_triangles = 0;
     int total_num_vertices = 0;
-    for (const int shape_index : visible_shapes.index_range()) {
-      const IndexMask &shape = visible_shapes[shape_index];
+    visible_shapes.foreach_index([&](const int shape_index) {
+      const IndexMask &shape = shapes[shape_index];
 
       const int num_stroke_triangles = triangles[shape_index].size();
       num_triangles_per_shape[shape_index] = num_stroke_triangles;
@@ -747,7 +748,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
         num_vertices_per_stroke[curve_i] = num_stroke_vertices;
         total_num_vertices += num_stroke_vertices;
       });
-    }
+    });
 
     bool is_layer_used_as_mask = false;
     const bool show_drawing_in_render = use_layer_in_render(
@@ -794,8 +795,8 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                             info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
     const bool is_onion = info.onion_id != 0;
 
-    for (const int shape_index : visible_shapes.index_range()) {
-      const IndexMask &shape = visible_shapes[shape_index];
+    visible_shapes.foreach_index([&](const int shape_index) {
+      const IndexMask &shape = shapes[shape_index];
 
       const int curve_i = shape.first();
 
@@ -819,7 +820,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
         t_offset += num_triangles_per_shape[shape_index];
         shape.foreach_index(
             [&](const int curve_i) { t_offset += num_vertices_per_stroke[curve_i] * 2; });
-        continue;
+        return;
       }
 
       GPUUniformBuf *new_ubo_mat;
@@ -881,7 +882,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
         t_offset += num_vertices_per_stroke[curve_i] * 2;
       });
-    }
+    });
   }
 
   drawcall_flush();

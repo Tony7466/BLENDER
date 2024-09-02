@@ -1047,8 +1047,10 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
-    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
+    const IndexMask visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         object, info.drawing, memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
+
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
     Array<int> verts_start_offsets(curves.curves_num(), 0);
@@ -1056,8 +1058,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
     int num_points = 0;
-    for (const int shape_index : visible_shapes.index_range()) {
-      const IndexMask &shape = visible_shapes[shape_index];
+    visible_shapes.foreach_index([&](const int shape_index) {
+      const IndexMask &shape = shapes[shape_index];
 
       total_triangles_num += triangles[shape_index].size();
 
@@ -1075,7 +1077,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         total_verts_num += 1 + points.size() + (is_cyclic ? 1 : 0) + 1;
         num_points += points.size();
       });
-    }
+    });
 
     total_triangles_num += (num_points + num_cyclic) * 2;
 
@@ -1151,8 +1153,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     IndexMaskMemory memory;
-    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
+    const IndexMask visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         object, info.drawing, memory);
+    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     curves.ensure_evaluated_lengths();
 
@@ -1201,8 +1204,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       return (1 + (p - points_.first()) + verts_start_offsets[curve_]) << GP_VERTEX_ID_SHIFT;
     };
 
-    for (const int shape_index : visible_shapes.index_range()) {
-      const IndexMask &shape = visible_shapes[shape_index];
+    visible_shapes.foreach_index([&](const int shape_index) {
+      const IndexMask &shape = shapes[shape_index];
       const Span<uint3> tris_slice = triangles[shape_index];
 
       /* Add the triangle indices to the index buffer. */
@@ -1265,7 +1268,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
         /* Last vertex is not drawn. */
         verts_slice.last().mat = -1;
       });
-    }
+    });
   }
 
   /* Mark last 2 verts as invalid. */
