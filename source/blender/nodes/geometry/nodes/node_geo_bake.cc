@@ -508,8 +508,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         bake_items,
         bake_socket_config_,
         data_block_map,
-        [&](const int i, const CPPType &type) {
-          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
+        [&](const int i) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i]);
         },
         r_output_values);
   }
@@ -529,27 +529,18 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         bake_items,
         bake_socket_config_,
         data_block_map,
-        [&](const int i, const CPPType &type) {
-          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
+        [&](const int i) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i]);
         },
         r_output_values);
   }
 
-  std::shared_ptr<AnonymousAttributeFieldInput> make_attribute_field(
-      const Object &self_object,
-      const ComputeContext &compute_context,
-      const NodeGeometryBakeItem &item,
-      const CPPType &type) const
+  std::string make_attribute_field(const Object &self_object,
+                                   const ComputeContext &compute_context,
+                                   const NodeGeometryBakeItem &item) const
   {
-    AnonymousAttributeIDPtr attribute_id = AnonymousAttributeIDPtr(
-        MEM_new<NodeAnonymousAttributeID>(__func__,
-                                          self_object,
-                                          compute_context,
-                                          node_,
-                                          std::to_string(item.identifier),
-                                          item.name));
-    return std::make_shared<AnonymousAttributeFieldInput>(
-        attribute_id, type, node_.label_or_name());
+    return bke::hash_to_anonymous_attribute_name(
+        compute_context.hash(), self_object.id.name, node_.identifier, item.identifier);
   }
 };
 

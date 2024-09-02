@@ -459,23 +459,6 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
                                                      const int node_id);
 
 /**
- * An anonymous attribute created by a node.
- */
-class NodeAnonymousAttributeID : public bke::AnonymousAttributeID {
-  std::string long_name_;
-  std::string socket_name_;
-
- public:
-  NodeAnonymousAttributeID(const Object &object,
-                           const ComputeContext &compute_context,
-                           const bNode &bnode,
-                           const StringRef identifier,
-                           const StringRef name);
-
-  std::string user_name() const override;
-};
-
-/**
  * Main function that converts a #bNodeTree into a lazy-function graph. If the graph has been
  * generated already, nothing is done. Under some circumstances a valid graph cannot be created. In
  * those cases null is returned.

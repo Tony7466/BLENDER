@@ -122,34 +122,6 @@ static void lazy_function_interface_from_node(const bNode &node,
   }
 }
 
-NodeAnonymousAttributeID::NodeAnonymousAttributeID(const Object &object,
-                                                   const ComputeContext &compute_context,
-                                                   const bNode &bnode,
-                                                   const StringRef identifier,
-                                                   const StringRef name)
-    : socket_name_(name)
-{
-  const ComputeContextHash &hash = compute_context.hash();
-  {
-    std::stringstream ss;
-    ss << hash << "_" << object.id.name << "_" << bnode.identifier << "_" << identifier;
-    long_name_ = ss.str();
-  }
-  {
-    uint64_t hash_result[2];
-    BLI_hash_md5_buffer(long_name_.data(), long_name_.size(), hash_result);
-    std::stringstream ss;
-    ss << ".a_" << std::hex << hash_result[0] << hash_result[1];
-    name_ = ss.str();
-    BLI_assert(name_.size() < MAX_CUSTOMDATA_LAYER_NAME);
-  }
-}
-
-std::string NodeAnonymousAttributeID::user_name() const
-{
-  return socket_name_;
-}
-
 /**
  * Used for most normal geometry nodes like Subdivision Surface and Set Position.
  */
@@ -166,7 +138,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
   struct OutputAttributeID {
     int bsocket_index;
-    AnonymousAttributeIDPtr attribute_id;
+    std::string attribute_id;
   };
 
   struct Storage {
@@ -244,20 +216,18 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
 
     /* Lazily create the required anonymous attribute ids. */
-    auto get_output_attribute_id = [&](const int output_bsocket_index) -> AnonymousAttributeIDPtr {
+    auto get_output_attribute_id = [&](const int output_bsocket_index) -> std::string {
       for (const OutputAttributeID &node_output_attribute : storage->attributes) {
         if (node_output_attribute.bsocket_index == output_bsocket_index) {
           return node_output_attribute.attribute_id;
         }
       }
       const bNodeSocket &bsocket = node_.output_socket(output_bsocket_index);
-      AnonymousAttributeIDPtr attribute_id = AnonymousAttributeIDPtr(
-          MEM_new<NodeAnonymousAttributeID>(__func__,
-                                            *user_data->call_data->self_object(),
-                                            *user_data->compute_context,
-                                            node_,
-                                            bsocket.identifier,
-                                            bsocket.name));
+      std::string attribute_id = bke::hash_to_anonymous_attribute_name(
+          user_data->call_data->self_object()->id.name,
+          user_data->compute_context->hash(),
+          node_.identifier,
+          bsocket.identifier);
       storage->attributes.append({output_bsocket_index, attribute_id});
       return attribute_id;
     };
@@ -330,12 +300,10 @@ class LazyFunctionForGeometryNode : public LazyFunction {
   void output_anonymous_attribute_field(lf::Params &params,
                                         const int lf_index,
                                         const bNodeSocket &bsocket,
-                                        AnonymousAttributeIDPtr attribute_id) const
+                                        std::string attribute_id) const
   {
-    GField output_field{std::make_shared<AnonymousAttributeFieldInput>(
-        std::move(attribute_id),
-        *bsocket.typeinfo->base_cpp_type,
-        fmt::format(TIP_("{} node"), node_.label_or_name()))};
+    GField output_field{std::make_shared<AttributeFieldInput>(std::move(attribute_id),
+                                                              *bsocket.typeinfo->base_cpp_type)};
     void *r_value = params.get_output_data_ptr(lf_index);
     new (r_value) SocketValueVariant(std::move(output_field));
     params.output_set(lf_index);
@@ -1384,13 +1352,15 @@ class LazyFunctionForAnonymousAttributeSetExtract : public lf::LazyFunction {
     if (value_variant->is_context_dependent_field()) {
       const GField &field = value_variant->get<GField>();
       field.node().for_each_field_input_recursive([&](const FieldInput &field_input) {
-        if (const auto *attr_field_input = dynamic_cast<const AnonymousAttributeFieldInput *>(
-                &field_input))
+        if (const auto *attr_field_input = dynamic_cast<const AttributeFieldInput *>(&field_input))
         {
-          if (!attributes.names) {
-            attributes.names = std::make_shared<Set<std::string>>();
+          const StringRef name = attr_field_input->attribute_name();
+          if (bke::attribute_name_is_anonymous(name)) {
+            if (!attributes.names) {
+              attributes.names = std::make_shared<Set<std::string>>();
+            }
+            attributes.names->add_as(name);
           }
-          attributes.names->add_as(attr_field_input->anonymous_id()->name());
         }
       });
     }

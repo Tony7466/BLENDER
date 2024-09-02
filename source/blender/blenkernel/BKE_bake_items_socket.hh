@@ -46,8 +46,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(
  *   should only be used when the bake items are not needed afterwards anymore.
  * - If a socket does not have a corresponding bake item, it's initialized to its default value.
  *
- * \param make_attribute_field: A function that creates a field input for any anonymous attributes
- *   being created for the baked data.
+ * \param make_attribute_name: A function that creates the name for an anonymous attribute.
  * \param r_socket_values: The caller is expected to allocate (but not construct) the output
  *   values. All socket values are constructed in this function.
  */
@@ -55,8 +54,7 @@ void move_bake_items_to_socket_values(
     Span<BakeItem *> bake_items,
     const BakeSocketConfig &config,
     BakeDataBlockMap *data_block_map,
-    FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int socket_index, const CPPType &)>
-        make_attribute_field,
+    FunctionRef<std::string(int socket_index)> make_attribute_name,
     Span<void *> r_socket_values);
 
 /**
@@ -67,8 +65,7 @@ void copy_bake_items_to_socket_values(
     Span<const BakeItem *> bake_items,
     const BakeSocketConfig &config,
     BakeDataBlockMap *data_block_map,
-    FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
-        make_attribute_field,
+    FunctionRef<std::string(int socket_index)> make_attribute_name,
     Span<void *> r_socket_values);
 
 }  // namespace blender::bke::bake
