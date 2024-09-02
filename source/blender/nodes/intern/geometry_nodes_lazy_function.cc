@@ -37,6 +37,7 @@
 
 #include "DNA_ID.h"
 
+#include "BKE_anonymous_attribute_make.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set.hh"

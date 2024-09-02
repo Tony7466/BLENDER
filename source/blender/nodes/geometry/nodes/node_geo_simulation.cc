@@ -8,6 +8,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_task.hh"
 
+#include "BKE_anonymous_attribute_make.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"

@@ -15,6 +15,7 @@
 
 #include "BLI_string.h"
 
+#include "BKE_anonymous_attribute_make.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.hh"

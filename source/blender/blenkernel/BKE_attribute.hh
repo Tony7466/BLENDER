@@ -4,14 +4,14 @@
 
 #pragma once
 
+
 #include <functional>
 #include <optional>
-#include <sstream>
 
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
-#include "BLI_hash_md5.hh"
+
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_struct_equality_utils.hh"
@@ -78,19 +78,6 @@ class AttributeIDRef {
 inline bool attribute_name_is_anonymous(const StringRef name)
 {
   return name.startswith(".a_");
-}
-
-template<typename... Args> inline std::string hash_to_anonymous_attribute_name(Args &&...args)
-{
-  std::stringstream ss;
-  ((ss << args), ...);
-  const std::string long_name = ss.str();
-
-  uint64_t hash_result[2];
-  BLI_hash_md5_buffer(long_name.data(), long_name.size(), hash_result);
-  std::stringstream ss2;
-  ss2 << ".a_" << std::hex << hash_result[0] << hash_result[1];
-  return ss2.str();
 }
 
 const CPPType *custom_data_type_to_cpp_type(eCustomDataType type);
