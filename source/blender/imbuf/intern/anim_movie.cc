@@ -218,7 +218,7 @@ static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_s
   /* Fall back to manually estimating the video stream duration.
    * This is because the video stream duration can be shorter than the `pFormatCtx->duration`.
    */
-  if (pFormatCtx->duration > 0) {
+  if (pFormatCtx->duration != AV_NOPTS_VALUE) {
     return ffmpeg_container_frame_count_get(pFormatCtx, video_stream);
   }
 
