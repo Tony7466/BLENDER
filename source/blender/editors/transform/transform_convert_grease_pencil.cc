@@ -56,7 +56,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
             drawings[info_i].layer_index);
         const int current_frame = scene->r.cfra;
         std::optional<int> start_frame = target_layer.start_frame_at(current_frame);
-        if ((!start_frame.has_value()) || start_frame.value() != current_frame) {
+        if (start_frame.has_value() && (start_frame.value() != current_frame)) {
           grease_pencil.insert_duplicate_frame(
               target_layer, *target_layer.start_frame_at(current_frame), current_frame, false);
         }
