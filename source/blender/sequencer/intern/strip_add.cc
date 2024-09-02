@@ -521,6 +521,7 @@ void SEQ_add_reload_new_file(Main *bmain, Scene *scene, Sequence *seq, const boo
       blender::Vector<ImBufAnim *> anims = manager->strip_anims_get(scene, seq);
 
       if (anims.size() == 0) {
+        manager->strip_anims_release(scene, seq);
         return;
       }
 

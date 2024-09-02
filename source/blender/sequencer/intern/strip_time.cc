@@ -345,6 +345,7 @@ float SEQ_time_sequence_get_fps(Scene *scene, Sequence *seq)
         manager->strip_anims_release(scene, seq);
         return float(frs_sec) / frs_sec_base;
       }
+      manager->strip_anims_release(scene, seq);
       break;
     }
     case SEQ_TYPE_MOVIECLIP:
