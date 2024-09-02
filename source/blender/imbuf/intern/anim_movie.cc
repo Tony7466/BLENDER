@@ -172,14 +172,8 @@ static double ffmpeg_stream_start_time_get(AVStream *stream)
   return stream->start_time * av_q2d(stream->time_base);
 }
 
-/* Fall back to manually estimating the video stream duration.
- * This is because the video stream duration can be shorter than the `pFormatCtx->duration`.
- */
 static int ffmpeg_container_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_stream)
 {
-  AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
-  double stream_dur;
-
   /* Find audio stream to guess the duration of the video.
    * Sometimes the audio AND the video stream have a start offset.
    * The difference between these is the offset we want to use to
@@ -195,6 +189,9 @@ static int ffmpeg_container_frame_count_get(AVFormatContext *pFormatCtx, AVStrea
       break;
     }
   }
+
+  const AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
+  double stream_dur;
 
   if (video_start > audio_start) {
     stream_dur = double(pFormatCtx->duration) / AV_TIME_BASE - (video_start - audio_start);
@@ -213,12 +210,14 @@ static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_s
 {
   /* Use stream duration to determine frame count. */
   if (video_stream->duration != AV_NOPTS_VALUE) {
-    AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
-    double stream_dur = video_stream->duration * av_q2d(video_stream->time_base);
+    const AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
+    const double stream_dur = video_stream->duration * av_q2d(video_stream->time_base);
     return int(stream_dur * av_q2d(frame_rate) + 0.5f);
   }
 
-  /* If container duration is available, use it to determine frame count. */
+  /* Fall back to manually estimating the video stream duration.
+   * This is because the video stream duration can be shorter than the `pFormatCtx->duration`.
+   */
   if (pFormatCtx->duration > 0) {
     return ffmpeg_container_frame_count_get(pFormatCtx, video_stream);
   }
@@ -326,7 +325,7 @@ static int startffmpeg(ImBufAnim *anim)
     return -1;
   }
 
-  AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
+  const AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
   frs_num = frame_rate.num;
   frs_den = frame_rate.den;
 
