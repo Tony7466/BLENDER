@@ -211,19 +211,19 @@ static int ffmpeg_container_frame_count_get(AVFormatContext *pFormatCtx, AVStrea
 
 static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_stream)
 {
-  AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
+  /* Use stream duration to determine frame count. */
+  if (video_stream->duration != AV_NOPTS_VALUE) {
+    AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
+    double stream_dur = video_stream->duration * av_q2d(video_stream->time_base);
+    return int(stream_dur * av_q2d(frame_rate) + 0.5f);
+  }
 
-  /* If container duration is available, use it to determine duration. */
+  /* If container duration is available, use it to determine frame count. */
   if (pFormatCtx->duration > 0) {
-    if (video_stream->duration != AV_NOPTS_VALUE) {
-      double stream_dur = video_stream->duration * av_q2d(video_stream->time_base);
-      return int(stream_dur * av_q2d(frame_rate) + 0.5f);
-    }
-
     return ffmpeg_container_frame_count_get(pFormatCtx, video_stream);
   }
 
-  /* Take from the stream if we can. */
+  /* Read frame count from the stream if we can. */
   if (video_stream->nb_frames != 0) {
     return video_stream->nb_frames;
   }
