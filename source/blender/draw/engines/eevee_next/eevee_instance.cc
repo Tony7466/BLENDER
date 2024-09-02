@@ -519,7 +519,6 @@ void Instance::render_frame(RenderEngine *engine, RenderLayer *render_layer, con
   /* TODO: Break on RE_engine_test_break(engine) */
   while (!sampling.finished()) {
     if (materials.queued_shaders_count > 0) {
-      BLI_time_sleep_ms(1);
       BLI_time_sleep_ms(50);
       this->render_sync();
       continue;
