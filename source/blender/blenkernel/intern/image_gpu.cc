@@ -210,7 +210,7 @@ static GPUTexture *gpu_texture_create_tile_array(Image *ima, ImBuf *main_ibuf)
 
   /* Upload each tile one by one. */
   LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
-    ImageTile_Runtime *tile_runtime = &tile->runtime;
+    const ImageTile_Runtime *tile_runtime = &tile->runtime;
     const int tilelayer = tile_runtime->tilearray_layer;
     const int *tileoffset = tile_runtime->tilearray_offset;
     const int *tilesize = tile_runtime->tilearray_size;
@@ -656,7 +656,7 @@ static ImBuf *update_do_scale(const uchar *rect,
 
   /* Scale pixels. */
   ImBuf *ibuf = IMB_allocFromBuffer(rect, rect_float, part_w, part_h, 4);
-  IMB_scaleImBuf(ibuf, *w, *h);
+  IMB_scale(ibuf, *w, *h, IMBScaleFilter::Box, false);
 
   return ibuf;
 }

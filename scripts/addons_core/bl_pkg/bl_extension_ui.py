@@ -1323,6 +1323,7 @@ def extension_draw_item(
                 props = row_right.operator("extensions.package_install", text="Update")
                 props.repo_index = repo_index
                 props.pkg_id = pkg_id
+                props.enable_on_install = is_enabled
                 del props
         else:
             props = row_right.operator("extensions.package_install", text="Install")
@@ -1342,8 +1343,8 @@ def extension_draw_item(
     row_right.separator()
 
     # NOTE: Keep space between any buttons and this menu to prevent stray clicks accidentally running install.
-    # The separator is around together with the align to give some space while keeping the button and the menu still close-by.
-    # Used `extension_path` so the menu can access "this" extension.
+    # The separator is around together with the align to give some space while keeping the button and the menu
+    # still close-by. Used `extension_path` so the menu can access "this" extension.
     row_right.context_string_set("extension_path", "{:s}.{:s}".format(repo_item.module, pkg_id))
     row_right.menu("USERPREF_MT_extensions_item", text="", icon='DOWNARROW_HLT')
     del row_right
