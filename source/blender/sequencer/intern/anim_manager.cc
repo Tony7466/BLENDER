@@ -364,6 +364,7 @@ void AnimManager::strip_anims_acquire(const Scene *scene, Sequence *seq)
 
 void AnimManager::strip_anims_release(const Scene *scene, blender::Vector<Sequence *> strips)
 {
+  strips.remove_if([](Sequence *seq) { return seq->type != SEQ_TYPE_MOVIE; });
   strips = remove_duplicates_for_parallel_load(scene, strips);
 
   for (Sequence *seq : strips) {
