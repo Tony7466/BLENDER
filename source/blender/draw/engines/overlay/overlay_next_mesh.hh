@@ -16,6 +16,8 @@
 #include "BKE_mesh_types.hh"
 #include "BKE_subdiv_modifier.hh"
 
+#include "GPU_capabilities.hh"
+
 #include "draw_cache_impl.hh"
 
 #include "overlay_next_private.hh"
@@ -99,25 +101,26 @@ class Meshes {
     {
       auto &pass = edit_mesh_prepass_ps_;
       pass.init();
-      pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | face_culling |
-                     state.clipping_state);
+      pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL | face_culling,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_depth.get());
       pass.push_constant("retopologyOffset", retopology_offset);
     }
     {
       /* Normals */
       const bool use_screen_size = (edit_flag & V3D_OVERLAY_EDIT_CONSTANT_SCREEN_SIZE_NORMALS);
-      const bool use_hq_normals = state.scene->r.perf_flag & SCE_PERF_HQ_NORMALS;
+      const bool use_hq_normals = (state.scene->r.perf_flag & SCE_PERF_HQ_NORMALS) ||
+                                  GPU_use_hq_normals_workaround();
 
       DRWState pass_state = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR |
-                            DRW_STATE_DEPTH_LESS_EQUAL | state.clipping_state;
+                            DRW_STATE_DEPTH_LESS_EQUAL;
       if (state.xray_enabled) {
         pass_state |= DRW_STATE_BLEND_ALPHA;
       }
 
       auto &pass = edit_mesh_normals_ps_;
       pass.init();
-      pass.state_set(pass_state);
+      pass.state_set(pass_state, state.clipping_plane_count);
 
       auto shader_pass = [&](GPUShader *shader, const char *name) {
         auto &sub = pass.sub(name);
@@ -150,8 +153,8 @@ class Meshes {
     {
       auto &pass = edit_mesh_analysis_ps_;
       pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     state.clipping_state);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_analysis.get());
       pass.bind_texture("weightTex", res.weight_ramp_tx);
     }
@@ -173,7 +176,8 @@ class Meshes {
       pass.init();
       /* Change first vertex convention to match blender loop structure. */
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_FIRST_VERTEX_CONVENTION | state.clipping_state);
+                         DRW_STATE_FIRST_VERTEX_CONVENTION,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_edge.get());
       pass.push_constant("do_smooth_wire", do_smooth_wire);
       pass.push_constant("use_vertex_selection", select_vert);
@@ -183,15 +187,16 @@ class Meshes {
       auto &pass = edit_mesh_faces_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     face_culling | state.clipping_state);
+                         face_culling,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_face.get());
       mesh_edit_common_resource_bind(pass, face_alpha);
     }
     {
       auto &pass = edit_mesh_cages_ps_;
       pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     state.clipping_state);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_face.get());
       mesh_edit_common_resource_bind(pass, face_alpha);
     }
@@ -199,7 +204,8 @@ class Meshes {
       auto &pass = edit_mesh_verts_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+                         DRW_STATE_WRITE_DEPTH,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_vert.get());
       mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
@@ -207,7 +213,8 @@ class Meshes {
       auto &pass = edit_mesh_facedots_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+                         DRW_STATE_WRITE_DEPTH,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_facedot.get());
       mesh_edit_common_resource_bind(pass, backwire_opacity);
     }
@@ -215,7 +222,8 @@ class Meshes {
       auto &pass = edit_mesh_skin_roots_ps_;
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_WRITE_DEPTH | state.clipping_state);
+                         DRW_STATE_WRITE_DEPTH,
+                     state.clipping_plane_count);
       pass.shader_set(res.shaders.mesh_edit_skin_root.get());
       pass.push_constant("retopologyOffset", retopology_offset);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
@@ -338,6 +346,18 @@ class Meshes {
     GPU_debug_group_end();
   }
 
+  static bool mesh_has_edit_cage(const Object *ob)
+  {
+    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
+    if (mesh.runtime->edit_mesh.get() != nullptr) {
+      const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
+      const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
+
+      return (editmesh_eval_cage != nullptr) && (editmesh_eval_cage != editmesh_eval_final);
+    }
+    return false;
+  }
+
  private:
   uint4 data_mask_get(const int flag)
   {
@@ -357,18 +377,6 @@ class Meshes {
     const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
     if (BMEditMesh *em = mesh.runtime->edit_mesh.get()) {
       return CustomData_get_offset(&em->bm->vdata, CD_MVERT_SKIN) != -1;
-    }
-    return false;
-  }
-
-  static bool mesh_has_edit_cage(const Object *ob)
-  {
-    const Mesh &mesh = *static_cast<const Mesh *>(ob->data);
-    if (mesh.runtime->edit_mesh.get() != nullptr) {
-      const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(ob);
-      const Mesh *editmesh_eval_cage = BKE_object_get_editmesh_eval_cage(ob);
-
-      return (editmesh_eval_cage != nullptr) && (editmesh_eval_cage != editmesh_eval_final);
     }
     return false;
   }

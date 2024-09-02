@@ -26,6 +26,12 @@ ShaderModule::ShaderPtr ShaderModule::shader(
 
   patch(info);
 
+  info.define("OVERLAY_NEXT");
+
+  if (clipping_enabled_) {
+    info.define("USE_WORLD_CLIP_PLANES");
+  }
+
   return ShaderPtr(
       GPU_shader_create_from_info(reinterpret_cast<const GPUShaderCreateInfo *>(&info)));
 }
@@ -37,7 +43,6 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
   // create_info_name += SelectEngineT::shader_suffix;
   // create_info_name += clipping_enabled_ ? "_clipped" : "";
   // this->shader_ = GPU_shader_create_from_info_name(create_info_name.c_str());
-  UNUSED_VARS(clipping_enabled_);
 
   /* WORKAROUND: ... but for now, we have to patch the create info used by the old engine. */
   gpu::shader::ShaderCreateInfo info = *reinterpret_cast<const gpu::shader::ShaderCreateInfo *>(
@@ -47,6 +52,10 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
 
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
+  }
+
+  if (clipping_enabled_) {
+    info.define("USE_WORLD_CLIP_PLANES");
   }
 
   return ShaderPtr(
@@ -66,6 +75,7 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
 
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
+    info.depth_write(gpu::shader::DepthWrite::UNCHANGED);
     /* Replace additional info. */
     for (StringRefNull &str : info.additional_infos_) {
       if (str == "draw_modelmat_new") {
@@ -73,6 +83,10 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(
       }
     }
     info.additional_info("select_id_patch");
+  }
+
+  if (clipping_enabled_) {
+    info.define("USE_WORLD_CLIP_PLANES");
   }
 
   return ShaderPtr(
@@ -101,6 +115,22 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     : selection_type_(selection_type), clipping_enabled_(clipping_enabled)
 {
   /** Shaders */
+
+  curve_edit_points = shader(
+      "overlay_edit_particle_point",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  curve_edit_line = shader("overlay_edit_particle_strand",
+                           [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  curve_edit_handles = shader(
+      "overlay_edit_curves_handle",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
+  legacy_curve_edit_wires = shader(
+      "overlay_edit_curve_wire",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  legacy_curve_edit_points = shader(
+      "overlay_edit_curve_point",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
   mesh_analysis = shader("overlay_edit_mesh_analysis",
                          [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
@@ -162,6 +192,33 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
     info.storage_buf(0, Qualifier::READ, "uint", "vnor[]", Frequency::GEOMETRY);
   });
 
+  outline_prepass_mesh = shader(
+      "overlay_outline_prepass_mesh", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_object_infos_new", "overlay_outline_prepass");
+      });
+  outline_prepass_wire = shader(
+      "overlay_outline_prepass_wire", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_object_infos_new", "overlay_outline_prepass");
+      });
+  outline_prepass_curves = shader(
+      "overlay_outline_prepass_curves", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_hair_new", "draw_object_infos_new", "overlay_outline_prepass");
+      });
+  outline_prepass_pointcloud = shader(
+      "overlay_outline_prepass_pointcloud", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info(
+            "draw_pointcloud_new", "draw_object_infos_new", "overlay_outline_prepass");
+      });
+  outline_prepass_gpencil = shader(
+      "overlay_outline_prepass_gpencil", [](gpu::shader::ShaderCreateInfo &info) {
+        shader_patch_common(info);
+        info.additional_info("draw_gpencil_new", "draw_object_infos_new");
+      });
+
   /** Selectable Shaders */
 
   armature_sphere_outline = selectable_shader(
@@ -173,8 +230,51 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   depth_mesh = selectable_shader("overlay_depth_only", [](gpu::shader::ShaderCreateInfo &info) {
     info.additional_infos_.clear();
-    info.additional_info("draw_view", "draw_modelmat_new", "draw_resource_handle_new");
+    info.additional_info(
+        "draw_view", "draw_globals", "draw_modelmat_new", "draw_resource_handle_new");
   });
+
+  facing = shader("overlay_facing", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.additional_info(
+        "draw_view", "draw_modelmat_new", "draw_resource_handle_new", "draw_globals");
+  });
+
+  fluid_grid_lines_flags = selectable_shader(
+      "overlay_volume_gridlines_flags", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_flat = selectable_shader(
+      "overlay_volume_gridlines_flat", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_grid_lines_range = selectable_shader(
+      "overlay_volume_gridlines_range", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_gridlines");
+      });
+
+  fluid_velocity_streamline = selectable_shader(
+      "overlay_volume_velocity_streamline", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_mac = selectable_shader(
+      "overlay_volume_velocity_mac", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
+
+  fluid_velocity_needle = selectable_shader(
+      "overlay_volume_velocity_needle", [](gpu::shader::ShaderCreateInfo &info) {
+        info.additional_infos_.clear();
+        info.additional_info("draw_volume_new", "draw_view", "overlay_volume_velocity");
+      });
 
   extra_shape = selectable_shader("overlay_extra", [](gpu::shader::ShaderCreateInfo &info) {
     info.storage_buf(0, Qualifier::READ, "ExtraInstanceData", "data_buf[]");
@@ -244,6 +344,45 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.define("inst_pos", "data_buf[gl_InstanceID].xyz");
         info.vertex_inputs_.pop_last();
       });
+
+  image_plane = selectable_shader("overlay_image", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.additional_info(
+        "draw_view", "draw_globals", "draw_modelmat_new", "draw_resource_handle_new");
+  });
+
+  particle_dot = selectable_shader("overlay_particle_dot",
+                                   [](gpu::shader::ShaderCreateInfo &info) {
+                                     info.additional_infos_.clear();
+                                     info.additional_info("overlay_particle",
+                                                          "draw_view",
+                                                          "draw_modelmat_new",
+                                                          "draw_resource_handle_new",
+                                                          "draw_globals");
+                                   });
+
+  particle_shape = selectable_shader("overlay_particle_shape_next",
+                                     [](gpu::shader::ShaderCreateInfo & /*info*/) {});
+
+  particle_hair = selectable_shader("overlay_particle_hair_next",
+                                    [](gpu::shader::ShaderCreateInfo & /*info*/) {});
+
+  wireframe_mesh = selectable_shader("overlay_wireframe", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.define("CUSTOM_DEPTH_BIAS_CONST");
+    info.specialization_constant(gpu::shader::Type::BOOL, "use_custom_depth_bias", true);
+    info.additional_info("draw_view",
+                         "draw_modelmat_new",
+                         "draw_resource_handle_new",
+                         "draw_object_infos_new",
+                         "draw_globals");
+  });
+
+  wireframe_points = selectable_shader("overlay_wireframe_points",
+                                       [](gpu::shader::ShaderCreateInfo & /*info*/) {});
+
+  wireframe_curve = selectable_shader("overlay_wireframe_curve",
+                                      [](gpu::shader::ShaderCreateInfo & /*info*/) {});
 }
 
 ShaderModule &ShaderModule::module_get(SelectionType selection_type, bool clipping_enabled)
