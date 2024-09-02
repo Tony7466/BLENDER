@@ -509,8 +509,8 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         bake_items,
         bake_socket_config_,
         data_block_map,
-        [&](const int i) {
-          return this->make_attribute_field(self_object, compute_context, bake_items_[i]);
+        [&](const int i, const CPPType &type) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
         },
         r_output_values);
   }
@@ -530,18 +530,23 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         bake_items,
         bake_socket_config_,
         data_block_map,
-        [&](const int i) {
-          return this->make_attribute_field(self_object, compute_context, bake_items_[i]);
+        [&](const int i, const CPPType &type) {
+          return this->make_attribute_field(self_object, compute_context, bake_items_[i], type);
         },
         r_output_values);
   }
 
-  std::string make_attribute_field(const Object &self_object,
-                                   const ComputeContext &compute_context,
-                                   const NodeGeometryBakeItem &item) const
+  std::shared_ptr<AttributeFieldInput> make_attribute_field(const Object &self_object,
+                                                            const ComputeContext &compute_context,
+                                                            const NodeGeometryBakeItem &item,
+                                                            const CPPType &type) const
   {
-    return bke::hash_to_anonymous_attribute_name(
+    std::string attribute_name = bke::hash_to_anonymous_attribute_name(
         compute_context.hash(), self_object.id.name, node_.identifier, item.identifier);
+    std::string socket_inspection_name = fmt::format(
+        TIP_("\"{}\" from {}"), item.name, node_.label_or_name());
+    return std::make_shared<AttributeFieldInput>(
+        std::move(attribute_name), type, std::move(socket_inspection_name));
   }
 };
 

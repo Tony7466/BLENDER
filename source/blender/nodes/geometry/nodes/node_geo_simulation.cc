@@ -102,13 +102,19 @@ static bke::bake::BakeSocketConfig make_bake_socket_config(
   return config;
 }
 
-static std::string make_attribute_field(const Object &self_object,
-                                        const ComputeContext &compute_context,
-                                        const bNode &node,
-                                        const NodeSimulationItem &item)
+static std::shared_ptr<AttributeFieldInput> make_attribute_field(
+    const Object &self_object,
+    const ComputeContext &compute_context,
+    const bNode &node,
+    const NodeSimulationItem &item,
+    const CPPType &type)
 {
-  return bke::hash_to_anonymous_attribute_name(
+  std::string attribute_name = bke::hash_to_anonymous_attribute_name(
       self_object.id.name, compute_context.hash(), node.identifier, item.identifier);
+  std::string socket_inspection_name = fmt::format(
+      TIP_("\"{}\" from {}"), item.name, node.label_or_name());
+  return std::make_shared<AttributeFieldInput>(
+      std::move(attribute_name), type, std::move(socket_inspection_name));
 }
 
 static void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
@@ -131,8 +137,9 @@ static void move_simulation_state_to_values(const Span<NodeSimulationItem> node_
       bake_items,
       config,
       data_block_map,
-      [&](const int i) {
-        return make_attribute_field(self_object, compute_context, node, node_simulation_items[i]);
+      [&](const int i, const CPPType &type) {
+        return make_attribute_field(
+            self_object, compute_context, node, node_simulation_items[i], type);
       },
       r_output_values);
 }
@@ -157,8 +164,9 @@ static void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_
       bake_items,
       config,
       data_block_map,
-      [&](const int i) {
-        return make_attribute_field(self_object, compute_context, node, node_simulation_items[i]);
+      [&](const int i, const CPPType &type) {
+        return make_attribute_field(
+            self_object, compute_context, node, node_simulation_items[i], type);
       },
       r_output_values);
 }

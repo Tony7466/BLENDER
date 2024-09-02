@@ -128,7 +128,8 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
 [[nodiscard]] static bool copy_bake_item_to_socket_value(
     const BakeItem &bake_item,
     const eNodeSocketDatatype socket_type,
-    const FunctionRef<std::string()> make_attribute_name,
+    const FunctionRef<std::shared_ptr<AttributeFieldInput>(const CPPType &type)>
+        make_attribute_field,
     Map<std::string, std::string> &r_attribute_map,
     void *r_value)
 {
@@ -157,10 +158,10 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
         return false;
       }
       if (const auto *item = dynamic_cast<const AttributeBakeItem *>(&bake_item)) {
-        std::string attribute_name = make_attribute_name();
-        fn::GField field{AttributeFieldInput::Create(attribute_name, base_type)};
+        std::shared_ptr<AttributeFieldInput> attribute_field = make_attribute_field(base_type);
+        r_attribute_map.add(item->name(), attribute_field->attribute_name());
+        fn::GField field{attribute_field};
         new (r_value) SocketValueVariant(std::move(field));
-        r_attribute_map.add(item->name(), attribute_name);
         return true;
       }
 #ifdef WITH_OPENVDB
@@ -246,11 +247,12 @@ static void default_initialize_socket_value(const eNodeSocketDatatype socket_typ
   }
 }
 
-void move_bake_items_to_socket_values(const Span<BakeItem *> bake_items,
-                                      const BakeSocketConfig &config,
-                                      BakeDataBlockMap *data_block_map,
-                                      FunctionRef<std::string(int)> make_attribute_name,
-                                      const Span<void *> r_socket_values)
+void move_bake_items_to_socket_values(
+    const Span<BakeItem *> bake_items,
+    const BakeSocketConfig &config,
+    BakeDataBlockMap *data_block_map,
+    FunctionRef<std::shared_ptr<AttributeFieldInput>(int, const CPPType &)> make_attribute_field,
+    const Span<void *> r_socket_values)
 {
   Map<std::string, std::string> attribute_map;
 
@@ -267,7 +269,7 @@ void move_bake_items_to_socket_values(const Span<BakeItem *> bake_items,
     if (!copy_bake_item_to_socket_value(
             *bake_item,
             socket_type,
-            [&]() { return make_attribute_name(i); },
+            [&](const CPPType &attr_type) { return make_attribute_field(i, attr_type); },
             attribute_map,
             r_socket_value))
     {
@@ -285,11 +287,12 @@ void move_bake_items_to_socket_values(const Span<BakeItem *> bake_items,
   restore_data_blocks(geometries, data_block_map);
 }
 
-void copy_bake_items_to_socket_values(const Span<const BakeItem *> bake_items,
-                                      const BakeSocketConfig &config,
-                                      BakeDataBlockMap *data_block_map,
-                                      FunctionRef<std::string(int)> make_attribute_name,
-                                      const Span<void *> r_socket_values)
+void copy_bake_items_to_socket_values(
+    const Span<const BakeItem *> bake_items,
+    const BakeSocketConfig &config,
+    BakeDataBlockMap *data_block_map,
+    FunctionRef<std::shared_ptr<AttributeFieldInput>(int, const CPPType &)> make_attribute_field,
+    const Span<void *> r_socket_values)
 {
   Map<std::string, std::string> attribute_map;
   Vector<GeometrySet *> geometries;
@@ -305,7 +308,7 @@ void copy_bake_items_to_socket_values(const Span<const BakeItem *> bake_items,
     if (!copy_bake_item_to_socket_value(
             *bake_item,
             socket_type,
-            [&]() { return make_attribute_name(i); },
+            [&](const CPPType &attr_type) { return make_attribute_field(i, attr_type); },
             attribute_map,
             r_socket_value))
     {

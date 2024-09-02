@@ -139,7 +139,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
   struct OutputAttributeID {
     int bsocket_index;
-    std::string attribute_id;
+    std::shared_ptr<AttributeFieldInput> attribute_field;
   };
 
   struct Storage {
@@ -217,20 +217,27 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
 
     /* Lazily create the required anonymous attribute ids. */
-    auto get_output_attribute_id = [&](const int output_bsocket_index) -> std::string {
+    auto get_output_attribute_field =
+        [&](const int output_bsocket_index) -> std::shared_ptr<AttributeFieldInput> {
       for (const OutputAttributeID &node_output_attribute : storage->attributes) {
         if (node_output_attribute.bsocket_index == output_bsocket_index) {
-          return node_output_attribute.attribute_id;
+          return node_output_attribute.attribute_field;
         }
       }
       const bNodeSocket &bsocket = node_.output_socket(output_bsocket_index);
-      std::string attribute_id = bke::hash_to_anonymous_attribute_name(
+      std::string attribute_name = bke::hash_to_anonymous_attribute_name(
           user_data->call_data->self_object()->id.name,
           user_data->compute_context->hash(),
           node_.identifier,
           bsocket.identifier);
-      storage->attributes.append({output_bsocket_index, attribute_id});
-      return attribute_id;
+      std::string socket_inspection_name = fmt::format(
+          TIP_("\"{}\" from {}"), bsocket.name, node_.label_or_name());
+      auto attribute_field = std::make_shared<AttributeFieldInput>(
+          std::move(attribute_name),
+          *bsocket.typeinfo->base_cpp_type,
+          std::move(socket_inspection_name));
+      storage->attributes.append({output_bsocket_index, attribute_field});
+      return attribute_field;
     };
 
     bool used_non_attribute_output_exists = false;
@@ -250,7 +257,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
           continue;
         }
         this->output_anonymous_attribute_field(
-            params, lf_index, output_bsocket, get_output_attribute_id(output_bsocket_index));
+            params, lf_index, get_output_attribute_field(output_bsocket_index));
       }
       else {
         if (output_usage == lf::ValueUsage::Used) {
@@ -282,7 +289,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
         context,
         own_lf_graph_info_.mapping.lf_input_index_for_output_bsocket_usage,
         own_lf_graph_info_.mapping.lf_input_index_for_attribute_propagation_to_output,
-        get_output_attribute_id};
+        [&](const int i) { return get_output_attribute_field(i)->attribute_name(); }};
 
     geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
     node_.typeinfo->geometry_node_execute(geo_params);
@@ -295,18 +302,12 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     }
   }
 
-  /**
-   * Output the given anonymous attribute id as a field.
-   */
   void output_anonymous_attribute_field(lf::Params &params,
                                         const int lf_index,
-                                        const bNodeSocket &bsocket,
-                                        std::string attribute_id) const
+                                        std::shared_ptr<AttributeFieldInput> attribute_field) const
   {
-    GField output_field{std::make_shared<AttributeFieldInput>(std::move(attribute_id),
-                                                              *bsocket.typeinfo->base_cpp_type)};
     void *r_value = params.get_output_data_ptr(lf_index);
-    new (r_value) SocketValueVariant(std::move(output_field));
+    new (r_value) SocketValueVariant(GField(attribute_field));
     params.output_set(lf_index);
   }
 
