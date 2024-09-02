@@ -26,6 +26,7 @@
 #include "DNA_object_enums.h"
 
 #include "BKE_pbvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 struct AssetWeakReference;
 struct BMFace;
@@ -78,7 +79,6 @@ struct Scene;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
-struct SubdivCCGCoord;
 struct Tex;
 struct ToolSettings;
 struct UnifiedPaintSettings;
@@ -614,7 +614,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    * mesh. Changing the underlying mesh type (e.g. enabling dyntopo, changing multires levels)
    * should invalidate this value.
    */
-  PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};
+  ActiveVert active_vert_ = {};
 
  public:
   SculptSession();
@@ -645,7 +645,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    */
   blender::float3 active_vert_position(const Depsgraph &depsgraph, const Object &object) const;
 
-  void set_active_vert(PBVHVertRef vert);
+  void set_active_vert(ActiveVert vert);
   void clear_active_vert();
 };
 
@@ -718,7 +718,7 @@ void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene);
 
 blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
 
-void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
+void BKE_sculpt_sync_face_visibility_to_grids(const Mesh &mesh, SubdivCCG &subdiv_ccg);
 
 /**
  * Test if blender::bke::pbvh::Tree can be used directly for drawing, which is faster than
