@@ -1889,8 +1889,6 @@ static void vpaint_paint_leaves(bContext *C,
     case VPAINT_BRUSH_TYPE_SMEAR:
       do_vpaint_brush_smear(C, vp, vpd, ob, mesh, nodes, node_mask, attribute);
       break;
-    default:
-      break;
   }
 }
 

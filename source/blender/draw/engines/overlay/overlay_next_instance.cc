@@ -33,6 +33,9 @@ void Instance::init()
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
 
+  /* Note there might be less than 6 planes, but we always compute the 6 of them for simplicity. */
+  state.clipping_plane_count = clipping_enabled_ ? 6 : 0;
+
   state.pixelsize = U.pixelsize;
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
   state.space_type = state.v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
@@ -46,8 +49,7 @@ void Instance::init()
     state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
     state.xray_opacity = XRAY_ALPHA(state.v3d);
     state.cfra = DEG_get_ctime(state.depsgraph);
-    state.clipping_state = RV3D_CLIPPING_ENABLED(state.v3d, state.rv3d) ? DRW_STATE_CLIP_PLANES :
-                                                                          DRWState(0);
+
     if (!state.hide_overlays) {
       state.overlay = state.v3d->overlay;
       state.v3d_flag = state.v3d->flag;
@@ -84,6 +86,9 @@ void Instance::begin_sync()
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
+  state.camera_position = view.viewinv().location();
+  state.camera_forward = view.viewinv().z_axis();
+
   resources.begin_sync();
 
   background.begin_sync(resources, state);
@@ -91,9 +96,9 @@ void Instance::begin_sync()
 
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.bounds.begin_sync();
-    layer.cameras.begin_sync();
+    layer.cameras.begin_sync(resources, state, view);
     layer.curves.begin_sync(resources, state, view);
-    layer.empties.begin_sync();
+    layer.empties.begin_sync(resources, state, view);
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
     layer.fluids.begin_sync(resources, state);
@@ -166,10 +171,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
-        layer.empties.object_sync(ob_ref, resources, state);
+        layer.empties.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_CAMERA:
-        layer.cameras.object_sync(ob_ref, resources, state);
+        layer.cameras.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_ARMATURE:
         break;
@@ -323,6 +328,17 @@ void Instance::draw(Manager &manager)
     GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
   }
 
+  regular.cameras.draw_scene_background_images(
+      resources.overlay_color_only_fb, state, manager, view);
+  infront.cameras.draw_scene_background_images(
+      resources.overlay_color_only_fb, state, manager, view);
+
+  regular.empties.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  regular.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
+
+  regular.empties.draw_images(resources.overlay_fb, manager, view);
+
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
 
@@ -367,6 +383,9 @@ void Instance::draw(Manager &manager)
 
   /* TODO(: Breaks selection on M1 Max. */
   // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
+  // infront.empties.draw_in_front_images(resources.overlay_in_front_fb, manager, view);
+  // regular.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
+  // infront.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
 
   /* Drawn onto the output framebuffer. */
   background.draw(manager);
