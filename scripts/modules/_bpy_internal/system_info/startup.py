@@ -31,11 +31,11 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
 
     os_type = platform.system()
     script_directory = Path(__file__).parent.resolve()
-    if os_type == "Darwin":  # macOS
+    if os_type == "Darwin":  # macOS appears as Darwin.
         blender_dir = script_directory.joinpath("../../../../../../MacOS/Blender")
     elif os_type == "Windows":
         blender_dir = script_directory.joinpath("../../../../../Blender.exe")
-    else:  # Linux & other Unix systems
+    else:  # Linux and other Unix systems.
         blender_dir = script_directory.joinpath("../../../../../blender")
 
     try:
@@ -46,7 +46,7 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
 
     text = blender_output.stdout
 
-    # Gather version number and type (Alpha, Beta, etc)
+    # Gather Blender version information.
     version_match = re.search(r"^Blender (.*)", text, flags=re.MULTILINE)
     branch_match = re.search(r"^\s+build branch: (.*)", text, flags=re.MULTILINE)
     commit_date_match = re.search(r"^\s+build commit date: (.*)", text, flags=re.MULTILINE)
