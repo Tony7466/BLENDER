@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Keep the information collected in this script up to date with startup.py
+# Keep the information collected in this script synchronized with startup.py
 
 def url_prefill_from_blender(*, addon_info=None):
     import bpy

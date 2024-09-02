@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-# Keep the information collected in this script up to date with runtime.py
+# Keep the information collected in this script synchronized with runtime.py
 
 def prefill_bug_report_info():
     import re
