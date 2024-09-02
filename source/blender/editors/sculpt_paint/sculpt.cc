@@ -2428,9 +2428,7 @@ static float brush_strength(const Sculpt &sd,
         case BRUSH_MASK_SMOOTH:
           return alpha * pressure * feather;
       }
-      BLI_assert_msg(0, "Not supposed to happen");
-      return 0.0f;
-
+      break;
     case SCULPT_TOOL_CREASE:
     case SCULPT_TOOL_BLOB:
       return alpha * flip * pressure * overlap * feather;
@@ -2490,10 +2488,9 @@ static float brush_strength(const Sculpt &sd,
     case SCULPT_TOOL_POSE:
     case SCULPT_TOOL_BOUNDARY:
       return root_alpha * feather;
-
-    default:
-      return 0.0f;
   }
+  BLI_assert_unreachable();
+  return 0.0f;
 }
 
 void sculpt_apply_texture(const SculptSession &ss,
@@ -3097,9 +3094,6 @@ void calc_brush_plane(const Depsgraph &depsgraph,
           project_plane_v3_v3v3(r_area_no, r_area_no, ss.cache->view_normal_symm);
           normalize_v3(r_area_no);
         }
-        break;
-
-      default:
         break;
     }
 
@@ -4898,6 +4892,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
+    ss.clear_active_vert();
     return false;
   }
 
@@ -4946,7 +4941,22 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
 
   /* Update the active vertex of the SculptSession. */
   const PBVHVertRef active_vertex = srd.active_vertex;
-  ss.set_active_vert(active_vertex);
+  ActiveVert active_vert = {};
+  switch (ss.pbvh->type()) {
+    case bke::pbvh::Type::Mesh:
+      active_vert = int(active_vertex.i);
+      break;
+    case bke::pbvh::Type::Grids: {
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      active_vert = SubdivCCGCoord::from_index(key, active_vertex.i);
+      break;
+    }
+    case bke::pbvh::Type::BMesh:
+      active_vert = reinterpret_cast<BMVert *>(active_vertex.i);
+      break;
+  }
+
+  ss.set_active_vert(active_vert);
   out->active_vertex_co = ss.active_vert_position(*depsgraph, ob);
 
   switch (ss.pbvh->type()) {
@@ -7396,11 +7406,11 @@ void transform_positions(const float4x4 &transform, const MutableSpan<float3> po
 }
 
 OffsetIndices<int> create_node_vert_offsets(const Span<bke::pbvh::MeshNode> nodes,
-                                            const IndexMask &nodes_mask,
+                                            const IndexMask &node_mask,
                                             Array<int> &node_data)
 {
-  node_data.reinitialize(nodes.size() + 1);
-  nodes_mask.foreach_index([&](const int i, const int pos) {
+  node_data.reinitialize(node_mask.size() + 1);
+  node_mask.foreach_index([&](const int i, const int pos) {
     node_data[pos] = bke::pbvh::node_unique_verts(nodes[i]).size();
   });
   return offset_indices::accumulate_counts_to_offsets(node_data);
@@ -7408,22 +7418,22 @@ OffsetIndices<int> create_node_vert_offsets(const Span<bke::pbvh::MeshNode> node
 
 OffsetIndices<int> create_node_vert_offsets(const CCGKey &key,
                                             const Span<bke::pbvh::GridsNode> nodes,
-                                            const IndexMask &nodes_mask,
+                                            const IndexMask &node_mask,
                                             Array<int> &node_data)
 {
-  node_data.reinitialize(nodes.size() + 1);
-  nodes_mask.foreach_index([&](const int i, const int pos) {
+  node_data.reinitialize(node_mask.size() + 1);
+  node_mask.foreach_index([&](const int i, const int pos) {
     node_data[pos] = bke::pbvh::node_grid_indices(nodes[i]).size() * key.grid_area;
   });
   return offset_indices::accumulate_counts_to_offsets(node_data);
 }
 
 OffsetIndices<int> create_node_vert_offsets_bmesh(const Span<bke::pbvh::BMeshNode> nodes,
-                                                  const IndexMask &nodes_mask,
+                                                  const IndexMask &node_mask,
                                                   Array<int> &node_data)
 {
-  node_data.reinitialize(nodes.size() + 1);
-  nodes_mask.foreach_index([&](const int i, const int pos) {
+  node_data.reinitialize(node_mask.size() + 1);
+  node_mask.foreach_index([&](const int i, const int pos) {
     node_data[pos] =
         BKE_pbvh_bmesh_node_unique_verts(const_cast<bke::pbvh::BMeshNode *>(&nodes[i])).size();
   });
