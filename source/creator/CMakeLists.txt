@@ -963,13 +963,13 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     endif()
 
     # The script uses the version of Python installed with Blender
-    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh.in
       ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
       @ONLY
     )
-    unset(_PYTHON_BINARY)
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
     install(
       PROGRAMS ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
       DESTINATION "."
@@ -1484,7 +1484,7 @@ elseif(WIN32)
 
 
   if(NOT WITH_PYTHON_MODULE)
-    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
     # Configure then generate file. Note that this copies the literal generator for the Python executable
     # So that's why it needs to be generated afterwards.
     configure_file(
@@ -1492,7 +1492,7 @@ elseif(WIN32)
       ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
       @ONLY
     )
-    unset(_PYTHON_BINARY)
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
     # Replace Python executable generator with actual executable name
     file(GENERATE
       OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
@@ -1647,13 +1647,13 @@ elseif(APPLE)
   endif()
 
   if(NOT WITH_PYTHON_MODULE AND WITH_PYTHON AND WITH_PYTHON_INSTALL)
-    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh.in
       ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
       @ONLY
     )
-    unset(_PYTHON_BINARY)
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
     install(
       PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
       DESTINATION "./Blender.app/Contents/Resources"

@@ -2,7 +2,7 @@
 
 set BLENDER_INSTALL_DIRECTORY=%~dp0
 set BLENDER_VERSION_FOLDER=%BLENDER_INSTALL_DIRECTORY%@BLENDER_VERSION@
-set PYTHON_BIN=%BLENDER_VERSION_FOLDER%\python\bin\@_PYTHON_BINARY@
+set PYTHON_BIN=%BLENDER_VERSION_FOLDER%\python\bin\@PYTHON_EXECUTABLE_NAME_ONLY@
 
 if exist "%PYTHON_BIN%" (
     "%PYTHON_BIN%" -I "%BLENDER_VERSION_FOLDER%\scripts\modules\_bpy_internal\system_info\startup.py"
@@ -11,6 +11,6 @@ if exist "%PYTHON_BIN%" (
 
 echo ERROR: Failed to find python executable at: %PYTHON_BIN%
 echo Possible causes include:
-echo - Your Blender installation is corrupt or missing @_PYTHON_BINARY@.
-echo - The location or name of @_PYTHON_BINARY@ has changed.
+echo - Your Blender installation is corrupt or missing @PYTHON_EXECUTABLE_NAME_ONLY@.
+echo - The location or name of @PYTHON_EXECUTABLE_NAME_ONLY@ has changed.
 pause
