@@ -1482,14 +1482,29 @@ elseif(WIN32)
 
 
   if(NOT WITH_PYTHON_MODULE)
+    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
+    # Configure and generate file. Note that this copies the literal generator for the Python executable
+    # So that's why it needs to be generated afterwards.
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_info.cmd.in
-      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.cmd
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
       @ONLY
+    )
+    unset(_PYTHON_BINARY)
+    # Replace Python executable generator with actual executable name
+    file(GENERATE
+      OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      INPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
     )
     install(
       PROGRAMS
       DESTINATION "."
+    )
+    install(
+      FILES
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      DESTINATION ${TARGETDIR_EXE}
+      RENAME blender_system_info.cmd
     )
     install(
       FILES
@@ -1499,7 +1514,6 @@ elseif(WIN32)
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_factory_startup.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_oculus.cmd
         ${CMAKE_SOURCE_DIR}/release/windows/batch/oculus.json
-        ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.cmd
       DESTINATION ${TARGETDIR_EXE}
     )
   endif()
