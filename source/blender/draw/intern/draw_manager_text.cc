@@ -143,7 +143,6 @@ static void drw_text_cache_draw_ex(DRWTextStore *dt, ARegion *region)
   const int font_id = BLF_set_default();
 
   float shadow_color[4] = {0, 0, 0, 0.8f};
-  UI_GetThemeColor3fv(TH_BACK, shadow_color);
 
   BLI_memiter_iter_init(dt->cache_strings, &it);
   while ((vos = static_cast<ViewCachedString *>(BLI_memiter_iter_step(&it)))) {
