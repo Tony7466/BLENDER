@@ -378,16 +378,15 @@ void Instance::draw(Manager &manager)
   draw_layer_color_only(regular, resources.overlay_color_only_fb);
   draw_layer_color_only(infront, resources.overlay_color_only_fb);
 
-  xray_fade.draw(manager);
-  grid.draw(resources, manager, view);
+  xray_fade.draw(resources.overlay_color_only_fb, manager, view);
+  grid.draw(resources.overlay_color_only_fb, manager, view);
 
   infront.empties.draw_in_front_images(resources.overlay_color_only_fb, manager, view);
   regular.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
   infront.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
 
-  /* Drawn onto the output framebuffer. */
-  background.draw(manager);
-  anti_aliasing.draw(manager);
+  background.draw(resources.overlay_output_fb, manager, view);
+  anti_aliasing.draw(resources.overlay_output_fb, manager, view);
 
   resources.line_tx.release();
   resources.overlay_tx.release();
