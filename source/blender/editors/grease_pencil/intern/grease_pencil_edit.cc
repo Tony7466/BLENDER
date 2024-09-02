@@ -3314,9 +3314,9 @@ static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
 static void GREASE_PENCIL_OT_join_shape(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Set Shape ID";
+  ot->name = "Join Shapes";
   ot->idname = "GREASE_PENCIL_OT_join_shape";
-  ot->description = "Set shape id";
+  ot->description = "Join selected strokes into one shape";
 
   /* callbacks */
   ot->exec = grease_pencil_join_shape_exec;
