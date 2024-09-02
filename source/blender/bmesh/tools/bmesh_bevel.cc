@@ -2304,8 +2304,7 @@ static void check_edge_data_seam_sharp_edges(BevVert *bv, int flag)
   EdgeHalf *e = &bv->edges[0], *efirst = &bv->edges[0];
 
   /* Get to first edge with seam or sharp edge data. */
-  while (HASNOT_SEAMSHARP(e, flag))
-  {
+  while (HASNOT_SEAMSHARP(e, flag)) {
     e = e->next;
     if (e == efirst) {
       break;
@@ -2313,8 +2312,7 @@ static void check_edge_data_seam_sharp_edges(BevVert *bv, int flag)
   }
 
   /* If no such edge found, return. */
-  if (HASNOT_SEAMSHARP(e, flag))
-  {
+  if (HASNOT_SEAMSHARP(e, flag)) {
     return;
   }
 
@@ -2325,15 +2323,13 @@ static void check_edge_data_seam_sharp_edges(BevVert *bv, int flag)
     int flag_count = 0;
     EdgeHalf *ne = e->next;
 
-    while (HASNOT_SEAMSHARP(ne, flag) && ne != efirst)
-    {
+    while (HASNOT_SEAMSHARP(ne, flag) && ne != efirst) {
       if (ne->is_bev) {
         flag_count++;
       }
       ne = ne->next;
     }
-    if (ne == e || (ne == efirst && HASNOT_SEAMSHARP(efirst, flag)))
-    {
+    if (ne == e || (ne == efirst && HASNOT_SEAMSHARP(efirst, flag))) {
       break;
     }
     /* Set seam_len / sharp_len of starting edge. */
@@ -2366,7 +2362,7 @@ static void bevel_extend_edge_data_ex(BevVert *bv, int flag)
         start = bcur; /* Set start to first boundvert with seam_len > 0. */
       }
 
-      /* Now for all the mesh_verts starting at current index and ending at idxlen
+      /* Now for all the mesh_verts starting at current index and ending at `idx_end`
        * we go through outermost ring and through all its segments and add seams
        * for those edges. */
       int idx_end = bcur->index + extend_len;
