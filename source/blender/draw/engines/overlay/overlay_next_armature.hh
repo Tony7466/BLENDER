@@ -159,10 +159,10 @@ class Armatures {
      * transparent blending. */
     {
       DRWState transparent_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                                   DRW_STATE_BLEND_ADD | state.clipping_state;
+                                   DRW_STATE_BLEND_ADD;
       {
         auto &sub = armature_ps_.sub("opaque.envelope_distance");
-        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT);
+        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", 1.0f);
         sub.push_constant("isDistance", true);
@@ -170,7 +170,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.envelope_distance");
-        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT);
+        sub.state_set(transparent_state | DRW_STATE_CULL_FRONT, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", wire_alpha);
         sub.push_constant("isDistance", true);
@@ -182,7 +182,7 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.degrees_of_freedom_fill");
-        sub.state_set(transparent_state);
+        sub.state_set(transparent_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", 1.0f);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
@@ -190,7 +190,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.degrees_of_freedom_fill");
-        sub.state_set(transparent_state);
+        sub.state_set(transparent_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_degrees_of_freedom.get());
         sub.push_constant("alpha", wire_alpha);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
@@ -202,20 +202,21 @@ class Armatures {
     }
 
     DRWState default_state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                             DRW_STATE_WRITE_DEPTH | state.clipping_state;
+                             DRW_STATE_WRITE_DEPTH;
 
     /* Bone Shapes (Octahedral, Box, Custom Shapes, Spheres). */
     {
       {
         auto &sub = armature_ps_.sub("opaque.sphere_fill");
-        sub.state_set(default_state);
+        sub.state_set(default_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", 1.0f);
         opaque_.sphere_fill = &sub;
       }
       {
         auto &sub = armature_ps_.sub("transparent.sphere_fill");
-        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA);
+        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_sphere_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.4f);
         transparent_.sphere_fill = &sub;
@@ -223,14 +224,15 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.shape_fill");
-        sub.state_set(default_state);
+        sub.state_set(default_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_fill.get());
         sub.push_constant("alpha", 1.0f);
         opaque_.shape_fill = &sub;
       }
       {
         auto &sub = armature_ps_.sub("transparent.shape_fill");
-        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA);
+        sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) | DRW_STATE_BLEND_ALPHA,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.6f);
         transparent_.shape_fill = &sub;
@@ -238,7 +240,7 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.sphere_outline");
-        sub.state_set(default_state);
+        sub.state_set(default_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
@@ -246,7 +248,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.sphere_outline");
-        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_sphere_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
@@ -258,7 +260,7 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.shape_outline");
-        sub.state_set(default_state);
+        sub.state_set(default_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
@@ -266,7 +268,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.shape_outline");
-        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.bind_texture("depthTex", depth_tex);
@@ -280,7 +282,7 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.shape_wire");
-        sub.state_set(default_state);
+        sub.state_set(default_state, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
@@ -288,7 +290,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.shape_wire");
-        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_shape_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.bind_texture("depthTex", depth_tex);
@@ -331,7 +333,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.stick");
-        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_stick.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
@@ -345,7 +347,7 @@ class Armatures {
     {
       {
         auto &sub = armature_ps_.sub("opaque.envelope_fill");
-        sub.state_set(default_state | DRW_STATE_CULL_BACK);
+        sub.state_set(default_state | DRW_STATE_CULL_BACK, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("isDistance", false);
         sub.push_constant("alpha", 1.0f);
@@ -354,7 +356,8 @@ class Armatures {
       {
         auto &sub = armature_ps_.sub("transparent.envelope_fill");
         sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) |
-                      (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
+                          (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK),
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_fill.get());
         sub.push_constant("alpha", wire_alpha * 0.6f);
         transparent_.envelope_fill = &sub;
@@ -362,7 +365,7 @@ class Armatures {
 
       {
         auto &sub = armature_ps_.sub("opaque.envelope_outline");
-        sub.state_set(default_state | DRW_STATE_CULL_BACK);
+        sub.state_set(default_state | DRW_STATE_CULL_BACK, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", 1.0f);
@@ -371,7 +374,8 @@ class Armatures {
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.envelope_outline");
         sub.state_set((default_state & ~DRW_STATE_WRITE_DEPTH) |
-                      (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK));
+                          (DRW_STATE_BLEND_ALPHA | DRW_STATE_CULL_BACK),
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_envelope_outline.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);
@@ -391,7 +395,7 @@ class Armatures {
       }
       if (use_wire_alpha) {
         auto &sub = armature_ps_.sub("transparent.wire");
-        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA);
+        sub.state_set(default_state | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.armature_wire.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("alpha", wire_alpha);

@@ -33,6 +33,9 @@ void Instance::init()
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
 
+  /* Note there might be less than 6 planes, but we always compute the 6 of them for simplicity. */
+  state.clipping_plane_count = clipping_enabled_ ? 6 : 0;
+
   state.pixelsize = U.pixelsize;
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
   state.space_type = state.v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
@@ -46,8 +49,7 @@ void Instance::init()
     state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
     state.xray_opacity = XRAY_ALPHA(state.v3d);
     state.cfra = DEG_get_ctime(state.depsgraph);
-    state.clipping_state = RV3D_CLIPPING_ENABLED(state.v3d, state.rv3d) ? DRW_STATE_CLIP_PLANES :
-                                                                          DRWState(0);
+
     if (!state.hide_overlays) {
       state.overlay = state.v3d->overlay;
       state.v3d_flag = state.v3d->flag;
@@ -87,6 +89,9 @@ void Instance::begin_sync()
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
+  state.camera_position = view.viewinv().location();
+  state.camera_forward = view.viewinv().z_axis();
+
   resources.begin_sync();
 
   background.begin_sync(resources, state);
@@ -95,10 +100,12 @@ void Instance::begin_sync()
   auto begin_sync_layer = [&](OverlayLayer &layer) {
     layer.armatures.begin_sync(resources, state);
     layer.bounds.begin_sync();
-    layer.cameras.begin_sync();
-    layer.empties.begin_sync();
+    layer.cameras.begin_sync(resources, state, view);
+    layer.curves.begin_sync(resources, state, view);
+    layer.empties.begin_sync(resources, state, view);
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
+    layer.fluids.begin_sync(resources, state);
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.light_probes.begin_sync(resources, state);
@@ -116,6 +123,7 @@ void Instance::begin_sync()
   grid.begin_sync(resources, state, view);
 
   anti_aliasing.begin_sync(resources);
+  xray_fade.begin_sync(resources, state);
 }
 
 void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
@@ -130,15 +138,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   OverlayLayer &layer = object_is_in_front(ob_ref.object, state) ? infront : regular;
 
   if (needs_prepass) {
-    switch (ob_ref.object->type) {
-      case OB_MESH:
-      case OB_SURF:
-      case OB_CURVES:
-      case OB_FONT:
-      case OB_CURVES_LEGACY:
-        layer.prepass.object_sync(manager, ob_ref, resources);
-        break;
-    }
+    layer.prepass.object_sync(manager, ob_ref, resources);
   }
 
   if (in_edit_mode && !state.hide_overlays) {
@@ -150,6 +150,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.armatures.edit_object_sync(ob_ref, resources, shapes, state);
         break;
       case OB_CURVES_LEGACY:
+        layer.curves.edit_object_sync_legacy(manager, ob_ref, resources);
+        break;
+      case OB_CURVES:
+        layer.curves.edit_object_sync(manager, ob_ref, resources);
         break;
       case OB_SURF:
         break;
@@ -161,8 +165,6 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_FONT:
         break;
-      case OB_CURVES:
-        break;
     }
   }
 
@@ -173,10 +175,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (!state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_EMPTY:
-        layer.empties.object_sync(ob_ref, resources, state);
+        layer.empties.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_CAMERA:
-        layer.cameras.object_sync(ob_ref, resources, state);
+        layer.cameras.object_sync(ob_ref, shapes, manager, resources, state);
         break;
       case OB_ARMATURE:
         if (!in_edit_mode) {
@@ -205,11 +207,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
+    layer.bounds.object_sync(ob_ref, resources, state);
     layer.facing.object_sync(manager, ob_ref, state);
     layer.force_fields.object_sync(ob_ref, resources, state);
-    layer.bounds.object_sync(ob_ref, resources, state);
-    layer.relations.object_sync(ob_ref, resources, state);
+    layer.fluids.object_sync(manager, ob_ref, resources, state);
     layer.particles.object_sync(manager, ob_ref, resources, state);
+    layer.relations.object_sync(ob_ref, resources, state);
 
     if (object_is_selected(ob_ref) && !in_edit_paint_mode) {
       outline.object_sync(manager, ob_ref, state);
@@ -231,6 +234,7 @@ void Instance::end_sync()
     layer.light_probes.end_sync(resources, shapes, state);
     layer.metaballs.end_sync(resources, shapes, state);
     layer.relations.end_sync(resources, state);
+    layer.fluids.end_sync(resources, shapes, state);
     layer.speakers.end_sync(resources, shapes, state);
   };
   end_sync_layer(regular);
@@ -265,8 +269,8 @@ void Instance::draw(Manager &manager)
   View view("OverlayView", view_legacy);
 
   if (state.xray_enabled) {
-    /* For Xray we render the scene to a separate depth buffer. */
-    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
+    /* For X-ray we render the scene to a separate depth buffer. */
+    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
     resources.depth_target_tx.wrap(resources.xray_depth_tx);
   }
   else {
@@ -275,7 +279,7 @@ void Instance::draw(Manager &manager)
 
   /* TODO(fclem): Remove mandatory allocation. */
   if (!resources.depth_in_front_tx.is_valid()) {
-    resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH_COMPONENT24);
+    resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
     resources.depth_in_front_tx.wrap(resources.depth_in_front_alloc_tx);
   }
 
@@ -332,6 +336,15 @@ void Instance::draw(Manager &manager)
     GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
   }
 
+  regular.cameras.draw_scene_background_images(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_scene_background_images(resources.overlay_color_only_fb, manager, view);
+
+  regular.empties.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  regular.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
+
+  regular.empties.draw_images(resources.overlay_fb, manager, view);
+
   regular.prepass.draw(resources.overlay_line_fb, manager, view);
   infront.prepass.draw(resources.overlay_line_in_front_fb, manager, view);
 
@@ -355,6 +368,7 @@ void Instance::draw(Manager &manager)
     layer.lattices.draw(framebuffer, manager, view);
     layer.metaballs.draw(framebuffer, manager, view);
     layer.relations.draw(framebuffer, manager, view);
+    layer.fluids.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
     layer.armatures.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
@@ -362,9 +376,12 @@ void Instance::draw(Manager &manager)
 
   draw_layer(regular, resources.overlay_line_fb);
 
+  xray_fade.draw(manager);
+
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
     layer.meshes.draw_color_only(framebuffer, manager, view);
+    layer.curves.draw_color_only(framebuffer, manager, view);
   };
 
   draw_layer_color_only(regular, resources.overlay_color_only_fb);
@@ -373,6 +390,9 @@ void Instance::draw(Manager &manager)
 
   /* TODO(: Breaks selection on M1 Max. */
   // infront.lattices.draw(resources.overlay_line_in_front_fb, manager, view);
+  // infront.empties.draw_in_front_images(resources.overlay_in_front_fb, manager, view);
+  // regular.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
+  // infront.cameras.draw_in_front(resources.overlay_in_front_fb, manager, view);
 
   /* Drawn onto the output framebuffer. */
   background.draw(manager);

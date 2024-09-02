@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_movieclip.h"
+
 #include "BLI_function_ref.hh"
 
 #include "GPU_matrix.hh"
@@ -61,7 +63,9 @@ struct State {
   short v3d_flag;     /* TODO: move to #View3DOverlay. */
   short v3d_gridflag; /* TODO: move to #View3DOverlay. */
   int cfra;
-  DRWState clipping_state;
+  float3 camera_position;
+  float3 camera_forward;
+  int clipping_plane_count;
 
   float view_dist_get(const float4x4 &winmat) const
   {
@@ -188,7 +192,14 @@ class ShaderModule {
   ShaderPtr armature_degrees_of_freedom;
   ShaderPtr background_fill = shader("overlay_background");
   ShaderPtr background_clip_bound = shader("overlay_clipbound");
+  ShaderPtr curve_edit_points;
+  ShaderPtr curve_edit_line;
+  ShaderPtr curve_edit_handles;
   ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr legacy_curve_edit_wires;
+  ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
+  ShaderPtr legacy_curve_edit_handles = shader("overlay_edit_curve_handle_next");
+  ShaderPtr legacy_curve_edit_points;
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_edit_depth;
   ShaderPtr mesh_edit_edge = shader("overlay_edit_mesh_edge_next");
@@ -205,6 +216,7 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr xray_fade = shader("overlay_xray_fade");
 
   /** Selectable Shaders */
   ShaderPtr armature_envelope_fill;
@@ -224,6 +236,13 @@ class ShaderModule {
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
   ShaderPtr facing;
+  ShaderPtr fluid_grid_lines_flags;
+  ShaderPtr fluid_grid_lines_flat;
+  ShaderPtr fluid_grid_lines_range;
+  ShaderPtr fluid_velocity_streamline;
+  ShaderPtr fluid_velocity_mac;
+  ShaderPtr fluid_velocity_needle;
+  ShaderPtr image_plane;
   ShaderPtr lattice_points;
   ShaderPtr lattice_wire;
   ShaderPtr particle_dot;
@@ -307,12 +326,25 @@ struct Resources : public select::SelectMap {
   /**
    * Depth target.
    * Can either be default depth buffer texture from #DefaultTextureList
-   * or `xray_depth_tx` if Xray is enabled.
+   * or `xray_depth_tx` if X-ray is enabled.
    */
   TextureRef depth_target_tx;
 
+  Vector<MovieClip *> bg_movie_clips;
+
   Resources(const SelectionType selection_type_, ShaderModule &shader_module)
       : select::SelectMap(selection_type_), shaders(shader_module){};
+
+  ~Resources()
+  {
+    free_movieclips_textures();
+  }
+
+  void begin_sync()
+  {
+    SelectMap::begin_sync();
+    free_movieclips_textures();
+  }
 
   ThemeColorID object_wire_theme_id(const ObjectRef &ob_ref, const State &state) const
   {
@@ -397,6 +429,14 @@ struct Resources : public select::SelectMap {
   {
     ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
     return background_blend_color(theme_id);
+  }
+
+  void free_movieclips_textures()
+  {
+    /* Free Movie clip textures after rendering */
+    for (MovieClip *clip : bg_movie_clips) {
+      BKE_movieclip_free_gputexture(clip);
+    }
   }
 };
 
