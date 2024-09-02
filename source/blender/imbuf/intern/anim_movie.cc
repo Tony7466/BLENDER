@@ -230,7 +230,7 @@ static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_s
   /* The duration has not been set, happens for single JPEG2000 images.
    * NOTE: Leave the duration zeroed, although it could set to 1 so the file is recognized
    * as a movie with 1 frame, leave as-is since image loading code-paths are preferred
-   * in this case. The following assetrion should be valid in this case. */
+   * in this case. The following assertion should be valid in this case. */
   BLI_assert(pFormatCtx->duration == AV_NOPTS_VALUE);
   return 0;
 }
