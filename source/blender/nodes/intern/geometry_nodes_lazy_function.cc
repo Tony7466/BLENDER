@@ -230,8 +230,8 @@ class LazyFunctionForGeometryNode : public LazyFunction {
           user_data->compute_context->hash(),
           node_.identifier,
           bsocket.identifier);
-      std::string socket_inspection_name = fmt::format(
-          TIP_("\"{}\" from {}"), bsocket.name, node_.label_or_name());
+      std::string socket_inspection_name = make_anonymous_attribute_socket_inspection_string(
+          bsocket);
       auto attribute_field = std::make_shared<AttributeFieldInput>(
           std::move(attribute_name),
           *bsocket.typeinfo->base_cpp_type,
@@ -470,6 +470,17 @@ void set_default_remaining_node_outputs(lf::Params &params, const bNode &node)
     }
     set_default_value_for_output_socket(params, lf_index, *bsocket);
   }
+}
+
+std::string make_anonymous_attribute_socket_inspection_string(const bNodeSocket &socket)
+{
+  return make_anonymous_attribute_socket_inspection_string(socket.owner_node().label_or_name(),
+                                                           socket.name);
+}
+std::string make_anonymous_attribute_socket_inspection_string(StringRef node_name,
+                                                              StringRef socket_name)
+{
+  return fmt::format(TIP_("\"{}\" from {}"), socket_name, node_name);
 }
 
 static void execute_multi_function_on_value_variant__single(

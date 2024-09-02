@@ -449,6 +449,10 @@ std::unique_ptr<LazyFunction> get_warning_node_lazy_function(const bNode &node);
  */
 void set_default_remaining_node_outputs(lf::Params &params, const bNode &node);
 
+std::string make_anonymous_attribute_socket_inspection_string(const bNodeSocket &socket);
+std::string make_anonymous_attribute_socket_inspection_string(StringRef node_name,
+                                                              StringRef socket_name);
+
 struct FoundNestedNodeID {
   int id;
   bool is_in_simulation = false;
