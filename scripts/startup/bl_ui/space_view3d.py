@@ -2324,6 +2324,7 @@ class VIEW3D_MT_select_edit_grease_pencil(Menu):
 
         layout.separator()
 
+        layout.operator("grease_pencil.select_shape")
         layout.operator("grease_pencil.select_linked")
 
         layout.separator()
