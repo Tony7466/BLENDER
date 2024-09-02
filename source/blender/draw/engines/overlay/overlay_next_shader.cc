@@ -24,8 +24,6 @@ ShaderModule::ShaderPtr ShaderModule::shader(
   /* Perform a copy for patching. */
   gpu::shader::ShaderCreateInfo info = *info_ptr;
 
-  info.define("OVERLAY_NEXT");
-
   patch(info);
 
   info.define("OVERLAY_NEXT");
