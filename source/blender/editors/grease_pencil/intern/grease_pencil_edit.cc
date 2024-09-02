@@ -3248,7 +3248,7 @@ static Array<int> get_gapless_indices(const IndexRange &universe, const IndexMas
   return indices_data;
 }
 
-static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
+static int grease_pencil_join_shapes_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
@@ -3256,7 +3256,7 @@ static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
 
   bool changed = false;
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
-  for (const MutableDrawingInfo &info : drawings) {
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
         *object, info.drawing, info.layer_index, memory);
@@ -3301,7 +3301,7 @@ static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
     info.drawing.tag_topology_changed();
 
     changed = true;
-  };
+  });
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -3311,15 +3311,15 @@ static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
-static void GREASE_PENCIL_OT_join_shape(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_join_shapes(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Join Shapes";
-  ot->idname = "GREASE_PENCIL_OT_join_shape";
+  ot->idname = "GREASE_PENCIL_OT_join_shapes";
   ot->description = "Join selected strokes into one shape";
 
   /* callbacks */
-  ot->exec = grease_pencil_join_shape_exec;
+  ot->exec = grease_pencil_join_shapes_exec;
   ot->poll = editable_grease_pencil_poll;
 
   /* flags */
@@ -3363,5 +3363,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_type);
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_resolution);
   WM_operatortype_append(GREASE_PENCIL_OT_set_handle_type);
-  WM_operatortype_append(GREASE_PENCIL_OT_join_shape);
+  WM_operatortype_append(GREASE_PENCIL_OT_join_shapes);
 }

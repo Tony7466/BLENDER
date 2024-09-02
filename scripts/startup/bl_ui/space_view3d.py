@@ -6172,7 +6172,7 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
 
         layout.separator()
 
-        layout.operator("grease_pencil.join_shape")
+        layout.operator("grease_pencil.join_shapes")
 
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):

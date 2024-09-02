@@ -4743,8 +4743,8 @@ def km_grease_pencil_edit_mode(params):
         # Set Handle Type
         ("grease_pencil.set_handle_type", {"type": 'V', "value": 'PRESS'}, None),
 
-        # Join Shape
-        ("grease_pencil.join_shape", {"type": 'J', "value": 'PRESS', "shift": True}, None),
+        # Join Shapes
+        ("grease_pencil.join_shapes", {"type": 'J', "value": 'PRESS', "shift": True}, None),
 
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
