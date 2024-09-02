@@ -899,8 +899,6 @@ void BKE_paint_brushes_validate(Main *bmain, Paint *paint)
     BKE_paint_eraser_brush_set(paint, nullptr);
     BKE_paint_eraser_brush_set_default(bmain, paint);
   }
-
-  BKE_paint_toolslots_brush_update(paint);
 }
 
 static bool paint_eraser_brush_set_from_asset_reference(Main *bmain, Paint *paint)
@@ -1550,22 +1548,20 @@ void BKE_paint_init(Main *bmain, Scene *sce, PaintMode mode, const uchar col[3])
   }
 }
 
-static void paint_tool_slots_free(Paint *paint)
-{
-  for (int i = 0; i < paint->tool_brushes_len; i++) {
-    PaintToolSlot &slot = paint->tool_brushes[i];
-    MEM_delete(slot.brush_asset_reference);
-  }
-  MEM_SAFE_FREE(paint->tool_brushes);
-}
-
 void BKE_paint_free(Paint *paint)
 {
   BKE_curvemapping_free(paint->cavity_curve);
   MEM_delete(paint->brush_asset_reference);
   MEM_delete(paint->main_brush_asset_reference);
   MEM_delete(paint->eraser_brush_asset_reference);
-  paint_tool_slots_free(paint);
+
+  LISTBASE_FOREACH_MUTABLE (
+      NamedBrushAssetReference *, brush_ref, &paint->active_brush_per_brush_type)
+  {
+    MEM_delete(brush_ref->name);
+    MEM_delete(brush_ref->brush_asset_reference);
+    MEM_delete(brush_ref);
+  }
 }
 
 void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
@@ -1585,16 +1581,12 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
     dst->eraser_brush_asset_reference = MEM_new<AssetWeakReference>(
         __func__, *src->eraser_brush_asset_reference);
   }
-  if (src->tool_brushes_len > 0) {
-    dst->tool_brushes = MEM_cnew_array<PaintToolSlot>(src->tool_brushes_len, "tool slot copy");
-    for (int i = 0; i < src->tool_brushes_len; i++) {
-      if (src->tool_brushes[i].brush_asset_reference) {
-        dst->tool_brushes[i].brush_asset_reference = MEM_new<AssetWeakReference>(
-            "tool slot asset reference copy", *src->tool_brushes[i].brush_asset_reference);
-      }
-    }
+  BLI_duplicatelist(&dst->active_brush_per_brush_type, &src->active_brush_per_brush_type);
+  LISTBASE_FOREACH (NamedBrushAssetReference *, brush_ref, &dst->active_brush_per_brush_type) {
+    brush_ref->name = BLI_strdup(brush_ref->name);
+    brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
+        "active_brush_per_brush_type copy", *brush_ref->brush_asset_reference);
   }
-  dst->tool_brushes_len = src->tool_brushes_len;
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
     id_us_plus((ID *)dst->palette);
@@ -1627,10 +1619,12 @@ void BKE_paint_blend_write(BlendWriter *writer, Paint *paint)
   if (paint->eraser_brush_asset_reference) {
     BKE_asset_weak_reference_write(writer, paint->eraser_brush_asset_reference);
   }
-  BLO_write_struct_array(writer, PaintToolSlot, paint->tool_brushes_len, paint->tool_brushes);
-  for (int i = 0; i < paint->tool_brushes_len; i++) {
-    if (paint->tool_brushes[i].brush_asset_reference) {
-      BKE_asset_weak_reference_write(writer, paint->tool_brushes[i].brush_asset_reference);
+
+  BLO_write_struct_list(writer, NamedBrushAssetReference, &paint->active_brush_per_brush_type);
+  LISTBASE_FOREACH (NamedBrushAssetReference *, brush_ref, &paint->active_brush_per_brush_type) {
+    BLO_write_string(writer, brush_ref->name);
+    if (brush_ref->brush_asset_reference) {
+      BKE_asset_weak_reference_write(writer, brush_ref->brush_asset_reference);
     }
   }
 }
@@ -1659,13 +1653,14 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
   if (paint->eraser_brush_asset_reference) {
     BKE_asset_weak_reference_read(reader, paint->eraser_brush_asset_reference);
   }
-  if (paint->tool_brushes) {
-    BLO_read_struct_array(reader, PaintToolSlot, paint->tool_brushes_len, paint->tool_brushes);
-    for (int i = 0; i < paint->tool_brushes_len; i++) {
-      BLO_read_struct(reader, AssetWeakReference, paint->tool_brushes[i].brush_asset_reference);
-      if (paint->tool_brushes[i].brush_asset_reference) {
-        BKE_asset_weak_reference_read(reader, paint->tool_brushes[i].brush_asset_reference);
-      }
+
+  BLO_read_struct_list(reader, NamedBrushAssetReference, &paint->active_brush_per_brush_type);
+  LISTBASE_FOREACH (NamedBrushAssetReference *, brush_ref, &paint->active_brush_per_brush_type) {
+    BLO_read_string(reader, &brush_ref->name);
+
+    BLO_read_struct(reader, AssetWeakReference, brush_ref->brush_asset_reference);
+    if (brush_ref->brush_asset_reference) {
+      BKE_asset_weak_reference_read(reader, brush_ref->brush_asset_reference);
     }
   }
 

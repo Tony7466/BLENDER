@@ -929,6 +929,13 @@ typedef struct PaintToolSlot {
   struct AssetWeakReference *brush_asset_reference;
 } PaintToolSlot;
 
+typedef struct NamedBrushAssetReference {
+  struct NamedBrushAssetReference *next, *prev;
+
+  const char *name;
+  struct AssetWeakReference *brush_asset_reference;
+} NamedBrushAssetReference;
+
 /** Paint Tool Base. */
 typedef struct Paint {
   /**
@@ -950,6 +957,19 @@ typedef struct Paint {
   struct PaintToolSlot *tool_brushes;
   int tool_brushes_len;
   char _pad1[4];
+
+  /**
+   * For the tool system: Remember the last active brush used for a specific brush type.
+   *
+   * The tool system exposes tools for some brush types, like an eraser tool to access eraser
+   * brushes. Switching between tools should remember the last used brush for a brush type, e.g.
+   * which eraser was used last by the eraser tool. The tool system manages this storage, and sets
+   * the active brush as the active tool is changed.
+   *
+   * Note that multiple tools may use the same brush type, for example primitive draw tools (to
+   * draw rectangles, circles, lines, etc.). The active brush is shared for them.
+   */
+  ListBase active_brush_per_brush_type; /* #NamedBrushAssetReference */
 
   /** Default eraser brush and associated weak reference. */
   struct Brush *eraser_brush;

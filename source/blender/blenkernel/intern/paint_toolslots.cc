@@ -10,51 +10,56 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_string.h"
+
 #include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_paint.hh"
 
-static void paint_toolslots_len_ensure(Paint *paint, int len)
-{
-  /* Tool slots are 'uchar'. */
-  BLI_assert(len <= UCHAR_MAX);
-  if (paint->tool_brushes_len < len) {
-    paint->tool_brushes = static_cast<PaintToolSlot *>(
-        MEM_recallocN(paint->tool_brushes, sizeof(*paint->tool_brushes) * len));
-    paint->tool_brushes_len = len;
-  }
-}
-
-static void paint_toolslots_brush_update_ex(Paint *paint,
-                                            const Brush *brush,
-                                            const AssetWeakReference *brush_asset_reference)
-{
-  std::optional<int> slot_index = BKE_paint_get_brush_tool_from_obmode(
-      brush, eObjectMode(paint->runtime.ob_mode));
-
-  paint_toolslots_len_ensure(paint, *slot_index + 1);
-  PaintToolSlot *tslot = &paint->tool_brushes[*slot_index];
-  if (tslot->brush_asset_reference) {
-    MEM_delete(tslot->brush_asset_reference);
-  }
-  tslot->brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *brush_asset_reference);
-}
-
-void BKE_paint_toolslots_brush_update(Paint *paint)
+void BKE_paint_toolslots_brush_update(Paint *paint, const char *brush_type_name)
 {
   if (paint->brush == nullptr) {
     return;
   }
-  paint_toolslots_brush_update_ex(paint, paint->brush, paint->brush_asset_reference);
+  if (!brush_type_name[0]) {
+    return;
+  }
+
+  NamedBrushAssetReference *brush_ref = static_cast<NamedBrushAssetReference *>(
+      BLI_findstring(&paint->active_brush_per_brush_type,
+                     brush_type_name,
+                     offsetof(NamedBrushAssetReference, name)));
+
+  /* Update existing reference. */
+  if (brush_ref) {
+    MEM_delete(brush_ref->brush_asset_reference);
+    brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
+        "NamedBrushAssetRefernce update asset ref", *paint->brush_asset_reference);
+  }
+  /* Add new reference. */
+  else {
+    NamedBrushAssetReference *brush_ref = MEM_cnew<NamedBrushAssetReference>(
+        "NamedBrushAssetReference");
+
+    brush_ref->name = BLI_strdup(brush_type_name);
+    brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
+        "NamedBrushAssetRefernce new asset ref", *paint->brush_asset_reference);
+    BLI_addhead(&paint->active_brush_per_brush_type, brush_ref);
+  }
 }
 
-AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(Paint *paint, int slot_index)
+AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(Paint *paint,
+                                                                  const char *brush_type_name)
 {
-  if (slot_index < paint->tool_brushes_len) {
-    PaintToolSlot *tslot = &paint->tool_brushes[slot_index];
-    return tslot->brush_asset_reference;
+  const NamedBrushAssetReference *brush_ref = static_cast<NamedBrushAssetReference *>(
+      BLI_findstring(&paint->active_brush_per_brush_type,
+                     brush_type_name,
+                     offsetof(NamedBrushAssetReference, name)));
+  if (!brush_ref) {
+    return nullptr;
   }
-  return nullptr;
+
+  return brush_ref->brush_asset_reference;
 }
