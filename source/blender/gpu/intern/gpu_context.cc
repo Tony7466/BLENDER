@@ -296,7 +296,7 @@ static bool gpu_backend_supported()
 #endif
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
-      return true;
+      return VKBackend::is_supported();
 #else
       return false;
 #endif
