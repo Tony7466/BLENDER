@@ -261,22 +261,33 @@ class InstancesFieldInput : public fn::FieldInput {
 class AttributeFieldInput : public GeometryFieldInput {
  private:
   std::string name_;
+  std::optional<std::string> socket_inspection_name_;
 
  public:
-  AttributeFieldInput(std::string name, const CPPType &type)
-      : GeometryFieldInput(type, name), name_(std::move(name))
+  AttributeFieldInput(std::string name,
+                      const CPPType &type,
+                      std::optional<std::string> socket_inspection_name = std::nullopt)
+      : GeometryFieldInput(type, name),
+        name_(std::move(name)),
+        socket_inspection_name_(std::move(socket_inspection_name))
   {
     category_ = Category::NamedAttribute;
   }
 
-  static fn::GField Create(std::string name, const CPPType &type)
+  static fn::GField Create(std::string name,
+                           const CPPType &type,
+                           std::optional<std::string> socket_inspection_name = std::nullopt)
   {
-    auto field_input = std::make_shared<AttributeFieldInput>(std::move(name), type);
+    auto field_input = std::make_shared<AttributeFieldInput>(
+        std::move(name), type, std::move(socket_inspection_name));
     return fn::GField(field_input);
   }
-  template<typename T> static fn::Field<T> Create(std::string name)
+  template<typename T>
+  static fn::Field<T> Create(std::string name,
+                             std::optional<std::string> socket_inspection_name = std::nullopt)
   {
-    return fn::Field<T>(Create(std::move(name), CPPType::get<T>()));
+    return fn::Field<T>(
+        Create(std::move(name), CPPType::get<T>(), std::move(socket_inspection_name)));
   }
 
   StringRefNull attribute_name() const

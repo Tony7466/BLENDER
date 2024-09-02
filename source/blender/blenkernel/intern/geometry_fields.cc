@@ -430,6 +430,9 @@ GVArray AttributeExistsFieldInput::get_varray_for_context(const bke::GeometryFie
 
 std::string AttributeFieldInput::socket_inspection_name() const
 {
+  if (socket_inspection_name_) {
+    return *socket_inspection_name_;
+  }
   return fmt::format(TIP_("\"{}\" attribute from geometry"), name_);
 }
 
