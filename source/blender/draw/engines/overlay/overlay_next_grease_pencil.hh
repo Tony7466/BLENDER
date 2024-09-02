@@ -81,22 +81,20 @@ class GreasePencil {
       const bke::CurvesGeometry &curves = info.drawing.strokes();
       const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
       const bke::AttributeAccessor attributes = curves.attributes();
+      const Span<Vector<uint3>> triangles = info.drawing.triangles();
       const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
           "material_index", bke::AttrDomain::Curve, 0);
       const VArray<bool> cyclic = *attributes.lookup_or_default<bool>(
           "cyclic", bke::AttrDomain::Curve, false);
 
       IndexMaskMemory memory;
-      const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+      const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
           *ob, info.drawing, memory);
-      const Vector<IndexMask> shapes = info.drawing.shapes(memory);
-
-      const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
       const bool hide_onion = info.onion_id != 0;
 
-      for (const int shape_index : shapes.index_range()) {
-        const IndexMask &shape = shapes[shape_index];
+      for (const int shape_index : visible_shapes.index_range()) {
+        const IndexMask &shape = visible_shapes[shape_index];
 
         const int material_index = stroke_materials[shape.first()];
         MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);

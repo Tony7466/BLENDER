@@ -1047,18 +1047,17 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         object, info.drawing, memory);
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
-    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     Array<int> verts_start_offsets(curves.curves_num(), 0);
 
     /* Calculate the vertex offsets for all the visible curves. */
     int num_cyclic = 0;
     int num_points = 0;
-    for (const int shape_index : shapes.index_range()) {
-      const IndexMask &shape = shapes[shape_index];
+    for (const int shape_index : visible_shapes.index_range()) {
+      const IndexMask &shape = visible_shapes[shape_index];
 
       total_triangles_num += triangles[shape_index].size();
 
@@ -1112,6 +1111,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
+    const Array<int> point_to_curve_map = curves.point_to_curve_map();
     const Span<float3> positions = curves.evaluated_positions();
     const VArray<bool> cyclic = curves.cyclic();
 
@@ -1151,7 +1151,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         object, info.drawing, memory);
 
     curves.ensure_evaluated_lengths();
@@ -1195,17 +1195,14 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       GPU_indexbuf_add_tri_verts(&ibo, v_mat + 2, v_mat + 1, v_mat + 3);
     };
 
-    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
-    const Array<int> point_to_curve_map = curves.point_to_curve_map();
-
     auto point_to_id = [&](uint32_t p) {
       const int curve_ = point_to_curve_map[p];
       const IndexRange points_ = points_by_curve[curve_];
       return (1 + (p - points_.first()) + verts_start_offsets[curve_]) << GP_VERTEX_ID_SHIFT;
     };
 
-    for (const int shape_index : shapes.index_range()) {
-      const IndexMask &shape = shapes[shape_index];
+    for (const int shape_index : visible_shapes.index_range()) {
+      const IndexMask &shape = visible_shapes[shape_index];
       const Span<uint3> tris_slice = triangles[shape_index];
 
       /* Add the triangle indices to the index buffer. */

@@ -321,14 +321,13 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
         "cyclic", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         *ob, info.drawing, memory);
-    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     const Span<Vector<uint3>> triangles = info.drawing.triangles();
 
-    for (const int shape_index : shapes.index_range()) {
-      const IndexMask &shape = shapes[shape_index];
+    for (const int shape_index : visible_shapes.index_range()) {
+      const IndexMask &shape = visible_shapes[shape_index];
 
       const int material_index = stroke_materials[shape.first()];
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, material_index + 1);

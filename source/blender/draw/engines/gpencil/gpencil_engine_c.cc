@@ -723,32 +723,29 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
         "cyclic", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+    const Vector<IndexMask> visible_shapes = ed::greasepencil::retrieve_visible_shapes(
         *ob, info.drawing, memory);
-    const Vector<IndexMask> shapes = info.drawing.shapes(memory);
 
     /* Precompute all the triangle and vertex counts.
      * In case the drawing should not be rendered, we need to compute the offset where the next
      * drawing begins. */
-    Array<int> num_triangles_per_stroke(shapes.size());
-    Array<int> num_vertices_per_stroke(visible_strokes.size());
+    Array<int> num_triangles_per_shape(visible_shapes.size());
+    Array<int> num_vertices_per_stroke(curves.curves_num());
     int total_num_triangles = 0;
     int total_num_vertices = 0;
-    int current_curve = 0;
-    for (const int shape_index : shapes.index_range()) {
-      const IndexMask &shape = shapes[shape_index];
+    for (const int shape_index : visible_shapes.index_range()) {
+      const IndexMask &shape = visible_shapes[shape_index];
 
       const int num_stroke_triangles = triangles[shape_index].size();
-      num_triangles_per_stroke[shape_index] = num_stroke_triangles;
+      num_triangles_per_shape[shape_index] = num_stroke_triangles;
       total_num_triangles += num_stroke_triangles;
 
       shape.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         const int num_stroke_vertices = (points.size() +
                                          int(cyclic[curve_i] && (points.size() >= 3)));
-        num_vertices_per_stroke[current_curve] = num_stroke_vertices;
+        num_vertices_per_stroke[curve_i] = num_stroke_vertices;
         total_num_vertices += num_stroke_vertices;
-        current_curve++;
       });
     }
 
@@ -797,9 +794,8 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                             info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
     const bool is_onion = info.onion_id != 0;
 
-    current_curve = 0;
-    for (const int shape_index : shapes.index_range()) {
-      const IndexMask &shape = shapes[shape_index];
+    for (const int shape_index : visible_shapes.index_range()) {
+      const IndexMask &shape = visible_shapes[shape_index];
 
       const int curve_i = shape.first();
 
@@ -820,11 +816,9 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                                (only_lines && !is_onion) || hide_onion;
 
       if (skip_stroke) {
-        t_offset += num_triangles_per_stroke[shape_index];
-        for (const int i : shape.index_range()) {
-          t_offset += num_vertices_per_stroke[current_curve + i] * 2;
-        };
-        current_curve += shape.size();
+        t_offset += num_triangles_per_shape[shape_index];
+        shape.foreach_index(
+            [&](const int curve_i) { t_offset += num_vertices_per_stroke[curve_i] * 2; });
         continue;
       }
 
@@ -870,23 +864,22 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
       if (show_fill) {
         const int v_first = t_offset * 3;
-        const int v_count = num_triangles_per_stroke[shape_index] * 3;
+        const int v_count = num_triangles_per_shape[shape_index] * 3;
         drawcall_add(geom, v_first, v_count);
       }
 
-      t_offset += num_triangles_per_stroke[shape_index];
+      t_offset += num_triangles_per_shape[shape_index];
 
       shape.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
 
         if (show_stroke) {
           const int v_first = t_offset * 3;
-          const int v_count = num_vertices_per_stroke[current_curve] * 2 * 3;
+          const int v_count = num_vertices_per_stroke[curve_i] * 2 * 3;
           drawcall_add(geom, v_first, v_count);
         }
 
-        t_offset += num_vertices_per_stroke[current_curve] * 2;
-        current_curve++;
+        t_offset += num_vertices_per_stroke[curve_i] * 2;
       });
     }
   }

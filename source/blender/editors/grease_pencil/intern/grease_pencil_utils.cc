@@ -1069,6 +1069,41 @@ IndexMask retrieve_visible_points(Object &object,
       });
 }
 
+Vector<IndexMask> retrieve_visible_shapes(Object &object,
+                                          const bke::greasepencil::Drawing &drawing,
+                                          IndexMaskMemory &memory)
+{
+  using namespace blender;
+
+  /* Get all the hidden material indices. */
+  VectorSet<int> hidden_material_indices = get_hidden_material_indices(object);
+
+  const Vector<IndexMask> shapes = drawing.shapes(memory);
+  if (hidden_material_indices.is_empty()) {
+    return shapes;
+  }
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  Vector<IndexMask> visible_shapes;
+
+  /* Get all the strokes that have their material visible. */
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Curve, 0);
+  for (const int shape_index : shapes.index_range()) {
+    const IndexMask &shape = shapes[shape_index];
+    const int curve_i = shape.first();
+    const int material_index = materials[curve_i];
+
+    if (!hidden_material_indices.contains(material_index)) {
+      visible_shapes.append(shape);
+    }
+  }
+
+  return visible_shapes;
+}
+
 IndexMask retrieve_visible_bezier_handle_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 const int layer_index,
