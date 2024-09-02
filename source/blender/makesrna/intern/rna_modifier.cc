@@ -1917,6 +1917,25 @@ static void rna_NodesModifier_node_group_update(Main *bmain, Scene *scene, Point
   MOD_nodes_update_interface(object, nmd);
 }
 
+void rna_NodesModifier_node_warnings_iterator_begin(CollectionPropertyIterator *iter,
+                                                    PointerRNA *ptr)
+{
+  // NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
+  iter->internal.count.item = 0;
+  iter->valid = true;
+}
+
+void rna_NodesModifier_node_warnings_iterator_next(CollectionPropertyIterator *iter)
+{
+  iter->internal.count.item++;
+}
+
+PointerRNA rna_NodesModifier_node_warnings_iterator_get(CollectionPropertyIterator *iter)
+{
+  return RNA_pointer_create(
+      iter->parent.owner_id, &RNA_IntAttributeValue, &iter->internal.count.item);
+}
+
 static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
 {
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
@@ -7914,6 +7933,18 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Node Group", "");
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER, nullptr);
+
+  prop = RNA_def_property(srna, "node_warnings", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_NodesModifier_node_warnings_iterator_begin",
+                                    "rna_NodesModifier_node_warnings_iterator_next",
+                                    nullptr,
+                                    "rna_NodesModifier_node_warnings_iterator_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_struct_type(prop, "IntAttributeValue");
 
   rna_def_modifier_panel_open_prop(srna, "open_output_attributes_panel", 0);
   rna_def_modifier_panel_open_prop(srna, "open_manage_panel", 1);
