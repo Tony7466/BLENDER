@@ -43,6 +43,7 @@ static void anim_filepath_get(const Scene *scene,
                               char *r_filepath)
 {
   if (seq->strip == nullptr || seq->strip->stripdata == nullptr) {
+    r_filepath[0] = '\0';
     return;
   }
   BLI_path_join(r_filepath, filepath_size, seq->strip->dirpath, seq->strip->stripdata->filename);
