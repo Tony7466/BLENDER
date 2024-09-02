@@ -2217,21 +2217,22 @@ static int animchannels_ungroup_exec(bContext *C, wmOperator * /*op*/)
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+
+    FCurve *fcu = (FCurve *)ale->data;
+
+    /* Already ungrouped, so skip. */
+    if (fcu->grp == nullptr) {
+      continue;
+    }
+
     /* find action for this F-Curve... */
+    bAction *act = ale->adt->action;
     if (!ale->adt || !ale->adt->action) {
       continue;
     }
 
-    FCurve *fcu = (FCurve *)ale->data;
-    bAction *act = ale->adt->action;
-
-    /* TODO: layered actions not yet supported. */
-    if (!act->wrap().is_action_legacy()) {
-      continue;
-    }
-
-    /* only proceed to remove if F-Curve is in a group... */
-    if (fcu->grp) {
+    /* Legacy actions. */
+    if (act->wrap().is_action_legacy()) {
       bActionGroup *agrp = fcu->grp;
 
       /* remove F-Curve from group and add at tail (ungrouped) */
@@ -2242,7 +2243,11 @@ static int animchannels_ungroup_exec(bContext *C, wmOperator * /*op*/)
       if (BLI_listbase_is_empty(&agrp->channels)) {
         BLI_freelinkN(&act->groups, agrp);
       }
+      continue;
     }
+
+    /* Layered action. */
+    fcu->grp->channel_bag->wrap().fcurve_ungroup(*fcu);
   }
 
   /* cleanup */

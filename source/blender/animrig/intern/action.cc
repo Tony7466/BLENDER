@@ -1929,6 +1929,36 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
   return true;
 }
 
+bool ChannelBag::fcurve_ungroup(FCurve &fcurve)
+{
+  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  if (fcurve_index == -1) {
+    return false;
+  }
+
+  if (fcurve.grp == nullptr) {
+    return true;
+  }
+
+  bActionGroup *old_group = fcurve.grp;
+
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    fcurve_index,
+                    fcurve_index + 1,
+                    this->fcurve_array_num - 1);
+
+  old_group->fcurve_range_length--;
+  if (old_group->fcurve_range_length == 0) {
+    const int old_group_index = this->channel_groups().as_span().first_index_try(old_group);
+    this->channel_group_remove_raw(old_group_index);
+  }
+
+  this->restore_channel_group_invariants();
+
+  return true;
+}
+
 ID *action_slot_get_id_for_keying(Main &bmain,
                                   Action &action,
                                   const slot_handle_t slot_handle,
