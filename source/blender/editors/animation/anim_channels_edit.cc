@@ -2055,20 +2055,18 @@ static void animchannels_group_channels(bAnimContext *ac,
     return;
   }
 
-  /* TODO: layered actions not yet supported. */
-  if (!act->wrap().is_action_legacy()) {
+  /* Get list of selected F-Curves to re-group. */
+  ListBase anim_data = {nullptr, nullptr};
+  const eAnimFilter_Flags filter = ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
+                                   ANIMFILTER_SEL | ANIMFILTER_FCURVESONLY;
+  ANIM_animdata_filter(ac, &anim_data, filter, adt_ref, ANIMCONT_CHANNEL);
+
+  if (anim_data.first == nullptr) {
     return;
   }
 
-  ListBase anim_data = {nullptr, nullptr};
-  int filter;
-
-  /* find selected F-Curves to re-group */
-  filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_SEL |
-            ANIMFILTER_FCURVESONLY);
-  ANIM_animdata_filter(ac, &anim_data, eAnimFilter_Flags(filter), adt_ref, ANIMCONT_CHANNEL);
-
-  if (anim_data.first) {
+  /* Legacy actions. */
+  if (act->wrap().is_action_legacy()) {
     bActionGroup *agrp;
 
     /* create new group, which should now be part of the action */
@@ -2090,10 +2088,42 @@ static void animchannels_group_channels(bAnimContext *ac,
       /* add F-Curve to group */
       action_groups_add_channel(act, agrp, fcu);
     }
+
+    /* cleanup */
+    ANIM_animdata_freelist(&anim_data);
+
+    return;
   }
 
-  /* cleanup */
-  ANIM_animdata_freelist(&anim_data);
+  /* Layered action.
+   *
+   * The animlist doesn't explictly group the channels by channel bag, so we
+   * have to get a little clever here.  We take advantage of the fact that the
+   * fcurves are at least listed in order, and so all fcurves in the same
+   * channel bag will be next to each other. So we keep track of the channel bag
+   * from the last fcurve, and check it against the current fcurve to see if
+   * we've progressed into a new channel bag, and then we create the new group
+   * for that channel bag.
+   *
+   * It's a little messy, and also has quadratic performance due to handling
+   * each fcurve individually (each of which is an O(N) operation), but it's
+   * also the simplest thing we can do given the data we have. In the future we
+   * can do something smarter, particularly if it becomes a performance issue. */
+  assert_baklava_phase_1_invariants(act->wrap());
+  blender::animrig::ChannelBag *last_channelbag = nullptr;
+  bActionGroup *group = nullptr;
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->data;
+    blender::animrig::ChannelBag *channelbag = channelbag_for_action_slot(act->wrap(),
+                                                                          ale->slot_handle);
+
+    if (channelbag != last_channelbag) {
+      last_channelbag = channelbag;
+      group = &channelbag->channel_group_create(name);
+    }
+
+    channelbag->fcurve_assign_to_channel_group(*fcu, *group);
+  }
 }
 
 static int animchannels_group_exec(bContext *C, wmOperator *op)
