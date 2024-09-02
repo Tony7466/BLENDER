@@ -54,8 +54,12 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
       for (const int info_i : drawings.index_range()) {
         blender::bke::greasepencil::Layer &target_layer = *grease_pencil.layer(
             drawings[info_i].layer_index);
-        grease_pencil.insert_duplicate_frame(
-            target_layer, *target_layer.start_frame_at(scene->r.cfra), scene->r.cfra, false);
+        const int current_frame = scene->r.cfra;
+        std::optional<int> start_frame = target_layer.start_frame_at(current_frame);
+        if ((!start_frame.has_value()) || start_frame.value() != current_frame) {
+          grease_pencil.insert_duplicate_frame(
+              target_layer, *target_layer.start_frame_at(current_frame), current_frame, false);
+        }
       }
       drawings = ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
     }
