@@ -1115,12 +1115,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   MutableSpan<GreasePencilStrokeVert> verts = cache->vbo->data<GreasePencilStrokeVert>();
   MutableSpan<GreasePencilColorVert> cols = cache->vbo_col->data<GreasePencilColorVert>();
   GPUIndexBufBuilder ibo_wireframe;
-  MutableSpan<GreasePencilStrokeVert> verts = {
-      static_cast<GreasePencilStrokeVert *>(GPU_vertbuf_get_data(cache->vbo)),
-      GPU_vertbuf_get_vertex_len(cache->vbo)};
-  MutableSpan<GreasePencilColorVert> cols = {
-      static_cast<GreasePencilColorVert *>(GPU_vertbuf_get_data(cache->vbo_col)),
-      GPU_vertbuf_get_vertex_len(cache->vbo_col)};
   /* Create IBO. */
   GPU_indexbuf_init(&ibo, GPU_PRIM_TRIS, total_triangles_num, 0xFFFFFFFFu);
   GPU_indexbuf_init_ex(&ibo_wireframe, GPU_PRIM_LINE_STRIP, total_wire_verts_num, 0xFFFFFFFFu);
