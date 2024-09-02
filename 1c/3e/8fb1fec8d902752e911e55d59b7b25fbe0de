@@ -1,1 +1,1 @@
-Referenced by issue #127045, Dragging Assets from the Library no longer transfers attached empties and related elements into the new scene. -MacOS silicon - Blender 4.3
+Referenced by issue #127045, Regression: Dragging Assets from the Library no longer transfers attached empties
