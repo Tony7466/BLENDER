@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bpy.types import Curve, SurfaceCurve, TextCurve
 
@@ -199,6 +200,10 @@ class DATA_PT_geometry_curve_bevel(CurveButtonsPanelCurve, Panel):
 
         if curve.bevel_mode == 'PROFILE':
             col.template_curveprofile(curve, "bevel_profile")
+
+
+class DATA_PT_curve_animation(CurveButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'curve'
 
 
 class DATA_PT_geometry_curve_start_end(CurveButtonsPanelCurve, Panel):
@@ -523,6 +528,7 @@ classes = (
     DATA_PT_paragraph_alignment,
     DATA_PT_paragraph_spacing,
     DATA_PT_text_boxes,
+    DATA_PT_curve_animation,
     DATA_PT_custom_props_curve,
 )
 
