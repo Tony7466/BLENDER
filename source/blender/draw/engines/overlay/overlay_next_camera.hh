@@ -605,15 +605,8 @@ class Cameras {
     manager.submit(ps_, view);
   }
 
-  void draw_scene_background_images(Framebuffer &framebuffer,
-                                    const State &state,
-                                    Manager &manager,
-                                    View &view)
+  void draw_scene_background_images(Framebuffer &framebuffer, Manager &manager, View &view)
   {
-    if (state.space_type != SPACE_VIEW3D) {
-      return;
-    }
-
     GPU_framebuffer_bind(framebuffer);
 
     manager.submit(background_scene_ps_, view);

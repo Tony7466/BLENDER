@@ -24,6 +24,8 @@ ShaderModule::ShaderPtr ShaderModule::shader(
   /* Perform a copy for patching. */
   gpu::shader::ShaderCreateInfo info = *info_ptr;
 
+  info.define("OVERLAY_NEXT");
+
   patch(info);
 
   return ShaderPtr(
@@ -205,6 +207,10 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         shader_patch_common(info);
         info.additional_info("draw_gpencil_new", "draw_object_infos_new");
       });
+
+  xray_fade = shader("overlay_xray_fade", [](gpu::shader::ShaderCreateInfo &info) {
+    info.sampler(2, ImageType::DEPTH_2D, "xrayDepthTexInfront");
+  });
 
   /** Selectable Shaders */
 

@@ -258,19 +258,21 @@ void Instance::draw(Manager &manager)
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
 
-  if (state.xray_enabled) {
-    /* For X-ray we render the scene to a separate depth buffer. */
-    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
-    resources.depth_target_tx.wrap(resources.xray_depth_tx);
-  }
-  else {
-    resources.depth_target_tx.wrap(resources.depth_tx);
-  }
-
   /* TODO(fclem): Remove mandatory allocation. */
   if (!resources.depth_in_front_tx.is_valid()) {
     resources.depth_in_front_alloc_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
     resources.depth_in_front_tx.wrap(resources.depth_in_front_alloc_tx);
+  }
+
+  if (state.xray_enabled) {
+    /* For X-ray we render the scene to a separate depth buffer. */
+    resources.xray_depth_tx.acquire(render_size, GPU_DEPTH24_STENCIL8);
+    resources.depth_target_tx.wrap(resources.xray_depth_tx);
+    resources.depth_target_in_front_tx.wrap(resources.xray_depth_tx);
+  }
+  else {
+    resources.depth_target_tx.wrap(resources.depth_tx);
+    resources.depth_target_in_front_tx.wrap(resources.depth_in_front_tx);
   }
 
   /* TODO: Better semantics using a switch? */
@@ -301,11 +303,13 @@ void Instance::draw(Manager &manager)
     resources.overlay_line_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_target_tx),
                                      GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
                                      GPU_ATTACHMENT_TEXTURE(resources.line_tx));
-    resources.overlay_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx),
-                                         GPU_ATTACHMENT_TEXTURE(resources.overlay_tx));
-    resources.overlay_line_in_front_fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx),
-                                              GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
-                                              GPU_ATTACHMENT_TEXTURE(resources.line_tx));
+    resources.overlay_in_front_fb.ensure(
+        GPU_ATTACHMENT_TEXTURE(resources.depth_target_in_front_tx),
+        GPU_ATTACHMENT_TEXTURE(resources.overlay_tx));
+    resources.overlay_line_in_front_fb.ensure(
+        GPU_ATTACHMENT_TEXTURE(resources.depth_target_in_front_tx),
+        GPU_ATTACHMENT_TEXTURE(resources.overlay_tx),
+        GPU_ATTACHMENT_TEXTURE(resources.line_tx));
   }
 
   resources.overlay_line_only_fb.ensure(GPU_ATTACHMENT_NONE,
@@ -326,10 +330,8 @@ void Instance::draw(Manager &manager)
     GPU_framebuffer_clear_color(resources.overlay_line_fb, clear_color);
   }
 
-  regular.cameras.draw_scene_background_images(
-      resources.overlay_color_only_fb, state, manager, view);
-  infront.cameras.draw_scene_background_images(
-      resources.overlay_color_only_fb, state, manager, view);
+  regular.cameras.draw_scene_background_images(resources.overlay_color_only_fb, manager, view);
+  infront.cameras.draw_scene_background_images(resources.overlay_color_only_fb, manager, view);
 
   regular.empties.draw_background_images(resources.overlay_color_only_fb, manager, view);
   regular.cameras.draw_background_images(resources.overlay_color_only_fb, manager, view);
@@ -375,11 +377,11 @@ void Instance::draw(Manager &manager)
   overlay_fb_draw(infront, resources.overlay_in_front_fb);
   draw_layer(infront, resources.overlay_line_in_front_fb);
 
-  draw_layer_color_only(regular, resources.overlay_color_only_fb);
-  draw_layer_color_only(infront, resources.overlay_color_only_fb);
-
   xray_fade.draw(resources.overlay_color_only_fb, manager, view);
   grid.draw(resources.overlay_color_only_fb, manager, view);
+
+  draw_layer_color_only(regular, resources.overlay_color_only_fb);
+  draw_layer_color_only(infront, resources.overlay_color_only_fb);
 
   infront.empties.draw_in_front_images(resources.overlay_color_only_fb, manager, view);
   regular.cameras.draw_in_front(resources.overlay_color_only_fb, manager, view);
