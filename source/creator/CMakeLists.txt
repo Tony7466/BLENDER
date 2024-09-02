@@ -1485,7 +1485,7 @@ elseif(WIN32)
 
   if(NOT WITH_PYTHON_MODULE)
     get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
-    # Configure and generate file. Note that this copies the literal generator for the Python executable
+    # Configure then generate file. Note that this copies the literal generator for the Python executable
     # So that's why it needs to be generated afterwards.
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_info.cmd.in
@@ -1497,10 +1497,6 @@ elseif(WIN32)
     file(GENERATE
       OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
       INPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
-    )
-    install(
-      PROGRAMS
-      DESTINATION "."
     )
     install(
       FILES
