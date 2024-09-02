@@ -3206,6 +3206,128 @@ static void GREASE_PENCIL_OT_set_curve_resolution(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Set Shape ID Operator
+ * \{ */
+
+static Array<int> get_gapless_indices(const IndexRange &universe, const IndexMask &selected)
+{
+  const int first_curve = selected.first();
+  Array<int> indices_data(universe.size());
+  MutableSpan<int> indices = indices_data.as_mutable_span();
+
+  /*
+   * Make the selected indices be in ascending order with the first indices staying at the same
+   * place.
+   *
+   * Here's a diagram:
+   *
+   *        Input
+   * 0 1 2 3 4 5 6 7 8 9
+   *       ^   ^ ^
+   *
+   * |-A-| |-B-| |--C--|
+   * 0 1 2 3 5 6 4 7 8 9
+   *       ^ ^ ^
+   *
+   * The `A` range gets filled with increasing indices starting at zero, ending at `first_curve`.
+   * The `B` range gets filled with the selected indices starting at `first_curve`.
+   * The `C` range gets filled with the unselected indices not including the `A` range.
+   */
+
+  IndexMaskMemory memory;
+  const IndexMask unselected = selected.complement(universe.drop_front(first_curve), memory);
+
+  /* Fill `A`. */
+  array_utils::fill_index_range<int>(indices.take_front(first_curve));
+  /* Fill `B`. */
+  selected.to_indices(indices.drop_front(first_curve).take_front(selected.size()));
+  /* Fill `C`. */
+  unselected.to_indices(indices.take_back(unselected.size()));
+
+  return indices_data;
+}
+
+static int grease_pencil_join_shape_exec(bContext *C, wmOperator * /*op*/)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  bool changed = false;
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  for (const MutableDrawingInfo &info : drawings) {
+    IndexMaskMemory memory;
+    const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
+        *object, info.drawing, info.layer_index, memory);
+    if (strokes.is_empty()) {
+      continue;
+    }
+    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+    bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
+
+    /* If the attribute does not exist then default with index range. */
+    if (!shape_ids) {
+      shape_ids = attributes.lookup_or_add_for_write_span<int>("shape_id", bke::AttrDomain::Curve);
+
+      array_utils::fill_index_range<int>(shape_ids.span);
+    }
+
+    /* TODO: Get the active element index instead of the first. */
+    const int active_curve = strokes.first();
+
+    index_mask::masked_fill(shape_ids.span, shape_ids.span[active_curve], strokes);
+    shape_ids.finish();
+
+    /* Copy curve attributes from the active to all other selected curves. */
+    Set<std::string> attributes_to_skip{{"curve_type", "cyclic", "shape_id"}};
+    attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+      if (meta_data.domain != bke::AttrDomain::Curve) {
+        return true;
+      }
+      if (attributes_to_skip.contains(id.name())) {
+        return true;
+      }
+      bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+      const CPPType &type = attribute.span.type();
+      type.fill_assign_indices(attribute.span[active_curve], attribute.span.data(), strokes);
+      attribute.finish();
+      return true;
+    });
+
+    Array<int> indices = get_gapless_indices(curves.curves_range(), strokes);
+    curves = geometry::reorder_curves_geometry(curves, indices, {});
+    info.drawing.tag_topology_changed();
+
+    changed = true;
+  };
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_join_shape(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Shape ID";
+  ot->idname = "GREASE_PENCIL_OT_join_shape";
+  ot->description = "Set shape id";
+
+  /* callbacks */
+  ot->exec = grease_pencil_join_shape_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -3241,4 +3363,5 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_type);
   WM_operatortype_append(GREASE_PENCIL_OT_set_curve_resolution);
   WM_operatortype_append(GREASE_PENCIL_OT_set_handle_type);
+  WM_operatortype_append(GREASE_PENCIL_OT_join_shape);
 }

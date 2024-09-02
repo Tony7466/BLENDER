@@ -6170,6 +6170,10 @@ class VIEW3D_MT_edit_greasepencil_stroke(Menu):
         layout.operator_menu_enum("grease_pencil.set_curve_type", property="type")
         layout.operator("grease_pencil.set_curve_resolution")
 
+        layout.separator()
+
+        layout.operator("grease_pencil.join_shape")
+
 
 class VIEW3D_MT_edit_greasepencil_point(Menu):
     bl_label = "Point"
