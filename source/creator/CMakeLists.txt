@@ -963,11 +963,13 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     endif()
 
     # The script uses the version of Python installed with Blender
+    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh.in
       ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
       @ONLY
     )
+    unset(_PYTHON_BINARY)
     install(
       PROGRAMS ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
       DESTINATION "."
@@ -1649,11 +1651,13 @@ elseif(APPLE)
   endif()
 
   if(NOT WITH_PYTHON_MODULE AND WITH_PYTHON AND WITH_PYTHON_INSTALL)
+    get_filename_component(_PYTHON_BINARY ${PYTHON_EXECUTABLE} NAME)
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh.in
       ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
       @ONLY
     )
+    unset(_PYTHON_BINARY)
     install(
       PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
       DESTINATION "./Blender.app/Contents/Resources"
