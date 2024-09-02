@@ -2109,7 +2109,6 @@ static void animchannels_group_channels(bAnimContext *ac,
    * each fcurve individually (each of which is an O(N) operation), but it's
    * also the simplest thing we can do given the data we have. In the future we
    * can do something smarter, particularly if it becomes a performance issue. */
-  assert_baklava_phase_1_invariants(act->wrap());
   blender::animrig::ChannelBag *last_channelbag = nullptr;
   bActionGroup *group = nullptr;
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
@@ -2124,6 +2123,9 @@ static void animchannels_group_channels(bAnimContext *ac,
 
     channelbag->fcurve_assign_to_channel_group(*fcu, *group);
   }
+
+  /* Cleanup. */
+  ANIM_animdata_freelist(&anim_data);
 }
 
 static int animchannels_group_exec(bContext *C, wmOperator *op)
