@@ -242,7 +242,6 @@ static int startffmpeg(ImBufAnim *anim)
   const AVCodec *pCodec;
   AVFormatContext *pFormatCtx = nullptr;
   AVCodecContext *pCodecCtx;
-  AVRational frame_rate;
   AVStream *video_stream;
   int video_stream_index;
   int frs_num;
@@ -327,6 +326,7 @@ static int startffmpeg(ImBufAnim *anim)
     return -1;
   }
 
+  AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
   frs_num = frame_rate.num;
   frs_den = frame_rate.den;
 
