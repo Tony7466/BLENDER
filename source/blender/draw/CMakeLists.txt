@@ -296,9 +296,11 @@ set(SRC
   engines/overlay/overlay_next_curve.hh
   engines/overlay/overlay_next_empty.hh
   engines/overlay/overlay_next_facing.hh
+  engines/overlay/overlay_next_fluid.hh
   engines/overlay/overlay_next_force_field.hh
   engines/overlay/overlay_next_grease_pencil.hh
   engines/overlay/overlay_next_grid.hh
+  engines/overlay/overlay_next_image.hh
   engines/overlay/overlay_next_instance.hh
   engines/overlay/overlay_next_lattice.hh
   engines/overlay/overlay_next_light.hh
