@@ -5586,12 +5586,12 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
 
     GPU_blend(GPU_BLEND_ALPHA);
 
-    if (true || ID_IS_LINKED(id)) {
+    if (ID_IS_LINKED(id)) {
       xs += int(0.8f * UI_UNIT_X);
       UI_icon_draw_ex(
           xs, ys, ICON_LINKED, aspect, 1.0f, 0.0f, wt->wcol.text, false, UI_NO_ICON_OVERLAY_TEXT);
     }
-    if (true || ID_MISSING(id)) {
+    if (ID_MISSING(id)) {
       xs += int(0.8f * UI_UNIT_X);
       UI_icon_draw_ex(xs,
                       ys,
@@ -5603,7 +5603,7 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
                       false,
                       UI_NO_ICON_OVERLAY_TEXT);
     }
-    if (true || ID_IS_OVERRIDE_LIBRARY(id)) {
+    if (ID_IS_OVERRIDE_LIBRARY(id)) {
       xs += int(0.8f * UI_UNIT_X);
       UI_icon_draw_ex(xs,
                       ys,
