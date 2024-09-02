@@ -11,6 +11,6 @@ if exist "%PYTHON_BIN%" (
 
 echo ERROR: Failed to find python executable at: %PYTHON_BIN%
 echo Possible causes include:
-echo - Your Blender installation is corrupt or missing python.exe.
+echo - Your Blender installation is corrupt or missing @_PYTHON_BINARY@.
 echo - The location or name of python.exe has changed.
 pause
