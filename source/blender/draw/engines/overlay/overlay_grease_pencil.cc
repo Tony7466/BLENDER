@@ -54,6 +54,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
     grp = pd->edit_grease_pencil_wires_grp = DRW_shgroup_create(sh, psl->edit_grease_pencil_ps);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", use_weight);
+    DRW_shgroup_uniform_bool_copy(grp, "useGreasePencil", true);
     DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
   }
   else {
@@ -65,6 +66,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
     grp = pd->edit_grease_pencil_points_grp = DRW_shgroup_create(sh, psl->edit_grease_pencil_ps);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", use_weight);
+    DRW_shgroup_uniform_bool_copy(grp, "useGreasePencil", true);
     DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
   }
   else {
@@ -79,7 +81,6 @@ void OVERLAY_grease_pencil_cache_init(OVERLAY_Data *vedata)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   ToolSettings *ts = scene->toolsettings;
-  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(ts);
   const View3D *v3d = draw_ctx->v3d;
 
   GPUShader *sh;
