@@ -1715,7 +1715,8 @@ bool UI_search_item_add(uiSearchItems *items,
                         void *poin,
                         int iconid,
                         int but_flag,
-                        uint8_t name_prefix_offset);
+                        uint8_t name_prefix_offset,
+                        ID *id = nullptr);
 
 /**
  * \note The item-pointer (referred to below) is a per search item user pointer

@@ -5496,7 +5496,8 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
                        int iconid,
                        int but_flag,
                        uiMenuItemSeparatorType separator_type,
-                       int *r_xmax)
+                       int *r_xmax,
+                       ID *id)
 {
   uiWidgetType *wt = widget_type(UI_WTYPE_MENU_ITEM);
   const rcti _rect = *rect;
@@ -5555,7 +5556,84 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     }
   }
 
+  /* restore rect, was messed with */
+  *rect = _rect;
+
+  int xs = rect->xmin;
+  int ys = rect->ymin + 0.1f * BLI_rcti_size_y(rect);
+
+  if (iconid) {
+    float height, aspect;
+
+    height = ICON_SIZE_FROM_BUTRECT(rect);
+    aspect = ICON_DEFAULT_HEIGHT / height;
+
+    xs += 0.2f * UI_UNIT_X;
+
+    GPU_blend(GPU_BLEND_ALPHA);
+    /* XXX scale weak get from fstyle? */
+    UI_icon_draw_ex(
+        xs, ys, iconid, aspect, 1.0f, 0.0f, wt->wcol.text, false, UI_NO_ICON_OVERLAY_TEXT);
+    GPU_blend(GPU_BLEND_NONE);
+
+    xs += 0.4f * UI_UNIT_X;
+  }
+
+  if (id) {
+    float height, aspect;
+    height = ICON_SIZE_FROM_BUTRECT(rect);
+    aspect = ICON_DEFAULT_HEIGHT / height;
+
+    GPU_blend(GPU_BLEND_ALPHA);
+
+    if (true || ID_IS_LINKED(id)) {
+      xs += int(0.8f * UI_UNIT_X);
+      UI_icon_draw_ex(
+          xs, ys, ICON_LINKED, aspect, 1.0f, 0.0f, wt->wcol.text, false, UI_NO_ICON_OVERLAY_TEXT);
+    }
+    if (true || ID_MISSING(id)) {
+      xs += int(0.8f * UI_UNIT_X);
+      UI_icon_draw_ex(xs,
+                      ys,
+                      ICON_LIBRARY_DATA_BROKEN,
+                      aspect,
+                      1.0f,
+                      0.0f,
+                      wt->wcol.text,
+                      false,
+                      UI_NO_ICON_OVERLAY_TEXT);
+    }
+    if (true || ID_IS_OVERRIDE_LIBRARY(id)) {
+      xs += int(0.8f * UI_UNIT_X);
+      UI_icon_draw_ex(xs,
+                      ys,
+                      ICON_LIBRARY_DATA_OVERRIDE,
+                      aspect,
+                      1.0f,
+                      0.0f,
+                      wt->wcol.text,
+                      false,
+                      UI_NO_ICON_OVERLAY_TEXT);
+    }
+
+    xs += int(0.8f * UI_UNIT_X);
+    IconTextOverlay overlay;
+    BLI_str_format_integer_unit(overlay.text, id->us);
+    UI_icon_draw_ex(xs,
+                    ys,
+                    id->flag & ID_FLAG_FAKEUSER ? ICON_FAKE_USER_ON : ICON_FAKE_USER_OFF,
+                    aspect,
+                    1.0f,
+                    0.0f,
+                    wt->wcol.text,
+                    false,
+                    &overlay);
+
+    GPU_blend(GPU_BLEND_NONE);
+  }
+
   {
+    rect->xmin = xs + UI_UNIT_X;
     char drawstr[UI_MAX_DRAW_STR];
     const float okwidth = float(BLI_rcti_size_x(rect));
     const size_t max_len = sizeof(drawstr);
@@ -5575,24 +5653,6 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
     if (r_xmax != nullptr) {
       *r_xmax = xofs + info.width;
     }
-  }
-
-  /* restore rect, was messed with */
-  *rect = _rect;
-
-  if (iconid) {
-    float height, aspect;
-    const int xs = rect->xmin + 0.2f * UI_UNIT_X;
-    const int ys = rect->ymin + 0.1f * BLI_rcti_size_y(rect);
-
-    height = ICON_SIZE_FROM_BUTRECT(rect);
-    aspect = ICON_DEFAULT_HEIGHT / height;
-
-    GPU_blend(GPU_BLEND_ALPHA);
-    /* XXX scale weak get from fstyle? */
-    UI_icon_draw_ex(
-        xs, ys, iconid, aspect, 1.0f, 0.0f, wt->wcol.text, false, UI_NO_ICON_OVERLAY_TEXT);
-    GPU_blend(GPU_BLEND_NONE);
   }
 
   /* part text right aligned */
