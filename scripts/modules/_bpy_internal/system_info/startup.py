@@ -39,7 +39,8 @@ https://developer.blender.org/docs/handbook/bug_reports/making_good_bug_reports/
         blender_dir = script_directory.joinpath("../../../../../blender")
 
     try:
-        blender_output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE, errors="surrogateescape")
+        blender_output = subprocess.run([blender_dir, "--version"], stdout=subprocess.PIPE,
+                                        encoding="utf-8", errors="surrogateescape")
     except Exception as ex:
         sys.stderr.write("{:s}\n".format(str(ex)))
         return 1
