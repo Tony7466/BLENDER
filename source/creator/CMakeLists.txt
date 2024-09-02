@@ -962,7 +962,9 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
       unset(_target_LIB)
     endif()
 
-    # The script uses the version of Python installed with Blender
+    # The script uses the version of Python installed with Blender,
+    # so it must only be inside installed if `WITH_PYTHON AND WITH_PYTHON_INSTALL`
+    # are active.
     get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh.in
@@ -1485,15 +1487,16 @@ elseif(WIN32)
 
   if(NOT WITH_PYTHON_MODULE)
     get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
-    # Configure then generate file. Note that this copies the literal generator for the Python executable
-    # So that's why it needs to be generated afterwards.
+    # Configure then generate file. Note that this copies the literal generator
+    # for the Python executable name. So the file needs to be generated afterwards
+    # to get the correct name.
     configure_file(
       ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_info.cmd.in
       ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
       @ONLY
     )
     unset(PYTHON_EXECUTABLE_NAME_ONLY)
-    # Replace Python executable generator with actual executable name
+    # Replace Python executable generator with actual executable name.
     file(GENERATE
       OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
       INPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
