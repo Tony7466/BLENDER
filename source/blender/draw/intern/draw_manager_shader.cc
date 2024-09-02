@@ -39,6 +39,8 @@ extern "C" char datatoc_common_fullscreen_vert_glsl[];
 
 #define USE_DEFERRED_COMPILATION 1
 
+using namespace blender;
+
 /* -------------------------------------------------------------------- */
 /** \name Deferred Compilation (DRW_deferred)
  *
@@ -49,9 +51,9 @@ extern "C" char datatoc_common_fullscreen_vert_glsl[];
 
 struct DRWShaderCompiler {
   /** Default compilation queue. */
-  ListBase queue; /* GPUMaterial */
+  Vector<GPUMaterial *> queue;
   /** Optimization queue. */
-  ListBase optimize_queue; /* GPUMaterial */
+  Vector<GPUMaterial *> optimize_queue;
 
   std::mutex queue_mutex;
   std::condition_variable queue_cv;
@@ -86,14 +88,12 @@ static void *drw_deferred_shader_compilation_exec(void *)
     }
 
     compiler_data.queue_mutex.lock();
-    /* Pop tail because it will be less likely to lock the main thread
+    /* Pop last because it will be less likely to lock the main thread
      * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-    LinkData *link = (LinkData *)BLI_poptail(&compiler_data.queue);
-    GPUMaterial *mat = link ? (GPUMaterial *)link->data : nullptr;
+    GPUMaterial *mat = compiler_data.queue.is_empty() ? nullptr : compiler_data.queue.pop_last();
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
-      MEM_freeN(link);
     }
     compiler_data.queue_mutex.unlock();
 
@@ -124,10 +124,11 @@ static void *drw_deferred_shader_compilation_exec(void *)
       /* Check for Material Optimization job once there are no more
        * shaders to compile. */
       compiler_data.queue_mutex.lock();
-      /* Pop tail because it will be less likely to lock the main thread
+      /* Pop last because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      LinkData *link = (LinkData *)BLI_poptail(&compiler_data.optimize_queue);
-      GPUMaterial *optimize_mat = link ? (GPUMaterial *)link->data : nullptr;
+      GPUMaterial *optimize_mat = compiler_data.optimize_queue.is_empty() ?
+                                      nullptr :
+                                      compiler_data.optimize_queue.pop_last();
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
         GPU_material_acquire(optimize_mat);
@@ -138,7 +139,6 @@ static void *drw_deferred_shader_compilation_exec(void *)
         /* Compile optimized material shader. */
         GPU_material_optimize(optimize_mat);
         GPU_material_release(optimize_mat);
-        MEM_freeN(link);
       }
       else {
         /* No more materials to optimize, or shaders to compile. */
@@ -211,15 +211,13 @@ void DRW_shader_exit()
   {
     std::scoped_lock queue_lock(compiler_data.queue_mutex);
 
-    LISTBASE_FOREACH (LinkData *, link, &compiler_data.queue) {
-      GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
+    while (!compiler_data.queue.is_empty()) {
+      GPU_material_status_set(compiler_data.queue.pop_last(), GPU_MAT_CREATED);
     }
-    LISTBASE_FOREACH (LinkData *, link, &compiler_data.optimize_queue) {
-      GPU_material_optimization_status_set(static_cast<GPUMaterial *>(link->data),
+    while (!compiler_data.optimize_queue.is_empty()) {
+      GPU_material_optimization_status_set(compiler_data.optimize_queue.pop_last(),
                                            GPU_MAT_OPTIMIZATION_READY);
     }
-    BLI_freelistN(&compiler_data.queue);
-    BLI_freelistN(&compiler_data.optimize_queue);
   }
 
   WM_system_gpu_context_activate(compiler_data.system_gpu_context);
@@ -240,13 +238,11 @@ static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job
   if (is_optimization_job) {
     BLI_assert(GPU_material_optimization_status(mat) != GPU_MAT_OPTIMIZATION_QUEUED);
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_QUEUED);
-    LinkData *node = BLI_genericNodeN(mat);
-    BLI_addtail(&compiler_data.optimize_queue, node);
+    compiler_data.optimize_queue.append(mat);
   }
   else {
     GPU_material_status_set(mat, GPU_MAT_QUEUED);
-    LinkData *node = BLI_genericNodeN(mat);
-    BLI_addtail(&compiler_data.queue, node);
+    compiler_data.queue.append(mat);
   }
 
   compiler_data.queue_cv.notify_one();
@@ -329,24 +325,16 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
   std::scoped_lock queue_lock(compiler_data.queue_mutex);
 
   /* Search for compilation job in queue. */
-  LinkData *link = (LinkData *)BLI_findptr(&compiler_data.queue, mat, offsetof(LinkData, data));
-  if (link) {
-    BLI_remlink(&compiler_data.queue, link);
-    GPU_material_status_set(static_cast<GPUMaterial *>(link->data), GPU_MAT_CREATED);
+  if (compiler_data.queue.contains(mat)) {
+    compiler_data.queue.remove_first_occurrence_and_reorder(mat);
+    GPU_material_status_set(mat, GPU_MAT_CREATED);
   }
-
-  MEM_SAFE_FREE(link);
 
   /* Search for optimization job in queue. */
-  LinkData *opti_link = (LinkData *)BLI_findptr(
-      &compiler_data.optimize_queue, mat, offsetof(LinkData, data));
-  if (opti_link) {
-    BLI_remlink(&compiler_data.optimize_queue, opti_link);
-    GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
-                                         GPU_MAT_OPTIMIZATION_READY);
+  if (compiler_data.optimize_queue.contains(mat)) {
+    compiler_data.optimize_queue.remove_first_occurrence_and_reorder(mat);
+    GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_READY);
   }
-
-  MEM_SAFE_FREE(opti_link);
 }
 
 void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
@@ -359,15 +347,10 @@ void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
   std::scoped_lock queue_lock(compiler_data.queue_mutex);
 
   /* Search for optimization job in queue. */
-  LinkData *opti_link = (LinkData *)BLI_findptr(
-      &compiler_data.optimize_queue, mat, offsetof(LinkData, data));
-  if (opti_link) {
-    BLI_remlink(&compiler_data.optimize_queue, opti_link);
-    GPU_material_optimization_status_set(static_cast<GPUMaterial *>(opti_link->data),
-                                         GPU_MAT_OPTIMIZATION_READY);
+  if (compiler_data.optimize_queue.contains(mat)) {
+    compiler_data.optimize_queue.remove_first_occurrence_and_reorder(mat);
+    GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_READY);
   }
-
-  MEM_SAFE_FREE(opti_link);
 }
 
 /** \} */
