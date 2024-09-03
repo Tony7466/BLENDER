@@ -14,7 +14,8 @@
 #include "BKE_mesh_sample.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
@@ -27,8 +28,6 @@
 #include "BLI_kdtree.h"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
-
-#include "PIL_time.h"
 
 #include "GEO_add_curves_on_mesh.hh"
 
@@ -164,8 +163,7 @@ struct DensityAddOperationExecutor {
 
     Vector<float3> new_positions_cu;
     Vector<float2> new_uvs;
-    const double time = PIL_check_seconds_timer() * 1000000.0;
-    RandomNumberGenerator rng{*(uint32_t *)(&time)};
+    RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
     /* Find potential new curve root points. */
     if (falloff_shape == PAINT_FALLOFF_SHAPE_TUBE) {
@@ -264,12 +262,15 @@ struct DensityAddOperationExecutor {
     add_inputs.uvs = new_uvs;
     add_inputs.interpolate_length = brush_settings_->flag &
                                     BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_LENGTH;
+    add_inputs.interpolate_radius = brush_settings_->flag &
+                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS;
     add_inputs.interpolate_shape = brush_settings_->flag &
                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
     add_inputs.interpolate_point_count = brush_settings_->flag &
                                          BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_POINT_COUNT;
     add_inputs.interpolate_resolution = curves_orig_->attributes().contains("resolution");
     add_inputs.fallback_curve_length = brush_settings_->curve_length;
+    add_inputs.fallback_curve_radius = brush_settings_->curve_radius;
     add_inputs.fallback_point_count = std::max(2, brush_settings_->points_per_curve);
     add_inputs.transforms = &transforms_;
     add_inputs.surface = surface_orig_;
@@ -634,7 +635,7 @@ struct DensitySubtractOperationExecutor {
      * strength. */
     Array<bool> allow_remove_curve(curves_->curves_num(), false);
     threading::parallel_for(curves_->curves_range(), 512, [&](const IndexRange range) {
-      RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+      RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
       for (const int curve_i : range) {
         if (!curves_to_keep[curve_i]) {
@@ -724,7 +725,7 @@ struct DensitySubtractOperationExecutor {
      * strength. */
     Array<bool> allow_remove_curve(curves_->curves_num(), false);
     threading::parallel_for(curves_->curves_range(), 512, [&](const IndexRange range) {
-      RandomNumberGenerator rng(int(PIL_check_seconds_timer() * 1000000.0));
+      RandomNumberGenerator rng = RandomNumberGenerator::from_random_seed();
 
       for (const int curve_i : range) {
         if (!curves_to_keep[curve_i]) {
@@ -856,7 +857,7 @@ static bool use_add_density_mode(const BrushStrokeMode brush_mode,
 
   /* Compute distance from brush to curve roots. */
   Array<std::pair<float, int>> distances_sq_to_brush(curves.curves_num());
-  threading::EnumerableThreadSpecific<int> valid_curve_count_by_thread;
+  threading::EnumerableThreadSpecific<int> valid_curve_count_by_thread([&]() { return 0; });
   threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
     int &valid_curve_count = valid_curve_count_by_thread.local();
     for (const int curve_i : range) {

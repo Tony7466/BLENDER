@@ -22,15 +22,13 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "PIL_time.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -40,15 +38,12 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "UI_interface.hh"
 
@@ -57,8 +52,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_view2d.hh"
 
@@ -71,7 +65,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define SEARCH_RADIUS_PIXEL 20
 
@@ -232,7 +226,7 @@ static bool gpencil_brush_invert_check(tGP_BrushEditData *gso)
 {
   /* The basic setting is the brush's setting (from the panel) */
   bool invert = ((gso->brush->gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
-                (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
+                (gso->brush->flag & BRUSH_DIR_IN);
   /* During runtime, the user can hold down the Ctrl key to invert the basic behavior */
   if (gso->flag & GP_SCULPT_FLAG_INVERT) {
     invert ^= true;
@@ -683,7 +677,7 @@ static bool gpencil_brush_pinch_apply(tGP_BrushEditData *gso,
 
   /* 1) Make this point relative to the cursor/midpoint (dvec) */
   float fpt[3];
-  mul_v3_m4v3(fpt, gso->object->object_to_world, &pt->x);
+  mul_v3_m4v3(fpt, gso->object->object_to_world().ptr(), &pt->x);
   sub_v3_v3v3(vec, fpt, gso->dvec);
 
   /* 2) Shrink the distance by pulling the point towards the midpoint
@@ -703,7 +697,7 @@ static bool gpencil_brush_pinch_apply(tGP_BrushEditData *gso,
 
   /* 3) Translate back to original space, with the shrinkage applied */
   add_v3_v3v3(fpt, gso->dvec, vec);
-  mul_v3_m4v3(&pt->x, gso->object->world_to_object, fpt);
+  mul_v3_m4v3(&pt->x, gso->object->world_to_object().ptr(), fpt);
 
   /* compute lock axis */
   gpencil_sculpt_compute_lock_axis(gso, pt, save_pt);
@@ -755,12 +749,12 @@ static bool gpencil_brush_twist_apply(tGP_BrushEditData *gso,
 
     /* Rotate point */
     float fpt[3];
-    mul_v3_m4v3(fpt, gso->object->object_to_world, &pt->x);
+    mul_v3_m4v3(fpt, gso->object->object_to_world().ptr(), &pt->x);
     sub_v3_v3v3(vec, fpt, gso->dvec); /* make relative to center
                                        * (center is stored in dvec) */
     mul_m3_v3(rmat, vec);
     add_v3_v3v3(fpt, vec, gso->dvec); /* restore */
-    mul_v3_m4v3(&pt->x, gso->object->world_to_object, fpt);
+    mul_v3_m4v3(&pt->x, gso->object->world_to_object().ptr(), fpt);
 
     /* compute lock axis */
     gpencil_sculpt_compute_lock_axis(gso, pt, save_pt);
@@ -1051,11 +1045,11 @@ static void gpencil_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
        */
       for (i = 0, pt = new_stroke->points; i < new_stroke->totpoints; i++, pt++) {
         /* Rotate around center new position */
-        mul_mat3_m4_v3(gso->object->object_to_world, &pt->x); /* only rotation component */
+        mul_mat3_m4_v3(gso->object->object_to_world().ptr(), &pt->x); /* only rotation component */
 
         /* assume that the delta can just be applied, and then everything works */
         add_v3_v3(&pt->x, delta);
-        mul_m4_v3(gso->object->world_to_object, &pt->x);
+        mul_m4_v3(gso->object->world_to_object().ptr(), &pt->x);
       }
 
       /* Store ref for later */
@@ -1138,9 +1132,9 @@ static void gpencil_sculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
   char str[UI_MAX_DRAW_STR] = "";
 
   SNPRINTF(str,
-           RPT_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                " | Shift-Wheel Up/Down for Strength"),
+           IFACE_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                  " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                  " | Shift-Wheel Up/Down for Strength"),
            brush->id.name + 2);
 
   ED_workspace_status_text(C, str);
@@ -1171,7 +1165,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->settings = gpencil_sculpt_get_settings(scene);
 
   /* Random generator, only init once. */
-  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(gso);
   gso->rng = BLI_rng_new(rng_seed);
 
@@ -1186,7 +1180,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->object = ob;
   if (ob) {
     float matrix[4][4];
-    copy_m4_m4(matrix, ob->object_to_world);
+    copy_m4_m4(matrix, ob->object_to_world().ptr());
     zero_axis_bias_m4(matrix);
     invert_m4_m4(gso->inv_mat, matrix);
     gso->vrgroup = gso->gpd->vertex_group_active_index - 1;
@@ -1194,7 +1188,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
       gso->vrgroup = -1;
     }
     /* Check if some modifier can transform the stroke. */
-    gso->is_transformed = BKE_gpencil_has_transform_modifiers(ob);
+    gso->is_transformed = false;
 
     gso->ob_eval = (Object *)DEG_get_evaluated_id(gso->depsgraph, &ob->id);
   }
@@ -1208,7 +1202,10 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->region = CTX_wm_region(C);
 
   Paint *paint = &ts->gp_sculptpaint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
+  if (brush && !brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   gso->brush = brush;
   BKE_curvemapping_init(gso->brush->curve);
 
@@ -1241,9 +1238,9 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   }
 
   /* Initialize custom data for brushes. */
-  char tool = gso->brush->gpencil_sculpt_tool;
+  char tool = gso->brush->gpencil_sculpt_brush_type;
   switch (tool) {
-    case GPSCULPT_TOOL_CLONE: {
+    case GPSCULPT_BRUSH_TYPE_CLONE: {
       bool found = false;
 
       /* check that there are some usable strokes in the buffer */
@@ -1270,7 +1267,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
       break;
     }
 
-    case GPSCULPT_TOOL_GRAB: {
+    case GPSCULPT_BRUSH_TYPE_GRAB: {
       /* Initialize the cache needed for this brush. */
       gso->stroke_customdata = BLI_ghash_ptr_new("GP Grab Brush - Strokes Hash");
       break;
@@ -1294,11 +1291,11 @@ static void gpencil_sculpt_brush_exit(bContext *C, wmOperator *op)
 {
   tGP_BrushEditData *gso = static_cast<tGP_BrushEditData *>(op->customdata);
   wmWindow *win = CTX_wm_window(C);
-  char tool = gso->brush->gpencil_sculpt_tool;
+  char tool = gso->brush->gpencil_sculpt_brush_type;
 
   /* free brush-specific data */
   switch (tool) {
-    case GPSCULPT_TOOL_GRAB: {
+    case GPSCULPT_BRUSH_TYPE_GRAB: {
       /* Free per-stroke customdata
        * - Keys don't need to be freed, as those are the strokes
        * - Values assigned to those keys do, as they are custom structs
@@ -1307,7 +1304,7 @@ static void gpencil_sculpt_brush_exit(bContext *C, wmOperator *op)
       break;
     }
 
-    case GPSCULPT_TOOL_CLONE: {
+    case GPSCULPT_BRUSH_TYPE_CLONE: {
       /* Free customdata */
       gpencil_brush_clone_free(gso);
       break;
@@ -1474,7 +1471,7 @@ static bool gpencil_sculpt_brush_do_stroke(tGP_BrushEditData *gso,
                                            GP_BrushApplyCb apply)
 {
   GP_SpaceConversion *gsc = &gso->gsc;
-  rcti *rect = &gso->brush_rect;
+  const rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;
@@ -1625,7 +1622,7 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
   bool redo_geom = false;
   Object *ob = gso->object;
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-  const char tool = gso->brush->gpencil_sculpt_tool;
+  const char tool = gso->brush->gpencil_sculpt_brush_type;
   GP_SpaceConversion *gsc = &gso->gsc;
   ToolSettings *ts = gso->scene->toolsettings;
   Brush *brush = gso->brush;
@@ -1663,28 +1660,28 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
     }
 
     switch (tool) {
-      case GPSCULPT_TOOL_SMOOTH: /* Smooth strokes */
+      case GPSCULPT_BRUSH_TYPE_SMOOTH: /* Smooth strokes */
       {
         changed |= gpencil_sculpt_brush_do_stroke(gso, gps, diff_mat, gpencil_brush_smooth_apply);
         redo_geom |= changed;
         break;
       }
 
-      case GPSCULPT_TOOL_THICKNESS: /* Adjust stroke thickness */
+      case GPSCULPT_BRUSH_TYPE_THICKNESS: /* Adjust stroke thickness */
       {
         changed |= gpencil_sculpt_brush_do_stroke(
             gso, gps, diff_mat, gpencil_brush_thickness_apply);
         break;
       }
 
-      case GPSCULPT_TOOL_STRENGTH: /* Adjust stroke color strength */
+      case GPSCULPT_BRUSH_TYPE_STRENGTH: /* Adjust stroke color strength */
       {
         changed |= gpencil_sculpt_brush_do_stroke(
             gso, gps, diff_mat, gpencil_brush_strength_apply);
         break;
       }
 
-      case GPSCULPT_TOOL_GRAB: /* Grab points */
+      case GPSCULPT_BRUSH_TYPE_GRAB: /* Grab points */
       {
         bGPDstroke *gps_active = (gps->runtime.gps_orig) ? gps->runtime.gps_orig : gps;
         if (gps_active != nullptr) {
@@ -1707,28 +1704,28 @@ static bool gpencil_sculpt_brush_do_frame(bContext *C,
         break;
       }
 
-      case GPSCULPT_TOOL_PUSH: /* Push points */
+      case GPSCULPT_BRUSH_TYPE_PUSH: /* Push points */
       {
         changed |= gpencil_sculpt_brush_do_stroke(gso, gps, diff_mat, gpencil_brush_push_apply);
         redo_geom |= changed;
         break;
       }
 
-      case GPSCULPT_TOOL_PINCH: /* Pinch points */
+      case GPSCULPT_BRUSH_TYPE_PINCH: /* Pinch points */
       {
         changed |= gpencil_sculpt_brush_do_stroke(gso, gps, diff_mat, gpencil_brush_pinch_apply);
         redo_geom |= changed;
         break;
       }
 
-      case GPSCULPT_TOOL_TWIST: /* Twist points around midpoint */
+      case GPSCULPT_BRUSH_TYPE_TWIST: /* Twist points around midpoint */
       {
         changed |= gpencil_sculpt_brush_do_stroke(gso, gps, diff_mat, gpencil_brush_twist_apply);
         redo_geom |= changed;
         break;
       }
 
-      case GPSCULPT_TOOL_RANDOMIZE: /* Apply jitter */
+      case GPSCULPT_BRUSH_TYPE_RANDOMIZE: /* Apply jitter */
       {
         changed |= gpencil_sculpt_brush_do_stroke(
             gso, gps, diff_mat, gpencil_brush_randomize_apply);
@@ -2016,10 +2013,10 @@ static bool gpencil_sculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *
   bGPdata *gpd = (bGPdata *)ob_eval->data;
 
   /* Calculate brush-specific data which applies equally to all points */
-  char tool = gso->brush->gpencil_sculpt_tool;
+  char tool = gso->brush->gpencil_sculpt_brush_type;
   switch (tool) {
-    case GPSCULPT_TOOL_GRAB: /* Grab points */
-    case GPSCULPT_TOOL_PUSH: /* Push points */
+    case GPSCULPT_BRUSH_TYPE_GRAB: /* Grab points */
+    case GPSCULPT_BRUSH_TYPE_PUSH: /* Push points */
     {
       /* calculate amount of displacement to apply */
       gso->rot_eval = 0.0f;
@@ -2027,15 +2024,15 @@ static bool gpencil_sculpt_brush_apply_standard(bContext *C, tGP_BrushEditData *
       break;
     }
 
-    case GPSCULPT_TOOL_PINCH: /* Pinch points */
-    case GPSCULPT_TOOL_TWIST: /* Twist points around midpoint */
+    case GPSCULPT_BRUSH_TYPE_PINCH: /* Pinch points */
+    case GPSCULPT_BRUSH_TYPE_TWIST: /* Twist points around midpoint */
     {
       /* calculate midpoint of the brush (in data space) */
       gpencil_brush_calc_midpoint(gso);
       break;
     }
 
-    case GPSCULPT_TOOL_RANDOMIZE: /* Random jitter */
+    case GPSCULPT_BRUSH_TYPE_RANDOMIZE: /* Random jitter */
     {
       /* compute the displacement vector for the cursor (in data space) */
       gso->rot_eval = 0.0f;
@@ -2157,8 +2154,8 @@ static void gpencil_sculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *
   }
 
   /* Apply brush */
-  char tool = gso->brush->gpencil_sculpt_tool;
-  if (tool == GPSCULPT_TOOL_CLONE) {
+  char tool = gso->brush->gpencil_sculpt_brush_type;
+  if (tool == GPSCULPT_BRUSH_TYPE_CLONE) {
     changed = gpencil_sculpt_brush_apply_clone(C, gso);
   }
   else {
@@ -2182,9 +2179,10 @@ static void gpencil_sculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *
 static Brush *gpencil_sculpt_get_smooth_brush(tGP_BrushEditData *gso)
 {
   Main *bmain = gso->bmain;
-  Brush *brush = static_cast<Brush *>(
-      BLI_findstring(&bmain->brushes, "Smooth Stroke", offsetof(ID, name) + 2));
-
+  Brush *brush = BKE_paint_brush_from_essentials(bmain, "Smooth Stroke");
+  if (brush && !brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   return brush;
 }
 
@@ -2273,25 +2271,25 @@ static int gpencil_sculpt_brush_invoke(bContext *C, wmOperator *op, const wmEven
   gso = static_cast<tGP_BrushEditData *>(op->customdata);
 
   /* Initialize type-specific data (used for the entire session). */
-  char tool = gso->brush->gpencil_sculpt_tool;
+  char tool = gso->brush->gpencil_sculpt_brush_type;
   switch (tool) {
     /* Brushes requiring timer... */
-    case GPSCULPT_TOOL_THICKNESS:
+    case GPSCULPT_BRUSH_TYPE_THICKNESS:
       brush_rate = 0.01f;
       needs_timer = true;
       break;
 
-    case GPSCULPT_TOOL_STRENGTH:
+    case GPSCULPT_BRUSH_TYPE_STRENGTH:
       brush_rate = 0.01f;
       needs_timer = true;
       break;
 
-    case GPSCULPT_TOOL_PINCH:
+    case GPSCULPT_BRUSH_TYPE_PINCH:
       brush_rate = 0.001f;
       needs_timer = true;
       break;
 
-    case GPSCULPT_TOOL_TWIST:
+    case GPSCULPT_BRUSH_TYPE_TWIST:
       brush_rate = 0.01f;
       needs_timer = true;
       break;

@@ -6,7 +6,7 @@
  * \ingroup bke
  */
 
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
@@ -359,6 +359,11 @@ bool BKE_main_namemap_get_name(Main *bmain, ID *id, char *name, const bool do_un
       return is_name_changed;
     }
 
+    /* At this point, if this is the first iteration, the initially given name is colliding with an
+     * existing ID name, and has to be modified. If this is a later iteration, the given name has
+     * already been modified one way or another. */
+    is_name_changed = true;
+
     /* The base name is already used. But our number suffix might not be used yet. */
     int number_to_use = -1;
     if (val.use_if_unused(number)) {
@@ -395,12 +400,8 @@ bool BKE_main_namemap_get_name(Main *bmain, ID *id, char *name, const bool do_un
       }
       break;
     }
-
-    /* Name had to be truncated, or number too large: mark
-     * the output name as definitely changed, and proceed with the
-     * truncated name again. */
-    is_name_changed = true;
   }
+
   return is_name_changed;
 }
 
@@ -597,7 +598,7 @@ static bool main_namemap_validate_and_fix(Main *bmain, const bool do_fix)
     return is_valid;
   }
 
-  /* Clear all existing namemaps. */
+  /* Clear all existing name-maps. */
   BKE_main_namemap_clear(bmain);
 
   return is_valid;

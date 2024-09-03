@@ -16,7 +16,7 @@
 #include "BLI_stack.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -28,15 +28,14 @@
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "ED_gpencil_legacy.hh"
@@ -49,13 +48,13 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 
@@ -63,9 +62,8 @@
 #include "WM_types.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 #define LEAK_HORZ 0
 #define LEAK_VERT 1
@@ -261,8 +259,11 @@ static void gpencil_delete_temp_stroke_extension(tGPDfill *tgpf, const bool all_
   }
 }
 
-static bool extended_bbox_overlap(
-    float min1[3], float max1[3], float min2[3], float max2[3], float extend)
+static bool extended_bbox_overlap(const float min1[3],
+                                  const float max1[3],
+                                  const float min2[3],
+                                  const float max2[3],
+                                  float extend)
 {
   for (int axis = 0; axis < 3; axis++) {
     float intersection_min = max_ff(min1[axis], min2[axis]) - extend;
@@ -1337,7 +1338,7 @@ static bool gpencil_render_offscreen(tGPDfill *tgpf)
   }
 
   tgpf->ima = BKE_image_add_from_imbuf(tgpf->bmain, ibuf, "GP_fill");
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  tgpf->ima->id.tag |= ID_TAG_DOIT;
 
   BKE_image_release_ibuf(tgpf->ima, ibuf, nullptr);
 
@@ -1565,7 +1566,7 @@ static bool gpencil_boundaryfill_area(tGPDfill *tgpf)
   /* release ibuf */
   BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
 
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  tgpf->ima->id.tag |= ID_TAG_DOIT;
   /* free temp stack data */
   BLI_stack_free(stack);
 
@@ -1603,7 +1604,7 @@ static void gpencil_set_borders(tGPDfill *tgpf, const bool transparent)
   /* release ibuf */
   BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
 
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  tgpf->ima->id.tag |= ID_TAG_DOIT;
 }
 
 /* Invert image to paint inverse area. */
@@ -1637,7 +1638,7 @@ static void gpencil_invert_image(tGPDfill *tgpf)
   /* release ibuf */
   BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
 
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  tgpf->ima->id.tag |= ID_TAG_DOIT;
 }
 
 /* Mark and clear processed areas. */
@@ -1703,7 +1704,7 @@ static void gpencil_erase_processed_area(tGPDfill *tgpf)
   /* release ibuf */
   BKE_image_release_ibuf(tgpf->ima, ibuf, lock);
 
-  tgpf->ima->id.tag |= LIB_TAG_DOIT;
+  tgpf->ima->id.tag |= ID_TAG_DOIT;
 }
 
 /**
@@ -2298,11 +2299,11 @@ static void gpencil_fill_status_indicators(tGPDfill *tgpf)
 
   char status_str[UI_MAX_DRAW_STR];
   SNPRINTF(status_str,
-           RPT_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back, MMB Adjust Extend, S: "
-                "Switch Mode, D: "
-                "Stroke Collision | %s %s (%.3f)"),
-           (is_extend) ? RPT_("Extend") : RPT_("Radius"),
-           (is_extend && use_stroke_collide) ? RPT_("Stroke: ON") : RPT_("Stroke: OFF"),
+           IFACE_("Fill: ESC/RMB cancel, LMB Fill, Shift Draw on Back, MMB Adjust Extend, S: "
+                  "Switch Mode, D: "
+                  "Stroke Collision | %s %s (%.3f)"),
+           (is_extend) ? IFACE_("Extend") : IFACE_("Radius"),
+           (is_extend && use_stroke_collide) ? IFACE_("Stroke: ON") : IFACE_("Stroke: OFF"),
            tgpf->fill_extend_fac);
 
   ED_workspace_status_text(tgpf->C, status_str);
@@ -2405,6 +2406,9 @@ static tGPDfill *gpencil_session_init_fill(bContext *C, wmOperator *op)
 
   /* save filling parameters */
   Brush *brush = BKE_paint_brush(&ts->gp_paint->paint);
+  if (!brush->gpencil_settings) {
+    BKE_brush_init_gpencil_settings(brush);
+  }
   tgpf->brush = brush;
   tgpf->flag = brush->gpencil_settings->flag;
   tgpf->fill_threshold = brush->gpencil_settings->fill_threshold;

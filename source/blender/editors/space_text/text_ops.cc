@@ -6,6 +6,7 @@
  * \ingroup sptext
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <sstream>
@@ -19,15 +20,14 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_string_utf8.h"
+#include "BLI_time.h"
 
-#include "BLT_translation.h"
-
-#include "PIL_time.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_text.h"
 
 #include "WM_api.hh"
@@ -540,6 +540,17 @@ static int text_reload_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int text_reload_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Reload active text file?"),
+                                nullptr,
+                                IFACE_("Reload"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_reload(wmOperatorType *ot)
 {
   /* identifiers */
@@ -549,7 +560,7 @@ void TEXT_OT_reload(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_reload_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_reload_invoke;
   ot->poll = text_edit_poll;
 }
 
@@ -591,6 +602,17 @@ static int text_unlink_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int text_unlink_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Delete active text file?"),
+                                nullptr,
+                                IFACE_("Delete"),
+                                ALERT_ICON_NONE,
+                                false);
+}
+
 void TEXT_OT_unlink(wmOperatorType *ot)
 {
   /* identifiers */
@@ -600,7 +622,7 @@ void TEXT_OT_unlink(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = text_unlink_exec;
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = text_unlink_invoke;
   ot->poll = text_unlink_poll;
 
   /* flags */
@@ -839,6 +861,7 @@ static int text_run_script(bContext *C, ReportList *reports)
   /* only for comparison */
   void *curl_prev = text->curl;
   int curc_prev = text->curc;
+  int selc_prev = text->selc;
 
   if (BPY_run_text(C, text, reports, !is_live)) {
     if (is_live) {
@@ -852,7 +875,7 @@ static int text_run_script(bContext *C, ReportList *reports)
   if (!is_live) {
     /* text may have freed itself */
     if (CTX_data_edit_text(C) == text) {
-      if (text->curl != curl_prev || curc_prev != text->curc) {
+      if (text->curl != curl_prev || curc_prev != text->curc || selc_prev != text->selc) {
         space_text_update_cursor_moved(C);
         WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
       }
@@ -1080,7 +1103,7 @@ void TEXT_OT_duplicate_line(wmOperatorType *ot)
 /** \name Copy Operator
  * \{ */
 
-static void txt_copy_clipboard(Text *text)
+static void txt_copy_clipboard(const Text *text)
 {
   char *buf;
 
@@ -1098,7 +1121,7 @@ static void txt_copy_clipboard(Text *text)
 
 static int text_copy_exec(bContext *C, wmOperator * /*op*/)
 {
-  Text *text = CTX_data_edit_text(C);
+  const Text *text = CTX_data_edit_text(C);
 
   txt_copy_clipboard(text);
 
@@ -1768,7 +1791,7 @@ static int space_text_get_cursor_rel(
 
   for (i = 0, j = 0; loop; j += BLI_str_utf8_size_safe(linein->line + j)) {
     int chars;
-    int columns = BLI_str_utf8_char_width_safe(linein->line + j); /* = 1 for tab */
+    const int columns = BLI_str_utf8_char_width_safe(linein->line + j); /* = 1 for tab */
 
     /* Mimic replacement of tabs */
     ch = linein->line[j];
@@ -1791,7 +1814,7 @@ static int space_text_get_cursor_rel(
         curs = j;
       }
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         if (found) {
           /* exact cursor position was found, check if it's */
@@ -1972,7 +1995,7 @@ static void txt_wrap_move_bol(SpaceText *st, ARegion *region, const bool sel)
 
   for (i = 0, j = 0; loop; j += BLI_str_utf8_size_safe((*linep)->line + j)) {
     int chars;
-    int columns = BLI_str_utf8_char_width_safe((*linep)->line + j); /* = 1 for tab */
+    const int columns = BLI_str_utf8_char_width_safe((*linep)->line + j); /* = 1 for tab */
 
     /* Mimic replacement of tabs */
     ch = (*linep)->line[j];
@@ -1986,7 +2009,7 @@ static void txt_wrap_move_bol(SpaceText *st, ARegion *region, const bool sel)
 
     while (chars--) {
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         *charp = endj;
 
@@ -2059,7 +2082,7 @@ static void txt_wrap_move_eol(SpaceText *st, ARegion *region, const bool sel)
 
   for (i = 0, j = 0; loop; j += BLI_str_utf8_size_safe((*linep)->line + j)) {
     int chars;
-    int columns = BLI_str_utf8_char_width_safe((*linep)->line + j); /* = 1 for tab */
+    const int columns = BLI_str_utf8_char_width_safe((*linep)->line + j); /* = 1 for tab */
 
     /* Mimic replacement of tabs */
     ch = (*linep)->line[j];
@@ -2073,7 +2096,7 @@ static void txt_wrap_move_eol(SpaceText *st, ARegion *region, const bool sel)
 
     while (chars--) {
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         if (chop) {
           endj = BLI_str_find_prev_char_utf8((*linep)->line + j, (*linep)->line) - (*linep)->line;
@@ -2455,13 +2478,11 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  return WM_operator_props_dialog_popup(C, op, 200);
+  return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Jump to Line Number"));
 }
 
 void TEXT_OT_jump(wmOperatorType *ot)
 {
-  PropertyRNA *prop;
-
   /* identifiers */
   ot->name = "Jump";
   ot->idname = "TEXT_OT_jump";
@@ -2473,8 +2494,9 @@ void TEXT_OT_jump(wmOperatorType *ot)
   ot->poll = text_edit_poll;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXT);
+  ot->prop = RNA_def_int(
+      ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_TEXT);
 }
 
 /** \} */
@@ -3063,12 +3085,9 @@ static int flatten_width(SpaceText *st, const char *str)
   int total = 0;
 
   for (int i = 0; str[i]; i += BLI_str_utf8_size_safe(str + i)) {
-    if (str[i] == '\t') {
-      total += st->tabnumber - total % st->tabnumber;
-    }
-    else {
-      total += BLI_str_utf8_char_width_safe(str + i);
-    }
+    const int columns = (str[i] == '\t') ? (st->tabnumber - total % st->tabnumber) :
+                                           BLI_str_utf8_char_width_safe(str + i);
+    total += columns;
   }
 
   return total;
@@ -3076,16 +3095,11 @@ static int flatten_width(SpaceText *st, const char *str)
 
 static int flatten_column_to_offset(SpaceText *st, const char *str, int index)
 {
-  int i = 0, j = 0, col;
+  int i = 0, j = 0;
 
   while (*(str + j)) {
-    if (str[j] == '\t') {
-      col = st->tabnumber - i % st->tabnumber;
-    }
-    else {
-      col = BLI_str_utf8_char_width_safe(str + j);
-    }
-
+    const int col = (str[j] == '\t') ? (st->tabnumber - i % st->tabnumber) :
+                                       BLI_str_utf8_char_width_safe(str + j);
     if (i + col > index) {
       break;
     }
@@ -3142,7 +3156,7 @@ static void space_text_cursor_set_to_pos_wrapped(
          j += BLI_str_utf8_size_safe(linep->line + j))
     {
       int chars;
-      int columns = BLI_str_utf8_char_width_safe(linep->line + j); /* = 1 for tab */
+      const int columns = BLI_str_utf8_char_width_safe(linep->line + j); /* = 1 for tab */
 
       /* Mimic replacement of tabs */
       if (ch == '\t') {
@@ -3173,7 +3187,7 @@ static void space_text_cursor_set_to_pos_wrapped(
           curs = j;
         }
         if (i + columns - start > max) {
-          end = MIN2(end, i);
+          end = std::min(end, i);
 
           if (found) {
             /* exact cursor position was found, check if it's still on needed line
@@ -3348,7 +3362,7 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
 
     if (event->type == TIMER) {
       text_cursor_set_to_pos(
-          st, region, CLAMPIS(event->mval[0], 0, region->winx), event->mval[1], true);
+          st, region, std::clamp(event->mval[0], 0, int(region->winx)), event->mval[1], true);
       ED_space_text_scroll_to_cursor(st, region, false);
       WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
@@ -3528,7 +3542,7 @@ static int text_line_number_invoke(bContext *C, wmOperator * /*op*/, const wmEve
     return OPERATOR_PASS_THROUGH;
   }
 
-  time = PIL_check_seconds_timer();
+  time = BLI_time_now_seconds();
   if (last_jump < time - 1) {
     jump_to = 0;
   }
@@ -3828,7 +3842,7 @@ static int text_find_and_replace(bContext *C, wmOperator *op, short mode)
   }
   else {
     if (!found) {
-      BKE_reportf(op->reports, RPT_WARNING, "Text not found: %s", st->findstr);
+      BKE_reportf(op->reports, RPT_INFO, "Text not found: %s", st->findstr);
     }
   }
 
@@ -4114,6 +4128,9 @@ static int text_jump_to_file_at_point_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "File path property not set");
     return OPERATOR_CANCELLED;
   }
+
+  /* Useful to copy-paste from the terminal. */
+  printf("%s:%d:%d\n", filepath, line_index + 1, column_index);
 
   bool success;
   if (U.text_editor[0] != '\0') {

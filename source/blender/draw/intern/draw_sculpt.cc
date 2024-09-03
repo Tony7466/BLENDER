@@ -41,8 +41,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                                                  const bool use_wire,
                                                  const Span<pbvh::AttributeRequest> attrs)
 {
-  /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
-  PBVH *pbvh = ob->sculpt ? ob->sculpt->pbvh : nullptr;
+  /* pbvh::Tree should always exist for non-empty meshes, created by depsgraph eval. */
+  bke::pbvh::Tree *pbvh = ob->sculpt ? ob->sculpt->pbvh.get() : nullptr;
   if (!pbvh) {
     return {};
   }
@@ -57,7 +57,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
     paint = BKE_paint_get_active_from_context(drwctx->evil_C);
   }
 
-  /* Frustum planes to show only visible PBVH nodes. */
+  /* Frustum planes to show only visible pbvh::Tree nodes. */
   float4 draw_planes[6];
   PBVHFrustumPlanes draw_frustum = {reinterpret_cast<float(*)[4]>(draw_planes), 6};
   float4 update_planes[6];
@@ -68,7 +68,7 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
   /* Transform clipping planes to object space. Transforming a plane with a
    * 4x4 matrix is done by multiplying with the transpose inverse.
    * The inverse cancels out here since we transform by inverse(obmat). */
-  float4x4 tmat = math::transpose(float4x4(ob->object_to_world));
+  float4x4 tmat = math::transpose(ob->object_to_world());
   for (int i : IndexRange(6)) {
     draw_planes[i] = tmat * draw_planes[i];
     update_planes[i] = draw_planes[i];
@@ -76,10 +76,10 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
 
   if (paint && (paint->flags & PAINT_SCULPT_DELAY_UPDATES)) {
     if (navigating) {
-      bke::pbvh::get_frustum_planes(pbvh, &update_frustum);
+      bke::pbvh::get_frustum_planes(*pbvh, &update_frustum);
     }
     else {
-      bke::pbvh::set_frustum_planes(pbvh, &update_frustum);
+      bke::pbvh::set_frustum_planes(*pbvh, &update_frustum);
     }
   }
 
@@ -96,12 +96,11 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
     update_only_visible = true;
   }
 
-  const Mesh *mesh = static_cast<const Mesh *>(ob->data);
-  bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
+  bke::pbvh::update_normals_from_eval(*const_cast<Object *>(ob), *pbvh);
 
   Vector<SculptBatch> result_batches;
-  bke::pbvh::draw_cb(*mesh,
-                     pbvh,
+  bke::pbvh::draw_cb(*ob,
+                     *pbvh,
                      update_only_visible,
                      update_frustum,
                      draw_frustum,
@@ -163,7 +162,7 @@ Vector<SculptBatch> sculpt_batches_per_material_get(const Object *ob,
 
   DRW_Attributes draw_attrs;
   DRW_MeshCDMask cd_needed;
-  DRW_mesh_get_attributes(ob, mesh, materials.data(), materials.size(), &draw_attrs, &cd_needed);
+  DRW_mesh_get_attributes(*ob, *mesh, materials.data(), materials.size(), &draw_attrs, &cd_needed);
 
   Vector<pbvh::AttributeRequest, 16> attrs;
 

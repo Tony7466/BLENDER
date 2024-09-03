@@ -14,7 +14,7 @@
 
 #include "GPU_select.hh"
 
-#include "../intern/gpu_select_private.h"
+#include "../intern/gpu_select_private.hh"
 
 #include "draw_manager.hh"
 #include "draw_pass.hh"
@@ -70,7 +70,7 @@ struct SelectBuf {
     }
   }
 
-  void select_bind(PassSimple &pass)
+  void select_bind(PassSimple::Sub &pass)
   {
     if (selection_type != SelectionType::DISABLED) {
       select_buf.push_update();
@@ -158,7 +158,7 @@ struct SelectMap {
 #endif
   }
 
-  /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
   void select_bind(PassSimple &pass)
   {
     if (selection_type == SelectionType::DISABLED) {
@@ -173,7 +173,7 @@ struct SelectMap {
     pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
   }
 
-  /** IMPORTANT: Changes the draw state. Need to be called after the pass own state_set. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
   void select_bind(PassMain &pass)
   {
     if (selection_type == SelectionType::DISABLED) {
@@ -189,6 +189,25 @@ struct SelectMap {
     /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
     pass.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
     pass.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
+  }
+
+  /* TODO: Deduplicate. */
+  /** IMPORTANT: Changes the draw state. Need to be called after the pass's own state_set. */
+  void select_bind(PassMain &pass, PassMain::Sub &sub)
+  {
+    if (selection_type == SelectionType::DISABLED) {
+      return;
+    }
+
+    pass.use_custom_ids = true;
+    if (disable_depth_test) {
+      /* TODO: clipping state. */
+      sub.state_set(DRW_STATE_WRITE_COLOR);
+    }
+    sub.bind_ubo(SELECT_DATA, &info_buf);
+    /* IMPORTANT: This binds a dummy buffer `in_select_buf` but it is not supposed to be used. */
+    sub.bind_ssbo(SELECT_ID_IN, &dummy_select_buf);
+    sub.bind_ssbo(SELECT_ID_OUT, &select_output_buf);
   }
 
   void end_sync()

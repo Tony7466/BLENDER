@@ -12,11 +12,8 @@
 #include "BLI_task.hh"
 
 #include "BKE_curves.hh"
-#include "BKE_curves_utils.hh"
 
 #include "GEO_randomize.hh"
-
-#include "DNA_pointcloud_types.h"
 
 namespace blender::nodes::node_geo_interpolate_curves_cc {
 
@@ -466,14 +463,15 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
    * that they had on the guides. */
   guide_curve_attributes.for_all([&](const AttributeIDRef &id,
                                      const AttributeMetaData &meta_data) {
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+    if (id.is_anonymous() && !propagation_info.propagate(id.name())) {
       return true;
     }
     const eCustomDataType type = meta_data.data_type;
     if (type == CD_PROP_STRING) {
       return true;
     }
-    if (guide_curve_attributes.is_builtin(id) && !ELEM(id.name(), "radius", "tilt", "resolution"))
+    if (guide_curve_attributes.is_builtin(id) &&
+        !ELEM(id.name(), "radius", "tilt", "resolution", "cyclic"))
     {
       return true;
     }
@@ -604,7 +602,7 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (guide_curve_attributes.contains(id)) {
       return true;
     }
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+    if (id.is_anonymous() && !propagation_info.propagate(id.name())) {
       return true;
     }
     if (meta_data.data_type == CD_PROP_STRING) {
@@ -626,8 +624,8 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
 }
 
 static void store_output_attributes(bke::CurvesGeometry &child_curves,
-                                    const AnonymousAttributeIDPtr weight_attribute_id,
-                                    const AnonymousAttributeIDPtr index_attribute_id,
+                                    const std::optional<std::string> weight_attribute_id,
+                                    const std::optional<std::string> index_attribute_id,
                                     const int max_neighbors,
                                     const Span<int> all_neighbor_counts,
                                     const Span<int> all_neighbor_indices,
@@ -691,8 +689,8 @@ static GeometrySet generate_interpolated_curves(
     const VArray<int> &point_group_ids,
     const int max_neighbors,
     const AnonymousAttributePropagationInfo &propagation_info,
-    const AnonymousAttributeIDPtr &index_attribute_id,
-    const AnonymousAttributeIDPtr &weight_attribute_id)
+    const std::optional<std::string> &index_attribute_id,
+    const std::optional<std::string> &weight_attribute_id)
 {
   const bke::CurvesGeometry &guide_curves = guide_curves_id.geometry.wrap();
 
@@ -849,10 +847,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   const AnonymousAttributePropagationInfo propagation_info = params.get_output_propagation_info(
       "Curves");
 
-  AnonymousAttributeIDPtr index_attribute_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Closest Index");
-  AnonymousAttributeIDPtr weight_attribute_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Closest Weight");
+  std::optional<std::string> index_attribute_id =
+      params.get_output_anonymous_attribute_id_if_needed("Closest Index");
+  std::optional<std::string> weight_attribute_id =
+      params.get_output_anonymous_attribute_id_if_needed("Closest Weight");
 
   GeometrySet new_curves = generate_interpolated_curves(guide_curves_id,
                                                         *points_component->attributes(),
@@ -871,19 +869,20 @@ static void node_geo_exec(GeoNodeExecParams params)
   {
     new_curves.add(*curve_edit_data);
   }
+  new_curves.name = guide_curves_geometry.name;
 
   params.set_output("Curves", std::move(new_curves));
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_INTERPOLATE_CURVES, "Interpolate Curves", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

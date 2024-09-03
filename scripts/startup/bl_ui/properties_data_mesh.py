@@ -73,6 +73,9 @@ class MESH_MT_shape_key_context_menu(Menu):
         props.all = True
         props.apply_mix = True
         layout.separator()
+        layout.operator("object.shape_key_lock", icon='LOCKED', text="Lock All").action = 'LOCK'
+        layout.operator("object.shape_key_lock", icon='UNLOCKED', text="Unlock All").action = 'UNLOCK'
+        layout.separator()
         layout.operator("object.shape_key_move", icon='TRIA_UP_BAR', text="Move to Top").type = 'TOP'
         layout.operator("object.shape_key_move", icon='TRIA_DOWN_BAR', text="Move to Bottom").type = 'BOTTOM'
 
@@ -132,6 +135,7 @@ class MESH_UL_shape_keys(UIList):
             else:
                 row.label(text="")
             row.prop(key_block, "mute", text="", emboss=False)
+            row.prop(key_block, "lock_shape", text="", emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.label(text="", icon_value=icon)
@@ -222,7 +226,7 @@ class DATA_PT_vertex_groups(MeshButtonsPanel, Panel):
     def poll(cls, context):
         engine = context.engine
         obj = context.object
-        return (obj and obj.type in {'MESH', 'LATTICE'} and (engine in cls.COMPAT_ENGINES))
+        return (obj and obj.type in {'MESH', 'LATTICE', 'GREASEPENCIL'} and (engine in cls.COMPAT_ENGINES))
 
     def draw(self, context):
         layout = self.layout
@@ -370,7 +374,8 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
                 row.active = enable_edit_value
                 row.prop(key, "eval_time")
 
-        layout.prop(ob, "add_rest_position_attribute")
+        if ob.type == 'MESH':
+            layout.prop(ob, "add_rest_position_attribute")
 
 
 class DATA_PT_uv_texture(MeshButtonsPanel, Panel):
@@ -512,8 +517,10 @@ class MESH_UL_attributes(UIList):
         sub = split.row()
         sub.alignment = 'RIGHT'
         sub.active = False
-        sub.label(text="%s ▶ %s" % (iface_(domain_name), iface_(data_type.name)),
-                  translate=False)
+        sub.label(
+            text="{:s} - {:s}".format(iface_(domain_name), iface_(data_type.name)),
+            translate=False,
+        )
 
 
 class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
@@ -633,8 +640,7 @@ class MESH_UL_color_attributes(UIList, ColorAttributesListBase):
         sub = split.row()
         sub.alignment = 'RIGHT'
         sub.active = False
-        sub.label(text="%s ▶ %s" % (iface_(domain_name), iface_(data_type.name)),
-                  translate=False)
+        sub.label(text="{:s} - {:s}".format(iface_(domain_name), iface_(data_type.name)), translate=False)
 
         active_render = _index == data.color_attributes.render_color_index
 

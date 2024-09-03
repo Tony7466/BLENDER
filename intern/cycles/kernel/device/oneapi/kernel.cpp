@@ -133,6 +133,23 @@ bool oneapi_run_test_kernel(SyclQueue *queue_)
   return is_computation_correct;
 }
 
+bool oneapi_zero_memory_on_device(SyclQueue *queue_, void *device_pointer, size_t num_bytes)
+{
+  assert(queue_);
+  sycl::queue *queue = reinterpret_cast<sycl::queue *>(queue_);
+  try {
+    queue->memset(device_pointer, 0, num_bytes);
+    queue->wait_and_throw();
+    return true;
+  }
+  catch (sycl::exception const &e) {
+    if (s_error_cb) {
+      s_error_cb(e.what(), s_error_user_ptr);
+    }
+    return false;
+  }
+}
+
 bool oneapi_kernel_is_required_for_features(const std::string &kernel_name,
                                             const uint kernel_features)
 {
