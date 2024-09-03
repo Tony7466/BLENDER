@@ -2072,13 +2072,13 @@ static uiBlock *block_create_gpu_backend_fallback(bContext *C, ARegion *region, 
 
   /* Title and explanation text. */
   uiLayout *col = uiLayoutColumn(layout, false);
-  uiItemL_ex(col, RPT_("Could not initialize Vulkan"), ICON_NONE, true, false);
+  uiItemL_ex(col, RPT_("Could not initialize Vulkan."), ICON_NONE, true, false);
   uiItemL(col, RPT_(""), ICON_NONE);
-  uiItemL(col, RPT_("Blender running with OpenGL instead"), ICON_NONE);
-  uiItemL(col, RPT_("Updating GPU drivers can improve compatibility"), ICON_NONE);
+  uiItemL(col, RPT_("Blender is now using OpenGL instead."), ICON_NONE);
+  uiItemL(col, RPT_("Updating GPU drivers can improve compatibility."), ICON_NONE);
   if (U.gpu_backend == GPU_BACKEND_VULKAN) {
     uiItemL(
-        col, RPT_("See system tab in preferences to switch back to OpenGL backend"), ICON_NONE);
+        col, RPT_("See system tab in preferences to switch back to OpenGL backend."), ICON_NONE);
   }
 
   uiItemS(layout);
