@@ -38,7 +38,7 @@ static int intersect(const float2 &P1,
   return val;
 }
 
-static bool inside(const float2 &point, Span<float2> poly)
+static bool inside(const float2 &point, const Span<float2> poly)
 {
   return isect_point_poly_v2(point, reinterpret_cast<const float(*)[2]>(poly.data()), poly.size());
 }
@@ -71,7 +71,7 @@ static ExtendedIntersectionPoint CreateIntersection(const int point_a,
 #define EXIT false
 #define ENTRY true
 
-static BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
+static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
@@ -87,7 +87,7 @@ static BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_
   return result;
 }
 
-static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
+static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
@@ -109,7 +109,7 @@ static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
   return result;
 }
 
-static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
+static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -131,7 +131,7 @@ static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
   return result;
 }
 
-static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -158,7 +158,7 @@ static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
   return result;
 }
 
-static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -186,8 +186,8 @@ static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
 }
 
 static BooleanResult non_intersecting_result(const Operation boolean_mode,
-                                             Span<float2> curve_a,
-                                             Span<float2> curve_b)
+                                             const Span<float2> curve_a,
+                                             const Span<float2> curve_b)
 {
   const bool is_a_in_b = inside(curve_a.first(), curve_b);
   const bool is_b_in_a = inside(curve_b.first(), curve_a);
@@ -240,8 +240,8 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
 }
 
 static BooleanResult invalided_result(const Operation mode,
-                                      Span<float2> curve_a,
-                                      Span<float2> curve_b)
+                                      const Span<float2> curve_a,
+                                      const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -645,7 +645,7 @@ struct CurveBooleanExecutor {
     }
   }
 
-  void set_a_directions(Span<float2> curve_a, Span<float2> curve_b, bool A_mode)
+  void set_a_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool A_mode)
   {
     const bool is_a_in_b = inside(curve_a.first(), curve_b);
 
@@ -658,7 +658,7 @@ struct CurveBooleanExecutor {
     }
   }
 
-  void set_b_directions(Span<float2> curve_a, Span<float2> curve_b, bool B_mode)
+  void set_b_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool B_mode)
   {
     const bool is_b_in_a = inside(curve_b.first(), curve_a);
 
@@ -691,8 +691,8 @@ struct CurveBooleanExecutor {
    * lists of sorted indices that point to intersection point for curve `A` and `B`
    */
   BooleanResult execute_boolean(const Operation boolean_mode,
-                                Span<float2> curve_a,
-                                Span<float2> curve_b)
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -875,7 +875,9 @@ struct CurveBooleanExecutor {
   }
 
   /* Curve `A` does not have fill. */
-  BooleanResult execute_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute_cut(const bool is_a_cyclic,
+                            const Span<float2> curve_a,
+                            const Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -947,14 +949,16 @@ struct CurveBooleanExecutor {
 };
 
 BooleanResult curve_boolean_calc(const Operation boolean_mode,
-                                 Span<float2> curve_a,
-                                 Span<float2> curve_b)
+                                 const Span<float2> curve_a,
+                                 const Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
   return executor.execute_boolean(boolean_mode, curve_a, curve_b);
 }
 
-BooleanResult curve_boolean_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
+BooleanResult curve_boolean_cut(const bool is_a_cyclic,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
   return executor.execute_cut(is_a_cyclic, curve_a, curve_b);
