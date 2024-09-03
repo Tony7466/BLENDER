@@ -262,14 +262,14 @@ bool GPU_backend_type_selection_is_overridden()
 
 bool GPU_backend_type_selection_detect()
 {
-  blender::Vector<eGPUBackendType> backends_to_check;
+  blender::VectorSet<eGPUBackendType> backends_to_check;
   if (GPU_backend_type_selection_is_overridden()) {
-    backends_to_check.append(*g_backend_type_override);
+    backends_to_check.add(*g_backend_type_override);
   }
 #if defined(WITH_OPENGL_BACKEND)
-  backends_to_check.append(GPU_BACKEND_OPENGL);
+  backends_to_check.add(GPU_BACKEND_OPENGL);
 #elif defined(WITH_METAL_BACKEND)
-  backends_to_check.append(GPU_BACKEND_METAL);
+  backends_to_check.add(GPU_BACKEND_METAL);
 #endif
 
   for (const eGPUBackendType backend_type : backends_to_check) {
@@ -277,6 +277,7 @@ bool GPU_backend_type_selection_detect()
     if (GPU_backend_supported()) {
       return true;
     }
+    G.f |= G_FLAG_GPU_BACKEND_FALLBACK;
   }
 
   GPU_backend_type_selection_set(GPU_BACKEND_NONE);

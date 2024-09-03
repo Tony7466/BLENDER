@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#include <sstream>
+
 #include "GHOST_C-api.h"
 
 #include "CLG_log.h"
@@ -72,7 +74,6 @@ bool VKBackend::is_supported()
     VkPhysicalDeviceProperties vk_properties = {};
     vkGetPhysicalDeviceProperties(vk_physical_device, &vk_properties);
 
-    CLOG_INFO(&LOG, 0, "validating support for [%s]", vk_properties.deviceName);
     Vector<StringRefNull> missing_capabilities;
 
     /* Check device features. */
@@ -157,22 +158,33 @@ bool VKBackend::is_supported()
     /* Report result. */
     if (missing_capabilities.is_empty()) {
       /* This device meets minimum requirements. */
+      CLOG_INFO(&LOG,
+                0,
+                "Device [%s] supports minimum requirements. Skip checking other GPUs. Another GPU "
+                "can still be selected during auto-detection.",
+                vk_properties.deviceName);
+
       vkDestroyInstance(vk_instance, nullptr);
       return true;
     }
 
+    std::stringstream ss;
+    ss << "Device [" << vk_properties.deviceName
+       << "] does not meet minimum requirements. Missing features are [";
     for (StringRefNull &feature : missing_capabilities) {
-      CLOG_WARN(
-          &LOG, "device [%s] does not support [%s]", vk_properties.deviceName, feature.c_str());
+      ss << feature << ", ";
     }
+    ss.seekp(-2, std::ios_base::end);
+    ss << "]";
+    CLOG_WARN(&LOG, "%s", ss.str().c_str());
   }
 
   /* No device found meeting the minimum requirements. */
 
   vkDestroyInstance(vk_instance, nullptr);
   CLOG_ERROR(&LOG,
-             "No Vulkan device found that meets the minimum requirements that Blender needs. "
-             "Updating GPU driver may change support.");
+             "No Vulkan device found that meets the minimum requirements. "
+             "Updating GPU driver can improve compatibility.");
   return false;
 }
 
