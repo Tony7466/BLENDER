@@ -53,7 +53,8 @@
  *
  * In particular, one must not construct a `FunctionRef` variable from a lambda directly as shown
  * below. This is because the lambda object goes out of scope after the line finished executing and
- * will be destructed. Calling the reference afterwards invokes undefined behavior.
+ * will be destructed. Calling the reference afterwards invokes undefined behavior. Also see
+ * #StoredFunctionRef for how to protect yourself against this in some cases.
  *
  * Don't:
  *   FunctionRef<int()> ref = []() { return 0; };
@@ -141,6 +142,53 @@ template<typename Ret, typename... Params> class FunctionRef<Ret(Params...)> {
     /* Just checking `callback_` is enough to determine if the `FunctionRef` is in a state that it
      * can be called in. */
     return callback_ != nullptr;
+  }
+};
+
+/**
+ * This should be used instead of `FunctionRef` in a parameter list if the function-ref has to
+ * outlive the current function. This is typically necessary if the function-ref is stored as
+ * data-member when in the value returned by the function.
+ *
+ * Using #StoredFunctionRef does not offer perfect protection and may also disable some valid uses
+ * which are pretty much impossible to detect automatically. However, it protects against the most
+ * common issue.
+ *
+ * ```
+ * class S {
+ *   StoredFunctionRef<int()> f_;
+ *
+ *   S(StoredFunctionRef<int()> f) : f_(f) {}
+ * }
+ *
+ * // This does not compile. It would lead to hard-to-find bugs, because #S::f_ would point to
+ * // invalid memory. This can sometimes work accidentally, sometimes even only in debug but not
+ * // release builds!
+ * const S value{[#]() { return 42; }};
+ *
+ * // This works fine though.
+ * auto func = [#]() { return 42; };
+ * const S value{func};
+ * ```
+ */
+template<typename Function> class StoredFunctionRef;
+template<typename Ret, typename... Params>
+class StoredFunctionRef<Ret(Params...)> : public FunctionRef<Ret(Params...)> {
+ public:
+  StoredFunctionRef() = default;
+  StoredFunctionRef(std::nullptr_t) {}
+
+  template<typename Callable>
+  StoredFunctionRef(Callable &&callable)
+      : FunctionRef<Ret(Params...)>(std::forward<Callable>(callable))
+  {
+    /* Check `is_reference_v` here only allows passing in l-value references. If the caller passes
+     * in an r-value reference (e.g. a lambda or other callable directly) `Callable` will not be a
+     * reference because of the `&&` in the parameter list. */
+    static_assert(std::is_reference_v<Callable>,
+                  "Passing in a lambda (or other function object) directly here does not work "
+                  "because its life-time is not long enough. Store it in a separate variable "
+                  "first and pass in a reference.");
   }
 };
 

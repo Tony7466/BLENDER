@@ -52,7 +52,7 @@ struct LibraryForeachIDData {
 
   /* Function to call for every ID pointers of current processed data, and its opaque user data
    * pointer. */
-  blender::FunctionRef<LibraryIDLinkCallback> callback;
+  blender::StoredFunctionRef<LibraryIDLinkCallback> callback;
   void *user_data;
   /** Store the returned value from the callback, to decide how to continue the processing of ID
    * pointers for current data. */
@@ -671,7 +671,7 @@ struct UnusedIDsData {
   bool do_linked_ids;
   bool do_recursive;
 
-  blender::FunctionRef<bool(ID *id)> filter_fn;
+  blender::StoredFunctionRef<bool(ID *id)> filter_fn;
 
   std::array<int, INDEX_ID_MAX> *num_total;
   std::array<int, INDEX_ID_MAX> *num_local;

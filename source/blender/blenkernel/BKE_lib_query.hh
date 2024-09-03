@@ -416,7 +416,7 @@ struct LibQueryUnusedIDsData {
    * Allows for more complex handling of which IDs should be deleted, on top of the basic
    * local/linked choices.
    */
-  blender::FunctionRef<bool(ID *id)> filter_fn = nullptr;
+  blender::StoredFunctionRef<bool(ID *id)> filter_fn = nullptr;
 
   /**
    * Amount of detected as unused data-blocks, per type and total as the last value of the array

@@ -64,7 +64,7 @@ class GeoNodeExecParams {
   const lf::Context &lf_context_;
   const Span<int> lf_input_for_output_bsocket_usage_;
   const Span<int> lf_input_for_attribute_propagation_to_output_;
-  const FunctionRef<std::string(int)> get_output_attribute_id_;
+  const StoredFunctionRef<std::string(int)> get_output_attribute_id_;
 
  public:
   GeoNodeExecParams(const bNode &node,
@@ -72,7 +72,7 @@ class GeoNodeExecParams {
                     const lf::Context &lf_context,
                     const Span<int> lf_input_for_output_bsocket_usage,
                     const Span<int> lf_input_for_attribute_propagation_to_output,
-                    const FunctionRef<std::string(int)> get_output_attribute_id)
+                    const StoredFunctionRef<std::string(int)> get_output_attribute_id)
       : node_(node),
         params_(params),
         lf_context_(lf_context),

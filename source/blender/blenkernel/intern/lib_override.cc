@@ -2714,11 +2714,7 @@ static bool lib_override_library_resync(Main *bmain,
 /** Cleanup: Remove unused 'place holder' linked IDs. */
 static void lib_override_cleanup_after_resync(Main *bmain)
 {
-  LibQueryUnusedIDsData parameters;
-  parameters.do_local_ids = true;
-  parameters.do_linked_ids = true;
-  parameters.do_recursive = true;
-  parameters.filter_fn = [](const ID *id) -> bool {
+  auto filter_fn = [](const ID *id) -> bool {
     if (ID_IS_LINKED(id) && (id->tag & ID_TAG_MISSING) != 0) {
       return true;
     }
@@ -2751,6 +2747,12 @@ static void lib_override_cleanup_after_resync(Main *bmain)
     }
     return false;
   };
+
+  LibQueryUnusedIDsData parameters;
+  parameters.do_local_ids = true;
+  parameters.do_linked_ids = true;
+  parameters.do_recursive = true;
+  parameters.filter_fn = filter_fn;
   BKE_lib_query_unused_ids_tag(bmain, ID_TAG_DOIT, parameters);
   CLOG_INFO(&LOG_RESYNC,
             2,

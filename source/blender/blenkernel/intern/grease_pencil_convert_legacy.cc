@@ -100,11 +100,11 @@ struct AnimDataFCurveConvertor {
   const char *relative_rna_path_dst;
 
   /** Optional callback to perform additional conversion work on a specific FCurve. */
-  blender::FunctionRef<FCurveConvertCB> convert_cb;
+  blender::StoredFunctionRef<FCurveConvertCB> convert_cb;
 
   AnimDataFCurveConvertor(const char *relative_rna_path_src,
                           const char *relative_rna_path_dst,
-                          blender::FunctionRef<FCurveConvertCB> convert_cb = {nullptr})
+                          blender::StoredFunctionRef<FCurveConvertCB> convert_cb = {})
       : relative_rna_path_src(relative_rna_path_src),
         relative_rna_path_dst(relative_rna_path_dst),
         convert_cb(convert_cb)

@@ -692,12 +692,12 @@ struct StackItem {
 
 struct PBVHIter {
   Tree *pbvh;
-  blender::FunctionRef<bool(Node &)> scb;
+  blender::StoredFunctionRef<bool(Node &)> scb;
 
   Stack<StackItem, 100> stack;
 };
 
-static void pbvh_iter_begin(PBVHIter *iter, Tree &pbvh, FunctionRef<bool(Node &)> scb)
+static void pbvh_iter_begin(PBVHIter *iter, Tree &pbvh, StoredFunctionRef<bool(Node &)> scb)
 {
   iter->pbvh = &pbvh;
   iter->scb = scb;
