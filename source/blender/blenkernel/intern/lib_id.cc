@@ -1917,14 +1917,10 @@ bool BKE_id_new_name_validate(Main *bmain,
   }
 
   /* The requested new name may be available (not collide with any other existing ID name), but
-   * still differ from the current name of the renamed ID. */
-  if (had_name_collision) {
-    BLI_assert(!STREQ(id->name + 2, name));
-    is_idname_changed = true;
-  }
-  else {
-    is_idname_changed = !STREQ(id->name + 2, name);
-  }
+   * still differ from the current name of the renamed ID.
+   * Conversely, the requested new name may have been colliding with an existing one, and the
+   * generated unique name may end up being the current ID's name. */
+  is_idname_changed = !STREQ(id->name + 2, name);
 
   if (is_idname_changed) {
     BLI_strncpy(id->name + 2, name, sizeof(id->name) - 2);
@@ -2305,7 +2301,6 @@ void BKE_library_make_local(Main *bmain,
 bool BKE_libblock_rename(Main *bmain, ID *id, const char *name, const IDNewNameMode mode)
 {
   BLI_assert(BKE_id_is_in_main(bmain, id));
-  BLI_assert(ID_IS_EDITABLE(id));
 
   if (STREQ(id->name + 2, name)) {
     return false;
