@@ -1,1 +1,2 @@
 Referenced by issue #98150, Voxel Remesher resizing improvments
+Referenced by pull request #127109, Fix #127077: Edit voxel size op unpredictable with large/small meshes
