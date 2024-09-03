@@ -194,28 +194,27 @@ class MeshMeasurements {
             float3 v1_clip, v2_clip;
 
             if (use_coords) {
-              copy_v3_v3(v1, vert_positions[BM_elem_index_get(eed->v1)]);
-              copy_v3_v3(v2, vert_positions[BM_elem_index_get(eed->v2)]);
+              v1 = vert_positions[BM_elem_index_get(eed->v1)];
+              v2 = vert_positions[BM_elem_index_get(eed->v2)];
             }
             else {
-              copy_v3_v3(v1, eed->v1->co);
-              copy_v3_v3(v2, eed->v2->co);
+              v1 = eed->v1->co;
+              v2 = eed->v2->co;
             }
 
             if (clip_segment_v3_plane_n(v1, v2, clip_planes.ptr(), 4, v1_clip, v2_clip)) {
-              float no_a[3], no_b[3];
-              float angle;
+              float3 no_a, no_b;
 
               const float3 vmid = math::transform_point(ob->object_to_world(),
                                                         0.5 * (v1_clip + v2_clip));
 
               if (use_coords) {
-                copy_v3_v3(no_a, face_normals[BM_elem_index_get(l_a->f)]);
-                copy_v3_v3(no_b, face_normals[BM_elem_index_get(l_b->f)]);
+                no_a = face_normals[BM_elem_index_get(l_a->f)];
+                no_b = face_normals[BM_elem_index_get(l_b->f)];
               }
               else {
-                copy_v3_v3(no_a, l_a->f->no);
-                copy_v3_v3(no_b, l_b->f->no);
+                no_a = l_a->f->no;
+                no_b = l_b->f->no;
               }
 
               if (do_global) {
@@ -225,7 +224,7 @@ class MeshMeasurements {
                 normalize_v3(no_b);
               }
 
-              angle = angle_normalized_v3v3(no_a, no_b);
+              const float angle = angle_normalized_v3v3(no_a, no_b);
 
               numstr_len = SNPRINTF_RLEN(numstr,
                                          "%.3f%s",
@@ -250,29 +249,29 @@ class MeshMeasurements {
       /* Alternative to using `poly_to_tri_count(i, BM_elem_index_get(f->l_first))`
        * without having to add an extra loop. */
       int tri_index = 0;
-      float3 vmid(0.0f);
       BM_ITER_MESH_INDEX (f, &iter, em->bm, BM_FACES_OF_MESH, i) {
         const int f_corner_tris_len = f->len - 2;
         if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
           n = 0;
           area = 0;
+          float3 vmid(0.0f);
           const std::array<BMLoop *, 3> *ltri_array = &em->looptris[tri_index];
           for (int j = 0; j < f_corner_tris_len; j++) {
 
             if (use_coords) {
-              copy_v3_v3(v1, vert_positions[BM_elem_index_get(ltri_array[j][0]->v)]);
-              copy_v3_v3(v2, vert_positions[BM_elem_index_get(ltri_array[j][1]->v)]);
-              copy_v3_v3(v3, vert_positions[BM_elem_index_get(ltri_array[j][2]->v)]);
+              v1 = vert_positions[BM_elem_index_get(ltri_array[j][0]->v)];
+              v2 = vert_positions[BM_elem_index_get(ltri_array[j][1]->v)];
+              v3 = vert_positions[BM_elem_index_get(ltri_array[j][2]->v)];
             }
             else {
-              copy_v3_v3(v1, ltri_array[j][0]->v->co);
-              copy_v3_v3(v2, ltri_array[j][1]->v->co);
-              copy_v3_v3(v3, ltri_array[j][2]->v->co);
+              v1 = ltri_array[j][0]->v->co;
+              v2 = ltri_array[j][1]->v->co;
+              v3 = ltri_array[j][2]->v->co;
             }
 
-            add_v3_v3(vmid, v1);
-            add_v3_v3(vmid, v2);
-            add_v3_v3(vmid, v3);
+            vmid += v1;
+            vmid += v2;
+            vmid += v3;
             n += 3;
 
             if (do_global) {
@@ -330,7 +329,6 @@ class MeshMeasurements {
                                               BM_elem_flag_test(loop->prev->v, BM_ELEM_SELECT) ||
                                               BM_elem_flag_test(loop->next->v, BM_ELEM_SELECT))))
             {
-              float v2_local[3];
               float3 vmid;
 
               /* lazy init center calc */
@@ -344,17 +342,17 @@ class MeshMeasurements {
                 is_first = false;
               }
               if (use_coords) {
-                copy_v3_v3(v1, vert_positions[BM_elem_index_get(loop->prev->v)]);
-                copy_v3_v3(v2, vert_positions[BM_elem_index_get(loop->v)]);
-                copy_v3_v3(v3, vert_positions[BM_elem_index_get(loop->next->v)]);
+                v1 = vert_positions[BM_elem_index_get(loop->prev->v)];
+                v2 = vert_positions[BM_elem_index_get(loop->v)];
+                v3 = vert_positions[BM_elem_index_get(loop->next->v)];
               }
               else {
-                copy_v3_v3(v1, loop->prev->v->co);
-                copy_v3_v3(v2, loop->v->co);
-                copy_v3_v3(v3, loop->next->v->co);
+                v1 = loop->prev->v->co;
+                v2 = loop->v->co;
+                v3 = loop->next->v->co;
               }
 
-              copy_v3_v3(v2_local, v2);
+              const float3 v2_local = v2;
 
               if (do_global) {
                 mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
@@ -362,7 +360,7 @@ class MeshMeasurements {
                 mul_mat3_m4_v3(ob->object_to_world().ptr(), v3);
               }
 
-              float angle = angle_v3v3v3(v1, v2, v3);
+              const float angle = angle_v3v3v3(v1, v2, v3);
 
               numstr_len = SNPRINTF_RLEN(numstr,
                                          "%.3f%s",
@@ -394,12 +392,7 @@ class MeshMeasurements {
         }
         BM_ITER_MESH_INDEX (v, &iter, em->bm, BM_VERTS_OF_MESH, i) {
           if (BM_elem_flag_test(v, BM_ELEM_SELECT)) {
-            if (use_coords) {
-              copy_v3_v3(v1, vert_positions[BM_elem_index_get(v)]);
-            }
-            else {
-              copy_v3_v3(v1, v->co);
-            }
+            v1 = use_coords ? vert_positions[BM_elem_index_get(v)] : v->co;
 
             mul_m4_v3(ob->object_to_world().ptr(), v1);
 
@@ -420,12 +413,12 @@ class MeshMeasurements {
             float3 v1_clip, v2_clip;
 
             if (use_coords) {
-              copy_v3_v3(v1, vert_positions[BM_elem_index_get(eed->v1)]);
-              copy_v3_v3(v2, vert_positions[BM_elem_index_get(eed->v2)]);
+              v1 = vert_positions[BM_elem_index_get(eed->v1)];
+              v2 = vert_positions[BM_elem_index_get(eed->v2)];
             }
             else {
-              copy_v3_v3(v1, eed->v1->co);
-              copy_v3_v3(v2, eed->v2->co);
+              v1 = eed->v1->co;
+              v2 = eed->v2->co;
             }
 
             if (clip_segment_v3_plane_n(v1, v2, clip_planes.ptr(), 4, v1_clip, v2_clip)) {
