@@ -3171,8 +3171,9 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
   return font;
 }
 
-static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
+static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVars *data, int font)
 {
+  blender::Vector<blender::seq::CharInfo> characters;
   int byte_offset = 0;
   while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
@@ -3181,11 +3182,12 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
     blender::seq::CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
-    char_info.advance_x = BLF_glyph_advance(runtime->font, str, char_length);
-    runtime->characters.append(char_info);
+    char_info.advance_x = BLF_glyph_advance(font, str, char_length);
+    characters.append(char_info);
 
     byte_offset += char_length;
   }
+  return characters;
 }
 
 static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
@@ -3196,14 +3198,17 @@ static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
   return ibuf->x;
 }
 
-static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
+static void apply_word_wrapping(const TextVars *data,
+                                TextVarsRuntime *runtime,
+                                const ImBuf *ibuf,
+                                blender::Vector<blender::seq::CharInfo> &characters)
 {
   const int wrap_width = wrap_width_get(data, ibuf);
   float2 char_position{0.0f, 0.0f};
   bool is_word_wrap = false;
   runtime->lines.append(blender::seq::LineInfo());
 
-  for (blender::seq::CharInfo &character : runtime->characters) {
+  for (blender::seq::CharInfo &character : characters) {
     character.position = char_position;
 
     if (is_word_wrap && character.str_ptr[0] == ' ') {
@@ -3295,8 +3300,8 @@ static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *
   runtime->line_height = BLF_height_max(font);
   runtime->character_count = BLI_strlen_utf8(data->text);
 
-  build_character_info(data, runtime);
-  apply_word_wrapping(data, runtime, ibuf);
+  blender::Vector<blender::seq::CharInfo> characters_temp = build_character_info(data, font);
+  apply_word_wrapping(data, runtime, ibuf, characters_temp);
   apply_text_alignment(data, runtime, ibuf);
 
   data->runtime = runtime;

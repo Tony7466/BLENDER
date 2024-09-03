@@ -115,7 +115,6 @@ struct LineInfo {
 };
 
 struct TextVarsRuntime {
-  Vector<CharInfo> characters;
   Vector<LineInfo> lines;
 
   rcti text_boundbox;
