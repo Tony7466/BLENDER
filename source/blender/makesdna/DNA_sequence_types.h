@@ -31,13 +31,16 @@ struct bSound;
 #ifdef __cplusplus
 namespace blender::seq {
 struct MediaPresence;
+struct ThumbnailCache;
 struct TextVarsRuntime;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
 using TextVarsRuntime = blender::seq::TextVarsRuntime;
+using ThumbnailCache = blender::seq::ThumbnailCache;
 #else
 typedef struct MediaPresence MediaPresence;
 typedef struct TextVarsRuntime TextVarsRuntime;
+typedef struct ThumbnailCache ThumbnailCache;
 #endif
 
 /* -------------------------------------------------------------------- */
@@ -166,7 +169,7 @@ typedef struct SequenceRuntime {
  */
 typedef struct Sequence {
   struct Sequence *next, *prev;
-  /** Temp var for copying, and tagging for linked selection. */
+  /** Temp var for duplication, pointing to the newly duplicated Sequence. */
   void *tmp;
   /** Needed (to be like ipo), else it will raise libdata warnings, this should never be used. */
   void *lib;
@@ -236,6 +239,9 @@ typedef struct Sequence {
   /** List of strips for meta-strips. */
   ListBase seqbase;
   ListBase channels; /* SeqTimelineChannel */
+
+  /* List of strip connections (one-way, not bidirectional). */
+  ListBase connections; /* SeqConnection */
 
   /** The linked "bSound" object. */
   struct bSound *sound;
@@ -311,9 +317,16 @@ typedef struct SeqTimelineChannel {
   int flag;
 } SeqTimelineChannel;
 
+typedef struct SeqConnection {
+  struct SeqConnection *next, *prev;
+  Sequence *seq_ref;
+} SeqConnection;
+
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
   MediaPresence *media_presence;
+  ThumbnailCache *thumbnail_cache;
+  void *_pad;
 } EditingRuntime;
 
 typedef struct Editing {
@@ -609,7 +622,7 @@ enum {
   SEQ_OVERLAP = (1 << 3),
   SEQ_FILTERY = (1 << 4),
   SEQ_MUTE = (1 << 5),
-  SEQ_FLAG_SKIP_THUMBNAILS = (1 << 6),
+  /* SEQ_FLAG_SKIP_THUMBNAILS = (1 << 6), */ /* no longer used */
   SEQ_REVERSE_FRAMES = (1 << 7),
   SEQ_IPO_FRAME_LOCKED = (1 << 8),
   SEQ_EFFECT_NOT_LOADED = (1 << 9),
@@ -834,7 +847,6 @@ enum {
 
   SEQ_CACHE_PREFETCH_ENABLE = (1 << 10),
   SEQ_CACHE_DISK_CACHE_ENABLE = (1 << 11),
-  SEQ_CACHE_STORE_THUMBNAIL = (1 << 12),
 };
 
 /** #Sequence.color_tag. */
