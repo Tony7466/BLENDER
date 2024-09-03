@@ -52,8 +52,7 @@ class MeshMeasurements {
     DRWTextStore *dt = DRW_text_cache_ensure();
     const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
     const Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
-    BMEditMesh *em = mesh->runtime->edit_mesh.get();
-    float3 v1, v2, v3;
+    const BMEditMesh *em = mesh->runtime->edit_mesh.get();
     char numstr[32];             /* Stores the measurement display text here */
     const char *conv_float;      /* Use a float conversion matching the grid size */
     uchar4 col = {0, 0, 0, 255}; /* color of the text to draw */
@@ -122,6 +121,7 @@ class MeshMeasurements {
             (do_moving && (BM_elem_flag_test(eed->v1, BM_ELEM_SELECT) ||
                            BM_elem_flag_test(eed->v2, BM_ELEM_SELECT))))
         {
+          float3 v1, v2;
           float3 v1_clip, v2_clip;
 
           if (use_coords) {
@@ -187,6 +187,7 @@ class MeshMeasurements {
                              BM_elem_flag_test(l_b->next->next->v, BM_ELEM_SELECT) ||
                              BM_elem_flag_test(l_b->prev->v, BM_ELEM_SELECT))))
           {
+            float3 v1, v2;
             float3 v1_clip, v2_clip;
 
             if (use_coords) {
@@ -214,10 +215,8 @@ class MeshMeasurements {
               }
 
               if (do_global) {
-                no_a = ob->object_to_world().view<3, 3>() * no_a;
-                no_b = ob->object_to_world().view<3, 3>() * no_b;
-                normalize_v3(no_a);
-                normalize_v3(no_b);
+                no_a = math::normalize(ob->object_to_world().view<3, 3>() * no_a);
+                no_b = math::normalize(ob->object_to_world().view<3, 3>() * no_b);
               }
 
               const float angle = angle_normalized_v3v3(no_a, no_b);
@@ -253,6 +252,7 @@ class MeshMeasurements {
           float3 vmid(0.0f);
           const std::array<BMLoop *, 3> *ltri_array = &em->looptris[tri_index];
           for (int j = 0; j < f_corner_tris_len; j++) {
+            float3 v1, v2, v3;
 
             if (use_coords) {
               v1 = vert_positions[BM_elem_index_get(ltri_array[j][0]->v)];
@@ -322,6 +322,7 @@ class MeshMeasurements {
                                               BM_elem_flag_test(loop->prev->v, BM_ELEM_SELECT) ||
                                               BM_elem_flag_test(loop->next->v, BM_ELEM_SELECT))))
             {
+              float3 v1, v2, v3;
               float3 vmid;
 
               /* lazy init center calc */
@@ -402,6 +403,7 @@ class MeshMeasurements {
 
         BM_ITER_MESH_INDEX (eed, &iter, em->bm, BM_EDGES_OF_MESH, i) {
           if (BM_elem_flag_test(eed, BM_ELEM_SELECT)) {
+            float3 v1, v2;
             float3 v1_clip, v2_clip;
 
             if (use_coords) {
