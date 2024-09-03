@@ -1089,25 +1089,25 @@ std::optional<int> BKE_paint_get_brush_tool_from_paintmode(const Brush *brush,
   switch (mode) {
     case PaintMode::Texture2D:
     case PaintMode::Texture3D:
-      return brush->imagepaint_tool;
+      return brush->image_brush_type;
     case PaintMode::Sculpt:
-      return brush->sculpt_tool;
+      return brush->sculpt_brush_type;
     case PaintMode::Vertex:
-      return brush->vertexpaint_tool;
+      return brush->vertex_brush_type;
     case PaintMode::Weight:
-      return brush->weightpaint_tool;
+      return brush->weight_brush_type;
     case PaintMode::GPencil:
-      return brush->gpencil_tool;
+      return brush->gpencil_brush_type;
     case PaintMode::VertexGPencil:
-      return brush->gpencil_vertex_tool;
+      return brush->gpencil_vertex_brush_type;
     case PaintMode::SculptGPencil:
-      return brush->gpencil_sculpt_tool;
+      return brush->gpencil_sculpt_brush_type;
     case PaintMode::WeightGPencil:
-      return brush->gpencil_weight_tool;
+      return brush->gpencil_weight_brush_type;
     case PaintMode::SculptCurves:
-      return brush->curves_sculpt_tool;
+      return brush->curves_sculpt_brush_type;
     case PaintMode::SculptGreasePencil:
-      return brush->gpencil_sculpt_tool;
+      return brush->gpencil_sculpt_brush_type;
     case PaintMode::Invalid:
     default:
       return {};
