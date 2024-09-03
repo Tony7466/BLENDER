@@ -68,8 +68,8 @@ static ExtendedIntersectionPoint CreateIntersection(const int point_a,
   return inter_point;
 }
 
-#define EXIT false
-#define ENTRY true
+static constexpr bool EXIT = false;
+static constexpr bool ENTRY = true;
 
 static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<float2> /*curve_b*/)
 {
