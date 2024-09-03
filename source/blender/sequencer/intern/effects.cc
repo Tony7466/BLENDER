@@ -3328,7 +3328,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
 
   const int font = text_effect_font_init(context, seq, font_flags);
-  TextVarsRuntime *runtime = calc_text_runtime(seq, font, out);  // xxx alloc/free;
+  TextVarsRuntime *runtime = calc_text_runtime(seq, font, out);
   rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
   text_draw(runtime, data->color);
