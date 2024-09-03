@@ -734,6 +734,11 @@ class ChannelBag : public ::ActionChannelBag {
   bool fcurve_remove(FCurve &fcurve_to_remove);
 
   /**
+   * Move the given fcurve to position `to_fcurve_index` in the fcurve array.
+   */
+  void fcurve_move(FCurve &fcurve, int to_fcurve_index);
+
+  /**
    * Remove all F-Curves from this ChannelBag.
    */
   void fcurves_clear();

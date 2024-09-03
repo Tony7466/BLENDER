@@ -1755,6 +1755,123 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
   BLI_freelistN(&anim_data_visible);
 }
 
+static void rearrange_layered_action_fcurves(bAnimContext *ac,
+                                             blender::animrig::Action &action,
+                                             const eRearrangeAnimChan_Mode mode)
+{
+  ListBase anim_data_visible = {nullptr, nullptr};
+  rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_FCURVE);
+
+  /* Lambda to either fetch an fcurve's group if it has one, or otherwise
+   * construct a fake one representing the ungrouped range at the end of the
+   * fcurve array. This lets the code further below be much less special-casey,
+   * in exchange for a little data copying. */
+  auto make_group = [&action](bAnimListElem *fcurve_ale) -> bActionGroup {
+    FCurve *fcurve = (FCurve *)fcurve_ale->data;
+    if (fcurve->grp) {
+      return *fcurve->grp;
+    }
+
+    blender::animrig::ChannelBag *bag = channelbag_for_action_slot(action,
+                                                                   fcurve_ale->slot_handle);
+    BLI_assert(bag != nullptr);
+
+    bActionGroup group = {};
+    group.channel_bag = bag;
+    group.fcurve_range_start = 0;
+    if (!bag->channel_groups().is_empty()) {
+      bActionGroup *last_group = bag->channel_groups().last();
+      group.fcurve_range_start = last_group->fcurve_range_start + last_group->fcurve_range_length;
+    }
+    group.fcurve_range_length = bag->fcurves().size() - group.fcurve_range_start;
+
+    return group;
+  };
+
+  auto skip = [](FCurve *fcurve, bActionGroup &group) {
+    /* If the curve itself isn't selected, then it shouldn't be operated on.  If
+     * its group is selected then the group was moved so we don't move the
+     * fcurve individually. */
+    return !SEL_FCU(fcurve) || SEL_AGRP(&group);
+  };
+
+  switch (mode) {
+    case REARRANGE_ANIMCHAN_UP: {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        FCurve *fcurve = (FCurve *)ale->data;
+        bActionGroup group = make_group(ale);
+
+        if (skip(fcurve, group)) {
+          continue;
+        }
+
+        blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
+        const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
+        const int to_index = fcurve_index - 1;
+        if (fcurve_index == group.fcurve_range_start || SEL_FCU(bag.fcurves()[to_index])) {
+          continue;
+        }
+
+        bag.fcurve_move(*fcurve, to_index);
+      }
+      return;
+    }
+
+    case REARRANGE_ANIMCHAN_TOP: {
+      LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        FCurve *fcurve = (FCurve *)ale->data;
+        bActionGroup group = make_group(ale);
+
+        if (skip(fcurve, group)) {
+          continue;
+        }
+
+        blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
+        bag.fcurve_move(*fcurve, group.fcurve_range_start);
+      }
+      return;
+    }
+
+    case REARRANGE_ANIMCHAN_DOWN: {
+      LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        FCurve *fcurve = (FCurve *)ale->data;
+        bActionGroup group = make_group(ale);
+
+        if (skip(fcurve, group)) {
+          continue;
+        }
+
+        blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
+        const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
+        const int to_index = fcurve_index + 1;
+        if (to_index >= group.fcurve_range_start + group.fcurve_range_length ||
+            SEL_FCU(bag.fcurves()[to_index]))
+        {
+          continue;
+        }
+
+        bag.fcurve_move(*fcurve, to_index);
+      }
+      return;
+    }
+
+    case REARRANGE_ANIMCHAN_BOTTOM: {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        FCurve *fcurve = (FCurve *)ale->data;
+        bActionGroup group = make_group(ale);
+
+        if (skip(fcurve, group)) {
+          continue;
+        }
+
+        blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
+        bag.fcurve_move(*fcurve, group.fcurve_range_start + group.fcurve_range_length - 1);
+      }
+      return;
+    }
+  }
+}
+
 /* Change the order of anim-channels within action
  * mode: REARRANGE_ANIMCHAN_*
  */
@@ -1765,6 +1882,7 @@ static void rearrange_action_channels(bAnimContext *ac, bAction *act, eRearrange
   /* Layered actions. */
   if (!act->wrap().is_action_legacy()) {
     rearrange_layered_action_channel_groups(ac, mode);
+    rearrange_layered_action_fcurves(ac, act->wrap(), mode);
     return;
   }
 

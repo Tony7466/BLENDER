@@ -1314,6 +1314,19 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
   return true;
 }
 
+void ChannelBag::fcurve_move(FCurve &fcurve, int to_fcurve_index)
+{
+  BLI_assert(to_fcurve_index > 0 && to_fcurve_index < this->fcurves().size());
+
+  const int fcurve_index = this->fcurves().as_span().first_index_try(&fcurve);
+  BLI_assert_msg(fcurve_index >= 0, "FCurve not in this channel bag.");
+
+  array_shift_range(
+      this->fcurve_array, this->fcurve_array_num, fcurve_index, fcurve_index + 1, to_fcurve_index);
+
+  this->restore_channel_group_invariants();
+}
+
 void ChannelBag::fcurves_clear()
 {
   dna::array::clear(&this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_ptr_destructor);
