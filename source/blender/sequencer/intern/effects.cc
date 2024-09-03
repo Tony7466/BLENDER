@@ -3182,7 +3182,7 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
     blender::seq::CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
-    char_info.width_pixels = BLF_glyph_advance(runtime->font, str, char_length);
+    char_info.advance_x = BLF_glyph_advance(runtime->font, str, char_length);
     runtime->characters.append(char_info);
 
     byte_offset += char_length;
@@ -3225,9 +3225,9 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
       continue;
     }
 
+    char_position.x += character.advance_x;
     runtime->lines.last().characters.append(character);
     runtime->lines.last().width = char_position.x;
-    char_position.x += character.width_pixels;
   }
 }
 
@@ -3265,7 +3265,7 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
     return {center_offset + line_offset, 0.0f};
   }
   else if (data->align == SEQ_TEXT_ALIGN_X_CENTER) {
-    return {center_offset / 2.0f, 0.0f};
+    return {center_offset, 0.0f};
   }
 
   return {center_offset - line_offset, 0.0f};

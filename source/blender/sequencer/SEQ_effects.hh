@@ -105,7 +105,7 @@ struct CharInfo {
   int byte_length;
   int flags;
   float2 position;
-  float width_pixels;
+  int advance_x;
   bool is_drawn = true; /* False, when character is excluded due to word wrapping. */
 };
 
