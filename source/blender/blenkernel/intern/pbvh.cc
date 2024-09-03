@@ -2005,7 +2005,7 @@ bool ray_face_nearest_tri(const float ray_start[3],
 }
 
 static bool pbvh_faces_node_raycast(const MeshNode &node,
-                                    const float (*origco)[3],
+                                    const Span<float3> origco,
                                     const Span<float3> vert_positions,
                                     const Span<int> corner_verts,
                                     const Span<int3> corner_tris,
@@ -2034,7 +2034,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
     }
 
     const float *co[3];
-    if (origco) {
+    if (!origco.is_empty()) {
       /* Intersect with backed up original coordinates. */
       co[0] = origco[face_verts[0]];
       co[1] = origco[face_verts[1]];
@@ -2078,7 +2078,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
 
 static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                     GridsNode &node,
-                                    const float (*origco)[3],
+                                    const Span<float3> origco,
                                     const float ray_start[3],
                                     const float ray_normal[3],
                                     IsectRayPrecalc *isect_precalc,
@@ -2095,6 +2095,8 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<CCGElem *> elems = subdiv_ccg.grids;
 
+  const float3 *origco_data = origco.data();
+
   for (const int grid : grids) {
     CCGElem *elem = elems[grid];
 
@@ -2108,11 +2110,11 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
         }
 
         const float *co[4];
-        if (origco) {
-          co[0] = origco[(y + 1) * gridsize + x];
-          co[1] = origco[(y + 1) * gridsize + x + 1];
-          co[2] = origco[y * gridsize + x + 1];
-          co[3] = origco[y * gridsize + x];
+        if (!origco.is_empty()) {
+          co[0] = origco_data[(y + 1) * gridsize + x];
+          co[1] = origco_data[(y + 1) * gridsize + x + 1];
+          co[2] = origco_data[y * gridsize + x + 1];
+          co[3] = origco_data[y * gridsize + x];
         }
         else {
           co[0] = CCG_grid_elem_co(key, elem, x, y + 1);
@@ -2158,8 +2160,8 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
       }
     }
 
-    if (origco) {
-      origco += gridsize * gridsize;
+    if (!origco.is_empty()) {
+      origco_data += gridsize * gridsize;
     }
   }
 
@@ -2168,7 +2170,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
 
 bool raycast_node(Tree &pbvh,
                   Node &node,
-                  const float (*origco)[3],
+                  const Span<float3> origco,
                   bool use_origco,
                   const Span<float3> vert_positions,
                   const Span<int> corner_verts,
@@ -2362,7 +2364,7 @@ void find_nearest_to_ray(Tree &pbvh,
 }
 
 static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
-                                           const float (*origco)[3],
+                                           const Span<float3> origco,
                                            const Span<float3> vert_positions,
                                            const Span<int> corner_verts,
                                            const Span<int3> corner_tris,
@@ -2385,7 +2387,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
       continue;
     }
 
-    if (origco) {
+    if (!origco.is_empty()) {
       /* Intersect with backed-up original coordinates. */
       hit |= ray_face_nearest_tri(ray_start,
                                   ray_normal,
@@ -2412,7 +2414,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
 
 static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
                                            GridsNode &node,
-                                           const float (*origco)[3],
+                                           const Span<float3> origco,
                                            const float ray_start[3],
                                            const float ray_normal[3],
                                            float *depth,
@@ -2424,6 +2426,8 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
   bool hit = false;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<CCGElem *> elems = subdiv_ccg.grids;
+
+  const float3 *origco_data = origco.data();
 
   for (const int grid : grids) {
     CCGElem *elem = elems[grid];
@@ -2437,13 +2441,13 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
           }
         }
 
-        if (origco) {
+        if (!origco.is_empty()) {
           hit |= ray_face_nearest_quad(ray_start,
                                        ray_normal,
-                                       origco[y * gridsize + x],
-                                       origco[y * gridsize + x + 1],
-                                       origco[(y + 1) * gridsize + x + 1],
-                                       origco[(y + 1) * gridsize + x],
+                                       origco_data[y * gridsize + x],
+                                       origco_data[y * gridsize + x + 1],
+                                       origco_data[(y + 1) * gridsize + x + 1],
+                                       origco_data[(y + 1) * gridsize + x],
                                        depth,
                                        dist_sq);
         }
@@ -2460,8 +2464,8 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
       }
     }
 
-    if (origco) {
-      origco += gridsize * gridsize;
+    if (!origco.is_empty()) {
+      origco_data += gridsize * gridsize;
     }
   }
 
@@ -2470,7 +2474,7 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
 
 bool find_nearest_to_ray_node(Tree &pbvh,
                               Node &node,
-                              const float (*origco)[3],
+                              const Span<float3> origco,
                               bool use_origco,
                               const Span<float3> vert_positions,
                               const Span<int> corner_verts,
