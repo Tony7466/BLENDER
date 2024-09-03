@@ -45,7 +45,7 @@ static T interpolate_attribute_of_a_intersection_point(
   const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
   const float alpha_a = inter_point.alpha_a;
 
-  return attribute_math::mix2<T>(alpha_a, a0, a1);
+  return attribute_math::DefaultMixer<T>(alpha_a, a0, a1);
 }
 
 template<typename T>
@@ -56,7 +56,7 @@ static T interpolate_attribute_of_b_intersection_point(
   const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
   const float alpha_b = inter_point.alpha_b;
 
-  return attribute_math::mix2<T>(alpha_b, b0, b1);
+  return attribute_math::DefaultMixer<T>(alpha_b, b0, b1);
 }
 
 static Array<int2> calculate_segments(const blender::polygonboolean::BooleanResult &result)
@@ -146,7 +146,7 @@ void interpolate_attribute_from_a_result(const VArray<T> attr_a,
 
       const float alpha = (id_b - min_b) / (max_b - min_b);
 
-      dst_attr[i] = attribute_math::mix2<T>(alpha, a0, a1);
+      dst_attr[i] = attribute_math::DefaultMixer<T>(alpha, a0, a1);
     }
     else if (type == blender::polygonboolean::VertexType::Intersection) {
       const blender::polygonboolean::IntersectionPoint &inter_point =
@@ -182,7 +182,7 @@ void interpolate_attribute_from_b_result(const VArray<T> attr_b,
 
       const float alpha = (id_a - min_a) / (max_a - min_a);
 
-      dst_attr[i] = attribute_math::mix2<T>(alpha, b0, b1);
+      dst_attr[i] = attribute_math::DefaultMixer<T>(alpha, b0, b1);
     }
     else if (type == blender::polygonboolean::VertexType::PointB) {
       dst_attr[i] = attr_b[vert.point_id];
@@ -218,7 +218,7 @@ void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
       const T a = interpolate_attribute_of_a_intersection_point<T>(attr_a, inter_point);
       const T b = interpolate_attribute_of_b_intersection_point<T>(attr_b, inter_point);
 
-      dst_attr[i] = attribute_math::mix2<T>(0.5f, a, b);
+      dst_attr[i] = attribute_math::DefaultMixer<T>(0.5f, a, b);
     }
   }
 }
