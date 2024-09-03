@@ -98,6 +98,10 @@ void Film::init_aovs(const Set<std::string> &passes_used_by_viewport_compositor)
 float *Film::read_aov(ViewLayerAOV *aov)
 {
   GPUTexture *pass_tx = this->get_aov_texture(aov);
+  /* `pass_tx` is null when scene uses more AOVs than supported. */
+  if (!pass_tx) {
+    return nullptr;
+  }
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
