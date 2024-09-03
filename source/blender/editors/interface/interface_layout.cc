@@ -512,7 +512,7 @@ static void ui_layer_but_cb(bContext *C, void *arg_but, void *arg_index)
 
     RNA_property_update(C, ptr, prop);
 
-    LISTBASE_FOREACH (uiBut *, cbut, &but->block->buttons) {
+    for (uiBut *cbut : but->block->buttons) {
       ui_but_update(cbut);
     }
   }
@@ -929,14 +929,13 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
                                      const int h,
                                      const bool icon_only)
 {
-  uiBut *last = static_cast<uiBut *>(block->buttons.last);
+  int size = block->buttons.size();
 
   ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_TAB, icon_only);
   BLI_assert(last != block->buttons.last);
 
-  for (uiBut *tab = last ? last->next : static_cast<uiBut *>(block->buttons.first); tab;
-       tab = tab->next)
-  {
+  for (auto tab_itr = block->buttons.begin() + size; tab_itr != block->buttons.end(); tab_itr++) {
+    uiBut *tab = *tab_itr;
     UI_but_drawflag_enable(tab, ui_but_align_opposite_to_area_align_get(CTX_wm_region(C)));
     if (icon_only) {
       UI_but_drawflag_enable(tab, UI_BUT_HAS_TOOLTIP_LABEL);
@@ -950,10 +949,11 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
     blender::Array<bool, 64> highlight_array(highlight_array_len);
     RNA_property_boolean_get_array(ptr_highlight, prop_highlight, highlight_array.data());
     int i = 0;
-    for (uiBut *tab_but = last ? last->next : static_cast<uiBut *>(block->buttons.first);
-         (tab_but != nullptr) && (i < highlight_array_len);
-         tab_but = tab_but->next, i++)
+    for (auto tab_itr = block->buttons.begin() + size;
+         (tab_itr != block->buttons.end()) && (i < highlight_array_len);
+         tab_itr++, i++)
     {
+      uiBut *tab_but = *tab_itr;
       SET_FLAG_FROM_TEST(tab_but->flag, !highlight_array[i], UI_BUT_INACTIVE);
     }
   }
@@ -1145,7 +1145,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
   }
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (but && but->rnapoin.data) {
         if (RNA_property_type(but->rnaprop) == PROP_STRING) {
           prevbut = but;
@@ -1561,7 +1561,7 @@ void uiItemsFullEnumO_items(uiLayout *layout,
                       flag,
                       nullptr);
 
-      uiBut *but = static_cast<uiBut *>(block->buttons.last);
+      uiBut *but = block->buttons.last();
 
       if (active == (i - 1)) {
         but->flag |= UI_SELECT_DRAW;
@@ -1579,7 +1579,7 @@ void uiItemsFullEnumO_items(uiLayout *layout,
         if (item->icon || radial) {
           uiItemL(target, item->name, item->icon);
 
-          but = static_cast<uiBut *>(block->buttons.last);
+          but = block->buttons.last();
         }
         else {
           /* Do not use uiItemL here, as our root layout is a menu one,
@@ -2334,7 +2334,7 @@ void uiItemFullR(uiLayout *layout,
       ui_decorate.layout = uiLayoutColumn(layout_row, true);
       ui_decorate.layout->space = 0;
       UI_block_layout_set_current(block, layout);
-      ui_decorate.but = static_cast<uiBut *>(block->buttons.last);
+      ui_decorate.but = block->buttons.last();
 
       /* Clear after. */
       layout->flag |= UI_ITEM_PROP_DECORATE_NO_PAD;
@@ -2480,8 +2480,9 @@ void uiItemFullR(uiLayout *layout,
 
 #ifdef UI_PROP_DECORATE
   if (ui_decorate.use_prop_decorate) {
-    uiBut *but_decorate = ui_decorate.but ? ui_decorate.but->next :
-                                            static_cast<uiBut *>(block->buttons.first);
+    uiBut *but_decorate = ui_decorate.but           ? ui_decorate.but->next :
+                          block->buttons.is_empty() ? nullptr :
+                                                      block->buttons.first();
     const bool use_blank_decorator = (flag & UI_ITEM_R_FORCE_BLANK_DECORATE);
     uiLayout *layout_col = uiLayoutColumn(ui_decorate.layout, false);
     layout_col->space = 0;
@@ -2494,12 +2495,12 @@ void uiItemFullR(uiLayout *layout,
 
       /* The icons are set in 'ui_but_anim_flag' */
       uiItemDecoratorR_prop(layout_col, ptr_dec, prop_dec, but_decorate->rnaindex);
-      but = static_cast<uiBut *>(block->buttons.last);
+      but = block->buttons.last();
 
       /* Order the decorator after the button we decorate, this is used so we can always
        * do a quick lookup. */
-      BLI_remlink(&block->buttons, but);
-      BLI_insertlinkafter(&block->buttons, but_decorate, but);
+      block->remove_but(but);
+      block->add_but(but, but_decorate);
       but_decorate = but->next;
     }
     BLI_assert(ELEM(i, 1, ui_decorate.len));
@@ -2547,7 +2548,7 @@ void uiItemFullR_with_popover(uiLayout *layout,
                               const char *panel_type)
 {
   uiBlock *block = layout->root->block;
-  uiBut *but = static_cast<uiBut *>(block->buttons.last);
+  uiBut *but = block->buttons.last();
   uiItemFullR(layout, ptr, prop, index, value, flag, name, icon);
   but = but->next;
   while (but) {
@@ -2578,7 +2579,7 @@ void uiItemFullR_with_menu(uiLayout *layout,
                            const char *menu_type)
 {
   uiBlock *block = layout->root->block;
-  uiBut *but = static_cast<uiBut *>(block->buttons.last);
+  uiBut *but = block->buttons.last();
   uiItemFullR(layout, ptr, prop, index, value, flag, name, icon);
   but = but->next;
   while (but) {
@@ -2722,7 +2723,7 @@ void uiItemsEnumR(uiLayout *layout, PointerRNA *ptr, const char *propname)
   for (int i = 0; i < totitem; i++) {
     if (item[i].identifier[0]) {
       uiItemEnumR_prop(column, item[i].name, item[i].icon, ptr, prop, item[i].value);
-      ui_but_tip_from_enum_item(static_cast<uiBut *>(block->buttons.last), &item[i]);
+      ui_but_tip_from_enum_item(block->buttons.last(), &item[i]);
     }
     else {
       if (item[i].name) {
@@ -2731,7 +2732,7 @@ void uiItemsEnumR(uiLayout *layout, PointerRNA *ptr, const char *propname)
         }
 
         uiItemL(column, item[i].name, ICON_NONE);
-        uiBut *bt = static_cast<uiBut *>(block->buttons.last);
+        uiBut *bt = block->buttons.last();
         bt->drawflag = UI_BUT_TEXT_LEFT;
 
         ui_but_tip_from_enum_item(bt, &item[i]);

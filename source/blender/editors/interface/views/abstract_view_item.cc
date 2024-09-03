@@ -166,7 +166,7 @@ static AbstractViewItem *find_item_from_rename_button(const uiBut &rename_but)
   /* A minimal sanity check, can't do much more here. */
   BLI_assert(rename_but.type == UI_BTYPE_TEXT && rename_but.poin);
 
-  LISTBASE_FOREACH (uiBut *, but, &rename_but.block->buttons) {
+  for (uiBut *but : rename_but.block->buttons) {
     if (but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }

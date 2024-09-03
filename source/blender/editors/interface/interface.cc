@@ -257,10 +257,50 @@ void ui_region_to_window(const ARegion *region, int *x, int *y)
   *y += region->winrct.ymin;
 }
 
+void uiBlock::add_but(uiBut *but, uiBut *insert_after)
+{
+  int64_t target_index = this->buttons.size();
+  if (insert_after) {
+    const int64_t insert_after_index = this->buttons.first_index_of_try(insert_after);
+    if (insert_after_index > -1) {
+      target_index = insert_after_index + 1;
+    }
+  }
+
+  uiBut *prev = target_index > 0 ? this->buttons[target_index - 1] : nullptr;
+  uiBut *next = target_index < this->buttons.size() ? this->buttons[target_index] : nullptr;
+
+  this->buttons.insert(target_index, but);
+  but->next = next;
+  but->prev = prev;
+  if (prev) {
+    prev->next = but;
+  }
+  if (next) {
+    next->prev = but;
+  }
+}
+
+void uiBlock::remove_but(uiBut *but)
+{
+  int64_t target_index = this->buttons.first_index_of_try(but);
+  if (target_index == -1) {
+    return;
+  }
+  this->buttons.remove(target_index);
+  if (but->prev) {
+    but->prev->next = but->next;
+  }
+  if (but->next) {
+    but->next->prev = but->prev;
+  }
+  but->prev = but->next = nullptr;
+}
+
 static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 {
   int sepr_flex_len = 0;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       sepr_flex_len++;
     }
@@ -271,7 +311,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   }
 
   rcti rect;
-  ui_but_to_pixelrect(&rect, region, block, static_cast<const uiBut *>(block->buttons.last));
+  ui_but_to_pixelrect(&rect, region, block, block->buttons.last());
   const float buttons_width = float(rect.xmax) + UI_HEADER_OFFSET;
   const float region_width = float(region->sizex) * UI_SCALE_FAC;
 
@@ -281,7 +321,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 
   /* We could get rid of this loop if we agree on a max number of spacer */
   Vector<int, 8> spacers_pos;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       ui_but_to_pixelrect(&rect, region, block, but);
       spacers_pos.append(rect.xmax + UI_HEADER_OFFSET);
@@ -292,7 +332,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   const float segment_width = region_width / float(sepr_flex_len);
   float offset = 0, remaining_space = region_width - buttons_width;
   int i = 0;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     BLI_rctf_translate(&but->rect, offset / view_scale_x, 0);
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       /* How much the next block overlap with the current segment */
@@ -348,7 +388,7 @@ void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 
 void UI_block_translate(uiBlock *block, int x, int y)
 {
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     BLI_rctf_translate(&but->rect, x, y);
   }
 
@@ -363,14 +403,17 @@ static bool ui_but_is_row_alignment_group(const uiBut *left, const uiBut *right)
 
 static void ui_block_bounds_calc_text(uiBlock *block, float offset)
 {
+  if (block->buttons.is_empty()) {
+    return;
+  }
   const uiStyle *style = UI_style_get();
   uiBut *col_bt;
   int i = 0, j, x1addval = offset;
 
   UI_fontstyle_set(&style->widget);
 
-  uiBut *init_col_bt = static_cast<uiBut *>(block->buttons.first);
-  LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+  uiBut *init_col_bt = block->buttons.first();
+  for (uiBut *bt = block->buttons.first(); bt; bt = bt->next) {
     if (!ELEM(bt->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE, UI_BTYPE_SEPR_SPACER)) {
       j = BLF_width(style->widget.uifont_id, bt->drawstr.c_str(), bt->drawstr.size());
 
@@ -436,7 +479,7 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
 
 void ui_block_bounds_calc(uiBlock *block)
 {
-  if (BLI_listbase_is_empty(&block->buttons)) {
+  if (block->buttons.is_empty()) {
     if (block->panel) {
       block->rect.xmin = 0.0;
       block->rect.xmax = block->panel->sizex;
@@ -448,7 +491,7 @@ void ui_block_bounds_calc(uiBlock *block)
 
     BLI_rctf_init_minmax(&block->rect);
 
-    LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+    for (uiBut *bt : block->buttons) {
       BLI_rctf_union(&block->rect, &bt->rect);
     }
 
@@ -461,7 +504,7 @@ void ui_block_bounds_calc(uiBlock *block)
   block->rect.xmax = block->rect.xmin + max_ff(BLI_rctf_size_x(&block->rect), block->minbounds);
 
   /* hardcoded exception... but that one is annoying with larger safety */
-  uiBut *bt = static_cast<uiBut *>(block->buttons.first);
+  uiBut *bt = block->buttons.is_empty() ? nullptr : block->buttons.first();
   const int xof = ((bt && STRPREFIX(bt->str.c_str(), "ERROR")) ? 10 : 40) * UI_SCALE_FAC;
 
   block->safety.xmin = block->rect.xmin - xof;
@@ -794,7 +837,7 @@ static bool ui_but_equals_old(const uiBut *but, const uiBut *oldbut)
 
 uiBut *ui_but_find_old(uiBlock *block_old, const uiBut *but_new)
 {
-  LISTBASE_FOREACH (uiBut *, but, &block_old->buttons) {
+  for (uiBut *but : block_old->buttons) {
     if (ui_but_equals_old(but_new, but)) {
       return but;
     }
@@ -804,7 +847,8 @@ uiBut *ui_but_find_old(uiBlock *block_old, const uiBut *but_new)
 
 uiBut *ui_but_find_new(uiBlock *block_new, const uiBut *but_old)
 {
-  LISTBASE_FOREACH (uiBut *, but, &block_new->buttons) {
+
+  for (uiBut *but : block_new->buttons) {
     if (ui_but_equals_old(but, but_old)) {
       return but;
     }
@@ -992,8 +1036,8 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
   if (oldbut->active || oldbut->semi_modal_state) {
     /* Move button over from oldblock to new block. */
-    BLI_remlink(&oldblock->buttons, oldbut);
-    BLI_insertlinkafter(&block->buttons, but, oldbut);
+    oldblock->remove_but(oldbut);
+    block->add_but(oldbut, but);
     /* Add the old button to the button groups in the new block. */
     ui_button_group_replace_but_ptr(block, but, oldbut);
     oldbut->block = block;
@@ -1005,7 +1049,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
       UI_butstore_register_update(block, oldbut, but);
     }
 
-    BLI_remlink(&block->buttons, but);
+    block->remove_but(but);
     ui_but_free(C, but);
 
     found_active = true;
@@ -1023,7 +1067,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
     /* ensures one button can get activated, and in case the buttons
      * draw are the same this gives O(1) lookup for each button */
-    BLI_remlink(&oldblock->buttons, oldbut);
+    oldblock->remove_but(oldbut);
     ui_but_free(C, oldbut);
   }
 
@@ -1060,7 +1104,7 @@ bool UI_but_active_only_ex(
   }
   else if ((found == true) && (isactive == false)) {
     if (remove_on_failure) {
-      BLI_remlink(&block->buttons, but);
+      block->remove_but(but);
       if (but->layout) {
         ui_layout_remove_but(but->layout, but);
       }
@@ -1084,7 +1128,7 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, ui
   BLI_assert(block->endblock);
 
   bool done = false;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->flag & UI_BUT_ACTIVATE_ON_INIT) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
       if (ui_but_is_editable(but)) {
@@ -1099,7 +1143,7 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, ui
   if (done) {
     /* Run this in a second pass since it's possible activating the button
      * removes the buttons being looped over. */
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
     }
   }
@@ -1148,7 +1192,7 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
     /* 2 Passes: One for first letter only, second for any letter if the first pass fails.
      * Run first pass on all buttons so first word chars always get first priority. */
 
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (!ELEM(but->type,
                 UI_BTYPE_BUT,
                 UI_BTYPE_BUT_MENU,
@@ -1555,7 +1599,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
   }
 
   if (block->flag & UI_BLOCK_PIE_MENU) {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (but->pie_dir != UI_RADIAL_NONE) {
         const std::string str = ui_but_pie_direction_string(but);
         ui_but_add_shortcut(but, str.c_str(), false);
@@ -1563,7 +1607,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
     }
   }
   else {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (block->flag & UI_BLOCK_SHOW_SHORTCUT_ALWAYS) {
         /* Skip icon-only buttons (as used in the toolbar). */
         if (but->drawstr[0] == '\0') {
@@ -1797,13 +1841,14 @@ void UI_block_update_from_old(const bContext *C, uiBlock *block)
     return;
   }
 
-  uiBut *but_old = static_cast<uiBut *>(block->oldblock->buttons.first);
+  uiBut *but_old = block->oldblock->buttons.is_empty() ? nullptr :
+                                                         block->oldblock->buttons.first();
 
   if (BLI_listbase_is_empty(&block->oldblock->butstore) == false) {
     UI_butstore_update(block);
   }
 
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (ui_but_update_from_old_block(C, block, &but, &but_old)) {
       ui_but_update(but);
 
@@ -1895,7 +1940,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
   BLI_assert(block->active);
 
   /* Extend button data. This needs to be done before the block updating. */
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     ui_but_predefined_extra_operator_icons_add(but);
   }
 
@@ -1905,7 +1950,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
    * on matching buttons, we need this to make button event handling non
    * blocking, while still allowing buttons to be remade each redraw as it
    * is expected by blender code */
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     /* temp? Proper check for graying out */
     if (but->optype) {
       wmOperatorType *ot = but->optype;
@@ -2094,7 +2139,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   UI_widgetbase_draw_cache_begin();
 
   /* widgets */
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->flag & (UI_HIDDEN | UI_SCROLLED)) {
       continue;
     }
@@ -2126,7 +2171,7 @@ static void ui_block_message_subscribe(ARegion *region, wmMsgBus *mbus, uiBlock 
 {
   uiBut *but_prev = nullptr;
   /* possibly we should keep the region this block is contained in? */
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->rnapoin.type && but->rnaprop) {
       /* quick check to avoid adding buttons representing a vector, multiple times. */
       if ((but_prev && (but_prev->rnaprop == but->rnaprop) &&
@@ -2672,7 +2717,7 @@ uiBut *ui_but_drag_multi_edit_get(uiBut *but)
 
   BLI_assert(but->flag & UI_BUT_DRAG_MULTI);
 
-  LISTBASE_FOREACH (uiBut *, but_iter, &but->block->buttons) {
+  for (uiBut *but_iter : but->block->buttons) {
     if (but_iter->editstr) {
       return_but = but_iter;
       break;
@@ -3535,9 +3580,10 @@ void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
 
-  while (uiBut *but = static_cast<uiBut *>(BLI_pophead(&block->buttons))) {
+  for (uiBut *but : block->buttons) {
     ui_but_free(C, but);
   }
+  block->buttons.clear_and_shrink();
 
   if (block->unit) {
     MEM_freeN((void *)block->unit);
@@ -4092,7 +4138,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
   uiBut *insert_after_but = but->prev;
 
   /* Remove old button address */
-  BLI_remlink(&but->block->buttons, but);
+  but->block->remove_but(but);
 
   const uiBut *old_but_ptr = but;
   /* Button may have pointer to a member within itself, this will have to be updated. */
@@ -4107,7 +4153,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
     but->poin = (char *)but;
   }
 
-  BLI_insertlinkafter(&but->block->buttons, insert_after_but, but);
+  but->block->add_but(but, insert_after_but);
 
   if (but->layout) {
     const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr, but);
@@ -4263,7 +4309,7 @@ static uiBut *ui_def_but(uiBlock *block,
     but->dragflag |= UI_BUT_DRAG_FULL_BUT;
   }
 
-  BLI_addtail(&block->buttons, but);
+  block->add_but(but);
 
   if (block->curlayout) {
     ui_layout_add_but(block->curlayout, but);

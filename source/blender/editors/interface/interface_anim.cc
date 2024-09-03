@@ -120,8 +120,8 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
 
   BLI_assert(UI_but_is_decorator(but));
   BLI_assert(but->decorated_rnapoin.data && but->decorated_rnaprop);
-
-  LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &but->block->buttons, but_iter, but->prev) {
+  ListBase lb = {but->block->buttons.first(), but->block->buttons.last()};
+  LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &lb, but_iter, but->prev) {
     if (but_iter != but &&
         ui_but_rna_equals_ex(
             but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex))
@@ -129,7 +129,7 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
       return but_iter;
     }
   }
-  LISTBASE_CIRCULAR_BACKWARD_END(uiBut *, &but->block->buttons, but_iter, but->prev);
+  LISTBASE_CIRCULAR_BACKWARD_END(uiBut *, &lb, but_iter, but->prev);
 
   return nullptr;
 }

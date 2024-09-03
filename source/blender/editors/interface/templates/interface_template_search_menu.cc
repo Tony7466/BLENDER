@@ -691,7 +691,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
 
       UI_block_end(C, block);
 
-      LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+      for (uiBut *but : block->buttons) {
         MenuType *mt_from_but = nullptr;
         /* Support menu titles with dynamic from initial labels
          * (used by edit-mesh context menu). */
@@ -792,7 +792,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
           menu_parent->drawstr = strdup_memarena(memarena, but->drawstr.c_str());
           menu_parent->parent = current_menu.self_as_parent;
 
-          LISTBASE_FOREACH (uiBut *, sub_but, &sub_block->buttons) {
+          for (uiBut *sub_but : sub_block->buttons) {
             menu_items_from_ui_create_item_from_button(
                 data, memarena, mt, sub_but, wm_context, menu_parent);
           }

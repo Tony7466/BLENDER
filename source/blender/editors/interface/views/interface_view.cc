@@ -96,7 +96,7 @@ void ViewLink::views_bounds_calc(const uiBlock &block)
     views_bounds.add(link->view.get(), minmax);
   }
 
-  LISTBASE_FOREACH (uiBut *, but, &block.buttons) {
+  for (uiBut *but : block.buttons) {
     if (but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }
@@ -294,7 +294,7 @@ uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
     return nullptr;
   }
 
-  LISTBASE_FOREACH (uiBut *, old_but, &old_block->buttons) {
+  for (uiBut *old_but : old_block->buttons) {
     if (old_but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }

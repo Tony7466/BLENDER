@@ -54,7 +54,7 @@ void template_asset_shelf_popover(uiLayout &layout,
   }
 
   uiItemPopoverPanel(row, &C, "ASSETSHELF_PT_popover_panel", name.c_str(), icon);
-  uiBut *but = static_cast<uiBut *>(block->buttons.last);
+  uiBut *but = block->buttons.last();
   if (use_preview_icon) {
     ui_def_but_icon(but, icon, UI_HAS_ICON | UI_BUT_ICON_PREVIEW);
   }

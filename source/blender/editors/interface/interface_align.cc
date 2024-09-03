@@ -376,7 +376,7 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
   /* First loop: we count number of buttons belonging to an align group,
    * and clear their align flag.
    * Tabs get some special treatment here, they get aligned to region border. */
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     /* special case: tabs need to be aligned to a region border, drawflag tells which one */
     if (but->type == UI_BTYPE_TAB) {
       ui_block_align_but_to_region(but, region);
@@ -411,7 +411,7 @@ void ui_block_align_calc(uiBlock *block, const ARegion *region)
 
   /* Second loop: we initialize our ButAlign data for each button. */
   butal = butal_array;
-  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+  for (uiBut *but : block->buttons) {
     if (but->alignnr != 0) {
       butal->but = but;
       butal->borders[LEFT] = &but->rect.xmin;

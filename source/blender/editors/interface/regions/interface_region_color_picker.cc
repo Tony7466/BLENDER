@@ -183,7 +183,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
 
   /* this updates button strings,
    * is hackish... but button pointers are on stack of caller function */
-  LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+  for (uiBut *bt : block->buttons) {
     if (bt->custom_data != cpicker) {
       continue;
     }
@@ -314,7 +314,7 @@ static void ui_popup_close_cb(bContext * /*C*/, void *bt1, void * /*arg*/)
 static void ui_colorpicker_hide_reveal(uiBlock *block, ePickerType colormode)
 {
   /* tag buttons */
-  LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+  for (uiBut *bt : block->buttons) {
     if ((bt->func == ui_colorpicker_rgba_update_cb) && (bt->type == UI_BTYPE_NUM_SLIDER) &&
         (bt->rnaindex != 3))
     {
@@ -810,7 +810,7 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
   }
 
   if (add != 0.0f) {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (but->type == UI_BTYPE_HSVCUBE && but->active == nullptr) {
         uiPopupBlockHandle *popup = block->handle;
         ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);

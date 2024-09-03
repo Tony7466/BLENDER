@@ -70,7 +70,7 @@ static Vector<rcti> button_section_bounds_calc(const ARegion *region, const bool
         continue;
       }
 
-      LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+      for (uiBut *but : block->buttons) {
         if (but->type == UI_BTYPE_SEPR_SPACER) {
           /* Start a new section. */
           if (has_section_content) {

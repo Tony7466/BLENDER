@@ -547,7 +547,7 @@ struct uiBlockDynamicListener {
 struct uiBlock {
   uiBlock *next, *prev;
 
-  ListBase buttons;
+  blender::Vector<uiBut *> buttons;
   Panel *panel;
   uiBlock *oldblock;
 
@@ -665,6 +665,8 @@ struct uiBlock {
   char display_device[64];
 
   PieMenuData pie_data;
+  void add_but(uiBut *but, uiBut *insert_after = nullptr);
+  void remove_but(uiBut *but);
 };
 
 struct uiSafetyRct {
@@ -672,7 +674,6 @@ struct uiSafetyRct {
   rctf parent;
   rctf safety;
 };
-
 /* `interface.cc` */
 
 void ui_fontscale(float *points, float aspect);

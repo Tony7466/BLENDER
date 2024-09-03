@@ -315,7 +315,7 @@ static ARegion *wm_searchbox_tooltip_init(
   *r_exit_on_event = true;
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    for (uiBut *but : block->buttons) {
       if (but->type != UI_BTYPE_SEARCH_MENU) {
         continue;
       }
