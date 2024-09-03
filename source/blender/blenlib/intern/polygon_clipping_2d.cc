@@ -303,21 +303,20 @@ static bool is_point_in_others(const int polygon_a,
   return false;
 }
 
-Array<float2> interpolate_position_ab(const Span<float2> pos_a,
-                                      const Span<float2> pos_b,
-                                      const BooleanResult &result)
+void interpolate_position_ab(const Span<float2> pos_a,
+                             const Span<float2> pos_b,
+                             const BooleanResult &result,
+                             MutableSpan<float2> dst_pos)
 {
-  Array<float2> pos_out(result.verts.size());
-
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
     const VertexType &type = vert.type;
 
     if (type == VertexType::PointA) {
-      pos_out[i] = pos_a[vert.point_id];
+      dst_pos[i] = pos_a[vert.point_id];
     }
     else if (type == VertexType::PointB) {
-      pos_out[i] = pos_b[vert.point_id];
+      dst_pos[i] = pos_b[vert.point_id];
     }
     else if (type == VertexType::Intersection) {
       const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
@@ -326,9 +325,44 @@ Array<float2> interpolate_position_ab(const Span<float2> pos_a,
       const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
       const float alpha_a = inter_point.alpha_a;
 
-      pos_out[i] = math::interpolate(a0, a1, alpha_a);
+      dst_pos[i] = math::interpolate(a0, a1, alpha_a);
     }
   }
+}
+
+void interpolate_position_a(const Span<float2> pos_a,
+                            const BooleanResult &result,
+                            MutableSpan<float2> dst_pos)
+{
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      dst_pos[i] = pos_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      dst_pos[i] = pos_a.first();
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const float2 a0 = pos_a[inter_point.point_a];
+      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      dst_pos[i] = math::interpolate(a0, a1, alpha_a);
+    }
+  }
+}
+
+Array<float2> interpolate_position_ab(const Span<float2> pos_a,
+                                      const Span<float2> pos_b,
+                                      const BooleanResult &result)
+{
+  Array<float2> pos_out(result.verts.size());
+
+  interpolate_position_ab(pos_a, pos_b, result, pos_out.as_mutable_span());
 
   return pos_out;
 }
@@ -337,26 +371,7 @@ Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResu
 {
   Array<float2> pos_out(result.verts.size());
 
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
-
-    if (type == VertexType::PointA) {
-      pos_out[i] = pos_a[vert.point_id];
-    }
-    else if (type == VertexType::PointB) {
-      pos_out[i] = pos_a.first();
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-      const float2 a0 = pos_a[inter_point.point_a];
-      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
-      const float alpha_a = inter_point.alpha_a;
-
-      pos_out[i] = math::interpolate(a0, a1, alpha_a);
-    }
-  }
+  interpolate_position_a(pos_a, result, pos_out.as_mutable_span());
 
   return pos_out;
 }

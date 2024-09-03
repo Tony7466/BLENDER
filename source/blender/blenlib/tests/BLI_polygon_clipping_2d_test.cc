@@ -320,7 +320,8 @@ void draw_polygons(const std::string &label,
   SVG_add_polygon(f, "polygon-A", curve_a, mapping);
   SVG_add_polygon(f, "polygon-B", curve_b, mapping);
 
-  const Span<float2> points = interpolate_position_ab(curve_a, curve_b, result);
+  Array<float2> points(result.verts.size());
+  interpolate_position_ab(curve_a, curve_b, result, points.as_mutable_span());
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
@@ -362,7 +363,8 @@ void draw_cut(const std::string &label,
   }
   SVG_add_polygon(f, "cut-B", curve_b, mapping);
 
-  const Span<float2> points = interpolate_position_a(curve_a, result);
+  Array<float2> points(result.verts.size());
+  interpolate_position_a(curve_a, result, points.as_mutable_span());
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
 
   if (points_by_polygon.size() == 1) {
@@ -381,7 +383,8 @@ void expect_boolean_result_coord(const Span<float2> curve_a,
                                  const Array<Vector<float2>> &expected_points)
 {
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
-  const Span<float2> points = interpolate_position_ab(curve_a, curve_b, result);
+  Array<float2> points(result.verts.size());
+  interpolate_position_ab(curve_a, curve_b, result, points.as_mutable_span());
 
   EXPECT_EQ(points_by_polygon.size(), expected_points.size());
   if (points_by_polygon.size() != expected_points.size()) {
