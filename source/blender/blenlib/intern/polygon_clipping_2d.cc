@@ -75,13 +75,9 @@ static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<floa
 {
   BooleanResult result;
 
-  const Array<Vertex> verts(0);
-  const Array<int> offsets = {0};
-  const Array<IntersectionPoint> intersections(0);
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.verts = {};
+  result.offsets = {};
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
@@ -95,7 +91,6 @@ static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*c
 
   Array<Vertex> verts(len_a);
   const Array<int> offsets = {0, len_a};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
     verts[i] = {VertexType::PointA, i};
@@ -103,7 +98,7 @@ static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*c
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
@@ -117,7 +112,6 @@ static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2>
 
   Array<Vertex> verts(len_b);
   const Array<int> offsets = {0, len_b};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
     verts[i] = {VertexType::PointB, i};
@@ -125,7 +119,7 @@ static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2>
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
@@ -140,7 +134,6 @@ static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> cu
 
   Array<Vertex> verts(len_a + len_b);
   const Array<int> offsets = {0, len_a, len_a + len_b};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
     verts[i] = {VertexType::PointA, i};
@@ -152,7 +145,7 @@ static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> cu
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
@@ -167,7 +160,6 @@ static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> cu
 
   Array<Vertex> verts(len_b + len_a);
   const Array<int> offsets = {0, len_b, len_b + len_a};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
     verts[i] = {VertexType::PointB, i};
@@ -179,7 +171,7 @@ static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> cu
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
