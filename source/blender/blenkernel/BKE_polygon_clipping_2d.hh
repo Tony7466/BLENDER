@@ -12,37 +12,37 @@
 namespace blender::bke::polygonboolean {
 
 template<typename T>
-void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
-                                          const VArray<T> attr_b,
+void interpolate_attribute_from_ab_result(const VArray<T> src_a,
+                                          const VArray<T> src_b,
                                           const blender::polygonboolean::BooleanResult &result,
-                                          MutableSpan<T> dst_attr);
+                                          MutableSpan<T> dst);
 template<typename T>
-void interpolate_attribute_from_a_result(const VArray<T> attr_a,
+void interpolate_attribute_from_a_result(const VArray<T> src_a,
                                          const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst_attr);
+                                         MutableSpan<T> dst);
 template<typename T>
-void interpolate_attribute_from_b_result(const VArray<T> attr_b,
+void interpolate_attribute_from_b_result(const VArray<T> src_b,
                                          const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst_attr);
+                                         MutableSpan<T> dst);
 
 template<typename T>
-Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a,
+Array<T> interpolate_attribute_from_a_result(const Span<T> src_a,
                                              const blender::polygonboolean::BooleanResult &result);
 template<typename T>
-Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b,
+Array<T> interpolate_attribute_from_b_result(const Span<T> src_b,
                                              const blender::polygonboolean::BooleanResult &result);
 template<typename T>
 Array<T> interpolate_attribute_from_ab_result(
-    const Span<T> attr_a,
-    const Span<T> attr_b,
+    const Span<T> src_a,
+    const Span<T> src_b,
     const blender::polygonboolean::BooleanResult &result);
 
 template<typename T>
 static T interpolate_attribute_of_a_intersection_point(
-    const VArray<T> attr_a, const blender::polygonboolean::IntersectionPoint &inter_point)
+    const VArray<T> src_a, const blender::polygonboolean::IntersectionPoint &inter_point)
 {
-  const T a0 = attr_a[inter_point.point_a];
-  const T a1 = attr_a[(inter_point.point_a + 1) % attr_a.size()];
+  const T a0 = src_a[inter_point.point_a];
+  const T a1 = src_a[(inter_point.point_a + 1) % src_a.size()];
   const float alpha_a = inter_point.alpha_a;
 
   return attribute_math::DefaultMixer<T>(alpha_a, a0, a1);
@@ -50,10 +50,10 @@ static T interpolate_attribute_of_a_intersection_point(
 
 template<typename T>
 static T interpolate_attribute_of_b_intersection_point(
-    const VArray<T> attr_b, const blender::polygonboolean::IntersectionPoint &inter_point)
+    const VArray<T> src_b, const blender::polygonboolean::IntersectionPoint &inter_point)
 {
-  const T b0 = attr_b[inter_point.point_b];
-  const T b1 = attr_b[(inter_point.point_b + 1) % attr_b.size()];
+  const T b0 = src_b[inter_point.point_b];
+  const T b1 = src_b[(inter_point.point_b + 1) % src_b.size()];
   const float alpha_b = inter_point.alpha_b;
 
   return attribute_math::DefaultMixer<T>(alpha_b, b0, b1);
@@ -118,9 +118,9 @@ static Array<int2> calculate_segments(const blender::polygonboolean::BooleanResu
 }
 
 template<typename T>
-void interpolate_attribute_from_a_result(const VArray<T> attr_a,
+void interpolate_attribute_from_a_result(const VArray<T> src_a,
                                          const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst_attr)
+                                         MutableSpan<T> dst)
 {
   const Array<int2> segment_indices = calculate_segments(result);
 
@@ -129,7 +129,7 @@ void interpolate_attribute_from_a_result(const VArray<T> attr_a,
     const blender::polygonboolean::VertexType &type = vert.type;
 
     if (type == blender::polygonboolean::VertexType::PointA) {
-      dst_attr[i] = attr_a[vert.point_id];
+      dst[i] = src_a[vert.point_id];
     }
     else if (type == blender::polygonboolean::VertexType::PointB) {
       const int2 &segment = segment_indices[i];
@@ -137,8 +137,8 @@ void interpolate_attribute_from_a_result(const VArray<T> attr_a,
       const blender::polygonboolean::IntersectionPoint &i0 = result.intersections_data[segment[0]];
       const blender::polygonboolean::IntersectionPoint &i1 = result.intersections_data[segment[1]];
 
-      const T a0 = interpolate_attribute_of_a_intersection_point<T>(attr_a, i0);
-      const T a1 = interpolate_attribute_of_a_intersection_point<T>(attr_a, i1);
+      const T a0 = interpolate_attribute_of_a_intersection_point<T>(src_a, i0);
+      const T a1 = interpolate_attribute_of_a_intersection_point<T>(src_a, i1);
 
       const float min_b = i0.point_b + i0.alpha_b;
       const float max_b = i1.point_b + i1.alpha_b;
@@ -146,20 +146,20 @@ void interpolate_attribute_from_a_result(const VArray<T> attr_a,
 
       const float alpha = (id_b - min_b) / (max_b - min_b);
 
-      dst_attr[i] = attribute_math::DefaultMixer<T>(alpha, a0, a1);
+      dst[i] = attribute_math::DefaultMixer<T>(alpha, a0, a1);
     }
     else if (type == blender::polygonboolean::VertexType::Intersection) {
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
-      dst_attr[i] = interpolate_attribute_of_a_intersection_point<T>(attr_a, inter_point);
+      dst[i] = interpolate_attribute_of_a_intersection_point<T>(src_a, inter_point);
     }
   }
 }
 
 template<typename T>
-void interpolate_attribute_from_b_result(const VArray<T> attr_b,
+void interpolate_attribute_from_b_result(const VArray<T> src_b,
                                          const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst_attr)
+                                         MutableSpan<T> dst)
 {
   const Array<int2> segment_indices = calculate_segments(result);
 
@@ -173,8 +173,8 @@ void interpolate_attribute_from_b_result(const VArray<T> attr_b,
       const blender::polygonboolean::IntersectionPoint &i0 = result.intersections_data[segment[0]];
       const blender::polygonboolean::IntersectionPoint &i1 = result.intersections_data[segment[1]];
 
-      const T b0 = interpolate_attribute_of_b_intersection_point<T>(attr_b, i0);
-      const T b1 = interpolate_attribute_of_b_intersection_point<T>(attr_b, i1);
+      const T b0 = interpolate_attribute_of_b_intersection_point<T>(src_b, i0);
+      const T b1 = interpolate_attribute_of_b_intersection_point<T>(src_b, i1);
 
       const float min_a = i0.point_a + i0.alpha_a;
       const float max_a = i1.point_a + i1.alpha_a;
@@ -182,80 +182,80 @@ void interpolate_attribute_from_b_result(const VArray<T> attr_b,
 
       const float alpha = (id_a - min_a) / (max_a - min_a);
 
-      dst_attr[i] = attribute_math::DefaultMixer<T>(alpha, b0, b1);
+      dst[i] = attribute_math::DefaultMixer<T>(alpha, b0, b1);
     }
     else if (type == blender::polygonboolean::VertexType::PointB) {
-      dst_attr[i] = attr_b[vert.point_id];
+      dst[i] = src_b[vert.point_id];
     }
     else if (type == blender::polygonboolean::VertexType::Intersection) {
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
-      dst_attr[i] = interpolate_attribute_of_b_intersection_point<T>(attr_b, inter_point);
+      dst[i] = interpolate_attribute_of_b_intersection_point<T>(src_b, inter_point);
     }
   }
 }
 
 template<typename T>
-void interpolate_attribute_from_ab_result(const VArray<T> attr_a,
-                                          const VArray<T> attr_b,
+void interpolate_attribute_from_ab_result(const VArray<T> src_a,
+                                          const VArray<T> src_b,
                                           const blender::polygonboolean::BooleanResult &result,
-                                          MutableSpan<T> dst_attr)
+                                          MutableSpan<T> dst)
 {
   for (const int i : result.verts.index_range()) {
     const blender::polygonboolean::Vertex &vert = result.verts[i];
     const blender::polygonboolean::VertexType &type = vert.type;
 
     if (type == blender::polygonboolean::VertexType::PointA) {
-      dst_attr[i] = attr_a[vert.point_id];
+      dst[i] = src_a[vert.point_id];
     }
     else if (type == blender::polygonboolean::VertexType::PointB) {
-      dst_attr[i] = attr_b[vert.point_id];
+      dst[i] = src_b[vert.point_id];
     }
     else if (type == blender::polygonboolean::VertexType::Intersection) {
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
 
-      const T a = interpolate_attribute_of_a_intersection_point<T>(attr_a, inter_point);
-      const T b = interpolate_attribute_of_b_intersection_point<T>(attr_b, inter_point);
+      const T a = interpolate_attribute_of_a_intersection_point<T>(src_a, inter_point);
+      const T b = interpolate_attribute_of_b_intersection_point<T>(src_b, inter_point);
 
-      dst_attr[i] = attribute_math::DefaultMixer<T>(0.5f, a, b);
+      dst[i] = attribute_math::DefaultMixer<T>(0.5f, a, b);
     }
   }
 }
 
 template<typename T>
-Array<T> interpolate_attribute_from_a_result(const Span<T> attr_a,
+Array<T> interpolate_attribute_from_a_result(const Span<T> src_a,
                                              const blender::polygonboolean::BooleanResult &result)
 {
   Array<T> attribute_out(result.verts.size());
 
   interpolate_attribute_from_a_result(
-      VArray<T>::ForSpan(attr_a), result, attribute_out.as_mutable_span());
+      VArray<T>::ForSpan(src_a), result, attribute_out.as_mutable_span());
 
   return attribute_out;
 }
 
 template<typename T>
-Array<T> interpolate_attribute_from_b_result(const Span<T> attr_b,
+Array<T> interpolate_attribute_from_b_result(const Span<T> src_b,
                                              const blender::polygonboolean::BooleanResult &result)
 {
   Array<T> attribute_out(result.verts.size());
 
   interpolate_attribute_from_b_result(
-      VArray<T>::ForSpan(attr_b), result, attribute_out.as_mutable_span());
+      VArray<T>::ForSpan(src_b), result, attribute_out.as_mutable_span());
 
   return attribute_out;
 }
 
 template<typename T>
-Array<T> interpolate_attribute_from_ab_result(const Span<T> attr_a,
-                                              const Span<T> attr_b,
+Array<T> interpolate_attribute_from_ab_result(const Span<T> src_a,
+                                              const Span<T> src_b,
                                               const blender::polygonboolean::BooleanResult &result)
 {
   Array<T> data_out(result.verts.size());
 
   interpolate_attribute_from_ab_result(
-      VArray<T>::ForSpan(attr_a), VArray<T>::ForSpan(attr_b), result, data_out.as_mutable_span());
+      VArray<T>::ForSpan(src_a), VArray<T>::ForSpan(src_b), result, data_out.as_mutable_span());
 
   return data_out;
 }
