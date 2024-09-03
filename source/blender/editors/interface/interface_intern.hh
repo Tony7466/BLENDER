@@ -1372,13 +1372,6 @@ uiBut *ui_but_add_search(uiBut *but,
                          PropertyRNA *searchprop,
                          bool results_are_suggestions);
 
-uiBut *ui_but_add_search_att(uiBut *but,
-                         PointerRNA *ptr,
-                         PropertyRNA *prop,
-                         PointerRNA *searchptr,
-                         PropertyRNA *searchprop,
-                         bool results_are_suggestions,
-                         int domain_filter);
 /**
  * Check all buttons defined in this layout,
  * and set any button flagged as UI_BUT_LIST_ITEM as active/selected.
@@ -1595,12 +1588,6 @@ struct uiRNACollectionSearch {
   uiBlock *butstore_block;
 };
 void ui_rna_collection_search_update_fn(
-    const bContext *C, void *arg, const char *str, uiSearchItems *items, bool is_first);
-
-void ui_rna_collection_search_att_edge_update_fn(
-    const bContext *C, void *arg, const char *str, uiSearchItems *items, bool is_first);
-
-void ui_rna_collection_search_att_point_update_fn(
     const bContext *C, void *arg, const char *str, uiSearchItems *items, bool is_first);
 
 

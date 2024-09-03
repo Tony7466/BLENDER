@@ -2868,102 +2868,6 @@ uiBut *ui_but_add_search(uiBut *but,
   return but;
 }
 
-uiBut *ui_but_add_search_att(uiBut *but,
-                         PointerRNA *ptr,
-                         PropertyRNA *prop,
-                         PointerRNA *searchptr,
-                         PropertyRNA *searchprop,
-                         const bool results_are_suggestions,
-                         int domain_filter)
-{
-  /* for ID's we do automatic lookup */
-  bool has_search_fn = false;
-  PointerRNA sptr;
-  if (!searchprop) {
-    if (RNA_property_type(prop) == PROP_STRING) {
-      has_search_fn = (RNA_property_string_search_flag(prop) != 0);
-    }
-    if (RNA_property_type(prop) == PROP_POINTER) {
-      StructRNA *ptype = RNA_property_pointer_type(ptr, prop);
-      search_id_collection(ptype, &sptr, &searchprop);
-      searchptr = &sptr;
-    }
-  }
-
-  /* turn button into search button */
-  if (has_search_fn || searchprop) {
-    uiRNACollectionSearch *coll_search = static_cast<uiRNACollectionSearch *>(
-        MEM_mallocN(sizeof(*coll_search), __func__));
-    uiButSearch *search_but;
-
-    but = ui_but_change_type(but, UI_BTYPE_SEARCH_MENU);
-    search_but = (uiButSearch *)but;
-
-    if (searchptr) {
-      search_but->rnasearchpoin = *searchptr;
-      search_but->rnasearchprop = searchprop;
-    }
-
-    but->hardmax = std::max(but->hardmax, 256.0f);
-    but->drawflag |= UI_BUT_ICON_LEFT | UI_BUT_TEXT_LEFT;
-    if (RNA_property_is_unlink(prop)) {
-      but->flag |= UI_BUT_VALUE_CLEAR;
-    }
-
-    coll_search->target_ptr = *ptr;
-    coll_search->target_prop = prop;
-
-    if (searchptr) {
-      coll_search->search_ptr = *searchptr;
-      coll_search->search_prop = searchprop;
-    }
-    else {
-      /* Rely on `has_search_fn`. */
-      coll_search->search_ptr = PointerRNA_NULL;
-      coll_search->search_prop = nullptr;
-    }
-
-    coll_search->search_but = but;
-    coll_search->butstore_block = but->block;
-    coll_search->butstore = UI_butstore_create(coll_search->butstore_block);
-    UI_butstore_register(coll_search->butstore, &coll_search->search_but);
-
-    if (RNA_property_type(prop) == PROP_ENUM) {
-      /* XXX, this will have a menu string,
-       * but in this case we just want the text */
-      but->str.clear();
-    }
-
-    UI_but_func_search_set_results_are_suggestions(but, results_are_suggestions);
-
-    uiButSearchUpdateFn update_fn = nullptr;
-    if (domain_filter == 0) {
-      update_fn = ui_rna_collection_search_att_point_update_fn;
-    } else if (domain_filter == 1) {
-      update_fn = ui_rna_collection_search_att_edge_update_fn;
-    }
-    UI_but_func_search_set(but,
-                           ui_searchbox_create_generic,
-                           update_fn,
-                           coll_search,
-                           false,
-                           ui_rna_collection_search_arg_free_fn,
-                           nullptr,
-                           nullptr);
-    /* If this is called multiple times for the same button, an earlier call may have taken the
-     * else branch below so the button was disabled. Now we have a searchprop, so it can be enabled
-     * again. */
-    but->flag &= ~UI_BUT_DISABLED;
-  }
-  else if (but->type == UI_BTYPE_SEARCH_MENU) {
-    /* In case we fail to find proper searchprop,
-     * so other code might have already set but->type to search menu... */
-    but->flag |= UI_BUT_DISABLED;
-  }
-
-  return but;
-}
-
 void uiItemPointerR_prop(uiLayout *layout,
                          PointerRNA *ptr,
                          PropertyRNA *prop,
@@ -3023,66 +2927,6 @@ void uiItemPointerR_prop(uiLayout *layout,
   but = ui_but_add_search(but, ptr, prop, searchptr, searchprop, results_are_suggestions);
 }
 
-void uiItemPointerR_att_prop(uiLayout *layout,
-                         PointerRNA *ptr,
-                         PropertyRNA *prop,
-                         PointerRNA *searchptr,
-                         PropertyRNA *searchprop,
-                         const char *name,
-                         int icon,
-                         bool results_are_suggestions,
-                         int domain_filter)
-{
-  const bool use_prop_sep = ((layout->item.flag & UI_ITEM_PROP_SEP) != 0);
-
-  ui_block_new_button_group(uiLayoutGetBlock(layout), uiButtonGroupFlag(0));
-
-  const PropertyType type = RNA_property_type(prop);
-  if (!ELEM(type, PROP_POINTER, PROP_STRING, PROP_ENUM)) {
-    RNA_warning("Property %s.%s must be a pointer, string or enum",
-                RNA_struct_identifier(ptr->type),
-                RNA_property_identifier(prop));
-    return;
-  }
-  if (RNA_property_type(searchprop) != PROP_COLLECTION) {
-    RNA_warning("search collection property is not a collection type: %s.%s",
-                RNA_struct_identifier(searchptr->type),
-                RNA_property_identifier(searchprop));
-    return;
-  }
-
-  /* get icon & name */
-  if (icon == ICON_NONE) {
-    StructRNA *icontype;
-    if (type == PROP_POINTER) {
-      icontype = RNA_property_pointer_type(ptr, prop);
-    }
-    else {
-      icontype = RNA_property_pointer_type(searchptr, searchprop);
-    }
-
-    icon = RNA_struct_ui_icon(icontype);
-  }
-  if (!name) {
-    name = RNA_property_ui_name(prop);
-  }
-
-  char namestr[UI_MAX_NAME_STR];
-  if (use_prop_sep == false) {
-    name = ui_item_name_add_colon(name, namestr);
-  }
-
-  /* create button */
-  uiBlock *block = uiLayoutGetBlock(layout);
-
-  int w, h;
-  ui_item_rna_size(layout, name, icon, ptr, prop, 0, false, false, &w, &h);
-  w += UI_UNIT_X; /* X icon needs more space */
-  uiBut *but = ui_item_with_label(layout, block, name, icon, ptr, prop, 0, 0, 0, w, h, 0);
-
-  but = ui_but_add_search_att(but, ptr, prop, searchptr, searchprop, results_are_suggestions, domain_filter);
-}
-
 void uiItemPointerR(uiLayout *layout,
                     PointerRNA *ptr,
                     const char *propname,
@@ -3106,32 +2950,6 @@ void uiItemPointerR(uiLayout *layout,
   }
 
   uiItemPointerR_prop(layout, ptr, prop, searchptr, searchprop, name, icon, false);
-}
-
-void uiItemPointerR_att(uiLayout *layout,
-                    PointerRNA *ptr,
-                    const char *propname,
-                    PointerRNA *searchptr,
-                    const char *searchpropname,
-                    const char *name,
-                    int icon,
-                    int domain_filter)
-{
-  /* validate arguments */
-  PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
-  if (!prop) {
-    RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
-    return;
-  }
-  PropertyRNA *searchprop = RNA_struct_find_property(searchptr, searchpropname);
-  if (!searchprop) {
-    RNA_warning("search collection property not found: %s.%s",
-                RNA_struct_identifier(searchptr->type),
-                searchpropname);
-    return;
-  }
-
-  uiItemPointerR_att_prop(layout, ptr, prop, searchptr, searchprop, name, icon, false, domain_filter);
 }
 
 void ui_item_menutype_func(bContext *C, uiLayout *layout, void *arg_mt)

@@ -287,14 +287,12 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     uiLayoutSetActive(sub, edge_bevel);
 
     const char *weight_type = "edge_weight";
-    int domain_filter = 1;
     if (!edge_bevel) {
       weight_type = "vertex_weight";
-      domain_filter = 0;
     }
 
     PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-    uiItemPointerR_att(col, ptr, weight_type, &object_data_ptr, "attributes", nullptr, ICON_NONE, domain_filter);
+    uiItemPointerR(col, ptr, weight_type, &object_data_ptr, "attributes", nullptr, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
