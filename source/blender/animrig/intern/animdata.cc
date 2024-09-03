@@ -56,7 +56,7 @@ static void add_object_data_user(const Main &bmain,
   }
 }
 
-static void add_id_materials(const Main &bmain, const ID &id, Vector<const ID *> &r_related_ids)
+static void add_id_materials(const ID &id, Vector<const ID *> &r_related_ids)
 {
   Material **materials = nullptr;
   int material_count = 0;
@@ -127,9 +127,12 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       case ID_OB: {
         Object *ob = (Object *)related_id;
         BLI_assert(ob != nullptr);
+        if (!ob->data) {
+          break;
+        }
         ID *data = (ID *)ob->data;
         related_ids.append_non_duplicates(data);
-        add_id_materials(bmain, *related_id, related_ids);
+        add_id_materials(*related_id, related_ids);
         break;
       }
 
@@ -227,7 +230,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
 
       case ID_ME: {
         add_object_data_user(bmain, *related_id, related_ids);
-        add_id_materials(bmain, *related_id, related_ids);
+        add_id_materials(*related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
         if (mesh->key && !related_ids.contains(&mesh->key->id)) {
           related_ids.append(&mesh->key->id);
@@ -238,7 +241,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       default: {
         /* Just check if the ID is used as object data somewhere. */
         add_object_data_user(bmain, *related_id, related_ids);
-        add_id_materials(bmain, *related_id, related_ids);
+        add_id_materials(*related_id, related_ids);
         break;
       }
     }
