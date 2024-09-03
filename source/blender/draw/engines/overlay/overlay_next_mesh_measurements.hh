@@ -53,11 +53,10 @@ class MeshMeasurements {
     const short txt_flag = DRW_TEXT_CACHE_GLOBALSPACE;
     const Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
     BMEditMesh *em = mesh->runtime->edit_mesh.get();
-    float3 v1, v2, v3, fvec;
+    float3 v1, v2, v3;
     char numstr[32];             /* Stores the measurement display text here */
     const char *conv_float;      /* Use a float conversion matching the grid size */
     uchar4 col = {0, 0, 0, 255}; /* color of the text to draw */
-    float area;                  /* area of the face */
     float grid = unit.system ? unit.scale_length : v3d->grid;
     const bool do_global = (v3d->flag & V3D_GLOBAL_STATS) != 0;
     const bool do_moving = (G.moving & G_TRANSFORM_EDIT) != 0;
@@ -135,8 +134,8 @@ class MeshMeasurements {
           }
 
           if (clip_segment_v3_plane_n(v1, v2, clip_planes.ptr(), 4, v1_clip, v2_clip)) {
-            const float3 vmid = math::transform_point(ob->object_to_world(),
-                                                      0.5 * (v1_clip + v2_clip));
+            const float3 co = math::transform_point(ob->object_to_world(),
+                                                    0.5 * (v1_clip + v2_clip));
 
             if (do_global) {
               mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
@@ -154,7 +153,7 @@ class MeshMeasurements {
                                                                    false) :
                                           SNPRINTF_RLEN(numstr, conv_float, len_v3v3(v1, v2));
 
-            DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, edge_tex_sep, txt_flag, col);
+            DRW_text_cache_add(dt, co, numstr, numstr_len, 0, edge_tex_sep, txt_flag, col);
           }
         }
       }
@@ -202,8 +201,8 @@ class MeshMeasurements {
             if (clip_segment_v3_plane_n(v1, v2, clip_planes.ptr(), 4, v1_clip, v2_clip)) {
               float3 no_a, no_b;
 
-              const float3 vmid = math::transform_point(ob->object_to_world(),
-                                                        0.5 * (v1_clip + v2_clip));
+              const float3 co = math::transform_point(ob->object_to_world(),
+                                                      0.5 * (v1_clip + v2_clip));
 
               if (use_coords) {
                 no_a = face_normals[BM_elem_index_get(l_a->f)];
@@ -228,7 +227,7 @@ class MeshMeasurements {
                                                       (is_rad) ? angle : RAD2DEGF(angle),
                                                       (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
 
-              DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, -edge_tex_sep, txt_flag, col);
+              DRW_text_cache_add(dt, co, numstr, numstr_len, 0, -edge_tex_sep, txt_flag, col);
             }
           }
         }
@@ -241,7 +240,7 @@ class MeshMeasurements {
 
       UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEAREA, col);
 
-      int i, n;
+      int i;
       BMFace *f = nullptr;
       /* Alternative to using `poly_to_tri_count(i, BM_elem_index_get(f->l_first))`
        * without having to add an extra loop. */
@@ -249,8 +248,8 @@ class MeshMeasurements {
       BM_ITER_MESH_INDEX (f, &iter, em->bm, BM_FACES_OF_MESH, i) {
         const int f_corner_tris_len = f->len - 2;
         if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
-          n = 0;
-          area = 0;
+          int n = 0;
+          float area = 0; /* area of the face */
           float3 vmid(0.0f);
           const std::array<BMLoop *, 3> *ltri_array = &em->looptris[tri_index];
           for (int j = 0; j < f_corner_tris_len; j++) {
@@ -280,8 +279,8 @@ class MeshMeasurements {
             area += area_tri_v3(v1, v2, v3);
           }
 
-          mul_v3_fl(vmid, 1.0f / float(n));
-          mul_m4_v3(ob->object_to_world().ptr(), vmid);
+          vmid *= 1.0f / float(n);
+          vmid = math::transform_point(ob->object_to_world(), vmid);
 
           const size_t numstr_len = unit.system ?
                                         BKE_unit_value_as_string(
@@ -360,9 +359,9 @@ class MeshMeasurements {
                                                       "%.3f%s",
                                                       (is_rad) ? angle : RAD2DEGF(angle),
                                                       (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
-              interp_v3_v3v3(fvec, vmid, v2_local, 0.8f);
-              mul_m4_v3(ob->object_to_world().ptr(), fvec);
-              DRW_text_cache_add(dt, fvec, numstr, numstr_len, 0, 0, txt_flag, col);
+              const float3 co = math::transform_point(ob->object_to_world(),
+                                                      math::interpolate(vmid, v2_local, 0.8f));
+              DRW_text_cache_add(dt, co, numstr, numstr_len, 0, 0, txt_flag, col);
             }
           }
         }
@@ -386,12 +385,11 @@ class MeshMeasurements {
         }
         BM_ITER_MESH_INDEX (v, &iter, em->bm, BM_VERTS_OF_MESH, i) {
           if (BM_elem_flag_test(v, BM_ELEM_SELECT)) {
-            v1 = use_coords ? vert_positions[BM_elem_index_get(v)] : v->co;
-
-            mul_m4_v3(ob->object_to_world().ptr(), v1);
+            const float3 co = math::transform_point(
+                ob->object_to_world(), use_coords ? vert_positions[BM_elem_index_get(v)] : v->co);
 
             const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
-            DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
+            DRW_text_cache_add(dt, co, numstr, numstr_len, 0, 0, txt_flag, col);
           }
         }
       }
@@ -416,13 +414,13 @@ class MeshMeasurements {
             }
 
             if (clip_segment_v3_plane_n(v1, v2, clip_planes.ptr(), 4, v1_clip, v2_clip)) {
-              const float3 vmid = math::transform_point(ob->object_to_world(),
-                                                        0.5 * (v1_clip + v2_clip));
+              const float3 co = math::transform_point(ob->object_to_world(),
+                                                      0.5 * (v1_clip + v2_clip));
 
               const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
               DRW_text_cache_add(
                   dt,
-                  vmid,
+                  co,
                   numstr,
                   numstr_len,
                   0,
@@ -443,18 +441,19 @@ class MeshMeasurements {
 
         BM_ITER_MESH_INDEX (f, &iter, em->bm, BM_FACES_OF_MESH, i) {
           if (BM_elem_flag_test(f, BM_ELEM_SELECT)) {
+            float3 co;
 
             if (use_coords) {
-              BM_face_calc_center_median_vcos(em->bm, f, v1, vert_positions);
+              BM_face_calc_center_median_vcos(em->bm, f, co, vert_positions);
             }
             else {
-              BM_face_calc_center_median(f, v1);
+              BM_face_calc_center_median(f, co);
             }
 
-            mul_m4_v3(ob->object_to_world().ptr(), v1);
+            co = math::transform_point(ob->object_to_world(), co);
 
             const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
-            DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
+            DRW_text_cache_add(dt, co, numstr, numstr_len, 0, 0, txt_flag, col);
           }
         }
       }
