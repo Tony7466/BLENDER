@@ -147,10 +147,10 @@ struct StrokeCache {
   /* Variants */
   float radius;
   float radius_squared;
-  float3 true_location;
-  float3 true_last_location;
   float3 location;
   float3 last_location;
+  float3 location_symm;
+  float3 last_location_symm;
   float stroke_distance;
 
   /* Used for alternating between deformation in brushes that need to apply different ones to
@@ -189,8 +189,6 @@ struct StrokeCache {
   /* Position of the mouse event in screen space, not modified by the stroke type. */
   float2 mouse_event;
 
-  GArray<> prev_colors_vpaint;
-
   struct {
     Array<float3> prev_displacement;
     Array<float3> limit_surface_co;
@@ -208,12 +206,12 @@ struct StrokeCache {
   const Brush *brush;
 
   float special_rotation;
-  float3 grab_delta, grab_delta_symmetry;
+  float3 grab_delta, grab_delta_symm;
   float3 old_grab_location, orig_grab_location;
 
   /* screen-space rotation defined by mouse motion */
   std::optional<math::Quaternion> rake_rotation;
-  std::optional<math::Quaternion> rake_rotation_symmetry;
+  std::optional<math::Quaternion> rake_rotation_symm;
   SculptRakeData rake_data;
 
   /* Face Sets */
@@ -224,8 +222,8 @@ struct StrokeCache {
   int symmetry;
   /* The symmetry pass we are currently on between 0 and 7. */
   ePaintSymmetryFlags mirror_symmetry_pass;
-  float3 true_view_normal;
   float3 view_normal;
+  float3 view_normal_symm;
 
   /* sculpt_normal gets calculated by calc_sculpt_normal(), then the
    * sculpt_normal_symm gets updated quickly with the usual symmetry
@@ -252,7 +250,7 @@ struct StrokeCache {
 
   /**
    * Accumulate mode.
-   * \note inverted for #SCULPT_TOOL_DRAW_SHARP.
+   * \note inverted for #SCULPT_BRUSH_TYPE_DRAW_SHARP.
    */
   bool accum;
 
@@ -293,10 +291,10 @@ struct StrokeCache {
 
   /* Cloth brush */
   std::unique_ptr<cloth::SimulationData> cloth_sim;
+  float3 initial_location_symm;
   float3 initial_location;
-  float3 true_initial_location;
+  float3 initial_normal_symm;
   float3 initial_normal;
-  float3 true_initial_normal;
 
   /* Boundary brush */
   std::array<std::unique_ptr<boundary::SculptBoundary>, PAINT_SYMM_AREAS> boundaries;
@@ -326,8 +324,8 @@ struct StrokeCache {
   float plane_trim_squared;
 
   bool supports_gravity;
-  float3 true_gravity_direction;
   float3 gravity_direction;
+  float3 gravity_direction_symm;
 
   std::unique_ptr<auto_mask::Cache> automasking;
 
@@ -568,21 +566,21 @@ void SCULPT_fake_neighbors_free(Object &ob);
 /** \name Brush Utilities.
  * \{ */
 
-bool SCULPT_tool_needs_all_pbvh_nodes(const Brush &brush);
+bool SCULPT_brush_type_needs_all_pbvh_nodes(const Brush &brush);
 
 namespace blender::ed::sculpt_paint {
 
 void calc_brush_plane(const Depsgraph &depsgraph,
                       const Brush &brush,
                       Object &ob,
-                      Span<bke::pbvh::Node *> nodes,
+                      const IndexMask &node_mask,
                       float3 &r_area_no,
                       float3 &r_area_co);
 
 std::optional<float3> calc_area_normal(const Depsgraph &depsgraph,
                                        const Brush &brush,
-                                       Object &ob,
-                                       Span<bke::pbvh::Node *> nodes);
+                                       const Object &ob,
+                                       const IndexMask &node_mask);
 
 /**
  * This calculates flatten center and area normal together,
@@ -591,13 +589,13 @@ std::optional<float3> calc_area_normal(const Depsgraph &depsgraph,
 void calc_area_normal_and_center(const Depsgraph &depsgraph,
                                  const Brush &brush,
                                  const Object &ob,
-                                 Span<bke::pbvh::Node *> nodes,
+                                 const IndexMask &node_mask,
                                  float r_area_no[3],
                                  float r_area_co[3]);
 void calc_area_center(const Depsgraph &depsgraph,
                       const Brush &brush,
                       const Object &ob,
-                      Span<bke::pbvh::Node *> nodes,
+                      const IndexMask &node_mask,
                       float r_area_co[3]);
 
 PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
@@ -696,7 +694,7 @@ namespace blender::ed::sculpt_paint {
 
 void calc_smooth_translations(const Depsgraph &depsgraph,
                               const Object &object,
-                              Span<bke::pbvh::Node *> nodes,
+                              const IndexMask &node_mask,
                               MutableSpan<float3> translations);
 
 }
@@ -885,7 +883,7 @@ void SCULPT_do_paint_brush_image(const Depsgraph &depsgraph,
                                  PaintModeSettings &paint_mode_settings,
                                  const Sculpt &sd,
                                  Object &ob,
-                                 blender::Span<blender::bke::pbvh::Node *> texnodes);
+                                 const blender::IndexMask &node_mask);
 bool SCULPT_use_image_paint_brush(PaintModeSettings &settings, Object &ob);
 
 namespace blender::ed::sculpt_paint {
@@ -896,20 +894,20 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot);
 
 }
 
-inline bool SCULPT_tool_is_paint(int tool)
+inline bool SCULPT_brush_type_is_paint(int tool)
 {
-  return ELEM(tool, SCULPT_TOOL_PAINT, SCULPT_TOOL_SMEAR);
+  return ELEM(tool, SCULPT_BRUSH_TYPE_PAINT, SCULPT_BRUSH_TYPE_SMEAR);
 }
 
-inline bool SCULPT_tool_is_mask(int tool)
+inline bool SCULPT_brush_type_is_mask(int tool)
 {
-  return ELEM(tool, SCULPT_TOOL_MASK);
+  return ELEM(tool, SCULPT_BRUSH_TYPE_MASK);
 }
 
-BLI_INLINE bool SCULPT_tool_is_attribute_only(int tool)
+BLI_INLINE bool SCULPT_brush_type_is_attribute_only(int tool)
 {
-  return SCULPT_tool_is_paint(tool) || SCULPT_tool_is_mask(tool) ||
-         ELEM(tool, SCULPT_TOOL_DRAW_FACE_SETS);
+  return SCULPT_brush_type_is_paint(tool) || SCULPT_brush_type_is_mask(tool) ||
+         ELEM(tool, SCULPT_BRUSH_TYPE_DRAW_FACE_SETS);
 }
 
 void SCULPT_stroke_id_ensure(Object &ob);
