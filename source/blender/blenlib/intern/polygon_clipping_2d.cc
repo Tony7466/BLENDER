@@ -201,7 +201,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_None(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotA) {
-      if (hole_mode == WITHOUT_HOLES) {
+      if (hole_mode == HoleMode::WithoutHoles) {
         return result_B(curve_a, curve_b);
       }
       return result_BA(curve_a, curve_b);
@@ -215,7 +215,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_B(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotB) {
-      if (hole_mode == WITHOUT_HOLES) {
+      if (hole_mode == HoleMode::WithoutHoles) {
         return result_A(curve_a, curve_b);
       }
       return result_AB(curve_a, curve_b);
@@ -786,10 +786,10 @@ struct CurveBooleanExecutor {
      * (Because non-intersecting holes are already handled)
      */
     if (boolean_mode == Operation::Or) {
-      if (hole_mode == WITHOUT_HOLES) {
+      if (hole_mode == HoleMode::WithoutHoles) {
         result = result_remove_holes(result, curve_a, curve_b);
       }
-      else if (hole_mode == WITH_ORDERED_HOLES) {
+      else if (hole_mode == HoleMode::WithOrderedHoles) {
         result = result_sort_holes(result, curve_a, curve_b);
       }
     }
