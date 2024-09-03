@@ -51,6 +51,7 @@
 
 #include "ED_armature.hh"
 #include "ED_fileselect.hh"
+#include "ED_id_management.hh"
 #include "ED_outliner.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
@@ -690,8 +691,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
   auto id_rename_helper = [bmain, tselem, oldname]() -> bool {
     std::string new_name = tselem->id->name + 2;
     BLI_strncpy(tselem->id->name + 2, oldname, sizeof(tselem->id->name) - 2);
-    return BKE_id_rename(
-        bmain, tselem->id, new_name.c_str(), IDNewNameMode::RenameExistingSameRoot);
+    return ED_id_rename(*bmain, *tselem->id, new_name);
   };
 
   if (ts && tselem) {

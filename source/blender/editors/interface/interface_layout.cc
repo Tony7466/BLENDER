@@ -41,6 +41,8 @@
 
 #include "UI_interface.hh"
 
+#include "ED_id_management.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -2403,7 +2405,7 @@ void uiItemFullR(uiLayout *layout,
       Main *bmain = CTX_data_main(static_cast<bContext *>(block->evil_C));
       ID *id = ptr->owner_id;
       UI_but_func_rename_full_set(but, [bmain, id](std::string &new_name) {
-        BKE_id_rename(bmain, id, new_name.c_str(), IDNewNameMode::RenameExistingSameRoot);
+        ED_id_rename(*bmain, *id, new_name);
         WM_main_add_notifier(NC_ID | NA_RENAME, nullptr);
       });
     }

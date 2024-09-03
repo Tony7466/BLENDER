@@ -494,9 +494,9 @@ static bool main_namemap_validate_and_fix(Main *bmain, const bool do_fix)
            * to the validated set if it can now be added to `id_names_libs`, and will prevent
            * further checking (which would fail again, since the new ID name/lib key has already
            * been added to `id_names_libs`). */
-          BKE_id_new_name_validate(bmain,
-                                   which_libbase(bmain, GS(id_iter->name)),
-                                   id_iter,
+          BKE_id_new_name_validate(*bmain,
+                                   *which_libbase(bmain, GS(id_iter->name)),
+                                   *id_iter,
                                    nullptr,
                                    IDNewNameMode::RenameExistingNever,
                                    true);

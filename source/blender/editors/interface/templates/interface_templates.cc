@@ -77,6 +77,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_fileselect.hh"
+#include "ED_id_management.hh"
 #include "ED_info.hh"
 #include "ED_object.hh"
 #include "ED_render.hh"
@@ -1405,7 +1406,7 @@ static void template_ID(const bContext *C,
     UI_but_flag_disable(but, UI_BUT_UNDO);
     Main *bmain = CTX_data_main(C);
     UI_but_func_rename_full_set(but, [bmain, id](std::string &new_name) {
-      BKE_id_rename(bmain, id, new_name.c_str(), IDNewNameMode::RenameExistingSameRoot);
+      ED_id_rename(*bmain, *id, new_name);
       WM_main_add_notifier(NC_ID | NA_RENAME, nullptr);
     });
     UI_but_funcN_set(but,

@@ -36,6 +36,7 @@
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_memarena.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
 
 #include "BLT_translation.hh"
@@ -219,13 +220,13 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
   id->tag &= ~(ID_TAG_INDIRECT | ID_TAG_EXTERN);
   id->flag &= ~ID_FLAG_INDIRECT_WEAK_LINK;
   if (id_in_mainlist) {
-    if (BKE_id_new_name_validate(bmain,
-                                 which_libbase(bmain, GS(id->name)),
-                                 id,
-                                 nullptr,
-                                 IDNewNameMode::RenameExistingNever,
-                                 false))
-    {
+    IDNewNameResult result = BKE_id_new_name_validate(*bmain,
+                                                      *which_libbase(bmain, GS(id->name)),
+                                                      *id,
+                                                      nullptr,
+                                                      IDNewNameMode::RenameExistingNever,
+                                                      false);
+    if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
       bmain->is_memfile_undo_written = false;
     }
   }
@@ -869,8 +870,8 @@ void BKE_id_move_to_same_lib(Main &bmain, ID &id, const ID &owner_id)
   id.tag |= ID_TAG_INDIRECT;
 
   BKE_main_namemap_remove_name(&bmain, &id, id.name + 2);
-  ListBase *lb = which_libbase(&bmain, GS(id.name));
-  BKE_id_new_name_validate(&bmain, lb, &id, id.name + 2, IDNewNameMode::RenameExistingNever, true);
+  ListBase &lb = *which_libbase(&bmain, GS(id.name));
+  BKE_id_new_name_validate(bmain, lb, id, id.name + 2, IDNewNameMode::RenameExistingNever, true);
 }
 
 static void id_embedded_swap(ID **embedded_id_a,
@@ -1110,7 +1111,7 @@ void BKE_libblock_management_main_add(Main *bmain, void *idv)
   BLI_addtail(lb, id);
   /* We need to allow adding extra datablocks into libraries too, e.g. to support generating new
    * overrides for recursive resync. */
-  BKE_id_new_name_validate(bmain, lb, id, nullptr, IDNewNameMode::RenameExistingNever, true);
+  BKE_id_new_name_validate(*bmain, *lb, *id, nullptr, IDNewNameMode::RenameExistingNever, true);
   /* alphabetic insertion: is in new_id */
   id->tag &= ~(ID_TAG_NO_MAIN | ID_TAG_NO_USER_REFCOUNT);
   bmain->is_memfile_undo_written = false;
@@ -1249,7 +1250,7 @@ void BKE_main_id_repair_duplicate_names_listbase(Main *bmain, ListBase *lb)
   for (i = 0; i < lb_len; i++) {
     if (!BLI_gset_add(gset, id_array[i]->name + 2)) {
       BKE_id_new_name_validate(
-          bmain, lb, id_array[i], nullptr, IDNewNameMode::RenameExistingNever, false);
+          *bmain, *lb, *id_array[i], nullptr, IDNewNameMode::RenameExistingNever, false);
     }
   }
   BLI_gset_free(gset, nullptr);
@@ -1368,7 +1369,7 @@ void *BKE_libblock_alloc_in_lib(Main *bmain,
 
       BKE_main_lock(bmain);
       BLI_addtail(lb, id);
-      BKE_id_new_name_validate(bmain, lb, id, name, IDNewNameMode::RenameExistingNever, true);
+      BKE_id_new_name_validate(*bmain, *lb, *id, name, IDNewNameMode::RenameExistingNever, true);
       bmain->is_memfile_undo_written = false;
       /* alphabetic insertion: is in new_id */
       BKE_main_unlock(bmain);
@@ -1839,33 +1840,32 @@ void id_sort_by_name(ListBase *lb, ID *id, ID *id_sorting_hint)
 #undef ID_SORT_STEP_SIZE
 }
 
-bool BKE_id_new_name_validate(Main *bmain,
-                              ListBase *lb,
-                              ID *id,
-                              const char *newname,
-                              IDNewNameMode mode,
-                              const bool do_linked_data)
+IDNewNameResult BKE_id_new_name_validate(Main &bmain,
+                                         ListBase &lb,
+                                         ID &id,
+                                         const char *newname,
+                                         IDNewNameMode mode,
+                                         const bool do_linked_data)
 {
-  bool is_idname_changed = false;
   char name[MAX_ID_NAME - 2];
 
   /* If library, don't rename (unless explicitly required), but do ensure proper sorting. */
-  if (!do_linked_data && ID_IS_LINKED(id)) {
-    id_sort_by_name(lb, id, nullptr);
+  if (!do_linked_data && ID_IS_LINKED(&id)) {
+    id_sort_by_name(&lb, &id, nullptr);
 
-    return is_idname_changed;
+    return IDNewNameResult::UNCHANGED;
   }
 
   /* If no name given, use name of current ID. */
   if (newname == nullptr) {
-    newname = id->name + 2;
+    newname = id.name + 2;
   }
   /* Make a copy of given name (newname args can be const). */
   STRNCPY(name, newname);
 
   if (name[0] == '\0') {
     /* Disallow empty names. */
-    STRNCPY_UTF8(name, DATA_(BKE_idtype_idcode_to_name(GS(id->name))));
+    STRNCPY_UTF8(name, DATA_(BKE_idtype_idcode_to_name(GS(id.name))));
   }
   else {
     /* disallow non utf8 chars,
@@ -1880,7 +1880,7 @@ bool BKE_id_new_name_validate(Main *bmain,
     STRNCPY(orig_name, name);
   }
 
-  const bool had_name_collision = BKE_main_namemap_get_name(bmain, id, name, false);
+  const bool had_name_collision = BKE_main_namemap_get_name(&bmain, &id, name, false);
 
   if (had_name_collision &&
       ELEM(mode, IDNewNameMode::RenameExistingAlways, IDNewNameMode::RenameExistingSameRoot))
@@ -1890,13 +1890,13 @@ bool BKE_id_new_name_validate(Main *bmain,
     int prev_number = 0;
     char new_name_root[MAX_ID_NAME - 2];
     int new_number = 0;
-    STRNCPY(prev_name, id->name + 2);
+    STRNCPY(prev_name, id.name + 2);
     if (mode == IDNewNameMode::RenameExistingSameRoot) {
-      BLI_string_split_name_number(id->name + 2, '.', prev_name_root, &prev_number);
+      BLI_string_split_name_number(id.name + 2, '.', prev_name_root, &prev_number);
       BLI_string_split_name_number(name, '.', new_name_root, &new_number);
     }
 
-    ID *id_other = BKE_libblock_find_name(bmain, GS(id->name), orig_name, id->lib);
+    ID *id_other = BKE_libblock_find_name(&bmain, GS(id.name), orig_name, id.lib);
     BLI_assert(id_other);
 
     /* In case of #RenameExistingSameRoot, the existing ID (`id_other`) is only renamed if it has
@@ -1905,14 +1905,16 @@ bool BKE_id_new_name_validate(Main *bmain,
         (mode == IDNewNameMode::RenameExistingSameRoot && STREQ(prev_name_root, new_name_root)))
     {
       BLI_strncpy(id_other->name + 2, name, sizeof(id_other->name) - 2);
-      id_sort_by_name(lb, id_other, nullptr);
+      id_sort_by_name(&lb, id_other, nullptr);
 
-      is_idname_changed = !STREQ(id->name + 2, orig_name);
+      const bool is_idname_changed = !STREQ(id.name + 2, orig_name);
+      IDNewNameResult result = IDNewNameResult::UNCHANGED_COLLISION;
       if (is_idname_changed) {
-        BLI_strncpy(id->name + 2, orig_name, sizeof(id->name) - 2);
+        BLI_strncpy(id.name + 2, orig_name, sizeof(id.name) - 2);
+        result = IDNewNameResult::RENAMED_COLLISION_FORCED;
       }
-      id_sort_by_name(lb, id, nullptr);
-      return is_idname_changed;
+      id_sort_by_name(&lb, &id, nullptr);
+      return result;
     }
   }
 
@@ -1920,13 +1922,19 @@ bool BKE_id_new_name_validate(Main *bmain,
    * still differ from the current name of the renamed ID.
    * Conversely, the requested new name may have been colliding with an existing one, and the
    * generated unique name may end up being the current ID's name. */
-  is_idname_changed = !STREQ(id->name + 2, name);
+  const bool is_idname_changed = !STREQ(id.name + 2, name);
 
+  IDNewNameResult result = IDNewNameResult::UNCHANGED;
   if (is_idname_changed) {
-    BLI_strncpy(id->name + 2, name, sizeof(id->name) - 2);
+    BLI_strncpy(id.name + 2, name, sizeof(id.name) - 2);
+    result = had_name_collision ? IDNewNameResult::RENAMED_COLLISION_ADJUSTED :
+                                  IDNewNameResult::RENAMED_NO_COLLISION;
   }
-  id_sort_by_name(lb, id, nullptr);
-  return is_idname_changed;
+  else if (had_name_collision) {
+    result = IDNewNameResult::UNCHANGED_COLLISION;
+  }
+  id_sort_by_name(&lb, &id, nullptr);
+  return result;
 }
 
 void BKE_main_id_newptr_and_tag_clear(Main *bmain)
@@ -2298,39 +2306,47 @@ void BKE_library_make_local(Main *bmain,
 #endif
 }
 
-bool BKE_libblock_rename(Main *bmain, ID *id, const char *name, const IDNewNameMode mode)
+IDNewNameResult BKE_libblock_rename(Main &bmain,
+                                    ID &id,
+                                    blender::StringRefNull name,
+                                    const IDNewNameMode mode)
 {
-  BLI_assert(BKE_id_is_in_main(bmain, id));
+  BLI_assert(BKE_id_is_in_main(&bmain, &id));
 
-  if (STREQ(id->name + 2, name)) {
-    return false;
+  if (STREQ(id.name + 2, name.c_str())) {
+    return IDNewNameResult::UNCHANGED;
   }
-  BKE_main_namemap_remove_name(bmain, id, id->name + 2);
-  ListBase *lb = which_libbase(bmain, GS(id->name));
-  if (BKE_id_new_name_validate(bmain, lb, id, name, mode, true)) {
-    bmain->is_memfile_undo_written = false;
-    return true;
+  BKE_main_namemap_remove_name(&bmain, &id, id.name + 2);
+  ListBase &lb = *which_libbase(&bmain, GS(id.name));
+  IDNewNameResult result = BKE_id_new_name_validate(bmain, lb, id, name.c_str(), mode, true);
+  if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
+    bmain.is_memfile_undo_written = false;
   }
-  return false;
+  return result;
 }
 
-bool BKE_id_rename(Main *bmain, ID *id, const char *name, const IDNewNameMode mode)
+IDNewNameResult BKE_id_rename(Main &bmain,
+                              ID &id,
+                              blender::StringRefNull name,
+                              const IDNewNameMode mode)
 {
-  const bool is_idname_changed = BKE_libblock_rename(bmain, id, name, mode);
+  const IDNewNameResult result = BKE_libblock_rename(bmain, id, name, mode);
 
-  switch (GS(id->name)) {
-    case ID_OB: {
-      Object *ob = reinterpret_cast<Object *>(id);
-      if (ob->type == OB_MBALL) {
-        DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+  if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
+    switch (GS(id.name)) {
+      case ID_OB: {
+        Object &ob = reinterpret_cast<Object &>(id);
+        if (ob.type == OB_MBALL) {
+          DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
+        }
+        break;
       }
-      break;
+      default:
+        break;
     }
-    default:
-      break;
   }
 
-  return is_idname_changed;
+  return result;
 }
 
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)

@@ -34,6 +34,7 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_set.hh"
+#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -279,16 +280,34 @@ enum class IDNewNameMode {
   RenameExistingSameRoot = 2,
 };
 
+enum class IDNewNameResult {
+  /** ID was not renamed, because requested new name was already the ID's name. */
+  UNCHANGED = 0,
+  /**
+   * ID was not renamed, because requested new name would collide with another existing ID's name,
+   * and the first available unique name is already current ID's name.
+   */
+  UNCHANGED_COLLISION = 1,
+  /** Successfully renamed, wihtout any collision with another ID's name. */
+  RENAMED_NO_COLLISION = 2,
+  /** Successfully renamed, requested new name was adjusted to avoid collision with another ID. */
+  RENAMED_COLLISION_ADJUSTED = 3,
+  /**
+   * Successfully renamed, requested new name was enforced onto given ID, and another ID had to be
+   * renamed to avoid name collision.
+   */
+  RENAMED_COLLISION_FORCED = 4,
+};
+
 /**
  * Sets the name of a block to name, suitably adjusted for uniqueness.
  *
  * \return true if the name of the ID was actually modified.
  */
-bool BKE_libblock_rename(Main *bmain,
-                         ID *id,
-                         const char *name,
-                         const IDNewNameMode mode = IDNewNameMode::RenameExistingNever)
-    ATTR_NONNULL();
+IDNewNameResult BKE_libblock_rename(Main &bmain,
+                                    ID &id,
+                                    blender::StringRefNull name,
+                                    const IDNewNameMode mode = IDNewNameMode::RenameExistingNever);
 
 /**
  * Like #BKE_libblock_rename, but also performs additional higher-level updates like depsgraph
@@ -296,10 +315,10 @@ bool BKE_libblock_rename(Main *bmain,
  *
  * \return true if the name of the ID was actually modified.
  */
-bool BKE_id_rename(Main *bmain,
-                   ID *id,
-                   const char *name,
-                   const IDNewNameMode mode = IDNewNameMode::RenameExistingNever) ATTR_NONNULL();
+IDNewNameResult BKE_id_rename(Main &bmain,
+                              ID &id,
+                              blender::StringRefNull name,
+                              const IDNewNameMode mode = IDNewNameMode::RenameExistingNever);
 
 ID *BKE_libblock_find_name(Main *bmain,
                            short type,
@@ -662,15 +681,14 @@ void BKE_lib_id_expand_local(Main *bmain, ID *id, int flags);
  * \param do_linked_data: if true, also ensure a unique name in case the given ID is linked
  * (otherwise, just ensure that it is properly sorted).
  *
- * \return true if the ID's name has been modified (either from given `name` parameter, or because
- * its current name was colliding with another existing ID).
+ * \return How renaming went on, see #IDNewNameResult for details.
  */
-bool BKE_id_new_name_validate(Main *bmain,
-                              ListBase *lb,
-                              ID *id,
-                              const char *newname,
-                              IDNewNameMode mode,
-                              bool do_linked_data) ATTR_NONNULL(1, 2, 3);
+IDNewNameResult BKE_id_new_name_validate(Main &bmain,
+                                         ListBase &lb,
+                                         ID &id,
+                                         const char *newname,
+                                         IDNewNameMode mode,
+                                         bool do_linked_data);
 
 /**
  * Pull an ID out of a library (make it local). Only call this for IDs that
