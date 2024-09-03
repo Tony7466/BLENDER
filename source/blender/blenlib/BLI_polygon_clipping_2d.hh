@@ -51,7 +51,7 @@ enum class HoleMode : int8_t {
   WithoutHoles,
 };
 
-enum VertexType {
+enum class VertexType : int8_t {
   PointA,
   PointB,
   Intersection,
