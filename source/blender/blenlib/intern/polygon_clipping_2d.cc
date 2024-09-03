@@ -495,17 +495,17 @@ struct CurveBooleanExecutor {
   Vector<Vertex> verts;
   Vector<int> vertex_offsets;
 
-  void newPolygon()
+  void new_polygon()
   {
     vertex_offsets.append(verts.size());
   }
 
-  void newVertexID(int point_id, bool is_curve_A)
+  void new_vertex_id(int point_id, bool is_curve_A)
   {
     verts.append({is_curve_A ? VertexType::PointA : VertexType::PointB, point_id});
   }
 
-  void newVertexIntersection(int point_id)
+  void new_vertex_intersection(int point_id)
   {
     verts.append({VertexType::Intersection, point_id});
   }
@@ -573,12 +573,12 @@ struct CurveBooleanExecutor {
 
     if (direction == ENTRY) {
       for (int i = start; i <= end; i++) {
-        newVertexID(i % curve_len, is_curve_A);
+        this->new_vertex_id(i % curve_len, is_curve_A);
       }
     }
     else { /* direction == EXIT */
       for (int i = start; i >= end; i--) {
-        newVertexID(i % curve_len, is_curve_A);
+        this->new_vertex_id(i % curve_len, is_curve_A);
       }
     }
   }
@@ -737,7 +737,7 @@ struct CurveBooleanExecutor {
       int curr_int_id = inter_id;
       const int start_int_id = curr_int_id;
 
-      newPolygon();
+      this->new_polygon();
 
       bool PolygonClosed = false;
       while (!PolygonClosed) {
@@ -749,7 +749,7 @@ struct CurveBooleanExecutor {
         /* Switch to the other curve. */
         is_curve_A = !is_curve_A;
 
-        newVertexIntersection(curr_int_id);
+        this->new_vertex_intersection(curr_int_id);
 
         if (is_curve_A && curr_int_id == start_int_id) {
           PolygonClosed = true;
@@ -761,7 +761,7 @@ struct CurveBooleanExecutor {
     }
 
     /* Add one for the end. */
-    newPolygon();
+    this->new_polygon();
 
     BooleanResult result = copy_data_to_result();
 
@@ -778,13 +778,13 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
     for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
-    newVertexIntersection(inter_id);
+    this->new_vertex_intersection(inter_id);
     return true;
   }
 
@@ -798,12 +798,12 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
-    newVertexIntersection(inter_id);
+    this->new_vertex_intersection(inter_id);
 
     for (const int i : IndexRange::from_begin_end(vertex_last.point_a + 1, len_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
     return true;
   }
@@ -819,19 +819,19 @@ struct CurveBooleanExecutor {
     BLI_assert(vertex0.A_entry_exit == ENTRY);
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
-    newVertexIntersection(i0);
+    this->new_vertex_intersection(i0);
 
     if (vertex0.point_a != vertex1.point_a) {
       for (const int i :
            IndexRange::from_begin_end_inclusive(vertex0.point_a + 1, vertex1.point_a))
       {
-        newVertexID(i, true);
+        this->new_vertex_id(i, true);
       }
     }
 
-    newVertexIntersection(i1);
+    this->new_vertex_intersection(i1);
   }
 
   bool cut_add_looping_cap()
@@ -846,23 +846,23 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
     /* Start at the last intersection point. */
-    newVertexIntersection(inter_id_last);
+    this->new_vertex_intersection(inter_id_last);
 
     /* Go through all point from last intersection point to the end. */
     for (const int i : IndexRange::from_begin_end(vertex_last.point_a + 1, len_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
     /* Go through all point from start point to the first intersection point. */
     for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
     /* End at the first intersection point. */
-    newVertexIntersection(inter_id_first);
+    this->new_vertex_intersection(inter_id_first);
     return true;
   }
 
@@ -934,7 +934,7 @@ struct CurveBooleanExecutor {
     }
 
     /* Add one for the end. */
-    newPolygon();
+    this->new_polygon();
 
     return copy_data_to_result();
   }
