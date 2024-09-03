@@ -57,7 +57,7 @@ class MeshMeasurements {
     char numstr[32];             /* Stores the measurement display text here */
     const char *conv_float;      /* Use a float conversion matching the grid size */
     uchar4 col = {0, 0, 0, 255}; /* color of the text to draw */
-    float grid = unit.system ? unit.scale_length : v3d->grid;
+    const float grid = unit.system ? unit.scale_length : v3d->grid;
     const bool do_global = (v3d->flag & V3D_GLOBAL_STATS) != 0;
     const bool do_moving = (G.moving & G_TRANSFORM_EDIT) != 0;
     float4x4 clip_planes;
@@ -138,8 +138,8 @@ class MeshMeasurements {
                                                     0.5 * (v1_clip + v2_clip));
 
             if (do_global) {
-              mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
-              mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
+              v1 = ob->object_to_world().view<3, 3>() * v1;
+              v2 = ob->object_to_world().view<3, 3>() * v2;
             }
 
             const size_t numstr_len = unit.system ?
@@ -214,8 +214,8 @@ class MeshMeasurements {
               }
 
               if (do_global) {
-                mul_mat3_m4_v3(ob->world_to_object().ptr(), no_a);
-                mul_mat3_m4_v3(ob->world_to_object().ptr(), no_b);
+                no_a = ob->object_to_world().view<3, 3>() * no_a;
+                no_b = ob->object_to_world().view<3, 3>() * no_b;
                 normalize_v3(no_a);
                 normalize_v3(no_b);
               }
@@ -271,9 +271,9 @@ class MeshMeasurements {
             n += 3;
 
             if (do_global) {
-              mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
-              mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
-              mul_mat3_m4_v3(ob->object_to_world().ptr(), v3);
+              v1 = ob->object_to_world().view<3, 3>() * v1;
+              v2 = ob->object_to_world().view<3, 3>() * v2;
+              v3 = ob->object_to_world().view<3, 3>() * v3;
             }
 
             area += area_tri_v3(v1, v2, v3);
@@ -348,9 +348,9 @@ class MeshMeasurements {
               const float3 v2_local = v2;
 
               if (do_global) {
-                mul_mat3_m4_v3(ob->object_to_world().ptr(), v1);
-                mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
-                mul_mat3_m4_v3(ob->object_to_world().ptr(), v3);
+                v1 = ob->object_to_world().view<3, 3>() * v1;
+                v2 = ob->object_to_world().view<3, 3>() * v2;
+                v3 = ob->object_to_world().view<3, 3>() * v3;
               }
 
               const float angle = angle_v3v3v3(v1, v2, v3);
