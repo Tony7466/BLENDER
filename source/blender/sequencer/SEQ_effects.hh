@@ -97,7 +97,6 @@ int SEQ_effect_get_num_inputs(int seq_type);
 void SEQ_effect_text_font_unload(TextVars *data, bool do_id_user);
 void SEQ_effect_text_font_load(TextVars *data, bool do_id_user);
 
-using namespace blender;
 namespace blender::seq {
 
 struct CharInfo {
