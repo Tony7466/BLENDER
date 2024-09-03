@@ -189,10 +189,10 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
                                              const Span<float2> curve_a,
                                              const Span<float2> curve_b)
 {
-  const bool is_a_in_b = inside(curve_a.first(), curve_b);
-  const bool is_b_in_a = inside(curve_b.first(), curve_a);
+  const bool a_start_in_b = inside(curve_a.first(), curve_b);
+  const bool b_start_in_a = inside(curve_b.first(), curve_a);
 
-  if (is_a_in_b) {
+  if (a_start_in_b) {
     if (boolean_mode == Operation::And) {
       return result_A(curve_a, curve_b);
     }
@@ -206,7 +206,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_B(curve_a, curve_b);
     }
   }
-  else if (is_b_in_a) {
+  else if (b_start_in_a) {
     if (boolean_mode == Operation::And) {
       return result_B(curve_a, curve_b);
     }
@@ -220,7 +220,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_A(curve_a, curve_b);
     }
   }
-  else if (!is_a_in_b && !is_b_in_a) {
+  else if (!a_start_in_b && !b_start_in_a) {
     if (boolean_mode == Operation::And) {
       return result_None(curve_a, curve_b);
     }
@@ -647,9 +647,9 @@ struct CurveBooleanExecutor {
 
   void set_a_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool A_mode)
   {
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
+    const bool a_start_in_b = inside(curve_a.first(), curve_b);
 
-    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
+    bool A_status = a_start_in_b ^ A_mode ? EXIT : ENTRY;
 
     for (const int j : IndexRange(num_intersects)) {
       intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
@@ -660,9 +660,9 @@ struct CurveBooleanExecutor {
 
   void set_b_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool B_mode)
   {
-    const bool is_b_in_a = inside(curve_b.first(), curve_a);
+    const bool b_start_in_a = inside(curve_b.first(), curve_a);
 
-    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
+    bool B_status = b_start_in_a ^ B_mode ? EXIT : ENTRY;
 
     for (const int j : IndexRange(num_intersects)) {
       intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
@@ -905,8 +905,8 @@ struct CurveBooleanExecutor {
     }
 
     if (intersections.is_empty()) {
-      const bool is_a_in_b = inside(curve_a.first(), curve_b);
-      if (is_a_in_b) {
+      const bool a_start_in_b = inside(curve_a.first(), curve_b);
+      if (a_start_in_b) {
         return result_None(curve_a, curve_b);
       }
       else {
