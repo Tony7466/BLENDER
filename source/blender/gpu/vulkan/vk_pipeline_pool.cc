@@ -5,10 +5,13 @@
 /** \file
  * \ingroup gpu
  */
+#include "BKE_appdir.hh"
+#include "BLI_fileops.hh"
+#include "BLI_path_util.h"
 
-#include "vk_pipeline_pool.hh"
 #include "vk_backend.hh"
 #include "vk_memory.hh"
+#include "vk_pipeline_pool.hh"
 
 namespace blender::gpu {
 
@@ -638,6 +641,34 @@ void VKPipelinePool::free_data()
   vkDestroyPipelineCache(device.vk_handle(), vk_pipeline_cache_static_, vk_allocation_callbacks);
   vkDestroyPipelineCache(
       device.vk_handle(), vk_pipeline_cache_non_static_, vk_allocation_callbacks);
+}
+
+static std::string pipeline_cache_filepath_get()
+{
+  static char tmp_dir_buffer[1024];
+  BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+
+  std::string cache_dir = std::string(tmp_dir_buffer) + "vk-pipeline-cache" + SEP_STR;
+  BLI_dir_create_recursive(cache_dir.c_str());
+  std::string cache_file = cache_dir + "static-shaders.bin";
+  return cache_file;
+}
+
+void VKPipelinePool::load_data() {}
+
+void VKPipelinePool::save_data()
+{
+  VKDevice &device = VKBackend::get().device;
+  size_t data_size;
+  vkGetPipelineCacheData(device.vk_handle(), vk_pipeline_cache_static_, &data_size, nullptr);
+  void *buffer = MEM_mallocN(data_size, __func__);
+  vkGetPipelineCacheData(device.vk_handle(), vk_pipeline_cache_static_, &data_size, buffer);
+
+  std::string cache_file = pipeline_cache_filepath_get();
+  std::fstream file(cache_file, std::ios::binary | std::ios::out);
+  file.write(static_cast<char *>(buffer), data_size);
+
+  MEM_freeN(buffer);
 }
 
 }  // namespace blender::gpu

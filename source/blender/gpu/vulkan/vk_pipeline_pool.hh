@@ -318,6 +318,9 @@ class VKPipelinePool : public NonCopyable {
    */
   void free_data();
 
+  void load_data();
+  void save_data();
+
  private:
   VkSpecializationInfo *specialization_info_update(
       Span<shader::SpecializationConstant::Value> specialization_constants);
