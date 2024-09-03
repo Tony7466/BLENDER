@@ -3180,7 +3180,7 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
     blender::seq::CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
-    char_info.widths_pixels = BLF_width(runtime->font, str, char_length, nullptr);
+    char_info.widths_pixels = BLF_glyph_advance(runtime->font, str, char_length);
     runtime->characters.append(char_info);
 
     byte_offset += char_length;

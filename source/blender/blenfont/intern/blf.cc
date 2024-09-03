@@ -809,6 +809,17 @@ float BLF_fixed_width(int fontid)
   return 0.0f;
 }
 
+int BLF_glyph_advance(int fontid, const char *str, size_t str_len)
+{
+  FontBLF *font = blf_get(fontid);
+
+  if (font) {
+    return blf_font_glyph_advance(font, str, str_len);
+  }
+
+  return 0.0f;
+}
+
 float BLF_height(int fontid, const char *str, const size_t str_len, ResultBLF *r_info)
 {
   FontBLF *font = blf_get(fontid);
