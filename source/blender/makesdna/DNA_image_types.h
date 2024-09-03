@@ -177,7 +177,8 @@ typedef struct Image {
   /* Number of iterations to perform when extracting mask for uv seam fixing. */
   short seam_margin;
 
-  char _pad2[2];
+  char gen_path_char;
+  char _pad0;
 
   /** Deprecated. */
   struct PackedFile *packedfile DNA_DEPRECATED;
@@ -199,7 +200,7 @@ typedef struct Image {
   ColorManagedColorspaceSettings colorspace_settings;
   char alpha_mode;
 
-  char _pad;
+  char _pad1;
 
   /* Multiview */
   /** For viewer node stereoscopy. */

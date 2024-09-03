@@ -3157,7 +3157,14 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
          * Here we ensure original image path wouldn't be used when saving
          * generated image.
          */
+        ima->gen_path_char = ima->filepath[0];
         ima->filepath[0] = '\0';
+      }
+      else if (ima->gen_path_char != 0) {
+        /* restore original path */
+        BLI_assert(ima->filepath[0] == '\0');
+        ima->filepath[0] = ima->gen_path_char;
+        ima->gen_path_char = 0;
       }
 
       if (ima->source != IMA_SRC_TILED) {
