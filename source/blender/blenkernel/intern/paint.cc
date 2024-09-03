@@ -1677,7 +1677,7 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     {
       BLO_read_string(reader, &brush_ref->name);
 
-      BLO_read_struct(reader, AssetWeakReference, brush_ref->brush_asset_reference);
+      BLO_read_struct(reader, AssetWeakReference, &brush_ref->brush_asset_reference);
       if (brush_ref->brush_asset_reference) {
         BKE_asset_weak_reference_read(reader, brush_ref->brush_asset_reference);
       }
