@@ -12,32 +12,6 @@
 namespace blender::bke::polygonboolean {
 
 template<typename T>
-void interpolate_attribute_from_ab_result(const VArray<T> src_a,
-                                          const VArray<T> src_b,
-                                          const blender::polygonboolean::BooleanResult &result,
-                                          MutableSpan<T> dst);
-template<typename T>
-void interpolate_attribute_from_a_result(const VArray<T> src_a,
-                                         const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst);
-template<typename T>
-void interpolate_attribute_from_b_result(const VArray<T> src_b,
-                                         const blender::polygonboolean::BooleanResult &result,
-                                         MutableSpan<T> dst);
-
-template<typename T>
-Array<T> interpolate_attribute_from_a_result(const Span<T> src_a,
-                                             const blender::polygonboolean::BooleanResult &result);
-template<typename T>
-Array<T> interpolate_attribute_from_b_result(const Span<T> src_b,
-                                             const blender::polygonboolean::BooleanResult &result);
-template<typename T>
-Array<T> interpolate_attribute_from_ab_result(
-    const Span<T> src_a,
-    const Span<T> src_b,
-    const blender::polygonboolean::BooleanResult &result);
-
-template<typename T>
 static T interpolate_attribute_of_a_intersection_point(
     const VArray<T> src_a, const blender::polygonboolean::IntersectionPoint &inter_point)
 {
