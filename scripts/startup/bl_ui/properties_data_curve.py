@@ -203,7 +203,21 @@ class DATA_PT_geometry_curve_bevel(CurveButtonsPanelCurve, Panel):
 
 
 class DATA_PT_curve_animation(CurveButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
-    _animated_id_context_property = 'curve'
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        # MeshButtonsPanel.poll ensures this is not None.
+        curve = context.curve
+
+        col = layout.column(align=True)
+        col.label(text=curve.bl_rna.name) # "Surface Curve" or "Curve".
+        self.draw_action_and_slot_selector(context, col, curve)
+
+        if shape_keys := curve.shape_keys:
+            col = layout.column(align=True)
+            col.label(text="Shape Keys")
+            self.draw_action_and_slot_selector(context, col, shape_keys)
 
 
 class DATA_PT_geometry_curve_start_end(CurveButtonsPanelCurve, Panel):
