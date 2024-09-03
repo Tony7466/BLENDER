@@ -3231,19 +3231,6 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
   }
 }
 
-static float2 vertical_alignment_offset_get(const TextVars *data, const TextVarsRuntime *runtime)
-{
-  const float text_height = runtime->lines.size() * runtime->line_height;
-  if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
-    return {0.0f, text_height};
-  }
-  else if (data->align_y == SEQ_TEXT_ALIGN_Y_CENTER) {
-    return {0.0f, text_height / 2.0f};
-  }
-
-  return {0.0f, 0.0f};
-}
-
 static int text_box_width_get(blender::Vector<blender::seq::LineInfo> lines)
 {
   int width_max = 0;
@@ -3279,7 +3266,6 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
 
   float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
   float2 line_height_offset{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
-  float2 vertical_alignment = vertical_alignment_offset_get(data, runtime);
 
   for (blender::seq::LineInfo &line : runtime->lines) {
     float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width, width_max);
