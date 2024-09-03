@@ -3192,10 +3192,10 @@ static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVa
 
 static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
 {
-  if (data->wrap_width != 0.0f) {
-    return data->wrap_width * ibuf->x;
+  if (data->wrap_width == 0.0f) {
+    return std::numeric_limits<int>::max();
   }
-  return ibuf->x;
+  return data->wrap_width * ibuf->x;
 }
 
 static void apply_word_wrapping(const TextVars *data,
