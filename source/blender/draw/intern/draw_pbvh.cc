@@ -105,7 +105,7 @@ class DrawCacheImpl : public DrawCache {
     void tag_dirty(const IndexMask &node_mask);
   };
 
-  /** Used to determine whether to used indexed VBO layouts for multires grids. */
+  /** Used to determine whether to use indexed VBO layouts for multires grids. */
   BitVector<> use_flat_layout_;
   /** The material index for each node. */
   Array<int> material_indices_;
