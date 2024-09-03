@@ -2971,10 +2971,12 @@ static void jump_flooding_pass(Span<JFACoord> input,
 
 static void text_draw(const TextVarsRuntime *runtime, float color[4])
 {
-  for (const blender::seq::CharInfo character : runtime->characters) {
-    BLF_position(runtime->font, character.position.x, character.position.y, 0.0f);
-    BLF_buffer_col(runtime->font, color);
-    BLF_draw_buffer(runtime->font, character.str_ptr, character.byte_length);
+  for (const blender::seq::LineInfo &line : runtime->lines) {
+    for (const blender::seq::CharInfo &character : line.characters) {
+      BLF_position(runtime->font, character.position.x, character.position.y, 0.0f);
+      BLF_buffer_col(runtime->font, color);
+      BLF_draw_buffer(runtime->font, character.str_ptr, character.byte_length);
+    }
   }
 }
 
@@ -3180,24 +3182,29 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
     blender::seq::CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
-    char_info.widths_pixels = BLF_glyph_advance(runtime->font, str, char_length);
+    char_info.width_pixels = BLF_glyph_advance(runtime->font, str, char_length);
     runtime->characters.append(char_info);
 
     byte_offset += char_length;
   }
 }
 
+static int text_box_width_get(const TextVars *data, const ImBuf *ibuf)
+{
+  if (data->wrap_width != 0.0f) {
+    return data->wrap_width * ibuf->x;
+  }
+  return ibuf->x;
+}
+
 static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
 {
-  blender::seq::CharInfo *characters_array = runtime->characters.data();
-  const int wrap_width = (data->wrap_width != 0.0f) ? data->wrap_width * ibuf->x :
-                                                      std::numeric_limits<int>::max();
+  const int wrap_width = text_box_width_get(data, ibuf);
   float2 char_position{0.0f, 0.0f};
   bool is_word_wrap = false;
-  int line_start_index = 0;
+  runtime->lines.append(blender::seq::LineInfo());
 
-  for (int i : blender::IndexRange(runtime->character_count)) {
-    blender::seq::CharInfo &character = runtime->characters[i];
+  for (blender::seq::CharInfo &character : runtime->characters) {
     character.position = char_position;
 
     if (is_word_wrap && character.str_ptr[0] == ' ') {
@@ -3212,28 +3219,21 @@ static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, 
     }
 
     if (is_word_wrap || character.str_ptr[0] == '\n') {
-      runtime->line_witdths.append(char_position.x);
-      int line_size = i - line_start_index;
-      runtime->characters_per_line.append(blender::MutableSpan<blender::seq::CharInfo>(
-          characters_array + line_start_index, line_size));
-
-      line_start_index = i + 1;
+      runtime->lines.append(blender::seq::LineInfo());
       char_position.x = 0;
       char_position.y -= runtime->line_height;
       continue;
     }
-    char_position.x += character.widths_pixels;
-  }
 
-  runtime->line_witdths.append(char_position.x);
-  runtime->characters_per_line.append(blender::MutableSpan<blender::seq::CharInfo>(
-      characters_array + line_start_index, runtime->character_count - line_start_index));
-  runtime->line_count = runtime->characters_per_line.size();
+    runtime->lines.last().characters.append(character);
+    runtime->lines.last().width = char_position.x;
+    char_position.x += character.width_pixels;
+  }
 }
 
 static float2 vertical_alignment_offset_get(const TextVars *data, const TextVarsRuntime *runtime)
 {
-  const float text_height = runtime->line_count * runtime->line_height;
+  const float text_height = runtime->lines.size() * runtime->line_height;
   if (data->align_y == SEQ_TEXT_ALIGN_Y_BOTTOM) {
     return {0.0f, text_height};
   }
@@ -3268,24 +3268,23 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
   runtime->text_boundbox.xmax = std::numeric_limits<int>::min();
   runtime->text_boundbox.xmin = std::numeric_limits<int>::max();
 
-  for (int line : runtime->characters_per_line.index_range()) {
-    float2 horizontal_alignment = horizontal_alignment_offset_get(data,
-                                                                  runtime->line_witdths[line]);
+  for (blender::seq::LineInfo &line : runtime->lines) {
+    float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width);
     float2 alignment = image_center + line_height_alignment + vertical_alignment +
                        horizontal_alignment;
 
-    for (blender::seq::CharInfo &character : runtime->characters_per_line[line]) {
+    for (blender::seq::CharInfo &character : line.characters) {
       character.position += alignment;
 
       runtime->text_boundbox.xmin = std::min(int(std::round(character.position.x)),
                                              runtime->text_boundbox.xmin);
-      int char_x_end = std::round(character.position.x + character.widths_pixels);
+      int char_x_end = std::round(character.position.x + character.width_pixels);
       runtime->text_boundbox.xmax = std::max(char_x_end, runtime->text_boundbox.xmax);
     }
   }
   runtime->text_boundbox.ymax = runtime->characters[0].position.y - line_height_alignment.y;
   runtime->text_boundbox.ymin = runtime->text_boundbox.ymax -
-                                runtime->line_count * runtime->line_height;
+                                runtime->lines.size() * runtime->line_height;
 }
 
 static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)

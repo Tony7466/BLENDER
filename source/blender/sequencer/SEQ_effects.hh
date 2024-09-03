@@ -105,18 +105,20 @@ struct CharInfo {
   int byte_length;
   int flags;
   float2 position;
-  float widths_pixels;
+  float width_pixels;
   bool is_drawn = true; /* False, when character is excluded due to word wrapping. */
+};
+
+struct LineInfo {
+  Vector<CharInfo> characters;
+  int width;
 };
 
 struct TextVarsRuntime {
   Vector<CharInfo> characters;
-  /* References array of `TextVarsRuntime::characters`. */
-  Vector<MutableSpan<CharInfo>> characters_per_line;
-  Vector<float> line_witdths;
+  Vector<LineInfo> lines;
 
   rcti text_boundbox;
-  int line_count;
   int line_height;
   int character_count;
   int font;
