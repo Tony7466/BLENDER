@@ -796,6 +796,14 @@ class ChannelBag : public ::ActionChannelBag {
   bool channel_group_remove(bActionGroup &group);
 
   /**
+   * Move the given channel group's to position `to_group_index` among the
+   * channel groups.
+   *
+   * The fcurves in the channel group will be moved with it.
+   */
+  void channel_group_move(bActionGroup &group, int to_group_index);
+
+  /**
    * Assigns the given FCurve to the given channel group.
    *
    * Fails if either doesn't belong to this channel bag, but otherwise always

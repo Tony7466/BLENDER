@@ -1678,21 +1678,100 @@ static void join_groups_action_temp(bAction *act)
   }
 }
 
+static void rearrange_layered_action_channel_groups(bAnimContext *ac,
+                                                    const eRearrangeAnimChan_Mode mode)
+{
+  ListBase anim_data_visible = {nullptr, nullptr};
+  rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_GROUP);
+
+  switch (mode) {
+    case REARRANGE_ANIMCHAN_UP: {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        bActionGroup *group = (bActionGroup *)ale->data;
+        if (!SEL_AGRP(group)) {
+          continue;
+        }
+        blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
+        const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        if (group_index == 0) {
+          continue;
+        }
+
+        const int to_index = group_index - 1;
+        if (SEL_AGRP(bag.channel_groups()[to_index])) {
+          continue;
+        }
+        bag.channel_group_move(*group, to_index);
+      }
+      break;
+    }
+
+    case REARRANGE_ANIMCHAN_TOP: {
+      LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        bActionGroup *group = (bActionGroup *)ale->data;
+        if (!SEL_AGRP(group)) {
+          continue;
+        }
+        blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
+        bag.channel_group_move(*group, 0);
+      }
+      break;
+    }
+
+    case REARRANGE_ANIMCHAN_DOWN: {
+      LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        bActionGroup *group = (bActionGroup *)ale->data;
+        if (!SEL_AGRP(group)) {
+          continue;
+        }
+        blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
+        const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        if (group_index == bag.channel_groups().size() - 1) {
+          continue;
+        }
+
+        const int to_index = group_index + 1;
+        if (SEL_AGRP(bag.channel_groups()[to_index])) {
+          continue;
+        }
+        bag.channel_group_move(*group, to_index);
+      }
+      break;
+    }
+
+    case REARRANGE_ANIMCHAN_BOTTOM: {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        bActionGroup *group = (bActionGroup *)ale->data;
+        if (!SEL_AGRP(group)) {
+          continue;
+        }
+        blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
+        bag.channel_group_move(*group, bag.channel_groups().size() - 1);
+      }
+      break;
+    }
+  }
+
+  BLI_freelistN(&anim_data_visible);
+}
+
 /* Change the order of anim-channels within action
  * mode: REARRANGE_ANIMCHAN_*
  */
 static void rearrange_action_channels(bAnimContext *ac, bAction *act, eRearrangeAnimChan_Mode mode)
 {
+  BLI_assert(act != nullptr);
+
+  /* Layered actions. */
+  if (!act->wrap().is_action_legacy()) {
+    rearrange_layered_action_channel_groups(ac, mode);
+    return;
+  }
+
+  /* Legacy actions. */
   bActionGroup tgrp;
   ListBase anim_data_visible = {nullptr, nullptr};
   bool do_channels;
-
-  BLI_assert(act != nullptr);
-
-  /* TODO: layered actions not yet supported. */
-  if (!act->wrap().is_action_legacy()) {
-    return;
-  }
 
   /* get rearranging function */
   AnimChanRearrangeFp rearrange_func = rearrange_get_mode_func(mode);

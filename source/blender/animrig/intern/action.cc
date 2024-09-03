@@ -1566,6 +1566,31 @@ bool ChannelBag::channel_group_remove(bActionGroup &group)
   return true;
 }
 
+void ChannelBag::channel_group_move(bActionGroup &group, const int to_group_index)
+{
+  BLI_assert(to_group_index >= 0 && to_group_index < this->channel_groups().size());
+
+  const int group_index = this->channel_groups().as_span().first_index_try(&group);
+  BLI_assert_msg(group_index >= 0, "Group not in this channel bag.");
+
+  if (to_group_index == group_index) {
+    return;
+  }
+
+  const bActionGroup pre_move_group = group;
+
+  array_shift_range(
+      this->group_array, this->group_array_num, group_index, group_index + 1, to_group_index);
+  this->restore_channel_group_invariants();
+
+  array_shift_range(this->fcurve_array,
+                    this->fcurve_array_num,
+                    pre_move_group.fcurve_range_start,
+                    pre_move_group.fcurve_range_start + pre_move_group.fcurve_range_length,
+                    group.fcurve_range_start);
+  this->restore_channel_group_invariants();
+}
+
 void ChannelBag::channel_group_remove_raw(const int group_index)
 {
   BLI_assert(group_index >= 0 && group_index < this->channel_groups().size());
