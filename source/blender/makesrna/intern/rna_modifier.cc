@@ -4846,15 +4846,11 @@ static void rna_def_modifier_bevel(BlenderRNA *brna)
   prop = RNA_def_property(srna, "edge_weight", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "edge_weight_name");
   RNA_def_property_ui_text(prop, "Edge Attribute", "Edge weight attribute");
-  RNA_def_property_string_funcs(
-      prop, nullptr, nullptr, "rna_BevelModifier_edge_weight_name_set");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "vertex_weight", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "vertex_weight_name");
   RNA_def_property_ui_text(prop, "Vertex Attribute", "Vertex weight attribute");
-  RNA_def_property_string_funcs(
-      prop, nullptr, nullptr, "rna_BevelModifier_vertex_weight_name_set");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "angle_limit", PROP_FLOAT, PROP_ANGLE);

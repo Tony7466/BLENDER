@@ -1371,7 +1371,6 @@ uiBut *ui_but_add_search(uiBut *but,
                          PointerRNA *searchptr,
                          PropertyRNA *searchprop,
                          bool results_are_suggestions);
-
 /**
  * Check all buttons defined in this layout,
  * and set any button flagged as UI_BUT_LIST_ITEM as active/selected.

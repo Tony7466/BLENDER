@@ -21,6 +21,7 @@
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_deform.hh"
 #include "BKE_mesh.hh"
@@ -30,6 +31,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.hh"
 
 #include "MOD_ui_common.hh"
@@ -87,12 +89,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   const MDeformVert *dvert = nullptr;
   BevelModifierData *bmd = (BevelModifierData *)md;
 
-  if (bmd->vertex_weight_name == "") {
-    STRNCPY(bmd->vertex_weight_name, "bevel_weight_vert");
-  }
-  if (bmd->edge_weight_name == "") {
-    STRNCPY(bmd->edge_weight_name, "bevel_weight_edge");
-  }
+  blender::bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  attributes.add<float>(bmd->vertex_weight_name, blender::bke::AttrDomain::Point, blender::bke::AttributeInitDefaultValue());
+  attributes.add<float>(bmd->edge_weight_name, blender::bke::AttrDomain::Edge, blender::bke::AttributeInitDefaultValue());
 
   const float threshold = cosf(bmd->bevel_angle + 0.000000175f);
   const bool do_clamp = !(bmd->flags & MOD_BEVEL_OVERLAP_OK);
@@ -286,13 +285,36 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     sub = uiLayoutColumn(col, false);
     uiLayoutSetActive(sub, edge_bevel);
 
-    const char *weight_type = "edge_weight";
-    if (!edge_bevel) {
-      weight_type = "vertex_weight";
-    }
+    const char *weight_type = edge_bevel ? "edge_weight" : "vertex_weight";
 
     PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-    uiItemPointerR(col, ptr, weight_type, &object_data_ptr, "attributes", nullptr, ICON_NONE);
+  
+    // this code is pulled out from uiItemPointerR() in interface_layout.cc
+    // because the search suggestions are hard coded as false
+    // we want search suggestions to be on
+    {
+      /* validate arguments */
+
+      const char *propname = weight_type;
+      PointerRNA *searchptr = &object_data_ptr;
+      const char *searchpropname = "attributes";
+      
+      PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
+      if (!prop) {
+        RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
+        return;
+      }
+      PropertyRNA *searchprop = RNA_struct_find_property(searchptr, searchpropname);
+      if (!searchprop) {
+        RNA_warning("search collection property not found: %s.%s",
+                    RNA_struct_identifier(searchptr->type),
+                    searchpropname);
+        return;
+      }
+
+      uiItemPointerR_prop(col, ptr, prop, searchptr, searchprop, nullptr, ICON_NONE, true);
+    }
+    
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
