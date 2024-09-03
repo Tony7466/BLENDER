@@ -2951,7 +2951,7 @@ IndexMask node_draw_update_mask(const Tree &pbvh,
   return std::visit(
       [&](const auto &nodes) {
         return IndexMask::from_predicate(node_mask, GrainSize(1024), memory, [&](const int i) {
-          return (nodes[i].flag_ & PBVH_UpdateDrawBuffers) != 0;
+          return nodes[i].flag_ & PBVH_UpdateDrawBuffers;
         });
       },
       pbvh.nodes_);
