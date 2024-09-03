@@ -2600,7 +2600,6 @@ static void init_text_effect(Sequence *seq)
   data->loc[0] = 0.5f;
   data->loc[1] = 0.5f;
   data->align = SEQ_TEXT_ALIGN_X_CENTER;
-  data->align_y = SEQ_TEXT_ALIGN_Y_CENTER;
   data->wrap_width = 1.0f;
 }
 
@@ -3269,8 +3268,7 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
 
   for (blender::seq::LineInfo &line : runtime->lines) {
     float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width, width_max);
-    float2 alignment = image_center + line_height_offset + vertical_alignment +
-                       horizontal_alignment;
+    float2 alignment = image_center + line_height_offset + horizontal_alignment;
 
     for (blender::seq::CharInfo &character : line.characters) {
       character.position += alignment;

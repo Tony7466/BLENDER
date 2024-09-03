@@ -439,8 +439,8 @@ typedef struct TextVars {
   float shadow_blur;
   float outline_width;
   char flag;
-  char align, align_y;
-  char _pad[5];
+  char align;
+  char _pad[6];
 
   TextVarsRuntime *runtime;
 } TextVars;
@@ -459,13 +459,6 @@ enum {
   SEQ_TEXT_ALIGN_X_LEFT = 0,
   SEQ_TEXT_ALIGN_X_CENTER = 1,
   SEQ_TEXT_ALIGN_X_RIGHT = 2,
-};
-
-/** #TextVars.align_y */
-enum {
-  SEQ_TEXT_ALIGN_Y_TOP = 0,
-  SEQ_TEXT_ALIGN_Y_CENTER = 1,
-  SEQ_TEXT_ALIGN_Y_BOTTOM = 2,
 };
 
 #define SEQ_FONT_NOT_LOADED -2
