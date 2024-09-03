@@ -185,7 +185,8 @@ static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
   return result;
 }
 
-static BooleanResult non_intersecting_result(const InputMode input_mode,
+static BooleanResult non_intersecting_result(const Operation boolean_mode,
+                                             const HoleMode hole_mode,
                                              Span<float2> curve_a,
                                              Span<float2> curve_b)
 {
@@ -193,50 +194,50 @@ static BooleanResult non_intersecting_result(const InputMode input_mode,
   const bool is_b_in_a = inside(curve_b.first(), curve_a);
 
   if (is_a_in_b) {
-    if (input_mode.boolean_mode == Operation::And) {
+    if (boolean_mode == Operation::And) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotB) {
+    else if (boolean_mode == Operation::NotB) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotA) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
+    else if (boolean_mode == Operation::NotA) {
+      if (hole_mode == WITHOUT_HOLES) {
         return result_B(curve_a, curve_b);
       }
       return result_BA(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::Or) {
+    else if (boolean_mode == Operation::Or) {
       return result_B(curve_a, curve_b);
     }
   }
   else if (is_b_in_a) {
-    if (input_mode.boolean_mode == Operation::And) {
+    if (boolean_mode == Operation::And) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotB) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
+    else if (boolean_mode == Operation::NotB) {
+      if (hole_mode == WITHOUT_HOLES) {
         return result_A(curve_a, curve_b);
       }
       return result_AB(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotA) {
+    else if (boolean_mode == Operation::NotA) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::Or) {
+    else if (boolean_mode == Operation::Or) {
       return result_A(curve_a, curve_b);
     }
   }
   else if (!is_a_in_b && !is_b_in_a) {
-    if (input_mode.boolean_mode == Operation::And) {
+    if (boolean_mode == Operation::And) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotB) {
+    else if (boolean_mode == Operation::NotB) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::NotA) {
+    else if (boolean_mode == Operation::NotA) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == Operation::Or) {
+    else if (boolean_mode == Operation::Or) {
       return result_AB(curve_a, curve_b);
     }
   }
@@ -696,7 +697,8 @@ struct CurveBooleanExecutor {
    * Instead we store each intersection point in an arbitrarily ordered list and then have two
    * lists of sorted indices that point to intersection point for curve `A` and `B`
    */
-  BooleanResult execute_boolean(const InputMode input_mode,
+  BooleanResult execute_boolean(const Operation boolean_mode,
+                                const HoleMode hole_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
   {
@@ -718,13 +720,13 @@ struct CurveBooleanExecutor {
           intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
-          return invalided_result(input_mode.boolean_mode, curve_a, curve_b);
+          return invalided_result(boolean_mode, curve_a, curve_b);
         }
       }
     }
 
     if (intersections.is_empty()) {
-      return non_intersecting_result(input_mode, curve_a, curve_b);
+      return non_intersecting_result(boolean_mode, hole_mode, curve_a, curve_b);
     }
 
     num_intersects = intersections.size();
@@ -734,7 +736,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Two ---- ---- ---- */
 
-    const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
+    const auto [A_mode, B_mode] = get_AB_mode(boolean_mode);
 
     set_a_directions(curve_a, curve_b, A_mode);
     set_b_directions(curve_a, curve_b, B_mode);
@@ -783,11 +785,11 @@ struct CurveBooleanExecutor {
      *  Holes are only create in the union of the shapes
      * (Because non-intersecting holes are already handled)
      */
-    if (input_mode.boolean_mode == Operation::Or) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
+    if (boolean_mode == Operation::Or) {
+      if (hole_mode == WITHOUT_HOLES) {
         result = result_remove_holes(result, curve_a, curve_b);
       }
-      else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
+      else if (hole_mode == WITH_ORDERED_HOLES) {
         result = result_sort_holes(result, curve_a, curve_b);
       }
     }
@@ -965,12 +967,13 @@ struct CurveBooleanExecutor {
   }
 };
 
-BooleanResult curve_boolean_calc(const InputMode input_mode,
+BooleanResult curve_boolean_calc(const Operation boolean_mode,
+                                 const HoleMode hole_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute_boolean(input_mode, curve_a, curve_b);
+  return executor.execute_boolean(boolean_mode, hole_mode, curve_a, curve_b);
 }
 
 BooleanResult curve_boolean_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)

@@ -51,11 +51,6 @@ enum HoleMode {
   WITHOUT_HOLES,
 };
 
-struct InputMode {
-  Operation boolean_mode;
-  HoleMode hole_mode;
-};
-
 enum VertexType {
   PointA,
   PointB,
@@ -101,7 +96,8 @@ void interpolate_position_a(const Span<float2> pos_a,
                             MutableSpan<float2> dst_pos);
 Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResult &result);
 
-BooleanResult curve_boolean_calc(const InputMode input_mode,
+BooleanResult curve_boolean_calc(const Operation boolean_mode,
+                                 const HoleMode hole_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
 /**
