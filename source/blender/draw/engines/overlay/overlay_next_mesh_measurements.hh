@@ -30,7 +30,7 @@
 
 namespace blender::draw::overlay {
 
-constexpr int OVERLAY_EDIT_TEXT = V3D_OVERLAY_EDIT_EDGE_LEN | V3D_OVERLAY_EDIT_FACE_AREA |
+constexpr int overlay_edit_text = V3D_OVERLAY_EDIT_EDGE_LEN | V3D_OVERLAY_EDIT_FACE_AREA |
                                   V3D_OVERLAY_EDIT_FACE_ANG | V3D_OVERLAY_EDIT_EDGE_ANG |
                                   V3D_OVERLAY_EDIT_INDICES;
 
@@ -38,7 +38,7 @@ class MeshMeasurements {
  public:
   static void edit_object_sync(const ObjectRef &ob_ref, State &state)
   {
-    if (!(DRW_state_show_text() && (state.overlay.edit_flag & OVERLAY_EDIT_TEXT))) {
+    if (!(DRW_state_show_text() && (state.overlay.edit_flag & overlay_edit_text))) {
       return;
     }
     /* Do not use ascii when using non-default unit system, some unit chars are utf8 (micro,
