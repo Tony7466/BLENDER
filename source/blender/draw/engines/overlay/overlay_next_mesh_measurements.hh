@@ -54,8 +54,7 @@ class MeshMeasurements {
     const Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
     BMEditMesh *em = mesh->runtime->edit_mesh.get();
     float3 v1, v2, v3, fvec;
-    char numstr[32]; /* Stores the measurement display text here */
-    size_t numstr_len;
+    char numstr[32];             /* Stores the measurement display text here */
     const char *conv_float;      /* Use a float conversion matching the grid size */
     uchar4 col = {0, 0, 0, 255}; /* color of the text to draw */
     float area;                  /* area of the face */
@@ -144,18 +143,16 @@ class MeshMeasurements {
               mul_mat3_m4_v3(ob->object_to_world().ptr(), v2);
             }
 
-            if (unit.system) {
-              numstr_len = BKE_unit_value_as_string(numstr,
-                                                    sizeof(numstr),
-                                                    len_v3v3(v1, v2) * unit.scale_length,
-                                                    3,
-                                                    B_UNIT_LENGTH,
-                                                    &unit,
-                                                    false);
-            }
-            else {
-              numstr_len = SNPRINTF_RLEN(numstr, conv_float, len_v3v3(v1, v2));
-            }
+            const size_t numstr_len = unit.system ?
+                                          BKE_unit_value_as_string(numstr,
+                                                                   sizeof(numstr),
+                                                                   len_v3v3(v1, v2) *
+                                                                       unit.scale_length,
+                                                                   3,
+                                                                   B_UNIT_LENGTH,
+                                                                   &unit,
+                                                                   false) :
+                                          SNPRINTF_RLEN(numstr, conv_float, len_v3v3(v1, v2));
 
             DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, edge_tex_sep, txt_flag, col);
           }
@@ -226,10 +223,10 @@ class MeshMeasurements {
 
               const float angle = angle_normalized_v3v3(no_a, no_b);
 
-              numstr_len = SNPRINTF_RLEN(numstr,
-                                         "%.3f%s",
-                                         (is_rad) ? angle : RAD2DEGF(angle),
-                                         (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
+              const size_t numstr_len = SNPRINTF_RLEN(numstr,
+                                                      "%.3f%s",
+                                                      (is_rad) ? angle : RAD2DEGF(angle),
+                                                      (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
 
               DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, -edge_tex_sep, txt_flag, col);
             }
@@ -286,19 +283,16 @@ class MeshMeasurements {
           mul_v3_fl(vmid, 1.0f / float(n));
           mul_m4_v3(ob->object_to_world().ptr(), vmid);
 
-          if (unit.system) {
-            numstr_len = BKE_unit_value_as_string(
-                numstr,
-                sizeof(numstr),
-                double(area * unit.scale_length * unit.scale_length),
-                3,
-                B_UNIT_AREA,
-                &unit,
-                false);
-          }
-          else {
-            numstr_len = SNPRINTF_RLEN(numstr, conv_float, area);
-          }
+          const size_t numstr_len = unit.system ?
+                                        BKE_unit_value_as_string(
+                                            numstr,
+                                            sizeof(numstr),
+                                            double(area * unit.scale_length * unit.scale_length),
+                                            3,
+                                            B_UNIT_AREA,
+                                            &unit,
+                                            false) :
+                                        SNPRINTF_RLEN(numstr, conv_float, area);
 
           DRW_text_cache_add(dt, vmid, numstr, numstr_len, 0, 0, txt_flag, col);
         }
@@ -362,10 +356,10 @@ class MeshMeasurements {
 
               const float angle = angle_v3v3v3(v1, v2, v3);
 
-              numstr_len = SNPRINTF_RLEN(numstr,
-                                         "%.3f%s",
-                                         (is_rad) ? angle : RAD2DEGF(angle),
-                                         (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
+              const size_t numstr_len = SNPRINTF_RLEN(numstr,
+                                                      "%.3f%s",
+                                                      (is_rad) ? angle : RAD2DEGF(angle),
+                                                      (is_rad) ? "r" : BLI_STR_UTF8_DEGREE_SIGN);
               interp_v3_v3v3(fvec, vmid, v2_local, 0.8f);
               mul_m4_v3(ob->object_to_world().ptr(), fvec);
               DRW_text_cache_add(dt, fvec, numstr, numstr_len, 0, 0, txt_flag, col);
@@ -396,7 +390,7 @@ class MeshMeasurements {
 
             mul_m4_v3(ob->object_to_world().ptr(), v1);
 
-            numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
+            const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
             DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
           }
         }
@@ -425,7 +419,7 @@ class MeshMeasurements {
               const float3 vmid = math::transform_point(ob->object_to_world(),
                                                         0.5 * (v1_clip + v2_clip));
 
-              numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
+              const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
               DRW_text_cache_add(
                   dt,
                   vmid,
@@ -459,7 +453,7 @@ class MeshMeasurements {
 
             mul_m4_v3(ob->object_to_world().ptr(), v1);
 
-            numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
+            const size_t numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
             DRW_text_cache_add(dt, v1, numstr, numstr_len, 0, 0, txt_flag, col);
           }
         }
