@@ -202,7 +202,7 @@ static void modifier_apply_threaded(ImBuf *ibuf,
 /** \name Color Balance Modifier
  * \{ */
 
-static StripColorBalance calc_cb_lgg(StripColorBalance *cb_)
+static StripColorBalance calc_cb_lgg(const StripColorBalance *cb_)
 {
   StripColorBalance cb = *cb_;
   int c;
@@ -248,7 +248,7 @@ static StripColorBalance calc_cb_lgg(StripColorBalance *cb_)
   return cb;
 }
 
-static StripColorBalance calc_cb_sop(StripColorBalance *cb_)
+static StripColorBalance calc_cb_sop(const StripColorBalance *cb_)
 {
   StripColorBalance cb = *cb_;
   int c;
@@ -283,7 +283,7 @@ static StripColorBalance calc_cb_sop(StripColorBalance *cb_)
   return cb;
 }
 
-static StripColorBalance calc_cb(StripColorBalance *cb_)
+static StripColorBalance calc_cb(const StripColorBalance *cb_)
 {
   if (cb_->method == SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN) {
     return calc_cb_lgg(cb_);
@@ -292,8 +292,8 @@ static StripColorBalance calc_cb(StripColorBalance *cb_)
   return calc_cb_sop(cb_);
 }
 
-/* NOTE: lift is actually 2-lift. */
-MINLINE float color_balance_fl_lgg(
+/* Lift-Gamma-Gain math. NOTE: lift is actually (2-lift). */
+static float color_balance_lgg(
     float in, const float lift, const float gain, const float gamma, const float mul)
 {
   float x = (((in - 1.0f) * lift) + 1.0f) * gain;
@@ -308,12 +308,9 @@ MINLINE float color_balance_fl_lgg(
   return x;
 }
 
-MINLINE float color_balance_fl_sop(float in,
-                                   const float slope,
-                                   const float offset,
-                                   const float power,
-                                   const float pivot,
-                                   float mul)
+/* Slope-Offset-Power (ASC CDL) math, see https://en.wikipedia.org/wiki/ASC_CDL */
+static float color_balance_sop(
+    float in, const float slope, const float offset, const float power, float mul)
 {
   float x = in * slope + offset;
 
@@ -322,166 +319,114 @@ MINLINE float color_balance_fl_sop(float in,
     x = 0.0f;
   }
 
-  x = powf(x / pivot, power) * pivot;
+  x = powf(x, power);
   x *= mul;
   CLAMP(x, FLT_MIN, FLT_MAX);
   return x;
 }
 
-static void make_cb_table_float_lgg(float lift, float gain, float gamma, float *table, float mul)
-{
-  for (int y = 0; y < 256; y++) {
-    float v = color_balance_fl_lgg(float(y) * (1.0f / 255.0f), lift, gain, gamma, mul);
+/* Use a larger lookup table than 256 possible byte values: due to alpha
+ * premultiplication, dark values with low alphas might need more precision. */
+static constexpr int CB_TABLE_SIZE = 1024;
 
-    table[y] = v;
+static void make_cb_table_lgg(
+    float lift, float gain, float gamma, float mul, float r_table[CB_TABLE_SIZE])
+{
+  for (int i = 0; i < CB_TABLE_SIZE; i++) {
+    float x = float(i) * (1.0f / (CB_TABLE_SIZE - 1.0f));
+    r_table[i] = color_balance_lgg(x, lift, gain, gamma, mul);
   }
 }
 
-static void make_cb_table_float_sop(
-    float slope, float offset, float power, float pivot, float *table, float mul)
+static void make_cb_table_sop(
+    float slope, float offset, float power, float mul, float r_table[CB_TABLE_SIZE])
 {
-  for (int y = 0; y < 256; y++) {
-    float v = color_balance_fl_sop(float(y) * (1.0f / 255.0f), slope, offset, power, pivot, mul);
-
-    table[y] = v;
+  for (int i = 0; i < CB_TABLE_SIZE; i++) {
+    float x = float(i) * (1.0f / (CB_TABLE_SIZE - 1.0f));
+    r_table[i] = color_balance_sop(x, slope, offset, power, mul);
   }
 }
 
-static void color_balance_byte_byte(
-    StripColorBalance *cb_, uchar *rect, const uchar *mask_rect, int width, int height, float mul)
+static void color_balance_byte(const StripColorBalance *cb_,
+                               uchar *rect,
+                               const uchar *mask_rect,
+                               int width,
+                               int height,
+                               float mul)
 {
-  // uchar cb_tab[3][256];
-  uchar *cp = rect;
-  uchar *e = cp + width * 4 * height;
-  const uchar *m = mask_rect;
+  float cb_tab[3][CB_TABLE_SIZE];
+  uchar *ptr = rect;
+  uchar *ptr_end = ptr + int64_t(width) * height * 4;
+  const uchar *mask_ptr = mask_rect;
 
   StripColorBalance cb = calc_cb(cb_);
-
-  while (cp < e) {
-    float p[4];
-    int c;
-
-    straight_uchar_to_premul_float(p, cp);
-
-    for (c = 0; c < 3; c++) {
-      float t;
-      if (cb.method == SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN) {
-        t = color_balance_fl_lgg(p[c], cb.lift[c], cb.gain[c], cb.gamma[c], mul);
-      }
-      else {
-        t = color_balance_fl_sop(p[c], cb.slope[c], cb.offset[c], cb.power[c], 1.0, mul);
-      }
-
-      if (m) {
-        float m_normal = float(m[c]) / 255.0f;
-
-        p[c] = p[c] * (1.0f - m_normal) + t * m_normal;
-      }
-      else {
-        p[c] = t;
-      }
-    }
-
-    premul_float_to_straight_uchar(cp, p);
-
-    cp += 4;
-    if (m) {
-      m += 4;
-    }
-  }
-}
-
-static void color_balance_byte_float(StripColorBalance *cb_,
-                                     uchar *rect,
-                                     float *rect_float,
-                                     const uchar *mask_rect,
-                                     int width,
-                                     int height,
-                                     float mul)
-{
-  float cb_tab[4][256];
-  int c, i;
-  uchar *p = rect;
-  uchar *e = p + width * 4 * height;
-  const uchar *m = mask_rect;
-  float *o;
-  StripColorBalance cb;
-
-  o = rect_float;
-
-  cb = calc_cb(cb_);
-
-  for (c = 0; c < 3; c++) {
+  for (int c = 0; c < 3; c++) {
     if (cb.method == SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN) {
-      make_cb_table_float_lgg(cb.lift[c], cb.gain[c], cb.gamma[c], cb_tab[c], mul);
+      make_cb_table_lgg(cb.lift[c], cb.gain[c], cb.gamma[c], mul, cb_tab[c]);
     }
     else {
-      make_cb_table_float_sop(cb.slope[c], cb.offset[c], cb.power[c], 1.0, cb_tab[c], mul);
+      make_cb_table_sop(cb.slope[c], cb.offset[c], cb.power[c], mul, cb_tab[c]);
     }
   }
 
-  for (i = 0; i < 256; i++) {
-    cb_tab[3][i] = float(i) * (1.0f / 255.0f);
-  }
+  while (ptr < ptr_end) {
+    float pix[4];
+    straight_uchar_to_premul_float(pix, ptr);
 
-  while (p < e) {
-    if (m) {
-      const float t[3] = {m[0] / 255.0f, m[1] / 255.0f, m[2] / 255.0f};
+    int p0 = int(pix[0] * (CB_TABLE_SIZE - 1.0f) + 0.5f);
+    int p1 = int(pix[1] * (CB_TABLE_SIZE - 1.0f) + 0.5f);
+    int p2 = int(pix[2] * (CB_TABLE_SIZE - 1.0f) + 0.5f);
+    if (mask_ptr) {
+      const float t[3] = {mask_ptr[0] / 255.0f, mask_ptr[1] / 255.0f, mask_ptr[2] / 255.0f};
 
-      p[0] = p[0] * (1.0f - t[0]) + t[0] * cb_tab[0][p[0]];
-      p[1] = p[1] * (1.0f - t[1]) + t[1] * cb_tab[1][p[1]];
-      p[2] = p[2] * (1.0f - t[2]) + t[2] * cb_tab[2][p[2]];
+      pix[0] = pix[0] * (1.0f - t[0]) + t[0] * cb_tab[0][p0];
+      pix[1] = pix[1] * (1.0f - t[1]) + t[1] * cb_tab[1][p1];
+      pix[2] = pix[2] * (1.0f - t[2]) + t[2] * cb_tab[2][p2];
 
-      m += 4;
+      mask_ptr += 4;
     }
     else {
-      o[0] = cb_tab[0][p[0]];
-      o[1] = cb_tab[1][p[1]];
-      o[2] = cb_tab[2][p[2]];
+      pix[0] = cb_tab[0][p0];
+      pix[1] = cb_tab[1][p1];
+      pix[2] = cb_tab[2][p2];
     }
 
-    o[3] = cb_tab[3][p[3]];
-
-    p += 4;
-    o += 4;
+    premul_float_to_straight_uchar(ptr, pix);
+    ptr += 4;
   }
 }
 
-static void color_balance_float_float(StripColorBalance *cb_,
-                                      float *rect_float,
-                                      const float *mask_rect_float,
-                                      int width,
-                                      int height,
-                                      float mul)
+static void color_balance_float(StripColorBalance *cb_,
+                                float *rect_float,
+                                const float *mask_rect_float,
+                                int width,
+                                int height,
+                                float mul)
 {
-  float *p = rect_float;
-  const float *e = rect_float + width * 4 * height;
-  const float *m = mask_rect_float;
+  float *ptr = rect_float;
+  const float *ptr_end = rect_float + int64_t(width) * height * 4;
+  const float *mask_ptr = mask_rect_float;
   StripColorBalance cb = calc_cb(cb_);
 
-  while (p < e) {
-    int c;
-    for (c = 0; c < 3; c++) {
+  while (ptr < ptr_end) {
+    for (int c = 0; c < 3; c++) {
       float t;
       if (cb_->method == SEQ_COLOR_BALANCE_METHOD_LIFTGAMMAGAIN) {
-        t = color_balance_fl_lgg(p[c], cb.lift[c], cb.gain[c], cb.gamma[c], mul);
+        t = color_balance_lgg(ptr[c], cb.lift[c], cb.gain[c], cb.gamma[c], mul);
       }
       else {
-        t = color_balance_fl_sop(p[c], cb.slope[c], cb.offset[c], cb.power[c], 1.0, mul);
+        t = color_balance_sop(ptr[c], cb.slope[c], cb.offset[c], cb.power[c], mul);
       }
 
-      if (m) {
-        p[c] = p[c] * (1.0f - m[c]) + t * m[c];
+      if (mask_ptr) {
+        ptr[c] = ptr[c] * (1.0f - mask_ptr[c]) + t * mask_ptr[c];
+        mask_ptr += 4;
       }
       else {
-        p[c] = t;
+        ptr[c] = t;
       }
     }
-
-    p += 4;
-    if (m) {
-      m += 4;
-    }
+    ptr += 4;
   }
 }
 
@@ -490,7 +435,6 @@ struct ColorBalanceInitData {
   ImBuf *ibuf;
   float mul;
   ImBuf *mask;
-  bool make_float;
 };
 
 struct ColorBalanceThread {
@@ -501,8 +445,6 @@ struct ColorBalanceThread {
 
   uchar *rect, *mask_rect;
   float *rect_float, *mask_rect_float;
-
-  bool make_float;
 };
 
 static void color_balance_init_handle(void *handle_v,
@@ -523,7 +465,6 @@ static void color_balance_init_handle(void *handle_v,
   handle->mul = init_data->mul;
   handle->width = ibuf->x;
   handle->height = tot_line;
-  handle->make_float = init_data->make_float;
 
   if (ibuf->byte_buffer.data) {
     handle->rect = ibuf->byte_buffer.data + offset;
@@ -560,13 +501,10 @@ static void *color_balance_do_thread(void *thread_data_v)
   float mul = thread_data->mul;
 
   if (rect_float) {
-    color_balance_float_float(cb, rect_float, mask_rect_float, width, height, mul);
-  }
-  else if (thread_data->make_float) {
-    color_balance_byte_float(cb, rect, rect_float, mask_rect, width, height, mul);
+    color_balance_float(cb, rect_float, mask_rect_float, width, height, mul);
   }
   else {
-    color_balance_byte_byte(cb, rect, mask_rect, width, height, mul);
+    color_balance_byte(cb, rect, mask_rect, width, height, mul);
   }
 
   return nullptr;
@@ -590,19 +528,16 @@ static void colorBalance_init_data(SequenceModifierData *smd)
   }
 }
 
-static void modifier_color_balance_apply(
-    StripColorBalance *cb, ImBuf *ibuf, float mul, bool make_float, ImBuf *mask_input)
+static void modifier_color_balance_apply(StripColorBalance *cb,
+                                         ImBuf *ibuf,
+                                         float mul,
+                                         ImBuf *mask_input)
 {
   ColorBalanceInitData init_data;
-
-  if (!ibuf->float_buffer.data && make_float) {
-    imb_addrectfloatImBuf(ibuf, 4);
-  }
 
   init_data.cb = cb;
   init_data.ibuf = ibuf;
   init_data.mul = mul;
-  init_data.make_float = make_float;
   init_data.mask = mask_input;
 
   IMB_processor_apply_threaded(ibuf->y,
@@ -624,7 +559,7 @@ static void colorBalance_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *ma
 {
   ColorBalanceModifierData *cbmd = (ColorBalanceModifierData *)smd;
 
-  modifier_color_balance_apply(&cbmd->color_balance, ibuf, cbmd->color_multiply, false, mask);
+  modifier_color_balance_apply(&cbmd->color_balance, ibuf, cbmd->color_multiply, mask);
 }
 
 static SequenceModifierTypeInfo seqModifier_ColorBalance = {
