@@ -15,6 +15,7 @@
 #include "draw_debug.hh"
 
 #include "overlay_next_instance.hh"
+#include "overlay_next_mesh_measurements.hh"
 
 namespace blender::draw::overlay {
 
@@ -29,6 +30,7 @@ void Instance::init()
   state.view_layer = ctx->view_layer;
   state.scene = ctx->scene;
   state.v3d = ctx->v3d;
+  state.region = ctx->region;
   state.rv3d = ctx->rv3d;
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
@@ -142,6 +144,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     switch (ob_ref.object->type) {
       case OB_MESH:
         layer.meshes.edit_object_sync(manager, ob_ref, resources);
+        MeshMeasurements::edit_object_sync(ob_ref, state);
         break;
       case OB_ARMATURE:
         break;

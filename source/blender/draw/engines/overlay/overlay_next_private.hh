@@ -42,6 +42,7 @@ struct State {
   const ViewLayer *view_layer;
   const Scene *scene;
   const View3D *v3d;
+  const ARegion *region;
   const RegionView3D *rv3d;
   const Base *active_base;
   View3DOverlay overlay;
