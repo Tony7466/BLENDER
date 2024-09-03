@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <atomic>
-
 #include "BLI_polygon_clipping_2d.hh"
 #include "BLI_virtual_array.hh"
 
