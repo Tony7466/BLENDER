@@ -304,13 +304,6 @@ void paint_update_brush_rake_rotation(UnifiedPaintSettings &ups,
 
 void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float stroke[3]);
 
-/* Tool slot API. */
-
-/* TODO rename (move?) functions. */
-void BKE_paint_toolslots_brush_update(Paint *paint, const char *brush_type_name);
-struct AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(
-    Paint *paint, const char *brush_type_name);
-
 /* .blend I/O */
 
 void BKE_paint_blend_write(BlendWriter *writer, Paint *paint);

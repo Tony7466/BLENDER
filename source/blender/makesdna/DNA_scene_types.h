@@ -925,10 +925,6 @@ typedef struct Paint_Runtime {
   char _pad[2];
 } Paint_Runtime;
 
-typedef struct PaintToolSlot {
-  struct AssetWeakReference *brush_asset_reference;
-} PaintToolSlot;
-
 typedef struct NamedBrushAssetReference {
   struct NamedBrushAssetReference *next, *prev;
 
@@ -953,10 +949,6 @@ typedef struct Paint {
    * file load.
    */
   struct AssetWeakReference *brush_asset_reference;
-
-  struct PaintToolSlot *tool_brushes;
-  int tool_brushes_len;
-  char _pad1[4];
 
   /**
    * For the tool system: Remember the last active brush used for a specific brush type.
