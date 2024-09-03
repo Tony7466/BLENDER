@@ -193,7 +193,7 @@ static NamedBrushAssetReference *toolsystem_brush_binding_lookup(Paint *paint,
                                                                  const char *brush_type_name)
 {
   return static_cast<NamedBrushAssetReference *>(
-      BLI_findstring_ptr(&paint->active_brush_per_brush_type,
+      BLI_findstring_ptr(&paint->tool_brush_bindings.active_brush_per_brush_type,
                          brush_type_name,
                          offsetof(NamedBrushAssetReference, name)));
 }
@@ -223,7 +223,7 @@ static void toolsystem_brush_binding_update_from_tool(Paint *paint, const bToolR
     new_brush_ref->name = BLI_strdup(active_tool->runtime->data_block);
     new_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
         "NamedBrushAssetRefernce new asset ref", *paint->brush_asset_reference);
-    BLI_addhead(&paint->active_brush_per_brush_type, new_brush_ref);
+    BLI_addhead(&paint->tool_brush_bindings.active_brush_per_brush_type, new_brush_ref);
   }
 }
 
@@ -325,14 +325,14 @@ static void activate_compatible_brush_from_toolref(const bContext *C,
         }
       }
       else {
-        if (paint->main_brush) {
-          BKE_paint_main_brush_set(paint, paint->main_brush);
+        if (paint->tool_brush_bindings.main_brush) {
+          BKE_paint_main_brush_set(paint, paint->tool_brush_bindings.main_brush);
         }
         else {
           std::optional<AssetWeakReference> main_brush_asset_reference =
               [&]() -> std::optional<AssetWeakReference> {
-            if (paint->main_brush_asset_reference) {
-              return *paint->main_brush_asset_reference;
+            if (paint->tool_brush_bindings.main_brush_asset_reference) {
+              return *paint->tool_brush_bindings.main_brush_asset_reference;
             }
             return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
                                                           std::nullopt);
