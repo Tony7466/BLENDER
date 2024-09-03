@@ -27,6 +27,7 @@
 #include "DNA_anim_types.h"
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
+#include "DNA_mesh_types.h"
 
 #include "ED_anim_api.hh"
 
@@ -39,90 +40,118 @@ namespace blender::animrig {
 /** \name Public F-Curves API
  * \{ */
 
+static void add_object_data_user(const Main &bmain,
+                                 const ID &id,
+                                 Vector<const ID *> &r_related_ids)
+{
+  for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
+       ob = static_cast<Object *>(ob->id.next))
+  {
+    if (ob->data != &id) {
+      continue;
+    }
+    if (!r_related_ids.contains(&ob->id)) {
+      r_related_ids.append(&ob->id);
+    }
+    return;
+  }
+}
+
 /* Find an action that is related to the given ID. Either on the data if the ID is an Object or a
  * user of the ID. If the possibility for multiple users exists, only return an action if the ID is
  * used exactly once. */
 static bAction *find_related_action(const Main &bmain, const ID &id)
 {
-  switch (GS(id.name)) {
-    case ID_OB: {
-      Object *ob = (Object *)(&id);
-      if (!ob) {
-        return nullptr;
-      }
-      ID *data = (ID *)ob->data;
-      if (!data) {
-        return nullptr;
-      }
-      AnimData *adt = BKE_animdata_from_id(data);
-      if (!adt) {
-        return nullptr;
-      }
+  Vector<const ID *> related_ids({&id});
+
+  for (int i = 0; i < related_ids.size(); i++) {
+    const ID *related_id = related_ids[i];
+    AnimData *adt = BKE_animdata_from_id(related_id);
+    if (adt && adt->action) {
       Action &action = adt->action->wrap();
-      if (!action.is_action_layered()) {
-        return nullptr;
-      }
-      return adt->action;
-      break;
-    }
-
-    case ID_KE: {
-      /* Shapekeys.  */
-      Key *shapekey = (Key *)(&id);
-      AnimData *adt = BKE_animdata_from_id(shapekey->from);
-      if (!adt || !adt->action) {
-        return nullptr;
-      }
-      return adt->action;
-      break;
-    }
-
-    case ID_NT: {
-      /* bNodeTree. */
-      if (ID_REAL_USERS(&id) != 0) {
-        /* When a bNodeTree is used by a material directly, the user count is at 0. This means
-         * action re-use is currently only supported by the first layer of a material, not node
-         * groups. */
-        return nullptr;
-      }
-      for (Material *material = static_cast<Material *>(bmain.materials.first); material;
-           material = static_cast<Material *>(material->id.next))
-      {
-        if (&material->nodetree->id != &id) {
-          continue;
-        }
-        AnimData *adt = BKE_animdata_from_id(&material->id);
-        if (!adt || !adt->action) {
-          return nullptr;
-        }
+      if (action.is_action_layered()) {
         return adt->action;
       }
-      break;
     }
 
-    default: {
-      if (ID_REAL_USERS(&id) != 1) {
-        return nullptr;
-      }
-      /* Find the one object using this datablock. If found, and it has
-       * an action, return that action instead. This is useful so object and data share the same
-       * action, but on different slots. */
+    /* In the case of more than 1 user we cannot properly determine from which the action should be
+     * taken, so those are skipped. Including the 0 users case for embedded IDs. */
+    if (ID_REAL_USERS(related_id) > 1) {
+      continue;
+    }
 
-      for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
-           ob = static_cast<Object *>(ob->id.next))
-      {
-        if (ob->data != &id) {
-          continue;
+    /* No action found on current ID, add related IDs to the ID Vector. */
+    switch (GS(related_id->name)) {
+      case ID_OB: {
+        Object *ob = (Object *)(related_id);
+        BLI_assert(ob != nullptr);
+        ID *data = (ID *)ob->data;
+        if (data && !related_ids.contains(data)) {
+          related_ids.append(data);
         }
-        if (!ob->adt || !ob->adt->action) {
-          /* No animation.  */
-          return nullptr;
+        break;
+      }
+
+      case ID_KE: {
+        /* Shapekeys.  */
+
+        /* Find a mesh using this shapekey. */
+        for (Mesh *mesh = static_cast<Mesh *>(bmain.meshes.first); mesh;
+             mesh = static_cast<Mesh *>(mesh->id.next))
+        {
+          if (!mesh->key || &mesh->key->id != related_id) {
+            continue;
+          }
+          if (!related_ids.contains(&mesh->id)) {
+            related_ids.append(&mesh->id);
+          }
+          break;
         }
-        Action &action = ob->adt->action->wrap();
-        if (!action.is_action_layered()) {
-          return nullptr;
+
+        /* Curves can also have shapekeys. */
+        for (Curve *curve = static_cast<Curve *>(bmain.curves.first); curve;
+             curve = static_cast<Curve *>(curve->id.next))
+        {
+          if (!curve->key || &curve->key->id != related_id) {
+            continue;
+          }
+          if (!related_ids.contains(&curve->id)) {
+            related_ids.append(&curve->id);
+          }
+          break;
         }
-        return ob->adt->action;
+
+        break;
+      }
+
+      case ID_NT: {
+        /* bNodeTree. */
+        for (Material *material = static_cast<Material *>(bmain.materials.first); material;
+             material = static_cast<Material *>(material->id.next))
+        {
+          if (!material->nodetree || &material->nodetree->id != related_id) {
+            continue;
+          }
+          if (!related_ids.contains(&material->id)) {
+            related_ids.append(&material->id);
+          }
+          break;
+        }
+        break;
+      }
+
+      case ID_ME: {
+        add_object_data_user(bmain, *related_id, related_ids);
+        Mesh *mesh = (Mesh *)related_id;
+        if (mesh->key && !related_ids.contains(&mesh->key->id)) {
+          related_ids.append(&mesh->key->id);
+        }
+        break;
+      }
+
+      default: {
+        /* Just check if the ID is used as object data somewhere. */
+        add_object_data_user(bmain, *related_id, related_ids);
         break;
       }
     }
