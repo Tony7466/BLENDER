@@ -334,7 +334,22 @@ class DATA_PT_light_animation(DataButtonsPanel, PropertiesAnimationMixin, Proper
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
     }
-    _animated_id_context_property = 'light'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        # DataButtonsPanel.poll ensures this is not None.
+        light = context.light
+
+        col = layout.column(align=True)
+        col.label(text="Light")
+        self.draw_action_and_slot_selector(context, col, light)
+
+        if node_tree := light.node_tree:
+            col = layout.column(align=True)
+            col.label(text="Shader Node Tree")
+            self.draw_action_and_slot_selector(context, col, node_tree)
 
 
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):

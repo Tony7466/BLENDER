@@ -993,6 +993,11 @@ class TEXTURE_PT_animation(TextureButtonsPanel, PropertiesAnimationMixin, Proper
         col.label(text="Texture")
         self.draw_action_and_slot_selector(context, col, texture)
 
+        if node_tree := texture.node_tree:
+            col = layout.column(align=True)
+            col.label(text="Shader Node Tree")
+            self.draw_action_and_slot_selector(context, col, node_tree)
+
 
 class TEXTURE_PT_custom_props(TextureButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
