@@ -31,15 +31,15 @@
 
 namespace blender::polygonboolean {
 
-enum BooleanMode {
-  /* (A*B) Intersection of A and B. */
-  A_AND_B,
-  /* (A+B) Union of A and B. */
-  A_OR_B,
-  /* (A-B) Differences of A with B. */
-  A_NOT_B,
-  /* (B-C) Differences of B with A. */
-  B_NOT_A,
+enum class Operation : int8_t {
+  /* Intersection of A and B. */
+  And,
+  /* Union of A and B. */
+  Or,
+  /* Differences of A with B. */
+  NotB,
+  /* Differences of B with A. */
+  NotA,
 };
 
 enum HoleMode {
@@ -52,7 +52,7 @@ enum HoleMode {
 };
 
 struct InputMode {
-  BooleanMode boolean_mode;
+  Operation boolean_mode;
   HoleMode hole_mode;
 };
 

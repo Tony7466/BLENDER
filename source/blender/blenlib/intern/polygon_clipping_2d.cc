@@ -193,50 +193,50 @@ static BooleanResult non_intersecting_result(const InputMode input_mode,
   const bool is_b_in_a = inside(curve_b.first(), curve_a);
 
   if (is_a_in_b) {
-    if (input_mode.boolean_mode == A_AND_B) {
+    if (input_mode.boolean_mode == Operation::And) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == Operation::NotB) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == Operation::NotA) {
       if (input_mode.hole_mode == WITHOUT_HOLES) {
         return result_B(curve_a, curve_b);
       }
       return result_BA(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (input_mode.boolean_mode == Operation::Or) {
       return result_B(curve_a, curve_b);
     }
   }
   else if (is_b_in_a) {
-    if (input_mode.boolean_mode == A_AND_B) {
+    if (input_mode.boolean_mode == Operation::And) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == Operation::NotB) {
       if (input_mode.hole_mode == WITHOUT_HOLES) {
         return result_A(curve_a, curve_b);
       }
       return result_AB(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == Operation::NotA) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (input_mode.boolean_mode == Operation::Or) {
       return result_A(curve_a, curve_b);
     }
   }
   else if (!is_a_in_b && !is_b_in_a) {
-    if (input_mode.boolean_mode == A_AND_B) {
+    if (input_mode.boolean_mode == Operation::And) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
+    else if (input_mode.boolean_mode == Operation::NotB) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
+    else if (input_mode.boolean_mode == Operation::NotA) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (input_mode.boolean_mode == Operation::Or) {
       return result_AB(curve_a, curve_b);
     }
   }
@@ -245,22 +245,22 @@ static BooleanResult non_intersecting_result(const InputMode input_mode,
   return result_None(curve_a, curve_b);
 }
 
-static BooleanResult invalided_result(const BooleanMode mode,
+static BooleanResult invalided_result(const Operation mode,
                                       Span<float2> curve_a,
                                       Span<float2> curve_b)
 {
   BooleanResult result;
 
-  if (mode == A_AND_B) {
+  if (mode == Operation::And) {
     result = result_AB(curve_a, curve_b);
   }
-  else if (mode == A_NOT_B) {
+  else if (mode == Operation::NotB) {
     result = result_A(curve_a, curve_b);
   }
-  else if (mode == B_NOT_A) {
+  else if (mode == Operation::NotA) {
     result = result_B(curve_a, curve_b);
   }
-  else if (mode == A_OR_B) {
+  else if (mode == Operation::Or) {
     result = result_AB(curve_a, curve_b);
   }
 
@@ -268,18 +268,18 @@ static BooleanResult invalided_result(const BooleanMode mode,
   return result;
 }
 
-static std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
+static std::pair<bool, bool> get_AB_mode(const Operation mode)
 {
-  if (mode == A_AND_B) {
+  if (mode == Operation::And) {
     return {false, false};
   }
-  else if (mode == A_NOT_B) {
+  else if (mode == Operation::NotB) {
     return {true, false};
   }
-  else if (mode == B_NOT_A) {
+  else if (mode == Operation::NotA) {
     return {false, true};
   }
-  else if (mode == A_OR_B) {
+  else if (mode == Operation::Or) {
     return {true, true};
   }
 
@@ -783,7 +783,7 @@ struct CurveBooleanExecutor {
      *  Holes are only create in the union of the shapes
      * (Because non-intersecting holes are already handled)
      */
-    if (input_mode.boolean_mode == A_OR_B) {
+    if (input_mode.boolean_mode == Operation::Or) {
       if (input_mode.hole_mode == WITHOUT_HOLES) {
         result = result_remove_holes(result, curve_a, curve_b);
       }
