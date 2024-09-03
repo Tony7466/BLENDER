@@ -1,1 +1,2 @@
 Referenced by issue #124452, Blender LTS: Maintenance Task 4.2
+Referenced by commit 790333578bbe318a58d524b1b6ea0bdce3559920, Fix incorrect use of exit() when execv() fails on *nix
