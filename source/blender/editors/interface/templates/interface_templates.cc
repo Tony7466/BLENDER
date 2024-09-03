@@ -575,7 +575,7 @@ void UI_context_active_but_prop_get_templateID(const bContext *C,
 {
   uiBut *but = UI_context_active_but_get(C);
 
-  memset(r_ptr, 0, sizeof(*r_ptr));
+  *r_ptr = {};
   *r_prop = nullptr;
 
   if (but && (but->funcN == template_id_cb) && but->func_argN) {
@@ -988,7 +988,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       /* these call UI_context_active_but_prop_get_templateID */
       break;
     case UI_ID_DELETE:
-      memset(&idptr, 0, sizeof(idptr));
+      idptr = {};
       RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
       RNA_property_update(C, &template_ui->ptr, template_ui->prop);
 
@@ -3022,7 +3022,7 @@ static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *prope
 
   /* Initialize properties but do not assume ownership of them.
    * This "minimal" operator owns nothing. */
-  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
+  op->ptr = MEM_new<PointerRNA>("wmOperatorPtrRNA");
   op->properties = static_cast<IDProperty *>(properties->data);
   *op->ptr = *properties;
 

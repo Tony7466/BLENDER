@@ -1135,7 +1135,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
   ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
   uiBut *prevbut = nullptr;
 
-  memset(r_ptr, 0, sizeof(*r_ptr));
+  *r_ptr = {};
   *r_prop = nullptr;
   *r_is_undo = false;
   *r_is_userdef = false;
@@ -3614,7 +3614,7 @@ void uiItemMenuEnumFullO_ptr(uiLayout *layout,
   /* Use the menu button as owner for the operator properties, which will then be passed to the
    * individual menu items. */
   if (r_opptr) {
-    but->opptr = MEM_cnew<PointerRNA>("uiButOpPtr");
+    but->opptr = MEM_new<PointerRNA>("uiButOpPtr");
     WM_operator_properties_create_ptr(but->opptr, ot);
     BLI_assert(but->opptr->data == nullptr);
     WM_operator_properties_alloc(&but->opptr, (IDProperty **)&but->opptr->data, ot->idname);

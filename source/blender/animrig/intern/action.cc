@@ -1301,11 +1301,12 @@ bool ChannelBag::fcurve_remove(FCurve &fcurve_to_remove)
       const int group_index = this->channel_groups().as_span().first_index_try(group);
       this->channel_group_remove_raw(group_index);
     }
-    this->restore_channel_group_invariants();
   }
 
   dna::array::remove_index(
       &this->fcurve_array, &this->fcurve_array_num, nullptr, fcurve_index, fcurve_ptr_destructor);
+
+  this->restore_channel_group_invariants();
 
   /* As an optimization, this function could call `DEG_relations_tag_update(bmain)` to prune any
    * relationships that are now no longer necessary. This is not needed for correctness of the
@@ -1604,12 +1605,7 @@ void ChannelBag::restore_channel_group_invariants()
 
 bool ChannelGroup::is_legacy() const
 {
-  const bool group_is_legacy = this->channel_bag == nullptr;
-
-  BLI_assert_msg(group_is_legacy || this->channels.first == nullptr,
-                 "Layered-action channel group has legacy-action data.");
-
-  return group_is_legacy;
+  return this->channel_bag == nullptr;
 }
 
 Span<FCurve *> ChannelGroup::fcurves()
