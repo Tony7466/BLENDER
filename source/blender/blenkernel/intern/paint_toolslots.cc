@@ -28,9 +28,9 @@ void BKE_paint_toolslots_brush_update(Paint *paint, const char *brush_type_name)
   }
 
   NamedBrushAssetReference *brush_ref = static_cast<NamedBrushAssetReference *>(
-      BLI_findstring(&paint->active_brush_per_brush_type,
-                     brush_type_name,
-                     offsetof(NamedBrushAssetReference, name)));
+      BLI_findstring_ptr(&paint->active_brush_per_brush_type,
+                         brush_type_name,
+                         offsetof(NamedBrushAssetReference, name)));
 
   /* Update existing reference. */
   if (brush_ref) {
@@ -54,9 +54,9 @@ AssetWeakReference *BKE_paint_toolslots_brush_asset_reference_get(Paint *paint,
                                                                   const char *brush_type_name)
 {
   const NamedBrushAssetReference *brush_ref = static_cast<NamedBrushAssetReference *>(
-      BLI_findstring(&paint->active_brush_per_brush_type,
-                     brush_type_name,
-                     offsetof(NamedBrushAssetReference, name)));
+      BLI_findstring_ptr(&paint->active_brush_per_brush_type,
+                         brush_type_name,
+                         offsetof(NamedBrushAssetReference, name)));
   if (!brush_ref) {
     return nullptr;
   }
