@@ -3267,13 +3267,15 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
   const int image_width = ibuf->x;
   const int image_height = ibuf->y;
   const int width_max = text_box_width_get(runtime->lines);
+  const int text_height = runtime->lines.size() * runtime->line_height;
 
   float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
   float2 line_height_offset{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
+  float2 alignment_y(0.0f, text_height / 2.0f);
 
   for (blender::seq::LineInfo &line : runtime->lines) {
-    float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width, width_max);
-    float2 alignment = image_center + line_height_offset + horizontal_alignment;
+    float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
+    float2 alignment = image_center + line_height_offset + alignment_x + alignment_y;
 
     for (blender::seq::CharInfo &character : line.characters) {
       character.position += alignment;
@@ -3281,9 +3283,8 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
   }
   runtime->text_boundbox.xmin = image_center.x - width_max / 2;
   runtime->text_boundbox.xmax = image_center.x + width_max / 2;
-  runtime->text_boundbox.ymax = runtime->lines[0].characters[0].position.y - line_height_offset.y;
-  runtime->text_boundbox.ymin = runtime->text_boundbox.ymax -
-                                runtime->lines.size() * runtime->line_height;
+  runtime->text_boundbox.ymax = image_center.y + text_height / 2;
+  runtime->text_boundbox.ymin = image_center.y - text_height / 2;
 }
 
 static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
