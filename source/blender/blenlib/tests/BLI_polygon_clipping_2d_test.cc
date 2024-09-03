@@ -418,8 +418,7 @@ void squares_A_AND_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::And, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 4);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -436,8 +435,7 @@ void squares_A_OR_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::Or, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 8);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -455,8 +453,7 @@ void squares_A_NOT_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::NotB, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 6);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -473,8 +470,7 @@ void squares_B_NOT_A_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::NotA, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotA, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 6);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -496,8 +492,7 @@ void simple_intersection_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::And, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 6);
   EXPECT_EQ(result.intersections_data.size(), 4);
@@ -520,8 +515,7 @@ void simple_union_with_hole_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::Or, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 11);
   EXPECT_EQ(result.intersections_data.size(), 4);
@@ -544,8 +538,8 @@ void simple_union_without_hole_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::Or, HoleMode::WithoutHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
+  result = result_remove_holes(result, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 8);
   EXPECT_EQ(result.intersections_data.size(), 2);
@@ -568,8 +562,7 @@ void complex_A_AND_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::And, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 24);
   EXPECT_EQ(result.intersections_data.size(), 24);
@@ -597,8 +590,7 @@ void complex_A_OR_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::Or, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 34);
   EXPECT_EQ(result.intersections_data.size(), 24);
@@ -642,8 +634,8 @@ void complex_A_OR_B_without_holes_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::Or, HoleMode::WithoutHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
+  result = result_remove_holes(result, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 17);
   EXPECT_EQ(result.intersections_data.size(), 10);
@@ -681,8 +673,7 @@ void complex_A_NOT_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::NotB, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 30);
   EXPECT_EQ(result.intersections_data.size(), 24);
@@ -719,8 +710,7 @@ void complex_B_NOT_A_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::NotA, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotA, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 28);
   EXPECT_EQ(result.intersections_data.size(), 24);
@@ -756,8 +746,7 @@ void last_segment_interection_test()
    */
   const Array<float2> points_a = {{0, 5}, {0, 0}, {7, 0}, {7, 5}};
   const Array<float2> points_b = {{2, 3}, {0, 7}, {3, 7}, {5, 4}, {6, 6}, {3, 4}, {2, 6}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(
-      Operation::NotB, HoleMode::WithHoles, points_a, points_b);
+  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
   EXPECT_TRUE(result.valid_geometry);
   EXPECT_EQ(result.verts.size(), 13);
   EXPECT_EQ(result.intersections_data.size(), 6);

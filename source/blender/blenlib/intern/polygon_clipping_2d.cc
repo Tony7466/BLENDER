@@ -186,7 +186,6 @@ static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
 }
 
 static BooleanResult non_intersecting_result(const Operation boolean_mode,
-                                             const HoleMode hole_mode,
                                              Span<float2> curve_a,
                                              Span<float2> curve_b)
 {
@@ -201,9 +200,6 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_None(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotA) {
-      if (hole_mode == HoleMode::WithoutHoles) {
-        return result_B(curve_a, curve_b);
-      }
       return result_BA(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::Or) {
@@ -215,9 +211,6 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_B(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotB) {
-      if (hole_mode == HoleMode::WithoutHoles) {
-        return result_A(curve_a, curve_b);
-      }
       return result_AB(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotA) {
@@ -397,9 +390,9 @@ static int result_find_base_id(const BooleanResult &results,
   return -1;
 }
 
-static BooleanResult result_remove_holes(const BooleanResult &in_results,
-                                         const Span<float2> curve_a,
-                                         const Span<float2> curve_b)
+BooleanResult result_remove_holes(const BooleanResult &in_results,
+                                  const Span<float2> curve_a,
+                                  const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -445,9 +438,9 @@ static BooleanResult result_remove_holes(const BooleanResult &in_results,
   return result;
 }
 
-static BooleanResult result_sort_holes(const BooleanResult &in_results,
-                                       const Span<float2> curve_a,
-                                       const Span<float2> curve_b)
+BooleanResult result_sort_holes(const BooleanResult &in_results,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -698,7 +691,6 @@ struct CurveBooleanExecutor {
    * lists of sorted indices that point to intersection point for curve `A` and `B`
    */
   BooleanResult execute_boolean(const Operation boolean_mode,
-                                const HoleMode hole_mode,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b)
   {
@@ -726,7 +718,7 @@ struct CurveBooleanExecutor {
     }
 
     if (intersections.is_empty()) {
-      return non_intersecting_result(boolean_mode, hole_mode, curve_a, curve_b);
+      return non_intersecting_result(boolean_mode, curve_a, curve_b);
     }
 
     num_intersects = intersections.size();
@@ -780,19 +772,6 @@ struct CurveBooleanExecutor {
     newPolygon();
 
     BooleanResult result = copy_data_to_result();
-
-    /**
-     *  Holes are only create in the union of the shapes
-     * (Because non-intersecting holes are already handled)
-     */
-    if (boolean_mode == Operation::Or) {
-      if (hole_mode == HoleMode::WithoutHoles) {
-        result = result_remove_holes(result, curve_a, curve_b);
-      }
-      else if (hole_mode == HoleMode::WithOrderedHoles) {
-        result = result_sort_holes(result, curve_a, curve_b);
-      }
-    }
 
     return result;
   }
@@ -968,12 +947,11 @@ struct CurveBooleanExecutor {
 };
 
 BooleanResult curve_boolean_calc(const Operation boolean_mode,
-                                 const HoleMode hole_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute_boolean(boolean_mode, hole_mode, curve_a, curve_b);
+  return executor.execute_boolean(boolean_mode, curve_a, curve_b);
 }
 
 BooleanResult curve_boolean_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)

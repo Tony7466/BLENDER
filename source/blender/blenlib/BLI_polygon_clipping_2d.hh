@@ -97,7 +97,6 @@ void interpolate_position_a(const Span<float2> pos_a,
 Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResult &result);
 
 BooleanResult curve_boolean_calc(const Operation boolean_mode,
-                                 const HoleMode hole_mode,
                                  Span<float2> curve_a,
                                  Span<float2> curve_b);
 /**
@@ -107,5 +106,12 @@ BooleanResult curve_boolean_calc(const Operation boolean_mode,
 BooleanResult curve_boolean_cut(const bool is_a_cyclic,
                                 Span<float2> curve_a,
                                 Span<float2> curve_b);
+
+BooleanResult result_remove_holes(const BooleanResult &in_results,
+                                  const Span<float2> curve_a,
+                                  const Span<float2> curve_b);
+BooleanResult result_sort_holes(const BooleanResult &in_results,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean
