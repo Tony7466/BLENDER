@@ -3189,7 +3189,7 @@ static void build_character_info(const TextVars *data, TextVarsRuntime *runtime)
   }
 }
 
-static int text_box_width_get(const TextVars *data, const ImBuf *ibuf)
+static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
 {
   if (data->wrap_width != 0.0f) {
     return data->wrap_width * ibuf->x;
@@ -3199,7 +3199,7 @@ static int text_box_width_get(const TextVars *data, const ImBuf *ibuf)
 
 static void apply_word_wrapping(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
 {
-  const int wrap_width = text_box_width_get(data, ibuf);
+  const int wrap_width = wrap_width_get(data, ibuf);
   float2 char_position{0.0f, 0.0f};
   bool is_word_wrap = false;
   runtime->lines.append(blender::seq::LineInfo());
@@ -3244,45 +3244,55 @@ static float2 vertical_alignment_offset_get(const TextVars *data, const TextVars
   return {0.0f, 0.0f};
 }
 
-static float2 horizontal_alignment_offset_get(const TextVars *data, float line_width)
+static int text_box_width_get(blender::Vector<blender::seq::LineInfo> lines)
 {
+  int width_max = 0;
+
+  for (const blender::seq::LineInfo &line : lines) {
+    width_max = std::max(width_max, line.width);
+  }
+  return width_max;
+}
+
+static float2 horizontal_alignment_offset_get(const TextVars *data,
+                                              float line_width,
+                                              int width_max)
+{
+  float line_offset = (width_max - line_width) / 2.0f;
+  float center_offset = -line_width / 2.0f;
+
   if (data->align == SEQ_TEXT_ALIGN_X_RIGHT) {
-    return {-line_width, 0.0f};
+    return {center_offset + line_offset, 0.0f};
   }
   else if (data->align == SEQ_TEXT_ALIGN_X_CENTER) {
-    return {-line_width / 2.0f, 0.0f};
+    return {center_offset / 2.0f, 0.0f};
   }
 
-  return {0.0f, 0.0f};
+  return {center_offset - line_offset, 0.0f};
 }
 
 static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
 {
   const int image_width = ibuf->x;
   const int image_height = ibuf->y;
+  const int width_max = text_box_width_get(runtime->lines);
 
   float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
-  float2 line_height_alignment{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
+  float2 line_height_offset{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
   float2 vertical_alignment = vertical_alignment_offset_get(data, runtime);
 
-  runtime->text_boundbox.xmax = std::numeric_limits<int>::min();
-  runtime->text_boundbox.xmin = std::numeric_limits<int>::max();
-
   for (blender::seq::LineInfo &line : runtime->lines) {
-    float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width);
-    float2 alignment = image_center + line_height_alignment + vertical_alignment +
+    float2 horizontal_alignment = horizontal_alignment_offset_get(data, line.width, width_max);
+    float2 alignment = image_center + line_height_offset + vertical_alignment +
                        horizontal_alignment;
 
     for (blender::seq::CharInfo &character : line.characters) {
       character.position += alignment;
-
-      runtime->text_boundbox.xmin = std::min(int(std::round(character.position.x)),
-                                             runtime->text_boundbox.xmin);
-      int char_x_end = std::round(character.position.x + character.width_pixels);
-      runtime->text_boundbox.xmax = std::max(char_x_end, runtime->text_boundbox.xmax);
     }
   }
-  runtime->text_boundbox.ymax = runtime->characters[0].position.y - line_height_alignment.y;
+  runtime->text_boundbox.xmin = image_center.x - width_max / 2;
+  runtime->text_boundbox.xmax = image_center.x + width_max / 2;
+  runtime->text_boundbox.ymax = runtime->lines[0].characters[0].position.y - line_height_offset.y;
   runtime->text_boundbox.ymin = runtime->text_boundbox.ymax -
                                 runtime->lines.size() * runtime->line_height;
 }
