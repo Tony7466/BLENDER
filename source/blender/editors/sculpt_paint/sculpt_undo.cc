@@ -140,14 +140,17 @@ struct Node {
   Array<float4, 0> col;
   Array<float, 0> mask;
 
-  GArray<> loop_col;
+  Array<float4, 0> loop_col;
 
   /* Mesh. */
 
   Array<int, 0> vert_indices;
   int unique_verts_num;
 
-  Array<int, 0> corner_indices;
+  /**
+   * \todo Storing corners rather than faces is unnecessary.
+   */
+  Vector<int, 0> corner_indices;
 
   BitVector<0> vert_hidden;
   BitVector<0> face_hidden;
@@ -643,8 +646,7 @@ static void restore_color(Object &object, StepData &step_data, MutableSpan<bool>
           unode->col);
     }
     else if (color_attribute.domain == bke::AttrDomain::Corner && !unode->loop_col.is_empty()) {
-      const Span<int> face_indices = unode->face_indices;
-      // color::swap_gathered_colors(unode->corner_indices, color_attribute.span, unode->loop_col);
+      color::swap_gathered_colors(unode->corner_indices, color_attribute.span, unode->loop_col);
     }
 
     modified_vertices.fill_indices(unode->vert_indices.as_span(), true);
@@ -1107,8 +1109,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
         node_mask.foreach_index([&](const int i) {
-          const Span<int> faces = bke::pbvh::node_faces(
-              static_cast<bke::pbvh::MeshNode &>(nodes[i]));
+          const Span<int> faces = bke::pbvh::node_faces(nodes[i]);
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_visibility(nodes[i]);
           }
@@ -1185,8 +1186,7 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
         node_mask.foreach_index([&](const int i) {
-          const Span<int> faces = bke::pbvh::node_faces(
-              static_cast<bke::pbvh::MeshNode &>(nodes[i]));
+          const Span<int> faces = bke::pbvh::node_faces(nodes[i]);
           if (indices_contain_true(modified_faces, faces)) {
             BKE_pbvh_node_mark_update_face_sets(nodes[i]);
           }
@@ -1393,7 +1393,7 @@ static void store_mask_grids(const SubdivCCG &subdiv_ccg, Node &unode)
   }
 }
 
-static void store_color(const Mesh &mesh, const bke::pbvh::Node &node, Node &unode)
+static void store_color(const Mesh &mesh, const bke::pbvh::MeshNode &node, Node &unode)
 {
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -1403,16 +1403,19 @@ static void store_color(const Mesh &mesh, const bke::pbvh::Node &node, Node &uno
 
   /* NOTE: even with loop colors we still store (derived)
    * vertex colors for original data lookup. */
-  const Span<int> verts = bke::pbvh::node_unique_verts(
-      static_cast<const bke::pbvh::MeshNode &>(node));
+  const Span<int> verts = bke::pbvh::node_unique_verts(node);
   unode.col.reinitialize(verts.size());
   color::gather_colors_vert(
       faces, corner_verts, vert_to_face_map, colors, color_attribute.domain, verts, unode.col);
 
   if (color_attribute.domain == bke::AttrDomain::Corner) {
-    const Span<int> face_indices = unode.face_indices;
-    // unode.loop_col.reinitialize(unode.corner_indices.size());
-    // color::gather_colors(colors, unode.corner_indices, unode.loop_col);
+    for (const int face : bke::pbvh::node_faces(node)) {
+      for (const int corner : faces[face]) {
+        unode.corner_indices.append(corner);
+      }
+    }
+    unode.loop_col.reinitialize(unode.corner_indices.size());
+    color::gather_colors(colors, unode.corner_indices, unode.loop_col);
   }
 }
 
@@ -1461,8 +1464,6 @@ static void fill_node_data_mesh(const Depsgraph &depsgraph,
   unode.unique_verts_num = bke::pbvh::node_unique_verts(node).size();
 
   const int verts_num = unode.vert_indices.size();
-
-  const bool need_loops = type == Type::Color;
 
   const bool need_faces = ELEM(type, Type::FaceSet, Type::HideFace);
   if (need_faces) {
@@ -1894,10 +1895,9 @@ static size_t node_size_in_bytes(const Node &node)
   size += node.normal.as_span().size_in_bytes();
   size += node.col.as_span().size_in_bytes();
   size += node.mask.as_span().size_in_bytes();
-  if (!node.loop_col.is_empty()) {
-    size += node.loop_col.as_span().size_in_bytes();
-  }
+  size += node.loop_col.as_span().size_in_bytes();
   size += node.vert_indices.as_span().size_in_bytes();
+  size += node.corner_indices.as_span().size_in_bytes();
   size += node.vert_hidden.size() / 8;
   size += node.face_hidden.size() / 8;
   size += node.grids.as_span().size_in_bytes();
