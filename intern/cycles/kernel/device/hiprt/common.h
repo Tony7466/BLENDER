@@ -319,7 +319,7 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
                                               void *payload,
                                               hiprtHit &hit)
 {
-#  ifdef POINT_CLOUD
+#  ifdef __POINTCLOUD__
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -334,8 +334,6 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
   int type = prim_info.y;
 
 #    ifdef __SHADOW_LINKING__
-  /* TODO: Needs further testing as point clouds crash when using HIP-RT
-   * at the time this change was made. */
   if (intersection_skip_shadow_link(nullptr, local_payload->self, object_id)) {
     /* Ignore hit - continue traversal */
     return false;
@@ -524,7 +522,7 @@ ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ray,
   float ray_tmax = hit.t;
 
 #  ifdef __SHADOW_LINKING__
-  /* It doesn't seem like this is neccesary. */
+  /* It doesn't seem like this is necessary. */
   if (intersection_skip_shadow_link(nullptr, self, object)) {
     /* Ignore hit - continue traversal */
     return true;

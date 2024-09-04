@@ -139,7 +139,7 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
     if (ELEM(attribute_id, "opacity")) {
       return true;
     }
-    if (attribute_id.is_anonymous() && !propagation_info.propagate(attribute_id.anonymous_id())) {
+    if (attribute_id.is_anonymous() && !propagation_info.propagate(attribute_id.name())) {
       return true;
     }
     const GAttributeReader src_attribute = instances_attributes.lookup(attribute_id);
@@ -172,12 +172,12 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
 
   {
     /* Manually propagate "opacity" data, because it's not a layer attribute on grease pencil
-     * yet. */
-    if (const AttributeReader opacity_attribute = instances_attributes.lookup<float>("opacity")) {
-      instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
-        grease_pencil->layer(layer_i)->opacity = opacity_attribute.varray[instance_i];
-      });
-    }
+     * yet. Default to a full opacity of 1. */
+    const VArray<float> opacities = *instances_attributes.lookup_or_default<float>(
+        "opacity", AttrDomain::Instance, 1.0f);
+    instance_selection.foreach_index([&](const int instance_i, const int layer_i) {
+      grease_pencil->layer(layer_i)->opacity = opacities[instance_i];
+    });
   }
 
   return grease_pencil;
@@ -231,7 +231,7 @@ static void node_register()
   ntype.declare = node_declare;
   bke::node_type_size(&ntype, 160, 100, 320);
 
-  bke::nodeRegisterType(&ntype);
+  bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

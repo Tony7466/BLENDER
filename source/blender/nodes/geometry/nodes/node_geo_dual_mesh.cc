@@ -146,7 +146,7 @@ static void transfer_attributes(
   attribute_ids.remove(".corner_edge");
   attribute_ids.remove("sharp_face");
   attribute_ids.remove_if([&](const AttributeIDRef &id) {
-    return id.is_anonymous() && !propagation_info.propagate(id.anonymous_id());
+    return id.is_anonymous() && !propagation_info.propagate(id.name());
   });
 
   for (const AttributeIDRef &id : attribute_ids) {
@@ -937,7 +937,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_DUAL_MESH, "Dual Mesh", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

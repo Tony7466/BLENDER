@@ -310,7 +310,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   const int total_groups_num = geometry_by_group_id.size();
   dst_instances->resize(total_groups_num);
 
-  AnonymousAttributeIDPtr dst_group_id_attribute_id =
+  std::optional<std::string> dst_group_id_attribute_id =
       params.get_output_anonymous_attribute_id_if_needed("Group ID");
   if (dst_group_id_attribute_id) {
     SpanAttributeWriter<int> dst_group_id =
@@ -356,7 +356,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

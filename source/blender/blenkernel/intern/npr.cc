@@ -12,6 +12,6 @@
 
 bNodeTree *BKE_npr_tree_add(Main *bmain, const char *name)
 {
-  bNodeTree *ntree = blender::bke::ntreeAddTree(bmain, name, ntreeType_Shader->idname);
+  bNodeTree *ntree = blender::bke::node_tree_add_tree(bmain, name, ntreeType_Shader->idname);
   return ntree;
 }

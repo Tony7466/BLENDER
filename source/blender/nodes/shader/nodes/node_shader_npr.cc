@@ -62,5 +62,5 @@ void register_node_type_sh_npr()
   ntype.draw_buttons_ex = file_ns::node_shader_buts_npr_ex;
   ntype.gpu_fn = file_ns::node_shader_fn;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
