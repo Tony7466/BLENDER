@@ -11,8 +11,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_vector.h"
-#include "BLI_utildefines.h"
 #include "BLI_string.h"
+#include "BLI_utildefines.h"
 
 #include "BLT_translation.hh"
 
@@ -90,8 +90,12 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   BevelModifierData *bmd = (BevelModifierData *)md;
 
   blender::bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  attributes.add<float>(bmd->vertex_weight_name, blender::bke::AttrDomain::Point, blender::bke::AttributeInitDefaultValue());
-  attributes.add<float>(bmd->edge_weight_name, blender::bke::AttrDomain::Edge, blender::bke::AttributeInitDefaultValue());
+  attributes.add<float>(bmd->vertex_weight_name,
+                        blender::bke::AttrDomain::Point,
+                        blender::bke::AttributeInitDefaultValue());
+  attributes.add<float>(bmd->edge_weight_name,
+                        blender::bke::AttrDomain::Edge,
+                        blender::bke::AttributeInitDefaultValue());
 
   const float threshold = cosf(bmd->bevel_angle + 0.000000175f);
   const bool do_clamp = !(bmd->flags & MOD_BEVEL_OVERLAP_OK);
@@ -288,7 +292,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     const char *weight_type = edge_bevel ? "edge_weight" : "vertex_weight";
 
     PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-  
+
     // this code is pulled out from uiItemPointerR() in interface_layout.cc
     // because the search suggestions are hard coded as false
     // we want search suggestions to be on
@@ -298,7 +302,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
       const char *propname = weight_type;
       PointerRNA *searchptr = &object_data_ptr;
       const char *searchpropname = "attributes";
-      
+
       PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
       if (!prop) {
         RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
@@ -314,7 +318,6 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
       uiItemPointerR_prop(col, ptr, prop, searchptr, searchprop, nullptr, ICON_NONE, true);
     }
-    
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
