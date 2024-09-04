@@ -66,15 +66,24 @@ struct DRWShaderCompiler {
 
 /** NOTE: While the `BLI_threads` API requires a List,
  * we only create a single thread at application startup and delete it at exit. */
-static ListBase compilation_threadpool = {};
-static DRWShaderCompiler compiler_data = {};
+static ListBase &compilation_threadpool()
+{
+  static ListBase compilation_threadpool_ = {};
+  return compilation_threadpool_;
+}
+
+static DRWShaderCompiler &compiler_data()
+{
+  static DRWShaderCompiler compiler_data_ = {};
+  return compiler_data_;
+}
 
 static void *drw_deferred_shader_compilation_exec(void *)
 {
   using namespace blender;
 
-  void *system_gpu_context = compiler_data.system_gpu_context;
-  GPUContext *blender_gpu_context = compiler_data.blender_gpu_context;
+  void *system_gpu_context = compiler_data().system_gpu_context;
+  GPUContext *blender_gpu_context = compiler_data().blender_gpu_context;
   BLI_assert(system_gpu_context != nullptr);
   BLI_assert(blender_gpu_context != nullptr);
   GPU_render_begin();
@@ -85,19 +94,20 @@ static void *drw_deferred_shader_compilation_exec(void *)
   Vector<GPUMaterial *> async_mats;
 
   while (true) {
-    if (compiler_data.stop) {
+    if (compiler_data().stop) {
       break;
     }
 
-    compiler_data.queue_mutex.lock();
+    compiler_data().queue_mutex.lock();
     /* Pop last because it will be less likely to lock the main thread
      * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-    GPUMaterial *mat = compiler_data.queue.is_empty() ? nullptr : compiler_data.queue.pop_last();
+    GPUMaterial *mat = compiler_data().queue.is_empty() ? nullptr :
+                                                          compiler_data().queue.pop_last();
     if (mat) {
       /* Avoid another thread freeing the material mid compilation. */
       GPU_material_acquire(mat);
     }
-    compiler_data.queue_mutex.unlock();
+    compiler_data().queue_mutex.unlock();
 
     if (mat) {
       /* We have a new material that must be compiled,
@@ -125,17 +135,17 @@ static void *drw_deferred_shader_compilation_exec(void *)
     else {
       /* Check for Material Optimization job once there are no more
        * shaders to compile. */
-      compiler_data.queue_mutex.lock();
+      compiler_data().queue_mutex.lock();
       /* Pop last because it will be less likely to lock the main thread
        * if all GPUMaterials are to be freed (see DRW_deferred_shader_remove()). */
-      GPUMaterial *optimize_mat = compiler_data.optimize_queue.is_empty() ?
+      GPUMaterial *optimize_mat = compiler_data().optimize_queue.is_empty() ?
                                       nullptr :
-                                      compiler_data.optimize_queue.pop_last();
+                                      compiler_data().optimize_queue.pop_last();
       if (optimize_mat) {
         /* Avoid another thread freeing the material during optimization. */
         GPU_material_acquire(optimize_mat);
       }
-      compiler_data.queue_mutex.unlock();
+      compiler_data().queue_mutex.unlock();
 
       if (optimize_mat) {
         /* Compile optimized material shader. */
@@ -144,8 +154,8 @@ static void *drw_deferred_shader_compilation_exec(void *)
       }
       else {
         /* No more materials to optimize, or shaders to compile. */
-        std::unique_lock lock(compiler_data.queue_mutex);
-        compiler_data.queue_cv.wait(lock);
+        std::unique_lock lock(compiler_data().queue_mutex);
+        compiler_data().queue_cv.wait(lock);
       }
     }
 
@@ -155,7 +165,7 @@ static void *drw_deferred_shader_compilation_exec(void *)
   }
 
   /* We have to wait until all the requested batches are ready,
-   * even if compiler_data.stop is true. */
+   * even if compiler_data().stop is true. */
   while (!async_mats.is_empty()) {
     async_mats.remove_if([](GPUMaterial *mat) {
       if (GPU_material_async_try_finalize(mat)) {
@@ -186,17 +196,17 @@ void DRW_shader_init()
   }
   initialized = true;
 
-  compiler_data.stop = false;
+  compiler_data().stop = false;
 
-  compiler_data.system_gpu_context = WM_system_gpu_context_create();
-  compiler_data.blender_gpu_context = GPU_context_create(nullptr,
-                                                         compiler_data.system_gpu_context);
+  compiler_data().system_gpu_context = WM_system_gpu_context_create();
+  compiler_data().blender_gpu_context = GPU_context_create(nullptr,
+                                                           compiler_data().system_gpu_context);
   GPU_context_active_set(nullptr);
   WM_system_gpu_context_activate(DST.system_gpu_context);
   GPU_context_active_set(DST.blender_gpu_context);
 
-  BLI_threadpool_init(&compilation_threadpool, drw_deferred_shader_compilation_exec, 1);
-  BLI_threadpool_insert(&compilation_threadpool, nullptr);
+  BLI_threadpool_init(&compilation_threadpool(), drw_deferred_shader_compilation_exec, 1);
+  BLI_threadpool_insert(&compilation_threadpool(), nullptr);
 }
 
 void DRW_shader_exit()
@@ -206,28 +216,28 @@ void DRW_shader_exit()
     return;
   }
 
-  compiler_data.stop = true;
-  compiler_data.queue_cv.notify_one();
-  BLI_threadpool_end(&compilation_threadpool);
+  compiler_data().stop = true;
+  compiler_data().queue_cv.notify_one();
+  BLI_threadpool_end(&compilation_threadpool());
 
   /* Revert the queued state for the materials that has not been compiled.
    * Note that this is not strictly needed since this function is called at program exit. */
   {
-    std::scoped_lock queue_lock(compiler_data.queue_mutex);
+    std::scoped_lock queue_lock(compiler_data().queue_mutex);
 
-    while (!compiler_data.queue.is_empty()) {
-      GPU_material_status_set(compiler_data.queue.pop_last(), GPU_MAT_CREATED);
+    while (!compiler_data().queue.is_empty()) {
+      GPU_material_status_set(compiler_data().queue.pop_last(), GPU_MAT_CREATED);
     }
-    while (!compiler_data.optimize_queue.is_empty()) {
-      GPU_material_optimization_status_set(compiler_data.optimize_queue.pop_last(),
+    while (!compiler_data().optimize_queue.is_empty()) {
+      GPU_material_optimization_status_set(compiler_data().optimize_queue.pop_last(),
                                            GPU_MAT_OPTIMIZATION_READY);
     }
   }
 
-  WM_system_gpu_context_activate(compiler_data.system_gpu_context);
-  GPU_context_active_set(compiler_data.blender_gpu_context);
-  GPU_context_discard(compiler_data.blender_gpu_context);
-  WM_system_gpu_context_dispose(compiler_data.system_gpu_context);
+  WM_system_gpu_context_activate(compiler_data().system_gpu_context);
+  GPU_context_active_set(compiler_data().blender_gpu_context);
+  GPU_context_discard(compiler_data().blender_gpu_context);
+  WM_system_gpu_context_dispose(compiler_data().system_gpu_context);
 }
 
 /**
@@ -236,20 +246,20 @@ void DRW_shader_exit()
  */
 static void drw_deferred_queue_append(GPUMaterial *mat, bool is_optimization_job)
 {
-  std::scoped_lock queue_lock(compiler_data.queue_mutex);
+  std::scoped_lock queue_lock(compiler_data().queue_mutex);
 
   /* Add to either compilation or optimization queue. */
   if (is_optimization_job) {
     BLI_assert(GPU_material_optimization_status(mat) != GPU_MAT_OPTIMIZATION_QUEUED);
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_QUEUED);
-    compiler_data.optimize_queue.append(mat);
+    compiler_data().optimize_queue.append(mat);
   }
   else {
     GPU_material_status_set(mat, GPU_MAT_QUEUED);
-    compiler_data.queue.append(mat);
+    compiler_data().queue.append(mat);
   }
 
-  compiler_data.queue_cv.notify_one();
+  compiler_data().queue_cv.notify_one();
 }
 
 static void drw_deferred_shader_add(GPUMaterial *mat, bool deferred)
@@ -326,17 +336,17 @@ void DRW_deferred_shader_remove(GPUMaterial *mat)
     return;
   }
 
-  std::scoped_lock queue_lock(compiler_data.queue_mutex);
+  std::scoped_lock queue_lock(compiler_data().queue_mutex);
 
   /* Search for compilation job in queue. */
-  if (compiler_data.queue.contains(mat)) {
-    compiler_data.queue.remove_first_occurrence_and_reorder(mat);
+  if (compiler_data().queue.contains(mat)) {
+    compiler_data().queue.remove_first_occurrence_and_reorder(mat);
     GPU_material_status_set(mat, GPU_MAT_CREATED);
   }
 
   /* Search for optimization job in queue. */
-  if (compiler_data.optimize_queue.contains(mat)) {
-    compiler_data.optimize_queue.remove_first_occurrence_and_reorder(mat);
+  if (compiler_data().optimize_queue.contains(mat)) {
+    compiler_data().optimize_queue.remove_first_occurrence_and_reorder(mat);
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_READY);
   }
 }
@@ -348,11 +358,11 @@ void DRW_deferred_shader_optimize_remove(GPUMaterial *mat)
     return;
   }
 
-  std::scoped_lock queue_lock(compiler_data.queue_mutex);
+  std::scoped_lock queue_lock(compiler_data().queue_mutex);
 
   /* Search for optimization job in queue. */
-  if (compiler_data.optimize_queue.contains(mat)) {
-    compiler_data.optimize_queue.remove_first_occurrence_and_reorder(mat);
+  if (compiler_data().optimize_queue.contains(mat)) {
+    compiler_data().optimize_queue.remove_first_occurrence_and_reorder(mat);
     GPU_material_optimization_status_set(mat, GPU_MAT_OPTIMIZATION_READY);
   }
 }
