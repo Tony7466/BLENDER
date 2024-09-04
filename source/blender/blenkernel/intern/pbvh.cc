@@ -2058,9 +2058,9 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
                                     int *r_active_face_index,
                                     float *r_face_normal)
 {
-  bool hit = false;
   const Span<int> tris = node_tri_indices(node);
 
+  bool hit = false;
   if (node_positions.is_empty()) {
     for (const int i : tris.index_range()) {
       const int tri_i = tris[i];
