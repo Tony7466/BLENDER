@@ -67,15 +67,4 @@ template<typename StringT> inline auto attribute_filter_from_skip_ref(const Set<
   });
 }
 
-class ProcessAllAttributeExceptAnonymous : public AttributeFilter {
- public:
-  Result filter(const StringRef name) const override
-  {
-    if (attribute_name_is_anonymous(name)) {
-      return AttributeFilter::Result::AllowSkip;
-    }
-    return AttributeFilter::Result::Process;
-  }
-};
-
 }  // namespace blender::bke

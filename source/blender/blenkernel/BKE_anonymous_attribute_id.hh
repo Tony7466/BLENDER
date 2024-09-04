@@ -10,6 +10,8 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "BKE_attribute_filter.hh"
+
 namespace blender::bke {
 
 /**
@@ -36,5 +38,16 @@ inline bool attribute_name_is_anonymous(const StringRef name)
 {
   return name.startswith(".a_");
 }
+
+class ProcessAllAttributeExceptAnonymous : public AttributeFilter {
+ public:
+  Result filter(const StringRef name) const override
+  {
+    if (attribute_name_is_anonymous(name)) {
+      return AttributeFilter::Result::AllowSkip;
+    }
+    return AttributeFilter::Result::Process;
+  }
+};
 
 }  // namespace blender::bke
