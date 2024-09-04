@@ -3904,8 +3904,8 @@ static void colorband_buttons_layout(uiLayout *layout,
     }
 
     /* Some special (rather awkward) treatment to update UI state on certain property changes. */
-    for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      uiBut *but = (*but_itr).get();
+    for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+      uiBut *but = block->buttons[idx].get();
       if (but->rnapoin.data != ptr.data) {
         continue;
       }

@@ -257,8 +257,8 @@ void ui_region_to_window(const ARegion *region, int *x, int *y)
   *y += region->winrct.ymin;
 }
 
-static std::unique_ptr<uiBut> *find_but(blender::Vector<std::unique_ptr<uiBut>> &buttons,
-                                        uiBut *but)
+static const std::unique_ptr<uiBut> *find_but(blender::Span<std::unique_ptr<uiBut>> buttons,
+                                              uiBut *but)
 {
   return std::find_if(buttons.begin(), buttons.end(), [but](const std::unique_ptr<uiBut> &test) {
     return test.get() == but;
@@ -268,29 +268,28 @@ static std::unique_ptr<uiBut> *find_but(blender::Vector<std::unique_ptr<uiBut>> 
 void uiBlock::add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
 {
   int64_t target_index = this->buttons.size();
+
   if (insert_after) {
-    const std::unique_ptr<uiBut> *itr = find_but(this->buttons, insert_after);
+    const std::unique_ptr<uiBut> *itr = find_but(this->buttons.as_span(), insert_after);
     BLI_assert(itr != this->buttons.end());
     target_index = itr - this->buttons.begin() + 1;
   }
 
-  uiBut *prev = target_index > 0 ? this->buttons[target_index - 1].get() : nullptr;
-  uiBut *next = target_index < this->buttons.size() ? this->buttons[target_index].get() : nullptr;
+  but->prev = target_index > 0 ? this->buttons[target_index - 1].get() : nullptr;
+  but->next = target_index < this->buttons.size() ? this->buttons[target_index].get() : nullptr;
 
-  but->next = next;
-  but->prev = prev;
-  if (prev) {
-    prev->next = but.get();
+  if (but->prev) {
+    but->prev->next = but.get();
   }
-  if (next) {
-    next->prev = but.get();
+  if (but->next) {
+    but->next->prev = but.get();
   }
   this->buttons.insert(target_index, std::move(but));
 }
 
 std::unique_ptr<uiBut> uiBlock::pop_but(uiBut *but)
 {
-  const std::unique_ptr<uiBut> *itr = find_but(this->buttons, but);
+  const std::unique_ptr<uiBut> *itr = find_but(this->buttons.as_span(), but);
   BLI_assert(itr != this->buttons.end());
   int64_t target_index = itr - this->buttons.begin();
 
@@ -856,7 +855,6 @@ uiBut *ui_but_find_old(uiBlock *block_old, const uiBut *but_new)
 
 uiBut *ui_but_find_new(uiBlock *block_new, const uiBut *but_old)
 {
-
   for (std::unique_ptr<uiBut> &but : block_new->buttons) {
     if (ui_but_equals_old(but.get(), but_old)) {
       return but.get();
@@ -4153,33 +4151,32 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
   const bool has_poin_ptr_to_self = but->poin == (char *)but;
 
   /* Copy construct button with the new type. */
-  std::unique_ptr<uiBut> new_but_ptr = ui_but_new(new_type);
-  uiBut *new_but = new_but_ptr.get();
-  *new_but_ptr = *old_but_ptr;
+  std::unique_ptr<uiBut> but_ptr = ui_but_new(new_type);
+  but = but_ptr.get();
+  *but = *old_but_ptr;
   /* We didn't mean to override this :) */
-  new_but->type = new_type;
+  but->type = new_type;
   if (has_poin_ptr_to_self) {
-    new_but->poin = (char *)but;
+    but->poin = (char *)but;
   }
 
-  new_but->block->add_but(std::move(new_but_ptr), insert_after_but);
+  but->block->add_but(std::move(but_ptr), insert_after_but);
 
-  if (new_but->layout) {
-    const bool found_layout = ui_layout_replace_but_ptr(
-        new_but->layout, old_but_ptr.get(), new_but);
+  if (but->layout) {
+    const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr.get(), but);
     BLI_assert(found_layout);
     UNUSED_VARS_NDEBUG(found_layout);
-    ui_button_group_replace_but_ptr(uiLayoutGetBlock(new_but->layout), old_but_ptr.get(), new_but);
+    ui_button_group_replace_but_ptr(uiLayoutGetBlock(but->layout), old_but_ptr.get(), but);
   }
 #ifdef WITH_PYTHON
   if (UI_editsource_enable_check()) {
-    UI_editsource_but_replace(old_but_ptr.get(), new_but);
+    UI_editsource_but_replace(old_but_ptr.get(), but);
   }
 #endif
 
   // ui_but_mem_delete(old_but_ptr.get());
 
-  return new_but;
+  return but;
 }
 
 /**
