@@ -1123,12 +1123,6 @@ static bool brush_needs_rake_rotation(const Brush &brush)
 
 /** \} */
 
-enum StrokeFlags {
-  CLIP_X = 1,
-  CLIP_Y = 2,
-  CLIP_Z = 4,
-};
-
 static void rake_data_update(SculptRakeData *srd, const float co[3])
 {
   float rake_dist = len_v3v3(srd->follow_co, co);
@@ -4106,6 +4100,12 @@ StrokeCache::~StrokeCache()
 
 }  // namespace blender::ed::sculpt_paint
 
+enum class StrokeFlags : uint8_t {
+  ClipX = 1,
+  ClipY = 2,
+  ClipZ = 4,
+};
+
 namespace blender::ed::sculpt_paint {
 
 /* Initialize mirror modifier clipping. */
@@ -4128,7 +4128,7 @@ static void sculpt_init_mirror_clipping(const Object &ob, const SculptSession &s
         continue;
       }
       /* Enable sculpt clipping. */
-      ss.cache->mirror_modifier_clip.flag |= CLIP_X << i;
+      ss.cache->mirror_modifier_clip.flag |= uint8_t(StrokeFlags::ClipX) << i;
 
       /* Update the clip tolerance. */
       ss.cache->mirror_modifier_clip.tolerance[i] = std::max(
@@ -4537,6 +4537,8 @@ static void brush_delta_update(const Depsgraph &depsgraph,
   }
 
   /* Handle 'rake' */
+  cache->rake_rotation = std::nullopt;
+  cache->rake_rotation_symm = std::nullopt;
   invert_m4_m4(imat, ob.object_to_world().ptr());
   mul_mat3_m4_v3(imat, grab_location);
 
@@ -5884,11 +5886,6 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
  * (without having lag prior to every stroke), but also makes it so the affect
  * is localized to a specific brushes and brush types only. */
 
-enum {
-  SCULPT_TOPOLOGY_ID_NONE,
-  SCULPT_TOPOLOGY_ID_DEFAULT,
-};
-
 static void fake_neighbor_init(Object &object, const float max_dist)
 {
   SculptSession &ss = *object.sculpt;
@@ -6153,10 +6150,6 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
     }
   }
 }
-
-struct SculptTopologyIDFloodFillData {
-  int next_id;
-};
 
 }  // namespace blender::ed::sculpt_paint
 
@@ -7257,7 +7250,7 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (uint8_t(StrokeFlags::ClipX) << axis))) {
       continue;
     }
 
@@ -7298,7 +7291,7 @@ void clip_and_lock_translations(const Sculpt &sd,
       continue;
     }
 
-    if (!(cache->mirror_modifier_clip.flag & (CLIP_X << axis))) {
+    if (!(cache->mirror_modifier_clip.flag & (uint8_t(StrokeFlags::ClipX) << axis))) {
       continue;
     }
 

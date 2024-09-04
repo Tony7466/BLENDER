@@ -233,6 +233,23 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
   }
 }
 
+BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
+                                               const Span<int> corner_verts,
+                                               const Span<int3> corner_tris,
+                                               MutableSpan<MeshNode> nodes)
+{
+#ifdef DEBUG_BUILD_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
+  Array<bool> vert_bitmap(verts_num, false);
+  for (const int i : nodes.index_range()) {
+    if ((nodes[i].flag_ & PBVH_Leaf) == 0) {
+      continue;
+    }
+    build_mesh_leaf_node(corner_verts, corner_tris, vert_bitmap, nodes[i]);
+  }
+}
+
 /* Return zero if all primitives in the node can be drawn with the
  * same material (including flat/smooth shading), non-zero otherwise */
 static bool leaf_needs_material_split(const Span<int> prim_indices,
