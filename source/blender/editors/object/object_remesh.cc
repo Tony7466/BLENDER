@@ -506,7 +506,8 @@ static int voxel_size_edit_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     }
   }
 
-  /* Set reasonable min/max voxel sizes to clamp to. */
+  /* Cap the max/min voxel size based on the point where we cant visually display any more info
+   * with grid lines. */
   cd->voxel_size_max = max_ff(len_v3v3(cd->preview_plane[1], cd->preview_plane[0]),
                               len_v3v3(cd->preview_plane[3], cd->preview_plane[0])) *
                        0.5f;
