@@ -43,6 +43,7 @@
 #include "BIF_glutil.hh"
 
 #include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_prefetch.hh"
 #include "SEQ_proxy.hh"
@@ -1077,6 +1078,34 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   GPU_line_smooth(false);
 }
 
+static void text_edit_draw(const bContext *C)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  if (data == nullptr || data->runtime == nullptr) {
+    return;
+  }
+
+  TextVarsRuntime *text = data->runtime;
+  blender::seq::CharInfo character =
+      text->lines[text->cursor_line].characters[text->cursor_character];
+
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  blender::float4 col{1.0f, 1.0f, 1.0f, 0.3f};
+  GPUVertFormat *format = immVertexFormat();
+  uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4fv(col);
+  immRectf(pos,
+           character.position.x - v2d->tot.xmax,
+           character.position.y + text->font_descender - v2d->tot.ymax,
+           character.position.x + 10 - v2d->tot.xmax,  // xxx pixelspace!
+           character.position.y + text->line_height + text->font_descender - v2d->tot.ymax);
+  immUnbindProgram();
+}
+
 void sequencer_draw_preview(const bContext *C,
                             Scene *scene,
                             ARegion *region,
@@ -1169,6 +1198,8 @@ void sequencer_draw_preview(const bContext *C,
   if (draw_gpencil && show_imbuf && (sseq->flag & SEQ_SHOW_OVERLAY)) {
     sequencer_draw_gpencil_overlay(C);
   }
+
+  text_edit_draw(C);
 
 #if 0
   sequencer_draw_maskedit(C, scene, region, sseq);

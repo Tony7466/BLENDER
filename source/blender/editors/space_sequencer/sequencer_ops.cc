@@ -80,6 +80,9 @@ void sequencer_operatortypes()
   WM_operatortype_append(SEQUENCER_OT_retiming_segment_speed_set);
   WM_operatortype_append(SEQUENCER_OT_retiming_key_delete);
 
+  /* `sequencer_text_edit.cc` */
+  WM_operatortype_append(SEQUENCER_OT_text_cursor_move);
+
   /* `sequencer_select.cc` */
   WM_operatortype_append(SEQUENCER_OT_select_all);
   WM_operatortype_append(SEQUENCER_OT_select);

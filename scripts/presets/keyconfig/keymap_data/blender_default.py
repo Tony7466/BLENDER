@@ -3107,6 +3107,17 @@ def km_sequencerpreview(params):
         ("sequencer.delete", {"type": 'X', "value": 'PRESS'}, None),
         ("sequencer.delete", {"type": 'DEL', "value": 'PRESS'}, None),
 
+        # Text editing.
+        ("sequencer.text_cursor_move", {"type": 'LEFT_ARROW', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'PREVIOUS_CHARACTER')]}),
+        ("sequencer.text_cursor_move", {"type": 'RIGHT_ARROW', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'NEXT_CHARACTER')]}),
+        ("sequencer.text_cursor_move", {"type": 'UP_ARROW', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'PREVIOUS_LINE')]}),
+        ("sequencer.text_cursor_move", {"type": 'DOWN_ARROW', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'NEXT_LINE')]}),
+
+
         *_template_items_context_menu("SEQUENCER_MT_preview_context_menu", params.context_menu_event),
     ])
 

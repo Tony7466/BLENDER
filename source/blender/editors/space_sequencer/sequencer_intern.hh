@@ -385,6 +385,9 @@ int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
 bool retiming_keys_can_be_displayed(const SpaceSeq *sseq);
 rctf seq_retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq);
 
+/* `sequencer_text_edit.cc` */
+void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot);
+
 /* `sequencer_timeline_draw.cc` */
 blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
 blender::Vector<Sequence *> sequencer_visible_strips_get(const Scene *scene, const View2D *v2d);

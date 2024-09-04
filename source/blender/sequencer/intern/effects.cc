@@ -3222,16 +3222,15 @@ static void apply_word_wrapping(const TextVars *data,
       is_word_wrap = true;
     }
 
+    char_position.x += character.advance_x;
+    runtime->lines.last().characters.append(character);
+    runtime->lines.last().width = char_position.x;
+
     if (is_word_wrap || character.str_ptr[0] == '\n') {
       runtime->lines.append(blender::seq::LineInfo());
       char_position.x = 0;
       char_position.y -= runtime->line_height;
-      continue;
     }
-
-    char_position.x += character.advance_x;
-    runtime->lines.last().characters.append(character);
-    runtime->lines.last().width = char_position.x;
   }
 }
 
@@ -3299,6 +3298,7 @@ static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *
 
   runtime->font = font;
   runtime->line_height = BLF_height_max(font);
+  runtime->font_descender = BLF_descender(font);
   runtime->character_count = BLI_strlen_utf8(data->text);
 
   blender::Vector<blender::seq::CharInfo> characters_temp = build_character_info(data, font);

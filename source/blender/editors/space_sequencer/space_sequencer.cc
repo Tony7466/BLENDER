@@ -1105,8 +1105,7 @@ void ED_spacetype_sequencer()
   art->on_view2d_changed = sequencer_preview_region_view2d_changed;
   art->draw = sequencer_preview_region_draw;
   art->listener = sequencer_preview_region_listener;
-  art->keymapflag = ED_KEYMAP_TOOL | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES |
-                    ED_KEYMAP_GPENCIL;
+  art->keymapflag = ED_KEYMAP_TOOL | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_GPENCIL;
   BLI_addhead(&st->regiontypes, art);
 
   /* List-view/buttons. */
