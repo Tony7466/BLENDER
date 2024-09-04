@@ -70,7 +70,7 @@ static void cursor_move_by_character(TextVarsRuntime *text, int offset)
   blender::seq::LineInfo cur_line = text->lines[text->cursor_line];
   /* Move to next line. */
   if (text->cursor_character + offset > cur_line.characters.size() - 1 &&
-      text->cursor_line < text->lines.size())
+      text->cursor_line < text->lines.size() - 1)
   {
     text->cursor_character = 0;
     text->cursor_line++;

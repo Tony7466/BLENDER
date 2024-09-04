@@ -3175,7 +3175,7 @@ static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVa
 {
   blender::Vector<blender::seq::CharInfo> characters;
   int byte_offset = 0;
-  while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
+  while (byte_offset <= BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
     const int char_length = BLI_str_utf8_size_or_error(str);
 
