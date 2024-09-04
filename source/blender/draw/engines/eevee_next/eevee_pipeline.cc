@@ -863,6 +863,9 @@ GPUTexture *DeferredLayer::render(View &main_view,
                    direct_radiance_txs_,
                    use_split_radiance_ ? indirect_result_.closures : nullptr);
 
+  /* Bind the combined_fb back, since later passes expect it to be bound. */
+  GPU_framebuffer_bind(combined_fb);
+
   if (use_feedback_output_ && !use_clamp_direct_) {
     /* We skip writing the radiance during the combine pass. Do a simple fast copy. */
     GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
