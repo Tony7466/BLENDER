@@ -304,6 +304,16 @@ std::unique_ptr<uiBut> uiBlock::pop_but(uiBut *but)
   return result;
 }
 
+uiBut *uiBlock::first_but_or_null() const
+{
+  return !this->buttons.is_empty() ? this->buttons.first().get() : nullptr;
+}
+
+uiBut *uiBlock::last_but_or_null() const
+{
+  return !this->buttons.is_empty() ? this->buttons.last().get() : nullptr;
+}
+
 static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 {
   int sepr_flex_len = 0;
@@ -511,7 +521,7 @@ void ui_block_bounds_calc(uiBlock *block)
   block->rect.xmax = block->rect.xmin + max_ff(BLI_rctf_size_x(&block->rect), block->minbounds);
 
   /* hardcoded exception... but that one is annoying with larger safety */
-  uiBut *bt = block->buttons.is_empty() ? nullptr : block->buttons.first().get();
+  uiBut *bt = block->first_but_or_null();
   const int xof = ((bt && STRPREFIX(bt->str.c_str(), "ERROR")) ? 10 : 40) * UI_SCALE_FAC;
 
   block->safety.xmin = block->rect.xmin - xof;
@@ -1847,8 +1857,7 @@ void UI_block_update_from_old(const bContext *C, uiBlock *block)
     return;
   }
 
-  uiBut *but_old = block->oldblock->buttons.is_empty() ? nullptr :
-                                                         block->oldblock->buttons.first().get();
+  uiBut *but_old = block->oldblock->first_but_or_null();
 
   if (BLI_listbase_is_empty(&block->oldblock->butstore) == false) {
     UI_butstore_update(block);

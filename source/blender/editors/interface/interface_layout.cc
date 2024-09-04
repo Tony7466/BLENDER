@@ -2333,7 +2333,7 @@ void uiItemFullR(uiLayout *layout,
       ui_decorate.layout = uiLayoutColumn(layout_row, true);
       ui_decorate.layout->space = 0;
       UI_block_layout_set_current(block, layout);
-      ui_decorate.but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
+      ui_decorate.but = block->last_but_or_null();
 
       /* Clear after. */
       layout->flag |= UI_ITEM_PROP_DECORATE_NO_PAD;
@@ -2479,9 +2479,7 @@ void uiItemFullR(uiLayout *layout,
 
 #ifdef UI_PROP_DECORATE
   if (ui_decorate.use_prop_decorate) {
-    uiBut *but_decorate = ui_decorate.but           ? ui_decorate.but->next :
-                          block->buttons.is_empty() ? nullptr :
-                                                      block->buttons.first().get();
+    uiBut *but_decorate = ui_decorate.but ? ui_decorate.but->next : block->first_but_or_null();
     const bool use_blank_decorator = (flag & UI_ITEM_R_FORCE_BLANK_DECORATE);
     uiLayout *layout_col = uiLayoutColumn(ui_decorate.layout, false);
     layout_col->space = 0;

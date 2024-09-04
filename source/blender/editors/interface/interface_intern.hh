@@ -667,6 +667,9 @@ struct uiBlock {
   PieMenuData pie_data;
   void add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after = nullptr);
   [[nodiscard]] std::unique_ptr<uiBut> pop_but(uiBut *but);
+
+  [[nodiscard]] uiBut *first_but_or_null() const;
+  [[nodiscard]] uiBut *last_but_or_null() const;
 };
 
 struct uiSafetyRct {

@@ -570,7 +570,7 @@ uiBut *ui_but_first(uiBlock *block)
 
 uiBut *ui_but_last(uiBlock *block)
 {
-  uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
+  uiBut *but = block->last_but_or_null();
   while (but) {
     if (ui_but_is_editable(but)) {
       return but;
@@ -687,7 +687,7 @@ static const uiBut *ui_but_next_non_separator(const uiBut *but)
 
 bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title)
 {
-  const uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.first().get();
+  const uiBut *but = block->first_but_or_null();
   if (skip_title) {
     /* Skip the first label, since popups often have a title,
      * we may want to consider the block empty in this case. */
@@ -707,7 +707,7 @@ bool UI_block_is_empty(const uiBlock *block)
 bool UI_block_can_add_separator(const uiBlock *block)
 {
   if (ui_block_is_menu(block) && !ui_block_is_pie_menu(block)) {
-    const uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
+    const uiBut *but = block->last_but_or_null();
     return (but && !ELEM(but->type, UI_BTYPE_SEPR_LINE, UI_BTYPE_SEPR));
   }
   return true;

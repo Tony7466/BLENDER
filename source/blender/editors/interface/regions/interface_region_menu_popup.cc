@@ -807,7 +807,7 @@ void UI_popup_block_template_confirm_op(uiLayout *layout,
       return nullptr;
     }
     uiBlock *block = uiLayoutGetBlock(row);
-    const uiBut *but_ref = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
+    const uiBut *but_ref = block->last_but_or_null();
     uiItemFullO_ptr(row,
                     ot,
                     confirm_text,
