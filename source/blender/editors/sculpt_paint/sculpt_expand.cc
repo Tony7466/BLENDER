@@ -2509,7 +2509,6 @@ static void undo_push(const Depsgraph &depsgraph, Object &ob, Cache &expand_cach
       undo::push_nodes(depsgraph, ob, node_mask, undo::Type::FaceSet);
       break;
     case TargetType::Colors: {
-      const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
       undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Color);
       break;
     }

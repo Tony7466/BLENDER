@@ -193,78 +193,6 @@ static int partition_indices_material_faces(MutableSpan<int> face_indices,
   }
 }
 
-/* Add a vertex to the map, with a positive value for unique vertices and
- * a negative value for additional vertices */
-static int map_insert_vert(Map<int, int> &map,
-                           MutableSpan<bool> vert_bitmap,
-                           int *face_verts,
-                           int *uniq_verts,
-                           int vertex)
-{
-  return map.lookup_or_add_cb(vertex, [&]() {
-    int value;
-    if (!vert_bitmap[vertex]) {
-      vert_bitmap[vertex] = true;
-      value = *uniq_verts;
-      (*uniq_verts)++;
-    }
-    else {
-      value = ~(*face_verts);
-      (*face_verts)++;
-    }
-    return value;
-  });
-}
-
-/* Find vertices used by the faces in this node and update the draw buffers */
-static void build_mesh_leaf_node(const OffsetIndices<int> faces,
-                                 const Span<int> corner_verts,
-                                 MutableSpan<bool> vert_bitmap,
-                                 MeshNode &node)
-{
-  node.unique_verts_num_ = 0;
-  int shared_verts = 0;
-  const Span<int> node_faces = node.face_indices_;
-
-  /* reserve size is rough guess */
-  Map<int, int> map;
-  map.reserve(node_faces.size());
-
-  int corner_count = 0;
-  for (const int face : node_faces) {
-    corner_count += faces[face].size();
-  }
-
-  node.face_vert_indices_.reinitialize(node_faces.size());
-
-  int node_vert_i = 0;
-  for (const int face : node_faces) {
-    for (const int vert : corner_verts.slice(faces[face])) {
-      node.face_vert_indices_[node_vert_i] = map_insert_vert(
-          map, vert_bitmap, &shared_verts, &node.unique_verts_num_, vert);
-      node_vert_i++;
-    }
-  }
-
-  node.vert_indices_.reinitialize(node.unique_verts_num_ + shared_verts);
-
-  /* Build the vertex list, unique verts first */
-  for (const MapItem<int, int> item : map.items()) {
-    int value = item.value;
-    if (value < 0) {
-      value = -value + node.unique_verts_num_ - 1;
-    }
-
-    node.vert_indices_[value] = item.key;
-  }
-
-  for (int &value : node.face_vert_indices_) {
-    if (value < 0) {
-      value = -value + node.unique_verts_num_ - 1;
-    }
-  }
-}
-
 /* Return zero if all primitives in the node can be drawn with the
  * same material (including flat/smooth shading), non-zero otherwise */
 static bool leaf_needs_material_split(const Span<int> prim_indices,
@@ -294,6 +222,10 @@ static bool leaf_needs_material_split(const Span<int> face_indices,
                                       int offset,
                                       int count)
 {
+  if (material_indices.is_empty()) {
+    return false;
+  }
+
   if (count <= 1) {
     return false;
   }
@@ -308,11 +240,8 @@ static bool leaf_needs_material_split(const Span<int> face_indices,
   return false;
 }
 
-static void build_nodes_recursive_mesh(const OffsetIndices<int> faces,
-                                       const Span<int> corner_verts,
-                                       const Span<int> material_indices,
+static void build_nodes_recursive_mesh(const Span<int> material_indices,
                                        const int leaf_limit,
-                                       MutableSpan<bool> vert_bitmap,
                                        const int node_index,
                                        const Bounds<float3> *cb,
                                        const Span<Bounds<float3>> prim_bounds,
@@ -332,7 +261,6 @@ static void build_nodes_recursive_mesh(const OffsetIndices<int> faces,
       MeshNode &node = nodes[node_index];
       node.flag_ |= PBVH_Leaf;
       node.face_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
-      build_mesh_leaf_node(faces, corner_verts, vert_bitmap, node);
       return;
     }
   }
@@ -371,11 +299,8 @@ static void build_nodes_recursive_mesh(const OffsetIndices<int> faces,
   }
 
   /* Build children */
-  build_nodes_recursive_mesh(faces,
-                             corner_verts,
-                             material_indices,
+  build_nodes_recursive_mesh(material_indices,
                              leaf_limit,
-                             vert_bitmap,
                              nodes[node_index].children_offset_,
                              nullptr,
                              prim_bounds,
@@ -385,11 +310,8 @@ static void build_nodes_recursive_mesh(const OffsetIndices<int> faces,
                              depth + 1,
                              prim_indices,
                              nodes);
-  build_nodes_recursive_mesh(faces,
-                             corner_verts,
-                             material_indices,
+  build_nodes_recursive_mesh(material_indices,
                              leaf_limit,
-                             vert_bitmap,
                              nodes[node_index].children_offset_ + 1,
                              nullptr,
                              prim_bounds,
@@ -430,8 +352,7 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
           for (const int vert : face_verts.slice(1, face_verts.size() - 1)) {
             math::min_max(vert_positions[vert], bounds.min, bounds.max);
           }
-          const float3 center = math::midpoint(prim_bounds[i].min, prim_bounds[i].max);
-          math::min_max(center, current.min, current.max);
+          current = bounds::merge(current, bounds);
         }
         return current;
       },
@@ -446,11 +367,8 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
 
   Vector<MeshNode> &nodes = std::get<Vector<MeshNode>>(pbvh->nodes_);
   nodes.resize(1);
-  build_nodes_recursive_mesh(faces,
-                             corner_verts,
-                             material_index,
+  build_nodes_recursive_mesh(material_index,
                              leaf_limit,
-                             vert_bitmap,
                              0,
                              &cb,
                              prim_bounds,
@@ -460,6 +378,50 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
                              0,
                              pbvh->prim_indices_,
                              nodes);
+
+  {
+
+    Array<Array<int>> verts_per_node(nodes.size(), NoInitialization());
+    threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
+      Set<int> verts;
+      for (const int i : range) {
+        MeshNode &node = nodes[i];
+
+        verts.clear();
+        for (const int face : node.face_indices_) {
+          for (const int vert : corner_verts.slice(faces[face])) {
+            verts.add(vert);
+          }
+        }
+
+        new (&verts_per_node[i]) Array<int>(verts.size());
+        std::copy(verts.begin(), verts.end(), verts_per_node[i].begin());
+        std::sort(verts_per_node[i].begin(), verts_per_node[i].end());
+      }
+    });
+
+    Vector<int> owned_verts;
+    Vector<int> shared_verts;
+    BitVector<> vert_used(vert_positions.size());
+    for (const int i : nodes.index_range()) {
+      MeshNode &node = nodes[i];
+
+      owned_verts.clear();
+      shared_verts.clear();
+      for (const int vert : verts_per_node[i]) {
+        if (vert_used[vert]) {
+          shared_verts.append(vert);
+        }
+        else {
+          vert_used[vert].set();
+          owned_verts.append(vert);
+        }
+      }
+      node.unique_verts_num_ = owned_verts.size();
+      node.vert_indices_.add_multiple(owned_verts);
+      node.vert_indices_.add_multiple(shared_verts);
+    }
+  }
 
   update_bounds_mesh(vert_positions, *pbvh);
   store_bounds_orig(*pbvh);
@@ -2073,7 +2035,6 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
   float nearest_vertex_co[3] = {0.0f};
   const Span<int> face_indices = node_faces(node);
 
-  int node_vert_i = 0;
   for (const int i : face_indices.index_range()) {
     const int face_i = face_indices[i];
     if (!hide_poly.is_empty() && hide_poly[face_i]) {
@@ -2082,14 +2043,13 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
 
     for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
       const int3 &tri = corner_tris[tri_i];
-      const int3 face_verts = node.face_vert_indices_[i];
 
       const float *co[3];
       if (origco) {
         /* Intersect with backed up original coordinates. */
-        co[0] = origco[face_verts[0]];
-        co[1] = origco[face_verts[1]];
-        co[2] = origco[face_verts[2]];
+        co[0] = origco[node.vert_indices_.index_of(corner_verts[tri[0]])];
+        co[1] = origco[node.vert_indices_.index_of(corner_verts[tri[1]])];
+        co[2] = origco[node.vert_indices_.index_of(corner_verts[tri[2]])];
       }
       else {
         /* intersect with current coordinates */
@@ -2223,6 +2183,7 @@ bool raycast_node(Tree &pbvh,
                   const float (*origco)[3],
                   bool use_origco,
                   const Span<float3> vert_positions,
+                  const OffsetIndices<int> faces,
                   const Span<int> corner_verts,
                   const Span<int3> corner_tris,
                   const Span<bool> hide_poly,
@@ -2246,6 +2207,7 @@ bool raycast_node(Tree &pbvh,
       hit |= pbvh_faces_node_raycast(static_cast<MeshNode &>(node),
                                      origco,
                                      vert_positions,
+                                     faces,
                                      corner_verts,
                                      corner_tris,
                                      hide_poly,
@@ -2414,6 +2376,7 @@ void find_nearest_to_ray(Tree &pbvh,
 static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                            const float (*origco)[3],
                                            const Span<float3> vert_positions,
+                                           const OffsetIndices<int> faces,
                                            const Span<int> corner_verts,
                                            const Span<int3> corner_tris,
                                            const Span<bool> hide_poly,
@@ -2425,7 +2388,6 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
   bool hit = false;
   const Span<int> face_indices = node_faces(node);
 
-  int node_vert_i = 0;
   for (const int i : face_indices.index_range()) {
     const int face_i = face_indices[i];
     if (!hide_poly.is_empty() && hide_poly[face_i]) {
@@ -2433,16 +2395,15 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
     }
 
     for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
-      const int3 &corner_tri = corner_tris[tri_i];
-      const int3 face_verts = node.face_vert_indices_[i];
+      const int3 &tri = corner_tris[tri_i];
 
       if (origco) {
         /* Intersect with backed-up original coordinates. */
         hit |= ray_face_nearest_tri(ray_start,
                                     ray_normal,
-                                    origco[face_verts[0]],
-                                    origco[face_verts[1]],
-                                    origco[face_verts[2]],
+                                    origco[node.vert_indices_.index_of(corner_verts[tri[0]])],
+                                    origco[node.vert_indices_.index_of(corner_verts[tri[1]])],
+                                    origco[node.vert_indices_.index_of(corner_verts[tri[2]])],
                                     depth,
                                     dist_sq);
       }
@@ -2450,9 +2411,9 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
         /* intersect with current coordinates */
         hit |= ray_face_nearest_tri(ray_start,
                                     ray_normal,
-                                    vert_positions[corner_verts[corner_tri[0]]],
-                                    vert_positions[corner_verts[corner_tri[1]]],
-                                    vert_positions[corner_verts[corner_tri[2]]],
+                                    vert_positions[corner_verts[tri[0]]],
+                                    vert_positions[corner_verts[tri[1]]],
+                                    vert_positions[corner_verts[tri[2]]],
                                     depth,
                                     dist_sq);
       }
@@ -2525,6 +2486,7 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                               const float (*origco)[3],
                               bool use_origco,
                               const Span<float3> vert_positions,
+                              const OffsetIndices<int> faces,
                               const Span<int> corner_verts,
                               const Span<int3> corner_tris,
                               const Span<bool> hide_poly,
@@ -2545,6 +2507,7 @@ bool find_nearest_to_ray_node(Tree &pbvh,
       hit |= pbvh_faces_node_nearest_to_ray(static_cast<MeshNode &>(node),
                                             origco,
                                             vert_positions,
+                                            faces,
                                             corner_verts,
                                             corner_tris,
                                             hide_poly,

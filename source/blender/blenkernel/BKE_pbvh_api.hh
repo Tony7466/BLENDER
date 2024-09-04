@@ -96,6 +96,13 @@ class Node {
 };
 
 struct MeshNode : public Node {
+  using LocalVertMap = VectorSet<int,
+                                 DefaultProbingStrategy,
+                                 DefaultHash<int>,
+                                 DefaultEquality<int>,
+                                 SimpleVectorSetSlot<int, int>,
+                                 GuardedAllocator>;
+
   /** Indices into the #Mesh::faces() array. Refers to a subset of Tree::prim_indices_. */
   Span<int> face_indices_;
 
@@ -118,19 +125,10 @@ struct MeshNode : public Node {
    *
    * Used for leaf nodes.
    */
-  Array<int, 0> vert_indices_;
+  LocalVertMap vert_indices_;
+  // Array<int, 0> vert_indices_;
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
   int unique_verts_num_ = 0;
-
-  /* An array mapping face corners into the vert_indices
-   * array. The array is sized to match 'totprim', and each of
-   * the face's corners gets an index into the vert_indices
-   * array, in the same order as the corners in the original
-   * triangle.
-   *
-   * Used for leaf nodes.
-   */
-  Array<int, 0> face_vert_indices_;
 };
 
 struct GridsNode : public Node {
@@ -246,6 +244,7 @@ bool raycast_node(Tree &pbvh,
                   const float (*origco)[3],
                   bool use_origco,
                   Span<float3> vert_positions,
+                  OffsetIndices<int> faces,
                   Span<int> corner_verts,
                   Span<int3> corner_tris,
                   Span<bool> hide_poly,
@@ -288,6 +287,7 @@ bool find_nearest_to_ray_node(Tree &pbvh,
                               const float (*origco)[3],
                               bool use_origco,
                               Span<float3> vert_positions,
+                              const OffsetIndices<int> faces,
                               Span<int> corner_verts,
                               Span<int3> corner_tris,
                               Span<bool> hide_poly,

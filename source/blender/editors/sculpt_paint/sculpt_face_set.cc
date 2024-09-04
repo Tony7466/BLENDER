@@ -289,7 +289,6 @@ static void face_sets_update(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *ss.pbvh;
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   bke::SpanAttributeWriter<int> face_sets = ensure_face_sets_mesh(object);
 
@@ -1642,7 +1641,6 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMa
   const Span<float3> positions = bke::pbvh::vert_positions_eval(depsgraph, object);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int> tri_faces = mesh.corner_tri_faces();
   const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
 
@@ -1653,30 +1651,25 @@ static void gesture_apply_mesh(gesture::GestureData &gesture_data, const IndexMa
   threading::EnumerableThreadSpecific<TLS> all_tls;
   if (pbvh.type() == bke::pbvh::Type::Mesh) {
     MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
-      TLS &tls = all_tls.local();
-      node_mask.slice(range).foreach_index([&](const int i) {
-        undo::push_node(depsgraph, *gesture_data.vc.obact, &nodes[i], undo::Type::FaceSet);
-        const Span<int> node_faces = bke::pbvh::node_faces(tri_faces, nodes[i], tls.face_indices);
-
-        bool any_updated = false;
-        for (const int face : node_faces) {
-          if (!hide_poly.is_empty() && hide_poly[face]) {
-            continue;
-          }
-          const Span<int> face_verts = corner_verts.slice(faces[face]);
-          const float3 face_center = bke::mesh::face_center_calc(positions, face_verts);
-          const float3 face_normal = bke::mesh::face_normal_calc(positions, face_verts);
-          if (!gesture::is_affected(gesture_data, face_center, face_normal)) {
-            continue;
-          }
-          face_sets.span[face] = new_face_set;
-          any_updated = true;
+    node_mask.foreach_index(GrainSize(1), [&](const int i) {
+      undo::push_node(depsgraph, *gesture_data.vc.obact, &nodes[i], undo::Type::FaceSet);
+      bool any_updated = false;
+      for (const int face : bke::pbvh::node_faces(nodes[i])) {
+        if (!hide_poly.is_empty() && hide_poly[face]) {
+          continue;
         }
-        if (any_updated) {
-          BKE_pbvh_node_mark_update_face_sets(nodes[i]);
+        const Span<int> face_verts = corner_verts.slice(faces[face]);
+        const float3 face_center = bke::mesh::face_center_calc(positions, face_verts);
+        const float3 face_normal = bke::mesh::face_normal_calc(positions, face_verts);
+        if (!gesture::is_affected(gesture_data, face_center, face_normal)) {
+          continue;
         }
-      });
+        face_sets.span[face] = new_face_set;
+        any_updated = true;
+      }
+      if (any_updated) {
+        BKE_pbvh_node_mark_update_face_sets(nodes[i]);
+      }
     });
   }
   else if (pbvh.type() == bke::pbvh::Type::Grids) {

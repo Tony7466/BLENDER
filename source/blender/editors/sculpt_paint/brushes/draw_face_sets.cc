@@ -25,7 +25,6 @@ inline namespace draw_face_sets_cc {
 constexpr float FACE_SET_BRUSH_MIN_FADE = 0.05f;
 
 struct MeshLocalData {
-  Vector<int> face_indices;
   Vector<float3> positions;
   Vector<float3> normals;
   Vector<float> factors;
@@ -173,8 +172,6 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
 {
   const SculptSession &ss = *object.sculpt;
   const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
   MutableSpan<int> face_sets = attribute.span;

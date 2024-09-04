@@ -317,7 +317,6 @@ static void transform_active_color(bContext *C,
   undo::push_begin(obact, op);
 
   bke::pbvh::Tree &pbvh = *obact.sculpt->pbvh;
-  const Mesh &mesh = *static_cast<const Mesh *>(obact.data);
 
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);

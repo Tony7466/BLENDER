@@ -215,7 +215,6 @@ static void flush_face_changes_node(Mesh &mesh,
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
 
-  const Span<int> tri_faces = mesh.corner_tri_faces();
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
 

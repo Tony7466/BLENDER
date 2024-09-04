@@ -521,7 +521,7 @@ static void restore_color(Object &object, StepData &step_data, MutableSpan<bool>
     }
     else if (color_attribute.domain == bke::AttrDomain::Corner && !unode->loop_col.is_empty()) {
       const Span<int> face_indices = unode->face_indices;
-      color::swap_gathered_colors(unode->corner_indices, color_attribute.span, unode->loop_col);
+      // color::swap_gathered_colors(unode->corner_indices, color_attribute.span, unode->loop_col);
     }
 
     modified_vertices.fill_indices(unode->vert_indices.as_span(), true);
@@ -1295,8 +1295,8 @@ static void store_color(const Object &object, const bke::pbvh::Node &node, Node 
 
   if (color_attribute.domain == bke::AttrDomain::Corner) {
     const Span<int> face_indices = unode.face_indices;
-    unode.loop_col.reinitialize(unode.corner_indices.size());
-    color::gather_colors(colors, unode.corner_indices, unode.loop_col);
+    // unode.loop_col.reinitialize(unode.corner_indices.size());
+    // color::gather_colors(colors, unode.corner_indices, unode.loop_col);
   }
 }
 
@@ -1715,7 +1715,9 @@ static size_t node_size_in_bytes(const Node &node)
   size += node.normal.as_span().size_in_bytes();
   size += node.col.as_span().size_in_bytes();
   size += node.mask.as_span().size_in_bytes();
-  size += node.loop_col.as_span().size_in_bytes();
+  if (!node.loop_col.is_empty()) {
+    size += node.loop_col.as_span().size_in_bytes();
+  }
   size += node.vert_indices.as_span().size_in_bytes();
   size += node.vert_hidden.size() / 8;
   size += node.face_hidden.size() / 8;

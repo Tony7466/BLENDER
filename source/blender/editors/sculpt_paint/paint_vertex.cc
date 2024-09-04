@@ -2307,8 +2307,6 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*obact.sculpt->pbvh, memory);
 
-  const Mesh &mesh = *static_cast<const Mesh *>(obact.data);
-
   undo::push_nodes(depsgraph, obact, node_mask, undo::Type::Color);
 
   fill_active_color(obact, paintcol, true, affect_alpha);
