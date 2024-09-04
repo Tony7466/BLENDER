@@ -14,6 +14,7 @@
 #include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 
 #include "DNA_grease_pencil_types.h"
@@ -1316,7 +1317,7 @@ static void grease_pencil_wire_batch_ensure(Object &object,
   const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
 
-  Vector<IndexRange> range_per_curve;
+  Vector<int> index_start_per_curve;
   Vector<bool> cyclic_per_curve;
 
   int index_len = 0;
@@ -1335,19 +1336,22 @@ static void grease_pencil_wire_batch_ensure(Object &object,
       const bool is_cyclic = cyclic[curve_i] && (point_len > 2);
       /* Count the primitive restart. */
       index_len += point_len + (is_cyclic ? 1 : 0) + 1;
-      range_per_curve.append({point_start, point_len + (is_cyclic ? 1 : 0)});
+      index_start_per_curve.append(point_start);
       cyclic_per_curve.append(is_cyclic);
     });
   }
+  index_start_per_curve.append(index_len);
+  const OffsetIndices<int> range_per_curve(index_start_per_curve, offset_indices::NoSortCheck{});
 
   GPUIndexBufBuilder elb;
   GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, max_index);
 
   blender::MutableSpan<uint32_t> indices = GPU_indexbuf_get_data(&elb);
 
-  threading::parallel_for(range_per_curve.index_range(), 1024, [&](const IndexRange range) {
+  threading::parallel_for(cyclic_per_curve.index_range(), 1024, [&](const IndexRange range) {
     for (const int i_curve : range) {
-      IndexRange offset_range = range_per_curve[i_curve];
+      /* Drop the trailing restart index. */
+      IndexRange offset_range = range_per_curve[i_curve].drop_back(1);
       /* Shift the range by i_curve to account for the second padding vertices.
        * The first one is already accounted for during counting (as primitive restart). */
       IndexRange index_range = offset_range.shift(i_curve + 1);
