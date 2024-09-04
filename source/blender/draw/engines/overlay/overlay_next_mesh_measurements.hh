@@ -215,8 +215,8 @@ class MeshMeasurements {
               }
 
               if (do_global) {
-                no_a = math::normalize(ob->object_to_world().view<3, 3>() * no_a);
-                no_b = math::normalize(ob->object_to_world().view<3, 3>() * no_b);
+                no_a = math::normalize(ob->world_to_object().view<3, 3>() * no_a);
+                no_b = math::normalize(ob->world_to_object().view<3, 3>() * no_b);
               }
 
               const float angle = angle_normalized_v3v3(no_a, no_b);
