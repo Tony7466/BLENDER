@@ -80,6 +80,9 @@ static std::string ensure_weight_attribute_meta_data(Mesh &mesh,
                                                      bool &r_attr_converted)
 {
   using namespace blender;
+  if (!blender::bke::allow_procedural_attribute_access(name)) {
+    return "";
+  }
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(name);
   if (!meta_data) {
