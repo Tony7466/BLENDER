@@ -27,21 +27,21 @@ bool ED_id_rename(Main &bmain, ID &id, blender::StringRefNull name)
   const IDNewNameResult result = BKE_id_rename(
       bmain, id, name, IDNewNameMode::RenameExistingSameRoot);
 
-  switch (result) {
-    case IDNewNameResult::UNCHANGED:
+  switch (result.action) {
+    case IDNewNameResult::Action::UNCHANGED:
       CLOG_INFO(&LOG, 4, "ID '%s' not renamed, already using the requested name", id.name + 2);
       return false;
-    case IDNewNameResult::UNCHANGED_COLLISION:
+    case IDNewNameResult::Action::UNCHANGED_COLLISION:
       CLOG_INFO(&LOG,
                 4,
                 "ID '%s' not renamed, requested new name '%s' would collide with an existing one",
                 id.name + 2,
                 name.c_str());
       return false;
-    case IDNewNameResult::RENAMED_NO_COLLISION:
+    case IDNewNameResult::Action::RENAMED_NO_COLLISION:
       CLOG_INFO(&LOG, 4, "ID '%s' renamed without any collision", id.name + 2);
       return true;
-    case IDNewNameResult::RENAMED_COLLISION_ADJUSTED:
+    case IDNewNameResult::Action::RENAMED_COLLISION_ADJUSTED:
       CLOG_INFO(&LOG,
                 4,
                 "ID '%s' renamed with adjustment from requested name '%s', to avoid name "
@@ -53,15 +53,15 @@ bool ED_id_rename(Main &bmain, ID &id, blender::StringRefNull name)
                  id.name + 2,
                  name.c_str());
       return true;
-    case IDNewNameResult::RENAMED_COLLISION_FORCED:
+    case IDNewNameResult::Action::RENAMED_COLLISION_FORCED:
       CLOG_INFO(
           &LOG,
           4,
           "ID '%s' forcefully renamed, another ID had to also be renamed to avoid name collision",
           id.name + 2);
       WM_reportf(RPT_INFO,
-                 "Another data-block was renamed to allow renaming this one to '%s'",
-                 id.name + 2);
+                 "Name in use. The other data-block was renamed to ‘%s’",
+                 result.other_id->name + 2);
       return true;
   }
 

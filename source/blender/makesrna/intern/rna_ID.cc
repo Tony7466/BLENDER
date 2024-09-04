@@ -284,7 +284,8 @@ int rna_ID_name_length(PointerRNA *ptr)
 
 static int rna_ID_rename(ID *self, Main *bmain, const char *new_name, const int mode)
 {
-  return int(BKE_id_rename(*bmain, *self, new_name, IDNewNameMode(mode)));
+  IDNewNameResult result = BKE_id_rename(*bmain, *self, new_name, IDNewNameMode(mode));
+  return int(result.action);
 }
 
 void rna_ID_name_set(PointerRNA *ptr, const char *value)
@@ -2207,28 +2208,28 @@ static void rna_def_ID(BlenderRNA *brna)
   };
 
   static const EnumPropertyItem rename_result_items[] = {
-      {int(IDNewNameResult::UNCHANGED),
+      {int(IDNewNameResult::Action::UNCHANGED),
        "UNCHANGED",
        0,
        "Unchanged",
        "The ID was not renamed, e.g. because it is already named as requested"},
-      {int(IDNewNameResult::UNCHANGED_COLLISION),
+      {int(IDNewNameResult::Action::UNCHANGED_COLLISION),
        "UNCHANGED_COLLISION",
        0,
        "Unchanged Due to Collision",
        "The ID was not renamed, because requested name would have collided with another existing "
        "ID's name, and the automatically adjusted name was the same as the current ID's name"},
-      {int(IDNewNameResult::RENAMED_NO_COLLISION),
+      {int(IDNewNameResult::Action::RENAMED_NO_COLLISION),
        "RENAMED_NO_COLLISION",
        0,
        "Renamed Without Collision",
        "The ID was renamed as requested, without creating any name collision"},
-      {int(IDNewNameResult::RENAMED_COLLISION_ADJUSTED),
+      {int(IDNewNameResult::Action::RENAMED_COLLISION_ADJUSTED),
        "RENAMED_COLLISION_ADJUSTED",
        0,
        "Renamed With Collision",
        "The ID was renamed with adjustement of the requested name, to avoid a name collision"},
-      {int(IDNewNameResult::RENAMED_COLLISION_FORCED),
+      {int(IDNewNameResult::Action::RENAMED_COLLISION_FORCED),
        "RENAMED_COLLISION_FORCED",
        0,
        "Renamed Enforced With Collision",
@@ -2424,7 +2425,7 @@ static void rna_def_ID(BlenderRNA *brna)
   parm = RNA_def_enum(func,
                       "id_rename_result",
                       rename_result_items,
-                      int(IDNewNameResult::UNCHANGED),
+                      int(IDNewNameResult::Action::UNCHANGED),
                       "",
                       "How did the renaming of the data-block went on");
   RNA_def_function_return(func, parm);

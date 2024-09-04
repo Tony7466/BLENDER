@@ -129,7 +129,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_never)
   /* Rename to different root name. */
   result = change_name(ctx.bmain, id_c, "OB_A", IDNewNameMode::RenameExistingNever);
 
-  EXPECT_TRUE(result == IDNewNameResult::RENAMED_COLLISION_ADJUSTED);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::RENAMED_COLLISION_ADJUSTED);
+  EXPECT_TRUE(result.other_id == id_a);
   EXPECT_STREQ(id_c->name + 2, "OB_A.001");
   EXPECT_STREQ(id_a->name + 2, "OB_A");
   EXPECT_TRUE(ctx.bmain->objects.first == id_a);
@@ -141,7 +142,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_never)
   /* Rename to same root name. */
   result = change_name(ctx.bmain, id_c, "OB_A", IDNewNameMode::RenameExistingNever);
 
-  EXPECT_TRUE(result == IDNewNameResult::UNCHANGED_COLLISION);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::UNCHANGED_COLLISION);
+  EXPECT_TRUE(result.other_id == id_a);
   EXPECT_STREQ(id_c->name + 2, "OB_A.001");
   EXPECT_STREQ(id_a->name + 2, "OB_A");
   EXPECT_TRUE(ctx.bmain->objects.first == id_a);
@@ -188,7 +190,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_always)
   /* Rename to different root name. */
   result = change_name(ctx.bmain, id_c, "OB_A", IDNewNameMode::RenameExistingAlways);
 
-  EXPECT_TRUE(result == IDNewNameResult::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.other_id == id_a);
   EXPECT_STREQ(id_c->name + 2, "OB_A");
   EXPECT_STREQ(id_a->name + 2, "OB_A.001");
   EXPECT_TRUE(ctx.bmain->objects.first == id_c);
@@ -200,7 +203,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_always)
   /* Rename to same root name. */
   result = change_name(ctx.bmain, id_a, "OB_A", IDNewNameMode::RenameExistingAlways);
 
-  EXPECT_TRUE(result == IDNewNameResult::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.other_id == id_c);
   EXPECT_STREQ(id_c->name + 2, "OB_A.001");
   EXPECT_STREQ(id_a->name + 2, "OB_A");
   EXPECT_TRUE(ctx.bmain->objects.first == id_a);
@@ -229,7 +233,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_same_root)
   /* Rename to different root name. */
   result = change_name(ctx.bmain, id_c, "OB_A", IDNewNameMode::RenameExistingSameRoot);
 
-  EXPECT_TRUE(result == IDNewNameResult::RENAMED_COLLISION_ADJUSTED);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::RENAMED_COLLISION_ADJUSTED);
+  EXPECT_TRUE(result.other_id == id_a);
   EXPECT_STREQ(id_c->name + 2, "OB_A.001");
   EXPECT_STREQ(id_a->name + 2, "OB_A");
   EXPECT_TRUE(ctx.bmain->objects.first == id_a);
@@ -241,7 +246,8 @@ TEST(lib_id_main_unique_name, local_ids_rename_existing_same_root)
   /* Rename to same root name. */
   result = change_name(ctx.bmain, id_c, "OB_A", IDNewNameMode::RenameExistingSameRoot);
 
-  EXPECT_TRUE(result == IDNewNameResult::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.action == IDNewNameResult::Action::RENAMED_COLLISION_FORCED);
+  EXPECT_TRUE(result.other_id == id_a);
   EXPECT_STREQ(id_c->name + 2, "OB_A");
   EXPECT_STREQ(id_a->name + 2, "OB_A.001");
   EXPECT_TRUE(ctx.bmain->objects.first == id_c);

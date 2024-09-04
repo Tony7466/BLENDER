@@ -256,6 +256,7 @@ void *BKE_libblock_copy(Main *bmain, const ID *id) ATTR_WARN_UNUSED_RESULT ATTR_
  */
 void BKE_id_move_to_same_lib(Main &bmain, ID &id, const ID &owner_id);
 
+/** How to handle ID rename in case requested name is already used by another ID. */
 enum class IDNewNameMode {
   /**
    * Never rename another existing ID if the target name is already in use. The renamed ID will get
@@ -280,23 +281,35 @@ enum class IDNewNameMode {
   RenameExistingSameRoot = 2,
 };
 
-enum class IDNewNameResult {
-  /** ID was not renamed, because requested new name was already the ID's name. */
-  UNCHANGED = 0,
-  /**
-   * ID was not renamed, because requested new name would collide with another existing ID's name,
-   * and the first available unique name is already current ID's name.
+/** Information about how an ID rename went on. */
+struct IDNewNameResult {
+  /** How the renaming wnet on. */
+  enum class Action {
+    /** ID was not renamed, because requested new name was already the ID's name. */
+    UNCHANGED = 0,
+    /**
+     * ID was not renamed, because requested new name would collide with another existing ID's
+     * name, and the first available unique name is already current ID's name.
+     */
+    UNCHANGED_COLLISION = 1,
+    /** Successfully renamed, wihtout any collision with another ID's name. */
+    RENAMED_NO_COLLISION = 2,
+    /** Successfully renamed, requested new name was adjusted to avoid collision with another ID.
+     */
+    RENAMED_COLLISION_ADJUSTED = 3,
+    /**
+     * Successfully renamed, requested new name was enforced onto given ID, and another ID had to
+     * be renamed to avoid name collision.
+     */
+    RENAMED_COLLISION_FORCED = 4,
+  } action = Action::UNCHANGED;
+
+  /** The colliding ID, if any.
+   *
+   * \warning Currently will be `nullptr` in #RENAMED_COLLISION_ADJUSTED case, for performance
+   * reasons (avoid an ID lookup by name) when doing 'standard' #RenameExistingNever renames.
    */
-  UNCHANGED_COLLISION = 1,
-  /** Successfully renamed, wihtout any collision with another ID's name. */
-  RENAMED_NO_COLLISION = 2,
-  /** Successfully renamed, requested new name was adjusted to avoid collision with another ID. */
-  RENAMED_COLLISION_ADJUSTED = 3,
-  /**
-   * Successfully renamed, requested new name was enforced onto given ID, and another ID had to be
-   * renamed to avoid name collision.
-   */
-  RENAMED_COLLISION_FORCED = 4,
+  ID *other_id = nullptr;
 };
 
 /**

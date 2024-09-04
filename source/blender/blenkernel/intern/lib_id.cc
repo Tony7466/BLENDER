@@ -226,7 +226,10 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
                                                       nullptr,
                                                       IDNewNameMode::RenameExistingNever,
                                                       false);
-    if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
+    if (!ELEM(result.action,
+              IDNewNameResult::Action::UNCHANGED,
+              IDNewNameResult::Action::UNCHANGED_COLLISION))
+    {
       bmain->is_memfile_undo_written = false;
     }
   }
@@ -1853,7 +1856,7 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
   if (!do_linked_data && ID_IS_LINKED(&id)) {
     id_sort_by_name(&lb, &id, nullptr);
 
-    return IDNewNameResult::UNCHANGED;
+    return {IDNewNameResult::Action::UNCHANGED, nullptr};
   }
 
   /* If no name given, use name of current ID. */
@@ -1908,10 +1911,10 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
       id_sort_by_name(&lb, id_other, nullptr);
 
       const bool is_idname_changed = !STREQ(id.name + 2, orig_name);
-      IDNewNameResult result = IDNewNameResult::UNCHANGED_COLLISION;
+      IDNewNameResult result = {IDNewNameResult::Action::UNCHANGED_COLLISION, id_other};
       if (is_idname_changed) {
         BLI_strncpy(id.name + 2, orig_name, sizeof(id.name) - 2);
-        result = IDNewNameResult::RENAMED_COLLISION_FORCED;
+        result.action = IDNewNameResult::Action::RENAMED_COLLISION_FORCED;
       }
       id_sort_by_name(&lb, &id, nullptr);
       return result;
@@ -1924,14 +1927,14 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
    * generated unique name may end up being the current ID's name. */
   const bool is_idname_changed = !STREQ(id.name + 2, name);
 
-  IDNewNameResult result = IDNewNameResult::UNCHANGED;
+  IDNewNameResult result = {IDNewNameResult::Action::UNCHANGED, nullptr};
   if (is_idname_changed) {
     BLI_strncpy(id.name + 2, name, sizeof(id.name) - 2);
-    result = had_name_collision ? IDNewNameResult::RENAMED_COLLISION_ADJUSTED :
-                                  IDNewNameResult::RENAMED_NO_COLLISION;
+    result.action = had_name_collision ? IDNewNameResult::Action::RENAMED_COLLISION_ADJUSTED :
+                                         IDNewNameResult::Action::RENAMED_NO_COLLISION;
   }
   else if (had_name_collision) {
-    result = IDNewNameResult::UNCHANGED_COLLISION;
+    result.action = IDNewNameResult::Action::UNCHANGED_COLLISION;
   }
   id_sort_by_name(&lb, &id, nullptr);
   return result;
@@ -2314,12 +2317,15 @@ IDNewNameResult BKE_libblock_rename(Main &bmain,
   BLI_assert(BKE_id_is_in_main(&bmain, &id));
 
   if (STREQ(id.name + 2, name.c_str())) {
-    return IDNewNameResult::UNCHANGED;
+    return {IDNewNameResult::Action::UNCHANGED, nullptr};
   }
   BKE_main_namemap_remove_name(&bmain, &id, id.name + 2);
   ListBase &lb = *which_libbase(&bmain, GS(id.name));
   IDNewNameResult result = BKE_id_new_name_validate(bmain, lb, id, name.c_str(), mode, true);
-  if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
+  if (!ELEM(result.action,
+            IDNewNameResult::Action::UNCHANGED,
+            IDNewNameResult::Action::UNCHANGED_COLLISION))
+  {
     bmain.is_memfile_undo_written = false;
   }
   return result;
@@ -2332,7 +2338,10 @@ IDNewNameResult BKE_id_rename(Main &bmain,
 {
   const IDNewNameResult result = BKE_libblock_rename(bmain, id, name, mode);
 
-  if (!ELEM(result, IDNewNameResult::UNCHANGED, IDNewNameResult::UNCHANGED_COLLISION)) {
+  if (!ELEM(result.action,
+            IDNewNameResult::Action::UNCHANGED,
+            IDNewNameResult::Action::UNCHANGED_COLLISION))
+  {
     switch (GS(id.name)) {
       case ID_OB: {
         Object &ob = reinterpret_cast<Object &>(id);
