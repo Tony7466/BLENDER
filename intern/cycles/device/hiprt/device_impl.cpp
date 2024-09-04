@@ -216,7 +216,7 @@ string HIPRTDevice::compile_kernel(const uint kernel_features, const char *name,
 
   path_create_directories(fatbin);
 
-  std::string rtc_options;
+  string rtc_options;
   rtc_options.append(" --offload-arch=").append(arch.c_str());
   rtc_options.append(" -D __HIPRT__");
   rtc_options.append(" -ffast-math -O3 -std=c++17");
@@ -666,6 +666,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   int num_bounds = 0;
 
   if (point_attr_mP == NULL) {
+    bvh->custom_prim_info.resize(num_points);
     bvh->custom_primitive_bound.alloc(num_points);
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -680,8 +681,8 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
     }
   }
   else if (bvh->params.num_motion_point_steps == 0) {
-
-    bvh->custom_primitive_bound.alloc(num_points * num_steps);
+    bvh->custom_prim_info.resize(num_points);
+    bvh->custom_primitive_bound.alloc(num_points);
 
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -693,17 +694,18 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
       if (bounds.valid()) {
         bvh->custom_primitive_bound[num_bounds] = bounds;
         bvh->custom_prim_info[num_bounds].x = j;
-        bvh->custom_prim_info[num_bounds].y = PRIMITIVE_POINT;
+        bvh->custom_prim_info[num_bounds].y = PRIMITIVE_MOTION_POINT;
         num_bounds++;
       }
     }
   }
   else {
-
     const int num_bvh_steps = bvh->params.num_motion_point_steps * 2 + 1;
     const float num_bvh_steps_inv_1 = 1.0f / (num_bvh_steps - 1);
 
+    bvh->custom_prim_info.resize(num_points * num_bvh_steps);
     bvh->custom_primitive_bound.alloc(num_points * num_bvh_steps);
+    bvh->prims_time.resize(num_points * num_bvh_steps);
 
     for (uint j = 0; j < num_points; j++) {
       const PointCloud::Point point = pointcloud->get_point(j);
@@ -937,7 +939,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
       current_header.frameIndex = transform_matrix.size();
       if (ob->get_motion().size()) {
         int motion_size = ob->get_motion().size();
-        assert(motion_size == 1);
+        assert(motion_size != 1);
 
         array<Transform> tfm_array = ob->get_motion();
         float time_iternval = 1 / (float)(motion_size - 1);
@@ -983,6 +985,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   transform_headers.copy_to_device();
   {
     instance_transform_matrix.alloc(frame_count);
+    instance_transform_matrix.host_free();
     instance_transform_matrix.host_pointer = transform_matrix.data();
     instance_transform_matrix.data_elements = sizeof(hiprtFrameMatrix);
     instance_transform_matrix.data_type = TYPE_UCHAR;
@@ -1035,6 +1038,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   if (bvh->custom_prim_info.size()) {
     size_t data_size = bvh->custom_prim_info.size();
     custom_prim_info.alloc(data_size);
+    custom_prim_info.host_free();
     custom_prim_info.host_pointer = bvh->custom_prim_info.data();
     custom_prim_info.data_elements = 2;
     custom_prim_info.data_type = TYPE_INT;
@@ -1048,6 +1052,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   if (bvh->prims_time.size()) {
     size_t data_size = bvh->prims_time.size();
     prims_time.alloc(data_size);
+    prims_time.host_free();
     prims_time.host_pointer = bvh->prims_time.data();
     prims_time.data_elements = 2;
     prims_time.data_type = TYPE_FLOAT;

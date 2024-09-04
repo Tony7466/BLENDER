@@ -727,6 +727,8 @@ endif()
 # HIP RT module
 
 if(WITH_CYCLES_DEVICE_HIPRT)
+  set(HIPRT_COMPILER_PARALLEL_JOBS 1 CACHE STRING "Number of parallel compiler instances to use for for HIP-RT kernels")
+  mark_as_advanced(HIPRT_COMPILER_PARALLEL_JOBS)
 
   set(bvh_file ${CMAKE_CURRENT_BINARY_DIR}/hiprt${HIPRT_VERSION}_${HIP_VERSION_SHORT}_amd.hipfb)
   set(bvh_file_oro ${CMAKE_CURRENT_BINARY_DIR}/oro_compiled_kernels.hipfb)
@@ -761,6 +763,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     -amdgpu-early-inline-all=false
     -mllvm
     -amdgpu-function-calls=true
+    -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
     --genco
     -I ${HIPRT_INCLUDE_DIR}
     -Wno-parentheses-equality
@@ -781,6 +784,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     -amdgpu-early-inline-all=false
     -mllvm
     -amdgpu-function-calls=true
+    -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
     --genco
     -I ${HIPRT_INCLUDE_DIR}/Orochi
     -include hip/hip_runtime.h
@@ -828,6 +832,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
       -fgpu-rdc
       -c
       --gpu-bundle-output
+      -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
       -emit-llvm
       -I ${HIPRT_INCLUDE_DIR}
       -Wno-parentheses-equality
@@ -849,6 +854,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     -fgpu-rdc
     -c
     --gpu-bundle-output
+    -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
     -emit-llvm
     -I ${CMAKE_CURRENT_SOURCE_DIR}/..
     -I ${CMAKE_CURRENT_SOURCE_DIR}/device/hiprt
@@ -883,6 +889,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     -fgpu-rdc
     --hip-link
     --cuda-device-only
+    -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
     ${cycles_bitcode_file}
     ${sdk_bitcode_file}
     -o ${hiprt_file})
@@ -1396,8 +1403,8 @@ delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIP_HEADERS}" $
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIPRT}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIPRT_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt)
 if(WITH_CYCLES_DEVICE_HIPRT)
-delayed_install(${HIPRT_INCLUDE_DIR}        "${SRC_KERNEL_DEVICE_HIPRT_SDK_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt/hiprt)
-delayed_install(${HIPRT_INCLUDE_DIR}        "${SRC_KERNEL_DEVICE_HIPRT_SDK}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt/hiprt/impl)
+  delayed_install(${HIPRT_INCLUDE_DIR}      "${SRC_KERNEL_DEVICE_HIPRT_SDK_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt/hiprt)
+  delayed_install(${HIPRT_INCLUDE_DIR}      "${SRC_KERNEL_DEVICE_HIPRT_SDK}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt/hiprt/impl)
 endif()
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
