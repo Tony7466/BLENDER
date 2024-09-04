@@ -200,9 +200,7 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
 
       verts.clear();
       for (const int face : node.face_indices_) {
-        for (const int vert : corner_verts.slice(faces[face])) {
-          verts.add(vert);
-        }
+        verts.add_multiple(corner_verts.slice(faces[face]));
       }
 
       new (&verts_per_node[i]) Array<int>(verts.size());
@@ -229,6 +227,7 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
       }
     }
     node.unique_verts_num_ = owned_verts.size();
+    node.vert_indices_.reserve(owned_verts.size() + shared_verts.size());
     node.vert_indices_.add_multiple(owned_verts);
     node.vert_indices_.add_multiple(shared_verts);
   }
