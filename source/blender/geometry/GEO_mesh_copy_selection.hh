@@ -22,22 +22,21 @@ enum class AttrDomain : int8_t;
 
 namespace blender::geometry {
 
-std::optional<Mesh *> mesh_copy_selection(
-    const Mesh &src_mesh,
-    const VArray<bool> &selection,
-    bke::AttrDomain selection_domain,
-    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
+std::optional<Mesh *> mesh_copy_selection(const Mesh &src_mesh,
+                                          const VArray<bool> &selection,
+                                          bke::AttrDomain selection_domain,
+                                          const bke::AttributeFilter &attribute_filter = {});
 
 std::optional<Mesh *> mesh_copy_selection_keep_verts(
     const Mesh &src_mesh,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
+    const bke::AttributeFilter &attribute_filter = {});
 
 std::optional<Mesh *> mesh_copy_selection_keep_edges(
     const Mesh &mesh,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
+    const bke::AttributeFilter &attribute_filter = {});
 
 }  // namespace blender::geometry

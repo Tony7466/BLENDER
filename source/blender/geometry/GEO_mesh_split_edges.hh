@@ -14,6 +14,6 @@ namespace blender::geometry {
 
 void split_edges(Mesh &mesh,
                  const IndexMask &mask,
-                 const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
+                 const bke::AttributeFilter &attribute_filter = {});
 
 }  // namespace blender::geometry

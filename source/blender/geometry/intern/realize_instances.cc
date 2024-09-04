@@ -866,7 +866,7 @@ static void gather_attributes_for_propagation(
                         /* Propagating string attributes is not supported yet. */
                         return;
                       }
-                      if (bke::allow_skipping_attribute(attribute_filter, attribute_id)) {
+                      if (attribute_filter.allow_skip(attribute_id)) {
                         return;
                       }
 

@@ -123,7 +123,7 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
 
   /* Transfer all other attributes. */
   for (const StringRef id : attribute_ids) {
-    if (bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       continue;
     }
 

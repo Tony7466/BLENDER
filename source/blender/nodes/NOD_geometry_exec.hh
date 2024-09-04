@@ -29,7 +29,6 @@ using bke::AttrDomain;
 using bke::AttributeAccessor;
 using bke::AttributeFieldInput;
 using bke::AttributeFilter;
-using bke::AttributeFilterResult;
 using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
@@ -58,19 +57,19 @@ using fn::GField;
 using geo_eval_log::NamedAttributeUsage;
 using geo_eval_log::NodeWarningType;
 
-class NodeAttributeFilter {
+class NodeAttributeFilter : public AttributeFilter {
  private:
-  FunctionRef<AttributeFilterResult(int socket_index, StringRef attribute_name)> fn_;
+  FunctionRef<AttributeFilter::Result(int socket_index, StringRef attribute_name)> fn_;
   int socket_index_;
 
  public:
-  NodeAttributeFilter(const FunctionRef<AttributeFilterResult(int, StringRef)> fn,
+  NodeAttributeFilter(const FunctionRef<AttributeFilter::Result(int, StringRef)> fn,
                       const int socket_index)
       : fn_(fn), socket_index_(socket_index)
   {
   }
 
-  AttributeFilterResult operator()(const StringRef attribute_name) const
+  Result filter(const StringRef attribute_name) const override
   {
     return fn_(socket_index_, attribute_name);
   }
@@ -84,7 +83,8 @@ class GeoNodeExecParams {
   const Span<int> lf_input_for_output_bsocket_usage_;
   const Span<int> lf_input_for_attribute_propagation_to_output_;
   const FunctionRef<std::string(int)> get_output_attribute_id_;
-  const FunctionRef<AttributeFilterResult(int socket_index, StringRef name)> filter_attributes_fn_;
+  const FunctionRef<AttributeFilter::Result(int socket_index, StringRef name)>
+      filter_attributes_fn_;
 
  public:
   GeoNodeExecParams(const bNode &node,
@@ -93,7 +93,7 @@ class GeoNodeExecParams {
                     const Span<int> lf_input_for_output_bsocket_usage,
                     const Span<int> lf_input_for_attribute_propagation_to_output,
                     const FunctionRef<std::string(int)> get_output_attribute_id,
-                    const FunctionRef<AttributeFilterResult(int socket_index, StringRef name)>
+                    const FunctionRef<AttributeFilter::Result(int socket_index, StringRef name)>
                         filter_attributes_fn)
       : node_(node),
         params_(params),

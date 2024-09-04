@@ -801,7 +801,7 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
     if (!(ATTR_DOMAIN_AS_MASK(meta_data.domain) & domain_mask)) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
 
@@ -831,7 +831,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const GAttributeReader src = src_attributes.lookup(id, domain);
@@ -869,7 +869,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
       if (meta_data.data_type == CD_PROP_STRING) {
         return true;
       }
-      if (allow_skipping_attribute(attribute_filter, id)) {
+      if (attribute_filter.allow_skip(id)) {
         return true;
       }
       const GAttributeReader src = src_attributes.lookup(id, domain);
@@ -900,7 +900,7 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
@@ -929,7 +929,7 @@ void gather_attributes_to_groups(const AttributeAccessor src_attributes,
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
@@ -975,7 +975,7 @@ void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const GVArraySpan src = *src_attributes.lookup(id, domain);
@@ -999,7 +999,7 @@ void fill_attribute_range_default(MutableAttributeAccessor attributes,
     if (meta_data.domain != domain) {
       return true;
     }
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     if (meta_data.data_type == CD_PROP_STRING) {

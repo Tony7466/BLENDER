@@ -58,7 +58,7 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (bke::allow_skipping_attribute(attribute_filter_with_skip, id)) {
+    if (attribute_filter_with_skip.allow_skip(id)) {
       return true;
     }
 

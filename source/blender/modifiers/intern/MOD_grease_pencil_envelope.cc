@@ -575,11 +575,8 @@ static void create_envelope_strokes(const EnvelopeInfo &info,
   });
   dst_curves.offsets_for_write().last() = dst_point_num;
 
-  bke::gather_attributes(src_attributes,
-                         bke::AttrDomain::Point,
-                         bke::ProcessAllAttributes,
-                         src_point_indices,
-                         dst_attributes);
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, src_point_indices, dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
                          bke::attribute_filter_from_skip_ref({"cyclic", "material_index"}),

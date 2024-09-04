@@ -166,7 +166,7 @@ static bke::CurvesGeometry reorder_and_flip_curves(const bke::CurvesGeometry &sr
 
   bke::gather_attributes(src_curves.attributes(),
                          bke::AttrDomain::Curve,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_curves.attributes_for_write());
 
@@ -269,10 +269,8 @@ static bke::CurvesGeometry join_curves_ranges(const bke::CurvesGeometry &src_cur
   offset_indices::accumulate_counts_to_offsets(new_offsets);
 
   /* Point attributes copied without changes. */
-  bke::copy_attributes(src_curves.attributes(),
-                       bke::AttrDomain::Point,
-                       bke::ProcessAllAttributes,
-                       dst_curves.attributes_for_write());
+  bke::copy_attributes(
+      src_curves.attributes(), bke::AttrDomain::Point, {}, dst_curves.attributes_for_write());
 
   dst_curves.tag_topology_changed();
   return dst_curves;

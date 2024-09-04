@@ -462,7 +462,7 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
   /* Interpolate attributes from guide curves to child curves. Attributes stay on the same domain
    * that they had on the guides. */
   guide_curve_attributes.for_all([&](const StringRef id, const AttributeMetaData &meta_data) {
-    if (bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const eCustomDataType type = meta_data.data_type;
@@ -601,7 +601,7 @@ static void interpolate_curve_attributes(bke::CurvesGeometry &child_curves,
     if (guide_curve_attributes.contains(id)) {
       return true;
     }
-    if (bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     if (meta_data.data_type == CD_PROP_STRING) {

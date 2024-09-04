@@ -802,7 +802,7 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
     const AttributeAccessor src_attributes,
     MutableAttributeAccessor dst_attributes,
     AttrDomainMask domain_mask,
-    const AttributeFilter &attribute_filter = ProcessAllAttributes);
+    const AttributeFilter &attribute_filter = {});
 
 bool allow_procedural_attribute_access(StringRef attribute_name);
 extern const char *no_procedural_access_message;

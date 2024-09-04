@@ -186,7 +186,7 @@ static void clean_unused_attributes(const AttributeFilter &attribute_filter,
     if (keep.contains(id)) {
       return true;
     }
-    if (!bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (!attribute_filter.allow_skip(id)) {
       return true;
     }
     unused_ids.append(id);

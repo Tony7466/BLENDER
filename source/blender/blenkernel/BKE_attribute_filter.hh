@@ -9,20 +9,24 @@
 
 namespace blender::bke {
 
-enum class AttributeFilterResult {
-  AllowSkip,
-  Process,
-};
+struct AttributeFilter {
+ public:
+  enum class Result {
+    AllowSkip,
+    Process,
+  };
 
-using AttributeFilter = FunctionRef<AttributeFilterResult(StringRef name)>;
+  virtual ~AttributeFilter() = default;
 
-inline bool allow_skipping_attribute(const AttributeFilter &filter, const StringRef name)
-{
-  return filter(name) == AttributeFilterResult::AllowSkip;
-}
+  virtual Result filter(const StringRef /*name*/) const
+  {
+    return Result::Process;
+  }
 
-static constexpr auto ProcessAllAttributes = [](const StringRef /*name*/) {
-  return AttributeFilterResult::Process;
+  bool allow_skip(const StringRef name) const
+  {
+    return this->filter(name) == Result::AllowSkip;
+  }
 };
 
 }  // namespace blender::bke

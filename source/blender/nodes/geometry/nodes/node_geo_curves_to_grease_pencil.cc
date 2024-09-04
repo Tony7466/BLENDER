@@ -139,7 +139,7 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
     if (ELEM(attribute_id, "opacity")) {
       return true;
     }
-    if (bke::allow_skipping_attribute(attribute_filter, attribute_id)) {
+    if (attribute_filter.allow_skip(attribute_id)) {
       return true;
     }
     const GAttributeReader src_attribute = instances_attributes.lookup(attribute_id);

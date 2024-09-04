@@ -145,8 +145,7 @@ static void transfer_attributes(
   attribute_ids.remove(".corner_vert");
   attribute_ids.remove(".corner_edge");
   attribute_ids.remove("sharp_face");
-  attribute_ids.remove_if(
-      [&](const StringRef id) { return bke::allow_skipping_attribute(attribute_filter, id); });
+  attribute_ids.remove_if([&](const StringRef id) { return attribute_filter.allow_skip(id); });
 
   for (const StringRef id : attribute_ids) {
     GAttributeReader src = src_attributes.lookup(id);

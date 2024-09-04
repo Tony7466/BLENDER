@@ -634,7 +634,7 @@ void GeometrySet::propagate_attributes_from_layer_to_instances(
     const AttributeFilter &attribute_filter)
 {
   src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (allow_skipping_attribute(attribute_filter, id)) {
+    if (attribute_filter.allow_skip(id)) {
       return true;
     }
     const GAttributeReader src = src_attributes.lookup(id, AttrDomain::Layer);
@@ -682,7 +682,7 @@ void GeometrySet::gather_attributes_for_propagation(
           /* Propagating string attributes is not supported yet. */
           return;
         }
-        if (allow_skipping_attribute(attribute_filter, attribute_id)) {
+        if (attribute_filter.allow_skip(attribute_id)) {
           return;
         }
 

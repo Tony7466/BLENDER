@@ -92,8 +92,7 @@ static void remove_non_propagated_attributes(MutableAttributeAccessor attributes
                                              const AttributeFilter &attribute_filter)
 {
   Set<StringRefNull> ids_to_remove = attributes.all_ids();
-  ids_to_remove.remove_if(
-      [&](const StringRef id) { return !bke::allow_skipping_attribute(attribute_filter, id); });
+  ids_to_remove.remove_if([&](const StringRef id) { return !attribute_filter.allow_skip(id); });
   for (const StringRef id : ids_to_remove) {
     attributes.remove(id);
   }

@@ -29,12 +29,12 @@ class CurvesGeometry;
 Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                           const CurvesGeometry &profile,
                           bool fill_caps,
-                          const bke::AttributeFilter &attribute_filter = ProcessAllAttributes);
+                          const bke::AttributeFilter &attribute_filter = {});
 /**
  * Create a loose-edge mesh based on the evaluated path of the curve's splines.
  * Transfer curve attributes to the mesh.
  */
 Mesh *curve_to_wire_mesh(const CurvesGeometry &curve,
-                         const bke::AttributeFilter &attribute_filter = ProcessAllAttributes);
+                         const bke::AttributeFilter &attribute_filter = {});
 
 }  // namespace blender::bke

@@ -20,10 +20,9 @@ namespace blender::geometry {
  *
  * \param selection: A selection of curves to consider when subdividing.
  */
-bke::CurvesGeometry subdivide_curves(
-    const bke::CurvesGeometry &src_curves,
-    const IndexMask &selection,
-    const VArray<int> &cuts,
-    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
+bke::CurvesGeometry subdivide_curves(const bke::CurvesGeometry &src_curves,
+                                     const IndexMask &selection,
+                                     const VArray<int> &cuts,
+                                     const bke::AttributeFilter &attribute_filter = {});
 
 }  // namespace blender::geometry

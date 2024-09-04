@@ -3706,7 +3706,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       }
       else if (const Curves *curves_eval = geometry.get_curves()) {
         Mesh *mesh = bke::curve_to_wire_mesh(curves_eval->geometry.wrap(),
-                                             bke::ProcessAllAttributeExceptAnonymous);
+                                             bke::ProcessAllAttributeExceptAnonymous{});
         if (!mesh) {
           mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
         }

@@ -91,7 +91,7 @@ static void reorder_mesh_verts_exec(const Mesh &src_mesh,
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Point,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_mesh.attributes_for_write());
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
@@ -108,7 +108,7 @@ static void reorder_mesh_edges_exec(const Mesh &src_mesh,
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Edge,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_mesh.attributes_for_write());
   const Array<int> new_by_old_map = invert_permutation(old_by_new_map);
@@ -122,7 +122,7 @@ static void reorder_mesh_faces_exec(const Mesh &src_mesh,
 {
   bke::gather_attributes(src_mesh.attributes(),
                          bke::AttrDomain::Face,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_mesh.attributes_for_write());
   const Span<int> old_offsets = src_mesh.face_offsets();
@@ -165,7 +165,7 @@ static void reorder_points_exec(const PointCloud &src_pointcloud,
 {
   bke::gather_attributes(src_pointcloud.attributes(),
                          bke::AttrDomain::Point,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_pointcloud.attributes_for_write());
   dst_pointcloud.tag_positions_changed();
@@ -178,7 +178,7 @@ static void reorder_curves_exec(const bke::CurvesGeometry &src_curves,
 {
   bke::gather_attributes(src_curves.attributes(),
                          bke::AttrDomain::Curve,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_curves.attributes_for_write());
 
@@ -202,7 +202,7 @@ static void reorder_instaces_exec(const bke::Instances &src_instances,
 {
   bke::gather_attributes(src_instances.attributes(),
                          bke::AttrDomain::Instance,
-                         bke::ProcessAllAttributes,
+                         {},
                          old_by_new_map,
                          dst_instances.attributes_for_write());
 }
@@ -218,7 +218,7 @@ static void clean_unused_attributes(const bke::AttributeFilter &attribute_filter
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
-    if (!bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (!attribute_filter.allow_skip(id)) {
       return true;
     }
     unused_ids.append(id);

@@ -25,7 +25,7 @@ struct RealizeInstancesOptions {
    */
   bool realize_instance_attributes = true;
 
-  bke::AttributeFilter attribute_filter = bke::ProcessAllAttributes;
+  bke::AttributeFilter attribute_filter = {};
 };
 
 /**

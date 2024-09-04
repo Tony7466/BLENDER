@@ -246,7 +246,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
     auto allow_attribute_skip_fn = [&](const int socket_index, const StringRef name) {
       if (!bke::attribute_name_is_anonymous(name)) {
-        return AttributeFilterResult::Process;
+        return AttributeFilter::Result::Process;
       }
       if (anonymous_attribute_sets[socket_index] == nullptr) {
         const bNodeSocket &socket = node_.output_socket(socket_index);
@@ -259,12 +259,12 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       }
       const bke::AnonymousAttributeSet &set = *anonymous_attribute_sets[socket_index];
       if (!set.names) {
-        return AttributeFilterResult::AllowSkip;
+        return AttributeFilter::Result::AllowSkip;
       }
       if (set.names->contains(name)) {
-        return AttributeFilterResult::Process;
+        return AttributeFilter::Result::Process;
       }
-      return AttributeFilterResult::AllowSkip;
+      return AttributeFilter::Result::AllowSkip;
     };
 
     GeoNodeExecParams geo_params{
