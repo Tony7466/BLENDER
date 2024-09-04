@@ -1310,10 +1310,14 @@ static void grease_pencil_wire_batch_ensure(Object &object,
   }
 
   grease_pencil_geom_batch_ensure(object, grease_pencil, scene);
+  uint32_t max_index = GPU_vertbuf_get_vertex_len(cache->vbo);
 
   /* Get the visible drawings. */
   const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
+
+  Vector<IndexRange> range_per_curve;
+  Vector<bool> cyclic_per_curve;
 
   int index_len = 0;
   for (const ed::greasepencil::DrawingInfo &info : drawings) {
@@ -1324,50 +1328,41 @@ static void grease_pencil_wire_batch_ensure(Object &object,
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
 
-    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
+    visible_strokes.foreach_index([&](const int curve_i) {
       IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
-      index_len += points.size() + (is_cyclic ? 1 : 0) + 1;
-      UNUSED_VARS(pos);
+      const int point_len = points.size();
+      const int point_start = index_len;
+      const bool is_cyclic = cyclic[curve_i] && (point_len > 2);
+      /* Count the primitive restart. */
+      index_len += point_len + (is_cyclic ? 1 : 0) + 1;
+      range_per_curve.append({point_start, point_len + (is_cyclic ? 1 : 0)});
+      cyclic_per_curve.append(is_cyclic);
     });
   }
 
   GPUIndexBufBuilder elb;
-  GPU_indexbuf_init_ex(
-      &elb, GPU_PRIM_LINE_STRIP, index_len, GPU_vertbuf_get_vertex_len(cache->vbo));
+  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, max_index);
 
-  /* Fill point index buffer with data. */
-  int drawing_start_offset = 0;
-  for (const ed::greasepencil::DrawingInfo &info : drawings) {
-    const bke::CurvesGeometry &curves = info.drawing.strokes();
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    const VArray<bool> cyclic = curves.cyclic();
-    IndexMaskMemory memory;
-    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
-        object, info.drawing, memory);
+  blender::MutableSpan<uint32_t> indices = GPU_indexbuf_get_data(&elb);
 
-    /* Fill line indices. */
-    visible_strokes.foreach_index([&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      const bool is_cyclic = cyclic[curve_i];
-
-      drawing_start_offset += 1;
-
-      for (const int point_i : IndexRange(points.size())) {
-        GPU_indexbuf_add_generic_vert(&elb, point_i + drawing_start_offset);
+  threading::parallel_for(range_per_curve.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i_curve : range) {
+      IndexRange offset_range = range_per_curve[i_curve];
+      /* Shift the range by i_curve to account for the second padding vertices.
+       * The first one is already accounted for during counting (as primitive restart). */
+      IndexRange index_range = offset_range.shift(i_curve + 1);
+      for (const int i : IndexRange(offset_range.size())) {
+        indices[offset_range[i]] = index_range[i];
       }
-
-      if (is_cyclic) {
-        GPU_indexbuf_add_generic_vert(&elb, drawing_start_offset);
+      if (cyclic_per_curve[i_curve]) {
+        indices[offset_range.last()] = index_range.first();
       }
+      indices[offset_range.one_after_last()] = gpu::RESTART_INDEX;
+    }
+  });
 
-      GPU_indexbuf_add_primitive_restart(&elb);
-
-      drawing_start_offset += points.size() + (is_cyclic ? 1 : 0) + 1;
-    });
-  }
-
-  gpu::IndexBuf *ibo = GPU_indexbuf_build(&elb);
+  gpu::IndexBuf *ibo = GPU_indexbuf_calloc();
+  GPU_indexbuf_build_in_place_ex(&elb, 0, max_index, true, ibo);
 
   cache->lines_batch = GPU_batch_create_ex(
       GPU_PRIM_LINE_STRIP, cache->vbo, ibo, GPU_BATCH_OWNS_INDEX);
