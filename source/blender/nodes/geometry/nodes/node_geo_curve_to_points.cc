@@ -89,30 +89,29 @@ static void fill_rotation_attribute(const Span<float3> tangents,
 static void copy_curve_domain_attributes(const AttributeAccessor curve_attributes,
                                          MutableAttributeAccessor point_attributes)
 {
-  curve_attributes.for_all(
-      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData &meta_data) {
-        if (curve_attributes.is_builtin(id)) {
-          return true;
-        }
-        if (meta_data.domain != AttrDomain::Curve) {
-          return true;
-        }
-        if (meta_data.data_type == CD_PROP_STRING) {
-          return true;
-        }
-        point_attributes.add(
-            id,
-            AttrDomain::Point,
-            meta_data.data_type,
-            bke::AttributeInitVArray(*curve_attributes.lookup(id, AttrDomain::Point)));
-        return true;
-      });
+  curve_attributes.for_all([&](const StringRef id, const bke::AttributeMetaData &meta_data) {
+    if (curve_attributes.is_builtin(id)) {
+      return true;
+    }
+    if (meta_data.domain != AttrDomain::Curve) {
+      return true;
+    }
+    if (meta_data.data_type == CD_PROP_STRING) {
+      return true;
+    }
+    point_attributes.add(
+        id,
+        AttrDomain::Point,
+        meta_data.data_type,
+        bke::AttributeInitVArray(*curve_attributes.lookup(id, AttrDomain::Point)));
+    return true;
+  });
 }
 
 static PointCloud *pointcloud_from_curves(bke::CurvesGeometry curves,
-                                          const std::optional<std::string> &tangent_id,
-                                          const std::optional<std::string> &normal_id,
-                                          const std::optional<std::string> &rotation_id)
+                                          const std::optional<StringRef> &tangent_id,
+                                          const std::optional<StringRef> &normal_id,
+                                          const std::optional<StringRef> &rotation_id)
 {
   PointCloud *pointcloud = BKE_pointcloud_new_nomain(0);
   pointcloud->totpoint = curves.points_num();
@@ -142,7 +141,7 @@ static void curve_to_points(GeometrySet &geometry_set,
                             GeoNodeExecParams params,
                             const GeometryNodeCurveResampleMode mode,
                             geometry::ResampleCurvesOutputAttributeIDs resample_attributes,
-                            std::optional<std::string> rotation_anonymous_id)
+                            const std::optional<StringRef> &rotation_anonymous_id)
 {
   switch (mode) {
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
@@ -213,7 +212,7 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
                                     GeoNodeExecParams params,
                                     const GeometryNodeCurveResampleMode mode,
                                     geometry::ResampleCurvesOutputAttributeIDs resample_attributes,
-                                    std::optional<std::string> rotation_anonymous_id,
+                                    const std::optional<StringRef> &rotation_anonymous_id,
                                     const AnonymousAttributePropagationInfo &propagation_info)
 {
   Field<int> count;

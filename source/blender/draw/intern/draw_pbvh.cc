@@ -157,7 +157,7 @@ class DrawCacheImpl : public DrawCache {
    */
   void free_nodes_with_changed_topology(const Object &object, const IndexMask &node_mask);
 
-  BitSpan ensure_use_flat_layout(const Object &object);
+  BitSpan ensure_use_flat_layout(const Object &object, const OrigMeshData &orig_mesh_data);
 
   Span<gpu::VertBuf *> ensure_attribute_data(const Object &object,
                                              const OrigMeshData &orig_mesh_data,
@@ -784,7 +784,6 @@ static void fill_vbo_normal_grids(const CCGKey &key,
                                   const Span<int> grid_indices,
                                   gpu::VertBuf &vert_buf)
 {
-
   short4 *data = vert_buf.data<short4>().data();
 
   if (use_flat_layout) {
@@ -916,9 +915,8 @@ static void fill_vbos_grids(const Object &object,
         break;
       }
       case CustomRequest::Normal: {
-        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
         const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
-        const bke::AttributeAccessor attributes = mesh.attributes();
+        const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
         const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
         node_mask.foreach_index(GrainSize(1), [&](const int i) {
@@ -1590,7 +1588,7 @@ static Array<int> calc_material_indices(const Object &object)
   return {};
 }
 
-static BitVector<> calc_use_flat_layout(const Object &object)
+static BitVector<> calc_use_flat_layout(const Object &object, const OrigMeshData &orig_mesh_data)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   switch (pbvh.type()) {
@@ -1598,8 +1596,7 @@ static BitVector<> calc_use_flat_layout(const Object &object)
       return {};
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
+      const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
       const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
       if (sharp_faces.is_empty()) {
         return BitVector<>(nodes.size(), false);
@@ -1757,11 +1754,12 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
   return ibos;
 }
 
-BitSpan DrawCacheImpl::ensure_use_flat_layout(const Object &object)
+BitSpan DrawCacheImpl::ensure_use_flat_layout(const Object &object,
+                                              const OrigMeshData &orig_mesh_data)
 {
   const bke::pbvh::Tree &pbvh = *object.sculpt->pbvh;
   if (use_flat_layout_.size() != pbvh.nodes_num()) {
-    use_flat_layout_ = calc_use_flat_layout(object);
+    use_flat_layout_ = calc_use_flat_layout(object, orig_mesh_data);
   }
   return use_flat_layout_;
 }
