@@ -248,7 +248,7 @@ struct GeometrySet {
    */
   void ensure_owns_all_data();
 
-  using AttributeForeachCallback = FunctionRef<void(const StringRef attribute_id,
+  using AttributeForeachCallback = FunctionRef<void(StringRef attribute_id,
                                                     const AttributeMetaData &meta_data,
                                                     const GeometryComponent &component)>;
 

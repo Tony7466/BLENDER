@@ -98,10 +98,9 @@ class BuiltinAttributeProvider {
  */
 class DynamicAttributesProvider {
  public:
-  virtual GAttributeReader try_get_for_read(const void *owner,
-                                            const StringRef attribute_id) const = 0;
-  virtual GAttributeWriter try_get_for_write(void *owner, const StringRef attribute_id) const = 0;
-  virtual bool try_delete(void *owner, const StringRef attribute_id) const = 0;
+  virtual GAttributeReader try_get_for_read(const void *owner, StringRef attribute_id) const = 0;
+  virtual GAttributeWriter try_get_for_write(void *owner, StringRef attribute_id) const = 0;
+  virtual bool try_delete(void *owner, StringRef attribute_id) const = 0;
   virtual bool try_create(void *owner,
                           const StringRef attribute_id,
                           const AttrDomain domain,
@@ -134,14 +133,14 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
   {
   }
 
-  GAttributeReader try_get_for_read(const void *owner, const StringRef attribute_id) const final;
+  GAttributeReader try_get_for_read(const void *owner, StringRef attribute_id) const final;
 
-  GAttributeWriter try_get_for_write(void *owner, const StringRef attribute_id) const final;
+  GAttributeWriter try_get_for_write(void *owner, StringRef attribute_id) const final;
 
-  bool try_delete(void *owner, const StringRef attribute_id) const final;
+  bool try_delete(void *owner, StringRef attribute_id) const final;
 
   bool try_create(void *owner,
-                  const StringRef attribute_id,
+                  StringRef attribute_id,
                   AttrDomain domain,
                   const eCustomDataType data_type,
                   const AttributeInit &initializer) const final;

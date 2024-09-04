@@ -407,24 +407,23 @@ struct GSpanAttributeWriter {
  * makes it easy to return the attribute accessor for a geometry from a function.
  */
 struct AttributeAccessorFunctions {
-  bool (*contains)(const void *owner, const StringRef attribute_id);
-  std::optional<AttributeMetaData> (*lookup_meta_data)(const void *owner,
-                                                       const StringRef attribute_id);
+  bool (*contains)(const void *owner, StringRef attribute_id);
+  std::optional<AttributeMetaData> (*lookup_meta_data)(const void *owner, StringRef attribute_id);
   bool (*domain_supported)(const void *owner, AttrDomain domain);
   int (*domain_size)(const void *owner, AttrDomain domain);
-  bool (*is_builtin)(const void *owner, const StringRef attribute_id);
-  GAttributeReader (*lookup)(const void *owner, const StringRef attribute_id);
+  bool (*is_builtin)(const void *owner, StringRef attribute_id);
+  GAttributeReader (*lookup)(const void *owner, StringRef attribute_id);
   GVArray (*adapt_domain)(const void *owner,
                           const GVArray &varray,
                           AttrDomain from_domain,
                           AttrDomain to_domain);
   bool (*for_all)(const void *owner,
-                  FunctionRef<bool(const StringRefNull, const AttributeMetaData &)> fn);
-  AttributeValidator (*lookup_validator)(const void *owner, const StringRef attribute_id);
-  GAttributeWriter (*lookup_for_write)(void *owner, const StringRef attribute_id);
-  bool (*remove)(void *owner, const StringRef attribute_id);
+                  FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
+  AttributeValidator (*lookup_validator)(const void *owner, StringRef attribute_id);
+  GAttributeWriter (*lookup_for_write)(void *owner, StringRef attribute_id);
+  bool (*remove)(void *owner, StringRef attribute_id);
   bool (*add)(void *owner,
-              const StringRef attribute_id,
+              StringRef attribute_id,
               AttrDomain domain,
               eCustomDataType data_type,
               const AttributeInit &initializer);
@@ -519,9 +518,9 @@ class AttributeAccessor {
    * Get read-only access to the attribute. If necessary, the attribute is interpolated to the
    * given domain, and converted to the given type, in that order.  The result may be empty.
    */
-  GAttributeReader lookup(const StringRef attribute_id,
-                          const std::optional<AttrDomain> domain,
-                          const std::optional<eCustomDataType> data_type) const;
+  GAttributeReader lookup(StringRef attribute_id,
+                          std::optional<AttrDomain> domain,
+                          std::optional<eCustomDataType> data_type) const;
 
   /**
    * Get read-only access to the attribute whereby the attribute is interpolated to the given
@@ -560,9 +559,9 @@ class AttributeAccessor {
    * If the attribute does not exist, a virtual array with the given default value is returned.
    * If the passed in default value is null, the default value of the type is used (generally 0).
    */
-  GAttributeReader lookup_or_default(const StringRef attribute_id,
-                                     const AttrDomain domain,
-                                     const eCustomDataType data_type,
+  GAttributeReader lookup_or_default(StringRef attribute_id,
+                                     AttrDomain domain,
+                                     eCustomDataType data_type,
                                      const void *default_value = nullptr) const;
 
   /**
@@ -641,12 +640,12 @@ class MutableAttributeAccessor : public AttributeAccessor {
    * Get a writable attribute or none if it does not exist.
    * Make sure to call #finish after changes are done.
    */
-  GAttributeWriter lookup_for_write(const StringRef attribute_id);
+  GAttributeWriter lookup_for_write(StringRef attribute_id);
 
   /**
    * Same as above, but returns a type that makes it easier to work with the attribute as a span.
    */
-  GSpanAttributeWriter lookup_for_write_span(const StringRef attribute_id);
+  GSpanAttributeWriter lookup_for_write_span(StringRef attribute_id);
 
   /**
    * Get a writable attribute or non if it does not exist.
@@ -679,7 +678,7 @@ class MutableAttributeAccessor : public AttributeAccessor {
   /**
    * Replace the existing attribute with a new one with a different name.
    */
-  bool rename(const StringRef old_attribute_id, const StringRef new_attribute_id);
+  bool rename(StringRef old_attribute_id, StringRef new_attribute_id);
 
   /**
    * Create a new attribute.
@@ -707,9 +706,9 @@ class MutableAttributeAccessor : public AttributeAccessor {
    * exists on a different domain or with a different type), none is returned.
    */
   GAttributeWriter lookup_or_add_for_write(
-      const StringRef attribute_id,
-      const AttrDomain domain,
-      const eCustomDataType data_type,
+      StringRef attribute_id,
+      AttrDomain domain,
+      eCustomDataType data_type,
       const AttributeInit &initializer = AttributeInitDefaultValue());
 
   /**
@@ -718,9 +717,9 @@ class MutableAttributeAccessor : public AttributeAccessor {
    * #lookup_or_add_for_write_only_span.
    */
   GSpanAttributeWriter lookup_or_add_for_write_span(
-      const StringRef attribute_id,
-      const AttrDomain domain,
-      const eCustomDataType data_type,
+      StringRef attribute_id,
+      AttrDomain domain,
+      eCustomDataType data_type,
       const AttributeInit &initializer = AttributeInitDefaultValue());
 
   /**
@@ -764,9 +763,9 @@ class MutableAttributeAccessor : public AttributeAccessor {
    *
    * For trivial types, the values in a newly created attribute will not be initialized.
    */
-  GSpanAttributeWriter lookup_or_add_for_write_only_span(const StringRef attribute_id,
-                                                         const AttrDomain domain,
-                                                         const eCustomDataType data_type);
+  GSpanAttributeWriter lookup_or_add_for_write_only_span(StringRef attribute_id,
+                                                         AttrDomain domain,
+                                                         eCustomDataType data_type);
 
   /**
    * Same as above, but should be used when the type is known at compile time.
