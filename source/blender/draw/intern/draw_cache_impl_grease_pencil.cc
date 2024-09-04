@@ -1305,7 +1305,7 @@ static void grease_pencil_wire_batch_ensure(Object &object,
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
       grease_pencil.runtime->batch_cache);
 
-  if (cache->edit_points_pos != nullptr) {
+  if (cache->lines_batch != nullptr) {
     return;
   }
 
