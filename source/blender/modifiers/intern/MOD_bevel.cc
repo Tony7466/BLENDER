@@ -236,8 +236,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
                 spread,
                 bmd->custom_profile,
                 bmd->vmesh_method,
-                bmd->edge_weight_name,
-                bmd->vertex_weight_name);
+                bweight_offset_vert,
+                bweight_offset_edge);
 
   result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, mesh);
 
