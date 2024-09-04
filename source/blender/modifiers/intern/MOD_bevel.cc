@@ -306,7 +306,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name);
 
     PropertyRNA *searchprop = RNA_struct_find_property(&object_data_ptr, "attributes");
-    uiItemPointerR_prop(col, ptr, prop, &object_data_ptr, searchprop, nullptr, ICON_NONE, true);
+    uiItemPointerR_prop(col, ptr, prop, &object_data_ptr, searchprop, nullptr, ICON_BLANK1, true);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
