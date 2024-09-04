@@ -144,8 +144,6 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
   const float4x4 world_to_layer = math::invert(layer_to_world);
   const VArray<bool> src_cyclic = src.cyclic();
   const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
-  const polygonboolean::InputMode input_mode = {polygonboolean::BooleanMode::A_NOT_B,
-                                                polygonboolean::HoleMode::WITHOUT_HOLES};
 
   Vector<bke::GeometrySet> geometry_sets;
 
@@ -159,7 +157,9 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     polygonboolean::BooleanResult result;
     if (is_fill) {
-      result = polygonboolean::curve_boolean_calc(input_mode, pos_2d_a, pos_2d_b);
+      result = polygonboolean::curve_boolean_calc(
+          polygonboolean::Operation::NotB, pos_2d_a, pos_2d_b);
+      result = result_remove_holes(result, pos_2d_a, pos_2d_b);
     }
     else {
       const bool is_cyclial = src_cyclic[curve_i];
@@ -215,12 +215,12 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         keep_caps, is_fill, reproject, bke::AttrDomain::Point);
 
     /* Copy/Interpolate point attributes. */
-    src_attributes.for_all([&](const bke::AttributeIDRef &id,
+    src_attributes.for_all([&](const blender::StringRef id,
                                const bke::AttributeMetaData meta_data) {
       if (meta_data.domain != bke::AttrDomain::Point) {
         return true;
       }
-      if (point_skip.contains(id.name())) {
+      if (point_skip.contains(id)) {
         return true;
       }
 
