@@ -231,9 +231,9 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
   return result_None(curve_a, curve_b);
 }
 
-static BooleanResult invalided_result(const Operation mode,
-                                      const Span<float2> curve_a,
-                                      const Span<float2> curve_b)
+static BooleanResult invalid_result(const Operation mode,
+                                    const Span<float2> curve_a,
+                                    const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -717,7 +717,7 @@ struct CurveBooleanExecutor {
           intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
-          return invalided_result(boolean_mode, curve_a, curve_b);
+          return invalid_result(boolean_mode, curve_a, curve_b);
         }
       }
     }
