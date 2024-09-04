@@ -182,7 +182,7 @@ static void clean_unused_attributes(const AttributeFilter &attribute_filter,
     if (!bke::attribute_name_is_anonymous(id)) {
       return true;
     }
-    if (!bke::allow_skipping_attribute(attribute_filter, id)) {
+    if (bke::allow_skipping_attribute(attribute_filter, id)) {
       return true;
     }
     unused_ids.append(id);
