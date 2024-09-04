@@ -576,6 +576,7 @@ void VKShader::init(const shader::ShaderCreateInfo &info, bool /*is_batch_compil
   VKShaderInterface *vk_interface = new VKShaderInterface();
   vk_interface->init(info);
   interface = vk_interface;
+  is_static_shader_ = info.do_static_compilation_;
 }
 
 VKShader::~VKShader()
@@ -883,7 +884,11 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
 
   /* Retarget depth from -1..1 to 0..1. This will be done by geometry stage, when geometry shaders
    * are used. */
-  const bool has_geometry_stage = bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD) ||
+  const bool has_geometry_stage = bool(info.builtins_ & (BuiltinBits::BARYCENTRIC_COORD)) ||
+                                  (bool(info.builtins_ & (BuiltinBits::LAYER)) &&
+                                   workarounds.shader_output_layer) ||
+                                  (bool(info.builtins_ & (BuiltinBits::VIEWPORT_INDEX)) &&
+                                   workarounds.shader_output_viewport_index) ||
                                   !info.geometry_source_.is_empty();
   const bool retarget_depth = !has_geometry_stage;
   if (retarget_depth) {
@@ -1283,8 +1288,8 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
 
   VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
-  VkPipeline vk_pipeline = device.pipelines.get_or_create_compute_pipeline(compute_info,
-                                                                           vk_pipeline_);
+  VkPipeline vk_pipeline = device.pipelines.get_or_create_compute_pipeline(
+      compute_info, is_static_shader_, vk_pipeline_);
   vk_pipeline_ = vk_pipeline;
   return vk_pipeline;
 }
@@ -1329,8 +1334,8 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
 
   VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
-  VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(graphics_info,
-                                                                            vk_pipeline_);
+  VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(
+      graphics_info, is_static_shader_, vk_pipeline_);
   vk_pipeline_ = vk_pipeline;
   return vk_pipeline;
 }

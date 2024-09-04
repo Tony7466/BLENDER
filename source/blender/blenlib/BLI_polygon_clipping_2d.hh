@@ -31,32 +31,27 @@
 
 namespace blender::polygonboolean {
 
-enum BooleanMode {
-  /* (A*B) Intersection of A and B. */
-  A_AND_B,
-  /* (A+B) Union of A and B. */
-  A_OR_B,
-  /* (A-B) Differences of A with B. */
-  A_NOT_B,
-  /* (B-C) Differences of B with A. */
-  B_NOT_A,
+enum class Operation : int8_t {
+  /* Intersection of A and B. */
+  And,
+  /* Union of A and B. */
+  Or,
+  /* Differences of A with B. */
+  NotB,
+  /* Differences of B with A. */
+  NotA,
 };
 
-enum HoleMode {
+enum class HoleMode : int8_t {
   /* Generates the base polygons and holes in an arbitrary order. */
-  WITH_HOLES,
+  WithHoles,
   /* Generates holes with the base polygon being the first and all others being holes. */
-  WITH_ORDERED_HOLES,
+  WithOrderedHoles,
   /* Generates only the base polygon without any holes.*/
-  WITHOUT_HOLES,
+  WithoutHoles,
 };
 
-struct InputMode {
-  BooleanMode boolean_mode;
-  HoleMode hole_mode;
-};
-
-enum VertexType {
+enum class VertexType : int8_t {
   PointA,
   PointB,
   Intersection,
@@ -88,20 +83,35 @@ struct BooleanResult {
   Array<IntersectionPoint> intersections_data;
 };
 
+void interpolate_position_ab(const Span<float2> pos_a,
+                             const Span<float2> pos_b,
+                             const BooleanResult &result,
+                             MutableSpan<float2> dst_pos);
 Array<float2> interpolate_position_ab(const Span<float2> pos_a,
                                       const Span<float2> pos_b,
                                       const BooleanResult &result);
+
+void interpolate_position_a(const Span<float2> pos_a,
+                            const BooleanResult &result,
+                            MutableSpan<float2> dst_pos);
 Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResult &result);
 
-BooleanResult curve_boolean_calc(const InputMode input_mode,
-                                 Span<float2> curve_a,
-                                 Span<float2> curve_b);
+BooleanResult curve_boolean_calc(const Operation boolean_mode,
+                                 const Span<float2> curve_a,
+                                 const Span<float2> curve_b);
 /**
  * `Cut` behaves like `A_NOT_B` but with `A` not having any fill, and so `A` is cut into separate
  * parts without any segments of `B` is left in the result.
  */
 BooleanResult curve_boolean_cut(const bool is_a_cyclic,
-                                Span<float2> curve_a,
-                                Span<float2> curve_b);
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b);
+
+BooleanResult result_remove_holes(const BooleanResult &in_results,
+                                  const Span<float2> curve_a,
+                                  const Span<float2> curve_b);
+BooleanResult result_sort_holes(const BooleanResult &in_results,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean

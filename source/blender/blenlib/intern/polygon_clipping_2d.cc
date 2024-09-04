@@ -38,7 +38,7 @@ static int intersect(const float2 &P1,
   return val;
 }
 
-static bool inside(const float2 &point, Span<float2> poly)
+static bool inside(const float2 &point, const Span<float2> poly)
 {
   return isect_point_poly_v2(point, reinterpret_cast<const float(*)[2]>(poly.data()), poly.size());
 }
@@ -68,26 +68,22 @@ static ExtendedIntersectionPoint CreateIntersection(const int point_a,
   return inter_point;
 }
 
-#define EXIT false
-#define ENTRY true
+static constexpr bool EXIT = false;
+static constexpr bool ENTRY = true;
 
-static BooleanResult result_None(Span<float2> /*curve_a*/, Span<float2> /*curve_b*/)
+static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
-  const Array<Vertex> verts(0);
-  const Array<int> offsets = {0};
-  const Array<IntersectionPoint> intersections(0);
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.verts = {};
+  result.offsets = {};
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
 }
 
-static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
+static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*curve_b*/)
 {
   BooleanResult result;
 
@@ -95,7 +91,6 @@ static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
 
   Array<Vertex> verts(len_a);
   const Array<int> offsets = {0, len_a};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
     verts[i] = {VertexType::PointA, i};
@@ -103,13 +98,13 @@ static BooleanResult result_A(Span<float2> curve_a, Span<float2> /*curve_b*/)
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
 }
 
-static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
+static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -117,7 +112,6 @@ static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
 
   Array<Vertex> verts(len_b);
   const Array<int> offsets = {0, len_b};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
     verts[i] = {VertexType::PointB, i};
@@ -125,13 +119,13 @@ static BooleanResult result_B(Span<float2> /*curve_a*/, Span<float2> curve_b)
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
 }
 
-static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -140,7 +134,6 @@ static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
 
   Array<Vertex> verts(len_a + len_b);
   const Array<int> offsets = {0, len_a, len_a + len_b};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_a)) {
     verts[i] = {VertexType::PointA, i};
@@ -152,13 +145,13 @@ static BooleanResult result_AB(Span<float2> curve_a, Span<float2> curve_b)
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
 }
 
-static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
+static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -167,7 +160,6 @@ static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
 
   Array<Vertex> verts(len_b + len_a);
   const Array<int> offsets = {0, len_b, len_b + len_a};
-  const Array<IntersectionPoint> intersections(0);
 
   for (const int i : IndexRange(len_b)) {
     verts[i] = {VertexType::PointB, i};
@@ -179,64 +171,58 @@ static BooleanResult result_BA(Span<float2> curve_a, Span<float2> curve_b)
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = intersections;
+  result.intersections_data = {};
   result.valid_geometry = true;
 
   return result;
 }
 
-static BooleanResult non_intersecting_result(const InputMode input_mode,
-                                             Span<float2> curve_a,
-                                             Span<float2> curve_b)
+static BooleanResult non_intersecting_result(const Operation boolean_mode,
+                                             const Span<float2> curve_a,
+                                             const Span<float2> curve_b)
 {
-  const bool is_a_in_b = inside(curve_a.first(), curve_b);
-  const bool is_b_in_a = inside(curve_b.first(), curve_a);
+  const bool a_start_in_b = inside(curve_a.first(), curve_b);
+  const bool b_start_in_a = inside(curve_b.first(), curve_a);
 
-  if (is_a_in_b) {
-    if (input_mode.boolean_mode == A_AND_B) {
+  if (a_start_in_b) {
+    if (boolean_mode == Operation::And) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
+    else if (boolean_mode == Operation::NotB) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
-        return result_B(curve_a, curve_b);
-      }
+    else if (boolean_mode == Operation::NotA) {
       return result_BA(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (boolean_mode == Operation::Or) {
       return result_B(curve_a, curve_b);
     }
   }
-  else if (is_b_in_a) {
-    if (input_mode.boolean_mode == A_AND_B) {
+  else if (b_start_in_a) {
+    if (boolean_mode == Operation::And) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
-        return result_A(curve_a, curve_b);
-      }
+    else if (boolean_mode == Operation::NotB) {
       return result_AB(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
+    else if (boolean_mode == Operation::NotA) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (boolean_mode == Operation::Or) {
       return result_A(curve_a, curve_b);
     }
   }
-  else if (!is_a_in_b && !is_b_in_a) {
-    if (input_mode.boolean_mode == A_AND_B) {
+  else if (!a_start_in_b && !b_start_in_a) {
+    if (boolean_mode == Operation::And) {
       return result_None(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_NOT_B) {
+    else if (boolean_mode == Operation::NotB) {
       return result_A(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == B_NOT_A) {
+    else if (boolean_mode == Operation::NotA) {
       return result_B(curve_a, curve_b);
     }
-    else if (input_mode.boolean_mode == A_OR_B) {
+    else if (boolean_mode == Operation::Or) {
       return result_AB(curve_a, curve_b);
     }
   }
@@ -245,22 +231,22 @@ static BooleanResult non_intersecting_result(const InputMode input_mode,
   return result_None(curve_a, curve_b);
 }
 
-static BooleanResult invalided_result(const BooleanMode mode,
-                                      Span<float2> curve_a,
-                                      Span<float2> curve_b)
+static BooleanResult invalided_result(const Operation mode,
+                                      const Span<float2> curve_a,
+                                      const Span<float2> curve_b)
 {
   BooleanResult result;
 
-  if (mode == A_AND_B) {
+  if (mode == Operation::And) {
     result = result_AB(curve_a, curve_b);
   }
-  else if (mode == A_NOT_B) {
+  else if (mode == Operation::NotB) {
     result = result_A(curve_a, curve_b);
   }
-  else if (mode == B_NOT_A) {
+  else if (mode == Operation::NotA) {
     result = result_B(curve_a, curve_b);
   }
-  else if (mode == A_OR_B) {
+  else if (mode == Operation::Or) {
     result = result_AB(curve_a, curve_b);
   }
 
@@ -268,18 +254,18 @@ static BooleanResult invalided_result(const BooleanMode mode,
   return result;
 }
 
-static std::pair<bool, bool> get_AB_mode(const BooleanMode mode)
+static std::pair<bool, bool> get_AB_mode(const Operation mode)
 {
-  if (mode == A_AND_B) {
+  if (mode == Operation::And) {
     return {false, false};
   }
-  else if (mode == A_NOT_B) {
+  else if (mode == Operation::NotB) {
     return {true, false};
   }
-  else if (mode == B_NOT_A) {
+  else if (mode == Operation::NotA) {
     return {false, true};
   }
-  else if (mode == A_OR_B) {
+  else if (mode == Operation::Or) {
     return {true, true};
   }
 
@@ -303,21 +289,20 @@ static bool is_point_in_others(const int polygon_a,
   return false;
 }
 
-Array<float2> interpolate_position_ab(const Span<float2> pos_a,
-                                      const Span<float2> pos_b,
-                                      const BooleanResult &result)
+void interpolate_position_ab(const Span<float2> pos_a,
+                             const Span<float2> pos_b,
+                             const BooleanResult &result,
+                             MutableSpan<float2> dst_pos)
 {
-  Array<float2> pos_out(result.verts.size());
-
   for (const int i : result.verts.index_range()) {
     const Vertex &vert = result.verts[i];
     const VertexType &type = vert.type;
 
     if (type == VertexType::PointA) {
-      pos_out[i] = pos_a[vert.point_id];
+      dst_pos[i] = pos_a[vert.point_id];
     }
     else if (type == VertexType::PointB) {
-      pos_out[i] = pos_b[vert.point_id];
+      dst_pos[i] = pos_b[vert.point_id];
     }
     else if (type == VertexType::Intersection) {
       const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
@@ -326,9 +311,44 @@ Array<float2> interpolate_position_ab(const Span<float2> pos_a,
       const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
       const float alpha_a = inter_point.alpha_a;
 
-      pos_out[i] = math::interpolate(a0, a1, alpha_a);
+      dst_pos[i] = math::interpolate(a0, a1, alpha_a);
     }
   }
+}
+
+void interpolate_position_a(const Span<float2> pos_a,
+                            const BooleanResult &result,
+                            MutableSpan<float2> dst_pos)
+{
+  for (const int i : result.verts.index_range()) {
+    const Vertex &vert = result.verts[i];
+    const VertexType &type = vert.type;
+
+    if (type == VertexType::PointA) {
+      dst_pos[i] = pos_a[vert.point_id];
+    }
+    else if (type == VertexType::PointB) {
+      dst_pos[i] = pos_a.first();
+    }
+    else if (type == VertexType::Intersection) {
+      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
+
+      const float2 a0 = pos_a[inter_point.point_a];
+      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
+      const float alpha_a = inter_point.alpha_a;
+
+      dst_pos[i] = math::interpolate(a0, a1, alpha_a);
+    }
+  }
+}
+
+Array<float2> interpolate_position_ab(const Span<float2> pos_a,
+                                      const Span<float2> pos_b,
+                                      const BooleanResult &result)
+{
+  Array<float2> pos_out(result.verts.size());
+
+  interpolate_position_ab(pos_a, pos_b, result, pos_out.as_mutable_span());
 
   return pos_out;
 }
@@ -337,26 +357,7 @@ Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResu
 {
   Array<float2> pos_out(result.verts.size());
 
-  for (const int i : result.verts.index_range()) {
-    const Vertex &vert = result.verts[i];
-    const VertexType &type = vert.type;
-
-    if (type == VertexType::PointA) {
-      pos_out[i] = pos_a[vert.point_id];
-    }
-    else if (type == VertexType::PointB) {
-      pos_out[i] = pos_a.first();
-    }
-    else if (type == VertexType::Intersection) {
-      const IntersectionPoint &inter_point = result.intersections_data[vert.point_id];
-
-      const float2 a0 = pos_a[inter_point.point_a];
-      const float2 a1 = pos_a[(inter_point.point_a + 1) % pos_a.size()];
-      const float alpha_a = inter_point.alpha_a;
-
-      pos_out[i] = math::interpolate(a0, a1, alpha_a);
-    }
-  }
+  interpolate_position_a(pos_a, result, pos_out.as_mutable_span());
 
   return pos_out;
 }
@@ -381,9 +382,9 @@ static int result_find_base_id(const BooleanResult &results,
   return -1;
 }
 
-static BooleanResult result_remove_holes(const BooleanResult &in_results,
-                                         const Span<float2> curve_a,
-                                         const Span<float2> curve_b)
+BooleanResult result_remove_holes(const BooleanResult &in_results,
+                                  const Span<float2> curve_a,
+                                  const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -429,9 +430,9 @@ static BooleanResult result_remove_holes(const BooleanResult &in_results,
   return result;
 }
 
-static BooleanResult result_sort_holes(const BooleanResult &in_results,
-                                       const Span<float2> curve_a,
-                                       const Span<float2> curve_b)
+BooleanResult result_sort_holes(const BooleanResult &in_results,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -494,17 +495,17 @@ struct CurveBooleanExecutor {
   Vector<Vertex> verts;
   Vector<int> vertex_offsets;
 
-  void newPolygon()
+  void new_polygon()
   {
     vertex_offsets.append(verts.size());
   }
 
-  void newVertexID(int point_id, bool is_curve_A)
+  void new_vertex_id(int point_id, bool is_curve_A)
   {
     verts.append({is_curve_A ? VertexType::PointA : VertexType::PointB, point_id});
   }
 
-  void newVertexIntersection(int point_id)
+  void new_vertex_intersection(int point_id)
   {
     verts.append({VertexType::Intersection, point_id});
   }
@@ -572,12 +573,12 @@ struct CurveBooleanExecutor {
 
     if (direction == ENTRY) {
       for (int i = start; i <= end; i++) {
-        newVertexID(i % curve_len, is_curve_A);
+        this->new_vertex_id(i % curve_len, is_curve_A);
       }
     }
     else { /* direction == EXIT */
       for (int i = start; i >= end; i--) {
-        newVertexID(i % curve_len, is_curve_A);
+        this->new_vertex_id(i % curve_len, is_curve_A);
       }
     }
   }
@@ -636,11 +637,11 @@ struct CurveBooleanExecutor {
     }
   }
 
-  void set_a_directions(Span<float2> curve_a, Span<float2> curve_b, bool A_mode)
+  void set_a_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool A_mode)
   {
-    const bool is_a_in_b = inside(curve_a.first(), curve_b);
+    const bool a_start_in_b = inside(curve_a.first(), curve_b);
 
-    bool A_status = is_a_in_b ^ A_mode ? EXIT : ENTRY;
+    bool A_status = a_start_in_b ^ A_mode ? EXIT : ENTRY;
 
     for (const int j : IndexRange(num_intersects)) {
       intersections[A_inter_sorted_ids[j]].A_entry_exit = A_status;
@@ -649,11 +650,11 @@ struct CurveBooleanExecutor {
     }
   }
 
-  void set_b_directions(Span<float2> curve_a, Span<float2> curve_b, bool B_mode)
+  void set_b_directions(const Span<float2> curve_a, const Span<float2> curve_b, bool B_mode)
   {
-    const bool is_b_in_a = inside(curve_b.first(), curve_a);
+    const bool b_start_in_a = inside(curve_b.first(), curve_a);
 
-    bool B_status = is_b_in_a ^ B_mode ? EXIT : ENTRY;
+    bool B_status = b_start_in_a ^ B_mode ? EXIT : ENTRY;
 
     for (const int j : IndexRange(num_intersects)) {
       intersections[B_inter_sorted_ids[j]].B_entry_exit = B_status;
@@ -681,9 +682,9 @@ struct CurveBooleanExecutor {
    * Instead we store each intersection point in an arbitrarily ordered list and then have two
    * lists of sorted indices that point to intersection point for curve `A` and `B`
    */
-  BooleanResult execute_boolean(const InputMode input_mode,
-                                Span<float2> curve_a,
-                                Span<float2> curve_b)
+  BooleanResult execute_boolean(const Operation boolean_mode,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -703,13 +704,13 @@ struct CurveBooleanExecutor {
           intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
-          return invalided_result(input_mode.boolean_mode, curve_a, curve_b);
+          return invalided_result(boolean_mode, curve_a, curve_b);
         }
       }
     }
 
     if (intersections.is_empty()) {
-      return non_intersecting_result(input_mode, curve_a, curve_b);
+      return non_intersecting_result(boolean_mode, curve_a, curve_b);
     }
 
     num_intersects = intersections.size();
@@ -719,7 +720,7 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase Two ---- ---- ---- */
 
-    const auto [A_mode, B_mode] = get_AB_mode(input_mode.boolean_mode);
+    const auto [A_mode, B_mode] = get_AB_mode(boolean_mode);
 
     set_a_directions(curve_a, curve_b, A_mode);
     set_b_directions(curve_a, curve_b, B_mode);
@@ -736,7 +737,7 @@ struct CurveBooleanExecutor {
       int curr_int_id = inter_id;
       const int start_int_id = curr_int_id;
 
-      newPolygon();
+      this->new_polygon();
 
       bool PolygonClosed = false;
       while (!PolygonClosed) {
@@ -748,7 +749,7 @@ struct CurveBooleanExecutor {
         /* Switch to the other curve. */
         is_curve_A = !is_curve_A;
 
-        newVertexIntersection(curr_int_id);
+        this->new_vertex_intersection(curr_int_id);
 
         if (is_curve_A && curr_int_id == start_int_id) {
           PolygonClosed = true;
@@ -760,22 +761,9 @@ struct CurveBooleanExecutor {
     }
 
     /* Add one for the end. */
-    newPolygon();
+    this->new_polygon();
 
     BooleanResult result = copy_data_to_result();
-
-    /**
-     *  Holes are only create in the union of the shapes
-     * (Because non-intersecting holes are already handled)
-     */
-    if (input_mode.boolean_mode == A_OR_B) {
-      if (input_mode.hole_mode == WITHOUT_HOLES) {
-        result = result_remove_holes(result, curve_a, curve_b);
-      }
-      else if (input_mode.hole_mode == WITH_ORDERED_HOLES) {
-        result = result_sort_holes(result, curve_a, curve_b);
-      }
-    }
 
     return result;
   }
@@ -790,13 +778,13 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
     for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
-    newVertexIntersection(inter_id);
+    this->new_vertex_intersection(inter_id);
     return true;
   }
 
@@ -810,12 +798,12 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
-    newVertexIntersection(inter_id);
+    this->new_vertex_intersection(inter_id);
 
     for (const int i : IndexRange::from_begin_end(vertex_last.point_a + 1, len_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
     return true;
   }
@@ -831,19 +819,19 @@ struct CurveBooleanExecutor {
     BLI_assert(vertex0.A_entry_exit == ENTRY);
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
-    newVertexIntersection(i0);
+    this->new_vertex_intersection(i0);
 
     if (vertex0.point_a != vertex1.point_a) {
       for (const int i :
            IndexRange::from_begin_end_inclusive(vertex0.point_a + 1, vertex1.point_a))
       {
-        newVertexID(i, true);
+        this->new_vertex_id(i, true);
       }
     }
 
-    newVertexIntersection(i1);
+    this->new_vertex_intersection(i1);
   }
 
   bool cut_add_looping_cap()
@@ -858,28 +846,30 @@ struct CurveBooleanExecutor {
     }
 
     /* Start line. */
-    newPolygon();
+    this->new_polygon();
 
     /* Start at the last intersection point. */
-    newVertexIntersection(inter_id_last);
+    this->new_vertex_intersection(inter_id_last);
 
     /* Go through all point from last intersection point to the end. */
     for (const int i : IndexRange::from_begin_end(vertex_last.point_a + 1, len_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
     /* Go through all point from start point to the first intersection point. */
     for (const int i : IndexRange::from_begin_end_inclusive(0, vertex_first.point_a)) {
-      newVertexID(i, true);
+      this->new_vertex_id(i, true);
     }
 
     /* End at the first intersection point. */
-    newVertexIntersection(inter_id_first);
+    this->new_vertex_intersection(inter_id_first);
     return true;
   }
 
   /* Curve `A` does not have fill. */
-  BooleanResult execute_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
+  BooleanResult execute_cut(const bool is_a_cyclic,
+                            const Span<float2> curve_a,
+                            const Span<float2> curve_b)
   {
     len_a = curve_a.size();
     len_b = curve_b.size();
@@ -907,8 +897,8 @@ struct CurveBooleanExecutor {
     }
 
     if (intersections.is_empty()) {
-      const bool is_a_in_b = inside(curve_a.first(), curve_b);
-      if (is_a_in_b) {
+      const bool a_start_in_b = inside(curve_a.first(), curve_b);
+      if (a_start_in_b) {
         return result_None(curve_a, curve_b);
       }
       else {
@@ -944,21 +934,23 @@ struct CurveBooleanExecutor {
     }
 
     /* Add one for the end. */
-    newPolygon();
+    this->new_polygon();
 
     return copy_data_to_result();
   }
 };
 
-BooleanResult curve_boolean_calc(const InputMode input_mode,
-                                 Span<float2> curve_a,
-                                 Span<float2> curve_b)
+BooleanResult curve_boolean_calc(const Operation boolean_mode,
+                                 const Span<float2> curve_a,
+                                 const Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
-  return executor.execute_boolean(input_mode, curve_a, curve_b);
+  return executor.execute_boolean(boolean_mode, curve_a, curve_b);
 }
 
-BooleanResult curve_boolean_cut(const bool is_a_cyclic, Span<float2> curve_a, Span<float2> curve_b)
+BooleanResult curve_boolean_cut(const bool is_a_cyclic,
+                                const Span<float2> curve_a,
+                                const Span<float2> curve_b)
 {
   CurveBooleanExecutor executor;
   return executor.execute_cut(is_a_cyclic, curve_a, curve_b);
