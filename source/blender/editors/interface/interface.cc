@@ -4006,8 +4006,6 @@ void ui_block_cm_to_display_space_v3(uiBlock *block, float pixel[3])
 
 /**
  * Factory function: Allocate button and set #uiBut.type.
- *
- * \note: #ui_but_mem_delete is the matching 'destructor' function.
  */
 static std::unique_ptr<uiBut> ui_but_new(const eButType type)
 {
@@ -4140,7 +4138,8 @@ static uiBut *ui_def_but(uiBlock *block,
     }
   }
 
-  std::unique_ptr<uiBut> but = ui_but_new((eButType)(type & BUTTYPE));
+  std::unique_ptr<uiBut> but_ptr = ui_but_new((eButType)(type & BUTTYPE));
+  uiBut *but = but_ptr.get();
 
   but->pointype = (eButPointerType)(type & UI_BUT_POIN_TYPES);
   but->bit = type & UI_BUT_POIN_BIT;
@@ -4165,7 +4164,7 @@ static uiBut *ui_def_but(uiBlock *block,
 
   but->block = block; /* pointer back, used for front-buffer status, and picker. */
 
-  if ((block->flag & UI_BUT_ALIGN) && ui_but_can_align(but.get())) {
+  if ((block->flag & UI_BUT_ALIGN) && ui_but_can_align(but)) {
     but->alignnr = block->alignnr;
   }
 
@@ -4249,21 +4248,20 @@ static uiBut *ui_def_but(uiBlock *block,
   if (ELEM(but->type, UI_BTYPE_COLOR)) {
     but->dragflag |= UI_BUT_DRAG_FULL_BUT;
   }
-  uiBut *but_ptr = but.get();
-  block->add_but(std::move(but));
+  block->add_but(std::move(but_ptr));
 
   if (block->curlayout) {
-    ui_layout_add_but(block->curlayout, but_ptr);
+    ui_layout_add_but(block->curlayout, but);
   }
 
 #ifdef WITH_PYTHON
   /* If the 'UI_OT_editsource' is running, extract the source info from the button. */
   if (UI_editsource_enable_check()) {
-    UI_editsource_active_but_test(but_ptr);
+    UI_editsource_active_but_test(but);
   }
 #endif
 
-  return but_ptr;
+  return but;
 }
 
 void ui_def_but_icon(uiBut *but, const int icon, const int flag)

@@ -2333,7 +2333,7 @@ void uiItemFullR(uiLayout *layout,
       ui_decorate.layout = uiLayoutColumn(layout_row, true);
       ui_decorate.layout->space = 0;
       UI_block_layout_set_current(block, layout);
-      ui_decorate.but = block->buttons.last().get();
+      ui_decorate.but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
 
       /* Clear after. */
       layout->flag |= UI_ITEM_PROP_DECORATE_NO_PAD;
