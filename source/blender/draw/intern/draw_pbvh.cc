@@ -1939,7 +1939,7 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_tris_batches(const Object &object,
   const Object &object_orig = *DEG_get_original_object(&const_cast<Object &>(object));
   const OrigMeshData orig_mesh_data{*static_cast<const Mesh *>(object_orig.data)};
 
-  this->ensure_use_flat_layout(object);
+  this->ensure_use_flat_layout(object, orig_mesh_data);
   this->free_nodes_with_changed_topology(object, nodes_to_update);
 
   const Span<gpu::IndexBuf *> ibos = this->ensure_tri_indices(
@@ -1983,7 +1983,7 @@ Span<gpu::Batch *> DrawCacheImpl::ensure_lines_batches(const Object &object,
   const Object &object_orig = *DEG_get_original_object(&const_cast<Object &>(object));
   const OrigMeshData orig_mesh_data(*static_cast<const Mesh *>(object_orig.data));
 
-  this->ensure_use_flat_layout(object);
+  this->ensure_use_flat_layout(object, orig_mesh_data);
   this->free_nodes_with_changed_topology(object, nodes_to_update);
 
   const Span<gpu::VertBuf *> position = this->ensure_attribute_data(

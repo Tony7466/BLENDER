@@ -126,7 +126,6 @@ struct MeshNode : public Node {
    * Used for leaf nodes.
    */
   LocalVertMap vert_indices_;
-  // Array<int, 0> vert_indices_;
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
   int unique_verts_num_ = 0;
 };

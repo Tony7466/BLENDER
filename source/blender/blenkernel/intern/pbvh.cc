@@ -2020,9 +2020,9 @@ bool ray_face_nearest_tri(const float3 &ray_start,
 
 static void calc_mesh_intersect_data(const Span<int> corner_verts,
                                      const Span<int3> corner_tris,
-                                     const Span<int> corner_tri_faces,
                                      const float3 &ray_start,
                                      const float3 &ray_normal,
+                                     const int face_index,
                                      const int tri_index,
                                      const std::array<const float *, 3> co,
                                      float *depth,
@@ -2048,7 +2048,7 @@ static void calc_mesh_intersect_data(const Span<int> corner_verts,
       {
         copy_v3_v3(nearest_vertex_co, co[j]);
         r_active_vertex->i = corner_verts[corner_tris[tri_index][j]];
-        *r_active_face_index = corner_tri_faces[tri_index];
+        *r_active_face_index = face_index;
       }
     }
   }
@@ -2088,9 +2088,9 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
           hit = true;
           calc_mesh_intersect_data(corner_verts,
                                    corner_tris,
-                                   corner_tri_faces,
                                    ray_start,
                                    ray_normal,
+                                   face_i,
                                    tri_i,
                                    co,
                                    depth,
@@ -2102,6 +2102,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
     }
   }
   else {
+    const MeshNode::LocalVertMap &vert_map = node.vert_indices_;
     for (const int i : face_indices.index_range()) {
       const int face_i = face_indices[i];
       if (!hide_poly.is_empty() && hide_poly[face_i]) {
@@ -2109,15 +2110,18 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
       }
 
       for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
-        const std::array<const float *, 3> co{{node_positions[face_verts[0]],
-                                               node_positions[face_verts[1]],
-                                               node_positions[face_verts[2]]}};
+        const int3 &tri = corner_tris[tri_i];
+        const std::array<const float *, 3> co{
+            {node_positions[vert_map.index_of(corner_verts[tri[0]])],
+             node_positions[vert_map.index_of(corner_verts[tri[1]])],
+             node_positions[vert_map.index_of(corner_verts[tri[2]])]}};
         if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
           hit = true;
           calc_mesh_intersect_data(corner_verts,
                                    corner_tris,
                                    ray_start,
                                    ray_normal,
+                                   face_i,
                                    tri_i,
                                    co,
                                    depth,
@@ -2478,6 +2482,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
       }
 
       for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
+        const int3 &corner_tri = corner_tris[tri_i];
         hit |= ray_face_nearest_tri(ray_start,
                                     ray_normal,
                                     vert_positions[corner_verts[corner_tri[0]]],
@@ -2489,6 +2494,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
     }
   }
   else {
+    const MeshNode::LocalVertMap &vert_map = node.vert_indices_;
     for (const int i : face_indices.index_range()) {
       const int face_i = face_indices[i];
       if (!hide_poly.is_empty() && hide_poly[face_i]) {
@@ -2496,11 +2502,12 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
       }
 
       for (const int tri_i : bke::mesh::face_triangles_range(faces, face_i)) {
+        const int3 &corner_tri = corner_tris[tri_i];
         hit |= ray_face_nearest_tri(ray_start,
                                     ray_normal,
-                                    node_positions[face_verts[0]],
-                                    node_positions[face_verts[1]],
-                                    node_positions[face_verts[2]],
+                                    node_positions[vert_map.index_of(corner_verts[corner_tri[0]])],
+                                    node_positions[vert_map.index_of(corner_verts[corner_tri[1]])],
+                                    node_positions[vert_map.index_of(corner_verts[corner_tri[2]])],
                                     depth,
                                     dist_sq);
       }

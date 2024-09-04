@@ -222,7 +222,6 @@ static void flush_face_changes_node(Mesh &mesh,
       ".hide_poly", bke::AttrDomain::Face);
 
   struct TLS {
-    Vector<int> face_indices;
     Vector<bool> new_hide;
   };
   threading::EnumerableThreadSpecific<TLS> all_tls;
