@@ -225,7 +225,6 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ra
                                                               void *payload,
                                                               hiprtHit &hit)
 {
-#  ifdef MOTION_BLUR
   LocalPayload *local_payload = (LocalPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = local_payload->local_object;
@@ -258,9 +257,6 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ra
     local_payload->prim_type = PRIMITIVE_MOTION_TRIANGLE;
   }
   return b_hit;
-#  else
-  return false;
-#  endif
 }
 
 ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &ray,
@@ -268,8 +264,6 @@ ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &r
                                                                void *payload,
                                                                hiprtHit &hit)
 {
-#  ifdef MOTION_BLUR
-
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -309,9 +303,6 @@ ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &r
     local_payload->prim_type = isect.type;
   }
   return b_hit;
-#  else
-  return false;
-#  endif
 }
 
 ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
@@ -319,7 +310,6 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
                                               void *payload,
                                               hiprtHit &hit)
 {
-#  ifdef __POINTCLOUD__
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -345,7 +335,7 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
 
   float ray_time = local_payload->ray_time;
 
-  if ((type & PRIMITIVE_MOTION) && kernel_data.bvh.use_bvh_steps) {
+  if ((type & PRIMITIVE_MOTION_POINT) && kernel_data.bvh.use_bvh_steps) {
 
     int time_offset = kernel_data_fetch(prim_time_offset, object_id);
     float2 prims_time = kernel_data_fetch(prims_time, hit.primID + time_offset);
@@ -376,9 +366,6 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
     local_payload->prim_type = isect.type;
   }
   return b_hit;
-#  else
-  return false;
-#  endif
 }
 
 // intersection filters
