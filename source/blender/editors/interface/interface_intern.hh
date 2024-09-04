@@ -1589,7 +1589,6 @@ struct uiRNACollectionSearch {
 void ui_rna_collection_search_update_fn(
     const bContext *C, void *arg, const char *str, uiSearchItems *items, bool is_first);
 
-
 /* `interface_ops.cc` */
 
 bool ui_jump_to_target_button_poll(bContext *C);
