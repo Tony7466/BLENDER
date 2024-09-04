@@ -11,6 +11,9 @@
 
 namespace blender::bke {
 
+/**
+ * Utility to create an #AttributeFilter from a lambda.
+ */
 template<typename Fn> struct AttributeFilterFromFunc : public AttributeFilter {
  private:
   Fn fn_;
@@ -26,6 +29,10 @@ template<typename Fn> struct AttributeFilterFromFunc : public AttributeFilter {
   }
 };
 
+/**
+ * Combines an existing #AttributeFilter and tags a few additional attributes that can/should be
+ * skipped.
+ */
 inline auto attribute_filter_with_skip_ref(AttributeFilter filter, const Span<StringRef> skip)
 {
   return AttributeFilterFromFunc([filter, skip](const StringRef name) {
@@ -36,6 +43,7 @@ inline auto attribute_filter_with_skip_ref(AttributeFilter filter, const Span<St
   });
 }
 
+/** Same as above but with a #Set. */
 template<typename StringT>
 inline auto attribute_filter_with_skip_ref(AttributeFilter filter, const Set<StringT> &skip)
 {
@@ -47,6 +55,10 @@ inline auto attribute_filter_with_skip_ref(AttributeFilter filter, const Set<Str
   });
 }
 
+/**
+ * Creates a simple #AttributeFilter that skips allows the given attributes to be skipped, while
+ * all others should be processed.
+ */
 inline auto attribute_filter_from_skip_ref(const Span<StringRef> skip)
 {
   return AttributeFilterFromFunc([skip](const StringRef name) {
@@ -57,6 +69,7 @@ inline auto attribute_filter_from_skip_ref(const Span<StringRef> skip)
   });
 }
 
+/** Same as above but with a #Set. */
 template<typename StringT> inline auto attribute_filter_from_skip_ref(const Set<StringT> &skip)
 {
   return AttributeFilterFromFunc([&skip](const StringRef name) {
