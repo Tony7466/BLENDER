@@ -3175,7 +3175,7 @@ static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVa
 {
   blender::Vector<blender::seq::CharInfo> characters;
   int byte_offset = 0;
-  while (byte_offset < BLI_strnlen(data->text, sizeof(data->text))) {
+  while (byte_offset <= BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
     const int char_length = BLI_str_utf8_size_or_error(str);
 
@@ -3198,6 +3198,7 @@ static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
   return data->wrap_width * ibuf->x;
 }
 
+/* Lines must contain CharInfo for newlines and \0, as UI must know where they begin. */
 static void apply_word_wrapping(const TextVars *data,
                                 TextVarsRuntime *runtime,
                                 const ImBuf *ibuf,
