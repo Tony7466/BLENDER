@@ -19,6 +19,7 @@
 #include "BLI_array.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
@@ -49,6 +50,7 @@
 #include "node_util.hh"
 
 using blender::Array;
+using blender::Map;
 using blender::Vector;
 
 static bool shader_tree_poll(const bContext *C, blender::bke::bNodeTreeType * /*treetype*/)
@@ -676,6 +678,44 @@ static void ntree_shader_copy_branch(bNodeTree *ntree,
   }
 }
 
+/* Copy all the nodes from src into the dst tree. */
+static void ntree_shader_embed_tree(bNodeTree *src, bNodeTree *dst)
+{
+  Vector<bNode *> new_nodes;
+
+  LISTBASE_FOREACH (bNode *, node, &src->nodes) {
+    /* Avoid creating unique names in the new tree, since it is very slow.
+     * The names on the new nodes will be invalid. */
+    bNode *copy = blender::bke::node_copy(
+        dst, *node, LIB_ID_CREATE_NO_USER_REFCOUNT | LIB_ID_CREATE_NO_MAIN, false);
+    /* But identifiers must be created for the `bNodeTree::all_nodes()` vector,
+     * so they won't match the original. */
+    blender::bke::node_unique_id(dst, copy);
+    /* Make sure to clear all sockets links as they are invalid. */
+    LISTBASE_FOREACH (bNodeSocket *, sock, &copy->inputs) {
+      sock->link = nullptr;
+    }
+    LISTBASE_FOREACH (bNodeSocket *, sock, &copy->outputs) {
+      sock->link = nullptr;
+    }
+    copy->runtime->original = node->runtime->original;
+    node->runtime->tmp_flag = new_nodes.size();
+    new_nodes.append(copy);
+  }
+
+  /* Reconnect the node links. */
+  LISTBASE_FOREACH_MUTABLE (bNodeLink *, link, &src->links) {
+    bNode *from_node = new_nodes[link->fromnode->runtime->tmp_flag];
+    bNode *to_node = new_nodes[link->tonode->runtime->tmp_flag];
+    blender::bke::node_add_link(
+        dst,
+        from_node,
+        ntree_shader_node_find_output(from_node, link->fromsock->identifier),
+        to_node,
+        ntree_shader_node_find_input(to_node, link->tosock->identifier));
+  }
+}
+
 /* Generate emission node to convert regular data to closure sockets.
  * Returns validity of the tree.
  */
@@ -1207,11 +1247,36 @@ static void ntree_shader_pruned_unused(bNodeTree *ntree, bNode *output_node)
   }
 }
 
-void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
+static bNodeTree *npr_tree_get(bNodeTree *ntree)
+{
+  if (!ntree) {
+    return nullptr;
+  }
+  /* TODO(NPR): This won't work if the npr node is inside a group or there's a re-route node. */
+  if (bNode *output = ntreeShaderOutputNode(ntree, SHD_OUTPUT_EEVEE)) {
+    bNodeSocket *surface_socket = ntree_shader_node_find_input(output, "Surface");
+    if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
+        surface_socket->link->fromnode->type == SH_NODE_NPR)
+    {
+      return reinterpret_cast<bNodeTree *>(surface_socket->link->fromnode->id);
+    }
+  }
+  return nullptr;
+}
+
+bNodeTree *npr_tree_get(Material *material)
+{
+  if (!material) {
+    return nullptr;
+  }
+  return npr_tree_get(material->nodetree);
+}
+
+static bNode *ntreeShaderNPROutputNode(bNodeTree *localtree)
 {
   bNode *output = nullptr;
   LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
-    if (node->type = SH_NODE_NPR_OUTPUT) {
+    if (node->type == SH_NODE_NPR_OUTPUT) {
       output = node;
       break;
 #if 0
@@ -1222,6 +1287,14 @@ void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
 #endif
     }
   }
+
+  return output;
+}
+
+/* To be used when NPR happens in a fully separate screen pass. */
+void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
+{
+  bNode *output = ntreeShaderNPROutputNode(localtree);
 
   if (!output) {
     // return;
@@ -1237,23 +1310,31 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialE
 {
   bNodeTreeExec *exec;
 
+  if (engine == GPU_MAT_NPR) {
+    bNodeTree *npr_tree = npr_tree_get(localtree);
+    bNodeTree *npr_localtree = blender::bke::node_tree_localize(npr_tree, nullptr);
+    ntree_shader_embed_tree(npr_localtree, localtree);
+    blender::bke::node_tree_free_local_tree(npr_localtree);
+  }
+
   ntree_shader_groups_remove_muted_links(localtree);
   ntree_shader_groups_expand_inputs(localtree);
   ntree_shader_groups_flatten(localtree);
 
-  if (engine == GPU_MAT_NPR) {
-    ntreeGPUMaterialNodesNPR(localtree, mat);
-    return;
+  bNode *output = nullptr;
+  if (engine == GPU_MAT_EEVEE) {
+    output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
   }
-
-  bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
+  else if (engine == GPU_MAT_NPR) {
+    output = ntreeShaderNPROutputNode(localtree);
+  }
 
   /* Tree is valid if it contains no undefined implicit socket type cast. */
   bool valid_tree = ntree_shader_implicit_closure_cast(localtree);
 
   if (valid_tree) {
     ntree_shader_pruned_unused(localtree, output);
-    if (output != nullptr) {
+    if (output != nullptr && engine == GPU_MAT_EEVEE) {
       ntree_shader_shader_to_rgba_branches(localtree);
       ntree_shader_weight_tree_invert(localtree, output);
     }
@@ -1360,22 +1441,4 @@ void ntreeShaderEndExecTree(bNodeTreeExec *exec)
      * same problem as noted in #ntreeBeginExecTree. */
     ntree->runtime->execdata = nullptr;
   }
-}
-
-bNodeTree *npr_tree_get(Material *material)
-{
-  if (!material || !material->nodetree) {
-    return nullptr;
-  }
-
-  /* TODO(NPR): This won't work if the npr node is inside a group or there's a re-route node. */
-  if (bNode *output = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_EEVEE)) {
-    bNodeSocket *surface_socket = ntree_shader_node_find_input(output, "Surface");
-    if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
-        surface_socket->link->fromnode->type == SH_NODE_NPR)
-    {
-      return reinterpret_cast<bNodeTree *>(surface_socket->link->fromnode->id);
-    }
-  }
-  return nullptr;
 }

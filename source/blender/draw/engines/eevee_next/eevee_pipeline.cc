@@ -554,6 +554,37 @@ void DeferredLayer::begin_sync()
   }
 
   this->gbuffer_pass_sync(inst_);
+
+  {
+    npr_ps_.init();
+    /* Textures. */
+    npr_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    npr_ps_.bind_texture(INDEX_NPR_TX_SLOT, &inst_.render_buffers.npr_index_tx);
+    npr_ps_.bind_texture(DEPTH_NPR_TX_SLOT, &inst_.render_buffers.depth_tx);
+#if 0
+  npr_ps_.bind_resources(inst_.gbuffer);
+#else
+    /* Bind manually to pre-defined slots. */
+    npr_ps_.bind_texture(GBUF_NORMAL_NPR_TX_SLOT, &inst_.gbuffer.normal_tx);
+    npr_ps_.bind_texture(GBUF_HEADER_NPR_TX_SLOT, &inst_.gbuffer.header_tx);
+    npr_ps_.bind_texture(GBUF_CLOSURE_NPR_TX_SLOT, &inst_.gbuffer.closure_tx);
+#endif
+    for (int i : IndexRange(3)) {
+      npr_ps_.bind_texture(DIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &direct_radiance_txs_[i]);
+      npr_ps_.bind_texture(INDIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &indirect_result_.closures[i]);
+    };
+
+    npr_ps_.bind_resources(inst_.uniform_data);
+    npr_ps_.bind_resources(inst_.sampling);
+
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL;
+
+    npr_double_sided_ps_ = &npr_ps_.sub("DoubleSided");
+    npr_double_sided_ps_->state_set(state);
+
+    npr_single_sided_ps_ = &npr_ps_.sub("SingleSided");
+    npr_single_sided_ps_->state_set(state | DRW_STATE_CULL_BACK);
+  }
 }
 
 void DeferredLayer::end_sync(bool is_first_pass, bool is_last_pass)
@@ -784,6 +815,23 @@ PassMain::Sub *DeferredLayer::material_add(::Material *blender_mat, GPUMaterial 
   return material_pass;
 }
 
+PassMain::Sub *DeferredLayer::npr_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  PassMain::Sub *pass = (blender_mat->blend_flag & MA_BL_CULL_BACKFACE) ? npr_single_sided_ps_ :
+                                                                          npr_double_sided_ps_;
+
+  PassMain::Sub *material_ps = &pass->sub(GPU_material_get_name(gpumat));
+
+  /* We have to bind the shader to be able to push constants. */
+  GPUPass *gpupass = GPU_material_get_pass(gpumat);
+  material_ps->shader_set(GPU_pass_shader_get(gpupass));
+  /* TODO(NPR) */
+  // material_ps->push_constant("npr_index", index);
+  material_ps->push_constant("use_split_radiance", &use_split_radiance_);
+
+  return material_ps;
+}
+
 GPUTexture *DeferredLayer::render(View &main_view,
                                   View &render_view,
                                   Framebuffer &prepass_fb,
@@ -859,12 +907,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
-  inst_.npr.render(render_view,
-                   direct_radiance_txs_,
-                   use_split_radiance_ ? indirect_result_.closures : nullptr);
-
-  /* Bind the combined_fb back, since later passes expect it to be bound. */
-  GPU_framebuffer_bind(combined_fb);
+  inst_.manager->submit(npr_ps_, render_view);
 
   if (use_feedback_output_ && !use_clamp_direct_) {
     /* We skip writing the radiance during the combine pass. Do a simple fast copy. */
@@ -973,6 +1016,16 @@ PassMain::Sub *DeferredPipeline::material_add(::Material *blender_mat, GPUMateri
   }
   else {
     return opaque_layer_.material_add(blender_mat, gpumat);
+  }
+}
+
+PassMain::Sub *DeferredPipeline::npr_add(::Material *blender_mat, GPUMaterial *gpumat)
+{
+  if (!use_combined_lightprobe_eval && (blender_mat->blend_flag & MA_BL_SS_REFRACTION)) {
+    return refraction_layer_.npr_add(blender_mat, gpumat);
+  }
+  else {
+    return opaque_layer_.npr_add(blender_mat, gpumat);
   }
 }
 

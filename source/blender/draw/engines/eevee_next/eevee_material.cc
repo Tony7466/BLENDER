@@ -192,6 +192,10 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     }
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
+      if (pipeline_type == MAT_PIPE_DEFERRED_NPR) {
+        /* No default shader. */
+        return MaterialPass();
+      }
       matpass.gpumat = inst_.shaders.material_default_shader_get(pipeline_type, geometry_type);
       break;
     case GPU_MAT_FAILED:
@@ -312,6 +316,7 @@ Material &MaterialModule::material_sync(Object *ob,
        * to avoid this shader compilation in another context. */
       mat.shading = material_pass_get(ob, blender_mat, surface_pipe, geometry_type);
       mat.capture = material_pass_get(ob, blender_mat, MAT_PIPE_CAPTURE, geometry_type);
+      mat.npr = MaterialPass();
       mat.overlap_masking = MaterialPass();
       mat.lightprobe_sphere_prepass = MaterialPass();
       mat.lightprobe_sphere_shading = MaterialPass();
@@ -331,15 +336,23 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.prepass = MaterialPass();
       }
 
-      if (surface_pipe == MAT_PIPE_DEFERRED) {
-        mat.npr_index = inst_.npr.sync_material(blender_mat);
-      }
       mat.shading = material_pass_get(
           ob, blender_mat, surface_pipe, geometry_type, MAT_PROBE_NONE, mat.npr_index);
       if (hide_on_camera) {
         /* Only null the sub_pass.
          * `mat.shading.gpumat` is always needed for using the GPU_material API. */
         mat.shading.sub_pass = nullptr;
+      }
+
+      if (surface_pipe == MAT_PIPE_DEFERRED && !hide_on_camera) {
+        mat.npr_index = inst_.npr.sync_material(blender_mat);
+      }
+      if (mat.npr_index) {
+        mat.npr = material_pass_get(
+            ob, blender_mat, MAT_PIPE_DEFERRED_NPR, geometry_type, MAT_PROBE_NONE, mat.npr_index);
+      }
+      else {
+        mat.npr = MaterialPass();
       }
 
       mat.overlap_masking = MaterialPass();

@@ -754,6 +754,11 @@ void ShaderModule::material_create_info_amend(GPUMaterial *gpumat, GPUCodegenOut
     frag_gen << (!codegen.surface.empty() ? codegen.surface : "return Closure(0);\n");
     frag_gen << "}\n\n";
 
+    frag_gen << "vec4 nodetree_npr()\n";
+    frag_gen << "{\n";
+    frag_gen << (!codegen.npr.empty() ? codegen.npr : "return vec4(0.0);\n");
+    frag_gen << "}\n\n";
+
     /* TODO(fclem): Find a way to pass material parameters inside the material UBO. */
     info.define("thickness_mode", thickness_type == MAT_THICKNESS_SLAB ? "-1.0" : "1.0");
 
@@ -874,6 +879,9 @@ void ShaderModule::material_create_info_amend(GPUMaterial *gpumat, GPUCodegenOut
             info.additional_info("eevee_surf_deferred");
           }
           break;
+        case MAT_PIPE_DEFERRED_NPR:
+          info.additional_info("eevee_surf_npr");
+          break;
         case MAT_PIPE_FORWARD:
           info.additional_info("eevee_surf_forward");
           break;
@@ -968,9 +976,11 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
   bool is_default_material = ELEM(
       blender_mat, BKE_material_default_surface(), BKE_material_default_volume());
 
+  bool is_npr = pipeline_type == MAT_PIPE_DEFERRED_NPR;
+
   GPUMaterial *mat = DRW_shader_from_material(blender_mat,
                                               nodetree,
-                                              GPU_MAT_EEVEE,
+                                              is_npr ? GPU_MAT_NPR : GPU_MAT_EEVEE,
                                               shader_uuid,
                                               is_volume,
                                               deferred_compilation,

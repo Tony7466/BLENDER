@@ -142,6 +142,7 @@ void SyncModule::sync_mesh(Object *ob,
     geometry_call(material.overlap_masking.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shading.sub_pass, geom, res_handle);
+    geometry_call(material.npr.sub_pass, geom, res_handle);
     geometry_call(material.shadow.sub_pass, geom, res_handle);
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
@@ -220,6 +221,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     geometry_call(material.overlap_masking.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shading.sub_pass, geom, res_handle);
+    geometry_call(material.npr.sub_pass, geom, res_handle);
     geometry_call(material.shadow.sub_pass, geom, res_handle);
 
     geometry_call(material.planar_probe_prepass.sub_pass, geom, res_handle);
@@ -303,6 +305,7 @@ void SyncModule::sync_point_cloud(Object *ob,
   drawcall_add(material.overlap_masking);
   drawcall_add(material.prepass);
   drawcall_add(material.shading);
+  drawcall_add(material.npr);
   drawcall_add(material.shadow);
 
   drawcall_add(material.planar_probe_prepass);
@@ -593,6 +596,7 @@ void SyncModule::sync_curves(Object *ob,
   drawcall_add(material.overlap_masking);
   drawcall_add(material.prepass);
   drawcall_add(material.shading);
+  drawcall_add(material.npr);
   drawcall_add(material.shadow);
 
   drawcall_add(material.planar_probe_prepass);

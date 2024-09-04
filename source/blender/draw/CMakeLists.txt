@@ -274,7 +274,6 @@ set(SRC
   engines/eevee_next/eevee_view.hh
   engines/eevee_next/eevee_volume.hh
   engines/eevee_next/eevee_world.hh
-  engines/eevee_next/npr/npr_defines.hh
   engines/external/external_engine.h
   engines/gpencil/gpencil_engine.h
   engines/image/image_batches.hh
@@ -498,6 +497,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_subsurface_setup_comp.glsl
   engines/eevee_next/shaders/eevee_surf_capture_frag.glsl
   engines/eevee_next/shaders/eevee_surf_deferred_frag.glsl
+  engines/eevee_next/shaders/eevee_surf_deferred_npr_frag.glsl
   engines/eevee_next/shaders/eevee_surf_depth_frag.glsl
   engines/eevee_next/shaders/eevee_surf_forward_frag.glsl
   engines/eevee_next/shaders/eevee_surf_hybrid_frag.glsl
