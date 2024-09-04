@@ -74,11 +74,30 @@ static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_
   }
 }
 
+static void ensure_weight_attribute_meta_data(blender::bke::MutableAttributeAccessor attributes,
+                                              const blender::StringRef name,
+                                              const blender::bke::AttrDomain domain)
+{
+  using namespace blender;
+  const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(name);
+  if (!meta_data) {
+    return;
+  }
+  if (meta_data->domain == domain && meta_data->data_type == CD_PROP_FLOAT) {
+    return;
+  }
+  Array<float> weight(attributes.domain_size(domain));
+  attributes.lookup<float>(name, domain).varray.materialize(weight);
+  attributes.remove(name);
+  attributes.add<float>(name, domain, bke::AttributeInitVArray(VArray<float>::ForSpan(weight)));
+}
+
 /*
  * This calls the new bevel code (added since 2.64)
  */
 static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *mesh)
 {
+  using namespace blender;
   Mesh *result;
   BMesh *bm;
   BMIter iter;
@@ -88,15 +107,6 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   int vgroup = -1;
   const MDeformVert *dvert = nullptr;
   BevelModifierData *bmd = (BevelModifierData *)md;
-
-  blender::bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  attributes.add<float>(bmd->vertex_weight_name,
-                        blender::bke::AttrDomain::Point,
-                        blender::bke::AttributeInitDefaultValue());
-  attributes.add<float>(bmd->edge_weight_name,
-                        blender::bke::AttrDomain::Edge,
-                        blender::bke::AttributeInitDefaultValue());
-
   const float threshold = cosf(bmd->bevel_angle + 0.000000175f);
   const bool do_clamp = !(bmd->flags & MOD_BEVEL_OVERLAP_OK);
   const int offset_type = bmd->val_flags;
@@ -123,6 +133,10 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   convert_params.cd_mask_extra.vmask = CD_MASK_ORIGINDEX;
   convert_params.cd_mask_extra.emask = CD_MASK_ORIGINDEX;
   convert_params.cd_mask_extra.pmask = CD_MASK_ORIGINDEX;
+
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  ensure_weight_attribute_meta_data(attributes, bmd->vertex_weight_name, bke::AttrDomain::Point);
+  ensure_weight_attribute_meta_data(attributes, bmd->edge_weight_name, bke::AttrDomain::Edge);
 
   bm = BKE_mesh_to_bmesh_ex(mesh, &create_params, &convert_params);
 
