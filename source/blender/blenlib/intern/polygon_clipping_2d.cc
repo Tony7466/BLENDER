@@ -369,16 +369,21 @@ static int result_find_base_id(const BooleanResult &results,
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
   const Array<float2> points = interpolate_position_ab(curve_a, curve_b, results);
 
+  Vector<int> base_ids;
+
   /**
    * The base is the polygon that all others are inside of, and therefor it is not in any others.
    */
   for (const int polygon_a : points_by_polygon.index_range()) {
     if (!is_point_in_others(polygon_a, points_by_polygon, points)) {
-      return polygon_a;
+      base_ids.append(polygon_a);
     }
   }
 
-  BLI_assert_unreachable();
+  if (base_ids.size() == 1) {
+    return base_ids.first();
+  }
+
   return -1;
 }
 
@@ -389,6 +394,10 @@ BooleanResult result_remove_holes(const BooleanResult &in_results,
   BooleanResult result;
 
   const int base_id = result_find_base_id(in_results, curve_a, curve_b);
+
+  if (base_id == -1) {
+    return in_results;
+  }
 
   const int base_start = in_results.offsets[base_id];
   const int base_end = in_results.offsets[base_id + 1];
@@ -437,6 +446,10 @@ BooleanResult result_sort_holes(const BooleanResult &in_results,
   BooleanResult result;
 
   const int base_id = result_find_base_id(in_results, curve_a, curve_b);
+
+  if (base_id == -1) {
+    return in_results;
+  }
 
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(in_results.offsets);
   const IndexRange polygons_before_base = IndexRange(base_id);
