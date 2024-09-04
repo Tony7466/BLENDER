@@ -72,12 +72,12 @@ static void node_update(bNodeTree *ntree, bNode *node)
 }
 
 struct AttributeOutputs {
-  AnonymousAttributeIDPtr top_id;
-  AnonymousAttributeIDPtr side_id;
+  std::optional<std::string> top_id;
+  std::optional<std::string> side_id;
 };
 
 static void save_selection_as_attribute(MutableAttributeAccessor attributes,
-                                        const AnonymousAttributeID *id,
+                                        const StringRef id,
                                         const AttrDomain domain,
                                         const IndexMask &selection)
 {
@@ -99,7 +99,7 @@ static void remove_non_propagated_attributes(
     if (!id.is_anonymous()) {
       return true;
     }
-    if (propagation_info.propagate(id.anonymous_id())) {
+    if (propagation_info.propagate(id.name())) {
       return true;
     }
     return false;
@@ -170,6 +170,12 @@ static void expand_mesh(Mesh &mesh,
     mesh.face_offset_indices[mesh.faces_num] = mesh.corners_num + loop_expand;
   }
   if (loop_expand != 0) {
+    if (mesh.corners_num == 0) {
+      mesh.attributes_for_write().add(
+          ".corner_vert", AttrDomain::Corner, CD_PROP_INT32, bke::AttributeInitConstruct());
+      mesh.attributes_for_write().add(
+          ".corner_edge", AttrDomain::Corner, CD_PROP_INT32, bke::AttributeInitConstruct());
+    }
     const int old_loops_num = mesh.corners_num;
     mesh.corners_num += loop_expand;
     CustomData_realloc(&mesh.corner_data, old_loops_num, mesh.corners_num);
@@ -454,11 +460,11 @@ static void extrude_mesh_vertices(Mesh &mesh,
 
   if (attribute_outputs.top_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.top_id.get(), AttrDomain::Point, new_vert_range);
+        attributes, *attribute_outputs.top_id, AttrDomain::Point, new_vert_range);
   }
   if (attribute_outputs.side_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.side_id.get(), AttrDomain::Edge, new_edge_range);
+        attributes, *attribute_outputs.side_id, AttrDomain::Edge, new_edge_range);
   }
 
   const bool no_loose_vert_hint = mesh.runtime->loose_verts_cache.is_cached() &&
@@ -813,11 +819,11 @@ static void extrude_mesh_edges(Mesh &mesh,
 
   if (attribute_outputs.top_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.top_id.get(), AttrDomain::Edge, duplicate_edge_range);
+        attributes, *attribute_outputs.top_id, AttrDomain::Edge, duplicate_edge_range);
   }
   if (attribute_outputs.side_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.side_id.get(), AttrDomain::Face, new_face_range);
+        attributes, *attribute_outputs.side_id, AttrDomain::Face, new_face_range);
   }
 
   tag_mesh_added_faces(mesh);
@@ -1209,11 +1215,11 @@ static void extrude_mesh_face_regions(Mesh &mesh,
 
   if (attribute_outputs.top_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.top_id.get(), AttrDomain::Face, face_selection);
+        attributes, *attribute_outputs.top_id, AttrDomain::Face, face_selection);
   }
   if (attribute_outputs.side_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.side_id.get(), AttrDomain::Face, side_face_range);
+        attributes, *attribute_outputs.side_id, AttrDomain::Face, side_face_range);
   }
 
   tag_mesh_added_faces(mesh);
@@ -1457,11 +1463,11 @@ static void extrude_individual_mesh_faces(
 
   if (attribute_outputs.top_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.top_id.get(), AttrDomain::Face, face_selection);
+        attributes, *attribute_outputs.top_id, AttrDomain::Face, face_selection);
   }
   if (attribute_outputs.side_id) {
     save_selection_as_attribute(
-        attributes, attribute_outputs.side_id.get(), AttrDomain::Face, side_face_range);
+        attributes, *attribute_outputs.side_id, AttrDomain::Face, side_face_range);
   }
 
   tag_mesh_added_faces(mesh);
