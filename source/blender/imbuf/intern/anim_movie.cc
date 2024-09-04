@@ -203,7 +203,7 @@ static int ffmpeg_container_frame_count_get(AVFormatContext *pFormatCtx, AVStrea
     stream_dur = double(pFormatCtx->duration) / AV_TIME_BASE;
   }
 
-  return int(stream_dur * av_q2d(frame_rate) + 0.5f);
+  return lround(stream_dur * av_q2d(frame_rate));
 }
 
 static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_stream)
@@ -212,7 +212,7 @@ static int ffmpeg_frame_count_get(AVFormatContext *pFormatCtx, AVStream *video_s
   if (video_stream->duration != AV_NOPTS_VALUE) {
     const AVRational frame_rate = av_guess_frame_rate(pFormatCtx, video_stream, nullptr);
     const double stream_dur = video_stream->duration * av_q2d(video_stream->time_base);
-    return int(stream_dur * av_q2d(frame_rate) + 0.5f);
+    return lround(stream_dur * av_q2d(frame_rate));
   }
 
   /* Fall back to manually estimating the video stream duration.
