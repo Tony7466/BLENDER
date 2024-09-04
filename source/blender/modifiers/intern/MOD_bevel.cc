@@ -319,13 +319,8 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     uiItemR(col, ptr, "angle_limit", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_WEIGHT) {
-    PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
-
     const char *prop_name = edge_bevel ? "edge_weight" : "vertex_weight";
-    PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name);
-
-    PropertyRNA *searchprop = RNA_struct_find_property(&object_data_ptr, "attributes");
-    uiItemPointerR_prop(col, ptr, prop, &object_data_ptr, searchprop, nullptr, ICON_BLANK1, true);
+    uiItemR(col, ptr, prop_name, UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
