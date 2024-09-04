@@ -41,6 +41,7 @@ struct GreasePencilBatchCache {
   gpu::IndexBuf *ibo;
   /** Batches */
   gpu::Batch *geom_batch;
+  gpu::Batch *lines_batch;
   gpu::Batch *edit_points;
   gpu::Batch *edit_lines;
 
@@ -153,6 +154,7 @@ static void grease_pencil_batch_cache_clear(GreasePencil &grease_pencil)
   GPU_VERTBUF_DISCARD_SAFE(cache->vbo_col);
   GPU_INDEXBUF_DISCARD_SAFE(cache->ibo);
 
+  GPU_BATCH_DISCARD_SAFE(cache->lines_batch);
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
   GPU_BATCH_DISCARD_SAFE(cache->edit_lines);
 
@@ -1293,6 +1295,86 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   cache->is_dirty = false;
 }
 
+static void grease_pencil_wire_batch_ensure(Object &object,
+                                            const GreasePencil &grease_pencil,
+                                            const Scene &scene)
+{
+  using namespace blender::bke::greasepencil;
+
+  BLI_assert(grease_pencil.runtime != nullptr);
+  GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
+      grease_pencil.runtime->batch_cache);
+
+  if (cache->edit_points_pos != nullptr) {
+    return;
+  }
+
+  grease_pencil_geom_batch_ensure(object, grease_pencil, scene);
+
+  /* Get the visible drawings. */
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
+
+  int index_len = 0;
+  for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    const bke::CurvesGeometry &curves = info.drawing.strokes();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
+    IndexMaskMemory memory;
+    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+        object, info.drawing, memory);
+
+    visible_strokes.foreach_index([&](const int curve_i, const int pos) {
+      IndexRange points = points_by_curve[curve_i];
+      const bool is_cyclic = cyclic[curve_i] && (points.size() > 2);
+      index_len += points.size() + (is_cyclic ? 1 : 0) + 1;
+      UNUSED_VARS(pos);
+    });
+  }
+
+  GPUIndexBufBuilder elb;
+  GPU_indexbuf_init_ex(
+      &elb, GPU_PRIM_LINE_STRIP, index_len, GPU_vertbuf_get_vertex_len(cache->vbo));
+
+  /* Fill point index buffer with data. */
+  int drawing_start_offset = 0;
+  for (const ed::greasepencil::DrawingInfo &info : drawings) {
+    const bke::CurvesGeometry &curves = info.drawing.strokes();
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const VArray<bool> cyclic = curves.cyclic();
+    IndexMaskMemory memory;
+    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+        object, info.drawing, memory);
+
+    /* Fill line indices. */
+    visible_strokes.foreach_index([&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      const bool is_cyclic = cyclic[curve_i];
+
+      drawing_start_offset += 1;
+
+      for (const int point_i : IndexRange(points.size())) {
+        GPU_indexbuf_add_generic_vert(&elb, point_i + drawing_start_offset);
+      }
+
+      if (is_cyclic) {
+        GPU_indexbuf_add_generic_vert(&elb, drawing_start_offset);
+      }
+
+      GPU_indexbuf_add_primitive_restart(&elb);
+
+      drawing_start_offset += points.size() + (is_cyclic ? 1 : 0) + 1;
+    });
+  }
+
+  gpu::IndexBuf *ibo = GPU_indexbuf_build(&elb);
+
+  cache->lines_batch = GPU_batch_create_ex(
+      GPU_PRIM_LINE_STRIP, cache->vbo, ibo, GPU_BATCH_OWNS_INDEX);
+
+  cache->is_dirty = false;
+}
+
 /** \} */
 
 void DRW_grease_pencil_batch_cache_dirty_tag(GreasePencil *grease_pencil, int mode)
@@ -1389,6 +1471,15 @@ gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object 
   grease_pencil_weight_batch_ensure(*ob, grease_pencil, *scene);
 
   return cache->edit_lines;
+}
+
+gpu::Batch *DRW_cache_grease_pencil_face_wireframe_get(const Scene *scene, Object *ob)
+{
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+  GreasePencilBatchCache *cache = grease_pencil_batch_cache_get(grease_pencil);
+  grease_pencil_wire_batch_ensure(*ob, grease_pencil, *scene);
+
+  return cache->lines_batch;
 }
 
 }  // namespace blender::draw
