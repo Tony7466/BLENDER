@@ -342,32 +342,13 @@ void interpolate_position_a(const Span<float2> pos_a,
   }
 }
 
-Array<float2> interpolate_position_ab(const Span<float2> pos_a,
-                                      const Span<float2> pos_b,
-                                      const BooleanResult &result)
-{
-  Array<float2> pos_out(result.verts.size());
-
-  interpolate_position_ab(pos_a, pos_b, result, pos_out.as_mutable_span());
-
-  return pos_out;
-}
-
-Array<float2> interpolate_position_a(const Span<float2> pos_a, const BooleanResult &result)
-{
-  Array<float2> pos_out(result.verts.size());
-
-  interpolate_position_a(pos_a, result, pos_out.as_mutable_span());
-
-  return pos_out;
-}
-
 static int result_find_base_id(const BooleanResult &results,
                                const Span<float2> curve_a,
                                const Span<float2> curve_b)
 {
   const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-  const Array<float2> points = interpolate_position_ab(curve_a, curve_b, results);
+  Array<float2> points(result.verts.size());
+  interpolate_position_ab(curve_a, curve_b, result, points.as_mutable_span());
 
   Vector<int> base_ids;
 
