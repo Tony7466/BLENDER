@@ -64,4 +64,6 @@ bool ED_id_rename(Main &bmain, ID &id, blender::StringRefNull name)
                  id.name + 2);
       return true;
   }
+
+  return false;
 }
