@@ -308,7 +308,7 @@ static bke::CurvesGeometry convert_curves_to_bezier(const bke::CurvesGeometry &s
       src_attributes,
       dst_attributes,
       ATTR_DOMAIN_MASK_POINT,
-      bke::attribute_filter_with_extra_skip_set_ref(attribute_filter, attributes_to_skip));
+      bke::attribute_filter_with_skip_ref(attribute_filter, attributes_to_skip));
 
   auto catmull_rom_to_bezier = [&](const IndexMask &selection) {
     bke::curves::fill_points<int8_t>(
@@ -477,13 +477,13 @@ static bke::CurvesGeometry convert_curves_to_nurbs(const bke::CurvesGeometry &sr
       src_attributes,
       dst_attributes,
       ATTR_DOMAIN_MASK_POINT,
-      bke::attribute_filter_with_extra_skip(attribute_filter,
-                                            {"position",
-                                             "handle_type_left",
-                                             "handle_type_right",
-                                             "handle_right",
-                                             "handle_left",
-                                             "nurbs_weight"}));
+      bke::attribute_filter_with_skip_ref(attribute_filter,
+                                          {"position",
+                                           "handle_type_left",
+                                           "handle_type_right",
+                                           "handle_right",
+                                           "handle_left",
+                                           "nurbs_weight"}));
 
   auto fill_weights_if_necessary = [&](const IndexMask &selection) {
     if (src_attributes.contains("nurbs_weight")) {
@@ -672,13 +672,13 @@ static bke::CurvesGeometry convert_curves_to_catmull_rom_or_poly(
       src_attributes,
       dst_attributes,
       ATTR_DOMAIN_MASK_POINT,
-      bke::attribute_filter_with_extra_skip(attribute_filter,
-                                            {"position",
-                                             "handle_type_left",
-                                             "handle_type_right",
-                                             "handle_right",
-                                             "handle_left",
-                                             "nurbs_weight"}));
+      bke::attribute_filter_with_skip_ref(attribute_filter,
+                                          {"position",
+                                           "handle_type_left",
+                                           "handle_type_right",
+                                           "handle_right",
+                                           "handle_left",
+                                           "nurbs_weight"}));
 
   auto convert_from_catmull_rom_or_poly_or_nurbs = [&](const IndexMask &selection) {
     array_utils::copy_group_to_group(

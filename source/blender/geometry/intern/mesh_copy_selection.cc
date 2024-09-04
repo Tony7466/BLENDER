@@ -110,12 +110,11 @@ static void gather_vert_attributes(const Mesh &mesh_src,
     bke::gather_deform_verts(src, vert_mask, dst);
   }
 
-  bke::gather_attributes(
-      mesh_src.attributes(),
-      bke::AttrDomain::Point,
-      bke::attribute_filter_with_extra_skip_set_ref(attribute_filter, vertex_group_names),
-      vert_mask,
-      mesh_dst.attributes_for_write());
+  bke::gather_attributes(mesh_src.attributes(),
+                         bke::AttrDomain::Point,
+                         bke::attribute_filter_with_skip_ref(attribute_filter, vertex_group_names),
+                         vert_mask,
+                         mesh_dst.attributes_for_write());
 }
 
 std::optional<Mesh *> mesh_copy_selection(const Mesh &src_mesh,
@@ -241,7 +240,7 @@ std::optional<Mesh *> mesh_copy_selection(const Mesh &src_mesh,
         bke::gather_attributes(
             src_attributes,
             bke::AttrDomain::Edge,
-            bke::attribute_filter_with_extra_skip(attribute_filter, {".edge_verts"}),
+            bke::attribute_filter_with_skip_ref(attribute_filter, {".edge_verts"}),
             edge_mask,
             dst_attributes);
         bke::gather_attributes(
@@ -249,8 +248,8 @@ std::optional<Mesh *> mesh_copy_selection(const Mesh &src_mesh,
         bke::gather_attributes_group_to_group(
             src_attributes,
             bke::AttrDomain::Corner,
-            bke::attribute_filter_with_extra_skip(attribute_filter,
-                                                  {".corner_edge", ".corner_vert"}),
+            bke::attribute_filter_with_skip_ref(attribute_filter,
+                                                {".corner_edge", ".corner_vert"}),
             src_faces,
             dst_faces,
             face_mask,
@@ -359,7 +358,7 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(const Mesh &src_mesh,
         bke::gather_attributes_group_to_group(
             src_attributes,
             bke::AttrDomain::Corner,
-            bke::attribute_filter_with_extra_skip(attribute_filter, {".corner_edge"}),
+            bke::attribute_filter_with_skip_ref(attribute_filter, {".corner_edge"}),
             src_faces,
             dst_faces,
             face_mask,

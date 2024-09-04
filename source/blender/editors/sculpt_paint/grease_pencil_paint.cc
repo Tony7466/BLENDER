@@ -603,12 +603,12 @@ struct PaintOperationExecutor {
     bke::fill_attribute_range_default(
         attributes,
         bke::AttrDomain::Point,
-        bke::attribute_filter_from_skip_set_ref(point_attributes_to_skip),
+        bke::attribute_filter_from_skip_ref(point_attributes_to_skip),
         IndexRange(last_active_point, 1));
     bke::fill_attribute_range_default(
         attributes,
         bke::AttrDomain::Curve,
-        bke::attribute_filter_from_skip_set_ref(curve_attributes_to_skip),
+        bke::attribute_filter_from_skip_ref(curve_attributes_to_skip),
         IndexRange(active_curve, 1));
 
     drawing_->tag_topology_changed();
@@ -967,7 +967,7 @@ struct PaintOperationExecutor {
     bke::fill_attribute_range_default(
         attributes,
         bke::AttrDomain::Point,
-        bke::attribute_filter_from_skip_set_ref(point_attributes_to_skip),
+        bke::attribute_filter_from_skip_ref(point_attributes_to_skip),
         curves.points_range().take_back(1));
 
     drawing_->set_texture_matrices({self.texture_space_}, IndexRange::from_single(active_curve));

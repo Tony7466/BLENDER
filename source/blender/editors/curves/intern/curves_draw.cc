@@ -938,28 +938,28 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       bke::fill_attribute_range_default(
           attributes,
           bke::AttrDomain::Point,
-          bke::attribute_filter_from_skip({"position",
-                                           "radius",
-                                           "handle_left",
-                                           "handle_right",
-                                           "handle_type_left",
-                                           "handle_type_right",
-                                           "nurbs_weight",
-                                           ".selection",
-                                           ".selection_handle_left",
-                                           ".selection_handle_right"}),
+          bke::attribute_filter_from_skip_ref({"position",
+                                               "radius",
+                                               "handle_left",
+                                               "handle_right",
+                                               "handle_type_left",
+                                               "handle_type_right",
+                                               "nurbs_weight",
+                                               ".selection",
+                                               ".selection_handle_left",
+                                               ".selection_handle_right"}),
           curves.points_by_curve()[curve_index]);
       bke::fill_attribute_range_default(
           attributes,
           bke::AttrDomain::Curve,
-          bke::attribute_filter_from_skip({"curve_type",
-                                           "resolution",
-                                           "cyclic",
-                                           "nurbs_order",
-                                           "knots_mode",
-                                           ".selection",
-                                           ".selection_handle_left",
-                                           ".selection_handle_right"}),
+          bke::attribute_filter_from_skip_ref({"curve_type",
+                                               "resolution",
+                                               "cyclic",
+                                               "nurbs_order",
+                                               "knots_mode",
+                                               ".selection",
+                                               ".selection_handle_left",
+                                               ".selection_handle_right"}),
           IndexRange(curve_index, 1));
     }
 
@@ -1013,18 +1013,19 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       selection.finish();
     }
 
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Point,
-                                      bke::attribute_filter_from_skip({"position",
-                                                                       "radius",
-                                                                       ".selection",
-                                                                       ".selection_handle_left",
-                                                                       ".selection_handle_right"}),
-                                      new_points);
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Point,
+        bke::attribute_filter_from_skip_ref({"position",
+                                             "radius",
+                                             ".selection",
+                                             ".selection_handle_left",
+                                             ".selection_handle_right"}),
+        new_points);
     bke::fill_attribute_range_default(
         attributes,
         bke::AttrDomain::Curve,
-        bke::attribute_filter_from_skip(
+        bke::attribute_filter_from_skip_ref(
             {"curve_type", ".selection", ".selection_handle_left", ".selection_handle_right"}),
         IndexRange(curve_index, 1));
   }

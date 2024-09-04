@@ -436,7 +436,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   /* Transfer curve attributes. */
   gather_attributes(src_attributes,
                     bke::AttrDomain::Curve,
-                    bke::attribute_filter_from_skip({"cyclic"}),
+                    bke::attribute_filter_from_skip_ref({"cyclic"}),
                     dst_to_src_curve,
                     dst_attributes);
   array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());

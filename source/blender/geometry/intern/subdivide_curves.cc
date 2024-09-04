@@ -379,16 +379,16 @@ bke::CurvesGeometry subdivide_curves(const bke::CurvesGeometry &src_curves,
                                  dst_handles_r.slice(dst_points));
     });
 
-    for (auto &attribute : bke::retrieve_attributes_for_transfer(
-             src_attributes,
-             dst_attributes,
-             ATTR_DOMAIN_MASK_POINT,
-             attribute_filter_with_extra_skip(attribute_filter,
-                                              {"position",
-                                               "handle_type_left",
-                                               "handle_type_right",
-                                               "handle_right",
-                                               "handle_left"})))
+    for (auto &attribute :
+         bke::retrieve_attributes_for_transfer(src_attributes,
+                                               dst_attributes,
+                                               ATTR_DOMAIN_MASK_POINT,
+                                               attribute_filter_with_skip_ref(attribute_filter,
+                                                                              {"position",
+                                                                               "handle_type_left",
+                                                                               "handle_type_right",
+                                                                               "handle_right",
+                                                                               "handle_left"})))
     {
       subdivide_attribute_linear(src_points_by_curve,
                                  dst_points_by_curve,

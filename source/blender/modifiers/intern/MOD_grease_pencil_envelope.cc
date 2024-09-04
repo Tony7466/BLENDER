@@ -582,7 +582,7 @@ static void create_envelope_strokes(const EnvelopeInfo &info,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
-                         bke::attribute_filter_from_skip({"cyclic", "material_index"}),
+                         bke::attribute_filter_from_skip_ref({"cyclic", "material_index"}),
                          src_curve_indices,
                          dst_attributes);
 

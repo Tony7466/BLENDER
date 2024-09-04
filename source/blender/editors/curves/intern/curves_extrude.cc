@@ -338,7 +338,7 @@ static void extrude_curves(Curves &curves_id)
            src_attributes,
            dst_attributes,
            ATTR_DOMAIN_MASK_POINT,
-           bke::attribute_filter_from_skip(
+           bke::attribute_filter_from_skip_ref(
                {".selection", ".selection_handle_left", ".selection_handle_right"})))
   {
     const CPPType &type = attribute.src.type();

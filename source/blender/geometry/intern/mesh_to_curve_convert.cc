@@ -42,8 +42,8 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
       skip.add(id);
     }
   }
-  const auto attribute_filter_with_skip = bke::attribute_filter_with_extra_skip_set_ref(
-      attribute_filter, skip);
+  const auto attribute_filter_with_skip = bke::attribute_filter_with_skip_ref(attribute_filter,
+                                                                              skip);
 
   bke::gather_attributes(mesh_attributes,
                          bke::AttrDomain::Point,

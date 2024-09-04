@@ -25,4 +25,16 @@ class AnonymousAttributeSet {
   std::shared_ptr<Set<std::string>> names;
 };
 
+/**
+ * Checks if the attribute name has the `.a_` prefix which indicates that it is an anonymous
+ * attribute. I.e. it is just internally used by Blender and the name should not be exposed to the
+ * user.
+ *
+ * Use #hash_to_anonymous_attribute_name to generate names for anonymous attributes.
+ */
+inline bool attribute_name_is_anonymous(const StringRef name)
+{
+  return name.startswith(".a_");
+}
+
 }  // namespace blender::bke

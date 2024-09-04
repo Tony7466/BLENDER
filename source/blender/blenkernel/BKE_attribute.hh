@@ -16,7 +16,7 @@
 
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_attribute.h"
-#include "BKE_attribute_filter.hh"
+#include "BKE_attribute_filters.hh"
 
 struct Mesh;
 struct PointCloud;

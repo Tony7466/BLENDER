@@ -169,7 +169,7 @@ static void copy_curve_attributes_without_id(const bke::CurvesGeometry &src_curv
            src_curves.attributes(),
            dst_curves.attributes_for_write(),
            ATTR_DOMAIN_MASK_ALL,
-           bke::attribute_filter_with_extra_skip(attribute_filter, {"id"})))
+           bke::attribute_filter_with_skip_ref(attribute_filter, {"id"})))
   {
     switch (attribute.meta_data.domain) {
       case AttrDomain::Curve:
@@ -348,7 +348,7 @@ static void copy_face_attributes_without_id(const Span<int> edge_mapping,
            src_attributes,
            dst_attributes,
            ATTR_DOMAIN_MASK_ALL,
-           bke::attribute_filter_with_extra_skip(
+           bke::attribute_filter_with_skip_ref(
                attribute_filter, {"id", ".corner_vert", ".corner_edge", ".edge_verts"})))
   {
     switch (attribute.meta_data.domain) {
@@ -550,7 +550,7 @@ static void copy_edge_attributes_without_id(const Span<int> point_mapping,
            src_attributes,
            dst_attributes,
            ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_EDGE,
-           bke::attribute_filter_with_extra_skip(attribute_filter, {"id", ".edge_verts"})))
+           bke::attribute_filter_with_skip_ref(attribute_filter, {"id", ".edge_verts"})))
   {
     switch (attribute.meta_data.domain) {
       case AttrDomain::Edge:
@@ -735,7 +735,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
            src_curves.attributes(),
            new_curves.attributes_for_write(),
            ATTR_DOMAIN_MASK_CURVE,
-           bke::attribute_filter_with_extra_skip(attribute_filter, {"id"})))
+           bke::attribute_filter_with_skip_ref(attribute_filter, {"id"})))
   {
     bke::attribute_math::convert_to_static_type(attribute.src.type(), [&](auto dummy) {
       using T = decltype(dummy);
@@ -792,7 +792,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
 
   bke::gather_attributes_to_groups(mesh.attributes(),
                                    AttrDomain::Point,
-                                   bke::attribute_filter_with_extra_skip(attribute_filter, {"id"}),
+                                   bke::attribute_filter_with_skip_ref(attribute_filter, {"id"}),
                                    duplicates,
                                    selection,
                                    new_mesh->attributes_for_write());
@@ -842,7 +842,7 @@ static void duplicate_points_pointcloud(GeometrySet &geometry_set,
 
   bke::gather_attributes_to_groups(src_points.attributes(),
                                    AttrDomain::Point,
-                                   bke::attribute_filter_with_extra_skip(attribute_filter, {"id"}),
+                                   bke::attribute_filter_with_skip_ref(attribute_filter, {"id"}),
                                    duplicates,
                                    selection,
                                    pointcloud->attributes_for_write());
@@ -953,7 +953,7 @@ static void duplicate_instances(GeometrySet &geometry_set,
   bke::gather_attributes_to_groups(
       src_instances.attributes(),
       AttrDomain::Instance,
-      bke::attribute_filter_with_extra_skip(attribute_filter, {"id", ".reference_index"}),
+      bke::attribute_filter_with_skip_ref(attribute_filter, {"id", ".reference_index"}),
       duplicates,
       selection,
       dst_instances->attributes_for_write());
