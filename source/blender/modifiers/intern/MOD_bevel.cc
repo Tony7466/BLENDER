@@ -300,38 +300,13 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
     uiItemR(col, ptr, "angle_limit", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (limit_method == MOD_BEVEL_WEIGHT) {
-    sub = uiLayoutColumn(col, false);
-    uiLayoutSetActive(sub, edge_bevel);
-
-    const char *weight_type = edge_bevel ? "edge_weight" : "vertex_weight";
-
     PointerRNA object_data_ptr = RNA_pointer_get(&ob_ptr, "data");
 
-    // this code is pulled out from uiItemPointerR() in interface_layout.cc
-    // because the search suggestions are hard coded as false
-    // we want search suggestions to be on
-    {
-      /* validate arguments */
+    const char *prop_name = edge_bevel ? "edge_weight" : "vertex_weight";
+    PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name);
 
-      const char *propname = weight_type;
-      PointerRNA *searchptr = &object_data_ptr;
-      const char *searchpropname = "attributes";
-
-      PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
-      if (!prop) {
-        RNA_warning("property not found: %s.%s", RNA_struct_identifier(ptr->type), propname);
-        return;
-      }
-      PropertyRNA *searchprop = RNA_struct_find_property(searchptr, searchpropname);
-      if (!searchprop) {
-        RNA_warning("search collection property not found: %s.%s",
-                    RNA_struct_identifier(searchptr->type),
-                    searchpropname);
-        return;
-      }
-
-      uiItemPointerR_prop(col, ptr, prop, searchptr, searchprop, nullptr, ICON_NONE, true);
-    }
+    PropertyRNA *searchprop = RNA_struct_find_property(&object_data_ptr, "attributes");
+    uiItemPointerR_prop(col, ptr, prop, &object_data_ptr, searchprop, nullptr, ICON_NONE, true);
   }
   else if (limit_method == MOD_BEVEL_VGROUP) {
     modifier_vgroup_ui(col, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
