@@ -1025,11 +1025,10 @@ std::optional<std::string> UI_key_event_operator_string(const bContext *C,
   short event_type = KM_NOTHING;
 
   uiBut *listbox = nullptr;
-  for (auto but_itr = but->block->buttons.rbegin(); but_itr != but->block->buttons.rend();
-       but_itr++)
-  {
-    if (((*but_itr)->type == UI_BTYPE_LISTBOX) && ui_but_contains_rect(*but_itr, &but->rect)) {
-      listbox = *but_itr;
+  for (int idx = but->block->buttons.size() - 1; idx >= 0; idx--) {
+    but = but->block->buttons[idx].get();
+    if ((but->type == UI_BTYPE_LISTBOX) && ui_but_contains_rect(but, &but->rect)) {
+      listbox = but;
       break;
     }
   }

@@ -120,7 +120,7 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
 
   BLI_assert(UI_but_is_decorator(but));
   BLI_assert(but->decorated_rnapoin.data && but->decorated_rnaprop);
-  ListBase lb = {but->block->buttons.first(), but->block->buttons.last()};
+  ListBase lb = {but->block->buttons.first().get(), but->block->buttons.last().get()};
   LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &lb, but_iter, but->prev) {
     if (but_iter != but &&
         ui_but_rna_equals_ex(

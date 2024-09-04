@@ -482,7 +482,7 @@ static void template_texture_user_menu(bContext *C, uiLayout *layout, void * /*a
     /* add label per category */
     if (!last_category || !STREQ(last_category, user->category)) {
       uiItemL(layout, IFACE_(user->category), ICON_NONE);
-      but = block->buttons.last();
+      but = block->buttons.last().get();
       but->drawflag = UI_BUT_TEXT_LEFT;
     }
 

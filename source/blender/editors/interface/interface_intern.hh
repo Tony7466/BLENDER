@@ -547,7 +547,7 @@ struct uiBlockDynamicListener {
 struct uiBlock {
   uiBlock *next, *prev;
 
-  blender::Vector<uiBut *> buttons;
+  blender::Vector<std::unique_ptr<uiBut>> buttons;
   Panel *panel;
   uiBlock *oldblock;
 
@@ -665,8 +665,8 @@ struct uiBlock {
   char display_device[64];
 
   PieMenuData pie_data;
-  void add_but(uiBut *but, uiBut *insert_after = nullptr);
-  void remove_but(uiBut *but);
+  void add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after = nullptr);
+  [[nodiscard]] std::unique_ptr<uiBut> pop_but(uiBut *but);
 };
 
 struct uiSafetyRct {

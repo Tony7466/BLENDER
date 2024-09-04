@@ -2865,9 +2865,9 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   if (block->oldblock == nullptr) {
     const bool is_popup = (block->flag & UI_BLOCK_KEEP_OPEN) != 0;
 
-    for (uiBut *but : block->buttons) {
+    for (std::unique_ptr<uiBut> &but : block->buttons) {
       /* no undo for buttons for operator redo panels */
-      UI_but_flag_disable(but, UI_BUT_UNDO);
+      UI_but_flag_disable(but.get(), UI_BUT_UNDO);
 
       /* only for popups, see #36109. */
 
@@ -2876,7 +2876,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
        */
       if (is_popup) {
         if ((but->rnaprop == op->type->prop) && ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_NUM)) {
-          UI_but_focus_on_enter_event(CTX_wm_window(C), but);
+          UI_but_focus_on_enter_event(CTX_wm_window(C), but.get());
         }
       }
     }
@@ -3905,7 +3905,7 @@ static void colorband_buttons_layout(uiLayout *layout,
 
     /* Some special (rather awkward) treatment to update UI state on certain property changes. */
     for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      uiBut *but = *but_itr;
+      uiBut *but = (*but_itr).get();
       if (but->rnapoin.data != ptr.data) {
         continue;
       }
@@ -6615,7 +6615,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
       uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
       /* This operator also works fine for blocked extensions. */
       uiItemO(row, "", ICON_ERROR, "EXTENSIONS_OT_userpref_show_for_update");
-      uiBut *but = uiLayoutGetBlock(layout)->buttons.last();
+      uiBut *but = uiLayoutGetBlock(layout)->buttons.last().get();
       uchar color[4];
       UI_GetThemeColor4ubv(TH_TEXT, color);
       copy_v4_v4_uchar(but->col, color);
@@ -6640,7 +6640,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
       else {
         uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
         uiItemO(row, "", ICON_INTERNET_OFFLINE, "EXTENSIONS_OT_userpref_show_online");
-        uiBut *but = uiLayoutGetBlock(layout)->buttons.last();
+        uiBut *but = uiLayoutGetBlock(layout)->buttons.last().get();
         uchar color[4];
         UI_GetThemeColor4ubv(TH_TEXT, color);
         copy_v4_v4_uchar(but->col, color);
@@ -6664,7 +6664,7 @@ void uiTemplateStatusInfo(uiLayout *layout, bContext *C)
       }
       uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
       uiItemO(row, "", icon, "EXTENSIONS_OT_userpref_show_for_update");
-      uiBut *but = uiLayoutGetBlock(layout)->buttons.last();
+      uiBut *but = uiLayoutGetBlock(layout)->buttons.last().get();
       uchar color[4];
       UI_GetThemeColor4ubv(TH_TEXT, color);
       copy_v4_v4_uchar(but->col, color);
@@ -6868,7 +6868,7 @@ void uiTemplateKeymapItemProperties(uiLayout *layout, PointerRNA *ptr)
   PointerRNA propptr = RNA_pointer_get(ptr, "properties");
 
   if (propptr.data) {
-    uiBut *but = uiLayoutGetBlock(layout)->buttons.last();
+    uiBut *but = uiLayoutGetBlock(layout)->buttons.last().get();
 
     WM_operator_properties_sanitize(&propptr, false);
     template_keymap_item_properties(layout, nullptr, &propptr);

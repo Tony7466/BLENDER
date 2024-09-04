@@ -297,11 +297,12 @@ static uiBut *ui_but_find(const ARegion *region,
                           const void *find_custom_data)
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      if (find_poll && find_poll(*but_itr, find_custom_data) == false) {
+    for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+      uiBut *but_itr = block->buttons[idx].get();
+      if (find_poll && find_poll(but_itr, find_custom_data) == false) {
         continue;
       }
-      return *but_itr;
+      return but_itr;
     }
   }
 
@@ -324,8 +325,8 @@ uiBut *ui_but_find_mouse_over_ex(const ARegion *region,
     float mx = xy[0], my = xy[1];
     ui_window_to_block_fl(region, block, &mx, &my);
 
-    for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      uiBut *but = *but_itr;
+    for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+      uiBut *but = block->buttons[idx].get();
       if (find_poll && find_poll(but, find_custom_data) == false) {
         continue;
       }
@@ -377,8 +378,8 @@ uiBut *ui_but_find_rect_over(const ARegion *region, const rcti *rect_px)
     rctf rect_block;
     ui_window_to_block_rctf(region, block, &rect_block, &rect_px_fl);
 
-    for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      uiBut *but = *but_itr;
+    for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+      uiBut *but = block->buttons[idx].get();
       if (ui_but_is_interactive(but, labeledit)) {
         /* No pie menu support. */
         BLI_assert(but->pie_dir == UI_RADIAL_NONE);
@@ -408,8 +409,8 @@ uiBut *ui_list_find_mouse_over_ex(const ARegion *region, const int xy[2])
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     float mx = xy[0], my = xy[1];
     ui_window_to_block_fl(region, block, &mx, &my);
-    for (auto but_itr = block->buttons.rbegin(); but_itr != block->buttons.rend(); but_itr++) {
-      uiBut *but = *but_itr;
+    for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+      uiBut *but = block->buttons[idx].get();
       if (but->type == UI_BTYPE_LISTBOX && ui_but_contains_pt(but, mx, my)) {
         return but;
       }
@@ -559,9 +560,9 @@ uiBut *ui_but_next(uiBut *but)
 
 uiBut *ui_but_first(uiBlock *block)
 {
-  for (uiBut *but : block->buttons) {
-    if (ui_but_is_editable(but)) {
-      return but;
+  for (std::unique_ptr<uiBut> &but : block->buttons) {
+    if (ui_but_is_editable(but.get())) {
+      return but.get();
     }
   }
   return nullptr;
@@ -569,7 +570,7 @@ uiBut *ui_but_first(uiBlock *block)
 
 uiBut *ui_but_last(uiBlock *block)
 {
-  uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last();
+  uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
   while (but) {
     if (ui_but_is_editable(but)) {
       return but;
@@ -643,9 +644,9 @@ size_t ui_but_tip_len_only_first_line(const uiBut *but)
 
 uiBut *ui_block_active_but_get(const uiBlock *block)
 {
-  for (uiBut *but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->active) {
-      return but;
+      return but.get();
     }
   }
 
@@ -686,7 +687,7 @@ static const uiBut *ui_but_next_non_separator(const uiBut *but)
 
 bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title)
 {
-  const uiBut *but = block->buttons.first();
+  const uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.first().get();
   if (skip_title) {
     /* Skip the first label, since popups often have a title,
      * we may want to consider the block empty in this case. */
@@ -706,7 +707,7 @@ bool UI_block_is_empty(const uiBlock *block)
 bool UI_block_can_add_separator(const uiBlock *block)
 {
   if (ui_block_is_menu(block) && !ui_block_is_pie_menu(block)) {
-    const uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last();
+    const uiBut *but = block->buttons.is_empty() ? nullptr : block->buttons.last().get();
     return (but && !ELEM(but->type, UI_BTYPE_SEPR_LINE, UI_BTYPE_SEPR));
   }
   return true;
@@ -714,7 +715,7 @@ bool UI_block_can_add_separator(const uiBlock *block)
 
 bool UI_block_has_active_default_button(const uiBlock *block)
 {
-  for (uiBut *but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if ((but->flag & UI_BUT_ACTIVE_DEFAULT) && ((but->flag & UI_HIDDEN) == 0)) {
       return true;
     }
@@ -774,9 +775,9 @@ uiBut *ui_region_find_active_but(ARegion *region)
 uiBut *ui_region_find_first_but_test_flag(ARegion *region, int flag_include, int flag_exclude)
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (uiBut *but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (((but->flag & flag_include) == flag_include) && ((but->flag & flag_exclude) == 0)) {
-        return but;
+        return but.get();
       }
     }
   }

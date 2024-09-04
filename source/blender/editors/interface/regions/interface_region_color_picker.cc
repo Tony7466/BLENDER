@@ -183,17 +183,17 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
 
   /* this updates button strings,
    * is hackish... but button pointers are on stack of caller function */
-  for (uiBut *bt : block->buttons) {
+  for (std::unique_ptr<uiBut> &bt : block->buttons) {
     if (bt->custom_data != cpicker) {
       continue;
     }
 
     if (bt->rnaprop) {
-      ui_but_v3_set(bt, rgb_scene_linear);
+      ui_but_v3_set(bt.get(), rgb_scene_linear);
 
       /* original button that created the color picker already does undo
        * push, so disable it on RNA buttons in the color picker block */
-      UI_but_flag_disable(bt, UI_BUT_UNDO);
+      UI_but_flag_disable(bt.get(), UI_BUT_UNDO);
     }
     else if (bt->str == "Hex:") {
       float rgb_hex[3];
@@ -214,29 +214,29 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
     }
     else if (bt->str.find(' ', 1) == 1) {
       if (bt->str[0] == 'R') {
-        ui_but_value_set(bt, rgb_scene_linear[0]);
+        ui_but_value_set(bt.get(), rgb_scene_linear[0]);
       }
       else if (bt->str[0] == 'G') {
-        ui_but_value_set(bt, rgb_scene_linear[1]);
+        ui_but_value_set(bt.get(), rgb_scene_linear[1]);
       }
       else if (bt->str[0] == 'B') {
-        ui_but_value_set(bt, rgb_scene_linear[2]);
+        ui_but_value_set(bt.get(), rgb_scene_linear[2]);
       }
       else if (bt->str[0] == 'H') {
-        ui_but_value_set(bt, cpicker->hsv_scene_linear[0]);
+        ui_but_value_set(bt.get(), cpicker->hsv_scene_linear[0]);
       }
       else if (bt->str[0] == 'S') {
-        ui_but_value_set(bt, cpicker->hsv_scene_linear[1]);
+        ui_but_value_set(bt.get(), cpicker->hsv_scene_linear[1]);
       }
       else if (bt->str[0] == 'V') {
-        ui_but_value_set(bt, cpicker->hsv_scene_linear[2]);
+        ui_but_value_set(bt.get(), cpicker->hsv_scene_linear[2]);
       }
       else if (bt->str[0] == 'L') {
-        ui_but_value_set(bt, cpicker->hsv_scene_linear[2]);
+        ui_but_value_set(bt.get(), cpicker->hsv_scene_linear[2]);
       }
     }
 
-    ui_but_update(bt);
+    ui_but_update(bt.get());
   }
 }
 
@@ -314,7 +314,7 @@ static void ui_popup_close_cb(bContext * /*C*/, void *bt1, void * /*arg*/)
 static void ui_colorpicker_hide_reveal(uiBlock *block, ePickerType colormode)
 {
   /* tag buttons */
-  for (uiBut *bt : block->buttons) {
+  for (std::unique_ptr<uiBut> &bt : block->buttons) {
     if ((bt->func == ui_colorpicker_rgba_update_cb) && (bt->type == UI_BTYPE_NUM_SLIDER) &&
         (bt->rnaindex != 3))
     {
@@ -810,25 +810,25 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
   }
 
   if (add != 0.0f) {
-    for (uiBut *but : block->buttons) {
+    for (std::unique_ptr<uiBut> &but : block->buttons) {
       if (but->type == UI_BTYPE_HSVCUBE && but->active == nullptr) {
         uiPopupBlockHandle *popup = block->handle;
         ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);
         float *hsv_perceptual = cpicker->hsv_perceptual;
 
         float rgb_perceptual[3];
-        ui_but_v3_get(but, rgb_perceptual);
-        ui_scene_linear_to_perceptual_space(but, rgb_perceptual);
+        ui_but_v3_get(but.get(), rgb_perceptual);
+        ui_scene_linear_to_perceptual_space(but.get(), rgb_perceptual);
         ui_color_picker_rgb_to_hsv_compat(rgb_perceptual, hsv_perceptual);
 
         hsv_perceptual[2] = clamp_f(hsv_perceptual[2] + add, 0.0f, 1.0f);
 
         float rgb_scene_linear[3];
         ui_color_picker_hsv_to_rgb(hsv_perceptual, rgb_scene_linear);
-        ui_perceptual_to_scene_linear_space(but, rgb_scene_linear);
-        ui_but_v3_set(but, rgb_scene_linear);
+        ui_perceptual_to_scene_linear_space(but.get(), rgb_scene_linear);
+        ui_but_v3_set(but.get(), rgb_scene_linear);
 
-        ui_update_color_picker_buts_rgb(but, block, cpicker, rgb_scene_linear);
+        ui_update_color_picker_buts_rgb(but.get(), block, cpicker, rgb_scene_linear);
         if (popup) {
           popup->menuretval = UI_RETURN_UPDATE;
         }

@@ -96,11 +96,11 @@ void ViewLink::views_bounds_calc(const uiBlock &block)
     views_bounds.add(link->view.get(), minmax);
   }
 
-  for (uiBut *but : block.buttons) {
+  for (const std::unique_ptr<uiBut> &but : block.buttons) {
     if (but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }
-    uiButViewItem *view_item_but = static_cast<uiButViewItem *>(but);
+    uiButViewItem *view_item_but = static_cast<uiButViewItem *>(but.get());
     if (!view_item_but->view_item) {
       continue;
     }
@@ -294,11 +294,11 @@ uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
     return nullptr;
   }
 
-  for (uiBut *old_but : old_block->buttons) {
+  for (std::unique_ptr<uiBut> &old_but : old_block->buttons) {
     if (old_but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }
-    uiButViewItem *old_item_but = (uiButViewItem *)old_but;
+    uiButViewItem *old_item_but = (uiButViewItem *)old_but.get();
     if (!old_item_but->view_item) {
       continue;
     }
