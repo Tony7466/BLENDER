@@ -753,10 +753,10 @@ std::optional<Span<int>> orig_face_set_data_lookup_grids(const Object &object,
                                                          const bke::pbvh::GridsNode &node);
 
 std::optional<Span<float>> orig_mask_data_lookup_mesh(const Object &object,
-                                                        const bke::pbvh::MeshNode &node);
+                                                      const bke::pbvh::MeshNode &node);
 
 std::optional<Span<float>> orig_mask_data_lookup_grids(const Object &object,
-                                                         const bke::pbvh::GridsNode &node);
+                                                       const bke::pbvh::GridsNode &node);
 
 }
 
