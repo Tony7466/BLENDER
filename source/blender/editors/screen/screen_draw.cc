@@ -241,17 +241,18 @@ static void screen_draw_area_drag_info(
   BLF_size(fstyle->uifont_id, UI_DEFAULT_TOOLTIP_POINTS * scale);
 
   const float margin = scale * 4.0f;
-  const float icon_width = (scale * 16.0f);
+  const float icon_width = (scale * ICON_DEFAULT_WIDTH / 1.4f);
   const float icon_gap = scale * 3.0f;
+  const float line_gap = scale * 5.0f;
   const int lheight = BLF_height_max(fstyle->uifont_id);
   const int descent = BLF_descender(fstyle->uifont_id);
-  const float line1_len = BLF_width(fstyle->uifont_id, area_name.c_str(), area_name.size());
-  const float line2_len = BLF_width(fstyle->uifont_id, hint.c_str(), hint.size());
-  const float width = margin + std::max(line1_len + icon_width + icon_gap, line2_len) + margin;
-  const float height = margin + icon_width + lheight + margin - descent;
+  const float line1_len = BLF_width(fstyle->uifont_id, hint.c_str(), hint.size());
+  const float line2_len = BLF_width(fstyle->uifont_id, area_name.c_str(), area_name.size());
+  const float width = margin + std::max(line1_len, line2_len + icon_width + icon_gap) + margin;
+  const float height = margin + lheight + line_gap + lheight + margin;
 
-  int left = x - int(width * 0.25f);
-  int top = y + int(height - margin);
+  int left = x + int(5.0f * UI_SCALE_FAC);
+  int top = y - int(7.0f * UI_SCALE_FAC);
 
   rctf rect;
   rect.xmin = left;
@@ -262,9 +263,9 @@ static void screen_draw_area_drag_info(
   UI_draw_roundbox_4fv(&rect, true, wcol->roundness * U.widget_unit, col_bg);
 
   UI_icon_draw_ex(left + margin,
-                  top - margin - icon_width,
+                  top - height + margin + (1.0f * scale),
                   icon,
-                  1.0f / scale,
+                  1.4f / scale,
                   1.0f,
                   0.0f,
                   wcol->text,
@@ -272,16 +273,16 @@ static void screen_draw_area_drag_info(
                   UI_NO_ICON_OVERLAY_TEXT);
 
   BLF_size(fstyle->uifont_id, UI_DEFAULT_TOOLTIP_POINTS * scale);
+  BLF_color4fv(fstyle->uifont_id, col_fg);
+
+  BLF_position(fstyle->uifont_id, left + margin, top - margin - lheight + (2.0f * scale), 0.0f);
+  BLF_draw(fstyle->uifont_id, hint.c_str(), hint.size());
 
   BLF_position(fstyle->uifont_id,
                left + margin + icon_width + icon_gap,
-               top - margin - lheight + (2.0f * scale),
+               top - height + margin - descent,
                0.0f);
-  BLF_color4fv(fstyle->uifont_id, col_fg);
   BLF_draw(fstyle->uifont_id, area_name.c_str(), area_name.size());
-
-  BLF_position(fstyle->uifont_id, left + margin, top - height + margin - descent, 0.0f);
-  BLF_draw(fstyle->uifont_id, hint.c_str(), hint.size());
 }
 
 static void screen_draw_area_closed(int xmin, int xmax, int ymin, int ymax)
