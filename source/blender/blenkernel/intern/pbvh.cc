@@ -50,7 +50,7 @@
 
 namespace blender::bke::pbvh {
 
-#define DEBUG_BUILD_TIME
+// #define DEBUG_BUILD_TIME
 #define LEAF_LIMIT 10000
 #define STACK_FIXED_DEPTH 100
 
