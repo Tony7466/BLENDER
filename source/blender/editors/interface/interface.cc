@@ -1021,7 +1021,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
   uiBut *oldbut = ui_but_find_old(oldblock, but);
   UNUSED_VARS(but_old_p);
 #else
-  BLI_assert(*but_old_p == nullptr || BLI_findindex(&oldblock->buttons, *but_old_p) != -1);
+  BLI_assert(find_but(oldblock->buttons, but_old_p) != oldblock->buttons.end());
 
   /* As long as old and new buttons are aligned, avoid loop-in-loop (calling #ui_but_find_old). */
   uiBut *oldbut;
@@ -1982,7 +1982,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     }
 
 #ifndef NDEBUG
-    ui_but_validate(but);
+    ui_but_validate(but.get());
 #endif
   }
 
