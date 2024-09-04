@@ -257,12 +257,16 @@ void ui_region_to_window(const ARegion *region, int *x, int *y)
   *y += region->winrct.ymin;
 }
 
-static const std::unique_ptr<uiBut> *find_but(blender::Span<std::unique_ptr<uiBut>> buttons,
-                                              uiBut *but)
+static int64_t but_index(blender::Span<std::unique_ptr<uiBut>> buttons, uiBut *but)
 {
-  return std::find_if(buttons.begin(), buttons.end(), [but](const std::unique_ptr<uiBut> &test) {
-    return test.get() == but;
-  });
+  BLI_assert(!buttons.is_empty() && but);
+  auto index = std::distance(
+      buttons.begin(),
+      std::find_if(buttons.begin(), buttons.end(), [but](const std::unique_ptr<uiBut> &test) {
+        return test.get() == but;
+      }));
+  BLI_assert(index != std::distance(buttons.begin(), buttons.end()));
+  return index;
 }
 
 void uiBlock::add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
@@ -270,9 +274,7 @@ void uiBlock::add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
   int64_t target_index = this->buttons.size();
 
   if (insert_after) {
-    const std::unique_ptr<uiBut> *itr = find_but(this->buttons.as_span(), insert_after);
-    BLI_assert(itr != this->buttons.end());
-    target_index = itr - this->buttons.begin() + 1;
+    target_index = but_index(this->buttons.as_span(), insert_after) + 1;
   }
 
   but->prev = target_index > 0 ? this->buttons[target_index - 1].get() : nullptr;
@@ -289,10 +291,7 @@ void uiBlock::add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
 
 std::unique_ptr<uiBut> uiBlock::pop_but(uiBut *but)
 {
-  const std::unique_ptr<uiBut> *itr = find_but(this->buttons.as_span(), but);
-  BLI_assert(itr != this->buttons.end());
-  int64_t target_index = itr - this->buttons.begin();
-
+  int64_t target_index = but_index(this->buttons, but);
   std::unique_ptr<uiBut> result = std::move(this->buttons[target_index]);
   this->buttons.remove(target_index);
   if (but->prev) {
@@ -1022,7 +1021,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
   UNUSED_VARS(but_old_p);
 #else
   BLI_assert(*but_old_p == nullptr ||
-             (find_but(oldblock->buttons, *but_old_p) != oldblock->buttons.end()));
+             but_index(oldblock->buttons, *but_old_p) != oldblock->buttons.size());
 
   /* As long as old and new buttons are aligned, avoid loop-in-loop (calling #ui_but_find_old). */
   uiBut *oldbut;
