@@ -3771,10 +3771,7 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 /** \name Clear Recent Files List Operator
  * \{ */
 
-enum ClearRecentInclude {
-  CLEAR_RECENT_ALL,
-  CLEAR_RECENT_MISSING
-};
+enum ClearRecentInclude { CLEAR_RECENT_ALL, CLEAR_RECENT_MISSING };
 
 static const EnumPropertyItem prop_clear_recent_types[] = {
     {CLEAR_RECENT_ALL, "ALL", 0, "All Items", ""},
@@ -3794,7 +3791,6 @@ static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator *op)
 
   if (include == CLEAR_RECENT_ALL) {
     wm_history_files_free();
-    wm_history_file_write();
   }
   else if (include == CLEAR_RECENT_MISSING) {
     LISTBASE_FOREACH_MUTABLE (RecentFile *, recent, &G.recent_files) {
@@ -3802,8 +3798,9 @@ static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator *op)
         BLI_freelinkN(&G.recent_files, recent);
       }
     }
-    wm_history_file_write();
   }
+
+  wm_history_file_write();
 
   return OPERATOR_FINISHED;
 }
