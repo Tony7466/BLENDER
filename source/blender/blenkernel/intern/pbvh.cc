@@ -2013,7 +2013,7 @@ static void calc_mesh_intersect_data(const Span<int> corner_verts,
                                      const float3 &ray_start,
                                      const float3 &ray_normal,
                                      const int tri_index,
-                                     const std::array<const float3 &, 3> co,
+                                     const std::array<const float *, 3> co,
                                      float *depth,
                                      PBVHVertRef *r_active_vertex,
                                      int *r_active_face_index,
@@ -2068,11 +2068,9 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
       if (!hide_poly.is_empty() && hide_poly[corner_tri_faces[tri_i]]) {
         continue;
       }
-      const std::array<const float3 &, 3> co{
-          vert_positions[corner_verts[tri[0]]],
-          vert_positions[corner_verts[tri[1]]],
-          vert_positions[corner_verts[tri[2]]],
-      };
+      const std::array<const float *, 3> co{{vert_positions[corner_verts[tri[0]]],
+                                             vert_positions[corner_verts[tri[1]]],
+                                             vert_positions[corner_verts[tri[2]]]}};
       if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
         hit = true;
         calc_mesh_intersect_data(corner_verts,
@@ -2096,11 +2094,9 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
       if (!hide_poly.is_empty() && hide_poly[corner_tri_faces[tri_i]]) {
         continue;
       }
-      const std::array<const float3 &, 3> co{
-          node_positions[face_verts[0]],
-          node_positions[face_verts[1]],
-          node_positions[face_verts[2]],
-      };
+      const std::array<const float *, 3> co{{node_positions[face_verts[0]],
+                                             node_positions[face_verts[1]],
+                                             node_positions[face_verts[2]]}};
       if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
         hit = true;
         calc_mesh_intersect_data(corner_verts,
@@ -2127,7 +2123,7 @@ static void calc_grids_intersect_data(const CCGKey &key,
                                       const int grid,
                                       const short x,
                                       const short y,
-                                      const std::array<const float3 &, 4> co,
+                                      const std::array<const float *, 4> co,
                                       float *depth,
                                       PBVHVertRef *r_active_vertex,
                                       int *r_active_grid_index,
@@ -2192,10 +2188,10 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
               continue;
             }
           }
-          const std::array<const float3 &, 4> co{CCG_grid_elem_co(key, elem, x, y + 1),
+          const std::array<const float *, 4> co{{CCG_grid_elem_co(key, elem, x, y + 1),
                                                  CCG_grid_elem_co(key, elem, x + 1, y + 1),
                                                  CCG_grid_elem_co(key, elem, x + 1, y),
-                                                 CCG_grid_elem_co(key, elem, x, y)};
+                                                 CCG_grid_elem_co(key, elem, x, y)}};
           if (ray_face_intersection_quad(
                   ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
           {
@@ -2227,10 +2223,10 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
               continue;
             }
           }
-          const std::array<const float3 &, 4> co{grid_positions[(y + 1) * grid_size + x],
-                                                 grid_positions[(y + 1) * grid_size + x + 1],
-                                                 grid_positions[y * grid_size + x + 1],
-                                                 grid_positions[y * grid_size + x]};
+          const std::array<const float *, 4> co{grid_positions[(y + 1) * grid_size + x],
+                                                grid_positions[(y + 1) * grid_size + x + 1],
+                                                grid_positions[y * grid_size + x + 1],
+                                                grid_positions[y * grid_size + x]};
           if (ray_face_intersection_quad(
                   ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
           {
@@ -2431,8 +2427,8 @@ static bool nearest_to_ray_aabb_dist_sq(Node *node,
 
 void find_nearest_to_ray(Tree &pbvh,
                          const FunctionRef<void(Node &node, float *tmin)> fn,
-                         const float ray_start[3],
-                         const float ray_normal[3],
+                         const float3 &ray_start,
+                         const float3 &ray_normal,
                          const bool original)
 {
   const DistRayAABB_Precalc ray_dist_precalc = dist_squared_ray_to_aabb_v3_precalc(ray_start,

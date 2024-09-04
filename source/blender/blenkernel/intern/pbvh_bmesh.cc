@@ -1954,8 +1954,8 @@ bool bmesh_node_raycast_detail(BMeshNode &node,
 }
 
 bool bmesh_node_nearest_to_ray(BMeshNode &node,
-                               const float ray_start[3],
-                               const float ray_normal[3],
+                               const float3 &ray_start,
+                               const float3 &ray_normal,
                                float *depth,
                                float *dist_sq,
                                bool use_original)
