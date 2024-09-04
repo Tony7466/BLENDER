@@ -65,12 +65,11 @@ static const EnumPropertyItem move_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static void cursor_move_character(TextVarsRuntime *text, int offset)
+static void cursor_move_by_character(TextVarsRuntime *text, int offset)
 {
   blender::seq::LineInfo cur_line = text->lines[text->cursor_line];
   /* Move to next line. */
-  if (text->cursor_character + offset >
-          cur_line.characters.size() - 1 &&  // XXX can not position cursor to EOL
+  if (text->cursor_character + offset > cur_line.characters.size() - 1 &&
       text->cursor_line < text->lines.size())
   {
     text->cursor_character = 0;
@@ -79,14 +78,43 @@ static void cursor_move_character(TextVarsRuntime *text, int offset)
   /* Move to previous line. */
   else if (text->cursor_character + offset < 0 && text->cursor_line > 0) {
     text->cursor_line--;
-    text->cursor_character = text->lines[text->cursor_line].characters.size() -
-                             1;  // XXX can not position cursor to EOL
+    text->cursor_character = text->lines[text->cursor_line].characters.size() - 1;
+  }
+  else {
+    text->cursor_character += offset;
+    const int position_max = text->lines[text->cursor_line].characters.size() - 1;
+    text->cursor_character = std::clamp(text->cursor_character, 0, position_max);
+  }
+}
+
+static void cursor_move_by_line(TextVarsRuntime *text, int offset)
+{
+  blender::seq::LineInfo cur_line = text->lines[text->cursor_line];
+  const int cur_pos_x = cur_line.characters[text->cursor_character].position.x;
+
+  const int line_max = text->lines.size() - 1;
+  int new_line_index = std::clamp(text->cursor_line + offset, 0, line_max);
+  blender::seq::LineInfo new_line = text->lines[new_line_index];
+
+  if (text->cursor_line == new_line_index) {
+    return;
   }
 
-  text->cursor_character += offset;
-  const int position_max = text->lines[text->cursor_line].characters.size() -
-                           1;  // XXX can not position cursor to EOL
-  text->cursor_character = std::clamp(text->cursor_character, 0, position_max);
+  /* Find character in another line closest to current position. */
+  int best_distance = std::numeric_limits<int>::max();
+  int best_character_index = 0;
+
+  for (int i : new_line.characters.index_range()) {
+    blender::seq::CharInfo character = new_line.characters[i];
+    const int distance = std::abs(character.position.x - cur_pos_x);
+    if (distance < best_distance) {
+      best_distance = distance;
+      best_character_index = i;
+    }
+  }
+
+  text->cursor_character = best_character_index;
+  text->cursor_line = new_line_index;
 }
 
 static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
@@ -104,16 +132,16 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
 
   switch (type) {
     case PREV_CHAR:
-      cursor_move_character(text, -1);
+      cursor_move_by_character(text, -1);
       break;
     case NEXT_CHAR:
-      cursor_move_character(text, 1);
+      cursor_move_by_character(text, 1);
       break;
     case PREV_LINE:
-      // line_offset = -1;
+      cursor_move_by_line(text, -1);
       break;
     case NEXT_LINE:
-      // line_offset = 1;
+      cursor_move_by_line(text, 1);
       break;
   }
 

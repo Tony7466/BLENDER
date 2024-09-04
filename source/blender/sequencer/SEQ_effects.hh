@@ -118,6 +118,7 @@ struct TextVarsRuntime {
 
   rcti text_boundbox;
   int line_height;
+  int font_descender;
   int character_count;
   int font;
 
