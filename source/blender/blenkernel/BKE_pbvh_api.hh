@@ -96,6 +96,10 @@ class Node {
 };
 
 struct MeshNode : public Node {
+  /**
+   * Global vertices are mapped to local indices with a vector set, with a specialized type in
+   * order to use 32 bit integers for slot values.
+   */
   using LocalVertMap = VectorSet<int,
                                  DefaultProbingStrategy,
                                  DefaultHash<int>,
@@ -106,7 +110,8 @@ struct MeshNode : public Node {
   /** Indices into the #Mesh::faces() array. Refers to a subset of Tree::prim_indices_. */
   Span<int> face_indices_;
 
-  /* Array of indices into the mesh's vertex array. Contains the
+  /**
+   * Array of indices into the mesh's vertex array. Contains the
    * indices of all vertices used by faces that are within this
    * node's bounding box.
    *
@@ -124,6 +129,8 @@ struct MeshNode : public Node {
    * be above that node's 'uniq_verts' value.
    *
    * Used for leaf nodes.
+   *
+   * \todo Find a way to disable the #VectorSet inline buffer.
    */
   LocalVertMap vert_indices_;
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
