@@ -1163,20 +1163,6 @@ static bool rna_HookModifier_object_override_apply(Main *bmain,
   return true;
 }
 
-static void rna_BevelModifier_edge_weight_name_set(PointerRNA *ptr, const char *value)
-{
-  BevelModifierData *bmd = static_cast<BevelModifierData *>(ptr->data);
-
-  STRNCPY(bmd->edge_weight_name, value);
-}
-
-static void rna_BevelModifier_vertex_weight_name_set(PointerRNA *ptr, const char *value)
-{
-  BevelModifierData *bmd = static_cast<BevelModifierData *>(ptr->data);
-
-  STRNCPY(bmd->vertex_weight_name, value);
-}
-
 static void rna_HookModifier_subtarget_set(PointerRNA *ptr, const char *value)
 {
   Object *owner = (Object *)ptr->owner_id;
