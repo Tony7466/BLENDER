@@ -241,10 +241,14 @@ void add_curves(bke::CurvesGeometry &curves, const Span<int> new_sizes)
 
   /* Initialize new attribute values, since #CurvesGeometry::resize() doesn't do that. */
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::fill_attribute_range_default(
-      attributes, bke::AttrDomain::Point, {}, curves.points_range().drop_front(orig_points_num));
-  bke::fill_attribute_range_default(
-      attributes, bke::AttrDomain::Curve, {}, curves.curves_range().drop_front(orig_curves_num));
+  bke::fill_attribute_range_default(attributes,
+                                    bke::AttrDomain::Point,
+                                    bke::ProcessAllAttributes,
+                                    curves.points_range().drop_front(orig_points_num));
+  bke::fill_attribute_range_default(attributes,
+                                    bke::AttrDomain::Curve,
+                                    bke::ProcessAllAttributes,
+                                    curves.curves_range().drop_front(orig_curves_num));
 
   curves.update_curve_types();
 }

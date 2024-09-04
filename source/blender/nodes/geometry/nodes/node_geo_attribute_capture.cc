@@ -169,8 +169,7 @@ static void node_operators()
   WM_operatortype_append(NODE_OT_capture_attribute_item_move);
 }
 
-static void clean_unused_attributes(const AnonymousAttributePropagationInfo &propagation_info,
-                                    const Set<StringRef> &skip,
+static void clean_unused_attributes(const AttributeFilter &attribute_filter,
                                     GeometryComponent &component)
 {
   std::optional<MutableAttributeAccessor> attributes = component.attributes_for_write();
@@ -183,10 +182,7 @@ static void clean_unused_attributes(const AnonymousAttributePropagationInfo &pro
     if (!bke::attribute_name_is_anonymous(id)) {
       return true;
     }
-    if (skip.contains(id)) {
-      return true;
-    }
-    if (propagation_info.propagate(id)) {
+    if (!bke::allow_skipping_attribute(attribute_filter, id)) {
       return true;
     }
     unused_ids.append(id);
@@ -250,8 +246,9 @@ static void node_geo_exec(GeoNodeExecParams params)
     bke::try_capture_fields_on_geometry(component, attribute_ids, domain, fields);
     /* Changing of the anonymous attributes may require removing attributes that are no longer
      * needed. */
-    clean_unused_attributes(
-        params.get_output_propagation_info("Geometry"), used_attribute_ids_set, component);
+    clean_unused_attributes(bke::attribute_filter_with_extra_skip_set_ref(
+                                params.get_attribute_filter("Geometry"), used_attribute_ids_set),
+                            component);
   };
 
   /* Run on the instances component separately to only affect the top level of instances. */

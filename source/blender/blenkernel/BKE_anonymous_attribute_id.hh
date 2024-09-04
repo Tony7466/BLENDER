@@ -25,27 +25,4 @@ class AnonymousAttributeSet {
   std::shared_ptr<Set<std::string>> names;
 };
 
-/**
- * Can be passed to algorithms which propagate attributes. It can tell the algorithm which
- * anonymous attributes should be propagated and can be skipped.
- */
-class AnonymousAttributePropagationInfo {
- public:
-  /**
-   * This uses `std::shared_ptr` because it's usually initialized from an #AnonymousAttributeSet
-   * and then the set doesn't have to be copied.
-   */
-  std::shared_ptr<Set<std::string>> names;
-
-  /**
-   * Propagate all anonymous attributes even if the set above is empty.
-   */
-  bool propagate_all = true;
-
-  /**
-   * Return true when the anonymous attribute should be propagated and false otherwise.
-   */
-  bool propagate(StringRef anonymous_id) const;
-};
-
 }  // namespace blender::bke

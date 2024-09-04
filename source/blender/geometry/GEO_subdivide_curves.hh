@@ -8,6 +8,7 @@
 #include "BLI_index_mask.hh"
 #include "BLI_virtual_array.hh"
 
+#include "BKE_attribute_filter.hh"
 #include "BKE_curves.hh"
 
 namespace blender::geometry {
@@ -23,6 +24,6 @@ bke::CurvesGeometry subdivide_curves(
     const bke::CurvesGeometry &src_curves,
     const IndexMask &selection,
     const VArray<int> &cuts,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
 
 }  // namespace blender::geometry

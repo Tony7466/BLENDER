@@ -8,6 +8,8 @@
 
 #include "BLI_index_mask.hh"
 
+#include "BKE_attribute_filter.hh"
+
 struct Mesh;
 namespace blender {
 namespace fn {
@@ -15,7 +17,6 @@ template<typename T> class Field;
 }
 namespace bke {
 enum class AttrDomain : int8_t;
-class AnonymousAttributePropagationInfo;
 }  // namespace bke
 }  // namespace blender
 
@@ -25,18 +26,18 @@ std::optional<Mesh *> mesh_copy_selection(
     const Mesh &src_mesh,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
 
 std::optional<Mesh *> mesh_copy_selection_keep_verts(
     const Mesh &src_mesh,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
 
 std::optional<Mesh *> mesh_copy_selection_keep_edges(
     const Mesh &mesh,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter = bke::ProcessAllAttributes);
 
 }  // namespace blender::geometry
