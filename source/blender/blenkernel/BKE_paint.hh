@@ -196,8 +196,8 @@ eObjectMode BKE_paint_object_mode_from_paintmode(PaintMode mode);
 bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode);
 Paint *BKE_paint_get_active_from_paintmode(Scene *sce, PaintMode mode);
 const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
-uint BKE_paint_get_brush_tool_offset_from_paintmode(PaintMode mode);
-std::optional<int> BKE_paint_get_brush_tool_from_obmode(const Brush *brush,
+uint BKE_paint_get_brush_type_offset_from_paintmode(PaintMode mode);
+std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
                                                         const eObjectMode ob_mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
@@ -693,7 +693,7 @@ void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene);
 
 blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
 
-void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
+void BKE_sculpt_sync_face_visibility_to_grids(const Mesh &mesh, SubdivCCG &subdiv_ccg);
 
 /**
  * Test if blender::bke::pbvh::Tree can be used directly for drawing, which is faster than
