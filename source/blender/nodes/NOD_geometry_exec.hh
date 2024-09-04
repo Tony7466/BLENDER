@@ -59,20 +59,12 @@ using geo_eval_log::NodeWarningType;
 
 class NodeAttributeFilter : public AttributeFilter {
  private:
-  FunctionRef<AttributeFilter::Result(int socket_index, StringRef attribute_name)> fn_;
-  int socket_index_;
+  const bke::AnonymousAttributeSet &set_;
 
  public:
-  NodeAttributeFilter(const FunctionRef<AttributeFilter::Result(int, StringRef)> fn,
-                      const int socket_index)
-      : fn_(fn), socket_index_(socket_index)
-  {
-  }
+  NodeAttributeFilter(const bke::AnonymousAttributeSet &set) : set_(set) {}
 
-  Result filter(const StringRef attribute_name) const override
-  {
-    return fn_(socket_index_, attribute_name);
-  }
+  Result filter(StringRef attribute_name) const override;
 };
 
 class GeoNodeExecParams {
@@ -83,8 +75,6 @@ class GeoNodeExecParams {
   const Span<int> lf_input_for_output_bsocket_usage_;
   const Span<int> lf_input_for_attribute_propagation_to_output_;
   const FunctionRef<std::string(int)> get_output_attribute_id_;
-  const FunctionRef<AttributeFilter::Result(int socket_index, StringRef name)>
-      filter_attributes_fn_;
 
  public:
   GeoNodeExecParams(const bNode &node,
@@ -92,17 +82,14 @@ class GeoNodeExecParams {
                     const lf::Context &lf_context,
                     const Span<int> lf_input_for_output_bsocket_usage,
                     const Span<int> lf_input_for_attribute_propagation_to_output,
-                    const FunctionRef<std::string(int)> get_output_attribute_id,
-                    const FunctionRef<AttributeFilter::Result(int socket_index, StringRef name)>
-                        filter_attributes_fn)
+                    const FunctionRef<std::string(int)> get_output_attribute_id)
       : node_(node),
         params_(params),
         lf_context_(lf_context),
         lf_input_for_output_bsocket_usage_(lf_input_for_output_bsocket_usage),
         lf_input_for_attribute_propagation_to_output_(
             lf_input_for_attribute_propagation_to_output),
-        get_output_attribute_id_(get_output_attribute_id),
-        filter_attributes_fn_(filter_attributes_fn)
+        get_output_attribute_id_(get_output_attribute_id)
   {
   }
 
@@ -305,12 +292,17 @@ class GeoNodeExecParams {
     return get_output_attribute_id_(output_socket.index());
   }
 
+  /**
+   * Get information about which attributes should be propagated to the given output.
+   */
   NodeAttributeFilter get_attribute_filter(const StringRef output_identifier) const
   {
-    const bNodeSocket &socket = node_.output_by_identifier(output_identifier);
-    BLI_assert(socket.type == SOCK_GEOMETRY);
-    const int output_index = socket.index();
-    return NodeAttributeFilter{filter_attributes_fn_, output_index};
+    const int lf_index =
+        lf_input_for_attribute_propagation_to_output_[node_.output_by_identifier(output_identifier)
+                                                          .index_in_all_outputs()];
+    const bke::AnonymousAttributeSet &set = params_.get_input<bke::AnonymousAttributeSet>(
+        lf_index);
+    return NodeAttributeFilter(set);
   }
 
  private:

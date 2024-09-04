@@ -241,40 +241,13 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       return this->anonymous_attribute_name_for_output(*user_data, i);
     };
 
-    Array<const bke::AnonymousAttributeSet *, 10> anonymous_attribute_sets(
-        node_.output_sockets().size(), nullptr);
-
-    auto allow_attribute_skip_fn = [&](const int socket_index, const StringRef name) {
-      if (!bke::attribute_name_is_anonymous(name)) {
-        return AttributeFilter::Result::Process;
-      }
-      if (anonymous_attribute_sets[socket_index] == nullptr) {
-        const bNodeSocket &socket = node_.output_socket(socket_index);
-        const int lf_index =
-            own_lf_graph_info_.mapping
-                .lf_input_index_for_attribute_propagation_to_output[socket.index_in_all_outputs()];
-        const bke::AnonymousAttributeSet *set = &params.get_input<bke::AnonymousAttributeSet>(
-            lf_index);
-        anonymous_attribute_sets[socket_index] = set;
-      }
-      const bke::AnonymousAttributeSet &set = *anonymous_attribute_sets[socket_index];
-      if (!set.names) {
-        return AttributeFilter::Result::AllowSkip;
-      }
-      if (set.names->contains(name)) {
-        return AttributeFilter::Result::Process;
-      }
-      return AttributeFilter::Result::AllowSkip;
-    };
-
     GeoNodeExecParams geo_params{
         node_,
         params,
         context,
         own_lf_graph_info_.mapping.lf_input_index_for_output_bsocket_usage,
         own_lf_graph_info_.mapping.lf_input_index_for_attribute_propagation_to_output,
-        get_anonymous_attribute_name,
-        allow_attribute_skip_fn};
+        get_anonymous_attribute_name};
 
     geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
     node_.typeinfo->geometry_node_execute(geo_params);
