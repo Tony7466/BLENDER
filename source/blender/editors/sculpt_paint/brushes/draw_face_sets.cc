@@ -173,8 +173,6 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
   const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
 
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
   bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);

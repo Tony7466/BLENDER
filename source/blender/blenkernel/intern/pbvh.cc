@@ -50,7 +50,7 @@
 
 namespace blender::bke::pbvh {
 
-// #define DEBUG_BUILD_TIME
+#define DEBUG_BUILD_TIME
 #define LEAF_LIMIT 10000
 #define STACK_FIXED_DEPTH 100
 
@@ -138,6 +138,28 @@ static int partition_prim_indices(MutableSpan<int> face_indices,
   return lo2;
 }
 
+static int partition_indices_material_faces(MutableSpan<int> face_indices,
+                                            const Span<int> material_indices,
+                                            const int lo,
+                                            const int hi)
+{
+  int i = lo, j = hi;
+  for (;;) {
+    const int first = face_indices[lo];
+    for (; face_materials_match(material_indices, first, face_indices[i]); i++) {
+      /* pass */
+    }
+    for (; !face_materials_match(material_indices, first, face_indices[j]); j--) {
+      /* pass */
+    }
+    if (!(i < j)) {
+      return i;
+    }
+    std::swap(face_indices[i], face_indices[j]);
+    i++;
+  }
+}
+
 /* Returns the index of the first element on the right of the partition */
 static int partition_indices_material_faces(MutableSpan<int> indices,
                                             const Span<int> prim_to_face_map,
@@ -158,28 +180,6 @@ static int partition_indices_material_faces(MutableSpan<int> indices,
       return i;
     }
     std::swap(indices[i], indices[j]);
-    i++;
-  }
-}
-
-static int partition_indices_material_faces(MutableSpan<int> face_indices,
-                                            const Span<int> material_indices,
-                                            const int lo,
-                                            const int hi)
-{
-  int i = lo, j = hi;
-  for (;;) {
-    const int first = face_indices[lo];
-    for (; face_materials_match(material_indices, first, face_indices[i]); i++) {
-      /* pass */
-    }
-    for (; !face_materials_match(material_indices, first, face_indices[j]); j--) {
-      /* pass */
-    }
-    if (!(i < j)) {
-      return i;
-    }
-    std::swap(face_indices[i], face_indices[j]);
     i++;
   }
 }
@@ -253,24 +253,15 @@ static bool leaf_needs_material_split(const Span<int> prim_indices,
 
 static bool leaf_needs_material_split(const Span<int> face_indices,
                                       const Span<int> material_indices,
-                                      int offset,
-                                      int count)
+                                      const IndexRange prim_range)
 {
   if (material_indices.is_empty()) {
     return false;
   }
-
-  if (count <= 1) {
-    return false;
-  }
-
-  const int first = face_indices[offset];
-  for (int i = offset + count - 1; i > offset; i--) {
-    if (material_indices[face_indices[i]] != material_indices[first]) {
-      return true;
-    }
-  }
-
+  const int first = material_indices[face_indices[prim_range.first()]];
+  return std::any_of(prim_range.begin(), prim_range.end(), [&](const int i) {
+    return material_indices[face_indices[i]] != first;
+  });
   return false;
 }
 
@@ -291,7 +282,9 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
   /* Decide whether this is a leaf or not */
   const bool below_leaf_limit = prims_num <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
   if (below_leaf_limit) {
-    if (!leaf_needs_material_split(prim_indices, material_indices, prim_offset, prims_num)) {
+    if (!leaf_needs_material_split(
+            prim_indices, material_indices, IndexRange(prim_offset, prims_num)))
+    {
       MeshNode &node = nodes[node_index];
       node.flag_ |= PBVH_Leaf;
       node.face_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
@@ -366,6 +359,16 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                              nodes);
 }
 
+inline Bounds<float3> calc_face_bounds(const Span<float3> vert_positions,
+                                       const Span<int> face_verts)
+{
+  Bounds<float3> bounds{vert_positions[face_verts.first()]};
+  for (const int vert : face_verts.slice(1, face_verts.size() - 1)) {
+    math::min_max(vert_positions[vert], bounds.min, bounds.max);
+  }
+  return bounds;
+}
+
 std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
 {
 #ifdef DEBUG_BUILD_TIME
@@ -390,13 +393,8 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
         for (const int i : range) {
-          const Span<int> face_verts = corner_verts.slice(faces[i]);
-          Bounds<float3> &bounds = prim_bounds[i];
-          bounds = {vert_positions[face_verts.first()]};
-          for (const int vert : face_verts.slice(1, face_verts.size() - 1)) {
-            math::min_max(vert_positions[vert], bounds.min, bounds.max);
-          }
-          current = bounds::merge(current, bounds);
+          prim_bounds[i] = calc_face_bounds(vert_positions, corner_verts.slice(faces[i]));
+          current = bounds::merge(current, prim_bounds[i]);
         }
         return current;
       },

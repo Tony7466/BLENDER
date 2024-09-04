@@ -1274,7 +1274,6 @@ static void restore_face_set_from_undo_step(Object &object)
 
   switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
       bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(object);
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
