@@ -64,6 +64,8 @@ struct DRWShaderCompiler {
   std::atomic<bool> stop;
 };
 
+/** NOTE: While the `BLI_threads` API requires a List,
+ * we only create a single thread at application startup and delete it at exit. */
 static ListBase compilation_threadpool = {};
 static DRWShaderCompiler compiler_data = {};
 
@@ -208,6 +210,8 @@ void DRW_shader_exit()
   compiler_data.queue_cv.notify_one();
   BLI_threadpool_end(&compilation_threadpool);
 
+  /* Revert the queued state for the materials that has not been compiled.
+   * Note that this is not strictly needed since this function is called at program exit. */
   {
     std::scoped_lock queue_lock(compiler_data.queue_mutex);
 
