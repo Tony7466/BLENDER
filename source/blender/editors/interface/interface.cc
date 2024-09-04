@@ -1021,7 +1021,8 @@ static bool ui_but_update_from_old_block(const bContext *C,
   uiBut *oldbut = ui_but_find_old(oldblock, but);
   UNUSED_VARS(but_old_p);
 #else
-  BLI_assert(find_but(oldblock->buttons, but_old_p) != oldblock->buttons.end());
+  BLI_assert(*but_old_p == nullptr ||
+             (find_but(oldblock->buttons, *but_old_p) != oldblock->buttons.end()));
 
   /* As long as old and new buttons are aligned, avoid loop-in-loop (calling #ui_but_find_old). */
   uiBut *oldbut;

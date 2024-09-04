@@ -9396,7 +9396,6 @@ static void foreach_semi_modal_but_as_active(bContext *C,
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     for (std::unique_ptr<uiBut> &but : block->buttons) {
       if ((but->flag2 & UI_BUT2_FORCE_SEMI_MODAL_ACTIVE) || but->semi_modal_state) {
-        uiBut *raw_but = but.get();
         with_but_active_as_semi_modal(C, region, but.get(), [&]() { fn(but.get()); });
       }
     }

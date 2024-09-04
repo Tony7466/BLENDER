@@ -932,7 +932,7 @@ static void ui_item_enum_expand_tabs(uiLayout *layout,
   int start_size = block->buttons.size();
 
   ui_item_enum_expand_exec(layout, block, ptr, prop, uiname, h, UI_BTYPE_TAB, icon_only);
-  BLI_assert(last != block->buttons.last);
+  BLI_assert(start_size != block->buttons.size());
 
   for (int idx = start_size; idx < block->buttons.size(); idx++) {
     uiBut *tab = block->buttons[idx].get();
