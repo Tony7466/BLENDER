@@ -78,14 +78,8 @@ void main()
   vec4 wPos[4];
 
   for (int v = 0; v < 4; v++) {
-    do_vertex_shader(in_inst_obmat,
-                     in_pos[v],
-                     pPos[v],
-                     vPos[v],
-                     ssPos[v],
-                     vColSize[v],
-                     inverted[v],
-                     wPos[v]);
+    do_vertex_shader(
+        in_inst_obmat, in_pos[v], pPos[v], vPos[v], ssPos[v], vColSize[v], inverted[v], wPos[v]);
   }
 
   /* Geometry Shader equivalent to calculate vertex output position. */
