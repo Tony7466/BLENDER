@@ -3785,7 +3785,7 @@ static const EnumPropertyItem prop_clear_recent_types[] = {
 static int wm_clear_recent_files_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   return WM_operator_props_popup_confirm_ex(
-      C, op, event, IFACE_("Clear items from the recent files list"), IFACE_("Remove"));
+      C, op, event, IFACE_("Clear Recent Files List"), IFACE_("Remove"));
 }
 
 static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator *op)
