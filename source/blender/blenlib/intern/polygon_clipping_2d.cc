@@ -76,7 +76,7 @@ static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<floa
   BooleanResult result;
 
   result.verts = {};
-  result.offsets = {};
+  result.offsets = {0};
   result.intersections_data = {};
   result.valid_geometry = true;
 
