@@ -21,11 +21,12 @@
 #include "RNA_define.hh"
 
 #include "ED_curves.hh"
+#include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "ED_grease_pencil.hh"
+#include "GEO_smooth_curves.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -471,86 +472,17 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      const OffsetIndices points_by_curve = curves.points_by_curve();
-      const VArray<bool> cyclic = curves.cyclic();
-      MutableSpan<MDeformVert> deform_verts = curves.deform_verts_for_write();
-      const Span<float3> positions = curves.positions();
-
       bke::SpanAttributeWriter<float> weights = attributes.lookup_for_write_span<float>(
           object_defgroup->name);
-      Array<float> smoothed_weights(weights.span.size());
-      Array<float> distance_to_next(curves.points_num());
-
-      /* Smooth all strokes in the drawing. */
-      threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange curves_range) {
-        const IndexRange points_of_curves = IndexRange(
-            points_by_curve[curves_range.first()].first(),
-            points_by_curve[curves_range.last()].last() -
-                points_by_curve[curves_range.first()].first() + 1);
-
-        /* Calculate the distance between stroke points. This distance is used in averaging the
-         * weights of the points. */
-        for (const int curve : curves_range) {
-          const IndexRange points = points_by_curve[curve];
-          for (const int point : points) {
-            const int next_point = point < points.last() ? (point + 1) : points.first();
-            distance_to_next[point] = math::length(positions[next_point] - positions[point]);
-          }
-        }
-
-        for ([[maybe_unused]] const int iteration : IndexRange(repeat)) {
-          for (const int curve : curves_range) {
-            const IndexRange points = points_by_curve[curve];
-            for (const int point : points) {
-              /* Smooth the point weight by averaging it with the weights of the neighboring
-               * points. */
-              const int prev_point = point > points.first() ? (point - 1) :
-                                                              (cyclic[curve] ? points.last() : -1);
-              const int next_point = point < points.last() ? (point + 1) :
-                                                             (cyclic[curve] ? points.first() : -1);
-              float smoothed_weight_sum = weights.span[point];
-              int smoothed_count = 1;
-
-              if (prev_point != -1 && next_point != -1) {
-                /* Calculate a weighted average, based on the distance of the neighboring points.
-                 * Close neighbors weigh more in the average.
-                 * Example: when the distance to point A is 1.0 and the distance of point B is 3.0,
-                 * the vertex weight of point A counts for 1.5 in the average and the vertex weight
-                 * of point B for 0.5.
-                 * The center point always counts for 1.
-                 */
-                const float average_distance = (distance_to_next[prev_point] +
-                                                distance_to_next[point]) *
-                                               0.5f;
-                if (average_distance != 0.0f) {
-                  smoothed_weight_sum += weights.span[prev_point] * distance_to_next[point] /
-                                         average_distance;
-                  smoothed_weight_sum += weights.span[next_point] * distance_to_next[prev_point] /
-                                         average_distance;
-                }
-                else {
-                  smoothed_weight_sum += weights.span[prev_point] + weights.span[next_point];
-                }
-                smoothed_count = 3;
-              }
-              else if (prev_point != -1) {
-                smoothed_weight_sum += weights.span[prev_point];
-                smoothed_count = 2;
-              }
-              else if (next_point != -1) {
-                smoothed_weight_sum += weights.span[next_point];
-                smoothed_count = 2;
-              }
-              smoothed_weights[point] = math::interpolate(
-                  weights.span[point], smoothed_weight_sum / float(smoothed_count), smooth_factor);
-            }
-          }
-
-          weights.span.slice(points_of_curves)
-              .copy_from(smoothed_weights.as_span().slice(points_of_curves));
-        }
-      });
-
+      geometry::smooth_curve_attribute(curves.curves_range(),
+                                       curves.points_by_curve(),
+                                       VArray<bool>::ForSingle(true, curves.points_num()),
+                                       curves.cyclic(),
+                                       repeat,
+                                       smooth_factor,
+                                       true,
+                                       false,
+                                       weights.span);
       weights.finish();
     }
   });
