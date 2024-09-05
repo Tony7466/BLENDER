@@ -2743,7 +2743,7 @@ int ED_path_extension_type(const char *path)
 
   /* NOTE: While `.ttc` & `.otc` files can be loaded, only a single "face" is supported,
    * users will have to extract bold/italic etc manually for Blender to use them, see #44254. */
-  if (BLI_path_extension_check_n(path, ".ttf", ".pfb", ".otf", ".woff", ".woff2", nullptr)) {
+  if (BLI_path_extension_check_n(path, ".ttf", ".ttc", ".pfb", ".otf", ".woff", ".woff2", nullptr)) {
     return FILE_TYPE_FTFONT;
   }
   if (BLI_path_extension_check(path, ".btx")) {

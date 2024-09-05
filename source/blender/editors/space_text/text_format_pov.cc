@@ -671,6 +671,7 @@ static const char *text_format_pov_literals_bool_data[] = {
     "tga",
     "tiff",
     "true",
+    "ttc",
     "ttf",
     "uint16be",
     "uint16le",
