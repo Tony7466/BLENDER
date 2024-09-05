@@ -22,10 +22,9 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -38,7 +37,7 @@
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ***************** Convert old 2.7 files to 2.8 ************************ */
 static bool gpencil_convert_old_files_poll(bContext *C)

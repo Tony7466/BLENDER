@@ -5,17 +5,14 @@
 set(INC
   ../include
   ../../asset_system
-  ../../blenfont
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/clog
   ../../../../intern/eigen
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -35,27 +32,30 @@ set(SRC
   editarmature_undo.cc
   meshlaplacian.cc
   pose_edit.cc
-  pose_group.cc
   pose_lib_2.cc
   pose_select.cc
   pose_slide.cc
   pose_transform.cc
   pose_utils.cc
 
-  armature_intern.h
+  armature_intern.hh
   meshlaplacian.h
 )
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::extern::fmtlib
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 
 
 blender_add_lib(bf_editor_armature "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_editor_armature bf_rna)

@@ -19,14 +19,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_context.h"
-#include "GPU_state.h"
+#include "GPU_context.hh"
+#include "GPU_state.hh"
 
 #include "py_capi_utils.h"
 
-#include "BKE_global.h"
-
-#include "../generic/py_capi_utils.h"
+#include "BKE_global.hh"
 
 #include <epoxy/gl.h>
 
@@ -51,7 +49,7 @@ static void report_deprecated_call(const char *function_name)
   }
   char message[256];
   SNPRINTF(message,
-           "'bgl.gl%s' is deprecated and will be removed in Blender 4.0. Report or update your "
+           "'bgl.gl%s' is deprecated and will not work on all platforms. Report or update your "
            "script to use 'gpu' module.",
            function_name);
   CLOG_WARN(&LOG, "%s", message);
@@ -208,19 +206,19 @@ struct BufferOrOffset {
 #define GLenum_str "i"
 #define GLenum_var(num) bgl_var##num
 #define GLenum_ref(num) &bgl_var##num
-#define GLenum_def(num) /* unsigned */ int GLenum_var(num)
+#define GLenum_def(num) /*unsigned*/ int GLenum_var(num)
 
 /* Type: `typedef uint GLboolean`. */
 #define GLboolean_str "b"
 #define GLboolean_var(num) bgl_var##num
 #define GLboolean_ref(num) &bgl_var##num
-#define GLboolean_def(num) /* unsigned */ char GLboolean_var(num)
+#define GLboolean_def(num) /*unsigned*/ char GLboolean_var(num)
 
 /* Type: `typedef uint GLbitfield`. */
 #define GLbitfield_str "i"
 #define GLbitfield_var(num) bgl_var##num
 #define GLbitfield_ref(num) &bgl_var##num
-#define GLbitfield_def(num) /* unsigned */ int GLbitfield_var(num)
+#define GLbitfield_def(num) /*unsigned*/ int GLbitfield_var(num)
 
 #if 0
 /* Type: `typedef signed char GLbyte`. */
@@ -264,28 +262,28 @@ struct BufferOrOffset {
 #define GLubyte_str "B"
 #define GLubyte_var(num) bgl_var##num
 #define GLubyte_ref(num) &bgl_var##num
-#define GLubyte_def(num) /* unsigned */ char GLubyte_var(num)
+#define GLubyte_def(num) /*unsigned*/ char GLubyte_var(num)
 
 #if 0
 /* Type: `typedef ushort GLushort`. */
 #  define GLushort_str "H"
 #  define GLushort_var(num) bgl_var##num
 #  define GLushort_ref(num) &bgl_var##num
-#  define GLushort_def(num) /* unsigned */ short GLushort_var(num)
+#  define GLushort_def(num) /*unsigned*/ short GLushort_var(num)
 #endif
 
 /* Type: `typedef uint GLuint`. */
 #define GLuint_str "I"
 #define GLuint_var(num) bgl_var##num
 #define GLuint_ref(num) &bgl_var##num
-#define GLuint_def(num) /* unsigned */ int GLuint_var(num)
+#define GLuint_def(num) /*unsigned*/ int GLuint_var(num)
 
 /* Type: `typedef uint GLuint64`. */
 #if 0
 #  define GLuint64_str "Q"
 #  define GLuint64_var(num) bgl_var##num
 #  define GLuint64_ref(num) &bgl_var##num
-#  define GLuint64_def(num) /* unsigned */ int GLuint64_var(num)
+#  define GLuint64_def(num) /*unsigned*/ int GLuint64_var(num)
 #endif
 
 /* Type: `typedef uint GLsync`. */
@@ -293,7 +291,7 @@ struct BufferOrOffset {
 #  define GLsync_str "I"
 #  define GLsync_var(num) bgl_var##num
 #  define GLsync_ref(num) &bgl_var##num
-#  define GLsync_def(num) /* unsigned */ int GLsync_var(num)
+#  define GLsync_def(num) /*unsigned*/ int GLsync_var(num)
 #endif
 
 /* Type: `typedef float GLfloat`. */
@@ -686,7 +684,7 @@ PyTypeObject BGL_bufferType = {
 };
 
 static Buffer *BGL_MakeBuffer_FromData(
-    PyObject *parent, int type, int ndimensions, int *dimensions, void *buf)
+    PyObject *parent, int type, int ndimensions, const int *dimensions, void *buf)
 {
   Buffer *buffer = (Buffer *)PyObject_NEW(Buffer, &BGL_bufferType);
 
@@ -702,7 +700,7 @@ static Buffer *BGL_MakeBuffer_FromData(
   return buffer;
 }
 
-Buffer *BGL_MakeBuffer(int type, int ndimensions, int *dimensions, void *initbuffer)
+Buffer *BGL_MakeBuffer(int type, int ndimensions, const int *dimensions, const void *initbuffer)
 {
   Buffer *buffer;
   void *buf = nullptr;
@@ -2675,7 +2673,7 @@ PyObject *BPyInit_bgl()
   if (GPU_backend_get_type() != GPU_BACKEND_OPENGL) {
     CLOG_WARN(&LOG,
               "'bgl' imported without an OpenGL backend. Please update your add-ons to use the "
-              "'gpu' module. In Blender 4.0 'bgl' will be removed.");
+              "'gpu' module.");
   }
 #endif
 

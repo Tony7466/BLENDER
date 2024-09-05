@@ -86,6 +86,12 @@ class GHOST_WindowCocoa : public GHOST_Window {
   std::string getTitle() const;
 
   /**
+   * Sets the file name represented by this window.
+   * \param filepath: The file directory.
+   */
+  GHOST_TSuccess setPath(const char *filepath);
+
+  /**
    * Returns the window rectangle dimensions.
    * The dimensions are given in screen coordinates that are
    * relative to the upper-left corner of the screen.
@@ -211,7 +217,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    */
   GHOST_TSuccess endProgressBar();
 
-  void setNativePixelSize(void);
+  void setNativePixelSize();
 
   GHOST_TSuccess beginFullScreen() const
   {
@@ -234,7 +240,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
   {
     m_immediateDraw = value;
   }
-  bool getImmediateDraw(void) const
+  bool getImmediateDraw() const
   {
     return m_immediateDraw;
   }

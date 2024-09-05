@@ -8,10 +8,10 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_main_namemap.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_main_namemap.hh"
 
 #include "DNA_ID.h"
 #include "DNA_mesh_types.h"
@@ -137,6 +137,24 @@ TEST(lib_id_main_unique_name, local_ids_1)
   EXPECT_TRUE(BKE_main_namemap_validate(ctx.bmain));
 
   EXPECT_EQ(ctx.bmain->name_map_global, nullptr);
+
+  /* Test lower-level #BKE_main_namemap_get_name itself. */
+  /* Name already in use, needs additional numeric suffix. */
+  char future_name[MAX_ID_NAME - 2];
+  STRNCPY(future_name, "OB_B");
+  EXPECT_TRUE(BKE_main_namemap_get_name(ctx.bmain, id_c, future_name, false));
+  EXPECT_STREQ(future_name, "OB_B.001");
+  /* Name not already in use, no need to alter it. */
+  STRNCPY(future_name, "OB_BBBB");
+  EXPECT_FALSE(BKE_main_namemap_get_name(ctx.bmain, id_c, future_name, false));
+  EXPECT_STREQ(future_name, "OB_BBBB");
+  /* Name too long, needs to be truncated. */
+  STRNCPY(future_name, "OB_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+  change_name(ctx.bmain, id_a, future_name);
+  EXPECT_STREQ(id_a->name + 2, future_name);
+  EXPECT_STREQ(future_name, "OB_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+  EXPECT_TRUE(BKE_main_namemap_get_name(ctx.bmain, id_c, future_name, false));
+  EXPECT_STREQ(future_name, "OB_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
 }
 
 TEST(lib_id_main_unique_name, linked_ids_1)
@@ -440,7 +458,7 @@ TEST(lib_id_main_unique_name, name_number_suffix_assignment)
 
   EXPECT_TRUE(BKE_main_namemap_validate(ctx.bmain));
 
-  /* Create objects again; they should get suffixes that were just free'd up. */
+  /* Create objects again; they should get suffixes that were just freed up. */
   ID *id_010 = static_cast<ID *>(BKE_id_new(ctx.bmain, ID_OB, "Foo"));
   EXPECT_STREQ(id_010->name + 2, "Foo.010");
   ID *id_020 = static_cast<ID *>(BKE_id_new(ctx.bmain, ID_OB, "Foo.123"));

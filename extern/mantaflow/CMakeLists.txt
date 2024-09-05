@@ -10,17 +10,6 @@ if(MSVC_CLANG AND WITH_OPENMP AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.0.1
   remove_cc_flag("-fopenmp")
 endif()
 
-# Exporting functions from the blender binary gives linker warnings on Apple arm64 systems.
-# Silence them here.
-if(APPLE)
-  if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
-    if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-      string(APPEND CMAKE_C_FLAGS " -fvisibility=hidden")
-      string(APPEND CMAKE_CXX_FLAGS " -fvisibility=hidden")
-    endif()
-  endif()
-endif()
-
 set(MANTAVERSION "0.13")
 
 add_definitions(-DWITH_FLUID=1)
@@ -97,15 +86,6 @@ if(WITH_MANTA_NUMPY AND WITH_PYTHON_NUMPY)
   )
 endif()
 
-if(WITH_TBB)
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
-endif()
-
 if(WITH_OPENVDB)
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
@@ -120,6 +100,11 @@ if(WITH_OPENVDB)
     # https://developercommunity.visualstudio.com/content/problem/1167590/bug.html
     # for details.
     string(APPEND CMAKE_CXX_FLAGS " /wd4251")
+  endif()
+
+  # This works around the issue described in #120317 and https://github.com/AcademySoftwareFoundation/openvdb/pull/1786
+  if(MSVC_CLANG)
+    set_source_files_properties(${MANTA_PP}/fileio/iovdb.cpp PROPERTIES COMPILE_FLAGS -fno-delayed-template-parsing)
   endif()
 endif()
 
@@ -256,6 +241,7 @@ if(WITH_MANTA_NUMPY AND WITH_PYTHON_NUMPY)
 endif()
 
 set(LIB
+  PRIVATE bf::dependencies::optional::tbb
   ${PYTHON_LINKFLAGS}
   ${PYTHON_LIBRARIES}
 )

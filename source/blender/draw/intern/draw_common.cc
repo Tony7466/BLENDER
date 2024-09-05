@@ -6,21 +6,22 @@
  * \ingroup draw
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "GPU_matrix.h"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_matrix.hh"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "UI_resources.hh"
 
+#include "BLI_index_range.hh"
 #include "BLI_math_color.h"
 
-#include "BKE_colorband.h"
-#include "BKE_global.h"
-#include "BKE_object.h"
+#include "BKE_colorband.hh"
+#include "BKE_global.hh"
+#include "BKE_object.hh"
 
-#include "draw_common.h"
+#include "draw_common_c.hh"
 
 #if 0
 #  define UI_COLOR_RGB_FROM_U8(r, g, b, v4) \
@@ -37,11 +38,27 @@ DRW_Global G_draw{};
 static bool weight_ramp_custom = false;
 static ColorBand weight_ramp_copy;
 
-static GPUTexture *DRW_create_weight_colorramp_texture(void);
+static GPUTexture *DRW_create_weight_colorramp_texture();
+
+using namespace blender;
 
 void DRW_globals_update()
 {
   GlobalsUboStorage *gb = &G_draw.block;
+
+  const DRWContextState *ctx = DRW_context_state_get();
+  if (ctx->rv3d != nullptr) {
+    int plane_len = (RV3D_LOCK_FLAGS(ctx->rv3d) & RV3D_BOXCLIP) ? 4 : 6;
+    for (auto i : IndexRange(plane_len)) {
+      gb->clip_planes[i] = float4(ctx->rv3d->clip[i]);
+    }
+    if (plane_len < 6) {
+      for (auto i : IndexRange(plane_len, 6 - plane_len)) {
+        /* Fill other planes with same valid planes. Avoid changing. */
+        gb->clip_planes[i] = gb->clip_planes[plane_len - 1];
+      }
+    }
+  }
 
   UI_GetThemeColor4fv(TH_WIRE, gb->color_wire);
   UI_GetThemeColor4fv(TH_WIRE_EDIT, gb->color_wire_edit);
@@ -61,6 +78,7 @@ void DRW_globals_update()
   UI_COLOR_RGBA_FROM_U8(0xB0, 0x00, 0xB0, 0xFF, gb->color_vertex_missing_data);
   UI_GetThemeColor4fv(TH_EDITMESH_ACTIVE, gb->color_edit_mesh_active);
   UI_GetThemeColor4fv(TH_EDGE_SELECT, gb->color_edge_select);
+  UI_GetThemeColor4fv(TH_EDGE_MODE_SELECT, gb->color_edge_mode_select);
   UI_GetThemeColor4fv(TH_GP_VERTEX, gb->color_gpencil_vertex);
   UI_GetThemeColor4fv(TH_GP_VERTEX_SELECT, gb->color_gpencil_vertex_select);
 
@@ -71,6 +89,7 @@ void DRW_globals_update()
   UI_GetThemeColor4fv(TH_EDGE_FACESEL, gb->color_edge_face_select);
   UI_GetThemeColor4fv(TH_FACE, gb->color_face);
   UI_GetThemeColor4fv(TH_FACE_SELECT, gb->color_face_select);
+  UI_GetThemeColor4fv(TH_FACE_MODE_SELECT, gb->color_face_mode_select);
   UI_GetThemeColor4fv(TH_FACE_RETOPOLOGY, gb->color_face_retopology);
   UI_GetThemeColor4fv(TH_FACE_BACK, gb->color_face_back);
   UI_GetThemeColor4fv(TH_FACE_FRONT, gb->color_face_front);
@@ -140,6 +159,8 @@ void DRW_globals_update()
   UI_GetThemeColor4fv(TH_ACTIVE_SPLINE, gb->color_active_spline);
 
   UI_GetThemeColor4fv(TH_CFRAME, gb->color_current_frame);
+  UI_GetThemeColor4fv(TH_FRAME_BEFORE, gb->color_before_frame);
+  UI_GetThemeColor4fv(TH_FRAME_AFTER, gb->color_after_frame);
 
   /* Meta-ball. */
   UI_COLOR_RGBA_FROM_U8(0xA0, 0x30, 0x30, 0xFF, gb->color_mball_radius);

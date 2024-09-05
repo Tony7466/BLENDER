@@ -9,6 +9,7 @@ from bl_ui.properties_animviz import (
 import bpy
 from bpy.types import Panel, Menu
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 
 class ObjectButtonsPanel:
@@ -390,19 +391,38 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
         col.prop(ob, "hide_render", text="Renders", toggle=False, invert_checkbox=True)
 
         if context.engine == 'BLENDER_EEVEE_NEXT':
-            if ob.type in ('MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD', 'VOLUME', 'LIGHT'):
+            if ob.type in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD', 'VOLUME'}:
+                layout.separator()
+                col = layout.column(heading="Ray Visibility")
+                col.prop(ob, "visible_camera", text="Camera", toggle=False)
+                col.prop(ob, "visible_shadow", text="Shadow", toggle=False)
+
+            if ob.type in {'LIGHT'}:
+                layout.separator()
+                col = layout.column(heading="Ray Visibility")
+                col.prop(ob, "visible_diffuse", text="Diffuse", toggle=False)
+                col.prop(ob, "visible_glossy", text="Glossy", toggle=False)
+                col.prop(ob, "visible_transmission", text="Transmission", toggle=False)
+                col.prop(ob, "visible_volume_scatter", text="Volume Scatter", toggle=False)
+
+            if ob.type in {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD', 'VOLUME'}:
                 layout.separator()
                 col = layout.column(heading="Light Probes")
                 col.prop(ob, "hide_probe_volume", text="Volume", toggle=False, invert_checkbox=True)
-                col.prop(ob, "hide_probe_cubemap", text="Cubemap", toggle=False, invert_checkbox=True)
+                col.prop(ob, "hide_probe_sphere", text="Sphere", toggle=False, invert_checkbox=True)
+                col.prop(ob, "hide_probe_plane", text="Plane", toggle=False, invert_checkbox=True)
 
-        if ob.type == 'GPENCIL':
+        if ob.type in {'GPENCIL', 'GREASEPENCIL'}:
             col = layout.column(heading="Grease Pencil")
             col.prop(ob, "use_grease_pencil_lights", toggle=False)
 
         layout.separator()
         col = layout.column(heading="Mask")
         col.prop(ob, "is_holdout")
+
+
+class OBJECT_PT_animation(ObjectButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'object'
 
 
 class OBJECT_PT_custom_props(ObjectButtonsPanel, PropertyPanel, Panel):
@@ -425,6 +445,7 @@ classes = (
     OBJECT_PT_display,
     OBJECT_PT_visibility,
     OBJECT_PT_lineart,
+    OBJECT_PT_animation,
     OBJECT_PT_custom_props,
 )
 

@@ -14,7 +14,7 @@
 #include "ED_armature.hh"
 #include "ED_screen.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
 /* ************************** registration **********************************/
 
@@ -63,6 +63,7 @@ void ED_operatortypes_armature()
   WM_operatortype_append(ARMATURE_OT_collection_remove);
   WM_operatortype_append(ARMATURE_OT_collection_move);
   WM_operatortype_append(ARMATURE_OT_collection_assign);
+  WM_operatortype_append(ARMATURE_OT_collection_create_and_assign);
   WM_operatortype_append(ARMATURE_OT_collection_unassign);
   WM_operatortype_append(ARMATURE_OT_collection_unassign_named);
   WM_operatortype_append(ARMATURE_OT_collection_select);
@@ -96,15 +97,6 @@ void ED_operatortypes_armature()
   WM_operatortype_append(POSE_OT_select_constraint_target);
   WM_operatortype_append(POSE_OT_select_grouped);
   WM_operatortype_append(POSE_OT_select_mirror);
-
-  WM_operatortype_append(POSE_OT_group_add);
-  WM_operatortype_append(POSE_OT_group_remove);
-  WM_operatortype_append(POSE_OT_group_move);
-  WM_operatortype_append(POSE_OT_group_sort);
-  WM_operatortype_append(POSE_OT_group_assign);
-  WM_operatortype_append(POSE_OT_group_unassign);
-  WM_operatortype_append(POSE_OT_group_select);
-  WM_operatortype_append(POSE_OT_group_deselect);
 
   WM_operatortype_append(POSE_OT_paths_calculate);
   WM_operatortype_append(POSE_OT_paths_update);
