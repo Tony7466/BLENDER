@@ -43,15 +43,6 @@ enum class Operation : int8_t {
   NotA,
 };
 
-enum class HoleMode : int8_t {
-  /* Generates the base polygons and holes in an arbitrary order. */
-  WithHoles,
-  /* Generates holes with the base polygon being the first and all others being holes. */
-  WithOrderedHoles,
-  /* Generates only the base polygon without any holes.*/
-  WithoutHoles,
-};
-
 enum class VertexType : int8_t {
   PointA,
   PointB,
