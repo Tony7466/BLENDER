@@ -220,6 +220,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   const Scene *scene = draw_ctx->scene;
   CurvesUniformBufPool *pool = DST.vmempool->curves_ubos;
   CurvesInfosBuf &curves_infos = pool->alloc();
+  memset(curves_infos.is_point_attribute, 0, sizeof(curves_infos.is_point_attribute));
   Curves &curves_id = *static_cast<Curves *>(object->data);
 
   const int subdiv = scene->r.hair_subdiv;
@@ -264,7 +265,7 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
 
   DRW_shgroup_buffer_texture(shgrp, "hairPointBuffer", curves_cache->final.proc_buf);
   if (curves_cache->proc_length_buf) {
-    DRW_shgroup_buffer_texture(shgrp, "hairLen", curves_cache->proc_length_buf);
+    DRW_shgroup_buffer_texture(shgrp, "l", curves_cache->proc_length_buf);
   }
 
   int curve_data_render_uv = 0;
@@ -464,6 +465,7 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
 
   CurvesUniformBufPool *pool = DST.vmempool->curves_ubos;
   CurvesInfosBuf &curves_infos = pool->alloc();
+  memset(curves_infos.is_point_attribute, 0, sizeof(curves_infos.is_point_attribute));
   BLI_assert(ob->type == OB_CURVES);
   Curves &curves_id = *static_cast<Curves *>(ob->data);
 
@@ -507,7 +509,7 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
 
   sub_ps.bind_texture("hairPointBuffer", curves_cache->final.proc_buf);
   if (curves_cache->proc_length_buf) {
-    sub_ps.bind_texture("hairLen", curves_cache->proc_length_buf);
+    sub_ps.bind_texture("l", curves_cache->proc_length_buf);
   }
 
   int curve_data_render_uv = 0;
