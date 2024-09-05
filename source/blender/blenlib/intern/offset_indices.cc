@@ -12,21 +12,21 @@ OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offse
                                                 const int start_offset)
 {
   int offset = start_offset;
+  int64_t offset_i64 = start_offset;
+
   for (const int i : counts_to_offsets.index_range().drop_back(1)) {
     const int count = counts_to_offsets[i];
     BLI_assert(count >= 0);
     counts_to_offsets[i] = offset;
     offset += count;
+#ifndef NDEBUG
+    offset_i64 += count;
+#endif
   }
   counts_to_offsets.last() = offset;
 
-#ifndef NDEBUG
-  int64_t offset_i64 = start_offset;
-  for (const int count : counts_to_offsets.drop_back(1)) {
-    offset_i64 += count;
-  }
   BLI_assert_msg(offset == offset_i64, "Integer overflow occured");
-#endif
+  UNUSED_VARS_NDEBUG(offset_i64);
 
   return OffsetIndices<int>(counts_to_offsets);
 }
