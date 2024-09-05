@@ -211,7 +211,7 @@ class DATA_PT_curve_animation(CurveButtonsPanel, PropertiesAnimationMixin, Prope
         curve = context.curve
 
         col = layout.column(align=True)
-        col.label(text=curve.bl_rna.name) # "Surface Curve" or "Curve".
+        col.label(text=curve.bl_rna.name)  # "Surface Curve" or "Curve".
         self.draw_action_and_slot_selector(context, col, curve)
 
         if shape_keys := curve.shape_keys:
