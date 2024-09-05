@@ -690,7 +690,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
       UI_menutype_draw(C, mt, layout);
 
       UI_block_end(C, block);
-
+      int but_idx = 0;
       for (std::unique_ptr<uiBut> &but : block->buttons) {
         MenuType *mt_from_but = nullptr;
         /* Support menu titles with dynamic from initial labels
@@ -698,12 +698,12 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
         if (but->type == UI_BTYPE_LABEL) {
 
           /* Check if the label is the title. */
-          uiBut *but_test = but->prev;
-          while (but_test && but_test->type == UI_BTYPE_SEPR) {
-            but_test = but_test->prev;
+          int64_t idx = but_idx++;
+          while (idx >= 0 && block->buttons[idx]->type == UI_BTYPE_SEPR) {
+            idx--;
           }
 
-          if (but_test == nullptr) {
+          if (idx < 0) {
             menu_display_name_map.add(mt, strdup_memarena(memarena, but->drawstr.c_str()));
           }
         }

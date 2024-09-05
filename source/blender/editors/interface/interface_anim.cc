@@ -120,16 +120,22 @@ static uiBut *ui_but_anim_decorate_find_attached_button(uiButDecorator *but)
 
   BLI_assert(UI_but_is_decorator(but));
   BLI_assert(but->decorated_rnapoin.data && but->decorated_rnaprop);
-  ListBase lb = {but->block->buttons.first().get(), but->block->buttons.last().get()};
-  LISTBASE_CIRCULAR_BACKWARD_BEGIN (uiBut *, &lb, but_iter, but->prev) {
+  if (but->block->buttons.is_empty()) {
+    return nullptr;
+  }
+  int idx = but->block->but_index(but);
+  idx = idx > 0 ? idx - 1 : but->block->buttons.size() - 1;
+  const int start = idx;
+  do {
+    but_iter = but->block->buttons[idx].get();
     if (but_iter != but &&
         ui_but_rna_equals_ex(
             but_iter, &but->decorated_rnapoin, but->decorated_rnaprop, but->decorated_rnaindex))
     {
       return but_iter;
     }
-  }
-  LISTBASE_CIRCULAR_BACKWARD_END(uiBut *, &lb, but_iter, but->prev);
+    idx = idx > 0 ? idx - 1 : but->block->buttons.size() - 1;
+  } while (idx != start);
 
   return nullptr;
 }

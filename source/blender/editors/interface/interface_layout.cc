@@ -2479,7 +2479,15 @@ void uiItemFullR(uiLayout *layout,
 
 #ifdef UI_PROP_DECORATE
   if (ui_decorate.use_prop_decorate) {
-    uiBut *but_decorate = ui_decorate.but ? ui_decorate.but->next : block->first_but_or_null();
+    uiBut *but_decorate = ui_decorate.but ? block->next_but(ui_decorate.but) :
+                                            block->first_but_or_null();
+
+    /** Move temporarily last but to avoid multiple reallocations while inserting decorators. */
+    blender::Vector<std::unique_ptr<uiBut>> tmp;
+    tmp.reserve(block->buttons.capacity());
+    while (but_decorate && but_decorate != block->buttons.last().get()) {
+      tmp.append(block->buttons.pop_last());
+    }
     const bool use_blank_decorator = (flag & UI_ITEM_R_FORCE_BLANK_DECORATE);
     uiLayout *layout_col = uiLayoutColumn(ui_decorate.layout, false);
     layout_col->space = 0;
@@ -2494,10 +2502,16 @@ void uiItemFullR(uiLayout *layout,
       uiItemDecoratorR_prop(layout_col, ptr_dec, prop_dec, but_decorate->rnaindex);
       but = block->buttons.last().get();
 
-      /* Order the decorator after the button we decorate, this is used so we can always
-       * do a quick lookup. */
-      block->add_but(block->pop_but(but), but_decorate);
-      but_decorate = but->next;
+      if (!tmp.is_empty()) {
+        block->buttons.append(tmp.pop_last());
+        but_decorate = block->buttons.last().get();
+      }
+      else {
+        but_decorate = nullptr;
+      }
+    }
+    while (!tmp.is_empty()) {
+      block->buttons.append(tmp.pop_last());
     }
     BLI_assert(ELEM(i, 1, ui_decorate.len));
 
@@ -2544,17 +2558,16 @@ void uiItemFullR_with_popover(uiLayout *layout,
                               const char *panel_type)
 {
   uiBlock *block = layout->root->block;
-  uiBut *but = block->buttons.last().get();
+  int idx = block->buttons.size();
   uiItemFullR(layout, ptr, prop, index, value, flag, name, icon);
-  but = but->next;
-  while (but) {
+  for (; idx < block->buttons.size(); idx++) {
+    uiBut *but = block->buttons[idx].get();
     if (but->rnaprop == prop && ELEM(but->type, UI_BTYPE_MENU, UI_BTYPE_COLOR)) {
       ui_but_rna_menu_convert_to_panel_type(but, panel_type);
       break;
     }
-    but = but->next;
   }
-  if (but == nullptr) {
+  if (idx == block->buttons.size()) {
     const char *propname = RNA_property_identifier(prop);
     ui_item_disabled(layout, panel_type);
     RNA_warning("property could not use a popover: %s.%s (%s)",
@@ -2575,17 +2588,17 @@ void uiItemFullR_with_menu(uiLayout *layout,
                            const char *menu_type)
 {
   uiBlock *block = layout->root->block;
-  uiBut *but = block->buttons.last().get();
+  int64_t idx = block->buttons.size();
   uiItemFullR(layout, ptr, prop, index, value, flag, name, icon);
-  but = but->next;
-  while (but) {
+  while (idx < block->buttons.size()) {
+    uiBut *but = block->buttons[idx].get();
     if (but->rnaprop == prop && but->type == UI_BTYPE_MENU) {
       ui_but_rna_menu_convert_to_menu_type(but, menu_type);
       break;
     }
-    but = but->next;
+    idx++;
   }
-  if (but == nullptr) {
+  if (idx == block->buttons.size()) {
     const char *propname = RNA_property_identifier(prop);
     ui_item_disabled(layout, menu_type);
     RNA_warning("property could not use a menu: %s.%s (%s)",

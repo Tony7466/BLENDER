@@ -610,22 +610,25 @@ static bool ui_but_find_select_in_enum__cmp(const uiBut *but_a, const uiBut *but
 
 uiBut *ui_but_find_select_in_enum(uiBut *but, int direction)
 {
-  uiBut *but_iter = but;
+  uiBlock *block = but->block;
+  int idx = block->but_index(but);
   uiBut *but_found = nullptr;
   BLI_assert(ELEM(direction, -1, 1));
 
-  while ((but_iter->prev) && ui_but_find_select_in_enum__cmp(but_iter->prev, but)) {
-    but_iter = but_iter->prev;
+  while (idx > 0 && ui_but_find_select_in_enum__cmp(block->buttons[idx - 1].get(), but)) {
+    idx--;
   }
 
-  while (but_iter && ui_but_find_select_in_enum__cmp(but_iter, but)) {
-    if (but_iter->flag & UI_SELECT) {
-      but_found = but_iter;
+  while (idx < block->buttons.size() &&
+         ui_but_find_select_in_enum__cmp(block->buttons[idx].get(), but))
+  {
+    if (block->buttons[idx]->flag & UI_SELECT) {
+      but_found = block->buttons[idx].get();
       if (direction == 1) {
         break;
       }
     }
-    but_iter = but_iter->next;
+    idx++;
   }
 
   return but_found;
@@ -3645,7 +3648,8 @@ static void ui_textedit_next_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
     return;
   }
 
-  for (uiBut *but = actbut->next; but; but = but->next) {
+  for (int64_t idx = block->but_index(actbut) + 1; idx < block->buttons.size(); idx++) {
+    uiBut *but = block->buttons[idx].get();
     if (ui_but_is_editable_as_text(but)) {
       if (!(but->flag & UI_BUT_DISABLED)) {
         data->postbut = but;
@@ -3681,7 +3685,8 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
     return;
   }
 
-  for (uiBut *but = actbut->prev; but; but = but->prev) {
+  for (int64_t idx = block->but_index(actbut) - 1; idx >= 0; idx--) {
+    uiBut *but = block->buttons[idx].get();
     if (ui_but_is_editable_as_text(but)) {
       if (!(but->flag & UI_BUT_DISABLED)) {
         data->postbut = but;
@@ -3690,8 +3695,8 @@ static void ui_textedit_prev_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
       }
     }
   }
-  for (auto itr = block->buttons.rbegin();; itr++) {
-    uiBut *but = (*itr).get();
+  for (int64_t idx = block->buttons.size() - 1; idx >= 0; idx--) {
+    uiBut *but = block->buttons[idx].get();
     if (but == actbut) {
       break;
     }
@@ -4896,7 +4901,8 @@ static int ui_do_but_TOG(bContext *C, uiBut *but, uiHandleButtonData *data, cons
         const int direction = (type == WHEELDOWNMOUSE) ? -1 : 1;
         uiBut *but_select = ui_but_find_select_in_enum(but, direction);
         if (but_select) {
-          uiBut *but_other = (direction == -1) ? but_select->next : but_select->prev;
+          uiBut *but_other = (direction == -1) ? but_select->block->next_but(but_select) :
+                                                 but_select->block->prev_but(but_select);
           if (but_other && ui_but_find_select_in_enum__cmp(but, but_other)) {
             ARegion *region = data->region;
 

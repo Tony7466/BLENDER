@@ -257,7 +257,7 @@ void ui_region_to_window(const ARegion *region, int *x, int *y)
   *y += region->winrct.ymin;
 }
 
-static int64_t but_index(blender::Span<std::unique_ptr<uiBut>> buttons, uiBut *but)
+int64_t uiBlock::but_index(const uiBut *but) const
 {
   BLI_assert(!buttons.is_empty() && but);
   auto index = std::distance(
@@ -269,38 +269,34 @@ static int64_t but_index(blender::Span<std::unique_ptr<uiBut>> buttons, uiBut *b
   return index;
 }
 
-void uiBlock::add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
+uiBut *uiBlock::next_but(const uiBut *but) const
+{
+  const int idx = this->but_index(but) + 1;
+  return idx < this->buttons.size() ? this->buttons[idx].get() : nullptr;
+}
+
+uiBut *uiBlock::prev_but(const uiBut *but) const
+{
+  const int idx = this->but_index(but) - 1;
+  return idx >= 0 ? this->buttons[idx].get() : nullptr;
+}
+
+void uiBlock::add_but_after(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
 {
   int64_t target_index = this->buttons.size();
 
   if (insert_after) {
-    target_index = but_index(this->buttons.as_span(), insert_after) + 1;
-  }
-
-  but->prev = target_index > 0 ? this->buttons[target_index - 1].get() : nullptr;
-  but->next = target_index < this->buttons.size() ? this->buttons[target_index].get() : nullptr;
-
-  if (but->prev) {
-    but->prev->next = but.get();
-  }
-  if (but->next) {
-    but->next->prev = but.get();
+    target_index = this->but_index(insert_after);
   }
   this->buttons.insert(target_index, std::move(but));
 }
 
 std::unique_ptr<uiBut> uiBlock::pop_but(uiBut *but)
 {
-  int64_t target_index = but_index(this->buttons, but);
+  int64_t target_index = this->but_index(but);
+
   std::unique_ptr<uiBut> result = std::move(this->buttons[target_index]);
   this->buttons.remove(target_index);
-  if (but->prev) {
-    but->prev->next = but->next;
-  }
-  if (but->next) {
-    but->next->prev = but->prev;
-  }
-  but->prev = but->next = nullptr;
   return result;
 }
 
@@ -424,15 +420,16 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
     return;
   }
   const uiStyle *style = UI_style_get();
-  uiBut *col_bt;
+  std::unique_ptr<uiBut> *col_bt;
   int i = 0, j, x1addval = offset;
 
   UI_fontstyle_set(&style->widget);
+  std::unique_ptr<uiBut> *end = block->buttons.end();
 
-  uiBut *init_col_bt = block->buttons.first().get();
-  for (uiBut *bt = block->buttons.first().get(); bt; bt = bt->next) {
-    if (!ELEM(bt->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE, UI_BTYPE_SEPR_SPACER)) {
-      j = BLF_width(style->widget.uifont_id, bt->drawstr.c_str(), bt->drawstr.size());
+  std::unique_ptr<uiBut> *init_col_bt = block->buttons.begin();
+  for (std::unique_ptr<uiBut> *bt = init_col_bt; bt < end; bt++) {
+    if (!ELEM((*bt)->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE, UI_BTYPE_SEPR_SPACER)) {
+      j = BLF_width(style->widget.uifont_id, (*bt)->drawstr.c_str(), (*bt)->drawstr.size());
 
       if (j > i) {
         i = j;
@@ -442,29 +439,29 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
     /* Skip all buttons that are in a horizontal alignment group.
      * We don't want to split them apart (but still check the row's width and apply current
      * offsets). */
-    if (bt->next && ui_but_is_row_alignment_group(bt, bt->next)) {
+    if (bt + 1 < end && ui_but_is_row_alignment_group((*bt).get(), bt[1].get())) {
       int width = 0;
-      const int alignnr = bt->alignnr;
-      for (col_bt = bt; col_bt && col_bt->alignnr == alignnr; col_bt = col_bt->next) {
-        width += BLI_rctf_size_x(&col_bt->rect);
-        col_bt->rect.xmin += x1addval;
-        col_bt->rect.xmax += x1addval;
+      const int alignnr = (*bt)->alignnr;
+      for (col_bt = bt; col_bt < end && (*col_bt)->alignnr == alignnr; col_bt++) {
+        width += BLI_rctf_size_x(&(*col_bt)->rect);
+        (*col_bt)->rect.xmin += x1addval;
+        (*col_bt)->rect.xmax += x1addval;
       }
       if (width > i) {
         i = width;
       }
       /* Give the following code the last button in the alignment group, there might have to be a
        * split immediately after. */
-      bt = col_bt ? col_bt->prev : nullptr;
+      bt = col_bt != end ? col_bt-- : nullptr;
     }
 
-    if (bt && bt->next && bt->rect.xmin < bt->next->rect.xmin) {
+    if (bt < end && (bt + 1 < end) && (*bt)->rect.xmin < (bt[1])->rect.xmin) {
       /* End of this column, and it's not the last one. */
-      for (col_bt = init_col_bt; col_bt->prev != bt; col_bt = col_bt->next) {
-        col_bt->rect.xmin = x1addval;
-        col_bt->rect.xmax = x1addval + i + block->bounds;
+      for (col_bt = init_col_bt; (col_bt - 1) != bt; col_bt++) {
+        (*col_bt)->rect.xmin = x1addval;
+        (*col_bt)->rect.xmax = x1addval + i + block->bounds;
 
-        ui_but_update(col_bt); /* clips text again */
+        ui_but_update((*col_bt).get()); /* clips text again */
       }
 
       /* And we prepare next column. */
@@ -475,22 +472,22 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
   }
 
   /* Last column. */
-  for (col_bt = init_col_bt; col_bt; col_bt = col_bt->next) {
+  for (col_bt = init_col_bt; col_bt < end; col_bt++) {
     /* Recognize a horizontally arranged alignment group and skip its items. */
-    if (col_bt->next && ui_but_is_row_alignment_group(col_bt, col_bt->next)) {
-      const int alignnr = col_bt->alignnr;
-      for (; col_bt && col_bt->alignnr == alignnr; col_bt = col_bt->next) {
+    if ((col_bt + 1 < end) && ui_but_is_row_alignment_group((*col_bt).get(), (col_bt[1]).get())) {
+      const int alignnr = (*col_bt)->alignnr;
+      for (; col_bt < end && (*col_bt)->alignnr == alignnr; col_bt++) {
         /* pass */
       }
     }
-    if (!col_bt) {
+    if (col_bt == end) {
       break;
     }
 
-    col_bt->rect.xmin = x1addval;
-    col_bt->rect.xmax = max_ff(x1addval + i + block->bounds, offset + block->minbounds);
+    (*col_bt)->rect.xmin = x1addval;
+    (*col_bt)->rect.xmax = max_ff(x1addval + i + block->bounds, offset + block->minbounds);
 
-    ui_but_update(col_bt); /* clips text again */
+    ui_but_update((*col_bt).get()); /* clips text again */
   }
 }
 
@@ -1042,7 +1039,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
     /* Fallback to block search. */
     oldbut = ui_but_find_old(oldblock, but);
   }
-  (*but_old_p) = oldbut ? oldbut->next : nullptr;
+  (*but_old_p) = oldbut ? oldbut->block->next_but(oldbut) : nullptr;
 #endif
 
   bool found_active = false;
@@ -1053,7 +1050,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
   if (oldbut->active || oldbut->semi_modal_state) {
     /* Move button over from oldblock to new block. */
-    block->add_but(oldblock->pop_but(oldbut), but);
+    block->add_but_after(oldblock->pop_but(oldbut), but);
     /* Add the old button to the button groups in the new block. */
     ui_button_group_replace_but_ptr(block, but, oldbut);
     oldbut->block = block;
@@ -4379,8 +4376,9 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   const char *title = RNA_property_ui_name(but->rnaprop);
 
   /* Is there a non-blank label before this button on the same row? */
-  const bool prior_label = but->prev && but->prev->type == UI_BTYPE_LABEL && but->prev->str[0] &&
-                           but->prev->alignnr == but->alignnr;
+  uiBut *but_prev = but->block->prev_but(but);
+  const bool prior_label = but_prev && but_prev->type == UI_BTYPE_LABEL && but_prev->str[0] &&
+                           but_prev->alignnr == but->alignnr;
 
   if (title && title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
     /* Show title when no categories and calling button has no text or prior label. */

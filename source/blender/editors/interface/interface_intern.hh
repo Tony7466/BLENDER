@@ -172,7 +172,6 @@ enum {
 #define PIE_MAX_ITEMS 8
 
 struct uiBut {
-  uiBut *next = nullptr, *prev = nullptr;
 
   /** Pointer back to the layout item holding this button. */
   uiLayout *layout = nullptr;
@@ -665,11 +664,14 @@ struct uiBlock {
   char display_device[64];
 
   PieMenuData pie_data;
-  void add_but(std::unique_ptr<uiBut> &&but, uiBut *insert_after = nullptr);
+  void add_but_after(std::unique_ptr<uiBut> &&but, uiBut *insert_after = nullptr);
   [[nodiscard]] std::unique_ptr<uiBut> pop_but(uiBut *but);
 
   [[nodiscard]] uiBut *first_but_or_null() const;
   [[nodiscard]] uiBut *last_but_or_null() const;
+  int64_t but_index(const uiBut *but) const;
+  [[nodiscard]] uiBut *next_but(const uiBut *but) const;
+  [[nodiscard]] uiBut *prev_but(const uiBut *but) const;
 };
 
 struct uiSafetyRct {

@@ -298,11 +298,11 @@ static uiBut *ui_but_find(const ARegion *region,
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
     for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
-      uiBut *but_itr = block->buttons[idx].get();
-      if (find_poll && find_poll(but_itr, find_custom_data) == false) {
+      uiBut *but = block->buttons[idx].get();
+      if (find_poll && find_poll(but, find_custom_data) == false) {
         continue;
       }
-      return but_itr;
+      return but;
     }
   }
 
@@ -538,8 +538,8 @@ uiBut *ui_view_item_find_search_highlight(const ARegion *region)
 
 uiBut *ui_but_prev(uiBut *but)
 {
-  while (but->prev) {
-    but = but->prev;
+  for (int idx = but->block->but_index(but) - 1; idx >= 0; idx--) {
+    but = but->block->buttons[idx].get();
     if (ui_but_is_editable(but)) {
       return but;
     }
@@ -549,8 +549,8 @@ uiBut *ui_but_prev(uiBut *but)
 
 uiBut *ui_but_next(uiBut *but)
 {
-  while (but->next) {
-    but = but->next;
+  for (int idx = but->block->but_index(but) + 1; idx < but->block->buttons.size(); idx++) {
+    but = but->block->buttons[idx].get();
     if (ui_but_is_editable(but)) {
       return but;
     }
@@ -570,12 +570,11 @@ uiBut *ui_but_first(uiBlock *block)
 
 uiBut *ui_but_last(uiBlock *block)
 {
-  uiBut *but = block->last_but_or_null();
-  while (but) {
+  for (int idx = block->buttons.size() - 1; idx >= 0; idx--) {
+    uiBut *but = block->buttons[idx].get();
     if (ui_but_is_editable(but)) {
       return but;
     }
-    but = but->prev;
   }
   return nullptr;
 }
@@ -677,7 +676,8 @@ bool ui_block_is_popup_any(const uiBlock *block)
 
 static const uiBut *ui_but_next_non_separator(const uiBut *but)
 {
-  for (; but; but = but->next) {
+  for (int idx = but->block->but_index(but); idx < but->block->buttons.size(); idx++) {
+    but = but->block->buttons[idx].get();
     if (!ELEM(but->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE)) {
       return but;
     }
@@ -693,7 +693,7 @@ bool UI_block_is_empty_ex(const uiBlock *block, const bool skip_title)
      * we may want to consider the block empty in this case. */
     but = ui_but_next_non_separator(but);
     if (but && but->type == UI_BTYPE_LABEL) {
-      but = but->next;
+      but = block->next_but(but);
     }
   }
   return (ui_but_next_non_separator(but) == nullptr);
