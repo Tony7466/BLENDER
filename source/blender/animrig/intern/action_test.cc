@@ -1113,4 +1113,89 @@ TEST_F(ChannelBagTest, channel_group_move_fcurve_into)
   EXPECT_EQ(2, group1->fcurve_range_length);
 }
 
+TEST_F(ChannelBagTest, channel_group_fcurve_ungroup)
+{
+  FCurve *fcu0 = &channel_bag->fcurve_ensure(nullptr, {"fcu0", 0, std::nullopt, "group0"});
+  FCurve *fcu1 = &channel_bag->fcurve_ensure(nullptr, {"fcu1", 0, std::nullopt, "group0"});
+  FCurve *fcu2 = &channel_bag->fcurve_ensure(nullptr, {"fcu2", 0, std::nullopt, "group1"});
+  FCurve *fcu3 = &channel_bag->fcurve_ensure(nullptr, {"fcu3", 0, std::nullopt, "group1"});
+  FCurve *fcu4 = &channel_bag->fcurve_ensure(nullptr, {"fcu4", 0, std::nullopt, std::nullopt});
+
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  ASSERT_EQ(2, channel_bag->channel_groups().size());
+
+  bActionGroup *group0 = channel_bag->channel_group(0);
+  bActionGroup *group1 = channel_bag->channel_group(1);
+
+  /* Attempting to ungroup an fcurve that's not in the channel bag should fail. */
+  FCurve bogus = {};
+  EXPECT_FALSE(channel_bag->fcurve_ungroup(bogus));
+
+  /* Attempting to ungroup an fcurve that's already ungrouped is fine. */
+  EXPECT_TRUE(channel_bag->fcurve_ungroup(*fcu4));
+
+  /* Ungroup each fcurve until all are ungrouped. */
+
+  EXPECT_TRUE(channel_bag->fcurve_ungroup(*fcu0));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+  EXPECT_EQ(fcu1, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(group1, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
+
+  EXPECT_TRUE(channel_bag->fcurve_ungroup(*fcu3));
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(1, group0->fcurve_range_length);
+  EXPECT_EQ(1, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
+  EXPECT_EQ(fcu1, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
+  EXPECT_EQ(nullptr, fcu3->grp);
+
+  EXPECT_TRUE(channel_bag->fcurve_ungroup(*fcu1));
+  EXPECT_EQ(1, channel_bag->channel_groups().size());
+  EXPECT_EQ(group1, channel_bag->channel_group(0));
+  EXPECT_EQ(0, group1->fcurve_range_start);
+  EXPECT_EQ(1, group1->fcurve_range_length);
+  EXPECT_EQ(fcu2, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(4));
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
+  EXPECT_EQ(nullptr, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+
+  EXPECT_TRUE(channel_bag->fcurve_ungroup(*fcu2));
+  EXPECT_EQ(0, channel_bag->channel_groups().size());
+  EXPECT_EQ(fcu4, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(4));
+  EXPECT_EQ(nullptr, fcu4->grp);
+  EXPECT_EQ(nullptr, fcu0->grp);
+  EXPECT_EQ(nullptr, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+  EXPECT_EQ(nullptr, fcu2->grp);
+}
+
 }  // namespace blender::animrig::tests
