@@ -45,12 +45,9 @@ endif()
 unset(_hiprt_version)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(HIPRT DEFAULT_MSG
-  HIPRT_INCLUDE_DIR)
-
 find_package_handle_standard_args(HIPRT
-    REQUIRED_VARS HIP_LINKER_EXECUTABLE)
-
+  REQUIRED_VARS HIPRT_INCLUDE_DIR HIP_LINKER_EXECUTABLE
+  FAIL_MESSAGE "HIP-RT or one of its dependencies not found")
 
 mark_as_advanced(
   HIPRT_INCLUDE_DIR
