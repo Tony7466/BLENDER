@@ -1,2 +1,3 @@
 Referenced by issue #126896, Regression: Shape Key Editor shows Object Actions
 Referenced by pull request #127177, Fix #126896: Shape Key Editor can't browse actions
+Referenced by commit efcd0e04b3796b644450f1589ce970104ffe6537, Fix #126896: Shape Key Editor can't browse actions
