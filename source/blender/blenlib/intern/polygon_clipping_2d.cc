@@ -14,6 +14,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_sort.hh"
 #include "BLI_vector.hh"
 
 #include "BLI_polygon_clipping_2d.hh"
@@ -584,7 +585,7 @@ struct CurveBooleanExecutor {
     A_inter_sorted_ids = Array<int>(num_intersects);
     array_utils::fill_index_range<int>(A_inter_sorted_ids);
 
-    std::sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
+    parallel_sort(A_inter_sorted_ids.begin(), A_inter_sorted_ids.end(), [&](int i1, int i2) {
       return intersections[i1].point_a + intersections[i1].alpha_a <
              intersections[i2].point_a + intersections[i2].alpha_a;
     });
@@ -599,7 +600,7 @@ struct CurveBooleanExecutor {
     B_inter_sorted_ids = Array<int>(num_intersects);
     array_utils::fill_index_range<int>(B_inter_sorted_ids);
 
-    std::sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
+    parallel_sort(B_inter_sorted_ids.begin(), B_inter_sorted_ids.end(), [&](int i1, int i2) {
       return intersections[i1].point_b + intersections[i1].alpha_b <
              intersections[i2].point_b + intersections[i2].alpha_b;
     });
