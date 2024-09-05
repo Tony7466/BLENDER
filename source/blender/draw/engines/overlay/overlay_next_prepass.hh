@@ -21,6 +21,7 @@ class Prepass {
 
   PassMain ps_ = {"prepass"};
   PassMain::Sub *mesh_ps_ = nullptr;
+  PassMain::Sub *hair_ps_ = nullptr;
   PassMain::Sub *curves_ps_ = nullptr;
   PassMain::Sub *point_cloud_ps_ = nullptr;
 
@@ -58,6 +59,12 @@ class Prepass {
       mesh_ps_ = &sub;
     }
     {
+      auto &sub = ps_.sub("Hair");
+      sub.shader_set(res.shaders.depth_mesh.get());
+      sub.bind_ubo("globalsBlock", &res.globals_buf);
+      hair_ps_ = &sub;
+    }
+    {
       auto &sub = ps_.sub("Curves");
       sub.shader_set(res.shaders.depth_curves.get());
       sub.bind_ubo("globalsBlock", &res.globals_buf);
@@ -71,6 +78,40 @@ class Prepass {
     }
   }
 
+  void particle_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res, const State &state)
+  {
+    Object *ob = ob_ref.object;
+
+    ResourceHandle handle = {0};
+
+    LISTBASE_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
+      if (!DRW_object_is_visible_psys_in_active_context(ob, psys)) {
+        continue;
+      }
+
+      const ParticleSettings *part = psys->part;
+      const int draw_as = (part->draw_as == PART_DRAW_REND) ? part->ren_as : part->draw_as;
+      switch (draw_as) {
+        case PART_DRAW_PATH:
+          if ((state.is_wireframe_mode == false) && (part->draw_as == PART_DRAW_REND)) {
+            /* Case where the render engine should have rendered it, but we need to draw it for
+             * selection purpose. */
+            if (handle.raw == 0u) {
+              handle = manager.resource_handle_for_psys(ob_ref,
+                                                        Particles::dupli_matrix_get(ob_ref));
+            }
+            gpu::Batch *geom = DRW_cache_particles_get_hair(ob, psys, nullptr);
+            mesh_ps_->draw(geom, handle, res.select_id(ob_ref).get());
+            break;
+          }
+          break;
+        default:
+          /* Other draw modes should be handled by the particle overlay. */
+          break;
+      }
+    }
+  }
+
   void object_sync(Manager &manager, const ObjectRef &ob_ref, Resources &res, const State &state)
   {
     if (!enabled) {
@@ -80,6 +121,8 @@ class Prepass {
     if (ob_ref.object->dt < OB_SOLID) {
       return;
     }
+
+    particle_sync(manager, ob_ref, res, state);
 
     /* TODO(fclem) This function should contain what `basic_cache_populate` contained. */
 
@@ -106,7 +149,6 @@ class Prepass {
       case OB_CURVES:
         geom = curves_sub_pass_setup(*curves_ps_, state.scene, ob_ref.object);
         pass = curves_ps_;
-        printf("Here\n");
         break;
       default:
         break;
