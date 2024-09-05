@@ -155,27 +155,33 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     const bool is_fill = use_fill[curve_i];
 
-    polygonboolean::BooleanResult result;
+    std::optional<polygonboolean::BooleanResult> result;
     if (is_fill) {
       result = polygonboolean::curve_boolean_calc(
           polygonboolean::Operation::NotB, pos_2d_a, pos_2d_b);
-      result = result_remove_holes(result, pos_2d_a, pos_2d_b);
+
+      if (result) {
+        result = std::optional(result_remove_holes(*result, pos_2d_a, pos_2d_b));
+      }
     }
     else {
       const bool is_cyclial = src_cyclic[curve_i];
       result = polygonboolean::curve_boolean_cut(is_cyclial, pos_2d_a, pos_2d_b);
     }
 
-    if (result.offsets.size() - 1 == 0) {
+    if (!result) {
+      result = std::optional(
+          polygonboolean::invalid_result(polygonboolean::Operation::NotB, pos_2d_a, pos_2d_b));
+    }
+
+    if ((*result).offsets.size() - 1 == 0) {
       continue;
     }
 
-    BLI_assert(result.valid_geometry);
+    const int added_curve_num = (*result).offsets.size() - 1;
+    bke::CurvesGeometry dst = bke::CurvesGeometry((*result).verts.size(), added_curve_num);
 
-    const int added_curve_num = result.offsets.size() - 1;
-    bke::CurvesGeometry dst = bke::CurvesGeometry(result.verts.size(), added_curve_num);
-
-    dst.offsets_for_write().copy_from(result.offsets);
+    dst.offsets_for_write().copy_from((*result).offsets);
     dst.cyclic_for_write().fill(is_fill);
 
     const bke::AttributeAccessor src_attributes = src.attributes();
@@ -189,8 +195,8 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
        * But it is guaranteed to be on the latest segment, and that is all that needs to be
        * checked.
        */
-      const polygonboolean::Vertex &vertex_first = result.verts.first();
-      const polygonboolean::Vertex &vertex_last = result.verts.last();
+      const polygonboolean::Vertex &vertex_first = (*result).verts.first();
+      const polygonboolean::Vertex &vertex_last = (*result).verts.last();
 
       const bool keep_first = vertex_first.type == polygonboolean::VertexType::PointA &&
                               vertex_first.point_id == 0;
@@ -201,7 +207,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
           keep_first, keep_last, curve_i, added_curve_num, src_attributes, dst_attributes);
     }
 
-    const bool reproject = result.intersections_data.size() != 0;
+    const bool reproject = (*result).intersections_data.size() != 0;
 
     const Set<std::string> &curve_skip = skipped_attribute_ids(
         keep_caps, is_fill, reproject, bke::AttrDomain::Curve);
@@ -233,7 +239,7 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
         VArray<T> src1_attr = src1.typed<T>();
         MutableSpan<T> dst_attr = (dstW.span.typed<T>());
 
-        bke::polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, result, dst_attr);
+        bke::polygonboolean::interpolate_attribute_from_a_result<T>(src1_attr, *result, dst_attr);
 
         dstW.finish();
       });
@@ -243,8 +249,9 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     if (reproject) {
       MutableSpan<float3> positions = dst.positions_for_write();
-      const Array<float2> pos2d = polygonboolean::interpolate_position_ab(
-          pos_2d_a, pos_2d_b, result);
+      Array<float2> pos2d((*result).verts.size());
+      polygonboolean::interpolate_position_ab(
+          pos_2d_a, pos_2d_b, *result, pos2d.as_mutable_span());
 
       const float4 &plane = transform_plane(layer_to_world, normal_planes[curve_i]);
       for (const int i : pos2d.index_range()) {
