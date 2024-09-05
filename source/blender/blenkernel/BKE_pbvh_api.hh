@@ -97,15 +97,19 @@ class Node {
 
 struct MeshNode : public Node {
   /**
+   * Use a 16 bit integer for the slot index type because there will always be less than
+   * #leaf_limit vertices in a node.
+   */
+  using LocalVertMapIndexT = int16_t;
+  /**
    * Global vertices are mapped to local indices with a vector set, with a specialized type in
-   * order to use 32 bit integers for slot values. Use a 16 bit integer for the slot index type
-   * because there will always be less than #leaf_limit vertices in a node.
+   * order to use 32 bit integers for slot values. .
    */
   using LocalVertMap = VectorSet<int,
                                  DefaultProbingStrategy,
                                  DefaultHash<int>,
                                  DefaultEquality<int>,
-                                 SimpleVectorSetSlot<int, int16_t>,
+                                 SimpleVectorSetSlot<int, LocalVertMapIndexT>,
                                  GuardedAllocator>;
 
   /** Indices into the #Mesh::faces() array. Refers to a subset of Tree::prim_indices_. */

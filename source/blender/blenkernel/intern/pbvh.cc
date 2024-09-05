@@ -52,8 +52,8 @@ namespace blender::bke::pbvh {
 
 // #define DEBUG_BUILD_TIME
 
-/* This must be smaller than the maximum value of the #MeshNode::LocalVertMap slot index type. */
-#define LEAF_LIMIT 10000
+constexpr int LEAF_LIMIT = 10000;
+static_assert(LEAF_LIMIT < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
 
 #define STACK_FIXED_DEPTH 100
 
