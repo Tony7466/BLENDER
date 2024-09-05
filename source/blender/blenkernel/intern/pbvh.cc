@@ -233,8 +233,6 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
     node.vert_indices_.reserve(owned_verts.size() + shared_verts.size());
     node.vert_indices_.add_multiple(owned_verts);
     node.vert_indices_.add_multiple(shared_verts);
-    node.vert_indices_.print_stats(
-        std::string(std::string("vert_indices_") + std::to_string(i)).c_str());
   }
 }
 
