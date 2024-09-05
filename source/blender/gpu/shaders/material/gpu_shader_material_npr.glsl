@@ -2,11 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-void npr_passthrough(in Closure shader, float weight, out Closure npr)
-{
-  npr = shader;
-}
-
 void npr_input(out vec4 combined_color,
                out vec4 diffuse_color,
                out vec4 diffuse_direct,

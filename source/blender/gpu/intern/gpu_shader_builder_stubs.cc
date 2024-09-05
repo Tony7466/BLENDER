@@ -165,7 +165,7 @@ bool CustomData_has_layer(const struct CustomData * /*data*/, eCustomDataType /*
  * \{ */
 extern "C" void ntreeGPUMaterialNodes(struct bNodeTree * /*localtree*/,
                                       struct GPUMaterial * /*mat*/,
-                                      enum eGPUMaterialEngine /*engine*/)
+                                      const bool /*is_npr_shader*/)
 {
   BLI_assert_unreachable();
 }

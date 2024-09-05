@@ -40,9 +40,6 @@ class NPRModule {
   void begin_sync();
   int sync_material(::Material *material);
   void end_sync();
-  void render(View &view,
-              TextureFromPool direct_radiance_txs[3],
-              class RayTraceResultTexture indirect_radiance_txs[3]);
 };
 
 }  // namespace blender::eevee

@@ -842,6 +842,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
                                         uint64_t shader_uuid,
                                         bool is_volume_shader,
                                         bool is_lookdev,
+                                        bool is_npr_shader,
                                         GPUCodegenCallbackFn callback,
                                         void *thunk,
                                         GPUMaterialPassReplacementCallbackFn pass_replacement_cb)
@@ -873,7 +874,7 @@ GPUMaterial *GPU_material_from_nodetree(Scene *scene,
 
   /* Localize tree to create links for reroute and mute. */
   bNodeTree *localtree = blender::bke::node_tree_localize(ntree, nullptr);
-  ntreeGPUMaterialNodes(localtree, mat, engine);
+  ntreeGPUMaterialNodes(localtree, mat, is_npr_shader);
 
   gpu_material_ramp_texture_build(mat);
   gpu_material_sky_texture_build(mat);

@@ -237,7 +237,6 @@ enum eGPUMaterialEngine {
   GPU_MAT_EEVEE_LEGACY = 0,
   GPU_MAT_EEVEE,
   GPU_MAT_COMPOSITOR,
-  GPU_MAT_NPR,
 };
 
 GPUMaterial *GPU_material_from_nodetree(
@@ -250,6 +249,7 @@ GPUMaterial *GPU_material_from_nodetree(
     uint64_t shader_uuid,
     bool is_volume_shader,
     bool is_lookdev,
+    bool is_npr_shader,
     GPUCodegenCallbackFn callback,
     void *thunk,
     GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);

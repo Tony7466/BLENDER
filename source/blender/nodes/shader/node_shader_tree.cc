@@ -1281,26 +1281,11 @@ static bNode *ntreeShaderNPROutputNode(bNodeTree *localtree)
   return output;
 }
 
-/* To be used when NPR happens in a fully separate screen pass. */
-void ntreeGPUMaterialNodesNPR(bNodeTree *localtree, GPUMaterial *mat)
-{
-  bNode *output = ntreeShaderNPROutputNode(localtree);
-
-  if (!output) {
-    // return;
-  }
-
-  ntree_shader_pruned_unused(localtree, output);
-  bNodeTreeExec *exec = ntreeShaderBeginExecTree(localtree);
-  ntreeExecGPUNodes(exec, mat, output);
-  ntreeShaderEndExecTree(exec);
-}
-
-void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialEngine engine)
+void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, const bool is_npr_shader)
 {
   bNodeTreeExec *exec;
 
-  if (engine == GPU_MAT_NPR) {
+  if (is_npr_shader) {
     bNodeTree *npr_tree = npr_tree_get(localtree);
     bNodeTree *npr_localtree = blender::bke::node_tree_localize(npr_tree, nullptr);
     ntree_shader_embed_tree(npr_localtree, localtree);
@@ -1312,11 +1297,11 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialE
   ntree_shader_groups_flatten(localtree);
 
   bNode *output = nullptr;
-  if (engine == GPU_MAT_EEVEE) {
-    output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
-  }
-  else if (engine == GPU_MAT_NPR) {
+  if (is_npr_shader) {
     output = ntreeShaderNPROutputNode(localtree);
+  }
+  else {
+    output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
   }
 
   /* Tree is valid if it contains no undefined implicit socket type cast. */
@@ -1324,7 +1309,7 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, eGPUMaterialE
 
   if (valid_tree) {
     ntree_shader_pruned_unused(localtree, output);
-    if (output != nullptr && engine == GPU_MAT_EEVEE) {
+    if (output != nullptr && !is_npr_shader) {
       ntree_shader_shader_to_rgba_branches(localtree);
       ntree_shader_weight_tree_invert(localtree, output);
     }

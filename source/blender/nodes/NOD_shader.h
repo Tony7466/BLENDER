@@ -38,7 +38,7 @@ bNodeTree *npr_tree_get(struct Material *material);
  */
 void ntreeGPUMaterialNodes(struct bNodeTree *localtree,
                            struct GPUMaterial *mat,
-                           enum eGPUMaterialEngine engine);
+                           const bool is_npr_shader);
 
 #ifdef __cplusplus
 }

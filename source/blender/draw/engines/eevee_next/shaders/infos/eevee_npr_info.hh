@@ -39,15 +39,3 @@ GPU_SHADER_CREATE_INFO(npr_surface_common)
 GPU_SHADER_CREATE_INFO(eevee_surf_npr)
     .fragment_source("eevee_surf_deferred_npr_frag.glsl")
     .additional_info("npr_surface_common");
-
-/** NOTE: Screen-space NPR evaluation. Not currently used. */
-GPU_SHADER_INTERFACE_INFO(npr_surface_iface, "").smooth(Type::VEC4, "uvcoordsvar");
-
-GPU_SHADER_CREATE_INFO(npr_surface)
-    .define("Closure", "int")
-    .vertex_source("npr_surface_vert.glsl")
-    .vertex_out(npr_surface_iface)
-    .fragment_source("npr_surface_frag.glsl")
-    .define("ModelMatrix", "mat4(1.0)")
-    .define("ModelMatrixInverse", "mat4(1.0)")
-    .additional_info("npr_surface_common");
