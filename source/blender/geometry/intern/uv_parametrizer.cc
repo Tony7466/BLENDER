@@ -4388,8 +4388,8 @@ static bool p_collapse_doubles_allowed(PEdge *edge, PEdge *pair, float threshold
 
   p_collapsing_verts(edge, pair, &oldv, &keepv);
 
-  /* do not collapse a pinned vertex unless the target vertex
-   * is also pinned */
+  /* Do not collapse a pinned vertex unless the target vertex
+   * is also pinned. */
   if ((oldv->flag & PVERT_PIN) && !(keepv->flag & PVERT_PIN)) {
     return false;
   }
@@ -4408,7 +4408,7 @@ static float p_collapse_doubles_cost(PEdge *edge, PEdge *pair)
   return p_edge_length_squared(collapse_e);
 }
 
-static void p_chart_collapse_doubles(PChart *chart, float threshold)
+static void p_chart_collapse_doubles(PChart *chart, const float threshold)
 {
   const float threshold_squared = threshold * threshold;
 
@@ -4443,8 +4443,8 @@ static void p_chart_flush_collapsed_uvs(PChart *chart)
 static bool p_validate_corrected_coords_point(const PEdge *corr_e,
                                               const float corr_co1[3],
                                               const float corr_co2[3],
-                                              float min_area,
-                                              float min_angle_cos)
+                                              const float min_area,
+                                              const float min_angle_cos)
 {
   /* Check whether the given corrected coordinates don't result in any other triangle with area
    * lower than min_area.
@@ -4520,7 +4520,7 @@ static bool p_validate_corrected_coords(const PEdge *corr_e,
     const PVert *other_v1 = e->next->vert;
     const PVert *other_v2 = e->next->next->vert;
 
-    float area = area_tri_v3(corr_co, other_v1->co, other_v2->co);
+    const float area = area_tri_v3(corr_co, other_v1->co, other_v2->co);
 
     if (area < min_area) {
       return false;
@@ -4542,9 +4542,9 @@ static bool p_validate_corrected_coords(const PEdge *corr_e,
 
 static bool p_edge_matrix(float R[3][3], const float edge_dir[3])
 {
-  static const float eps = 1.0e-5;
-  static const float n1[3] = {0.0f, 0.0f, 1.0f};
-  static const float n2[3] = {0.0f, 1.0f, 0.0f};
+  static const constexpr float eps = 1.0e-5;
+  static const constexpr float n1[3] = {0.0f, 0.0f, 1.0f};
+  static const constexpr float n2[3] = {0.0f, 1.0f, 0.0f};
 
   float edge_len = len_v3(edge_dir);
   if (edge_len < eps) {
@@ -4603,7 +4603,7 @@ static bool p_chart_correct_degenerate_triangle_point(PFace *f,
                                                       float min_area,
                                                       float min_angle_cos)
 {
-  static const float ref_edges[][3] = {{1.0f, 0.0f, 0.0f},
+  static const float3 ref_edges[] = {{1.0f, 0.0f, 0.0f},
                                        {0.0f, 1.0f, 0.0f},
                                        {0.0f, 0.0f, 1.0f},
                                        {0.0f, 1.0f, 1.0f},
@@ -4771,8 +4771,8 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
     PVert *corr_v = corr_e->vert;
 
     /* check 4 distinct directions */
-    static const int DIR_COUNT = 16;
-    static const int LEN_MULTIPLIER_COUNT = 2;
+    static const constexpr int DIR_COUNT = 16;
+    static const constexpr int LEN_MULTIPLIER_COUNT = 2;
     float corr_co[3];
     bool corr_co_found = false;
 
@@ -5168,9 +5168,9 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
                                         slim::MatrixTransferChart &mt_chart,
                                         slim::PinnedVertexData &pinned_vertex_data)
 {
-  auto &pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
-  auto &pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
-  auto &selected_pins = pinned_vertex_data.selected_pins;
+  std::vector<int>& pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
+  std::vector<double>& pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
+  std::vector<int>& selected_pins = pinned_vertex_data.selected_pins;
 
   pinned_vertex_indices.clear();
   pinned_vertex_positions_2D.clear();
