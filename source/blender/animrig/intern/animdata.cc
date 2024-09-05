@@ -41,9 +41,11 @@ namespace blender::animrig {
 /** \name Public F-Curves API
  * \{ */
 
-static void add_object_data_user(const Main &bmain,
-                                 const ID &id,
-                                 Vector<const ID *> &r_related_ids)
+/* Find the users of the given ID within the objects of `bmain` and add non-duplicates to the end
+ * of `r_related_ids`. */
+static void add_object_data_users(const Main &bmain,
+                                  const ID &id,
+                                  Vector<const ID *> &r_related_ids)
 {
   for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
        ob = static_cast<Object *>(ob->id.next))
@@ -52,10 +54,10 @@ static void add_object_data_user(const Main &bmain,
       continue;
     }
     r_related_ids.append_non_duplicates(&ob->id);
-    return;
   }
 }
 
+/* Add all materials used by the given ID to `r_related_ids`. Skips duplicates. */
 static void add_id_materials(const ID &id, Vector<const ID *> &r_related_ids)
 {
   Material **materials = nullptr;
@@ -99,19 +101,22 @@ static void add_id_materials(const ID &id, Vector<const ID *> &r_related_ids)
   }
 }
 
-/* Find an action that is related to the given ID. Either on the data if the ID is an Object or a
- * user of the ID. If the possibility for multiple users exists, only return an action if the ID is
- * used exactly once. */
+/* Find an action on an ID that is related to the given ID. Related things are e.g. Object<->Data,
+ * Mesh<->Material and so on. The exact relationships are defined per ID type. */
 static bAction *find_related_action(const Main &bmain, const ID &id)
 {
   Vector<const ID *> related_ids({&id});
 
+  /* `related_ids` can grow during an iteration if the ID of the current iteration has associated
+   * code that defines relationships. */
   for (int i = 0; i < related_ids.size(); i++) {
     const ID *related_id = related_ids[i];
     AnimData *adt = BKE_animdata_from_id(related_id);
     if (adt && adt->action) {
       Action &action = adt->action->wrap();
       if (action.is_action_layered()) {
+        /* Returning the first action found means highest priority has the action closest in the
+         * relationship graph. */
         return adt->action;
       }
     }
@@ -229,7 +234,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       }
 
       case ID_ME: {
-        add_object_data_user(bmain, *related_id, related_ids);
+        add_object_data_users(bmain, *related_id, related_ids);
         add_id_materials(*related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
         if (mesh->key && !related_ids.contains(&mesh->key->id)) {
@@ -240,7 +245,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
 
       default: {
         /* Just check if the ID is used as object data somewhere. */
-        add_object_data_user(bmain, *related_id, related_ids);
+        add_object_data_users(bmain, *related_id, related_ids);
         add_id_materials(*related_id, related_ids);
         break;
       }
