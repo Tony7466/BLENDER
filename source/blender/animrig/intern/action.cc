@@ -1586,10 +1586,7 @@ void ChannelBag::channel_group_move(bActionGroup &group, const int to_group_inde
   const int group_index = this->channel_groups().as_span().first_index_try(&group);
   BLI_assert_msg(group_index >= 0, "Group not in this channel bag.");
 
-  if (to_group_index == group_index) {
-    return;
-  }
-
+  /* Shallow copy, to track which fcurves should be moved in the second step. */
   const bActionGroup pre_move_group = group;
 
   array_shift_range(
@@ -1945,12 +1942,10 @@ bool ChannelBag::fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to
 
   /* Remove fcurve from old group, if it belongs to one. */
   if (fcurve.grp != nullptr) {
-    bActionGroup *old_group = fcurve.grp;
-
-    old_group->fcurve_range_length--;
-    if (old_group->fcurve_range_length == 0) {
-      const int old_group_index = this->channel_groups().as_span().first_index_try(old_group);
-      this->channel_group_remove_raw(old_group_index);
+    fcurve.grp->fcurve_range_length--;
+    if (fcurve.grp->fcurve_range_length == 0) {
+      const int group_index = this->channel_groups().as_span().first_index_try(fcurve.grp);
+      this->channel_group_remove_raw(group_index);
     }
     this->restore_channel_group_invariants();
   }

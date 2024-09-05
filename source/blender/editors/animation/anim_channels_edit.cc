@@ -1678,6 +1678,24 @@ static void join_groups_action_temp(bAction *act)
   }
 }
 
+/**
+ * Move selected, visible channel groups in the channel list according to
+ * `mode`.
+ *
+ * NOTE: the current implementation has quadratic performance with respect to
+ * the number of groups in a `ChannelBag`, due to both `Span::first_index_try()`
+ * and `ChannelBag::channel_group_move()` having linear performance. If this
+ * becomes a performance bottleneck in practice, we can create a dedicated
+ * method on `ChannelBag` for collectively moving a non-contiguous set of
+ * channel groups that works in linear time.
+ *
+ * TODO: there's a fair amount of apparent repetition in this code and the code
+ * in `rearrange_layered_action_fcurves()`. In the time available when writing
+ * this, I (Nathan) wasn't able to figure out a satisfactory way to DRY that
+ * which didn't make the code signifacantly harder to follow. I suspect there is
+ * a good way to DRY this, and therefore this is probably worth revisiting when
+ * we have more time.
+ */
 static void rearrange_layered_action_channel_groups(bAnimContext *ac,
                                                     const eRearrangeAnimChan_Mode mode)
 {
@@ -1755,6 +1773,23 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
   BLI_freelistN(&anim_data_visible);
 }
 
+/**
+ * Move selected, visible fcurves in the channel list according to `mode`.
+ *
+ * NOTE: the current implementation has quadratic performance with respect to
+ * the number of fcurves in a `ChannelBag`, due to both
+ * `Span::first_index_try()` and `ChannelBag::fcurve_move()` having linear
+ * performance. If this becomes a performance bottleneck in practice, we can
+ * create a dedicated method on `ChannelBag` for collectively moving a
+ * non-contiguous set of fcurves that works in linear time.
+ *
+ * TODO: there's a fair amount of apparent repetition in this code and the code
+ * in `rearrange_layered_action_channel_groups()`. In the time available when
+ * writing this, I (Nathan) wasn't able to figure out a satisfactory way to DRY
+ * that which didn't make the code signifacantly harder to follow. I suspect
+ * there is a good way to DRY this, and therefore this is probably worth
+ * revisiting when we have more time.
+ */
 static void rearrange_layered_action_fcurves(bAnimContext *ac,
                                              blender::animrig::Action &action,
                                              const eRearrangeAnimChan_Mode mode)
@@ -1766,7 +1801,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
    * construct a fake one representing the ungrouped range at the end of the
    * fcurve array. This lets the code further below be much less special-casey,
    * in exchange for a little data copying. */
-  auto make_group = [&action](bAnimListElem *fcurve_ale) -> bActionGroup {
+  auto get_group_or_make_fake = [&action](bAnimListElem *fcurve_ale) -> bActionGroup {
     FCurve *fcurve = (FCurve *)fcurve_ale->data;
     if (fcurve->grp) {
       return *fcurve->grp;
@@ -1788,20 +1823,23 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
     return group;
   };
 
-  auto skip = [](FCurve *fcurve, bActionGroup &group) {
+  /* Lambda to determine whether an fcurve should be skipped, given both the
+   * fcurve and the group it belongs to. */
+  auto should_skip = [](FCurve &fcurve, bActionGroup &group) {
     /* If the curve itself isn't selected, then it shouldn't be operated on.  If
      * its group is selected then the group was moved so we don't move the
      * fcurve individually. */
-    return !SEL_FCU(fcurve) || SEL_AGRP(&group);
+    /* Extra parethesis because `SEL_FCU` doesn't properly wrap its argument. */
+    return !SEL_FCU((&fcurve)) || SEL_AGRP(&group);
   };
 
   switch (mode) {
     case REARRANGE_ANIMCHAN_UP: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
         FCurve *fcurve = (FCurve *)ale->data;
-        bActionGroup group = make_group(ale);
+        bActionGroup group = get_group_or_make_fake(ale);
 
-        if (skip(fcurve, group)) {
+        if (should_skip(*fcurve, group)) {
           continue;
         }
 
@@ -1820,9 +1858,9 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
     case REARRANGE_ANIMCHAN_TOP: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
         FCurve *fcurve = (FCurve *)ale->data;
-        bActionGroup group = make_group(ale);
+        bActionGroup group = get_group_or_make_fake(ale);
 
-        if (skip(fcurve, group)) {
+        if (should_skip(*fcurve, group)) {
           continue;
         }
 
@@ -1835,9 +1873,9 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
     case REARRANGE_ANIMCHAN_DOWN: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
         FCurve *fcurve = (FCurve *)ale->data;
-        bActionGroup group = make_group(ale);
+        bActionGroup group = get_group_or_make_fake(ale);
 
-        if (skip(fcurve, group)) {
+        if (should_skip(*fcurve, group)) {
           continue;
         }
 
@@ -1858,9 +1896,9 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
     case REARRANGE_ANIMCHAN_BOTTOM: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
         FCurve *fcurve = (FCurve *)ale->data;
-        bActionGroup group = make_group(ale);
+        bActionGroup group = get_group_or_make_fake(ale);
 
-        if (skip(fcurve, group)) {
+        if (should_skip(*fcurve, group)) {
           continue;
         }
 
@@ -2295,7 +2333,7 @@ static void animchannels_group_channels(bAnimContext *ac,
   /* Layered action.
    *
    * The animlist doesn't explictly group the channels by channel bag, so we
-   * have to get a little clever here.  We take advantage of the fact that the
+   * have to get a little clever here. We take advantage of the fact that the
    * fcurves are at least listed in order, and so all fcurves in the same
    * channel bag will be next to each other. So we keep track of the channel bag
    * from the last fcurve, and check it against the current fcurve to see if
@@ -2423,10 +2461,10 @@ static int animchannels_ungroup_exec(bContext *C, wmOperator * /*op*/)
     }
 
     /* find action for this F-Curve... */
-    bAction *act = ale->adt->action;
     if (!ale->adt || !ale->adt->action) {
       continue;
     }
+    bAction *act = ale->adt->action;
 
     /* Legacy actions. */
     if (act->wrap().is_action_legacy()) {

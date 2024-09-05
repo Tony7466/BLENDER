@@ -735,6 +735,12 @@ class ChannelBag : public ::ActionChannelBag {
 
   /**
    * Move the given fcurve to position `to_fcurve_index` in the fcurve array.
+   *
+   * Note: this can indirectly alter channel group membership, because the
+   * channel groups don't change what ranges in the fcurve array they cover.
+   *
+   * `fcurve` must belong to this channel bag, and `to_fcurve_index` must be a
+   * valid index in the fcurve array.
    */
   void fcurve_move(FCurve &fcurve, int to_fcurve_index);
 
@@ -804,10 +810,11 @@ class ChannelBag : public ::ActionChannelBag {
    * Move the given channel group's to position `to_group_index` among the
    * channel groups.
    *
-   * The fcurves in the channel group will be moved with it.
+   * The fcurves in the channel group are moved with it, so that membership
+   * doesn't change.
    *
-   * The channel group must belong to this channel bag, and `to_group_index`
-   * must be a valid existing group index.
+   * `group` must belong to this channel bag, and `to_group_index` must be a
+   * valid index in the channel group array.
    */
   void channel_group_move(bActionGroup &group, int to_group_index);
 
@@ -824,9 +831,12 @@ class ChannelBag : public ::ActionChannelBag {
   /**
    * Removes the the given FCurve from the channel group it's in, if any.
    *
-   * Fails only if the fcurve doesn't belong to this channel bag, but otherwise
-   * always succeeds. Note that the fcurve already not belonging to group is
-   * considered success.
+   * As part of removing `fcurve` from its group, `fcurve` is moved to the end
+   * of the fcurve array. However, if `fcurve` is already ungrouped then this
+   * method is a no-op.
+   *
+   * Fails if the fcurve doesn't belong to this channel bag, but otherwise
+   * always succeeds.
    *
    * \return True on success, false on failure.
    */
