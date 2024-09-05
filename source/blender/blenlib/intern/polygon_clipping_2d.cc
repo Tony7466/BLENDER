@@ -88,16 +88,13 @@ static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*c
 
   const int len_a = curve_a.size();
 
-  Array<Vertex> verts(len_a);
-  const Array<int> offsets = {0, len_a};
+  result.verts = Array<Vertex>(len_a);
+  result.offsets = {0, len_a};
+  result.intersections_data = {};
 
   for (const int i : IndexRange(len_a)) {
-    verts[i] = {VertexType::PointA, i};
+    result.verts[i] = {VertexType::PointA, i};
   }
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = {};
 
   return result;
 }
@@ -108,16 +105,13 @@ static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2>
 
   const int len_b = curve_b.size();
 
-  Array<Vertex> verts(len_b);
-  const Array<int> offsets = {0, len_b};
+  result.verts = Array<Vertex>(len_b);
+  result.offsets = {0, len_b};
+  result.intersections_data = {};
 
   for (const int i : IndexRange(len_b)) {
-    verts[i] = {VertexType::PointB, i};
+    result.verts[i] = {VertexType::PointB, i};
   }
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = {};
 
   return result;
 }
@@ -129,20 +123,17 @@ static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> cu
   const int len_a = curve_a.size();
   const int len_b = curve_b.size();
 
-  Array<Vertex> verts(len_a + len_b);
-  const Array<int> offsets = {0, len_a, len_a + len_b};
+  result.verts = Array<Vertex>(len_a + len_b);
+  result.offsets = {0, len_a, len_a + len_b};
+  result.intersections_data = {};
 
   for (const int i : IndexRange(len_a)) {
-    verts[i] = {VertexType::PointA, i};
+    result.verts[i] = {VertexType::PointA, i};
   }
 
   for (const int i : IndexRange(len_b)) {
-    verts[i + len_a] = {VertexType::PointB, i};
+    result.verts[i + len_a] = {VertexType::PointB, i};
   }
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = {};
 
   return result;
 }
@@ -154,20 +145,17 @@ static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> cu
   const int len_a = curve_a.size();
   const int len_b = curve_b.size();
 
-  Array<Vertex> verts(len_b + len_a);
-  const Array<int> offsets = {0, len_b, len_b + len_a};
+  result.verts = Array<Vertex>(len_b + len_a);
+  result.offsets = {0, len_b, len_b + len_a};
+  result.intersections_data = {};
 
   for (const int i : IndexRange(len_b)) {
-    verts[i] = {VertexType::PointB, i};
+    result.verts[i] = {VertexType::PointB, i};
   }
 
   for (const int i : IndexRange(len_a)) {
-    verts[i + len_b] = {VertexType::PointA, i};
+    result.verts[i + len_b] = {VertexType::PointA, i};
   }
-
-  result.verts = verts;
-  result.offsets = offsets;
-  result.intersections_data = {};
 
   return result;
 }
