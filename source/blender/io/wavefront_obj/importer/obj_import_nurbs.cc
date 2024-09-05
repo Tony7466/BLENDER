@@ -120,8 +120,19 @@ void CurveFromGeometry::create_nurbs(Curve *curve)
   const int64_t tot_vert{nurbs_geometry.curv_indices.size()};
 
   BKE_nurb_points_add(nurb, tot_vert);
-  nurb->pntsu = nurbs_geometry.u.parms.size() - nurb->orderu;
-  nurb->pntsv = std::max(int(nurbs_geometry.v.parms.size() - nurb->orderv), 1);
+  /*
+  ** TODO: So there is a test: CurveDeg3 in nurbs_curves.obj which choke on this:
+  ** But I think it is because there is a typo and the line `deg 2' should read
+  ** `deg 3'.
+  */
+  if(GEOM_SURF == curve_geometry_.geom_type_) {
+    nurb->pntsu = nurbs_geometry.u.parms.size() - nurb->orderu;
+    nurb->pntsv = nurbs_geometry.v.parms.size() - nurb->orderv;
+  } else
+  {
+    /* pntsu was set in BKE_nurb_points_add. */
+    nurb->pntsv = 1;
+  }
   BLI_assert(tot_vert == nurb->pntsu * nurb->pntsv);
 
   for (int i = 0; i < tot_vert; i++) {
