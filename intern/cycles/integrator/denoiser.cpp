@@ -77,10 +77,11 @@ bool use_optix_denoiser(Device *denoiser_device, const DenoiseParams &params)
 #ifdef WITH_OPTIX
   return (params.type == DENOISER_OPTIX &&
           OptiXDenoiser::is_device_supported(denoiser_device->info));
-#endif
+#else
   (void)denoiser_device;
   (void)params;
   return false;
+#endif
 }
 
 bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
@@ -88,10 +89,11 @@ bool use_gpu_oidn_denoiser(Device *denoiser_device, const DenoiseParams &params)
 #ifdef WITH_OPENIMAGEDENOISE
   return (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
           OIDNDenoiserGPU::is_device_supported(denoiser_device->info));
-#endif
+#else
   (void)denoiser_device;
   (void)params;
   return false;
+#endif
 }
 
 DenoiseParams get_effective_denoise_params(Device *denoiser_device,
