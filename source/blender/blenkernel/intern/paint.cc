@@ -608,7 +608,11 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
   return PaintMode::Invalid;
 }
 
-static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
+/**
+ * Similar to the #BKE_paint_brush_set() version taking an asset reference, but this does
+ * additional sanity checks. Call after changing #Paint.brush_asset_reference.
+ */
+static bool paint_brush_set_protected_from_asset_reference(Main *bmain, Paint *paint)
 {
   /* Don't resolve this during file read, it will be done after. */
   if (bmain->is_locked_for_linking) {
@@ -659,6 +663,41 @@ static AssetWeakReference *asset_reference_create_from_brush(Brush *brush)
   return nullptr;
 }
 
+bool BKE_paint_brush_set(Main *bmain,
+                         Paint *paint,
+                         const AssetWeakReference *brush_asset_reference)
+{
+  /* Don't resolve this during file read, it will be done after. */
+  if (bmain->is_locked_for_linking) {
+    return false;
+  }
+
+  Brush *brush = reinterpret_cast<Brush *>(
+      blender::bke::asset_edit_id_from_weak_reference(*bmain, ID_BR, *brush_asset_reference));
+  BLI_assert(brush == nullptr || blender::bke::asset_edit_id_is_editable(brush->id));
+
+  /* Ensure we have a brush with appropriate mode to assign.
+   * Could happen if contents of asset blend was manually changed. */
+  if (brush && (paint->runtime.ob_mode & brush->ob_mode) == 0) {
+    return false;
+  }
+
+  /* Update the brush itself. */
+  paint->brush = brush;
+  /* Update the brush asset reference. */
+  {
+    MEM_delete(paint->brush_asset_reference);
+    paint->brush_asset_reference = nullptr;
+    if (brush != nullptr) {
+      BLI_assert(blender::bke::asset_edit_weak_reference_from_id(brush->id) ==
+                 *brush_asset_reference);
+      paint->brush_asset_reference = MEM_new<AssetWeakReference>(__func__, *brush_asset_reference);
+    }
+  }
+
+  return true;
+}
+
 bool BKE_paint_brush_set(Paint *paint, Brush *brush)
 {
   if (paint == nullptr) {
@@ -676,22 +715,6 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
     paint->brush_asset_reference = asset_reference_create_from_brush(brush);
   }
 
-  return true;
-}
-
-bool BKE_paint_main_brush_set(Paint *paint, Brush *brush)
-{
-  if (!BKE_paint_brush_set(paint, brush)) {
-    return false;
-  }
-  paint->tool_brush_bindings.main_brush = brush;
-
-  MEM_delete(paint->tool_brush_bindings.main_brush_asset_reference);
-  paint->tool_brush_bindings.main_brush_asset_reference = nullptr;
-  if (brush != nullptr) {
-    paint->tool_brush_bindings.main_brush_asset_reference = asset_reference_create_from_brush(
-        brush);
-  }
   return true;
 }
 
@@ -876,13 +899,13 @@ void BKE_paint_brushes_set_default_references(ToolSettings *ts)
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint)
 {
   paint_brush_set_default_reference(paint, true, false);
-  return paint_brush_set_from_asset_reference(bmain, paint);
+  return paint_brush_set_protected_from_asset_reference(bmain, paint);
 }
 
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name)
 {
   paint_brush_set_essentials_reference(paint, name);
-  return paint_brush_set_from_asset_reference(bmain, paint);
+  return paint_brush_set_protected_from_asset_reference(bmain, paint);
 }
 
 void BKE_paint_brushes_validate(Main *bmain, Paint *paint)
@@ -1481,7 +1504,7 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
       BLI_assert(paint_test.runtime.ob_mode == (*r_paint)->runtime.ob_mode);
 #endif
     }
-    paint_brush_set_from_asset_reference(bmain, *r_paint);
+    paint_brush_set_protected_from_asset_reference(bmain, *r_paint);
     paint_eraser_brush_set_from_asset_reference(bmain, *r_paint);
     return true;
   }

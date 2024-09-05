@@ -935,15 +935,14 @@ typedef struct NamedBrushAssetReference {
 /**
  * For the tool system: Storage to remember the last active brush for specific tools.
  *
- * This stores a "main" brush, which is used for any tool that uses brushes but isn't limited to a
- * specific brush type, and a list of brush references identified by the brush type, for tools that
- * are limited to a brush type.
+ * This stores a "main" brush reference, which is used for any tool that uses brushes but isn't
+ * limited to a specific brush type, and a list of brush references identified by the brush type,
+ * for tools that are limited to a brush type.
  *
  * The tool system updates these fields as the active brush or active tool changes. It also
  * determines the brush to remember/restore on tool changes and activates it.
  */
 typedef struct ToolSystemBrushBindings {
-  struct Brush *main_brush;
   struct AssetWeakReference *main_brush_asset_reference;
 
   /**

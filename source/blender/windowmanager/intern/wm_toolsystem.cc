@@ -189,8 +189,8 @@ static bool brush_type_is_compatible_with_active_tool(bContext *C,
   return type_name_from_tool == type_name_from_brush;
 }
 
-static NamedBrushAssetReference *toolsystem_brush_binding_lookup(Paint *paint,
-                                                                 const char *brush_type_name)
+static NamedBrushAssetReference *toolsystem_brush_type_binding_lookup(Paint *paint,
+                                                                      const char *brush_type_name)
 {
   return static_cast<NamedBrushAssetReference *>(
       BLI_findstring_ptr(&paint->tool_brush_bindings.active_brush_per_brush_type,
@@ -198,18 +198,36 @@ static NamedBrushAssetReference *toolsystem_brush_binding_lookup(Paint *paint,
                          offsetof(NamedBrushAssetReference, name)));
 }
 
-static void toolsystem_brush_binding_update_from_tool(Paint *paint, const bToolRef *active_tool)
+/**
+ * Update the bindings so the main brush reference matches the currently active brush.
+ */
+static void toolsystem_main_brush_binding_update_from_active(Paint *paint)
+{
+  MEM_delete(paint->tool_brush_bindings.main_brush_asset_reference);
+  paint->tool_brush_bindings.main_brush_asset_reference = nullptr;
+
+  if (paint->brush != nullptr) {
+    if (std::optional<AssetWeakReference> brush_asset_reference =
+            blender::bke::asset_edit_weak_reference_from_id(paint->brush->id))
+    {
+      paint->tool_brush_bindings.main_brush_asset_reference = MEM_new<AssetWeakReference>(
+          __func__, *brush_asset_reference);
+    }
+  }
+}
+
+static void toolsystem_brush_type_binding_update(Paint *paint, const char *brush_type)
 {
   if (paint->brush == nullptr) {
     return;
   }
-  if (!active_tool->runtime || !active_tool->runtime->data_block[0]) {
+  if (!brush_type[0]) {
     return;
   }
 
   /* Update existing reference. */
-  if (NamedBrushAssetReference *existing_brush_ref = toolsystem_brush_binding_lookup(
-          paint, active_tool->runtime->data_block))
+  if (NamedBrushAssetReference *existing_brush_ref = toolsystem_brush_type_binding_lookup(
+          paint, brush_type))
   {
     MEM_delete(existing_brush_ref->brush_asset_reference);
     existing_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
@@ -220,7 +238,7 @@ static void toolsystem_brush_binding_update_from_tool(Paint *paint, const bToolR
     NamedBrushAssetReference *new_brush_ref = MEM_cnew<NamedBrushAssetReference>(
         "NamedBrushAssetReference");
 
-    new_brush_ref->name = BLI_strdup(active_tool->runtime->data_block);
+    new_brush_ref->name = BLI_strdup(brush_type);
     new_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
         "NamedBrushAssetRefernce new asset ref", *paint->brush_asset_reference);
     BLI_addhead(&paint->tool_brush_bindings.active_brush_per_brush_type, new_brush_ref);
@@ -231,14 +249,17 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
 {
   const bToolRef *active_tool = WM_toolsystem_ref_from_context(C);
 
-  if (!active_tool->runtime->data_block[0]) {
-    return BKE_paint_main_brush_set(paint, brush);
-  }
-
   if (!BKE_paint_brush_set(paint, brush)) {
     return false;
   }
-  toolsystem_brush_binding_update_from_tool(paint, active_tool);
+
+  if (!active_tool->runtime->data_block[0]) {
+    /* Only update the main brush binding to reference the newly active brush. */
+    toolsystem_main_brush_binding_update_from_active(paint);
+    return true;
+  }
+
+  toolsystem_brush_type_binding_update(paint, active_tool->runtime->data_block);
 
   /* If necessary, find a compatible tool to switch to. */
   {
@@ -304,29 +325,30 @@ static void activate_compatible_brush_from_toolref(const bContext *C,
       BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
       Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
 
-      /* Use main brush, works with any type. */
+      /* Attempt to re-activate a brush remembered for this brush type, as stored in a brush
+       * binding. */
       if (tref_rt->data_block[0]) {
         std::optional<AssetWeakReference> brush_asset_reference =
             [&]() -> std::optional<AssetWeakReference> {
-          const NamedBrushAssetReference *brush_ref = toolsystem_brush_binding_lookup(
+          const NamedBrushAssetReference *brush_ref = toolsystem_brush_type_binding_lookup(
               paint, tref_rt->data_block);
           if (brush_ref && brush_ref->brush_asset_reference) {
             return *brush_ref->brush_asset_reference;
           }
+          /* No remembered brush found for this type, use a default for the type. */
           return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
                                                         tref_rt->data_block);
         }();
 
         if (brush_asset_reference) {
-          Brush *brush = reinterpret_cast<Brush *>(blender::bke::asset_edit_id_from_weak_reference(
-              *bmain, ID_BR, *brush_asset_reference));
-
-          BKE_paint_brush_set(paint, brush);
+          BKE_paint_brush_set(bmain, paint, &*brush_asset_reference);
         }
       }
+      /* Re-activate the main brush, regardless of the brush type. */
       else {
-        if (paint->tool_brush_bindings.main_brush) {
-          BKE_paint_main_brush_set(paint, paint->tool_brush_bindings.main_brush);
+        if (paint->tool_brush_bindings.main_brush_asset_reference) {
+          BKE_paint_brush_set(bmain, paint, paint->tool_brush_bindings.main_brush_asset_reference);
+          toolsystem_main_brush_binding_update_from_active(paint);
         }
         else {
           std::optional<AssetWeakReference> main_brush_asset_reference =
@@ -339,11 +361,8 @@ static void activate_compatible_brush_from_toolref(const bContext *C,
           }();
 
           if (main_brush_asset_reference) {
-            Brush *main_brush = reinterpret_cast<Brush *>(
-                blender::bke::asset_edit_id_from_weak_reference(
-                    *bmain, ID_BR, *main_brush_asset_reference));
-
-            BKE_paint_main_brush_set(paint, main_brush);
+            BKE_paint_brush_set(bmain, paint, &*main_brush_asset_reference);
+            toolsystem_main_brush_binding_update_from_active(paint);
           }
         }
       }

@@ -229,8 +229,13 @@ void BKE_paint_brush_asset_reference_from_essentials(const char *name,
  * only be called to force a brush to be active, circumventing the tool system.
  */
 bool BKE_paint_brush_set(Paint *paint, Brush *brush);
-/** Makes \a brush the active brush, and updates the main brush reference. */
-bool BKE_paint_main_brush_set(Paint *paint, Brush *brush);
+/**
+ * Version of #BKE_paint_brush_set() that takes an asset reference instead of a brush, importing
+ * the brush if necessary.
+ */
+bool BKE_paint_brush_set(Main *bmain,
+                         Paint *paint,
+                         const AssetWeakReference *brush_asset_reference);
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
