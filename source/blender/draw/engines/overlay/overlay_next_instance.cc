@@ -15,7 +15,6 @@
 #include "draw_debug.hh"
 
 #include "overlay_next_instance.hh"
-#include "overlay_next_mesh_measurements.hh"
 
 namespace blender::draw::overlay {
 
@@ -87,7 +86,7 @@ void Instance::begin_sync()
 {
   const DRWView *view_legacy = DRW_view_default_get();
   View view("OverlayView", view_legacy);
-
+  state.dt = DRW_text_cache_ensure();
   state.camera_position = view.viewinv().location();
   state.camera_forward = view.viewinv().z_axis();
 
@@ -143,8 +142,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   if (in_edit_mode && !state.hide_overlays) {
     switch (ob_ref.object->type) {
       case OB_MESH:
-        layer.meshes.edit_object_sync(manager, ob_ref, resources);
-        MeshMeasurements::edit_object_sync(ob_ref, state);
+        layer.meshes.edit_object_sync(manager, ob_ref, state, resources);
         break;
       case OB_ARMATURE:
         break;

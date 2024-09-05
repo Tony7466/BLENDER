@@ -306,7 +306,6 @@ set(SRC
   engines/overlay/overlay_next_light.hh
   engines/overlay/overlay_next_lightprobe.hh
   engines/overlay/overlay_next_mesh.hh
-  engines/overlay/overlay_next_mesh_measurements.hh
   engines/overlay/overlay_next_metaball.hh
   engines/overlay/overlay_next_outline.hh
   engines/overlay/overlay_next_particle.hh
