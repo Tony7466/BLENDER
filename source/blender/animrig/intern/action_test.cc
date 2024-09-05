@@ -712,6 +712,14 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   ASSERT_EQ(bag->fcurve_array_num, 2);
   ASSERT_EQ(bag->fcurve_array[0]->totvert, 2);
 
+  ASSERT_EQ(BLI_listbase_count(&action->groups), 1);
+  ASSERT_EQ(BLI_listbase_count(&converted->groups), 0);
+
+  ASSERT_EQ(bag->channel_groups().size(), 1);
+  bActionGroup *group = bag->channel_group(0);
+  ASSERT_EQ(group->fcurve_range_length, 2);
+  ASSERT_STREQ(group->name, "Test");
+
   ASSERT_TRUE(bag->fcurve_array[0]->modifiers.first == nullptr);
   ASSERT_TRUE(bag->fcurve_array[1]->modifiers.first != nullptr);
 
