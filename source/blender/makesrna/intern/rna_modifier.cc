@@ -1955,14 +1955,29 @@ static void rna_NodesModifier_node_warnings_iterator_next(CollectionPropertyIter
 
 static PointerRNA rna_NodesModifier_node_warnings_iterator_get(CollectionPropertyIterator *iter)
 {
-  return RNA_pointer_create(
-      iter->parent.owner_id, &RNA_NodesModifierWarning, &iter->internal.count.item);
+  NodesModifierData *nmd = static_cast<NodesModifierData *>(iter->parent.data);
+  blender::Span warnings = get_node_modifier_warnings(*nmd);
+  return RNA_pointer_create(iter->parent.owner_id,
+                            &RNA_NodesModifierWarning,
+                            (void *)&warnings[iter->internal.count.item]);
 }
 
-int rna_NodesModifier_node_warnings_length(PointerRNA *ptr)
+static int rna_NodesModifier_node_warnings_length(PointerRNA *ptr)
 {
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
   return get_node_modifier_warnings(*nmd).size();
+}
+
+static void rna_NodesModifierWarning_message_get(PointerRNA *ptr, char *r_value)
+{
+  const auto *warning = static_cast<const blender::nodes::geo_eval_log::NodeWarning *>(ptr->data);
+  strcpy(r_value, warning->message.c_str());
+}
+
+static int rna_NodesModifierWarning_message_length(PointerRNA *ptr)
+{
+  const auto *warning = static_cast<const blender::nodes::geo_eval_log::NodeWarning *>(ptr->data);
+  return warning->message.size();
 }
 
 static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
@@ -7916,11 +7931,20 @@ static void rna_def_modifier_nodes_panels(BlenderRNA *brna)
 static void rna_def_modifier_nodes_warning(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "NodesModifierWarning", nullptr);
   RNA_def_struct_ui_text(srna,
                          "Nodes Modifier Warning",
                          "Warning created during evaluation of a geometry nodes modifier");
+
+  prop = RNA_def_property(srna, "message", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Message", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_NodesModifierWarning_message_get",
+                                "rna_NodesModifierWarning_message_length",
+                                nullptr);
 }
 
 static void rna_def_modifier_nodes(BlenderRNA *brna)
@@ -7985,7 +8009,7 @@ static void rna_def_modifier_nodes(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
-  RNA_def_property_struct_type(prop, "IntAttributeValue");
+  RNA_def_property_struct_type(prop, "NodesModifierWarning");
 
   rna_def_modifier_panel_open_prop(srna, "open_output_attributes_panel", 0);
   rna_def_modifier_panel_open_prop(srna, "open_manage_panel", 1);
