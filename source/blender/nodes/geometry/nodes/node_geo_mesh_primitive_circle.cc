@@ -2,9 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 
@@ -215,21 +212,23 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_enum_node_geometry_mesh_circle_fill_type_items,
                     NOD_storage_enum_accessors(fill_type),
-                    GEO_NODE_MESH_CIRCLE_FILL_NONE);
+                    GEO_NODE_MESH_CIRCLE_FILL_NONE,
+                    nullptr,
+                    true);
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_CIRCLE, "Mesh Circle", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryMeshCircle", node_free_standard_storage, node_copy_standard_storage);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.declare = node_declare;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

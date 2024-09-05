@@ -14,7 +14,7 @@ set(INC
   ../../nodes
   ../../windowmanager
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -53,10 +53,14 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_OPENVDB)
+  list(APPEND INC
+    ../../../../intern/openvdb
+  )
   list(APPEND INC_SYS
     ${OPENVDB_INCLUDE_DIRS}
   )
@@ -68,5 +72,5 @@ endif()
 
 blender_add_lib(bf_editor_space_spreadsheet "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h dna_type_offsets.h
+# RNA_prototypes.hh dna_type_offsets.h
 add_dependencies(bf_editor_space_spreadsheet bf_rna)

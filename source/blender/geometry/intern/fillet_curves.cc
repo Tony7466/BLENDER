@@ -5,9 +5,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
-#include "BKE_geometry_set.hh"
 
-#include "BLI_math_geom.h"
 #include "BLI_math_rotation_legacy.hh"
 #include "BLI_task.hh"
 
@@ -505,7 +503,7 @@ static bke::CurvesGeometry fillet_curves(
   }
 
   bke::copy_attributes_group_to_group(src_attributes,
-                                      ATTR_DOMAIN_POINT,
+                                      bke::AttrDomain::Point,
                                       propagation_info,
                                       {},
                                       src_points_by_curve,

@@ -22,7 +22,7 @@
 
 #include "ED_screen.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 #include "view3d_navigate.hh" /* own include */
 
 static void view3d_smoothview_apply_with_interp(
@@ -54,7 +54,7 @@ void ED_view3d_smooth_view_undo_begin(bContext *C, const ScrArea *area)
   /* Tag the camera object so it's known smooth-view is applied to the view-ports camera
    * (needed to detect when a locked camera is being manipulated).
    * NOTE: It doesn't matter if the actual object being manipulated is the camera or not. */
-  camera->id.tag &= ~LIB_TAG_DOIT;
+  camera->id.tag &= ~ID_TAG_DOIT;
 
   LISTBASE_FOREACH (const ARegion *, region, &area->regionbase) {
     if (region->regiontype != RGN_TYPE_WINDOW) {
@@ -62,7 +62,7 @@ void ED_view3d_smooth_view_undo_begin(bContext *C, const ScrArea *area)
     }
     const RegionView3D *rv3d = static_cast<const RegionView3D *>(region->regiondata);
     if (ED_view3d_camera_lock_undo_test(v3d, rv3d, C)) {
-      camera->id.tag |= LIB_TAG_DOIT;
+      camera->id.tag |= ID_TAG_DOIT;
       break;
     }
   }
@@ -78,9 +78,9 @@ void ED_view3d_smooth_view_undo_end(bContext *C,
   if (!camera) {
     return;
   }
-  if (camera->id.tag & LIB_TAG_DOIT) {
+  if (camera->id.tag & ID_TAG_DOIT) {
     /* Smooth view didn't touch the camera. */
-    camera->id.tag &= ~LIB_TAG_DOIT;
+    camera->id.tag &= ~ID_TAG_DOIT;
     return;
   }
 
@@ -262,7 +262,7 @@ void ED_view3d_smooth_view_ex(
     Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, sview->camera);
     if (sview->ofs != nullptr) {
       sms.dst.dist = ED_view3d_offset_distance(
-          ob_camera_eval->object_to_world, sview->ofs, VIEW3D_DIST_FALLBACK);
+          ob_camera_eval->object_to_world().ptr(), sview->ofs, VIEW3D_DIST_FALLBACK);
     }
     ED_view3d_from_object(ob_camera_eval, sms.dst.ofs, sms.dst.quat, &sms.dst.dist, &sms.dst.lens);
     sms.to_camera = true; /* restore view3d values in end */
@@ -287,7 +287,7 @@ void ED_view3d_smooth_view_ex(
       Object *ob_camera_old_eval = DEG_get_evaluated_object(depsgraph, sview->camera_old);
       if (sview->ofs != nullptr) {
         sms.src.dist = ED_view3d_offset_distance(
-            ob_camera_old_eval->object_to_world, sview->ofs, 0.0f);
+            ob_camera_old_eval->object_to_world().ptr(), sview->ofs, 0.0f);
       }
       ED_view3d_from_object(
           ob_camera_old_eval, sms.src.ofs, sms.src.quat, &sms.src.dist, &sms.src.lens);
@@ -361,7 +361,7 @@ void ED_view3d_smooth_view_ex(
   if (sms.to_camera == false) {
     /* See comments in #ED_view3d_smooth_view_undo_begin for why this is needed. */
     if (v3d->camera) {
-      v3d->camera->id.tag &= ~LIB_TAG_DOIT;
+      v3d->camera->id.tag &= ~ID_TAG_DOIT;
     }
   }
 }

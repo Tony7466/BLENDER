@@ -6,29 +6,33 @@
 
 /** \file
  * \ingroup bke
- * \brief External data structures for PBVH. Does not include data structures internal to the draw
- * code.
  */
 
-#include "BLI_compiler_compat.h"
 #include "BLI_utildefines.h"
 
-struct PBVHNode;
 struct BMesh;
+struct BMVert;
+struct BMFace;
 
-enum PBVHType {
-  PBVH_FACES,
-  PBVH_GRIDS,
-  PBVH_BMESH,
+namespace blender::bke::pbvh {
+
+class Node;
+class Tree;
+
+enum class Type {
+  Mesh,
+  Grids,
+  BMesh,
 };
 
-/* #PBVHNodeFlags is needed by `DRW_render.h` and `draw_cache.cc`. */
+}  // namespace blender::bke::pbvh
+
+/* #PBVHNodeFlags is needed by `DRW_render.hh` and `draw_cache.cc`. */
 enum PBVHNodeFlags {
   PBVH_Leaf = 1 << 0,
 
   PBVH_UpdateNormals = 1 << 1,
   PBVH_UpdateBB = 1 << 2,
-  PBVH_UpdateOriginalBB = 1 << 3,
   PBVH_UpdateDrawBuffers = 1 << 4,
   PBVH_UpdateRedraw = 1 << 5,
   PBVH_UpdateMask = 1 << 6,
@@ -67,24 +71,8 @@ struct PBVHVertRef {
 
 #define PBVH_REF_NONE -1LL
 
-/* Public members of PBVH, used for inlined functions. */
-struct PBVHPublic {
-  PBVHType type;
-  BMesh *bm;
-};
-
-struct PBVH;
-struct PBVHNode;
-
-BLI_INLINE PBVHType BKE_pbvh_type(const PBVH *pbvh)
-{
-  return ((const PBVHPublic *)pbvh)->type;
-}
-
-/* Needed for the render engines integration. */
-void BKE_pbvh_is_drawing_set(PBVH *pbvh, bool val);
-void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
-                            void (*draw_fn)(PBVHNode *node,
+void BKE_pbvh_draw_debug_cb(blender::bke::pbvh::Tree &pbvh,
+                            void (*draw_fn)(blender::bke::pbvh::Node *node,
                                             void *user_data,
                                             const float bmin[3],
                                             const float bmax[3],

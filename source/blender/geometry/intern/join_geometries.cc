@@ -11,20 +11,19 @@
 
 namespace blender::geometry {
 
-using bke::AttributeIDRef;
 using bke::AttributeMetaData;
 using bke::GeometryComponent;
 using bke::GeometrySet;
 
-static Map<AttributeIDRef, AttributeMetaData> get_final_attribute_info(
+static Map<StringRef, AttributeMetaData> get_final_attribute_info(
     const Span<const GeometryComponent *> components, const Span<StringRef> ignored_attributes)
 {
-  Map<AttributeIDRef, AttributeMetaData> info;
+  Map<StringRef, AttributeMetaData> info;
 
   for (const GeometryComponent *component : components) {
     component->attributes()->for_all(
-        [&](const bke::AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
-          if (ignored_attributes.contains(attribute_id.name())) {
+        [&](const StringRef attribute_id, const AttributeMetaData &meta_data) {
+          if (ignored_attributes.contains(attribute_id)) {
             return true;
           }
           if (meta_data.data_type == CD_PROP_STRING) {
@@ -47,9 +46,9 @@ static Map<AttributeIDRef, AttributeMetaData> get_final_attribute_info(
 }
 
 static void fill_new_attribute(const Span<const GeometryComponent *> src_components,
-                               const AttributeIDRef &attribute_id,
+                               const StringRef attribute_id,
                                const eCustomDataType data_type,
-                               const eAttrDomain domain,
+                               const bke::AttrDomain domain,
                                GMutableSpan dst_span)
 {
   const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(data_type);
@@ -73,15 +72,15 @@ static void fill_new_attribute(const Span<const GeometryComponent *> src_compone
   }
 }
 
-static void join_attributes(const Span<const GeometryComponent *> src_components,
-                            GeometryComponent &result,
-                            const Span<StringRef> ignored_attributes = {})
+void join_attributes(const Span<const GeometryComponent *> src_components,
+                     GeometryComponent &result,
+                     const Span<StringRef> ignored_attributes)
 {
-  const Map<AttributeIDRef, AttributeMetaData> info = get_final_attribute_info(src_components,
-                                                                               ignored_attributes);
+  const Map<StringRef, AttributeMetaData> info = get_final_attribute_info(src_components,
+                                                                          ignored_attributes);
 
-  for (const MapItem<AttributeIDRef, AttributeMetaData> item : info.items()) {
-    const AttributeIDRef attribute_id = item.key;
+  for (const MapItem<StringRef, AttributeMetaData> item : info.items()) {
+    const StringRef attribute_id = item.key;
     const AttributeMetaData &meta_data = item.value;
 
     bke::GSpanAttributeWriter write_attribute =
@@ -109,8 +108,7 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
   std::unique_ptr<bke::Instances> dst_instances = std::make_unique<bke::Instances>();
   dst_instances->resize(offsets.total_size());
 
-  MutableSpan<float4x4> all_transforms = dst_instances->transforms();
-  MutableSpan<int> all_handles = dst_instances->reference_handles();
+  MutableSpan<int> all_handles = dst_instances->reference_handles_for_write();
 
   for (const int i : src_components.index_range()) {
     const auto &src_component = static_cast<const bke::InstancesComponent &>(*src_components[i]);
@@ -126,12 +124,11 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
 
     const Span<int> src_handles = src_instances.reference_handles();
     array_utils::gather(handle_map.as_span(), src_handles, all_handles.slice(dst_range));
-    array_utils::copy(src_instances.transforms(), all_transforms.slice(dst_range));
   }
 
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {"position"});
+  join_attributes(src_components, dst_component, {".reference_index"});
 }
 
 static void join_volumes(const Span<const GeometryComponent *> /*src_components*/,
@@ -174,11 +171,13 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   }
 
   std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
-  for (const GeometryComponent *component : components) {
+  instances->resize(components.size());
+  instances->transforms_for_write().fill(float4x4::identity());
+  MutableSpan<int> handles = instances->reference_handles_for_write();
+  for (const int i : components.index_range()) {
     GeometrySet tmp_geo;
-    tmp_geo.add(*component);
-    const int handle = instances->add_reference(bke::InstanceReference{tmp_geo});
-    instances->add_instance(handle, float4x4::identity());
+    tmp_geo.add(*components[i]);
+    handles[i] = instances->add_reference(bke::InstanceReference{tmp_geo});
   }
 
   RealizeInstancesOptions options;
@@ -194,12 +193,15 @@ GeometrySet join_geometries(const Span<GeometrySet> geometries,
                             const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   GeometrySet result;
-  static const Array<GeometryComponent::Type> supported_types({GeometryComponent::Type::Mesh,
-                                                               GeometryComponent::Type::PointCloud,
-                                                               GeometryComponent::Type::Instance,
-                                                               GeometryComponent::Type::Volume,
-                                                               GeometryComponent::Type::Curve,
-                                                               GeometryComponent::Type::Edit});
+  result.name = geometries.is_empty() ? "" : geometries[0].name;
+  static const Array<GeometryComponent::Type> supported_types(
+      {GeometryComponent::Type::Mesh,
+       GeometryComponent::Type::PointCloud,
+       GeometryComponent::Type::Instance,
+       GeometryComponent::Type::Volume,
+       GeometryComponent::Type::Curve,
+       GeometryComponent::Type::GreasePencil,
+       GeometryComponent::Type::Edit});
   for (const GeometryComponent::Type type : supported_types) {
     join_component_type(type, geometries, propagation_info, result);
   }

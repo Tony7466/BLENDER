@@ -9,41 +9,40 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math_color.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_material.h"
-#include "BKE_report.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_view2d.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ************************************************ */
 /* General Brush Editing Context */
@@ -691,8 +690,8 @@ static bool brush_smear_apply(tGP_BrushVertexpaintData *gso,
 static void gpencil_vertexpaint_brush_header_set(bContext *C)
 {
   ED_workspace_status_text(C,
-                           TIP_("GPencil Vertex Paint: LMB to paint | RMB/Escape to Exit"
-                                " | Ctrl to Invert Action"));
+                           IFACE_("GPencil Vertex Paint: LMB to paint | RMB/Escape to Exit"
+                                  " | Ctrl to Invert Action"));
 }
 
 /* ************************************************ */
@@ -716,7 +715,7 @@ static bool gpencil_vertexpaint_brush_init(bContext *C, wmOperator *op)
       MEM_callocN(sizeof(tGP_BrushVertexpaintData), "tGP_BrushVertexpaintData"));
   op->customdata = gso;
 
-  gso->brush = paint->brush;
+  gso->brush = BKE_paint_brush(paint);
   srgb_to_linearrgb_v3_v3(gso->linear_color, gso->brush->rgb);
   BKE_curvemapping_init(gso->brush->curve);
 
@@ -819,7 +818,7 @@ static bool gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
                                               const float bound_mat[4][4])
 {
   GP_SpaceConversion *gsc = &gso->gsc;
-  rcti *rect = &gso->brush_rect;
+  const rcti *rect = &gso->brush_rect;
   Brush *brush = gso->brush;
   const int radius = (brush->flag & GP_BRUSH_USE_PRESSURE) ? gso->brush->size * gso->pressure :
                                                              gso->brush->size;
@@ -963,7 +962,7 @@ static bool gpencil_vertexpaint_select_stroke(tGP_BrushVertexpaintData *gso,
     }
 
     /* If nothing hit, check if the mouse is inside any filled stroke. */
-    if ((!hit) && ELEM(tool, GPAINT_TOOL_TINT, GPVERTEX_TOOL_DRAW)) {
+    if ((!hit) && ELEM(tool, GPAINT_BRUSH_TYPE_TINT, GPVERTEX_BRUSH_TYPE_DRAW)) {
       MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(gso->object,
                                                                      gps_active->mat_nr + 1);
       if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
@@ -994,8 +993,9 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
                                                const float bound_mat[4][4])
 {
   Object *ob = CTX_data_active_object(C);
-  const char tool = ob->mode == OB_MODE_VERTEX_GPENCIL_LEGACY ? gso->brush->gpencil_vertex_tool :
-                                                                gso->brush->gpencil_tool;
+  const char tool = ob->mode == OB_MODE_VERTEX_GPENCIL_LEGACY ?
+                        gso->brush->gpencil_vertex_brush_type :
+                        gso->brush->gpencil_brush_type;
   const int radius = (gso->brush->flag & GP_BRUSH_USE_PRESSURE) ?
                          gso->brush->size * gso->pressure :
                          gso->brush->size;
@@ -1031,7 +1031,7 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
    * under the brush. */
   float average_color[3] = {0};
   int totcol = 0;
-  if ((tool == GPVERTEX_TOOL_AVERAGE) && (gso->pbuffer_used > 0)) {
+  if ((tool == GPVERTEX_BRUSH_TYPE_AVERAGE) && (gso->pbuffer_used > 0)) {
     for (i = 0; i < gso->pbuffer_used; i++) {
       selected = &gso->pbuffer[i];
       bGPDstroke *gps = selected->gps;
@@ -1065,29 +1065,29 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
     selected = &gso->pbuffer[i];
 
     switch (tool) {
-      case GPAINT_TOOL_TINT:
-      case GPVERTEX_TOOL_DRAW: {
+      case GPAINT_BRUSH_TYPE_TINT:
+      case GPVERTEX_BRUSH_TYPE_DRAW: {
         brush_tint_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
         changed |= true;
         break;
       }
-      case GPVERTEX_TOOL_BLUR: {
+      case GPVERTEX_BRUSH_TYPE_BLUR: {
         brush_blur_apply(gso, selected->gps, selected->pt_index, radius, selected->pc);
         changed |= true;
         break;
       }
-      case GPVERTEX_TOOL_AVERAGE: {
+      case GPVERTEX_BRUSH_TYPE_AVERAGE: {
         brush_average_apply(
             gso, selected->gps, selected->pt_index, radius, selected->pc, average_color);
         changed |= true;
         break;
       }
-      case GPVERTEX_TOOL_SMEAR: {
+      case GPVERTEX_BRUSH_TYPE_SMEAR: {
         brush_smear_apply(gso, selected->gps, selected->pt_index, selected);
         changed |= true;
         break;
       }
-      case GPVERTEX_TOOL_REPLACE: {
+      case GPVERTEX_BRUSH_TYPE_REPLACE: {
         brush_replace_apply(gso, selected->gps, selected->pt_index);
         changed |= true;
         break;
@@ -1109,7 +1109,7 @@ static bool gpencil_vertexpaint_brush_do_frame(bContext *C,
 static bool gpencil_vertexpaint_brush_apply_to_layers(bContext *C, tGP_BrushVertexpaintData *gso)
 {
   ToolSettings *ts = CTX_data_tool_settings(C);
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *obact = gso->object;
   bool changed = false;
 

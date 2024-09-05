@@ -10,8 +10,8 @@
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_image_wrappers.hh"
 #include "BKE_pbvh_api.hh"
@@ -95,8 +95,7 @@ static const Edge<CoordSpace::Tile> convert_coord_space(const Edge<CoordSpace::U
   };
 }
 
-class NonManifoldTileEdges : public Vector<Edge<CoordSpace::Tile>> {
-};
+class NonManifoldTileEdges : public Vector<Edge<CoordSpace::Tile>> {};
 
 class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
  public:
@@ -104,17 +103,17 @@ class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
   {
     int num_non_manifold_edges = count_non_manifold_edges(mesh_data);
     reserve(num_non_manifold_edges);
-    for (const int primitive_id : mesh_data.looptris.index_range()) {
+    for (const int primitive_id : mesh_data.corner_tris.index_range()) {
       for (const int edge_id : mesh_data.primitive_to_edge_map[primitive_id]) {
         if (is_manifold(mesh_data, edge_id)) {
           continue;
         }
-        const MLoopTri &lt = mesh_data.looptris[primitive_id];
-        const uv_islands::MeshEdge &mesh_edge = mesh_data.edges[edge_id];
+        const int3 &tri = mesh_data.corner_tris[primitive_id];
+        const int2 mesh_edge = mesh_data.edges[edge_id];
         Edge<CoordSpace::UV> edge;
 
-        edge.vertex_1.coordinate = find_uv(mesh_data, lt, mesh_edge.vert1);
-        edge.vertex_2.coordinate = find_uv(mesh_data, lt, mesh_edge.vert2);
+        edge.vertex_1.coordinate = find_uv(mesh_data, tri, mesh_edge[0]);
+        edge.vertex_2.coordinate = find_uv(mesh_data, tri, mesh_edge[1]);
         append(edge);
       }
     }
@@ -138,7 +137,7 @@ class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
   static int64_t count_non_manifold_edges(const uv_islands::MeshData &mesh_data)
   {
     int64_t result = 0;
-    for (const int primitive_id : mesh_data.looptris.index_range()) {
+    for (const int primitive_id : mesh_data.corner_tris.index_range()) {
       for (const int edge_id : mesh_data.primitive_to_edge_map[primitive_id]) {
         if (is_manifold(mesh_data, edge_id)) {
           continue;
@@ -154,10 +153,10 @@ class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
     return mesh_data.edge_to_primitive_map[edge_id].size() == 2;
   }
 
-  static float2 find_uv(const uv_islands::MeshData &mesh_data, const MLoopTri &lt, int vertex_i)
+  static float2 find_uv(const uv_islands::MeshData &mesh_data, const int3 &tri, int vertex_i)
   {
     for (int i = 0; i < 3; i++) {
-      const int loop_i = lt.tri[i];
+      const int loop_i = tri[i];
       const int vert = mesh_data.corner_verts[loop_i];
       if (vert == vertex_i) {
         return mesh_data.uv_map[loop_i];
@@ -170,43 +169,53 @@ class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
 
 class PixelNodesTileData : public Vector<std::reference_wrapper<UDIMTilePixels>> {
  public:
-  PixelNodesTileData(PBVH &pbvh, const image::ImageTileWrapper &image_tile)
+  PixelNodesTileData(blender::bke::pbvh::Tree &pbvh, const image::ImageTileWrapper &image_tile)
   {
     reserve(count_nodes(pbvh, image_tile));
 
-    for (PBVHNode &node : pbvh.nodes) {
-      if (should_add_node(node, image_tile)) {
-        NodeData &node_data = *static_cast<NodeData *>(node.pixels.node_data);
-        UDIMTilePixels &tile_pixels = *node_data.find_tile_data(image_tile);
-        append(tile_pixels);
-      }
-    }
+    std::visit(
+        [&](auto &nodes) {
+          for (blender::bke::pbvh::Node &node : nodes) {
+            if (should_add_node(node, image_tile)) {
+              NodeData &node_data = *static_cast<NodeData *>(node.pixels_);
+              UDIMTilePixels &tile_pixels = *node_data.find_tile_data(image_tile);
+              append(tile_pixels);
+            }
+          }
+        },
+        pbvh.nodes_);
   }
 
  private:
-  static bool should_add_node(PBVHNode &node, const image::ImageTileWrapper &image_tile)
+  static bool should_add_node(blender::bke::pbvh::Node &node,
+                              const image::ImageTileWrapper &image_tile)
   {
-    if ((node.flag & PBVH_Leaf) == 0) {
+    if ((node.flag_ & PBVH_Leaf) == 0) {
       return false;
     }
-    if (node.pixels.node_data == nullptr) {
+    if (node.pixels_ == nullptr) {
       return false;
     }
-    NodeData &node_data = *static_cast<NodeData *>(node.pixels.node_data);
+    NodeData &node_data = *static_cast<NodeData *>(node.pixels_);
     if (node_data.find_tile_data(image_tile) == nullptr) {
       return false;
     }
     return true;
   }
 
-  static int64_t count_nodes(PBVH &pbvh, const image::ImageTileWrapper &image_tile)
+  static int64_t count_nodes(blender::bke::pbvh::Tree &pbvh,
+                             const image::ImageTileWrapper &image_tile)
   {
     int64_t result = 0;
-    for (PBVHNode &node : pbvh.nodes) {
-      if (should_add_node(node, image_tile)) {
-        result++;
-      }
-    }
+    std::visit(
+        [&](auto &nodes) {
+          for (blender::bke::pbvh::Node &node : nodes) {
+            if (should_add_node(node, image_tile)) {
+              result++;
+            }
+          }
+        },
+        pbvh.nodes_);
     return result;
   }
 };
@@ -313,7 +322,7 @@ struct Rows {
    * - The second source pixel must be a neighbor pixel of the first source, or the same as the
    *   first source when no second pixel could be found.
    * - The second source pixel must be a pixel that is painted on by the brush.
-   * - The second source pixel must be the second closest pixel , or the first source
+   * - The second source pixel must be the second closest pixel, or the first source
    *   when no second pixel could be found.
    */
   int2 find_second_source(int2 destination, int2 first_source)
@@ -473,7 +482,7 @@ struct Rows {
     return selected_pixels;
   }
 
-  void pack_into(const Vector<std::reference_wrapper<Pixel>> &selected_pixels,
+  void pack_into(const Span<std::reference_wrapper<Pixel>> selected_pixels,
                  CopyPixelTile &copy_tile) const
   {
     std::optional<std::reference_wrapper<CopyPixelGroup>> last_group = std::nullopt;
@@ -500,7 +509,7 @@ struct Rows {
   }
 };
 
-void copy_update(PBVH &pbvh,
+void copy_update(blender::bke::pbvh::Tree &pbvh,
                  Image &image,
                  ImageUser &image_user,
                  const uv_islands::MeshData &mesh_data)
@@ -545,7 +554,10 @@ void copy_update(PBVH &pbvh,
   }
 }
 
-void copy_pixels(PBVH &pbvh, Image &image, ImageUser &image_user, image::TileNumber tile_number)
+void copy_pixels(blender::bke::pbvh::Tree &pbvh,
+                 Image &image,
+                 ImageUser &image_user,
+                 image::TileNumber tile_number)
 {
   PBVHData &pbvh_data = data_get(pbvh);
   std::optional<std::reference_wrapper<CopyPixelTile>> pixel_tile =

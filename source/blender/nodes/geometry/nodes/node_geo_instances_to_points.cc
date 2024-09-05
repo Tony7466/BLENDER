@@ -8,7 +8,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "node_geometry_util.hh"
 
@@ -54,12 +54,12 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
 
   bke::MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
   bke::SpanAttributeWriter<float> point_radii =
-      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
   array_utils::gather(radii, selection, point_radii.span);
   point_radii.finish();
 
   const bke::AttributeAccessor src_attributes = instances.attributes();
-  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  Map<StringRef, AttributeKind> attributes_to_propagate;
   geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Instance},
                                                  GeometryComponent::Type::PointCloud,
                                                  false,
@@ -70,7 +70,7 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
   attributes_to_propagate.remove("radius");
 
   for (const auto item : attributes_to_propagate.items()) {
-    const AttributeIDRef &id = item.key;
+    const StringRef id = item.key;
     const eCustomDataType type = item.value.data_type;
 
     const GAttributeReader src = src_attributes.lookup(id);
@@ -78,11 +78,11 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
     {
       const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
                                           *src.sharing_info);
-      dst_attributes.add(id, ATTR_DOMAIN_POINT, type, init);
+      dst_attributes.add(id, AttrDomain::Point, type, init);
     }
     else {
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, ATTR_DOMAIN_POINT, type);
+          id, AttrDomain::Point, type);
       array_utils::gather(src.varray, selection, dst.span);
       dst.finish();
     }
@@ -109,13 +109,13 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_INSTANCES_TO_POINTS, "Instances to Points", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

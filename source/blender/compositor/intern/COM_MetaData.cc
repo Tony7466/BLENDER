@@ -15,6 +15,13 @@ void MetaData::add(const blender::StringRef key, const blender::StringRef value)
   entries_.add(key, value);
 }
 
+bool MetaData::is_cryptomatte_layer() const
+{
+  return entries_.contains(META_DATA_KEY_CRYPTOMATTE_HASH) ||
+         entries_.contains(META_DATA_KEY_CRYPTOMATTE_CONVERSION) ||
+         entries_.contains(META_DATA_KEY_CRYPTOMATTE_MANIFEST);
+}
+
 void MetaData::add_cryptomatte_entry(const blender::StringRef layer_name,
                                      const blender::StringRefNull key,
                                      const blender::StringRef value)
@@ -30,7 +37,8 @@ void MetaData::replace_hash_neutral_cryptomatte_keys(const blender::StringRef la
   std::string cryptomatte_manifest = entries_.pop_default(META_DATA_KEY_CRYPTOMATTE_MANIFEST, "");
 
   if (cryptomatte_hash.length() || cryptomatte_conversion.length() ||
-      cryptomatte_manifest.length()) {
+      cryptomatte_manifest.length())
+  {
     add_cryptomatte_entry(layer_name, "name", layer_name);
   }
   if (cryptomatte_hash.length()) {

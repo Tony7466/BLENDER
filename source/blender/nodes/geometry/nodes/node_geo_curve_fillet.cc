@@ -53,7 +53,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryCurveFillet &storage = node_storage(*node);
   const GeometryNodeCurveFilletMode mode = (GeometryNodeCurveFilletMode)storage.mode;
   bNodeSocket *poly_socket = static_cast<bNodeSocket *>(node->inputs.first)->next;
-  bke::nodeSetSocketAvailability(ntree, poly_socket, mode == GEO_NODE_CURVE_FILLET_POLY);
+  bke::node_set_socket_availability(ntree, poly_socket, mode == GEO_NODE_CURVE_FILLET_POLY);
 }
 
 static bke::CurvesGeometry fillet_curve(const bke::CurvesGeometry &src_curves,
@@ -99,7 +99,7 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
 {
   using namespace blender::bke::greasepencil;
   for (const int layer_index : grease_pencil.layers().index_range()) {
-    Drawing *drawing = get_eval_grease_pencil_layer_drawing_for_write(grease_pencil, layer_index);
+    Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
     if (drawing == nullptr) {
       continue;
     }
@@ -108,7 +108,7 @@ static void fillet_grease_pencil(GreasePencil &grease_pencil,
       continue;
     }
     const bke::GreasePencilLayerFieldContext field_context(
-        grease_pencil, ATTR_DOMAIN_CURVE, layer_index);
+        grease_pencil, AttrDomain::Curve, layer_index);
     bke::CurvesGeometry dst_curves = fillet_curve(src_curves,
                                                   mode,
                                                   field_context,
@@ -143,7 +143,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (geometry_set.has_curves()) {
       const Curves &curves_id = *geometry_set.get_curves();
       const bke::CurvesGeometry &src_curves = curves_id.geometry.wrap();
-      const bke::CurvesFieldContext field_context{src_curves, ATTR_DOMAIN_POINT};
+      const bke::CurvesFieldContext field_context{src_curves, AttrDomain::Point};
       bke::CurvesGeometry dst_curves = fillet_curve(src_curves,
                                                     mode,
                                                     field_context,
@@ -171,13 +171,13 @@ static void node_rna(StructRNA *srna)
       {GEO_NODE_CURVE_FILLET_BEZIER,
        "BEZIER",
        0,
-       "Bezier",
-       "Align Bezier handles to create circular arcs at each control point"},
+       "Bézier",
+       "Align Bézier handles to create circular arcs at each control point"},
       {GEO_NODE_CURVE_FILLET_POLY,
        "POLY",
        0,
        "Poly",
-       "Add control points along a circular arc (handle type is vector if Bezier Spline)"},
+       "Add control points along a circular arc (handle type is vector if Bézier Spline)"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -192,17 +192,17 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_FILLET_CURVE, "Fillet Curve", NODE_CLASS_GEOMETRY);
   ntype.draw_buttons = node_layout;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryCurveFillet", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

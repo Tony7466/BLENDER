@@ -4,22 +4,23 @@
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
+#include "BLI_memory_counter.hh"
 #include "BLI_task.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_types.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_volume.hh"
 
 #include "DNA_collection_types.h"
@@ -60,7 +61,7 @@ GeometryComponentPtr GeometryComponent::create(Type component_type)
   return {};
 }
 
-int GeometryComponent::attribute_domain_size(const eAttrDomain domain) const
+int GeometryComponent::attribute_domain_size(const AttrDomain domain) const
 {
   if (this->is_empty()) {
     return 0;
@@ -80,6 +81,8 @@ std::optional<MutableAttributeAccessor> GeometryComponent::attributes_for_write(
 {
   return std::nullopt;
 }
+
+void GeometryComponent::count_memory(MemoryCounter & /*memory*/) const {}
 
 GeometryComponent::Type GeometryComponent::type() const
 {
@@ -225,10 +228,10 @@ std::ostream &operator<<(std::ostream &stream, const GeometrySet &geometry_set)
 {
   Vector<std::string> parts;
   if (const Mesh *mesh = geometry_set.get_mesh()) {
-    parts.append(std::to_string(mesh->totvert) + " verts");
-    parts.append(std::to_string(mesh->totedge) + " edges");
+    parts.append(std::to_string(mesh->verts_num) + " verts");
+    parts.append(std::to_string(mesh->edges_num) + " edges");
     parts.append(std::to_string(mesh->faces_num) + " faces");
-    parts.append(std::to_string(mesh->totloop) + " corners");
+    parts.append(std::to_string(mesh->corners_num) + " corners");
   }
   if (const Curves *curves = geometry_set.get_curves()) {
     parts.append(std::to_string(curves->geometry.point_num) + " control points");
@@ -342,6 +345,12 @@ const CurvesEditHints *GeometrySet::get_curve_edit_hints() const
 {
   const GeometryComponentEditData *component = this->get_component<GeometryComponentEditData>();
   return (component == nullptr) ? nullptr : component->curves_edit_hints_.get();
+}
+
+const GizmoEditHints *GeometrySet::get_gizmo_edit_hints() const
+{
+  const GeometryComponentEditData *component = this->get_component<GeometryComponentEditData>();
+  return (component == nullptr) ? nullptr : component->gizmo_edit_hints_.get();
 }
 
 const GreasePencil *GeometrySet::get_grease_pencil() const
@@ -567,10 +576,31 @@ CurvesEditHints *GeometrySet::get_curve_edit_hints_for_write()
   return component.curves_edit_hints_.get();
 }
 
+GizmoEditHints *GeometrySet::get_gizmo_edit_hints_for_write()
+{
+  if (!this->has<GeometryComponentEditData>()) {
+    return nullptr;
+  }
+  GeometryComponentEditData &component =
+      this->get_component_for_write<GeometryComponentEditData>();
+  return component.gizmo_edit_hints_.get();
+}
+
 GreasePencil *GeometrySet::get_grease_pencil_for_write()
 {
   GreasePencilComponent *component = this->get_component_ptr<GreasePencilComponent>();
   return component == nullptr ? nullptr : component->get_for_write();
+}
+
+void GeometrySet::count_memory(MemoryCounter &memory) const
+{
+  for (const GeometryComponentPtr &component : components_) {
+    if (component) {
+      memory.add_shared(component.get(), [&](MemoryCounter &shared_memory) {
+        component->count_memory(shared_memory);
+      });
+    }
+  }
 }
 
 void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
@@ -584,11 +614,10 @@ void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
     const GeometryComponent &component = *this->get_component(component_type);
     const std::optional<AttributeAccessor> attributes = component.attributes();
     if (attributes.has_value()) {
-      attributes->for_all(
-          [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) {
-            callback(attribute_id, meta_data, component);
-            return true;
-          });
+      attributes->for_all([&](const StringRef attribute_id, const AttributeMetaData &meta_data) {
+        callback(attribute_id, meta_data, component);
+        return true;
+      });
     }
   }
   if (include_instances && this->has_instances()) {
@@ -604,19 +633,19 @@ void GeometrySet::propagate_attributes_from_layer_to_instances(
     MutableAttributeAccessor dst_attributes,
     const AnonymousAttributePropagationInfo &propagation_info)
 {
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
+    if (bke::attribute_name_is_anonymous(id) && !propagation_info.propagate(id)) {
       return true;
     }
-    const GAttributeReader src = src_attributes.lookup(id, ATTR_DOMAIN_LAYER);
+    const GAttributeReader src = src_attributes.lookup(id, AttrDomain::Layer);
     if (src.sharing_info && src.varray.is_span()) {
       const AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
-      if (dst_attributes.add(id, ATTR_DOMAIN_INSTANCE, meta_data.data_type, init)) {
+      if (dst_attributes.add(id, AttrDomain::Instance, meta_data.data_type, init)) {
         return true;
       }
     }
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, ATTR_DOMAIN_INSTANCE, meta_data.data_type);
+        id, AttrDomain::Instance, meta_data.data_type);
     if (!dst) {
       return true;
     }
@@ -631,7 +660,7 @@ void GeometrySet::gather_attributes_for_propagation(
     const GeometryComponent::Type dst_component_type,
     bool include_instances,
     const AnonymousAttributePropagationInfo &propagation_info,
-    Map<AttributeIDRef, AttributeKind> &r_attributes) const
+    Map<StringRef, AttributeKind> &r_attributes) const
 {
   /* Only needed right now to check if an attribute is built-in on this component type.
    * TODO: Get rid of the dummy component. */
@@ -639,7 +668,7 @@ void GeometrySet::gather_attributes_for_propagation(
   this->attribute_foreach(
       component_types,
       include_instances,
-      [&](const AttributeIDRef &attribute_id,
+      [&](const StringRef attribute_id,
           const AttributeMetaData &meta_data,
           const GeometryComponent &component) {
         if (component.attributes()->is_builtin(attribute_id)) {
@@ -653,15 +682,16 @@ void GeometrySet::gather_attributes_for_propagation(
           /* Propagating string attributes is not supported yet. */
           return;
         }
-        if (attribute_id.is_anonymous() &&
-            !propagation_info.propagate(attribute_id.anonymous_id())) {
+        if (bke::attribute_name_is_anonymous(attribute_id) &&
+            !propagation_info.propagate(attribute_id))
+        {
           return;
         }
 
-        eAttrDomain domain = meta_data.domain;
+        AttrDomain domain = meta_data.domain;
         if (dst_component_type != GeometryComponent::Type::Instance &&
-            domain == ATTR_DOMAIN_INSTANCE) {
-          domain = ATTR_DOMAIN_POINT;
+            domain == AttrDomain::Instance) {
+          domain = AttrDomain::Point;
         }
 
         auto add_info = [&](AttributeKind *attribute_kind) {
@@ -751,37 +781,25 @@ bool object_has_geometry_set_instances(const Object &object)
   if (geometry_set == nullptr) {
     return false;
   }
-  for (const GeometryComponent *component : geometry_set->get_components()) {
-    if (component->is_empty()) {
-      continue;
-    }
-    const GeometryComponent::Type type = component->type();
-    bool is_instance = false;
-    switch (type) {
-      case GeometryComponent::Type::Mesh:
-        is_instance = object.type != OB_MESH;
-        break;
-      case GeometryComponent::Type::PointCloud:
-        is_instance = object.type != OB_POINTCLOUD;
-        break;
-      case GeometryComponent::Type::Instance:
-        is_instance = true;
-        break;
-      case GeometryComponent::Type::Volume:
-        is_instance = object.type != OB_VOLUME;
-        break;
-      case GeometryComponent::Type::Curve:
-        is_instance = !ELEM(object.type, OB_CURVES_LEGACY, OB_FONT);
-        break;
-      case GeometryComponent::Type::Edit:
-        break;
-      case GeometryComponent::Type::GreasePencil:
-        is_instance = object.type != OB_GREASE_PENCIL;
-        break;
-    }
-    if (is_instance) {
-      return true;
-    }
+  if (geometry_set->has_component<InstancesComponent>()) {
+    return true;
+  }
+  if (object.type != OB_MESH && geometry_set->has_component<MeshComponent>()) {
+    return true;
+  }
+  if (object.type != OB_POINTCLOUD && geometry_set->has_component<PointCloudComponent>()) {
+    return true;
+  }
+  if (object.type != OB_VOLUME && geometry_set->has_component<VolumeComponent>()) {
+    return true;
+  }
+  if (!ELEM(object.type, OB_CURVES_LEGACY, OB_FONT) &&
+      geometry_set->has_component<CurveComponent>())
+  {
+    return true;
+  }
+  if (object.type != OB_GREASE_PENCIL && geometry_set->has_component<GreasePencilComponent>()) {
+    return true;
   }
   return false;
 }

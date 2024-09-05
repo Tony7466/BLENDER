@@ -15,6 +15,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_socket_value.hh"
+#include "BKE_volume_grid_fwd.hh"
 
 #include "DNA_node_types.h"
 
@@ -23,13 +24,10 @@
 
 namespace blender::nodes {
 
-using bke::AnonymousAttributeFieldInput;
-using bke::AnonymousAttributeID;
-using bke::AnonymousAttributeIDPtr;
 using bke::AnonymousAttributePropagationInfo;
+using bke::AttrDomain;
 using bke::AttributeAccessor;
 using bke::AttributeFieldInput;
-using bke::AttributeIDRef;
 using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
@@ -65,7 +63,7 @@ class GeoNodeExecParams {
   const lf::Context &lf_context_;
   const Span<int> lf_input_for_output_bsocket_usage_;
   const Span<int> lf_input_for_attribute_propagation_to_output_;
-  const FunctionRef<AnonymousAttributeIDPtr(int)> get_output_attribute_id_;
+  const FunctionRef<std::string(int)> get_output_attribute_id_;
 
  public:
   GeoNodeExecParams(const bNode &node,
@@ -73,7 +71,7 @@ class GeoNodeExecParams {
                     const lf::Context &lf_context,
                     const Span<int> lf_input_for_output_bsocket_usage,
                     const Span<int> lf_input_for_attribute_propagation_to_output,
-                    const FunctionRef<AnonymousAttributeIDPtr(int)> get_output_attribute_id)
+                    const FunctionRef<std::string(int)> get_output_attribute_id)
       : node_(node),
         params_(params),
         lf_context_(lf_context),
@@ -85,8 +83,20 @@ class GeoNodeExecParams {
   }
 
   template<typename T>
-  static inline constexpr bool is_field_base_type_v =
-      is_same_any_v<T, float, int, bool, ColorGeometry4f, float3, std::string, math::Quaternion>;
+  static inline constexpr bool is_field_base_type_v = is_same_any_v<T,
+                                                                    float,
+                                                                    int,
+                                                                    bool,
+                                                                    ColorGeometry4f,
+                                                                    float3,
+                                                                    std::string,
+                                                                    math::Quaternion,
+                                                                    float4x4>;
+
+  template<typename T>
+  static inline constexpr bool stored_as_SocketValueVariant_v =
+      is_field_base_type_v<T> || fn::is_field_v<T> || bke::is_VolumeGrid_v<T> ||
+      is_same_any_v<T, GField, bke::GVolumeGrid>;
 
   /**
    * Get the input value for the input socket with the given identifier.
@@ -95,9 +105,7 @@ class GeoNodeExecParams {
    */
   template<typename T> T extract_input(StringRef identifier)
   {
-    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
-                  std::is_same_v<std::decay_t<T>, GField>)
-    {
+    if constexpr (stored_as_SocketValueVariant_v<T>) {
       SocketValueVariant value_variant = this->extract_input<SocketValueVariant>(identifier);
       return value_variant.extract<T>();
     }
@@ -126,9 +134,7 @@ class GeoNodeExecParams {
    */
   template<typename T> T get_input(StringRef identifier) const
   {
-    if constexpr (is_field_base_type_v<T> || fn::is_field_v<T> ||
-                  std::is_same_v<std::decay_t<T>, GField>)
-    {
+    if constexpr (stored_as_SocketValueVariant_v<T>) {
       auto value_variant = this->get_input<SocketValueVariant>(identifier);
       return value_variant.extract<T>();
     }
@@ -155,9 +161,7 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
-    if constexpr (is_field_base_type_v<StoredT> || fn::is_field_v<StoredT> ||
-                  std::is_same_v<StoredT, GField>)
-    {
+    if constexpr (stored_as_SocketValueVariant_v<StoredT>) {
       SocketValueVariant value_variant(std::forward<T>(value));
       this->set_output(identifier, std::move(value_variant));
     }
@@ -217,18 +221,20 @@ class GeoNodeExecParams {
     return nullptr;
   }
 
-  Depsgraph *depsgraph() const
+  const Depsgraph *depsgraph() const
   {
     if (const auto *data = this->user_data()) {
       if (data->call_data->modifier_data) {
         return data->call_data->modifier_data->depsgraph;
       }
       if (data->call_data->operator_data) {
-        return data->call_data->operator_data->depsgraph;
+        return data->call_data->operator_data->depsgraphs->active;
       }
     }
     return nullptr;
   }
+
+  Main *bmain() const;
 
   GeoNodesLFUserData *user_data() const
   {
@@ -265,11 +271,11 @@ class GeoNodeExecParams {
    * Return a new anonymous attribute id for the given output. None is returned if the anonymous
    * attribute is not needed.
    */
-  AnonymousAttributeIDPtr get_output_anonymous_attribute_id_if_needed(
+  std::optional<std::string> get_output_anonymous_attribute_id_if_needed(
       const StringRef output_identifier, const bool force_create = false)
   {
     if (!this->anonymous_attribute_output_is_required(output_identifier) && !force_create) {
-      return {};
+      return std::nullopt;
     }
     const bNodeSocket &output_socket = node_.output_by_identifier(output_identifier);
     return get_output_attribute_id_(output_socket.index());

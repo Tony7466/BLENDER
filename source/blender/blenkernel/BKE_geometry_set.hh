@@ -13,9 +13,12 @@
 
 #include "BLI_bounds_types.hh"
 #include "BLI_function_ref.hh"
+#include "BLI_implicit_sharing_ptr.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_memory_counter_fwd.hh"
 
+/* For #Map. */
 #include "BKE_attribute.hh"
 
 struct Curves;
@@ -25,11 +28,18 @@ struct PointCloud;
 struct Volume;
 struct GreasePencil;
 namespace blender::bke {
+class AnonymousAttributePropagationInfo;
+struct AttributeKind;
+class AttributeAccessor;
+struct AttributeMetaData;
 class ComponentAttributeProviders;
 class CurvesEditHints;
 class Instances;
 class GeometryComponent;
 class GreasePencilEditHints;
+class MutableAttributeAccessor;
+enum class AttrDomain : int8_t;
+struct GizmoEditHints;
 }  // namespace blender::bke
 
 namespace blender::bke {
@@ -78,7 +88,7 @@ class GeometryComponent : public ImplicitSharingMixin {
   virtual ~GeometryComponent() = default;
   static GeometryComponentPtr create(Type component_type);
 
-  int attribute_domain_size(eAttrDomain domain) const;
+  int attribute_domain_size(AttrDomain domain) const;
 
   /**
    * Get access to the attributes in this geometry component. May return none if the geometry does
@@ -86,6 +96,8 @@ class GeometryComponent : public ImplicitSharingMixin {
    */
   virtual std::optional<AttributeAccessor> attributes() const;
   virtual std::optional<MutableAttributeAccessor> attributes_for_write();
+
+  virtual void count_memory(MemoryCounter &memory) const;
 
   /**
    * Copies the component. The returned component only has a single user and is therefor mutable.
@@ -139,6 +151,13 @@ struct GeometrySet {
 
  public:
   /**
+   * A user defined name for this geometry. It is not expected to be unique. Its main
+   * purpose is help debugging instance trees. It may eventually also be used when exporting
+   * instance trees or when creating separate objects from them.
+   */
+  std::string name;
+
+  /**
    * The methods are defaulted here so that they are not instantiated in every translation unit.
    */
   GeometrySet();
@@ -174,6 +193,12 @@ struct GeometrySet {
   {
     BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
     return this->has(Component::static_type);
+  }
+
+  template<typename Component> bool has_component() const
+  {
+    BLI_STATIC_ASSERT(is_geometry_component_v<Component>, "");
+    return components_[int(Component::static_type)];
   }
 
   void remove(const GeometryComponent::Type component_type);
@@ -223,7 +248,7 @@ struct GeometrySet {
    */
   void ensure_owns_all_data();
 
-  using AttributeForeachCallback = FunctionRef<void(const AttributeIDRef &attribute_id,
+  using AttributeForeachCallback = FunctionRef<void(StringRef attribute_id,
                                                     const AttributeMetaData &meta_data,
                                                     const GeometryComponent &component)>;
 
@@ -240,7 +265,7 @@ struct GeometrySet {
                                          GeometryComponent::Type dst_component_type,
                                          bool include_instances,
                                          const AnonymousAttributePropagationInfo &propagation_info,
-                                         Map<AttributeIDRef, AttributeKind> &r_attributes) const;
+                                         Map<StringRef, AttributeKind> &r_attributes) const;
 
   Vector<GeometryComponent::Type> gather_component_types(bool include_instances,
                                                          bool ignore_empty) const;
@@ -344,6 +369,10 @@ struct GeometrySet {
    */
   const CurvesEditHints *get_curve_edit_hints() const;
   /**
+   * Returns read-only gizmo edit hints or null.
+   */
+  const GizmoEditHints *get_gizmo_edit_hints() const;
+  /**
    * Returns a read-only Grease Pencil data-block or null.
    */
   const GreasePencil *get_grease_pencil() const;
@@ -372,6 +401,10 @@ struct GeometrySet {
    * Returns mutable curve edit hints or null.
    */
   CurvesEditHints *get_curve_edit_hints_for_write();
+  /**
+   * Returns mutable gizmo edit hints or null.
+   */
+  GizmoEditHints *get_gizmo_edit_hints_for_write();
   /**
    * Returns a mutable Grease Pencil data-block or null. No ownership is transferred.
    */
@@ -411,8 +444,10 @@ struct GeometrySet {
   friend bool operator==(const GeometrySet &a, const GeometrySet &b)
   {
     /* This compares only the component pointers, not the actual geometry data. */
-    return Span(a.components_) == Span(b.components_);
+    return Span(a.components_) == Span(b.components_) && a.name == b.name;
   }
+
+  void count_memory(MemoryCounter &memory) const;
 
  private:
   /**
@@ -438,6 +473,7 @@ class MeshComponent : public GeometryComponent {
 
  public:
   MeshComponent();
+  MeshComponent(Mesh *mesh, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~MeshComponent();
   GeometryComponentPtr copy() const override;
 
@@ -469,6 +505,8 @@ class MeshComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  void count_memory(MemoryCounter &memory) const override;
+
   static constexpr inline GeometryComponent::Type static_type = Type::Mesh;
 
   std::optional<AttributeAccessor> attributes() const final;
@@ -492,6 +530,8 @@ class PointCloudComponent : public GeometryComponent {
 
  public:
   PointCloudComponent();
+  PointCloudComponent(PointCloud *pointcloud,
+                      GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~PointCloudComponent();
   GeometryComponentPtr copy() const override;
 
@@ -526,6 +566,8 @@ class PointCloudComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  void count_memory(MemoryCounter &memory) const override;
+
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
 
@@ -552,6 +594,7 @@ class CurveComponent : public GeometryComponent {
 
  public:
   CurveComponent();
+  CurveComponent(Curves *curve, GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~CurveComponent();
   GeometryComponentPtr copy() const override;
 
@@ -570,6 +613,8 @@ class CurveComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  void count_memory(MemoryCounter &memory) const override;
 
   /**
    * Create empty curve data used for rendering the spline's wire edges.
@@ -593,6 +638,8 @@ class InstancesComponent : public GeometryComponent {
 
  public:
   InstancesComponent();
+  InstancesComponent(Instances *instances,
+                     GeometryOwnershipType ownership = GeometryOwnershipType::Owned);
   ~InstancesComponent();
   GeometryComponentPtr copy() const override;
 
@@ -608,6 +655,8 @@ class InstancesComponent : public GeometryComponent {
 
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
+
+  void count_memory(MemoryCounter &memory) const override;
 
   std::optional<AttributeAccessor> attributes() const final;
   std::optional<MutableAttributeAccessor> attributes_for_write() final;
@@ -657,6 +706,8 @@ class VolumeComponent : public GeometryComponent {
   bool owns_direct_data() const override;
   void ensure_owns_direct_data() override;
 
+  void count_memory(MemoryCounter &memory) const override;
+
   static constexpr inline GeometryComponent::Type static_type = Type::Volume;
 };
 
@@ -680,6 +731,10 @@ class GeometryComponentEditData final : public GeometryComponent {
    * Information about how drawings on the grease pencil layers are manipulated during evaluation.
    */
   std::unique_ptr<GreasePencilEditHints> grease_pencil_edit_hints_;
+  /**
+   * Propagated information for how gizmos should be transformed along with the geometry.
+   */
+  std::unique_ptr<GizmoEditHints> gizmo_edit_hints_;
 
   GeometryComponentEditData();
 

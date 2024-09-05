@@ -33,7 +33,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -43,7 +43,7 @@
 #include "BLI_ghash.h"
 
 #include "BKE_context.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 /* so operators called can spawn threads which acquire the GIL */
 #define BPY_RELEASE_GIL
@@ -226,7 +226,7 @@ static PyObject *pyop_call(PyObject * /*self*/, PyObject *args)
 
     if (kw && PyDict_Size(kw)) {
       error_val = pyrna_pydict_to_props(
-          &ptr, kw, false, "Converting py args to operator properties: ");
+          &ptr, kw, false, "Converting py args to operator properties:");
     }
 
     if (error_val == 0) {
@@ -313,7 +313,6 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
   bool macro_args = true;
   int error_val = 0;
 
-  char *buf = nullptr;
   PyObject *pybuf;
 
   bContext *C = BPY_context_get();
@@ -367,11 +366,12 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
 
   if (kw && PyDict_Size(kw)) {
     error_val = pyrna_pydict_to_props(
-        &ptr, kw, false, "Converting py args to operator properties: ");
+        &ptr, kw, false, "Converting py args to operator properties:");
   }
 
+  std::string op_string;
   if (error_val == 0) {
-    buf = WM_operator_pystring_ex(C, nullptr, all_args, macro_args, ot, &ptr);
+    op_string = WM_operator_pystring_ex(C, nullptr, all_args, macro_args, ot, &ptr);
   }
 
   WM_operator_properties_free(&ptr);
@@ -380,9 +380,8 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  if (buf) {
-    pybuf = PyUnicode_FromString(buf);
-    MEM_freeN(buf);
+  if (!op_string.empty()) {
+    pybuf = PyUnicode_FromString(op_string.c_str());
   }
   else {
     pybuf = PyUnicode_FromString("");
@@ -393,16 +392,13 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
 
 static PyObject *pyop_dir(PyObject * /*self*/)
 {
-  GHashIterator iter;
-  PyObject *list;
-  int i;
+  const wmOperatorTypeMap &map = WM_operatortype_map();
+  PyObject *list = PyList_New(map.size());
 
-  WM_operatortype_iter(&iter);
-  list = PyList_New(BLI_ghash_len(iter.gh));
-
-  for (i = 0; !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter), i++) {
-    wmOperatorType *ot = static_cast<wmOperatorType *>(BLI_ghashIterator_getValue(&iter));
+  int i = 0;
+  for (wmOperatorType *ot : map.values()) {
     PyList_SET_ITEM(list, i, PyUnicode_FromString(ot->idname));
+    i++;
   }
 
   return list;

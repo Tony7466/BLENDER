@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "BLI_string.h"
 
@@ -22,10 +22,10 @@
 
 #include <cstring>
 
-#include "GPU_platform.h"
-#include "GPU_vertex_format.h"
+#include "GPU_platform.hh"
+#include "GPU_vertex_format.hh"
 
-#include "gpu_shader_dependency_private.h"
+#include "gpu_shader_dependency_private.hh"
 
 #include "mtl_common.hh"
 #include "mtl_context.hh"
@@ -49,6 +49,8 @@ char *MSLGeneratorInterface::msl_patch_default = nullptr;
 /* Generator names. */
 #define FRAGMENT_OUT_STRUCT_NAME "FragmentOut"
 #define FRAGMENT_TILE_IN_STRUCT_NAME "FragmentTileIn"
+
+#define ATOMIC_DEFINE_STR "#define MTL_SUPPORTS_TEXTURE_ATOMICS 1\n"
 
 /* -------------------------------------------------------------------- */
 /** \name Shader Translation utility functions.
@@ -185,7 +187,7 @@ static bool is_program_word(const char *chr, int *len)
   int numchars = 0;
   for (const char *c = chr; *c != '\0'; c++) {
     char ch = *c;
-    /* Note: Hash (`#`) is not valid in var names, but is used by Closure macro patterns. */
+    /* NOTE: Hash (`#`) is not valid in var names, but is used by Closure macro patterns. */
     if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
         (numchars > 0 && ch >= '0' && ch <= '9') || ch == '_' || ch == '#')
     {
@@ -301,7 +303,7 @@ static void replace_outvars(std::string &str)
             /* Generate out-variable pattern for arrays, of form
              * `OUT(vec2,samples,CRYPTOMATTE_LEVELS_MAX)`
              * replacing original `out vec2 samples[SAMPLE_LEN]`
-             * using 'OUT' macro declared in mtl_shader_defines.msl*/
+             * using 'OUT' macro declared in `mtl_shader_defines.msl`. */
             char *array_end = strchr(word_base2 + len2, ']');
             if (array_end != nullptr) {
               *start = 'O';
@@ -778,6 +780,10 @@ std::string MTLShader::resources_declare(const ShaderCreateInfo &info) const
   for (const ShaderCreateInfo::Resource &res : info.batch_resources_) {
     print_resource(ss, res);
   }
+  ss << "\n/* Geometry Resources. */\n";
+  for (const ShaderCreateInfo::Resource &res : info.geometry_resources_) {
+    print_resource(ss, res);
+  }
   /* NOTE: Push constant uniform data is generated during `generate_msl_from_glsl`
    * as the generated output is needed for all paths. This includes generation
    * of the push constant data structure (struct PushConstantBlock).
@@ -869,6 +875,18 @@ char *MSLGeneratorInterface::msl_patch_default_get()
   return msl_patch_default;
 }
 
+/* Specialization constants will evaluate using a dynamic value if provided at PSO compile time. */
+static void generate_specialization_constant_declarations(const shader::ShaderCreateInfo *info,
+                                                          std::stringstream &ss)
+{
+  uint index = MTL_SHADER_SPECIALIZATION_CONSTANT_BASE_ID;
+  for (const SpecializationConstant &sc : info->specialization_constants_) {
+    /* TODO(Metal): Output specialization constant chain. */
+    ss << "constant " << sc.type << " " << sc.name << " [[function_constant(" << index << ")]];\n";
+    index++;
+  }
+}
+
 bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
 {
   /* Verify if create-info is available.
@@ -915,9 +933,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Concatenate msl_shader_defines to provide functionality mapping
    * from GLSL to MSL. Also include additional GPU defines for
    * optional high-level feature support. */
-  std::string msl_defines_string =
-      "#define GPU_ARB_texture_cube_map_array 1\n\
-      #define GPU_ARB_shader_draw_parameters 1\n";
+  std::string msl_defines_string = "#define GPU_ARB_shader_draw_parameters 1\n";
 
   /* NOTE(Metal): textureGather appears to not function correctly on non-Apple-silicon GPUs.
    * Manifests as selection outlines not showing up (#103412). Disable texture gather if
@@ -1023,6 +1039,11 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     msl_iface.uses_gl_FragDepth = (info->depth_write_ != DepthWrite::UNCHANGED) &&
                                   shd_builder_->glsl_fragment_source_.find("gl_FragDepth") !=
                                       std::string::npos;
+
+    /* TODO(fclem): Add to create info. */
+    msl_iface.uses_gl_FragStencilRefARB = shd_builder_->glsl_fragment_source_.find(
+                                              "gl_FragStencilRefARB") != std::string::npos;
+
     msl_iface.depth_write = info->depth_write_;
 
     /* Early fragment tests. */
@@ -1047,6 +1068,19 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Setup `stringstream` for populating generated MSL shader vertex/frag shaders. */
   std::stringstream ss_vertex;
   std::stringstream ss_fragment;
+  ss_vertex << "#line 1 \"msl_wrapper_code\"\n";
+  ss_fragment << "#line 1 \"msl_wrapper_code\"\n";
+
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
+      MTLBackend::get_capabilities().supports_texture_atomics)
+  {
+    ss_vertex << ATOMIC_DEFINE_STR;
+    ss_fragment << ATOMIC_DEFINE_STR;
+  }
+
+  /* Generate specialization constants. */
+  generate_specialization_constant_declarations(info, ss_vertex);
+  generate_specialization_constant_declarations(info, ss_fragment);
 
   /*** Generate VERTEX Stage ***/
   /* Conditional defines. */
@@ -1318,11 +1352,14 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     if (msl_iface.uses_gl_FragDepth) {
       ss_fragment << "float gl_FragDepth;" << std::endl;
     }
+    if (msl_iface.uses_gl_FragStencilRefARB) {
+      ss_fragment << "int gl_FragStencilRefARB;" << std::endl;
+    }
     if (msl_iface.uses_gl_PointCoord) {
       ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
     if (msl_iface.uses_gl_FrontFacing) {
-      ss_fragment << "MTLBOOL gl_FrontFacing;" << std::endl;
+      ss_fragment << "bool gl_FrontFacing;" << std::endl;
     }
     if (msl_iface.uses_gl_PrimitiveID) {
       ss_fragment << "uint gl_PrimitiveID;" << std::endl;
@@ -1413,7 +1450,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
 #endif
 
   /* Bake shader interface. */
-  this->set_interface(msl_iface.bake_shader_interface(this->name));
+  this->set_interface(msl_iface.bake_shader_interface(this->name, info));
 
   /* Update other shader properties. */
   uses_gpu_layer = msl_iface.uses_gpu_layer;
@@ -1502,9 +1539,16 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
 
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
+  ss_compute << "#line 1 \"msl_wrapper_code\"\n";
 
-  ss_compute << "#define GPU_ARB_texture_cube_map_array 1\n"
-                "#define GPU_ARB_shader_draw_parameters 1\n";
+  ss_compute << "#define GPU_ARB_shader_draw_parameters 1\n";
+  if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
+      MTLBackend::get_capabilities().supports_texture_atomics)
+  {
+    ss_compute << ATOMIC_DEFINE_STR;
+  }
+
+  generate_specialization_constant_declarations(info, ss_compute);
 
 #ifndef NDEBUG
   extract_global_scope_constants(shd_builder_->glsl_compute_source_, ss_compute);
@@ -1661,10 +1705,10 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
   this->shader_compute_source_from_msl(msl_final_compute);
 
   /* Bake shader interface. */
-  this->set_interface(msl_iface.bake_shader_interface(this->name));
+  this->set_interface(msl_iface.bake_shader_interface(this->name, info));
 
   /* Compute dims. */
-  this->compute_pso_instance_.set_compute_workgroup_size(
+  this->compute_pso_common_state_.set_compute_workgroup_size(
       max_ii(info->compute_layout_.local_size_x, 1),
       max_ii(info->compute_layout_.local_size_y, 1),
       max_ii(info->compute_layout_.local_size_z, 1));
@@ -1792,6 +1836,11 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
     uniforms.append(uniform);
   }
 
+  /** Prepare Constants. */
+  for (const auto &constant : create_info_->specialization_constants_) {
+    constants.append(MSLConstant(constant.type, constant.name));
+  }
+
   /* Prepare textures and uniform blocks.
    * Perform across both resource categories and extract both
    * texture samplers and image types. */
@@ -1806,146 +1855,140 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
 
   uint max_storage_buffer_location = 0;
 
+  const blender::Vector<ShaderCreateInfo::Resource> all_resources = info->resources_get_all_();
+
   /* Determine max sampler slot for image resource offset, when not using auto resource location,
    * as image resources cannot overlap sampler ranges. */
   int max_sampler_slot = 0;
   if (!create_info_->auto_resource_location_) {
-    for (int i = 0; i < 2; i++) {
-      const Vector<ShaderCreateInfo::Resource> &resources = (i == 0) ? info->pass_resources_ :
-                                                                       info->batch_resources_;
-      for (const ShaderCreateInfo::Resource &res : resources) {
-        if (res.bind_type == shader::ShaderCreateInfo::Resource::BindType::SAMPLER) {
-          max_sampler_slot = max_ii(res.slot, max_sampler_slot);
-        }
+    for (const ShaderCreateInfo::Resource &res : all_resources) {
+      if (res.bind_type == shader::ShaderCreateInfo::Resource::BindType::SAMPLER) {
+        max_sampler_slot = max_ii(res.slot, max_sampler_slot);
       }
     }
   }
 
-  for (int i = 0; i < 2; i++) {
-    const Vector<ShaderCreateInfo::Resource> &resources = (i == 0) ? info->pass_resources_ :
-                                                                     info->batch_resources_;
-    for (const ShaderCreateInfo::Resource &res : resources) {
-      /* TODO(Metal): Consider adding stage flags to textures in create info. */
-      /* Handle sampler types. */
-      switch (res.bind_type) {
-        case shader::ShaderCreateInfo::Resource::BindType::SAMPLER: {
+  for (const ShaderCreateInfo::Resource &res : all_resources) {
+    /* TODO(Metal): Consider adding stage flags to textures in create info. */
+    /* Handle sampler types. */
+    switch (res.bind_type) {
+      case shader::ShaderCreateInfo::Resource::BindType::SAMPLER: {
 
-          /* Samplers to have access::sample by default. */
-          MSLTextureSamplerAccess access = MSLTextureSamplerAccess::TEXTURE_ACCESS_SAMPLE;
-          /* TextureBuffers must have read/write/read-write access pattern. */
-          if (res.sampler.type == ImageType::FLOAT_BUFFER ||
-              res.sampler.type == ImageType::INT_BUFFER ||
-              res.sampler.type == ImageType::UINT_BUFFER)
-          {
-            access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
-          }
+        /* Samplers to have access::sample by default. */
+        MSLTextureSamplerAccess access = MSLTextureSamplerAccess::TEXTURE_ACCESS_SAMPLE;
+        /* TextureBuffers must have read/write/read-write access pattern. */
+        if (res.sampler.type == ImageType::FLOAT_BUFFER ||
+            res.sampler.type == ImageType::INT_BUFFER ||
+            res.sampler.type == ImageType::UINT_BUFFER)
+        {
+          access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
+        }
 
-          MSLTextureResource msl_tex;
-          msl_tex.stage = ShaderStage::ANY;
-          msl_tex.type = res.sampler.type;
-          msl_tex.name = res.sampler.name;
-          msl_tex.access = access;
-          msl_tex.slot = texture_slot_id++;
-          msl_tex.location = (create_info_->auto_resource_location_) ? msl_tex.slot : res.slot;
-          msl_tex.is_texture_sampler = true;
-          BLI_assert(msl_tex.slot < MTL_MAX_TEXTURE_SLOTS);
+        MSLTextureResource msl_tex;
+        msl_tex.stage = ShaderStage::ANY;
+        msl_tex.type = res.sampler.type;
+        msl_tex.name = res.sampler.name;
+        msl_tex.access = access;
+        msl_tex.slot = texture_slot_id++;
+        msl_tex.location = (create_info_->auto_resource_location_) ? msl_tex.slot : res.slot;
+        msl_tex.is_texture_sampler = true;
+        BLI_assert(msl_tex.slot < MTL_MAX_TEXTURE_SLOTS);
 
-          texture_samplers.append(msl_tex);
-          max_tex_bind_index = max_ii(max_tex_bind_index, msl_tex.slot);
-        } break;
+        texture_samplers.append(msl_tex);
+        max_tex_bind_index = max_ii(max_tex_bind_index, msl_tex.slot);
+      } break;
 
-        case shader::ShaderCreateInfo::Resource::BindType::IMAGE: {
-          /* Flatten qualifier flags into final access state. */
-          MSLTextureSamplerAccess access;
-          if (bool(res.image.qualifiers & Qualifier::READ_WRITE)) {
-            access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READWRITE;
-          }
-          else if (bool(res.image.qualifiers & Qualifier::WRITE)) {
-            access = MSLTextureSamplerAccess::TEXTURE_ACCESS_WRITE;
-          }
-          else {
-            access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
-          }
+      case shader::ShaderCreateInfo::Resource::BindType::IMAGE: {
+        /* Flatten qualifier flags into final access state. */
+        MSLTextureSamplerAccess access;
+        if ((res.image.qualifiers & Qualifier::READ_WRITE) == Qualifier::READ_WRITE) {
+          access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READWRITE;
+        }
+        else if (bool(res.image.qualifiers & Qualifier::WRITE)) {
+          access = MSLTextureSamplerAccess::TEXTURE_ACCESS_WRITE;
+        }
+        else {
+          access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
+        }
 
-          /* Writeable image targets only assigned to Fragment and compute shaders. */
-          MSLTextureResource msl_image;
-          msl_image.stage = ShaderStage::FRAGMENT | ShaderStage::COMPUTE;
-          msl_image.type = res.image.type;
-          msl_image.name = res.image.name;
-          msl_image.access = access;
-          msl_image.slot = texture_slot_id++;
-          msl_image.location = (create_info_->auto_resource_location_) ? msl_image.slot : res.slot;
-          msl_image.is_texture_sampler = false;
-          BLI_assert(msl_image.slot < MTL_MAX_TEXTURE_SLOTS);
+        /* Writeable image targets only assigned to Fragment and compute shaders. */
+        MSLTextureResource msl_image;
+        msl_image.stage = ShaderStage::FRAGMENT | ShaderStage::COMPUTE;
+        msl_image.type = res.image.type;
+        msl_image.name = res.image.name;
+        msl_image.access = access;
+        msl_image.slot = texture_slot_id++;
+        msl_image.location = (create_info_->auto_resource_location_) ? msl_image.slot : res.slot;
+        msl_image.is_texture_sampler = false;
+        BLI_assert(msl_image.slot < MTL_MAX_TEXTURE_SLOTS);
 
-          texture_samplers.append(msl_image);
-          max_tex_bind_index = max_ii(max_tex_bind_index, msl_image.slot);
-        } break;
+        texture_samplers.append(msl_image);
+        max_tex_bind_index = max_ii(max_tex_bind_index, msl_image.slot);
+      } break;
 
-        case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
-          MSLBufferBlock ubo;
-          BLI_assert(res.uniformbuf.type_name.size() > 0);
-          BLI_assert(res.uniformbuf.name.size() > 0);
-          int64_t array_offset = res.uniformbuf.name.find_first_of("[");
+      case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
+        MSLBufferBlock ubo;
+        BLI_assert(res.uniformbuf.type_name.size() > 0);
+        BLI_assert(res.uniformbuf.name.size() > 0);
+        int64_t array_offset = res.uniformbuf.name.find_first_of("[");
 
-          /* We maintain two bind indices. "Slot" refers to the storage index buffer(N) in which
-           * we will bind the resource. "Location" refers to the explicit bind index specified
-           * in ShaderCreateInfo.
-           * NOTE: ubo.slot is offset by one, as first UBO slot is reserved for push constant data.
-           */
-          ubo.slot = 1 + (ubo_buffer_slot_id_++);
-          ubo.location = (create_info_->auto_resource_location_) ? ubo.slot : res.slot;
+        /* We maintain two bind indices. "Slot" refers to the storage index buffer(N) in which
+         * we will bind the resource. "Location" refers to the explicit bind index specified
+         * in ShaderCreateInfo.
+         * NOTE: ubo.slot is offset by one, as first UBO slot is reserved for push constant data.
+         */
+        ubo.slot = 1 + (ubo_buffer_slot_id_++);
+        ubo.location = (create_info_->auto_resource_location_) ? ubo.slot : res.slot;
 
-          BLI_assert(ubo.location >= 0 && ubo.location < MTL_MAX_BUFFER_BINDINGS);
+        BLI_assert(ubo.location >= 0 && ubo.location < MTL_MAX_BUFFER_BINDINGS);
 
-          ubo.qualifiers = shader::Qualifier::READ;
-          ubo.type_name = res.uniformbuf.type_name;
-          ubo.is_texture_buffer = false;
-          ubo.is_array = (array_offset > -1);
-          if (ubo.is_array) {
-            /* If is array UBO, strip out array tag from name. */
-            StringRef name_no_array = StringRef(res.uniformbuf.name.c_str(), array_offset);
-            ubo.name = name_no_array;
-          }
-          else {
-            ubo.name = res.uniformbuf.name;
-          }
-          ubo.stage = ShaderStage::ANY;
-          uniform_blocks.append(ubo);
-        } break;
+        ubo.qualifiers = shader::Qualifier::READ;
+        ubo.type_name = res.uniformbuf.type_name;
+        ubo.is_texture_buffer = false;
+        ubo.is_array = (array_offset > -1);
+        if (ubo.is_array) {
+          /* If is array UBO, strip out array tag from name. */
+          StringRef name_no_array = StringRef(res.uniformbuf.name.c_str(), array_offset);
+          ubo.name = name_no_array;
+        }
+        else {
+          ubo.name = res.uniformbuf.name;
+        }
+        ubo.stage = ShaderStage::ANY;
+        uniform_blocks.append(ubo);
+      } break;
 
-        case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
-          MSLBufferBlock ssbo;
-          BLI_assert(res.storagebuf.type_name.size() > 0);
-          BLI_assert(res.storagebuf.name.size() > 0);
-          int64_t array_offset = res.storagebuf.name.find_first_of("[");
+      case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
+        MSLBufferBlock ssbo;
+        BLI_assert(res.storagebuf.type_name.size() > 0);
+        BLI_assert(res.storagebuf.name.size() > 0);
+        int64_t array_offset = res.storagebuf.name.find_first_of("[");
 
-          /* We maintain two bind indices. "Slot" refers to the storage index buffer(N) in which
-           * we will bind the resource. "Location" refers to the explicit bind index specified
-           * in ShaderCreateInfo. */
-          ssbo.slot = storage_buffer_slot_id_++;
-          ssbo.location = (create_info_->auto_resource_location_) ? ssbo.slot : res.slot;
+        /* We maintain two bind indices. "Slot" refers to the storage index buffer(N) in which
+         * we will bind the resource. "Location" refers to the explicit bind index specified
+         * in ShaderCreateInfo. */
+        ssbo.slot = storage_buffer_slot_id_++;
+        ssbo.location = (create_info_->auto_resource_location_) ? ssbo.slot : res.slot;
 
-          max_storage_buffer_location = max_uu(max_storage_buffer_location, ssbo.location);
+        max_storage_buffer_location = max_uu(max_storage_buffer_location, ssbo.location);
 
-          BLI_assert(ssbo.location >= 0 && ssbo.location < MTL_MAX_BUFFER_BINDINGS);
+        BLI_assert(ssbo.location >= 0 && ssbo.location < MTL_MAX_BUFFER_BINDINGS);
 
-          ssbo.qualifiers = res.storagebuf.qualifiers;
-          ssbo.type_name = res.storagebuf.type_name;
-          ssbo.is_texture_buffer = false;
-          ssbo.is_array = (array_offset > -1);
-          if (ssbo.is_array) {
-            /* If is array UBO, strip out array tag from name. */
-            StringRef name_no_array = StringRef(res.storagebuf.name.c_str(), array_offset);
-            ssbo.name = name_no_array;
-          }
-          else {
-            ssbo.name = res.storagebuf.name;
-          }
-          ssbo.stage = ShaderStage::ANY;
-          storage_blocks.append(ssbo);
-        } break;
-      }
+        ssbo.qualifiers = res.storagebuf.qualifiers;
+        ssbo.type_name = res.storagebuf.type_name;
+        ssbo.is_texture_buffer = false;
+        ssbo.is_array = (array_offset > -1);
+        if (ssbo.is_array) {
+          /* If is array UBO, strip out array tag from name. */
+          StringRef name_no_array = StringRef(res.storagebuf.name.c_str(), array_offset);
+          ssbo.name = name_no_array;
+        }
+        else {
+          ssbo.name = res.storagebuf.name;
+        }
+        ssbo.stage = ShaderStage::ANY;
+        storage_blocks.append(ssbo);
+      } break;
     }
   }
 
@@ -2044,6 +2087,16 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
     fragment_outputs.append(mtl_frag_out);
   }
 
+  /** Identify support for tile inputs. */
+  const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+  if (is_tile_based_arch) {
+    supports_native_tile_inputs = true;
+  }
+  else {
+    /* NOTE: If emulating tile input reads, we must ensure we also expose position data. */
+    supports_native_tile_inputs = false;
+  }
+
   /* Fragment tile inputs. */
   for (const shader::ShaderCreateInfo::SubpassIn &frag_tile_in : create_info_->subpass_inputs_) {
 
@@ -2062,6 +2115,52 @@ void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateIn
     mtl_frag_in.raster_order_group = frag_tile_in.raster_order_group;
 
     fragment_tile_inputs.append(mtl_frag_in);
+
+    /* If we do not support native tile inputs, generate an image-binding per input. */
+    if (!supports_native_tile_inputs) {
+      /* Determine type: */
+      bool is_layered_fb = bool(create_info_->builtins_ & BuiltinBits::LAYER);
+      /* Start with invalid value to detect failure cases. */
+      ImageType image_type = ImageType::FLOAT_BUFFER;
+      switch (frag_tile_in.type) {
+        case Type::FLOAT:
+          image_type = is_layered_fb ? ImageType::FLOAT_2D_ARRAY : ImageType::FLOAT_2D;
+          break;
+        case Type::INT:
+          image_type = is_layered_fb ? ImageType::INT_2D_ARRAY : ImageType::INT_2D;
+          break;
+        case Type::UINT:
+          image_type = is_layered_fb ? ImageType::UINT_2D_ARRAY : ImageType::UINT_2D;
+          break;
+        default:
+          break;
+      }
+      BLI_assert(image_type != ImageType::FLOAT_BUFFER);
+
+      /* Generate texture binding resource. */
+      MSLTextureResource msl_image;
+      msl_image.stage = ShaderStage::FRAGMENT;
+      msl_image.type = image_type;
+      msl_image.name = frag_tile_in.name + "_subpass_img";
+      msl_image.access = MSLTextureSamplerAccess::TEXTURE_ACCESS_READ;
+      msl_image.slot = texture_slot_id++;
+      /* WATCH: We don't have a great place to generate the image bindings.
+       * So we will use the subpass binding index and check if it collides with an existing
+       * binding. */
+      msl_image.location = frag_tile_in.index;
+      msl_image.is_texture_sampler = false;
+      BLI_assert(msl_image.slot < MTL_MAX_TEXTURE_SLOTS);
+      BLI_assert(msl_image.location < MTL_MAX_TEXTURE_SLOTS);
+
+      /* Check existing samplers. */
+      for (const auto &tex : texture_samplers) {
+        UNUSED_VARS_NDEBUG(tex);
+        BLI_assert(tex.location != msl_image.location);
+      }
+
+      texture_samplers.append(msl_image);
+      max_tex_bind_index = max_ii(max_tex_bind_index, msl_image.slot);
+    }
   }
 
   /* Transform feedback. */
@@ -2111,7 +2210,7 @@ uint32_t MSLGeneratorInterface::max_sampler_index_for_stage(ShaderStage /*stage*
 
 uint32_t MSLGeneratorInterface::get_sampler_argument_buffer_bind_index(ShaderStage stage)
 {
-  /* Note: Shader stage must be a singular index. Compound shader masks are not valid for this
+  /* NOTE: Shader stage must be a singular index. Compound shader masks are not valid for this
    * function. */
   BLI_assert(stage == ShaderStage::VERTEX || stage == ShaderStage::FRAGMENT ||
              stage == ShaderStage::COMPUTE);
@@ -2405,7 +2504,7 @@ void MSLGeneratorInterface::generate_msl_textures_input_string(std::stringstream
                                                                ShaderStage stage,
                                                                bool &is_first_parameter)
 {
-  /* Note: Shader stage must be specified as the singular stage index for which the input
+  /* NOTE: Shader stage must be specified as the singular stage index for which the input
    * is generating. Compound stages are not valid inputs. */
   BLI_assert(stage == ShaderStage::VERTEX || stage == ShaderStage::FRAGMENT ||
              stage == ShaderStage::COMPUTE);
@@ -2571,7 +2670,7 @@ std::string MSLGeneratorInterface::generate_msl_fragment_inputs_string()
   }
   if (this->uses_gl_FrontFacing) {
     out << parameter_delimiter(is_first_parameter)
-        << "\n\tconst MTLBOOL gl_FrontFacing [[front_facing]]";
+        << "\n\tconst bool gl_FrontFacing [[front_facing]]";
   }
   if (this->uses_gl_PrimitiveID) {
     out << parameter_delimiter(is_first_parameter)
@@ -2749,9 +2848,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
      * by ensuring that vertex position is consistently calculated between subsequent passes
      * with maximum precision. */
     out << "\tfloat4 _default_position_ [[position]]";
-    if (@available(macos 11.0, *)) {
-      out << " [[invariant]]";
-    }
+    out << " [[invariant]]";
     out << ";" << std::endl;
   }
   else {
@@ -2762,9 +2859,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
 
       /* Use invariance if available. See above for detail. */
       out << "\tfloat4 " << this->vertex_output_varyings[0].name << " [[position]];";
-      if (@available(macos 11.0, *)) {
-        out << " [[invariant]]";
-      }
+      out << " [[invariant]]";
       out << ";" << std::endl;
       first_attr_is_position = true;
     }
@@ -2969,6 +3064,10 @@ std::string MSLGeneratorInterface::generate_msl_fragment_struct(bool is_input)
                                                                                      "any"));
     out << "\tfloat fragdepth [[depth(" << out_depth_argument << ")]];" << std::endl;
   }
+  /* Add gl_FragStencilRefARB output if used. */
+  if (!is_input && this->uses_gl_FragStencilRefARB) {
+    out << "\tuint fragstencil [[stencil]];" << std::endl;
+  }
   if (is_input) {
     out << "} " FRAGMENT_TILE_IN_STRUCT_NAME ";" << std::endl;
   }
@@ -2998,10 +3097,31 @@ std::string MSLGeneratorInterface::generate_msl_global_uniform_population(Shader
 std::string MSLGeneratorInterface::generate_msl_fragment_tile_input_population()
 {
   std::stringstream out;
-  for (const MSLFragmentTileInputAttribute &tile_input : this->fragment_tile_inputs) {
-    out << "\t" << get_shader_stage_instance_name(ShaderStage::FRAGMENT) << "." << tile_input.name
-        << " = "
-        << "fragment_tile_in." << tile_input.name << ";" << std::endl;
+
+  /* Native tile read is supported on tile-based architectures (Apple Silicon). */
+  if (supports_native_tile_inputs) {
+    for (const MSLFragmentTileInputAttribute &tile_input : this->fragment_tile_inputs) {
+      out << "\t" << get_shader_stage_instance_name(ShaderStage::FRAGMENT) << "."
+          << tile_input.name << " = "
+          << "fragment_tile_in." << tile_input.name << ";" << std::endl;
+    }
+  }
+  else {
+    for (const MSLFragmentTileInputAttribute &tile_input : this->fragment_tile_inputs) {
+      /* Get read swizzle mask. */
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(tile_input.type)] = '\0';
+
+      bool is_layered_fb = bool(create_info_->builtins_ & BuiltinBits::LAYER);
+      std::string texel_co = (is_layered_fb) ?
+                                 "ivec3(ivec2(v_in._default_position_.xy), int(v_in.gpu_Layer))" :
+                                 "ivec2(v_in._default_position_.xy)";
+
+      out << "\t" << get_shader_stage_instance_name(ShaderStage::FRAGMENT) << "."
+          << tile_input.name << " = texelFetch("
+          << get_shader_stage_instance_name(ShaderStage::FRAGMENT) << "." << tile_input.name
+          << "_subpass_img, " << texel_co << ", 0)." << swizzle << ";\n";
+    }
   }
   return out.str();
 }
@@ -3121,10 +3241,11 @@ std::string MSLGeneratorInterface::generate_msl_vertex_attribute_input_populatio
           &do_attribute_conversion_on_read, this->vertex_input_attributes[attribute].type);
 
       if (do_attribute_conversion_on_read) {
-        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert" << attribute
-            << ", v_in." << this->vertex_input_attributes[attribute].name << ", "
-            << shader_stage_inst_name << "." << this->vertex_input_attributes[attribute].name
-            << ");" << std::endl;
+        BLI_assert(this->vertex_input_attributes[attribute].layout_location >= 0);
+        out << "\t" << attribute_conversion_func_name << "(MTL_AttributeConvert"
+            << this->vertex_input_attributes[attribute].layout_location << ", v_in."
+            << this->vertex_input_attributes[attribute].name << ", " << shader_stage_inst_name
+            << "." << this->vertex_input_attributes[attribute].name << ");" << std::endl;
       }
       else {
         out << "\t" << shader_stage_inst_name << "."
@@ -3405,6 +3526,12 @@ std::string MSLGeneratorInterface::generate_msl_fragment_output_population()
     out << "\toutput.fragdepth = " << shader_stage_inst_name << ".gl_FragDepth;" << std::endl;
   }
 
+  /* Output gl_FragStencilRefARB. */
+  if (this->uses_gl_FragStencilRefARB) {
+    out << "\toutput.fragstencil = uint(" << shader_stage_inst_name << ".gl_FragStencilRefARB);"
+        << std::endl;
+  }
+
   /* Output attributes. */
   for (int f_output = 0; f_output < this->fragment_outputs.size(); f_output++) {
 
@@ -3577,7 +3704,8 @@ static uint32_t name_buffer_copystr(char **name_buffer_ptr,
   return insert_offset;
 }
 
-MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *name)
+MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(
+    const char *name, const shader::ShaderCreateInfo *info)
 {
   MTLShaderInterface *interface = new MTLShaderInterface(name);
   interface->init();
@@ -3722,6 +3850,12 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *nam
                            tex_buf_ssbo_location);
   }
 
+  /* Specialization Constants. */
+  for (const MSLConstant &constant : this->constants) {
+    interface->add_constant(name_buffer_copystr(
+        &interface->name_buffer_, constant.name.c_str(), name_buffer_size, name_buffer_offset));
+  }
+
   /* Sampler Parameters. */
   interface->set_sampler_properties(
       this->use_argument_buffer_for_samplers(),
@@ -3730,7 +3864,7 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(const char *nam
       this->get_sampler_argument_buffer_bind_index(ShaderStage::COMPUTE));
 
   /* Map Metal bindings to standardized ShaderInput struct name/binding index. */
-  interface->prepare_common_shader_inputs();
+  interface->prepare_common_shader_inputs(info);
 
   /* Resize name buffer to save some memory. */
   if (name_buffer_offset < name_buffer_size) {
@@ -3998,7 +4132,7 @@ std::string MSLTextureResource::get_msl_wrapper_type_str() const
     case ImageType::INT_2D_ARRAY_ATOMIC:
     case ImageType::UINT_2D_ARRAY_ATOMIC: {
       if (supports_native_atomics) {
-        return "_mtl_combined_image_sampler_2d";
+        return "_mtl_combined_image_sampler_2d_array";
       }
       else {
         return "_mtl_combined_image_sampler_2d_array_atomic_fallback";

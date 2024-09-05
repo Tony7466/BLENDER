@@ -2,14 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BLI_index_mask.hh"
-
-#include "BKE_attribute.hh"
-
 #pragma once
 
+#include "BLI_index_mask.hh"
+
 struct PointCloud;
-class PointCloudComponent;
+namespace blender::bke {
+class AnonymousAttributePropagationInfo;
+}
 
 /** \file
  * \ingroup geo
