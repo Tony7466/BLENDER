@@ -197,41 +197,4 @@ void interpolate_attribute_from_ab_result(const VArray<T> src_a,
   }
 }
 
-template<typename T>
-Array<T> interpolate_attribute_from_a_result(const Span<T> src_a,
-                                             const blender::polygonboolean::BooleanResult &result)
-{
-  Array<T> attribute_out(result.verts.size());
-
-  interpolate_attribute_from_a_result(
-      VArray<T>::ForSpan(src_a), result, attribute_out.as_mutable_span());
-
-  return attribute_out;
-}
-
-template<typename T>
-Array<T> interpolate_attribute_from_b_result(const Span<T> src_b,
-                                             const blender::polygonboolean::BooleanResult &result)
-{
-  Array<T> attribute_out(result.verts.size());
-
-  interpolate_attribute_from_b_result(
-      VArray<T>::ForSpan(src_b), result, attribute_out.as_mutable_span());
-
-  return attribute_out;
-}
-
-template<typename T>
-Array<T> interpolate_attribute_from_ab_result(const Span<T> src_a,
-                                              const Span<T> src_b,
-                                              const blender::polygonboolean::BooleanResult &result)
-{
-  Array<T> data_out(result.verts.size());
-
-  interpolate_attribute_from_ab_result(
-      VArray<T>::ForSpan(src_a), VArray<T>::ForSpan(src_b), result, data_out.as_mutable_span());
-
-  return data_out;
-}
-
 }  // namespace blender::bke::polygonboolean
