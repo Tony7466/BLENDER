@@ -567,6 +567,13 @@ const EnumPropertyItem rna_enum_shrinkwrap_face_cull_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_node_warning_type_items[] = {
+    {int(blender::nodes::geo_eval_log::NodeWarningType::Error), "ERROR", 0, "Error", ""},
+    {int(blender::nodes::geo_eval_log::NodeWarningType::Warning), "WARNING", 0, "Warning", ""},
+    {int(blender::nodes::geo_eval_log::NodeWarningType::Info), "INFO", 0, "Info", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 #ifndef RNA_RUNTIME
 /* use eWarp_Falloff_*** & eHook_Falloff_***, they're in sync */
 static const EnumPropertyItem modifier_warp_falloff_items[] = {
@@ -1978,6 +1985,12 @@ static int rna_NodesModifierWarning_message_length(PointerRNA *ptr)
 {
   const auto *warning = static_cast<const blender::nodes::geo_eval_log::NodeWarning *>(ptr->data);
   return warning->message.size();
+}
+
+static int rna_NodesModifierWarning_type_get(PointerRNA *ptr)
+{
+  const auto *warning = static_cast<const blender::nodes::geo_eval_log::NodeWarning *>(ptr->data);
+  return int(warning->type);
 }
 
 static IDProperty **rna_NodesModifier_properties(PointerRNA *ptr)
@@ -7945,6 +7958,12 @@ static void rna_def_modifier_nodes_warning(BlenderRNA *brna)
                                 "rna_NodesModifierWarning_message_get",
                                 "rna_NodesModifierWarning_message_length",
                                 nullptr);
+
+  prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Type", nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_items(prop, rna_enum_node_warning_type_items);
+  RNA_def_property_enum_funcs(prop, "rna_NodesModifierWarning_type_get", nullptr, nullptr);
 }
 
 static void rna_def_modifier_nodes(BlenderRNA *brna)
