@@ -7,11 +7,6 @@
  * \ingroup wm
  */
 
-#include <optional>
-
-#include "BLI_compiler_attrs.h"
-#include "BLI_utildefines.h"
-
 struct Brush;
 struct IDProperty;
 struct Main;
@@ -29,13 +24,6 @@ struct wmMsgSubscribeKey;
 struct wmMsgSubscribeValue;
 struct wmOperatorType;
 struct wmWindow;
-
-namespace blender {
-class StringRef;
-class StringRefNull;
-};  // namespace blender
-
-enum class PaintMode : int8_t;
 
 /* `wm_toolsystem.cc` */
 
