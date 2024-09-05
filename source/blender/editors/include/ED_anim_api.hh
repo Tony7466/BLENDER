@@ -11,6 +11,11 @@
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_screen_types.h"
+#include "DNA_space_types.h"
+
+#include <optional>
+
 struct AnimData;
 struct Depsgraph;
 struct ID;
@@ -54,6 +59,32 @@ struct PropertyRNA;
 /** \name Context
  * \{ */
 
+/** Main Data container types. */
+enum eAnimCont_Types {
+  /** Invalid or no data. */
+  ANIMCONT_NONE = 0,
+  /** Action (#bAction). */
+  ANIMCONT_ACTION = 1,
+  /** Shape-key (#Key). */
+  ANIMCONT_SHAPEKEY = 2,
+  /** Grease pencil (screen). */
+  ANIMCONT_GPENCIL = 3,
+  /** Dope-sheet (#bDopesheet). */
+  ANIMCONT_DOPESHEET = 4,
+  /** Animation F-Curves (#bDopesheet). */
+  ANIMCONT_FCURVES = 5,
+  /** Drivers (#bDopesheet). */
+  ANIMCONT_DRIVERS = 6,
+  /** NLA (#bDopesheet). */
+  ANIMCONT_NLA = 7,
+  /** Animation channel (#bAnimListElem). */
+  ANIMCONT_CHANNEL = 8,
+  /** Mask dope-sheet. */
+  ANIMCONT_MASK = 9,
+  /** "timeline" editor (#bDopeSheet). */
+  ANIMCONT_TIMELINE = 10,
+};
+
 /**
  * This struct defines a structure used for animation-specific
  * 'context' information.
@@ -61,15 +92,17 @@ struct PropertyRNA;
 struct bAnimContext {
   /** data to be filtered for use in animation editor */
   void *data;
-  /** type of data eAnimCont_Types */
-  short datatype;
+  /** Type of `data`. */
+  eAnimCont_Types datatype;
 
-  /** editor->mode */
-  short mode;
+  /** Editor mode, which depends on `spacetype` (below). */
+  eAnimEdit_Context dopesheet_mode;
+  eGraphEdit_Mode grapheditor_mode;
+
   /** area->spacetype */
-  short spacetype;
+  eSpace_Type spacetype;
   /** active region -> type (channels or main) */
-  short regiontype;
+  eRegion_Type regiontype;
 
   /** editor host */
   ScrArea *area;
@@ -96,32 +129,6 @@ struct bAnimContext {
 
   /** pointer to current reports list */
   ReportList *reports;
-};
-
-/** Main Data container types. */
-enum eAnimCont_Types {
-  /** Invalid or no data. */
-  ANIMCONT_NONE = 0,
-  /** Action (#bAction). */
-  ANIMCONT_ACTION = 1,
-  /** Shape-key (#Key). */
-  ANIMCONT_SHAPEKEY = 2,
-  /** Grease pencil (screen). */
-  ANIMCONT_GPENCIL = 3,
-  /** Dope-sheet (#bDopesheet). */
-  ANIMCONT_DOPESHEET = 4,
-  /** Animation F-Curves (#bDopesheet). */
-  ANIMCONT_FCURVES = 5,
-  /** Drivers (#bDopesheet). */
-  ANIMCONT_DRIVERS = 6,
-  /** NLA (#bDopesheet). */
-  ANIMCONT_NLA = 7,
-  /** Animation channel (#bAnimListElem). */
-  ANIMCONT_CHANNEL = 8,
-  /** Mask dope-sheet. */
-  ANIMCONT_MASK = 9,
-  /** "timeline" editor (#bDopeSheet). */
-  ANIMCONT_TIMELINE = 10,
 };
 
 /** \} */
@@ -365,7 +372,12 @@ enum eAnimFilter_Flags {
   /** duplicate entries for animation data attached to multi-user blocks must not occur */
   ANIMFILTER_NODUPLIS = (1 << 11),
 
-  /** avoid channel that does not have any F-curve data */
+  /**
+   * Avoid channels that don't have any F-curve data under them.
+   *
+   * Note that this isn't just direct fcurve channels, but also includes e.g.
+   * channel groups with fcurve channels as members.
+   */
   ANIMFILTER_FCURVESONLY = (1 << 12),
 
   /** for checking if we should keep some collapsed channel around (internal use only!) */
@@ -753,6 +765,12 @@ void ANIM_set_active_channel(bAnimContext *ac,
  */
 bool ANIM_is_active_channel(bAnimListElem *ale);
 
+/**
+ * Deselects the keys displayed within the open animation editors. Depending on the display
+ * settings of those editors, the keys may not be from an action of the selected objects.
+ */
+void ANIM_deselect_keys_in_animation_editors(bContext *C);
+
 /* ************************************************ */
 /* DRAWING API */
 /* `anim_draw.cc` */
@@ -895,17 +913,20 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *c
  *
  * \warning name buffer we're writing to cannot exceed 256 chars
  * (check anim_channels_defines.cc for details).
+ *
+ * \return the icon of whatever struct the F-Curve's RNA path resolves to.
+ * Returns #std::nullopt if the path could not be resolved.
  */
-int getname_anim_fcurve(char *name, ID *id, FCurve *fcu);
+std::optional<int> getname_anim_fcurve(char *name, ID *id, FCurve *fcu);
 
 /**
  * Get the name of an F-Curve that's animating a specific slot.
  *
  * This function iterates the Slot's users to find an ID that allows it to resolve its RNA path.
  */
-std::string getname_anim_fcurve_bound(Main &bmain,
-                                      const blender::animrig::Slot &slot,
-                                      FCurve &fcurve);
+std::string getname_anim_fcurve_for_slot(Main &bmain,
+                                         const blender::animrig::Slot &slot,
+                                         FCurve &fcurve);
 
 /**
  * Automatically determine a color for the nth F-Curve.

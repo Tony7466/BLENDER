@@ -258,6 +258,8 @@ static int graphkeys_insertkey_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  ANIM_deselect_keys_in_animation_editors(C);
+
   /* Which channels to affect? */
   mode = eGraphKeys_InsertKey_Types(RNA_enum_get(op->ptr, "type"));
 
@@ -2160,9 +2162,13 @@ static KeyframeEditData sum_selected_keyframes(bAnimContext *ac)
           &current_ked, static_cast<FCurve *>(ale->key_data), nullptr, bezt_calc_average, nullptr);
     }
 
+    if (current_ked.i1 == 0) {
+      continue;
+    }
+
     ked.f1 += current_ked.f1;
     ked.i1 += current_ked.i1;
-    ked.f2 += (current_ked.f2 + offset) * unit_scale;
+    ked.f2 += (current_ked.f2 + offset * current_ked.i1) * unit_scale;
     ked.i2 += current_ked.i2;
   }
 

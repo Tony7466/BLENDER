@@ -348,11 +348,11 @@ else()
       ${CMAKE_SOURCE_DIR}/release/windows/icons/winblender.rc
     )
     if(NOT WITH_WINDOWS_EXTERNAL_MANIFEST)
-      list(APPEND SRC
+      target_sources(blender-launcher PRIVATE
         ${CMAKE_BINARY_DIR}/blender.exe.manifest
       )
     endif()
-    target_compile_definitions (blender-launcher PRIVATE -D_UNICODE -DUNICODE)
+    target_compile_definitions(blender-launcher PRIVATE -D_UNICODE -DUNICODE)
     target_link_libraries(blender-launcher Pathcch.lib)
   endif()
 endif()
@@ -632,8 +632,9 @@ if(NOT ("${_install_cmd}" STREQUAL ""))
   get_filename_component(_install_dst ${TARGETDIR_VER} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
   add_custom_command(
     TARGET blender POST_BUILD MAIN_DEPENDENCY blender
-    COMMAND ${CMAKE_COMMAND} -E echo
-    "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
   )
   unset(_install_dst)
 endif()
@@ -960,6 +961,23 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
       endif()
       unset(_target_LIB)
     endif()
+
+    if(WITH_INSTALL_PORTABLE)
+      # The script uses the version of Python installed with Blender,
+      # so it must only be inside installed if `WITH_PYTHON AND WITH_PYTHON_INSTALL`
+      # are active.
+      get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+      configure_file(
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh.in
+        ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+        @ONLY
+      )
+      unset(PYTHON_EXECUTABLE_NAME_ONLY)
+      install(
+        PROGRAMS ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+        DESTINATION "."
+      )
+    endif()
   endif()
 
   if(WITH_DRACO)
@@ -985,7 +1003,7 @@ elseif(WIN32)
     ALL
   )
 
- if(WITH_VULKAN_BACKEND)
+  if(WITH_VULKAN_BACKEND)
     windows_install_shared_manifest(
       FILES ${LIBDIR}/vulkan/bin/vulkan-1.dll
       ALL
@@ -1470,6 +1488,27 @@ elseif(WIN32)
 
 
   if(NOT WITH_PYTHON_MODULE)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+    # Configure then generate file. Note that this copies the literal generator
+    # for the Python executable name. So the file needs to be generated afterwards
+    # to get the correct name.
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_info.cmd.in
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
+      @ONLY
+    )
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
+    # Replace Python executable generator with actual executable name.
+    file(GENERATE
+      OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      INPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
+    )
+    install(
+      FILES
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      DESTINATION ${TARGETDIR_EXE}
+      RENAME blender_system_info.cmd
+    )
     install(
       FILES
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu.cmd
@@ -1609,6 +1648,20 @@ elseif(APPLE)
     install(
       TARGETS blender
       LIBRARY DESTINATION ${TARGETDIR_BPY}
+    )
+  endif()
+
+  if(NOT WITH_PYTHON_MODULE AND WITH_PYTHON AND WITH_PYTHON_INSTALL)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh.in
+      ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
+      @ONLY
+    )
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
+    install(
+      PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
+      DESTINATION "./Blender.app/Contents/Resources"
     )
   endif()
 
@@ -1906,6 +1959,9 @@ if(UNIX AND NOT APPLE)
       install(
         CODE "\
 set(BLENDER_BIN \"${CMAKE_INSTALL_PREFIX}/${BLENDER_BIN}\")\n\
+if(DEFINED ENV\{DESTDIR\})\n\
+  set(BLENDER_BIN \"$ENV\{DESTDIR\}/$\{BLENDER_BIN\}\")\n\
+endif()\n\
 set(PYTHON_EXECUTABLE \"${PYTHON_EXECUTABLE}\")\n\
 set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
 set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
