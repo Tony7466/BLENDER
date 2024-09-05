@@ -814,9 +814,6 @@ void last_segment_interection_test()
 
 void simple_cut_test()
 {
-  /**
-   * With cut the first curve A does not loop.
-   */
   const Array<float2> points_a = {{5, 7}, {3, 6}, {0, 2}, {0, 0}};
   const Array<float2> points_b = {{1, 6}, {3, 4}, {3, 1}, {0, 4}, {2, 3}};
   std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
@@ -839,9 +836,6 @@ void simple_cut_test()
 
 void simple_cut_2_test()
 {
-  /**
-   * With cut the first curve A does not loop.
-   */
   const Array<float2> points_a = {{5, 5}, {3, 5}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {{5, 6}, {6, 5}, {1, 0}, {0, 1}};
   std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
@@ -862,9 +856,6 @@ void simple_cut_2_test()
 
 void simple_cut_3_test()
 {
-  /**
-   * With cut the first curve A does not loop.
-   */
   const Array<float2> points_a = {{6, 8}, {4, 7}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {
       {3, 7}, {5, 5}, {1, 0}, {0, 4}, {2, 3}, {1, 5}, {3, 4}, {2, 6}, {4, 5}};
@@ -889,9 +880,6 @@ void simple_cut_3_test()
 
 void simple_cut_4_test()
 {
-  /**
-   * With cut the first curve A does not loop.
-   */
   const Array<float2> points_a = {{6, 7}, {4, 6}, {1, 2}, {1, 0}};
   const Array<float2> points_b = {
       {0, 4}, {2, 2}, {7, 8}, {3, 7}, {4, 5}, {2, 6}, {3, 4}, {1, 5}, {2, 3}};

@@ -95,7 +95,7 @@ std::optional<BooleanResult> curve_boolean_calc(const Operation boolean_mode,
                                                 const Span<float2> curve_a,
                                                 const Span<float2> curve_b);
 /**
- * `Cut` behaves like `A_NOT_B` but with `A` not having any fill, and so `A` is cut into separate
+ * `Cut` behaves like `NotB` but with `A` not having any fill, and so `A` is cut into separate
  * parts without any segments of `B` is left in the result.
  */
 std::optional<BooleanResult> curve_boolean_cut(const bool is_a_cyclic,
