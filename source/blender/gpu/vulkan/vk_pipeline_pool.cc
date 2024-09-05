@@ -19,9 +19,8 @@
 
 #ifdef WITH_BUILDINFO
 extern "C" char build_hash[];
-#endif
-
 static CLG_LogRef LOG = {"gpu.vulkan"};
+#endif
 
 namespace blender::gpu {
 
@@ -657,6 +656,7 @@ void VKPipelinePool::free_data()
 /** \name Persistent cache
  * \{ */
 
+#ifdef WITH_BUILDINFO
 struct VKPipelineCachePrefixHeader {
   /* 'B'lender 'C'ache + 2 bytes for file versioning. */
   uint32_t magic = 0xBC00;
@@ -680,9 +680,7 @@ struct VKPipelineCachePrefixHeader {
     memcpy(&pipeline_cache_uuid, &properties.pipelineCacheUUID, VK_UUID_SIZE);
 
     memset(commit_hash, 0, sizeof(commit_hash));
-#ifdef WITH_BUILDINFO
     BLI_strncpy(commit_hash, build_hash, sizeof(commit_hash));
-#endif
   }
 };
 
@@ -696,6 +694,7 @@ static std::string pipeline_cache_filepath_get()
   std::string cache_file = cache_dir + "static-shaders.bin";
   return cache_file;
 }
+#endif
 
 void VKPipelinePool::read_from_disk()
 {
