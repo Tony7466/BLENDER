@@ -418,16 +418,19 @@ void squares_A_AND_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 4);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::And, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{2, 2}, {1, 2}, {1, 1}, {2, 1}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Squares A intersection B", points_a, points_b, result);
+    draw_polygons("Squares A intersection B", points_a, points_b, *result);
   }
 }
 
@@ -435,17 +438,20 @@ void squares_A_OR_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 8);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::Or, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{2, 0}, {0, 0}, {0, 2}, {1, 2}, {1, 3}, {3, 3}, {3, 1}, {2, 1}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Squares A union B", points_a, points_b, result);
+    draw_polygons("Squares A union B", points_a, points_b, *result);
   }
 }
 
@@ -453,16 +459,19 @@ void squares_A_NOT_B_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 6);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::NotB, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{2, 0}, {0, 0}, {0, 2}, {1, 2}, {1, 1}, {2, 1}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Squares A without B", points_a, points_b, result);
+    draw_polygons("Squares A without B", points_a, points_b, *result);
   }
 }
 
@@ -470,16 +479,19 @@ void squares_B_NOT_A_test()
 {
   const Array<float2> points_a = {{0, 0}, {2, 0}, {2, 2}, {0, 2}};
   const Array<float2> points_b = {{1, 1}, {3, 1}, {3, 3}, {1, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotA, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 6);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::NotA, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{2, 2}, {1, 2}, {1, 3}, {3, 3}, {3, 1}, {2, 1}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Squares B without A", points_a, points_b, result);
+    draw_polygons("Squares B without A", points_a, points_b, *result);
   }
 }
 
@@ -492,17 +504,20 @@ void simple_intersection_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 6);
-  EXPECT_EQ(result.intersections_data.size(), 4);
-  EXPECT_EQ(result.offsets.size(), 3);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::And, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{5, 3}, {6, 4}, {6, 3}},
                                                  {{2, 3}, {2, 4}, {3, 3}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Simple Intersection", points_a, points_b, result);
+    draw_polygons("Simple Intersection", points_a, points_b, *result);
   }
 }
 
@@ -515,17 +530,20 @@ void simple_union_with_hole_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 11);
-  EXPECT_EQ(result.intersections_data.size(), 4);
-  EXPECT_EQ(result.offsets.size(), 3);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::Or, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{8, 3}, {8, 6}, {0, 6}, {0, 3}, {2, 3}, {2, 0}, {6, 0}, {6, 3}}, {{3, 3}, {4, 2}, {5, 3}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Simple Union With Hole", points_a, points_b, result);
+    draw_polygons("Simple Union With Hole", points_a, points_b, *result);
   }
 }
 
@@ -538,18 +556,22 @@ void simple_union_without_hole_test()
    */
   const Array<float2> points_a = {{0, 6}, {8, 6}, {8, 3}, {0, 3}};
   const Array<float2> points_b = {{6, 0}, {6, 4}, {4, 2}, {2, 4}, {2, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
-  result = result_remove_holes(result, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 8);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::Or, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
+  result = std::optional(result_remove_holes(*result, points_a, points_b));
+
   const Array<Vector<float2>> expected_points = {
       {{8, 3}, {8, 6}, {0, 6}, {0, 3}, {2, 3}, {2, 0}, {6, 0}, {6, 3}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Simple Union Without Hole", points_a, points_b, result);
+    draw_polygons("Simple Union Without Hole", points_a, points_b, *result);
   }
 }
 
@@ -562,11 +584,14 @@ void complex_A_AND_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::And, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 24);
-  EXPECT_EQ(result.intersections_data.size(), 24);
-  EXPECT_EQ(result.offsets.size(), 7);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::And, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{12.3455, 1.47273}, {12.2, 1.8}, {12.4851, 1.67327}, {12.5663, 1.40964}},
       {{6.71134, 3.08247}, {6.95349, 4.13178}, {7.32258, 3.96774}, {7, 3}},
@@ -574,10 +599,10 @@ void complex_A_AND_B_test()
       {{7.79641, 7.78443}, {7.65714, 7.18095}, {8.52174, 7.56522}, {8.7027, 8.10811}},
       {{10.3333, 6}, {10.5059, 5.61176}, {11.2479, 5.69421}, {11.1538, 6}},
       {{7.38462, 6}, {7.21053, 5.24561}, {7.76923, 5.30769}, {8, 6}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Complex A Intersection B", points_a, points_b, result);
+    draw_polygons("Complex A Intersection B", points_a, points_b, *result);
   }
 }
 
@@ -590,11 +615,14 @@ void complex_A_OR_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 34);
-  EXPECT_EQ(result.intersections_data.size(), 24);
-  EXPECT_EQ(result.offsets.size(), 7);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::Or, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{14, 1},
        {12.4851, 1.67327},
@@ -618,10 +646,10 @@ void complex_A_OR_B_test()
       {{5, 6}, {7.38462, 6}, {7.65714, 7.18095}},
       {{7.76923, 5.30769}, {7.32258, 3.96774}, {12.2, 1.8}, {10.5059, 5.61176}},
       {{5, 5}, {6.95349, 4.13178}, {7.21053, 5.24561}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Complex A Union B", points_a, points_b, result);
+    draw_polygons("Complex A Union B", points_a, points_b, *result);
   }
 }
 
@@ -634,12 +662,16 @@ void complex_A_OR_B_without_holes_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::Or, points_a, points_b);
-  result = result_remove_holes(result, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 17);
-  EXPECT_EQ(result.intersections_data.size(), 10);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::Or, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
+  result = std::optional(result_remove_holes(*result, points_a, points_b));
+
   const Array<Vector<float2>> expected_points = {{{14, 1},
                                                   {12.4851, 1.67327},
                                                   {11.2479, 5.69421},
@@ -657,10 +689,10 @@ void complex_A_OR_B_without_holes_test()
                                                   {12.3455, 1.47273},
                                                   {13, 0},
                                                   {12.5663, 1.40964}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Complex A Union B without holes", points_a, points_b, result);
+    draw_polygons("Complex A Union B without holes", points_a, points_b, *result);
   }
 }
 
@@ -673,11 +705,14 @@ void complex_A_NOT_B_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 30);
-  EXPECT_EQ(result.intersections_data.size(), 24);
-  EXPECT_EQ(result.offsets.size(), 8);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::NotB, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{14, 1}, {12.4851, 1.67327}, {12.5663, 1.40964}},
       {{7, 3}, {7.32258, 3.96774}, {12.2, 1.8}, {12.3455, 1.47273}},
@@ -694,10 +729,10 @@ void complex_A_NOT_B_test()
       {{8.7027, 8.10811}, {8.52174, 7.56522}, {9.45361, 7.97938}, {9.30137, 8.32192}},
       {{14, 6}, {11.2479, 5.69421}, {11.1538, 6}},
       {{8, 6}, {7.76923, 5.30769}, {10.5059, 5.61176}, {10.3333, 6}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Complex A without B", points_a, points_b, result);
+    draw_polygons("Complex A without B", points_a, points_b, *result);
   }
 }
 
@@ -710,11 +745,14 @@ void complex_B_NOT_A_test()
    */
   const Array<float2> points_a = {{14, 1}, {0, 5}, {14, 10}, {5, 6}, {14, 6}, {5, 5}};
   const Array<float2> points_b = {{9, 13}, {13, 0}, {9, 9}, {6, 0}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotA, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 28);
-  EXPECT_EQ(result.intersections_data.size(), 24);
-  EXPECT_EQ(result.offsets.size(), 8);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::NotA, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {
       {{12.3455, 1.47273}, {13, 0}, {12.5663, 1.40964}},
       {{6.71134, 3.08247}, {6, 0}, {7, 3}},
@@ -728,10 +766,10 @@ void complex_B_NOT_A_test()
       {{7.65714, 7.18095}, {7.38462, 6}, {8, 6}, {8.52174, 7.56522}},
       {{10.5059, 5.61176}, {12.2, 1.8}, {12.4851, 1.67327}, {11.2479, 5.69421}},
       {{7.21053, 5.24561}, {6.95349, 4.13178}, {7.32258, 3.96774}, {7.76923, 5.30769}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Complex B without A", points_a, points_b, result);
+    draw_polygons("Complex B without A", points_a, points_b, *result);
   }
 }
 
@@ -746,11 +784,14 @@ void last_segment_interection_test()
    */
   const Array<float2> points_a = {{0, 5}, {0, 0}, {7, 0}, {7, 5}};
   const Array<float2> points_b = {{2, 3}, {0, 7}, {3, 7}, {5, 4}, {6, 6}, {3, 4}, {2, 6}};
-  BooleanResult result = polygonboolean::curve_boolean_calc(Operation::NotB, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 13);
-  EXPECT_EQ(result.intersections_data.size(), 6);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_calc(
+      Operation::NotB, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{0, 5},
                                                   {0, 0},
                                                   {7, 0},
@@ -764,10 +805,10 @@ void last_segment_interection_test()
                                                   {2, 5},
                                                   {2, 3},
                                                   {1, 5}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_polygons("Last segment loop", points_a, points_b, result);
+    draw_polygons("Last segment loop", points_a, points_b, *result);
   }
 }
 
@@ -778,18 +819,21 @@ void simple_cut_test()
    */
   const Array<float2> points_a = {{5, 7}, {3, 6}, {0, 2}, {0, 0}};
   const Array<float2> points_b = {{1, 6}, {3, 4}, {3, 1}, {0, 4}, {2, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 8);
-  EXPECT_EQ(result.intersections_data.size(), 4);
-  EXPECT_EQ(result.offsets.size(), 4);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
+      false, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{5, 7}, {3, 6}, {2.14286, 4.85714}},
                                                  {{1.61538, 4.15385}, {1.09091, 3.45455}},
                                                  {{0.857143, 3.14286}, {0, 2}, {0, 0}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut", false, points_a, points_b, result);
+    draw_cut("Simple cut", false, points_a, points_b, *result);
   }
 }
 
@@ -800,16 +844,19 @@ void simple_cut_2_test()
    */
   const Array<float2> points_a = {{5, 5}, {3, 5}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {{5, 6}, {6, 5}, {1, 0}, {0, 1}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 4);
-  EXPECT_EQ(result.intersections_data.size(), 2);
-  EXPECT_EQ(result.offsets.size(), 2);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
+      false, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{4, 5}, {3, 5}, {1, 3}, {1, 2}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 2", false, points_a, points_b, result);
+    draw_cut("Simple cut 2", false, points_a, points_b, *result);
   }
 }
 
@@ -821,19 +868,22 @@ void simple_cut_3_test()
   const Array<float2> points_a = {{6, 8}, {4, 7}, {1, 3}, {1, 1}};
   const Array<float2> points_b = {
       {3, 7}, {5, 5}, {1, 0}, {0, 4}, {2, 3}, {1, 5}, {3, 4}, {2, 6}, {4, 5}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 9);
-  EXPECT_EQ(result.intersections_data.size(), 7);
-  EXPECT_EQ(result.offsets.size(), 5);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
+      false, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{6, 8}, {4, 7}, {3.57143, 6.42857}},
                                                  {{3.4, 6.2}, {2.90909, 5.54545}},
                                                  {{2.5, 5}, {2.09091, 4.45455}},
                                                  {{1.6, 3.8}, {1.27273, 3.36364}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 3", false, points_a, points_b, result);
+    draw_cut("Simple cut 3", false, points_a, points_b, *result);
   }
 }
 
@@ -845,19 +895,22 @@ void simple_cut_4_test()
   const Array<float2> points_a = {{6, 7}, {4, 6}, {1, 2}, {1, 0}};
   const Array<float2> points_b = {
       {0, 4}, {2, 2}, {7, 8}, {3, 7}, {4, 5}, {2, 6}, {3, 4}, {1, 5}, {2, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(false, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 9);
-  EXPECT_EQ(result.intersections_data.size(), 7);
-  EXPECT_EQ(result.offsets.size(), 5);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
+      false, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{3.7, 5.6}, {3.45455, 5.27273}},
                                                  {{2.8, 4.4}, {2.63636, 4.18182}},
                                                  {{1.9, 3.2}, {1.81818, 3.09091}},
                                                  {{1.42857, 2.57143}, {1, 2}, {1, 0}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_cut("Simple cut 4", false, points_a, points_b, result);
+    draw_cut("Simple cut 4", false, points_a, points_b, *result);
   }
 }
 
@@ -865,18 +918,21 @@ void cyclical_cut_test()
 {
   const Array<float2> points_a = {{6, 5}, {4, 5}, {1, 2}, {1, 0}};
   const Array<float2> points_b = {{1, 4}, {3, 1}, {5, 3}, {2, 5}, {3, 3}};
-  BooleanResult result = polygonboolean::curve_boolean_cut(true, points_a, points_b);
-  EXPECT_TRUE(result.valid_geometry);
-  EXPECT_EQ(result.verts.size(), 10);
-  EXPECT_EQ(result.intersections_data.size(), 6);
-  EXPECT_EQ(result.offsets.size(), 4);
+  std::optional<BooleanResult> result = polygonboolean::curve_boolean_cut(
+      true, points_a, points_b);
+
+  if (!result.has_value()) {
+    EXPECT_TRUE(false);
+    return;
+  }
+
   const Array<Vector<float2>> expected_points = {{{4.4, 3.4}, {6, 5}, {4, 5}, {3.2, 4.2}},
                                                  {{2.66667, 3.66667}, {2.33333, 3.33333}},
                                                  {{1.8, 2.8}, {1, 2}, {1, 0}, {2.6, 1.6}}};
-  expect_boolean_result_coord(points_a, points_b, result, expected_points);
+  expect_boolean_result_coord(points_a, points_b, *result, expected_points);
 
   if (DO_DRAW) {
-    draw_cut("Cyclical cut", true, points_a, points_b, result);
+    draw_cut("Cyclical cut", true, points_a, points_b, *result);
   }
 }
 

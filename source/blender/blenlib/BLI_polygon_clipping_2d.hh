@@ -20,12 +20,13 @@
  *
  * The input is two lists of positions describing the point in each polygon.
  *
+ * Will return `std::nullopt` if the algorithm can not generate valid polygons (i.e has an
+ * degeneracies)
+ *
  * The output is the following:
- * 	1: Whether the algorithm can generate valid polygons, (the input geometry will be outputted if
- * not valid)
- *  2: List of Vertex describing how to interpolate any attribute.
- *  3: Offsets to determent the start and end of each polygon of the output.
- *  4: List of Intersection points.
+ *  1: List of Vertex describing how to interpolate any attribute.
+ *  2: Offsets to determent the start and end of each polygon of the output.
+ *  3: List of Intersection points.
  *
  */
 
@@ -77,7 +78,6 @@ struct IntersectionPoint {
 };
 
 struct BooleanResult {
-  bool valid_geometry;
   Array<Vertex> verts;
   Array<int> offsets;
   Array<IntersectionPoint> intersections_data;
@@ -91,16 +91,16 @@ void interpolate_position_a(const Span<float2> pos_a,
                             const BooleanResult &result,
                             MutableSpan<float2> dst_pos);
 
-BooleanResult curve_boolean_calc(const Operation boolean_mode,
-                                 const Span<float2> curve_a,
-                                 const Span<float2> curve_b);
+std::optional<BooleanResult> curve_boolean_calc(const Operation boolean_mode,
+                                                const Span<float2> curve_a,
+                                                const Span<float2> curve_b);
 /**
  * `Cut` behaves like `A_NOT_B` but with `A` not having any fill, and so `A` is cut into separate
  * parts without any segments of `B` is left in the result.
  */
-BooleanResult curve_boolean_cut(const bool is_a_cyclic,
-                                const Span<float2> curve_a,
-                                const Span<float2> curve_b);
+std::optional<BooleanResult> curve_boolean_cut(const bool is_a_cyclic,
+                                               const Span<float2> curve_a,
+                                               const Span<float2> curve_b);
 
 BooleanResult result_remove_holes(const BooleanResult &in_results,
                                   const Span<float2> curve_a,
@@ -108,5 +108,12 @@ BooleanResult result_remove_holes(const BooleanResult &in_results,
 BooleanResult result_sort_holes(const BooleanResult &in_results,
                                 const Span<float2> curve_a,
                                 const Span<float2> curve_b);
+
+/**
+ * This returns the most appropriate result when the inputted geometry has an degeneracies.
+ */
+BooleanResult invalid_result(const Operation mode,
+                             const Span<float2> curve_a,
+                             const Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean
