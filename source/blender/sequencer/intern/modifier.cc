@@ -1283,15 +1283,15 @@ static void tonemapmodifier_apply_threaded_photoreceptor(int width,
       float I_l = output[0] + ic * (L - output[0]);
       float I_g = avg->cav[0] + ic * (avg->lav - avg->cav[0]);
       float I_a = I_l + ia * (I_g - I_l);
-      output[0] /= (output[0] + powf(f * I_a, m));
+      output[0] /= std::max(output[0] + powf(f * I_a, m), 1.0e-30f);
       I_l = output[1] + ic * (L - output[1]);
       I_g = avg->cav[1] + ic * (avg->lav - avg->cav[1]);
       I_a = I_l + ia * (I_g - I_l);
-      output[1] /= (output[1] + powf(f * I_a, m));
+      output[1] /= std::max(output[1] + powf(f * I_a, m), 1.0e-30f);
       I_l = output[2] + ic * (L - output[2]);
       I_g = avg->cav[2] + ic * (avg->lav - avg->cav[2]);
       I_a = I_l + ia * (I_g - I_l);
-      output[2] /= (output[2] + powf(f * I_a, m));
+      output[2] /= std::max(output[2] + powf(f * I_a, m), 1.0e-30f);
       /* Apply mask. */
       output[0] = input[0] * (1.0f - mask[0]) + output[0] * mask[0];
       output[1] = input[1] * (1.0f - mask[1]) + output[1] * mask[1];
@@ -1320,7 +1320,7 @@ static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf 
   float *fp = ibuf->float_buffer.data;
   uchar *cp = ibuf->byte_buffer.data;
   float avl, maxl = -FLT_MAX, minl = FLT_MAX;
-  const float sc = 1.0f / p;
+  float total_weight = 0.0f;
   float Lav = 0.0f;
   float cav[4] = {0.0f, 0.0f, 0.0f, 0.0f};
   while (p--) {
@@ -1332,12 +1332,18 @@ static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf 
       straight_uchar_to_premul_float(pixel, cp);
     }
     IMB_colormanagement_colorspace_to_scene_linear_v3(pixel, data.colorspace);
-    float L = IMB_colormanagement_get_luminance(pixel);
-    Lav += L;
-    add_v3_v3(cav, pixel);
-    lsum += logf(max_ff(L, 0.0f) + 1e-5f);
-    maxl = (L > maxl) ? L : maxl;
-    minl = (L < minl) ? L : minl;
+
+    /* Only include >50% transparency pixels in luminance calculations. */
+    float alpha = pixel[3];
+    if (alpha > 0.5f) {
+      total_weight += alpha;
+      float L = IMB_colormanagement_get_luminance(pixel);
+      Lav += L;
+      add_v3_v3(cav, pixel);
+      lsum += logf(max_ff(L, 0.0f) + 1e-5f);
+      maxl = (L > maxl) ? L : maxl;
+      minl = (L < minl) ? L : minl;
+    }
     if (fp != nullptr) {
       fp += 4;
     }
@@ -1345,6 +1351,10 @@ static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf 
       cp += 4;
     }
   }
+  if (total_weight < 1.0e-6f) {
+    return; /* No visible pixels in input. */
+  }
+  const float sc = 1.0f / total_weight;
   data.lav = Lav * sc;
   mul_v3_v3fl(data.cav, cav, sc);
   maxl = logf(maxl + 1e-5f);
