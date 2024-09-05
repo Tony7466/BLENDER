@@ -677,20 +677,19 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
             layout.label(text="Cycles is disabled in this build", icon='INFO')
 
 
-class USERPREF_PT_system_gpu_viewport(SystemPanel, CenterAlignMixIn, Panel):
-    bl_label = "GPU Viewport"
+class USERPREF_PT_system_display_graphics(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Display Graphics"
 
     @classmethod
     def poll(cls, _context):
-        # TODO: only show when multiple backends exist.
-        return True
+        import platform
+        return platform.system() != 'Darwin'
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
         system = prefs.system
 
         col = layout.column()
-        # col.use_property_split = False
         col.prop(system, "gpu_backend", text="Backend")
 
         import gpu
@@ -698,11 +697,10 @@ class USERPREF_PT_system_gpu_viewport(SystemPanel, CenterAlignMixIn, Panel):
             layout.label(text="A restart of Blender is required", icon="INFO")
 
         if system.gpu_backend == 'VULKAN':
-            row = layout.row()
-            row.label(text="", icon="INFO")
-            col = row.column()
-            col.label(text="OpenXR and GPU subdivision aren't supported")
-            col.label(text="Performance will be improved in time")
+            col = layout.column()
+            col.label(text="The Vulkan backend is experimental:", icon="INFO")
+            col.label(text="\u2022 OpenXR and GPU subdivision are not supported", icon="BLANK1")
+            col.label(text="\u2022 Expect reduced performance", icon="BLANK1")
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
@@ -2984,7 +2982,7 @@ classes = (
     USERPREF_PT_animation_fcurves,
 
     USERPREF_PT_system_cycles_devices,
-    USERPREF_PT_system_gpu_viewport,
+    USERPREF_PT_system_display_graphics,
     USERPREF_PT_system_os_settings,
     USERPREF_PT_system_network,
     USERPREF_PT_system_memory,

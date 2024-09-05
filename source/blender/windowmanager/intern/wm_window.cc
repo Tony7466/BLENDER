@@ -2072,14 +2072,13 @@ static uiBlock *block_create_gpu_backend_fallback(bContext *C, ARegion *region, 
 
   /* Title and explanation text. */
   uiLayout *col = uiLayoutColumn(layout, false);
-  uiItemL_ex(col, RPT_("Could not initialize Vulkan."), ICON_NONE, true, false);
+  uiItemL_ex(
+      col, RPT_("Failed to load using Vulkan, using OpenGL instead."), ICON_NONE, true, false);
   uiItemL(col, RPT_(""), ICON_NONE);
-  uiItemL(col, RPT_("Blender is now using OpenGL instead."), ICON_NONE);
-  uiItemL(col, RPT_("Updating GPU drivers can improve compatibility."), ICON_NONE);
-  if (U.gpu_backend == GPU_BACKEND_VULKAN) {
-    uiItemL(
-        col, RPT_("See system tab in preferences to switch back to OpenGL backend."), ICON_NONE);
-  }
+  uiItemL(col, RPT_("Updating GPU drivers may solve this issue."), ICON_NONE);
+  uiItemL(col,
+          RPT_("The graphics backend can be changed in the System section of the Preferences."),
+          ICON_NONE);
 
   uiItemS(layout);
 
@@ -2095,10 +2094,10 @@ void wm_test_gpu_backend_fallback(bContext *C)
   }
 
   /* Have we already shown a message during this Blender session. */
-  static bool message_shown = false;
-  if (message_shown) {
+  if (bool(G.f & G_FLAG_GPU_BACKEND_FALLBACK_QUIET)) {
     return;
   }
+  G.f |= G_FLAG_GPU_BACKEND_FALLBACK_QUIET;
 
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = static_cast<wmWindow *>((wm->winactive) ? wm->winactive : wm->windows.first);
@@ -2114,8 +2113,6 @@ void wm_test_gpu_backend_fallback(bContext *C)
     UI_popup_block_invoke(C, block_create_gpu_backend_fallback, nullptr, nullptr);
     CTX_wm_window_set(C, prevwin);
   }
-
-  message_shown = true;
 }
 
 eWM_CapabilitiesFlag WM_capabilities_flag()
