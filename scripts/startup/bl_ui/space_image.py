@@ -35,6 +35,7 @@ from bl_ui.space_toolsystem_common import (
 
 from bpy.app.translations import (
     contexts as i18n_contexts,
+    pgettext_iface as iface_,
 )
 
 
@@ -782,19 +783,21 @@ class IMAGE_HT_header(Header):
     def draw_xform_template(layout, context):
         sima = context.space_data
         show_uvedit = sima.show_uvedit
-        show_maskedit = sima.show_maskedit
 
-        if show_uvedit or show_maskedit:
+        if show_uvedit:
             layout.prop(sima, "pivot_point", icon_only=True)
 
         if show_uvedit:
             tool_settings = context.tool_settings
 
             # Snap.
-            snap_uv_element = tool_settings.snap_uv_element
-            try:
-                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element].icon
-            except KeyError:
+            snap_uv_elements = tool_settings.snap_uv_element
+            if len(snap_uv_elements) == 1:
+                text = ""
+                elem = next(iter(snap_uv_elements))
+                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[elem].icon
+            else:
+                text = iface_("Mix", i18n_contexts.id_image)
                 act_snap_icon = 'NONE'
 
             row = layout.row(align=True)
@@ -804,7 +807,7 @@ class IMAGE_HT_header(Header):
             sub.popover(
                 panel="IMAGE_PT_snapping",
                 icon=act_snap_icon,
-                text="",
+                text=text,
             )
 
             # Proportional Editing
@@ -872,8 +875,20 @@ class IMAGE_HT_header(Header):
         layout.template_ID(sima, "image", new="image.new", open="image.open")
 
         if show_maskedit:
-            row = layout.row()
-            row.template_ID(sima, "mask", new="mask.new")
+            layout.template_ID(sima, "mask", new="mask.new")
+            layout.prop(sima, "pivot_point", icon_only=True)
+
+            row = layout.row(align=True)
+            row.prop(tool_settings, "use_proportional_edit_mask", text="", icon_only=True)
+            sub = row.row(align=True)
+            sub.active = tool_settings.use_proportional_edit_mask
+            sub.prop_with_popover(
+                tool_settings,
+                "proportional_edit_falloff",
+                text="",
+                icon_only=True,
+                panel="IMAGE_PT_proportional_edit",
+            )
 
         if not show_render:
             layout.prop(sima, "use_image_pin", text="", emboss=False)
@@ -1016,10 +1031,10 @@ class IMAGE_PT_snapping(Panel):
         col.label(text="Snap Target")
         col.prop(tool_settings, "snap_uv_element", expand=True)
 
-        if tool_settings.snap_uv_element != 'INCREMENT':
-            col.label(text="Snap Base")
-            row = col.row(align=True)
-            row.prop(tool_settings, "snap_target", expand=True)
+        col.label(text="Snap Base")
+        row = col.row(align=True)
+        row.active = bool(tool_settings.snap_uv_element.difference({'INCREMENT', 'GRID'}))
+        row.prop(tool_settings, "snap_target", expand=True)
 
         col.separator()
 

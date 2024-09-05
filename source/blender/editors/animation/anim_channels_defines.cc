@@ -991,7 +991,7 @@ static void acf_fcurve_name(bAnimListElem *ale, char *name)
     }
 
     BLI_assert(ale->bmain);
-    const std::string fcurve_name = getname_anim_fcurve_bound(*ale->bmain, *slot, *fcurve);
+    const std::string fcurve_name = getname_anim_fcurve_for_slot(*ale->bmain, *slot, *fcurve);
     const size_t num_chars_copied = fcurve_name.copy(name, std::string::npos);
     name[num_chars_copied] = '\0';
 
@@ -1278,7 +1278,7 @@ static bAnimChannelType ACF_NLACURVE = {
 /* TODO: just get this from RNA? */
 static int acf_fillanim_icon(bAnimListElem * /*ale*/)
 {
-  return ICON_ACTION; /* TODO: give Animation its own icon? */
+  return ICON_ACTION;
 }
 
 /* check if some setting exists for this channel */
@@ -1398,7 +1398,7 @@ static bool acf_action_slot_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, Pro
 
 static int acf_action_slot_icon(bAnimListElem * /*ale*/)
 {
-  return ICON_LINK_BLEND; /* TODO: design icon. */
+  return ICON_ACTION_SLOT;
 }
 
 static int acf_action_slot_idtype_icon(bAnimListElem *ale)

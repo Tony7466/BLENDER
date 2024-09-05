@@ -960,7 +960,7 @@ static void do_blend_effect_float(
 }
 
 static void do_blend_effect_byte(
-    float fac, int x, int y, uchar *rect1, uchar *rect2, int btype, uchar *out)
+    float fac, int x, int y, const uchar *rect1, uchar *rect2, int btype, uchar *out)
 {
   switch (btype) {
     case SEQ_TYPE_ADD:
@@ -3119,8 +3119,8 @@ static void fill_rect_alpha_under(
     for (int x = x1; x < x2; x++) {
       float4 pix = load_premul_pixel(dst);
       float fac = 1.0f - pix.w;
-      float4 col = fac * premul_col + pix;
-      store_premul_pixel(col, dst);
+      float4 dst_fl = fac * premul_col + pix;
+      store_premul_pixel(dst_fl, dst);
       dst += 4;
     }
   }
@@ -3130,9 +3130,9 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                              Sequence *seq,
                              float /*timeline_frame*/,
                              float /*fac*/,
-                             ImBuf * /* ibuf1*/,
-                             ImBuf * /* ibuf2*/,
-                             ImBuf * /* ibuf3*/)
+                             ImBuf * /*ibuf1*/,
+                             ImBuf * /*ibuf2*/,
+                             ImBuf * /*ibuf3*/)
 {
   /* NOTE: text rasterization only fills in part of output image,
    * need to clear it. */

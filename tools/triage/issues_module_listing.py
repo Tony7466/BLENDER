@@ -29,7 +29,6 @@ class ModuleInfo:
 modules = {
     "Module/Animation & Rigging": ModuleInfo(name="Animation & Rigging", labelid="268"),
     "Module/Core": ModuleInfo(name="Core", labelid="269"),
-    "Module/EEVEE & Viewport": ModuleInfo(name="EEVEE & Viewport", labelid="272"),
     "Module/Grease Pencil": ModuleInfo(name="Grease Pencil", labelid="273"),
     "Module/Modeling": ModuleInfo(name="Modeling", labelid="274"),
     "Module/Nodes & Physics": ModuleInfo(name="Nodes & Physics", labelid="275"),
@@ -40,6 +39,7 @@ modules = {
     "Module/Sculpt, Paint & Texture": ModuleInfo(name="Sculpt, Paint & Texture", labelid="281"),
     "Module/User Interface": ModuleInfo(name="User Interface", labelid="283"),
     "Module/VFX & Video": ModuleInfo(name="VFX & Video", labelid="284"),
+    "Module/Viewport & EEVEE": ModuleInfo(name="Viewport & EEVEE", labelid="272"),
 }
 
 base_url = (
@@ -61,7 +61,7 @@ severity_labelid = {
 
 def compile_list(severity: str) -> None:
 
-    label = f"Priority/{severity}"
+    label = f"Severity/{severity}"
     issues_json = gitea_json_issues_search(
         type="issues",
         state="open",
@@ -92,7 +92,7 @@ def compile_list(severity: str) -> None:
         uncategorized_reports.append(f"[#{number}]({html_url})")
 
     # Print statistics
-    print(f"Open {severity} Priority bugs as of {date.today()}:\n")
+    print(f"Open {severity} Severity bugs as of {date.today()}:\n")
 
     # Module overview with numbers
     total = 0

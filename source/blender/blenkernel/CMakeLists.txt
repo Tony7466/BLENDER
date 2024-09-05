@@ -10,7 +10,6 @@ set(INC
   ../bmesh
   ../draw
   ../functions
-  ../gpencil_modifiers_legacy
   ../gpu
   ../ikplugin
   ../imbuf
@@ -59,7 +58,6 @@ set(SRC
   intern/appdir.cc
   intern/armature.cc
   intern/armature_deform.cc
-  intern/armature_pose.cc
   intern/armature_selection.cc
   intern/armature_update.cc
   intern/asset.cc
@@ -329,6 +327,9 @@ set(SRC
   BKE_anim_visualization.h
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
+  BKE_anonymous_attribute_make.hh
+  BKE_attribute_filter.hh
+  BKE_attribute_filters.hh
   BKE_appdir.hh
   BKE_armature.hh
   BKE_asset.hh
@@ -477,7 +478,7 @@ set(SRC
   BKE_object_types.hh
   BKE_ocean.h
   BKE_outliner_treehash.hh
-  BKE_packedFile.h
+  BKE_packedFile.hh
   BKE_paint.hh
   BKE_particle.h
   BKE_pbvh.hh
@@ -567,7 +568,6 @@ set(LIB
   bf_draw
   PRIVATE bf::extern::curve_fit_nd
   bf_functions
-  bf_gpencil_modifiers_legacy
   bf_gpu
   bf_ikplugin
   bf_imbuf
