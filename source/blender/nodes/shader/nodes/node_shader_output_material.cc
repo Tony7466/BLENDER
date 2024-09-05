@@ -4,6 +4,11 @@
 
 #include "node_shader_util.hh"
 
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
 namespace blender::nodes::node_shader_output_material_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)

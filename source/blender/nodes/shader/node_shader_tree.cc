@@ -774,8 +774,7 @@ static bool ntree_weight_tree_tag_nodes(bNode *fromnode, bNode *tonode, void *us
                                        SH_NODE_MIX_SHADER,
                                        SH_NODE_OUTPUT_WORLD,
                                        SH_NODE_OUTPUT_MATERIAL,
-                                       SH_NODE_SHADERTORGB,
-                                       SH_NODE_NPR);
+                                       SH_NODE_SHADERTORGB);
   if (tonode->runtime->tmp_flag == -1 && to_node_from_weight_tree) {
     tonode->runtime->tmp_flag = *node_count;
     *node_count += (tonode->type == SH_NODE_MIX_SHADER) ? 4 : 1;
@@ -834,8 +833,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
               ->value = 1.0f;
           break;
         }
-        case SH_NODE_ADD_SHADER:
-        case SH_NODE_NPR: {
+        case SH_NODE_ADD_SHADER: {
           /* Simple passthrough node. Each original inputs will get the same weight. */
           /* TODO(fclem): Better use some kind of reroute node? */
           nodes_copy[id] = blender::bke::node_add_static_node(nullptr, ntree, SH_NODE_MATH);
@@ -927,8 +925,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
           case SH_NODE_OUTPUT_LIGHT:
           case SH_NODE_OUTPUT_WORLD:
           case SH_NODE_OUTPUT_MATERIAL:
-          case SH_NODE_ADD_SHADER:
-          case SH_NODE_NPR: {
+          case SH_NODE_ADD_SHADER: {
             tonode = nodes_copy[node->runtime->tmp_flag];
             tosock = ntree_shader_node_output_get(tonode, 0);
             break;
@@ -961,8 +958,7 @@ static void ntree_shader_weight_tree_invert(bNodeTree *ntree, bNode *output_node
           bNode *fromnode = sock->link->fromnode;
 
           switch (fromnode->type) {
-            case SH_NODE_ADD_SHADER:
-            case SH_NODE_NPR: {
+            case SH_NODE_ADD_SHADER: {
               fromnode = nodes_copy[fromnode->runtime->tmp_flag];
               fromsock = ntree_shader_node_input_get(fromnode, 1);
               if (fromsock->link) {
@@ -1252,14 +1248,8 @@ static bNodeTree *npr_tree_get(bNodeTree *ntree)
   if (!ntree) {
     return nullptr;
   }
-  /* TODO(NPR): This won't work if the npr node is inside a group or there's a re-route node. */
   if (bNode *output = ntreeShaderOutputNode(ntree, SHD_OUTPUT_EEVEE)) {
-    bNodeSocket *surface_socket = ntree_shader_node_find_input(output, "Surface");
-    if (surface_socket && surface_socket->link && surface_socket->link->fromnode &&
-        surface_socket->link->fromnode->type == SH_NODE_NPR)
-    {
-      return reinterpret_cast<bNodeTree *>(surface_socket->link->fromnode->id);
-    }
+    return reinterpret_cast<bNodeTree *>(output->id);
   }
   return nullptr;
 }

@@ -63,7 +63,6 @@ void register_shader_nodes()
   register_node_type_sh_mix();
   register_node_type_sh_normal_map();
   register_node_type_sh_normal();
-  register_node_type_sh_npr();
   register_node_type_sh_npr_input();
   register_node_type_sh_npr_output();
   register_node_type_sh_object_info();

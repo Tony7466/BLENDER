@@ -92,7 +92,6 @@ DefNode(ShaderNode,     SH_NODE_WAVELENGTH,         0,                      "WAV
 DefNode(ShaderNode,     SH_NODE_BLACKBODY,          0,                      "BLACKBODY",          Blackbody,        "Blackbody",         "Convert a blackbody temperature to an RGB value")
 DefNode(ShaderNode,     SH_NODE_BUMP,               def_sh_bump,            "BUMP",               Bump,             "Bump",              "Generate a perturbed normal from a height texture for bump mapping. Typically used for faking highly detailed surfaces")
 DefNode(ShaderNode,     SH_NODE_NORMAL_MAP,         def_sh_normal_map,      "NORMAL_MAP",         NormalMap,        "Normal Map",        "Generate a perturbed normal from an RGB normal map image. Typically used for faking highly detailed surfaces")
-DefNode(ShaderNode,     SH_NODE_NPR,                def_sh_npr,             "NPR",                NPR,              "NPR",               "Apply a NPR node tree to the Material")
 DefNode(ShaderNode,     SH_NODE_NPR_INPUT,          0,                      "NPR_INPUT",          NPR_Input,        "Input",             "NPR Input")
 DefNode(ShaderNode,     SH_NODE_NPR_OUTPUT,         0,                      "NPR_OUTPUT",         NPR_Output,       "Output",            "NPR Output")
 DefNode(ShaderNode,     SH_NODE_TANGENT,            def_sh_tangent,         "TANGENT",            Tangent,          "Tangent",           "Generate a tangent direction for the Anisotropic BSDF")
