@@ -1157,6 +1157,8 @@ eOLDrawState tree_element_type_active_state_get(const bContext *C,
       return tree_element_ebone_state_get(te);
     case TSE_MODIFIER:
       return tree_element_modifier_state_get(te, tselem);
+    case TSE_LINKED_NODE_TREE:
+      return OL_DRAWSEL_NONE;
     case TSE_LINKED_OB:
       return tree_element_object_state_get(tvc, tselem);
     case TSE_LINKED_PSYS:
@@ -1250,6 +1252,7 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
       case ID_SPK:
       case ID_AR:
       case ID_GD_LEGACY:
+      case ID_GP:
       case ID_LP:
       case ID_CV:
       case ID_PT:
@@ -1319,6 +1322,8 @@ static void outliner_set_properties_tab(bContext *C, TreeElement *te, TreeStoreE
             BKE_modifier_panel_expand(md);
           }
         }
+        break;
+      case TSE_LINKED_NODE_TREE:
         break;
       case TSE_GPENCIL_EFFECT_BASE:
       case TSE_GPENCIL_EFFECT:
@@ -1425,6 +1430,7 @@ static void do_outliner_item_activate_tree_element(bContext *C,
            TSE_SEQ_STRIP,
            TSE_SEQUENCE_DUP,
            TSE_EBONE,
+           TSE_LINKED_NODE_TREE,
            TSE_LAYER_COLLECTION))
   {
     /* Note about TSE_EBONE: In case of a same ID_AR datablock shared among several

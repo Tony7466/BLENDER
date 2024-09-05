@@ -233,7 +233,6 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
       sculpt_session->multires.level = mmd->sculptlvl;
       sculpt_session->totvert = mesh->verts_num;
       sculpt_session->faces_num = mesh->faces_num;
-      sculpt_session->vert_positions = {};
       sculpt_session->faces = {};
       sculpt_session->corner_verts = {};
     }
@@ -295,8 +294,7 @@ static void deform_matrices(ModifierData *md,
     return;
   }
   blender::bke::subdiv::displacement_attach_from_multires(subdiv, mesh, mmd);
-  blender::bke::subdiv::deform_coarse_vertices(
-      subdiv, mesh, reinterpret_cast<float(*)[3]>(positions.data()), positions.size());
+  blender::bke::subdiv::deform_coarse_vertices(subdiv, mesh, positions);
   if (subdiv != runtime_data->subdiv) {
     blender::bke::subdiv::free(subdiv);
   }

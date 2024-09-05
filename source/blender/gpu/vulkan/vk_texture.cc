@@ -41,8 +41,7 @@ VKTexture::~VKTexture()
 {
   if (vk_image_ != VK_NULL_HANDLE && allocation_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device;
-    device.discard_image(vk_image_, allocation_);
-
+    device.discard_pool_for_current_thread().discard_image(vk_image_, allocation_);
     vk_image_ = VK_NULL_HANDLE;
     allocation_ = VK_NULL_HANDLE;
   }
@@ -595,8 +594,8 @@ VkExtent3D VKTexture::vk_extent_3d(int mip_level) const
 const VKImageView &VKTexture::image_view_get(const VKImageViewInfo &info)
 {
   if (is_texture_view()) {
-    // TODO: API should be improved as we don't support image view specialization.
-    // In the current API this is still possible to setup when using attachments.
+    /* TODO: API should be improved as we don't support image view specialization.
+     * In the current API this is still possible to setup when using attachments. */
     return image_view_get(info.arrayed);
   }
   for (const VKImageView &image_view : image_views_) {

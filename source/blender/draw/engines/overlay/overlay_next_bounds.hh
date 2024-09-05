@@ -78,7 +78,7 @@ class Bounds {
           break;
         }
         case OB_BOUND_SPHERE: {
-          float4x4 scale = math::from_scale<float4x4>(float3{math::reduce_max(size)});
+          float4x4 scale = math::from_scale<float4x4>(float3(math::reduce_max(size)));
           scale.location() = center;
           ExtraInstanceData data(object_mat * scale, color, 1.0f);
           call_buffers_.sphere.append(data, select_id);
@@ -86,7 +86,7 @@ class Bounds {
         }
         case OB_BOUND_CYLINDER: {
           float4x4 scale = math::from_scale<float4x4>(
-              float3{float2{math::max(size.x, size.y)}, size.z});
+              float3(float2(math::max(size.x, size.y)), size.z));
           scale.location() = center;
           ExtraInstanceData data(object_mat * scale, color, 1.0f);
           call_buffers_.cylinder.append(data, select_id);
@@ -94,7 +94,7 @@ class Bounds {
         }
         case OB_BOUND_CONE: {
           float4x4 mat = math::from_scale<float4x4>(
-              float3{float2{math::max(size.x, size.y)}, size.z});
+              float3(float2(math::max(size.x, size.y)), size.z));
           mat.location() = center;
           /* Cone batch has base at 0 and is pointing towards +Y. */
           std::swap(mat[1], mat[2]);
@@ -104,7 +104,7 @@ class Bounds {
           break;
         }
         case OB_BOUND_CAPSULE: {
-          float4x4 mat = math::from_scale<float4x4>(float3{math::max(size.x, size.y)});
+          float4x4 mat = math::from_scale<float4x4>(float3(math::max(size.x, size.y)));
           mat.location() = center;
           mat.location().z = center.z + std::max(0.0f, size.z - size.x);
           ExtraInstanceData data(object_mat * mat, color, 1.0f);
@@ -148,8 +148,8 @@ class Bounds {
   void end_sync(Resources &res, ShapeCache &shapes, const State &state)
   {
     ps_.init();
-    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                  state.clipping_state);
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL,
+                  state.clipping_plane_count);
     ps_.shader_set(res.shaders.extra_shape.get());
     ps_.bind_ubo("globalsBlock", &res.globals_buf);
     res.select_bind(ps_);
