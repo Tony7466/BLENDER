@@ -50,7 +50,7 @@ void VKDevice::deinit()
     }
     thread_data_.clear();
   }
-  pipelines.save_data();
+  pipelines.write_to_disk();
   pipelines.free_data();
   descriptor_set_layouts_.deinit();
   vmaDestroyAllocator(mem_allocator_);
@@ -92,7 +92,7 @@ void VKDevice::init(void *ghost_context)
   init_debug_callbacks();
   init_memory_allocator();
   pipelines.init();
-  pipelines.load_data();
+  pipelines.read_from_disk();
 
   samplers_.init();
   init_dummy_buffer();

@@ -318,8 +318,23 @@ class VKPipelinePool : public NonCopyable {
    */
   void free_data();
 
-  void load_data();
-  void save_data();
+  /**
+   * Read the static pipeline cache from cache file.
+   *
+   * Previous stored pipeline cache will not be read when G_DEBUG_GPU is enabled. In this case the
+   * shader modules will be compiled with other settings and any cached pipeline will not be used
+   * during this session.
+   */
+  void read_from_disk();
+
+  /**
+   * Store the static pipeline cache to disk.
+   *
+   * The cache will not be written when G_DEBUG_GPU is active. In this case the shader modules have
+   * been generated with debug information and other compiler settings are used. This will clutter
+   * the pipeline cache.
+   */
+  void write_to_disk();
 
  private:
   VkSpecializationInfo *specialization_info_update(
