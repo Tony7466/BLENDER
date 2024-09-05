@@ -387,6 +387,8 @@ rctf seq_retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequ
 
 /* `sequencer_text_edit.cc` */
 void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot);
+void SEQUENCER_OT_text_insert(wmOperatorType *ot);
+blender::int2 seq_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset);
 
 /* `sequencer_timeline_draw.cc` */
 blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);

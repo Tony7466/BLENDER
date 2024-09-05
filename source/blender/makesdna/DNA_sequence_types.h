@@ -453,7 +453,8 @@ typedef struct TextVars {
   float outline_width;
   char flag;
   char align;
-  char _pad[6];
+  char _pad[2];
+  int cursor_offset;
 
   TextVarsRuntime *runtime;
 } TextVars;

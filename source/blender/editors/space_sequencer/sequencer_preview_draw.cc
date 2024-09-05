@@ -1088,8 +1088,8 @@ static void text_edit_draw(const bContext *C)
   }
 
   TextVarsRuntime *text = data->runtime;
-  blender::seq::CharInfo character =
-      text->lines[text->cursor_line].characters[text->cursor_character];
+  blender::int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+  blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
 
   View2D *v2d = UI_view2d_fromcontext(C);
 

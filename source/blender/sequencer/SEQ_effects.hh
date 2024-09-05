@@ -124,8 +124,6 @@ struct TextVarsRuntime {
 
   /* Variables for UI. */
   bool editing_is_active;
-  int cursor_character;
-  int cursor_line;
 };
 
 }  // namespace blender::seq
