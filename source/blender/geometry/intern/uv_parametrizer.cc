@@ -5060,8 +5060,6 @@ static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *
 /* Conversion Function to build matrix for SLIM Parametrization */
 static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 {
-  static const float SLIM_COLLAPSE_THRESHOLD = 1.0e-5f;
-
   static const float SLIM_CORR_MIN_AREA = 1.0e-8;
   static const float SLIM_CORR_MIN_ANGLE = 1.0f * M_PI / 180.0f;
 
@@ -5070,10 +5068,6 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     slim::MatrixTransferChart *mt_chart = &mt->charts[i];
-
-    /* p_chart_correct_degenerate_triangles is able to fix double vertices so
-     * the following is probably not needed */
-    // p_chart_collapse_doubles(chart, SLIM_COLLAPSE_THRESHOLD);
 
     p_chart_correct_degenerate_triangles(chart, SLIM_CORR_MIN_AREA, SLIM_CORR_MIN_ANGLE);
 
