@@ -664,9 +664,8 @@ struct uiBlock {
   char display_device[64];
 
   PieMenuData pie_data;
-  void add_but_after(std::unique_ptr<uiBut> &&but, uiBut *insert_after = nullptr);
-  [[nodiscard]] std::unique_ptr<uiBut> pop_but(uiBut *but);
 
+  void remove_but(uiBut *but);
   [[nodiscard]] uiBut *first_but_or_null() const;
   [[nodiscard]] uiBut *last_but_or_null() const;
   int64_t but_index(const uiBut *but) const;

@@ -281,23 +281,10 @@ uiBut *uiBlock::prev_but(const uiBut *but) const
   return idx >= 0 ? this->buttons[idx].get() : nullptr;
 }
 
-void uiBlock::add_but_after(std::unique_ptr<uiBut> &&but, uiBut *insert_after)
-{
-  int64_t target_index = this->buttons.size();
-
-  if (insert_after) {
-    target_index = this->but_index(insert_after);
-  }
-  this->buttons.insert(target_index, std::move(but));
-}
-
-std::unique_ptr<uiBut> uiBlock::pop_but(uiBut *but)
+void uiBlock::remove_but(uiBut *but)
 {
   int64_t target_index = this->but_index(but);
-
-  std::unique_ptr<uiBut> result = std::move(this->buttons[target_index]);
   this->buttons.remove(target_index);
-  return result;
 }
 
 uiBut *uiBlock::first_but_or_null() const
@@ -1050,7 +1037,10 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
   if (oldbut->active || oldbut->semi_modal_state) {
     /* Move button over from oldblock to new block. */
-    block->add_but_after(oldblock->pop_but(oldbut), but);
+    int but_index = block->but_index(but);
+    int old_but_index = oldblock->but_index(oldbut);
+    std::swap(block->buttons[but_index], oldblock->buttons[old_but_index]);
+
     /* Add the old button to the button groups in the new block. */
     ui_button_group_replace_but_ptr(block, but, oldbut);
     oldbut->block = block;
@@ -1061,9 +1051,9 @@ static bool ui_but_update_from_old_block(const bContext *C,
     if (!BLI_listbase_is_empty(&block->butstore)) {
       UI_butstore_register_update(block, oldbut, but);
     }
-
-    std::unique_ptr<uiBut> but_ptr = block->pop_but(but);
     ui_but_free(C, but);
+    /** `but` was swaped with `oldbut` in storages. Remove from `oldbut` initial location. */
+    oldblock->buttons.remove(old_but_index);
 
     found_active = true;
   }
@@ -1080,8 +1070,8 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
     /* ensures one button can get activated, and in case the buttons
      * draw are the same this gives O(1) lookup for each button */
-    std::unique_ptr<uiBut> oldbut_ptr = oldblock->pop_but(oldbut);
     ui_but_free(C, oldbut);
+    oldblock->remove_but(oldbut);
   }
 
   return found_active;
@@ -1117,10 +1107,10 @@ bool UI_but_active_only_ex(
   }
   else if ((found == true) && (isactive == false)) {
     if (remove_on_failure) {
-      std::unique_ptr<uiBut> but_ptr = block->pop_but(but);
       if (but->layout) {
         ui_layout_remove_but(but->layout, but);
       }
+      block->remove_but(but);
       ui_but_free(C, but);
     }
     return false;
@@ -4081,25 +4071,22 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
     return but;
   }
 
-  uiBut *insert_after_but = but->prev;
+  const int64_t but_index = but->block->but_index(but);
 
   /* Remove old button address */
-  std::unique_ptr<uiBut> old_but_ptr = but->block->pop_but(but);
+  std::unique_ptr<uiBut> old_but_ptr = std::move(but->block->buttons[but_index]);
 
   /* Button may have pointer to a member within itself, this will have to be updated. */
   const bool has_poin_ptr_to_self = but->poin == (char *)but;
 
   /* Copy construct button with the new type. */
-  std::unique_ptr<uiBut> but_ptr = ui_but_new(new_type);
-  but = but_ptr.get();
+  but->block->buttons[but_index] = ui_but_new(new_type);
   *but = *old_but_ptr;
   /* We didn't mean to override this :) */
   but->type = new_type;
   if (has_poin_ptr_to_self) {
     but->poin = (char *)but;
   }
-
-  but->block->add_but(std::move(but_ptr), insert_after_but);
 
   if (but->layout) {
     const bool found_layout = ui_layout_replace_but_ptr(but->layout, old_but_ptr.get(), but);
@@ -4143,8 +4130,8 @@ static uiBut *ui_def_but(uiBlock *block,
     }
   }
 
-  std::unique_ptr<uiBut> but_ptr = ui_but_new((eButType)(type & BUTTYPE));
-  uiBut *but = but_ptr.get();
+  block->buttons.append(ui_but_new((eButType)(type & BUTTYPE)));
+  uiBut *but = block->buttons.last().get();
 
   but->pointype = (eButPointerType)(type & UI_BUT_POIN_TYPES);
   but->bit = type & UI_BUT_POIN_BIT;
@@ -4253,7 +4240,6 @@ static uiBut *ui_def_but(uiBlock *block,
   if (ELEM(but->type, UI_BTYPE_COLOR)) {
     but->dragflag |= UI_BUT_DRAG_FULL_BUT;
   }
-  block->add_but(std::move(but_ptr));
 
   if (block->curlayout) {
     ui_layout_add_but(block->curlayout, but);
