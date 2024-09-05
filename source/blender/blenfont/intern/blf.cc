@@ -988,12 +988,48 @@ char *BLF_display_name_from_file(const char *filepath)
   /* While listing font directories this function can be called simultaneously from a greater
    * number of threads than we want the FreeType cache to keep open at a time. Therefore open
    * with a separate FT_Library object and use FreeType calls directly to avoid any contention. */
+
+  /* Simple helper function for getting common prefix on font family names. */
+  auto common_prefix = [](char *str1, char *str2) {
+    int n = 0;
+    for (; *str1 && *str1 == *str2; str1++, str2++) {
+      n++;
+    }
+    return n;
+  };
+
   char *name = nullptr;
   FT_Library ft_library;
   if (FT_Init_FreeType(&ft_library) == FT_Err_Ok) {
     FT_Face face;
     if (FT_New_Face(ft_library, filepath, 0, &face) == FT_Err_Ok) {
-      if (face->family_name) {
+      if (face->num_faces > 1) {
+        int prefix_size = INT_MAX;
+        char **names = (char **)MEM_callocN(sizeof(char *) * face->num_faces, "font family names");
+        for (int i = 1; i < face->num_faces; i++) {
+          FT_Face other_face;
+          if (FT_New_Face(ft_library, filepath, i, &other_face)) {
+            continue;
+          }
+          size_t common_size = common_prefix(face->family_name, other_face->family_name);
+          names[i] = BLI_strdup(other_face->family_name);
+          if (common_size < prefix_size) {
+            prefix_size = common_size;
+          }
+          FT_Done_Face(other_face);
+        }
+        if (prefix_size < INT_MAX) {
+          name = BLI_sprintfN("%.*s (", prefix_size, face->family_name);
+          for (int i = 1; i < face->num_faces; i++) {
+            BLI_strncat(name, &names[i][prefix_size], 256);
+            BLI_strncat(name, ", ", 256);
+          }
+          BLI_strncat(name, ") ", 256);
+          BLI_strncat(name, face->style_name, 256);
+        }
+        MEM_freeN(names);
+      }
+      if ((!name) && face->family_name) {
         name = BLI_sprintfN("%s %s", face->family_name, face->style_name);
       }
       FT_Done_Face(face);
