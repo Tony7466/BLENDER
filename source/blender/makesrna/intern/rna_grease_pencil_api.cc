@@ -11,6 +11,8 @@
 
 #include "RNA_define.hh"
 
+#include "ED_object_vgroup.hh"
+
 #include "WM_api.hh"
 
 #include "rna_internal.hh" /* own include */
@@ -25,8 +27,11 @@ const EnumPropertyItem rna_enum_tree_node_move_type_items[] = {
 
 #  include "BKE_attribute.hh"
 #  include "BKE_context.hh"
+#  include "BKE_curves.hh"
+#  include "BKE_deform.hh"
 #  include "BKE_grease_pencil.hh"
 #  include "BKE_report.hh"
+#  include "DNA_meshdata_types.h"
 
 #  include "DEG_depsgraph.hh"
 
@@ -100,6 +105,80 @@ static void rna_GreasePencilDrawing_resize_curves(ID *grease_pencil_id,
     DEG_id_tag_update(grease_pencil_id, ID_RECALC_GEOMETRY);
     WM_main_add_notifier(NC_GEOM | ND_DATA, grease_pencil_id);
   }
+}
+
+static void rna_GreasePencilDrawing_add_vertex_weight(ID *grease_pencil_id,
+                                                      GreasePencilDrawing *drawing_ptr,
+                                                      ReportList *reports,
+                                                      const int stroke_index,
+                                                      const int index,
+                                                      const int def_nr,
+                                                      const float weight,
+                                                      const int assignmode)
+{
+  using namespace blender;
+  bke::greasepencil::Drawing &drawing = drawing_ptr->wrap();
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+  if (stroke_index < 0 || stroke_index >= curves.curve_num) {
+    return;
+  }
+
+  blender::IndexRange active_curve_range = curves.points_by_curve()[stroke_index];
+
+  const int deform_vert_idx = active_curve_range.start() + index;
+  if (!active_curve_range.contains(deform_vert_idx)) {
+    return;
+  }
+
+  MDeformVert *dv = &curves.deform_verts_for_write()[deform_vert_idx];
+
+  // BEGIN exact copy of part of object_vgroup.cc vgroup_nr_vert_add():
+
+  /* Lets first check to see if this vert is already in the weight group - if so lets update it. */
+  MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
+
+  if (dw) {
+    switch (assignmode) {
+      case WEIGHT_REPLACE:
+        dw->weight = weight;
+        break;
+      case WEIGHT_ADD:
+        dw->weight += weight;
+        if (dw->weight >= 1.0f) {
+          dw->weight = 1.0f;
+        }
+        break;
+      case WEIGHT_SUBTRACT:
+        dw->weight -= weight;
+        /* If the weight is zero or less than remove the vert from the deform group. */
+        if (dw->weight <= 0.0f) {
+          BKE_defvert_remove_group(dv, dw);
+        }
+        break;
+    }
+  }
+  else {
+    /* If the vert wasn't in the deform group then we must take a different form of action. */
+
+    switch (assignmode) {
+      case WEIGHT_SUBTRACT:
+        /* If we are subtracting then we don't need to do anything. */
+        return;
+
+      case WEIGHT_REPLACE:
+      case WEIGHT_ADD:
+        /* If we are doing an additive assignment, then we need to create the deform weight. */
+
+        /* We checked if the vertex was added before so no need to test again, simply add. */
+        BKE_defvert_add_index_notest(dv, def_nr, weight);
+        break;
+    }
+  }
+
+  // END
+
+  DEG_id_tag_update(grease_pencil_id, ID_RECALC_GEOMETRY);
 }
 
 static GreasePencilFrame *rna_Frames_frame_new(ID *id,
@@ -452,6 +531,57 @@ void RNA_api_grease_pencil_drawing(StructRNA *srna)
                            0,
                            10000);
   RNA_def_parameter_flags(parm, PROP_DYNAMIC, ParameterFlag(0));
+
+  static const EnumPropertyItem assign_mode_items[] = {
+      {WEIGHT_REPLACE, "REPLACE", 0, "Replace", "Replace"},
+      {WEIGHT_ADD, "ADD", 0, "Add", "Add"},
+      {WEIGHT_SUBTRACT, "SUBTRACT", 0, "Subtract", "Subtract"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  func = RNA_def_function(srna, "add_vertex_weight", "rna_GreasePencilDrawing_add_vertex_weight");
+  RNA_def_function_ui_description(func, "Set the active stroke index.");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS);
+
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+  parm = RNA_def_int(func,
+                     "stroke_index",
+                     0,
+                     0,
+                     INT_MAX,
+                     "Stroke Index",
+                     "The index of the grease pencil stroke to modify",
+                     0,
+                     INT_MAX);
+
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+  parm = RNA_def_int(func,
+                     "vertex_index",
+                     0,
+                     0,
+                     INT_MAX,
+                     "Index",
+                     "The index of the stroke vertex to modify",
+                     0,
+                     INT_MAX);
+
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+  parm = RNA_def_int(func,
+                     "vertex_group_id",
+                     0,
+                     0,
+                     INT_MAX,
+                     "Vertex Group ID",
+                     "The ID of the Vertex group to modify",
+                     0,
+                     INT_MAX);
+
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+  parm = RNA_def_float(
+      func, "weight", 0, 0.0f, 1.0f, "Weight", "The vertex weight to set", 0.0f, 1.0f);
+
+  RNA_def_parameter_flags(parm, PropertyFlag(0), ParameterFlag(0));
+  parm = RNA_def_enum(func, "assign_mode", assign_mode_items, 0, "", "");
 }
 
 void RNA_api_grease_pencil_frames(StructRNA *srna)
