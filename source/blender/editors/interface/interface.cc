@@ -1040,6 +1040,9 @@ static bool ui_but_update_from_old_block(const bContext *C,
     int but_index = block->but_index(but);
     int old_but_index = oldblock->but_index(oldbut);
     std::swap(block->buttons[but_index], oldblock->buttons[old_but_index]);
+    /* `but` was swaped with `oldbut` in storages. Remove `but` from `oldbut` initial location. */
+    std::unique_ptr<uiBut> but_ptr = std::move(oldblock->buttons[old_but_index]);
+    oldblock->buttons.remove(old_but_index);
 
     /* Add the old button to the button groups in the new block. */
     ui_button_group_replace_but_ptr(block, but, oldbut);
@@ -1052,8 +1055,6 @@ static bool ui_but_update_from_old_block(const bContext *C,
       UI_butstore_register_update(block, oldbut, but);
     }
     ui_but_free(C, but);
-    /** `but` was swaped with `oldbut` in storages. Remove from `oldbut` initial location. */
-    oldblock->buttons.remove(old_but_index);
 
     found_active = true;
   }
@@ -1110,8 +1111,8 @@ bool UI_but_active_only_ex(
       if (but->layout) {
         ui_layout_remove_but(but->layout, but);
       }
-      block->remove_but(but);
       ui_but_free(C, but);
+      block->remove_but(but);
     }
     return false;
   }
@@ -4081,6 +4082,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
 
   /* Copy construct button with the new type. */
   but->block->buttons[but_index] = ui_but_new(new_type);
+  but = but->block->buttons.last().get();
   *but = *old_but_ptr;
   /* We didn't mean to override this :) */
   but->type = new_type;

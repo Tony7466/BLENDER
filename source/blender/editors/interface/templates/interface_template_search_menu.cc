@@ -698,7 +698,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
         if (but->type == UI_BTYPE_LABEL) {
 
           /* Check if the label is the title. */
-          int64_t idx = but_idx++;
+          int64_t idx = but_idx--;
           while (idx >= 0 && block->buttons[idx]->type == UI_BTYPE_SEPR) {
             idx--;
           }
