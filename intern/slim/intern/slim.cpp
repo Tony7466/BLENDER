@@ -27,7 +27,7 @@ namespace slim {
  * Inputs:
  *   V          #vertices by 3 list of mesh vertex positions
  *   F          #faces by 3 list of mesh face indices
- *   indices] uniform    boolean (default false) - Use a uniform mesh instead of the vertices V
+ *   uniform    #boolean (default false) - Use a uniform mesh instead of the vertices V
  * Outputs:
  *   G  #faces*dim by #V Gradient operator
  *

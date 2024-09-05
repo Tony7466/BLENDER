@@ -4870,7 +4870,9 @@ static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, 
   return ret;
 }
 
-/***************************** SLIM Integration *******************************/
+/* -------------------------------------------------------------------- */
+/** \name SLIM Integration
+ * \{ */
 
 /* Get SLIM parameters from scene */
 static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_options)
@@ -4961,40 +4963,40 @@ static void slim_transfer_vertices(const PChart *chart,
                                    slim::MatrixTransfer *mt)
 {
   int r = mt_chart->n_verts;
-  auto &V = mt_chart->v_matrices;
-  auto &UV = mt_chart->uv_matrices;
-  auto &P = mt_chart->p_matrices;
-  auto &PP = mt_chart->pp_matrices;
-  auto &W = mt_chart->w_vectors;
+  std::vector<double>& v_mat = mt_chart->v_matrices;
+  std::vector<double>& uv_mat = mt_chart->uv_matrices;
+  std::vector<int>& p_mat = mt_chart->p_matrices;
+  std::vector<double>& pp_mat = mt_chart->pp_matrices;
+  std::vector<float>& w_vec = mt_chart->w_vectors;
 
-  int pVid = 0;
+  int p_vid = 0;
   int vid = mt_chart->n_boundary_vertices;
 
   /* For every vertex, fill up V matrix and P matrix (pinned vertices) */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
     if (!v->on_boundary_flag) {
       if (mt->use_weights) {
-        W[vid] = v->weight;
+        w_vec[vid] = v->weight;
       }
 
       v->slim_id = vid;
       vid++;
     }
 
-    V[v->slim_id] = v->co[0];
-    V[r + v->slim_id] = v->co[1];
-    V[2 * r + v->slim_id] = v->co[2];
+    v_mat[v->slim_id] = v->co[0];
+    v_mat[r + v->slim_id] = v->co[1];
+    v_mat[2 * r + v->slim_id] = v->co[2];
 
-    UV[v->slim_id] = v->uv[0];
-    UV[r + v->slim_id] = v->uv[1];
+    uv_mat[v->slim_id] = v->uv[0];
+    uv_mat[r + v->slim_id] = v->uv[1];
 
     if (v->flag & PVERT_PIN || (mt->is_minimize_stretch && !(v->flag & PVERT_SELECT))) {
       mt_chart->n_pinned_vertices += 1;
 
-      P[pVid] = v->slim_id;
-      PP[2 * pVid] = (double)v->uv[0];
-      PP[2 * pVid + 1] = (double)v->uv[1];
-      pVid += 1;
+      p_mat[p_vid] = v->slim_id;
+      pp_mat[2 * p_vid] = (double)v->uv[0];
+      pp_mat[2 * p_vid + 1] = (double)v->uv[1];
+      p_vid += 1;
     }
   }
 }
@@ -5004,8 +5006,8 @@ static void slim_transfer_boundary_vertices(PChart *chart,
                                             slim::MatrixTransferChart *mt_chart,
                                             const slim::MatrixTransfer *mt)
 {
-  auto &B = mt_chart->b_vectors;
-  auto &W = mt_chart->w_vectors;
+  auto &b_vec = mt_chart->b_vectors;
+  auto &w_vec = mt_chart->w_vectors;
 
   /* For every vertex, set slim_flag to 0 */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
@@ -5021,13 +5023,13 @@ static void slim_transfer_boundary_vertices(PChart *chart,
 
   do {
     if (mt->use_weights) {
-      W[vid] = be->vert->weight;
+      w_vec[vid] = be->vert->weight;
     }
 
     mt_chart->n_boundary_vertices += 1;
     be->vert->slim_id = vid;
     be->vert->on_boundary_flag = true;
-    B[vid] = vid;
+    b_vec[vid] = vid;
 
     vid += 1;
     be = p_boundary_edge_next(be);
@@ -5317,5 +5319,7 @@ bool uv_parametrizer_is_slim(ParamHandle *phandle)
 {
   return phandle->slim_mt != nullptr;
 }
+
+/** \} */
 
 }  // namespace blender::geometry

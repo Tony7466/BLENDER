@@ -111,7 +111,7 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
  * - begin: data is gathered into matrices and transferred to SLIM
  * - solve: compute cheap initialization (if necessary) and refine iteratively
  * - end: clean up
- */
+ * \{ */
 
 struct ParamSlimOptions {
   float weight_influence = 0.0f;

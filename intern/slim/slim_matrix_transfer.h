@@ -20,6 +20,7 @@ struct MatrixTransferChart {
   int n_boundary_vertices = 0;
   int n_edges = 0;
 
+  /* Field indicating whether a given SLIM operation succeeded or not. */
   bool succeeded = false;
 
   /* Vertex positions. */
