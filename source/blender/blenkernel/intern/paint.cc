@@ -609,10 +609,10 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
 }
 
 /**
- * Similar to the #BKE_paint_brush_set() version taking an asset reference, but this does
- * additional sanity checks. Call after changing #Paint.brush_asset_reference.
+ * After changing #Paint.brush_asset_reference, call this to activate the matching brush, importing
+ * it if necessary. Has no effect if #Paint.brush is set already.
  */
-static bool paint_brush_set_protected_from_asset_reference(Main *bmain, Paint *paint)
+static bool paint_brush_update_from_asset_reference(Main *bmain, Paint *paint)
 {
   /* Don't resolve this during file read, it will be done after. */
   if (bmain->is_locked_for_linking) {
@@ -718,7 +718,7 @@ bool BKE_paint_brush_set(Paint *paint, Brush *brush)
   return true;
 }
 
-AssetWeakReference *BKE_paint_brush_asset_reference_from_essentials(const char *name)
+static AssetWeakReference *paint_brush_asset_reference_from_essentials(const char *name)
 {
   AssetWeakReference *weak_ref = MEM_new<AssetWeakReference>(__func__);
   weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
@@ -728,8 +728,8 @@ AssetWeakReference *BKE_paint_brush_asset_reference_from_essentials(const char *
   return weak_ref;
 }
 
-void BKE_paint_brush_asset_reference_from_essentials(const char *name,
-                                                     AssetWeakReference *r_weak_ref)
+static void paint_brush_asset_reference_from_essentials(const char *name,
+                                                        AssetWeakReference *r_weak_ref)
 {
   r_weak_ref->asset_library_type = eAssetLibraryType::ASSET_LIBRARY_ESSENTIALS;
   r_weak_ref->asset_library_identifier = nullptr;
@@ -753,7 +753,7 @@ static void paint_brush_set_essentials_reference(Paint *paint, const char *name)
   /* Set brush asset reference to a named brush in the essentials asset library. */
   MEM_delete(paint->brush_asset_reference);
 
-  paint->brush_asset_reference = BKE_paint_brush_asset_reference_from_essentials(name);
+  paint->brush_asset_reference = paint_brush_asset_reference_from_essentials(name);
   paint->brush = nullptr;
 }
 
@@ -762,7 +762,7 @@ static void paint_eraser_brush_set_essentials_reference(Paint *paint, const char
   /* Set brush asset reference to a named brush in the essentials asset library. */
   MEM_delete(paint->eraser_brush_asset_reference);
 
-  paint->eraser_brush_asset_reference = BKE_paint_brush_asset_reference_from_essentials(name);
+  paint->eraser_brush_asset_reference = paint_brush_asset_reference_from_essentials(name);
   paint->eraser_brush = nullptr;
 }
 
@@ -839,7 +839,7 @@ std::optional<AssetWeakReference> BKE_paint_brush_type_default_reference(
   }
 
   AssetWeakReference asset_reference;
-  BKE_paint_brush_asset_reference_from_essentials(name.c_str(), &asset_reference);
+  paint_brush_asset_reference_from_essentials(name.c_str(), &asset_reference);
   return asset_reference;
 }
 
@@ -899,13 +899,13 @@ void BKE_paint_brushes_set_default_references(ToolSettings *ts)
 bool BKE_paint_brush_set_default(Main *bmain, Paint *paint)
 {
   paint_brush_set_default_reference(paint, true, false);
-  return paint_brush_set_protected_from_asset_reference(bmain, paint);
+  return paint_brush_update_from_asset_reference(bmain, paint);
 }
 
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name)
 {
   paint_brush_set_essentials_reference(paint, name);
-  return paint_brush_set_protected_from_asset_reference(bmain, paint);
+  return paint_brush_update_from_asset_reference(bmain, paint);
 }
 
 void BKE_paint_brushes_validate(Main *bmain, Paint *paint)
@@ -1504,7 +1504,7 @@ bool BKE_paint_ensure(Main *bmain, ToolSettings *ts, Paint **r_paint)
       BLI_assert(paint_test.runtime.ob_mode == (*r_paint)->runtime.ob_mode);
 #endif
     }
-    paint_brush_set_protected_from_asset_reference(bmain, *r_paint);
+    paint_brush_update_from_asset_reference(bmain, *r_paint);
     paint_eraser_brush_set_from_asset_reference(bmain, *r_paint);
     return true;
   }
