@@ -805,6 +805,9 @@ class ChannelBag : public ::ActionChannelBag {
    * channel groups.
    *
    * The fcurves in the channel group will be moved with it.
+   *
+   * The channel group must belong to this channel bag, and `to_group_index`
+   * must be a valid existing group index.
    */
   void channel_group_move(bActionGroup &group, int to_group_index);
 
