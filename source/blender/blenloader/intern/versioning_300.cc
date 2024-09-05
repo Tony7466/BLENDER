@@ -52,6 +52,7 @@
 #include "DNA_text_types.h"
 #include "DNA_tracking_types.h"
 #include "DNA_workspace_types.h"
+#include "DNA_defaults.h"
 
 #undef DNA_GENFILE_VERSIONING_MACROS
 
@@ -4557,15 +4558,15 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   {
     /* Keep this block, even when empty. */
 
+    const ToolSettings* tool_settings_default = DNA_struct_default_get(ToolSettings);
+
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      scene->toolsettings->uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations;
-      scene->toolsettings->uvcalc_weights_factor = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsFactor;
-      scene->toolsettings->uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale;
-      scene->toolsettings->uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips;
-      scene->toolsettings->uvcalc_importance_weights =
-          _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights;
-      STRNCPY(scene->toolsettings->uvcalc_weights_group,
-              _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup);
+      scene->toolsettings->uvcalc_iterations = tool_settings_default->uvcalc_iterations;
+      scene->toolsettings->uvcalc_weights_factor = tool_settings_default->uvcalc_weights_factor;
+      scene->toolsettings->uvcalc_relative_scale = tool_settings_default->uvcalc_relative_scale;
+      scene->toolsettings->uvcalc_allow_flips = tool_settings_default->uvcalc_allow_flips;
+      scene->toolsettings->uvcalc_importance_weights = tool_settings_default->uvcalc_importance_weights;
+      STRNCPY(scene->toolsettings->uvcalc_weights_group, tool_settings_default->uvcalc_weights_group);
     }
   }
 }

@@ -38,6 +38,7 @@
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
+#include "DNA_defaults.h"
 
 #undef DNA_GENFILE_VERSIONING_MACROS
 
@@ -2001,10 +2002,12 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 264, 5)) {
     /* set a unwrapping margin and ABF by default */
+    const ToolSettings* tool_settings_default = DNA_struct_default_get(ToolSettings);
+
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->toolsettings->uvcalc_margin == 0.0f) {
-        scene->toolsettings->uvcalc_margin = _DNA_DEFAULT_ToolSettings_UVCalc_Margin;
-        scene->toolsettings->unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper;
+        scene->toolsettings->uvcalc_margin = tool_settings_default->uvcalc_margin;
+        scene->toolsettings->unwrapper = tool_settings_default->unwrapper;
       }
     }
   }

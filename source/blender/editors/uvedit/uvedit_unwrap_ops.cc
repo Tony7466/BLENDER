@@ -18,6 +18,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_defaults.h"
 #include "DNA_scene_types.h"
+#include "DNA_defaults.h"
 
 #include "BKE_global.hh"
 
@@ -2810,6 +2811,8 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 
 void UV_OT_unwrap(wmOperatorType *ot)
 {
+  const ToolSettings* tool_settings_default = DNA_struct_default_get(ToolSettings);
+
   static const EnumPropertyItem method_items[] = {
       {0, "ANGLE_BASED", 0, "Angle Based", ""},
       {1, "CONFORMAL", 0, "Conformal", ""},
@@ -2835,19 +2838,19 @@ void UV_OT_unwrap(wmOperatorType *ot)
       ot->srna,
       "method",
       method_items,
-      _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper,
+      tool_settings_default->unwrapper,
       "Method",
       "Unwrapping method (Angle Based usually gives better results than Conformal, while "
       "being somewhat slower)");
   RNA_def_boolean(ot->srna,
                   "fill_holes",
-                  _DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_FILLHOLES,
+                  tool_settings_default->uvcalc_flag & UVCALC_FILLHOLES,
                   "Fill Holes",
                   "Virtually fill holes in mesh before unwrapping, to better avoid overlaps and "
                   "preserve symmetry");
   RNA_def_boolean(ot->srna,
                   "correct_aspect",
-                  !(_DNA_DEFAULT_ToolSettings_UVCalc_Flag & UVCALC_NO_ASPECT_CORRECT),
+                  !(tool_settings_default->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT),
                   "Correct Aspect",
                   "Map UVs taking image aspect ratio into account");
   RNA_def_boolean(
@@ -2868,14 +2871,14 @@ void UV_OT_unwrap(wmOperatorType *ot)
   /* SLIM only */
   RNA_def_boolean(ot->srna,
                   "allow_flips",
-                  _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,
+                  tool_settings_default->uvcalc_allow_flips,
                   "Allow Flips",
                   "Allowing flips means that depending on the position of pins, the map may be "
                   "flipped to lower distortion");
 
   RNA_def_int(ot->srna,
               "iterations",
-              _DNA_DEFAULT_ToolSettings_UVCalc_Iterations,
+              tool_settings_default->uvcalc_iterations,
               0,
               10000,
               "Iterations",
@@ -2885,19 +2888,19 @@ void UV_OT_unwrap(wmOperatorType *ot)
 
   RNA_def_boolean(ot->srna,
                   "importance_weights",
-                  _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights,
+                  tool_settings_default->uvcalc_importance_weights,
                   "Importance Weights",
                   "Whether to take into account per-vertex importance weights");
   RNA_def_string(ot->srna,
                  "weights_group",
-                 _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup,
+                 tool_settings_default->uvcalc_weights_group,
                  MAX_ID_NAME,
                  "Weights Group",
                  "Vertex group name for importance weights (modulating the deform)");
   RNA_def_float(
       ot->srna,
       "weights_factor",
-      _DNA_DEFAULT_ToolSettings_UVCalc_WeightsFactor,
+      tool_settings_default->uvcalc_weights_factor,
       -10000.0,
       10000.0,
       "Weights Factor",

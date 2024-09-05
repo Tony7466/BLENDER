@@ -363,15 +363,14 @@
     .sharp_max = DEG2RADF(180.0f), \
   }
 
-#define _DNA_DEFAULT_ToolSettings_UVCalc_Margin               (0.001f)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_Flag                 (UVCALC_TRANSFORM_CORRECT_SLIDE)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper            (1)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_Iterations           (10)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_WeightsFactor    (1.0)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale        (1.0)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips           (1)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights    (0)
-#define _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup     "uv_importance"
+/* Regarding this default hard-coded name:
+ * in most cases there is no expectation for the names used for vertex groups.
+ * UV weights is a fairly specific feature for unwrapping and in this case
+ * users are expected to use the name "uv_importance".
+ * While we could support setting a different group per mesh (similar to the active group).
+ * This isn't all that useful in practice, so use a "default" name instead.
+ * This approach may be reworked after gathering feedback from users. */
+#define _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup "uv_importance"
 
 #define _DNA_DEFAULT_ToolSettings \
   { \
@@ -379,15 +378,15 @@
     .doublimit = 0.001, \
     .vgroup_weight = 1.0f, \
  \
-    .uvcalc_margin = _DNA_DEFAULT_ToolSettings_UVCalc_Margin, \
-    .uvcalc_flag = _DNA_DEFAULT_ToolSettings_UVCalc_Flag, \
-    .unwrapper = _DNA_DEFAULT_ToolSettings_UVCalc_Unwrapper, \
-    .uvcalc_iterations = _DNA_DEFAULT_ToolSettings_UVCalc_Iterations, \
+    .uvcalc_margin = 0.001f, \
+    .uvcalc_flag = UVCALC_TRANSFORM_CORRECT_SLIDE, \
+    .unwrapper = 1, \
+    .uvcalc_iterations = 10, \
     .uvcalc_weights_group = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup, \
-    .uvcalc_weights_factor = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsFactor, \
-    .uvcalc_relative_scale = _DNA_DEFAULT_ToolSettings_UVCalc_RelativeScale, \
-    .uvcalc_allow_flips = _DNA_DEFAULT_ToolSettings_UVCalc_AllowFlips,\
-    .uvcalc_importance_weights = _DNA_DEFAULT_ToolSettings_UVCalc_ImportanceWeights,\
+    .uvcalc_weights_factor = 1.0, \
+    .uvcalc_relative_scale = 1.0, \
+    .uvcalc_allow_flips = 1,\
+    .uvcalc_importance_weights = 0,\
  \
     .select_thresh = 0.01f, \
  \
