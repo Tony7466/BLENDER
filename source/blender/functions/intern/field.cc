@@ -413,6 +413,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
       const GMutableSpan span{type, buffer, array_size};
       mf_params.add_uninitialized_single_output(span);
     }
+
     procedure_executor.call_auto(mask, mf_params, mf_context);
   }
 
