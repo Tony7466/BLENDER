@@ -11,15 +11,32 @@ namespace blender::offset_indices {
 OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offsets,
                                                 const int start_offset)
 {
-  std::optional<OffsetIndices<int>> offsets = accumulate_counts_to_offsets_with_overflow_check(
-      counts_to_offsets, start_offset);
-  BLI_assert(offsets.has_value());
-  return *offsets;
+  int offset = start_offset;
+  for (const int i : counts_to_offsets.index_range().drop_back(1)) {
+    const int count = counts_to_offsets[i];
+    BLI_assert(count >= 0);
+    counts_to_offsets[i] = offset;
+    offset += count;
+  }
+  counts_to_offsets.last() = offset;
+
+#ifndef NDEBUG
+  int64_t offset_i64 = start_offset;
+  for (const int count : counts_to_offsets.drop_back(1)) {
+    offset_i64 += count;
+  }
+  BLI_assert_msg(offset == offset_i64, "Integer overflow occured");
+#endif
+
+  return OffsetIndices<int>(counts_to_offsets);
 }
 
 std::optional<OffsetIndices<int>> accumulate_counts_to_offsets_with_overflow_check(
     MutableSpan<int> counts_to_offsets, int start_offset)
 {
+  /* This variant was measured to be about ~8% slower than the version without overflow check.
+   * Since this function is often a serial bottleneck, we use a separate code path for when an
+   * overflow check is requested. */
   int64_t offset = start_offset;
   for (const int i : counts_to_offsets.index_range().drop_back(1)) {
     const int count = counts_to_offsets[i];
