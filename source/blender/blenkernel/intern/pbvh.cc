@@ -51,7 +51,10 @@
 namespace blender::bke::pbvh {
 
 // #define DEBUG_BUILD_TIME
+
+/* This must be smaller than the maximum value of the #MeshNode::LocalVertMap slot index type. */
 #define LEAF_LIMIT 10000
+
 #define STACK_FIXED_DEPTH 100
 
 /** Create invalid bounds for use with #math::min_max. */
@@ -230,6 +233,8 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
     node.vert_indices_.reserve(owned_verts.size() + shared_verts.size());
     node.vert_indices_.add_multiple(owned_verts);
     node.vert_indices_.add_multiple(shared_verts);
+    node.vert_indices_.print_stats(
+        std::string(std::string("vert_indices_") + std::to_string(i)).c_str());
   }
 }
 
