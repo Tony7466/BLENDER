@@ -71,7 +71,7 @@ static ExtendedIntersectionPoint CreateIntersection(const int point_a,
 static constexpr bool EXIT = false;
 static constexpr bool ENTRY = true;
 
-static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<float2> /*curve_b*/)
+static BooleanResult result_None()
 {
   BooleanResult result;
 
@@ -82,7 +82,7 @@ static BooleanResult result_None(const Span<float2> /*curve_a*/, const Span<floa
   return result;
 }
 
-static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*curve_b*/)
+static BooleanResult result_A(const Span<float2> curve_a)
 {
   BooleanResult result;
 
@@ -99,7 +99,7 @@ static BooleanResult result_A(const Span<float2> curve_a, const Span<float2> /*c
   return result;
 }
 
-static BooleanResult result_B(const Span<float2> /*curve_a*/, const Span<float2> curve_b)
+static BooleanResult result_B(const Span<float2> curve_b)
 {
   BooleanResult result;
 
@@ -169,41 +169,41 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
 
   if (a_start_in_b) {
     if (boolean_mode == Operation::And) {
-      return result_A(curve_a, curve_b);
+      return result_A(curve_a);
     }
     else if (boolean_mode == Operation::NotB) {
-      return result_None(curve_a, curve_b);
+      return result_None();
     }
     else if (boolean_mode == Operation::NotA) {
       return result_BA(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::Or) {
-      return result_B(curve_a, curve_b);
+      return result_B(curve_b);
     }
   }
   else if (b_start_in_a) {
     if (boolean_mode == Operation::And) {
-      return result_B(curve_a, curve_b);
+      return result_B(curve_b);
     }
     else if (boolean_mode == Operation::NotB) {
       return result_AB(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotA) {
-      return result_None(curve_a, curve_b);
+      return result_None();
     }
     else if (boolean_mode == Operation::Or) {
-      return result_A(curve_a, curve_b);
+      return result_A(curve_a);
     }
   }
   else if (!a_start_in_b && !b_start_in_a) {
     if (boolean_mode == Operation::And) {
-      return result_None(curve_a, curve_b);
+      return result_None();
     }
     else if (boolean_mode == Operation::NotB) {
-      return result_A(curve_a, curve_b);
+      return result_A(curve_a);
     }
     else if (boolean_mode == Operation::NotA) {
-      return result_B(curve_a, curve_b);
+      return result_B(curve_b);
     }
     else if (boolean_mode == Operation::Or) {
       return result_AB(curve_a, curve_b);
@@ -211,7 +211,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
   }
 
   BLI_assert_unreachable();
-  return result_None(curve_a, curve_b);
+  return result_None();
 }
 
 BooleanResult invalid_result(const Operation mode,
@@ -222,17 +222,17 @@ BooleanResult invalid_result(const Operation mode,
     return result_AB(curve_a, curve_b);
   }
   else if (mode == Operation::NotB) {
-    return result_A(curve_a, curve_b);
+    return result_A(curve_a);
   }
   else if (mode == Operation::NotA) {
-    return result_B(curve_a, curve_b);
+    return result_B(curve_b);
   }
   else if (mode == Operation::Or) {
     return result_AB(curve_a, curve_b);
   }
 
   BLI_assert_unreachable();
-  return result_None(curve_a, curve_b);
+  return result_None();
 }
 
 static std::pair<bool, bool> get_AB_mode(const Operation mode)
@@ -869,10 +869,10 @@ struct CurveBooleanExecutor {
     if (intersections.is_empty()) {
       const bool a_start_in_b = inside(curve_a.first(), curve_b);
       if (a_start_in_b) {
-        return std::optional(result_None(curve_a, curve_b));
+        return std::optional(result_None());
       }
       else {
-        return std::optional(result_A(curve_a, curve_b));
+        return std::optional(result_A(curve_a));
       }
     }
 
