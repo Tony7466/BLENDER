@@ -224,8 +224,9 @@ class LensDistortionOperation : public NodeOperation {
       return true;
     }
 
-    /* Both distortion and dispersion are zero and the operation does nothing. */
-    if (get_distortion() == 0.0f && get_dispersion() == 0.0f) {
+    /* Both distortion and dispersion are zero and the operation does nothing. Jittering has an
+     * effect regardless, so its gets an exemption. */
+    if (!get_is_jitter() && get_distortion() == 0.0f && get_dispersion() == 0.0f) {
       return true;
     }
 
@@ -254,5 +255,5 @@ void register_node_type_cmp_lensdist()
       &ntype, "NodeLensDist", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

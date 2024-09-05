@@ -343,7 +343,7 @@ static bool toggle_weight_tool_direction_poll(bContext *C)
   if (brush == nullptr) {
     return false;
   }
-  return brush->gpencil_weight_tool == GPWEIGHT_TOOL_DRAW;
+  return brush->gpencil_weight_brush_type == GPWEIGHT_BRUSH_TYPE_DRAW;
 }
 
 static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
@@ -411,12 +411,16 @@ static int grease_pencil_weight_invert_exec(bContext *C, wmOperator *op)
 
 static bool grease_pencil_vertex_group_weight_poll(bContext *C)
 {
+  if (!grease_pencil_weight_painting_poll(C)) {
+    return false;
+  }
+
   const Object *ob = CTX_data_active_object(C);
   if (ob == nullptr || BLI_listbase_is_empty(BKE_object_defgroup_list(ob))) {
     return false;
   }
 
-  return grease_pencil_weight_painting_poll(C);
+  return true;
 }
 
 static void GREASE_PENCIL_OT_weight_invert(wmOperatorType *ot)

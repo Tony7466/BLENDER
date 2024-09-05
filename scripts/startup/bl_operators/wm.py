@@ -1086,7 +1086,7 @@ class WM_OT_url_open_preset(Operator):
     )
 
     def _url_from_bug(self, _context):
-        from bl_ui_utils.bug_report_url import url_prefill_from_blender
+        from _bpy_internal.system_info.runtime import url_prefill_from_blender
         return url_prefill_from_blender()
 
     def _url_from_release_notes(self, _context):
@@ -2902,7 +2902,8 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.is_editable]
+                        if ((space_type == 'OUTLINER') and only_selected) else
+                        [id for id in bpy.data.scenes if id.is_editable]
                     ),
                     "name",
                     iface_("Scene(s)"),
@@ -2912,7 +2913,8 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.is_editable]
+                        if ((space_type == 'OUTLINER') and only_selected) else
+                        [id for id in bpy.data.brushes if id.is_editable]
                     ),
                     "name",
                     iface_("Brush(es)"),

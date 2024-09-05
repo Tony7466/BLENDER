@@ -690,9 +690,9 @@ void DepsgraphRelationBuilder::build_collection(LayerCollection *from_layer_coll
     const ComponentKey object_hierarchy_key{&object->id, NodeType::HIERARCHY};
     add_relation(collection_hierarchy_key, object_hierarchy_key, "Collection -> Object hierarchy");
 
-    const OperationKey object_instance_key{
-        &object->id, NodeType::INSTANCING, OperationCode::INSTANCE};
-    add_relation(object_instance_key, collection_geometry_key, "Collection Geometry");
+    const OperationKey object_instance_geometry_key{
+        &object->id, NodeType::INSTANCING, OperationCode::INSTANCE_GEOMETRY};
+    add_relation(object_instance_geometry_key, collection_geometry_key, "Collection Geometry");
 
     /* An instance is part of the geometry of the collection. */
     if (object->type == OB_EMPTY) {
@@ -750,9 +750,13 @@ void DepsgraphRelationBuilder::build_object(Object *object)
     add_relation(local_transform_key, parent_transform_key, "ObLocal -> ObParent");
   }
 
-  add_relation(ComponentKey(&object->id, NodeType::TRANSFORM),
+  add_relation(OperationKey{&object->id, NodeType::INSTANCING, OperationCode::INSTANCE_GEOMETRY},
                OperationKey{&object->id, NodeType::INSTANCING, OperationCode::INSTANCE},
-               "Transform -> Instance");
+               "Instance Geometry -> Geometry");
+
+  add_relation(ComponentKey(&object->id, NodeType::TRANSFORM),
+               OperationKey{&object->id, NodeType::INSTANCING, OperationCode::INSTANCE_GEOMETRY},
+               "Transform -> Instance Geometry");
 
   /* Modifiers. */
   build_object_modifiers(object);
@@ -1785,7 +1789,7 @@ void DepsgraphRelationBuilder::build_animation_images(ID *id)
   /* See #DepsgraphNodeBuilder::build_animation_images. */
   bool has_image_animation = false;
   if (ELEM(GS(id->name), ID_MA, ID_WO)) {
-    bNodeTree *ntree = *bke::BKE_ntree_ptr_from_id(id);
+    bNodeTree *ntree = *bke::node_tree_ptr_from_id(id);
     if (ntree != nullptr && ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION)
     {
       has_image_animation = true;
@@ -2600,8 +2604,8 @@ void DepsgraphRelationBuilder::build_object_data_geometry(Object *object)
   add_relation(scene_key, obdata_ubereval_key, "Copy-on-Eval Relation", RELATION_FLAG_NO_FLUSH);
   /* Relation to the instance, so that instancer can use geometry of this object. */
   add_relation(ComponentKey(&object->id, NodeType::GEOMETRY),
-               OperationKey(&object->id, NodeType::INSTANCING, OperationCode::INSTANCE),
-               "Transform -> Instance");
+               OperationKey(&object->id, NodeType::INSTANCING, OperationCode::INSTANCE_GEOMETRY),
+               "Transform -> Instance Geometry");
   /* Shader FX. */
   if (object->shader_fx.first != nullptr) {
     ModifierUpdateDepsgraphContext ctx = {};
