@@ -335,13 +335,13 @@ void interpolate_position_a(const Span<float2> pos_a,
   }
 }
 
-static int result_find_base_id(const BooleanResult &results,
+static int result_find_base_id(const BooleanResult &result,
                                const Span<float2> curve_a,
                                const Span<float2> curve_b)
 {
-  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(results.offsets);
-  Array<float2> points(results.verts.size());
-  interpolate_position_ab(curve_a, curve_b, results, points.as_mutable_span());
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(result.offsets);
+  Array<float2> points(result.verts.size());
+  interpolate_position_ab(curve_a, curve_b, result, points.as_mutable_span());
 
   Vector<int> base_ids;
 
@@ -361,31 +361,31 @@ static int result_find_base_id(const BooleanResult &results,
   return -1;
 }
 
-BooleanResult result_remove_holes(const BooleanResult &in_results,
+BooleanResult result_remove_holes(const BooleanResult &in_result,
                                   const Span<float2> curve_a,
                                   const Span<float2> curve_b)
 {
   BooleanResult result;
 
-  const int base_id = result_find_base_id(in_results, curve_a, curve_b);
+  const int base_id = result_find_base_id(in_result, curve_a, curve_b);
 
   if (base_id == -1) {
-    return in_results;
+    return in_result;
   }
 
-  const int base_start = in_results.offsets[base_id];
-  const int base_end = in_results.offsets[base_id + 1];
+  const int base_start = in_result.offsets[base_id];
+  const int base_end = in_result.offsets[base_id + 1];
   const int base_size = base_end - base_start;
 
   Array<Vertex> verts(base_size);
   const Array<int> offsets = {0, base_size};
 
-  const int og_intersection_size = in_results.intersections_data.size();
+  const int og_intersection_size = in_result.intersections_data.size();
   Array<int> reverse_map(og_intersection_size, -1);
   int new_intersection_size = 0;
 
   for (const int i : IndexRange(base_size)) {
-    const Vertex &vert = in_results.verts[i + base_start];
+    const Vertex &vert = in_result.verts[i + base_start];
     if (vert.type != VertexType::Intersection) {
       verts[i] = vert;
       continue;
@@ -401,7 +401,7 @@ BooleanResult result_remove_holes(const BooleanResult &in_results,
   Array<IntersectionPoint> intersections(new_intersection_size);
   for (const int i : IndexRange(og_intersection_size)) {
     if (reverse_map[i] != -1) {
-      intersections[reverse_map[i]] = in_results.intersections_data[i];
+      intersections[reverse_map[i]] = in_result.intersections_data[i];
     }
   }
 
@@ -412,46 +412,46 @@ BooleanResult result_remove_holes(const BooleanResult &in_results,
   return result;
 }
 
-BooleanResult result_sort_holes(const BooleanResult &in_results,
+BooleanResult result_sort_holes(const BooleanResult &in_result,
                                 const Span<float2> curve_a,
                                 const Span<float2> curve_b)
 {
   BooleanResult result;
 
-  const int base_id = result_find_base_id(in_results, curve_a, curve_b);
+  const int base_id = result_find_base_id(in_result, curve_a, curve_b);
 
   if (base_id == -1) {
-    return in_results;
+    return in_result;
   }
 
-  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(in_results.offsets);
+  const OffsetIndices<int> points_by_polygon = OffsetIndices<int>(in_result.offsets);
   const IndexRange polygons_before_base = IndexRange(base_id);
   const IndexRange polygons_after_base = IndexRange::from_begin_end(base_id + 1,
                                                                     points_by_polygon.size());
 
   const IndexRange base_points = points_by_polygon[base_id];
 
-  Array<Vertex> verts(in_results.verts.size());
-  Array<int> offsets(in_results.offsets.size());
+  Array<Vertex> verts(in_result.verts.size());
+  Array<int> offsets(in_result.offsets.size());
 
   int i = 0;
   int curr_off = 0;
 
   offsets[curr_off++] = i;
   for (const int j : base_points.index_range()) {
-    verts[i++] = in_results.verts[base_points[j]];
+    verts[i++] = in_result.verts[base_points[j]];
   }
 
   for (const int polygon_j : polygons_before_base.index_range()) {
     offsets[curr_off++] = i;
     for (const int j : points_by_polygon[polygon_j]) {
-      verts[i++] = in_results.verts[j];
+      verts[i++] = in_result.verts[j];
     }
   }
   for (const int polygon_j : polygons_after_base.index_range()) {
     offsets[curr_off++] = i;
     for (const int j : points_by_polygon[polygon_j]) {
-      verts[i++] = in_results.verts[j];
+      verts[i++] = in_result.verts[j];
     }
   }
 
@@ -459,7 +459,7 @@ BooleanResult result_sort_holes(const BooleanResult &in_results,
 
   result.verts = verts;
   result.offsets = offsets;
-  result.intersections_data = in_results.intersections_data;
+  result.intersections_data = in_result.intersections_data;
 
   return result;
 }

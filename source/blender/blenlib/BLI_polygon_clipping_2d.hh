@@ -102,10 +102,10 @@ std::optional<BooleanResult> curve_boolean_cut(const bool is_a_cyclic,
                                                const Span<float2> curve_a,
                                                const Span<float2> curve_b);
 
-BooleanResult result_remove_holes(const BooleanResult &in_results,
+BooleanResult result_remove_holes(const BooleanResult &in_result,
                                   const Span<float2> curve_a,
                                   const Span<float2> curve_b);
-BooleanResult result_sort_holes(const BooleanResult &in_results,
+BooleanResult result_sort_holes(const BooleanResult &in_result,
                                 const Span<float2> curve_a,
                                 const Span<float2> curve_b);
 
