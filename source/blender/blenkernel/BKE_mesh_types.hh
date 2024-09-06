@@ -164,6 +164,14 @@ struct MeshRuntime {
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;
 
+  /**
+   * BVH tree and sculpt/paint modification acceleration structure. The usage and meaning of the
+   * struct is quite context dependent and depends on the state of the object. It may correspond to
+   * the object's evaluated positions, or it may correspond to dynamic topology #BMesh or the
+   * evaluated multires #SubdivCCG. It's still stored on the original mesh because conceptually
+   * that's what's being changed, and only one object using the mesh can be in a mode that uses
+   * this structure at a time.
+   */
   std::unique_ptr<pbvh::Tree> pbvh;
 
   /** Needed in case we need to lazily initialize the mesh. */
