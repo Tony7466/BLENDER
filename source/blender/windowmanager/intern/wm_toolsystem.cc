@@ -264,7 +264,7 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
   /* If necessary, find a compatible tool to switch to. */
   {
     const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-    std::optional<int> brush_type = BKE_paint_get_brush_tool_from_paintmode(brush, paint_mode);
+    std::optional<int> brush_type = BKE_paint_get_brush_type_from_paintmode(brush, paint_mode);
     if (!brush_type) {
       BLI_assert_unreachable();
       WM_toolsystem_ref_set_by_id(C, "builtin.brush");

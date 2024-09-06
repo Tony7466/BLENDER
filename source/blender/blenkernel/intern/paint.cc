@@ -1107,7 +1107,7 @@ std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
   }
 }
 
-std::optional<int> BKE_paint_get_brush_tool_from_paintmode(const Brush *brush,
+std::optional<int> BKE_paint_get_brush_type_from_paintmode(const Brush *brush,
                                                            const PaintMode mode)
 {
   switch (mode) {

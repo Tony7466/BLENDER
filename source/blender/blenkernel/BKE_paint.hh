@@ -200,7 +200,7 @@ const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
 uint BKE_paint_get_brush_type_offset_from_paintmode(PaintMode mode);
 std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
                                                         const eObjectMode ob_mode);
-std::optional<int> BKE_paint_get_brush_tool_from_paintmode(const Brush *brush,
+std::optional<int> BKE_paint_get_brush_type_from_paintmode(const Brush *brush,
                                                            const PaintMode mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
