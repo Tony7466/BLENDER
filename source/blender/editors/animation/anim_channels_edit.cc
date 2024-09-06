@@ -1712,6 +1712,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
         blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
         const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        BLI_assert(group_index >= 0);
         if (group_index == 0) {
           continue;
         }
@@ -1747,6 +1748,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
         blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
         const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        BLI_assert(group_index >= 0);
         if (group_index == bag.channel_groups().size() - 1) {
           continue;
         }
