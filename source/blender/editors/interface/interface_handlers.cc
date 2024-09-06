@@ -10597,16 +10597,23 @@ static int ui_handle_menu_event(bContext *C,
 
 #  if defined(__APPLE__)
   constexpr int PopupTitleHoverCursor = WM_CURSOR_HAND;
-  constexpr int PopupTitleDragCursor = WM_CURSOR_HAND;
+  constexpr int PopupTitleDragCursor = WM_CURSOR_HAND_CLOSED;
 #  else
-  constexpr int PopupTitleHoverCursor = WM_CURSOR_NSEW_SCROLL;
-  constexpr int PopupTitleDragCursor = WM_CURSOR_NSEW_SCROLL;
+  constexpr int PopupTitleHoverCursor = WM_CURSOR_MOVE;
+  constexpr int PopupTitleDragCursor = WM_CURSOR_MOVE;
 #  endif
 
   wmWindow *win = CTX_wm_window(C);
 
-  if (!menu->is_grab && is_floating && event->type == MOUSEMOVE && !win->modalcursor) {
-    WM_cursor_set(win, inside_title ? PopupTitleHoverCursor : WM_CURSOR_DEFAULT);
+  if (!menu->is_grab && is_floating) {
+    if (event->type == LEFTMOUSE && event->val == KM_PRESS && inside_title) {
+      /* Initial press before starting to drag. */
+      WM_cursor_set(win, PopupTitleDragCursor);
+    }
+    else if (event->type == MOUSEMOVE && !win->modalcursor) {
+      /* Hover over draggable area. */
+      WM_cursor_set(win, inside_title ? PopupTitleHoverCursor : WM_CURSOR_DEFAULT);
+    }
   }
 
   if (menu->is_grab) {
