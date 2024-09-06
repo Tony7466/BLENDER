@@ -622,17 +622,6 @@ static const float bone_box_verts[8][3] = {
     {-1.0f, 1.0f, 1.0f},
 };
 
-static const float bone_box_smooth_normals[8][3] = {
-    {M_SQRT3, -M_SQRT3, M_SQRT3},
-    {M_SQRT3, -M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, -M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, -M_SQRT3, M_SQRT3},
-    {M_SQRT3, M_SQRT3, M_SQRT3},
-    {M_SQRT3, M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, M_SQRT3, -M_SQRT3},
-    {-M_SQRT3, M_SQRT3, M_SQRT3},
-};
-
 static const uint bone_box_wire[24] = {
     0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7,
 };
@@ -891,7 +880,7 @@ blender::gpu::Batch *DRW_cache_object_edge_detection_get(Object *ob, bool *r_is_
   }
 }
 
-blender::gpu::Batch *DRW_cache_object_face_wireframe_get(Object *ob)
+blender::gpu::Batch *DRW_cache_object_face_wireframe_get(const Scene *scene, Object *ob)
 {
   using namespace blender::draw;
   switch (ob->type) {
@@ -903,6 +892,8 @@ blender::gpu::Batch *DRW_cache_object_face_wireframe_get(Object *ob)
       return DRW_cache_volume_face_wireframe_get(ob);
     case OB_GPENCIL_LEGACY:
       return DRW_cache_gpencil_face_wireframe_get(ob);
+    case OB_GREASE_PENCIL:
+      return DRW_cache_grease_pencil_face_wireframe_get(scene, ob);
     default:
       return nullptr;
   }
@@ -1977,22 +1968,6 @@ static const float bone_octahedral_verts[6][3] = {
     {0.1f, 0.1f, -0.1f},
     {-0.1f, 0.1f, -0.1f},
     {-0.1f, 0.1f, 0.1f},
-    {0.0f, 1.0f, 0.0f},
-};
-
-static const float bone_octahedral_smooth_normals[6][3] = {
-    {0.0f, -1.0f, 0.0f},
-#if 0 /* creates problems for outlines when scaled */
-    {0.943608f * M_SQRT1_2, -0.331048f, 0.943608f * M_SQRT1_2},
-    {0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
-    {-0.943608f * M_SQRT1_2, -0.331048f, -0.943608f * M_SQRT1_2},
-    {-0.943608f * M_SQRT1_2, -0.331048f, 0.943608f * M_SQRT1_2},
-#else
-    {M_SQRT1_2, 0.0f, M_SQRT1_2},
-    {M_SQRT1_2, 0.0f, -M_SQRT1_2},
-    {-M_SQRT1_2, 0.0f, -M_SQRT1_2},
-    {-M_SQRT1_2, 0.0f, M_SQRT1_2},
-#endif
     {0.0f, 1.0f, 0.0f},
 };
 
