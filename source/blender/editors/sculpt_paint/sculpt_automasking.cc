@@ -587,45 +587,44 @@ static void calc_blurred_cavity_bmesh(const Object &object,
       continue;
     }
 
+    neighbors.clear();
     for (BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
-      {
-        const int neighbor_idx = BM_elem_index_get(neighbor);
-        if (visited_verts.contains(neighbor_idx)) {
-          continue;
-        }
-
-        visited_verts.add_new(neighbor_idx);
-        queue.push({neighbor, neighbor_idx, blurvert.depth + 1});
+      const int neighbor_idx = BM_elem_index_get(neighbor);
+      if (visited_verts.contains(neighbor_idx)) {
+        continue;
       }
-    }
 
-    BLI_assert(all_verts.count != verts_in_range.count);
-
-    if (all_verts.count == 0) {
-      all_verts.position = vert->co;
+      visited_verts.add_new(neighbor_idx);
+      queue.push({neighbor, neighbor_idx, blurvert.depth + 1});
     }
-    else {
-      all_verts.position /= float(all_verts.count);
-      all_verts.distance /= all_verts.count;
-    }
-
-    if (verts_in_range.count == 0) {
-      verts_in_range.position = vert->co;
-    }
-    else {
-      verts_in_range.position /= float(verts_in_range.count);
-    }
-
-    verts_in_range.normal = math::normalize(verts_in_range.normal);
-    if (math::dot(verts_in_range.normal, verts_in_range.normal) == 0.0f) {
-      verts_in_range.normal = vert->no;
-    }
-
-    const float3 vec = all_verts.position - verts_in_range.position;
-    float factor_sum = math::dot(vec, verts_in_range.normal) / all_verts.distance;
-    *(float *)SCULPT_vertex_attr_get(vert, ss.attrs.automasking_cavity) = calc_cavity_factor(
-        automasking, factor_sum);
   }
+
+  BLI_assert(all_verts.count != verts_in_range.count);
+
+  if (all_verts.count == 0) {
+    all_verts.position = vert->co;
+  }
+  else {
+    all_verts.position /= float(all_verts.count);
+    all_verts.distance /= all_verts.count;
+  }
+
+  if (verts_in_range.count == 0) {
+    verts_in_range.position = vert->co;
+  }
+  else {
+    verts_in_range.position /= float(verts_in_range.count);
+  }
+
+  verts_in_range.normal = math::normalize(verts_in_range.normal);
+  if (math::dot(verts_in_range.normal, verts_in_range.normal) == 0.0f) {
+    verts_in_range.normal = vert->no;
+  }
+
+  const float3 vec = all_verts.position - verts_in_range.position;
+  float factor_sum = math::dot(vec, verts_in_range.normal) / all_verts.distance;
+  *(float *)SCULPT_vertex_attr_get(vert, ss.attrs.automasking_cavity) = calc_cavity_factor(
+      automasking, factor_sum);
 }
 
 static void calc_blurred_cavity(const Depsgraph &depsgraph,
