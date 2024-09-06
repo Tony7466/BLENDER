@@ -49,6 +49,7 @@ struct State {
   enum eSpace_Type space_type;
   enum eContextObjectMode ctx_mode;
   enum eObjectMode object_mode;
+  const Object *obact;
   bool clear_in_front;
   bool use_in_front;
   bool is_wireframe_mode;
@@ -195,6 +196,7 @@ class ShaderModule {
   ShaderPtr curve_edit_points;
   ShaderPtr curve_edit_line;
   ShaderPtr curve_edit_handles;
+  ShaderPtr facing;
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr legacy_curve_edit_wires;
   ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
@@ -216,6 +218,7 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr uniform_color;
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */
@@ -235,7 +238,6 @@ class ShaderModule {
   ShaderPtr extra_wire;
   ShaderPtr extra_loose_points;
   ShaderPtr extra_ground_line;
-  ShaderPtr facing;
   ShaderPtr fluid_grid_lines_flags;
   ShaderPtr fluid_grid_lines_flat;
   ShaderPtr fluid_grid_lines_range;
@@ -430,6 +432,21 @@ struct Resources : public select::SelectMap {
   {
     ThemeColorID theme_id = object_wire_theme_id(ob_ref, state);
     return background_blend_color(theme_id);
+  }
+
+  void background_color_get(const State &state, float4 &color)
+  {
+    if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD) {
+      if (state.scene->world) {
+        color = float4(float3(&state.scene->world->horr));
+      }
+    }
+    else if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT) {
+      color = state.v3d->shading.background_color;
+      return;
+    }
+
+    UI_GetThemeColor3fv(TH_BACK, color);
   }
 
   void free_movieclips_textures()

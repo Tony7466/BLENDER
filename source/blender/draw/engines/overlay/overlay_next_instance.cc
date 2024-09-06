@@ -32,6 +32,7 @@ void Instance::init()
   state.rv3d = ctx->rv3d;
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
+  state.obact = ctx->obact;
 
   /* Note there might be less than 6 planes, but we always compute the 6 of them for simplicity. */
   state.clipping_plane_count = clipping_enabled_ ? 6 : 0;
@@ -104,6 +105,7 @@ void Instance::begin_sync()
     layer.curves.begin_sync(resources, state, view);
     layer.empties.begin_sync(resources, state, view);
     layer.facing.begin_sync(resources, state);
+    layer.fade.begin_sync(resources, state);
     layer.force_fields.begin_sync();
     layer.fluids.begin_sync(resources, state);
     layer.lattices.begin_sync(resources, state);
@@ -209,6 +211,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     }
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.facing.object_sync(manager, ob_ref, state);
+    layer.fade.object_sync(manager, ob_ref, state);
     layer.force_fields.object_sync(ob_ref, resources, state);
     layer.fluids.object_sync(manager, ob_ref, resources, state);
     layer.particles.object_sync(manager, ob_ref, resources, state);
@@ -355,6 +358,7 @@ void Instance::draw(Manager &manager)
   outline.draw(resources, manager, view);
 
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
+    layer.fade.draw(framebuffer, manager, view);
     layer.facing.draw(framebuffer, manager, view);
   };
 
