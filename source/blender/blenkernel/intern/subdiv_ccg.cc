@@ -103,17 +103,21 @@ static void subdiv_ccg_eval_grid_element_limit(Subdiv &subdiv,
                                                const int ptex_face_index,
                                                const float u,
                                                const float v,
-                                               const int elem)
+                                               const int element)
 {
   if (subdiv.displacement_evaluator != nullptr) {
-    eval_final_point(&subdiv, ptex_face_index, u, v, subdiv_ccg.positions[elem]);
+    eval_final_point(&subdiv, ptex_face_index, u, v, subdiv_ccg.positions[element]);
   }
   else if (!subdiv_ccg.normals.is_empty()) {
-    eval_limit_point_and_normal(
-        &subdiv, ptex_face_index, u, v, subdiv_ccg.positions[elem], subdiv_ccg.normals[elem]);
+    eval_limit_point_and_normal(&subdiv,
+                                ptex_face_index,
+                                u,
+                                v,
+                                subdiv_ccg.positions[element],
+                                subdiv_ccg.normals[element]);
   }
   else {
-    eval_limit_point(&subdiv, ptex_face_index, u, v, subdiv_ccg.positions[elem]);
+    eval_limit_point(&subdiv, ptex_face_index, u, v, subdiv_ccg.positions[element]);
   }
 }
 
@@ -122,16 +126,16 @@ static void subdiv_ccg_eval_grid_element_mask(SubdivCCG &subdiv_ccg,
                                               const int ptex_face_index,
                                               const float u,
                                               const float v,
-                                              const int elem)
+                                              const int element)
 {
   if (!subdiv_ccg.masks.is_empty()) {
     return;
   }
   if (mask_evaluator != nullptr) {
-    subdiv_ccg.masks[elem] = mask_evaluator->eval_mask(mask_evaluator, ptex_face_index, u, v);
+    subdiv_ccg.masks[element] = mask_evaluator->eval_mask(mask_evaluator, ptex_face_index, u, v);
   }
   else {
-    subdiv_ccg.masks[elem] = 0.0f;
+    subdiv_ccg.masks[element] = 0.0f;
   }
 }
 
@@ -141,10 +145,10 @@ static void subdiv_ccg_eval_grid_element(Subdiv &subdiv,
                                          const int ptex_face_index,
                                          const float u,
                                          const float v,
-                                         const int elem)
+                                         const int element)
 {
-  subdiv_ccg_eval_grid_element_limit(subdiv, subdiv_ccg, ptex_face_index, u, v, elem);
-  subdiv_ccg_eval_grid_element_mask(subdiv_ccg, mask_evaluator, ptex_face_index, u, v, elem);
+  subdiv_ccg_eval_grid_element_limit(subdiv, subdiv_ccg, ptex_face_index, u, v, element);
+  subdiv_ccg_eval_grid_element_mask(subdiv_ccg, mask_evaluator, ptex_face_index, u, v, element);
 }
 
 static void subdiv_ccg_eval_regular_grid(Subdiv &subdiv,
@@ -159,16 +163,16 @@ static void subdiv_ccg_eval_regular_grid(Subdiv &subdiv,
   const IndexRange face = subdiv_ccg.faces[face_index];
   for (int corner = 0; corner < face.size(); corner++) {
     const int grid_index = face.start() + corner;
-    const int grid_start = grid_index * subdiv_ccg.grid_area;
+    const IndexRange range = grid_range(subdiv_ccg.grid_area, grid_index);
     for (int y = 0; y < grid_size; y++) {
       const float grid_v = y * grid_size_1_inv;
       for (int x = 0; x < grid_size; x++) {
         const float grid_u = x * grid_size_1_inv;
         float u, v;
         rotate_grid_to_quad(corner, grid_u, grid_v, &u, &v);
-        const int grid_element_index = grid_start + y * grid_size + x;
+        const int element = range[CCG_grid_xy_to_index(grid_size, x, y)];
         subdiv_ccg_eval_grid_element(
-            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, grid_element_index);
+            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, element);
       }
     }
   }
@@ -186,14 +190,14 @@ static void subdiv_ccg_eval_special_grid(Subdiv &subdiv,
   for (int corner = 0; corner < face.size(); corner++) {
     const int grid_index = face.start() + corner;
     const int ptex_face_index = face_ptex_offset[face_index] + corner;
-    const int grid_start = grid_index * subdiv_ccg.grid_area;
+    const IndexRange range = grid_range(subdiv_ccg.grid_area, grid_index);
     for (int y = 0; y < grid_size; y++) {
       const float u = 1.0f - (y * grid_size_1_inv);
       for (int x = 0; x < grid_size; x++) {
         const float v = 1.0f - (x * grid_size_1_inv);
-        const int grid_element_index = grid_start + y * grid_size + x;
+        const int element = range[CCG_grid_xy_to_index(grid_size, x, y)];
         subdiv_ccg_eval_grid_element(
-            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, grid_element_index);
+            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, element);
       }
     }
   }
@@ -510,23 +514,18 @@ static void subdiv_ccg_recalc_inner_face_normals(const SubdivCCG &subdiv_ccg,
                                                  const int corner)
 {
   const int grid_size = subdiv_ccg.grid_size;
+  const int grid_area = subdiv_ccg.grid_area;
   const int grid_size_1 = grid_size - 1;
-  const int grid = corner;
+  const Span grid_positions = subdiv_ccg.positions.as_span().slice(grid_range(grid_area, corner));
   for (int y = 0; y < grid_size - 1; y++) {
     for (int x = 0; x < grid_size - 1; x++) {
-      const int grid_elements[4] = {
-          grid_xy_to_vert(key, grid, x, y + 1),
-          grid_xy_to_vert(key, grid, x + 1, y + 1),
-          grid_xy_to_vert(key, grid, x + 1, y),
-          grid_xy_to_vert(key, grid, x, y),
-      };
       const int face_index = y * grid_size_1 + x;
       float *face_normal = face_normals[face_index];
       normal_quad_v3(face_normal,
-                     subdiv_ccg.normals[grid_elements[0]],
-                     subdiv_ccg.normals[grid_elements[1]],
-                     subdiv_ccg.normals[grid_elements[2]],
-                     subdiv_ccg.normals[grid_elements[3]]);
+                     grid_positions[CCG_grid_xy_to_index(grid_size, x, y + 1)],
+                     grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y + 1)],
+                     grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y)],
+                     grid_positions[CCG_grid_xy_to_index(grid_size, x, y)]);
     }
   }
 }
@@ -538,8 +537,10 @@ static void subdiv_ccg_average_inner_face_normals(SubdivCCG &subdiv_ccg,
                                                   const int corner)
 {
   const int grid_size = subdiv_ccg.grid_size;
+  const int grid_area = subdiv_ccg.grid_area;
   const int grid_size_1 = grid_size - 1;
-  const int grid = corner;
+  MutableSpan grid_normals = subdiv_ccg.normals.as_mutable_span().slice(
+      grid_range(grid_area, corner));
   for (int y = 0; y < grid_size; y++) {
     for (int x = 0; x < grid_size; x++) {
       float normal_acc[3] = {0.0f, 0.0f, 0.0f};
@@ -564,8 +565,7 @@ static void subdiv_ccg_average_inner_face_normals(SubdivCCG &subdiv_ccg,
         counter++;
       }
       /* Normalize and store. */
-      mul_v3_v3fl(
-          subdiv_ccg.normals[grid_xy_to_vert(key, grid, x, y)], normal_acc, 1.0f / counter);
+      mul_v3_v3fl(grid_normals[CCG_grid_xy_to_index(grid_size, x, y)], normal_acc, 1.0f / counter);
     }
   }
 }
@@ -645,16 +645,20 @@ static void average_grid_element_value_v3(float a[3], float b[3])
   copy_v3_v3(b, a);
 }
 
-static void average_grid_element(SubdivCCG &subdiv_ccg, const int a, const int b)
+static void average_grid_element(SubdivCCG &subdiv_ccg,
+                                 const int grid_element_a,
+                                 const int grid_element_b)
 {
-  average_grid_element_value_v3(subdiv_ccg.positions[a], subdiv_ccg.positions[b]);
+  average_grid_element_value_v3(subdiv_ccg.positions[grid_element_a],
+                                subdiv_ccg.positions[grid_element_b]);
   if (!subdiv_ccg.normals.is_empty()) {
-    average_grid_element_value_v3(subdiv_ccg.normals[a], subdiv_ccg.normals[b]);
+    average_grid_element_value_v3(subdiv_ccg.normals[grid_element_a],
+                                  subdiv_ccg.normals[grid_element_b]);
   }
   if (!subdiv_ccg.masks.is_empty()) {
-    float mask = (subdiv_ccg.masks[a] + subdiv_ccg.masks[b]) * 0.5f;
-    subdiv_ccg.masks[a] = mask;
-    subdiv_ccg.masks[b] = mask;
+    float mask = (subdiv_ccg.masks[grid_element_a] + subdiv_ccg.masks[grid_element_b]) * 0.5f;
+    subdiv_ccg.masks[grid_element_a] = mask;
+    subdiv_ccg.masks[grid_element_b] = mask;
   }
 }
 
@@ -693,15 +697,15 @@ static void element_accumulator_mul_fl(GridElementAccumulator &accumulator, cons
 }
 
 static void element_accumulator_copy(SubdivCCG &subdiv_ccg,
-                                     const int elem,
+                                     const int destination,
                                      const GridElementAccumulator &accumulator)
 {
-  subdiv_ccg.positions[elem] = accumulator.co;
+  subdiv_ccg.positions[destination] = accumulator.co;
   if (!subdiv_ccg.normals.is_empty()) {
-    subdiv_ccg.normals[elem] = accumulator.no;
+    subdiv_ccg.normals[destination] = accumulator.no;
   }
   if (!subdiv_ccg.masks.is_empty()) {
-    subdiv_ccg.masks[elem] = accumulator.mask;
+    subdiv_ccg.masks[destination] = accumulator.mask;
   }
 }
 
@@ -711,10 +715,9 @@ static void subdiv_ccg_average_inner_face_grids(SubdivCCG &subdiv_ccg,
 {
   const int num_face_grids = face.size();
   const int grid_size = subdiv_ccg.grid_size;
-  int prev_grid = face.last();
+  int prev_grid = face.start() + num_face_grids - 1;
   /* Average boundary between neighbor grid. */
-  for (const int corner : face) {
-    const int grid = corner;
+  for (const int grid : face) {
     for (int i = 1; i < grid_size; i++) {
       const int prev_grid_element = grid_xy_to_vert(key, prev_grid, i, 0);
       const int grid_element = grid_xy_to_vert(key, grid, 0, i);
@@ -726,14 +729,12 @@ static void subdiv_ccg_average_inner_face_grids(SubdivCCG &subdiv_ccg,
    * Guarantees correct and smooth averaging in the center. */
   GridElementAccumulator center_accumulator;
   element_accumulator_init(center_accumulator);
-  for (const int corner : face) {
-    const int grid = corner;
+  for (const int grid : face) {
     const int grid_center_element = grid_xy_to_vert(key, grid, 0, 0);
     element_accumulator_add(center_accumulator, subdiv_ccg, grid_center_element);
   }
   element_accumulator_mul_fl(center_accumulator, 1.0f / num_face_grids);
-  for (const int corner : face) {
-    const int grid = corner;
+  for (const int grid : face) {
     const int grid_center_element = grid_xy_to_vert(key, grid, 0, 0);
     element_accumulator_copy(subdiv_ccg, grid_center_element, center_accumulator);
   }
@@ -790,14 +791,14 @@ static void subdiv_ccg_average_grids_corners(SubdivCCG &subdiv_ccg,
   }
   GridElementAccumulator accumulator;
   element_accumulator_init(accumulator);
-  for (int i = 0; i < num_adjacent_faces; i++) {
-    const int grid_element = adjacent_vertex.corner_coords[i].to_index(key);
+  for (int face_index = 0; face_index < num_adjacent_faces; face_index++) {
+    const int grid_element = adjacent_vertex.corner_coords[face_index].to_index(key);
     element_accumulator_add(accumulator, subdiv_ccg, grid_element);
   }
   element_accumulator_mul_fl(accumulator, 1.0f / num_adjacent_faces);
   /* Copy averaged value to all the other faces. */
-  for (int i = 0; i < num_adjacent_faces; i++) {
-    const int grid_element = adjacent_vertex.corner_coords[i].to_index(key);
+  for (int face_index = 0; face_index < num_adjacent_faces; face_index++) {
+    const int grid_element = adjacent_vertex.corner_coords[face_index].to_index(key);
     element_accumulator_copy(subdiv_ccg, grid_element, accumulator);
   }
 }
@@ -919,7 +920,7 @@ void BKE_subdiv_ccg_topology_counters(const SubdivCCG &subdiv_ccg,
                                       int &r_num_faces,
                                       int &r_num_loops)
 {
-  const int num_grids = subdiv_ccg.faces.total_size();
+  const int num_grids = subdiv_ccg.grids_num;
   const int grid_size = subdiv_ccg.grid_size;
   const int grid_area = grid_size * grid_size;
   const int num_edges_per_grid = 2 * (grid_size * (grid_size - 1));
@@ -942,7 +943,7 @@ void BKE_subdiv_ccg_print_coord(const char *message, const SubdivCCGCoord &coord
 
 bool BKE_subdiv_ccg_check_coord_valid(const SubdivCCG &subdiv_ccg, const SubdivCCGCoord &coord)
 {
-  if (coord.grid_index < 0 || coord.grid_index >= subdiv_ccg.faces.total_size()) {
+  if (coord.grid_index < 0 || coord.grid_index >= subdiv_ccg.grids_num) {
     return false;
   }
   const int grid_size = subdiv_ccg.grid_size;
@@ -1456,7 +1457,7 @@ void BKE_subdiv_ccg_neighbor_coords_get(const SubdivCCG &subdiv_ccg,
 {
 #ifdef WITH_OPENSUBDIV
   BLI_assert(coord.grid_index >= 0);
-  BLI_assert(coord.grid_index < subdiv_ccg.faces.total_size());
+  BLI_assert(coord.grid_index < subdiv_ccg.grids_num);
   BLI_assert(coord.x >= 0);
   BLI_assert(coord.x < subdiv_ccg.grid_size);
   BLI_assert(coord.y >= 0);
@@ -1597,8 +1598,7 @@ blender::BitGroupVector<> &BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_c
 {
   if (subdiv_ccg.grid_hidden.is_empty()) {
     const int grid_area = subdiv_ccg.grid_size * subdiv_ccg.grid_size;
-    subdiv_ccg.grid_hidden = blender::BitGroupVector<>(
-        subdiv_ccg.faces.total_size(), grid_area, false);
+    subdiv_ccg.grid_hidden = blender::BitGroupVector<>(subdiv_ccg.grids_num, grid_area, false);
   }
   return subdiv_ccg.grid_hidden;
 }
