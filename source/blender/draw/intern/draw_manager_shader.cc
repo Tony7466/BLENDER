@@ -34,6 +34,10 @@
 
 #include "draw_manager_c.hh"
 
+#include <atomic>
+#include <condition_variable>
+#include <mutex>
+
 extern "C" char datatoc_gpu_shader_depth_only_frag_glsl[];
 extern "C" char datatoc_common_fullscreen_vert_glsl[];
 
