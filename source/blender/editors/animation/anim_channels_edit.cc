@@ -1705,6 +1705,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
   switch (mode) {
     case REARRANGE_ANIMCHAN_UP: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_GROUP);
         bActionGroup *group = (bActionGroup *)ale->data;
         if (!SEL_AGRP(group)) {
           continue;
@@ -1726,6 +1727,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_TOP: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_GROUP);
         bActionGroup *group = (bActionGroup *)ale->data;
         if (!SEL_AGRP(group)) {
           continue;
@@ -1738,6 +1740,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_DOWN: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_GROUP);
         bActionGroup *group = (bActionGroup *)ale->data;
         if (!SEL_AGRP(group)) {
           continue;
@@ -1759,6 +1762,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_BOTTOM: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_GROUP);
         bActionGroup *group = (bActionGroup *)ale->data;
         if (!SEL_AGRP(group)) {
           continue;
@@ -1836,6 +1840,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
   switch (mode) {
     case REARRANGE_ANIMCHAN_UP: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_FCURVE);
         FCurve *fcurve = (FCurve *)ale->data;
         bActionGroup group = get_group_or_make_fake(ale);
 
@@ -1857,6 +1862,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_TOP: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_FCURVE);
         FCurve *fcurve = (FCurve *)ale->data;
         bActionGroup group = get_group_or_make_fake(ale);
 
@@ -1872,6 +1878,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_DOWN: {
       LISTBASE_FOREACH_BACKWARD (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_FCURVE);
         FCurve *fcurve = (FCurve *)ale->data;
         bActionGroup group = get_group_or_make_fake(ale);
 
@@ -1895,6 +1902,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
 
     case REARRANGE_ANIMCHAN_BOTTOM: {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data_visible) {
+        BLI_assert(ale->type == ANIMTYPE_FCURVE);
         FCurve *fcurve = (FCurve *)ale->data;
         bActionGroup group = get_group_or_make_fake(ale);
 
