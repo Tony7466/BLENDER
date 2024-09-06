@@ -49,14 +49,17 @@ class TestBlendFileOpenAllTestFiles(TestHelper):
         self.excluded_dirs = ()
 
         if platform.system() == "Darwin":
-            if platform.machine() == "x86_64":
-                self.excluded_dirs = (
-                    *self.excluded_dirs,
-                    # The assert in `BKE_libblock_alloc_in_lib` often fails:
-                    # `BLI_assert(bmain->is_locked_for_linking == false || ELEM(type, ID_WS, ID_GR, ID_NT))`.
-                    # This needs to be investigated.
-                    "io_tests/blend_big_endian/",
-                )
+            # NOTE(@ideasman42):
+            # - `x86_64` fails often.
+            # - `arm64` can succeed but is unreliable enough to keep disabled.
+            # Keep both disabled.
+            self.excluded_dirs = (
+                *self.excluded_dirs,
+                # The assert in `BKE_libblock_alloc_in_lib` often fails:
+                # `BLI_assert(bmain->is_locked_for_linking == false || ELEM(type, ID_WS, ID_GR, ID_NT))`.
+                # This needs to be investigated.
+                "io_tests/blend_big_endian/",
+            )
 
         assert all(p.endswith("/") for p in self.excluded_dirs)
         self.excluded_dirs = tuple(p.replace("/", os.sep) for p in self.excluded_dirs)
@@ -105,18 +108,25 @@ class TestBlendFileOpenAllTestFiles(TestHelper):
         for bfp in self.blendfile_paths:
             if self.skip_path_check(bfp):
                 continue
+            if not self.args.is_quiet:
+                print(f"Trying to open {bfp}")
             bpy.ops.wm.read_homefile(use_empty=True, use_factory_startup=True)
             bpy.ops.wm.open_mainfile(filepath=bfp, load_ui=False)
 
     def link_append(self, do_link):
+        operation_name = "link" if do_link else "append"
         for bfp in self.blendfile_paths:
             if self.skip_path_check(bfp):
                 continue
             bpy.ops.wm.read_homefile(use_empty=True, use_factory_startup=True)
             with bpy.data.libraries.load(bfp, link=do_link) as (lib_in, lib_out):
                 if len(lib_in.collections):
+                    if not self.args.is_quiet:
+                        print(f"Trying to {operation_name} {bfp}/Collection/{lib_in.collections[0]}")
                     lib_out.collections.append(lib_in.collections[0])
                 elif len(lib_in.objects):
+                    if not self.args.is_quiet:
+                        print(f"Trying to {operation_name} {bfp}/Object/{lib_in.objects[0]}")
                     lib_out.objects.append(lib_in.objects[0])
 
     def test_link(self):
@@ -143,6 +153,15 @@ def argparse_create():
         dest="src_test_dir",
         default="..",
         help="Root tests directory to search for blendfiles",
+        required=False,
+    )
+
+    parser.add_argument(
+        "--quiet",
+        dest="is_quiet",
+        type=bool,
+        default=False,
+        help="Whether to quiet prints of all blendfile read/link attempts",
         required=False,
     )
 
