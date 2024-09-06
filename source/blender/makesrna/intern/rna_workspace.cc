@@ -191,10 +191,10 @@ static bool rna_WorkSpaceTool_has_datablock_get(PointerRNA *ptr)
   return (tref->runtime) ? (tref->runtime->data_block[0] != '\0') : false;
 }
 
-static bool rna_WorkSpaceTool_uses_brushes_get(PointerRNA *ptr)
+static bool rna_WorkSpaceTool_use_brushes_get(PointerRNA *ptr)
 {
   bToolRef *tref = static_cast<bToolRef *>(ptr->data);
-  return (tref->runtime) ? ((tref->runtime->flag & TOOLREF_FLAG_USES_BRUSHES) != 0) : false;
+  return (tref->runtime) ? ((tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES) != 0) : false;
 }
 
 static void rna_WorkSpaceTool_widget_get(PointerRNA *ptr, char *value)
@@ -307,10 +307,10 @@ static void rna_def_workspace_tool(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Has Data-Block", "");
   RNA_def_property_boolean_funcs(prop, "rna_WorkSpaceTool_has_datablock_get", nullptr);
 
-  prop = RNA_def_property(srna, "uses_brushes", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_brushes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Uses Brushes", "");
-  RNA_def_property_boolean_funcs(prop, "rna_WorkSpaceTool_uses_brushes_get", nullptr);
+  RNA_def_property_boolean_funcs(prop, "rna_WorkSpaceTool_use_brushes_get", nullptr);
 
   RNA_define_verify_sdna(true);
 

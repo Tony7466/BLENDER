@@ -1393,7 +1393,7 @@ class _defs_particle:
             icon_prefix="brush.particle.",
             type=bpy.types.ParticleEdit,
             attr="tool",
-            options={'USES_BRUSHES'}
+            options={'USE_BRUSHES'}
         )
 
 
@@ -1871,7 +1871,7 @@ class _defs_texture_paint:
             label="Brush",
             icon="brush.sculpt.paint",
             cursor='PAINT_CROSS',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
 
@@ -3130,7 +3130,7 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
             idname="builtin.brush",
             label="Brush",
             icon="brush.sculpt.paint",
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
     )
 
@@ -3293,7 +3293,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             idname="builtin.brush",
             label="Brush",
             icon="brush.sculpt.paint",
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
     )
 

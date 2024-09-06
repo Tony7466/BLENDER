@@ -1730,7 +1730,7 @@ bool paint_brush_tool_poll(bContext *C)
   {
     /* Check the current tool is a brush. */
     bToolRef *tref = area->runtime.tool;
-    if (tref && tref->runtime && (tref->runtime->flag & TOOLREF_FLAG_USES_BRUSHES)) {
+    if (tref && tref->runtime && (tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES)) {
       return true;
     }
   }

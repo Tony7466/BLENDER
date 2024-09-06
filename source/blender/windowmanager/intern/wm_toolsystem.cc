@@ -156,7 +156,7 @@ static void toolsystem_ref_link(const bContext *C, WorkSpace *workspace, bToolRe
     }
   }
 
-  if (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES) {
+  if (tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES) {
     Main *bmain = CTX_data_main(C);
 
     if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE) &&
@@ -780,7 +780,7 @@ void WM_toolsystem_update_from_context(
 bool WM_toolsystem_active_tool_is_brush(const bContext *C)
 {
   bToolRef_Runtime *tref_rt = WM_toolsystem_runtime_from_context((bContext *)C);
-  return tref_rt && (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES);
+  return tref_rt && (tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES);
 }
 
 void WM_toolsystem_do_msg_notify_tag_refresh(bContext *C,
