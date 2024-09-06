@@ -2703,6 +2703,10 @@ static int num_inputs_text()
 
 static StripEarlyOut early_out_text(const Sequence *seq, float /*fac*/)
 {
+  /* xxx I want to have runtime data initialized at all times. But this should work to prevent
+   * unnecessary blending. */
+  return StripEarlyOut::NoInput;
+
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   if (data->text[0] == 0 || data->text_size < 1.0f ||
       ((data->color[3] == 0.0f) &&
@@ -3233,7 +3237,7 @@ static void apply_word_wrapping(const TextVars *data,
     character.position = char_position;
     runtime->lines.last().characters.append(character);
     runtime->lines.last().width = char_position.x;
-    
+
     char_position.x += character.advance_x;
 
     if (character.do_wrap || character.str_ptr[0] == '\n') {

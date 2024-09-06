@@ -110,9 +110,9 @@ int2 seq_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset)
   }
 
   // xxx bad!
-  cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size()-1));
+  cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size() - 1));
   cursor_position.x = std::clamp(
-      cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size()-1));
+      cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size() - 1));
 
   return cursor_position;
 }
@@ -352,7 +352,6 @@ static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
     int len = BLI_strnlen(prev_char.str_ptr, 512) - prev_char.byte_length +
               1; /* +1 to include '\0' XXX hardcoded size.*/
 
-    // xxx backspace modifies last character!
     std::memmove(cursor_addr, prev_char.str_ptr + prev_char.byte_length, len);
     data->cursor_offset -= 1;
   }
