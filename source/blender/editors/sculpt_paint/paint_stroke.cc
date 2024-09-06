@@ -1737,7 +1737,7 @@ bool paint_brush_tool_poll(bContext *C)
 {
   /* Check the current tool is a brush. */
   const bToolRef *tref = brush_tool_get(C);
-  return tref && tref->runtime && (tref->runtime->flag & TOOLREF_FLAG_USES_BRUSHES);
+  return tref && tref->runtime && (tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES);
 }
 
 bool paint_brush_cursor_poll(bContext *C)
@@ -1748,7 +1748,7 @@ bool paint_brush_cursor_poll(bContext *C)
   }
 
   const bool tool_defines_cursor = tref->runtime->cursor != WM_CURSOR_DEFAULT;
-  return (tref->runtime->flag & TOOLREF_FLAG_USES_BRUSHES) && !tool_defines_cursor;
+  return (tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES) && !tool_defines_cursor;
 }
 
 }  // namespace blender::ed::sculpt_paint

@@ -393,7 +393,7 @@ static void toolsystem_ref_link(const bContext *C, WorkSpace *workspace, bToolRe
     }
   }
 
-  if (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES) {
+  if (tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES) {
     activate_compatible_brush_from_toolref(C, workspace, tref);
   }
 }
@@ -999,7 +999,7 @@ void WM_toolsystem_update_from_context(
 bool WM_toolsystem_active_tool_is_brush(const bContext *C)
 {
   bToolRef_Runtime *tref_rt = WM_toolsystem_runtime_from_context((bContext *)C);
-  return tref_rt && (tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES);
+  return tref_rt && (tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES);
 }
 
 bool WM_toolsystem_active_tool_has_custom_cursor(const bContext *C)
