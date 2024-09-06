@@ -755,6 +755,85 @@ class ChannelBagTest : public testing::Test {
   }
 };
 
+TEST_F(ChannelBagTest, fcurve_move)
+{
+  FCurve *fcu0 = &channel_bag->fcurve_ensure(nullptr, {"fcu0", 0, std::nullopt, "group0"});
+  FCurve *fcu1 = &channel_bag->fcurve_ensure(nullptr, {"fcu1", 0, std::nullopt, "group0"});
+  FCurve *fcu2 = &channel_bag->fcurve_ensure(nullptr, {"fcu2", 0, std::nullopt, "group1"});
+  FCurve *fcu3 = &channel_bag->fcurve_ensure(nullptr, {"fcu3", 0, std::nullopt, "group1"});
+  FCurve *fcu4 = &channel_bag->fcurve_ensure(nullptr, {"fcu4", 0, std::nullopt, std::nullopt});
+
+  ASSERT_EQ(5, channel_bag->fcurves().size());
+  ASSERT_EQ(2, channel_bag->channel_groups().size());
+
+  bActionGroup *group0 = channel_bag->channel_group(0);
+  bActionGroup *group1 = channel_bag->channel_group(1);
+
+  /* Moving an fcurve to where it already is should be fine. */
+  channel_bag->fcurve_move(*fcu0, 0);
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group0, fcu1->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(group1, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu4->grp);
+
+  /* Move to first. */
+  channel_bag->fcurve_move(*fcu4, 0);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+  EXPECT_EQ(fcu4, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu4->grp);
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group1, fcu1->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(nullptr, fcu3->grp);
+
+  /* Move to last. */
+  channel_bag->fcurve_move(*fcu1, 4);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+  EXPECT_EQ(fcu4, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu0, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu4->grp);
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group1, fcu2->grp);
+  EXPECT_EQ(group1, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+
+  /* Move to middle. */
+  channel_bag->fcurve_move(*fcu4, 2);
+  EXPECT_EQ(0, group0->fcurve_range_start);
+  EXPECT_EQ(2, group0->fcurve_range_length);
+  EXPECT_EQ(2, group1->fcurve_range_start);
+  EXPECT_EQ(2, group1->fcurve_range_length);
+  EXPECT_EQ(fcu0, channel_bag->fcurve(0));
+  EXPECT_EQ(fcu2, channel_bag->fcurve(1));
+  EXPECT_EQ(fcu4, channel_bag->fcurve(2));
+  EXPECT_EQ(fcu3, channel_bag->fcurve(3));
+  EXPECT_EQ(fcu1, channel_bag->fcurve(4));
+  EXPECT_EQ(group0, fcu0->grp);
+  EXPECT_EQ(group0, fcu2->grp);
+  EXPECT_EQ(group1, fcu4->grp);
+  EXPECT_EQ(group1, fcu3->grp);
+  EXPECT_EQ(nullptr, fcu1->grp);
+}
+
 TEST_F(ChannelBagTest, channel_group_create)
 {
   ASSERT_TRUE(channel_bag->channel_groups().is_empty());
