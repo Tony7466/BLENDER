@@ -1462,7 +1462,8 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
 
           tls.average_positions.resize(positions.size());
           const MutableSpan<float3> average_positions = tls.average_positions;
-          smooth::neighbor_position_average_grids(subdiv_ccg, grids, average_positions);
+          smooth::average_data_grids(
+              subdiv_ccg, subdiv_ccg.positions.as_span(), grids, average_positions);
 
           tls.laplacian_disp.resize(positions.size());
           const MutableSpan<float3> laplacian_disp = tls.laplacian_disp;
@@ -1753,7 +1754,8 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
 
           tls.smooth_positions.resize(positions.size());
           const MutableSpan<float3> smooth_positions = tls.smooth_positions;
-          smooth::neighbor_position_average_grids(subdiv_ccg, grids, smooth_positions);
+          smooth::average_data_grids(
+              subdiv_ccg, subdiv_ccg.positions.as_span(), grids, smooth_positions);
 
           const Span<float> sharpen_factors = gather_data_grids(
               subdiv_ccg, ss.filter_cache->sharpen_factor.as_span(), grids, tls.sharpen_factors);
@@ -2074,7 +2076,7 @@ static void calc_limit_surface_positions(const Object &object, MutableSpan<float
 
   threading::parallel_for(IndexRange(subdiv_ccg.grids_num), 512, [&](const IndexRange range) {
     for (const int grid : range) {
-      MutableSpan<float3> grid_dst = limit_positions.slice(bke::ccg::grid_range(key, grid));
+      MutableSpan grid_dst = limit_positions.slice(bke::ccg::grid_range(key, grid));
       BKE_subdiv_ccg_eval_limit_positions(subdiv_ccg, key, grid, grid_dst);
     }
   });

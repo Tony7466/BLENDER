@@ -1444,6 +1444,7 @@ void do_simulation_step(const Depsgraph &depsgraph,
           });
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      const Span<float3> cloth_positions = cloth_sim.pos;
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::parallel_for(active_nodes.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
@@ -1460,10 +1461,9 @@ void do_simulation_step(const Depsgraph &depsgraph,
           const Span<int> verts = calc_vert_indices_grids(key, grids, tls.vert_indices);
           solve_verts_simulation(object, brush, sim_location, verts, factors, tls, cloth_sim);
 
-          for (const int i : grids.index_range()) {
-            const IndexRange grid_range = bke::ccg::grid_range(key, grids[i]);
-            positions.slice(grid_range)
-                .copy_from(cloth_sim.pos.as_mutable_span().slice(grid_range));
+          for (const int grid : grids) {
+            const IndexRange grid_range = bke::ccg::grid_range(key, grid);
+            positions.slice(grid_range).copy_from(cloth_positions.slice(grid_range));
           }
 
           cloth_sim.node_state[cloth_sim.node_state_index.lookup(&nodes[i])] =

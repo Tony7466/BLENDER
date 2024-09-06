@@ -39,9 +39,6 @@ void neighbor_color_average(OffsetIndices<int> faces,
                             Span<Vector<int>> vert_neighbors,
                             MutableSpan<float4> smooth_colors);
 
-void neighbor_position_average_grids(const SubdivCCG &subdiv_ccg,
-                                     Span<int> grids,
-                                     MutableSpan<float3> new_positions);
 void neighbor_position_average_interior_grids(OffsetIndices<int> faces,
                                               Span<int> corner_verts,
                                               BitSpan boundary_verts,

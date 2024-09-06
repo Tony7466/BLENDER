@@ -822,8 +822,8 @@ static Array<float> normals_falloff_create(const Depsgraph &depsgraph,
               dists[to_vert] = dists[from_vert];
             }
             else {
-              const float3 &from_normal = normals[from.to_index(key)];
-              const float3 &to_normal = normals[to.to_index(key)];
+              const float3 &from_normal = normals[from_vert];
+              const float3 &to_normal = normals[to_vert];
               const float from_edge_factor = edge_factors[from_vert];
               const float dist = math::dot(orig_normal, to_normal) *
                                  powf(from_edge_factor, edge_sensitivity);
@@ -1502,7 +1502,7 @@ static void write_mask_data(Object &object, const Span<float> mask)
     case bke::pbvh::Type::Grids: {
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       subdiv_ccg.masks.as_mutable_span().copy_from(mask);
-      MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
+      MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update_mask(nodes[i]); });
       break;
     }
@@ -1597,12 +1597,8 @@ static void update_mask_grids(const SculptSession &ss,
   MutableSpan<float> masks = subdiv_ccg.masks;
 
   bool any_changed = false;
-  const Span<int> grids = node.grids();
-  for (const int i : grids.index_range()) {
-    const int grid = grids[i];
-    const int start = grid * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      const int vert = start + offset;
+  for (const int grid : node.grids()) {
+    for (const int vert : bke::ccg::grid_range(key, grid)) {
       const float initial_mask = masks[vert];
 
       if (expand_cache.check_islands && !is_vert_in_active_component(ss, expand_cache, vert)) {

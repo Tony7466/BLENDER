@@ -915,10 +915,9 @@ std::optional<SubdivCCGCoord> nearest_vert_calc_grids(const bke::pbvh::Tree &pbv
       [&](const IndexRange range, NearestData nearest) {
         nodes_in_sphere.slice(range).foreach_index([&](const int i) {
           for (const int grid : nodes[i].grids()) {
-            const int grid_start = grid * key.grid_area;
+            const IndexRange grid_range = bke::ccg::grid_range(key, grid);
             BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&](const int i) {
-              const float distance_sq = math::distance_squared(positions[grid_start + i],
-                                                               location);
+              const float distance_sq = math::distance_squared(positions[grid_range[i]], location);
               if (distance_sq < nearest.distance_sq) {
                 SubdivCCGCoord coord{};
                 coord.grid_index = grid;
@@ -1217,10 +1216,10 @@ static void restore_mask_from_undo_step(Object &object)
         {
           int index = 0;
           for (const int grid : nodes[i].grids()) {
-            const int grid_start = grid * key.grid_area;
+            const IndexRange grid_range = bke::ccg::grid_range(key, grid);
             for (const int i : IndexRange(key.grid_area)) {
               if (grid_hidden.is_empty() || !grid_hidden[grid][i]) {
-                masks[grid_start + i] = (*orig_data)[index];
+                masks[grid_range[i]] = (*orig_data)[index];
               }
               index++;
             }
@@ -1407,10 +1406,10 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
         {
           int index = 0;
           for (const int grid : nodes[i].grids()) {
-            const int grid_start = grid * key.grid_area;
+            const IndexRange grid_range = bke::ccg::grid_range(key, grid);
             for (const int i : IndexRange(key.grid_area)) {
               if (grid_hidden.is_empty() || !grid_hidden[grid][i]) {
-                positions[grid_start + i] = orig_data->positions[index];
+                positions[grid_range[i]] = orig_data->positions[index];
               }
               index++;
             }
@@ -1810,13 +1809,13 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
           ss, orig_positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
       for (const int i : grids.index_range()) {
-        const int node_verts_start = i * key.grid_area;
+        const IndexRange grid_range_node = bke::ccg::grid_range(key, i);
         const int grid = grids[i];
         for (const int offset : IndexRange(key.grid_area)) {
           if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
             continue;
           }
-          const int node_vert = node_verts_start + offset;
+          const int node_vert = grid_range_node[offset];
 
           const bool normal_test_r = use_area_nos && distances_sq[node_vert] <= normal_radius_sq;
           const bool area_test_r = use_area_cos && distances_sq[node_vert] <= position_radius_sq;
@@ -1850,15 +1849,15 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
       ss, positions, eBrushFalloffShape(brush.falloff_shape), distances_sq);
 
   for (const int i : grids.index_range()) {
-    const int node_verts_start = i * key.grid_area;
+    const IndexRange grid_range_node = bke::ccg::grid_range(key, i);
     const int grid = grids[i];
-    const int grid_start = grid * key.grid_area;
+    const IndexRange grid_range = bke::ccg::grid_range(key, grid);
     for (const int offset : IndexRange(key.grid_area)) {
       if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
         continue;
       }
-      const int node_vert = node_verts_start + offset;
-      const int vert = grid_start + offset;
+      const int node_vert = grid_range_node[offset];
+      const int vert = grid_range[offset];
 
       const bool normal_test_r = use_area_nos && distances_sq[node_vert] <= normal_radius_sq;
       const bool area_test_r = use_area_cos && distances_sq[node_vert] <= position_radius_sq;
@@ -5981,9 +5980,9 @@ static void fake_neighbor_search_grids(const SculptSession &ss,
                                        NearestVertData &nvtd)
 {
   for (const int grid : node.grids()) {
-    const int verts_start = grid * key.grid_area;
+    const IndexRange grid_range = bke::ccg::grid_range(key, grid);
     BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&](const int offset) {
-      const int vert = verts_start + offset;
+      const int vert = grid_range[offset];
       if (ss.fake_neighbors.fake_neighbor_index[vert] != FAKE_NEIGHBOR_NONE) {
         return;
       }
@@ -6506,16 +6505,9 @@ void gather_bmesh_positions(const Set<BMVert *, 0> &verts, const MutableSpan<flo
 
 void gather_grids_normals(const SubdivCCG &subdiv_ccg,
                           const Span<int> grids,
-                          const MutableSpan<float3> dst)
+                          const MutableSpan<float3> normals)
 {
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<float3> normals = subdiv_ccg.normals;
-  BLI_assert(grids.size() * key.grid_area == normals.size());
-
-  for (const int i : grids.index_range()) {
-    const Span<float3> grid_src = normals.slice(bke::ccg::grid_range(key, grids[i]));
-    dst.slice(bke::ccg::grid_range(key, i)).copy_from(grid_src);
-  }
+  gather_data_grids(subdiv_ccg, subdiv_ccg.normals.as_span(), grids, normals);
 }
 
 void gather_bmesh_normals(const Set<BMVert *, 0> &verts, const MutableSpan<float3> normals)
@@ -6547,8 +6539,9 @@ void gather_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    node_data.slice(bke::ccg::grid_range(key, i))
-        .copy_from(src.slice(bke::ccg::grid_range(key, grids[i])));
+    const IndexRange grids_range = bke::ccg::grid_range(key, i);
+    const IndexRange node_range = bke::ccg::grid_range(key, grids[i]);
+    node_data.slice(node_range).copy_from(src.slice(grids_range));
   }
 }
 
@@ -6586,8 +6579,9 @@ void scatter_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    dst.slice(bke::ccg::grid_range(key, grids[i]))
-        .copy_from(node_data.slice(bke::ccg::grid_range(key, i)));
+    const IndexRange grids_range = bke::ccg::grid_range(key, i);
+    const IndexRange node_range = bke::ccg::grid_range(key, grids[i]);
+    dst.slice(grids_range).copy_from(node_data.slice(node_range));
   }
 }
 
@@ -6749,10 +6743,10 @@ void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
   if (!subdiv_ccg.masks.is_empty()) {
     const Span<float> masks = subdiv_ccg.masks;
     for (const int i : grids.index_range()) {
-      const Span<float> src = masks.slice(bke::ccg::grid_range(key, grids[i]));
-      MutableSpan<float> dst = r_factors.slice(bke::ccg::grid_range(key, i));
-      for (const int j : dst.index_range()) {
-        dst[j] = 1.0f - src[j];
+      const Span src = masks.slice(bke::ccg::grid_range(key, grids[i]));
+      MutableSpan dst = r_factors.slice(bke::ccg::grid_range(key, i));
+      for (const int offset : dst.index_range()) {
+        dst[offset] = 1.0f - src[offset];
       }
     }
   }

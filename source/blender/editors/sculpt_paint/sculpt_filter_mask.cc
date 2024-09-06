@@ -277,8 +277,8 @@ BLI_NOINLINE static void copy_old_hidden_mask_grids(const SubdivCCG &subdiv_ccg,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<float> masks = subdiv_ccg.masks;
   for (const int i : grids.index_range()) {
-    const Span<float> grid_masks = masks.slice(bke::ccg::grid_range(key, grids[i]));
-    MutableSpan<float> grid_dst = new_mask.slice(bke::ccg::grid_range(key, i));
+    const Span grid_masks = masks.slice(bke::ccg::grid_range(key, grids[i]));
+    MutableSpan grid_dst = new_mask.slice(bke::ccg::grid_range(key, i));
     bits::foreach_1_index(grid_hidden[grids[i]],
                           [&](const int offset) { grid_dst[offset] = grid_masks[offset]; });
   }
@@ -317,7 +317,7 @@ static void smooth_mask_grids(const SubdivCCG &subdiv_ccg,
                               MutableSpan<float> new_mask)
 {
   const Span<int> grids = node.grids();
-  average_neighbor_mask_grids(subdiv_ccg, node.grids(), new_mask);
+  smooth::average_data_grids(subdiv_ccg, subdiv_ccg.masks.as_span(), grids, new_mask);
   copy_old_hidden_mask_grids(subdiv_ccg, grids, new_mask);
 }
 
@@ -335,7 +335,7 @@ static void sharpen_mask_grids(const SubdivCCG &subdiv_ccg,
   const MutableSpan<float> node_mask = tls.node_mask;
   gather_data_grids(subdiv_ccg, subdiv_ccg.masks.as_span(), grids, node_mask);
 
-  average_neighbor_mask_grids(subdiv_ccg, grids, new_mask);
+  smooth::average_data_grids(subdiv_ccg, subdiv_ccg.masks.as_span(), grids, new_mask);
 
   sharpen_masks(node_mask, new_mask);
 
@@ -353,7 +353,7 @@ static void grow_mask_grids(const SubdivCCG &subdiv_ccg,
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
-    const Span<float> grid_masks = masks.slice(bke::ccg::grid_range(key, grid));
+    const Span grid_masks = masks.slice(bke::ccg::grid_range(key, grid));
     MutableSpan grid_dst = new_mask.slice(bke::ccg::grid_range(key, i));
 
     for (const short y : IndexRange(key.grid_size)) {
@@ -386,7 +386,7 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
-    const Span<float> grid_masks = masks.slice(bke::ccg::grid_range(key, grid));
+    const Span grid_masks = masks.slice(bke::ccg::grid_range(key, grid));
     MutableSpan grid_dst = new_mask.slice(bke::ccg::grid_range(key, i));
 
     for (const short y : IndexRange(key.grid_size)) {

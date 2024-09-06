@@ -558,10 +558,10 @@ static void restore_position_grids(MutableSpan<float3> positions,
   MutableSpan<float3> undo_position = unode.position;
 
   for (const int i : grids.index_range()) {
-    MutableSpan<float3> grid_positions = positions.slice(bke::ccg::grid_range(key, grids[i]));
-    MutableSpan<float3> grid_undo_positions = undo_position.slice(bke::ccg::grid_range(key, i));
-    for (const int offset : grid_positions.index_range()) {
-      std::swap(grid_positions[offset], grid_undo_positions[offset]);
+    MutableSpan data = positions.slice(bke::ccg::grid_range(key, grids[i]));
+    MutableSpan undo_data = undo_position.slice(bke::ccg::grid_range(key, i));
+    for (const int offset : data.index_range()) {
+      std::swap(data[offset], undo_data[offset]);
     }
   }
 
@@ -689,10 +689,10 @@ static void restore_mask_grids(Object &object, Node &unode, MutableSpan<bool> mo
   MutableSpan<float> undo_mask = unode.mask;
 
   for (const int i : grids.index_range()) {
-    MutableSpan<float> grid_masks = masks.slice(bke::ccg::grid_range(key, grids[i]));
-    MutableSpan<float> grid_undo_masks = undo_mask.slice(bke::ccg::grid_range(key, i));
-    for (const int offset : grid_masks.index_range()) {
-      std::swap(grid_masks[offset], grid_undo_masks[offset]);
+    MutableSpan data = masks.slice(bke::ccg::grid_range(key, grids[i]));
+    MutableSpan undo_data = undo_mask.slice(bke::ccg::grid_range(key, i));
+    for (const int offset : data.index_range()) {
+      std::swap(data[offset], undo_data[offset]);
     }
   }
 

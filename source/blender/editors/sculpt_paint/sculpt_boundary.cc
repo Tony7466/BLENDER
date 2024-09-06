@@ -375,8 +375,8 @@ static void indices_init_grids(Object &object,
         const int from_v_i = from_v.to_index(key);
         const int to_v_i = to_v.to_index(key);
 
-        const float3 &from_v_co = positions[from_v.to_index(key)];
-        const float3 &to_v_co = positions[to_v.to_index(key)];
+        const float3 &from_v_co = positions[from_v_i];
+        const float3 &to_v_co = positions[to_v_i];
 
         if (!boundary::vert_is_boundary(subdiv_ccg, corner_verts, faces, boundary_verts, to_v)) {
           return false;
@@ -631,7 +631,7 @@ static void edit_data_init_grids(const SubdivCCG &subdiv_ccg,
         /* Check the distance using the vertex that was propagated from the initial vertex that
          * was used to initialize the boundary. */
         if (boundary.edit_info.original_vertex_i[from_v_i] == initial_vert_i) {
-          boundary.pivot_position = positions[neighbor.to_index(key)];
+          boundary.pivot_position = positions[neighbor_idx];
           accum_distance += math::distance(positions[from_v_i], boundary.pivot_position);
         }
       }
