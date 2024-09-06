@@ -1225,7 +1225,7 @@ static void ntree_shader_pruned_unused(bNodeTree *ntree, bNode *output_node)
   }
 
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_OUTPUT_AOV) {
+    if (ELEM(node->type, SH_NODE_OUTPUT_AOV, SH_NODE_NPR_OUTPUT)) {
       node->runtime->tmp_flag = 1;
       blender::bke::node_chain_iterator_backwards(ntree, node, ntree_branch_node_tag, nullptr, 0);
     }
@@ -1285,8 +1285,12 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, const bool is
 {
   bNodeTreeExec *exec;
 
-  if (is_npr_shader) {
-    bNodeTree *npr_tree = npr_tree_get(localtree);
+  if (bNodeTree *npr_tree = npr_tree_get(localtree)) {
+    /** WORKAROUND:
+     * Embed the NPR nodes into the main tree so:
+     * - NPR shaders can evaluate inputs from the main tree inline.
+     * - GPUAttributes required by the NPR shader are registered in the main shader too. */
+    /* TODO(NPR): This is wasting texture sampler slots. */
     bNodeTree *npr_localtree = blender::bke::node_tree_localize(npr_tree, nullptr);
     ntree_shader_embed_tree(npr_localtree, localtree);
     blender::bke::node_tree_free_local_tree(npr_localtree);
@@ -1296,20 +1300,14 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, const bool is
   ntree_shader_groups_expand_inputs(localtree);
   ntree_shader_groups_flatten(localtree);
 
-  bNode *output = nullptr;
-  if (is_npr_shader) {
-    output = ntreeShaderNPROutputNode(localtree);
-  }
-  else {
-    output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
-  }
+  bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
 
   /* Tree is valid if it contains no undefined implicit socket type cast. */
   bool valid_tree = ntree_shader_implicit_closure_cast(localtree);
 
   if (valid_tree) {
     ntree_shader_pruned_unused(localtree, output);
-    if (output != nullptr && !is_npr_shader) {
+    if (output != nullptr) {
       ntree_shader_shader_to_rgba_branches(localtree);
       ntree_shader_weight_tree_invert(localtree, output);
     }
@@ -1338,6 +1336,10 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, const bool is
       }
     }
   }
+  if (bNode *npr_output = ntreeShaderNPROutputNode(localtree)) {
+    ntreeExecGPUNodes(exec, mat, npr_output);
+  }
+
   ntreeShaderEndExecTree(exec);
 }
 
