@@ -3063,7 +3063,6 @@ def km_sequencerpreview(params):
     )
 
     items.extend([
-        ("sequencer.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
         # Text editing.
         ("sequencer.text_cursor_move", {"type": 'LEFT_ARROW', "value": 'PRESS', "repeat": True},
          {"properties": [("type", 'PREVIOUS_CHARACTER')]}),
@@ -3073,6 +3072,19 @@ def km_sequencerpreview(params):
          {"properties": [("type", 'PREVIOUS_LINE')]}),
         ("sequencer.text_cursor_move", {"type": 'DOWN_ARROW', "value": 'PRESS', "repeat": True},
          {"properties": [("type", 'NEXT_LINE')]}),
+        ("sequencer.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
+        ("sequencer.text_delete", {"type": 'DEL', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'NEXT_OR_SELECTION')]}),
+        ("sequencer.text_delete", {"type": 'DEL', "value": 'PRESS', "ctrl": True, "repeat": True},
+         {"properties": [("type", 'NEXT_WORD')]}),
+        ("sequencer.text_delete", {"type": 'BACK_SPACE', "value": 'PRESS', "repeat": True},
+         {"properties": [("type", 'PREVIOUS_OR_SELECTION')]}),
+        ("sequencer.text_delete", {"type": 'BACK_SPACE', "value": 'PRESS', "shift": True, "repeat": True},
+         {"properties": [("type", 'PREVIOUS_OR_SELECTION')]}),
+        ("sequencer.text_delete", {"type": 'BACK_SPACE', "value": 'PRESS', "ctrl": True, "repeat": True},
+         {"properties": [("type", 'PREVIOUS_WORD')]}),     
+        ("sequencer.text_line_break", {"type": 'RET', "value": 'PRESS', "repeat": True}, None),
+        ("sequencer.text_line_break", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "repeat": True}, None),
 
         # Selection.
         *_template_sequencer_preview_select(

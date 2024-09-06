@@ -1081,6 +1081,11 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
 static void text_edit_draw(const bContext *C)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+
+  if (seq == nullptr || seq->type != SEQ_TYPE_TEXT) {
+    return;
+  }
+
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
   if (data == nullptr || data->runtime == nullptr) {

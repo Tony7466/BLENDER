@@ -36,6 +36,32 @@
 /* Own include. */
 #include "sequencer_intern.hh"
 
+static bool sequencer_text_editing_poll(bContext *C)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  if (seq == nullptr) {
+    return false;
+  }
+
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  if (data == nullptr || data->runtime == nullptr) {
+    return false;
+  }
+
+  return sequencer_editing_initialized_and_active(C);
+}
+
+static void text_editing_update(bContext *C)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  MEM_delete(data->runtime);
+  data->runtime = nullptr;
+  SEQ_relations_invalidate_cache_raw(CTX_data_scene(C), seq);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
+}
+
 enum {
   LINE_BEGIN,
   LINE_END,
@@ -82,6 +108,11 @@ int2 seq_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset)
     cursor_offset -= line.characters.size();
     cursor_position.y += 1;
   }
+
+  // xxx bad!
+  cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size()-1));
+  cursor_position.x = std::clamp(
+      cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size()-1));
 
   return cursor_position;
 }
@@ -154,11 +185,6 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-
-  if (data == nullptr || data->runtime == nullptr) {
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-
   TextVarsRuntime *text = data->runtime;
 
   const int type = RNA_enum_get(op->ptr, "type");
@@ -194,7 +220,7 @@ void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_cursor_move_exec;
-  ot->poll = sequencer_editing_initialized_and_active;
+  ot->poll = sequencer_text_editing_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -208,52 +234,47 @@ void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot)
                "Where to move cursor to, to make a selection");
 }
 
-static int sequencer_text_insert_exec(bContext *C, wmOperator *op)
+static int sequencer_text_insert_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
   /*
    */
   return OPERATOR_FINISHED;
 }
 
-static int sequencer_text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static void text_insert(TextVars *data, const char *buf)
 {
-
-  if (RNA_struct_property_is_set(op->ptr, "text")) {
-    return sequencer_text_insert_exec(C, op);
-  }
-
-  if (event->utf8_buf[0] == '\0') {
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-  int in_buf_len = BLI_str_utf8_size_safe(event->utf8_buf);
-
-  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
-
-  if (data == nullptr || data->runtime == nullptr) {
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
-  }
-
-  TextVarsRuntime *text = data->runtime;
-  int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+  int in_buf_len = BLI_str_utf8_size_safe(buf);
 
   /* XXX Bail, if array is full. */
+  TextVarsRuntime *text = data->runtime;
+  int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
   seq::CharInfo cur_char = text->lines[cursor_position.y].characters[cursor_position.x];
   char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
   int move_len = BLI_strnlen(cur_char.str_ptr, 512) +
                  1; /* +1 to include '\0' XXX hardcoded size.*/
 
   std::memmove(cursor_addr + in_buf_len, cur_char.str_ptr, move_len);
-  std::memcpy(cursor_addr, event->utf8_buf, in_buf_len);
+  std::memcpy(cursor_addr, buf, in_buf_len);
 
+  // The issue seems to be, that adding multiple spaces causes cursor offset to advance, but
+  // this is not always true at the start of line when wrapping. Also wrapped string is stored raw
+  // in buffer, will have to check if multiple spaces would cause issues. Likely they do!
   data->cursor_offset += 1;
+}
 
-  /* Invalidate text cache. */
-  MEM_delete(data->runtime);
-  data->runtime = nullptr;
+static int sequencer_text_insert_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
-  SEQ_relations_invalidate_cache_raw(CTX_data_scene(C), seq);
-  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
+  int in_buf_len = BLI_str_utf8_size_safe(event->utf8_buf);
+  if (in_buf_len == 0) {
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
+  text_insert(data, event->utf8_buf);
+
+  text_editing_update(C);
   return OPERATOR_FINISHED;
 }
 
@@ -267,7 +288,7 @@ void SEQUENCER_OT_text_insert(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = sequencer_text_insert_exec;
   ot->invoke = sequencer_text_insert_invoke;
-  ot->poll = sequencer_editing_initialized_and_active;
+  ot->poll = sequencer_text_editing_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -282,9 +303,62 @@ void SEQUENCER_OT_text_insert(wmOperatorType *ot)
         "Next typed character will strike through previous, for special character input");*/
 }
 
+enum {
+  DEL_NEXT_CHAR,
+  DEL_PREV_CHAR,
+  DEL_NEXT_WORD,
+  DEL_PREV_WORD,
+  DEL_SELECTION,
+  DEL_NEXT_SEL,
+  DEL_PREV_SEL
+};
+
+static const EnumPropertyItem delete_type_items[] = {
+    {DEL_NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
+    {DEL_PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
+    {DEL_NEXT_SEL, "NEXT_OR_SELECTION", 0, "Next or Selection", ""},
+    {DEL_PREV_SEL, "PREVIOUS_OR_SELECTION", 0, "Previous or Selection", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
 {
-  return OPERATOR_FINISHED
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  TextVarsRuntime *text = data->runtime;
+  const int type = RNA_enum_get(op->ptr, "type");
+
+  if (type == DEL_NEXT_SEL) {
+    if (data->cursor_offset >= text->character_count) {
+      return OPERATOR_CANCELLED;
+    }
+
+    int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+    seq::CharInfo cur_char = text->lines[cursor_position.y].characters[cursor_position.x];
+    char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
+    int len = BLI_strnlen(cur_char.str_ptr, 512) - cur_char.byte_length +
+              1; /* +1 to include '\0' XXX hardcoded size.*/
+
+    std::memmove(cursor_addr, cur_char.str_ptr + cur_char.byte_length, len);
+  }
+  if (type == DEL_PREV_SEL) {
+    if (data->cursor_offset == 0) {
+      return OPERATOR_CANCELLED;
+    }
+
+    int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset - 1);
+    seq::CharInfo prev_char = text->lines[cursor_position.y].characters[cursor_position.x];
+    char *cursor_addr = const_cast<char *>(prev_char.str_ptr);
+    int len = BLI_strnlen(prev_char.str_ptr, 512) - prev_char.byte_length +
+              1; /* +1 to include '\0' XXX hardcoded size.*/
+
+    // xxx backspace modifies last character!
+    std::memmove(cursor_addr, prev_char.str_ptr + prev_char.byte_length, len);
+    data->cursor_offset -= 1;
+  }
+
+  text_editing_update(C);
+  return OPERATOR_FINISHED;
 }
 
 void SEQUENCER_OT_text_delete(wmOperatorType *ot)
@@ -296,17 +370,40 @@ void SEQUENCER_OT_text_delete(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_delete_exec;
-  ot->poll = sequencer_editing_initialized_and_active;
+  ot->poll = sequencer_text_editing_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_string(ot->srna, "text", nullptr, 0, "Text", "Text to insert at the cursor position");
-  RNA_def_boolean(
-      ot->srna,
-      "accent",
-      false,
-      "Accent Mode",
-      "Next typed character will strike through previous, for special character input");
+  RNA_def_enum(ot->srna,
+               "type",
+               delete_type_items,
+               DEL_PREV_CHAR,
+               "Type",
+               "Which part of the text to delete");
+}
+
+static int sequencer_text_line_break_exec(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  text_insert(data, "\n");
+  text_editing_update(C);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_line_break(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Insert Line Break";
+  ot->description = "Insert line break at cursor position";
+  ot->idname = "SEQUENCER_OT_text_line_break";
+
+  /* api callbacks */
+  ot->exec = sequencer_text_line_break_exec;
+  ot->poll = sequencer_text_editing_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
 }
