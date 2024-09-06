@@ -719,29 +719,24 @@ static void fill_topology_automasking_factors_grids(const Sculpt &sd,
   const float radius = ss.cache ? ss.cache->radius : std::numeric_limits<float>::max();
   const SubdivCCGCoord active_vert = std::get<SubdivCCGCoord>(ss.active_vert());
 
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int grid_verts_num = subdiv_ccg.grids.size() * key.grid_area;
 
-  flood_fill::FillDataGrids flood = flood_fill::FillDataGrids(grid_verts_num);
+  flood_fill::FillDataGrids flood = flood_fill::FillDataGrids(positions.size());
 
   flood.add_initial_with_symmetry(ob, *bke::object::pbvh_get(ob), subdiv_ccg, active_vert, radius);
 
   const bool use_radius = ss.cache && is_constrained_by_radius(brush);
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
-  float3 location = CCG_grid_elem_co(
-      key, grids[active_vert.grid_index], active_vert.x, active_vert.y);
+  float3 location = positions[active_vert.to_index(key)];
 
   flood.execute(
       ob, subdiv_ccg, [&](SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool /*is_duplicate*/) {
         *(float *)SCULPT_vertex_attr_get(key, to_v, ss.attrs.automasking_factor) = 1.0f;
         *(float *)SCULPT_vertex_attr_get(key, from_v, ss.attrs.automasking_factor) = 1.0f;
         return (use_radius || SCULPT_is_vertex_inside_brush_radius_symm(
-                                  CCG_grid_elem_co(key, grids[to_v.grid_index], to_v.x, to_v.y),
-                                  location,
-                                  radius,
-                                  symm));
+                                  positions[to_v.to_index(key)], location, radius, symm));
       });
 }
 
@@ -890,15 +885,14 @@ static void init_boundary_masking_grids(Object &object,
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
 
-  const int num_grids = key.grid_area * grids.size();
-  Array<int> edge_distance(num_grids, EDGE_DISTANCE_INF);
-  for (const int i : IndexRange(num_grids)) {
+  Array<int> edge_distance(positions.size(), EDGE_DISTANCE_INF);
+  for (const int i : positions.index_range()) {
     const SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, i);
     switch (mode) {
       case BoundaryAutomaskMode::Edges:
@@ -920,7 +914,7 @@ static void init_boundary_masking_grids(Object &object,
 
   SubdivCCGNeighbors neighbors;
   for (const int propagation_it : IndexRange(propagation_steps)) {
-    for (const int i : IndexRange(num_grids)) {
+    for (const int i : positions.index_range()) {
       if (edge_distance[i] != EDGE_DISTANCE_INF) {
         continue;
       }
@@ -937,7 +931,7 @@ static void init_boundary_masking_grids(Object &object,
     }
   }
 
-  for (const int i : IndexRange(num_grids)) {
+  for (const int i : positions.index_range()) {
     if (edge_distance[i] == EDGE_DISTANCE_INF) {
       continue;
     }

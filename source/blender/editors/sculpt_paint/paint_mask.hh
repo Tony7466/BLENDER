@@ -15,7 +15,6 @@
 
 struct BMesh;
 struct BMVert;
-struct CCGElem;
 struct CCGKey;
 struct Depsgraph;
 struct Object;
@@ -60,7 +59,7 @@ void update_mask_mesh(const Depsgraph &depsgraph,
                       FunctionRef<void(MutableSpan<float>, Span<int>)> update_fn);
 
 /** Check whether array data is the same as the stored mask for the referenced geometry. */
-bool mask_equals_array_grids(Span<CCGElem *> elems,
+bool mask_equals_array_grids(Span<float> masks,
                              const CCGKey &key,
                              Span<int> grids,
                              Span<float> values);

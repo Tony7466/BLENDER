@@ -91,35 +91,6 @@ void transform_positions(const float4x4 &transform, MutableSpan<float3> position
  * `positions_orig`.
  */
 
-/** Fill the output array with all positions in the geometry referenced by the indices. */
-void gather_grids_positions(const CCGKey &key,
-                            Span<CCGElem *> elems,
-                            Span<int> grids,
-                            MutableSpan<float3> positions);
-inline MutableSpan<float3> gather_grids_positions(const SubdivCCG &subdiv_ccg,
-                                                  const Span<int> grids,
-                                                  Vector<float3> &positions)
-{
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  positions.resize(key.grid_area * grids.size());
-  gather_grids_positions(key, subdiv_ccg.grids, grids, positions);
-  return positions;
-}
-void gather_bmesh_positions(const Set<BMVert *, 0> &verts, MutableSpan<float3> positions);
-inline MutableSpan<float3> gather_bmesh_positions(const Set<BMVert *, 0> &verts,
-                                                  Vector<float3> &positions)
-{
-  positions.resize(verts.size());
-  gather_bmesh_positions(verts, positions.as_mutable_span());
-  return positions;
-}
-
-/** Fill the output array with all normals in the grids referenced by the indices. */
-void gather_grids_normals(const SubdivCCG &subdiv_ccg,
-                          Span<int> grids,
-                          MutableSpan<float3> normals);
-void gather_bmesh_normals(const Set<BMVert *, 0> &verts, MutableSpan<float3> normals);
-
 /** Gather data from an array aligned with all geometry vertices. */
 template<typename T> void gather_data_mesh(Span<T> src, Span<int> indices, MutableSpan<T> dst);
 template<typename T>
@@ -157,6 +128,32 @@ MutableSpan<T> gather_data_vert_bmesh(const Span<T> src,
   gather_data_vert_bmesh(src, verts, dst.as_mutable_span());
   return dst;
 }
+
+/** Fill the output array with all positions in the geometry referenced by the indices. */
+inline MutableSpan<float3> gather_grids_positions(const SubdivCCG &subdiv_ccg,
+                                                  const Span<int> grids,
+                                                  Vector<float3> &positions)
+{
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  positions.resize(key.grid_area * grids.size());
+  gather_data_grids(
+      subdiv_ccg, subdiv_ccg.positions.as_span(), grids, positions.as_mutable_span());
+  return positions;
+}
+void gather_bmesh_positions(const Set<BMVert *, 0> &verts, MutableSpan<float3> positions);
+inline MutableSpan<float3> gather_bmesh_positions(const Set<BMVert *, 0> &verts,
+                                                  Vector<float3> &positions)
+{
+  positions.resize(verts.size());
+  gather_bmesh_positions(verts, positions.as_mutable_span());
+  return positions;
+}
+
+/** Fill the output array with all normals in the grids referenced by the indices. */
+void gather_grids_normals(const SubdivCCG &subdiv_ccg,
+                          Span<int> grids,
+                          MutableSpan<float3> normals);
+void gather_bmesh_normals(const Set<BMVert *, 0> &verts, MutableSpan<float3> normals);
 
 /** Scatter data from an array of the node's data to the referenced geometry vertices. */
 template<typename T> void scatter_data_mesh(Span<T> src, Span<int> indices, MutableSpan<T> dst);

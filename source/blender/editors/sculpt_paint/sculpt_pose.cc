@@ -394,25 +394,24 @@ static void grow_factors_grids(const ePaintSymmetryFlags symm,
                                PoseGrowFactorData &gftd)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<int> grids = node.grids();
 
   for (const int i : grids.index_range()) {
     const int grid = grids[i];
-    CCGElem *elem = elems[grid];
-    const int start = key.grid_area * grid;
+    const IndexRange grid_range = bke::ccg::grid_range(key, grid);
     for (const short y : IndexRange(key.grid_size)) {
       for (const short x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
         if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
           continue;
         }
-        const int vert = start + offset;
+        const int vert = grid_range[offset];
 
         SubdivCCGNeighbors neighbors;
         BKE_subdiv_ccg_neighbor_coords_get(
-            subdiv_ccg, SubdivCCGCoord{grids[i], x, y}, false, neighbors);
+            subdiv_ccg, SubdivCCGCoord{grid, x, y}, false, neighbors);
 
         float max = 0.0f;
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
@@ -425,7 +424,7 @@ static void grow_factors_grids(const ePaintSymmetryFlags symm,
         }
 
         if (max > prev_mask[vert]) {
-          const float3 &position = CCG_elem_offset_co(key, elem, offset);
+          const float3 &position = positions[vert];
           pose_factor[vert] = max;
           if (SCULPT_check_vertex_pivot_symmetry(position, pose_initial_position, symm)) {
             gftd.pos_avg += position;

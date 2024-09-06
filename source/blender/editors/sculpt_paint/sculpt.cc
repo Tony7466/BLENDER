@@ -176,11 +176,8 @@ const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
     case blender::bke::pbvh::Type::BMesh:
       return ((BMVert *)vertex.i)->co;
     case blender::bke::pbvh::Type::Grids: {
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      const int grid_index = vertex.i / key.grid_area;
-      const int index_in_grid = vertex.i - grid_index * key.grid_area;
-      CCGElem *elem = ss.subdiv_ccg->grids[grid_index];
-      return CCG_elem_co(key, CCG_elem_offset(key, elem, index_in_grid));
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      return subdiv_ccg.positions[vertex.i];
     }
   }
   return nullptr;
@@ -201,11 +198,8 @@ const blender::float3 SCULPT_vertex_normal_get(const Depsgraph &depsgraph,
       return v->no;
     }
     case blender::bke::pbvh::Type::Grids: {
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      const int grid_index = vertex.i / key.grid_area;
-      const int index_in_grid = vertex.i - grid_index * key.grid_area;
-      CCGElem *elem = ss.subdiv_ccg->grids[grid_index];
-      return CCG_elem_no(key, CCG_elem_offset(key, elem, index_in_grid));
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      return subdiv_ccg.normals[vertex.i];
     }
   }
   BLI_assert_unreachable();
@@ -911,7 +905,7 @@ std::optional<SubdivCCGCoord> nearest_vert_calc_grids(const bke::pbvh::Tree &pbv
 
   const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
 
   const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
   const NearestData nearest = threading::parallel_reduce(
@@ -921,9 +915,9 @@ std::optional<SubdivCCGCoord> nearest_vert_calc_grids(const bke::pbvh::Tree &pbv
       [&](const IndexRange range, NearestData nearest) {
         nodes_in_sphere.slice(range).foreach_index([&](const int i) {
           for (const int grid : nodes[i].grids()) {
-            CCGElem *elem = elems[grid];
+            const int grid_start = grid * key.grid_area;
             BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&](const int i) {
-              const float distance_sq = math::distance_squared(CCG_elem_offset_co(key, elem, i),
+              const float distance_sq = math::distance_squared(positions[grid_start + i],
                                                                location);
               if (distance_sq < nearest.distance_sq) {
                 SubdivCCGCoord coord{};
@@ -1216,17 +1210,17 @@ static void restore_mask_from_undo_step(Object &object)
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const Span<CCGElem *> grids = subdiv_ccg.grids;
+      MutableSpan<float> masks = subdiv_ccg.masks;
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         if (const std::optional<Span<float>> orig_data = orig_mask_data_lookup_grids(object,
                                                                                      nodes[i]))
         {
           int index = 0;
           for (const int grid : nodes[i].grids()) {
-            CCGElem *elem = grids[grid];
+            const int grid_start = grid * key.grid_area;
             for (const int i : IndexRange(key.grid_area)) {
               if (grid_hidden.is_empty() || !grid_hidden[grid][i]) {
-                CCG_elem_offset_mask(key, elem, i) = (*orig_data)[index];
+                masks[grid_start + i] = (*orig_data)[index];
               }
               index++;
             }
@@ -1406,17 +1400,17 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const Span<CCGElem *> grids = subdiv_ccg.grids;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       node_mask.foreach_index(GrainSize(1), [&](const int i) {
         if (const std::optional<OrigPositionData> orig_data = orig_position_data_lookup_grids(
                 object, nodes[i]))
         {
           int index = 0;
           for (const int grid : nodes[i].grids()) {
-            CCGElem *elem = grids[grid];
+            const int grid_start = grid * key.grid_area;
             for (const int i : IndexRange(key.grid_area)) {
               if (grid_hidden.is_empty() || !grid_hidden[grid][i]) {
-                CCG_elem_offset_co(key, elem, i) = orig_data->positions[index];
+                positions[grid_start + i] = orig_data->positions[index];
               }
               index++;
             }
@@ -1799,7 +1793,7 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
 
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> normals = subdiv_ccg.normals;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<int> grids = node.grids();
 
@@ -1822,19 +1816,23 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
           if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
             continue;
           }
-          const int vert = node_verts_start + offset;
+          const int node_vert = node_verts_start + offset;
 
-          const bool normal_test_r = use_area_nos && distances_sq[vert] <= normal_radius_sq;
-          const bool area_test_r = use_area_cos && distances_sq[vert] <= position_radius_sq;
+          const bool normal_test_r = use_area_nos && distances_sq[node_vert] <= normal_radius_sq;
+          const bool area_test_r = use_area_cos && distances_sq[node_vert] <= position_radius_sq;
           if (!normal_test_r && !area_test_r) {
             continue;
           }
-          const float3 &normal = orig_normals[vert];
-          const float distance = std::sqrt(distances_sq[vert]);
+          const float3 &normal = orig_normals[node_vert];
+          const float distance = std::sqrt(distances_sq[node_vert]);
           const int flip_index = math::dot(view_normal, normal) <= 0.0f;
           if (area_test_r) {
-            accumulate_area_center(
-                location, orig_positions[vert], distance, position_radius_inv, flip_index, anctd);
+            accumulate_area_center(location,
+                                   orig_positions[node_vert],
+                                   distance,
+                                   position_radius_inv,
+                                   flip_index,
+                                   anctd);
           }
           if (normal_test_r) {
             accumulate_area_normal(normal, distance, normal_radius_inv, flip_index, anctd);
@@ -1854,28 +1852,25 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
   for (const int i : grids.index_range()) {
     const int node_verts_start = i * key.grid_area;
     const int grid = grids[i];
-    CCGElem *elem = elems[grid];
+    const int grid_start = grid * key.grid_area;
     for (const int offset : IndexRange(key.grid_area)) {
       if (!grid_hidden.is_empty() && grid_hidden[grid][offset]) {
         continue;
       }
-      const int vert = node_verts_start + offset;
+      const int node_vert = node_verts_start + offset;
+      const int vert = grid_start + offset;
 
-      const bool normal_test_r = use_area_nos && distances_sq[vert] <= normal_radius_sq;
-      const bool area_test_r = use_area_cos && distances_sq[vert] <= position_radius_sq;
+      const bool normal_test_r = use_area_nos && distances_sq[node_vert] <= normal_radius_sq;
+      const bool area_test_r = use_area_cos && distances_sq[node_vert] <= position_radius_sq;
       if (!normal_test_r && !area_test_r) {
         continue;
       }
-      const float3 &normal = CCG_elem_offset_no(key, elem, offset);
-      const float distance = std::sqrt(distances_sq[vert]);
+      const float3 &normal = normals[vert];
+      const float distance = std::sqrt(distances_sq[node_vert]);
       const int flip_index = math::dot(view_normal, normal) <= 0.0f;
       if (area_test_r) {
-        accumulate_area_center(location,
-                               CCG_elem_offset_co(key, elem, offset),
-                               distance,
-                               position_radius_inv,
-                               flip_index,
-                               anctd);
+        accumulate_area_center(
+            location, positions[node_vert], distance, position_radius_inv, flip_index, anctd);
       }
       if (normal_test_r) {
         accumulate_area_normal(normal, distance, normal_radius_inv, flip_index, anctd);
@@ -5977,7 +5972,7 @@ static void fake_neighbor_search_mesh(const SculptSession &ss,
 
 static void fake_neighbor_search_grids(const SculptSession &ss,
                                        const CCGKey &key,
-                                       const Span<CCGElem *> elems,
+                                       const Span<float3> positions,
                                        const BitGroupVector<> &grid_hidden,
                                        const float3 &location,
                                        const float max_distance_sq,
@@ -5987,7 +5982,6 @@ static void fake_neighbor_search_grids(const SculptSession &ss,
 {
   for (const int grid : node.grids()) {
     const int verts_start = grid * key.grid_area;
-    CCGElem *elem = elems[grid];
     BKE_subdiv_ccg_foreach_visible_grid_vert(key, grid_hidden, grid, [&](const int offset) {
       const int vert = verts_start + offset;
       if (ss.fake_neighbors.fake_neighbor_index[vert] != FAKE_NEIGHBOR_NONE) {
@@ -5996,8 +5990,7 @@ static void fake_neighbor_search_grids(const SculptSession &ss,
       if (islands::vert_id_get(ss, vert) == island_id) {
         return;
       }
-      const float distance_sq = math::distance_squared(CCG_elem_offset_co(key, elem, offset),
-                                                       location);
+      const float distance_sq = math::distance_squared(positions[vert], location);
       if (distance_sq < max_distance_sq && distance_sq < nvtd.distance_sq) {
         nvtd.vert = vert;
         BLI_assert(nvtd.vert < key.grid_area * elems.size());
@@ -6097,15 +6090,14 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
     case bke::pbvh::Type::Grids: {
       const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const Span<CCGElem *> elems = subdiv_ccg.grids;
+      const Span<float3> positions = subdiv_ccg.positions;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
-      for (const int vert : IndexRange(elems.size() * key.grid_area)) {
+      for (const int vert : positions.index_range()) {
         if (fake_neighbors[vert] != FAKE_NEIGHBOR_NONE) {
           continue;
         }
         const int island_id = islands::vert_id_get(ss, vert);
-        const SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vert);
-        const float3 &location = CCG_grid_elem_co(key, elems[coord.grid_index], coord.x, coord.y);
+        const float3 &location = positions[vert];
         IndexMaskMemory memory;
         const IndexMask nodes_in_sphere = bke::pbvh::search_nodes(
             pbvh, memory, [&](const bke::pbvh::Node &node) {
@@ -6123,7 +6115,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
               nodes_in_sphere.slice(range).foreach_index([&](const int i) {
                 fake_neighbor_search_grids(ss,
                                            key,
-                                           elems,
+                                           positions,
                                            grid_hidden,
                                            location,
                                            max_distance_sq,
@@ -6398,9 +6390,8 @@ static SculptTopologyIslandCache calc_topology_islands_grids(const Object &objec
   const SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int verts_num = subdiv_ccg.grids.size() * key.grid_area;
-  AtomicDisjointSet disjoint_set(verts_num);
-  threading::parallel_for(subdiv_ccg.grids.index_range(), 512, [&](const IndexRange range) {
+  AtomicDisjointSet disjoint_set(subdiv_ccg.positions.size());
+  threading::parallel_for(IndexRange(subdiv_ccg.grids_num), 512, [&](const IndexRange range) {
     for (const int grid : range) {
       SubdivCCGNeighbors neighbors;
       for (const short y : IndexRange(key.grid_size)) {
@@ -6416,7 +6407,7 @@ static SculptTopologyIslandCache calc_topology_islands_grids(const Object &objec
     }
   });
 
-  return vert_disjoint_set_to_islands(disjoint_set, verts_num);
+  return vert_disjoint_set_to_islands(disjoint_set, subdiv_ccg.positions.size());
 }
 
 static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &object)
@@ -6502,22 +6493,6 @@ void SCULPT_cube_tip_init(const Sculpt & /*sd*/,
 
 namespace blender::ed::sculpt_paint {
 
-void gather_grids_positions(const CCGKey &key,
-                            const Span<CCGElem *> elems,
-                            const Span<int> grids,
-                            const MutableSpan<float3> positions)
-{
-  BLI_assert(grids.size() * key.grid_area == positions.size());
-
-  for (const int i : grids.index_range()) {
-    CCGElem *elem = elems[grids[i]];
-    const int start = i * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      positions[start + offset] = CCG_elem_offset_co(key, elem, offset);
-    }
-  }
-}
-
 void gather_bmesh_positions(const Set<BMVert *, 0> &verts, const MutableSpan<float3> positions)
 {
   BLI_assert(verts.size() == positions.size());
@@ -6531,18 +6506,15 @@ void gather_bmesh_positions(const Set<BMVert *, 0> &verts, const MutableSpan<flo
 
 void gather_grids_normals(const SubdivCCG &subdiv_ccg,
                           const Span<int> grids,
-                          const MutableSpan<float3> normals)
+                          const MutableSpan<float3> dst)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> normals = subdiv_ccg.normals;
   BLI_assert(grids.size() * key.grid_area == normals.size());
 
   for (const int i : grids.index_range()) {
-    CCGElem *elem = elems[grids[i]];
-    const int start = i * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      normals[start + offset] = CCG_elem_offset_no(key, elem, offset);
-    }
+    const Span<float3> grid_src = normals.slice(bke::ccg::grid_range(key, grids[i]));
+    dst.slice(bke::ccg::grid_range(key, i)).copy_from(grid_src);
   }
 }
 
@@ -6575,9 +6547,8 @@ void gather_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    const int node_start = i * key.grid_area;
-    const int grids_start = grids[i] * key.grid_area;
-    node_data.slice(node_start, key.grid_area).copy_from(src.slice(grids_start, key.grid_area));
+    node_data.slice(bke::ccg::grid_range(key, i))
+        .copy_from(src.slice(bke::ccg::grid_range(key, grids[i])));
   }
 }
 
@@ -6615,9 +6586,8 @@ void scatter_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    const int node_start = i * key.grid_area;
-    const int grids_start = grids[i] * key.grid_area;
-    dst.slice(grids_start, key.grid_area).copy_from(node_data.slice(node_start, key.grid_area));
+    dst.slice(bke::ccg::grid_range(key, grids[i]))
+        .copy_from(node_data.slice(bke::ccg::grid_range(key, i)));
   }
 }
 
@@ -6778,15 +6748,15 @@ void fill_factor_from_hide_and_mask(const SubdivCCG &subdiv_ccg,
                                     const MutableSpan<float> r_factors)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
   BLI_assert(grids.size() * key.grid_area == r_factors.size());
 
-  if (key.has_mask) {
+  if (!subdiv_ccg.masks.is_empty()) {
+    const Span<float> masks = subdiv_ccg.masks;
     for (const int i : grids.index_range()) {
-      CCGElem *elem = elems[grids[i]];
-      const int start = i * key.grid_area;
-      for (const int offset : IndexRange(key.grid_area)) {
-        r_factors[start + offset] = 1.0f - CCG_elem_offset_mask(key, elem, offset);
+      const Span<float> src = masks.slice(bke::ccg::grid_range(key, grids[i]));
+      MutableSpan<float> dst = r_factors.slice(bke::ccg::grid_range(key, i));
+      for (const int j : dst.index_range()) {
+        dst[j] = 1.0f - src[j];
       }
     }
   }
@@ -6838,15 +6808,15 @@ void calc_front_face(const float3 &view_normal,
                      const MutableSpan<float> factors)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> normals = subdiv_ccg.normals;
   BLI_assert(grids.size() * key.grid_area == factors.size());
 
   for (const int i : grids.index_range()) {
-    CCGElem *elem = elems[grids[i]];
-    const int start = i * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      const float dot = math::dot(view_normal, CCG_elem_offset_no(key, elem, offset));
-      factors[start + offset] *= std::max(dot, 0.0f);
+    const Span<float3> grid_normals = normals.slice(bke::ccg::grid_range(key, grids[i]));
+    MutableSpan<float> grid_factors = factors.slice(bke::ccg::grid_range(key, i));
+    for (const int offset : grid_factors.index_range()) {
+      const float dot = math::dot(view_normal, grid_normals[offset]);
+      grid_factors[offset] *= std::max(dot, 0.0f);
     }
   }
 }
@@ -7217,14 +7187,14 @@ void apply_translations(const Span<float3> translations,
                         SubdivCCG &subdiv_ccg)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  MutableSpan<float3> positions = subdiv_ccg.positions;
   BLI_assert(grids.size() * key.grid_area == translations.size());
 
   for (const int i : grids.index_range()) {
-    CCGElem *elem = elems[grids[i]];
-    const int start = i * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      CCG_elem_offset_co(key, elem, offset) += translations[start + offset];
+    const Span<float3> grid_translations = translations.slice(bke::ccg::grid_range(key, i));
+    MutableSpan<float3> grid_positions = positions.slice(bke::ccg::grid_range(key, grids[i]));
+    for (const int offset : grid_positions.index_range()) {
+      grid_positions[offset] += grid_translations[offset];
     }
   }
 }

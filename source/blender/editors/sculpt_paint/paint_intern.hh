@@ -28,7 +28,6 @@ struct bContext;
 struct BMesh;
 struct BMVert;
 struct Brush;
-struct CCGElem;
 struct CCGKey;
 struct ColorManagedDisplay;
 struct ColorSpace;

@@ -109,7 +109,6 @@ void calc_relaxed_translations_grids(const SubdivCCG &subdiv_ccg,
                                      Span<int> grids,
                                      bool filter_boundary_face_sets,
                                      Span<float> factors,
-                                     Span<float3> positions,
                                      Vector<Vector<SubdivCCGCoord>> &neighbors,
                                      MutableSpan<float3> translations);
 void calc_relaxed_translations_bmesh(const Set<BMVert *, 0> &verts,

@@ -96,7 +96,7 @@ BLI_NOINLINE static void calc_neighbor_influence(const SubdivCCG &subdiv_ccg,
                                                  const MutableSpan<float3> translations)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
+  const Span<float3> ccg_positions = subdiv_ccg.positions;
   for (const int i : grids.index_range()) {
     const int node_start = i * key.grid_area;
     const int grid = grids[i];
@@ -119,10 +119,7 @@ BLI_NOINLINE static void calc_neighbor_influence(const SubdivCCG &subdiv_ccg,
         float3 final_translation(0);
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
           add_neighbor_influence(
-              position,
-              dir,
-              CCG_grid_elem_co(key, elems[neighbor.grid_index], neighbor.x, neighbor.y),
-              final_translation);
+              position, dir, ccg_positions[neighbor.to_index(key)], final_translation);
         }
 
         translations[node_vert_index] = final_translation;
