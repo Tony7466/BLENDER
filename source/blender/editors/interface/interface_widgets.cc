@@ -3373,6 +3373,14 @@ static void widget_numbut_draw(const uiBut *but,
 {
   const float rad = widget_radius_from_zoom(zoom, wcol);
   const int handle_width = min_ii(BLI_rcti_size_x(rect) / 3, BLI_rcti_size_y(rect) * 0.7f);
+  const int axis_width = min_ii(BLI_rcti_size_x(rect) / 3, BLI_rcti_size_y(rect) * 0.1333f);
+  const int draw_axis = (but->rnaprop && ELEM(RNA_property_subtype(but->rnaprop),
+                                              PROP_XYZ,
+                                              PROP_XYZ_LENGTH,
+                                              PROP_TRANSLATION,
+                                              PROP_EULER,
+                                              PROP_AXISANGLE));
+  int roundboxalign_zone;
 
   if (state->but_flag & UI_SELECT) {
     std::swap(wcol->shadetop, wcol->shadedown);
@@ -3389,13 +3397,16 @@ static void widget_numbut_draw(const uiBut *but,
     wtb.draw_outline = false;
   }
 
+  uiWidgetColors wcol_zone;
+  uiWidgetBase wtb_zone;
+  rcti rect_zone;
+
+  if (draw_axis) {
+    rect->xmin += axis_width;
+  }
+
   /* decoration */
   if ((state->but_flag & UI_HOVER) && !state->is_text_input) {
-    uiWidgetColors wcol_zone;
-    uiWidgetBase wtb_zone;
-    rcti rect_zone;
-    int roundboxalign_zone;
-
     /* left arrow zone */
     widget_init(&wtb_zone);
     wtb_zone.draw_outline = false;
@@ -3409,7 +3420,14 @@ static void widget_numbut_draw(const uiBut *but,
 
     rect_zone = *rect;
     rect_zone.xmax = rect->xmin + handle_width + U.pixelsize;
-    roundboxalign_zone = roundboxalign & ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
+
+    if (draw_axis) {
+      rect_zone.xmin += axis_width;
+      rect_zone.xmax += axis_width;
+    }
+
+    roundboxalign_zone = (draw_axis ? 0 :
+                                      roundboxalign & ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT));
     round_box_edges(&wtb_zone, roundboxalign_zone, &rect_zone, rad);
 
     shape_preset_init_number_arrows(&wtb_zone.tria1, &rect_zone, 0.6f, 'l');
@@ -3449,6 +3467,9 @@ static void widget_numbut_draw(const uiBut *but,
     rect_zone = *rect;
     rect_zone.xmin = rect->xmin + handle_width - U.pixelsize;
     rect_zone.xmax = rect->xmax - handle_width + U.pixelsize;
+    if (draw_axis) {
+      rect_zone.xmin += axis_width;
+    }
     round_box_edges(&wtb_zone, 0, &rect_zone, 0);
     widgetbase_draw(&wtb_zone, &wcol_zone);
 
@@ -3461,6 +3482,43 @@ static void widget_numbut_draw(const uiBut *but,
     /* inner and outline */
     wtb.draw_emboss = draw_emboss(but);
     widgetbase_draw(&wtb, wcol);
+  }
+
+  /* Draw axis indicator for subtypes that support it. */
+  if (draw_axis) {
+    widget_init(&wtb_zone);
+    wtb_zone.draw_outline = true;
+    wtb_zone.draw_emboss = true;
+    wcol_zone = *wcol;
+
+    bTheme *btheme = UI_GetTheme();
+    /* X Axis. */
+    copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.xaxis);
+
+    if (but->rnaindex == 1) {
+      /* Y Axis. */
+      copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.yaxis);
+    }
+    else if (but->rnaindex == 2) {
+      /* Z Axis. */
+      copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.zaxis);
+    }
+
+    /* TODO: Support quaternions. */
+
+    if ((state->but_flag & UI_HOVER) || state->is_text_input) {
+      wcol_zone.inner[3] = 255;
+    }
+    else {
+      wcol_zone.inner[3] = 128;
+    }
+
+    rect_zone = *rect;
+    rect_zone.xmin -= axis_width;
+    rect_zone.xmax = rect->xmin + axis_width + U.pixelsize;
+    roundboxalign_zone = roundboxalign & ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
+    round_box_edges(&wtb_zone, roundboxalign_zone, &rect_zone, rad);
+    widgetbase_draw(&wtb_zone, &wcol_zone);
   }
 
   if (!state->is_text_input) {
