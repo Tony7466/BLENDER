@@ -3510,7 +3510,7 @@ static void widget_numbut_draw(const uiBut *but,
       wcol_zone.inner[3] = 255;
     }
     else {
-      wcol_zone.inner[3] = 128;
+      wcol_zone.inner[3] = 64;
     }
 
     rect_zone = *rect;
