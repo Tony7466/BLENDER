@@ -1281,7 +1281,7 @@ static bNode *ntreeShaderNPROutputNode(bNodeTree *localtree)
   return output;
 }
 
-void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, const bool is_npr_shader)
+void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
 {
   bNodeTreeExec *exec;
 

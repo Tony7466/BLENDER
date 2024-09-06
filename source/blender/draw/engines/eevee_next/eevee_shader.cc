@@ -979,14 +979,11 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
   bool is_default_material = ELEM(
       blender_mat, BKE_material_default_surface(), BKE_material_default_volume());
 
-  bool is_npr = pipeline_type == MAT_PIPE_DEFERRED_NPR;
-
   GPUMaterial *mat = DRW_shader_from_material(blender_mat,
                                               nodetree,
                                               GPU_MAT_EEVEE,
                                               shader_uuid,
                                               is_volume,
-                                              pipeline_type == MAT_PIPE_DEFERRED_NPR,
                                               deferred_compilation,
                                               codegen_callback,
                                               this,
@@ -1035,7 +1032,6 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                    shader_uuid,
                                                    is_volume,
                                                    false,
-                                                   pipeline_type == MAT_PIPE_DEFERRED_NPR,
                                                    codegen_callback,
                                                    this);
   GPU_material_status_set(gpumat, GPU_MAT_CREATED);
