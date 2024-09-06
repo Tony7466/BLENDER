@@ -193,13 +193,17 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     case GPU_MAT_QUEUED:
       queued_shaders_count++;
       if (pipeline_type == MAT_PIPE_DEFERRED_NPR) {
-        /* No default shader. */
+        /* Default material has no NPR pass. */
         return MaterialPass();
       }
       matpass.gpumat = inst_.shaders.material_default_shader_get(pipeline_type, geometry_type);
       break;
     case GPU_MAT_FAILED:
     default:
+      if (pipeline_type == MAT_PIPE_DEFERRED_NPR) {
+        /* Error material has no NPR pass. */
+        return MaterialPass();
+      }
       matpass.gpumat = inst_.shaders.material_shader_get(
           error_mat_, error_mat_->nodetree, pipeline_type, geometry_type, false);
       break;
