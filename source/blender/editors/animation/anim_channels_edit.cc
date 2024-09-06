@@ -2313,8 +2313,9 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
           AnimData *adt = ale->adt;
           FCurve *fcu, *fcn;
 
-          /* skip this group if no AnimData available, as we can't safely remove the F-Curves */
+          /* Groups should always be part of an action. */
           if (adt == nullptr || adt->action == nullptr) {
+            BLI_assert_unreachable();
             continue;
           }
 
