@@ -12,6 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_geom.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.hh"
 #include "BLI_task.hh"
@@ -478,7 +479,11 @@ static void colorBalance_init_data(SequenceModifierData *smd)
   }
 }
 
-static void colorBalance_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void colorBalance_apply(bool /*full_quad*/,
+                               const StripScreenQuad & /*quad*/,
+                               SequenceModifierData *smd,
+                               ImBuf *ibuf,
+                               ImBuf *mask)
 {
   const ColorBalanceModifierData *cbmd = (const ColorBalanceModifierData *)smd;
 
@@ -607,7 +612,11 @@ static void whiteBalance_apply_threaded(int width,
   }
 }
 
-static void whiteBalance_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void whiteBalance_apply(bool /*full_quad*/,
+                               const StripScreenQuad & /*quad*/,
+                               SequenceModifierData *smd,
+                               ImBuf *ibuf,
+                               ImBuf *mask)
 {
   WhiteBalanceThreadData data;
   WhiteBalanceModifierData *wbmd = (WhiteBalanceModifierData *)smd;
@@ -718,7 +727,11 @@ static void curves_apply_threaded(int width,
   }
 }
 
-static void curves_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void curves_apply(bool /*full_quad*/,
+                         const StripScreenQuad & /*quad*/,
+                         SequenceModifierData *smd,
+                         ImBuf *ibuf,
+                         ImBuf *mask)
 {
   CurvesModifierData *cmd = (CurvesModifierData *)smd;
 
@@ -850,7 +863,11 @@ static void hue_correct_apply_threaded(int width,
   }
 }
 
-static void hue_correct_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void hue_correct_apply(bool /*full_quad*/,
+                              const StripScreenQuad & /*quad*/,
+                              SequenceModifierData *smd,
+                              ImBuf *ibuf,
+                              ImBuf *mask)
 {
   HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
 
@@ -955,7 +972,11 @@ static void brightcontrast_apply_threaded(int width,
   }
 }
 
-static void brightcontrast_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static void brightcontrast_apply(bool /*full_quad*/,
+                                 const StripScreenQuad & /*quad*/,
+                                 SequenceModifierData *smd,
+                                 ImBuf *ibuf,
+                                 ImBuf *mask)
 {
   BrightContrastModifierData *bcmd = (BrightContrastModifierData *)smd;
   BrightContrastThreadData data;
@@ -1032,7 +1053,11 @@ static void maskmodifier_apply_threaded(int width,
   }
 }
 
-static void maskmodifier_apply(SequenceModifierData * /*smd*/, ImBuf *ibuf, ImBuf *mask)
+static void maskmodifier_apply(bool /*full_quad*/,
+                               const StripScreenQuad & /*quad*/,
+                               SequenceModifierData * /*smd*/,
+                               ImBuf *ibuf,
+                               ImBuf *mask)
 {
   // SequencerMaskModifierData *bcmd = (SequencerMaskModifierData *)smd;
 
@@ -1202,7 +1227,17 @@ static void tonemapmodifier_apply_threaded_photoreceptor(int width,
   }
 }
 
-static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
+static bool is_point_inside_quad(const StripScreenQuad &quad, int x, int y)
+{
+  float2 pt(x - 0.5f, y - 0.5f);
+  return isect_point_quad_v2(pt, quad.v0, quad.v1, quad.v2, quad.v3);
+}
+
+static void tonemapmodifier_apply(bool full_quad,
+                                  const StripScreenQuad &quad,
+                                  SequenceModifierData *smd,
+                                  ImBuf *ibuf,
+                                  ImBuf *mask)
 {
   SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
   AvgLogLum data;
@@ -1210,45 +1245,43 @@ static void tonemapmodifier_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf 
   data.colorspace = (ibuf->float_buffer.data != nullptr) ? ibuf->float_buffer.colorspace :
                                                            ibuf->byte_buffer.colorspace;
   float lsum = 0.0f;
-  int p = ibuf->x * ibuf->y;
   float *fp = ibuf->float_buffer.data;
   uchar *cp = ibuf->byte_buffer.data;
   float avl, maxl = -FLT_MAX, minl = FLT_MAX;
-  float total_weight = 0.0f;
+  int pixel_count = 0;
   float Lav = 0.0f;
   float cav[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  while (p--) {
-    float pixel[4];
-    if (fp != nullptr) {
-      copy_v4_v4(pixel, fp);
-    }
-    else {
-      straight_uchar_to_premul_float(pixel, cp);
-    }
-    IMB_colormanagement_colorspace_to_scene_linear_v3(pixel, data.colorspace);
-
-    /* Only include >50% transparency pixels in luminance calculations. */
-    float alpha = pixel[3];
-    if (alpha > 0.5f) {
-      total_weight += alpha;
-      float L = IMB_colormanagement_get_luminance(pixel);
-      Lav += L;
-      add_v3_v3(cav, pixel);
-      lsum += logf(max_ff(L, 0.0f) + 1e-5f);
-      maxl = (L > maxl) ? L : maxl;
-      minl = (L < minl) ? L : minl;
-    }
-    if (fp != nullptr) {
-      fp += 4;
-    }
-    else {
-      cp += 4;
+  for (int y = 0; y < ibuf->y; y++) {
+    for (int x = 0; x < ibuf->x; x++) {
+      if (full_quad || is_point_inside_quad(quad, x, y)) {
+        pixel_count++;
+        float pixel[4];
+        if (fp != nullptr) {
+          copy_v4_v4(pixel, fp);
+        }
+        else {
+          straight_uchar_to_premul_float(pixel, cp);
+        }
+        IMB_colormanagement_colorspace_to_scene_linear_v3(pixel, data.colorspace);
+        float L = IMB_colormanagement_get_luminance(pixel);
+        Lav += L;
+        add_v3_v3(cav, pixel);
+        lsum += logf(max_ff(L, 0.0f) + 1e-5f);
+        maxl = (L > maxl) ? L : maxl;
+        minl = (L < minl) ? L : minl;
+      }
+      if (fp != nullptr) {
+        fp += 4;
+      }
+      else {
+        cp += 4;
+      }
     }
   }
-  if (total_weight < 1.0e-6f) {
-    return; /* No visible pixels in input. */
+  if (pixel_count == 0) {
+    return; /* Strip is zero size of off-screen. */
   }
-  const float sc = 1.0f / total_weight;
+  const float sc = 1.0f / pixel_count;
   data.lav = Lav * sc;
   mul_v3_v3fl(data.cav, cav, sc);
   maxl = logf(maxl + 1e-5f);
@@ -1423,6 +1456,9 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
 {
   ImBuf *processed_ibuf = ibuf;
 
+  const StripScreenQuad quad = get_strip_screen_quad(context, seq);
+  const bool full_quad = is_strip_covering_screen(context, seq);
+
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
     processed_ibuf = IMB_dupImBuf(ibuf);
     SEQ_render_imbuf_from_sequencer_space(context->scene, processed_ibuf);
@@ -1457,7 +1493,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
         processed_ibuf = IMB_dupImBuf(ibuf);
       }
 
-      smti->apply(smd, processed_ibuf, mask);
+      smti->apply(full_quad, quad, smd, processed_ibuf, mask);
 
       if (mask) {
         IMB_freeImBuf(mask);

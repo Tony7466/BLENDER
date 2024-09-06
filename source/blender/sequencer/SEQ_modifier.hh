@@ -17,6 +17,7 @@ struct Scene;
 struct SeqRenderData;
 struct Sequence;
 struct SequenceModifierData;
+struct StripScreenQuad;
 
 struct SequenceModifierTypeInfo {
   /* default name for the modifier */
@@ -41,7 +42,11 @@ struct SequenceModifierTypeInfo {
   void (*copy_data)(SequenceModifierData *smd, SequenceModifierData *target);
 
   /* apply modifier on a given image buffer */
-  void (*apply)(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask);
+  void (*apply)(bool full_quad,
+                const StripScreenQuad &quad,
+                SequenceModifierData *smd,
+                ImBuf *ibuf,
+                ImBuf *mask);
 };
 
 const SequenceModifierTypeInfo *SEQ_modifier_type_info_get(int type);
