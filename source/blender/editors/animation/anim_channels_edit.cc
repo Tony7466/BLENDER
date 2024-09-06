@@ -1806,7 +1806,10 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
   /* Lambda to either fetch an fcurve's group if it has one, or otherwise
    * construct a fake one representing the ungrouped range at the end of the
    * fcurve array. This lets the code further below be much less special-casey,
-   * in exchange for a little data copying. */
+   * in exchange for a little data copying.
+   *
+   * NOTE: this returns a *copy* of the group, rather a pointer or reference, to
+   * make it possible to return a fake group when needed. */
   auto get_group_or_make_fake = [&action](bAnimListElem *fcurve_ale) -> bActionGroup {
     FCurve *fcurve = (FCurve *)fcurve_ale->data;
     if (fcurve->grp) {
