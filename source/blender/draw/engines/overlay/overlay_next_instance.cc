@@ -116,6 +116,7 @@ void Instance::begin_sync()
     layer.prepass.begin_sync(resources, state);
     layer.relations.begin_sync();
     layer.speakers.begin_sync();
+    layer.sculpts.begin_sync(resources, state);
     layer.wireframe.begin_sync(resources, state);
   };
   begin_sync_layer(regular);
@@ -140,6 +141,10 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
 
   if (needs_prepass) {
     layer.prepass.object_sync(manager, ob_ref, resources, state);
+  }
+
+  if (in_sculpt_mode) {
+    layer.sculpts.object_sync(ob_ref, state);
   }
 
   if (in_edit_mode && !state.hide_overlays) {
@@ -374,6 +379,7 @@ void Instance::draw(Manager &manager)
     layer.fluids.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
     layer.armatures.draw(framebuffer, manager, view);
+    layer.sculpts.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 
