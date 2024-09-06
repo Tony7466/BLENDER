@@ -110,8 +110,13 @@ class Prepass {
               handle = manager.resource_handle_for_psys(ob_ref,
                                                         Particles::dupli_matrix_get(ob_ref));
             }
+
+            select::ID select_id = use_material_slot_selection_ ?
+                                       res.select_id(ob_ref, part->omat << 16) :
+                                       res.select_id(ob_ref);
+
             gpu::Batch *geom = DRW_cache_particles_get_hair(ob, psys, nullptr);
-            mesh_ps_->draw(geom, handle, res.select_id(ob_ref).get());
+            mesh_ps_->draw(geom, handle, select_id.get());
             break;
           }
           break;
