@@ -113,12 +113,12 @@ class KeyframingTest : public testing::Test {
     cube_mesh_rna_pointer = RNA_id_pointer_create(&cube_mesh->id);
     /* Removing the implicit id user. Using BKE_mesh_assign_object increments the user count which
      * would leave it at 2 otherwise. */
-    cube_mesh->id.us--;
+    id_us_min(&cube_mesh->id);
     BKE_mesh_assign_object(bmain, cube, cube_mesh);
     material = BKE_material_add(bmain, "material");
     material_rna_pointer = RNA_id_pointer_create(&material->id);
 
-    material->id.us--;
+    id_us_min(&material->id);
     BKE_object_material_assign(bmain, cube, material, 0, BKE_MAT_ASSIGN_OBDATA);
 
     /* Set up an NLA system with a single NLA track with a single offset-in-time
