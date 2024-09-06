@@ -2109,7 +2109,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2128,7 +2128,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2147,7 +2147,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2166,7 +2166,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2185,7 +2185,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2204,7 +2204,7 @@ class _defs_grease_pencil_paint:
             draw_settings=draw_settings,
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            # options={'USES_BRUSHES'},
         )
 
     @ToolDef.from_fn
