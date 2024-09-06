@@ -329,10 +329,6 @@ static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
   struct CavityBlurVert {
     int vertex;
     int depth;
-
-    CavityBlurVert(int vertex_, int depth_) : vertex(vertex_), depth(depth_) {}
-
-    CavityBlurVert() = default;
   };
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -358,7 +354,7 @@ static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
   std::queue<CavityBlurVert> queue;
   Set<int, 64> visited_verts;
 
-  const CavityBlurVert initial(vert, 0);
+  const CavityBlurVert initial{vert, 0};
   visited_verts.add_new(vert);
   queue.push(initial);
 
@@ -400,7 +396,7 @@ static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
       }
 
       visited_verts.add_new(neighbor);
-      queue.emplace(neighbor, blurvert.depth + 1);
+      queue.push({neighbor, blurvert.depth + 1});
     }
   }
 
@@ -441,14 +437,10 @@ static void calc_blurred_cavity_grids(const Object &object,
     SubdivCCGCoord vertex;
     int index;
     int depth;
-
-    CavityBlurVert(SubdivCCGCoord vertex_, int index_, int depth_) : vertex(vertex_), index(index_), depth(depth_) {}
-
-    CavityBlurVert() = default;
   };
 
   const SculptSession &ss = *object.sculpt;
-  const SubdivCCG& subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const Span<CCGElem *> grids = subdiv_ccg.grids;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -462,7 +454,7 @@ static void calc_blurred_cavity_grids(const Object &object,
   std::queue<CavityBlurVert> queue;
   Set<int, 64> visited_verts;
 
-  const CavityBlurVert initial(vert, vert.to_index(key), 0);
+  const CavityBlurVert initial{vert, vert.to_index(key), 0};
   visited_verts.add_new(initial.index);
   queue.push(initial);
 
@@ -475,8 +467,10 @@ static void calc_blurred_cavity_grids(const Object &object,
 
     const SubdivCCGCoord current_vert = blurvert.vertex;
 
-    const float3 blur_vert_position = CCG_grid_elem_co(key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
-    const float3 blur_vert_normal = CCG_grid_elem_no(key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
+    const float3 blur_vert_position = CCG_grid_elem_co(
+        key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
+    const float3 blur_vert_normal = CCG_grid_elem_no(
+        key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
 
     const float dist_to_start = math::distance(blur_vert_position, starting_position);
 
@@ -497,15 +491,14 @@ static void calc_blurred_cavity_grids(const Object &object,
     }
 
     BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, current_vert, false, neighbors);
-    for (const SubdivCCGCoord neighbor : neighbors.coords)
-    {
+    for (const SubdivCCGCoord neighbor : neighbors.coords) {
       const int neighbor_idx = neighbor.to_index(key);
       if (visited_verts.contains(neighbor_idx)) {
         continue;
       }
 
       visited_verts.add_new(neighbor_idx);
-      queue.emplace(neighbor, neighbor_idx, blurvert.depth + 1);
+      queue.push({neighbor, neighbor_idx, blurvert.depth + 1});
     }
   }
 
@@ -540,16 +533,12 @@ static void calc_blurred_cavity_grids(const Object &object,
 static void calc_blurred_cavity_bmesh(const Object &object,
                                       const Cache *automasking,
                                       const int steps,
-                                      BMVert* vert)
+                                      BMVert *vert)
 {
   struct CavityBlurVert {
-    BMVert* vertex;
+    BMVert *vertex;
     int index;
     int depth;
-
-    CavityBlurVert(BMVert* vertex_, int index_, int depth_) : vertex(vertex_), index(index_), depth(depth_) {}
-
-    CavityBlurVert() = default;
   };
 
   const SculptSession &ss = *object.sculpt;
@@ -564,7 +553,7 @@ static void calc_blurred_cavity_bmesh(const Object &object,
   std::queue<CavityBlurVert> queue;
   Set<int, 64> visited_verts;
 
-  const CavityBlurVert initial(vert, BM_elem_index_get(vert), 0);
+  const CavityBlurVert initial{vert, BM_elem_index_get(vert), 0};
   visited_verts.add_new(initial.index);
   queue.push(initial);
 
@@ -575,7 +564,7 @@ static void calc_blurred_cavity_bmesh(const Object &object,
     const CavityBlurVert blurvert = queue.front();
     queue.pop();
 
-    BMVert* current_vert = blurvert.vertex;
+    BMVert *current_vert = blurvert.vertex;
 
     const float3 blur_vert_position = current_vert->co;
     const float3 blur_vert_normal = current_vert->no;
@@ -606,7 +595,7 @@ static void calc_blurred_cavity_bmesh(const Object &object,
         }
 
         visited_verts.add_new(neighbor_idx);
-        queue.emplace(neighbor, neighbor_idx, blurvert.depth + 1);
+        queue.push({neighbor, neighbor_idx, blurvert.depth + 1});
       }
     }
 
@@ -646,7 +635,7 @@ static void calc_blurred_cavity(const Depsgraph &depsgraph,
                                 const PBVHVertRef vertex)
 {
   const SculptSession &ss = *object.sculpt;
-  switch(ss.pbvh->type()) {
+  switch (ss.pbvh->type()) {
     case bke::pbvh::Type::Mesh:
       calc_blurred_cavity_mesh(depsgraph, object, automasking, steps, int(vertex.i));
       break;
