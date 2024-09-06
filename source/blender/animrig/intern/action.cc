@@ -2119,6 +2119,8 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   }
 
   LISTBASE_FOREACH (bActionGroup *, group, &legacy_action.groups) {
+    /* The resulting group might not have the same name, because the legacy system allowed
+     * duplicate names while the new system ensures uniqueness. */
     bActionGroup &converted_group = bag->channel_group_create(group->name);
     LISTBASE_FOREACH (FCurve *, fcu, &group->channels) {
       if (fcu->grp != group) {
