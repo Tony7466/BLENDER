@@ -1294,6 +1294,8 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
     bNodeTree *npr_localtree = blender::bke::node_tree_localize(npr_tree, nullptr);
     ntree_shader_embed_tree(npr_localtree, localtree);
     blender::bke::node_tree_free_local_tree(npr_localtree);
+    BLI_assert(!npr_localtree->id.py_instance); /* Or call #BKE_libblock_free_data_py. */
+    MEM_freeN(npr_localtree);
   }
 
   ntree_shader_groups_remove_muted_links(localtree);
