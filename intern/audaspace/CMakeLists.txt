@@ -29,6 +29,7 @@ if(NOT WITH_SYSTEM_AUDASPACE)
     audaspace
   )
   if(WITH_SDL_DYNLOAD)
+    message(FATAL_ERROR "TEST")
     list(APPEND LIB
       extern_sdlew
     )
