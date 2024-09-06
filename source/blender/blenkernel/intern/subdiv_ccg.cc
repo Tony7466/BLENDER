@@ -128,7 +128,7 @@ static void subdiv_ccg_eval_grid_element_mask(SubdivCCG &subdiv_ccg,
                                               const float v,
                                               const int element)
 {
-  if (!subdiv_ccg.masks.is_empty()) {
+  if (subdiv_ccg.masks.is_empty()) {
     return;
   }
   if (mask_evaluator != nullptr) {
