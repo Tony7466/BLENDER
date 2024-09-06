@@ -326,7 +326,8 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__action_reuse_material)
   ASSERT_TRUE(cube->adt != nullptr);
   ASSERT_TRUE(cube->adt->action != nullptr);
 
-  ASSERT_EQ(cube->adt->action, material->adt->action);
+  /* Actions are not shared between object and material. */
+  ASSERT_NE(cube->adt->action, material->adt->action);
 
   result_ob = insert_keyframes(bmain,
                                &cube_mesh_rna_pointer,
@@ -341,13 +342,21 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__action_reuse_material)
   ASSERT_TRUE(cube_mesh->adt != nullptr);
   ASSERT_TRUE(cube_mesh->adt->action != nullptr);
 
+  /* Reuse between Object and object data. */
   ASSERT_EQ(cube_mesh->adt->action, cube->adt->action);
+  /* Still no reuse from mesh to material. */
+  ASSERT_NE(cube_mesh->adt->action, material->adt->action);
 
   Action &action = cube->adt->action->wrap();
   /* Should have two slots now. */
-  ASSERT_EQ(action.slot_array_num, 3);
+  ASSERT_EQ(action.slot_array_num, 2);
+
+  /* Material action should have only 1 slot. */
+  ASSERT_EQ(material->adt->action->wrap().slot_array_num, 1);
+
   for (Slot *slot : action.slots()) {
-    ASSERT_TRUE(slot->idtype == ID_ME || slot->idtype == ID_OB || slot->idtype == ID_MA);
+    ASSERT_TRUE(slot->idtype == ID_ME || slot->idtype == ID_OB);
+    ASSERT_NE(slot->idtype, ID_MA);
   }
 
   U.experimental.use_animation_baklava = 0;

@@ -57,50 +57,6 @@ static void add_object_data_users(const Main &bmain,
   }
 }
 
-/* Add all materials used by the given ID to `r_related_ids`. Skips duplicates. */
-static void add_id_materials(const ID &id, Vector<const ID *> &r_related_ids)
-{
-  Material **materials = nullptr;
-  int material_count = 0;
-  switch (GS(id.name)) {
-    case ID_OB: {
-      Object *ob = (Object *)&id;
-      materials = ob->mat;
-      material_count = ob->totcol;
-      break;
-    }
-
-    case ID_ME: {
-      Mesh *mesh = (Mesh *)&id;
-      materials = mesh->mat;
-      material_count = mesh->totcol;
-      break;
-    }
-
-    case ID_CV: {
-      Curve *curve = (Curve *)&id;
-      materials = curve->mat;
-      material_count = curve->totcol;
-      break;
-    }
-
-    default:
-      return;
-  }
-
-  if (!materials) {
-    return;
-  }
-
-  for (int i = 0; i < material_count; i++) {
-    Material *mat = materials[i];
-    if (!mat) {
-      continue;
-    }
-    r_related_ids.append_non_duplicates(&mat->id);
-  }
-}
-
 /* Find an action on an ID that is related to the given ID. Related things are e.g. Object<->Data,
  * Mesh<->Material and so on. The exact relationships are defined per ID type. */
 static bAction *find_related_action(const Main &bmain, const ID &id)
@@ -138,7 +94,6 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
         }
         ID *data = (ID *)ob->data;
         related_ids.append_non_duplicates(data);
-        add_id_materials(*related_id, related_ids);
         break;
       }
 
@@ -171,47 +126,10 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       }
 
       case ID_MA: {
+        /* Explicitly not relating materials and material users. */
         Material *mat = (Material *)related_id;
         if (mat->nodetree) {
           related_ids.append_non_duplicates(&mat->nodetree->id);
-        }
-
-        for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
-             ob = static_cast<Object *>(ob->id.next))
-        {
-          if (!ob->mat) {
-            continue;
-          }
-
-          bool found_user = false;
-          for (int i = 0; i < ob->totcol; i++) {
-            if (ob->mat[i] != mat) {
-              continue;
-            }
-            related_ids.append_non_duplicates(&ob->id);
-            found_user = true;
-            break;
-          }
-
-          if (found_user) {
-            break;
-          }
-
-          /* Found no material user in Object materials, check in object data. */
-          Material ***data_materials = BKE_object_material_array_p(ob);
-          if (data_materials == nullptr) {
-            continue;
-          }
-          const short *material_len = BKE_object_material_len_p(ob);
-          /* Since we got the Material array, it should have a length even if 0. */
-          BLI_assert(material_len != nullptr);
-          for (int i = 0; i < *material_len; i++) {
-            if ((*data_materials)[i] != mat) {
-              continue;
-            }
-            related_ids.append_non_duplicates((ID *)ob->data);
-            break;
-          }
         }
         break;
       }
@@ -236,7 +154,6 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
 
       case ID_ME: {
         add_object_data_users(bmain, *related_id, related_ids);
-        add_id_materials(*related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
         if (mesh->key && !related_ids.contains(&mesh->key->id)) {
           related_ids.append(&mesh->key->id);
@@ -247,7 +164,6 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       default: {
         /* Just check if the ID is used as object data somewhere. */
         add_object_data_users(bmain, *related_id, related_ids);
-        add_id_materials(*related_id, related_ids);
         break;
       }
     }
