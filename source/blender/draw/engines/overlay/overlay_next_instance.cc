@@ -32,7 +32,7 @@ void Instance::init()
   state.rv3d = ctx->rv3d;
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
-  state.obact = ctx->obact;
+  state.object_active = ctx->obact;
 
   /* Note there might be less than 6 planes, but we always compute the 6 of them for simplicity. */
   state.clipping_plane_count = clipping_enabled_ ? 6 : 0;

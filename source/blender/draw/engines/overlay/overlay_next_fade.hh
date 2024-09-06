@@ -38,8 +38,7 @@ class Fade {
     ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
                   state.clipping_plane_count);
     ps_.shader_set(res.shaders.uniform_color.get());
-    float4 color;
-    res.background_color_get(state, color);
+    float4 color = res.background_color_get(state);
     color[3] = state.overlay.fade_alpha;
     if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_THEME) {
       srgb_to_linearrgb_v4(color, color);
@@ -55,7 +54,7 @@ class Fade {
     const Object *ob = ob_ref.object;
     const bool renderable = DRW_object_is_renderable(ob);
     const bool draw_surface = (ob->dt >= OB_WIRE) && (renderable || (ob->dt == OB_WIRE));
-    const bool draw_fade = draw_surface && overlay_should_fade_object(ob, state.obact);
+    const bool draw_fade = draw_surface && overlay_should_fade_object(ob, state.object_active);
     if (!draw_fade) {
       return;
     }

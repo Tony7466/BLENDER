@@ -49,7 +49,7 @@ struct State {
   enum eSpace_Type space_type;
   enum eContextObjectMode ctx_mode;
   enum eObjectMode object_mode;
-  const Object *obact;
+  const Object *object_active;
   bool clear_in_front;
   bool use_in_front;
   bool is_wireframe_mode;
@@ -434,19 +434,19 @@ struct Resources : public select::SelectMap {
     return background_blend_color(theme_id);
   }
 
-  void background_color_get(const State &state, float4 &color)
+  float4 background_color_get(const State &state)
   {
     if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD) {
       if (state.scene->world) {
-        color = float4(float3(&state.scene->world->horr));
+        return float4(float3(&state.scene->world->horr));
       }
     }
     else if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_VIEWPORT) {
-      color = state.v3d->shading.background_color;
-      return;
+      return state.v3d->shading.background_color;
     }
-
+    float4 color;
     UI_GetThemeColor3fv(TH_BACK, color);
+    return color;
   }
 
   void free_movieclips_textures()
