@@ -839,15 +839,11 @@ TEST_F(ActionLayersTest, conversion_to_layered_action_groups)
   action_fcurve_ensure(bmain, action, "Test_Three", nullptr, {"show_name", 1});
   action_fcurve_ensure(bmain, action, "Test_Rename", nullptr, {"show_axis", 1});
 
-  LISTBASE_FOREACH (bActionGroup *, action_group, &action->groups) {
-    if (!STREQ(action_group->name, "Test_Rename")) {
-      continue;
-    }
-
-    /* Forcing a duplicate name which was allowed by the legacy action groups. */
-    strcpy(action_group->name, "Test");
-    break;
-  }
+  bActionGroup *rename_group = static_cast<bActionGroup *>(BLI_findlink(&action->groups, 3));
+  ASSERT_NE(rename_group, nullptr);
+  ASSERT_STREQ(rename_group->name, "Test_Rename");
+  /* Forcing a duplicate name which was allowed by legacy actions. */
+  strcpy(rename_group->name, "Test");
 
   Action *converted = convert_to_layered_action(*bmain, *action);
   Strip *strip = converted->layer(0)->strip(0);
@@ -856,27 +852,27 @@ TEST_F(ActionLayersTest, conversion_to_layered_action_groups)
 
   ASSERT_EQ(BLI_listbase_count(&converted->groups), 0);
   ASSERT_EQ(bag->channel_groups().size(), 4);
-  for (bActionGroup *group : bag->channel_groups()) {
-    if (STREQ(group->name, "Test")) {
-      EXPECT_EQ(group->fcurve_range_length, 2);
-    }
-    else if (STREQ(group->name, "Test_Two")) {
-      EXPECT_EQ(group->fcurve_range_length, 1);
-      EXPECT_STREQ(bag->fcurve_array[group->fcurve_range_start]->rna_path, "scale");
-    }
-    else if (STREQ(group->name, "Test_Three")) {
-      EXPECT_EQ(group->fcurve_range_length, 1);
-      EXPECT_STREQ(bag->fcurve_array[group->fcurve_range_start]->rna_path, "show_name");
-    }
-    else {
-      /* This was "Test_Renamed". */
-      EXPECT_STREQ(group->name, "Test.001");
-      EXPECT_EQ(group->fcurve_range_length, 1);
-      EXPECT_STREQ(bag->fcurve_array[group->fcurve_range_start]->rna_path, "show_axis");
-    }
-  }
 
-  ASSERT_TRUE(converted != action);
+  bActionGroup *test_group = bag->channel_group(0);
+  EXPECT_STREQ(test_group->name, "Test");
+  EXPECT_EQ(test_group->fcurve_range_length, 2);
+
+  bActionGroup *test_two_group = bag->channel_group(1);
+  EXPECT_STREQ(test_two_group->name, "Test_Two");
+  EXPECT_EQ(test_two_group->fcurve_range_length, 1);
+  EXPECT_STREQ(bag->fcurve_array[test_two_group->fcurve_range_start]->rna_path, "scale");
+
+  bActionGroup *test_three_group = bag->channel_group(2);
+  EXPECT_STREQ(test_three_group->name, "Test_Three");
+  EXPECT_EQ(test_three_group->fcurve_range_length, 1);
+  EXPECT_STREQ(bag->fcurve_array[test_three_group->fcurve_range_start]->rna_path, "show_name");
+
+  bActionGroup *test_rename_group = bag->channel_group(3);
+  EXPECT_STREQ(test_rename_group->name, "Test.001");
+  EXPECT_EQ(test_rename_group->fcurve_range_length, 1);
+  EXPECT_STREQ(bag->fcurve_array[test_rename_group->fcurve_range_start]->rna_path, "show_axis");
+
+  ASSERT_NE(converted, action);
 }
 
 TEST_F(ActionLayersTest, empty_to_layered)
