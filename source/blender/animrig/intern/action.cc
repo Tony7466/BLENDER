@@ -1589,10 +1589,17 @@ void ChannelBag::channel_group_move(bActionGroup &group, const int to_group_inde
   /* Shallow copy, to track which fcurves should be moved in the second step. */
   const bActionGroup pre_move_group = group;
 
+  /* First we move the group to its new position. The call to
+   * `restore_channel_group_invariants()` is necessary to update the group's
+   * fcurve range (as well as the ranges of the other groups) to match its new
+   * position in the group array. */
   array_shift_range(
       this->group_array, this->group_array_num, group_index, group_index + 1, to_group_index);
   this->restore_channel_group_invariants();
 
+  /* Move the fcurves that were part of `group` (as recorded in
+   *`pre_move_group`) to their new positions (now in `group`) so that they're
+   * part of `group` again. */
   array_shift_range(this->fcurve_array,
                     this->fcurve_array_num,
                     pre_move_group.fcurve_range_start,
