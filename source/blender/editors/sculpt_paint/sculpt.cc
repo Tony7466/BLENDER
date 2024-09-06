@@ -5992,7 +5992,6 @@ static void fake_neighbor_search_grids(const SculptSession &ss,
       const float distance_sq = math::distance_squared(positions[vert], location);
       if (distance_sq < max_distance_sq && distance_sq < nvtd.distance_sq) {
         nvtd.vert = vert;
-        BLI_assert(nvtd.vert < key.grid_area * elems.size());
         nvtd.distance_sq = distance_sq;
       }
     });
@@ -6539,8 +6538,8 @@ void gather_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    const IndexRange grids_range = bke::ccg::grid_range(key, i);
-    const IndexRange node_range = bke::ccg::grid_range(key, grids[i]);
+    const IndexRange grids_range = bke::ccg::grid_range(key, grids[i]);
+    const IndexRange node_range = bke::ccg::grid_range(key, i);
     node_data.slice(node_range).copy_from(src.slice(grids_range));
   }
 }
@@ -6579,8 +6578,8 @@ void scatter_data_grids(const SubdivCCG &subdiv_ccg,
   BLI_assert(grids.size() * key.grid_area == node_data.size());
 
   for (const int i : grids.index_range()) {
-    const IndexRange grids_range = bke::ccg::grid_range(key, i);
-    const IndexRange node_range = bke::ccg::grid_range(key, grids[i]);
+    const IndexRange grids_range = bke::ccg::grid_range(key, grids[i]);
+    const IndexRange node_range = bke::ccg::grid_range(key, i);
     dst.slice(grids_range).copy_from(node_data.slice(node_range));
   }
 }

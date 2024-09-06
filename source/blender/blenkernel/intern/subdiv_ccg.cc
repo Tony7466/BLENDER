@@ -159,11 +159,12 @@ static void subdiv_ccg_eval_regular_grid(Subdiv &subdiv,
 {
   const int ptex_face_index = face_ptex_offset[face_index];
   const int grid_size = subdiv_ccg.grid_size;
+  const int grid_area = subdiv_ccg.grid_area;
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const IndexRange face = subdiv_ccg.faces[face_index];
   for (int corner = 0; corner < face.size(); corner++) {
     const int grid_index = face.start() + corner;
-    const IndexRange range = grid_range(subdiv_ccg.grid_area, grid_index);
+    const IndexRange range = grid_range(grid_area, grid_index);
     for (int y = 0; y < grid_size; y++) {
       const float grid_v = y * grid_size_1_inv;
       for (int x = 0; x < grid_size; x++) {
@@ -185,12 +186,13 @@ static void subdiv_ccg_eval_special_grid(Subdiv &subdiv,
                                          const int face_index)
 {
   const int grid_size = subdiv_ccg.grid_size;
+  const int grid_area = subdiv_ccg.grid_area;
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const IndexRange face = subdiv_ccg.faces[face_index];
   for (int corner = 0; corner < face.size(); corner++) {
     const int grid_index = face.start() + corner;
     const int ptex_face_index = face_ptex_offset[face_index] + corner;
-    const IndexRange range = grid_range(subdiv_ccg.grid_area, grid_index);
+    const IndexRange range = grid_range(grid_area, grid_index);
     for (int y = 0; y < grid_size; y++) {
       const float u = 1.0f - (y * grid_size_1_inv);
       for (int x = 0; x < grid_size; x++) {
@@ -509,7 +511,6 @@ CCGKey BKE_subdiv_ccg_key_top_level(const SubdivCCG &subdiv_ccg)
  *
  * The result is stored in normals storage from TLS. */
 static void subdiv_ccg_recalc_inner_face_normals(const SubdivCCG &subdiv_ccg,
-                                                 const CCGKey &key,
                                                  MutableSpan<float3> face_normals,
                                                  const int corner)
 {
@@ -532,7 +533,6 @@ static void subdiv_ccg_recalc_inner_face_normals(const SubdivCCG &subdiv_ccg,
 
 /* Average normals at every grid element, using adjacent faces normals. */
 static void subdiv_ccg_average_inner_face_normals(SubdivCCG &subdiv_ccg,
-                                                  const CCGKey &key,
                                                   const Span<float3> face_normals,
                                                   const int corner)
 {
@@ -586,8 +586,8 @@ static void subdiv_ccg_recalc_inner_grid_normals(SubdivCCG &subdiv_ccg, const In
     for (const int face_index : segment) {
       const IndexRange face = faces[face_index];
       for (const int grid_index : face) {
-        subdiv_ccg_recalc_inner_face_normals(subdiv_ccg, key, face_normals, grid_index);
-        subdiv_ccg_average_inner_face_normals(subdiv_ccg, key, face_normals, grid_index);
+        subdiv_ccg_recalc_inner_face_normals(subdiv_ccg, face_normals, grid_index);
+        subdiv_ccg_average_inner_face_normals(subdiv_ccg, face_normals, grid_index);
       }
       subdiv_ccg_average_inner_face_grids(subdiv_ccg, key, face);
     }
@@ -1597,7 +1597,7 @@ bool BKE_subdiv_ccg_coord_is_mesh_boundary(const OffsetIndices<int> faces,
 blender::BitGroupVector<> &BKE_subdiv_ccg_grid_hidden_ensure(SubdivCCG &subdiv_ccg)
 {
   if (subdiv_ccg.grid_hidden.is_empty()) {
-    const int grid_area = subdiv_ccg.grid_size * subdiv_ccg.grid_size;
+    const int grid_area = subdiv_ccg.grid_area;
     subdiv_ccg.grid_hidden = blender::BitGroupVector<>(subdiv_ccg.grids_num, grid_area, false);
   }
   return subdiv_ccg.grid_hidden;
