@@ -139,9 +139,12 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("l {} {}\n", a, b);
   }
-  void write_obj_cstype()
+  void write_obj_cstype(bool rational)
   {
-    write_impl("cstype rat bspline\n");
+    write_impl("cstype ");
+    if(rational)
+      write_impl("rat ");
+    write_impl("bspline\n");
   }
   void write_obj_nurbs_degree(int deg)
   {

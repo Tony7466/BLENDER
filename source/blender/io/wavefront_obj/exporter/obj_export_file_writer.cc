@@ -442,16 +442,22 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
   const int total_splines = obj_nurbs_data.total_splines();
   for (int spline_idx = 0; spline_idx < total_splines; spline_idx++) {
     const int total_vertices = obj_nurbs_data.total_spline_vertices(spline_idx);
+    const Nurb *const nurb = obj_nurbs_data.get_nurb(spline_idx);
+    const bool rational = std::any_of(nurb->bp, nurb->bp+total_vertices, [] (BPoint const &bp)
+      { return abs(bp.vec[3] - 1.f) > 0.0001f; });
     for (int vertex_idx = 0; vertex_idx < total_vertices; vertex_idx++) {
       const float4 vertex_coords = obj_nurbs_data.vertex_coordinates(
           spline_idx, vertex_idx, export_params_.global_scale);
-      fh.write_obj_vertex(vertex_coords[0], vertex_coords[1], vertex_coords[2], vertex_coords[3]);
+      if(rational)
+        fh.write_obj_vertex(vertex_coords[0], vertex_coords[1], vertex_coords[2], vertex_coords[3]);
+      else
+        fh.write_obj_vertex(vertex_coords[0], vertex_coords[1], vertex_coords[2]);
     }
 
     const char *nurbs_name = obj_nurbs_data.get_curve_name();
     const std::pair<int, int> nurbs_degrees = obj_nurbs_data.get_nurbs_degree(spline_idx);
     fh.write_obj_group(nurbs_name);
-    fh.write_obj_cstype();
+    fh.write_obj_cstype(rational);
     int dim;
     switch (obj_nurbs_data.get_object_type()) {
       case OB_CURVES_LEGACY:

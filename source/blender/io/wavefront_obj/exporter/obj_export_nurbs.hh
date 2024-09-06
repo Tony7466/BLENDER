@@ -33,6 +33,7 @@ class OBJCurve : NonCopyable {
   const char *get_curve_name() const;
   short get_curve_type() const;
   int total_splines() const;
+  const Nurb * get_nurb(int spline_idx) const;
   /**
    * \param spline_index: Zero-based index of spline of interest.
    * \return Total vertices in a spline.
