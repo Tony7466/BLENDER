@@ -309,8 +309,8 @@ struct bAnimListElem {
    *
    * For channel groups and action slots, that will always be an Action. For
    * f-curves it's more complicated, because f-curves are sometimes owned by
-   * other ID types (e.g. driver f-curves are owned by objects), so you have to
-   * be careful.
+   * other ID types (e.g. driver f-curves are owned by objects, materials,
+   * etc.), so you have to be careful.
    *
    * NOTE: this is different from id above. The id above will be set to
    * an object if the f-curve is coming from action associated with that object.
