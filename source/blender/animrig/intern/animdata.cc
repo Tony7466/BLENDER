@@ -42,19 +42,19 @@ namespace blender::animrig {
  * \{ */
 
 /* Find the users of the given ID within the objects of `bmain` and add non-duplicates to the end
- * of `r_related_ids`. */
-static void add_object_data_users(const Main &bmain,
-                                  const ID &id,
-                                  Vector<const ID *> &r_related_ids)
+ * of `related_ids`. */
+static void add_object_data_users(const Main &bmain, const ID &id, Vector<const ID *> &related_ids)
 {
-  for (Object *ob = static_cast<Object *>(bmain.objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next))
-  {
+  Object *ob;
+  ID *object_id;
+  FOREACH_MAIN_LISTBASE_ID_BEGIN (&bmain.objects, object_id) {
+    ob = (Object *)object_id;
     if (ob->data != &id) {
       continue;
     }
-    r_related_ids.append_non_duplicates(&ob->id);
+    related_ids.append_non_duplicates(&ob->id);
   }
+  FOREACH_MAIN_LISTBASE_ID_END;
 }
 
 /* Find an action on an ID that is related to the given ID. Related things are e.g. Object<->Data,
