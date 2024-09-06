@@ -588,7 +588,7 @@ static void calc_blurred_cavity_bmesh(const Object &object,
     }
 
     neighbors.clear();
-    for (BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
+    for (BMVert *neighbor : vert_neighbors_get_bmesh(*current_vert, neighbors)) {
       const int neighbor_idx = BM_elem_index_get(neighbor);
       if (visited_verts.contains(neighbor_idx)) {
         continue;
