@@ -1718,7 +1718,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
 
         const int to_index = group_index - 1;
-        if (SEL_AGRP(bag.channel_groups()[to_index])) {
+        if (SEL_AGRP(bag.channel_group(to_index))) {
           continue;
         }
         bag.channel_group_move(*group, to_index);
@@ -1754,7 +1754,7 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
 
         const int to_index = group_index + 1;
-        if (SEL_AGRP(bag.channel_groups()[to_index])) {
+        if (SEL_AGRP(bag.channel_group(to_index))) {
           continue;
         }
         bag.channel_group_move(*group, to_index);
@@ -1838,8 +1838,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
     /* If the curve itself isn't selected, then it shouldn't be operated on.  If
      * its group is selected then the group was moved so we don't move the
      * fcurve individually. */
-    /* Extra parethesis because `SEL_FCU` doesn't properly wrap its argument. */
-    return !SEL_FCU((&fcurve)) || SEL_AGRP(&group);
+    return !SEL_FCU(&fcurve) || SEL_AGRP(&group);
   };
 
   switch (mode) {
@@ -1856,7 +1855,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
         blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
         const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
         const int to_index = fcurve_index - 1;
-        if (fcurve_index == group.fcurve_range_start || SEL_FCU(bag.fcurves()[to_index])) {
+        if (fcurve_index == group.fcurve_range_start || SEL_FCU(bag.fcurve(to_index))) {
           continue;
         }
 
@@ -1895,7 +1894,7 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
         const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
         const int to_index = fcurve_index + 1;
         if (to_index >= group.fcurve_range_start + group.fcurve_range_length ||
-            SEL_FCU(bag.fcurves()[to_index]))
+            SEL_FCU(bag.fcurve(to_index)))
         {
           continue;
         }
