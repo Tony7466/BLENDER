@@ -3205,29 +3205,38 @@ static void apply_word_wrapping(const TextVars *data,
                                 blender::Vector<blender::seq::CharInfo> &characters)
 {
   const int wrap_width = wrap_width_get(data, ibuf);
-  float2 char_position{0.0f, 0.0f};
-  bool is_word_wrap = false;
-  runtime->lines.append(blender::seq::LineInfo());
 
+  float2 char_position{0.0f, 0.0f};
+  blender::seq::CharInfo *last_space = nullptr;
+
+  /* First pass: Find characters where line has to be broken. */
+  for (blender::seq::CharInfo &character : characters) {
+    if (character.str_ptr[0] == ' ') {
+      character.position = char_position;
+      last_space = &character;
+    }
+    if (character.str_ptr[0] == '\n') {
+      char_position.x = 0;
+      last_space = nullptr;
+    }
+    if (character.str_ptr[0] != '\0' && char_position.x > wrap_width && last_space != nullptr) {
+      last_space->do_wrap = true;
+      char_position -= last_space->position + last_space->advance_x;
+    }
+    char_position.x += character.advance_x;
+  }
+
+  /* Second pass: Fill lines with characters. */
+  char_position = {0.0f, 0.0f};
+  runtime->lines.append(blender::seq::LineInfo());
   for (blender::seq::CharInfo &character : characters) {
     character.position = char_position;
-
-    if (is_word_wrap && character.str_ptr[0] == ' ') {
-      character.is_drawn = false;
-      continue;
-    }
-    if (is_word_wrap && character.str_ptr[0] != ' ') {
-      is_word_wrap = false;
-    }
-    if (character.str_ptr[0] == ' ' && char_position.x > wrap_width) {
-      is_word_wrap = true;
-    }
-
-    char_position.x += character.advance_x;
     runtime->lines.last().characters.append(character);
     runtime->lines.last().width = char_position.x;
+    
+    char_position.x += character.advance_x;
 
-    if (is_word_wrap || character.str_ptr[0] == '\n') {
+    if (character.do_wrap || character.str_ptr[0] == '\n') {
       runtime->lines.append(blender::seq::LineInfo());
       char_position.x = 0;
       char_position.y -= runtime->line_height;

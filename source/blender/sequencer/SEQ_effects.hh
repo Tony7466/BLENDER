@@ -105,7 +105,7 @@ struct CharInfo {
   int flags;
   float2 position;
   int advance_x;
-  bool is_drawn = true; /* False, when character is excluded due to word wrapping. */
+  bool do_wrap;
 };
 
 struct LineInfo {
