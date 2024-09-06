@@ -4892,22 +4892,22 @@ static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_o
  * pinned vertices) overestimate and correct later. */
 static void slim_allocate_matrices(const PChart *chart, slim::MatrixTransferChart *mt_chart)
 {
-  mt_chart->n_verts = chart->nverts;
-  mt_chart->n_faces = chart->nfaces;
-  mt_chart->n_edges = chart->nedges;
+  mt_chart->verts_num = chart->nverts;
+  mt_chart->faces_num = chart->nfaces;
+  mt_chart->edges_num = chart->nedges;
 
-  mt_chart->v_matrices.resize(mt_chart->n_verts * 3);
-  mt_chart->uv_matrices.resize(mt_chart->n_verts * 2);
-  mt_chart->pp_matrices.resize(mt_chart->n_verts * 2);
+  mt_chart->v_matrices.resize(mt_chart->verts_num * 3);
+  mt_chart->uv_matrices.resize(mt_chart->verts_num * 2);
+  mt_chart->pp_matrices.resize(mt_chart->verts_num * 2);
 
-  mt_chart->f_matrices.resize(mt_chart->n_faces * 3);
-  mt_chart->p_matrices.resize(mt_chart->n_verts);
-  mt_chart->b_vectors.resize(mt_chart->n_verts);
+  mt_chart->f_matrices.resize(mt_chart->faces_num * 3);
+  mt_chart->p_matrices.resize(mt_chart->verts_num);
+  mt_chart->b_vectors.resize(mt_chart->verts_num);
   /* also clear memory for weight vectors, hence 'new' followed by '()' */
-  mt_chart->w_vectors.resize(mt_chart->n_verts, 0.0);
+  mt_chart->w_vectors.resize(mt_chart->verts_num, 0.0);
 
-  mt_chart->e_matrices.resize(mt_chart->n_edges * 2 * 2);
-  mt_chart->el_vectors.resize(mt_chart->n_edges * 2);
+  mt_chart->e_matrices.resize(mt_chart->edges_num * 2 * 2);
+  mt_chart->el_vectors.resize(mt_chart->edges_num * 2);
 }
 
 /* Transfer edges and edge lengths */
@@ -4935,7 +4935,7 @@ static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_cha
     }
 
     be = p_boundary_edge_next(be);
-    E[eid + mt_chart->n_edges + mt_chart->n_boundary_vertices] = be->vert->slim_id;
+    E[eid + mt_chart->edges_num + mt_chart->boundary_vertices_num] = be->vert->slim_id;
     eid++;
 
   } while (be != outer);
@@ -4952,7 +4952,7 @@ static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_cha
       mt_chart->succeeded = false;
     }
 
-    E[eid + mt_chart->n_edges + mt_chart->n_boundary_vertices] = e1->vert->slim_id;
+    E[eid + mt_chart->edges_num + mt_chart->boundary_vertices_num] = e1->vert->slim_id;
     eid++;
   }
 }
@@ -4962,7 +4962,7 @@ static void slim_transfer_vertices(const PChart *chart,
                                    slim::MatrixTransferChart *mt_chart,
                                    slim::MatrixTransfer *mt)
 {
-  int r = mt_chart->n_verts;
+  int r = mt_chart->verts_num;
   std::vector<double>& v_mat = mt_chart->v_matrices;
   std::vector<double>& uv_mat = mt_chart->uv_matrices;
   std::vector<int>& p_mat = mt_chart->p_matrices;
@@ -4970,7 +4970,7 @@ static void slim_transfer_vertices(const PChart *chart,
   std::vector<float>& w_vec = mt_chart->w_vectors;
 
   int p_vid = 0;
-  int vid = mt_chart->n_boundary_vertices;
+  int vid = mt_chart->boundary_vertices_num;
 
   /* For every vertex, fill up V matrix and P matrix (pinned vertices) */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
@@ -4991,7 +4991,7 @@ static void slim_transfer_vertices(const PChart *chart,
     uv_mat[r + v->slim_id] = v->uv[1];
 
     if (v->flag & PVERT_PIN || (mt->is_minimize_stretch && !(v->flag & PVERT_SELECT))) {
-      mt_chart->n_pinned_vertices += 1;
+      mt_chart->pinned_vertices_num += 1;
 
       p_mat[p_vid] = v->slim_id;
       pp_mat[2 * p_vid] = (double)v->uv[0];
@@ -5026,7 +5026,7 @@ static void slim_transfer_boundary_vertices(PChart *chart,
       w_vec[vid] = be->vert->weight;
     }
 
-    mt_chart->n_boundary_vertices += 1;
+    mt_chart->boundary_vertices_num += 1;
     be->vert->slim_id = vid;
     be->vert->on_boundary_flag = true;
     b_vec[vid] = vid;
@@ -5047,7 +5047,7 @@ static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *
     PEdge *e1 = e->next;
     PEdge *e2 = e1->next;
 
-    int r = mt_chart->n_faces;
+    int r = mt_chart->faces_num;
     auto &F = mt_chart->f_matrices;
 
     F[fid] = e->vert->slim_id;
@@ -5072,8 +5072,8 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
     p_chart_correct_degenerate_triangles(chart, SLIM_CORR_MIN_AREA, SLIM_CORR_MIN_ANGLE);
 
     mt_chart->succeeded = true;
-    mt_chart->n_pinned_vertices = 0;
-    mt_chart->n_boundary_vertices = 0;
+    mt_chart->pinned_vertices_num = 0;
+    mt_chart->boundary_vertices_num = 0;
 
     /* Allocate memory for matrices of Vertices,Faces etc. for each chart. */
     slim_allocate_matrices(chart, mt_chart);
@@ -5084,16 +5084,16 @@ static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
     slim_transfer_edges(chart, mt_chart);
     slim_transfer_faces(chart, mt_chart);
 
-    mt_chart->pp_matrices.resize(mt_chart->n_pinned_vertices * 2);
+    mt_chart->pp_matrices.resize(mt_chart->pinned_vertices_num * 2);
     mt_chart->pp_matrices.shrink_to_fit();
 
-    mt_chart->p_matrices.resize(mt_chart->n_pinned_vertices);
+    mt_chart->p_matrices.resize(mt_chart->pinned_vertices_num);
     mt_chart->p_matrices.shrink_to_fit();
 
-    mt_chart->b_vectors.resize(mt_chart->n_boundary_vertices);
+    mt_chart->b_vectors.resize(mt_chart->boundary_vertices_num);
     mt_chart->b_vectors.shrink_to_fit();
 
-    mt_chart->e_matrices.resize((mt_chart->n_edges + mt_chart->n_boundary_vertices) * 2);
+    mt_chart->e_matrices.resize((mt_chart->edges_num + mt_chart->boundary_vertices_num) * 2);
     mt_chart->e_matrices.shrink_to_fit();
   }
 }
@@ -5206,7 +5206,7 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
     }
   }
 
-  mt_chart.n_pinned_vertices = pinned_vertex_indices.size();
+  mt_chart.pinned_vertices_num = pinned_vertex_indices.size();
 }
 
 void uv_parametrizer_slim_solve(ParamHandle *phandle,

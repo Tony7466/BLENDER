@@ -27,7 +27,7 @@ static void transfer_uvs_back_to_native_part(MatrixTransferChart &chart, Eigen::
   }
 
   auto &uv_coordinate_array = chart.uv_matrices;
-  int number_of_vertices = chart.n_verts;
+  int number_of_vertices = chart.verts_num;
 
   for (int i = 0; i < number_of_vertices; i++) {
     for (int j = 0; j < 2; j++) {

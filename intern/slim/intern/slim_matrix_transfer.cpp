@@ -34,7 +34,7 @@ void MatrixTransfer::setup_slim_data(MatrixTransferChart &chart) const
     geometry_data.construct_slim_data(
         *slim_data, skip_initialization, reflection_mode);
 
-    chart.n_pinned_vertices = geometry_data.number_of_pinned_vertices;
+    chart.pinned_vertices_num = geometry_data.number_of_pinned_vertices;
   }
   catch (SlimFailedException &) {
     slim_data->valid = false;

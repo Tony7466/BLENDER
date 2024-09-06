@@ -14,31 +14,31 @@ typedef std::unique_ptr<SLIMData> SLIMDataPtr;
 /* MatrixTransferChart holds all information and data matrices to be
  * transferred from Blender to SLIM. */
 struct MatrixTransferChart {
-  int n_verts = 0;
-  int n_faces = 0;
-  int n_pinned_vertices = 0;
-  int n_boundary_vertices = 0;
-  int n_edges = 0;
+  int verts_num = 0;
+  int faces_num = 0;
+  int pinned_vertices_num = 0;
+  int boundary_vertices_num = 0;
+  int edges_num = 0;
 
   /* Field indicating whether a given SLIM operation succeeded or not. */
   bool succeeded = false;
 
-  /* Vertex positions. */
+  /* Vertex positions (matrix [verts_num x 3] in a linearized form). */
   std::vector<double> v_matrices;
-  /* UV positions of vertices. */
+  /* UV positions of vertices (matrix [verts_num x 2] in a linearized form). */
   std::vector<double> uv_matrices;
-  /* Positions of pinned vertices. */
+  /* Positions of pinned vertices (matrix [pinned_vertices_num x 2] in a linearized form). */
   std::vector<double> pp_matrices;
   /* Edge lengths. */
   std::vector<double> el_vectors;
   /* Weights per vertex. */
   std::vector<float> w_vectors;
 
-  /* Vertex index triplets making up faces. */
+  /* Vertex index triplets making up faces (matrix [faces_num x 3] in a linearized form). */
   std::vector<int> f_matrices;
   /* Indices of pinned vertices. */
   std::vector<int> p_matrices;
-  /* Vertex index tuples making up edges. */
+  /* Vertex index tuples making up edges (matrix [edges_num x 2] in a linearized form). */
   std::vector<int> e_matrices;
   /* Vertex indices of boundary vertices. */
   std::vector<int> b_vectors;

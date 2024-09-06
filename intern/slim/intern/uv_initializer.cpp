@@ -94,10 +94,10 @@ void convex_border_parameterization(const Eigen::MatrixXi &f,
                                     Eigen::MatrixXd &uv,
                                     Method method)
 {
-  int n_verts = uv.rows();
-  int n_edges = e.rows();
+  int verts_num = uv.rows();
+  int edges_num = e.rows();
 
-  Eigen::SparseMatrix<double> vertex_to_angles(n_verts, n_verts * 2);
+  Eigen::SparseMatrix<double> vertex_to_angles(verts_num, verts_num * 2);
 
   switch (method) {
     case HARMONIC:
@@ -110,7 +110,7 @@ void convex_border_parameterization(const Eigen::MatrixXi &f,
       break;
   }
 
-  int n_unknowns = n_verts - bnd.size();
+  int n_unknowns = verts_num - bnd.size();
   int n_knowns = bnd.size();
 
   Eigen::SparseMatrix<double> aint(n_unknowns, n_unknowns);
@@ -127,7 +127,7 @@ void convex_border_parameterization(const Eigen::MatrixXi &f,
 
   int first_vertex, second_vertex;
 
-  for (int e_idx = 0; e_idx < n_edges; e_idx++) {
+  for (int e_idx = 0; e_idx < edges_num; e_idx++) {
     edge = e.row(e_idx);
     edge_length = el(e_idx);
     first_vertex = edge(0);
@@ -241,11 +241,11 @@ void tutte(const Eigen::MatrixXi &f,
 void map_vertices_to_convex_border(Eigen::MatrixXd &vertex_positions)
 {
   double pi = atan(1) * 4;
-  int n_boundary_vertices = vertex_positions.rows();
+  int boundary_vertices_num = vertex_positions.rows();
   double x, y;
-  double angle = 2 * pi / n_boundary_vertices;
+  double angle = 2 * pi / boundary_vertices_num;
 
-  for (int i = 0; i < n_boundary_vertices; i++) {
+  for (int i = 0; i < boundary_vertices_num; i++) {
     x = cos(angle * i);
     y = sin(angle * i);
     vertex_positions(i, 0) = (x * 0.5) + 0.5;

@@ -19,12 +19,12 @@ using namespace Eigen;
 namespace slim {
 
 GeometryData::GeometryData(const MatrixTransfer &mt, MatrixTransferChart &chart)
-    : number_of_vertices(chart.n_verts),
-      number_of_faces(chart.n_faces),
+    : number_of_vertices(chart.verts_num),
+      number_of_faces(chart.faces_num),
       /* `n_edges` in transferred_data accounts for boundary edges only once. */
-      number_of_edges_twice(chart.n_edges + chart.n_boundary_vertices),
-      number_of_boundary_vertices(chart.n_boundary_vertices),
-      number_of_pinned_vertices(chart.n_pinned_vertices),
+      number_of_edges_twice(chart.edges_num + chart.boundary_vertices_num),
+      number_of_boundary_vertices(chart.boundary_vertices_num),
+      number_of_pinned_vertices(chart.pinned_vertices_num),
       use_weights(mt.use_weights),
       weight_influence(mt.weight_influence),
       vertex_positions3d(chart.v_matrices.data(), number_of_vertices, columns_3),
