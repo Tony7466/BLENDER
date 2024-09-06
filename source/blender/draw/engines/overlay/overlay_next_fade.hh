@@ -26,7 +26,8 @@ class Fade {
 
   void begin_sync(Resources &res, const State &state)
   {
-    enabled_ = !state.xray_enabled && (state.overlay.flag & V3D_OVERLAY_FADE_INACTIVE) &&
+    enabled_ = state.v3d && !state.xray_enabled &&
+               (state.overlay.flag & V3D_OVERLAY_FADE_INACTIVE) &&
                (selection_type_ == SelectionType::DISABLED);
 
     if (!enabled_) {
