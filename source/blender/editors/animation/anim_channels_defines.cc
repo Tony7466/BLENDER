@@ -286,9 +286,11 @@ static short acf_generic_group_offset(bAnimContext *ac, bAnimListElem *ale)
   short offset = acf_generic_basic_offset(ac, ale);
 
   if (ale->id) {
+
+    /* Action Editor. */
     if (ac->datatype == ANIMCONT_ACTION) {
-      /* For Action Editor mode, we have a limited set of channel types we're
-       * dealing with, so we can handle them explicitly here in one place. */
+      /* For Action Editor mode, we have a limited set of channel types we need
+       * to account for, so we can handle them very simply here in one place. */
       switch (ale->type) {
         case ANIMTYPE_FCURVE:
         case ANIMTYPE_GROUP: {
@@ -311,6 +313,8 @@ static short acf_generic_group_offset(bAnimContext *ac, bAnimListElem *ale)
 
       return offset;
     }
+
+    /* Other editors. */
 
     /* texture animdata */
     if (GS(ale->id->name) == ID_TE) {
