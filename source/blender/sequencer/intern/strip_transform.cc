@@ -16,6 +16,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_rect.h"
 
 #include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
@@ -657,6 +658,13 @@ static void seq_image_transform_quad_get_ex(const Scene *scene,
   if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     image_size[0] = seq->strip->stripdata->orig_width;
     image_size[1] = seq->strip->stripdata->orig_height;
+  }
+  if (seq->type == SEQ_TYPE_TEXT && seq->effectdata != nullptr) {
+    TextVars *data = static_cast<TextVars *>(seq->effectdata);
+    if (data->runtime != nullptr) {
+      image_size[0] = BLI_rcti_size_x(&data->runtime->text_boundbox);
+      image_size[1] = BLI_rcti_size_y(&data->runtime->text_boundbox);
+    }
   }
 
   float transform_matrix[4][4];
