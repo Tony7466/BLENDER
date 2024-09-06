@@ -304,7 +304,7 @@ struct bAnimListElem {
   Main *bmain;
 
   /**
-   * For list elements that corresponds to an f-curve, a channel group, or an
+   * For list elements that correspond to an f-curve, a channel group, or an
    * action slot, this is the ID which owns that data.
    *
    * For channel groups and action slots, that will always be an Action. For
