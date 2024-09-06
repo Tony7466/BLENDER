@@ -426,6 +426,9 @@ class SamplerSlots {
     else if (pipeline_type == MAT_PIPE_FORWARD) {
       last_reserved_ = MATERIAL_TEXTURE_RESERVED_SLOT_LAST_FORWARD;
     }
+    else if (pipeline_type == MAT_PIPE_DEFERRED_NPR) {
+      last_reserved_ = MATERIAL_TEXTURE_RESERVED_SLOT_LAST_NPR;
+    }
   }
 
   int get()
