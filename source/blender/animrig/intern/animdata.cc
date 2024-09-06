@@ -111,6 +111,13 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
    * code that defines relationships. */
   for (int i = 0; i < related_ids.size(); i++) {
     const ID *related_id = related_ids[i];
+
+    /* In the case of more than 1 user we cannot properly determine from which the action should be
+     * taken, so those are skipped. Including the 0 users case for embedded IDs. */
+    if (ID_REAL_USERS(related_id) > 1) {
+      continue;
+    }
+
     AnimData *adt = BKE_animdata_from_id(related_id);
     if (adt && adt->action) {
       Action &action = adt->action->wrap();
@@ -119,12 +126,6 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
          * relationship graph. */
         return adt->action;
       }
-    }
-
-    /* In the case of more than 1 user we cannot properly determine from which the action should be
-     * taken, so those are skipped. Including the 0 users case for embedded IDs. */
-    if (ID_REAL_USERS(related_id) > 1) {
-      continue;
     }
 
     /* No action found on current ID, add related IDs to the ID Vector. */
