@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,12 +18,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.is_function_node();
   b.add_input<decl::Float>("Value").min(0.0f).max(1.0f).is_default_link_socket();
   b.add_input<decl::Float>("Strength")
-      .description("Controls curvature or shape of the easing")
       .default_value(0.5f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
+      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; })
+      .description("Controls curvature or shape of the easing");
   b.add_input<decl::Float>("Frequency")
       .default_value(1.0f)
       .min(-10.0f)
@@ -61,12 +61,12 @@ static void node_declare(NodeDeclarationBuilder &b)
       .make_available(
           [](bNode &node) { node_storage(node).operation = NODE_EASING_CUBIC_BEZIER; });
   b.add_input<decl::Float>("Inflection")
-      .description("Inflection point where In-Out/Out-In transition occurs")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; });
+      .make_available([](bNode &node) { node_storage(node).operation = NODE_EASING_VARIABLE; })
+      .description("Inflection point where In-Out/Out-In transition occurs");
   b.add_input<decl::Bool>("Invert").description("Invert easing direction from In-Out to Out-In");
   b.add_input<decl::Float>("Mirror")
       .min(0.0f)
@@ -134,20 +134,20 @@ static void node_update(bNodeTree *ntree, bNode *node)
                                   NODE_EASING_SQUARE,
                                   NODE_EASING_SINEWAVE);
 
-  bke::nodeSetSocketAvailability(ntree, sockInflection, use_inout_controls);
-  bke::nodeSetSocketAvailability(ntree, sockInvert, use_inout_controls);
-  bke::nodeSetSocketAvailability(ntree, sockStrength, use_strength);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(ntree, sockInflection, use_inout_controls);
+  bke::node_set_socket_availability(ntree, sockInvert, use_inout_controls);
+  bke::node_set_socket_availability(ntree, sockStrength, use_strength);
+  bke::node_set_socket_availability(
       ntree, sockCount, ELEM(operation, NODE_EASING_BOUNCE, NODE_EASING_SNAKE));
-  bke::nodeSetSocketAvailability(ntree, sockFrequency, use_frequency);
-  bke::nodeSetSocketAvailability(ntree, sockJumpStart, operation == NODE_EASING_STEPS);
-  bke::nodeSetSocketAvailability(ntree, sockJumpEnd, operation == NODE_EASING_STEPS);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(ntree, sockFrequency, use_frequency);
+  bke::node_set_socket_availability(ntree, sockJumpStart, operation == NODE_EASING_STEPS);
+  bke::node_set_socket_availability(ntree, sockJumpEnd, operation == NODE_EASING_STEPS);
+  bke::node_set_socket_availability(
       ntree, sockP1X, ELEM(operation, NODE_EASING_CUBIC_BEZIER, NODE_EASING_LINEAR));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, sockP1Y, ELEM(operation, NODE_EASING_CUBIC_BEZIER, NODE_EASING_LINEAR));
-  bke::nodeSetSocketAvailability(ntree, sockP2X, operation == NODE_EASING_CUBIC_BEZIER);
-  bke::nodeSetSocketAvailability(ntree, sockP2Y, operation == NODE_EASING_CUBIC_BEZIER);
+  bke::node_set_socket_availability(ntree, sockP2X, operation == NODE_EASING_CUBIC_BEZIER);
+  bke::node_set_socket_availability(ntree, sockP2Y, operation == NODE_EASING_CUBIC_BEZIER);
 
   switch (operation) {
     case NODE_EASING_SQUARE:
@@ -172,8 +172,10 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static float mirror_input(const float t, const float m)
+/* Clamp and mirror input. */
+static float process_input(const float v, const float m)
 {
+  const float t = math::clamp(v, 0.0f, 1.0f);
   if (m <= 0.0f) {
     return t;
   }
@@ -185,19 +187,13 @@ static float mirror_input(const float t, const float m)
   return (t < mr) ? t * (1.0f / mr) : 1.0f - (t - mr) * (1.0f / m);
 }
 
-/* Clamp and mirror input. */
-static float process_input(const float t, const float m)
-{
-  return mirror_input(math::clamp(t, 0.0f, 1.0f), m);
-}
-
 static float map(const float value,
                  const float from_min,
                  const float from_max,
                  const float to_min,
                  const float to_max)
 {
-  const float factor = safe_divide(value - from_min, from_max - from_min);
+  const float factor = math::safe_divide(value - from_min, from_max - from_min);
   return to_min + factor * (to_max - to_min);
 }
 
@@ -1000,7 +996,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   fn_node_type_base(&ntype, FN_NODE_EASING, "Easing", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.updatefunc = node_update;
@@ -1008,7 +1004,7 @@ static void node_register()
   node_type_storage(&ntype, "NodeEasing", node_free_standard_storage, node_copy_standard_storage);
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
