@@ -65,31 +65,27 @@ static void text_editing_update(bContext *C)
 enum {
   LINE_BEGIN,
   LINE_END,
-  FILE_TOP,
-  FILE_BOTTOM,
+  TEXT_BEGIN,
+  TEXT_END,
   PREV_CHAR,
   NEXT_CHAR,
   PREV_WORD,
   NEXT_WORD,
   PREV_LINE,
   NEXT_LINE,
-  PREV_PAGE,
-  NEXT_PAGE
 };
 
 static const EnumPropertyItem move_type_items[] = {
-    {LINE_BEGIN, "LINE_BEGIN", 0, "Line Begin", ""},
-    {LINE_END, "LINE_END", 0, "Line End", ""},
-    {FILE_TOP, "FILE_TOP", 0, "File Top", ""},
-    {FILE_BOTTOM, "FILE_BOTTOM", 0, "File Bottom", ""},
+    {LINE_BEGIN, "LINE_BEGIN", 0, "Line Begin", ""},                 // ok
+    {LINE_END, "LINE_END", 0, "Line End", ""},                       // ok
+    {TEXT_BEGIN, "TEXT_BEGIN", 0, "Text Begin", ""},                 // ok
+    {TEXT_END, "TEXT_END", 0, "Text End", ""},                       // ok
     {PREV_CHAR, "PREVIOUS_CHARACTER", 0, "Previous Character", ""},  // ok
     {NEXT_CHAR, "NEXT_CHARACTER", 0, "Next Character", ""},          // ok
     {PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
     {NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
     {PREV_LINE, "PREVIOUS_LINE", 0, "Previous Line", ""},  // ok
     {NEXT_LINE, "NEXT_LINE", 0, "Next Line", ""},          // ok
-    {PREV_PAGE, "PREVIOUS_PAGE", 0, "Previous Page", ""},
-    {NEXT_PAGE, "NEXT_PAGE", 0, "Next Page", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -181,6 +177,55 @@ static int2 cursor_move_by_line(int2 cursor_position, TextVarsRuntime *text, int
   return cursor_position;
 }
 
+static int2 cursor_move_line_end(int2 cursor_position, TextVarsRuntime *text)
+{
+  seq::LineInfo cur_line = text->lines[cursor_position.y];
+  cursor_position.x = cur_line.characters.size() - 1;
+  return cursor_position;
+}
+
+/* XXX Not great, not terrible I guess */
+static int2 cursor_move_prev_word(int2 cursor_position, TextVarsRuntime *text)
+{
+  cursor_position = cursor_move_by_character(cursor_position, text, -1);
+
+  while (cursor_position.x > 0 || cursor_position.y > 0) {
+    seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
+    int2 prev_cursor_pos = cursor_move_by_character(cursor_position, text, -1);
+    seq::CharInfo prev_character = text->lines[prev_cursor_pos.y].characters[prev_cursor_pos.x];
+
+    /* Detect whitespace / non-whitespace transition. */
+    if (ELEM(prev_character.str_ptr[0], ' ', '\t', '\n') &&
+        !ELEM(character.str_ptr[0], ' ', '\t', '\n'))
+    {
+      break;
+    }
+    cursor_position = prev_cursor_pos;
+  }
+  return cursor_position;
+}
+
+/* XXX Not great, not terrible I guess */
+static int2 cursor_move_next_word(int2 cursor_position, TextVarsRuntime *text)
+{
+  const int maxline = text->lines.size() - 1;
+  const int maxchar = text->lines.last().characters.size() - 1;
+
+  while ((cursor_position.x < maxchar) || (cursor_position.y < maxline)) {
+    seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
+    cursor_position = cursor_move_by_character(cursor_position, text, 1);
+    seq::CharInfo next_character = text->lines[cursor_position.y].characters[cursor_position.x];
+
+    /* Detect whitespace / non-whitespace transition. */
+    if (ELEM(next_character.str_ptr[0], ' ', '\t', '\n', '\0') &&
+        !ELEM(character.str_ptr[0], ' ', '\t', '\n'))
+    {
+      break;
+    }
+  }
+  return cursor_position;
+}
+
 static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
@@ -202,6 +247,25 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
       break;
     case NEXT_LINE:
       cursor_position = cursor_move_by_line(cursor_position, text, 1);
+      break;
+    case LINE_BEGIN:
+      cursor_position.x = 0;
+      break;
+    case LINE_END:
+      cursor_position = cursor_move_line_end(cursor_position, text);
+      break;
+    case TEXT_BEGIN:
+      cursor_position = {0, 0};
+      break;
+    case TEXT_END:
+      cursor_position.y = text->lines.size() - 1;
+      cursor_position = cursor_move_line_end(cursor_position, text);
+      break;
+    case PREV_WORD:
+      cursor_position = cursor_move_prev_word(cursor_position, text);
+      break;
+    case NEXT_WORD:
+      cursor_position = cursor_move_next_word(cursor_position, text);
       break;
   }
 
