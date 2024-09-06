@@ -1700,6 +1700,12 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
                                                     const eRearrangeAnimChan_Mode mode)
 {
   ListBase anim_data_visible = {nullptr, nullptr};
+
+  /* We don't use `ANIMFILTER_SEL` here, and instead individually check on each
+   * element whether it's selected or not in the code further below. This is
+   * because it's what the legacy code does (see for example
+   * `rearrange_animchannel_add_to_islands()`), and we're avoiding diverging
+   * unnecessarily from that in case there was a reason for it. */
   rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_GROUP);
 
   switch (mode) {
@@ -1805,6 +1811,12 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
                                              const eRearrangeAnimChan_Mode mode)
 {
   ListBase anim_data_visible = {nullptr, nullptr};
+
+  /* We don't use `ANIMFILTER_SEL` here, and instead individually check on each
+   * element whether it's selected or not in the code further below. This is
+   * because it's what the legacy code does (see for example
+   * `rearrange_animchannel_add_to_islands()`), and we're avoiding diverging
+   * unnecessarily from that in case there was a reason for it. */
   rearrange_animchannels_filter_visible(&anim_data_visible, ac, ANIMTYPE_FCURVE);
 
   /* Lambda to either fetch an fcurve's group if it has one, or otherwise
