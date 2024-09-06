@@ -200,13 +200,13 @@ static bool rna_WorkSpaceTool_use_brushes_get(PointerRNA *ptr)
 static void rna_WorkSpaceTool_brush_type_get(PointerRNA *ptr, char *value)
 {
   bToolRef *tref = static_cast<bToolRef *>(ptr->data);
-  strcpy(value, tref->runtime ? tref->runtime->data_block : "");
+  strcpy(value, tref->runtime ? tref->runtime->brush_type : "");
 }
 
 static int rna_WorkSpaceTool_brush_type_length(PointerRNA *ptr)
 {
   bToolRef *tref = static_cast<bToolRef *>(ptr->data);
-  return tref->runtime ? strlen(tref->runtime->data_block) : 0;
+  return tref->runtime ? strlen(tref->runtime->brush_type) : 0;
 }
 
 static void rna_WorkSpaceTool_widget_get(PointerRNA *ptr, char *value)

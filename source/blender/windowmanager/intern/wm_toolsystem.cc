@@ -146,8 +146,8 @@ static std::optional<blender::StringRefNull> find_tool_id_from_brush_type_id(
 {
   const WorkSpace *workspace = CTX_wm_workspace(C);
   LISTBASE_FOREACH (const bToolRef *, tref, &workspace->tools) {
-    if (tref->runtime && tref->runtime->data_block[0] &&
-        tref->runtime->data_block == brush_type_id)
+    if (tref->runtime && tref->runtime->brush_type[0] &&
+        tref->runtime->brush_type == brush_type_id)
     {
       return tref->idname;
     }
@@ -179,11 +179,11 @@ static bool brush_type_is_compatible_with_active_tool(bContext *C,
   BLI_assert(BKE_paintmode_get_active_from_context(C) == BKE_paintmode_get_from_tool(active_tool));
 
   /* Tool supports any brush type, no need to check further. */
-  if (!active_tool->runtime->data_block[0]) {
+  if (!active_tool->runtime->brush_type[0]) {
     return true;
   }
 
-  const blender::StringRef type_name_from_tool = active_tool->runtime->data_block;
+  const blender::StringRef type_name_from_tool = active_tool->runtime->brush_type;
   const blender::StringRef type_name_from_brush = brush_type_identifier_get(brush_type,
                                                                             paint_mode);
   return type_name_from_tool == type_name_from_brush;
@@ -253,13 +253,13 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
     return false;
   }
 
-  if (!active_tool->runtime->data_block[0]) {
+  if (!active_tool->runtime->brush_type[0]) {
     /* Only update the main brush binding to reference the newly active brush. */
     toolsystem_main_brush_binding_update_from_active(paint);
     return true;
   }
 
-  toolsystem_brush_type_binding_update(paint, active_tool->runtime->data_block);
+  toolsystem_brush_type_binding_update(paint, active_tool->runtime->brush_type);
 
   /* If necessary, find a compatible tool to switch to. */
   {
@@ -327,17 +327,17 @@ static void activate_compatible_brush_from_toolref(const bContext *C,
 
       /* Attempt to re-activate a brush remembered for this brush type, as stored in a brush
        * binding. */
-      if (tref_rt->data_block[0]) {
+      if (tref_rt->brush_type[0]) {
         std::optional<AssetWeakReference> brush_asset_reference =
             [&]() -> std::optional<AssetWeakReference> {
           const NamedBrushAssetReference *brush_ref = toolsystem_brush_type_binding_lookup(
-              paint, tref_rt->data_block);
+              paint, tref_rt->brush_type);
           if (brush_ref && brush_ref->brush_asset_reference) {
             return *brush_ref->brush_asset_reference;
           }
           /* No remembered brush found for this type, use a default for the type. */
           return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
-                                                        tref_rt->data_block);
+                                                        tref_rt->brush_type);
         }();
 
         if (brush_asset_reference) {

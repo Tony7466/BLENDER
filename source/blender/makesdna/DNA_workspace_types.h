@@ -41,6 +41,7 @@ typedef struct bToolRef_Runtime {
   /** One of these 3 must be defined. */
   char keymap[64];
   char gizmo_group[64];
+  char brush_type[64];
   char data_block[64];
 
   /** Keymap for #bToolRef.idname_fallback, if set. */

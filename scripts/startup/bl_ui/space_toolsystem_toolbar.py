@@ -1969,7 +1969,7 @@ class _defs_grease_pencil_paint:
             idname="builtin_brush.Fill",
             label="Fill",
             icon="brush.gpencil_draw.fill",
-            data_block='FILL',
+            brush_type='FILL',
             options={'USE_BRUSHES'},
         )
 
@@ -1979,7 +1979,7 @@ class _defs_grease_pencil_paint:
             idname="builtin_brush.Erase",
             label="Erase",
             icon="brush.gpencil_draw.erase",
-            data_block='ERASE',
+            brush_type='ERASE',
             options={'USE_BRUSHES'},
         )
 
@@ -2012,7 +2012,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
@@ -2026,7 +2026,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
@@ -2040,7 +2040,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
@@ -2054,7 +2054,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
@@ -2068,7 +2068,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
@@ -2082,7 +2082,7 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
-            data_block='DRAW',
+            brush_type='DRAW',
             options={'USE_BRUSHES'},
         )
 
