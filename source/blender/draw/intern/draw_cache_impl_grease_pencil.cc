@@ -1330,7 +1330,7 @@ static void grease_pencil_wire_batch_ensure(Object &object,
         object, info.drawing, memory);
 
     visible_strokes.foreach_index([&](const int curve_i) {
-      IndexRange points = points_by_curve[curve_i];
+      const IndexRange points = points_by_curve[curve_i];
       const int point_len = points.size();
       const int point_start = index_len;
       const bool is_cyclic = cyclic[curve_i] && (point_len > 2);
@@ -1349,16 +1349,16 @@ static void grease_pencil_wire_batch_ensure(Object &object,
   blender::MutableSpan<uint32_t> indices = GPU_indexbuf_get_data(&elb);
 
   threading::parallel_for(cyclic_per_curve.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i_curve : range) {
+    for (const int curve : range) {
       /* Drop the trailing restart index. */
-      IndexRange offset_range = range_per_curve[i_curve].drop_back(1);
-      /* Shift the range by i_curve to account for the second padding vertices.
+      const IndexRange offset_range = range_per_curve[curve].drop_back(1);
+      /* Shift the range by `curve` to account for the second padding vertices.
        * The first one is already accounted for during counting (as primitive restart). */
-      IndexRange index_range = offset_range.shift(i_curve + 1);
-      for (const int i : IndexRange(offset_range.size())) {
+      const IndexRange index_range = offset_range.shift(curve + 1);
+      for (const int i : offset_range.index_range()) {
         indices[offset_range[i]] = index_range[i];
       }
-      if (cyclic_per_curve[i_curve]) {
+      if (cyclic_per_curve[curve]) {
         indices[offset_range.last()] = index_range.first();
       }
       indices[offset_range.one_after_last()] = gpu::RESTART_INDEX;
