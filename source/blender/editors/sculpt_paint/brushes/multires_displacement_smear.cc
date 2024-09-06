@@ -146,8 +146,8 @@ BLI_NOINLINE static void eval_all_limit_positions(const SubdivCCG &subdiv_ccg,
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   threading::parallel_for(IndexRange(subdiv_ccg.grids_num), 1024, [&](const IndexRange range) {
     for (const int grid : range) {
-      const MutableSpan grid_limit_positions = limit_positions.slice(grid * key.grid_area,
-                                                                     key.grid_area);
+      const MutableSpan grid_limit_positions = limit_positions.slice(
+          bke::ccg::grid_range(key.grid_area, grid));
       BKE_subdiv_ccg_eval_limit_positions(subdiv_ccg, key, grid, grid_limit_positions);
     }
   });

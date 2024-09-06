@@ -578,15 +578,12 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
-        for (const int grid : range) {
-          const Span<float3> grid_positions = positions.slice(bke::ccg::grid_range(key, grid));
-
-          prim_bounds[grid] = negative_bounds();
-          for (const int i : grid_positions.index_range()) {
-            math::min_max(grid_positions[i], prim_bounds[grid].min, prim_bounds[grid].max);
+        for (const int i : range) {
+          prim_bounds[i] = negative_bounds();
+          for (const float3 &position : positions.slice(bke::ccg::grid_range(key, i))) {
+            math::min_max(position, prim_bounds[i].min, prim_bounds[i].max);
           }
-
-          const float3 center = math::midpoint(prim_bounds[grid].min, prim_bounds[grid].max);
+          const float3 center = math::midpoint(prim_bounds[i].min, prim_bounds[i].max);
           math::min_max(center, current.min, current.max);
         }
         return current;
@@ -2181,10 +2178,10 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
             }
           }
           const std::array<const float *, 4> co{
-              {grid_positions[CCG_grid_xy_to_index(key.grid_size, x, y + 1)],
-               grid_positions[CCG_grid_xy_to_index(key.grid_size, x + 1, y + 1)],
-               grid_positions[CCG_grid_xy_to_index(key.grid_size, x + 1, y)],
-               grid_positions[CCG_grid_xy_to_index(key.grid_size, x, y)]}};
+              {grid_positions[CCG_grid_xy_to_index(grid_size, x, y + 1)],
+               grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y + 1)],
+               grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y)],
+               grid_positions[CCG_grid_xy_to_index(grid_size, x, y)]}};
           if (ray_face_intersection_quad(
                   ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
           {
@@ -2519,10 +2516,10 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
           hit |= ray_face_nearest_quad(
               ray_start,
               ray_normal,
-              grid_positions[CCG_grid_xy_to_index(key.grid_size, x, y)],
-              grid_positions[CCG_grid_xy_to_index(key.grid_size, x + 1, y)],
-              grid_positions[CCG_grid_xy_to_index(key.grid_size, x + 1, y + 1)],
-              grid_positions[CCG_grid_xy_to_index(key.grid_size, x, y + 1)],
+              grid_positions[CCG_grid_xy_to_index(grid_size, x, y)],
+              grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y)],
+              grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y + 1)],
+              grid_positions[CCG_grid_xy_to_index(grid_size, x, y + 1)],
               depth,
               dist_sq);
         }

@@ -11,8 +11,6 @@
 #include "BKE_mesh_legacy_derived_mesh.hh"
 
 /* Thread sync primitives used directly. */
-#include "BLI_array.hh"
-#include "BLI_math_vector_types.hh"
 #include "BLI_ordered_edge.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"

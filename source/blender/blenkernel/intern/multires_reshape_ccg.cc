@@ -18,21 +18,22 @@
 bool multires_reshape_assign_final_coords_from_ccg(const MultiresReshapeContext *reshape_context,
                                                    SubdivCCG *subdiv_ccg)
 {
+  using namespace blender;
   const CCGKey reshape_level_key = BKE_subdiv_ccg_key(*subdiv_ccg, reshape_context->reshape.level);
 
   const int reshape_grid_size = reshape_context->reshape.grid_size;
   const float reshape_grid_size_1_inv = 1.0f / (float(reshape_grid_size) - 1.0f);
 
-  const blender::Span<blender::float3> positions = subdiv_ccg->positions;
-  const blender::Span<float> masks = subdiv_ccg->masks;
+  const Span<float3> positions = subdiv_ccg->positions;
+  const Span<float> masks = subdiv_ccg->masks;
 
-  for (const int grid_index : blender::IndexRange(subdiv_ccg->grids_num)) {
-    const int grid_start = grid_index * reshape_level_key.grid_area;
+  int num_grids = subdiv_ccg->grids_num;
+  for (int grid_index = 0; grid_index < num_grids; ++grid_index) {
     for (int y = 0; y < reshape_grid_size; ++y) {
       const float v = float(y) * reshape_grid_size_1_inv;
       for (int x = 0; x < reshape_grid_size; ++x) {
         const float u = float(x) * reshape_grid_size_1_inv;
-        const int vert = grid_start + CCG_grid_xy_to_index(reshape_grid_size, x, y);
+        const int vert = bke::ccg::grid_xy_to_vert(reshape_level_key, grid_index, x, y);
 
         GridCoord grid_coord;
         grid_coord.grid_index = grid_index;

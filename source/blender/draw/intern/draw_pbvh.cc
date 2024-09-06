@@ -768,8 +768,8 @@ static void fill_vbo_position_grids(const CCGKey &key,
   else {
     for (const int grid : grids) {
       const Span<float3> grid_positions = positions.slice(bke::ccg::grid_range(key, grid));
-      std::copy_n(grid_positions.data(), key.grid_area, data);
-      data += key.grid_area;
+      std::copy_n(grid_positions.data(), grid_positions.size(), data);
+      data += grid_positions.size();
     }
   }
 }
@@ -856,8 +856,8 @@ static void fill_vbo_mask_grids(const CCGKey &key,
   else {
     for (const int grid : grids) {
       const Span<float> grid_masks = masks.slice(bke::ccg::grid_range(key, grid));
-      std::copy_n(grid_masks.data(), key.grid_area, data);
-      data += key.grid_area;
+      std::copy_n(grid_masks.data(), grid_masks.size(), data);
+      data += grid_masks.size();
     }
   }
 }
