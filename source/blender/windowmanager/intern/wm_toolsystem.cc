@@ -291,7 +291,7 @@ static void activate_compatible_brush_from_toolref(const bContext *C,
   bToolRef_Runtime *tref_rt = tref->runtime;
   Main *bmain = CTX_data_main(C);
 
-  BLI_assert(tref_rt->flag & TOOLREF_FLAG_USES_BRUSHES);
+  BLI_assert(tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES);
 
   if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE)) {
     if (tref_rt->data_block[0]) {

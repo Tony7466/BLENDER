@@ -1970,7 +1970,7 @@ class _defs_grease_pencil_paint:
             label="Fill",
             icon="brush.gpencil_draw.fill",
             data_block='FILL',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -1980,7 +1980,7 @@ class _defs_grease_pencil_paint:
             label="Erase",
             icon="brush.gpencil_draw.erase",
             data_block='ERASE',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2013,7 +2013,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2027,7 +2027,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2041,7 +2041,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2055,7 +2055,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2069,7 +2069,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2083,7 +2083,7 @@ class _defs_grease_pencil_paint:
             keymap=(),
             # Only allow draw brushes, no eraser, fill or tint.
             data_block='DRAW',
-            options={'USES_BRUSHES'},
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
