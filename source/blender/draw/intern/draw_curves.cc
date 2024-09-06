@@ -60,11 +60,17 @@ struct CurvesUniformBufPool {
 
   CurvesInfosBuf &alloc()
   {
+    CurvesInfosBuf *ptr;
     if (used >= ubos.size()) {
       ubos.append(std::make_unique<CurvesInfosBuf>());
-      return *ubos.last();
+      ptr = ubos.last().get();
     }
-    return *ubos[used++];
+    else {
+      ptr = ubos[used++].get();
+    }
+
+    memset(ptr->data(), 0, sizeof(CurvesInfos));
+    return *ptr;
   }
 };
 
@@ -220,7 +226,6 @@ DRWShadingGroup *DRW_shgroup_curves_create_sub(Object *object,
   const Scene *scene = draw_ctx->scene;
   CurvesUniformBufPool *pool = DST.vmempool->curves_ubos;
   CurvesInfosBuf &curves_infos = pool->alloc();
-  memset(curves_infos.is_point_attribute, 0, sizeof(curves_infos.is_point_attribute));
   Curves &curves_id = *static_cast<Curves *>(object->data);
 
   const int subdiv = scene->r.hair_subdiv;
@@ -465,7 +470,6 @@ gpu::Batch *curves_sub_pass_setup_implementation(PassT &sub_ps,
 
   CurvesUniformBufPool *pool = DST.vmempool->curves_ubos;
   CurvesInfosBuf &curves_infos = pool->alloc();
-  memset(curves_infos.is_point_attribute, 0, sizeof(curves_infos.is_point_attribute));
   BLI_assert(ob->type == OB_CURVES);
   Curves &curves_id = *static_cast<Curves *>(ob->data);
 
