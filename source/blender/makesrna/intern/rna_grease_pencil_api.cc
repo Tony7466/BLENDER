@@ -121,6 +121,7 @@ static void rna_GreasePencilDrawing_add_vertex_weight(ID *grease_pencil_id,
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   if (stroke_index < 0 || stroke_index >= curves.curve_num) {
+    BKE_report(reports, RPT_ERROR, "Stroke index must be in range");
     return;
   }
 
@@ -128,6 +129,7 @@ static void rna_GreasePencilDrawing_add_vertex_weight(ID *grease_pencil_id,
 
   const int deform_vert_idx = active_curve_range.start() + index;
   if (!active_curve_range.contains(deform_vert_idx)) {
+    BKE_report(reports, RPT_ERROR, "Vertex index must be in range");
     return;
   }
 
