@@ -291,10 +291,14 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         bcam->aperturesize = 1.0f / (2.0f * fstop);
       }
       else if (bcam->type == CAMERA_PANORAMA) {
-        float implicit_focal = bcam->lens;
+        // default behaviour is to use fisheye_lens
+        float implicit_focal = bcam->fisheye_lens;
         switch (bcam->panorama_type) {
           case PANORAMA_FISHEYE_EQUIDISTANT:
-            implicit_focal = current_sensor_size / (bcam->fisheye_fov);
+            implicit_focal = current_sensor_size / bcam->fisheye_fov;
+            break;
+          case PANORAMA_FISHEYE_EQUISOLID:
+            implicit_focal = bcam->fisheye_lens;
             break;
         }
         bcam->aperturesize = (implicit_focal * 1e-3f) / (2.0f * fstop);
