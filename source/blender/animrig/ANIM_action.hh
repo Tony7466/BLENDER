@@ -736,7 +736,7 @@ class ChannelBag : public ::ActionChannelBag {
   /**
    * Move the given fcurve to position `to_fcurve_index` in the fcurve array.
    *
-   * Note: this can indirectly alter channel group membership, because the
+   * Note: this can indirectly alter channel group memberships, because the
    * channel groups don't change what ranges in the fcurve array they cover.
    *
    * `fcurve` must belong to this channel bag, and `to_fcurve_index` must be a
