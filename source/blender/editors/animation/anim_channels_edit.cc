@@ -2335,13 +2335,9 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
             }
 
             /* free the group itself */
-            if (adt->action) {
-              BLI_freelinkN(&adt->action->groups, agrp);
-              DEG_id_tag_update_ex(CTX_data_main(C), &adt->action->id, ID_RECALC_ANIMATION);
-            }
-            else {
-              MEM_freeN(agrp);
-            }
+            BLI_freelinkN(&adt->action->groups, agrp);
+            DEG_id_tag_update_ex(CTX_data_main(C), &adt->action->id, ID_RECALC_ANIMATION);
+
             break;
           }
 
