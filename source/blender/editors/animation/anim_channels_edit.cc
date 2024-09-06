@@ -1712,15 +1712,17 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
         blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
         const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        const int to_index = group_index - 1;
         BLI_assert(group_index >= 0);
-        if (group_index == 0) {
+
+        /* We skip moving when the destination is also selected because that
+         * would swap two selected groups rather than moving them all in the
+         * same direction. This happens when multiple selected groups are
+         * already packed together at the top. */
+        if (to_index < 0 || SEL_AGRP(bag.channel_group(to_index))) {
           continue;
         }
 
-        const int to_index = group_index - 1;
-        if (SEL_AGRP(bag.channel_group(to_index))) {
-          continue;
-        }
         bag.channel_group_move(*group, to_index);
       }
       break;
@@ -1748,15 +1750,17 @@ static void rearrange_layered_action_channel_groups(bAnimContext *ac,
         }
         blender::animrig::ChannelBag &bag = group->channel_bag->wrap();
         const int group_index = bag.channel_groups().as_span().first_index_try(group);
+        const int to_index = group_index + 1;
         BLI_assert(group_index >= 0);
-        if (group_index == bag.channel_groups().size() - 1) {
+
+        /* We skip moving when the destination is also selected because that
+         * would swap two selected groups rather than moving them all in the
+         * same direction. This happens when multiple selected groups are
+         * already packed together at the bottom. */
+        if (to_index >= bag.channel_groups().size() || SEL_AGRP(bag.channel_group(to_index))) {
           continue;
         }
 
-        const int to_index = group_index + 1;
-        if (SEL_AGRP(bag.channel_group(to_index))) {
-          continue;
-        }
         bag.channel_group_move(*group, to_index);
       }
       break;
@@ -1855,7 +1859,12 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
         blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
         const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
         const int to_index = fcurve_index - 1;
-        if (fcurve_index == group.fcurve_range_start || SEL_FCU(bag.fcurve(to_index))) {
+
+        /* We skip moving when the destination is also selected because that
+         * would swap two selected fcurves rather than moving them all in the
+         * same direction. This happens when multiple selected fcurves are
+         * already packed together at the top. */
+        if (to_index < group.fcurve_range_start || SEL_FCU(bag.fcurve(to_index))) {
           continue;
         }
 
@@ -1893,6 +1902,11 @@ static void rearrange_layered_action_fcurves(bAnimContext *ac,
         blender::animrig::ChannelBag &bag = group.channel_bag->wrap();
         const int fcurve_index = bag.fcurves().as_span().first_index_try(fcurve);
         const int to_index = fcurve_index + 1;
+
+        /* We skip moving when the destination is also selected because that
+         * would swap two selected fcurves rather than moving them all in the
+         * same direction. This happens when multiple selected fcurves are
+         * already packed together at the bottom. */
         if (to_index >= group.fcurve_range_start + group.fcurve_range_length ||
             SEL_FCU(bag.fcurve(to_index)))
         {
