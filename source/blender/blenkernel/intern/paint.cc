@@ -1680,7 +1680,7 @@ void BKE_sculptsession_free_pbvh(Object &object)
     return;
   }
 
-  ss->pbvh.reset();
+  static_cast<Mesh *>(object.data)->runtime->pbvh.reset();
   ss->vert_to_face_map = {};
   ss->edge_to_face_offsets = {};
   ss->edge_to_face_indices = {};
@@ -2121,29 +2121,13 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
     return;
   }
 
-  bke::pbvh::Tree *pbvh = bke::object::pbvh_get(*ob_orig);
-
   if (!ss->cache && !ss->filter_cache && !ss->expand_cache) {
-    /* Avoid performing the following normal update for Multires, as it causes race conditions
-     * and other intermittent crashes with shared meshes.
-     * See !125268 and #125157 for more information. */
-    if (pbvh && pbvh->type() != blender::bke::pbvh::Type::Grids) {
-      /* pbvh::Tree nodes may contain dirty normal tags. To avoid losing that information when
-       * the pbvh::Tree is deleted, make sure all tagged geometry normals are up to date.
-       * See #122947 for more information. */
-      blender::bke::pbvh::update_normals_from_eval(*ob_eval, *pbvh);
-    }
-    /* We free pbvh on changes, except in the middle of drawing a stroke
-     * since it can't deal with changing PVBH node organization, we hope
-     * topology does not change in the meantime .. weak. */
-    BKE_sculptsession_free_pbvh(*ob_orig);
-
     BKE_sculptsession_free_deformMats(ss);
 
     /* In vertex/weight paint, force maps to be rebuilt. */
     BKE_sculptsession_free_vwpaint_data(ss);
   }
-  else if (pbvh) {
+  else if (bke::pbvh::Tree *pbvh = bke::object::pbvh_get(*ob_orig)) {
     IndexMaskMemory memory;
     const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh, memory);
     switch (pbvh->type()) {
@@ -2424,19 +2408,21 @@ blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Ob
     return pbvh;
   }
 
+  Mesh &mesh = *static_cast<Mesh *>(ob->data);
+
   if (ob->sculpt->bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special pbvh::Tree. */
-    ob->sculpt->pbvh = build_pbvh_for_dynamic_topology(ob);
+    mesh.runtime->pbvh = build_pbvh_for_dynamic_topology(ob);
   }
   else {
     Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
     Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
     if (mesh_eval->runtime->subdiv_ccg != nullptr) {
-      ob->sculpt->pbvh = build_pbvh_from_ccg(ob, *mesh_eval->runtime->subdiv_ccg);
+      mesh.runtime->pbvh = build_pbvh_from_ccg(ob, *mesh_eval->runtime->subdiv_ccg);
     }
     else if (ob->type == OB_MESH) {
       const Mesh *me_eval_deform = BKE_object_get_mesh_deform_eval(object_eval);
-      ob->sculpt->pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
+      mesh.runtime->pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
     }
   }
 
@@ -2450,18 +2436,21 @@ namespace blender::bke::object {
 
 const pbvh::Tree *pbvh_get(const Object &object)
 {
-  if (!object.sculpt) {
-    return nullptr;
-  }
-  return object.sculpt->pbvh.get();
+  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+  return mesh.runtime->pbvh.get();
+}
+
+const pbvh::Tree *pbvh_get_from_eval(const Object &object_eval)
+{
+  const Object &object_orig = *DEG_get_original_object(&const_cast<Object &>(object_eval));
+  const Mesh &mesh = *static_cast<const Mesh *>(object_orig.data);
+  return mesh.runtime->pbvh.get();
 }
 
 pbvh::Tree *pbvh_get(Object &object)
 {
-  if (!object.sculpt) {
-    return nullptr;
-  }
-  return object.sculpt->pbvh.get();
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  return mesh.runtime->pbvh.get();
 }
 
 }  // namespace blender::bke::object
@@ -2473,11 +2462,12 @@ bool BKE_object_sculpt_use_dyntopo(const Object *object)
 
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d)
 {
-  SculptSession *ss = ob->sculpt;
+  const Object &object_orig = *DEG_get_original_object(const_cast<Object *>(ob));
+  SculptSession *ss = object_orig.sculpt;
   if (ss == nullptr || ss->mode_type != OB_MODE_SCULPT) {
     return false;
   }
-  const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob);
+  const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(object_orig);
   if (!pbvh) {
     return false;
   }

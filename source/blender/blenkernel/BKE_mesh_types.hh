@@ -29,7 +29,10 @@ struct SubdivCCG;
 struct SubsurfRuntimeData;
 namespace blender::bke {
 struct EditMeshData;
+namespace pbvh {
+class Tree;
 }
+}  // namespace blender::bke
 namespace blender::bke::bake {
 struct BakeMaterialsList;
 }
@@ -160,6 +163,8 @@ struct MeshRuntime {
 
   /** Cache for BVH trees generated for the mesh. Defined in 'BKE_bvhutil.c' */
   BVHCache *bvh_cache = nullptr;
+
+  std::unique_ptr<pbvh::Tree> pbvh;
 
   /** Needed in case we need to lazily initialize the mesh. */
   CustomData_MeshMasks cd_mask_extra = {};

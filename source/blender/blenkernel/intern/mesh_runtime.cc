@@ -20,6 +20,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
+#include "BKE_pbvh_api.hh"
 #include "BKE_shrinkwrap.hh"
 #include "BKE_subdiv_ccg.hh"
 
@@ -313,6 +314,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
 {
   /* Tagging shared caches dirty will free the allocated data if there is only one user. */
   free_bvh_cache(*mesh->runtime);
+  mesh->runtime->pbvh.reset();
   mesh->runtime->subdiv_ccg.reset();
   mesh->runtime->bounds_cache.tag_dirty();
   mesh->runtime->vert_to_face_offset_cache.tag_dirty();
@@ -338,6 +340,7 @@ void Mesh::tag_edges_split()
   /* Triangulation didn't change because vertex positions and loop vertex indices didn't change. */
   free_bvh_cache(*this->runtime);
   this->runtime->vert_normals_cache.tag_dirty();
+  this->runtime->pbvh.reset();
   this->runtime->subdiv_ccg.reset();
   this->runtime->vert_to_face_offset_cache.tag_dirty();
   this->runtime->vert_to_face_map_cache.tag_dirty();

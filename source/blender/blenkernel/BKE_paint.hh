@@ -463,9 +463,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Limit surface/grids. */
   SubdivCCG *subdiv_ccg = nullptr;
 
-  /* BVH tree acceleration structure */
-  std::unique_ptr<blender::bke::pbvh::Tree> pbvh;
-
   /* Object is deformed with some modifiers. */
   bool deform_modifiers_active = false;
   /* Coords of deformed mesh but without stroke displacement. */
@@ -710,6 +707,7 @@ namespace blender::bke::object {
  */
 pbvh::Tree *pbvh_get(Object &object);
 const pbvh::Tree *pbvh_get(const Object &object);
+const pbvh::Tree *pbvh_get_from_eval(const Object &object_eval);
 
 }  // namespace blender::bke::object
 bool BKE_object_sculpt_use_dyntopo(const Object *object);

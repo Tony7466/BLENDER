@@ -231,11 +231,13 @@ static void basic_cache_populate(void *vedata, Object *ob)
       }
     }
 
-    if (G.debug_value == 889 && ob->sculpt && blender::bke::object::pbvh_get(*ob)) {
+    if (G.debug_value == 889 && ob->sculpt && blender::bke::object::pbvh_get_from_eval(*ob)) {
       int debug_node_nr = 0;
       DRW_debug_modelmat(ob->object_to_world().ptr());
       BKE_pbvh_draw_debug_cb(
-          *blender::bke::object::pbvh_get(*ob), DRW_sculpt_debug_cb, &debug_node_nr);
+          *const_cast<blender::bke::pbvh::Tree *>(blender::bke::object::pbvh_get_from_eval(*ob)),
+          DRW_sculpt_debug_cb,
+          &debug_node_nr);
     }
   }
 }
