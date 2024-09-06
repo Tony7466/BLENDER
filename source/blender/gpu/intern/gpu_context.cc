@@ -13,8 +13,11 @@
  * - free can be called from any thread
  */
 
+#include "BKE_global.hh"
+
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
 #include "GPU_context.hh"
 #include "GPU_framebuffer.hh"
