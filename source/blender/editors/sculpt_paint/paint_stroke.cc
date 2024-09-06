@@ -1728,7 +1728,11 @@ static const bToolRef *brush_tool_get(const bContext *C)
       (area && ELEM(area->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) &&
       (region && region->regiontype == RGN_TYPE_WINDOW))
   {
-    return area->runtime.tool;
+    if (area->runtime.tool && area->runtime.tool->runtime &&
+        (area->runtime.tool->runtime->flag & TOOLREF_FLAG_USE_BRUSHES))
+    {
+      return area->runtime.tool;
+    }
   }
   return nullptr;
 }
@@ -1736,19 +1740,22 @@ static const bToolRef *brush_tool_get(const bContext *C)
 bool paint_brush_tool_poll(bContext *C)
 {
   /* Check the current tool is a brush. */
-  const bToolRef *tref = brush_tool_get(C);
-  return tref && tref->runtime && (tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES);
+  return brush_tool_get(C) != nullptr;
 }
 
 bool paint_brush_cursor_poll(bContext *C)
 {
   const bToolRef *tref = brush_tool_get(C);
-  if (!(tref && tref->runtime)) {
+  if (!tref) {
     return false;
   }
 
-  const bool tool_defines_cursor = tref->runtime->cursor != WM_CURSOR_DEFAULT;
-  return (tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES) && !tool_defines_cursor;
+  /* Don't use brush cursor when the tool sets its own cursor. */
+  if (tref->runtime->cursor != WM_CURSOR_DEFAULT) {
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace blender::ed::sculpt_paint
