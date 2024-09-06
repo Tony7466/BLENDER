@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 extern PyMethodDef BPY_rna_id_collection_user_map_method_def;
+extern PyMethodDef BPY_rna_id_collection_file_path_map_method_def;
 extern PyMethodDef BPY_rna_id_collection_batch_remove_method_def;
 extern PyMethodDef BPY_rna_id_collection_orphans_purge_method_def;
 
