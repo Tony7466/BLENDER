@@ -111,11 +111,11 @@ static BooleanResult result_AB(const Span<float2> curve_a, const Span<float2> cu
   result.offsets = {0, len_a, len_a + len_b};
   result.intersections_data = {};
 
-  for (const int i : IndexRange(len_a)) {
+  for (const int i : curve_a.index_range()) {
     result.verts[i] = {VertexType::PointA, i};
   }
 
-  for (const int i : IndexRange(len_b)) {
+  for (const int i : curve_b.index_range()) {
     result.verts[i + len_a] = {VertexType::PointB, i};
   }
 
@@ -133,11 +133,11 @@ static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> cu
   result.offsets = {0, len_b, len_b + len_a};
   result.intersections_data = {};
 
-  for (const int i : IndexRange(len_b)) {
+  for (const int i : curve_b.index_range()) {
     result.verts[i] = {VertexType::PointB, i};
   }
 
-  for (const int i : IndexRange(len_a)) {
+  for (const int i : curve_a.index_range()) {
     result.verts[i + len_b] = {VertexType::PointA, i};
   }
 
@@ -549,7 +549,7 @@ struct CurveBooleanExecutor {
     array_utils::copy(vertex_offsets.as_span(), offsets.as_mutable_span());
 
     Array<IntersectionPoint> intersections_data(intersections.size());
-    for (const int i : IndexRange(intersections.size())) {
+    for (const int i : intersections.index_range()) {
       const ExtendedIntersectionPoint &inter = intersections[i];
       intersections_data[i] = {inter.point_a, inter.point_b, inter.alpha_a, inter.alpha_b};
     }
@@ -647,8 +647,8 @@ struct CurveBooleanExecutor {
 
     /* ---- ---- ---- Phase One ---- ---- ---- */
 
-    for (const int i : IndexRange(len_a)) {
-      for (const int j : IndexRange(len_b)) {
+    for (const int i : curve_a.index_range()) {
+      for (const int j : curve_b.index_range()) {
         float alpha_a, alpha_b;
         const int val = intersect(curve_a[i],
                                   curve_a[(i + 1) % len_a],
@@ -833,7 +833,7 @@ struct CurveBooleanExecutor {
     const IndexRange a_range = is_a_cyclic ? IndexRange(len_a) : IndexRange(len_a - 1);
 
     for (const int i : a_range) {
-      for (const int j : IndexRange(len_b)) {
+      for (const int j : curve_b.index_range()) {
         float alpha_a, alpha_b;
         const int val = intersect(curve_a[i],
                                   curve_a[(i + 1) % len_a],
