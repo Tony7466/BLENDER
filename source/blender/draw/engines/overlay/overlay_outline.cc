@@ -345,8 +345,8 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
       blender::gpu::Batch *geom = draw::DRW_cache_grease_pencil_get(scene, ob);
 
       if (show_fill) {
-        int v_first = t_offset * 3;
-        int v_count = num_stroke_triangles * 3;
+        const int v_first = t_offset * 3;
+        const int v_count = num_stroke_triangles * 3;
         DRW_shgroup_call_range(grp, ob, geom, v_first, v_count);
       }
 
@@ -363,8 +363,8 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
         }
 
         if (show_stroke) {
-          int v_first = t_offset * 3;
-          int v_count = num_stroke_vertices * 2 * 3;
+          const int v_first = t_offset * 3;
+          const int v_count = num_stroke_vertices * 2 * 3;
           DRW_shgroup_call_range(grp, ob, geom, v_first, v_count);
         }
         t_offset += num_stroke_vertices * 2;

@@ -116,8 +116,8 @@ class GreasePencil {
         blender::gpu::Batch *geom = draw::DRW_cache_grease_pencil_get(scene, ob);
 
         if (show_fill) {
-          int v_first = t_offset * 3;
-          int v_count = num_stroke_triangles * 3;
+          const int v_first = t_offset * 3;
+          const int v_count = num_stroke_triangles * 3;
           pass.draw(geom, 1, v_count, v_first, res_handle, select_id.get());
         }
 
@@ -135,8 +135,8 @@ class GreasePencil {
           }
 
           if (show_stroke) {
-            int v_first = t_offset * 3;
-            int v_count = num_stroke_vertices * 2 * 3;
+            const int v_first = t_offset * 3;
+            const int v_count = num_stroke_vertices * 2 * 3;
             pass.draw(geom, 1, v_count, v_first, res_handle, select_id.get());
           }
           t_offset += num_stroke_vertices * 2;
