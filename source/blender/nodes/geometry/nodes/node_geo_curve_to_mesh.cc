@@ -11,6 +11,7 @@
 #include "UI_resources.hh"
 
 #include "GEO_randomize.hh"
+#include "GEO_join_geometries.hh"
 
 #include "node_geometry_util.hh"
 
@@ -70,32 +71,28 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
     return;
   }
 
-  InstancesComponent &instances_component =
-      geometry_set.get_component_for_write<InstancesComponent>();
-  bke::Instances *instances = instances_component.get_for_write();
-  if (instances == nullptr) {
-    instances = new bke::Instances();
-    instances_component.replace(instances);
-  }
+  bke::Instances *gp_instances = new bke::Instances();
   for (Mesh *mesh : mesh_by_layer) {
     if (!mesh) {
       /* Add an empty reference so the number of layers and instances match.
        * This makes it easy to reconstruct the layers afterwards and keep their attributes.
        * Although in this particular case we don't propagate the attributes. */
-      const int handle = instances->add_reference(bke::InstanceReference());
-      instances->add_instance(handle, float4x4::identity());
+      const int handle = gp_instances->add_reference(bke::InstanceReference());
+      gp_instances->add_instance(handle, float4x4::identity());
       continue;
     }
     GeometrySet temp_set = GeometrySet::from_mesh(mesh);
-    const int handle = instances->add_reference(bke::InstanceReference{temp_set});
-    instances->add_instance(handle, float4x4::identity());
+    const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
+    gp_instances->add_instance(handle, float4x4::identity());
   }
 
-  bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
+  bke::copy_attributes(grease_pencil.attributes(),
                        bke::AttrDomain::Layer,
                        bke::AttrDomain::Instance,
                        attribute_filter,
-                       geometry_set.get_instances_for_write()->attributes_for_write());
+                       gp_instances->attributes_for_write());
+
+  geometry_set = geometry::join_geometries({std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
   geometry_set.replace_grease_pencil(nullptr);
 }
 

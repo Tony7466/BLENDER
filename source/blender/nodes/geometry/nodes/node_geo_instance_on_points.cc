@@ -12,6 +12,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
+#include "GEO_join_geometries.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_instance_on_points_cc {
@@ -189,8 +191,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
-    InstancesComponent &instances_component =
-        geometry_set.get_component_for_write<InstancesComponent>();
+    InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
     bke::Instances *dst_instances = instances_component.get_for_write();
     if (dst_instances == nullptr) {
       dst_instances = new bke::Instances();
@@ -222,9 +223,12 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      attributes_to_propagate);
       }
     }
+
     if (geometry_set.has_grease_pencil()) {
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+
+      bke::Instances *gp_instances = instances_component.get_for_write();
       for (const int layer_index : grease_pencil.layers().index_range()) {
         const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
         if (drawing == nullptr) {
@@ -235,8 +239,8 @@ static void node_geo_exec(GeoNodeExecParams params)
           /* Add an empty reference so the number of layers and instances match.
            * This makes it easy to reconstruct the layers afterwards and keep their attributes.
            * Although in this particular case we don't propagate the attributes. */
-          const int handle = dst_instances->add_reference(bke::InstanceReference());
-          dst_instances->add_instance(handle, float4x4::identity());
+          const int handle = gp_instances->add_reference(bke::InstanceReference());
+          gp_instances->add_instance(handle, float4x4::identity());
           continue;
         }
         /* TODO: Attributes are not propagating from the curves or the points. */
@@ -250,16 +254,17 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      params,
                                      attributes_to_propagate);
         GeometrySet temp_set = GeometrySet::from_instances(instances);
-        const int handle = dst_instances->add_reference(bke::InstanceReference{temp_set});
-        dst_instances->add_instance(handle, float4x4::identity());
+        const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
+        gp_instances->add_instance(handle, float4x4::identity());
       }
-      if (geometry_set.has_instances()) {
-        bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
+      
+      bke::copy_attributes(grease_pencil.attributes(),
                              bke::AttrDomain::Layer,
                              bke::AttrDomain::Instance,
                              attribute_filter,
-                             geometry_set.get_instances_for_write()->attributes_for_write());
-      }
+                             gp_instances->attributes_for_write());
+      
+      geometry_set = geometry::join_geometries({std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
     }
     geometry_set.remove_geometry_during_modify();
   });
