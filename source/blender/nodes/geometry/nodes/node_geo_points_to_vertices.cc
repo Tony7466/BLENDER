@@ -20,7 +20,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
-/* One improvement would be to move the attribute arrays directly to the mesh when possible. */
 static void geometry_set_points_to_vertices(GeometrySet &geometry_set,
                                             Field<bool> &selection_field,
                                             const AttributeFilter &attribute_filter)
@@ -39,45 +38,10 @@ static void geometry_set_points_to_vertices(GeometrySet &geometry_set,
   fn::FieldEvaluator selection_evaluator{field_context, points->totpoint};
   selection_evaluator.add(selection_field);
   selection_evaluator.evaluate();
+
   const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
-
-  Map<StringRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::PointCloud},
-                                                 GeometryComponent::Type::Mesh,
-                                                 false,
-                                                 attribute_filter,
-                                                 attributes);
-
-  Mesh *mesh;
-  if (selection.size() == points->totpoint) {
-    /* Create a mesh without positions so the attribute can be shared. */
-    mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
-    CustomData_free_layer_named(&mesh->vert_data, "position", mesh->verts_num);
-    mesh->verts_num = selection.size();
-  }
-  else {
-    mesh = BKE_mesh_new_nomain(selection.size(), 0, 0, 0);
-  }
-
-  const AttributeAccessor src_attributes = points->attributes();
-  MutableAttributeAccessor dst_attributes = mesh->attributes_for_write();
-
-  for (MapItem<StringRef, AttributeKind> entry : attributes.items()) {
-    const StringRef id = entry.key;
-    const eCustomDataType data_type = entry.value.data_type;
-    const GAttributeReader src = src_attributes.lookup(id);
-    if (selection.size() == points->totpoint && src.sharing_info && src.varray.is_span()) {
-      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
-                                          *src.sharing_info);
-      dst_attributes.add(id, AttrDomain::Point, data_type, init);
-    }
-    else {
-      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, AttrDomain::Point, data_type);
-      array_utils::gather(src.varray, selection, dst.span);
-      dst.finish();
-    }
-  }
+  Mesh *mesh = bke::mesh_new_no_attributes(selection.size(), 0, 0, 0);
+  bke::gather_attributes(points->attributes(), bke::AttrDomain::Point, bke::AttrDomain::Point, attribute_filter, selection, mesh->attributes_for_write());
 
   mesh->tag_loose_edges_none();
   mesh->tag_overlapping_none();
