@@ -23,8 +23,8 @@ static void interpolate_attribute_of_a_intersection_point(
   const T a1 = src_a[(inter_point.point_a + 1) % src_a.size()];
   const float alpha_a = inter_point.alpha_a;
 
-  mixer.mix_in(i, a0, alpha_a * weight);
-  mixer.mix_in(i, a1, (1.0f - alpha_a) * weight);
+  mixer.mix_in(i, a0, (1.0f - alpha_a) * weight);
+  mixer.mix_in(i, a1, alpha_a * weight);
 }
 
 template<typename T>
@@ -39,8 +39,8 @@ static void interpolate_attribute_of_b_intersection_point(
   const T b1 = src_b[(inter_point.point_b + 1) % src_b.size()];
   const float alpha_b = inter_point.alpha_b;
 
-  mixer.mix_in(i, b0, alpha_b * weight);
-  mixer.mix_in(i, b1, (1.0f - alpha_b) * weight);
+  mixer.mix_in(i, b0, (1.0f - alpha_b) * weight);
+  mixer.mix_in(i, b1, alpha_b * weight);
 }
 
 static Array<int2> calculate_segments(const blender::polygonboolean::BooleanResult &result)
