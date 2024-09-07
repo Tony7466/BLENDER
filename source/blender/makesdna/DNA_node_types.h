@@ -1993,8 +1993,29 @@ typedef struct NodeForeachGeometryElementOutputItems {
   char _pad[4];
 } NodeForeachGeometryElementOutputItems;
 
+typedef struct NodeForeachGeometryElementInputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeForeachGeometryElementInputItem;
+
+typedef struct NodeForeachGeometryElementInputItems {
+  NodeForeachGeometryElementInputItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeForeachGeometryElementInputItems;
+
 typedef struct NodeGeometryForeachGeometryElementOutput {
   NodeForeachGeometryElementOutputItems output_items;
+  NodeForeachGeometryElementInputItems input_items;
   int inspection_index;
   char _pad[4];
 } NodeGeometryForeachGeometryElementOutput;

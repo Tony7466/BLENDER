@@ -28,6 +28,32 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value();
   b.add_output<decl::Int>("Index").align_with_previous();
+
+  const bNode *node = b.node_or_null();
+  const bNodeTree *tree = b.tree_or_null();
+  if (node && tree) {
+    const NodeGeometryForeachGeometryElementInput &storage = node_storage(*node);
+    const bNode *output_node = tree->node_by_id(storage.output_node_id);
+    if (output_node) {
+      const auto &output_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+          output_node->storage);
+      for (const int i : IndexRange(output_storage.input_items.items_num)) {
+        const NodeForeachGeometryElementInputItem &item = output_storage.input_items.items[i];
+        const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+        const StringRef name = item.name ? item.name : "";
+        const std::string identifier =
+            ForeachGeometryElementInputItemsAccessor::socket_identifier_for_item(item);
+        auto &input_decl =
+            b.add_input(socket_type, name, identifier)
+                .socket_name_ptr(
+                    &tree->id, ForeachGeometryElementInputItemsAccessor::item_srna, &item, "name");
+        auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
+        input_decl.supports_field();
+      }
+    }
+  }
+  b.add_input<decl::Extend>("", "__extend__");
+  b.add_output<decl::Extend>("", "__extend__").align_with_previous();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -47,6 +73,16 @@ static void node_label(const bNodeTree * /*ntree*/,
   BLI_strncpy_utf8(label, IFACE_("For-Each Element"), label_maxncpy);
 }
 
+static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
+{
+  bNode *output_node = ntree->node_by_id(node_storage(*node).output_node_id);
+  if (!output_node) {
+    return true;
+  }
+  return socket_items::try_add_item_via_any_extend_socket<
+      ForeachGeometryElementInputItemsAccessor>(*ntree, *node, *output_node, *link);
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
@@ -57,6 +93,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.labelfunc = node_label;
+  ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
   ntype.no_muting = true;
   blender::bke::node_type_storage(&ntype,
@@ -123,6 +160,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_free_storage(bNode *node)
 {
+  socket_items::destruct_array<ForeachGeometryElementInputItemsAccessor>(*node);
   socket_items::destruct_array<ForeachGeometryElementOutputItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
@@ -133,6 +171,7 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   auto *dst_storage = MEM_cnew<NodeGeometryForeachGeometryElementOutput>(__func__, src_storage);
   dst_node->storage = dst_storage;
 
+  socket_items::copy_array<ForeachGeometryElementInputItemsAccessor>(*src_node, *dst_node);
   socket_items::copy_array<ForeachGeometryElementOutputItemsAccessor>(*src_node, *dst_node);
 }
 
@@ -196,6 +235,40 @@ void ForeachGeometryElementOutputItemsAccessor::blend_read_data(BlendDataReader 
                         &storage.output_items.items);
   for (const NodeForeachGeometryElementOutputItem &item :
        Span(storage.output_items.items, storage.output_items.items_num))
+  {
+    BLO_read_string(reader, &item.name);
+  }
+}
+
+StructRNA *ForeachGeometryElementInputItemsAccessor::item_srna =
+    &RNA_ForeachGeometryElementInputItem;
+int ForeachGeometryElementInputItemsAccessor::node_type = GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
+
+void ForeachGeometryElementInputItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
+{
+  const auto &storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+      node.storage);
+  BLO_write_struct_array(writer,
+                         NodeForeachGeometryElementInputItem,
+                         storage.input_items.items_num,
+                         storage.input_items.items);
+  for (const NodeForeachGeometryElementInputItem &item :
+       Span(storage.input_items.items, storage.input_items.items_num))
+  {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+void ForeachGeometryElementInputItemsAccessor::blend_read_data(BlendDataReader *reader,
+                                                               bNode &node)
+{
+  auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
+  BLO_read_struct_array(reader,
+                        NodeForeachGeometryElementInputItem,
+                        storage.input_items.items_num,
+                        &storage.input_items.items);
+  for (const NodeForeachGeometryElementInputItem &item :
+       Span(storage.input_items.items, storage.input_items.items_num))
   {
     BLO_read_string(reader, &item.name);
   }
