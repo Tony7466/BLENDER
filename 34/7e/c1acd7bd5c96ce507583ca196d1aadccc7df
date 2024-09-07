@@ -1,2 +1,3 @@
 Referenced by commit b4287a49020e49da9fb24a1375ae846391ecccea, Fix: Sculpt: Smooth brush crash and node data iteration issues
 Referenced by issue #127130, Snake Hook brush applies twist continuously
+Referenced by issue #127279, Sculpt: Some parts of mesh can't be sculpted on 6 level of multires
