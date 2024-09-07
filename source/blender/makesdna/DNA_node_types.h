@@ -2017,7 +2017,9 @@ typedef struct NodeGeometryForeachGeometryElementOutput {
   NodeForeachGeometryElementOutputItems output_items;
   NodeForeachGeometryElementInputItems input_items;
   int inspection_index;
-  char _pad[4];
+  /** #AttrDomain. */
+  uint8_t domain;
+  char _pad[3];
 } NodeGeometryForeachGeometryElementOutput;
 
 typedef struct IndexSwitchItem {

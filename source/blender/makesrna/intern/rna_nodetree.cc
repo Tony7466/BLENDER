@@ -9608,14 +9608,17 @@ static void def_geo_foreach_geometry_element_output(StructRNA *srna)
   prop = RNA_def_property(srna, "input_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "input_items.items", "input_items.items_num");
   RNA_def_property_struct_type(prop, "ForeachGeometryElementInputItem");
-  RNA_def_property_ui_text(prop, "Input Items", "");
   RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementInputItems");
 
   prop = RNA_def_property(srna, "output_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "output_items.items", "output_items.items_num");
   RNA_def_property_struct_type(prop, "ForeachGeometryElementOutputItem");
-  RNA_def_property_ui_text(prop, "Output Items", "");
   RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementOutputItems");
+
+  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Domain", "Geometry domain that is iterated over");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void rna_def_geo_capture_attribute_item(BlenderRNA *brna)

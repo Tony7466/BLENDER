@@ -8,9 +8,13 @@
 
 #include "BLO_read_write.hh"
 
+#include "RNA_access.hh"
 #include "RNA_prototypes.hh"
 
 #include "NOD_geo_foreach_geometry_element.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_geo_foreach_geometry_element_cc {
 
@@ -47,13 +51,24 @@ static void node_declare(NodeDeclarationBuilder &b)
             b.add_input(socket_type, name, identifier)
                 .socket_name_ptr(
                     &tree->id, ForeachGeometryElementInputItemsAccessor::item_srna, &item, "name");
-        auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
+        b.add_output(socket_type, name, identifier).align_with_previous();
         input_decl.supports_field();
       }
     }
   }
   b.add_input<decl::Extend>("", "__extend__");
   b.add_output<decl::Extend>("", "__extend__").align_with_previous();
+}
+
+static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  bNodeTree &tree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNode &node = *static_cast<bNode *>(ptr->data);
+  const NodeGeometryForeachGeometryElementInput &storage = node_storage(node);
+  bNode *output_node = tree.node_by_id(storage.output_node_id);
+
+  PointerRNA output_node_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Node, output_node);
+  uiItemR(layout, &output_node_ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -92,6 +107,7 @@ static void node_register()
                      NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
   ntype.labelfunc = node_label;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
