@@ -72,6 +72,10 @@ void Instance::init()
     state.do_pose_fade_geom = state.do_pose_xray && !(state.object_mode & OB_MODE_WEIGHT_PAINT) &&
                               ctx->object_pose != nullptr;
   }
+  else if (state.space_type == SPACE_IMAGE) {
+    const SpaceImage *sima = (SpaceImage *)state.space_data;
+    state.hide_overlays = (sima->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS) == 0;
+  }
 
   /* TODO(fclem): Remove DRW global usage. */
   resources.globals_buf = G_draw.block_ubo;
