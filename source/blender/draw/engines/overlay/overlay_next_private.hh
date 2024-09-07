@@ -221,6 +221,8 @@ class ShaderModule {
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
   ShaderPtr sculpt_mesh;
+  ShaderPtr sculpt_curves;
+  ShaderPtr sculpt_curves_cage;
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */

@@ -385,6 +385,7 @@ void Instance::draw(Manager &manager)
     layer.fluids.draw(framebuffer, manager, view);
     layer.particles.draw(framebuffer, manager, view);
     layer.armatures.draw(framebuffer, manager, view);
+    layer.sculpts.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
   };
 

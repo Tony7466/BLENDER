@@ -25,9 +25,15 @@ class Sculpts {
  private:
   const SelectionType selection_type_;
 
-  PassSimple pass_ = {"Sculpt"};
+  PassSimple sculpt_mask_ = {"SculptMaskAndFaceSet"};
+  PassSimple::Sub *mesh_ps_ = nullptr;
+  PassSimple::Sub *curves_ps_ = nullptr;
 
-  SculptBatchFeature sculpt_batch_features_ = SCULPT_BATCH_DEFAULT;
+  PassSimple sculpt_curve_cage_ = {"SculptCage"};
+
+  bool show_curves_cage_ = false;
+  bool show_face_set_ = false;
+  bool show_mask_ = false;
 
   bool enabled_ = false;
 
@@ -37,7 +43,7 @@ class Sculpts {
   void begin_sync(Resources &res, const State &state)
   {
     const int sculpt_overlay_flags = V3D_OVERLAY_SCULPT_SHOW_FACE_SETS |
-                                     V3D_OVERLAY_SCULPT_SHOW_MASK;
+                                     V3D_OVERLAY_SCULPT_SHOW_MASK | V3D_OVERLAY_SCULPT_CURVES_CAGE;
 
     enabled_ = (state.space_type == SPACE_VIEW3D) && !state.xray_enabled &&
                (selection_type_ == SelectionType::DISABLED) &&
@@ -46,27 +52,48 @@ class Sculpts {
 
     if (!enabled_) {
       /* Not used. But release the data. */
-      pass_.init();
+      sculpt_mask_.init();
+      sculpt_curve_cage_.init();
       return;
     }
 
-    const bool show_face_set = state.overlay.flag & V3D_OVERLAY_SCULPT_SHOW_FACE_SETS;
-    const bool show_mask = state.overlay.flag & V3D_OVERLAY_SCULPT_SHOW_MASK;
-    float face_set_opacity = show_face_set ? state.overlay.sculpt_mode_face_sets_opacity : 0.0f;
-    float mask_opacity = show_mask ? state.overlay.sculpt_mode_mask_opacity : 0.0f;
+    show_curves_cage_ = state.overlay.flag & V3D_OVERLAY_SCULPT_CURVES_CAGE;
+    show_face_set_ = state.overlay.flag & V3D_OVERLAY_SCULPT_SHOW_FACE_SETS;
+    show_mask_ = state.overlay.flag & V3D_OVERLAY_SCULPT_SHOW_MASK;
 
-    sculpt_batch_features_ = (show_face_set ? SCULPT_BATCH_FACE_SET : SCULPT_BATCH_DEFAULT) |
-                             (show_mask ? SCULPT_BATCH_MASK : SCULPT_BATCH_DEFAULT);
+    float curve_cage_opacity = show_curves_cage_ ? state.overlay.sculpt_curves_cage_opacity : 0.0f;
+    float face_set_opacity = show_face_set_ ? state.overlay.sculpt_mode_face_sets_opacity : 0.0f;
+    float mask_opacity = show_mask_ ? state.overlay.sculpt_mode_mask_opacity : 0.0f;
 
-    pass_.init();
-    pass_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_MUL,
-                    state.clipping_plane_count);
     {
-      auto &pass = pass_;
-      pass.shader_set(res.shaders.sculpt_mesh.get());
+      sculpt_mask_.init();
+      sculpt_mask_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
+                                 DRW_STATE_BLEND_MUL,
+                             state.clipping_plane_count);
+      {
+        auto &sub = sculpt_mask_.sub("Mesh");
+        sub.shader_set(res.shaders.sculpt_mesh.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("maskOpacity", mask_opacity);
+        sub.push_constant("faceSetsOpacity", face_set_opacity);
+        mesh_ps_ = &sub;
+      }
+      {
+        auto &sub = sculpt_mask_.sub("Curves");
+        sub.shader_set(res.shaders.sculpt_curves.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("selection_opacity", mask_opacity);
+        curves_ps_ = &sub;
+      }
+    }
+    {
+      auto &pass = sculpt_curve_cage_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                     state.clipping_plane_count);
+      pass.shader_set(res.shaders.sculpt_curves_cage.get());
       pass.bind_ubo("globalsBlock", &res.globals_buf);
-      pass.push_constant("maskOpacity", mask_opacity);
-      pass.push_constant("faceSetsOpacity", face_set_opacity);
+      pass.push_constant("opacity", curve_cage_opacity);
     }
   }
 
@@ -76,8 +103,51 @@ class Sculpts {
       return;
     }
 
-    if (ob_ref.object->type != OB_MESH) {
-      /* Only meshes are supported by this overlay. */
+    switch (ob_ref.object->type) {
+      case OB_MESH:
+        mesh_sync(manager, ob_ref, state);
+        break;
+      case OB_CURVES:
+        curves_sync(manager, ob_ref, state);
+        break;
+    }
+  }
+
+  void curves_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
+  {
+    ::Curves *curves = static_cast<::Curves *>(ob_ref.object->data);
+
+    /* As an optimization, draw nothing if everything is selected. */
+    if (show_mask_ && !everything_selected(*curves)) {
+      /* Retrieve the location of the texture. */
+      bool is_point_domain;
+      gpu::VertBuf **select_attr_buf = DRW_curves_texture_for_evaluated_attribute(
+          curves, ".selection", &is_point_domain);
+      if (select_attr_buf) {
+        /* Evaluate curves and their attributes if necessary. */
+        gpu::Batch *geometry = curves_sub_pass_setup(*curves_ps_, state.scene, ob_ref.object);
+        if (*select_attr_buf) {
+          ResourceHandle handle = manager.resource_handle(ob_ref);
+
+          curves_ps_->push_constant("is_point_domain", is_point_domain);
+          curves_ps_->bind_texture("selection_tx", *select_attr_buf);
+          curves_ps_->draw(geometry, handle);
+        }
+      }
+    }
+
+    if (show_curves_cage_) {
+      ResourceHandle handle = manager.resource_handle(ob_ref);
+
+      blender::gpu::Batch *geometry = DRW_curves_batch_cache_get_sculpt_curves_cage(curves);
+      sculpt_curve_cage_.draw(geometry, handle);
+    }
+  }
+
+  void mesh_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
+  {
+    if (!show_face_set_ && !show_mask_) {
+      /* Nothing to display. */
       return;
     }
 
@@ -141,8 +211,13 @@ class Sculpts {
       const float3 half_extent = bounds.max - center;
       ResourceHandle handle = manager.resource_handle(ob_ref, nullptr, &center, &half_extent);
 
+      SculptBatchFeature sculpt_batch_features_ = (show_face_set_ ? SCULPT_BATCH_FACE_SET :
+                                                                    SCULPT_BATCH_DEFAULT) |
+                                                  (show_mask_ ? SCULPT_BATCH_MASK :
+                                                                SCULPT_BATCH_DEFAULT);
+
       for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, sculpt_batch_features_)) {
-        pass_.draw(batch.batch, handle);
+        mesh_ps_->draw(batch.batch, handle);
       }
     }
     else {
@@ -150,8 +225,17 @@ class Sculpts {
 
       Mesh &mesh = *static_cast<Mesh *>(ob_ref.object->data);
       gpu::Batch *sculpt_overlays = DRW_mesh_batch_cache_get_sculpt_overlays(mesh);
-      pass_.draw(sculpt_overlays, handle);
+      mesh_ps_->draw(sculpt_overlays, handle);
     }
+  }
+
+  void draw(GPUFrameBuffer *framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_) {
+      return;
+    }
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(sculpt_curve_cage_, view);
   }
 
   void draw_on_render(GPUFrameBuffer *framebuffer, Manager &manager, View &view)
@@ -160,7 +244,16 @@ class Sculpts {
       return;
     }
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(pass_, view);
+    manager.submit(sculpt_mask_, view);
+  }
+
+ private:
+  bool everything_selected(const ::Curves &curves_id)
+  {
+    const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+    const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+        ".selection", bke::AttrDomain::Point, true);
+    return selection.is_single() && selection.get_internal_single();
   }
 };
 
