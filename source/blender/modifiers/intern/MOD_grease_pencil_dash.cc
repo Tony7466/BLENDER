@@ -32,7 +32,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
@@ -303,14 +303,12 @@ static bke::CurvesGeometry create_dashes(const PatternInfo &pattern_info,
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
-                         {},
-                         {"radius", "opacity"},
+                         bke::attribute_filter_from_skip_ref({"radius", "opacity"}),
                          src_point_indices,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Curve,
-                         {},
-                         {"cyclic", "material_index"},
+                         bke::attribute_filter_from_skip_ref({"cyclic", "material_index"}),
                          src_curve_indices,
                          dst_attributes);
 

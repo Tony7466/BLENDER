@@ -189,7 +189,7 @@ void BKE_pchan_minmax(const Object *ob,
  *
  * \note This uses #BKE_pchan_minmax, see its documentation for details on bounds calculation.
  *
- * \param use_select When true, only consider selected bones. When false, selection state is
+ * \param use_select: When true, only consider selected bones. When false, selection state is
  * ignored and all bones are included in the bounds.
  */
 std::optional<blender::Bounds<blender::float3>> BKE_pose_minmax(const Object *ob, bool use_select);
@@ -280,25 +280,6 @@ void BKE_pose_where_is_bone(Depsgraph *depsgraph,
  * Calculate tail of pose-channel.
  */
 void BKE_pose_where_is_bone_tail(bPoseChannel *pchan);
-
-/**
- * Evaluate the action and apply it to the pose. If any pose bones are selected, only FCurves that
- * relate to those bones are evaluated.
- */
-void BKE_pose_apply_action_selected_bones(Object *ob,
-                                          bAction *action,
-                                          const AnimationEvalContext *anim_eval_context);
-/**
- * Evaluate the action and apply it to the pose. Ignore selection state of the bones.
- */
-void BKE_pose_apply_action_all_bones(Object *ob,
-                                     bAction *action,
-                                     const AnimationEvalContext *anim_eval_context);
-
-void BKE_pose_apply_action_blend(Object *ob,
-                                 bAction *action,
-                                 const AnimationEvalContext *anim_eval_context,
-                                 float blend_factor);
 
 void vec_roll_to_mat3(const float vec[3], float roll, float r_mat[3][3]);
 
@@ -502,7 +483,7 @@ void BKE_pchan_bbone_handles_get(bPoseChannel *pchan,
  */
 void BKE_pchan_bbone_spline_params_get(bPoseChannel *pchan,
                                        bool rest,
-                                       BBoneSplineParameters *r_param);
+                                       BBoneSplineParameters *param);
 
 /**
  * Fills the array with the desired amount of bone->segments elements.
