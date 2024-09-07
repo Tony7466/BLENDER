@@ -2047,6 +2047,16 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     /* TODO */
     params.set_output(0, GeometrySet());
   }
+
+  std::string input_name(const int i) const override
+  {
+    return zone_wrapper_input_name(zone_info_, zone_, inputs_, i);
+  }
+
+  std::string output_name(const int i) const override
+  {
+    return zone_wrapper_output_name(zone_info_, zone_, outputs_, i);
+  }
 };
 
 /**
@@ -2620,7 +2630,7 @@ struct GeometryNodesLazyFunctionBuilder {
                                                             &side_effect_provider,
                                                             nullptr);
 
-    // std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_body_graph.to_dot() << "\n\n";
 
     return body_fn;
   }
@@ -2779,7 +2789,7 @@ struct GeometryNodesLazyFunctionBuilder {
 
     this->fix_link_cycles(lf_graph, graph_params.socket_usage_inputs);
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
 
     lf_graph.update_node_indices();
     lf_graph_info_->num_inline_nodes_approximate += lf_graph.nodes().size();

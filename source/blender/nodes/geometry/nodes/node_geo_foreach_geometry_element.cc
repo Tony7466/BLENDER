@@ -28,7 +28,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.allow_any_socket_order();
 
   b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Geometry").align_with_previous();
+  b.add_output<decl::Geometry>("Geometry").align_with_previous().propagate_all();
 
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value();
   b.add_output<decl::Int>("Index").align_with_previous();
@@ -131,7 +131,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.use_custom_socket_order();
   b.allow_any_socket_order();
 
+  /* TODO: This propagates attributes from the geometry in the input node. */
   b.add_output<decl::Geometry>("Geometry");
+
+  aal::RelationsInNode &relations = b.get_anonymous_attribute_relations();
 
   const bNode *node = b.node_or_null();
   const bNodeTree *tree = b.tree_or_null();
@@ -153,7 +156,14 @@ static void node_declare(NodeDeclarationBuilder &b)
                                               &item,
                                               "name");
       auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
-      if (socket_type != SOCK_GEOMETRY) {
+      if (socket_type == SOCK_GEOMETRY) {
+        output_decl.propagate_all();
+        aal::PropagateRelation relation;
+        relation.from_geometry_input = input_decl.index();
+        relation.to_geometry_output = output_decl.index();
+        relations.propagate_relations.append(relation);
+      }
+      else {
         if (previous_geometry_index > 0) {
           input_decl.supports_field();
         }
