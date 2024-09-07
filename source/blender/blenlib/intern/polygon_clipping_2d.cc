@@ -83,35 +83,18 @@ static BooleanResult result_None()
   return result;
 }
 
-static BooleanResult result_A(const Span<float2> curve_a)
+static BooleanResult result_from_curve(const Span<float2> curve, const bool is_curve_A)
 {
   BooleanResult result;
 
-  const int len_a = curve_a.size();
+  const int len = curve.size();
 
-  result.verts = Array<Vertex>(len_a);
-  result.offsets = {0, len_a};
+  result.verts = Array<Vertex>(len);
+  result.offsets = {0, len};
   result.intersections_data = {};
 
-  for (const int i : IndexRange(len_a)) {
-    result.verts[i] = {VertexType::PointA, i};
-  }
-
-  return result;
-}
-
-static BooleanResult result_B(const Span<float2> curve_b)
-{
-  BooleanResult result;
-
-  const int len_b = curve_b.size();
-
-  result.verts = Array<Vertex>(len_b);
-  result.offsets = {0, len_b};
-  result.intersections_data = {};
-
-  for (const int i : IndexRange(len_b)) {
-    result.verts[i] = {VertexType::PointB, i};
+  for (const int i : curve.index_range()) {
+    result.verts[i] = {is_curve_A ? VertexType::PointA : VertexType::PointB, i};
   }
 
   return result;
@@ -170,7 +153,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
 
   if (a_start_in_b) {
     if (boolean_mode == Operation::And) {
-      return result_A(curve_a);
+      return result_from_curve(curve_a, true);
     }
     else if (boolean_mode == Operation::NotB) {
       return result_None();
@@ -179,12 +162,12 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_BA(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::Or) {
-      return result_B(curve_b);
+      return result_from_curve(curve_b, false);
     }
   }
   else if (b_start_in_a) {
     if (boolean_mode == Operation::And) {
-      return result_B(curve_b);
+      return result_from_curve(curve_b, false);
     }
     else if (boolean_mode == Operation::NotB) {
       return result_AB(curve_a, curve_b);
@@ -193,7 +176,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_None();
     }
     else if (boolean_mode == Operation::Or) {
-      return result_A(curve_a);
+      return result_from_curve(curve_a, true);
     }
   }
   else if (!a_start_in_b && !b_start_in_a) {
@@ -201,10 +184,10 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_None();
     }
     else if (boolean_mode == Operation::NotB) {
-      return result_A(curve_a);
+      return result_from_curve(curve_a, true);
     }
     else if (boolean_mode == Operation::NotA) {
-      return result_B(curve_b);
+      return result_from_curve(curve_b, false);
     }
     else if (boolean_mode == Operation::Or) {
       return result_AB(curve_a, curve_b);
@@ -223,10 +206,10 @@ BooleanResult invalid_result(const Operation mode,
     return result_AB(curve_a, curve_b);
   }
   else if (mode == Operation::NotB) {
-    return result_A(curve_a);
+    return result_from_curve(curve_a, true);
   }
   else if (mode == Operation::NotA) {
-    return result_B(curve_b);
+    return result_from_curve(curve_b, false);
   }
   else if (mode == Operation::Or) {
     return result_AB(curve_a, curve_b);
@@ -873,7 +856,7 @@ struct CurveBooleanExecutor {
         return std::optional(result_None());
       }
       else {
-        return std::optional(result_A(curve_a));
+        return std::optional(result_from_curve(curve_a, true));
       }
     }
 
