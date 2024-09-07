@@ -960,7 +960,7 @@ void copy_attributes(const AttributeAccessor src_attributes,
                            src_domain,
                            dst_domain,
                            attribute_filter,
-                           IndexMask(src_attributes.domain_size(dst_domain)),
+                           IndexMask(src_attributes.domain_size(src_domain)),
                            dst_attributes);
 }
 
