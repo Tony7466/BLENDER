@@ -220,6 +220,7 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr sculpt_mesh;
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */
@@ -297,6 +298,11 @@ struct Resources : public select::SelectMap {
 
   /* Output Color. */
   Framebuffer overlay_output_fb = {"overlay_output_fb"};
+
+  /* Render Framebuffers. Only used for multiplicative blending on top of the render. */
+  /* TODO(fclem): Remove the usage of these somehow. This is against design. */
+  GPUFrameBuffer *render_fb = nullptr;
+  GPUFrameBuffer *render_in_front_fb = nullptr;
 
   /* Target containing line direction and data for line expansion and anti-aliasing. */
   TextureFromPool line_tx = {"line_tx"};
