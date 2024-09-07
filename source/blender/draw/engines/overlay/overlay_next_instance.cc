@@ -209,6 +209,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.speakers.object_sync(ob_ref, resources, state);
         break;
     }
+    layer.armatures.fade_geometry_sync(manager, ob_ref, state);
     layer.bounds.object_sync(ob_ref, resources, state);
     layer.facing.object_sync(manager, ob_ref, state);
     layer.fade.object_sync(manager, ob_ref, state);
@@ -360,6 +361,7 @@ void Instance::draw(Manager &manager)
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.fade.draw(framebuffer, manager, view);
     layer.facing.draw(framebuffer, manager, view);
+    layer.armatures.fade_geometry_draw(framebuffer, manager, view);
   };
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {

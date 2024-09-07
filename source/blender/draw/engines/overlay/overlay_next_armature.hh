@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BKE_modifier.hh"
+
 #include "ED_view3d.hh"
 
 #include "overlay_next_private.hh"
@@ -33,6 +35,11 @@ class Armatures {
   const SelectionType selection_type_;
 
   PassSimple armature_ps_ = {"Armature"};
+
+  /* Passes for Fade Geometry. */
+  PassMain armature_fade_geometry_ps_ = {"ArmatureFadeGeometry"};
+  PassMain::Sub *armature_fade_geometry_active_ps_;
+  PassMain::Sub *armature_fade_geometry_other_ps_;
 
   /* Force transparent drawing in X-ray mode. */
   bool draw_transparent = false;
@@ -422,6 +429,26 @@ class Armatures {
       transparent_.relations = opaque_.relations;
     }
 
+    /* Fade Geometry. */
+    armature_fade_geometry_ps_.init();
+    if (state.do_pose_fade_geom) {
+      const float alpha = state.overlay.xray_alpha_bone;
+      float4 color = {0.0f, 0.0f, 0.0f, alpha};
+      armature_fade_geometry_ps_.state_set(default_state, state.clipping_plane_count);
+      armature_fade_geometry_ps_.shader_set(res.shaders.uniform_color.get());
+      {
+        auto &sub = armature_fade_geometry_ps_.sub("fade_geometry.active");
+        sub.push_constant("ucolor", color);
+        armature_fade_geometry_active_ps_ = &sub;
+      }
+      {
+        color[3] = powf(alpha, 4);
+        auto &sub = armature_fade_geometry_ps_.sub("fade_geometry");
+        sub.push_constant("ucolor", color);
+        armature_fade_geometry_other_ps_ = &sub;
+      }
+    }
+
     auto shape_instance_bufs_begin_sync = [](BoneBuffers &bb) {
       bb.envelope_fill_buf.clear();
       bb.envelope_outline_buf.clear();
@@ -569,6 +596,22 @@ class Armatures {
     draw_armature_pose(&ctx);
   }
 
+  void fade_geometry_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
+  {
+    const bool draw_bone_selection = (ob_ref.object->type == OB_MESH) && state.do_pose_fade_geom &&
+                                     selection_type_ == SelectionType::DISABLED;
+    if (!draw_bone_selection) {
+      return;
+    }
+    blender::gpu::Batch *geom = DRW_cache_object_surface_get(ob_ref.object);
+    if (geom) {
+      ResourceHandle handle = manager.resource_handle(ob_ref);
+      (is_driven_by_active_armature(ob_ref.object, state) ? armature_fade_geometry_active_ps_ :
+                                                            armature_fade_geometry_other_ps_)
+          ->draw(geom, handle);
+    }
+  }
+
   void end_sync(Resources & /*res*/, const ShapeCache &shapes, const State & /*state*/)
   {
     if (!enabled_) {
@@ -631,6 +674,16 @@ class Armatures {
     manager.submit(armature_ps_, view);
   }
 
+  void fade_geometry_draw(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(armature_fade_geometry_ps_, view);
+  }
+
   /* Public for the time of the Overlay Next port to avoid duplicated logic. */
  public:
   static void draw_armature_pose(Armatures::DrawContext *ctx);
@@ -652,6 +705,22 @@ class Armatures {
       if (armature_ob == BKE_object_pose_armature_get(active_ob)) {
         return true;
       }
+    }
+
+    return false;
+  }
+
+  static bool is_driven_by_active_armature(Object *ob, const State &state)
+  {
+    Object *ob_arm = BKE_modifiers_is_deformed_by_armature(ob);
+    if (ob_arm) {
+      return is_pose_mode(ob_arm, state);
+    }
+
+    Object *ob_mesh_deform = BKE_modifiers_is_deformed_by_meshdeform(ob);
+    if (ob_mesh_deform) {
+      /* Recursive. */
+      return is_driven_by_active_armature(ob_mesh_deform, state);
     }
 
     return false;
