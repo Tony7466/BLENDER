@@ -48,10 +48,10 @@ void GPU_vertformat_clear(GPUVertFormat *format)
 #endif
 }
 
-void GPU_vertformat_copy(GPUVertFormat *dest, const GPUVertFormat *src)
+void GPU_vertformat_copy(GPUVertFormat *dest, const GPUVertFormat &src)
 {
   /* copy regular struct fields */
-  memcpy(dest, src, sizeof(GPUVertFormat));
+  memcpy(dest, &src, sizeof(GPUVertFormat));
 }
 
 static uint comp_size(GPUVertCompType type)
@@ -139,7 +139,7 @@ uint GPU_vertformat_attr_add(GPUVertFormat *format,
       assert(fetch_mode == GPU_FETCH_FLOAT);
       break;
     case GPU_COMP_I10:
-      /* 10_10_10 format intended for normals (xyz) or colors (rgb)
+      /* 10_10_10 format intended for normals (XYZ) or colors (RGB)
        * extra component packed.w can be manually set to { -2, -1, 0, 1 } */
       assert(ELEM(comp_len, 3, 4));
 
@@ -430,16 +430,16 @@ static void recommended_fetch_mode_and_comp_type(Type gpu_type,
   }
 }
 
-void GPU_vertformat_from_shader(GPUVertFormat *format, const GPUShader *gpushader)
+void GPU_vertformat_from_shader(GPUVertFormat *format, const GPUShader *shader)
 {
   GPU_vertformat_clear(format);
 
-  uint attr_len = GPU_shader_get_attribute_len(gpushader);
+  uint attr_len = GPU_shader_get_attribute_len(shader);
   int location_test = 0, attrs_added = 0;
   while (attrs_added < attr_len) {
     char name[256];
     Type gpu_type;
-    if (!GPU_shader_get_attribute_info(gpushader, location_test++, name, (int *)&gpu_type)) {
+    if (!GPU_shader_get_attribute_info(shader, location_test++, name, (int *)&gpu_type)) {
       continue;
     }
 

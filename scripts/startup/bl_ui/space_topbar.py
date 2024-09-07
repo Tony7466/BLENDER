@@ -134,8 +134,10 @@ class TOPBAR_PT_gpencil_layers(Panel):
 
         col = row.column()
         layer_rows = 10
-        col.template_list("GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
-                          rows=layer_rows, sort_reverse=True, sort_lock=True)
+        col.template_list(
+            "GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
+            rows=layer_rows, sort_reverse=True, sort_lock=True,
+        )
 
         gpl = context.active_gpencil_layer
         if gpl:
@@ -242,14 +244,15 @@ class TOPBAR_MT_file(Menu):
         layout.operator_context = 'EXEC_AREA' if context.blend_data.is_saved else 'INVOKE_AREA'
         layout.operator("wm.save_mainfile", text="Save", icon='FILE_TICK')
 
-        sub = layout.row()
-        sub.enabled = context.blend_data.is_saved
-        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
-
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save As...")
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save Copy...").copy = True
+
+        sub = layout.row()
+        sub.enabled = context.blend_data.is_saved
+        sub.operator_context = 'EXEC_AREA'
+        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
 
         layout.separator()
 
@@ -262,6 +265,9 @@ class TOPBAR_MT_file(Menu):
 
         layout.menu("TOPBAR_MT_file_import", icon='IMPORT')
         layout.menu("TOPBAR_MT_file_export", icon='EXPORT')
+        row = layout.row()
+        row.operator("wm.collection_export_all")
+        row.enabled = context.view_layer.has_export_collections
 
         layout.separator()
 
@@ -374,10 +380,11 @@ class TOPBAR_MT_file_defaults(Menu):
             display_name = bpy.path.display_name(iface_(app_template))
             props = layout.operator("wm.read_factory_settings", text="Load Factory Blender Settings")
             props.app_template = app_template
-            props = layout.operator("wm.read_factory_settings",
-                                    text=iface_("Load Factory %s Settings",
-                                                i18n_contexts.operator_default) % display_name,
-                                    translate=False)
+            props = layout.operator(
+                "wm.read_factory_settings",
+                text=iface_("Load Factory {:s} Settings", i18n_contexts.operator_default).format(display_name),
+                translate=False,
+            )
             props.app_template = app_template
             props.use_factory_startup_app_template_only = True
             del display_name
@@ -420,7 +427,7 @@ class TOPBAR_MT_file_import(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_import", text="Collada (.dae)")
+            self.layout.operator("wm.collada_import", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_import", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
@@ -428,7 +435,7 @@ class TOPBAR_MT_file_import(Menu):
                 "wm.usd_import", text="Universal Scene Description (.usd*)")
 
         if bpy.app.build_options.io_gpencil:
-            self.layout.operator("wm.gpencil_import_svg", text="SVG as Grease Pencil")
+            self.layout.operator("wm.grease_pencil_import_svg", text="SVG as Grease Pencil")
 
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_import", text="Wavefront (.obj)")
@@ -445,7 +452,7 @@ class TOPBAR_MT_file_export(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_export", text="Collada (.dae)")
+            self.layout.operator("wm.collada_export", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
@@ -455,10 +462,10 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.io_gpencil:
             # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
-                self.layout.operator("wm.gpencil_export_svg", text="Grease Pencil as SVG")
+                self.layout.operator("wm.grease_pencil_export_svg", text="Grease Pencil as SVG")
             # HARU library dependency.
             if bpy.app.build_options.haru:
-                self.layout.operator("wm.gpencil_export_pdf", text="Grease Pencil as PDF")
+                self.layout.operator("wm.grease_pencil_export_pdf", text="Grease Pencil as PDF")
 
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_export", text="Wavefront (.obj)")

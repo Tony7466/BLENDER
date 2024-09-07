@@ -354,7 +354,7 @@ static tNearestVertInfo *find_nearest_fcurve_vert(bAnimContext *ac, const int mv
  * 3) (de)select all - no testing is done; only for use internal tools as normal function...
  * \{ */
 
-void deselect_graph_keys(bAnimContext *ac, bool test, short sel, bool do_channels)
+void deselect_graph_keys(bAnimContext *ac, bool test, eEditKeyframes_Select sel, bool do_channels)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
@@ -595,7 +595,7 @@ static void initialize_box_select_key_editing_data(const bool incl_handles,
 static bool box_select_graphkeys(bAnimContext *ac,
                                  const rctf *rectf_view,
                                  short mode,
-                                 short selectmode,
+                                 eEditKeyframes_Select selectmode,
                                  bool incl_handles,
                                  void *data)
 {
@@ -689,8 +689,11 @@ static short ok_bezier_always_ok(KeyframeEditData * /*ked*/, BezTriple * /*bezt*
 #define ABOVE 1
 #define INSIDE 0
 #define BELOW -1
-static int rectf_curve_zone_y(
-    FCurve *fcu, const rctf *rectf, const float offset, const float unit_scale, const float eval_x)
+static int rectf_curve_zone_y(const FCurve *fcu,
+                              const rctf *rectf,
+                              const float offset,
+                              const float unit_scale,
+                              const float eval_x)
 {
   const float fcurve_y = (evaluate_fcurve(fcu, eval_x) + offset) * unit_scale;
   return fcurve_y < rectf->ymin ? BELOW : fcurve_y <= rectf->ymax ? INSIDE : ABOVE;
@@ -700,8 +703,11 @@ static int rectf_curve_zone_y(
  * only keyframes, but also all the interpolated values). This is done by sampling the curve at
  * different points between the xmin and the xmax of the rectangle.
  */
-static bool rectf_curve_intersection(
-    const float offset, const float unit_scale, const rctf *rectf, AnimData *adt, FCurve *fcu)
+static bool rectf_curve_intersection(const float offset,
+                                     const float unit_scale,
+                                     const rctf *rectf,
+                                     AnimData *adt,
+                                     const FCurve *fcu)
 {
   /* 30 sampling points. This worked well in tests. */
   int num_steps = 30;
@@ -753,7 +759,7 @@ static bool rectf_curve_intersection(
 static void box_select_graphcurves(bAnimContext *ac,
                                    const rctf *rectf_view,
                                    const short mode,
-                                   const short selectmode,
+                                   const eEditKeyframes_Select selectmode,
                                    const bool incl_handles,
                                    void *data)
 {
@@ -856,7 +862,7 @@ static int graphkeys_box_select_exec(bContext *C, wmOperator *op)
   }
 
   const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
-  const int selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+  const eEditKeyframes_Select selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, true, SELECT_SUBTRACT, true);
   }
@@ -972,7 +978,7 @@ static int graphkeys_lassoselect_exec(bContext *C, wmOperator *op)
   }
 
   const eSelectOp sel_op = eSelectOp(RNA_enum_get(op->ptr, "mode"));
-  const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+  const eEditKeyframes_Select selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, false, SELECT_SUBTRACT, true);
   }
@@ -1057,7 +1063,7 @@ static int graph_circle_select_exec(bContext *C, wmOperator *op)
   const eSelectOp sel_op = ED_select_op_modal(
       eSelectOp(RNA_enum_get(op->ptr, "mode")),
       WM_gesture_is_modal_first(static_cast<const wmGesture *>(op->customdata)));
-  const short selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
+  const eEditKeyframes_Select selectmode = (sel_op != SEL_OP_SUB) ? SELECT_ADD : SELECT_SUBTRACT;
   if (SEL_OP_USE_PRE_DESELECT(sel_op)) {
     deselect_graph_keys(&ac, false, SELECT_SUBTRACT, true);
   }
@@ -1246,7 +1252,7 @@ static void columnselect_graph_keys(bAnimContext *ac, short mode)
       break;
 
     case GRAPHKEYS_COLUMNSEL_MARKERS_COLUMN: /* list of selected markers */
-      ED_markers_make_cfra_list(ac->markers, &ked.list, SELECT);
+      ED_markers_make_cfra_list(ac->markers, &ked.list, true);
       break;
 
     default: /* invalid option */
@@ -1531,7 +1537,9 @@ static const EnumPropertyItem prop_graphkeys_leftright_select_types[] = {
 
 /* --------------------------------- */
 
-static void graphkeys_select_leftright(bAnimContext *ac, short leftright, short select_mode)
+static void graphkeys_select_leftright(bAnimContext *ac,
+                                       short leftright,
+                                       eEditKeyframes_Select select_mode)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
@@ -1594,7 +1602,7 @@ static int graphkeys_select_leftright_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
   short leftright = RNA_enum_get(op->ptr, "mode");
-  short selectmode;
+  eEditKeyframes_Select selectmode;
 
   /* get editor data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {

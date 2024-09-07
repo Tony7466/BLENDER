@@ -10,6 +10,9 @@
 namespace blender::geometry {
 
 bke::GeometrySet join_geometries(Span<bke::GeometrySet> geometries,
-                                 const bke::AnonymousAttributePropagationInfo &propagation_info);
+                                 const bke::AttributeFilter &attribute_filter);
 
-}
+void join_attributes(const Span<const bke::GeometryComponent *> src_components,
+                     bke::GeometryComponent &r_result,
+                     const Span<StringRef> ignored_attributes = {});
+}  // namespace blender::geometry

@@ -18,7 +18,6 @@
 #include "BKE_action.h"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -628,29 +627,14 @@ int view3d_opengl_select_ex(const ViewContext *vc,
       /* While this uses 'alloca' in a loop (which we typically avoid),
        * the number of items is nearly always 1, maybe 2..3 in rare cases. */
       LinkNode *ob_pose_list = nullptr;
-      if (obact->type == OB_GPENCIL_LEGACY) {
-        GpencilVirtualModifierData virtual_modifier_data;
-        const GpencilModifierData *md = BKE_gpencil_modifiers_get_virtual_modifierlist(
-            obact, &virtual_modifier_data);
-        for (; md; md = md->next) {
-          if (md->type == eGpencilModifierType_Armature) {
-            ArmatureGpencilModifierData *agmd = (ArmatureGpencilModifierData *)md;
-            if (agmd->object && (agmd->object->mode & OB_MODE_POSE)) {
-              BLI_linklist_prepend_alloca(&ob_pose_list, agmd->object);
-            }
-          }
-        }
-      }
-      else {
-        VirtualModifierData virtual_modifier_data;
-        const ModifierData *md = BKE_modifiers_get_virtual_modifierlist(obact,
-                                                                        &virtual_modifier_data);
-        for (; md; md = md->next) {
-          if (md->type == eModifierType_Armature) {
-            ArmatureModifierData *amd = (ArmatureModifierData *)md;
-            if (amd->object && (amd->object->mode & OB_MODE_POSE)) {
-              BLI_linklist_prepend_alloca(&ob_pose_list, amd->object);
-            }
+      VirtualModifierData virtual_modifier_data;
+      const ModifierData *md = BKE_modifiers_get_virtual_modifierlist(obact,
+                                                                      &virtual_modifier_data);
+      for (; md; md = md->next) {
+        if (md->type == eModifierType_Armature) {
+          ArmatureModifierData *amd = (ArmatureModifierData *)md;
+          if (amd->object && (amd->object->mode & OB_MODE_POSE)) {
+            BLI_linklist_prepend_alloca(&ob_pose_list, amd->object);
           }
         }
       }
@@ -859,7 +843,8 @@ static bool view3d_localview_init(const Depsgraph *depsgraph,
         base->local_view_bits &= ~local_view_bit;
       }
       FOREACH_BASE_IN_EDIT_MODE_BEGIN (scene, view_layer, v3d, base_iter) {
-        BKE_object_minmax(base_iter->object, min, max);
+        Object *ob_eval = DEG_get_evaluated_object(depsgraph, base_iter->object);
+        BKE_object_minmax(ob_eval ? ob_eval : base_iter->object, min, max);
         base_iter->local_view_bits |= local_view_bit;
         ok = true;
       }
@@ -869,7 +854,8 @@ static bool view3d_localview_init(const Depsgraph *depsgraph,
       BKE_view_layer_synced_ensure(scene, view_layer);
       LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
         if (BASE_SELECTED(v3d, base)) {
-          BKE_object_minmax(base->object, min, max);
+          Object *ob_eval = DEG_get_evaluated_object(depsgraph, base->object);
+          BKE_object_minmax(ob_eval ? ob_eval : base->object, min, max);
           base->local_view_bits |= local_view_bit;
           ok = true;
         }
@@ -987,7 +973,7 @@ static void view3d_localview_exit(const Depsgraph *depsgraph,
         continue;
       }
 
-      if (frame_selected) {
+      if (frame_selected && depsgraph) {
         Object *camera_old_rv3d, *camera_new_rv3d;
 
         camera_old_rv3d = (rv3d->persp == RV3D_CAMOB) ? camera_old : nullptr;
@@ -1014,6 +1000,34 @@ static void view3d_localview_exit(const Depsgraph *depsgraph,
       rv3d->localvd = nullptr;
     }
   }
+}
+
+bool ED_localview_exit_if_empty(const Depsgraph *depsgraph,
+                                Scene *scene,
+                                ViewLayer *view_layer,
+                                wmWindowManager *wm,
+                                wmWindow *win,
+                                View3D *v3d,
+                                ScrArea *area,
+                                const bool frame_selected,
+                                const int smooth_viewtx)
+{
+  if (v3d->localvd == nullptr) {
+    return false;
+  }
+
+  v3d->localvd->runtime.flag &= ~V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
+
+  BKE_view_layer_synced_ensure(scene, view_layer);
+  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+    if (base->local_view_bits & v3d->local_view_uid) {
+      return false;
+    }
+  }
+
+  view3d_localview_exit(
+      depsgraph, wm, win, scene, view_layer, area, frame_selected, smooth_viewtx);
+  return true;
 }
 
 static int localview_exec(bContext *C, wmOperator *op)
@@ -1104,6 +1118,19 @@ static int localview_remove_from_exec(bContext *C, wmOperator *op)
       }
       changed = true;
     }
+  }
+
+  /* If some object was removed from the local view, exit the local view if it is now empty. */
+  if (changed) {
+    ED_localview_exit_if_empty(CTX_data_ensure_evaluated_depsgraph(C),
+                               scene,
+                               view_layer,
+                               CTX_wm_manager(C),
+                               CTX_wm_window(C),
+                               v3d,
+                               CTX_wm_area(C),
+                               true,
+                               WM_operator_smooth_viewtx_get(op));
   }
 
   if (changed) {

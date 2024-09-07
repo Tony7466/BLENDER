@@ -137,6 +137,13 @@ ccl_device_inline bool curve_custom_intersect(const hiprtRay &ray,
   int curve_index = kernel_data_fetch(custom_prim_info, hit.primID + data_offset.x).x;
   int key_value = kernel_data_fetch(custom_prim_info, hit.primID + data_offset.x).y;
 
+#  ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(nullptr, local_payload->self, object_id)) {
+    /* Ignore hit - continue traversal */
+    return false;
+  }
+#  endif
+
   if (intersection_skip_self_shadow(local_payload->self, object_id, curve_index + prim_offset))
     return false;
 
@@ -218,7 +225,7 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ra
                                                               void *payload,
                                                               hiprtHit &hit)
 {
-#  ifdef MOTION_BLUR
+#  ifdef __OBJECT_MOTION__
   LocalPayload *local_payload = (LocalPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = local_payload->local_object;
@@ -261,8 +268,7 @@ ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &r
                                                                void *payload,
                                                                hiprtHit &hit)
 {
-#  ifdef MOTION_BLUR
-
+#  ifdef __OBJECT_MOTION__
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -312,7 +318,7 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
                                               void *payload,
                                               hiprtHit &hit)
 {
-#  ifdef POINT_CLOUD
+#  ifdef __POINTCLOUD__
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
@@ -326,12 +332,19 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ray,
 
   int type = prim_info.y;
 
+#    ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(nullptr, local_payload->self, object_id)) {
+    /* Ignore hit - continue traversal */
+    return false;
+  }
+#    endif
+
   if (intersection_skip_self_shadow(local_payload->self, object_id, prim_id_global))
     return false;
 
   float ray_time = local_payload->ray_time;
 
-  if ((type & PRIMITIVE_MOTION) && kernel_data.bvh.use_bvh_steps) {
+  if ((type & PRIMITIVE_MOTION_POINT) && kernel_data.bvh.use_bvh_steps) {
 
     int time_offset = kernel_data_fetch(prim_time_offset, object_id);
     float2 prims_time = kernel_data_fetch(prims_time, hit.primID + time_offset);
@@ -379,10 +392,19 @@ ccl_device_inline bool closest_intersection_filter(const hiprtRay &ray,
   int prim_offset = kernel_data_fetch(object_prim_offset, object_id);
   int prim = hit.primID + prim_offset;
 
-  if (intersection_skip_self_shadow(payload->self, object_id, prim))
+#  ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(nullptr, payload->self, object_id)) {
+    /* Ignore hit - continue traversal */
     return true;
-  else
-    return false;
+  }
+#  endif
+
+  if (intersection_skip_self_shadow(payload->self, object_id, prim)) {
+    /* Ignore hit - continue traversal */
+    return true;
+  }
+
+  return false;
 }
 
 ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ray,
@@ -405,6 +427,13 @@ ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ray,
   int prim = hit.primID + prim_offset;
 
   float ray_tmax = hit.t;
+
+#  ifdef __SHADOW_LINKING__
+  if (intersection_skip_shadow_link(nullptr, self, object)) {
+    /* Ignore hit - continue traversal */
+    return true;
+  }
+#  endif
 
 #  ifdef __VISIBILITY_FLAG__
 
@@ -490,6 +519,14 @@ ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ray,
   int prim = hit.primID;
 
   float ray_tmax = hit.t;
+
+#  ifdef __SHADOW_LINKING__
+  /* It doesn't seem like this is necessary. */
+  if (intersection_skip_shadow_link(nullptr, self, object)) {
+    /* Ignore hit - continue traversal */
+    return true;
+  }
+#  endif
 
 #  ifdef __VISIBILITY_FLAG__
 

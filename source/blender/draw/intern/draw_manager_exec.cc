@@ -320,8 +320,8 @@ void DRW_state_reset()
 
   GPU_texture_unbind_all();
   GPU_texture_image_unbind_all();
-  GPU_uniformbuf_unbind_all();
-  GPU_storagebuf_unbind_all();
+  GPU_uniformbuf_debug_unbind_all();
+  GPU_storagebuf_debug_unbind_all();
 
   /* Should stay constant during the whole rendering. */
   GPU_point_size(5);
@@ -751,8 +751,7 @@ BLI_INLINE void draw_select_buffer(DRWShadingGroup *shgroup,
   int tot = is_instancing ? GPU_vertbuf_get_vertex_len(batch->inst[0]) :
                             GPU_vertbuf_get_vertex_len(batch->verts[0]);
   /* HACK: get VBO data without actually drawing. */
-  int *select_id = static_cast<int *>(
-      (void *)static_cast<int *>(GPU_vertbuf_get_data(state->select_buf)));
+  int *select_id = state->select_buf->data<int>().data();
 
   /* Batching */
   if (!is_instancing) {
@@ -1011,8 +1010,8 @@ static void draw_shgroup(DRWShadingGroup *shgroup, DRWState pass_state)
       if (G.debug & G_DEBUG_GPU) {
         GPU_texture_unbind_all();
         GPU_texture_image_unbind_all();
-        GPU_uniformbuf_unbind_all();
-        GPU_storagebuf_unbind_all();
+        GPU_uniformbuf_debug_unbind_all();
+        GPU_storagebuf_debug_unbind_all();
       }
     }
     GPU_shader_bind(shgroup->shader);

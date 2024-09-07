@@ -60,7 +60,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1417,10 +1417,10 @@ static bool gpencil_stroke_eraser_is_occluded(
   Brush *eraser = p->eraser;
   BrushGpencilSettings *gp_settings = nullptr;
 
-  if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+  if (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE) {
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE)) {
     gp_settings = eraser->gpencil_settings;
   }
 
@@ -1808,11 +1808,11 @@ static void gpencil_stroke_doeraser(tGPsdata *p)
   BrushGpencilSettings *gp_settings = nullptr;
 
   /* detect if use pressure in eraser */
-  if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+  if (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE) {
     use_pressure = bool(brush->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = brush->gpencil_settings;
   }
-  else if ((eraser != nullptr) && (eraser->gpencil_tool == GPAINT_TOOL_ERASE)) {
+  else if ((eraser != nullptr) && (eraser->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE)) {
     use_pressure = bool(eraser->gpencil_settings->flag & GP_BRUSH_USE_PRESSURE);
     gp_settings = eraser->gpencil_settings;
   }
@@ -1914,90 +1914,17 @@ static void gpencil_session_validatebuffer(tGPsdata *p)
   }
 }
 
-/* helper to get default eraser and create one if no eraser brush */
-static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
-{
-  Brush *brush_dft = nullptr;
-  Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_prev = BKE_paint_brush(paint);
-  for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
-       brush = static_cast<Brush *>(brush->id.next))
-  {
-    if (brush->gpencil_settings == nullptr) {
-      continue;
-    }
-    if ((brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
-        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
-    {
-      /* save first eraser to use later if no default */
-      if (brush_dft == nullptr) {
-        brush_dft = brush;
-      }
-      /* found default */
-      if (brush->gpencil_settings->flag & GP_BRUSH_DEFAULT_ERASER) {
-        return brush;
-      }
-    }
-  }
-  /* if no default, but exist eraser brush, return this and set as default */
-  if (brush_dft) {
-    brush_dft->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
-    return brush_dft;
-  }
-  /* create a new soft eraser brush */
-
-  brush_dft = BKE_brush_add_gpencil(bmain, ts, "Soft Eraser", OB_MODE_PAINT_GPENCIL_LEGACY);
-  brush_dft->size = 30.0f;
-  brush_dft->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
-  brush_dft->gpencil_settings->icon_id = GP_BRUSH_ICON_ERASE_SOFT;
-  brush_dft->gpencil_tool = GPAINT_TOOL_ERASE;
-  brush_dft->gpencil_settings->eraser_mode = GP_BRUSH_ERASER_SOFT;
-
-  /* reset current brush */
-  BKE_paint_brush_set(paint, brush_prev);
-
-  return brush_dft;
-}
-
-/* helper to set default eraser and disable others */
-static void gpencil_set_default_eraser(Main *bmain, Brush *brush_dft)
-{
-  if (brush_dft == nullptr) {
-    return;
-  }
-
-  for (Brush *brush = static_cast<Brush *>(bmain->brushes.first); brush;
-       brush = static_cast<Brush *>(brush->id.next))
-  {
-    if ((brush->gpencil_settings) && (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
-      if (brush == brush_dft) {
-        brush->gpencil_settings->flag |= GP_BRUSH_DEFAULT_ERASER;
-      }
-      else if (brush->gpencil_settings->flag & GP_BRUSH_DEFAULT_ERASER) {
-        brush->gpencil_settings->flag &= ~GP_BRUSH_DEFAULT_ERASER;
-      }
-    }
-  }
-}
-
 /* initialize a drawing brush */
 static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
 {
-  Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-
   Paint *paint = &ts->gp_paint->paint;
-  bool changed = false;
   Brush *brush = BKE_paint_brush(paint);
 
-  /* if not exist, create a new one */
-  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-    /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
-    changed = true;
-    brush = BKE_paint_brush(paint);
+  if (brush == nullptr) {
+    return;
   }
+
   /* Be sure curves are initialized. */
   BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
   BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
@@ -2010,23 +1937,23 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
   /* Assign to temp #tGPsdata */
-  p->brush = BKE_paint_brush(paint);
-  if (p->brush->gpencil_tool != GPAINT_TOOL_ERASE) {
-    p->eraser = gpencil_get_default_eraser(p->bmain, ts);
+  p->brush = brush;
+
+  Brush *eraser_brush;
+  if (p->brush->gpencil_brush_type != GPAINT_BRUSH_TYPE_ERASE &&
+      (eraser_brush = BKE_paint_eraser_brush(paint)))
+  {
+    if (eraser_brush && !eraser_brush->gpencil_settings) {
+      BKE_brush_init_gpencil_settings(eraser_brush);
+    }
+    p->eraser = eraser_brush;
   }
   else {
     p->eraser = p->brush;
   }
-  /* set new eraser as default */
-  gpencil_set_default_eraser(p->bmain, p->eraser);
 
   /* use radius of eraser */
   p->radius = short(p->eraser->size);
-
-  /* Need this update to synchronize brush with draw manager. */
-  if (changed) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
-  }
 }
 
 /* initialize a paint brush and a default color if not exist */
@@ -2040,6 +1967,14 @@ static void gpencil_init_colors(tGPsdata *p)
 
   gpd->runtime.matid = BKE_object_material_slot_find_index(p->ob, p->material);
   gpd->runtime.sbuffer_brush = brush;
+
+  /* Reduce slightly the opacity of fill to make easy fill areas while drawing. */
+  gpd->runtime.fill_opacity_fac = 0.8f;
+  if ((brush->gpencil_settings->flag & GP_BRUSH_DISSABLE_LASSO) != 0) {
+    /* Don't set it to 0 so that there is still some feedback if the material has no stroke color.
+     */
+    gpd->runtime.fill_opacity_fac = 0.1f;
+  }
 }
 
 /* (re)init new painting data */
@@ -2117,6 +2052,10 @@ static bool gpencil_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 
   /* set brush and create a new one if null */
   gpencil_init_drawing_brush(C, p);
+  if (p->brush == nullptr) {
+    p->status = GP_STATUS_ERROR;
+    return false;
+  }
 
   /* setup active color */
   /* region where paint was originated */
@@ -2565,7 +2504,7 @@ static int gpencil_draw_init(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* if mode is draw and the brush is eraser, cancel */
   if (paintmode != GP_PAINTMODE_ERASER) {
-    if ((brush) && (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
+    if ((brush) && (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE)) {
       return 0;
     }
   }
@@ -2865,8 +2804,8 @@ static void gpencil_draw_apply(bContext *C, wmOperator *op, tGPsdata *p, Depsgra
       copy_v2_v2(p->mval, now_mouse);
 
       GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
-      bool is_speed_guide = ((guide->use_guide) &&
-                             (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+      bool is_speed_guide = ((guide->use_guide) && (p->brush && (p->brush->gpencil_brush_type ==
+                                                                 GPAINT_BRUSH_TYPE_DRAW)));
       if (is_speed_guide) {
         gpencil_snap_to_guide(p, guide, p->mval);
       }
@@ -2933,7 +2872,7 @@ static void gpencil_draw_apply_event(bContext *C,
   PointerRNA itemptr;
   float mousef[2];
   bool is_speed_guide = ((guide->use_guide) &&
-                         (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+                         (p->brush && (p->brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_DRAW)));
 
   /* convert from window-space to area-space mouse coordinates
    * add any x,y override position
@@ -3623,7 +3562,7 @@ static void gpencil_add_fake_points(const wmEvent *event, tGPsdata *p)
   GP_Sculpt_Guide *guide = &p->scene->toolsettings->gp_sculpt.guide;
   int input_samples = brush->gpencil_settings->input_samples;
   bool is_speed_guide = ((guide->use_guide) &&
-                         (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+                         (p->brush && (p->brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_DRAW)));
 
   /* TODO: ensure sampling enough points when using circular guide,
    * but the arc must be around the center. (see if above to check other guides only). */
@@ -3868,8 +3807,8 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
     /* handle painting mouse-movements? */
     if (ISMOUSE_MOTION(event->type) || (p->flags & GP_PAINTFLAG_FIRSTRUN)) {
       /* handle drawing event */
-      bool is_speed_guide = ((guide->use_guide) &&
-                             (p->brush && (p->brush->gpencil_tool == GPAINT_TOOL_DRAW)));
+      bool is_speed_guide = ((guide->use_guide) && (p->brush && (p->brush->gpencil_brush_type ==
+                                                                 GPAINT_BRUSH_TYPE_DRAW)));
 
       int size_before = p->gpd->runtime.sbuffer_used;
       if (((p->flags & GP_PAINTFLAG_FIRSTRUN) == 0) && (p->paintmode != GP_PAINTMODE_ERASER) &&

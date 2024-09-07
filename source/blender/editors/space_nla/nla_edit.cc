@@ -35,7 +35,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface_icons.hh"
 
@@ -2176,7 +2176,7 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator * /*op*/)
        * (transitions don't have scale) */
       if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
         if (strip->act == nullptr || ID_IS_OVERRIDE_LIBRARY(strip->act) ||
-            ID_IS_LINKED(strip->act))
+            !ID_IS_EDITABLE(strip->act))
         {
           continue;
         }

@@ -48,8 +48,8 @@ void ED_paint_data_warning(
  * Make sure that active object has a material,
  * and assign UVs and image layers if they do not exist.
  */
-bool ED_paint_proj_mesh_data_check(Scene *scene,
-                                   Object *ob,
+bool ED_paint_proj_mesh_data_check(Scene &scene,
+                                   Object &ob,
                                    bool *r_has_uvs,
                                    bool *r_has_mat,
                                    bool *r_has_tex,
@@ -118,7 +118,7 @@ void ED_paintcurve_undosys_type(UndoType *ut);
 /** Color type of an object can be overridden in sculpt/paint mode. */
 eV3DShadingColorType ED_paint_shading_color_override(bContext *C,
                                                      const PaintModeSettings *settings,
-                                                     Object *ob,
+                                                     Object &ob,
                                                      eV3DShadingColorType orig_color_type);
 
 /**
@@ -126,26 +126,26 @@ eV3DShadingColorType ED_paint_shading_color_override(bContext *C,
  *
  * When #tref isn't given the active tool from the context is used.
  */
-bool ED_paint_tool_use_canvas(bContext *C, bToolRef *tref);
+bool ED_image_paint_brush_type_use_canvas(bContext *C, bToolRef *tref);
 
 /** Store the last used tool in the sculpt session. */
-void ED_paint_tool_update_sticky_shading_color(bContext *C, Object *ob);
+void ED_image_paint_brush_type_update_sticky_shading_color(bContext *C, Object *ob);
 
-void ED_object_vpaintmode_enter_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob);
-void ED_object_vpaintmode_enter(bContext *C, Depsgraph *depsgraph);
-void ED_object_wpaintmode_enter_ex(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob);
-void ED_object_wpaintmode_enter(bContext *C, Depsgraph *depsgraph);
+void ED_object_vpaintmode_enter_ex(Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob);
+void ED_object_vpaintmode_enter(bContext *C, Depsgraph &depsgraph);
+void ED_object_wpaintmode_enter_ex(Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob);
+void ED_object_wpaintmode_enter(bContext *C, Depsgraph &depsgraph);
 
-void ED_object_vpaintmode_exit_ex(Object *ob);
+void ED_object_vpaintmode_exit_ex(Object &ob);
 void ED_object_vpaintmode_exit(bContext *C);
-void ED_object_wpaintmode_exit_ex(Object *ob);
+void ED_object_wpaintmode_exit_ex(Object &ob);
 void ED_object_wpaintmode_exit(bContext *C);
 
-void ED_object_texture_paint_mode_enter_ex(Main *bmain,
-                                           Scene *scene,
-                                           Depsgraph *depsgraph,
-                                           Object *ob);
+void ED_object_texture_paint_mode_enter_ex(Main &bmain,
+                                           Scene &scene,
+                                           Depsgraph &depsgraph,
+                                           Object &ob);
 void ED_object_texture_paint_mode_enter(bContext *C);
 
-void ED_object_texture_paint_mode_exit_ex(Main *bmain, Scene *scene, Object *ob);
+void ED_object_texture_paint_mode_exit_ex(Main &bmain, Scene &scene, Object &ob);
 void ED_object_texture_paint_mode_exit(bContext *C);

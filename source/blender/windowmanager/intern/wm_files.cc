@@ -38,6 +38,7 @@
 #include "BLI_filereader.h"
 #include "BLI_linklist.h"
 #include "BLI_math_time.h"
+#include "BLI_memory_cache.hh"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_time.h"
@@ -76,13 +77,14 @@
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
-#include "BKE_packedFile.h"
+#include "BKE_node.hh"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_undo_system.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "BLO_writefile.hh"
 
@@ -105,6 +107,8 @@
 #include "ED_util.hh"
 #include "ED_view3d.hh"
 #include "ED_view3d_offscreen.hh"
+
+#include "NOD_composite.hh"
 
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
@@ -226,14 +230,14 @@ static BlendFileReadWMSetupData *wm_file_read_setup_wm_init(bContext *C,
     wm->message_bus = nullptr;
   }
 
-  /* XXX Hack! We have to clear context menu here, because removing all modalhandlers
-   * above frees the active menu (at least, in the 'startup splash' case),
+  /* XXX Hack! We have to clear context popup-region here, because removing all
+   * #wmWindow::modalhandlers above frees the active menu (at least, in the 'startup splash' case),
    * causing use-after-free error in later handling of the button callbacks in UI code
-   * (see ui_apply_but_funcs_after()).
+   * (see #ui_apply_but_funcs_after()).
    * Tried solving this by always nullptr-ing context's menu when setting wm/win/etc.,
    * but it broke popups refreshing (see #47632),
    * so for now just handling this specific case here. */
-  CTX_wm_menu_set(C, nullptr);
+  CTX_wm_region_popup_set(C, nullptr);
 
   ED_editors_exit(bmain, true);
 
@@ -449,6 +453,21 @@ static void wm_file_read_setup_wm_finalize(bContext *C,
   /* Else just using the new WM read from file, nothing to do. */
   BLI_assert(wm_setup_data->old_wm == nullptr);
   MEM_delete(wm_setup_data);
+
+  /* UI Updates. */
+  /* Flag local View3D's to check and exit if they are empty. */
+  LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+    LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+      LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+        if (sl->spacetype == SPACE_VIEW3D) {
+          View3D *v3d = reinterpret_cast<View3D *>(sl);
+          if (v3d->localvd) {
+            v3d->localvd->runtime.flag |= V3D_RUNTIME_LOCAL_MAYBE_EMPTY;
+          }
+        }
+      }
+    }
+  }
 }
 
 /** \} */
@@ -489,7 +508,15 @@ static void wm_init_userdef(Main *bmain)
     SET_FLAG_FROM_TEST(G.f, (U.flag & USER_SCRIPT_AUTOEXEC_DISABLE) == 0, G_FLAG_SCRIPT_AUTOEXEC);
   }
 
-  MEM_CacheLimiter_set_maximum(size_t(U.memcachelimit) * 1024 * 1024);
+  /* Only reset "offline mode" if they weren't passes via command line arguments. */
+  if ((G.f & G_FLAG_INTERNET_OVERRIDE_PREF_ANY) == 0) {
+    SET_FLAG_FROM_TEST(G.f, U.flag & USER_INTERNET_ALLOW, G_FLAG_INTERNET_ALLOW);
+  }
+
+  const int64_t cache_limit = int64_t(U.memcachelimit) * 1024 * 1024;
+  MEM_CacheLimiter_set_maximum(cache_limit);
+  blender::memory_cache::set_approximate_size_limit(cache_limit);
+
   BKE_sound_init(bmain);
 
   /* Update the temporary directory from the preferences or fallback to the system default. */
@@ -666,6 +693,7 @@ struct wmFileReadPost_Params {
   /* Used by #wm_homefile_read_post. */
   uint success : 1;
   uint is_alloc : 1;
+  uint is_first_time : 1;
 };
 
 /**
@@ -696,11 +724,10 @@ static void wm_file_read_post(bContext *C,
 
 #ifdef WITH_PYTHON
   if (is_startup_file) {
-    /* On startup (by default), Python won't have been initialized.
-     *
-     * The following block handles data & preferences being reloaded
+    /* The following block handles data & preferences being reloaded
      * which requires resetting some internal variables. */
-    if (CTX_py_init_get(C)) {
+    if (!params->is_first_time) {
+      BLI_assert(CTX_py_init_get(C));
       bool reset_all = use_userdef;
       if (use_userdef || reset_app_template) {
         /* Only run when we have a template path found. */
@@ -780,8 +807,23 @@ static void wm_file_read_post(bContext *C,
 
     ED_editors_init(C);
 
+    /* Add-ons are disabled when loading the startup file, so the Render Layer node in compositor
+     * node trees might be wrong due to missing render engines that are available as add-ons, like
+     * Cycles. So we need to update compositor node trees after reading the file when add-ons are
+     * now loaded. */
+    if (is_startup_file) {
+      FOREACH_NODETREE_BEGIN (bmain, node_tree, owner_id) {
+        if (node_tree->type == NTREE_COMPOSIT) {
+          ntreeCompositUpdateRLayers(node_tree);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+
 #if 1
     WM_event_add_notifier(C, NC_WM | ND_FILEREAD, nullptr);
+    /* Clear static filtered asset tree caches. */
+    WM_event_add_notifier(C, NC_ASSET | ND_ASSET_LIST_READING, nullptr);
 #else
     WM_msg_publish_static(CTX_wm_message_bus(C), WM_MSG_STATICTYPE_FILE_READ);
 #endif
@@ -955,7 +997,7 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
   if (bf_reports->resynced_lib_overrides_libraries_count != 0) {
     BKE_reportf(bf_reports->reports,
                 RPT_WARNING,
-                "%d libraries have overrides needing resync (auto resynced in %.0fm%.2fs),  "
+                "%d libraries have overrides needing resync (auto resynced in %.0fm%.2fs), "
                 "please check the Info editor for details",
                 bf_reports->resynced_lib_overrides_libraries_count,
                 duration_lib_override_recursive_resync_minutes,
@@ -1244,7 +1286,8 @@ void wm_homefile_read_ex(bContext *C,
   if (use_userdef || reset_app_template) {
 #ifdef WITH_PYTHON
     /* This only runs once Blender has already started. */
-    if (CTX_py_init_get(C)) {
+    if (!params_homefile->is_first_time) {
+      BLI_assert(CTX_py_init_get(C));
       /* This is restored by 'wm_file_read_post', disable before loading any preferences
        * so an add-on can read their own preferences when un-registering,
        * and use new preferences if/when re-registering, see #67577.
@@ -1360,6 +1403,7 @@ void wm_homefile_read_ex(bContext *C,
     if (BLI_access(filepath_startup, R_OK) == 0) {
       BlendFileReadParams params{};
       params.is_startup = true;
+      params.is_factory_settings = use_factory_settings;
       params.skip_flags = skip_flags | BLO_READ_SKIP_USERDEF;
       BlendFileReadReport bf_reports{};
       bf_reports.reports = reports;
@@ -1402,6 +1446,7 @@ void wm_homefile_read_ex(bContext *C,
   if (success == false) {
     BlendFileReadParams read_file_params{};
     read_file_params.is_startup = true;
+    read_file_params.is_factory_settings = use_factory_settings;
     read_file_params.skip_flags = skip_flags;
     BlendFileData *bfd = BKE_blendfile_read_from_memory(
         datatoc_startup_blend, datatoc_startup_blend_size, &read_file_params, nullptr);
@@ -1495,6 +1540,8 @@ void wm_homefile_read_ex(bContext *C,
     params_file_read_post.use_userdef = use_userdef;
     params_file_read_post.is_startup_file = true;
     params_file_read_post.is_factory_startup = is_factory_startup;
+    params_file_read_post.is_first_time = params_homefile->is_first_time;
+
     params_file_read_post.reset_app_template = reset_app_template;
 
     params_file_read_post.success = success;
@@ -1731,7 +1778,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
     }
 
     /* File-system thumbnail image can be 256x256. */
-    IMB_scaleImBuf(ibuf, ex * 2, ey * 2);
+    IMB_scale(ibuf, ex * 2, ey * 2, IMBScaleFilter::Box, false);
 
     /* Save metadata for quick access. */
     char version_st[10] = {0};
@@ -1741,7 +1788,7 @@ static ImBuf *blend_file_thumb_from_screenshot(bContext *C, BlendThumbnail **r_t
 
     /* Thumbnail inside blend should be 128x128. */
     ImBuf *thumb_ibuf = IMB_dupImBuf(ibuf);
-    IMB_scaleImBuf(thumb_ibuf, ex, ey);
+    IMB_scale(thumb_ibuf, ex, ey, IMBScaleFilter::Box, false);
 
     BlendThumbnail *thumb = BKE_main_thumbnail_from_imbuf(nullptr, thumb_ibuf);
     IMB_freeImBuf(thumb_ibuf);
@@ -1856,11 +1903,15 @@ static ImBuf *blend_file_thumb_from_camera(const bContext *C,
     IMB_metadata_set_field(ibuf->metadata, "Thumb::Blender::Version", version_st);
 
     /* BLEN_THUMB_SIZE is size of thumbnail inside blend file: 128x128. */
-    IMB_scaleImBuf(thumb_ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE);
+    IMB_scale(thumb_ibuf, BLEN_THUMB_SIZE, BLEN_THUMB_SIZE, IMBScaleFilter::Box, false);
     thumb = BKE_main_thumbnail_from_imbuf(nullptr, thumb_ibuf);
     IMB_freeImBuf(thumb_ibuf);
     /* Thumbnail saved to file-system should be 256x256. */
-    IMB_scaleImBuf(ibuf, PREVIEW_RENDER_LARGE_HEIGHT, PREVIEW_RENDER_LARGE_HEIGHT);
+    IMB_scale(ibuf,
+              PREVIEW_RENDER_LARGE_HEIGHT,
+              PREVIEW_RENDER_LARGE_HEIGHT,
+              IMBScaleFilter::Box,
+              false);
   }
   else {
     /* '*r_thumb' needs to stay nullptr to prevent a bad thumbnail from being handled. */
@@ -1911,8 +1962,15 @@ static bool wm_file_write_check_with_report_on_failure(Main *bmain,
     return false;
   }
 
+  if (bmain->is_asset_edit_file &&
+      blender::StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX))
+  {
+    BKE_report(reports, RPT_ERROR, "Cannot overwrite files that are managed by the asset system");
+    return false;
+  }
+
   LISTBASE_FOREACH (Library *, li, &bmain->libraries) {
-    if (BLI_path_cmp(li->filepath_abs, filepath) == 0) {
+    if (BLI_path_cmp(li->runtime.filepath_abs, filepath) == 0) {
       BKE_reportf(reports, RPT_ERROR, "Cannot overwrite used library '%.240s'", filepath);
       return false;
     }
@@ -2523,11 +2581,6 @@ static int wm_userpref_read_exec(bContext *C, wmOperator *op)
     U.runtime.is_dirty = true;
   }
 
-  /* Ensure the correct icon textures are loaded. When the current theme didn't had an
-   * #icon_border_intensity, but the loaded theme has, the icon with border intensity needs to be
-   * loaded. */
-  UI_icons_reload_internal_textures();
-
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 
   /* Needed to recalculate UI scaling values (eg, #UserDef.inv_dpi_fac). */
@@ -2568,7 +2621,7 @@ static int wm_userpref_read_invoke(bContext *C, wmOperator *op, const wmEvent * 
       C,
       op,
       title.c_str(),
-      IFACE_("To make changes to Preferences permanent, use \"Save Preferences.\""),
+      IFACE_("To make changes to Preferences permanent, use \"Save Preferences\""),
       IFACE_("Load"),
       ALERT_ICON_WARNING,
       false);
@@ -3033,16 +3086,16 @@ static int wm_open_mainfile_exec(bContext *C, wmOperator *op)
   return wm_open_mainfile__open(C, op);
 }
 
-static std::string wm_open_mainfile_description(bContext * /*C*/,
-                                                wmOperatorType * /*ot*/,
-                                                PointerRNA *params)
+static std::string wm_open_mainfile_get_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
-  if (!RNA_struct_property_is_set(params, "filepath")) {
+  if (!RNA_struct_property_is_set(ptr, "filepath")) {
     return "";
   }
 
   char filepath[FILE_MAX];
-  RNA_string_get(params, "filepath", filepath);
+  RNA_string_get(ptr, "filepath", filepath);
 
   BLI_stat_t stats;
   if (BLI_stat(filepath, &stats) == -1) {
@@ -3144,7 +3197,7 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
   ot->name = "Open";
   ot->idname = "WM_OT_open_mainfile";
   ot->description = "Open a Blender file";
-  ot->get_description = wm_open_mainfile_description;
+  ot->get_description = wm_open_mainfile_get_description;
 
   ot->invoke = wm_open_mainfile_invoke;
   ot->exec = wm_open_mainfile_exec;
@@ -3180,10 +3233,16 @@ void WM_OT_open_mainfile(wmOperatorType *ot)
 
 static int wm_revert_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  std::string message = IFACE_("Any unsaved changes will be lost.");
+  if (ED_image_should_save_modified(CTX_data_main(C))) {
+    message += "\n";
+    message += IFACE_("Warning: There are unsaved external image(s).");
+  }
+
   return WM_operator_confirm_ex(C,
                                 op,
                                 IFACE_("Revert to the Saved File"),
-                                IFACE_("Any unsaved changes will be lost."),
+                                message.c_str(),
                                 IFACE_("Revert"),
                                 ALERT_ICON_WARNING,
                                 false);
@@ -3250,7 +3309,7 @@ static int wm_recover_last_session_exec(bContext *C, wmOperator *op)
   if (WM_file_recover_last_session(C, op->reports)) {
     if (!G.background) {
       wmOperatorType *ot = op->type;
-      PointerRNA *props_ptr = MEM_cnew<PointerRNA>(__func__);
+      PointerRNA *props_ptr = MEM_new<PointerRNA>(__func__);
       WM_operator_properties_create_ptr(props_ptr, ot);
       RNA_boolean_set(props_ptr, "use_scripts", true);
       wm_test_autorun_revert_action_set(ot, props_ptr);
@@ -3318,7 +3377,7 @@ static int wm_recover_auto_save_exec(bContext *C, wmOperator *op)
   if (success) {
     if (!G.background) {
       wmOperatorType *ot = op->type;
-      PointerRNA *props_ptr = MEM_cnew<PointerRNA>(__func__);
+      PointerRNA *props_ptr = MEM_new<PointerRNA>(__func__);
       WM_operator_properties_create_ptr(props_ptr, ot);
       RNA_boolean_set(props_ptr, "use_scripts", true);
       wm_test_autorun_revert_action_set(ot, props_ptr);
@@ -3409,6 +3468,17 @@ static void save_set_filepath(bContext *C, wmOperator *op)
     }
     else {
       STRNCPY(filepath, blendfile_path);
+    }
+
+    /* For convenience when using "Save As" on asset system files:
+     * Replace `.asset.blend` extension with just `.blend`.
+     * Asset system files must not be overridden (except by the asset system),
+     * there are further checks to prevent this entirely. */
+    if (bmain->is_asset_edit_file &&
+        blender::StringRef(filepath).endswith(BLENDER_ASSET_FILE_SUFFIX))
+    {
+      filepath[strlen(filepath) - strlen(BLENDER_ASSET_FILE_SUFFIX)] = '\0';
+      BLI_path_extension_ensure(filepath, FILE_MAX, ".blend");
     }
 
     wm_filepath_default(bmain, filepath);
@@ -3509,19 +3579,21 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  if (!is_save_as) {
-    /* If saved as current file, there are technically no more compatibility issues, the file on
-     * disk now matches the currently opened data version-wise. */
+  if (!use_save_as_copy) {
+    /* If saved file is the active one, there are technically no more compatibility issues, the
+     * file on disk now matches the currently opened data version-wise. */
     bmain->has_forward_compatibility_issues = false;
-  }
 
-  WM_event_add_notifier(C, NC_WM | ND_FILESAVE, nullptr);
-  if (wmWindowManager *wm = CTX_wm_manager(C)) {
-    /* Restart auto-save timer to avoid unnecessary unexpected freezing (because of auto-save) when
-     * often saving manually. */
-    wm_autosave_timer_end(wm);
-    wm_autosave_timer_begin(wm);
-    wm->autosave_scheduled = false;
+    /* If saved file is the active one, notify WM so that saved status and window title can be
+     * updated. */
+    WM_event_add_notifier(C, NC_WM | ND_FILESAVE, nullptr);
+    if (wmWindowManager *wm = CTX_wm_manager(C)) {
+      /* Restart auto-save timer to avoid unnecessary unexpected freezing (because of auto-save)
+       * when often saving manually. */
+      wm_autosave_timer_end(wm);
+      wm_autosave_timer_begin(wm);
+      wm->autosave_scheduled = false;
+    }
   }
 
   if (!is_save_as && RNA_boolean_get(op->ptr, "exit")) {
@@ -3626,8 +3698,8 @@ static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * 
   }
 
   if (blendfile_path[0] != '\0') {
-    if (CTX_data_main(C)->has_forward_compatibility_issues) {
-      wm_save_file_forwardcompat_dialog(C, op);
+    if (BKE_main_needs_overwrite_confirm(CTX_data_main(C))) {
+      wm_save_file_overwrite_dialog(C, op);
       ret = OPERATOR_INTERFACE;
     }
     else {
@@ -3699,23 +3771,49 @@ void WM_OT_save_mainfile(wmOperatorType *ot)
 /** \name Clear Recent Files List Operator
  * \{ */
 
-static int wm_clear_recent_files_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+enum ClearRecentInclude { CLEAR_RECENT_ALL, CLEAR_RECENT_MISSING };
+
+static const EnumPropertyItem prop_clear_recent_types[] = {
+    {CLEAR_RECENT_ALL, "ALL", 0, "All Items", ""},
+    {CLEAR_RECENT_MISSING, "MISSING", 0, "Items Not Found", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static int wm_clear_recent_files_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  return WM_operator_confirm_ex(C,
-                                op,
-                                nullptr,
-                                IFACE_("Remove all items from the recent files list"),
-                                IFACE_("Remove All"),
-                                ALERT_ICON_WARNING,
-                                false);
+  return WM_operator_props_popup_confirm_ex(
+      C, op, event, IFACE_("Clear Recent Files List"), IFACE_("Remove"));
 }
 
-static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator * /*op*/)
+static int wm_clear_recent_files_exec(bContext * /*C*/, wmOperator *op)
 {
-  wm_history_files_free();
+  ClearRecentInclude include = static_cast<ClearRecentInclude>(RNA_enum_get(op->ptr, "remove"));
+
+  if (include == CLEAR_RECENT_ALL) {
+    wm_history_files_free();
+  }
+  else if (include == CLEAR_RECENT_MISSING) {
+    LISTBASE_FOREACH_MUTABLE (RecentFile *, recent, &G.recent_files) {
+      if (!BLI_exists(recent->filepath)) {
+        BLI_freelinkN(&G.recent_files, recent);
+      }
+    }
+  }
+
   wm_history_file_write();
 
   return OPERATOR_FINISHED;
+}
+
+static void wm_clear_recent_files_ui(bContext * /*C*/, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
+  uiItemS(layout);
+  uiItemR(layout, op->ptr, "remove", UI_ITEM_R_TOGGLE, nullptr, ICON_NONE);
+  uiItemS(layout);
 }
 
 void WM_OT_clear_recent_files(wmOperatorType *ot)
@@ -3726,6 +3824,14 @@ void WM_OT_clear_recent_files(wmOperatorType *ot)
 
   ot->invoke = wm_clear_recent_files_invoke;
   ot->exec = wm_clear_recent_files_exec;
+  ot->ui = wm_clear_recent_files_ui;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;
+
+  /* props */
+  ot->prop = RNA_def_enum(
+      ot->srna, "remove", prop_clear_recent_types, CLEAR_RECENT_ALL, "Remove", "");
 }
 
 /** \} */
@@ -3904,7 +4010,7 @@ void wm_test_autorun_revert_action_set(wmOperatorType *ot, PointerRNA *ptr)
   wm_test_autorun_revert_action_data.ot = nullptr;
   if (wm_test_autorun_revert_action_data.ptr != nullptr) {
     WM_operator_properties_free(wm_test_autorun_revert_action_data.ptr);
-    MEM_freeN(wm_test_autorun_revert_action_data.ptr);
+    MEM_delete(wm_test_autorun_revert_action_data.ptr);
     wm_test_autorun_revert_action_data.ptr = nullptr;
   }
   wm_test_autorun_revert_action_data.ot = ot;
@@ -3919,7 +4025,7 @@ void wm_test_autorun_revert_action_exec(bContext *C)
   /* Use regular revert. */
   if (ot == nullptr) {
     ot = WM_operatortype_find("WM_OT_revert_mainfile", false);
-    ptr = MEM_cnew<PointerRNA>(__func__);
+    ptr = MEM_new<PointerRNA>(__func__);
     WM_operator_properties_create_ptr(ptr, ot);
     RNA_boolean_set(ptr, "use_scripts", true);
 
@@ -3979,57 +4085,70 @@ static void wm_free_operator_properties_callback(void *user_data)
   IDP_FreeProperty(properties);
 }
 
-static const char *save_file_forwardcompat_dialog_name = "save_file_forwardcompat_popup";
+static const char *save_file_overwrite_dialog_name = "save_file_overwrite_popup";
 
-static void file_forwardcompat_detailed_info_show(uiLayout *parent_layout, Main *bmain)
+static void file_overwrite_detailed_info_show(uiLayout *parent_layout, Main *bmain)
 {
   uiLayout *layout = uiLayoutColumn(parent_layout, true);
   /* Trick to make both lines of text below close enough to look like they are part of a same
    * block. */
   uiLayoutSetScaleY(layout, 0.70f);
 
-  char writer_ver_str[16];
-  char current_ver_str[16];
-  if (bmain->versionfile == BLENDER_VERSION) {
-    BKE_blender_version_blendfile_string_from_values(
-        writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, bmain->subversionfile);
-    BKE_blender_version_blendfile_string_from_values(
-        current_ver_str, sizeof(current_ver_str), BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
-  }
-  else {
-    BKE_blender_version_blendfile_string_from_values(
-        writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
-    BKE_blender_version_blendfile_string_from_values(
-        current_ver_str, sizeof(current_ver_str), BLENDER_VERSION, -1);
+  if (bmain->has_forward_compatibility_issues) {
+    char writer_ver_str[16];
+    char current_ver_str[16];
+    if (bmain->versionfile == BLENDER_VERSION) {
+      BKE_blender_version_blendfile_string_from_values(
+          writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, bmain->subversionfile);
+      BKE_blender_version_blendfile_string_from_values(
+          current_ver_str, sizeof(current_ver_str), BLENDER_FILE_VERSION, BLENDER_FILE_SUBVERSION);
+    }
+    else {
+      BKE_blender_version_blendfile_string_from_values(
+          writer_ver_str, sizeof(writer_ver_str), bmain->versionfile, -1);
+      BKE_blender_version_blendfile_string_from_values(
+          current_ver_str, sizeof(current_ver_str), BLENDER_VERSION, -1);
+    }
+
+    char message_line1[256];
+    char message_line2[256];
+    SNPRINTF(message_line1,
+             RPT_("This file was saved by a newer version of Blender (%s)"),
+             writer_ver_str);
+    SNPRINTF(message_line2,
+             RPT_("Saving it with this Blender (%s) may cause loss of data"),
+             current_ver_str);
+    uiItemL(layout, message_line1, ICON_NONE);
+    uiItemL(layout, message_line2, ICON_NONE);
   }
 
-  char message_line1[256];
-  char message_line2[256];
-  SNPRINTF(message_line1,
-           RPT_("This file was saved by a newer version of Blender (%s)"),
-           writer_ver_str);
-  SNPRINTF(message_line2,
-           RPT_("Saving it with this Blender (%s) may cause loss of data"),
-           current_ver_str);
-  uiItemL(layout, message_line1, ICON_NONE);
-  uiItemL(layout, message_line2, ICON_NONE);
+  if (bmain->is_asset_edit_file) {
+    if (bmain->has_forward_compatibility_issues) {
+      uiItemS_ex(layout, 1.4f);
+    }
+
+    uiItemL(layout,
+            RPT_("This file is managed by the Blender asset system. It can only be"),
+            ICON_NONE);
+    uiItemL(layout, RPT_("saved as a new, regular file."), ICON_NONE);
+  }
 }
 
-static void save_file_forwardcompat_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
+static void save_file_overwrite_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
 {
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
 }
 
-static void save_file_forwardcompat_cancel_button(uiBlock *block, wmGenericCallback *post_action)
+static void save_file_overwrite_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(
       block, UI_BTYPE_BUT, 0, ICON_NONE, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
-  UI_but_func_set(but, save_file_forwardcompat_cancel, block, post_action);
+  UI_but_func_set(but, save_file_overwrite_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
-static void save_file_forwardcompat_overwrite(bContext *C, void *arg_block, void *arg_data)
+static void save_file_overwrite_confirm(bContext *C, void *arg_block, void *arg_data)
 {
   wmWindow *win = CTX_wm_window(C);
 
@@ -4052,8 +4171,7 @@ static void save_file_forwardcompat_overwrite(bContext *C, void *arg_block, void
   WM_generic_callback_free(callback);
 }
 
-static void save_file_forwardcompat_overwrite_button(uiBlock *block,
-                                                     wmGenericCallback *post_action)
+static void save_file_overwrite_confirm_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
@@ -4068,12 +4186,12 @@ static void save_file_forwardcompat_overwrite_button(uiBlock *block,
                                 0,
                                 0,
                                 "");
-  UI_but_func_set(but, save_file_forwardcompat_overwrite, block, post_action);
+  UI_but_func_set(but, save_file_overwrite_confirm, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_REDALERT);
 }
 
-static void save_file_forwardcompat_saveas(bContext *C, void *arg_block, void * /*arg_data*/)
+static void save_file_overwrite_saveas(bContext *C, void *arg_block, void * /*arg_data*/)
 {
   wmWindow *win = CTX_wm_window(C);
   UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
@@ -4081,7 +4199,7 @@ static void save_file_forwardcompat_saveas(bContext *C, void *arg_block, void * 
   WM_operator_name_call(C, "WM_OT_save_as_mainfile", WM_OP_INVOKE_DEFAULT, nullptr, nullptr);
 }
 
-static void save_file_forwardcompat_saveas_button(uiBlock *block, wmGenericCallback *post_action)
+static void save_file_overwrite_saveas_button(uiBlock *block, wmGenericCallback *post_action)
 {
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
@@ -4096,19 +4214,17 @@ static void save_file_forwardcompat_saveas_button(uiBlock *block, wmGenericCallb
                                 0,
                                 0,
                                 "");
-  UI_but_func_set(but, save_file_forwardcompat_saveas, block, post_action);
+  UI_but_func_set(but, save_file_overwrite_saveas, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
 
-static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
-                                                            ARegion *region,
-                                                            void *arg1)
+static uiBlock *block_create_save_file_overwrite_dialog(bContext *C, ARegion *region, void *arg1)
 {
   wmGenericCallback *post_action = static_cast<wmGenericCallback *>(arg1);
   Main *bmain = CTX_data_main(C);
 
-  uiBlock *block = UI_block_begin(C, region, save_file_forwardcompat_dialog_name, UI_EMBOSS);
+  uiBlock *block = UI_block_begin(C, region, save_file_overwrite_dialog_name, UI_EMBOSS);
   UI_block_flag_enable(
       block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
@@ -4116,8 +4232,30 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
   uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_WARNING);
 
   /* Title. */
-  uiItemL_ex(
-      layout, RPT_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
+  if (bmain->has_forward_compatibility_issues) {
+    if (bmain->is_asset_edit_file) {
+      uiItemL_ex(layout,
+                 RPT_("Cannot overwrite asset system files. Save as new file"),
+                 ICON_NONE,
+                 true,
+                 false);
+      uiItemL_ex(layout, RPT_("with an older Blender version?"), ICON_NONE, true, false);
+    }
+    else {
+      uiItemL_ex(
+          layout, RPT_("Overwrite file with an older Blender version?"), ICON_NONE, true, false);
+    }
+  }
+  else if (bmain->is_asset_edit_file) {
+    uiItemL_ex(layout,
+               RPT_("Cannot overwrite asset system files. Save as new file?"),
+               ICON_NONE,
+               true,
+               false);
+  }
+  else {
+    BLI_assert_unreachable();
+  }
 
   /* Filename. */
   const char *blendfile_path = BKE_main_blendfile_path(CTX_data_main(C));
@@ -4134,7 +4272,7 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
   uiItemL(layout, filename, ICON_NONE);
 
   /* Detailed message info. */
-  file_forwardcompat_detailed_info_show(layout, bmain);
+  file_overwrite_detailed_info_show(layout, bmain);
 
   uiItemS_ex(layout, 4.0f);
 
@@ -4144,7 +4282,11 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
   uiLayoutSetScaleY(split, 1.2f);
 
   uiLayoutColumn(split, false);
-  save_file_forwardcompat_overwrite_button(block, post_action);
+  /* Asset files don't actually allow overriding. */
+  const bool allow_overwrite = !bmain->is_asset_edit_file;
+  if (allow_overwrite) {
+    save_file_overwrite_confirm_button(block, post_action);
+  }
 
   uiLayout *split_right = uiLayoutSplit(split, 0.1f, true);
 
@@ -4152,25 +4294,25 @@ static uiBlock *block_create_save_file_forwardcompat_dialog(bContext *C,
   /* Empty space. */
 
   uiLayoutColumn(split_right, false);
-  save_file_forwardcompat_cancel_button(block, post_action);
+  save_file_overwrite_cancel_button(block, post_action);
 
   uiLayoutColumn(split_right, false);
-  save_file_forwardcompat_saveas_button(block, post_action);
+  save_file_overwrite_saveas_button(block, post_action);
 
   UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
   return block;
 }
 
-void wm_save_file_forwardcompat_dialog(bContext *C, wmOperator *op)
+void wm_save_file_overwrite_dialog(bContext *C, wmOperator *op)
 {
-  if (!UI_popup_block_name_exists(CTX_wm_screen(C), save_file_forwardcompat_dialog_name)) {
+  if (!UI_popup_block_name_exists(CTX_wm_screen(C), save_file_overwrite_dialog_name)) {
     wmGenericCallback *callback = MEM_cnew<wmGenericCallback>(__func__);
     callback->exec = nullptr;
     callback->user_data = IDP_CopyProperty(op->properties);
     callback->free_user_data = wm_free_operator_properties_callback;
 
     UI_popup_block_invoke(
-        C, block_create_save_file_forwardcompat_dialog, callback, free_post_file_close_action);
+        C, block_create_save_file_overwrite_dialog, callback, free_post_file_close_action);
   }
 }
 
@@ -4285,7 +4427,7 @@ static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback
 
 static void wm_block_file_close_save_button(uiBlock *block,
                                             wmGenericCallback *post_action,
-                                            const bool has_forwardcompat_issues)
+                                            const bool needs_overwrite_confirm)
 {
   uiBut *but = uiDefIconTextBut(
       block,
@@ -4293,7 +4435,7 @@ static void wm_block_file_close_save_button(uiBlock *block,
       0,
       ICON_NONE,
       /* Forward compatibility issues force using 'save as' operator instead of 'save' one. */
-      has_forwardcompat_issues ? IFACE_("Save As...") : IFACE_("Save"),
+      needs_overwrite_confirm ? IFACE_("Save As...") : IFACE_("Save"),
       0,
       0,
       0,
@@ -4329,7 +4471,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
 
   uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_QUESTION);
 
-  const bool has_forwardcompat_issues = bmain->has_forward_compatibility_issues;
+  const bool needs_overwrite_confirm = BKE_main_needs_overwrite_confirm(bmain);
 
   /* Title. */
   uiItemL_ex(layout, RPT_("Save changes before closing?"), ICON_NONE, true, false);
@@ -4346,8 +4488,8 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
   uiItemL(layout, filename, ICON_NONE);
 
   /* Potential forward compatibility issues message. */
-  if (has_forwardcompat_issues) {
-    file_forwardcompat_detailed_info_show(layout, bmain);
+  if (needs_overwrite_confirm) {
+    file_overwrite_detailed_info_show(layout, bmain);
   }
 
   /* Image Saving Warnings. */
@@ -4452,7 +4594,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
     uiLayoutSetScaleY(split, 1.2f);
 
     uiLayoutColumn(split, false);
-    wm_block_file_close_save_button(block, post_action, has_forwardcompat_issues);
+    wm_block_file_close_save_button(block, post_action, needs_overwrite_confirm);
 
     uiLayoutColumn(split, false);
     wm_block_file_close_discard_button(block, post_action);
@@ -4478,7 +4620,7 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
     wm_block_file_close_cancel_button(block, post_action);
 
     uiLayoutColumn(split_right, false);
-    wm_block_file_close_save_button(block, post_action, has_forwardcompat_issues);
+    wm_block_file_close_save_button(block, post_action, needs_overwrite_confirm);
   }
 
   UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);

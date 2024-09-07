@@ -92,13 +92,15 @@ void write_froxel(ivec3 froxel, VolumeProperties prop)
   prop.scattering += imageLoad(out_scattering_img, froxel).rgb;
   prop.emission += imageLoad(out_emissive_img, froxel).rgb;
   extinction += imageLoad(out_extinction_img, froxel).rgb;
-  phase += imageLoad(out_phase_img, froxel).rg;
+  phase.x += imageLoad(out_phase_img, froxel).r;
+  phase.y += imageLoad(out_phase_weight_img, froxel).r;
 #endif
 
   imageStore(out_scattering_img, froxel, prop.scattering.xyzz);
   imageStore(out_extinction_img, froxel, extinction.xyzz);
   imageStore(out_emissive_img, froxel, prop.emission.xyzz);
-  imageStore(out_phase_img, froxel, phase.xyyy);
+  imageStore(out_phase_img, froxel, phase.xxxx);
+  imageStore(out_phase_weight_img, froxel, phase.yyyy);
 }
 
 void main()
@@ -136,7 +138,7 @@ void main()
 #endif
 
 #ifndef VOLUME_HOMOGENOUS
-      /* Heterogenous volumes evaluate properties at every froxel position. */
+      /* Heterogeneous volumes evaluate properties at every froxel position. */
       VolumeProperties prop = eval_froxel(froxel, jitter);
 #endif
       write_froxel(froxel, prop);

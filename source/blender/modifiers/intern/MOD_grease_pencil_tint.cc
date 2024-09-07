@@ -37,7 +37,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
@@ -459,7 +459,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   auto *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
 
   modifier::greasepencil::read_influence_data(reader, &tmd->influence);
-  BLO_read_data_address(reader, &tmd->color_ramp);
+  BLO_read_struct(reader, ColorBand, &tmd->color_ramp);
 }
 
 }  // namespace blender

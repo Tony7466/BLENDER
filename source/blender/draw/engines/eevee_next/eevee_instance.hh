@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <fmt/format.h>
+
 #include "BKE_object.hh"
 #include "DEG_depsgraph.hh"
 #include "DNA_lightprobe_types.h"
@@ -22,16 +24,16 @@
 #include "eevee_film.hh"
 #include "eevee_gbuffer.hh"
 #include "eevee_hizbuffer.hh"
-#include "eevee_irradiance_cache.hh"
 #include "eevee_light.hh"
 #include "eevee_lightprobe.hh"
+#include "eevee_lightprobe_planar.hh"
+#include "eevee_lightprobe_sphere.hh"
+#include "eevee_lightprobe_volume.hh"
 #include "eevee_lookdev.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
-#include "eevee_planar_probes.hh"
 #include "eevee_raytrace.hh"
-#include "eevee_reflection_probes.hh"
 #include "eevee_renderbuffers.hh"
 #include "eevee_sampling.hh"
 #include "eevee_shader.hh"
@@ -73,7 +75,12 @@ class Instance {
   static void *debug_scope_irradiance_sample;
 
   uint64_t depsgraph_last_update_ = 0;
-  bool overlays_enabled_;
+  bool overlays_enabled_ = false;
+
+  bool shaders_are_ready_ = true;
+
+  /** Info string displayed at the top of the render / viewport, or the console when baking. */
+  std::string info_ = "";
 
  public:
   ShaderModule &shaders;
@@ -124,8 +131,6 @@ class Instance {
   const View3D *v3d;
   const RegionView3D *rv3d;
 
-  /** True if the grease pencil engine might be running. */
-  bool gpencil_engine_enabled;
   /** True if the instance is created for light baking. */
   bool is_light_bake = false;
   /** View-layer overrides. */
@@ -133,8 +138,6 @@ class Instance {
   bool use_curves = true;
   bool use_volumes = true;
 
-  /** Info string displayed at the top of the render / viewport. */
-  std::string info = "";
   /** Debug mode from debug value. */
   eDebugMode debug_mode = eDebugMode::DEBUG_NONE;
 
@@ -154,7 +157,7 @@ class Instance {
         depth_of_field(*this),
         cryptomatte(*this),
         hiz_buffer(*this, uniform_data.data.hiz),
-        sampling(*this),
+        sampling(*this, uniform_data.data.clamp),
         camera(*this, uniform_data.data.camera),
         film(*this, uniform_data.data.film),
         render_buffers(*this, uniform_data.data.render_pass),
@@ -192,13 +195,20 @@ class Instance {
   /**
    * Return true when probe pipeline is used during this sample.
    */
-  bool do_reflection_probe_sync() const;
+  bool do_lightprobe_sphere_sync() const;
   bool do_planar_probe_sync() const;
+
+  /**
+   * Return true when probe passes should be loaded.
+   * It can be true even if do_<type>_probe_sync() is false due to shaders still being compiled.
+   */
+  bool needs_lightprobe_sphere_passes() const;
+  bool needs_planar_probe_passes() const;
 
   /* Render. */
 
   void render_sync();
-  void render_frame(RenderLayer *render_layer, const char *view_name);
+  void render_frame(RenderEngine *engine, RenderLayer *render_layer, const char *view_name);
   void store_metadata(RenderResult *render_result);
 
   /* Viewport. */
@@ -217,6 +227,26 @@ class Instance {
       FunctionRef<void(LightProbeGridCacheFrame *, float progress)> result_update);
 
   static void update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view_layer);
+
+  /* Append a new line to the info string. */
+  template<typename... Args> void info_append(const char *msg, Args &&...args)
+  {
+    info_ += fmt::format(msg, args...);
+    info_ += "\n";
+  }
+
+  /* The same as `info_append`, but `msg` will be translated.
+   * NOTE: When calling this function, `msg` should be a string literal. */
+  template<typename... Args> void info_append_i18n(const char *msg, Args &&...args)
+  {
+    info_ += fmt::format(RPT_(msg), args...);
+    info_ += "\n";
+  }
+
+  const char *info_get()
+  {
+    return info_.c_str();
+  }
 
   bool is_viewport() const
   {
@@ -243,6 +273,12 @@ class Instance {
     return overlays_enabled_;
   }
 
+  /** True if the grease pencil engine might be running. */
+  bool gpencil_engine_enabled() const
+  {
+    return DEG_id_type_any_exists(depsgraph, ID_GP);
+  }
+
   bool is_playback() const
   {
     return DRW_state_is_playback();
@@ -257,6 +293,11 @@ class Instance {
   bool is_navigating() const
   {
     return DRW_state_is_navigating();
+  }
+
+  bool is_painting() const
+  {
+    return DRW_state_is_painting();
   }
 
   bool use_scene_lights() const
@@ -302,6 +343,11 @@ class Instance {
     }
 
     return flags;
+  }
+
+  int get_recalc_flags(const ::World &world)
+  {
+    return world.last_update > depsgraph_last_update_ ? int(ID_RECALC_SHADING) : 0;
   }
 
  private:

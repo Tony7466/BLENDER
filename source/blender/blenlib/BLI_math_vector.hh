@@ -19,32 +19,6 @@
 namespace blender::math {
 
 /**
- * Returns true if all components are exactly equal to 0.
- */
-template<typename T, int Size> [[nodiscard]] inline bool is_zero(const VecBase<T, Size> &a)
-{
-  for (int i = 0; i < Size; i++) {
-    if (a[i] != T(0)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-/**
- * Returns true if at least one component is exactly equal to 0.
- */
-template<typename T, int Size> [[nodiscard]] inline bool is_any_zero(const VecBase<T, Size> &a)
-{
-  for (int i = 0; i < Size; i++) {
-    if (a[i] == T(0)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
  * Returns true if the given vectors are equal within the given epsilon.
  * The epsilon is scaled for each component by magnitude of the matching component of `a`.
  */
@@ -284,7 +258,7 @@ template<typename T, int Size>
 }
 
 template<typename T, int Size>
-void min_max(const VecBase<T, Size> &vector, VecBase<T, Size> &min, VecBase<T, Size> &max)
+inline void min_max(const VecBase<T, Size> &vector, VecBase<T, Size> &min, VecBase<T, Size> &max)
 {
   min = math::min(vector, min);
   max = math::max(vector, max);
@@ -694,6 +668,18 @@ template<typename T, int Size> [[nodiscard]] inline T reduce_add(const VecBase<T
 }
 
 /**
+ * \return the product of the components of a vector.
+ */
+template<typename T, int Size> [[nodiscard]] inline T reduce_mul(const VecBase<T, Size> &a)
+{
+  T result = a[0];
+  for (int i = 1; i < Size; i++) {
+    result *= a[i];
+  }
+  return result;
+}
+
+/**
  * \return the average of the components of a vector.
  */
 template<typename T, int Size> [[nodiscard]] inline T average(const VecBase<T, Size> &a)
@@ -743,6 +729,48 @@ template<typename T, int Size>
     }
   }
   return true;
+}
+
+/**
+ * Return true if the absolute values of all components are smaller than given epsilon (0 by
+ * default).
+ *
+ * \note Does not compute the actual length of the vector, for performance.
+ */
+template<typename T, int Size>
+[[nodiscard]] inline bool is_zero(const VecBase<T, Size> &a, const T epsilon = T(0))
+{
+  for (int i = 0; i < Size; i++) {
+    if (math::abs(a[i]) > epsilon) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Returns true if at least one component is exactly equal to 0.
+ */
+template<typename T, int Size> [[nodiscard]] inline bool is_any_zero(const VecBase<T, Size> &a)
+{
+  for (int i = 0; i < Size; i++) {
+    if (a[i] == T(0)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Return true if the squared length of the vector is (almost) equal to 1 (with a
+ * `10 * std::numeric_limits<T>::epsilon()` epsilon error by default).
+ */
+template<typename T, int Size>
+[[nodiscard]] inline bool is_unit(const VecBase<T, Size> &a,
+                                  const T epsilon = T(10) * std::numeric_limits<T>::epsilon())
+{
+  const T length = length_squared(a);
+  return math::abs(length - T(1)) <= epsilon;
 }
 
 /** Intersections. */
