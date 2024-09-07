@@ -94,14 +94,24 @@ static PointCloud *pointcloud_from_curves(const bke::CurvesGeometry curves,
   PointCloud *pointcloud = bke::pointcloud_new_no_attributes(curves.points_num());
   MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
 
-  bke::copy_attributes(curves.attributes(), bke::AttrDomain::Point, bke::AttrDomain::Point, AttributeFilter::default_filter(), dst_attributes);
-  bke::copy_attributes(curves.attributes(), bke::AttrDomain::Curve, bke::AttrDomain::Point, AttributeFilter::default_filter(), dst_attributes);
+  bke::copy_attributes(curves.attributes(),
+                       bke::AttrDomain::Point,
+                       bke::AttrDomain::Point,
+                       AttributeFilter::default_filter(),
+                       dst_attributes);
+  bke::copy_attributes(curves.attributes(),
+                       bke::AttrDomain::Curve,
+                       bke::AttrDomain::Point,
+                       AttributeFilter::default_filter(),
+                       dst_attributes);
 
   if (rotation_id) {
     const AttributeAccessor attributes = curves.attributes();
     const VArraySpan tangents = *attributes.lookup<float3>(*tangent_id, AttrDomain::Point);
     const VArraySpan normals = *attributes.lookup<float3>(*normal_id, AttrDomain::Point);
-    SpanAttributeWriter<math::Quaternion> rotations = dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(*rotation_id, AttrDomain::Point);
+    SpanAttributeWriter<math::Quaternion> rotations =
+        dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(*rotation_id,
+                                                                           AttrDomain::Point);
     fill_rotation_attribute(tangents, normals, rotations.span);
     rotations.finish();
   }

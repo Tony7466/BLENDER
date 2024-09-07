@@ -80,13 +80,20 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   PointCloud *pointcloud = bke::pointcloud_new_no_attributes(selection.size());
   MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
   /* TODO: Compose filter to include skip of positions ans radius attribute from gathering. */
-  bke::gather_attributes(mesh->attributes(), domain, bke::AttrDomain::Point, attribute_filter, selection, dst_attributes);
+  bke::gather_attributes(mesh->attributes(),
+                         domain,
+                         bke::AttrDomain::Point,
+                         attribute_filter,
+                         selection,
+                         dst_attributes);
 
-  GSpanAttributeWriter radius = dst_attributes.lookup_or_add_for_write_only_span("radius", AttrDomain::Point, CD_PROP_FLOAT);
+  GSpanAttributeWriter radius = dst_attributes.lookup_or_add_for_write_only_span(
+      "radius", AttrDomain::Point, CD_PROP_FLOAT);
   array_utils::gather(radii_eval, selection, radius.span);
   radius.finish();
 
-  GSpanAttributeWriter positions = dst_attributes.lookup_or_add_for_write_only_span("position", AttrDomain::Point, CD_PROP_FLOAT3);
+  GSpanAttributeWriter positions = dst_attributes.lookup_or_add_for_write_only_span(
+      "position", AttrDomain::Point, CD_PROP_FLOAT3);
   array_utils::gather(positions_eval, selection, positions.span);
   positions.finish();
 

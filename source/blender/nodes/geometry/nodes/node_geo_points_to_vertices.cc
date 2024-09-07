@@ -41,7 +41,12 @@ static void geometry_set_points_to_vertices(GeometrySet &geometry_set,
 
   const IndexMask selection = selection_evaluator.get_evaluated_as_mask(0);
   Mesh *mesh = bke::mesh_new_no_attributes(selection.size(), 0, 0, 0);
-  bke::gather_attributes(points->attributes(), bke::AttrDomain::Point, bke::AttrDomain::Point, attribute_filter, selection, mesh->attributes_for_write());
+  bke::gather_attributes(points->attributes(),
+                         bke::AttrDomain::Point,
+                         bke::AttrDomain::Point,
+                         attribute_filter,
+                         selection,
+                         mesh->attributes_for_write());
 
   mesh->tag_loose_edges_none();
   mesh->tag_overlapping_none();
