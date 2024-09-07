@@ -437,8 +437,7 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   gather_attributes(src_attributes,
                     bke::AttrDomain::Curve,
                     bke::AttrDomain::Curve,
-                    {},
-                    {"cyclic"},
+                    bke::attribute_filter_from_skip_ref({"cyclic"}),
                     dst_to_src_curve,
                     dst_attributes);
   array_utils::copy(dst_cyclic.as_span(), dst_curves.cyclic_for_write());
@@ -447,7 +446,6 @@ static bke::CurvesGeometry remove_points_and_split(const bke::CurvesGeometry &cu
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
                     bke::AttrDomain::Point,
-                    {},
                     {},
                     dst_to_src_point,
                     dst_attributes);
@@ -1521,7 +1519,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
       vcuts = VArray<int>::ForContainer(std::move(use_cuts));
     }
 
-    curves = geometry::subdivide_curves(curves, strokes, vcuts, {});
+    curves = geometry::subdivide_curves(curves, strokes, vcuts);
     info.drawing.tag_topology_changed();
     changed.store(true, std::memory_order_relaxed);
   });
@@ -1915,7 +1913,6 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
   bke::gather_attributes(grease_pencil_src.attributes(),
                          bke::AttrDomain::Layer,
                          bke::AttrDomain::Layer,
-                         {},
                          {},
                          Span({layer_index}),
                          grease_pencil_dst.attributes_for_write());
@@ -2671,14 +2668,12 @@ static bke::CurvesGeometry extrude_grease_pencil_curves(const bke::CurvesGeometr
                          bke::AttrDomain::Curve,
                          bke::AttrDomain::Curve,
                          {},
-                         {},
                          dst_to_src_curves,
                          dst_attributes);
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
                          bke::AttrDomain::Point,
-                         {},
                          {},
                          dst_to_src_points,
                          dst_attributes);

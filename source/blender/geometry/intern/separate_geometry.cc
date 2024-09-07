@@ -26,7 +26,7 @@ static std::optional<bke::CurvesGeometry> separate_curves_selection(
     const fn::FieldContext &field_context,
     const fn::Field<bool> &selection_field,
     const AttrDomain domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const int domain_size = src_curves.attributes().domain_size(domain);
   fn::FieldEvaluator evaluator{field_context, domain_size};
@@ -41,10 +41,10 @@ static std::optional<bke::CurvesGeometry> separate_curves_selection(
   }
 
   if (domain == AttrDomain::Point) {
-    return bke::curves_copy_point_selection(src_curves, selection, propagation_info);
+    return bke::curves_copy_point_selection(src_curves, selection, attribute_filter);
   }
   else if (domain == AttrDomain::Curve) {
-    return bke::curves_copy_curve_selection(src_curves, selection, propagation_info);
+    return bke::curves_copy_curve_selection(src_curves, selection, attribute_filter);
   }
   BLI_assert_unreachable();
   return std::nullopt;
@@ -54,7 +54,7 @@ static std::optional<bke::CurvesGeometry> separate_curves_selection(
 static std::optional<PointCloud *> separate_point_cloud_selection(
     const PointCloud &src_pointcloud,
     const fn::Field<bool> &selection_field,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const bke::PointCloudFieldContext context{src_pointcloud};
   fn::FieldEvaluator evaluator{context, src_pointcloud.totpoint};
@@ -72,17 +72,15 @@ static std::optional<PointCloud *> separate_point_cloud_selection(
   bke::gather_attributes(src_pointcloud.attributes(),
                          AttrDomain::Point,
                          AttrDomain::Point,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          selection,
                          pointcloud->attributes_for_write());
   return pointcloud;
 }
 
-static void delete_selected_instances(
-    bke::GeometrySet &geometry_set,
-    const fn::Field<bool> &selection_field,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+static void delete_selected_instances(bke::GeometrySet &geometry_set,
+                                      const fn::Field<bool> &selection_field,
+                                      const bke::AttributeFilter &attribute_filter)
 {
   bke::Instances &instances = *geometry_set.get_instances_for_write();
   bke::InstancesFieldContext field_context{instances};
@@ -96,15 +94,14 @@ static void delete_selected_instances(
     return;
   }
 
-  instances.remove(selection, propagation_info);
+  instances.remove(selection, attribute_filter);
 }
 
-static std::optional<Mesh *> separate_mesh_selection(
-    const Mesh &mesh,
-    const fn::Field<bool> &selection_field,
-    const AttrDomain selection_domain,
-    const GeometryNodeDeleteGeometryMode mode,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+static std::optional<Mesh *> separate_mesh_selection(const Mesh &mesh,
+                                                     const fn::Field<bool> &selection_field,
+                                                     const AttrDomain selection_domain,
+                                                     const GeometryNodeDeleteGeometryMode mode,
+                                                     const bke::AttributeFilter &attribute_filter)
 {
   const bke::AttributeAccessor attributes = mesh.attributes();
   const bke::MeshFieldContext context(mesh, selection_domain);
@@ -115,11 +112,11 @@ static std::optional<Mesh *> separate_mesh_selection(
 
   switch (mode) {
     case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
-      return mesh_copy_selection(mesh, selection, selection_domain, propagation_info);
+      return mesh_copy_selection(mesh, selection, selection_domain, attribute_filter);
     case GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE:
-      return mesh_copy_selection_keep_verts(mesh, selection, selection_domain, propagation_info);
+      return mesh_copy_selection_keep_verts(mesh, selection, selection_domain, attribute_filter);
     case GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE:
-      return mesh_copy_selection_keep_edges(mesh, selection, selection_domain, propagation_info);
+      return mesh_copy_selection_keep_edges(mesh, selection, selection_domain, attribute_filter);
   }
   return nullptr;
 }
@@ -127,7 +124,7 @@ static std::optional<Mesh *> separate_mesh_selection(
 static std::optional<GreasePencil *> separate_grease_pencil_layer_selection(
     const GreasePencil &src_grease_pencil,
     const fn::Field<bool> &selection_field,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const bke::AttributeAccessor attributes = src_grease_pencil.attributes();
   const bke::GeometryFieldContext context(src_grease_pencil);
@@ -155,8 +152,7 @@ static std::optional<GreasePencil *> separate_grease_pencil_layer_selection(
   bke::gather_attributes(src_grease_pencil.attributes(),
                          AttrDomain::Layer,
                          AttrDomain::Layer,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          selection,
                          dst_grease_pencil->attributes_for_write());
 
@@ -167,14 +163,14 @@ void separate_geometry(bke::GeometrySet &geometry_set,
                        const AttrDomain domain,
                        const GeometryNodeDeleteGeometryMode mode,
                        const fn::Field<bool> &selection,
-                       const bke::AnonymousAttributePropagationInfo &propagation_info,
+                       const bke::AttributeFilter &attribute_filter,
                        bool &r_is_error)
 {
   bool some_valid_domain = false;
   if (const PointCloud *points = geometry_set.get_pointcloud()) {
     if (domain == AttrDomain::Point) {
       std::optional<PointCloud *> dst_points = separate_point_cloud_selection(
-          *points, selection, propagation_info);
+          *points, selection, attribute_filter);
       if (dst_points) {
         geometry_set.replace_pointcloud(*dst_points);
       }
@@ -184,7 +180,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
   if (const Mesh *mesh = geometry_set.get_mesh()) {
     if (ELEM(domain, AttrDomain::Point, AttrDomain::Edge, AttrDomain::Face)) {
       std::optional<Mesh *> dst_mesh = separate_mesh_selection(
-          *mesh, selection, domain, mode, propagation_info);
+          *mesh, selection, domain, mode, attribute_filter);
       if (dst_mesh) {
         if (*dst_mesh) {
           const char *active_layer = CustomData_get_active_layer_name(&mesh->corner_data,
@@ -217,7 +213,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
       const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
       const bke::CurvesFieldContext field_context{src_curves, domain};
       std::optional<bke::CurvesGeometry> dst_curves = separate_curves_selection(
-          src_curves, field_context, selection, domain, propagation_info);
+          src_curves, field_context, selection, domain, attribute_filter);
       if (dst_curves) {
         if (dst_curves->points_num() == 0) {
           geometry_set.remove<bke::CurveComponent>();
@@ -236,7 +232,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
     if (domain == AttrDomain::Layer) {
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
       std::optional<GreasePencil *> dst_grease_pencil = separate_grease_pencil_layer_selection(
-          grease_pencil, selection, propagation_info);
+          grease_pencil, selection, attribute_filter);
       if (dst_grease_pencil) {
         geometry_set.replace_grease_pencil(*dst_grease_pencil);
       }
@@ -252,7 +248,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
         const bke::CurvesGeometry &src_curves = drawing->strokes();
         const bke::GreasePencilLayerFieldContext field_context(grease_pencil, domain, layer_index);
         std::optional<bke::CurvesGeometry> dst_curves = separate_curves_selection(
-            src_curves, field_context, selection, domain, propagation_info);
+            src_curves, field_context, selection, domain, attribute_filter);
         if (!dst_curves) {
           continue;
         }
@@ -264,7 +260,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
   }
   if (geometry_set.has_instances()) {
     if (domain == AttrDomain::Instance) {
-      delete_selected_instances(geometry_set, selection, propagation_info);
+      delete_selected_instances(geometry_set, selection, attribute_filter);
       some_valid_domain = true;
     }
   }
