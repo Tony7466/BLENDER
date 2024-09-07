@@ -2024,7 +2024,9 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 struct ForeachGeometryElementEvalStorage {
   LinearAllocator<> allocator;
   lf::Graph graph;
+  std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<lf::GraphExecutor> graph_executor;
+  VectorSet<lf::FunctionNode *> lf_body_nodes;
 };
 
 class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
@@ -2091,6 +2093,59 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                                   GeoNodesLFUserData &user_data,
                                   GeoNodesLFLocalUserData &local_user_data) const
   {
+    const AttrDomain domain = AttrDomain(node_storage.domain);
+    const GeometrySet &geometry = params.get_input<GeometrySet>(zone_info_.indices.inputs.main[0]);
+    const MeshComponent *component = geometry.get_component<MeshComponent>();
+    const int domain_size = component ? component->attribute_domain_size(domain) : 0;
+
+    lf::Graph &lf_graph = eval_storage.graph;
+
+    Vector<lf::GraphInputSocket *> lf_inputs;
+    Vector<lf::GraphOutputSocket *> lf_outputs;
+
+    for (const int i : inputs_.index_range()) {
+      const lf::Input &input = inputs_[i];
+      lf_inputs.append(&lf_graph.add_input(*input.type, this->input_name(i)));
+    }
+    for (const int i : outputs_.index_range()) {
+      const lf::Output &output = outputs_[i];
+      lf_outputs.append(&lf_graph.add_output(*output.type, this->output_name(i)));
+    }
+
+    /* Create body nodes. */
+    VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
+    for ([[maybe_unused]] const int i : IndexRange(domain_size)) {
+      lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
+      lf_body_nodes.add_new(&lf_node);
+    }
+
+    eval_storage.or_function.emplace(lf_body_nodes.size());
+
+    /* Link up output usages to body nodes. */
+    for (const int zone_output_i : body_fn_.indices.inputs.output_usages.index_range()) {
+      /* +1 because of geometry output. */
+      lf::GraphInputSocket &lf_graph_input =
+          *lf_inputs[zone_info_.indices.inputs.output_usages[1 + zone_output_i]];
+      for (const int i : lf_body_nodes.index_range()) {
+        lf::FunctionNode &lf_node = *lf_body_nodes[i];
+        lf_graph.add_link(lf_graph_input,
+                          lf_node.input(body_fn_.indices.inputs.output_usages[zone_output_i]));
+      }
+    }
+
+    /* Link up body nodes to input usages. */
+    /* TODO: Not sure these links should go this way. */
+    for (const int zone_input_i : body_fn_.indices.outputs.input_usages.index_range()) {
+      lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_function);
+      lf::GraphOutputSocket &lf_graph_output =
+          *lf_outputs[zone_info_.indices.outputs.input_usages[zone_input_i]];
+      lf_graph.add_link(lf_or_node.output(0), lf_graph_output);
+      for (const int i : lf_body_nodes.index_range()) {
+        lf::FunctionNode &lf_node = *lf_body_nodes[i];
+        lf_graph.add_link(lf_node.output(body_fn_.indices.outputs.input_usages[zone_input_i]),
+                          lf_or_node.input(i));
+      }
+    }
   }
 
   std::string input_name(const int i) const override
