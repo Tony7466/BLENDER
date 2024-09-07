@@ -55,10 +55,10 @@ struct ExtendedIntersectionPoint {
   bool B_entry_exit;
 };
 
-static ExtendedIntersectionPoint CreateIntersection(const int point_a,
-                                                    const int point_b,
-                                                    const float alpha_a,
-                                                    const float alpha_b)
+static ExtendedIntersectionPoint create_intersection(const int point_a,
+                                                     const int point_b,
+                                                     const float alpha_a,
+                                                     const float alpha_b)
 {
   ExtendedIntersectionPoint inter_point;
   inter_point.point_a = point_a;
@@ -72,7 +72,7 @@ static ExtendedIntersectionPoint CreateIntersection(const int point_a,
 static constexpr bool EXIT = false;
 static constexpr bool ENTRY = true;
 
-static BooleanResult result_None()
+static BooleanResult result_none()
 {
   BooleanResult result;
 
@@ -156,7 +156,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_from_curve(curve_a, true);
     }
     else if (boolean_mode == Operation::NotB) {
-      return result_None();
+      return result_none();
     }
     else if (boolean_mode == Operation::NotA) {
       return result_BA(curve_a, curve_b);
@@ -173,7 +173,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
       return result_AB(curve_a, curve_b);
     }
     else if (boolean_mode == Operation::NotA) {
-      return result_None();
+      return result_none();
     }
     else if (boolean_mode == Operation::Or) {
       return result_from_curve(curve_a, true);
@@ -181,7 +181,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
   }
   else if (!a_start_in_b && !b_start_in_a) {
     if (boolean_mode == Operation::And) {
-      return result_None();
+      return result_none();
     }
     else if (boolean_mode == Operation::NotB) {
       return result_from_curve(curve_a, true);
@@ -195,7 +195,7 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
   }
 
   BLI_assert_unreachable();
-  return result_None();
+  return result_none();
 }
 
 BooleanResult invalid_result(const Operation mode,
@@ -216,7 +216,7 @@ BooleanResult invalid_result(const Operation mode,
   }
 
   BLI_assert_unreachable();
-  return result_None();
+  return result_none();
 }
 
 static std::pair<bool, bool> get_AB_mode(const Operation mode)
@@ -480,7 +480,7 @@ struct CurveBooleanExecutor {
     return is_curve_A ? A_inter_sorted_ids[next_sorted_int] : B_inter_sorted_ids[next_sorted_int];
   }
 
-  void Add_Between_Points(int id0, bool is_curve_A)
+  void add_between_points(int id0, bool is_curve_A)
   {
     const int id1 = get_next_intersection_id(id0, is_curve_A);
 
@@ -657,7 +657,7 @@ struct CurveBooleanExecutor {
                                   &alpha_a,
                                   &alpha_b);
         if (val == ISECT_LINE_LINE_CROSS) {
-          intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
+          intersections.append(create_intersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
           return std::nullopt;
@@ -697,7 +697,7 @@ struct CurveBooleanExecutor {
 
       bool PolygonClosed = false;
       while (!PolygonClosed) {
-        Add_Between_Points(curr_int_id, is_curve_A);
+        add_between_points(curr_int_id, is_curve_A);
 
         curr_int_id = get_next_intersection_id(curr_int_id, is_curve_A);
         unprocessed_intersection_unsorted_ids[curr_int_id] = false;
@@ -842,7 +842,7 @@ struct CurveBooleanExecutor {
                                   &alpha_a,
                                   &alpha_b);
         if (val == ISECT_LINE_LINE_CROSS) {
-          intersections.append(CreateIntersection(i, j, alpha_a, alpha_b));
+          intersections.append(create_intersection(i, j, alpha_a, alpha_b));
         }
         else if (val == ISECT_LINE_LINE_EXACT) {
           return std::nullopt;
@@ -853,7 +853,7 @@ struct CurveBooleanExecutor {
     if (intersections.is_empty()) {
       const bool a_start_in_b = inside(curve_a.first(), curve_b);
       if (a_start_in_b) {
-        return std::optional(result_None());
+        return std::optional(result_none());
       }
       else {
         return std::optional(result_from_curve(curve_a, true));
