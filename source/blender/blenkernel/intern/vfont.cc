@@ -526,7 +526,8 @@ void BKE_vfont_build_char(Curve *cu,
   float si = sinf(rot);
   float co = cosf(rot);
 
-  VChar *che = find_vfont_char(vfd, character, info->flag & CU_CHINFO_BOLD, info->flag & CU_CHINFO_ITALIC);
+  VChar *che = find_vfont_char(
+      vfd, character, info->flag & CU_CHINFO_BOLD, info->flag & CU_CHINFO_ITALIC);
 
   /* Select the glyph data */
   Nurb *nu1 = nullptr;
@@ -1010,7 +1011,8 @@ static bool vfont_to_curve(Object *ob,
 
     if (!ELEM(ascii, '\n', '\0')) {
       BLI_rw_mutex_lock(&vfont_rwlock, THREAD_LOCK_READ);
-      che = find_vfont_char(vfd, ascii, info->flag & CU_CHINFO_BOLD, info->flag & CU_CHINFO_ITALIC);
+      che = find_vfont_char(
+          vfd, ascii, info->flag & CU_CHINFO_BOLD, info->flag & CU_CHINFO_ITALIC);
       BLI_rw_mutex_unlock(&vfont_rwlock);
 
       /* The character wasn't in the current curve base so load it. */

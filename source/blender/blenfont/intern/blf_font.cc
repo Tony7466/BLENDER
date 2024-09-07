@@ -107,8 +107,11 @@ static FT_Error blf_cache_face_requester(FTC_FaceID faceID,
     err = FT_New_Face(lib, font->filepath, font->face_index, face);
   }
   else if (font->mem) {
-    err = FT_New_Memory_Face(
-        lib, static_cast<const FT_Byte *>(font->mem), (FT_Long)font->mem_size, font->face_index, face);
+    err = FT_New_Memory_Face(lib,
+                             static_cast<const FT_Byte *>(font->mem),
+                             (FT_Long)font->mem_size,
+                             font->face_index,
+                             face);
   }
   BLI_mutex_unlock(&ft_lib_mutex);
 
@@ -2002,11 +2005,12 @@ void blf_font_attach_from_mem(FontBLF *font, const uchar *mem, const size_t mem_
   }
 }
 
-static bool blf_set_face_index(FontBLF* font, int face_index) {
+static bool blf_set_face_index(FontBLF *font, int face_index)
+{
   if (blf_ensure_face(font)) {
     if (font->face->face_index == face_index) {
       font->face_index = face_index;
-      return true; // nothing to do
+      return true;  // nothing to do
     }
 
     BLI_mutex_lock(&ft_lib_mutex);
@@ -2031,7 +2035,8 @@ static bool blf_set_face_index(FontBLF* font, int face_index) {
   return false;
 }
 
-static bool blf_is_ideal_metrics_face(FontMetrics *metrics, bool bold, bool italic) {
+static bool blf_is_ideal_metrics_face(FontMetrics *metrics, bool bold, bool italic)
+{
   return ((bold && metrics->weight > 550 && metrics->weight < 750) ||
           (!bold && metrics->weight > 350 && metrics->weight < 450)) &&
          (italic == metrics->slant > 5.0f);
@@ -2039,8 +2044,7 @@ static bool blf_is_ideal_metrics_face(FontMetrics *metrics, bool bold, bool ital
 
 bool blf_face_match_style(FontBLF *font, bool bold, bool italic)
 {
-  if (blf_is_ideal_metrics_face(&font->metrics, bold, italic))
-  {
+  if (blf_is_ideal_metrics_face(&font->metrics, bold, italic)) {
     /* Current face matches. */
     return true;
   }
