@@ -218,11 +218,11 @@
     const NSPoint mouseLocation = sender.draggingLocation;
     m_windowCocoa->setAcceptDragOperation(TRUE); /* Drag operation is accepted by default. */
     m_systemCocoa->handleDraggingEvent(GHOST_kEventDraggingEntered,
-                                     m_draggedObjectType,
-                                     m_windowCocoa,
-                                     mouseLocation.x,
-                                     mouseLocation.y,
-                                     nil);
+                                       m_draggedObjectType,
+                                       m_windowCocoa,
+                                       mouseLocation.x,
+                                       mouseLocation.y,
+                                       nil);
   }
   return NSDragOperationCopy;
 }
@@ -291,11 +291,11 @@
 
     const NSPoint mouseLocation = sender.draggingLocation;
     m_systemCocoa->handleDraggingEvent(GHOST_kEventDraggingDropDone,
-                                     m_draggedObjectType,
-                                     m_windowCocoa,
-                                     mouseLocation.x,
-                                     mouseLocation.y,
-                                     (void *)data);
+                                       m_draggedObjectType,
+                                       m_windowCocoa,
+                                       mouseLocation.x,
+                                       mouseLocation.y,
+                                       (void *)data);
   }
   return YES;
 }
@@ -356,11 +356,11 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
     }
 
     m_window = [[BlenderWindow alloc] initWithSystemCocoa:systemCocoa
-                                            windowCocoa:this
-                                            contentRect:rect
-                                              styleMask:styleMask
-                                                backing:NSBackingStoreBuffered
-                                                  defer:NO];
+                                              windowCocoa:this
+                                              contentRect:rect
+                                                styleMask:styleMask
+                                                  backing:NSBackingStoreBuffered
+                                                    defer:NO];
 
     /* Forbid to resize the window below the blender defined minimum one. */
     const NSSize minSize = {320, 240};
@@ -433,9 +433,9 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
     m_tablet = GHOST_TABLET_DATA_NONE;
 
     BlenderWindowDelegate *windowDelegate = [[BlenderWindowDelegate alloc]
-      initWithSystemCocoa:systemCocoa
-              windowCocoa:this];
-  m_window.delegate = windowDelegate;
+        initWithSystemCocoa:systemCocoa
+                windowCocoa:this];
+    m_window.delegate = windowDelegate;
 
     m_window.acceptsMouseMovedEvents = YES;
 
@@ -588,7 +588,7 @@ void GHOST_WindowCocoa::getClientBounds(GHOST_Rect &bounds) const
 
     /* Max window contents as screen size (excluding title bar...). */
     const NSRect contentRect = [BlenderWindow contentRectForFrameRect:screenSize
-                                                    styleMask:[m_window styleMask]];
+                                                            styleMask:[m_window styleMask]];
 
     const NSRect rect = [m_window contentRectForFrameRect:[m_window frame]];
 
