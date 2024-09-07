@@ -2021,6 +2021,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 };
 
+struct ForeachGeometryElementEvalStorage {
+  LinearAllocator<> allocator;
+  lf::Graph graph;
+  std::optional<lf::GraphExecutor> graph_executor;
+};
+
 class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
  private:
   const bNodeTreeZone &zone_;
@@ -2042,10 +2048,49 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     inputs_[zone_info.indices.inputs.main[1]].usage = lf::ValueUsage::Used;
   }
 
-  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  void *init_storage(LinearAllocator<> &allocator) const override
   {
+    return allocator.construct<ForeachGeometryElementEvalStorage>().release();
+  }
+
+  void destruct_storage(void *storage) const override
+  {
+    auto *s = static_cast<ForeachGeometryElementEvalStorage *>(storage);
+    std::destroy_at(s);
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override
+  {
+    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+
+    const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+        output_bnode_.storage);
+    auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
+
+    if (!params.output_was_set(zone_info_.indices.outputs.input_usages[0])) {
+      /* The geometry and selection inputs are always used. */
+      params.set_output(zone_info_.indices.outputs.input_usages[0], true);
+      params.set_output(zone_info_.indices.outputs.input_usages[1], true);
+    }
+
+    if (!eval_storage.graph_executor) {
+      /* Create the execution graph in the first evaluation. */
+      this->initialize_execution_graph(
+          params, eval_storage, node_storage, user_data, local_user_data);
+      std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
+    }
+
     /* TODO */
-    params.set_output(0, GeometrySet());
+    params.set_output(zone_info_.indices.outputs.main[0], GeometrySet());
+  }
+
+  void initialize_execution_graph(lf::Params &params,
+                                  ForeachGeometryElementEvalStorage &eval_storage,
+                                  const NodeGeometryForeachGeometryElementOutput &node_storage,
+                                  GeoNodesLFUserData &user_data,
+                                  GeoNodesLFLocalUserData &local_user_data) const
+  {
   }
 
   std::string input_name(const int i) const override
