@@ -191,7 +191,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
-    InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
+    InstancesComponent &instances_component =
+        geometry_set.get_component_for_write<InstancesComponent>();
     bke::Instances *dst_instances = instances_component.get_for_write();
     if (dst_instances == nullptr) {
       dst_instances = new bke::Instances();
@@ -257,14 +258,15 @@ static void node_geo_exec(GeoNodeExecParams params)
         const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
         gp_instances->add_instance(handle, float4x4::identity());
       }
-      
+
       bke::copy_attributes(grease_pencil.attributes(),
-                             bke::AttrDomain::Layer,
-                             bke::AttrDomain::Instance,
-                             attribute_filter,
-                             gp_instances->attributes_for_write());
-      
-      geometry_set = geometry::join_geometries({std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+                           bke::AttrDomain::Layer,
+                           bke::AttrDomain::Instance,
+                           attribute_filter,
+                           gp_instances->attributes_for_write());
+
+      geometry_set = geometry::join_geometries(
+          {std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
     }
     geometry_set.remove_geometry_during_modify();
   });

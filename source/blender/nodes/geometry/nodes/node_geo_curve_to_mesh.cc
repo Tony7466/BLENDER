@@ -10,8 +10,8 @@
 
 #include "UI_resources.hh"
 
-#include "GEO_randomize.hh"
 #include "GEO_join_geometries.hh"
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -92,7 +92,8 @@ static void grease_pencil_to_mesh(GeometrySet &geometry_set,
                        attribute_filter,
                        gp_instances->attributes_for_write());
 
-  geometry_set = geometry::join_geometries({std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+  geometry_set = geometry::join_geometries(
+      {std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
   geometry_set.replace_grease_pencil(nullptr);
 }
 

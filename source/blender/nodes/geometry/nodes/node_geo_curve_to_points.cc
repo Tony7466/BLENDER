@@ -13,8 +13,8 @@
 #include "BKE_instances.hh"
 #include "BKE_pointcloud.hh"
 
-#include "GEO_resample_curves.hh"
 #include "GEO_join_geometries.hh"
+#include "GEO_resample_curves.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -230,7 +230,8 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
         continue;
       }
       const bke::CurvesGeometry &src_curves = drawing->strokes();
-      bke::GreasePencilLayerFieldContext field_context(grease_pencil, AttrDomain::Curve, layer_index);
+      bke::GreasePencilLayerFieldContext field_context(
+          grease_pencil, AttrDomain::Curve, layer_index);
 
       bke::CurvesGeometry dst_curves;
       switch (mode) {
@@ -251,10 +252,8 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
           break;
         }
         case GEO_NODE_CURVE_RESAMPLE_EVALUATED: {
-          dst_curves = geometry::resample_to_evaluated(src_curves,
-                                                       field_context,
-                                                       fn::make_constant_field<bool>(true),
-                                                       resample_attributes);
+          dst_curves = geometry::resample_to_evaluated(
+              src_curves, field_context, fn::make_constant_field<bool>(true), resample_attributes);
           break;
         }
       }
@@ -266,9 +265,8 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
     if (pointcloud_by_layer.is_empty()) {
       return;
     }
-    InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
 
-    bke::Instances *gp_instances = instances_component.get_for_write();
+    bke::Instances *gp_instances = new bke::Instances();
     for (PointCloud *pointcloud : pointcloud_by_layer) {
       if (!pointcloud) {
         /* Add an empty reference so the number of layers and instances match.
@@ -287,8 +285,9 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
                          bke::AttrDomain::Instance,
                          attribute_filter,
                          gp_instances->attributes_for_write());
-    
-    geometry = geometry::join_geometries({std::move(geometry), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+
+    geometry = geometry::join_geometries(
+        {std::move(geometry), GeometrySet::from_instances(gp_instances)}, attribute_filter);
   });
   geometry_set.replace_grease_pencil(nullptr);
 }
