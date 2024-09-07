@@ -392,58 +392,64 @@ Vector<IndexMask> Drawing::shapes(IndexMaskMemory &memory) const
 
 static bool check_self_intersections(Span<float2> projverts)
 {
-  std::atomic<bool> intersect = false;
-  threading::parallel_for(projverts.index_range(), 512, [&](const IndexRange range) {
-    for (const int e2_id : range) {
-      if (intersect) {
-        return;
-      }
-      for (const int e1_id : projverts.index_range().drop_front(e2_id)) {
-        const int p1 = e1_id;
-        const int p2 = (e1_id + 1) % projverts.size();
-        const int p3 = e2_id;
-        const int p4 = (e2_id + 1) % projverts.size();
-        if (p1 == p4) {
-          continue;
+  /* Check all pairs of edges that do not share a point (without duplicates) */
+  return threading::parallel_reduce(
+      projverts.index_range(),
+      4096,
+      false,
+      [&](const IndexRange range, const bool value) {
+        if (value) {
+          return value;
         }
-        if (p2 == p3) {
-          continue;
-        }
+        for (const int e2_id : range) {
+          for (const int e1_id : projverts.index_range().drop_front(e2_id)) {
+            const int p1 = e1_id;
+            const int p2 = (e1_id + 1) % projverts.size();
+            const int p3 = e2_id;
+            const int p4 = (e2_id + 1) % projverts.size();
+            if (p1 == p4 || p2 == p3) {
+              continue;
+            }
 
-        if (isect_seg_seg_v2_simple(projverts[p1], projverts[p2], projverts[p3], projverts[p4])) {
-          intersect.store(true, std::memory_order_relaxed);
-          return;
-        }
-      }
-    };
-  });
-
-  return intersect;
+            if (isect_seg_seg_v2_simple(
+                    projverts[p1], projverts[p2], projverts[p3], projverts[p4])) {
+              return true;
+            }
+          }
+        };
+        return false;
+      },
+      std::logical_or<bool>());
 }
 
 static bool check_other_intersections(Span<float2> projverts1, Span<float2> projverts2)
 {
-  std::atomic<bool> intersect = false;
-
-  threading::parallel_for(projverts1.index_range(), 512, [&](const IndexRange range) {
-    for (const int e1_id : range) {
-      for (const int e2_id : projverts2.index_range()) {
-        const int p11 = e1_id;
-        const int p12 = (e1_id + 1) % projverts1.size();
-        const int p21 = e2_id;
-        const int p22 = (e2_id + 1) % projverts2.size();
-
-        if (isect_seg_seg_v2_simple(
-                projverts1[p11], projverts1[p12], projverts2[p21], projverts2[p22]))
-        {
-          intersect.store(true, std::memory_order_relaxed);
-          return;
+  /* Check all pairs of edges. */
+  return threading::parallel_reduce(
+      projverts1.index_range(),
+      4096,
+      false,
+      [&](const IndexRange range, const bool value) {
+        if (value) {
+          return value;
         }
-      }
-    }
-  });
+        for (const int e2_id : range) {
+          for (const int e1_id : projverts2.index_range()) {
+            const int p11 = e1_id;
+            const int p12 = (e1_id + 1) % projverts1.size();
+            const int p21 = e2_id;
+            const int p22 = (e2_id + 1) % projverts2.size();
 
-  return intersect;
+            if (isect_seg_seg_v2_simple(
+                    projverts1[p11], projverts1[p12], projverts2[p21], projverts2[p22]))
+            {
+              return true;
+            }
+          }
+        };
+        return false;
+      },
+      std::logical_or<bool>());
 }
 
 static bool check_valid_curves(Span<float2> projverts, const OffsetIndices<int> points_by_group)
