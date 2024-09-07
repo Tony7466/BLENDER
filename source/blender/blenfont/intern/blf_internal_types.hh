@@ -374,6 +374,9 @@ struct FontBLF {
   /** Freetype2 face. */
   FT_Face face;
 
+  /* Can be non-zero for font collections (TTC, OTC). */
+  int face_index;
+
   /** Point to face->size or to cache's size. */
   FT_Size ft_size;
 

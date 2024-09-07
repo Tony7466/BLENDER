@@ -40,5 +40,8 @@ struct VChar {
 VFontData *BKE_vfontdata_from_freetypefont(PackedFile *pf);
 VFontData *BKE_vfontdata_copy(const VFontData *vfont_src, int flag);
 
-VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, unsigned long character);
+VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont,
+                                            unsigned long character,
+                                            bool bold = false,
+                                            bool italic = false);
 VChar *BKE_vfontdata_char_copy(const VChar *vchar_src);

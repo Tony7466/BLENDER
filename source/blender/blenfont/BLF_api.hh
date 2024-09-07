@@ -90,7 +90,11 @@ bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, flo
 float BLF_character_to_curves(int fontid,
                               unsigned int unicode,
                               ListBase *nurbsbase,
-                              const float scale);
+                              const float scale,
+                              const bool bold = false,
+                              const bool italic = false);
+
+bool BLF_match_style(int fontid, bool bold, bool italic);
 
 /**
  * Check if font supports a particular glyph.

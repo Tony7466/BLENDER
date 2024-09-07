@@ -75,7 +75,7 @@ VFontData *BKE_vfontdata_copy(const VFontData *vfont_src, const int /*flag*/)
   return vfont_dst;
 }
 
-VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
+VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character, bool bold, bool italic)
 {
   if (!vfont) {
     return nullptr;
@@ -105,9 +105,14 @@ VChar *BKE_vfontdata_char_from_freetypefont(VFont *vfont, ulong character)
   /* need to set a size for embolden, etc. */
   BLF_size(font_id, 16);
 
-  che->width = BLF_character_to_curves(font_id, character, &che->nurbsbase, vfont->data->scale);
+  BLF_match_style(font_id, bold, italic);
 
-  BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(che->index), che);
+  che->width = BLF_character_to_curves(
+      font_id, character, &che->nurbsbase, vfont->data->scale, bold, italic);
+
+  /* Separate storage of bold and italic versions. */
+  const int key = che->index << 2 | bold << 1 | italic;
+  BLI_ghash_insert(vfont->data->characters, POINTER_FROM_UINT(key), che);
   BLF_unload_id(font_id);
   return che;
 }

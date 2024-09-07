@@ -93,6 +93,9 @@ FontBLF *blf_font_new_from_filepath(const char *filepath);
 FontBLF *blf_font_new_from_mem(const char *mem_name, const unsigned char *mem, size_t mem_size);
 void blf_font_attach_from_mem(FontBLF *font, const unsigned char *mem, size_t mem_size);
 
+/* A single font can contain multiple faces. */
+bool blf_face_match_style(FontBLF *font, bool bold, bool italic);
+
 /**
  * Change font's output size. Returns true if successful in changing the size.
  */
@@ -205,7 +208,9 @@ GlyphBLF *blf_glyph_ensure_icon(
 float blf_character_to_curves(FontBLF *font,
                               unsigned int unicode,
                               ListBase *nurbsbase,
-                              const float scale);
+                              const float scale,
+                              const bool bold,
+                              const bool italic);
 
 void blf_glyph_draw(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int x, int y);
 
