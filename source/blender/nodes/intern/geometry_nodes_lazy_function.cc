@@ -1670,6 +1670,82 @@ struct RepeatEvalStorage {
   Vector<int> output_index_map;
 };
 
+static void initialize_zone_wrapper(const bNodeTreeZone &zone,
+                                    ZoneBuildInfo &zone_info,
+                                    const ZoneBodyFunction &body_fn,
+                                    Vector<lf::Input> &r_inputs,
+                                    Vector<lf::Output> &r_outputs)
+{
+  for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1)) {
+    zone_info.indices.inputs.main.append(r_inputs.append_and_get_index_as(
+        socket->name, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe));
+  }
+
+  for (const bNodeLink *link : zone.border_links) {
+    zone_info.indices.inputs.border_links.append(
+        r_inputs.append_and_get_index_as(link->fromsock->name,
+                                         *link->tosock->typeinfo->geometry_nodes_cpp_type,
+                                         lf::ValueUsage::Maybe));
+  }
+
+  for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
+    zone_info.indices.inputs.output_usages.append(
+        r_inputs.append_and_get_index_as("Usage", CPPType::get<bool>(), lf::ValueUsage::Maybe));
+    zone_info.indices.outputs.main.append(r_outputs.append_and_get_index_as(
+        socket->name, *socket->typeinfo->geometry_nodes_cpp_type));
+  }
+
+  for ([[maybe_unused]] const bNodeSocket *socket : zone.input_node->input_sockets().drop_back(1))
+  {
+    zone_info.indices.outputs.input_usages.append(
+        r_outputs.append_and_get_index_as("Usage", CPPType::get<bool>()));
+  }
+
+  for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
+    zone_info.indices.outputs.border_link_usages.append(
+        r_outputs.append_and_get_index_as("Border Link Usage", CPPType::get<bool>()));
+  }
+
+  for (const auto item : body_fn.indices.inputs.attributes_by_field_source_index.items()) {
+    zone_info.indices.inputs.attributes_by_field_source_index.add_new(
+        item.key,
+        r_inputs.append_and_get_index_as(
+            "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
+  }
+  for (const auto item : body_fn.indices.inputs.attributes_by_caller_propagation_index.items()) {
+    zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(
+        item.key,
+        r_inputs.append_and_get_index_as(
+            "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
+  }
+}
+
+static std::string zone_wrapper_input_name(const ZoneBuildInfo &zone_info,
+                                           const bNodeTreeZone &zone,
+                                           const Span<lf::Input> inputs,
+                                           const int i)
+{
+  if (zone_info.indices.inputs.output_usages.contains(i)) {
+    const bNodeSocket &bsocket = zone.output_node->output_socket(
+        i - zone_info.indices.inputs.output_usages.first());
+    return "Usage: " + StringRef(bsocket.name);
+  }
+  return inputs[i].debug_name;
+}
+
+static std::string zone_wrapper_output_name(const ZoneBuildInfo &zone_info,
+                                            const bNodeTreeZone &zone,
+                                            const Span<lf::Output> outputs,
+                                            const int i)
+{
+  if (zone_info.indices.outputs.input_usages.contains(i)) {
+    const bNodeSocket &bsocket = zone.input_node->input_socket(
+        i - zone_info.indices.outputs.input_usages.first());
+    return "Usage: " + StringRef(bsocket.name);
+  }
+  return outputs[i].debug_name;
+}
+
 class LazyFunctionForRepeatZone : public LazyFunction {
  private:
   const bNodeTreeZone &zone_;
@@ -1688,52 +1764,9 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   {
     debug_name_ = "Repeat Zone";
 
-    zone_info.indices.inputs.main.append(inputs_.append_and_get_index_as(
-        "Iterations", CPPType::get<SocketValueVariant>(), lf::ValueUsage::Used));
-    for (const bNodeSocket *socket : zone.input_node->input_sockets().drop_front(1).drop_back(1)) {
-      zone_info.indices.inputs.main.append(inputs_.append_and_get_index_as(
-          socket->name, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe));
-    }
-
-    for (const bNodeLink *link : zone.border_links) {
-      zone_info.indices.inputs.border_links.append(
-          inputs_.append_and_get_index_as(link->fromsock->name,
-                                          *link->tosock->typeinfo->geometry_nodes_cpp_type,
-                                          lf::ValueUsage::Maybe));
-    }
-
-    for (const bNodeSocket *socket : zone.output_node->output_sockets().drop_back(1)) {
-      zone_info.indices.inputs.output_usages.append(
-          inputs_.append_and_get_index_as("Usage", CPPType::get<bool>(), lf::ValueUsage::Maybe));
-      zone_info.indices.outputs.main.append(outputs_.append_and_get_index_as(
-          socket->name, *socket->typeinfo->geometry_nodes_cpp_type));
-    }
-
-    for ([[maybe_unused]] const bNodeSocket *socket :
-         zone.input_node->input_sockets().drop_back(1))
-    {
-      zone_info.indices.outputs.input_usages.append(
-          outputs_.append_and_get_index_as("Usage", CPPType::get<bool>()));
-    }
-
-    for ([[maybe_unused]] const bNodeLink *link : zone.border_links) {
-      zone_info.indices.outputs.border_link_usages.append(
-          outputs_.append_and_get_index_as("Border Link Usage", CPPType::get<bool>()));
-    }
-
-    for (const auto item : body_fn_.indices.inputs.attributes_by_field_source_index.items()) {
-      zone_info.indices.inputs.attributes_by_field_source_index.add_new(
-          item.key,
-          inputs_.append_and_get_index_as(
-              "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
-    }
-    for (const auto item : body_fn_.indices.inputs.attributes_by_caller_propagation_index.items())
-    {
-      zone_info.indices.inputs.attributes_by_caller_propagation_index.add_new(
-          item.key,
-          inputs_.append_and_get_index_as(
-              "Attribute Set", CPPType::get<bke::AnonymousAttributeSet>(), lf::ValueUsage::Maybe));
-    }
+    initialize_zone_wrapper(zone, zone_info, body_fn, inputs_, outputs_);
+    /* Iterations input is always used. */
+    inputs_[zone_info.indices.inputs.main[0]].usage = lf::ValueUsage::Used;
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
@@ -1979,22 +2012,40 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
   std::string input_name(const int i) const override
   {
-    if (zone_info_.indices.inputs.output_usages.contains(i)) {
-      const bNodeSocket &bsocket = zone_.output_node->output_socket(
-          i - zone_info_.indices.inputs.output_usages.first());
-      return "Usage: " + StringRef(bsocket.name);
-    }
-    return inputs_[i].debug_name;
+    return zone_wrapper_input_name(zone_info_, zone_, inputs_, i);
   }
 
   std::string output_name(const int i) const override
   {
-    if (zone_info_.indices.outputs.input_usages.contains(i)) {
-      const bNodeSocket &bsocket = zone_.input_node->input_socket(
-          i - zone_info_.indices.outputs.input_usages.first());
-      return "Usage: " + StringRef(bsocket.name);
-    }
-    return outputs_[i].debug_name;
+    return zone_wrapper_output_name(zone_info_, zone_, outputs_, i);
+  }
+};
+
+class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
+ private:
+  const bNodeTreeZone &zone_;
+  const bNode &output_bnode_;
+  const ZoneBuildInfo &zone_info_;
+  const ZoneBodyFunction &body_fn_;
+
+ public:
+  LazyFunctionForForeachGeometryElementZone(const bNodeTreeZone &zone,
+                                            ZoneBuildInfo &zone_info,
+                                            const ZoneBodyFunction &body_fn)
+      : zone_(zone), output_bnode_(*zone.output_node), zone_info_(zone_info), body_fn_(body_fn)
+  {
+    debug_name_ = "Foreach Geometry Element";
+
+    initialize_zone_wrapper(zone, zone_info, body_fn, inputs_, outputs_);
+    /* Geometry and selection inputs are always used. */
+    inputs_[zone_info.indices.inputs.main[0]].usage = lf::ValueUsage::Used;
+    inputs_[zone_info.indices.inputs.main[1]].usage = lf::ValueUsage::Used;
+  }
+
+  void execute_impl(lf::Params &params, const lf::Context & /*context*/) const override
+  {
+    /* TODO */
+    params.set_output(0, GeometrySet());
   }
 };
 
@@ -2270,6 +2321,7 @@ struct GeometryNodesLazyFunctionBuilder {
           break;
         }
         case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT:
+          this->build_foreach_geometry_element_zone_function(zone);
           break;
         default: {
           BLI_assert_unreachable();
@@ -2445,6 +2497,17 @@ struct GeometryNodesLazyFunctionBuilder {
     ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
     /* Wrap the loop body by another function that implements the repeat behavior. */
     auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(zone, zone_info, body_fn);
+    zone_info.lazy_function = &zone_fn;
+  }
+
+  void build_foreach_geometry_element_zone_function(const bNodeTreeZone &zone)
+  {
+    ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
+    /* Build a function for the loop body. */
+    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
+    /* Wrap the loop body in another function that implements the foreach behavior. */
+    auto &zone_fn = scope_.construct<LazyFunctionForForeachGeometryElementZone>(
+        zone, zone_info, body_fn);
     zone_info.lazy_function = &zone_fn;
   }
 
@@ -4499,7 +4562,6 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
       return nullptr;
     }
   }
-  return nullptr;
 
   std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
       btree.runtime->geometry_nodes_lazy_function_graph_info;
