@@ -2269,6 +2269,8 @@ struct GeometryNodesLazyFunctionBuilder {
           this->build_repeat_zone_function(zone);
           break;
         }
+        case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT:
+          break;
         default: {
           BLI_assert_unreachable();
           break;
@@ -4497,6 +4499,7 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
       return nullptr;
     }
   }
+  return nullptr;
 
   std::unique_ptr<GeometryNodesLazyFunctionGraphInfo> &lf_graph_info_ptr =
       btree.runtime->geometry_nodes_lazy_function_graph_info;

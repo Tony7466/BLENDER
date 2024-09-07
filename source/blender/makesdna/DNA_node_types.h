@@ -1968,6 +1968,15 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct NodeGeometryForeachGeometryElementInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometryForeachGeometryElementInput;
+
+typedef struct NodeGeometryForeachGeometryElementOutput {
+  int a;
+} NodeGeometryForeachGeometryElementOutput;
+
 typedef struct IndexSwitchItem {
   /** Generated unique identifier which stays the same even when the item order or names change. */
   int identifier;

@@ -191,9 +191,12 @@ class NodeAddZoneOperator(NodeAddOperator):
 
         # Connect geometry sockets by default.
         # Get the sockets by their types, because the name is not guaranteed due to i18n.
-        from_socket = next(s for s in input_node.outputs if s.type == 'GEOMETRY')
-        to_socket = next(s for s in output_node.inputs if s.type == 'GEOMETRY')
-        tree.links.new(to_socket, from_socket)
+        try:
+            from_socket = next(s for s in input_node.outputs if s.type == 'GEOMETRY')
+            to_socket = next(s for s in output_node.inputs if s.type == 'GEOMETRY')
+            tree.links.new(to_socket, from_socket)
+        except:
+            pass
 
         return {'FINISHED'}
 
@@ -216,6 +219,16 @@ class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
 
     input_node_type = "GeometryNodeRepeatInput"
     output_node_type = "GeometryNodeRepeatOutput"
+
+
+class NODE_OT_add_foreach_geometry_element_zone(NodeAddZoneOperator, Operator):
+    """Add a for-each geometry element zone that allows executing nodes e.g. for each vertex separately"""
+    bl_idname = "node.add_foreach_geometry_element_zone"
+    bl_label = "Add For-Each Geometry Element Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeForeachGeometryElementInput"
+    output_node_type = "GeometryNodeForeachGeometryElementOutput"
 
 
 class NODE_OT_collapse_hide_unused_toggle(Operator):
@@ -418,6 +431,7 @@ classes = (
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_add_repeat_zone,
+    NODE_OT_add_foreach_geometry_element_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_interface_item_new,
     NODE_OT_interface_item_duplicate,

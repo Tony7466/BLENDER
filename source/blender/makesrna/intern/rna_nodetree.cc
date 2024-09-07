@@ -9304,6 +9304,13 @@ static void def_geo_repeat_input(StructRNA *srna)
   def_common_zone_input(srna);
 }
 
+static void def_geo_foreach_geometry_element_input(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeGeometryForeachGeometryElementInput", "storage");
+
+  def_common_zone_input(srna);
+}
+
 static void rna_def_node_item_array_socket_item_common(StructRNA *srna,
                                                        const char *accessor,
                                                        const bool add_socket_type)

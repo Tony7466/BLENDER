@@ -503,6 +503,8 @@ DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display t
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
 DefNode(GeometryNode, GEO_NODE_WARNING, 0, "WARNING", Warning, "Warning", "Create custom warnings in node groups")
+DefNode(GeometryNode, GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT, def_geo_foreach_geometry_element_input, "FOREACH_GEOMETRY_ELEMENT_INPUT", ForeachGeometryElementInput, "For-Each Geometry Element Input", "")
+DefNode(GeometryNode, GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT, 0, "FOREACH_GEOMETRY_ELEMENT_OUTPUT", ForeachGeometryElementOutput, "For-Each Geometry Element Output", "")
 
 /* undefine macros */
 #undef DefNode
