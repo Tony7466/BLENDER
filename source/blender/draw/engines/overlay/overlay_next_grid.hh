@@ -9,8 +9,11 @@
 #pragma once
 
 #include "DEG_depsgraph_query.hh"
+
 #include "DNA_camera_types.h"
 #include "DNA_space_types.h"
+
+#include "ED_image.hh"
 #include "ED_view3d.hh"
 
 #include "overlay_next_private.hh"
@@ -32,7 +35,7 @@ class Grid {
   bool enabled_ = false;
 
  public:
-  void begin_sync(Resources &res, const State &state, const View &view)
+  void begin_sync(Resources &res, ShapeCache &shapes, const State &state, const View &view)
   {
     this->update_ubo(state, view);
 
@@ -42,24 +45,65 @@ class Grid {
 
     grid_ps_.init();
     grid_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA);
-    grid_ps_.shader_set(res.shaders.grid.get());
-    grid_ps_.bind_ubo("grid_buf", &data_);
-    grid_ps_.bind_ubo("globalsBlock", &res.globals_buf);
-    grid_ps_.bind_texture("depth_tx", &res.depth_tx);
-    if (zneg_flag_ & SHOW_AXIS_Z) {
-      grid_ps_.push_constant("grid_flag", zneg_flag_);
-      grid_ps_.push_constant("plane_axes", zplane_axes_);
-      grid_ps_.draw(DRW_cache_grid_get());
+    if (state.space_type == SPACE_IMAGE) {
+      /* Add quad background. */
+      auto &sub = grid_ps_.sub("grid_background");
+      sub.shader_set(res.shaders.grid_background.get());
+      float4 color_back;
+      interp_v4_v4v4(color_back, G_draw.block.color_background, G_draw.block.color_grid, 0.5);
+      sub.push_constant("ucolor", color_back);
+      sub.bind_texture("depthBuffer", &res.depth_tx);
+      float4x4 mat;
+      unit_m4(mat.ptr());
+      mat[0][0] = data_.size[0];
+      mat[1][1] = data_.size[1];
+      mat[2][2] = data_.size[2];
+      draw::Manager &manager = *DRW_manager_get();
+      ResourceHandle handle = manager.resource_handle(mat);
+      sub.draw(shapes.quad_solid.get(), handle);
     }
-    if (grid_flag_) {
-      grid_ps_.push_constant("grid_flag", grid_flag_);
-      grid_ps_.push_constant("plane_axes", grid_axes_);
-      grid_ps_.draw(DRW_cache_grid_get());
+    {
+      auto &sub = grid_ps_.sub("grid");
+      sub.shader_set(res.shaders.grid.get());
+      sub.bind_ubo("grid_buf", &data_);
+      sub.bind_ubo("globalsBlock", &res.globals_buf);
+      sub.bind_texture("depth_tx", &res.depth_tx);
+      if (zneg_flag_ & SHOW_AXIS_Z) {
+        sub.push_constant("grid_flag", zneg_flag_);
+        sub.push_constant("plane_axes", zplane_axes_);
+        sub.draw(DRW_cache_grid_get());
+      }
+      if (grid_flag_) {
+        sub.push_constant("grid_flag", grid_flag_);
+        sub.push_constant("plane_axes", grid_axes_);
+        sub.draw(DRW_cache_grid_get());
+      }
+      if (zpos_flag_ & SHOW_AXIS_Z) {
+        sub.push_constant("grid_flag", zpos_flag_);
+        sub.push_constant("plane_axes", zplane_axes_);
+        sub.draw(DRW_cache_grid_get());
+      }
     }
-    if (zpos_flag_ & SHOW_AXIS_Z) {
-      grid_ps_.push_constant("grid_flag", zpos_flag_);
-      grid_ps_.push_constant("plane_axes", zplane_axes_);
-      grid_ps_.draw(DRW_cache_grid_get());
+    if (state.space_type == SPACE_IMAGE) {
+      float4 theme_color;
+      UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
+      srgb_to_linearrgb_v4(theme_color, theme_color);
+
+      /* add wire border */
+      auto &sub = grid_ps_.sub("wire_border");
+      sub.shader_set(res.shaders.grid_image.get());
+      sub.push_constant("ucolor", theme_color);
+      float4x4 mat;
+      unit_m4(mat.ptr());
+      draw::Manager &manager = *DRW_manager_get();
+      for (const int x : IndexRange(data_.size[0])) {
+        mat[3][0] = x;
+        for (const int y : IndexRange(data_.size[1])) {
+          mat[3][1] = y;
+          ResourceHandle handle = manager.resource_handle(mat);
+          sub.draw(shapes.quad_wire.get(), handle);
+        }
+      }
     }
   }
 
@@ -76,9 +120,8 @@ class Grid {
  private:
   void update_ubo(const State &state, const View &view)
   {
-    if (state.space_type == SPACE_IMAGE) {
-      /* TODO */
-      enabled_ = false;
+    enabled_ = !state.hide_overlays;
+    if (!enabled_) {
       return;
     }
 
@@ -89,117 +132,157 @@ class Grid {
     /* Default, nothing is drawn. */
     grid_flag_ = zneg_flag_ = zpos_flag_ = OVERLAY_GridBits(0);
 
-    const View3D *v3d = state.v3d;
-    const RegionView3D *rv3d = state.rv3d;
+    if (state.space_type == SPACE_IMAGE) {
+      SpaceImage *sima = (SpaceImage *)state.space_data;
+      const View2D *v2d = &state.region->v2d;
 
-    const bool show_axis_x = (state.v3d_gridflag & V3D_SHOW_X) != 0;
-    const bool show_axis_y = (state.v3d_gridflag & V3D_SHOW_Y) != 0;
-    const bool show_axis_z = (state.v3d_gridflag & V3D_SHOW_Z) != 0;
-    const bool show_floor = (state.v3d_gridflag & V3D_SHOW_FLOOR) != 0;
-    const bool show_ortho_grid = (state.v3d_gridflag & V3D_SHOW_ORTHO_GRID) != 0;
-    const bool show_any = show_axis_x || show_axis_y || show_axis_z || show_floor ||
-                          show_ortho_grid;
+      /* Only UV Edit mode has the various Overlay options for now. */
+      const bool is_uv_edit = sima->mode == SI_MODE_UV;
 
-    enabled_ = !state.hide_overlays && show_any;
-
-    if (!enabled_) {
-      return;
-    }
-
-    /* If perspective view or non-axis aligned view. */
-    if (view.is_persp() || rv3d->view == RV3D_VIEW_USER) {
-      if (show_axis_x) {
-        grid_flag_ |= PLANE_XY | SHOW_AXIS_X;
+      const bool background_enabled = is_uv_edit ? (!state.hide_overlays &&
+                                                    (sima->overlay.flag &
+                                                     SI_OVERLAY_SHOW_GRID_BACKGROUND) != 0) :
+                                                   true;
+      if (background_enabled) {
+        grid_flag_ = GRID_BACK | PLANE_IMAGE;
+        if (sima->flag & SI_GRID_OVER_IMAGE) {
+          grid_flag_ = PLANE_IMAGE;
+        }
       }
-      if (show_axis_y) {
-        grid_flag_ |= PLANE_XY | SHOW_AXIS_Y;
+
+      const bool draw_grid = is_uv_edit || !ED_space_image_has_buffer(sima);
+      if (background_enabled && draw_grid) {
+        grid_flag_ |= SHOW_GRID;
+        if (is_uv_edit) {
+          if (sima->grid_shape_source != SI_GRID_SHAPE_DYNAMIC) {
+            grid_flag_ |= CUSTOM_GRID;
+          }
+        }
       }
-      if (show_floor) {
-        grid_flag_ |= PLANE_XY | SHOW_GRID;
+
+      data_.distance = 1.0f;
+      data_.size = float4(1.0f);
+      if (is_uv_edit) {
+        data_.size[0] = float(sima->tile_grid_shape[0]);
+        data_.size[1] = float(sima->tile_grid_shape[1]);
       }
+
+      data_.zoom_factor = ED_space_image_zoom_level(v2d, SI_GRID_STEPS_LEN);
+      ED_space_image_grid_steps(sima, grid_steps, grid_steps_y, SI_GRID_STEPS_LEN);
     }
     else {
-      if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_RIGHT, RV3D_VIEW_LEFT)) {
-        grid_flag_ = PLANE_YZ | SHOW_AXIS_Y | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
+      const View3D *v3d = state.v3d;
+      const RegionView3D *rv3d = state.rv3d;
+
+      const bool show_axis_x = (state.v3d_gridflag & V3D_SHOW_X) != 0;
+      const bool show_axis_y = (state.v3d_gridflag & V3D_SHOW_Y) != 0;
+      const bool show_axis_z = (state.v3d_gridflag & V3D_SHOW_Z) != 0;
+      const bool show_floor = (state.v3d_gridflag & V3D_SHOW_FLOOR) != 0;
+      const bool show_ortho_grid = (state.v3d_gridflag & V3D_SHOW_ORTHO_GRID) != 0;
+      const bool show_any = show_axis_x || show_axis_y || show_axis_z || show_floor ||
+                            show_ortho_grid;
+
+      enabled_ = enabled_ && show_any;
+
+      if (!enabled_) {
+        return;
       }
-      else if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_TOP, RV3D_VIEW_BOTTOM)) {
-        grid_flag_ = PLANE_XY | SHOW_AXIS_X | SHOW_AXIS_Y | SHOW_GRID | GRID_BACK;
-      }
-      else if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_FRONT, RV3D_VIEW_BACK)) {
-        grid_flag_ = PLANE_XZ | SHOW_AXIS_X | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
-      }
-    }
 
-    grid_axes_[0] = float((grid_flag_ & (PLANE_XZ | PLANE_XY)) != 0);
-    grid_axes_[1] = float((grid_flag_ & (PLANE_YZ | PLANE_XY)) != 0);
-    grid_axes_[2] = float((grid_flag_ & (PLANE_YZ | PLANE_XZ)) != 0);
-
-    /* Z axis if needed */
-    if (((rv3d->view == RV3D_VIEW_USER) || (rv3d->persp != RV3D_ORTHO)) && show_axis_z) {
-      zpos_flag_ = SHOW_AXIS_Z;
-
-      float3 zvec = -float3(view.viewinv()[2]);
-      float3 campos = float3(view.viewinv()[3]);
-
-      /* z axis : chose the most facing plane */
-      if (fabsf(zvec[0]) < fabsf(zvec[1])) {
-        zpos_flag_ |= PLANE_XZ;
+      /* If perspective view or non-axis aligned view. */
+      if (view.is_persp() || rv3d->view == RV3D_VIEW_USER) {
+        if (show_axis_x) {
+          grid_flag_ |= PLANE_XY | SHOW_AXIS_X;
+        }
+        if (show_axis_y) {
+          grid_flag_ |= PLANE_XY | SHOW_AXIS_Y;
+        }
+        if (show_floor) {
+          grid_flag_ |= PLANE_XY | SHOW_GRID;
+        }
       }
       else {
-        zpos_flag_ |= PLANE_YZ;
+        if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_RIGHT, RV3D_VIEW_LEFT)) {
+          grid_flag_ = PLANE_YZ | SHOW_AXIS_Y | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
+        }
+        else if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_TOP, RV3D_VIEW_BOTTOM)) {
+          grid_flag_ = PLANE_XY | SHOW_AXIS_X | SHOW_AXIS_Y | SHOW_GRID | GRID_BACK;
+        }
+        else if (show_ortho_grid && ELEM(rv3d->view, RV3D_VIEW_FRONT, RV3D_VIEW_BACK)) {
+          grid_flag_ = PLANE_XZ | SHOW_AXIS_X | SHOW_AXIS_Z | SHOW_GRID | GRID_BACK;
+        }
       }
-      zneg_flag_ = zpos_flag_;
 
-      /* Perspective: If camera is below floor plane, we switch clipping.
-       * Orthographic: If eye vector is looking up, we switch clipping. */
-      if ((view.is_persp() && (campos[2] > 0.0f)) || (!view.is_persp() && (zvec[2] < 0.0f))) {
-        zpos_flag_ |= CLIP_ZPOS;
-        zneg_flag_ |= CLIP_ZNEG;
+      grid_axes_[0] = float((grid_flag_ & (PLANE_XZ | PLANE_XY)) != 0);
+      grid_axes_[1] = float((grid_flag_ & (PLANE_YZ | PLANE_XY)) != 0);
+      grid_axes_[2] = float((grid_flag_ & (PLANE_YZ | PLANE_XZ)) != 0);
+
+      /* Z axis if needed */
+      if (((rv3d->view == RV3D_VIEW_USER) || (rv3d->persp != RV3D_ORTHO)) && show_axis_z) {
+        zpos_flag_ = SHOW_AXIS_Z;
+
+        float3 zvec = -float3(view.viewinv()[2]);
+        float3 campos = float3(view.viewinv()[3]);
+
+        /* z axis : chose the most facing plane */
+        if (fabsf(zvec[0]) < fabsf(zvec[1])) {
+          zpos_flag_ |= PLANE_XZ;
+        }
+        else {
+          zpos_flag_ |= PLANE_YZ;
+        }
+        zneg_flag_ = zpos_flag_;
+
+        /* Perspective: If camera is below floor plane, we switch clipping.
+         * Orthographic: If eye vector is looking up, we switch clipping. */
+        if ((view.is_persp() && (campos[2] > 0.0f)) || (!view.is_persp() && (zvec[2] < 0.0f))) {
+          zpos_flag_ |= CLIP_ZPOS;
+          zneg_flag_ |= CLIP_ZNEG;
+        }
+        else {
+          zpos_flag_ |= CLIP_ZNEG;
+          zneg_flag_ |= CLIP_ZPOS;
+        }
+
+        zplane_axes_[0] = float((zpos_flag_ & (PLANE_XZ | PLANE_XY)) != 0);
+        zplane_axes_[1] = float((zpos_flag_ & (PLANE_YZ | PLANE_XY)) != 0);
+        zplane_axes_[2] = float((zpos_flag_ & (PLANE_YZ | PLANE_XZ)) != 0);
       }
       else {
-        zpos_flag_ |= CLIP_ZNEG;
-        zneg_flag_ |= CLIP_ZPOS;
+        zneg_flag_ = zpos_flag_ = CLIP_ZNEG | CLIP_ZPOS;
       }
 
-      zplane_axes_[0] = float((zpos_flag_ & (PLANE_XZ | PLANE_XY)) != 0);
-      zplane_axes_[1] = float((zpos_flag_ & (PLANE_YZ | PLANE_XY)) != 0);
-      zplane_axes_[2] = float((zpos_flag_ & (PLANE_YZ | PLANE_XZ)) != 0);
-    }
-    else {
-      zneg_flag_ = zpos_flag_ = CLIP_ZNEG | CLIP_ZPOS;
-    }
+      float dist;
+      if (rv3d->persp == RV3D_CAMOB && v3d->camera && v3d->camera->type == OB_CAMERA) {
+        Object *camera_object = DEG_get_evaluated_object(state.depsgraph, v3d->camera);
+        dist = ((Camera *)(camera_object->data))->clip_end;
+        grid_flag_ |= GRID_CAMERA;
+        zneg_flag_ |= GRID_CAMERA;
+        zpos_flag_ |= GRID_CAMERA;
+      }
+      else {
+        dist = v3d->clip_end;
+      }
 
-    float dist;
-    if (rv3d->persp == RV3D_CAMOB && v3d->camera && v3d->camera->type == OB_CAMERA) {
-      Object *camera_object = DEG_get_evaluated_object(state.depsgraph, v3d->camera);
-      dist = ((Camera *)(camera_object->data))->clip_end;
-      grid_flag_ |= GRID_CAMERA;
-      zneg_flag_ |= GRID_CAMERA;
-      zpos_flag_ |= GRID_CAMERA;
-    }
-    else {
-      dist = v3d->clip_end;
-    }
+      if (view.is_persp()) {
+        data_.size = float4(dist);
+      }
+      else {
+        float viewdist = 1.0f / min_ff(fabsf(view.winmat()[0][0]), fabsf(view.winmat()[1][1]));
+        data_.size = float4(viewdist * dist);
+      }
 
-    if (view.is_persp()) {
-      data_.size = float4(dist);
-    }
-    else {
-      float viewdist = 1.0f / min_ff(fabsf(view.winmat()[0][0]), fabsf(view.winmat()[1][1]));
-      data_.size = float4(viewdist * dist);
-    }
+      data_.distance = dist / 2.0f;
 
-    data_.distance = dist / 2.0f;
+      ED_view3d_grid_steps(state.scene, v3d, rv3d, grid_steps);
 
-    ED_view3d_grid_steps(state.scene, v3d, rv3d, grid_steps);
-
-    if ((v3d->flag & (V3D_XR_SESSION_SURFACE | V3D_XR_SESSION_MIRROR)) != 0) {
-      /* The calculations for the grid parameters assume that the view matrix has no scale
-       * component, which may not be correct if the user is "shrunk" or "enlarged" by zooming in or
-       * out. Therefore, we need to compensate the values here. */
-      /* Assumption is uniform scaling (all column vectors are of same length). */
-      float viewinvscale = len_v3(view.viewinv()[0]);
-      data_.distance *= viewinvscale;
+      if ((v3d->flag & (V3D_XR_SESSION_SURFACE | V3D_XR_SESSION_MIRROR)) != 0) {
+        /* The calculations for the grid parameters assume that the view matrix has no scale
+         * component, which may not be correct if the user is "shrunk" or "enlarged" by zooming in
+         * or out. Therefore, we need to compensate the values here. */
+        /* Assumption is uniform scaling (all column vectors are of same length). */
+        float viewinvscale = len_v3(view.viewinv()[0]);
+        data_.distance *= viewinvscale;
+      }
     }
 
     /* Convert to UBO alignment. */

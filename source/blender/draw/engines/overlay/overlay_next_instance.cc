@@ -39,6 +39,7 @@ void Instance::init()
 
   state.pixelsize = U.pixelsize;
   state.ctx_mode = CTX_data_mode_enum_ex(ctx->object_edit, ctx->obact, ctx->object_mode);
+  state.space_data = ctx->space_data;
   state.space_type = state.v3d != nullptr ? SPACE_VIEW3D : eSpace_Type(ctx->space_data->spacetype);
   if (state.v3d != nullptr) {
     state.clear_in_front = (state.v3d->shading.type != OB_SOLID);
@@ -121,7 +122,7 @@ void Instance::begin_sync()
   begin_sync_layer(regular);
   begin_sync_layer(infront);
 
-  grid.begin_sync(resources, state, view);
+  grid.begin_sync(resources, shapes, state, view);
 
   anti_aliasing.begin_sync(resources);
   xray_fade.begin_sync(resources, state);
