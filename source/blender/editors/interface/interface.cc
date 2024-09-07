@@ -5,7 +5,7 @@
 /** \file
  * \ingroup edinterface
  */
-
+#include <algorithm>
 #include <cctype>
 #include <cfloat>
 #include <climits>
@@ -1001,60 +1001,63 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
 /**
  * \return true when \a but_p is set (only done for active buttons).
  */
+
+static bool but_itr_in_range(std::unique_ptr<uiBut> *but, uiBlock *block)
+{
+  return block->buttons.begin() <= but && but < block->buttons.end();
+}
+
+std::unique_ptr<uiBut> *but_rfind_old_itr(uiBlock *block_old,
+                                          const std::unique_ptr<uiBut> &but_new)
+{
+  for (int64_t idx = block_old->buttons.size() - 1; idx >= 0; idx--) {
+    std::unique_ptr<uiBut> *but = block_old->buttons.begin() + idx;
+    if (ui_but_equals_old(but_new.get(), but->get())) {
+      return but;
+    }
+  }
+  return nullptr;
+}
+
 static bool ui_but_update_from_old_block(const bContext *C,
                                          uiBlock *block,
-                                         uiBut **but_p,
-                                         uiBut **but_old_p)
+                                         std::unique_ptr<uiBut> &but,
+                                         std::unique_ptr<uiBut> *&oldbut)
 {
   uiBlock *oldblock = block->oldblock;
-  uiBut *but = *but_p;
 
 #if 0
   /* Simple method - search every time. Keep this for easy testing of the "fast path." */
-  uiBut *oldbut = ui_but_find_old(oldblock, but);
-  UNUSED_VARS(but_old_p);
+  uiBut *oldbut = but_rfind_old_itr(oldblock, but);
+  UNUSED_VARS(oldbut);
 #else
-  BLI_assert(*but_old_p == nullptr ||
-             oldblock->but_index(*but_old_p) != oldblock->buttons.size());
+  BLI_assert(oldbut == nullptr || but_itr_in_range(oldbut, oldblock));
 
   /* As long as old and new buttons are aligned, avoid loop-in-loop (calling #ui_but_find_old). */
-  uiBut *oldbut;
-  if (LIKELY(*but_old_p && ui_but_equals_old(but, *but_old_p))) {
-    oldbut = *but_old_p;
-  }
-  else {
+  if (!LIKELY(but_itr_in_range(oldbut, oldblock) && ui_but_equals_old(but.get(), oldbut->get()))) {
     /* Fallback to block search. */
-    oldbut = ui_but_find_old(oldblock, but);
+    oldbut = but_rfind_old_itr(oldblock, but);
   }
-  (*but_old_p) = oldbut ? oldbut->block->next_but(oldbut) : nullptr;
 #endif
 
   bool found_active = false;
 
-  if (!oldbut) {
+  if (!but_itr_in_range(oldbut, oldblock)) {
     return false;
   }
 
-  if (oldbut->active || oldbut->semi_modal_state) {
-    /* Move button over from oldblock to new block. */
-    int but_index = block->but_index(but);
-    int old_but_index = oldblock->but_index(oldbut);
-    std::swap(block->buttons[but_index], oldblock->buttons[old_but_index]);
-    /* `but` was swaped with `oldbut` in storages. Remove `but` from `oldbut` initial location. */
-    std::unique_ptr<uiBut> but_ptr = std::move(oldblock->buttons[old_but_index]);
-    oldblock->buttons.remove(old_but_index);
-
+  if ((*oldbut)->active || (*oldbut)->semi_modal_state) {
     /* Add the old button to the button groups in the new block. */
-    ui_button_group_replace_but_ptr(block, but, oldbut);
-    oldbut->block = block;
-    *but_p = oldbut;
+    ui_button_group_replace_but_ptr(block, oldbut->get(), but.get());
+    (*oldbut)->block = block;
 
-    ui_but_update_old_active_from_new(oldbut, but);
+    ui_but_update_old_active_from_new(oldbut->get(), but.get());
 
     if (!BLI_listbase_is_empty(&block->butstore)) {
-      UI_butstore_register_update(block, oldbut, but);
+      UI_butstore_register_update(block, oldbut->get(), but.get());
     }
-    ui_but_free(C, but);
+    /* Swap old and new buttons, new button will be removed as `oldbut`. */
+    std::swap(but, *oldbut);
 
     found_active = true;
   }
@@ -1067,14 +1070,13 @@ static bool ui_but_update_from_old_block(const bContext *C,
       flag_copy |= UI_HOVER;
     }
 
-    but->flag = (but->flag & ~flag_copy) | (oldbut->flag & flag_copy);
-
-    /* ensures one button can get activated, and in case the buttons
-     * draw are the same this gives O(1) lookup for each button */
-    ui_but_free(C, oldbut);
-    oldblock->remove_but(oldbut);
+    but->flag = (but->flag & ~flag_copy) | ((*oldbut)->flag & flag_copy);
   }
-
+  ui_but_free(C, oldbut->get());
+  /* In the reversed `oldblock->buttons` vector and as long as old and new buttons
+   * are aligned this is likely `oldblock->buttons.remove_last()`, with O(1). */
+  oldblock->buttons.remove(oldbut - oldblock->buttons.begin());
+  oldbut = oldblock->buttons.begin() < oldbut ? oldbut-- : nullptr;
   return found_active;
 }
 
@@ -1844,21 +1846,40 @@ void UI_block_update_from_old(const bContext *C, uiBlock *block)
   if (!block->oldblock) {
     return;
   }
-
-  uiBut *but_old = block->oldblock->first_but_or_null();
+  uiBlock *oldblock = block->oldblock;
+  /* Remove all back `buts` until an active `but` is found, most `blocks` do not even have an
+   * active `but`. */
+  int count = 0;
+  for (int idx = oldblock->buttons.size() - 1; idx >= 0; idx--) {
+    std::unique_ptr<uiBut> &oldbut = oldblock->buttons[idx];
+    if (oldbut->active || oldbut->semi_modal_state ||
+        (oldbut->flag & (UI_BUT_DRAG_MULTI | UI_HOVER)))
+    {
+      break;
+    }
+    count++;
+    ui_but_free(C, oldbut.get());
+  }
+  oldblock->buttons.remove(oldblock->buttons.size() - count, count);
+  /* Reverse `oldblock` buttons to allow popping out `buts`. */
+  std::reverse(oldblock->buttons.begin(), oldblock->buttons.end());
+  std::unique_ptr<uiBut> *oldbut = !oldblock->buttons.is_empty() ? oldblock->buttons.end() - 1 :
+                                                                   nullptr;
 
   if (BLI_listbase_is_empty(&block->oldblock->butstore) == false) {
     UI_butstore_update(block);
   }
 
-  for (int idx : block->buttons.index_range()) {
-    uiBut *but = block->buttons[idx].get();
-    if (ui_but_update_from_old_block(C, block, &but, &but_old)) {
-      ui_but_update(but);
+  for (std::unique_ptr<uiBut> &but : block->buttons) {
+    if (oldblock->buttons.is_empty()) {
+      break;
+    }
+    if (ui_but_update_from_old_block(C, block, but, oldbut)) {
+      ui_but_update(but.get());
 
       /* redraw dynamic tooltip if we have one open */
       if (but->tip_func) {
-        UI_but_tooltip_refresh((bContext *)C, but);
+        UI_but_tooltip_refresh((bContext *)C, but.get());
       }
     }
   }
