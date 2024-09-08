@@ -2027,7 +2027,7 @@ class LazyFunctionForForeachGeometryElementZone;
 struct ForeachGeometryElementEvalStorage;
 
 struct ForeachGeometryElementEvalState {
-  GeometrySet input_geometry;
+  GeometrySet main_geometry;
   Vector<int> indices_to_evaluate;
 };
 
@@ -2132,17 +2132,17 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                                   GeoNodesLFLocalUserData &local_user_data) const
   {
     const AttrDomain domain = AttrDomain(node_storage.domain);
-    eval_storage.state.input_geometry = params.extract_input<GeometrySet>(
+    eval_storage.state.main_geometry = params.extract_input<GeometrySet>(
         zone_info_.indices.inputs.main[0]);
 
     Vector<GeometryComponent *> src_components;
     for (const GeometryComponent *src_component :
-         eval_storage.state.input_geometry.get_components())
+         eval_storage.state.main_geometry.get_components())
     {
       const int domain_size = src_component->attribute_domain_size(domain);
       if (domain_size > 0) {
         src_components.append(
-            &eval_storage.state.input_geometry.get_component_for_write(src_component->type()));
+            &eval_storage.state.main_geometry.get_component_for_write(src_component->type()));
       }
     }
 
@@ -2335,14 +2335,72 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
 void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &params,
                                                                const lf::Context &context) const
 {
-  Vector<GeometrySet> geometries;
-  for (const int i : inputs_.index_range()) {
-    geometries.append(params.extract_input<GeometrySet>(i));
-  }
-  GeometrySet joined = geometry::join_geometries(geometries, {});
-  params.set_output(1, std::move(joined));
+  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
 
-  params.set_output(0, eval_storage_.state.input_geometry);
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
+  const AttrDomain domain = AttrDomain(node_storage.domain);
+
+  int items_until_geometry = 0;
+  for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
+    const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    if (socket_type == SOCK_GEOMETRY) {
+      break;
+    }
+    const CPPType *base_cpp_type = bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
+    if (!base_cpp_type) {
+      continue;
+    }
+    const eCustomDataType cd_type = bke::cpp_type_to_custom_data_type(*base_cpp_type);
+
+    const std::string attribute_name = bke::hash_to_anonymous_attribute_name(
+        user_data.call_data->self_object()->id.name,
+        user_data.compute_context->hash(),
+        parent_.output_bnode_.identifier,
+        item.identifier);
+
+    for (const ForeachElementComponent &component_info : eval_storage_.components) {
+      const int domain_size = component_info.component->attribute_domain_size(domain);
+      MutableAttributeAccessor attributes = *component_info.component->attributes_for_write();
+      GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
+          attribute_name, domain, cd_type);
+      const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
+
+      IndexMaskMemory memory;
+      const IndexMask inverted_mask = mask.complement(IndexRange(domain_size), memory);
+      base_cpp_type->value_initialize_indices(attribute.span.data(), inverted_mask);
+
+      mask.foreach_index([&](const int i, const int pos) {
+        const int lf_param_index = pos * node_storage.output_items.items_num + item_i;
+        const SocketValueVariant &value_variant = params.get_input<SocketValueVariant>(
+            lf_param_index);
+        const void *value = value_variant.get_single_ptr_raw();
+        base_cpp_type->copy_construct(value, attribute.span[i]);
+      });
+
+      attribute.finish();
+    }
+
+    auto attribute_field = std::make_shared<AttributeFieldInput>(
+        attribute_name,
+        *base_cpp_type,
+        make_anonymous_attribute_socket_inspection_string(
+            parent_.output_bnode_.output_socket(1 + item_i)));
+    SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
+    params.set_output(1 + item_i, std::move(attribute_value_variant));
+
+    items_until_geometry++;
+  }
+
+  params.set_output(0, eval_storage_.state.main_geometry);
+
+  // Vector<GeometrySet> geometries;
+  // for (const int i : inputs_.index_range()) {
+  //   geometries.append(params.extract_input<GeometrySet>(i));
+  // }
+  // GeometrySet joined = geometry::join_geometries(geometries, {});
+  // params.set_output(1, std::move(joined));
 }
 
 /**
