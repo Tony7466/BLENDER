@@ -1,1 +1,2 @@
 Referenced by issue #39953, Float data images display trash in image editor
+Referenced by pull request #127305, Color management: skip no-op colorspace transforms for float images (mostly affects VSE)
