@@ -2238,6 +2238,19 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     for (const int i : zone_info_.indices.outputs.input_usages) {
       lf_outputs[i]->set_default_value(&static_true);
     }
+
+    eval_storage.or_function.emplace(mask.size());
+    for (const int border_link_i : zone_.border_links.index_range()) {
+      lf::FunctionNode &lf_or = lf_graph.add_function(*eval_storage.or_function);
+      for (const int i : lf_body_nodes.index_range()) {
+        lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
+        lf_graph.add_link(
+            lf_body_node.output(body_fn_.indices.outputs.border_link_usages[border_link_i]),
+            lf_or.input(i));
+      }
+      lf_graph.add_link(lf_or.output(0),
+                        *lf_outputs[zone_info_.indices.outputs.border_link_usages[border_link_i]]);
+    }
   }
 
   std::string input_name(const int i) const override
