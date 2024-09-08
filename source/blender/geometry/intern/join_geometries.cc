@@ -177,7 +177,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   for (const int i : components.index_range()) {
     GeometrySet tmp_geo;
     tmp_geo.add(*components[i]);
-    handles[i] = instances->add_reference(bke::InstanceReference{tmp_geo});
+    handles[i] = instances->add_new_reference(bke::InstanceReference{tmp_geo});
   }
 
   RealizeInstancesOptions options;
