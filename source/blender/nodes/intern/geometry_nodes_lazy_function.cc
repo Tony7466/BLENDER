@@ -51,6 +51,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_extract_element.hh"
 #include "GEO_join_geometries.hh"
 
 #include <fmt/format.h>
@@ -2035,6 +2036,7 @@ struct ForeachElementComponent {
   GeometryComponent *component;
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
+  std::optional<Array<GeometrySet>> geometry_elements;
   Array<SocketValueVariant> index_values;
   Array<Array<SocketValueVariant>> item_input_values;
   IndexRange body_nodes_range;
@@ -2182,6 +2184,15 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       mask.foreach_index(
           [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
 
+      if (component->type() == GeometryComponent::Type::Mesh && domain == AttrDomain::Point) {
+        const Mesh &mesh = *static_cast<const MeshComponent *>(component)->get();
+        Array<Mesh *> vertex_meshes = geometry::extract_vertex_meshes(mesh, mask, {});
+        component_info.geometry_elements.emplace(mask.size());
+        for (const int i : mask.index_range()) {
+          (*component_info.geometry_elements)[i].replace_mesh(vertex_meshes[i]);
+        }
+      }
+
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
         const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
@@ -2237,7 +2248,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       for (const int i : component_info.body_nodes_range.index_range()) {
         const int body_i = component_info.body_nodes_range[i];
         lf::FunctionNode &lf_body_node = *lf_body_nodes[body_i];
-        lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(&empty_geometry);
+        const GeometrySet *element_geometry = &empty_geometry;
+        if (component_info.geometry_elements.has_value()) {
+          element_geometry = &(*component_info.geometry_elements)[i];
+        }
+        lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(element_geometry);
         lf_body_node.input(body_fn_.indices.inputs.main[1])
             .set_default_value(&component_info.index_values[i]);
         for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
@@ -2472,6 +2487,7 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
     if (socket_type == SOCK_GEOMETRY) {
       handle_new_geometry_output(previous_geometry_item_i,
                                  IndexRange::from_begin_end(previous_geometry_item_i + 1, item_i));
+      previous_geometry_item_i = item_i;
     }
   }
   handle_new_geometry_output(previous_geometry_item_i,
