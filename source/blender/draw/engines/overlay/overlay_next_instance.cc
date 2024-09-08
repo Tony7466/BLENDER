@@ -205,7 +205,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
           layer.metaballs.object_sync(ob_ref, resources, state);
         }
         break;
-      case OB_GPENCIL_LEGACY:
+      case OB_GREASE_PENCIL:
+        layer.grease_pencil.object_sync(ob_ref, resources, state);
         break;
       case OB_SPEAKER:
         layer.speakers.object_sync(ob_ref, resources, state);

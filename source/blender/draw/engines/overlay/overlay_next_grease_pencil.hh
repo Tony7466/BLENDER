@@ -27,8 +27,11 @@ class GreasePencil {
   PassSimple::Sub *edit_points_ = nullptr;
   PassSimple::Sub *edit_lines_ = nullptr;
 
+  PassSimple grid_ps_ = {"GPencil Grid"};
+
   bool show_points_ = false;
   bool show_lines_ = false;
+  bool show_grid_ = false;
 
   bool in_edit_mode_ = false;
   bool in_paint_mode_ = false;
@@ -55,7 +58,6 @@ class GreasePencil {
     view_dist = state.view_dist_get(view.winmat());
 
     const View3D *v3d = state.v3d;
-    const DRWContextState *draw_ctx = DRW_context_state_get();
     const ToolSettings *ts = state.scene->toolsettings;
 
     const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(ts);
@@ -108,6 +110,26 @@ class GreasePencil {
         edit_lines_ = &sub;
       }
     }
+
+    const bool is_depth_projection_mode = ts->gpencil_v3d_align &
+                                          (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE);
+    show_grid_ = (v3d->gp_flag & V3D_GP_SHOW_GRID) && !is_depth_projection_mode;
+
+    {
+      const bool grid_xray = (v3d->gp_flag & V3D_GP_SHOW_GRID_XRAY);
+      DRWState depth_write_state = (grid_xray) ? DRW_STATE_DEPTH_ALWAYS :
+                                                 DRW_STATE_DEPTH_LESS_EQUAL;
+      auto &pass = grid_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | depth_write_state,
+                     state.clipping_plane_count);
+      if (show_grid_) {
+        const float4 col_grid(0.5f, 0.5f, 0.5f, state.overlay.gpencil_grid_opacity);
+        pass.shader_set(res.shaders.grid_grease_pencil.get());
+        pass.bind_ubo("globalsBlock", &res.globals_buf);
+        pass.push_constant("color", col_grid);
+      }
+    }
   }
 
   void edit_object_sync(Manager &manager,
@@ -119,15 +141,44 @@ class GreasePencil {
       return;
     }
 
+    Object *ob = ob_ref.object;
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
     if (show_points_) {
-      gpu::Batch *geom = DRW_cache_grease_pencil_edit_points_get(state.scene, ob_ref.object);
+      gpu::Batch *geom = in_weight_mode_ ?
+                             DRW_cache_grease_pencil_weight_points_get(state.scene, ob) :
+                             DRW_cache_grease_pencil_edit_points_get(state.scene, ob);
       edit_points_->draw(geom, res_handle);
     }
     if (show_lines_) {
-      gpu::Batch *geom = DRW_cache_grease_pencil_edit_lines_get(state.scene, ob_ref.object);
+      gpu::Batch *geom = in_weight_mode_ ?
+                             DRW_cache_grease_pencil_weight_lines_get(state.scene, ob) :
+                             DRW_cache_grease_pencil_edit_lines_get(state.scene, ob);
       edit_lines_->draw(geom, res_handle);
+    }
+  }
+
+  void object_sync(const ObjectRef &ob_ref, Resources & /*res*/, State &state)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    if (ob_ref.object != state.active_base->object) {
+      /* Only display for the active object. */
+      return;
+    }
+
+    if (show_grid_) {
+      const int grid_lines = 4;
+      const int line_count = grid_lines * 4 + 2;
+      const float4x4 grid_mat = grid_matrix_get(*ob_ref.object, state.scene);
+
+      grid_ps_.push_constant("xAxis", grid_mat.x_axis());
+      grid_ps_.push_constant("yAxis", grid_mat.y_axis());
+      grid_ps_.push_constant("origin", grid_mat.location());
+      grid_ps_.push_constant("halfLineCount", line_count / 2);
+      grid_ps_.draw_procedural(GPU_PRIM_LINES, 1, line_count * 2);
     }
   }
 
@@ -136,7 +187,9 @@ class GreasePencil {
     if (!enabled_) {
       return;
     }
+
     GPU_framebuffer_bind(framebuffer);
+    manager.submit(grid_ps_, view);
   }
 
   void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
@@ -295,6 +348,51 @@ class GreasePencil {
         transform_direction(bbox_to_world_normal, local_plane_direction));
 
     return float4(plane_direction, -dot(plane_direction, bbox_center));
+  }
+
+  float4x4 grid_matrix_get(const Object &object, const Scene *scene)
+  {
+    const ToolSettings *ts = scene->toolsettings;
+
+    const ::GreasePencil &grease_pencil = *static_cast<::GreasePencil *>(object.data);
+    const blender::bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
+
+    float4x4 mat = object.object_to_world();
+    if (ts->gp_sculpt.lock_axis != GP_LOCKAXIS_CURSOR) {
+      mat = layer.to_world_space(object);
+    }
+    const View3DCursor *cursor = &scene->cursor;
+
+    /* Set the grid in the selected axis */
+    switch (ts->gp_sculpt.lock_axis) {
+      case GP_LOCKAXIS_X:
+        std::swap(mat[0], mat[2]);
+        break;
+      case GP_LOCKAXIS_Y:
+        std::swap(mat[1], mat[2]);
+        break;
+      case GP_LOCKAXIS_Z:
+        /* Default. */
+        break;
+      case GP_LOCKAXIS_CURSOR: {
+        mat = float4x4(cursor->matrix<float3x3>());
+        break;
+      }
+      case GP_LOCKAXIS_VIEW:
+        /* view aligned */
+        DRW_view_viewmat_get(nullptr, mat.ptr(), true);
+        break;
+    }
+
+    mat *= 2.0f;
+
+    if (ts->gpencil_v3d_align & GP_PROJECT_CURSOR) {
+      mat.location() = cursor->location;
+    }
+    else {
+      mat.location() = layer.to_world_space(object).location();
+    }
+    return mat;
   }
 };
 

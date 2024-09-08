@@ -200,6 +200,7 @@ class ShaderModule {
   ShaderPtr curve_edit_line;
   ShaderPtr curve_edit_handles;
   ShaderPtr grid = shader("overlay_grid");
+  ShaderPtr grid_grease_pencil = shader("overlay_gpencil_canvas");
   ShaderPtr legacy_curve_edit_wires;
   ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
   ShaderPtr legacy_curve_edit_handles = shader("overlay_edit_curve_handle_next");
