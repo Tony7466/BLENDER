@@ -469,7 +469,7 @@ void OBJWriter::write_nurbs_curve(FormatHandler &fh, const OBJCurve &obj_nurbs_d
         dim = 2;
         break;
       default:
-          BLI_assert_unreachable();
+        BLI_assert_unreachable();
     };
 
     /**

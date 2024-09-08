@@ -7,8 +7,6 @@
  */
 
 #include "BKE_lib_id.hh"
-#include <algorithm>
-
 #include "BKE_object.hh"
 
 #include "BLI_listbase.h"

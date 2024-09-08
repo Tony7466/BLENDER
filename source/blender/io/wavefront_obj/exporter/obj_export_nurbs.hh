@@ -44,15 +44,15 @@ class OBJCurve : NonCopyable {
    */
   float4 vertex_coordinates(int spline_index, int vertex_index, float global_scale) const;
   /**
-   * \param spline_index: Zero-based index of spline of interest.
-   * \return: Number of control point on the requested axis of the surface.
-   */
-  int spline_control_points(const int spline_index, int uv) const;
-  /**
    * Get total control points of the NURBS spline at the given index along a specific axis.
    * This is different than total vertices of a spline.
    */
   int total_spline_control_points(int spline_index, int uv) const;
+  /**
+   * \param spline_index: Zero-based index of spline of interest.
+   * \return: Number of control point on the requested axis of the surface.
+   */
+  int spline_control_points(const int spline_index, int uv) const;
   /**
    * Get the degree of the NURBS spline at the given index.
    */
