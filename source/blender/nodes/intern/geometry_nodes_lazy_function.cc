@@ -2424,7 +2424,7 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
         const int item_i = attribute_items_range[local_item_i];
         const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
         const AttrDomain domain = AttrDomain(item.domain);
-        const int field_param_i = body_i * node_storage.output_items.items_num + geometry_item_i;
+        const int field_param_i = body_i * node_storage.output_items.items_num + item_i;
         GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
 
         /* TODO: modify nested instances + instances component */
