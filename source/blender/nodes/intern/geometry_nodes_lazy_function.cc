@@ -2022,10 +2022,23 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 };
 
 class LazyFunctionForForeachGeometryElementZone;
+struct ForeachGeometryElementEvalStorage;
 
 struct ForeachGeometryElementEvalState {
   GeometrySet input_geometry;
   Vector<int> indices_to_evaluate;
+};
+
+struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
+  const LazyFunctionForForeachGeometryElementZone &parent_;
+  ForeachGeometryElementEvalStorage &eval_storage_;
+
+ public:
+  LazyFunctionForReduceForeachGeometryElement(
+      const LazyFunctionForForeachGeometryElementZone &parent,
+      ForeachGeometryElementEvalStorage &eval_storage);
+
+  void execute_impl(lf::Params &params, const lf::Context &context) const override;
 };
 
 struct ForeachGeometryElementEvalStorage {
@@ -2034,6 +2047,7 @@ struct ForeachGeometryElementEvalStorage {
   std::optional<FieldEvaluator> field_evaluator;
   lf::Graph graph;
   std::optional<LazyFunctionForLogicalOr> or_function;
+  std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
   std::optional<lf::GraphExecutor> graph_executor;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
   ForeachGeometryElementEvalState state;
@@ -2047,6 +2061,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   const bNode &output_bnode_;
   const ZoneBuildInfo &zone_info_;
   const ZoneBodyFunction &body_fn_;
+
+  friend LazyFunctionForReduceForeachGeometryElement;
 
  public:
   LazyFunctionForForeachGeometryElementZone(const bNodeTreeZone &zone,
@@ -2200,6 +2216,28 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                           lf_body_node.input(body_fn_.indices.inputs.border_links[border_link_i]));
       }
     }
+
+    eval_storage.reduce_function.emplace(*this, eval_storage);
+    lf::FunctionNode &lf_reduce = lf_graph.add_function(*eval_storage.reduce_function);
+
+    for (const int i : mask.index_range()) {
+      lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
+      for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
+        lf_graph.add_link(lf_body_node.output(body_fn_.indices.outputs.main[item_i]),
+                          lf_reduce.input(i * node_storage.output_items.items_num + item_i));
+      }
+    }
+
+    lf_graph.add_link(lf_reduce.output(0), *lf_outputs[zone_info_.indices.outputs.main[0]]);
+    for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
+      lf_graph.add_link(lf_reduce.output(1 + item_i),
+                        *lf_outputs[zone_info_.indices.outputs.main[1 + item_i]]);
+    }
+
+    static bool static_true{true};
+    for (const int i : zone_info_.indices.outputs.input_usages) {
+      lf_outputs[i]->set_default_value(&static_true);
+    }
   }
 
   std::string input_name(const int i) const override
@@ -2212,6 +2250,39 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     return zone_wrapper_output_name(zone_info_, zone_, outputs_, i);
   }
 };
+
+LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometryElement(
+    const LazyFunctionForForeachGeometryElementZone &parent,
+    ForeachGeometryElementEvalStorage &eval_storage)
+    : parent_(parent), eval_storage_(eval_storage)
+{
+  debug_name_ = "Reduce";
+
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent.output_bnode_.storage);
+
+  for ([[maybe_unused]] const int i : eval_storage.lf_body_nodes.index_range()) {
+    for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
+      const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+      const bNodeSocket &socket = parent.output_bnode_.input_socket(item_i);
+      /* Use all sockets for now. */
+      inputs_.append_as(
+          item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
+    }
+  }
+  outputs_.append_as("Geometry", CPPType::get<GeometrySet>());
+  for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
+    const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+    const bNodeSocket &socket = parent.output_bnode_.output_socket(item_i + 1);
+    outputs_.append_as(item.name, *socket.typeinfo->geometry_nodes_cpp_type);
+  }
+}
+
+void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &params,
+                                                               const lf::Context &context) const
+{
+  /* TODO */
+}
 
 /**
  * Logs intermediate values from the lazy-function graph evaluation into #GeoModifierLog based on
