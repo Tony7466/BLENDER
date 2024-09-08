@@ -2031,6 +2031,15 @@ struct ForeachGeometryElementEvalState {
   Vector<int> indices_to_evaluate;
 };
 
+struct ForeachElementComponent {
+  GeometryComponent *component;
+  std::optional<bke::GeometryFieldContext> field_context;
+  std::optional<FieldEvaluator> field_evaluator;
+  Array<SocketValueVariant> index_values;
+  Array<Array<SocketValueVariant>> item_input_values;
+  IndexRange body_nodes_range;
+};
+
 struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
   const LazyFunctionForForeachGeometryElementZone &parent_;
   ForeachGeometryElementEvalStorage &eval_storage_;
@@ -2045,8 +2054,6 @@ struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
 
 struct ForeachGeometryElementEvalStorage {
   LinearAllocator<> allocator;
-  std::optional<bke::GeometryFieldContext> field_context;
-  std::optional<FieldEvaluator> field_evaluator;
   lf::Graph graph;
   std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
@@ -2054,8 +2061,8 @@ struct ForeachGeometryElementEvalStorage {
   void *graph_executor_storage = nullptr;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
   ForeachGeometryElementEvalState state;
-  Array<SocketValueVariant> index_values;
-  Array<Array<SocketValueVariant>> item_input_values;
+
+  Array<ForeachElementComponent> components;
 };
 
 class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
@@ -2125,32 +2132,72 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                                   GeoNodesLFLocalUserData &local_user_data) const
   {
     const AttrDomain domain = AttrDomain(node_storage.domain);
-    const GeometrySet &geometry = params.get_input<GeometrySet>(zone_info_.indices.inputs.main[0]);
-    const MeshComponent *component = geometry.get_component<MeshComponent>();
-    const int domain_size = component ? component->attribute_domain_size(domain) : 0;
+    eval_storage.state.input_geometry = params.extract_input<GeometrySet>(
+        zone_info_.indices.inputs.main[0]);
 
-    eval_storage.field_context.emplace(*component, domain);
-    eval_storage.field_evaluator.emplace(*eval_storage.field_context, domain_size);
-
-    eval_storage.state.input_geometry = geometry;
+    Vector<GeometryComponent *> src_components;
+    for (const GeometryComponent *src_component :
+         eval_storage.state.input_geometry.get_components())
+    {
+      const int domain_size = src_component->attribute_domain_size(domain);
+      if (domain_size > 0) {
+        src_components.append(
+            &eval_storage.state.input_geometry.get_component_for_write(src_component->type()));
+      }
+    }
 
     const Field<bool> selection_field = params
                                             .extract_input<SocketValueVariant>(
                                                 zone_info_.indices.inputs.main[1])
                                             .extract<Field<bool>>();
-    eval_storage.field_evaluator->set_selection(selection_field);
 
-    for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-      const GField item_field = params
-                                    .extract_input<SocketValueVariant>(
-                                        zone_info_.indices.inputs.main[2 + item_i])
-                                    .extract<GField>();
-      eval_storage.field_evaluator->add(item_field);
+    int body_nodes_offset = 0;
+    eval_storage.components.reinitialize(src_components.size());
+    for (const int component_i : src_components.index_range()) {
+      GeometryComponent *component = src_components[component_i];
+      const int domain_size = component->attribute_domain_size(domain);
+      ForeachElementComponent &component_info = eval_storage.components[component_i];
+      component_info.component = component;
+
+      component_info.field_context.emplace(*component, domain);
+      component_info.field_evaluator.emplace(*component_info.field_context, domain_size);
+
+      component_info.field_evaluator->set_selection(selection_field);
+
+      for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+        const GField item_field = params
+                                      .get_input<SocketValueVariant>(
+                                          zone_info_.indices.inputs.main[2 + item_i])
+                                      .get<GField>();
+        component_info.field_evaluator->add(item_field);
+      }
+      component_info.field_evaluator->evaluate();
+
+      const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
+      component_info.body_nodes_range = IndexRange::from_begin_size(body_nodes_offset,
+                                                                    mask.size());
+      body_nodes_offset += mask.size();
+
+      component_info.index_values.reinitialize(mask.size());
+      mask.foreach_index(
+          [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
+
+      component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
+      for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+        const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
+        component_info.item_input_values[item_i].reinitialize(mask.size());
+        const GVArray &values = component_info.field_evaluator->get_evaluated(item_i);
+        const CPPType &type = values.type();
+        mask.foreach_index([&](const int i, const int pos) {
+          BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+          values.get_to_uninitialized(i, buffer);
+          component_info.item_input_values[item_i][pos].store_single(
+              eNodeSocketDatatype(item.socket_type), buffer);
+          type.destruct(buffer);
+        });
+      }
     }
-
-    eval_storage.field_evaluator->evaluate();
-
-    const IndexMask mask = eval_storage.field_evaluator->get_evaluated_selection_as_mask();
+    const int body_nodes_num = body_nodes_offset;
 
     lf::Graph &lf_graph = eval_storage.graph;
 
@@ -2168,7 +2215,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
     /* Create body nodes. */
     VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
-    for ([[maybe_unused]] const int i : mask.index_range()) {
+    for ([[maybe_unused]] const int i : IndexRange(body_nodes_num)) {
       lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
       lf_body_nodes.add_new(&lf_node);
     }
@@ -2185,44 +2232,30 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       }
     }
 
-    eval_storage.index_values.reinitialize(mask.size());
-    mask.foreach_index([&](const int i, const int pos) { eval_storage.index_values[pos].set(i); });
-
-    eval_storage.item_input_values.reinitialize(node_storage.input_items.items_num);
-    for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-      const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
-      eval_storage.item_input_values[item_i].reinitialize(mask.size());
-      const GVArray &values = eval_storage.field_evaluator->get_evaluated(item_i);
-      const CPPType &type = values.type();
-      mask.foreach_index([&](const int i, const int pos) {
-        BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
-        values.get_to_uninitialized(i, buffer);
-        eval_storage.item_input_values[item_i][pos].store_single(
-            eNodeSocketDatatype(item.socket_type), buffer);
-        type.destruct(buffer);
-      });
-    }
-
     static GeometrySet empty_geometry;
-    for (const int i : mask.index_range()) {
-      lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
-      lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(&empty_geometry);
-      lf_body_node.input(body_fn_.indices.inputs.main[1])
-          .set_default_value(&eval_storage.index_values[i]);
-      for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-        lf_body_node.input(body_fn_.indices.inputs.main[2 + item_i])
-            .set_default_value(&eval_storage.item_input_values[item_i][i]);
-      }
-      for (const int border_link_i : zone_info_.indices.inputs.border_links.index_range()) {
-        lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.border_links[border_link_i]],
-                          lf_body_node.input(body_fn_.indices.inputs.border_links[border_link_i]));
+    for (const ForeachElementComponent &component_info : eval_storage.components) {
+      for (const int i : component_info.body_nodes_range.index_range()) {
+        const int body_i = component_info.body_nodes_range[i];
+        lf::FunctionNode &lf_body_node = *lf_body_nodes[body_i];
+        lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(&empty_geometry);
+        lf_body_node.input(body_fn_.indices.inputs.main[1])
+            .set_default_value(&component_info.index_values[i]);
+        for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+          lf_body_node.input(body_fn_.indices.inputs.main[2 + item_i])
+              .set_default_value(&component_info.item_input_values[item_i][i]);
+        }
+        for (const int border_link_i : zone_info_.indices.inputs.border_links.index_range()) {
+          lf_graph.add_link(
+              *lf_inputs[zone_info_.indices.inputs.border_links[border_link_i]],
+              lf_body_node.input(body_fn_.indices.inputs.border_links[border_link_i]));
+        }
       }
     }
 
     eval_storage.reduce_function.emplace(*this, eval_storage);
     lf::FunctionNode &lf_reduce = lf_graph.add_function(*eval_storage.reduce_function);
 
-    for (const int i : mask.index_range()) {
+    for (const int i : IndexRange(body_nodes_num)) {
       lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
       for (const int item_i : IndexRange(node_storage.output_items.items_num)) {
         lf_graph.add_link(lf_body_node.output(body_fn_.indices.outputs.main[item_i]),
@@ -2241,7 +2274,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       lf_outputs[i]->set_default_value(&static_true);
     }
 
-    eval_storage.or_function.emplace(mask.size());
+    eval_storage.or_function.emplace(body_nodes_num);
     for (const int border_link_i : zone_.border_links.index_range()) {
       lf::FunctionNode &lf_or = lf_graph.add_function(*eval_storage.or_function);
       for (const int i : lf_body_nodes.index_range()) {
@@ -2307,9 +2340,9 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
     geometries.append(params.extract_input<GeometrySet>(i));
   }
   GeometrySet joined = geometry::join_geometries(geometries, {});
+  params.set_output(1, std::move(joined));
 
   params.set_output(0, eval_storage_.state.input_geometry);
-  params.set_output(1, std::move(joined));
 }
 
 /**
