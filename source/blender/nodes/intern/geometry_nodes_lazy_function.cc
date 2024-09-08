@@ -2200,10 +2200,24 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
             element_meshes = geometry::extract_face_meshes(mesh, mask, {});
             break;
           }
+          default:
+            break;
         }
+        if (!element_meshes.is_empty()) {
+          component_info.geometry_elements.emplace(mask.size());
+          for (const int i : mask.index_range()) {
+            (*component_info.geometry_elements)[i].replace_mesh(element_meshes[i]);
+          }
+        }
+      }
+      else if (component->type() == GeometryComponent::Type::PointCloud &&
+               domain == AttrDomain::Point)
+      {
+        const PointCloud &pointcloud = *static_cast<const PointCloudComponent *>(component)->get();
+        Array<PointCloud *> element_pointclouds = geometry::extract_points(pointcloud, mask, {});
         component_info.geometry_elements.emplace(mask.size());
         for (const int i : mask.index_range()) {
-          (*component_info.geometry_elements)[i].replace_mesh(element_meshes[i]);
+          (*component_info.geometry_elements)[i].replace_pointcloud(element_pointclouds[i]);
         }
       }
 

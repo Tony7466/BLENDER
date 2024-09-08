@@ -10,6 +10,7 @@
 #include "BLI_index_mask_fwd.hh"
 
 struct Mesh;
+struct PointCloud;
 
 namespace blender::geometry {
 
@@ -24,5 +25,9 @@ Array<Mesh *> extract_edge_meshes(const Mesh &mesh,
 Array<Mesh *> extract_face_meshes(const Mesh &mesh,
                                   const IndexMask &mask,
                                   const bke::AttributeFilter &attribute_filter);
+
+Array<PointCloud *> extract_points(const PointCloud &pointcloud,
+                                   const IndexMask &mask,
+                                   const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

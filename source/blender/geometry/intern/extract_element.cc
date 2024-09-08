@@ -8,6 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_mesh.hh"
+#include "BKE_pointcloud.hh"
 
 namespace blender::geometry {
 
@@ -138,6 +139,28 @@ Array<Mesh *> extract_face_meshes(const Mesh &mesh,
   });
 
   return meshes;
+}
+
+Array<PointCloud *> extract_points(const PointCloud &pointcloud,
+                                   const IndexMask &mask,
+                                   const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= pointcloud.totpoint);
+  Array<PointCloud *> pointclouds(mask.size(), nullptr);
+
+  const bke::AttributeAccessor src_attributes = pointcloud.attributes();
+
+  mask.foreach_index(GrainSize(32), [&](const int point_i, const int pointcloud_i) {
+    PointCloud *new_pointcloud = BKE_pointcloud_new_nomain(1);
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Point,
+                           attribute_filter,
+                           Span<int>{point_i},
+                           new_pointcloud->attributes_for_write());
+    pointclouds[pointcloud_i] = new_pointcloud;
+  });
+
+  return pointclouds;
 }
 
 }  // namespace blender::geometry
