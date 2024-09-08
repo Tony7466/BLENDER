@@ -2109,7 +2109,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       /* Create the execution graph in the first evaluation. */
       this->initialize_execution_graph(
           params, eval_storage, node_storage, user_data, local_user_data);
-      std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
+      // std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
     }
 
     lf::Context eval_graph_context{
