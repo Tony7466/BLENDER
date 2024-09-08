@@ -1317,6 +1317,7 @@ TEST(path_util, Suffix)
 TEST(path_util, SlashFind)
 {
   PATH_SLASH_FIND("/", 0);
+  PATH_SLASH_FIND("\\", 0);
   PATH_SLASH_FIND("\\tmp\\", 0);
   PATH_SLASH_FIND("/tmp\\", 0);
   PATH_SLASH_FIND("\\tmp/", 0);
@@ -1340,13 +1341,14 @@ TEST(path_util, SlashFind)
 #define PATH_SLASH_RFIND(path, expect_index) \
   { \
     const char *result = BLI_path_slash_rfind(path); \
-    EXPECT_EQ(result, &path[expect_index]); \
+    EXPECT_STREQ(result, &path[expect_index]); \
   } \
   (void)0;
 
 TEST(path_util, SlashRFind)
 {
   PATH_SLASH_RFIND("/", 0);
+  PATH_SLASH_RFIND("\\", 0);
   PATH_SLASH_RFIND("\\tmp\\", 4);
   PATH_SLASH_RFIND("/tmp\\", 4);
   PATH_SLASH_RFIND("\\tmp/", 4);
@@ -1357,8 +1359,8 @@ TEST(path_util, SlashRFind)
   PATH_SLASH_RFIND("\\tmp", 0);
 
   EXPECT_EQ(BLI_path_slash_rfind("no_slashes"), nullptr);
-  EXPECT_EQ(BLI_path_slash_find(""), nullptr);
-  EXPECT_EQ(BLI_path_slash_find("."), nullptr);
+  EXPECT_EQ(BLI_path_slash_rfind(""), nullptr);
+  EXPECT_EQ(BLI_path_slash_rfind("."), nullptr);
 }
 
 #undef PATH_SLASH_RFIND
@@ -1429,6 +1431,7 @@ TEST(path_util, SlashRStrip)
   PATH_SLASH_RSTRIP("/brown", "/brown");
   PATH_SLASH_RSTRIP("/brown/../", "/brown/..");
   PATH_SLASH_RSTRIP("/brown/..", "/brown/..");
+  PATH_SLASH_RSTRIP("/brown///", "/brown");
   PATH_SLASH_RSTRIP("/", "");
   PATH_SLASH_RSTRIP("", "");
   PATH_SLASH_RSTRIP(".", ".");
@@ -1488,7 +1491,7 @@ TEST(path_util, SlashSkip)
 TEST(path_util, SlashNative)
 {
 #ifdef WIN32
-  PATH_SLASH_NATIVE("C:/", "C:/");
+  PATH_SLASH_NATIVE("C:/", "C:\\");
   PATH_SLASH_NATIVE("C:\\", "C:\\");
   PATH_SLASH_NATIVE("C:\\tmp\\", "C:\\tmp\\");
   PATH_SLASH_NATIVE("C:/tmp\\", "C:\\tmp\\");
