@@ -1,1 +1,2 @@
 Referenced by issue #127280, Sculpt: Crash on some brushes with 6 level multires
+Referenced by commit 48231f509448736907ea2d39e4e3c51b2420dbd1, Fix #127280: Crash in sculpt original data lookup
