@@ -252,7 +252,7 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
 {
   float(*matrix)[4] = (float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
-  NodeCropWidgetGroup *crop_group = (NodeCropWidgetGroup *)gz->parent_gzgroup->customdata;
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float2 dims = crop_group->state.dims;
   const float2 offset = crop_group->state.offset;
   const bNode *node = (const bNode *)gz_prop->custom_func.user_data;
@@ -274,7 +274,7 @@ static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
 {
   const float(*matrix)[4] = (const float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
-  NodeCropWidgetGroup *crop_group = (NodeCropWidgetGroup *)gz->parent_gzgroup->customdata;
+  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float2 dims = crop_group->state.dims;
   const float2 offset = crop_group->state.offset;
   bNode *node = (bNode *)gz_prop->custom_func.user_data;
@@ -335,7 +335,7 @@ static void WIDGETGROUP_node_crop_setup(const bContext * /*C*/, wmGizmoGroup *gz
 
   gzgroup->customdata = crop_group;
   gzgroup->customdata_free = [](void *customdata) {
-    MEM_delete(static_cast<NodeCropWidgetGroup *>(customdata));
+    MEM_delete(static_cast<NodeBBoxWidgetGroup *>(customdata));
   };
 }
 
@@ -468,7 +468,6 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
 
   float eul[3];
   mat4_to_eul(eul, matrix);
-  //  mat3_to_eul(eul, rot);
   mask_node->rotation = eul[2];
 
   BLI_rctf_resize(&rct, fabsf(size[0]), fabsf(size[1]) / aspect);
@@ -545,7 +544,7 @@ static void WIDGETGROUP_node_box_mask_refresh(const bContext *C, wmGizmoGroup *g
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
 
     SpaceNode *snode = CTX_wm_space_node(C);
-    bNode *node = bke::nodeGetActive(snode->edittree);
+    bNode *node = bke::node_get_active(snode->edittree);
 
     crop_group->update_data.context = (bContext *)C;
     crop_group->update_data.ptr = RNA_pointer_create(

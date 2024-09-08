@@ -1115,6 +1115,7 @@ static int gizmo_cage2d_modal(bContext *C,
 
     /* The mouse coords are projected into the matrix so we don't need to worry about axis
      * alignment. */
+    // todo: when gizmo is rotated, mouse coordinates are still not rotated. Setting use_offset in gizmo_window_project_2d below fixes the rotation problem but breaks the offset. 
     bool ok = gizmo_window_project_2d(
         C, gz, blender::float2(blender::int2(event->mval)), 2, false, point_local);
     copy_m4_m4(gz->matrix_offset, matrix_back);
@@ -1190,6 +1191,17 @@ static int gizmo_cage2d_modal(bContext *C,
     }
     else {
       zero_v2(pivot);
+    }
+
+    if(transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_ROTATE) {
+      // rotate cursor position around pivot by angle
+
+      float mat[4][4];
+      float size[3] = {1,1,1};
+
+      //print_m4("matrix_space", gz->matrix_space);
+      //print_m4("matrix_basis", gz->matrix_basis);
+      //print_m4("matrix_offset", gz->matrix_offset);
     }
 
     bool constrain_axis[2] = {false};
