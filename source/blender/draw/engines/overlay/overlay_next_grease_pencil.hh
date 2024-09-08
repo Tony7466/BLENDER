@@ -64,11 +64,11 @@ class GreasePencil {
     const bool show_edit_point = selection_domain == bke::AttrDomain::Point;
     const bool show_edit_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES);
 
-    in_edit_mode_ = (state.object_mode & OB_MODE_EDIT_GPENCIL_LEGACY);
-    in_paint_mode_ = (state.object_mode & OB_MODE_PAINT_GPENCIL_LEGACY);
-    in_weight_mode_ = (state.object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY);
-    in_sculpt_mode_ = (state.object_mode & OB_MODE_SCULPT_GPENCIL_LEGACY);
-    in_vertex_mode_ = (state.object_mode & OB_MODE_VERTEX_GPENCIL_LEGACY);
+    in_edit_mode_ = (state.object_mode & OB_MODE_EDIT);
+    in_paint_mode_ = (state.object_mode & OB_MODE_VERTEX_PAINT);
+    in_weight_mode_ = (state.object_mode & OB_MODE_WEIGHT_PAINT);
+    in_sculpt_mode_ = (state.object_mode & OB_MODE_SCULPT);
+    in_vertex_mode_ = (state.object_mode & OB_MODE_VERTEX_GPENCIL_LEGACY); /* What is that? */
 
     const int sculpt_select_mode = ts->gpencil_selectmode_sculpt;
     const bool sculpt_point = (sculpt_select_mode & GP_SCULPT_MASK_SELECTMODE_POINT);

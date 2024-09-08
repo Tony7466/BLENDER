@@ -107,6 +107,7 @@ void Instance::begin_sync()
     layer.facing.begin_sync(resources, state);
     layer.force_fields.begin_sync();
     layer.fluids.begin_sync(resources, state);
+    layer.grease_pencil.begin_sync(resources, state, view);
     layer.lattices.begin_sync(resources, state);
     layer.lights.begin_sync();
     layer.light_probes.begin_sync(resources, state);
@@ -492,6 +493,8 @@ bool Instance::object_is_edit_mode(const Object *object)
         return state.ctx_mode == CTX_MODE_EDIT_CURVES;
       case OB_POINTCLOUD:
         return state.ctx_mode == CTX_MODE_EDIT_POINT_CLOUD;
+      case OB_GREASE_PENCIL:
+        return state.ctx_mode == CTX_MODE_EDIT_GREASE_PENCIL;
       case OB_VOLUME:
         /* No edit mode yet. */
         return false;
@@ -508,6 +511,7 @@ bool Instance::object_is_in_front(const Object *object, const State &state)
              (state.do_pose_xray && Armatures::is_pose_mode(object, state));
     case OB_MESH:
     case OB_CURVES_LEGACY:
+    case OB_GREASE_PENCIL:
     case OB_SURF:
     case OB_LATTICE:
     case OB_MBALL:
