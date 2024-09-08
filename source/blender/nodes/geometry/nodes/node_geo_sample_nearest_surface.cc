@@ -160,8 +160,9 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
         return;
       }
       const BVHTreeFromMesh &bvh = bvh_trees_[group_index];
-      BVHTreeNearest nearest = {};
+      BVHTreeNearest nearest;
       nearest.dist_sq = FLT_MAX;
+      nearest.index = -1;
       BLI_bvhtree_find_nearest(
           bvh.tree, position, &nearest, bvh.nearest_callback, const_cast<BVHTreeFromMesh *>(&bvh));
       triangle_index[i] = nearest.index;
