@@ -18,6 +18,7 @@ struct bTheme;
 #define DEF_ICON_VECTOR(name) ICON_##name,
 #define DEF_ICON_COLOR(name) ICON_##name,
 #define DEF_ICON_BLANK(name) ICON_BLANK_##name,
+#define DEF_ICON_CURSOR(name) ICON_##name,
 
 /**
  * Builtin icons with a compile-time icon-id. Dynamically created icons such as preview image

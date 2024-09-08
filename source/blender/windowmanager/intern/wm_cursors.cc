@@ -22,6 +22,11 @@
 #include "BKE_global.hh"
 #include "BKE_main.hh"
 
+#include "IMB_imbuf.hh"
+
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 #include "wm_cursors.hh"
@@ -139,6 +144,45 @@ static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
                              cursor->can_invert_color);
 }
 
+static bool icon_cursor(wmWindow *win, WMCursorType curs)
+{
+  ImBuf *imb = UI_svg_icon_bitmap(ICON_CURSOR_SAMPLE, 28.0f, true);
+  if (!imb) {
+    return false;
+  }
+  IMB_flipy(imb);
+
+  char width = std::min(imb->x, 32);
+  char height = std::min(imb->y, 32);
+  char bitmap[4 * 32] = {0};
+  char mask[4 * 32] = {0};
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int i = (y * width * 4) + (x * 4);
+      int j = (y * 4) + (x >> 3);
+      int k = (x % 8);
+      if (imb->byte_buffer.data[i + 3] > 128) {
+        if (imb->byte_buffer.data[i] > 128) {
+          bitmap[j] |= (1 << k);
+        }
+        mask[j] |= (1 << k);
+      }
+    }
+  }
+
+  IMB_freeImBuf(imb);
+
+  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                             (uint8_t *)bitmap,
+                             (uint8_t *)mask,
+                             32,
+                             32,
+                             2,
+                             2,
+                             false);
+}
+
 void WM_cursor_set(wmWindow *win, int curs)
 {
   if (win == nullptr || G.background) {
@@ -169,22 +213,17 @@ void WM_cursor_set(wmWindow *win, int curs)
 
   GHOST_TStandardCursor ghost_cursor = convert_to_ghost_standard_cursor(WMCursorType(curs));
 
-  if (ghost_cursor != GHOST_kStandardCursorCustom &&
+  if (0 && ghost_cursor != GHOST_kStandardCursorCustom &&
       GHOST_HasCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin), ghost_cursor))
   {
     /* Use native GHOST cursor when available. */
     GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin), ghost_cursor);
   }
   else {
-    BCursor *bcursor = BlenderCursor[curs];
-    if (bcursor) {
-      /* Use custom bitmap cursor. */
-      window_set_custom_cursor_ex(win, bcursor);
-    }
-    else {
-      /* Fallback to default cursor if no bitmap found. */
-      GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                           GHOST_kStandardCursorDefault);
+    if (!icon_cursor(win, WMCursorType(curs))) {
+        /* Fallback to default cursor if no SVG cursor found. */
+        GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                             GHOST_kStandardCursorDefault);
     }
   }
 }

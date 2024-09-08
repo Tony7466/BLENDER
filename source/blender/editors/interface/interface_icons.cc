@@ -70,7 +70,8 @@ using VectorDrawFunc = void (*)(int x, int y, int w, int h, float alpha);
 #define ICON_TYPE_GEOM 6
 #define ICON_TYPE_EVENT 7 /* draw keymap entries using custom renderer. */
 #define ICON_TYPE_GPLAYER 8
-#define ICON_TYPE_BLANK 9
+#define ICON_TYPE_CURSOR 9
+#define ICON_TYPE_BLANK 10
 
 struct DrawInfo {
   int type;
@@ -90,6 +91,11 @@ struct DrawInfo {
     struct {
       int theme_color;
     } texture;
+    struct {
+      float hotspot_x;
+      float hotspot_y;
+      float scale;
+    } cursor;
     struct {
       /* Can be packed into a single int. */
       short event_type;
@@ -120,6 +126,7 @@ static const IconType icontypes[] = {
 #  define DEF_ICON_FOLDER(name) {ICON_TYPE_SVG_MONO, TH_ICON_FOLDER},
 #  define DEF_ICON_FUND(name) {ICON_TYPE_SVG_MONO, TH_ICON_FUND},
 #  define DEF_ICON_VECTOR(name) {ICON_TYPE_VECTOR, 0},
+#  define DEF_ICON_CURSOR(name) {ICON_TYPE_CURSOR, 0},
 #  define DEF_ICON_BLANK(name) {ICON_TYPE_BLANK, 0},
 #  include "UI_icons.hh"
 };
@@ -171,6 +178,25 @@ static DrawInfo *def_internal_icon(
   new_icon->drawinfo_free = UI_icons_free_drawinfo;
   new_icon->drawinfo = di;
 
+  BKE_icon_set(icon_id, new_icon);
+
+  return di;
+}
+
+static DrawInfo *def_internal_cursor(int icon_id, float hotspot_x, float hotspot_y, float size)
+{
+  Icon *new_icon = MEM_cnew<Icon>(__func__);
+
+  new_icon->obj = nullptr; /* icon is not for library object */
+  new_icon->id_type = 0;
+
+  DrawInfo *di = MEM_cnew<DrawInfo>(__func__);
+  di->type = ICON_TYPE_CURSOR;
+  di->data.cursor.hotspot_x = hotspot_x;
+  di->data.cursor.hotspot_y = hotspot_y;
+  di->data.cursor.scale = size;
+  new_icon->drawinfo_free = UI_icons_free_drawinfo;
+  new_icon->drawinfo = di;
   BKE_icon_set(icon_id, new_icon);
 
   return di;
@@ -812,11 +838,15 @@ static void init_internal_icons()
   /* Define icons. */
   for (int x = ICON_NONE; x < ICON_BLANK_LAST_SVG_ITEM; x++) {
     const IconType icontype = icontypes[x];
+
     if (!ELEM(icontype.type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
       continue;
     }
+
     def_internal_icon(nullptr, x, 0, 0, 0, icontype.type, icontype.theme_color);
   }
+
+  def_internal_cursor(ICON_CURSOR_SAMPLE, 0.0f, 1.0f, 1.0f);
 
   def_internal_vicon(ICON_KEYTYPE_KEYFRAME_VEC, vicon_keytype_keyframe_draw);
   def_internal_vicon(ICON_KEYTYPE_BREAKDOWN_VEC, vicon_keytype_breakdown_draw);
@@ -1535,6 +1565,10 @@ static void icon_draw_size(float x,
   }
   else if (di->type == ICON_TYPE_EVENT) {
     icon_draw_rect_input(x, y, w, h, icon_id, aspect, alpha, inverted);
+  }
+  else if (di->type == ICON_TYPE_CURSOR) {
+    BLF_draw_svg_icon(
+        uint(icon_id), x, y, float(draw_size) / aspect / di->data.cursor.scale, nullptr, 0.0f, true, nullptr);
   }
   else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
     float outline_intensity = mono_border ? (btheme->tui.icon_border_intensity > 0.0f ?

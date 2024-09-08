@@ -896,6 +896,7 @@ if(WITH_BLENDER)
       zoom_out
       zoom_previous
       zoom_selected
+      cursor_sample
     )
     set(SVG_CONTENTS_H)
     set(SVG_CONTENTS_C)
