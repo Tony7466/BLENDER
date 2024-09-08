@@ -2395,12 +2395,88 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
 
   params.set_output(0, eval_storage_.state.main_geometry);
 
-  // Vector<GeometrySet> geometries;
-  // for (const int i : inputs_.index_range()) {
-  //   geometries.append(params.extract_input<GeometrySet>(i));
-  // }
-  // GeometrySet joined = geometry::join_geometries(geometries, {});
-  // params.set_output(1, std::move(joined));
+  if (items_until_geometry == node_storage.output_items.items_num) {
+    return;
+  }
+
+  auto handle_new_geometry_output = [&](const int geometry_item_i,
+                                        const IndexRange attribute_items_range) {
+    const int bodies_num = eval_storage_.lf_body_nodes.size();
+    Array<GeometrySet> geometries(bodies_num);
+
+    Array<std::string> attribute_names(attribute_items_range.size());
+    for (const int i : attribute_items_range.index_range()) {
+      const int item_i = attribute_items_range[i];
+      const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+      attribute_names[i] = bke::hash_to_anonymous_attribute_name(
+          user_data.call_data->self_object()->id.name,
+          user_data.compute_context->hash(),
+          parent_.output_bnode_.identifier,
+          item.identifier);
+    }
+
+    for (const int body_i : IndexRange(bodies_num)) {
+      const int geometry_param_i = body_i * node_storage.output_items.items_num + geometry_item_i;
+      GeometrySet &geometry = geometries[body_i];
+      geometry = params.extract_input<GeometrySet>(geometry_param_i);
+
+      for (const int local_item_i : attribute_items_range.index_range()) {
+        const int item_i = attribute_items_range[local_item_i];
+        const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+        const AttrDomain domain = AttrDomain(item.domain);
+        const int field_param_i = body_i * node_storage.output_items.items_num + geometry_item_i;
+        GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
+
+        /* TODO: modify nested instances + instances component */
+        for (const GeometryComponent::Type component_type :
+             {GeometryComponent::Type::Mesh,
+              GeometryComponent::Type::PointCloud,
+              GeometryComponent::Type::Curve,
+              GeometryComponent::Type::GreasePencil})
+        {
+          if (geometry.has(component_type)) {
+            bke::try_capture_field_on_geometry(geometry.get_component_for_write(component_type),
+                                               attribute_names[local_item_i],
+                                               domain,
+                                               field);
+          }
+        }
+      }
+    }
+
+    GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
+    params.set_output(1 + geometry_item_i, std::move(joined_geometry));
+
+    for (const int local_item_i : attribute_items_range.index_range()) {
+      const int item_i = attribute_items_range[local_item_i];
+      const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const CPPType &base_cpp_type = *bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
+      const StringRef attribute_name = attribute_names[local_item_i];
+      auto attribute_field = std::make_shared<AttributeFieldInput>(
+          attribute_name,
+          base_cpp_type,
+          make_anonymous_attribute_socket_inspection_string(
+              parent_.output_bnode_.output_socket(1 + item_i)));
+      SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
+      params.set_output(1 + item_i, std::move(attribute_value_variant));
+    }
+  };
+
+  int previous_geometry_item_i = items_until_geometry;
+  for (const int item_i :
+       IndexRange(node_storage.output_items.items_num).drop_front(items_until_geometry + 1))
+  {
+    const NodeForeachGeometryElementOutputItem &item = node_storage.output_items.items[item_i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    if (socket_type == SOCK_GEOMETRY) {
+      handle_new_geometry_output(previous_geometry_item_i,
+                                 IndexRange::from_begin_end(previous_geometry_item_i + 1, item_i));
+    }
+  }
+  handle_new_geometry_output(previous_geometry_item_i,
+                             IndexRange::from_begin_end(previous_geometry_item_i + 1,
+                                                        node_storage.output_items.items_num));
 }
 
 /**

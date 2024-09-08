@@ -1977,12 +1977,14 @@ typedef struct NodeForeachGeometryElementOutputItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
-  char _pad[2];
+  uint8_t domain;
+  char _pad[1];
   /**
    * Generated unique identifier for sockets which stays the same even when the item order or
    * names change.
    */
   int identifier;
+  /** #AttrDomain. */
 } NodeForeachGeometryElementOutputItem;
 
 typedef struct NodeForeachGeometryElementOutputItems {
