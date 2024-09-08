@@ -142,9 +142,9 @@ Array<Mesh *> extract_face_meshes(const Mesh &mesh,
   return meshes;
 }
 
-Array<PointCloud *> extract_points(const PointCloud &pointcloud,
-                                   const IndexMask &mask,
-                                   const bke::AttributeFilter &attribute_filter)
+Array<PointCloud *> extract_single_points(const PointCloud &pointcloud,
+                                          const IndexMask &mask,
+                                          const bke::AttributeFilter &attribute_filter)
 {
   BLI_assert(mask.min_array_size() <= pointcloud.totpoint);
   Array<PointCloud *> pointclouds(mask.size(), nullptr);
@@ -164,9 +164,9 @@ Array<PointCloud *> extract_points(const PointCloud &pointcloud,
   return pointclouds;
 }
 
-Array<Curves *> extract_point_curves(const Curves &curves,
-                                     const IndexMask &mask,
-                                     const bke::AttributeFilter &attribute_filter)
+Array<Curves *> extract_single_point_curves(const Curves &curves,
+                                            const IndexMask &mask,
+                                            const bke::AttributeFilter &attribute_filter)
 {
   BLI_assert(mask.min_array_size() <= curves.geometry.point_num);
   Array<Curves *> new_curves(mask.size(), nullptr);
@@ -174,15 +174,47 @@ Array<Curves *> extract_point_curves(const Curves &curves,
   const bke::CurvesGeometry &src_curves = curves.geometry.wrap();
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
 
-  mask.foreach_index(GrainSize(32), [&](const int point_i, const int new_curves_i) {
+  mask.foreach_index(GrainSize(32), [&](const int point_i, const int single_curve_i) {
     /* TODO: Use src curve type. */
-    Curves *point_curves = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
+    Curves *single_curve = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
     bke::gather_attributes(src_attributes,
                            bke::AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
-                           point_curves->geometry.wrap().attributes_for_write());
-    new_curves[new_curves_i] = point_curves;
+                           single_curve->geometry.wrap().attributes_for_write());
+    new_curves[single_curve_i] = single_curve;
+  });
+
+  return new_curves;
+}
+
+Array<Curves *> extract_single_curves(const Curves &curves,
+                                      const IndexMask &mask,
+                                      const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= curves.geometry.curve_num);
+  Array<Curves *> new_curves(mask.size(), nullptr);
+
+  const bke::CurvesGeometry &src_curves = curves.geometry.wrap();
+  const bke::AttributeAccessor src_attributes = src_curves.attributes();
+  const OffsetIndices<int> src_points_by_curve = src_curves.points_by_curve();
+
+  mask.foreach_index(GrainSize(32), [&](const int curve_i, const int single_curve_i) {
+    const IndexRange src_points = src_points_by_curve[curve_i];
+    const int points_num = src_points.size();
+    Curves *single_curve = bke::curves_new_nomain_single(points_num, CURVE_TYPE_POLY);
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Point,
+                           attribute_filter,
+                           src_points,
+                           single_curve->geometry.wrap().attributes_for_write());
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Curve,
+                           attribute_filter,
+                           Span<int>{curve_i},
+                           single_curve->geometry.wrap().attributes_for_write());
+    single_curve->geometry.wrap().update_curve_types();
+    new_curves[single_curve_i] = single_curve;
   });
 
   return new_curves;

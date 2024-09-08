@@ -2214,7 +2214,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                domain == AttrDomain::Point)
       {
         const PointCloud &pointcloud = *static_cast<const PointCloudComponent *>(component)->get();
-        Array<PointCloud *> element_pointclouds = geometry::extract_points(pointcloud, mask, {});
+        Array<PointCloud *> element_pointclouds = geometry::extract_single_points(
+            pointcloud, mask, {});
         component_info.geometry_elements.emplace(mask.size());
         for (const int i : mask.index_range()) {
           (*component_info.geometry_elements)[i].replace_pointcloud(element_pointclouds[i]);
@@ -2225,10 +2226,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         Array<Curves *> element_curves;
         switch (domain) {
           case AttrDomain::Point: {
-            element_curves = geometry::extract_point_curves(curves, mask, {});
+            element_curves = geometry::extract_single_point_curves(curves, mask, {});
             break;
           }
           case AttrDomain::Curve: {
+            element_curves = geometry::extract_single_curves(curves, mask, {});
             break;
           }
           default:
