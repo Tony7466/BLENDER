@@ -144,7 +144,7 @@ static BooleanResult result_BA(const Span<float2> curve_a, const Span<float2> cu
   return result;
 }
 
-static BooleanResult non_intersecting_result(const Operation boolean_mode,
+static BooleanResult non_intersecting_result(const Operation mode,
                                              const Span<float2> curve_a,
                                              const Span<float2> curve_b)
 {
@@ -152,45 +152,48 @@ static BooleanResult non_intersecting_result(const Operation boolean_mode,
   const bool b_start_in_a = inside(curve_b.first(), curve_a);
 
   if (a_start_in_b) {
-    if (boolean_mode == Operation::And) {
-      return result_from_curve(curve_a, true);
-    }
-    else if (boolean_mode == Operation::NotB) {
-      return result_none();
-    }
-    else if (boolean_mode == Operation::NotA) {
-      return result_BA(curve_a, curve_b);
-    }
-    else if (boolean_mode == Operation::Or) {
-      return result_from_curve(curve_b, false);
+    switch (mode) {
+      case Operation::And:
+        return result_from_curve(curve_a, true);
+      case Operation::NotB:
+        return result_none();
+      case Operation::NotA:
+        return result_BA(curve_a, curve_b);
+      case Operation::Or:
+        return result_from_curve(curve_b, false);
+      default:
+        BLI_assert_unreachable();
+        break;
     }
   }
   else if (b_start_in_a) {
-    if (boolean_mode == Operation::And) {
-      return result_from_curve(curve_b, false);
-    }
-    else if (boolean_mode == Operation::NotB) {
-      return result_AB(curve_a, curve_b);
-    }
-    else if (boolean_mode == Operation::NotA) {
-      return result_none();
-    }
-    else if (boolean_mode == Operation::Or) {
-      return result_from_curve(curve_a, true);
+    switch (mode) {
+      case Operation::And:
+        return result_from_curve(curve_b, false);
+      case Operation::NotB:
+        return result_AB(curve_a, curve_b);
+      case Operation::NotA:
+        return result_none();
+      case Operation::Or:
+        return result_from_curve(curve_a, true);
+      default:
+        BLI_assert_unreachable();
+        break;
     }
   }
   else if (!a_start_in_b && !b_start_in_a) {
-    if (boolean_mode == Operation::And) {
-      return result_none();
-    }
-    else if (boolean_mode == Operation::NotB) {
-      return result_from_curve(curve_a, true);
-    }
-    else if (boolean_mode == Operation::NotA) {
-      return result_from_curve(curve_b, false);
-    }
-    else if (boolean_mode == Operation::Or) {
-      return result_AB(curve_a, curve_b);
+    switch (mode) {
+      case Operation::And:
+        return result_none();
+      case Operation::NotB:
+        return result_from_curve(curve_a, true);
+      case Operation::NotA:
+        return result_from_curve(curve_b, false);
+      case Operation::Or:
+        return result_AB(curve_a, curve_b);
+      default:
+        BLI_assert_unreachable();
+        break;
     }
   }
 
@@ -202,17 +205,18 @@ BooleanResult invalid_result(const Operation mode,
                              const Span<float2> curve_a,
                              const Span<float2> curve_b)
 {
-  if (mode == Operation::And) {
-    return result_AB(curve_a, curve_b);
-  }
-  else if (mode == Operation::NotB) {
-    return result_from_curve(curve_a, true);
-  }
-  else if (mode == Operation::NotA) {
-    return result_from_curve(curve_b, false);
-  }
-  else if (mode == Operation::Or) {
-    return result_AB(curve_a, curve_b);
+  switch (mode) {
+    case Operation::And:
+      return result_AB(curve_a, curve_b);
+    case Operation::NotB:
+      return result_from_curve(curve_a, true);
+    case Operation::NotA:
+      return result_from_curve(curve_b, false);
+    case Operation::Or:
+      return result_AB(curve_a, curve_b);
+    default:
+      BLI_assert_unreachable();
+      break;
   }
 
   BLI_assert_unreachable();
@@ -221,21 +225,19 @@ BooleanResult invalid_result(const Operation mode,
 
 static std::pair<bool, bool> get_AB_mode(const Operation mode)
 {
-  if (mode == Operation::And) {
-    return {false, false};
+  switch (mode) {
+    case Operation::And:
+      return {false, false};
+    case Operation::NotB:
+      return {true, false};
+    case Operation::NotA:
+      return {false, true};
+    case Operation::Or:
+      return {true, true};
+    default:
+      BLI_assert_unreachable();
+      return {false, false};
   }
-  else if (mode == Operation::NotB) {
-    return {true, false};
-  }
-  else if (mode == Operation::NotA) {
-    return {false, true};
-  }
-  else if (mode == Operation::Or) {
-    return {true, true};
-  }
-
-  BLI_assert_unreachable();
-  return {false, false};
 }
 
 static bool is_point_in_others(const int polygon_a,
@@ -494,8 +496,8 @@ struct CurveBooleanExecutor {
 
     const int curve_len = is_curve_A ? len_a : len_b;
 
-    /* If both intersection points are on the same segment, there's ether no points between or all
-     * of the points. */
+    /* If both intersection points are on the same segment, there's ether no points between or
+     * all of the points. */
     if (i0 == i1) {
       const float a0 = is_curve_A ? vertex0.alpha_a : vertex0.alpha_b;
       const float a1 = is_curve_A ? vertex1.alpha_a : vertex1.alpha_b;
@@ -628,7 +630,8 @@ struct CurveBooleanExecutor {
    * The Greiner-Hormann algorithm works in three phases:
    *  1: Find all intersections and sort them.
    *  2: Set the `direction` of all intersection point (the paper call it `entry_exit`)
-   *  3: Create all polygons by following the direction of each intersection point until in loops.
+   *  3: Create all polygons by following the direction of each intersection point until in
+   * loops.
    *
    * Some changes where made to use c++ style objects and so that the intersection point stored
    * separately from the rest of the points.
