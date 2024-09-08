@@ -50,7 +50,7 @@
 
 namespace blender::bke::pbvh {
 
-// #define DEBUG_BUILD_TIME
+#define DEBUG_BUILD_TIME
 
 constexpr int LEAF_LIMIT = 10000;
 static_assert(LEAF_LIMIT < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
@@ -112,33 +112,51 @@ static int partition_prim_indices(MutableSpan<int> prim_indices,
 }
 
 static int partition_prim_indices(MutableSpan<int> face_indices,
-                                  MutableSpan<int> prim_scratch,
-                                  int lo,
-                                  int hi,
-                                  int axis,
-                                  float mid,
+                                  const int axis,
+                                  const float mid,
                                   const Span<float3> face_centers)
 {
-  for (int i = lo; i < hi; i++) {
-    prim_scratch[i - lo] = face_indices[i];
-  }
+  // std::sort(face_indices.begin(), face_indices.end(), [&](const int i) {
+  //   const int face = face_indices[i];
+  //   const float3 &center = face_centers[face];
+  //   return center[axis] >= mid;
+  // });
+  const int *middle = std::partition(face_indices.begin(), face_indices.end(), [&](const int i) {
+    const int face = face_indices[i];
+    const float3 &center = face_centers[face];
+    return center[axis] >= mid;
+  });
+  return middle - face_indices.begin();
+  // IndexMaskMemory memory;
+  // const IndexMask side_a = IndexMask::from_predicate(
+  //     face_indices.index_range(), GrainSize(1024), memory, [&](const int i) {
+  //       const int face = face_indices[i];
+  //       const float3 &center = face_centers[face];
+  //       return center[axis] >= mid;
+  //     });
 
-  int lo2 = lo, hi2 = hi - 1;
-  int i1 = lo, i2 = 0;
+  // for (int i = lo; i < hi; i++) {
+  //   prim_scratch[i - lo] = face_indices[i];
+  // }
 
-  while (i1 < hi) {
-    const int face_i = prim_scratch[i2];
-    const float3 &face_center = face_centers[prim_scratch[i2]];
-    const bool side = face_center[axis] >= mid;
+  // int lo2 = lo;
+  // int hi2 = hi - 1;
+  // int i1 = lo;
+  // int i2 = 0;
 
-    while (i1 < hi && prim_scratch[i2] == face_i) {
-      face_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
-      i1++;
-      i2++;
-    }
-  }
+  // while (i1 < hi) {
+  //   const int face_i = prim_scratch[i2];
+  //   const float3 &face_center = face_centers[prim_scratch[i2]];
+  //   const bool side = face_center[axis] >= mid;
 
-  return lo2;
+  //   while (i1 < hi && prim_scratch[i2] == face_i) {
+  //     face_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
+  //     i1++;
+  //     i2++;
+  //   }
+  // }
+
+  // return lo2;
 }
 
 static int partition_indices_material_faces(MutableSpan<int> face_indices,
@@ -274,7 +292,6 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                                        const Span<float3> face_centers,
                                        const int prim_offset,
                                        const int prims_num,
-                                       MutableSpan<int> prim_scratch,
                                        const int depth,
                                        MutableSpan<int> prim_indices,
                                        Vector<MeshNode> &nodes)
@@ -322,13 +339,10 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
     const int axis = math::dominant_axis(bounds.max - bounds.min);
 
     /* Partition primitives along that axis */
-    end = partition_prim_indices(prim_indices,
-                                 prim_scratch,
-                                 prim_offset,
-                                 prim_offset + prims_num,
-                                 axis,
-                                 math::midpoint(bounds.min[axis], bounds.max[axis]),
-                                 face_centers);
+    end = prim_offset + partition_prim_indices(prim_indices.slice(prim_offset, prims_num),
+                                               axis,
+                                               math::midpoint(bounds.min[axis], bounds.max[axis]),
+                                               face_centers);
   }
   else {
     /* Partition primitives by material */
@@ -344,7 +358,6 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                              face_centers,
                              prim_offset,
                              end - prim_offset,
-                             prim_scratch,
                              depth + 1,
                              prim_indices,
                              nodes);
@@ -355,7 +368,6 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                              face_centers,
                              end,
                              prim_offset + prims_num - end,
-                             prim_scratch,
                              depth + 1,
                              prim_indices,
                              nodes);
@@ -423,7 +435,6 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
                                face_centers,
                                0,
                                faces.size(),
-                               Array<int>(pbvh->prim_indices_.size()),
                                0,
                                pbvh->prim_indices_,
                                nodes);
