@@ -273,8 +273,7 @@ Span<InstanceReference> Instances::references() const
   return references_;
 }
 
-void Instances::remove(const IndexMask &mask,
-                       const AnonymousAttributePropagationInfo &propagation_info)
+void Instances::remove(const IndexMask &mask, const AttributeFilter &attribute_filter)
 {
   const std::optional<IndexRange> masked_range = mask.to_range();
   if (masked_range.has_value() && masked_range->start() == 0) {
@@ -291,8 +290,7 @@ void Instances::remove(const IndexMask &mask,
   gather_attributes(this->attributes(),
                     AttrDomain::Instance,
                     AttrDomain::Instance,
-                    propagation_info,
-                    {},
+                    attribute_filter,
                     mask,
                     new_instances.attributes_for_write());
 

@@ -15,6 +15,8 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 
+#include "GEO_join_geometries.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_instance_on_points_cc {
@@ -52,7 +54,7 @@ void gather_attributes(const bke::AttributeAccessor src_attributes,
                        bke::MutableAttributeAccessor dst_attributes)
 {
   for (const auto item : attributes_to_propagate.items()) {
-    const AttributeIDRef &id = item.key;
+    const StringRef id = item.key;
     const eCustomDataType data_type = item.value.data_type;
 
     const GAttributeReader src = src_attributes.lookup(id, src_domain, data_type);
@@ -219,27 +221,17 @@ static bool add_instances_from_points(
          instance.has_realized_data();
 }
 
-struct InstancesPart {
-  VArray<float3> scales;
-  VArray<math::Quaternion> rotations;
-  std::optional<VArray<int>> pick_instance;
-  bke::AttributeAccessor attributes;
-  bke::AttrDomain attributes_domain;
-};
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   GeometrySet instance = params.extract_input<GeometrySet>("Instance");
   instance.ensure_owns_direct_data();
-  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
-      "Instances");
+  const NodeAttributeFilter &attribute_filter = params.get_attribute_filter("Instances");
 
   const Field<bool> selection_field = params.get_input<Field<bool>>("Selection");
   const Field<bool> pick_instance_field = params.get_input<Field<bool>>("Pick Instance");
   const Field<int> indices_field = params.get_input<Field<int>>("Instance Index");
-  const Field<math::Quaternion> rotations_field = params.get_input<Field<math::Quaternion>>(
-      "Rotation");
+  const Field<math::Quaternion> rotations_field = params.get_input<Field<math::Quaternion>>("Rotation");
   const Field<float3> scales_field = params.get_input<Field<float3>>("Scale");
 
   std::atomic<bool> has_skiped_realized_instances = false;
@@ -247,37 +239,33 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
-    InstancesComponent &instances_component =geometry_set.get_component_for_write<InstancesComponent>();
+    InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
     bke::Instances *dst_instances = instances_component.get_for_write();
     if (dst_instances == nullptr) {
       dst_instances = new bke::Instances();
       instances_component.replace(dst_instances);
     }
 
-    LinearAllocator allocator;
-    Vector<InstancesPart> instances_parts;
-
     const static std::array<GeometryComponent::Type, 3> types = {
         GeometryComponent::Type::Mesh,
         GeometryComponent::Type::PointCloud,
         GeometryComponent::Type::Curve};
 
-    Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+    Map<StringRef, AttributeKind> attributes_to_propagate;
     geometry_set.gather_attributes_for_propagation(types,
                                                    GeometryComponent::Type::Instance,
                                                    false,
-                                                   propagation_info,
+                                                   attribute_filter,
                                                    attributes_to_propagate);
     attributes_to_propagate.remove("position");
     attributes_to_propagate.remove(".reference_index");
 
     for (const GeometryComponent::Type type : types) {
       if (geometry_set.has(type)) {
-        
         fn::FieldEvaluator &evaluator = *new (allocator.allocate<fn::FieldEvaluator>()) fn::FieldEvaluator();
-        
+
         // component_to_instances_part()
-        
+
         const GeometryComponent &component = *geometry_set.get_component(type);
         if (add_instances_from_points(component,
                                       instance,
@@ -293,10 +281,13 @@ static void node_geo_exec(GeoNodeExecParams params)
         }
       }
     }
+
     if (geometry_set.has_grease_pencil()) {
       /*
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
+
+      bke::Instances *gp_instances = instances_component.get_for_write();
       for (const int layer_index : grease_pencil.layers().index_range()) {
         const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
         if (drawing == nullptr) {
@@ -306,9 +297,10 @@ static void node_geo_exec(GeoNodeExecParams params)
         if (src_curves.curves_num() == 0) {
           /* Add an empty reference so the number of layers and instances match.
            * This makes it easy to reconstruct the layers afterwards and keep their attributes.
-           * Although in this particular case we don't propagate the attributes. */ /*
-          const int handle = dst_instances->add_reference(bke::InstanceReference());
-          dst_instances->add_instance(handle, float4x4::identity());
+           * Although in this particular case we don't propagate the attributes. *//*
+          const int handle = gp_instances->add_reference(bke::InstanceReference());
+          gp_instances->add_instance(handle, float4x4::identity());
+
           continue;
         }
         /* TODO: Attributes are not propagating from the curves or the points. */ /*
@@ -322,16 +314,8 @@ static void node_geo_exec(GeoNodeExecParams params)
                                      params,
                                      attributes_to_propagate);
         GeometrySet temp_set = GeometrySet::from_instances(instances);
-        const int handle = dst_instances->add_reference(bke::InstanceReference{temp_set});
-        dst_instances->add_instance(handle, float4x4::identity());
-      }
-      if (geometry_set.has_instances()) {
-        bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
-                             bke::AttrDomain::Layer,
-                             bke::AttrDomain::Instance,
-                             propagation_info,
-                             {},
-                             geometry_set.get_instances_for_write()->attributes_for_write());
+        const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
+        gp_instances->add_instance(handle, float4x4::identity());
       }
       */
     }

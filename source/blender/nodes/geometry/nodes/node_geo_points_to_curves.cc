@@ -88,7 +88,7 @@ static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
 
 static Curves *curve_from_points(const AttributeAccessor attributes,
                                  const VArray<float> &weights_varray,
-                                 const bke::AnonymousAttributePropagationInfo &propagation_info)
+                                 const AttributeFilter &attribute_filter)
 {
   const int domain_size = weights_varray.size();
   Curves *curves_id = bke::curves_new_nomain_single(domain_size, CURVE_TYPE_POLY);
@@ -97,8 +97,7 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
     bke::copy_attributes(attributes,
                          AttrDomain::Point,
                          AttrDomain::Point,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          curves.attributes_for_write());
     return curves_id;
   }
@@ -109,8 +108,7 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
   bke::gather_attributes(attributes,
                          AttrDomain::Point,
                          AttrDomain::Point,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          indices,
                          curves.attributes_for_write());
   return curves_id;
@@ -119,7 +117,7 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
 static Curves *curves_from_points(const PointCloud &points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
-                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
+                                  const AttributeFilter &attribute_filter)
 {
   const int domain_size = points.totpoint;
   if (domain_size == 0) {
@@ -136,14 +134,14 @@ static Curves *curves_from_points(const PointCloud &points,
   const VArray<float> weights_varray = evaluator.get_evaluated<float>(1);
 
   if (group_ids_varray.is_single()) {
-    return curve_from_points(points.attributes(), weights_varray, propagation_info);
+    return curve_from_points(points.attributes(), weights_varray, attribute_filter);
   }
 
   Array<int> group_ids(domain_size);
   group_ids_varray.materialize(group_ids.as_mutable_span());
   const int total_curves = identifiers_to_indices(group_ids);
   if (total_curves == 1) {
-    return curve_from_points(points.attributes(), weights_varray, propagation_info);
+    return curve_from_points(points.attributes(), weights_varray, attribute_filter);
   }
 
   Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
@@ -162,8 +160,7 @@ static Curves *curves_from_points(const PointCloud &points,
   bke::gather_attributes(points.attributes(),
                          AttrDomain::Point,
                          AttrDomain::Point,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          indices,
                          curves.attributes_for_write());
 
@@ -177,13 +174,12 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> group_id_field = params.extract_input<Field<int>>("Curve Group ID");
   const Field<float> weight_field = params.extract_input<Field<float>>("Weight");
 
-  const bke::AnonymousAttributePropagationInfo propagation_info =
-      params.get_output_propagation_info("Curves");
+  const NodeAttributeFilter attribute_filter = params.get_attribute_filter("Curves");
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     geometry_set.replace_curves(nullptr);
     if (const PointCloud *points = geometry_set.get_pointcloud()) {
       Curves *curves_id = curves_from_points(
-          *points, group_id_field, weight_field, propagation_info);
+          *points, group_id_field, weight_field, attribute_filter);
       geometry_set.replace_curves(curves_id);
     }
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});

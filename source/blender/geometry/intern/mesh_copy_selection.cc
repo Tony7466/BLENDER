@@ -95,7 +95,7 @@ static void copy_overlapping_hint(const Mesh &src, Mesh &dst)
 
 /** Gather vertex group data and array attributes in separate loops. */
 static void gather_vert_attributes(const Mesh &mesh_src,
-                                   const bke::AnonymousAttributePropagationInfo &propagation_info,
+                                   const bke::AttributeFilter &attribute_filter,
                                    const IndexMask &vert_mask,
                                    Mesh &mesh_dst)
 {
@@ -113,17 +113,15 @@ static void gather_vert_attributes(const Mesh &mesh_src,
   bke::gather_attributes(mesh_src.attributes(),
                          bke::AttrDomain::Point,
                          bke::AttrDomain::Point,
-                         propagation_info,
-                         vertex_group_names,
+                         bke::attribute_filter_with_skip_ref(attribute_filter, vertex_group_names),
                          vert_mask,
                          mesh_dst.attributes_for_write());
 }
 
-std::optional<Mesh *> mesh_copy_selection(
-    const Mesh &src_mesh,
-    const VArray<bool> &selection,
-    const bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+std::optional<Mesh *> mesh_copy_selection(const Mesh &src_mesh,
+                                          const VArray<bool> &selection,
+                                          const bke::AttrDomain selection_domain,
+                                          const bke::AttributeFilter &attribute_filter)
 {
   const Span<int2> src_edges = src_mesh.edges();
   const OffsetIndices src_faces = src_mesh.faces();
@@ -239,30 +237,30 @@ std::optional<Mesh *> mesh_copy_selection(
                     dst_corner_edges);
       },
       [&]() {
-        gather_vert_attributes(src_mesh, propagation_info, vert_mask, *dst_mesh);
-        bke::gather_attributes(src_attributes,
-                               bke::AttrDomain::Edge,
-                               bke::AttrDomain::Edge,
-                               propagation_info,
-                               {".edge_verts"},
-                               edge_mask,
-                               dst_attributes);
+        gather_vert_attributes(src_mesh, attribute_filter, vert_mask, *dst_mesh);
+        bke::gather_attributes(
+            src_attributes,
+            bke::AttrDomain::Edge,
+            bke::AttrDomain::Edge,
+            bke::attribute_filter_with_skip_ref(attribute_filter, {".edge_verts"}),
+            edge_mask,
+            dst_attributes);
         bke::gather_attributes(src_attributes,
                                bke::AttrDomain::Face,
                                bke::AttrDomain::Face,
-                               propagation_info,
-                               {},
+                               attribute_filter,
                                face_mask,
                                dst_attributes);
-        bke::gather_attributes_group_to_group(src_attributes,
-                                              bke::AttrDomain::Corner,
-                                              bke::AttrDomain::Corner,
-                                              propagation_info,
-                                              {".corner_edge", ".corner_vert"},
-                                              src_faces,
-                                              dst_faces,
-                                              face_mask,
-                                              dst_attributes);
+        bke::gather_attributes_group_to_group(
+            src_attributes,
+            bke::AttrDomain::Corner,
+            bke::AttrDomain::Corner,
+            bke::attribute_filter_with_skip_ref(attribute_filter,
+                                                {".corner_edge", ".corner_vert"}),
+            src_faces,
+            dst_faces,
+            face_mask,
+            dst_attributes);
       });
 
   if (selection_domain == bke::AttrDomain::Edge) {
@@ -277,11 +275,10 @@ std::optional<Mesh *> mesh_copy_selection(
   return dst_mesh;
 }
 
-std::optional<Mesh *> mesh_copy_selection_keep_verts(
-    const Mesh &src_mesh,
-    const VArray<bool> &selection,
-    const bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+std::optional<Mesh *> mesh_copy_selection_keep_verts(const Mesh &src_mesh,
+                                                     const VArray<bool> &selection,
+                                                     const bke::AttrDomain selection_domain,
+                                                     const bke::AttributeFilter &attribute_filter)
 {
   const Span<int2> src_edges = src_mesh.edges();
   const OffsetIndices src_faces = src_mesh.faces();
@@ -362,32 +359,29 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
         bke::copy_attributes(src_attributes,
                              bke::AttrDomain::Point,
                              bke::AttrDomain::Point,
-                             propagation_info,
-                             {},
+                             attribute_filter,
                              dst_attributes);
         bke::gather_attributes(src_attributes,
                                bke::AttrDomain::Edge,
                                bke::AttrDomain::Edge,
-                               propagation_info,
-                               {},
+                               attribute_filter,
                                edge_mask,
                                dst_attributes);
         bke::gather_attributes(src_attributes,
                                bke::AttrDomain::Face,
                                bke::AttrDomain::Face,
-                               propagation_info,
-                               {},
+                               attribute_filter,
                                face_mask,
                                dst_attributes);
-        bke::gather_attributes_group_to_group(src_attributes,
-                                              bke::AttrDomain::Corner,
-                                              bke::AttrDomain::Corner,
-                                              propagation_info,
-                                              {".corner_edge"},
-                                              src_faces,
-                                              dst_faces,
-                                              face_mask,
-                                              dst_attributes);
+        bke::gather_attributes_group_to_group(
+            src_attributes,
+            bke::AttrDomain::Corner,
+            bke::AttrDomain::Corner,
+            bke::attribute_filter_with_skip_ref(attribute_filter, {".corner_edge"}),
+            src_faces,
+            dst_faces,
+            face_mask,
+            dst_attributes);
       });
 
   /* Positions are not changed by the operation, so the bounds are the same. */
@@ -400,11 +394,10 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
   return dst_mesh;
 }
 
-std::optional<Mesh *> mesh_copy_selection_keep_edges(
-    const Mesh &src_mesh,
-    const VArray<bool> &selection,
-    const bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+std::optional<Mesh *> mesh_copy_selection_keep_edges(const Mesh &src_mesh,
+                                                     const VArray<bool> &selection,
+                                                     const bke::AttrDomain selection_domain,
+                                                     const bke::AttributeFilter &attribute_filter)
 {
   const OffsetIndices src_faces = src_mesh.faces();
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
@@ -451,27 +444,23 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
   bke::copy_attributes(src_attributes,
                        bke::AttrDomain::Point,
                        bke::AttrDomain::Point,
-                       propagation_info,
-                       {},
+                       attribute_filter,
                        dst_attributes);
   bke::copy_attributes(src_attributes,
                        bke::AttrDomain::Edge,
                        bke::AttrDomain::Edge,
-                       propagation_info,
-                       {},
+                       attribute_filter,
                        dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Face,
                          bke::AttrDomain::Face,
-                         propagation_info,
-                         {},
+                         attribute_filter,
                          face_mask,
                          dst_attributes);
   bke::gather_attributes_group_to_group(src_attributes,
                                         bke::AttrDomain::Corner,
                                         bke::AttrDomain::Corner,
-                                        propagation_info,
-                                        {},
+                                        attribute_filter,
                                         src_faces,
                                         dst_faces,
                                         face_mask,
