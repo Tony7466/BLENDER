@@ -34,6 +34,9 @@ CCL_NAMESPACE_BEGIN
 #ifndef M_PI_F
 #  define M_PI_F (3.1415926535897932f) /* pi */
 #endif
+#ifndef M_TAU_F
+#  define M_TAU_F (6.28318530717958647692f) /* tau = 2*pi */
+#endif
 #ifndef M_PI_2_F
 #  define M_PI_2_F (1.5707963267948966f) /* pi/2 */
 #endif
@@ -86,8 +89,34 @@ CCL_NAMESPACE_BEGIN
 
 /* Scalar */
 
+ccl_device_inline float square(float a)
+{
+  return a * a;
+}
+
+ccl_device_inline float fceilf(float a)
+{
+  return ceilf(a);
+}
+
+ccl_device_inline float froundf(float a)
+{
+  return roundf(a);
+}
+
+ccl_device_inline float float_max(float a, float b)
+{
+  return (a > b) ? a : b;
+}
+
+ccl_device_inline float float_min(float a, float b)
+{
+  return (a < b) ? a : b;
+}
+
 #if !defined(__HIP__) && !defined(__KERNEL_ONEAPI__)
 #  ifdef _WIN32
+/* fmaxf and fminf are overridden by macros in compat.h */
 ccl_device_inline float fmaxf(float a, float b)
 {
   return (a > b) ? a : b;
@@ -766,6 +795,11 @@ ccl_device float safe_logf(float a, float b)
 ccl_device float safe_modulo(float a, float b)
 {
   return (b != 0.0f) ? fmodf(a, b) : 0.0f;
+}
+
+ccl_device float floored_modulo(float a, float b)
+{
+  return a - floorf(a / b) * b;
 }
 
 ccl_device float safe_floored_modulo(float a, float b)

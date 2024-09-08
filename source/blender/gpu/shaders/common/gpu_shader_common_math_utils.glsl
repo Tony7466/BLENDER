@@ -7,12 +7,35 @@
 /* WORKAROUND: To be removed once we port all code to use `gpu_shader_math_base_lib.glsl`. */
 #ifndef GPU_SHADER_MATH_BASE_LIB_GLSL
 
+#  define M_PI 3.14159265358979323846  /* pi */
+#  define M_TAU 6.28318530717958647692 /* tau = 2*pi */
+
+float square(float v)
+{
+  return v * v;
+}
+
+float atan2(float y, float x)
+{
+  return atan(y, x);
+}
+
 float safe_divide(float a, float b)
 {
   return (b != 0.0) ? a / b : 0.0;
 }
 
 #endif
+
+float floored_modulo(float a, float b)
+{
+  return a - floor(a / b) * b;
+}
+
+float safe_floored_modulo(float a, float b)
+{
+  return (b != 0.0) ? (a - floor(a / b) * b) : 0.0;
+}
 
 /* fmod function compatible with OSL (copy from OSL/dual.h) */
 float compatible_fmod(float a, float b)

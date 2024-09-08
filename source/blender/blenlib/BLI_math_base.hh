@@ -80,6 +80,11 @@ template<typename T> inline T safe_mod(const T &a, const T &b)
   return (b != 0) ? std::fmod(a, b) : 0;
 }
 
+template<typename T> inline T floored_mod(const T &a, const T &b)
+{
+  return a - std::floor(a / b) * b;
+}
+
 template<typename T> inline void min_max(const T &value, T &min, T &max)
 {
   min = math::min(value, min);

@@ -54,6 +54,13 @@
 #include "BLI_sys_types.h"
 #include <math.h>
 
+#ifndef M_PI_F
+#  define M_PI_F (3.1415926535897932f) /* pi */
+#endif
+#ifndef M_TAU_F
+#  define M_TAU_F (6.28318530717958647692f) /* tau = 2*pi */
+#endif
+
 #ifndef M_PI
 #  define M_PI 3.14159265358979323846 /* pi */
 #endif

@@ -310,6 +310,16 @@ ccl_device_inline float3 fabs(const float3 a)
 #  endif
 }
 
+ccl_device_inline float3 fceilf(const float3 a)
+{
+  return make_float3(fceilf(a.x), fceilf(a.y), fceilf(a.z));
+}
+
+ccl_device_inline float3 froundf(const float3 a)
+{
+  return make_float3(froundf(a.x), froundf(a.y), froundf(a.z));
+}
+
 ccl_device_inline float3 fmod(const float3 a, const float b)
 {
   return make_float3(fmodf(a.x, b), fmodf(a.y, b), fmodf(a.z, b));

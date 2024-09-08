@@ -1347,6 +1347,21 @@ typedef struct NodeTexNoise {
   char _pad[2];
 } NodeTexNoise;
 
+typedef struct NodeTexRaiko {
+  NodeTexBase base;
+  int mode;
+  uint8_t normalize_r_gon_parameter;
+  uint8_t integer_sides;
+  uint8_t elliptical_corners;
+  uint8_t invert_order_of_transformation;
+  uint8_t transform_fields_noise;
+  uint8_t transform_coordinates_noise;
+  uint8_t uniform_scale_randomness;
+  uint8_t grid_dimensions;
+  uint8_t step_count;
+  char _pad[3];
+} NodeTexRaiko;
+
 typedef struct NodeTexVoronoi {
   NodeTexBase base;
   int dimensions;
@@ -2232,6 +2247,14 @@ enum {
   SHD_VORONOI_SMOOTH_F1 = 2,
   SHD_VORONOI_DISTANCE_TO_EDGE = 3,
   SHD_VORONOI_N_SPHERE_RADIUS = 4,
+};
+
+/* Raiko Texture */
+
+enum {
+  SHD_RAIKO_ADDITIVE = 0,
+  SHD_RAIKO_CLOSEST = 1,
+  SHD_RAIKO_SMOOTH_MINIMUM = 2,
 };
 
 /* Deprecated Musgrave Texture. Keep for Versioning */

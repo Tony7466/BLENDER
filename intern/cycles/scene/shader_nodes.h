@@ -241,6 +241,130 @@ class NoiseTextureNode : public TextureNode {
   NODE_SOCKET_API(float3, vector)
 };
 
+class RaikoTextureNode : public TextureNode {
+ public:
+  SHADER_NODE_CLASS(RaikoTextureNode)
+
+  NODE_SOCKET_API(int, mode)
+  NODE_SOCKET_API(bool, normalize_r_gon_parameter)
+  NODE_SOCKET_API(float3, vector)
+  NODE_SOCKET_API(float, w)
+  NODE_SOCKET_API(float, accuracy)
+  NODE_SOCKET_API(float, scale)
+  NODE_SOCKET_API(float, smoothness)
+
+  /* R-sphere */
+  NODE_SOCKET_API(bool, integer_sides)
+  NODE_SOCKET_API(bool, elliptical_corners)
+  NODE_SOCKET_API(float, r_gon_sides)
+  NODE_SOCKET_API(float, r_gon_roundness)
+  NODE_SOCKET_API(float, r_gon_exponent)
+  NODE_SOCKET_API(float, sphere_exponent)
+
+  /* Randomize R-sphere */
+  NODE_SOCKET_API(float, r_gon_sides_randomness)
+  NODE_SOCKET_API(float, r_gon_roundness_randomness)
+  NODE_SOCKET_API(float, r_gon_exponent_randomness)
+  NODE_SOCKET_API(float, sphere_exponent_randomness)
+
+  /* Transform */
+  NODE_SOCKET_API(bool, invert_order_of_transformation)
+  NODE_SOCKET_API(bool, transform_fields_noise)
+  NODE_SOCKET_API(bool, transform_coordinates_noise)
+  NODE_SOCKET_API(float3, transform_rotation)
+  NODE_SOCKET_API(float3, transform_scale)
+  NODE_SOCKET_API(float, transform_scale_w)
+
+  /* Randomize Transform */
+  NODE_SOCKET_API(bool, uniform_scale_randomness)
+  NODE_SOCKET_API(float3, transform_rotation_randomness)
+  NODE_SOCKET_API(float3, transform_scale_randomness)
+  NODE_SOCKET_API(float, transform_scale_w_randomness)
+
+  /* Add Noise */
+  NODE_SOCKET_API(float, noise_fragmentation)
+  NODE_SOCKET_API(float, noise_fields_strength_1)
+  NODE_SOCKET_API(float, noise_coordinates_strength_1)
+  NODE_SOCKET_API(float, noise_scale_1)
+  NODE_SOCKET_API(float, noise_detail_1)
+  NODE_SOCKET_API(float, noise_roughness_1)
+  NODE_SOCKET_API(float, noise_lacunarity_1)
+  NODE_SOCKET_API(float, noise_fields_strength_2)
+  NODE_SOCKET_API(float, noise_coordinates_strength_2)
+  NODE_SOCKET_API(float, noise_scale_2)
+  NODE_SOCKET_API(float, noise_detail_2)
+  NODE_SOCKET_API(float, noise_roughness_2)
+  NODE_SOCKET_API(float, noise_lacunarity_2)
+
+  /* Grid */
+  NODE_SOCKET_API(int, grid_dimensions)
+  NODE_SOCKET_API(float3, grid_vector_1)
+  NODE_SOCKET_API(float, grid_vector_w_1)
+  NODE_SOCKET_API(float3, grid_vector_2)
+  NODE_SOCKET_API(float, grid_vector_w_2)
+  NODE_SOCKET_API(float3, grid_vector_3)
+  NODE_SOCKET_API(float, grid_vector_w_3)
+  NODE_SOCKET_API(float3, grid_vector_4)
+  NODE_SOCKET_API(float, grid_vector_w_4)
+
+  /* Randomize Grid */
+  NODE_SOCKET_API(float3, grid_points_translation_randomness)
+  NODE_SOCKET_API(float, grid_points_translation_w_randomness)
+
+  /* Chained Elliptical Remap */
+  NODE_SOCKET_API(int, step_count)
+  NODE_SOCKET_API(float, step_center_1)
+  NODE_SOCKET_API(float, step_width_1)
+  NODE_SOCKET_API(float, step_value_1)
+  NODE_SOCKET_API(float, ellipse_height_1)
+  NODE_SOCKET_API(float, ellipse_width_1)
+  NODE_SOCKET_API(float, inflection_point_1)
+  NODE_SOCKET_API(float, step_center_2)
+  NODE_SOCKET_API(float, step_width_2)
+  NODE_SOCKET_API(float, step_value_2)
+  NODE_SOCKET_API(float, ellipse_height_2)
+  NODE_SOCKET_API(float, ellipse_width_2)
+  NODE_SOCKET_API(float, inflection_point_2)
+  NODE_SOCKET_API(float, step_center_3)
+  NODE_SOCKET_API(float, step_width_3)
+  NODE_SOCKET_API(float, step_value_3)
+  NODE_SOCKET_API(float, ellipse_height_3)
+  NODE_SOCKET_API(float, ellipse_width_3)
+  NODE_SOCKET_API(float, inflection_point_3)
+  NODE_SOCKET_API(float, step_center_4)
+  NODE_SOCKET_API(float, step_width_4)
+  NODE_SOCKET_API(float, step_value_4)
+  NODE_SOCKET_API(float, ellipse_height_4)
+  NODE_SOCKET_API(float, ellipse_width_4)
+  NODE_SOCKET_API(float, inflection_point_4)
+
+  /* Randomize Chained Elliptical Remap */
+  NODE_SOCKET_API(float, step_center_randomness_1)
+  NODE_SOCKET_API(float, step_width_randomness_1)
+  NODE_SOCKET_API(float, step_value_randomness_1)
+  NODE_SOCKET_API(float, ellipse_height_randomness_1)
+  NODE_SOCKET_API(float, ellipse_width_randomness_1)
+  NODE_SOCKET_API(float, inflection_point_randomness_1)
+  NODE_SOCKET_API(float, step_center_randomness_2)
+  NODE_SOCKET_API(float, step_width_randomness_2)
+  NODE_SOCKET_API(float, step_value_randomness_2)
+  NODE_SOCKET_API(float, ellipse_height_randomness_2)
+  NODE_SOCKET_API(float, ellipse_width_randomness_2)
+  NODE_SOCKET_API(float, inflection_point_randomness_2)
+  NODE_SOCKET_API(float, step_center_randomness_3)
+  NODE_SOCKET_API(float, step_width_randomness_3)
+  NODE_SOCKET_API(float, step_value_randomness_3)
+  NODE_SOCKET_API(float, ellipse_height_randomness_3)
+  NODE_SOCKET_API(float, ellipse_width_randomness_3)
+  NODE_SOCKET_API(float, inflection_point_randomness_3)
+  NODE_SOCKET_API(float, step_center_randomness_4)
+  NODE_SOCKET_API(float, step_width_randomness_4)
+  NODE_SOCKET_API(float, step_value_randomness_4)
+  NODE_SOCKET_API(float, ellipse_height_randomness_4)
+  NODE_SOCKET_API(float, ellipse_width_randomness_4)
+  NODE_SOCKET_API(float, inflection_point_randomness_4)
+};
+
 class GaborTextureNode : public TextureNode {
  public:
   SHADER_NODE_CLASS(GaborTextureNode)

@@ -61,6 +61,14 @@ ccl_device_inline float stack_load_float_default(ccl_private float *stack, uint 
   return (a == (uint)SVM_STACK_INVALID) ? __uint_as_float(value) : stack_load_float(stack, a);
 }
 
+ccl_device_inline float3 stack_load_float3_default(ccl_private float *stack, uint a, uint3 value)
+{
+  return (a == (uint)SVM_STACK_INVALID) ? make_float3(__uint_as_float(value.x),
+                                                      __uint_as_float(value.y),
+                                                      __uint_as_float(value.z)) :
+                                          stack_load_float3(stack, a);
+}
+
 ccl_device_inline void stack_store_float(ccl_private float *stack, uint a, float f)
 {
   kernel_assert(a < SVM_STACK_SIZE);
@@ -181,6 +189,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/mix.h"
 #include "kernel/svm/noisetex.h"
 #include "kernel/svm/normal.h"
+#include "kernel/svm/raiko.h"
 #include "kernel/svm/ramp.h"
 #include "kernel/svm/sepcomb_color.h"
 #include "kernel/svm/sepcomb_hsv.h"
@@ -476,6 +485,9 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_TEX_GRADIENT)
       svm_node_tex_gradient(sd, stack, node);
+      break;
+      SVM_CASE(NODE_TEX_RAIKO)
+      offset = svm_node_tex_raiko<node_feature_mask>(kg, sd, stack, node, offset);
       break;
       SVM_CASE(NODE_TEX_VORONOI)
       offset = svm_node_tex_voronoi<node_feature_mask>(

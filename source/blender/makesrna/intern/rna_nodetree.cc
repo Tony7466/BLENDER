@@ -5304,6 +5304,134 @@ static void def_sh_tex_magic(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Node_update");
 }
 
+static void def_sh_tex_raiko(StructRNA *srna)
+{
+  static const EnumPropertyItem rna_enum_node_tex_mode_items[] = {
+      {SHD_RAIKO_ADDITIVE,
+       "ADDITIVE",
+       0,
+       "Additive",
+       "Add up individually remapped r-gon fields to compute the outputs"},
+      {SHD_RAIKO_CLOSEST,
+       "CLOSEST",
+       0,
+       "Closest",
+       "Only use the r-gon field of the closest grid point to compute the outputs"},
+      {SHD_RAIKO_SMOOTH_MINIMUM,
+       "SMOOTH_MINIMUM",
+       0,
+       "Smooth Minimum",
+       "Take the smooth minimum of individual r-gon fields to compute the outputs"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_enum_node_tex_grid_dimensions_items[] = {
+      {0, "0D", 0, "0D", "Only compute the grid point at the origin"},
+      {1,
+       "1D",
+       0,
+       "1D",
+       "Use 1 1D vector to control the X component of the 4D grid basis vector. The YZW "
+       "components are internally set to 0.0"},
+      {2,
+       "2D",
+       0,
+       "2D",
+       "Use 2 2D vectors to control the XY components of the 4D grid basis vectors. The ZW "
+       "components are internally set to 0.0, regardless of the Z component of the input vectors"},
+      {3,
+       "3D",
+       0,
+       "3D",
+       "Use 3 3D vectors to control the XYZ components of the 4D grid basis vectors. The W "
+       "component is internally set to 0.0"},
+      {4, "4D", 0, "4D", "Use 4 4D grid basis vectors"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_enum_node_tex_step_count_items[] = {
+      {1, "1_STEP", 0, "1 Step", "1 chained elliptical remapping step"},
+      {2, "2_STEPS", 0, "2 Steps", "2 chained elliptical remapping steps"},
+      {3, "3_STEPS", 0, "3 Steps", "3 chained elliptical remapping steps"},
+      {4, "4_STEPS", 0, "4 Steps", "4 chained elliptical remapping steps"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeTexRaiko", "storage");
+  def_sh_tex(srna);
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "mode");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "Raiko Texture operational mode");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "normalize_r_gon_parameter", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "normalize_r_gon_parameter", 0);
+  RNA_def_property_ui_text(prop,
+                           "Normalize R-gon Parameter",
+                           "Normalize the R-gon Parameter Field output to a [-1, 1] interval");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "integer_sides", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "integer_sides", 0);
+  RNA_def_property_ui_text(prop,
+                           "Integer Sides",
+                           "Only allow whole integers as the value of R-gon Sides. R-gon Sides "
+                           "takes the smallest integer greater than or equal to itself");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "elliptical_corners", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "elliptical_corners", 0);
+  RNA_def_property_ui_text(
+      prop, "Elliptical Corners", "Use elliptical corners for irregular the segment if existent");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "invert_order_of_transformation", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "invert_order_of_transformation", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Invert Order of Transformation",
+      "Invert the order in which the rotation and scale transformations are performed");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "transform_fields_noise", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "transform_fields_noise", 0);
+  RNA_def_property_ui_text(prop,
+                           "Transform Fields Noise",
+                           "Apply the transformations to the Noise used to compute field outputs");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "transform_coordinates_noise", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "transform_coordinates_noise", 0);
+  RNA_def_property_ui_text(
+      prop,
+      "Transform Coordinates Noise",
+      "Apply the transformations to the Noise used to compute the R-sphere Coordinates output");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "uniform_scale_randomness", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "uniform_scale_randomness", 0);
+  RNA_def_property_ui_text(prop,
+                           "Uniform Scale Randomness",
+                           "Use the same random deviation in all components of Scale Transform");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "grid_dimensions", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "grid_dimensions");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_grid_dimensions_items);
+  RNA_def_property_ui_text(prop, "Grid Dimensions", "Number of grid dimensions");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "step_count", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "step_count");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_step_count_items);
+  RNA_def_property_ui_text(prop, "Step Count", "Number of chained elliptical remapping steps");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+}
+
 static void def_sh_tex_voronoi(StructRNA *srna)
 {
   static EnumPropertyItem prop_distance_items[] = {

@@ -315,6 +315,12 @@ typedef enum NodeGradientType {
   NODE_BLEND_SPHERICAL
 } NodeGradientType;
 
+typedef enum NodeRaikoMode {
+  NODE_RAIKO_ADDITIVE,
+  NODE_RAIKO_CLOSEST,
+  NODE_RAIKO_SMOOTH_MINIMUM
+} NodeRaikoMode;
+
 typedef enum NodeVoronoiDistanceMetric {
   NODE_VORONOI_EUCLIDEAN,
   NODE_VORONOI_MANHATTAN,
