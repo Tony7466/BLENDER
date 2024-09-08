@@ -611,11 +611,12 @@ void ShadowModule::init()
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
     atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
-    inst_.info += "Error: Could not allocate shadow atlas. Most likely out of GPU memory.\n";
+    inst_.info_append_i18n(
+        "Error: Could not allocate shadow atlas. Most likely out of GPU memory.");
   }
 
   /* Read end of the swap-chain to avoid stall. */
-  {
+  if (inst_.is_viewport()) {
     if (inst_.sampling.finished_viewport()) {
       /* Swap enough to read the last one. */
       for (int i = 0; i < statistics_buf_.size(); i++) {
@@ -629,15 +630,14 @@ void ShadowModule::init()
     ShadowStatistics stats = statistics_buf_.current();
 
     if (stats.page_used_count > shadow_page_len_ && enabled_) {
-      std::stringstream ss;
-      ss << "Error: Shadow buffer full, may result in missing shadows and lower performance. ("
-         << stats.page_used_count << " / " << shadow_page_len_ << ")\n";
-      inst_.info += ss.str();
+      inst_.info_append_i18n(
+          "Error: Shadow buffer full, may result in missing shadows and lower "
+          "performance. ({} / {})",
+          stats.page_used_count,
+          shadow_page_len_);
     }
     if (stats.view_needed_count > SHADOW_VIEW_MAX && enabled_) {
-      std::stringstream ss;
-      ss << "Error: Too many shadow updates, some shadow might be incorrect.\n";
-      inst_.info += ss.str();
+      inst_.info_append_i18n("Error: Too many shadow updates, some shadow might be incorrect.");
     }
   }
 
@@ -1022,22 +1022,32 @@ void ShadowModule::end_sync()
         /* Convert the unordered tiles into a texture used during shading. Creates views. */
         PassSimple::Sub &sub = pass.sub("Finalize");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_FINALIZE));
-        sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
-        sub.bind_ssbo("tilemaps_clip_buf", tilemap_pool.tilemaps_clip);
-        sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
+        sub.bind_ssbo("tilemaps_buf", &tilemap_pool.tilemaps_data);
+        sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
+        sub.bind_ssbo("pages_infos_buf", &pages_infos_data_);
+        sub.bind_ssbo("statistics_buf", &statistics_buf_.current());
         sub.bind_ssbo("view_infos_buf", &shadow_multi_view_.matrices_ubo_get());
-        sub.bind_ssbo("statistics_buf", statistics_buf_.current());
-        sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
-        sub.bind_ssbo("tile_draw_buf", tile_draw_buf_);
-        sub.bind_ssbo("dst_coord_buf", dst_coord_buf_);
-        sub.bind_ssbo("src_coord_buf", src_coord_buf_);
-        sub.bind_ssbo("render_map_buf", render_map_buf_);
-        sub.bind_ssbo("render_view_buf", render_view_buf_);
-        sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
-        sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
+        sub.bind_ssbo("render_view_buf", &render_view_buf_);
+        sub.bind_ssbo("tilemaps_clip_buf", &tilemap_pool.tilemaps_clip);
+        sub.bind_image("tilemaps_img", &tilemap_pool.tilemap_tx);
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_UNIFORM | GPU_BARRIER_TEXTURE_FETCH |
                     GPU_BARRIER_SHADER_IMAGE_ACCESS);
+      }
+      {
+        /* Convert the unordered tiles into a texture used during shading. Creates views. */
+        PassSimple::Sub &sub = pass.sub("RenderMap");
+        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_TILEMAP_RENDERMAP));
+        sub.bind_ssbo("statistics_buf", &statistics_buf_.current());
+        sub.bind_ssbo("render_view_buf", &render_view_buf_);
+        sub.bind_ssbo("tiles_buf", &tilemap_pool.tiles_data);
+        sub.bind_ssbo("clear_dispatch_buf", &clear_dispatch_buf_);
+        sub.bind_ssbo("tile_draw_buf", &tile_draw_buf_);
+        sub.bind_ssbo("dst_coord_buf", &dst_coord_buf_);
+        sub.bind_ssbo("src_coord_buf", &src_coord_buf_);
+        sub.bind_ssbo("render_map_buf", &render_map_buf_);
+        sub.dispatch(int3(1, 1, SHADOW_VIEW_MAX));
+        sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
       {
         /* Amend tilemap_tx content to support clipmap LODs. */
@@ -1332,16 +1342,16 @@ void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 
   switch (inst_.debug_mode) {
     case DEBUG_SHADOW_TILEMAPS:
-      inst_.info += "Debug Mode: Shadow Tilemap\n";
+      inst_.info_append("Debug Mode: Shadow Tilemap");
       break;
     case DEBUG_SHADOW_VALUES:
-      inst_.info += "Debug Mode: Shadow Values\n";
+      inst_.info_append("Debug Mode: Shadow Values");
       break;
     case DEBUG_SHADOW_TILE_RANDOM_COLOR:
-      inst_.info += "Debug Mode: Shadow Tile Random Color\n";
+      inst_.info_append("Debug Mode: Shadow Tile Random Color");
       break;
     case DEBUG_SHADOW_TILEMAP_RANDOM_COLOR:
-      inst_.info += "Debug Mode: Shadow Tilemap Random Color\n";
+      inst_.info_append("Debug Mode: Shadow Tilemap Random Color");
       break;
     default:
       break;

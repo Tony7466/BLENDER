@@ -37,6 +37,9 @@ static fn::Field<int> get_count_input_from_length(const fn::Field<float> &length
       [](const float curve_length, const float sample_length) {
         /* Find the number of sampled segments by dividing the total length by
          * the sample length. Then there is one more sampled point than segment. */
+        if (UNLIKELY(sample_length == 0.0f)) {
+          return 1;
+        }
         const int count = int(curve_length / sample_length) + 1;
         return std::max(1, count);
       },
@@ -53,21 +56,16 @@ static fn::Field<int> get_count_input_from_length(const fn::Field<float> &length
  * Return true if the attribute should be copied/interpolated to the result curves.
  * Don't output attributes that correspond to curve types that have no curves in the result.
  */
-static bool interpolate_attribute_to_curves(const bke::AttributeIDRef &attribute_id,
+static bool interpolate_attribute_to_curves(const StringRef attribute_id,
                                             const std::array<int, CURVE_TYPES_NUM> &type_counts)
 {
-  if (attribute_id.is_anonymous()) {
+  if (bke::attribute_name_is_anonymous(attribute_id)) {
     return true;
   }
-  if (ELEM(attribute_id.name(),
-           "handle_type_left",
-           "handle_type_right",
-           "handle_left",
-           "handle_right"))
-  {
+  if (ELEM(attribute_id, "handle_type_left", "handle_type_right", "handle_left", "handle_right")) {
     return type_counts[CURVE_TYPE_BEZIER] != 0;
   }
-  if (ELEM(attribute_id.name(), "nurbs_weight")) {
+  if (ELEM(attribute_id, "nurbs_weight")) {
     return type_counts[CURVE_TYPE_NURBS] != 0;
   }
   return true;
@@ -76,7 +74,7 @@ static bool interpolate_attribute_to_curves(const bke::AttributeIDRef &attribute
 /**
  * Return true if the attribute should be copied to poly curves.
  */
-static bool interpolate_attribute_to_poly_curve(const bke::AttributeIDRef &attribute_id)
+static bool interpolate_attribute_to_poly_curve(const StringRef attribute_id)
 {
   static const Set<StringRef> no_interpolation{{
       "handle_type_left",
@@ -85,25 +83,27 @@ static bool interpolate_attribute_to_poly_curve(const bke::AttributeIDRef &attri
       "handle_left",
       "nurbs_weight",
   }};
-  return !no_interpolation.contains(attribute_id.name());
+  return !no_interpolation.contains(attribute_id);
 }
 
 /**
  * Retrieve spans from source and result attributes.
  */
-static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
+static void retrieve_attribute_spans(const Span<StringRef> ids,
                                      const CurvesGeometry &src_curves,
                                      CurvesGeometry &dst_curves,
-                                     Vector<GSpan> &src,
+                                     Vector<GVArraySpan> &src,
                                      Vector<GMutableSpan> &dst,
                                      Vector<bke::GSpanAttributeWriter> &dst_attributes)
 {
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
   for (const int i : ids.index_range()) {
-    const GVArray src_attribute = *src_attributes.lookup(ids[i], bke::AttrDomain::Point);
-    src.append(src_attribute.get_internal_span());
+    const bke::GAttributeReader src_attribute = src_attributes.lookup(ids[i],
+                                                                      bke::AttrDomain::Point);
+    src.append(src_attribute.varray);
 
-    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(src_attribute.type());
+    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
+        src_attribute.varray.type());
     bke::GSpanAttributeWriter dst_attribute =
         dst_curves.attributes_for_write().lookup_or_add_for_write_only_span(
             ids[i], bke::AttrDomain::Point, data_type);
@@ -113,12 +113,12 @@ static void retrieve_attribute_spans(const Span<bke::AttributeIDRef> ids,
 }
 
 struct AttributesForResample : NonCopyable, NonMovable {
-  Vector<GSpan> src;
+  Vector<GVArraySpan> src;
   Vector<GMutableSpan> dst;
 
   Vector<bke::GSpanAttributeWriter> dst_attributes;
 
-  Vector<GSpan> src_no_interpolation;
+  Vector<GVArraySpan> src_no_interpolation;
   Vector<GMutableSpan> dst_no_interpolation;
 
   Span<float3> src_evaluated_tangents;
@@ -136,27 +136,26 @@ static void gather_point_attributes_to_interpolate(
     AttributesForResample &result,
     const ResampleCurvesOutputAttributeIDs &output_ids)
 {
-  VectorSet<bke::AttributeIDRef> ids;
-  VectorSet<bke::AttributeIDRef> ids_no_interpolation;
-  src_curves.attributes().for_all(
-      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-        if (meta_data.domain != bke::AttrDomain::Point) {
-          return true;
-        }
-        if (meta_data.data_type == CD_PROP_STRING) {
-          return true;
-        }
-        if (!interpolate_attribute_to_curves(id, dst_curves.curve_type_counts())) {
-          return true;
-        }
-        if (interpolate_attribute_to_poly_curve(id)) {
-          ids.add_new(id);
-        }
-        else {
-          ids_no_interpolation.add_new(id);
-        }
-        return true;
-      });
+  VectorSet<StringRef> ids;
+  VectorSet<StringRef> ids_no_interpolation;
+  src_curves.attributes().for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
+    if (meta_data.domain != bke::AttrDomain::Point) {
+      return true;
+    }
+    if (meta_data.data_type == CD_PROP_STRING) {
+      return true;
+    }
+    if (!interpolate_attribute_to_curves(id, dst_curves.curve_type_counts())) {
+      return true;
+    }
+    if (interpolate_attribute_to_poly_curve(id)) {
+      ids.add_new(id);
+    }
+    else {
+      ids_no_interpolation.add_new(id);
+    }
+    return true;
+  });
 
   /* Position is handled differently since it has non-generic interpolation for Bezier
    * curves and because the evaluated positions are cached for each evaluated point. */
@@ -178,14 +177,14 @@ static void gather_point_attributes_to_interpolate(
   if (output_ids.tangent_id) {
     result.src_evaluated_tangents = src_curves.evaluated_tangents();
     bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-        output_ids.tangent_id, bke::AttrDomain::Point, CD_PROP_FLOAT3);
+        *output_ids.tangent_id, bke::AttrDomain::Point, CD_PROP_FLOAT3);
     result.dst_tangents = dst_attribute.span.typed<float3>();
     result.dst_attributes.append(std::move(dst_attribute));
   }
   if (output_ids.normal_id) {
     result.src_evaluated_normals = src_curves.evaluated_normals();
     bke::GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-        output_ids.normal_id, bke::AttrDomain::Point, CD_PROP_FLOAT3);
+        *output_ids.normal_id, bke::AttrDomain::Point, CD_PROP_FLOAT3);
     result.dst_normals = dst_attribute.span.typed<float3>();
     result.dst_attributes.append(std::move(dst_attribute));
   }

@@ -47,7 +47,7 @@ VKImageView::VKImageView(VKTexture &texture, const VKImageViewInfo &info, String
   VkImageViewCreateInfo image_view_info = {};
   image_view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   image_view_info.image = texture.vk_image_handle();
-  image_view_info.viewType = to_vk_image_view_type(texture.type_get(), info.usage);
+  image_view_info.viewType = to_vk_image_view_type(texture.type_get(), info.usage, info.arrayed);
   image_view_info.format = vk_format_;
   image_view_info.components.r = to_vk_component_swizzle(info.swizzle[0]);
   image_view_info.components.g = to_vk_component_swizzle(info.swizzle[1]);
@@ -77,7 +77,7 @@ VKImageView::~VKImageView()
 {
   if (vk_image_view_ != VK_NULL_HANDLE) {
     VKDevice &device = VKBackend::get().device;
-    device.discard_image_view(vk_image_view_);
+    device.discard_pool_for_current_thread().discard_image_view(vk_image_view_);
     vk_image_view_ = VK_NULL_HANDLE;
   }
   vk_format_ = VK_FORMAT_UNDEFINED;

@@ -69,7 +69,14 @@ class GreasePencilDisplayPanel:
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        brush = context.tool_settings.gpencil_paint.brush
+
+        if context.mode == 'SCULPT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_sculpt_paint.brush
+        elif context.mode == 'WEIGHT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_weight_paint.brush
+        else:
+            brush = context.tool_settings.gpencil_paint.brush
+
         if ob and ob.type in {'GPENCIL', 'GREASEPENCIL'} and brush:
             return True
 
@@ -291,7 +298,7 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
 
         for i in range(len(grease_pencil.layers) - 1, -1, -1):
             layer = grease_pencil.layers[i]
-            if layer == grease_pencil.layers.active_layer:
+            if layer == grease_pencil.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -316,7 +323,7 @@ class GREASE_PENCIL_MT_layer_active(Menu):
 
         for i in range(len(obd.layers) - 1, -1, -1):
             layer = obd.layers[i]
-            if layer == obd.layers.active_layer:
+            if layer == obd.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -539,19 +546,22 @@ class AnnotationOnionSkin:
 
         gpl = context.active_annotation_layer
         col = layout.column()
+        col.prop(gpl, "annotation_onion_use_custom_color")
         split = col.split(factor=0.5)
         split.active = gpl.use_annotation_onion_skinning
 
         # - Before Frames
         sub = split.column(align=True)
         row = sub.row(align=True)
-        row.prop(gpl, "annotation_onion_before_color", text="")
+        if gpl.annotation_onion_use_custom_color:
+            row.prop(gpl, "annotation_onion_before_color", text="")
         sub.prop(gpl, "annotation_onion_before_range", text="Before")
 
         # - After Frames
         sub = split.column(align=True)
         row = sub.row(align=True)
-        row.prop(gpl, "annotation_onion_after_color", text="")
+        if gpl.annotation_onion_use_custom_color:
+            row.prop(gpl, "annotation_onion_after_color", text="")
         sub.prop(gpl, "annotation_onion_after_range", text="After")
 
 
