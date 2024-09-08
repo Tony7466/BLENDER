@@ -5,10 +5,10 @@
 #include <atomic>
 
 #include "BLI_array_utils.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
-#include "BLI_linear_allocator.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -55,9 +55,13 @@ static void wrap_indices(const int total, MutableSpan<int> indices)
   });
 }
 
-static void fill_by_single_instance(const GeometrySet &instance, const float4x4 &transform, const IndexMask &mask, bke::Instances &instances)
+static void fill_by_single_instance(const GeometrySet &instance,
+                                    const float4x4 &transform,
+                                    const IndexMask &mask,
+                                    bke::Instances &instances)
 {
-  index_mask::masked_fill<int>(instances.reference_handles_for_write(), instances.add_reference(instance), mask);
+  index_mask::masked_fill<int>(
+      instances.reference_handles_for_write(), instances.add_reference(instance), mask);
   index_mask::masked_fill<float4x4>(instances.transforms_for_write(), transform, mask);
 }
 
@@ -68,8 +72,10 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
                                        bool &ignore_realized_data)
 {
   IndexMaskMemory memory;
-  const IndexMask mapped_instance_selection = IndexMask::from_bools(selection, pick_instance, memory);
-  const IndexMask single_instance_selection = mapped_instance_selection.complement(selection, memory);
+  const IndexMask mapped_instance_selection = IndexMask::from_bools(
+      selection, pick_instance, memory);
+  const IndexMask single_instance_selection = mapped_instance_selection.complement(selection,
+                                                                                   memory);
 
   ignore_realized_data |= single_instance_selection.is_empty() && instances.has_realized_data();
 
@@ -79,7 +85,8 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
   MutableSpan<float4x4> dst_transforms = dst_instances->transforms_for_write();
 
   if (!single_instance_selection.is_empty()) {
-    fill_by_single_instance(instances, float4x4::identity(), single_instance_selection, *dst_instances);
+    fill_by_single_instance(
+        instances, float4x4::identity(), single_instance_selection, *dst_instances);
   }
 
   if (mapped_instance_selection.is_empty()) {
@@ -88,7 +95,8 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
 
   const bke::Instances *src_instances = instances.get_instances();
   if (src_instances == nullptr) {
-    fill_by_single_instance(GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
+    fill_by_single_instance(
+        GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
     return GeometrySet::from_instances(dst_instances);
   }
 
@@ -97,7 +105,8 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
   const Span<int> src_handles = src_instances->reference_handles();
   const Span<float4x4> src_transforms = src_instances->transforms();
   if (src_handles.is_empty()) {
-    fill_by_single_instance(GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
+    fill_by_single_instance(
+        GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
     return GeometrySet::from_instances(dst_instances);
   }
 
@@ -107,9 +116,10 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
 
   Array<int> mapped_to_all_mapping(selection.min_array_size(), -1);
   index_mask::build_reverse_map(selection, mapped_to_all_mapping.as_mutable_span());
-  mapped_instance_selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i, const int pos) {
-    dst_transforms[mapped_to_all_mapping[i]] = src_transforms[gathered_indices[pos]];
-  });
+  mapped_instance_selection.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int i, const int pos) {
+        dst_transforms[mapped_to_all_mapping[i]] = src_transforms[gathered_indices[pos]];
+      });
 
   array_utils::gather(src_handles, gathered_indices.as_span(), gathered_indices.as_mutable_span());
   VectorSet<int> unique_handlers(gathered_indices.as_span());
@@ -126,12 +136,15 @@ static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
     unique_handlers_indices[unique_handler_i] = dst_instances->add_reference(reference);
   }
 
-  array_utils::gather(unique_handlers_indices.as_span(), gathered_indices.as_span(), gathered_indices.as_mutable_span());
-  //array_utils::scatter(gathered_indices.as_span(), mapped_instance_selection, dst_handles);
+  array_utils::gather(unique_handlers_indices.as_span(),
+                      gathered_indices.as_span(),
+                      gathered_indices.as_mutable_span());
+  // array_utils::scatter(gathered_indices.as_span(), mapped_instance_selection, dst_handles);
 
-  mapped_instance_selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i, const int pos) {
-    dst_handles[mapped_to_all_mapping[i]] = gathered_indices[pos];
-  });
+  mapped_instance_selection.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int i, const int pos) {
+        dst_handles[mapped_to_all_mapping[i]] = gathered_indices[pos];
+      });
 
   return GeometrySet::from_instances(dst_instances);
 }
@@ -143,7 +156,8 @@ static void apply_transform(const VArray<float3> positions,
                             MutableSpan<float4x4> transformations)
 {
   selection.foreach_index(GrainSize(4096), [&](const int src_index, const int dst_pos) {
-    const float4x4 to_apply = math::from_loc_rot_scale<float4x4>(positions[src_index], rotations[src_index], scales[src_index]);
+    const float4x4 to_apply = math::from_loc_rot_scale<float4x4>(
+        positions[src_index], rotations[src_index], scales[src_index]);
     transformations[dst_pos] = to_apply * transformations[dst_pos];
   });
 }
@@ -158,7 +172,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   const Field<bool> pick_instance_field = params.extract_input<Field<bool>>("Pick Instance");
   const Field<int> indices_field = params.extract_input<Field<int>>("Instance Index");
-  const Field<math::Quaternion> rotations_field = params.extract_input<Field<math::Quaternion>>("Rotation");
+  const Field<math::Quaternion> rotations_field = params.extract_input<Field<math::Quaternion>>(
+      "Rotation");
   const Field<float3> scales_field = params.extract_input<Field<float3>>("Scale");
 
   std::atomic<bool> has_skiped_realized_instances = false;
@@ -166,12 +181,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     /* It's important not to invalidate the existing #InstancesComponent because it owns references
      * to other geometry sets that are processed by this node. */
-    InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
-    bke::Instances *dst_instances = instances_component.get_for_write();
+    InstancesComponent &instances_component =
+        geometry_set.get_component_for_write<InstancesComponent>();
+    bke::Instances *dst_instances = instances_component.release();
 
     Vector<GeometrySet, 4> instances_set;
     if (dst_instances != nullptr) {
-      instances_set.append(GeometrySet::from_instances(dst_instances, bke::GeometryOwnershipType::ReadOnly));
+      instances_set.append(GeometrySet::from_instances(dst_instances));
     }
 
     const static std::array<GeometryComponent::Type, 3> types = {
@@ -217,17 +233,20 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
 
       bool ignore_realized_data = false;
-      GeometrySet instances_on_component = instances_on_domain(pick_instance, indices, selection, instance, ignore_realized_data);
+      GeometrySet instances_on_component = instances_on_domain(
+          pick_instance, indices, selection, instance, ignore_realized_data);
       if (ignore_realized_data) {
         has_skiped_realized_instances = true;
       }
 
       bke::Instances &dst_instances = *instances_on_component.get_instances_for_write();
       const VArray<float3> src_positions = *src_attributes.lookup<float3>("position");
-      apply_transform(src_positions, rotations, scales, selection, dst_instances.transforms_for_write());
-      
+      apply_transform(
+          src_positions, rotations, scales, selection, dst_instances.transforms_for_write());
+
       // Need to exclude skiped attributes from filter to do not copy them.
-      // bke::copy_attributes(src_attributes, AttrDomain::Point, AttrDomain::Instance, attribute_filter, dst_instances.attributes_for_write());
+      // bke::copy_attributes(src_attributes, AttrDomain::Point, AttrDomain::Instance,
+      // attribute_filter, dst_instances.attributes_for_write());
 
       instances_set.append(std::move(instances_on_component));
     }
@@ -270,8 +289,13 @@ static void node_geo_exec(GeoNodeExecParams params)
       */
     }
 
-    GeometrySet all_instances = geometry::join_geometries(instances_set.as_span(), attribute_filter);
-    geometry_set.replace_instances(all_instances.get_component_for_write<bke::InstancesComponent>().release());
+    GeometrySet all_instances = geometry::join_geometries(instances_set.as_span(),
+                                                          attribute_filter);
+    // *dst_instances = std::move(*(new bke::Instances()));
+    // *dst_instances =
+    // std::move(*all_instances.get_component_for_write<bke::InstancesComponent>().release());
+    instances_component.replace(
+        all_instances.get_component_for_write<bke::InstancesComponent>().release());
     geometry_set.remove_geometry_during_modify();
   });
 
