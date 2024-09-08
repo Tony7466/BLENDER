@@ -166,6 +166,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         break;
       case OB_FONT:
         break;
+      case OB_GREASE_PENCIL:
+        layer.grease_pencil.edit_object_sync(manager, ob_ref, state, resources);
+        break;
     }
   }
 
@@ -375,12 +378,14 @@ void Instance::draw(Manager &manager)
     layer.particles.draw(framebuffer, manager, view);
     layer.armatures.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
+    layer.grease_pencil.draw(framebuffer, manager, view);
   };
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.light_probes.draw_color_only(framebuffer, manager, view);
     layer.meshes.draw_color_only(framebuffer, manager, view);
     layer.curves.draw_color_only(framebuffer, manager, view);
+    layer.grease_pencil.draw_color_only(framebuffer, manager, view);
   };
 
   overlay_fb_draw(regular, resources.overlay_fb);
