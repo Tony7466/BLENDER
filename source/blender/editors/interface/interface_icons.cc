@@ -186,10 +186,7 @@ static DrawInfo *def_internal_icon(
 static DrawInfo *def_internal_cursor(int icon_id, float hotspot_x, float hotspot_y, float size)
 {
   Icon *new_icon = MEM_cnew<Icon>(__func__);
-
-  new_icon->obj = nullptr; /* icon is not for library object */
   new_icon->id_type = 0;
-
   DrawInfo *di = MEM_cnew<DrawInfo>(__func__);
   di->type = ICON_TYPE_CURSOR;
   di->data.cursor.hotspot_x = hotspot_x;
@@ -198,7 +195,6 @@ static DrawInfo *def_internal_cursor(int icon_id, float hotspot_x, float hotspot
   new_icon->drawinfo_free = UI_icons_free_drawinfo;
   new_icon->drawinfo = di;
   BKE_icon_set(icon_id, new_icon);
-
   return di;
 }
 
@@ -838,11 +834,9 @@ static void init_internal_icons()
   /* Define icons. */
   for (int x = ICON_NONE; x < ICON_BLANK_LAST_SVG_ITEM; x++) {
     const IconType icontype = icontypes[x];
-
     if (!ELEM(icontype.type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
       continue;
     }
-
     def_internal_icon(nullptr, x, 0, 0, 0, icontype.type, icontype.theme_color);
   }
 
@@ -1567,8 +1561,14 @@ static void icon_draw_size(float x,
     icon_draw_rect_input(x, y, w, h, icon_id, aspect, alpha, inverted);
   }
   else if (di->type == ICON_TYPE_CURSOR) {
-    BLF_draw_svg_icon(
-        uint(icon_id), x, y, float(draw_size) / aspect / di->data.cursor.scale, nullptr, 0.0f, true, nullptr);
+    BLF_draw_svg_icon(uint(icon_id),
+                      x,
+                      y,
+                      float(draw_size) / aspect / di->data.cursor.scale,
+                      nullptr,
+                      0.0f,
+                      true,
+                      nullptr);
   }
   else if (ELEM(di->type, ICON_TYPE_SVG_MONO, ICON_TYPE_SVG_COLOR)) {
     float outline_intensity = mono_border ? (btheme->tui.icon_border_intensity > 0.0f ?

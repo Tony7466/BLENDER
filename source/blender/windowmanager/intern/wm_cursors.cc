@@ -213,7 +213,7 @@ void WM_cursor_set(wmWindow *win, int curs)
 
   GHOST_TStandardCursor ghost_cursor = convert_to_ghost_standard_cursor(WMCursorType(curs));
 
-  if (0 && ghost_cursor != GHOST_kStandardCursorCustom &&
+  if (false && ghost_cursor != GHOST_kStandardCursorCustom &&
       GHOST_HasCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin), ghost_cursor))
   {
     /* Use native GHOST cursor when available. */
@@ -221,9 +221,9 @@ void WM_cursor_set(wmWindow *win, int curs)
   }
   else {
     if (!icon_cursor(win, WMCursorType(curs))) {
-        /* Fallback to default cursor if no SVG cursor found. */
-        GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                             GHOST_kStandardCursorDefault);
+      /* Fallback to default cursor if no SVG cursor found. */
+      GHOST_SetCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                           GHOST_kStandardCursorDefault);
     }
   }
 }
