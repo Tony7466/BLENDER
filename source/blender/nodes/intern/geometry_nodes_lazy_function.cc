@@ -2196,6 +2196,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
             element_meshes = geometry::extract_edge_meshes(mesh, mask, {});
             break;
           }
+          case AttrDomain::Face: {
+            element_meshes = geometry::extract_face_meshes(mesh, mask, {});
+            break;
+          }
         }
         component_info.geometry_elements.emplace(mask.size());
         for (const int i : mask.index_range()) {

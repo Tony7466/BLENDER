@@ -21,4 +21,8 @@ Array<Mesh *> extract_edge_meshes(const Mesh &mesh,
                                   const IndexMask &mask,
                                   const bke::AttributeFilter &attribute_filter);
 
+Array<Mesh *> extract_face_meshes(const Mesh &mesh,
+                                  const IndexMask &mask,
+                                  const bke::AttributeFilter &attribute_filter);
+
 }  // namespace blender::geometry
