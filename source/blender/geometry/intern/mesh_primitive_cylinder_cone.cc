@@ -659,7 +659,7 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
                                    const int side_segments,
                                    const int fill_segments,
                                    const ConeFillType fill_type,
-                                   ConeAttributeOutputs &attribute_outputs)
+                                   const ConeAttributeOutputs &attribute_outputs)
 {
   const ConeConfig config(
       radius_top, radius_bottom, depth, circle_segments, side_segments, fill_segments, fill_type);

@@ -51,6 +51,8 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_join_geometries.hh"
+
 #include <fmt/format.h>
 #include <sstream>
 
@@ -2049,6 +2051,7 @@ struct ForeachGeometryElementEvalStorage {
   std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
   std::optional<lf::GraphExecutor> graph_executor;
+  void *graph_executor_storage = nullptr;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
   ForeachGeometryElementEvalState state;
   Array<SocketValueVariant> index_values;
@@ -2087,6 +2090,9 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   void destruct_storage(void *storage) const override
   {
     auto *s = static_cast<ForeachGeometryElementEvalStorage *>(storage);
+    if (s->graph_executor_storage) {
+      s->graph_executor->destruct_storage(s->graph_executor_storage);
+    }
     std::destroy_at(s);
   }
 
@@ -2099,12 +2105,6 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         output_bnode_.storage);
     auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
 
-    if (!params.output_was_set(zone_info_.indices.outputs.input_usages[0])) {
-      /* The geometry and selection inputs are always used. */
-      params.set_output(zone_info_.indices.outputs.input_usages[0], true);
-      params.set_output(zone_info_.indices.outputs.input_usages[1], true);
-    }
-
     if (!eval_storage.graph_executor) {
       /* Create the execution graph in the first evaluation. */
       this->initialize_execution_graph(
@@ -2112,8 +2112,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
     }
 
-    /* TODO */
-    params.set_output(zone_info_.indices.outputs.main[0], GeometrySet());
+    lf::Context eval_graph_context{
+        eval_storage.graph_executor_storage, context.user_data, context.local_user_data};
+
+    eval_storage.graph_executor->execute(params, eval_graph_context);
   }
 
   void initialize_execution_graph(lf::Params &params,
@@ -2251,6 +2253,12 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       lf_graph.add_link(lf_or.output(0),
                         *lf_outputs[zone_info_.indices.outputs.border_link_usages[border_link_i]]);
     }
+
+    lf_graph.update_node_indices();
+    eval_storage.graph_executor.emplace(
+        lf_graph, lf_inputs.as_span(), lf_outputs.as_span(), nullptr, nullptr, nullptr);
+    eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
+        eval_storage.allocator);
   }
 
   std::string input_name(const int i) const override
@@ -2294,7 +2302,14 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
 void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &params,
                                                                const lf::Context &context) const
 {
-  /* TODO */
+  Vector<GeometrySet> geometries;
+  for (const int i : inputs_.index_range()) {
+    geometries.append(params.extract_input<GeometrySet>(i));
+  }
+  GeometrySet joined = geometry::join_geometries(geometries, {});
+
+  params.set_output(0, eval_storage_.state.input_geometry);
+  params.set_output(1, std::move(joined));
 }
 
 /**
