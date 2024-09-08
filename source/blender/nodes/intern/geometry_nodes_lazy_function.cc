@@ -2184,12 +2184,22 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       mask.foreach_index(
           [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
 
-      if (component->type() == GeometryComponent::Type::Mesh && domain == AttrDomain::Point) {
+      if (component->type() == GeometryComponent::Type::Mesh) {
         const Mesh &mesh = *static_cast<const MeshComponent *>(component)->get();
-        Array<Mesh *> vertex_meshes = geometry::extract_vertex_meshes(mesh, mask, {});
+        Array<Mesh *> element_meshes;
+        switch (domain) {
+          case AttrDomain::Point: {
+            element_meshes = geometry::extract_vertex_meshes(mesh, mask, {});
+            break;
+          }
+          case AttrDomain::Edge: {
+            element_meshes = geometry::extract_edge_meshes(mesh, mask, {});
+            break;
+          }
+        }
         component_info.geometry_elements.emplace(mask.size());
         for (const int i : mask.index_range()) {
-          (*component_info.geometry_elements)[i].replace_mesh(vertex_meshes[i]);
+          (*component_info.geometry_elements)[i].replace_mesh(element_meshes[i]);
         }
       }
 
