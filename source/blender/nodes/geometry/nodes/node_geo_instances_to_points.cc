@@ -45,48 +45,30 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
   if (selection.is_empty()) {
     return;
   }
-  const VArray<float3> positions = evaluator.get_evaluated<float3>(0);
-  const VArray<float> radii = evaluator.get_evaluated<float>(1);
+  const GVArray positions = evaluator.get_evaluated(0);
+  const GVArray radii = evaluator.get_evaluated(1);
 
-  PointCloud *pointcloud = BKE_pointcloud_new_nomain(selection.size());
+  PointCloud *pointcloud = bke::pointcloud_new_no_attributes(selection.size());
   geometry_set.replace_pointcloud(pointcloud);
-  array_utils::gather(positions, selection, pointcloud->positions_for_write());
+  MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
 
-  bke::MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
-  bke::SpanAttributeWriter<float> point_radii =
-      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
+  /* TODO: Compose filter to include skip of positions ans radius attribute from gathering. */
+  bke::gather_attributes(instances.attributes(),
+                         bke::AttrDomain::Instance,
+                         bke::AttrDomain::Point,
+                         attribute_filter,
+                         selection,
+                         dst_attributes);
+
+  bke::GSpanAttributeWriter point_positions = dst_attributes.lookup_or_add_for_write_only_span(
+      "position", AttrDomain::Point, CD_PROP_FLOAT3);
+  array_utils::gather(positions, selection, point_positions.span);
+  point_positions.finish();
+
+  bke::GSpanAttributeWriter point_radii = dst_attributes.lookup_or_add_for_write_only_span(
+      "radius", AttrDomain::Point, CD_PROP_FLOAT);
   array_utils::gather(radii, selection, point_radii.span);
   point_radii.finish();
-
-  const bke::AttributeAccessor src_attributes = instances.attributes();
-  Map<StringRef, AttributeKind> attributes_to_propagate;
-  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Instance},
-                                                 GeometryComponent::Type::PointCloud,
-                                                 false,
-                                                 attribute_filter,
-                                                 attributes_to_propagate);
-  /* These two attributes are added by the implicit inputs above. */
-  attributes_to_propagate.remove("position");
-  attributes_to_propagate.remove("radius");
-
-  for (const auto item : attributes_to_propagate.items()) {
-    const StringRef id = item.key;
-    const eCustomDataType type = item.value.data_type;
-
-    const GAttributeReader src = src_attributes.lookup(id);
-    if (selection.size() == instances.instances_num() && src.sharing_info && src.varray.is_span())
-    {
-      const bke::AttributeInitShared init(src.varray.get_internal_span().data(),
-                                          *src.sharing_info);
-      dst_attributes.add(id, AttrDomain::Point, type, init);
-    }
-    else {
-      GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, AttrDomain::Point, type);
-      array_utils::gather(src.varray, selection, dst.span);
-      dst.finish();
-    }
-  }
 }
 
 static void node_geo_exec(GeoNodeExecParams params)

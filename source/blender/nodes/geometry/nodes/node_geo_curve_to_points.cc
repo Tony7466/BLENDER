@@ -87,54 +87,35 @@ static void fill_rotation_attribute(const Span<float3> tangents,
   });
 }
 
-static void copy_curve_domain_attributes(const AttributeAccessor curve_attributes,
-                                         MutableAttributeAccessor point_attributes)
-{
-  curve_attributes.for_all([&](const StringRef id, const bke::AttributeMetaData &meta_data) {
-    if (curve_attributes.is_builtin(id)) {
-      return true;
-    }
-    if (meta_data.domain != AttrDomain::Curve) {
-      return true;
-    }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
-    }
-    point_attributes.add(
-        id,
-        AttrDomain::Point,
-        meta_data.data_type,
-        bke::AttributeInitVArray(*curve_attributes.lookup(id, AttrDomain::Point)));
-    return true;
-  });
-}
-
-static PointCloud *pointcloud_from_curves(bke::CurvesGeometry curves,
+static PointCloud *pointcloud_from_curves(const bke::CurvesGeometry curves,
                                           const std::optional<StringRef> &tangent_id,
                                           const std::optional<StringRef> &normal_id,
                                           const std::optional<StringRef> &rotation_id)
 {
-  PointCloud *pointcloud = BKE_pointcloud_new_nomain(0);
-  pointcloud->totpoint = curves.points_num();
+  PointCloud *pointcloud = bke::pointcloud_new_no_attributes(curves.points_num());
+  MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
+
+  bke::copy_attributes(curves.attributes(),
+                       bke::AttrDomain::Point,
+                       bke::AttrDomain::Point,
+                       AttributeFilter::default_filter(),
+                       dst_attributes);
+  bke::copy_attributes(curves.attributes(),
+                       bke::AttrDomain::Curve,
+                       bke::AttrDomain::Point,
+                       AttributeFilter::default_filter(),
+                       dst_attributes);
 
   if (rotation_id) {
-    MutableAttributeAccessor attributes = curves.attributes_for_write();
+    const AttributeAccessor attributes = curves.attributes();
     const VArraySpan tangents = *attributes.lookup<float3>(*tangent_id, AttrDomain::Point);
     const VArraySpan normals = *attributes.lookup<float3>(*normal_id, AttrDomain::Point);
     SpanAttributeWriter<math::Quaternion> rotations =
-        attributes.lookup_or_add_for_write_only_span<math::Quaternion>(*rotation_id,
-                                                                       AttrDomain::Point);
+        dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(*rotation_id,
+                                                                           AttrDomain::Point);
     fill_rotation_attribute(tangents, normals, rotations.span);
     rotations.finish();
   }
-
-  /* Move the curve point custom data to the pointcloud, to avoid any copying. */
-  CustomData_free(&pointcloud->pdata, pointcloud->totpoint);
-  pointcloud->pdata = curves.point_data;
-  CustomData_reset(&curves.point_data);
-
-  copy_curve_domain_attributes(curves.attributes(), pointcloud->attributes_for_write());
-
   return pointcloud;
 }
 
