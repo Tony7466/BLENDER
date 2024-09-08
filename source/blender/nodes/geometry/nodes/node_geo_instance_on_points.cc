@@ -46,49 +46,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Instances").propagate_all();
 }
 
-void gather_attributes(const bke::AttributeAccessor src_attributes,
-                       const AttrDomain src_domain,
-                       const AttrDomain dst_domain,
-                       const Map<AttributeIDRef, AttributeKind> &attributes_to_propagate,
-                       const Span<int> dst_to_src_mapping,
-                       bke::MutableAttributeAccessor dst_attributes)
-{
-  for (const auto item : attributes_to_propagate.items()) {
-    const StringRef id = item.key;
-    const eCustomDataType data_type = item.value.data_type;
-
-    const GAttributeReader src = src_attributes.lookup(id, src_domain, data_type);
-    if (!src) {
-      continue;
-    }
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, dst_domain, data_type);
-    if (!dst) {
-      continue;
-    }
-    bke::attribute_math::convert_to_static_type(src.varray.type(), [&](auto dymmu) {
-      using T = decltype(dymmu);
-      array_utils::gather<T>(src.varray.typed<T>(),
-                             dst_to_src_mapping,
-                             dst.span.typed<T>().take_back(dst_to_src_mapping.size()));
-    });
-    dst.finish();
-    continue;
-  }
-}
-
-static void gather_transform_apply(const Span<float4x4> to_apply,
-                                   const Span<int> indices,
-                                   MutableSpan<float4x4> original)
-{
-  BLI_assert(indices.size() == original.size());
-  threading::parallel_for(original.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      original[i] *= to_apply[indices[i]];
-    }
-  });
-}
-
 static void wrap_indices(const int total, MutableSpan<int> indices)
 {
   threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
@@ -98,127 +55,97 @@ static void wrap_indices(const int total, MutableSpan<int> indices)
   });
 }
 
-static void added_mapped_instances_from_component(const GeometrySet &instance,
-                                                  VArray<int> indices,
-                                                  const IndexMask &pick_instance_mask,
-                                                  const IndexMask &top_level_instances_mask,
-                                                  bke::Instances &dst_component,
-                                                  Array<int> &r_dst_to_src_mapping)
+static void fill_by_single_instance(const GeometrySet &instance, const float4x4 &transform, const IndexMask &mask, bke::Instances &instances)
 {
-  const bke::Instances *src_instances = instance.get_instances();
-  const bool has_picked_instance = src_instances != nullptr && src_instances->instances_num() > 0;
-  const int total_new_instances = top_level_instances_mask.size() +
-                                  int(has_picked_instance) * pick_instance_mask.size();
-  dst_component.resize(dst_component.instances_num() + total_new_instances);
-  MutableSpan<int> dst_handles = dst_component.reference_handles_for_write().take_back(
-      total_new_instances);
-  MutableSpan<float4x4> dst_transforms = dst_component.transforms_for_write().take_back(
-      total_new_instances);
-
-  if (!top_level_instances_mask.is_empty()) {
-    const int single_handler_i = dst_component.add_reference(instance);
-    dst_handles.take_back(top_level_instances_mask.size()).fill(single_handler_i);
-    dst_transforms.take_back(top_level_instances_mask.size()).fill(float4x4::identity());
-  }
-
-  r_dst_to_src_mapping.reinitialize(total_new_instances);
-  top_level_instances_mask.to_indices(
-      r_dst_to_src_mapping.as_mutable_span().take_back(top_level_instances_mask.size()));
-  if (!has_picked_instance) {
-    return;
-  }
-  pick_instance_mask.to_indices(
-      r_dst_to_src_mapping.as_mutable_span().take_front(pick_instance_mask.size()));
-
-  Array<int> src_in_dst_mapping(pick_instance_mask.size());
-  array_utils::gather(indices, pick_instance_mask, src_in_dst_mapping.as_mutable_span());
-  wrap_indices(src_instances->instances_num(), src_in_dst_mapping);
-  array_utils::gather(src_instances->reference_handles(),
-                      src_in_dst_mapping.as_span(),
-                      src_in_dst_mapping.as_mutable_span());
-
-  const Span<bke::InstanceReference> src_references = src_instances->references();
-  VectorSet<int> unique_handlers(src_in_dst_mapping);
-  Array<int> unique_handler_indices(unique_handlers.size());
-  for (const int unique_handler_i : unique_handlers.index_range()) {
-    const int unique_handler_index = unique_handlers[unique_handler_i];
-    const bke::InstanceReference &reference = src_references[unique_handler_index];
-    unique_handler_indices[unique_handler_i] = dst_component.add_reference(reference);
-  }
-
-  pick_instance_mask.foreach_index(GrainSize(4096), [&](const int /*index*/, const int pos) {
-    dst_handles[pos] = unique_handler_indices[unique_handlers.index_of(src_in_dst_mapping[pos])];
-  });
-
-  const Span<float4x4> src_transforms = src_instances->transforms();
-  array_utils::gather<float4x4>(src_transforms,
-                                src_in_dst_mapping.as_span(),
-                                dst_transforms.take_front(pick_instance_mask.size()));
+  index_mask::masked_fill<int>(instances.reference_handles_for_write(), instances.add_reference(instance), mask);
+  index_mask::masked_fill<float4x4>(instances.transforms_for_write(), transform, mask);
 }
 
-static bool add_instances_from_points(
-    const GeometryComponent &src_component,
-    const GeometrySet &instance,
-    const Map<AttributeIDRef, AttributeKind> &attributes_to_propagate,
-    const Field<bool> &selection_field,
-    const Field<bool> &pick_instance_field,
-    const Field<int> &indices_field,
-    const Field<math::Quaternion> &rotations_field,
-    const Field<float3> &scales_field,
-    bke::Instances &dst_component)
+static GeometrySet instances_on_domain(const VArray<bool> &pick_instance,
+                                       const VArray<int> &indices,
+                                       const IndexMask &selection,
+                                       const GeometrySet &instances,
+                                       bool &ignore_realized_data)
 {
-  const bke::GeometryFieldContext field_context(src_component, AttrDomain::Point);
-  fn::FieldEvaluator evaluator(field_context,
-                               src_component.attribute_domain_size(AttrDomain::Point));
+  IndexMaskMemory memory;
+  const IndexMask mapped_instance_selection = IndexMask::from_bools(selection, pick_instance, memory);
+  const IndexMask single_instance_selection = mapped_instance_selection.complement(selection, memory);
 
-  evaluator.set_selection(selection_field);
-  evaluator.add(pick_instance_field);
-  evaluator.add(indices_field);
-  evaluator.add(rotations_field);
-  evaluator.add(scales_field);
+  ignore_realized_data |= single_instance_selection.is_empty() && instances.has_realized_data();
 
-  evaluator.evaluate();
+  bke::Instances *dst_instances = new bke::Instances();
+  dst_instances->resize(selection.size());
+  MutableSpan<int> dst_handles = dst_instances->reference_handles_for_write();
+  MutableSpan<float4x4> dst_transforms = dst_instances->transforms_for_write();
 
-  const VArray<bool> pick_instance = evaluator.get_evaluated<bool>(0);
-  const VArray<int> indices = evaluator.get_evaluated<int>(1);
-  const VArray<math::Quaternion> rotations = evaluator.get_evaluated<math::Quaternion>(2);
-  const VArray<float3> scales = evaluator.get_evaluated<float3>(3);
-
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-  if (selection.is_empty()) {
-    return false;
+  if (!single_instance_selection.is_empty()) {
+    fill_by_single_instance(instances, float4x4::identity(), single_instance_selection, *dst_instances);
   }
 
-  IndexMaskMemory memory;
-  const IndexMask picked_instances = IndexMask::from_bools(selection, pick_instance, memory);
-  const IndexMask top_level_instances = picked_instances.complement(selection, memory);
+  if (mapped_instance_selection.is_empty()) {
+    return GeometrySet::from_instances(dst_instances);
+  }
 
-  Array<int> dst_to_src_mapping;
-  added_mapped_instances_from_component(
-      instance, indices, picked_instances, top_level_instances, dst_component, dst_to_src_mapping);
+  const bke::Instances *src_instances = instances.get_instances();
+  if (src_instances == nullptr) {
+    fill_by_single_instance(GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
+    return GeometrySet::from_instances(dst_instances);
+  }
 
-  gather_attributes(*src_component.attributes(),
-                    AttrDomain::Point,
-                    AttrDomain::Instance,
-                    attributes_to_propagate,
-                    dst_to_src_mapping,
-                    dst_component.attributes_for_write());
+  const int instances_num = src_instances->instances_num();
+  const Span<bke::InstanceReference> src_instance_handlers = src_instances->references();
+  const Span<int> src_handles = src_instances->reference_handles();
+  const Span<float4x4> src_transforms = src_instances->transforms();
+  if (src_handles.is_empty()) {
+    fill_by_single_instance(GeometrySet(), float4x4::identity(), mapped_instance_selection, *dst_instances);
+    return GeometrySet::from_instances(dst_instances);
+  }
 
-  MutableSpan<float4x4> dst_transforms = dst_component.transforms_for_write().take_back(
-      selection.size());
-  const VArraySpan<float3> positions = *src_component.attributes()->lookup<float3>("position");
+  Array<int> gathered_indices(mapped_instance_selection.size());
+  indices.materialize_compressed(mapped_instance_selection, gathered_indices.as_mutable_span());
+  wrap_indices(instances_num, gathered_indices.as_mutable_span());
 
-  threading::parallel_for(dst_to_src_mapping.index_range(), 4096, [&](const IndexRange range) {
-    for (const int dst_index : range) {
-      const int src_index = dst_to_src_mapping[dst_index];
-      const float4x4 user_transform = math::from_loc_rot_scale<float4x4>(
-          positions[src_index], rotations[src_index], scales[src_index]);
-      dst_transforms[dst_index] = user_transform * dst_transforms[dst_index];
+  Array<int> mapped_to_all_mapping(selection.min_array_size(), -1);
+  index_mask::build_reverse_map(selection, mapped_to_all_mapping.as_mutable_span());
+  mapped_instance_selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i, const int pos) {
+    dst_transforms[mapped_to_all_mapping[i]] = src_transforms[gathered_indices[pos]];
+  });
+
+  array_utils::gather(src_handles, gathered_indices.as_span(), gathered_indices.as_mutable_span());
+  VectorSet<int> unique_handlers(gathered_indices.as_span());
+  threading::parallel_for(gathered_indices.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      gathered_indices[i] = unique_handlers.index_of(gathered_indices[i]);
     }
   });
 
-  return pick_instance.is_single() && pick_instance.get_internal_single() &&
-         instance.has_realized_data();
+  Array<int> unique_handlers_indices(unique_handlers.size());
+  for (const int unique_handler_i : unique_handlers.index_range()) {
+    const int unique_handler_index = unique_handlers[unique_handler_i];
+    const bke::InstanceReference &reference = src_instance_handlers[unique_handler_index];
+    unique_handlers_indices[unique_handler_i] = dst_instances->add_reference(reference);
+  }
+
+  array_utils::gather(unique_handlers_indices.as_span(), gathered_indices.as_span(), gathered_indices.as_mutable_span());
+  //array_utils::scatter(gathered_indices.as_span(), mapped_instance_selection, dst_handles);
+
+  mapped_instance_selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int i, const int pos) {
+    dst_handles[mapped_to_all_mapping[i]] = gathered_indices[pos];
+  });
+
+  return GeometrySet::from_instances(dst_instances);
+}
+
+static void apply_transform(const VArray<float3> positions,
+                            const VArray<math::Quaternion> &rotations,
+                            const VArray<float3> &scales,
+                            const IndexMask &selection,
+                            MutableSpan<float4x4> transformations)
+{
+  selection.foreach_index(GrainSize(4096), [&](const int src_index, const int dst_pos) {
+    const float4x4 to_apply = math::from_loc_rot_scale<float4x4>(positions[src_index], rotations[src_index], scales[src_index]);
+    transformations[dst_pos] = to_apply * transformations[dst_pos];
+  });
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -228,11 +155,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   instance.ensure_owns_direct_data();
   const NodeAttributeFilter &attribute_filter = params.get_attribute_filter("Instances");
 
-  const Field<bool> selection_field = params.get_input<Field<bool>>("Selection");
-  const Field<bool> pick_instance_field = params.get_input<Field<bool>>("Pick Instance");
-  const Field<int> indices_field = params.get_input<Field<int>>("Instance Index");
-  const Field<math::Quaternion> rotations_field = params.get_input<Field<math::Quaternion>>("Rotation");
-  const Field<float3> scales_field = params.get_input<Field<float3>>("Scale");
+  const Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
+  const Field<bool> pick_instance_field = params.extract_input<Field<bool>>("Pick Instance");
+  const Field<int> indices_field = params.extract_input<Field<int>>("Instance Index");
+  const Field<math::Quaternion> rotations_field = params.extract_input<Field<math::Quaternion>>("Rotation");
+  const Field<float3> scales_field = params.extract_input<Field<float3>>("Scale");
 
   std::atomic<bool> has_skiped_realized_instances = false;
 
@@ -241,9 +168,10 @@ static void node_geo_exec(GeoNodeExecParams params)
      * to other geometry sets that are processed by this node. */
     InstancesComponent &instances_component = geometry_set.get_component_for_write<InstancesComponent>();
     bke::Instances *dst_instances = instances_component.get_for_write();
-    if (dst_instances == nullptr) {
-      dst_instances = new bke::Instances();
-      instances_component.replace(dst_instances);
+
+    Vector<GeometrySet, 4> instances_set;
+    if (dst_instances != nullptr) {
+      instances_set.append(GeometrySet::from_instances(dst_instances, bke::GeometryOwnershipType::ReadOnly));
     }
 
     const static std::array<GeometryComponent::Type, 3> types = {
@@ -261,25 +189,47 @@ static void node_geo_exec(GeoNodeExecParams params)
     attributes_to_propagate.remove(".reference_index");
 
     for (const GeometryComponent::Type type : types) {
-      if (geometry_set.has(type)) {
-        fn::FieldEvaluator &evaluator = *new (allocator.allocate<fn::FieldEvaluator>()) fn::FieldEvaluator();
-
-        // component_to_instances_part()
-
-        const GeometryComponent &component = *geometry_set.get_component(type);
-        if (add_instances_from_points(component,
-                                      instance,
-                                      attributes_to_propagate,
-                                      selection_field,
-                                      pick_instance_field,
-                                      indices_field,
-                                      rotations_field,
-                                      scales_field,
-                                      *dst_instances))
-        {
-          has_skiped_realized_instances = true;
-        }
+      if (!geometry_set.has(type)) {
+        continue;
       }
+
+      const GeometryComponent &component = *geometry_set.get_component(type);
+      const bke::AttributeAccessor src_attributes = *component.attributes();
+      const bke::GeometryFieldContext field_context(component, AttrDomain::Point);
+      fn::FieldEvaluator evaluator(field_context, src_attributes.domain_size(AttrDomain::Point));
+
+      evaluator.set_selection(selection_field);
+      evaluator.add(pick_instance_field);
+      evaluator.add(indices_field);
+      evaluator.add(rotations_field);
+      evaluator.add(scales_field);
+
+      evaluator.evaluate();
+
+      const VArray<bool> pick_instance = evaluator.get_evaluated<bool>(0);
+      const VArray<int> indices = evaluator.get_evaluated<int>(1);
+      const VArray<math::Quaternion> rotations = evaluator.get_evaluated<math::Quaternion>(2);
+      const VArray<float3> scales = evaluator.get_evaluated<float3>(3);
+      const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+
+      if (selection.is_empty()) {
+        continue;
+      }
+
+      bool ignore_realized_data = false;
+      GeometrySet instances_on_component = instances_on_domain(pick_instance, indices, selection, instance, ignore_realized_data);
+      if (ignore_realized_data) {
+        has_skiped_realized_instances = true;
+      }
+
+      bke::Instances &dst_instances = *instances_on_component.get_instances_for_write();
+      const VArray<float3> src_positions = *src_attributes.lookup<float3>("position");
+      apply_transform(src_positions, rotations, scales, selection, dst_instances.transforms_for_write());
+      
+      // Need to exclude skiped attributes from filter to do not copy them.
+      // bke::copy_attributes(src_attributes, AttrDomain::Point, AttrDomain::Instance, attribute_filter, dst_instances.attributes_for_write());
+
+      instances_set.append(std::move(instances_on_component));
     }
 
     if (geometry_set.has_grease_pencil()) {
@@ -319,6 +269,9 @@ static void node_geo_exec(GeoNodeExecParams params)
       }
       */
     }
+
+    GeometrySet all_instances = geometry::join_geometries(instances_set.as_span(), attribute_filter);
+    geometry_set.replace_instances(all_instances.get_component_for_write<bke::InstancesComponent>().release());
     geometry_set.remove_geometry_during_modify();
   });
 
