@@ -2220,6 +2220,27 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
           (*component_info.geometry_elements)[i].replace_pointcloud(element_pointclouds[i]);
         }
       }
+      else if (component->type() == GeometryComponent::Type::Curve) {
+        const Curves &curves = *static_cast<const CurveComponent *>(component)->get();
+        Array<Curves *> element_curves;
+        switch (domain) {
+          case AttrDomain::Point: {
+            element_curves = geometry::extract_point_curves(curves, mask, {});
+            break;
+          }
+          case AttrDomain::Curve: {
+            break;
+          }
+          default:
+            break;
+        }
+        if (!element_curves.is_empty()) {
+          component_info.geometry_elements.emplace(mask.size());
+          for (const int i : mask.index_range()) {
+            (*component_info.geometry_elements)[i].replace_curves(element_curves[i]);
+          }
+        }
+      }
 
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {

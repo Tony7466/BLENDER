@@ -11,6 +11,7 @@
 
 struct Mesh;
 struct PointCloud;
+struct Curves;
 
 namespace blender::geometry {
 
@@ -29,5 +30,9 @@ Array<Mesh *> extract_face_meshes(const Mesh &mesh,
 Array<PointCloud *> extract_points(const PointCloud &pointcloud,
                                    const IndexMask &mask,
                                    const bke::AttributeFilter &attribute_filter);
+
+Array<Curves *> extract_point_curves(const Curves &curves,
+                                     const IndexMask &mask,
+                                     const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

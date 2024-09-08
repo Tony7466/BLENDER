@@ -7,6 +7,7 @@
 #include "BLI_index_mask.hh"
 
 #include "BKE_attribute.hh"
+#include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
@@ -161,6 +162,30 @@ Array<PointCloud *> extract_points(const PointCloud &pointcloud,
   });
 
   return pointclouds;
+}
+
+Array<Curves *> extract_point_curves(const Curves &curves,
+                                     const IndexMask &mask,
+                                     const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= curves.geometry.point_num);
+  Array<Curves *> new_curves(mask.size(), nullptr);
+
+  const bke::CurvesGeometry &src_curves = curves.geometry.wrap();
+  const bke::AttributeAccessor src_attributes = src_curves.attributes();
+
+  mask.foreach_index(GrainSize(32), [&](const int point_i, const int new_curves_i) {
+    /* TODO: Use src curve type. */
+    Curves *point_curves = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Point,
+                           attribute_filter,
+                           Span<int>{point_i},
+                           point_curves->geometry.wrap().attributes_for_write());
+    new_curves[new_curves_i] = point_curves;
+  });
+
+  return new_curves;
 }
 
 }  // namespace blender::geometry
