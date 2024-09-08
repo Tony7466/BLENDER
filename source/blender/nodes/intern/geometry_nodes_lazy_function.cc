@@ -2021,12 +2021,24 @@ class LazyFunctionForRepeatZone : public LazyFunction {
   }
 };
 
+class LazyFunctionForForeachGeometryElementZone;
+
+struct ForeachGeometryElementEvalState {
+  GeometrySet input_geometry;
+  Vector<int> indices_to_evaluate;
+};
+
 struct ForeachGeometryElementEvalStorage {
   LinearAllocator<> allocator;
+  std::optional<bke::GeometryFieldContext> field_context;
+  std::optional<FieldEvaluator> field_evaluator;
   lf::Graph graph;
   std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<lf::GraphExecutor> graph_executor;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
+  ForeachGeometryElementEvalState state;
+  Array<SocketValueVariant> index_values;
+  Array<Array<SocketValueVariant>> item_input_values;
 };
 
 class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
@@ -2045,9 +2057,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     debug_name_ = "Foreach Geometry Element";
 
     initialize_zone_wrapper(zone, zone_info, body_fn, inputs_, outputs_);
-    /* Geometry and selection inputs are always used. */
-    inputs_[zone_info.indices.inputs.main[0]].usage = lf::ValueUsage::Used;
-    inputs_[zone_info.indices.inputs.main[1]].usage = lf::ValueUsage::Used;
+    /* All main inputs are always used for now. */
+    for (const int i : zone_info.indices.inputs.main) {
+      inputs_[i].usage = lf::ValueUsage::Used;
+    }
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
@@ -2098,6 +2111,29 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const MeshComponent *component = geometry.get_component<MeshComponent>();
     const int domain_size = component ? component->attribute_domain_size(domain) : 0;
 
+    eval_storage.field_context.emplace(*component, domain);
+    eval_storage.field_evaluator.emplace(*eval_storage.field_context, domain_size);
+
+    eval_storage.state.input_geometry = geometry;
+
+    const Field<bool> selection_field = params
+                                            .extract_input<SocketValueVariant>(
+                                                zone_info_.indices.inputs.main[1])
+                                            .extract<Field<bool>>();
+    eval_storage.field_evaluator->set_selection(selection_field);
+
+    for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+      const GField item_field = params
+                                    .extract_input<SocketValueVariant>(
+                                        zone_info_.indices.inputs.main[2 + item_i])
+                                    .extract<GField>();
+      eval_storage.field_evaluator->add(item_field);
+    }
+
+    eval_storage.field_evaluator->evaluate();
+
+    const IndexMask mask = eval_storage.field_evaluator->get_evaluated_selection_as_mask();
+
     lf::Graph &lf_graph = eval_storage.graph;
 
     Vector<lf::GraphInputSocket *> lf_inputs;
@@ -2114,12 +2150,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
     /* Create body nodes. */
     VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
-    for ([[maybe_unused]] const int i : IndexRange(domain_size)) {
+    for ([[maybe_unused]] const int i : mask.index_range()) {
       lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
       lf_body_nodes.add_new(&lf_node);
     }
-
-    eval_storage.or_function.emplace(lf_body_nodes.size());
 
     /* Link up output usages to body nodes. */
     for (const int zone_output_i : body_fn_.indices.inputs.output_usages.index_range()) {
@@ -2133,17 +2167,37 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       }
     }
 
-    /* Link up body nodes to input usages. */
-    /* TODO: Not sure these links should go this way. */
-    for (const int zone_input_i : body_fn_.indices.outputs.input_usages.index_range()) {
-      lf::FunctionNode &lf_or_node = lf_graph.add_function(*eval_storage.or_function);
-      lf::GraphOutputSocket &lf_graph_output =
-          *lf_outputs[zone_info_.indices.outputs.input_usages[zone_input_i]];
-      lf_graph.add_link(lf_or_node.output(0), lf_graph_output);
-      for (const int i : lf_body_nodes.index_range()) {
-        lf::FunctionNode &lf_node = *lf_body_nodes[i];
-        lf_graph.add_link(lf_node.output(body_fn_.indices.outputs.input_usages[zone_input_i]),
-                          lf_or_node.input(i));
+    eval_storage.index_values.reinitialize(mask.size());
+    mask.foreach_index([&](const int i, const int pos) { eval_storage.index_values[pos].set(i); });
+
+    eval_storage.item_input_values.reinitialize(node_storage.input_items.items_num);
+    for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+      const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
+      eval_storage.item_input_values[item_i].reinitialize(mask.size());
+      const GVArray &values = eval_storage.field_evaluator->get_evaluated(item_i);
+      const CPPType &type = values.type();
+      mask.foreach_index([&](const int i, const int pos) {
+        BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+        values.get_to_uninitialized(i, buffer);
+        eval_storage.item_input_values[item_i][pos].store_single(
+            eNodeSocketDatatype(item.socket_type), buffer);
+        type.destruct(buffer);
+      });
+    }
+
+    static GeometrySet empty_geometry;
+    for (const int i : mask.index_range()) {
+      lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
+      lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(&empty_geometry);
+      lf_body_node.input(body_fn_.indices.inputs.main[1])
+          .set_default_value(&eval_storage.index_values[i]);
+      for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
+        lf_body_node.input(body_fn_.indices.inputs.main[2 + item_i])
+            .set_default_value(&eval_storage.item_input_values[item_i][i]);
+      }
+      for (const int border_link_i : zone_info_.indices.inputs.border_links.index_range()) {
+        lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.border_links[border_link_i]],
+                          lf_body_node.input(body_fn_.indices.inputs.border_links[border_link_i]));
       }
     }
   }

@@ -907,6 +907,7 @@ void node_tree_blend_write(BlendWriter *writer, bNodeTree *ntree)
       nodes::MenuSwitchItemsAccessor::blend_write(writer, *node);
     }
     if (node->type == GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT) {
+      nodes::ForeachGeometryElementInputItemsAccessor::blend_write(writer, *node);
       nodes::ForeachGeometryElementOutputItemsAccessor::blend_write(writer, *node);
     }
   }
@@ -1181,6 +1182,7 @@ void node_tree_blend_read_data(BlendDataReader *reader, ID *owner_id, bNodeTree 
           break;
         }
         case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT: {
+          nodes::ForeachGeometryElementInputItemsAccessor::blend_read_data(reader, *node);
           nodes::ForeachGeometryElementOutputItemsAccessor::blend_read_data(reader, *node);
           break;
         }
