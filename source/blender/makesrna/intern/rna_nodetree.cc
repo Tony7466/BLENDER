@@ -9578,6 +9578,7 @@ static void rna_def_geo_foreach_geometry_element_input_items(BlenderRNA *brna)
 static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
 {
   StructRNA *srna;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "ForeachGeometryElementOutputItem", nullptr);
   RNA_def_struct_ui_text(srna, "For-Each Geometry Element Item", "");
@@ -9585,6 +9586,14 @@ static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
 
   rna_def_node_item_array_socket_item_common(
       srna, "ForeachGeometryElementOutputItemsAccessor", true);
+
+  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Domain", "Domain that the field is evaluated on");
+  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_items);
+  RNA_def_property_update(
+      prop,
+      NC_NODE | NA_EDITED,
+      "rna_Node_ItemArray_item_update<ForeachGeometryElementOutputItemsAccessor>");
 }
 
 static void rna_def_geo_foreach_geometry_element_output_items(BlenderRNA *brna)
