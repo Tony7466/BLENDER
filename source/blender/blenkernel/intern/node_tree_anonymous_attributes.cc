@@ -664,6 +664,9 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
           }
           /* Propagate from the first geometry output of the output node to the geometry input. */
           const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier);
+          if (!zone) {
+            break;
+          }
           const bNode *input_node = node;
           const bNode *output_node = zone->output_node;
           const int src_index = output_node->output_socket(0).index_in_tree();
