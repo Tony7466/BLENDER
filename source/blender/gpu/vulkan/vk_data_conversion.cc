@@ -13,6 +13,10 @@
 
 #include "BLI_color.hh"
 
+#ifdef WITH_IMAGE_OPENEXR
+#  include "Imath/half.h"
+#endif
+
 namespace blender::gpu {
 
 /* -------------------------------------------------------------------- */
@@ -802,12 +806,20 @@ void convert(DestinationType &dst, const SourceType &src)
 
 static void convert(F16 &dst, const F32 &src)
 {
+#ifdef WITH_IMAGE_OPENEXR
+  dst.value = imath_float_to_half(src.value);
+#else
   dst.value = convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(src.value));
+#endif
 }
 
 static void convert(F32 &dst, const F16 &src)
 {
+#ifdef WITH_IMAGE_OPENEXR
+  dst.value = imath_half_to_float(src.value);
+#else
   dst.value = uint32_t_to_float(convert_float_formats<FormatF32, FormatF16>(src.value));
+#endif
 }
 
 static void convert(SRGBA8 &dst, const FLOAT4 &src)
@@ -822,17 +834,30 @@ static void convert(FLOAT4 &dst, const SRGBA8 &src)
 
 static void convert(FLOAT3 &dst, const HALF4 &src)
 {
+#ifdef WITH_IMAGE_OPENEXR
+  dst.value.x = imath_half_to_float(src.get_r());
+  dst.value.y = imath_half_to_float(src.get_g());
+  dst.value.z = imath_half_to_float(src.get_b());
+#else
   dst.value.x = uint32_t_to_float(convert_float_formats<FormatF32, FormatF16>(src.get_r()));
   dst.value.y = uint32_t_to_float(convert_float_formats<FormatF32, FormatF16>(src.get_g()));
   dst.value.z = uint32_t_to_float(convert_float_formats<FormatF32, FormatF16>(src.get_b()));
+#endif
 }
 
 static void convert(HALF4 &dst, const FLOAT3 &src)
 {
+#ifdef WITH_IMAGE_OPENEXR
+  dst.set_r(imath_float_to_half(src.value.x));
+  dst.set_g(imath_float_to_half(src.value.y));
+  dst.set_b(imath_float_to_half(src.value.z));
+  dst.set_a(imath_float_to_half(1.0));
+#else
   dst.set_r(convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(src.value.x)));
   dst.set_g(convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(src.value.y)));
   dst.set_b(convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(src.value.z)));
   dst.set_a(convert_float_formats<FormatF16, FormatF32>(float_to_uint32_t(1.0f)));
+#endif
 }
 
 static void convert(FLOAT3 &dst, const FLOAT4 &src)

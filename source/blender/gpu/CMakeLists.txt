@@ -408,15 +408,21 @@ if(WITH_VULKAN_BACKEND)
     )
   endif()
 
+  # Vulkan uses Imath/half.h for float to half conversion when available. 
+  if(WITH_IMAGE_OPENEXR) 
+    add_definitions(-DWITH_IMAGE_OPENEXR)
+  else()
+    message(WARNING "Using fallback for Imath. Float/half conversion will be less precise.")
+  endif()
+
+
   list(APPEND INC
     ../../../extern/vulkan_memory_allocator
   )
   list(APPEND INC_SYS
     ${VULKAN_INCLUDE_DIRS}
-  )
-
-  list(APPEND INC_SYS
     ${SHADERC_INCLUDE_DIRS}
+    ${IMATH_INCLUDE_DIRS}
   )
   list(APPEND SRC
     ${VULKAN_SRC}
