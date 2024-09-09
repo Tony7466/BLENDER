@@ -3854,11 +3854,10 @@ static int area_join_cursor(sAreaJoinData *jd, const wmEvent *event)
   }
 
 #if defined(__APPLE__)
-  const int move_cursor =  WM_CURSOR_HAND_CLOSED;
+  const int move_cursor = WM_CURSOR_HAND_CLOSED;
 #else
   const int move_cursor = WM_CURSOR_MOVE;
 #endif
-
 
   if (jd->sa1 && jd->sa1 == jd->sa2 && U.experimental.use_docking) {
     if (jd->split_fac >= 0.0001f) {
