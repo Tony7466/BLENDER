@@ -2,6 +2,12 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
+#include "stdcycles.h"
+#include "vector2.h"
+#include "vector4.h"
+
+#define vector3 point
+
 shader node_raiko_texture(int use_mapping = 0,
                           matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                           string mode = "additive",
