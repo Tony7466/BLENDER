@@ -52,9 +52,9 @@ constexpr float LEGACY_RADIUS_CONVERSION_FACTOR = 1.0f / 2000.0f;
 class DrawingRuntime {
  public:
   /**
-   * Triangle cache for all the strokes in the drawing.
+   * Triangle cache for all the strokes in the drawing. Stored per curve and indices to points.
    */
-  mutable SharedCache<Vector<uint3>> triangles_cache;
+  mutable SharedCache<Vector<Vector<uint3>>> triangles_cache;
 
   /**
    * Normal vector cache for every stroke. Computed using Newell's method.
@@ -89,7 +89,7 @@ class Drawing : public ::GreasePencilDrawing {
   /**
    * The triangles for all the fills in the geometry.
    */
-  Span<uint3> triangles() const;
+  Span<Vector<uint3>> triangles() const;
   /**
    * Normal vectors for a plane that fits the stroke.
    */

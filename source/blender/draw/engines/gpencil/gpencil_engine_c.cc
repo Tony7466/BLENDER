@@ -714,6 +714,8 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
   for (const DrawingInfo info : drawings) {
     const Layer &layer = *layers[info.layer_index];
 
+    const Span<Vector<uint3>> triangles = info.drawing.triangles();
+
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.evaluated_points_by_curve();
     const bke::AttributeAccessor attributes = curves.attributes();
@@ -733,7 +735,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     int total_num_vertices = 0;
     visible_strokes.foreach_index([&](const int stroke_i, const int pos) {
       const IndexRange points = points_by_curve[stroke_i];
-      const int num_stroke_triangles = (points.size() >= 3) ? (points.size() - 2) : 0;
+      const int num_stroke_triangles = triangles[stroke_i].size();
       const int num_stroke_vertices = (points.size() +
                                        int(cyclic[stroke_i] && (points.size() >= 3)));
       num_triangles_per_stroke[pos] = num_stroke_triangles;
