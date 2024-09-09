@@ -50,7 +50,7 @@
 
 namespace blender::bke::pbvh {
 
-#define DEBUG_BUILD_TIME
+// #define DEBUG_BUILD_TIME
 
 constexpr int LEAF_LIMIT = 10000;
 static_assert(LEAF_LIMIT < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
