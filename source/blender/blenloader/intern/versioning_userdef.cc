@@ -195,7 +195,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   }
 
   if (!USER_VERSION_ATLEAST(403, 23)) {
-    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_foreach);
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_foreach_geometry_element);
   }
 
   /**

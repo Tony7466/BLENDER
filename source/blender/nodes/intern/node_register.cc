@@ -92,7 +92,7 @@ class ForeachGeometryElementZoneType : public blender::bke::bNodeZoneType {
     this->output_idname = "GeometryNodeForeachGeometryElementOutput";
     this->input_type = GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT;
     this->output_type = GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
-    this->theme_id = TH_NODE_ZONE_FOREACH;
+    this->theme_id = TH_NODE_ZONE_FOREACH_GEOMETRY_ELEMENT;
   }
 
   const int &get_corresponding_output_id(const bNode &input_bnode) const override
