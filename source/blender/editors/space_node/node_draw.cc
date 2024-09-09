@@ -503,7 +503,16 @@ static bool node_update_basis_socket(const bContext &C,
   PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
   uiLayoutSetContextPointer(row, "node", &nodeptr);
 
-  if (input_socket) {
+  if (input_socket && output_socket && !STREQ(input_socket->name, output_socket->name)) {
+    uiLayout *left_row = uiLayoutRow(row, false);
+    uiLayoutSetAlignment(left_row, UI_LAYOUT_ALIGN_LEFT);
+    uiItemL(left_row, input_socket->name, ICON_NONE);
+
+    uiLayout *right_row = uiLayoutRow(row, false);
+    uiLayoutSetAlignment(right_row, UI_LAYOUT_ALIGN_RIGHT);
+    uiItemL(right_row, output_socket->name, ICON_NONE);
+  }
+  else if (input_socket) {
     /* Context pointers for current node and socket. */
     PointerRNA sockptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, input_socket);
     uiLayoutSetContextPointer(row, "socket", &sockptr);
