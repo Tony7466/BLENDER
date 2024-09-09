@@ -9554,7 +9554,7 @@ static void def_geo_repeat_output(StructRNA *srna)
 static void rna_def_geo_foreach_geometry_element_input_item(BlenderRNA *brna)
 {
   StructRNA *srna = RNA_def_struct(brna, "ForeachGeometryElementInputItem", nullptr);
-  RNA_def_struct_ui_text(srna, "For-Each Geometry Element Item", "");
+  RNA_def_struct_ui_text(srna, "For Each Geometry Element Item", "");
   RNA_def_struct_sdna(srna, "NodeForeachGeometryElementInputItem");
 
   rna_def_node_item_array_socket_item_common(
@@ -9581,7 +9581,7 @@ static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "ForeachGeometryElementOutputItem", nullptr);
-  RNA_def_struct_ui_text(srna, "For-Each Geometry Element Item", "");
+  RNA_def_struct_ui_text(srna, "For Each Geometry Element Item", "");
   RNA_def_struct_sdna(srna, "NodeForeachGeometryElementOutputItem");
 
   rna_def_node_item_array_socket_item_common(

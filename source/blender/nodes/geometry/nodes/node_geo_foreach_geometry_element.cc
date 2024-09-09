@@ -278,7 +278,7 @@ static void node_label(const bNodeTree * /*ntree*/,
                        char *label,
                        const int label_maxncpy)
 {
-  BLI_strncpy_utf8(label, IFACE_("For-Each Element"), label_maxncpy);
+  BLI_strncpy_utf8(label, IFACE_("For Each Element"), label_maxncpy);
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
@@ -296,7 +296,7 @@ static void node_register()
   static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype,
                      GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT,
-                     "For-Each Geometry Element Input",
+                     "For Each Geometry Element Input",
                      NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
@@ -418,37 +418,37 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 static void NODE_OT_foreach_geometry_element_zone_input_item_remove(wmOperatorType *ot)
 {
   socket_items::ops::remove_active_item<ForeachGeometryElementInputItemsAccessor>(
-      ot, "Remove For-Each Input Item", __func__, "Remove active for-each input item");
+      ot, "Remove For Each Input Item", __func__, "Remove active for-each input item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_input_item_add(wmOperatorType *ot)
 {
   socket_items::ops::add_item<ForeachGeometryElementInputItemsAccessor>(
-      ot, "Add For-Each Input Item", __func__, "Add for-each input item");
+      ot, "Add For Each Input Item", __func__, "Add for-each input item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_input_item_move(wmOperatorType *ot)
 {
   socket_items::ops::move_active_item<ForeachGeometryElementInputItemsAccessor>(
-      ot, "Move For-Each Input Item", __func__, "Move active for-each input item");
+      ot, "Move For Each Input Item", __func__, "Move active for-each input item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_output_item_remove(wmOperatorType *ot)
 {
   socket_items::ops::remove_active_item<ForeachGeometryElementOutputItemsAccessor>(
-      ot, "Remove For-Each Output Item", __func__, "Remove active for-each output item");
+      ot, "Remove For Each Output Item", __func__, "Remove active for-each output item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_output_item_add(wmOperatorType *ot)
 {
   socket_items::ops::add_item<ForeachGeometryElementOutputItemsAccessor>(
-      ot, "Add For-Each Output Item", __func__, "Add for-each output item");
+      ot, "Add For Each Output Item", __func__, "Add for-each output item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_output_item_move(wmOperatorType *ot)
 {
   socket_items::ops::move_active_item<ForeachGeometryElementOutputItemsAccessor>(
-      ot, "Move For-Each Output Item", __func__, "Move active for-each output item");
+      ot, "Move For Each Output Item", __func__, "Move active for-each output item");
 }
 
 static void node_operators()
@@ -467,7 +467,7 @@ static void node_register()
   static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype,
                      GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT,
-                     "For-Each Geometry Element Output",
+                     "For Each Geometry Element Output",
                      NODE_CLASS_INTERFACE);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;

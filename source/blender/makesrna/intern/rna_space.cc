@@ -8371,7 +8371,7 @@ static const EnumPropertyItem viewer_path_elem_type_items[] = {
     {VIEWER_PATH_ELEM_TYPE_FOREACH_GEOMETRY_ELEMENT_ZONE,
      "FOREACH_GEOMETRY_ELEMENT_ZONE",
      ICON_NONE,
-     "For-Each Geometry Element",
+     "For Each Geometry Element",
      ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
