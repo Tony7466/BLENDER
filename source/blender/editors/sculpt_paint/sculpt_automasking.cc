@@ -434,14 +434,14 @@ static void calc_blurred_cavity_grids(const Object &object,
                                       const SubdivCCGCoord vert)
 {
   struct CavityBlurVert {
-    SubdivCCGCoord vertex;
-    int index;
+    int vert;
     int depth;
   };
 
   const SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
+  const Span<float3> normals = subdiv_ccg.normals;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   AccumulatedVert all_verts;
@@ -454,23 +454,21 @@ static void calc_blurred_cavity_grids(const Object &object,
   std::queue<CavityBlurVert> queue;
   Set<int, 64> visited_verts;
 
-  const CavityBlurVert initial{vert, vert.to_index(key), 0};
-  visited_verts.add_new(initial.index);
+  const CavityBlurVert initial{vert.to_index(key), 0};
+  visited_verts.add_new(initial.vert);
   queue.push(initial);
 
-  const float3 starting_position = CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
+  const float3 starting_position = positions[vert.to_index(key)];
 
   SubdivCCGNeighbors neighbors;
   while (!queue.empty()) {
     const CavityBlurVert blurvert = queue.front();
     queue.pop();
 
-    const SubdivCCGCoord current_vert = blurvert.vertex;
+    const int current_vert = blurvert.vert;
 
-    const float3 blur_vert_position = CCG_grid_elem_co(
-        key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
-    const float3 blur_vert_normal = CCG_grid_elem_no(
-        key, grids[current_vert.grid_index], current_vert.x, current_vert.y);
+    const float3 blur_vert_position = positions[current_vert];
+    const float3 blur_vert_normal = normals[current_vert];
 
     const float dist_to_start = math::distance(blur_vert_position, starting_position);
 
@@ -490,7 +488,8 @@ static void calc_blurred_cavity_grids(const Object &object,
       continue;
     }
 
-    BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, current_vert, false, neighbors);
+    BKE_subdiv_ccg_neighbor_coords_get(
+        subdiv_ccg, SubdivCCGCoord::from_index(key, current_vert), false, neighbors);
     for (const SubdivCCGCoord neighbor : neighbors.coords) {
       const int neighbor_idx = neighbor.to_index(key);
       if (visited_verts.contains(neighbor_idx)) {
@@ -498,14 +497,14 @@ static void calc_blurred_cavity_grids(const Object &object,
       }
 
       visited_verts.add_new(neighbor_idx);
-      queue.push({neighbor, neighbor_idx, blurvert.depth + 1});
+      queue.push({neighbor_idx, blurvert.depth + 1});
     }
   }
 
   BLI_assert(all_verts.count != verts_in_range.count);
 
   if (all_verts.count == 0) {
-    all_verts.position = CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
+    all_verts.position = positions[vert.to_index(key)];
   }
   else {
     all_verts.position /= float(all_verts.count);
@@ -513,7 +512,7 @@ static void calc_blurred_cavity_grids(const Object &object,
   }
 
   if (verts_in_range.count == 0) {
-    verts_in_range.position = CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
+    verts_in_range.position = positions[vert.to_index(key)];
   }
   else {
     verts_in_range.position /= float(verts_in_range.count);
@@ -521,7 +520,7 @@ static void calc_blurred_cavity_grids(const Object &object,
 
   verts_in_range.normal = math::normalize(verts_in_range.normal);
   if (math::dot(verts_in_range.normal, verts_in_range.normal) == 0.0f) {
-    verts_in_range.normal = CCG_grid_elem_no(key, grids[vert.grid_index], vert.x, vert.y);
+    verts_in_range.normal = normals[vert.to_index(key)];
   }
 
   const float3 vec = all_verts.position - verts_in_range.position;
