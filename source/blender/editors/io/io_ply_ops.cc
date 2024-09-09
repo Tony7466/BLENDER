@@ -89,7 +89,7 @@ static int wm_ply_export_exec(bContext *C, wmOperator *op)
 
   PLY_export(C, &export_params);
 
-  return OPERATOR_FINISHED;
+  return BKE_reports_contain(op->reports, RPT_ERROR) ? OPERATOR_CANCELLED : OPERATOR_FINISHED;
 }
 
 static void wm_ply_export_draw(bContext *C, wmOperator *op)
@@ -275,7 +275,7 @@ static int wm_ply_import_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
   ED_outliner_select_sync_from_object_tag(C);
 
-  return OPERATOR_FINISHED;
+  return BKE_reports_contain(op->reports, RPT_ERROR) ? OPERATOR_CANCELLED : OPERATOR_FINISHED;
 }
 
 static void ui_ply_import_settings(const bContext *C, uiLayout *layout, PointerRNA *ptr)
