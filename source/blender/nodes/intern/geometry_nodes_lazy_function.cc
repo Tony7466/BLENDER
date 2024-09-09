@@ -2167,17 +2167,13 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
-    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
-
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
     auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
 
     if (!eval_storage.graph_executor) {
       /* Create the execution graph in the first evaluation. */
-      this->initialize_execution_graph(
-          params, eval_storage, node_storage, user_data, local_user_data);
+      this->initialize_execution_graph(params, eval_storage, node_storage);
       // std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
     }
 
@@ -2187,11 +2183,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     eval_storage.graph_executor->execute(params, eval_graph_context);
   }
 
-  void initialize_execution_graph(lf::Params &params,
-                                  ForeachGeometryElementEvalStorage &eval_storage,
-                                  const NodeGeometryForeachGeometryElementOutput &node_storage,
-                                  GeoNodesLFUserData &user_data,
-                                  GeoNodesLFLocalUserData &local_user_data) const
+  void initialize_execution_graph(
+      lf::Params &params,
+      ForeachGeometryElementEvalStorage &eval_storage,
+      const NodeGeometryForeachGeometryElementOutput &node_storage) const
   {
     const AttrDomain domain = AttrDomain(node_storage.domain);
     eval_storage.state.main_geometry = params.extract_input<GeometrySet>(
