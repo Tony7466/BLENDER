@@ -585,10 +585,10 @@ void DrawCacheImpl::free_nodes_with_changed_topology(const Object &object,
   free_ibos(lines_ibos_coarse_, nodes_to_free);
   free_ibos(tris_ibos_, nodes_to_free);
   free_ibos(tris_ibos_coarse_, nodes_to_free);
-  // TODO: No need to free VBOs when not BMesh (since otherwise they are indexed with visibility)
-  // for (AttributeData &data : attribute_vbos_.values()) {
-  //   free_vbos(data.vbos, nodes_to_free);
-  // }
+  /* TODO: No need to free VBOs visibility changes because of indexing (except for BMesh). */
+  for (AttributeData &data : attribute_vbos_.values()) {
+    free_vbos(data.vbos, nodes_to_free);
+  }
 
   free_batches(lines_batches_, nodes_to_free);
   free_batches(lines_batches_coarse_, nodes_to_free);
@@ -1511,12 +1511,12 @@ static Array<int> calc_material_indices(const Object &object)
   return {};
 }
 
-// TODO: Use flat layout until there are sharp faces or face corner attributes requested
 static BitVector<> calc_use_flat_layout(const Object &object, const OrigMeshData &orig_mesh_data)
 {
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
+      /* TODO: Use vertex indexing until there are sharp faces or face corner attributes. */
       return {};
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
