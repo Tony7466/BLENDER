@@ -776,7 +776,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     ${target_gpus}
     ${HIP_HIPCC_FLAGS}
     -x hip
-    ${HIPRT_INCLUDE_DIR}/Orochi/ParallelPrimitives/RadixSortKernels.h
+    ${HIPRT_INCLUDE_DIR}/contrib/Orochi/ParallelPrimitives/RadixSortKernels.h
     ${flags}
     -D HIPRT_BITCODE_LINKING
     -std=c++17
@@ -786,7 +786,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
     -amdgpu-function-calls=true
     -parallel-jobs=${HIPRT_COMPILER_PARALLEL_JOBS}
     --genco
-    -I ${HIPRT_INCLUDE_DIR}/Orochi
+    -I ${HIPRT_INCLUDE_DIR}/contrib/Orochi
     -include hip/hip_runtime.h
     -Wno-parentheses-equality
     -Wno-unused-value
