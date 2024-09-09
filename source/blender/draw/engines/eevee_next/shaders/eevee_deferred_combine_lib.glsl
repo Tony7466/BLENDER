@@ -119,7 +119,7 @@ DeferredCombine deferred_combine(ivec2 texel)
   /* Normalize or fallback to default normal. */
   average_normal = (normal_len < 1e-5) ? gbuf.surface_N : (average_normal / normal_len);
 
-  struct DeferredCombine result;
+  DeferredCombine result;
   result.diffuse_color = diffuse_color;
   result.diffuse_direct = diffuse_direct;
   result.diffuse_indirect = diffuse_indirect;
