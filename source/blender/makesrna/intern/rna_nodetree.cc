@@ -9577,7 +9577,9 @@ static void rna_def_geo_foreach_geometry_element_input_items(BlenderRNA *brna)
 
 static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
 {
-  StructRNA *srna = RNA_def_struct(brna, "ForeachGeometryElementOutputItem", nullptr);
+  StructRNA *srna;
+
+  srna = RNA_def_struct(brna, "ForeachGeometryElementOutputItem", nullptr);
   RNA_def_struct_ui_text(srna, "For-Each Geometry Element Item", "");
   RNA_def_struct_sdna(srna, "NodeForeachGeometryElementOutputItem");
 
@@ -9614,6 +9616,20 @@ static void def_geo_foreach_geometry_element_output(StructRNA *srna)
   RNA_def_property_collection_sdna(prop, nullptr, "output_items.items", "output_items.items_num");
   RNA_def_property_struct_type(prop, "ForeachGeometryElementOutputItem");
   RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementOutputItems");
+
+  prop = RNA_def_property(srna, "active_input_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "input_items.active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_output_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "output_items.active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 
   prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_ui_text(prop, "Domain", "Geometry domain that is iterated over");

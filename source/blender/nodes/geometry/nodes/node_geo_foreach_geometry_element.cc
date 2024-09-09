@@ -17,10 +17,33 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BKE_screen.hh"
+
+#include "WM_api.hh"
+
 namespace blender::nodes::node_geo_foreach_geometry_element_cc {
 
+static void draw_item(uiList * /*ui_list*/,
+                      const bContext *C,
+                      uiLayout *layout,
+                      PointerRNA * /*idataptr*/,
+                      PointerRNA *itemptr,
+                      int /*icon*/,
+                      PointerRNA * /*active_dataptr*/,
+                      const char * /*active_propname*/,
+                      int /*index*/,
+                      int /*flt_flag*/)
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  float4 color;
+  RNA_float_get_array(itemptr, "color", color);
+  uiTemplateNodeSocket(row, const_cast<bContext *>(C), color);
+  uiLayoutSetEmboss(row, UI_EMBOSS_NONE);
+  uiItemR(row, itemptr, "name", UI_ITEM_NONE, "", ICON_NONE);
+}
+
 /** Shared between zone input and output node. */
-static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *current_node_ptr)
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_node_ptr)
 {
   bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(current_node_ptr->owner_id);
   bNode *current_node = static_cast<bNode *>(current_node_ptr->data);
@@ -36,9 +59,144 @@ static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *curre
   if (!zone->output_node) {
     return;
   }
+  const bool is_zone_input_node = current_node->type == GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT;
   bNode &output_node = const_cast<bNode &>(*zone->output_node);
   PointerRNA output_node_ptr = RNA_pointer_create(
       current_node_ptr->owner_id, &RNA_Node, &output_node);
+  auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(output_node.storage);
+
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "foreach_items", false, TIP_("Items"))) {
+    if (is_zone_input_node) {
+      static const uiListType *input_items_list = []() {
+        uiListType *list = MEM_cnew<uiListType>(__func__);
+        STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_input_items");
+        list->draw_item = draw_item;
+        WM_uilisttype_add(list);
+        return list;
+      }();
+      uiLayout *row = uiLayoutRow(panel, false);
+      uiTemplateList(row,
+                     C,
+                     input_items_list->idname,
+                     "",
+                     &output_node_ptr,
+                     "input_items",
+                     &output_node_ptr,
+                     "active_input_index",
+                     nullptr,
+                     3,
+                     5,
+                     UILST_LAYOUT_DEFAULT,
+                     0,
+                     UI_TEMPLATE_LIST_FLAG_NONE);
+      {
+        uiLayout *ops_col = uiLayoutColumn(row, false);
+        {
+          uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+          uiItemO(
+              add_remove_col, "", ICON_ADD, "node.foreach_geometry_element_zone_input_item_add");
+          uiItemO(add_remove_col,
+                  "",
+                  ICON_REMOVE,
+                  "node.foreach_geometry_element_zone_input_item_remove");
+        }
+        {
+          uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_input_item_move",
+                      "",
+                      ICON_TRIA_UP,
+                      "direction",
+                      0);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_input_item_move",
+                      "",
+                      ICON_TRIA_DOWN,
+                      "direction",
+                      1);
+        }
+      }
+
+      if (storage.input_items.active_index >= 0 &&
+          storage.input_items.active_index < storage.input_items.items_num)
+      {
+        NodeForeachGeometryElementInputItem &active_item =
+            storage.input_items.items[storage.input_items.active_index];
+        PointerRNA item_ptr = RNA_pointer_create(
+            output_node_ptr.owner_id,
+            ForeachGeometryElementInputItemsAccessor::item_srna,
+            &active_item);
+        uiLayoutSetPropSep(panel, true);
+        uiLayoutSetPropDecorate(panel, false);
+        uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      }
+    }
+    else {
+      static const uiListType *output_items_list = []() {
+        uiListType *list = MEM_cnew<uiListType>(__func__);
+        STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_output_items");
+        list->draw_item = draw_item;
+        WM_uilisttype_add(list);
+        return list;
+      }();
+      uiLayout *row = uiLayoutRow(panel, false);
+      uiTemplateList(row,
+                     C,
+                     output_items_list->idname,
+                     "",
+                     &output_node_ptr,
+                     "output_items",
+                     &output_node_ptr,
+                     "active_output_index",
+                     nullptr,
+                     3,
+                     5,
+                     UILST_LAYOUT_DEFAULT,
+                     0,
+                     UI_TEMPLATE_LIST_FLAG_NONE);
+      {
+        uiLayout *ops_col = uiLayoutColumn(row, false);
+        {
+          uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+          uiItemO(
+              add_remove_col, "", ICON_ADD, "node.foreach_geometry_element_zone_output_item_add");
+          uiItemO(add_remove_col,
+                  "",
+                  ICON_REMOVE,
+                  "node.foreach_geometry_element_zone_output_item_remove");
+        }
+        {
+          uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_output_item_move",
+                      "",
+                      ICON_TRIA_UP,
+                      "direction",
+                      0);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_output_item_move",
+                      "",
+                      ICON_TRIA_DOWN,
+                      "direction",
+                      1);
+        }
+      }
+
+      if (storage.output_items.active_index >= 0 &&
+          storage.output_items.active_index < storage.output_items.items_num)
+      {
+        NodeForeachGeometryElementOutputItem &active_item =
+            storage.output_items.items[storage.output_items.active_index];
+        PointerRNA item_ptr = RNA_pointer_create(
+            output_node_ptr.owner_id,
+            ForeachGeometryElementOutputItemsAccessor::item_srna,
+            &active_item);
+        uiLayoutSetPropSep(panel, true);
+        uiLayoutSetPropDecorate(panel, false);
+        uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      }
+    }
+  }
 
   uiItemR(layout, &output_node_ptr, "inspection_index", UI_ITEM_NONE, nullptr, ICON_NONE);
 }

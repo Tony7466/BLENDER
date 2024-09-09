@@ -86,7 +86,7 @@ struct ForeachGeometryElementInputItemsAccessor {
   using ItemT = NodeForeachGeometryElementInputItem;
   static StructRNA *item_srna;
   static int node_type;
-  static constexpr const char *node_idname = "GeometryNodeForeachGeometryElementInput";
+  static constexpr const char *node_idname = "GeometryNodeForeachGeometryElementOutput";
   static constexpr bool has_type = true;
   static constexpr bool has_name = true;
   static constexpr bool has_single_identifier_str = true;
