@@ -706,13 +706,7 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
   }
 
   if (seq->modifiers.first) {
-    ImBuf *ibuf_new = SEQ_modifier_apply_stack(context, seq, preprocessed_ibuf, timeline_frame);
-
-    if (ibuf_new != preprocessed_ibuf) {
-      IMB_metadata_copy(ibuf_new, preprocessed_ibuf);
-      IMB_freeImBuf(preprocessed_ibuf);
-      preprocessed_ibuf = ibuf_new;
-    }
+    SEQ_modifier_apply_stack(context, seq, preprocessed_ibuf, timeline_frame);
   }
 
   return preprocessed_ibuf;
@@ -751,7 +745,7 @@ struct RenderEffectInitData {
   const SeqRenderData *context;
   Sequence *seq;
   float timeline_frame, fac;
-  ImBuf *ibuf1, *ibuf2, *ibuf3;
+  ImBuf *ibuf1, *ibuf2;
 
   ImBuf *out;
 };
@@ -761,7 +755,7 @@ struct RenderEffectThread {
   const SeqRenderData *context;
   Sequence *seq;
   float timeline_frame, fac;
-  ImBuf *ibuf1, *ibuf2, *ibuf3;
+  ImBuf *ibuf1, *ibuf2;
 
   ImBuf *out;
   int start_line, tot_line;
@@ -782,7 +776,6 @@ static void render_effect_execute_init_handle(void *handle_v,
   handle->fac = init_data->fac;
   handle->ibuf1 = init_data->ibuf1;
   handle->ibuf2 = init_data->ibuf2;
-  handle->ibuf3 = init_data->ibuf3;
   handle->out = init_data->out;
 
   handle->start_line = start_line;
@@ -799,7 +792,6 @@ static void *render_effect_execute_do_thread(void *thread_data_v)
                                  thread_data->fac,
                                  thread_data->ibuf1,
                                  thread_data->ibuf2,
-                                 thread_data->ibuf3,
                                  thread_data->start_line,
                                  thread_data->tot_line,
                                  thread_data->out);
@@ -813,11 +805,10 @@ ImBuf *seq_render_effect_execute_threaded(SeqEffectHandle *sh,
                                           float timeline_frame,
                                           float fac,
                                           ImBuf *ibuf1,
-                                          ImBuf *ibuf2,
-                                          ImBuf *ibuf3)
+                                          ImBuf *ibuf2)
 {
   RenderEffectInitData init_data;
-  ImBuf *out = sh->init_execution(context, ibuf1, ibuf2, ibuf3);
+  ImBuf *out = sh->init_execution(context, ibuf1, ibuf2);
 
   init_data.sh = sh;
   init_data.context = context;
@@ -826,7 +817,6 @@ ImBuf *seq_render_effect_execute_threaded(SeqEffectHandle *sh,
   init_data.fac = fac;
   init_data.ibuf1 = ibuf1;
   init_data.ibuf2 = ibuf2;
-  init_data.ibuf3 = ibuf3;
   init_data.out = out;
 
   IMB_processor_apply_threaded(out->y,
@@ -848,15 +838,14 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
   int i;
   SeqEffectHandle sh = SEQ_effect_handle_get(seq);
   const FCurve *fcu = nullptr;
-  ImBuf *ibuf[3];
-  Sequence *input[3];
+  ImBuf *ibuf[2];
+  Sequence *input[2];
   ImBuf *out = nullptr;
 
-  ibuf[0] = ibuf[1] = ibuf[2] = nullptr;
+  ibuf[0] = ibuf[1] = nullptr;
 
   input[0] = seq->seq1;
   input[1] = seq->seq2;
-  input[2] = seq->seq3;
 
   if (!sh.execute && !(sh.execute_slice && sh.init_execution)) {
     /* effect not supported in this version... */
@@ -881,10 +870,10 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
 
   switch (early_out) {
     case StripEarlyOut::NoInput:
-      out = sh.execute(context, seq, timeline_frame, fac, nullptr, nullptr, nullptr);
+      out = sh.execute(context, seq, timeline_frame, fac, nullptr, nullptr);
       break;
     case StripEarlyOut::DoEffect:
-      for (i = 0; i < 3; i++) {
+      for (i = 0; i < 2; i++) {
         /* Speed effect requires time remapping of `timeline_frame` for input(s). */
         if (input[0] && seq->type == SEQ_TYPE_SPEED) {
           int target_frame = floor(
@@ -901,10 +890,10 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
       if (ibuf[0] && (ibuf[1] || SEQ_effect_get_num_inputs(seq->type) == 1)) {
         if (sh.multithreaded) {
           out = seq_render_effect_execute_threaded(
-              &sh, context, seq, timeline_frame, fac, ibuf[0], ibuf[1], ibuf[2]);
+              &sh, context, seq, timeline_frame, fac, ibuf[0], ibuf[1]);
         }
         else {
-          out = sh.execute(context, seq, timeline_frame, fac, ibuf[0], ibuf[1], ibuf[2]);
+          out = sh.execute(context, seq, timeline_frame, fac, ibuf[0], ibuf[1]);
         }
       }
       break;
@@ -920,7 +909,7 @@ static ImBuf *seq_render_effect_strip_impl(const SeqRenderData *context,
       break;
   }
 
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 2; i++) {
     IMB_freeImBuf(ibuf[i]);
   }
 
@@ -1919,19 +1908,19 @@ static ImBuf *seq_render_strip_stack_apply_effect(
   if (swap_input) {
     if (sh.multithreaded) {
       out = seq_render_effect_execute_threaded(
-          &sh, context, seq, timeline_frame, fac, ibuf2, ibuf1, nullptr);
+          &sh, context, seq, timeline_frame, fac, ibuf2, ibuf1);
     }
     else {
-      out = sh.execute(context, seq, timeline_frame, fac, ibuf2, ibuf1, nullptr);
+      out = sh.execute(context, seq, timeline_frame, fac, ibuf2, ibuf1);
     }
   }
   else {
     if (sh.multithreaded) {
       out = seq_render_effect_execute_threaded(
-          &sh, context, seq, timeline_frame, fac, ibuf1, ibuf2, nullptr);
+          &sh, context, seq, timeline_frame, fac, ibuf1, ibuf2);
     }
     else {
-      out = sh.execute(context, seq, timeline_frame, fac, ibuf1, ibuf2, nullptr);
+      out = sh.execute(context, seq, timeline_frame, fac, ibuf1, ibuf2);
     }
   }
 
@@ -1994,11 +1983,14 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
       early_out = StripEarlyOut::UseInput1;
     }
 
-    /* Early out for alpha over. It requires image to be rendered, so it can't use
-     * `seq_get_early_out_for_blend_mode`. */
+    /* "Alpha over" is default for all strips, and it can be optimized in some cases:
+     * - If the whole image has no transparency, there's no need to do actual blending.
+     * - Likewise, if we are at the bottom of the stack; the input can be used as-is.
+     * - If we are rendering a strip that is known to be opaque, we mark it as an occluder,
+     *   so that strips below can check if they are completely hidden. */
     if (out == nullptr && early_out == StripEarlyOut::DoEffect && is_opaque_alpha_over(seq)) {
       ImBuf *test = seq_render_strip(context, state, seq, timeline_frame);
-      if (ELEM(test->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB)) {
+      if (ELEM(test->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB) || i == 0) {
         early_out = StripEarlyOut::UseInput2;
       }
       else {
@@ -2026,12 +2018,19 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
       case StripEarlyOut::UseInput1:
         if (i == 0) {
           out = IMB_allocImBuf(context->rectx, context->recty, 32, IB_rect);
+          seq_imbuf_assign_spaces(context->scene, out);
         }
         break;
       case StripEarlyOut::DoEffect:
         if (i == 0) {
-          ImBuf *ibuf1 = IMB_allocImBuf(context->rectx, context->recty, 32, IB_rect);
+          /* This is an effect at the bottom of the stack, so one of the inputs does not exist yet:
+           * create one that is transparent black. Extra optimization for an alpha over strip at
+           * the bottom, we can just return it instead of blending with black. */
           ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
+          const bool use_float = ibuf2 && ibuf2->float_buffer.data;
+          ImBuf *ibuf1 = IMB_allocImBuf(
+              context->rectx, context->recty, 32, use_float ? IB_rectfloat : IB_rect);
+          seq_imbuf_assign_spaces(context->scene, ibuf1);
 
           out = seq_render_strip_stack_apply_effect(context, seq, timeline_frame, ibuf1, ibuf2);
           IMB_metadata_copy(out, ibuf2);

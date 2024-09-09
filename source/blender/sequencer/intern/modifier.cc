@@ -1449,19 +1449,16 @@ static bool skip_modifier(Scene *scene, const SequenceModifierData *smd, int tim
   return strip_has_ended_skip || missing_data_skip;
 }
 
-ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
-                                Sequence *seq,
-                                ImBuf *ibuf,
-                                int timeline_frame)
+void SEQ_modifier_apply_stack(const SeqRenderData *context,
+                              const Sequence *seq,
+                              ImBuf *ibuf,
+                              int timeline_frame)
 {
-  ImBuf *processed_ibuf = ibuf;
-
   const StripScreenQuad quad = get_strip_screen_quad(context, seq);
   const bool full_quad = is_strip_covering_screen(context, seq);
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
-    processed_ibuf = IMB_dupImBuf(ibuf);
-    SEQ_render_imbuf_from_sequencer_space(context->scene, processed_ibuf);
+    SEQ_render_imbuf_from_sequencer_space(context->scene, ibuf);
   }
 
   LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
@@ -1489,11 +1486,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
       ImBuf *mask = modifier_mask_get(
           smd, context, timeline_frame, frame_offset, ibuf->float_buffer.data != nullptr);
 
-      if (processed_ibuf == ibuf) {
-        processed_ibuf = IMB_dupImBuf(ibuf);
-      }
-
-      smti->apply(full_quad, quad, smd, processed_ibuf, mask);
+      smti->apply(full_quad, quad, smd, ibuf, mask);
 
       if (mask) {
         IMB_freeImBuf(mask);
@@ -1502,10 +1495,8 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
   }
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
-    seq_imbuf_to_sequencer_space(context->scene, processed_ibuf, false);
+    seq_imbuf_to_sequencer_space(context->scene, ibuf, false);
   }
-
-  return processed_ibuf;
 }
 
 void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)

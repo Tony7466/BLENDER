@@ -311,6 +311,7 @@ set(SRC
   engines/overlay/overlay_next_prepass.hh
   engines/overlay/overlay_next_private.hh
   engines/overlay/overlay_next_relation.hh
+  engines/overlay/overlay_next_sculpt.hh
   engines/overlay/overlay_next_speaker.hh
   engines/overlay/overlay_next_wireframe.hh
   engines/overlay/overlay_next_xray_fade.hh
@@ -663,6 +664,7 @@ set(GLSL_SRC
   engines/overlay/shaders/overlay_depth_only_frag.glsl
   engines/overlay/shaders/overlay_depth_only_gpencil_frag.glsl
   engines/overlay/shaders/overlay_depth_only_gpencil_vert.glsl
+  engines/overlay/shaders/overlay_depth_only_mesh_conservative_vert.glsl
   engines/overlay/shaders/overlay_depth_only_vert.glsl
   engines/overlay/shaders/overlay_edit_curve_handle_geom.glsl
   engines/overlay/shaders/overlay_edit_curve_handle_next_vert.glsl
