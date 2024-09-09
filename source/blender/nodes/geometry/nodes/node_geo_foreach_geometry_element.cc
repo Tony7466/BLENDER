@@ -211,6 +211,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.use_custom_socket_order();
   b.allow_any_socket_order();
 
+  b.add_output<decl::Int>("Index").description(
+      "Index of the element in the source geometry. Note that the same index can occure more than "
+      "once when iterating over multiple components at once");
+
   b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
 
   b.add_input<decl::Bool>("Selection")
@@ -218,9 +222,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .hide_value()
       .field_on_all()
       .description("Selection on the iteration domain");
-  b.add_output<decl::Int>("Index").align_with_previous().description(
-      "Index of the element in the source geometry. Note that the same index can occure more than "
-      "once when iterating over multiple components at once");
 
   const bNode *node = b.node_or_null();
   const bNodeTree *tree = b.tree_or_null();

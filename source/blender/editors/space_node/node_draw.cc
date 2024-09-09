@@ -915,6 +915,15 @@ static void node_update_basis_from_declaration(
 
   /* Start by adding root panel items. */
   LocationUpdateState location_state(item_data);
+
+  /* Draw buttons at the top when the node has a custom socket order. This could be customized in
+   * the future to support showing the buttons in any place. */
+  if (node.declaration()->allow_any_socket_order) {
+    location_state.buttons_drawn = true;
+    location_state.need_spacer_after_item = node_update_basis_buttons(
+        C, ntree, node, node.typeinfo->draw_buttons, block, locy);
+  }
+
   add_panel_items_recursive(
       C, ntree, node, block, locx, locy, -1, false, "", nullptr, location_state);
 
