@@ -211,7 +211,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.allow_any_socket_order();
 
   b.add_input<decl::Geometry>("Geometry");
-  b.add_output<decl::Geometry>("Geometry").align_with_previous().propagate_all();
 
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_output<decl::Int>("Index").align_with_previous();

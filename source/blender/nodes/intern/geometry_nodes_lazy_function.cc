@@ -51,7 +51,6 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GEO_extract_element.hh"
 #include "GEO_join_geometries.hh"
 
 #include <fmt/format.h>
@@ -2036,7 +2035,6 @@ struct ForeachElementComponent {
   GeometryComponent *component;
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
-  std::optional<Array<GeometrySet>> geometry_elements;
   Array<SocketValueVariant> index_values;
   Array<Array<SocketValueVariant>> item_input_values;
   IndexRange body_nodes_range;
@@ -2246,66 +2244,6 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       mask.foreach_index(
           [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
 
-      if (component->type() == GeometryComponent::Type::Mesh) {
-        const Mesh &mesh = *static_cast<const MeshComponent *>(component)->get();
-        Array<Mesh *> element_meshes;
-        switch (domain) {
-          case AttrDomain::Point: {
-            element_meshes = geometry::extract_vertex_meshes(mesh, mask, {});
-            break;
-          }
-          case AttrDomain::Edge: {
-            element_meshes = geometry::extract_edge_meshes(mesh, mask, {});
-            break;
-          }
-          case AttrDomain::Face: {
-            element_meshes = geometry::extract_face_meshes(mesh, mask, {});
-            break;
-          }
-          default:
-            break;
-        }
-        if (!element_meshes.is_empty()) {
-          component_info.geometry_elements.emplace(mask.size());
-          for (const int i : mask.index_range()) {
-            (*component_info.geometry_elements)[i].replace_mesh(element_meshes[i]);
-          }
-        }
-      }
-      else if (component->type() == GeometryComponent::Type::PointCloud &&
-               domain == AttrDomain::Point)
-      {
-        const PointCloud &pointcloud = *static_cast<const PointCloudComponent *>(component)->get();
-        Array<PointCloud *> element_pointclouds = geometry::extract_single_points(
-            pointcloud, mask, {});
-        component_info.geometry_elements.emplace(mask.size());
-        for (const int i : mask.index_range()) {
-          (*component_info.geometry_elements)[i].replace_pointcloud(element_pointclouds[i]);
-        }
-      }
-      else if (component->type() == GeometryComponent::Type::Curve) {
-        const Curves &curves = *static_cast<const CurveComponent *>(component)->get();
-        Array<Curves *> element_curves;
-        switch (domain) {
-          case AttrDomain::Point: {
-            element_curves = geometry::extract_single_point_curves(curves, mask, {});
-            break;
-          }
-          case AttrDomain::Curve: {
-            element_curves = geometry::extract_single_curves(curves, mask, {});
-            break;
-          }
-          default:
-            break;
-        }
-        if (!element_curves.is_empty()) {
-          component_info.geometry_elements.emplace(mask.size());
-          for (const int i : mask.index_range()) {
-            (*component_info.geometry_elements)[i].replace_curves(element_curves[i]);
-          }
-        }
-      }
-
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
         const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
@@ -2361,15 +2299,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       for (const int i : component_info.body_nodes_range.index_range()) {
         const int body_i = component_info.body_nodes_range[i];
         lf::FunctionNode &lf_body_node = *lf_body_nodes[body_i];
-        const GeometrySet *element_geometry = &empty_geometry;
-        if (component_info.geometry_elements.has_value()) {
-          element_geometry = &(*component_info.geometry_elements)[i];
-        }
-        lf_body_node.input(body_fn_.indices.inputs.main[0]).set_default_value(element_geometry);
-        lf_body_node.input(body_fn_.indices.inputs.main[1])
+        lf_body_node.input(body_fn_.indices.inputs.main[0])
             .set_default_value(&component_info.index_values[i]);
         for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-          lf_body_node.input(body_fn_.indices.inputs.main[2 + item_i])
+          lf_body_node.input(body_fn_.indices.inputs.main[1 + item_i])
               .set_default_value(&component_info.item_input_values[item_i][i]);
         }
         for (const int border_link_i : zone_info_.indices.inputs.border_links.index_range()) {
