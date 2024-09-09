@@ -1325,6 +1325,53 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
 
 }  // namespace mask
 
+static bool create_node_index_attribute(Object &object)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
+  bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
+  bke::SpanAttributeWriter node_index = attributes.lookup_or_add_for_write_only_span<int>(
+      "node_index", bke::AttrDomain::Face);
+  if (!node_index) {
+    return false;
+  }
+
+  const bke::pbvh::Tree *pbvh = bke::object::pbvh_get(object);
+  if (!pbvh) {
+    return false;
+  }
+  if (pbvh->type() != bke::pbvh::Type::Mesh) {
+    return false;
+  }
+
+  const Span<bke::pbvh::MeshNode> nodes = pbvh->nodes<bke::pbvh::MeshNode>();
+  for (const int i : nodes.index_range()) {
+    node_index.span.fill_indices(nodes[i].faces(), i);
+  }
+  node_index.finish();
+  return true;
+}
+
+static int create_node_index_attribute_exec(bContext *C, wmOperator * /*op*/)
+{
+  Object &object = *CTX_data_active_object(C);
+  if (!create_node_index_attribute(object)) {
+    return OPERATOR_CANCELLED;
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void SCULPT_OT_debug_node_index(wmOperatorType *ot)
+{
+  ot->name = "Create BVH Node Index Attribute";
+  ot->idname = "SCULPT_OT_debug_node_index";
+  ot->description = "Create attribute containing BVH node index (for debugging)";
+
+  ot->exec = create_node_index_attribute_exec;
+  ot->poll = SCULPT_mode_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+}
+
 void operatortypes_sculpt()
 {
   WM_operatortype_append(SCULPT_OT_brush_stroke);
@@ -1362,6 +1409,7 @@ void operatortypes_sculpt()
 
   WM_operatortype_append(expand::SCULPT_OT_expand);
   WM_operatortype_append(mask::SCULPT_OT_mask_from_cavity);
+  WM_operatortype_append(SCULPT_OT_debug_node_index);
 }
 
 void keymap_sculpt(wmKeyConfig *keyconf)
