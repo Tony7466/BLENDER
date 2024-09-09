@@ -90,12 +90,12 @@ def compile_list(severity: str) -> None:
             if label_id not in module_label_ids:
                 continue
 
-            current_modules_name = module_label_ids[label_id]
-            if current_modules_name != label_iter["name"]:
-                input(f"ALERT: The name of label of '{current_modules_name}' changed. Press enter to continue: ")
+            current_module_name = module_label_ids[label_id]
+            if current_module_name != label_iter["name"]:
+                input(f"ALERT: The name of label of '{current_module_name}' changed. Press enter to continue: ")
 
-            modules[current_modules_name].buglist.append(f"[#{number}]({html_url})")
-            modules[current_modules_name].buglist_full.append(f"* [{title}]({html_url}) - {created_at}\n")
+            modules[current_module_name].buglist.append(f"[#{number}]({html_url})")
+            modules[current_module_name].buglist_full.append(f"* [{title}]({html_url}) - {created_at}\n")
             break
     else:
         uncategorized_reports.append(f"[#{number}]({html_url})")
