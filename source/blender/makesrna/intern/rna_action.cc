@@ -383,10 +383,8 @@ static int rna_iterator_ActionLayer_strips_length(PointerRNA *ptr)
   return layer.strips().size();
 }
 
-ActionStrip *rna_ActionStrips_new(ActionLayer *dna_layer,
-                                  bContext *C,
-                                  ReportList *reports,
-                                  const int type)
+ActionStrip *rna_ActionStrips_new(
+    ID *dna_action_id, ActionLayer *dna_layer, bContext *C, ReportList *reports, const int type)
 {
   const animrig::Strip::Type strip_type = animrig::Strip::Type(type);
 
@@ -399,7 +397,8 @@ ActionStrip *rna_ActionStrips_new(ActionLayer *dna_layer,
     return nullptr;
   }
 
-  animrig::Strip &strip = layer.strip_add(strip_type);
+  animrig::Action &action = reinterpret_cast<bAction *>(dna_action_id)->wrap();
+  animrig::Strip &strip = layer.strip_add(action, strip_type);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
   return &strip;
@@ -1960,7 +1959,7 @@ static void rna_def_ActionLayer_strips(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_ui_description(func,
                                   "Add a new strip to the layer. Currently a layer can only have "
                                   "one strip, with infinite boundaries.");
-  RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "type",
                       rna_enum_strip_type_items,

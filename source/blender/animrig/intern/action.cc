@@ -72,20 +72,20 @@ static animrig::Layer &ActionLayer_alloc()
   ActionLayer *layer = DNA_struct_default_alloc(ActionLayer);
   return layer->wrap();
 }
-static animrig::Strip &ActionStrip_alloc_infinite(bAction *owning_action, const Strip::Type type)
+static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const Strip::Type type)
 {
   ActionStrip *strip = MEM_new<ActionStrip>(__func__);
 
   /* Copy the default ActionStrip fields into the allocated data-block. */
   memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
 
-  strip->owning_action = owning_action;
+  strip->owning_action = &owning_action;
 
   switch (type) {
     case Strip::Type::Keyframe: {
       strip->strip_type = int8_t(type);
       StripKeyframeData *strip_data = MEM_new<StripKeyframeData>(__func__);
-      strip->data_index = owning_action->wrap().strip_keyframe_data_append(strip_data);
+      strip->data_index = owning_action.strip_keyframe_data_append(strip_data);
       break;
     }
   }
@@ -243,7 +243,6 @@ Layer &Action::layer_add(const StringRefNull name)
 {
   Layer &new_layer = ActionLayer_alloc();
   STRNCPY_UTF8(new_layer.name, name.c_str());
-  new_layer.owning_action = this;
 
   grow_array_and_append<::ActionLayer *>(&this->layer_array, &this->layer_array_num, &new_layer);
   this->layer_active_index = this->layer_array_num - 1;
@@ -293,7 +292,7 @@ void Action::layer_keystrip_ensure()
 
   /* Ensure a keyframe Strip. */
   if (layer->strips().is_empty()) {
-    layer->strip_add(Strip::Type::Keyframe);
+    layer->strip_add(*this, Strip::Type::Keyframe);
   }
 
   /* Within the limits of Baklava Phase 1, the above code should not have
@@ -764,9 +763,9 @@ Strip *Layer::strip(const int64_t index)
   return &this->strip_array[index]->wrap();
 }
 
-Strip &Layer::strip_add(const Strip::Type strip_type)
+Strip &Layer::strip_add(Action &owning_action, const Strip::Type strip_type)
 {
-  Strip &strip = ActionStrip_alloc_infinite(this->owning_action, strip_type);
+  Strip &strip = ActionStrip_alloc_infinite(owning_action, strip_type);
 
   /* Add the new strip to the strip array. */
   grow_array_and_append<::ActionStrip *>(&this->strip_array, &this->strip_array_num, &strip);
@@ -2228,7 +2227,7 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Action &converted_action = dna_action->wrap();
   Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
-  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer.strip_add(converted_action, Strip::Type::Keyframe);
   BLI_assert(strip.keyframe_data().channelbag_array_num == 0);
   ChannelBag *bag = &strip.keyframe_data().channelbag_for_slot_add(slot);
 

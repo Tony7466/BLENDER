@@ -145,7 +145,7 @@ class AnimationEvaluationTest : public testing::Test {
 
 TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 {
-  Strip &strip = layer->strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer->strip_add(*action, Strip::Type::Keyframe);
   StripKeyframeData &strip_data = strip.keyframe_data();
 
   /* Set some keys. */
@@ -184,7 +184,7 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)
 {
   /* Single finite strip, check first, middle, and last frame. */
-  Strip &strip = layer->strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer->strip_add(*action, Strip::Type::Keyframe);
   strip.resize(1.0f, 10.0f);
 
   /* Set some keys. */
@@ -204,8 +204,8 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)
 TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
 {
   /* Two finite strips that are strictly distinct. */
-  Strip &strip1 = layer->strip_add(Strip::Type::Keyframe);
-  Strip &strip2 = layer->strip_add(Strip::Type::Keyframe);
+  Strip &strip1 = layer->strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip2 = layer->strip_add(*action, Strip::Type::Keyframe);
   strip1.resize(1.0f, 10.0f);
   strip2.resize(11.0f, 20.0f);
   strip2.frame_offset = 10;
@@ -244,8 +244,8 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
 TEST_F(AnimationEvaluationTest, strip_boundaries__overlapping_edge)
 {
   /* Two finite strips that are overlapping on their edge. */
-  Strip &strip1 = layer->strip_add(Strip::Type::Keyframe);
-  Strip &strip2 = layer->strip_add(Strip::Type::Keyframe);
+  Strip &strip1 = layer->strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip2 = layer->strip_add(*action, Strip::Type::Keyframe);
   strip1.resize(1.0f, 10.0f);
   strip2.resize(10.0f, 19.0f);
   strip2.frame_offset = 9;

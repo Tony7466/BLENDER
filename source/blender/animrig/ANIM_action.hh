@@ -452,7 +452,7 @@ class Layer : public ::ActionLayer {
    * \see strip_add<T>() for a templated version that returns the strip as its
    * concrete C++ type.
    */
-  Strip &strip_add(Strip::Type strip_type);
+  Strip &strip_add(Action &owning_action, Strip::Type strip_type);
 
   // /**
   //  * Add a new strip of the type of T.

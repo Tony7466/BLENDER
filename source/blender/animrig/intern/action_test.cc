@@ -95,9 +95,9 @@ TEST_F(ActionLayersTest, remove_layer)
 
   /* Add some strips to check that they are freed correctly too (implicitly by the
    * memory leak checker). */
-  layer0.strip_add(Strip::Type::Keyframe);
-  layer1.strip_add(Strip::Type::Keyframe);
-  layer2.strip_add(Strip::Type::Keyframe);
+  layer0.strip_add(*action, Strip::Type::Keyframe);
+  layer1.strip_add(*action, Strip::Type::Keyframe);
+  layer2.strip_add(*action, Strip::Type::Keyframe);
 
   { /* Test removing a layer that is not owned. */
     Action *other_anim = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "ACOtherAnim"));
@@ -124,7 +124,7 @@ TEST_F(ActionLayersTest, add_strip)
 {
   Layer &layer = action->layer_add("Test Læür");
 
-  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer.strip_add(*action, Strip::Type::Keyframe);
   ASSERT_EQ(1, layer.strips().size());
   EXPECT_EQ(&strip, layer.strip(0));
 
@@ -133,7 +133,7 @@ TEST_F(ActionLayersTest, add_strip)
   EXPECT_EQ(inf, strip.frame_end) << "Expected strip to be infinite.";
   EXPECT_EQ(0, strip.frame_offset) << "Expected infinite strip to have no offset.";
 
-  Strip &another_strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &another_strip = layer.strip_add(*action, Strip::Type::Keyframe);
   ASSERT_EQ(2, layer.strips().size());
   EXPECT_EQ(&another_strip, layer.strip(1));
 
@@ -152,9 +152,9 @@ TEST_F(ActionLayersTest, add_strip)
 TEST_F(ActionLayersTest, remove_strip)
 {
   Layer &layer = action->layer_add("Test Læür");
-  Strip &strip0 = layer.strip_add(Strip::Type::Keyframe);
-  Strip &strip1 = layer.strip_add(Strip::Type::Keyframe);
-  Strip &strip2 = layer.strip_add(Strip::Type::Keyframe);
+  Strip &strip0 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip1 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip2 = layer.strip_add(*action, Strip::Type::Keyframe);
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
@@ -177,7 +177,7 @@ TEST_F(ActionLayersTest, remove_strip)
 
   { /* Test removing a strip that is not owned. */
     Layer &other_layer = action->layer_add("Another Layer");
-    Strip &other_strip = other_layer.strip_add(Strip::Type::Keyframe);
+    Strip &other_strip = other_layer.strip_add(*action, Strip::Type::Keyframe);
 
     EXPECT_FALSE(layer.strip_remove(other_strip))
         << "Removing a strip not owned by the layer should be gracefully rejected";
@@ -597,7 +597,7 @@ TEST_F(ActionLayersTest, strip)
 {
   constexpr float inf = std::numeric_limits<float>::infinity();
   Layer &layer0 = action->layer_add("Test Læür nul");
-  Strip &strip = layer0.strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer0.strip_add(*action, Strip::Type::Keyframe);
 
   strip.resize(-inf, inf);
   EXPECT_TRUE(strip.contains_frame(0.0f));
@@ -637,7 +637,7 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
   EXPECT_TRUE(action->assign_id(&slot, cube->id));
   Layer &layer = action->layer_add("Kübus layer");
 
-  Strip &strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &strip = layer.strip_add(*action, Strip::Type::Keyframe);
   StripKeyframeData &strip_data = strip.keyframe_data();
 
   const KeyframeSettings settings = get_keyframe_settings(false);

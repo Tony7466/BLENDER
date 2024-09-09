@@ -1130,9 +1130,6 @@ typedef struct bActionChannel {
  * \see #blender::animrig::Layer
  */
 typedef struct ActionLayer {
-  /** The action this layer belongs to. */
-  bAction *owning_action;
-
   /** User-Visible identifier, unique within the Animation. */
   char name[64]; /* MAX_NAME. */
 

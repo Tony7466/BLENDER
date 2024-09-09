@@ -72,7 +72,7 @@ TEST_F(ActionFilterTest, slots_expanded_or_not)
   ASSERT_TRUE(action->assign_id(&slot_suzanne, suzanne->id));
 
   Layer &layer = action->layer_add("Kübus layer");
-  Strip &key_strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &key_strip = layer.strip_add(*action, Strip::Type::Keyframe);
   StripKeyframeData &strip_data = key_strip.keyframe_data();
 
   /* Create multiple FCurves for multiple Slots. */
@@ -232,7 +232,7 @@ TEST_F(ActionFilterTest, layered_action_active_fcurves)
   ASSERT_TRUE(action->assign_id(&slot_cube, cube->id));
 
   Layer &layer = action->layer_add("Kübus layer");
-  Strip &key_strip = layer.strip_add(Strip::Type::Keyframe);
+  Strip &key_strip = layer.strip_add(*action, Strip::Type::Keyframe);
   StripKeyframeData &strip_data = key_strip.keyframe_data();
 
   /* Create multiple FCurves. */
