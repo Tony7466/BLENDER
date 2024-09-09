@@ -1369,7 +1369,7 @@ static void SCULPT_OT_debug_node_index(wmOperatorType *ot)
   ot->exec = create_node_index_attribute_exec;
   ot->poll = SCULPT_mode_poll;
 
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 void operatortypes_sculpt()
