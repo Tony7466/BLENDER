@@ -12,6 +12,7 @@
 #include "RNA_prototypes.hh"
 
 #include "NOD_geo_foreach_geometry_element.hh"
+#include "NOD_socket_items_ops.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -207,6 +208,53 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
       ForeachGeometryElementOutputItemsAccessor>(*ntree, *node, *node, *link);
 }
 
+static void NODE_OT_foreach_geometry_element_zone_input_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_active_item<ForeachGeometryElementInputItemsAccessor>(
+      ot, "Remove For-Each Input Item", __func__, "Remove active for-each input item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_input_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<ForeachGeometryElementInputItemsAccessor>(
+      ot, "Add For-Each Input Item", __func__, "Add for-each input item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_input_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_active_item<ForeachGeometryElementInputItemsAccessor>(
+      ot, "Move For-Each Input Item", __func__, "Move active for-each input item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_output_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_active_item<ForeachGeometryElementOutputItemsAccessor>(
+      ot, "Remove For-Each Output Item", __func__, "Remove active for-each output item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_output_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<ForeachGeometryElementOutputItemsAccessor>(
+      ot, "Add For-Each Output Item", __func__, "Add for-each output item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_output_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_active_item<ForeachGeometryElementOutputItemsAccessor>(
+      ot, "Move For-Each Output Item", __func__, "Move active for-each output item");
+}
+
+static void node_operators()
+{
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_input_item_add);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_input_item_remove);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_input_item_move);
+
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_add);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_remove);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_move);
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
@@ -218,6 +266,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.labelfunc = input_node::node_label;
   ntype.insert_link = node_insert_link;
+  ntype.register_operators = node_operators;
   ntype.no_muting = true;
   blender::bke::node_type_storage(
       &ntype, "NodeGeometryForeachGeometryElementOutput", node_free_storage, node_copy_storage);
