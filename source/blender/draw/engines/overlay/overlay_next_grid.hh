@@ -24,7 +24,7 @@ class Grid {
  private:
   UniformBuffer<OVERLAY_GridData> data_;
 
-  PassSimple grid_ps_ = {"grid_ps_"};
+  PassMain grid_ps_ = {"grid_ps_"};
 
   float3 grid_axes_ = float3(0.0f);
   float3 zplane_axes_ = float3(0.0f);
@@ -39,6 +39,7 @@ class Grid {
   {
     enabled_ = init(state, view);
     if (!enabled_) {
+      grid_ps_.init();
       return;
     }
 
@@ -125,11 +126,20 @@ class Grid {
     /* Default, nothing is drawn. */
     grid_flag_ = zneg_flag_ = zpos_flag_ = OVERLAY_GridBits(0);
 
-    return (state.space_type == SPACE_IMAGE) ? init_2d(state, view, grid_steps) :
+    return (state.space_type == SPACE_IMAGE) ? init_2d(state, grid_steps) :
                                                init_3d(state, view, grid_steps);
   }
 
-  bool init_2d(const State &state, const View &view, float grid_steps[])
+  void copy_to_data(float grid_steps_x[], float grid_steps_y[])
+  {
+    /* Convert to UBO alignment. */
+    for (const int i : IndexRange(SI_GRID_STEPS_LEN)) {
+      data_.steps[i][0] = grid_steps_x[i];
+      data_.steps[i][1] = grid_steps_y[i];
+    }
+  }
+
+  bool init_2d(const State &state, float grid_steps[])
   {
     if (state.hide_overlays) {
       return false;
@@ -171,11 +181,7 @@ class Grid {
 
     data_.zoom_factor = ED_space_image_zoom_level(v2d, SI_GRID_STEPS_LEN);
     ED_space_image_grid_steps(sima, grid_steps, grid_steps_y, SI_GRID_STEPS_LEN);
-    /* Convert to UBO alignment. */
-    for (const int i : IndexRange(SI_GRID_STEPS_LEN)) {
-      data_.steps[i][0] = grid_steps[i];
-      data_.steps[i][1] = (grid_steps_y[i] != 0.0f) ? grid_steps_y[i] : grid_steps[i];
-    }
+    copy_to_data(grid_steps, grid_steps_y);
     return true;
   }
 
@@ -291,11 +297,7 @@ class Grid {
       float viewinvscale = len_v3(view.viewinv()[0]);
       data_.distance *= viewinvscale;
     }
-    /* Convert to UBO alignment. */
-    for (const int i : IndexRange(SI_GRID_STEPS_LEN)) {
-      data_.steps[i][0] = grid_steps[i];
-      data_.steps[i][1] = grid_steps[i];
-    }
+    copy_to_data(grid_steps, grid_steps);
     return true;
   }
 };
