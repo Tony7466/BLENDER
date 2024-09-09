@@ -535,44 +535,46 @@ static void vert_neighbors_get_bmesh(PBVHVertRef vertex, SculptVertexNeighborIte
   }
 }
 
-Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors)
+Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors)
 {
+  r_neighbors.clear();
   BMIter liter;
   BMLoop *l;
   BM_ITER_ELEM (l, &liter, &vert, BM_LOOPS_OF_VERT) {
     for (BMVert *other_vert : {l->prev->v, l->next->v}) {
       if (other_vert != &vert) {
-        neighbors.append(other_vert);
+        r_neighbors.append(other_vert);
       }
     }
   }
-  return neighbors;
+  return r_neighbors;
 }
 
-Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors)
+Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors)
 {
+  r_neighbors.clear();
   BMIter liter;
   BMLoop *l;
   BM_ITER_ELEM (l, &liter, &vert, BM_LOOPS_OF_VERT) {
     for (BMVert *other_vert : {l->prev->v, l->next->v}) {
       if (other_vert != &vert) {
-        neighbors.append(other_vert);
+        r_neighbors.append(other_vert);
       }
     }
   }
 
   if (BM_vert_is_boundary(&vert)) {
-    if (neighbors.size() == 2) {
+    if (r_neighbors.size() == 2) {
       /* Do not include neighbors of corner vertices. */
-      neighbors.clear();
+      r_neighbors.clear();
     }
     else {
       /* Only include other boundary vertices as neighbors of boundary vertices. */
-      neighbors.remove_if([&](const BMVert *vert) { return !BM_vert_is_boundary(vert); });
+      r_neighbors.remove_if([&](const BMVert *vert) { return !BM_vert_is_boundary(vert); });
     }
   }
 
-  return neighbors;
+  return r_neighbors;
 }
 
 static void vertex_neighbors_get_faces(const SculptSession &ss,
@@ -1715,8 +1717,8 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
   const Span<int> verts = node.verts();
 
   if (ss.cache && !ss.cache->accum) {
-    if (const std::optional<OrigPositionData> orig_data = orig_position_data_get_mesh(object,
-                                                                                      node))
+    if (const std::optional<OrigPositionData> orig_data = orig_position_data_lookup_mesh(object,
+                                                                                         node))
     {
       const Span<float3> orig_positions = orig_data->positions;
       const Span<float3> orig_normals = orig_data->normals;
@@ -1804,8 +1806,8 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
   const Span<int> grids = node.grids();
 
   if (ss.cache && !ss.cache->accum) {
-    if (const std::optional<OrigPositionData> orig_data = orig_position_data_get_grids(object,
-                                                                                       node))
+    if (const std::optional<OrigPositionData> orig_data = orig_position_data_lookup_grids(object,
+                                                                                          node))
     {
       const Span<float3> orig_positions = orig_data->positions;
       const Span<float3> orig_normals = orig_data->normals;
@@ -7578,8 +7580,8 @@ void calc_vert_neighbors(Set<BMVert *, 0> verts, const MutableSpan<Vector<BMVert
   int i = 0;
   Vector<BMVert *, 64> neighbor_data;
   for (BMVert *vert : verts) {
-    Span<BMVert *> verts = vert_neighbors_get_bmesh(*vert, neighbor_data);
-    result[i] = Vector<BMVert *>(verts);
+    Span<BMVert *> neighbors = vert_neighbors_get_bmesh(*vert, neighbor_data);
+    result[i] = Vector<BMVert *>(neighbors);
     i++;
   }
 }
@@ -7672,7 +7674,6 @@ void calc_vert_neighbors_interior(const Set<BMVert *, 0> &verts,
 
   int i = 0;
   for (BMVert *vert : verts) {
-    neighbor_data.clear();
     vert_neighbors_get_interior_bmesh(*vert, neighbor_data);
     result[i] = neighbor_data;
     i++;
