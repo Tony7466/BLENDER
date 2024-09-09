@@ -706,13 +706,13 @@ static Collection *collection_duplicate_recursive(Main *bmain,
 
   /* We can loop on collection_old's children,
    * that list is currently identical the collection_new' children, and won't be changed here. */
-  LISTBASE_FOREACH_MUTABLE (CollectionChild *, child_old, &collection_old->children) {
-    Collection *child_collection_old = child_old->collection;
+  LISTBASE_FOREACH_MUTABLE (CollectionChild *, child_iter, &collection_old->children) {
+    Collection *child_collection_old = child_iter->collection;
 
     Collection *child_collection_new = collection_duplicate_recursive(bmain,
                                                                       collection_new,
                                                                       child_collection_old,
-                                                                      child_old,
+                                                                      child_iter,
                                                                       id_create_flag,
                                                                       duplicate_flags,
                                                                       duplicate_options);
