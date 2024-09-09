@@ -4827,6 +4827,11 @@ static bool achannel_is_being_renamed(const bAnimContext *ac,
  */
 static bool achannel_is_part_of_disconnected_slot(const bAnimListElem *ale)
 {
+  BLI_assert(ale->bmain != nullptr);
+  if (ale->bmain == nullptr) {
+    return false;
+  }
+
   switch (ale->type) {
     case ANIMTYPE_ACTION_SLOT: {
       const animrig::Slot &slot = static_cast<const ActionSlot *>(ale->data)->wrap();
