@@ -27,6 +27,7 @@ void Instance::init()
 
   state.depsgraph = ctx->depsgraph;
   state.view_layer = ctx->view_layer;
+  state.space_data = ctx->space_data;
   state.scene = ctx->scene;
   state.v3d = ctx->v3d;
   state.region = ctx->region;
@@ -70,6 +71,15 @@ void Instance::init()
     state.do_pose_xray = (state.overlay.flag & V3D_OVERLAY_BONE_SELECT);
     state.do_pose_fade_geom = state.do_pose_xray && !(state.object_mode & OB_MODE_WEIGHT_PAINT) &&
                               ctx->object_pose != nullptr;
+  }
+  else if (state.space_type == SPACE_IMAGE) {
+    const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
+    /* During engine initialization phase the `space_image` isn't locked and we are able to
+     * retrieve the needed data. During cache_init the image engine locks the `space_image` and
+     * makes it impossible to retrieve the data. */
+    ED_space_image_get_uv_aspect(space_image, &state.image_uv_aspect.x, &state.image_uv_aspect.y);
+    ED_space_image_get_size(space_image, &state.image_size.x, &state.image_size.y);
+    ED_space_image_get_aspect(space_image, &state.image_aspect.x, &state.image_aspect.y);
   }
 
   /* TODO(fclem): Remove DRW global usage. */

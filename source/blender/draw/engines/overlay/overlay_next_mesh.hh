@@ -16,6 +16,8 @@
 #include "BKE_mesh_types.hh"
 #include "BKE_subdiv_modifier.hh"
 
+#include "ED_image.hh"
+
 #include "GPU_capabilities.hh"
 
 #include "draw_cache_impl.hh"
@@ -409,6 +411,294 @@ class Meshes {
       return CustomData_get_offset(&em->bm->vdata, CD_MVERT_SKIN) != -1;
     }
     return false;
+  }
+};
+
+class MeshUVs {
+ private:
+  PassSimple analysis_ps_ = {"Mesh Analysis"};
+
+  PassSimple edges_ps_ = {"Edges"};
+  PassSimple faces_ps_ = {"Faces"};
+  PassSimple verts_ps_ = {"Verts"};
+  PassSimple facedots_ps_ = {"FaceDots"};
+
+  bool show_vert = false;
+  bool show_face = false;
+  bool show_face_dots = false;
+  bool show_uv_edit = false;
+
+  /** Wireframe Overlay */
+  /* Draw final evaluated UVs (modifier stack applied) as greyed out wire-frame. */
+  /* TODO(fclem): Maybe should be its own Overlay?. */
+  bool show_wireframe = false;
+
+  /** Brush stencil. */
+  /* TODO(fclem): Maybe should be its own Overlay?. */
+  bool show_stencil = false;
+
+  bool select_edge = false;
+  bool select_face = false;
+  bool select_vert = false;
+
+  /** Paint Mask overlay. */
+  /* TODO(fclem): Maybe should be its own Overlay?. */
+  bool show_mask = false;
+  eMaskOverlayMode mask_mode = MASK_OVERLAY_ALPHACHANNEL;
+  Mask *mask_id = nullptr;
+
+  /** Stretching Overlay. */
+  bool show_mesh_analysis = false;
+  eSpaceImage_UVDT_Stretch mesh_analysis_type;
+  /**
+   * In order to display the stretching relative to all objects in edit mode, we have to sum the
+   * area ***AFTER*** extraction and before drawing. To that end, we get a pointer to the resulting
+   * total per mesh area location to dereference after extraction.
+   */
+  Vector<float *> per_mesh_area_3d;
+  Vector<float *> per_mesh_area_2d;
+
+  /** UDIM border overlay. */
+  bool show_tiled_image_active = false;
+  bool show_tiled_image_border = false;
+
+  bool enabled_ = false;
+
+ public:
+  void begin_sync(Resources &res, const State &state, const View &view)
+  {
+    enabled_ = state.space_type == SPACE_IMAGE;
+
+    if (!enabled_) {
+      return;
+    }
+
+    const ToolSettings *tool_setting = state.scene->toolsettings;
+    const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
+    ::Image *image = space_image->image;
+    const bool is_tiled_image = image && (image->source == IMA_SRC_TILED);
+    const bool is_viewer = image && ELEM(image->type, IMA_TYPE_R_RESULT, IMA_TYPE_COMPOSITE);
+    /* Only disable UV drawing on top of render results.
+     * Otherwise, show UVs even in the absence of active image. */
+    enabled_ = !is_viewer;
+
+    if (!enabled_) {
+      return;
+    }
+
+    const bool space_mode_is_paint = space_image->mode == SI_MODE_PAINT;
+    const bool space_mode_is_view = space_image->mode == SI_MODE_VIEW;
+    const bool space_mode_is_mask = space_image->mode == SI_MODE_MASK;
+    const bool space_mode_is_uv = space_image->mode == SI_MODE_UV;
+
+    const bool object_mode_is_edit = state.object_mode & OB_MODE_EDIT;
+    const bool object_mode_is_paint = state.object_mode & OB_MODE_TEXTURE_PAINT;
+
+    {
+      /* Edit UV Overlay. */
+      show_uv_edit = space_mode_is_uv && object_mode_is_edit;
+      show_mesh_analysis = show_uv_edit && (space_image->flag & SI_DRAW_STRETCH);
+
+      const bool hide_faces = space_image->flag & SI_NO_DRAWFACES;
+
+      int sel_mode_2d = tool_setting->uv_selectmode;
+      show_vert = (sel_mode_2d != UV_SELECT_EDGE);
+      show_face = !show_mesh_analysis && !hide_faces;
+      show_face_dots = (sel_mode_2d == UV_SELECT_FACE) && !hide_faces;
+
+      if (tool_setting->uv_flag & UV_SYNC_SELECTION) {
+        int sel_mode_3d = tool_setting->selectmode;
+        /* NOTE: Ignore #SCE_SELECT_VERTEX because a single selected edge
+         * on the mesh may cause single UV vertices to be selected. */
+        show_vert = true /* (sel_mode_3d & SCE_SELECT_VERTEX) */;
+        show_face_dots = (sel_mode_3d & SCE_SELECT_FACE) && !hide_faces;
+      }
+
+      if (show_mesh_analysis) {
+        mesh_analysis_type = eSpaceImage_UVDT_Stretch(space_image->dt_uvstretch);
+      }
+    }
+    {
+      /* Wireframe UV Overlay. */
+      const bool show_wireframe_uv_edit = space_image->flag & SI_DRAWSHADOW;
+      const bool show_wireframe_tex_paint = !(space_image->flag & SI_NO_DRAW_TEXPAINT);
+
+      if (space_mode_is_uv && object_mode_is_edit) {
+        show_wireframe = show_wireframe_uv_edit;
+      }
+      else if (space_mode_is_uv && object_mode_is_paint) {
+        show_wireframe = show_wireframe_tex_paint;
+      }
+      else if (space_mode_is_paint && (object_mode_is_paint || object_mode_is_edit)) {
+        show_wireframe = show_wireframe_tex_paint;
+      }
+      else if (space_mode_is_view && object_mode_is_paint) {
+        show_wireframe = show_wireframe_tex_paint;
+      }
+      else {
+        show_wireframe = false;
+      }
+    }
+    {
+      /* Brush Stencil Overlay. */
+      const Brush *brush = BKE_paint_brush_for_read(&tool_setting->imapaint.paint);
+      show_stencil = space_mode_is_paint && brush &&
+                     (brush->image_brush_type == IMAGE_PAINT_BRUSH_TYPE_CLONE) &&
+                     brush->clone.image;
+    }
+    {
+      /* Mask Overlay. */
+      show_mask = space_mode_is_mask && space_image->mask_info.mask &&
+                  space_image->mask_info.draw_flag & MASK_DRAWFLAG_OVERLAY;
+      if (show_mask) {
+        mask_mode = eMaskOverlayMode(space_image->mask_info.overlay_mode);
+        mask_id = (Mask *)DEG_get_evaluated_id(state.depsgraph, &space_image->mask_info.mask->id);
+      }
+      else {
+        mask_id = nullptr;
+      }
+    }
+    {
+      /* UDIM Overlay. */
+      /* TODO: Always enable this overlay even if overlays are disabled. */
+      show_tiled_image_active = is_tiled_image; /* TODO: Only disable this if overlays are off. */
+      show_tiled_image_border = is_tiled_image;
+    }
+
+    const float dash_length = 4.0f * UI_SCALE_FAC;
+    OVERLAY_UVLineStyle line_style = edit_uv_line_style_from_space_image(space_image);
+
+    /* -------COPIED CODE------ */
+
+    ToolSettings *tsettings = state.scene->toolsettings;
+    select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
+    select_face = (tsettings->selectmode & SCE_SELECT_FACE);
+    select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
+
+    int edit_flag = state.v3d->overlay.edit_flag;
+    show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
+    show_face = (edit_flag & V3D_OVERLAY_EDIT_FACES);
+    show_face_dots = ((edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) || state.xray_enabled) & select_face;
+
+    const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) == 0;
+    const bool is_wire_shading_mode = (state.v3d->shading.type == OB_WIRE);
+
+    float backwire_opacity = (state.xray_enabled) ? 0.5f : 1.0f;
+    float face_alpha = (show_face) ? 1.0f : 0.0f;
+
+    GPUTexture **depth_tex = (state.xray_enabled) ? &res.depth_tx : &res.dummy_depth_tx;
+
+    {
+      auto &pass = analysis_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                     state.clipping_plane_count);
+      pass.shader_set(res.shaders.mesh_analysis.get());
+      pass.bind_texture("weightTex", res.weight_ramp_tx);
+    }
+
+    auto mesh_edit_common_resource_bind = [&](PassSimple &pass, float alpha) {
+      pass.bind_texture("depthTex", depth_tex);
+      /* TODO(fclem): UBO. */
+      pass.push_constant("wireShading", is_wire_shading_mode);
+      pass.push_constant("selectFace", select_face);
+      pass.push_constant("selectEdge", select_edge);
+      pass.push_constant("alpha", alpha);
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+    };
+
+    {
+      auto &pass = edges_ps_;
+      pass.init();
+      /* Change first vertex convention to match blender loop structure. */
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_FIRST_VERTEX_CONVENTION);
+      pass.shader_set(res.shaders.mesh_edit_edge.get());
+      pass.push_constant("do_smooth_wire", do_smooth_wire);
+      pass.push_constant("use_vertex_selection", select_vert);
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
+    }
+    {
+      auto &pass = faces_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(res.shaders.mesh_edit_face.get());
+      mesh_edit_common_resource_bind(pass, face_alpha);
+    }
+    {
+      auto &pass = verts_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_WRITE_DEPTH);
+      pass.shader_set(res.shaders.mesh_edit_vert.get());
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
+    }
+    {
+      auto &pass = facedots_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
+                     DRW_STATE_WRITE_DEPTH);
+      pass.shader_set(res.shaders.mesh_edit_facedot.get());
+      mesh_edit_common_resource_bind(pass, backwire_opacity);
+    }
+
+    per_mesh_area_3d.clear();
+    per_mesh_area_2d.clear();
+  }
+
+  void edit_object_sync(Manager &manager,
+                        const ObjectRef &ob_ref,
+                        const State &state,
+                        Resources & /*res*/)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    ResourceHandle res_handle = manager.resource_handle(ob_ref);
+
+    Object *ob = ob_ref.object;
+    Mesh &mesh = *static_cast<Mesh *>(ob->data);
+  }
+
+  void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    GPU_debug_group_begin("Mesh Edit UVs");
+
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(faces_ps_, view);
+    manager.submit(edges_ps_, view);
+    manager.submit(verts_ps_, view);
+    manager.submit(facedots_ps_, view);
+
+    GPU_debug_group_end();
+  }
+
+ private:
+  static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage *sima)
+  {
+    const bool is_uv_editor = sima->mode == SI_MODE_UV;
+    if (is_uv_editor) {
+      switch (sima->dt_uv) {
+        case SI_UVDT_OUTLINE:
+          return OVERLAY_UV_LINE_STYLE_OUTLINE;
+        case SI_UVDT_BLACK:
+          return OVERLAY_UV_LINE_STYLE_BLACK;
+        case SI_UVDT_WHITE:
+          return OVERLAY_UV_LINE_STYLE_WHITE;
+        case SI_UVDT_DASH:
+          return OVERLAY_UV_LINE_STYLE_DASH;
+        default:
+          return OVERLAY_UV_LINE_STYLE_BLACK;
+      }
+    }
+    else {
+      return OVERLAY_UV_LINE_STYLE_SHADOW;
+    }
   }
 };
 
