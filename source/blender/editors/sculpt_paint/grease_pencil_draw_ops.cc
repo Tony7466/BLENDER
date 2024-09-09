@@ -148,18 +148,18 @@ static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContex
     }
   }
   else if (mode == PaintMode::VertexGPencil) {
-    switch (eBrushGPVertexTool(brush.gpencil_vertex_tool)) {
-      case GPVERTEX_TOOL_DRAW:
+    switch (eBrushGPVertexType(brush.gpencil_vertex_brush_type)) {
+      case GPVERTEX_BRUSH_TYPE_DRAW:
         return greasepencil::new_vertex_paint_operation(stroke_mode);
-      case GPVERTEX_TOOL_BLUR:
+      case GPVERTEX_BRUSH_TYPE_BLUR:
         return greasepencil::new_vertex_blur_operation();
-      case GPVERTEX_TOOL_AVERAGE:
+      case GPVERTEX_BRUSH_TYPE_AVERAGE:
         return greasepencil::new_vertex_average_operation();
-      case GPVERTEX_TOOL_SMEAR:
+      case GPVERTEX_BRUSH_TYPE_SMEAR:
         return greasepencil::new_vertex_smear_operation();
-      case GPVERTEX_TOOL_REPLACE:
+      case GPVERTEX_BRUSH_TYPE_REPLACE:
         return greasepencil::new_vertex_replace_operation();
-      case GPVERTEX_TOOL_TINT:
+      case GPVERTEX_BRUSH_TYPE_TINT:
         /* Unused. */
         BLI_assert_unreachable();
         return nullptr;
