@@ -41,12 +41,9 @@ struct SequenceModifierTypeInfo {
   /* copy data from one modifier to another */
   void (*copy_data)(SequenceModifierData *smd, SequenceModifierData *target);
 
-  /* apply modifier on a given image buffer */
-  void (*apply)(bool full_quad,
-                const StripScreenQuad &quad,
-                SequenceModifierData *smd,
-                ImBuf *ibuf,
-                ImBuf *mask);
+  /* Apply modifier on an image buffer.
+   * quad contains four corners of the (pre-transform) strip rectangle in pixel space. */
+  void (*apply)(const StripScreenQuad &quad, SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask);
 };
 
 const SequenceModifierTypeInfo *SEQ_modifier_type_info_get(int type);

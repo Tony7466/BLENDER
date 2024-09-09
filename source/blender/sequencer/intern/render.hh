@@ -61,4 +61,3 @@ ImBuf *seq_render_mask(const SeqRenderData *context,
 void seq_imbuf_assign_spaces(const Scene *scene, ImBuf *ibuf);
 
 StripScreenQuad get_strip_screen_quad(const SeqRenderData *context, const Sequence *seq);
-bool is_strip_covering_screen(const SeqRenderData *context, const Sequence *seq);

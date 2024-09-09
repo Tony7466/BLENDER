@@ -479,8 +479,7 @@ static void colorBalance_init_data(SequenceModifierData *smd)
   }
 }
 
-static void colorBalance_apply(bool /*full_quad*/,
-                               const StripScreenQuad & /*quad*/,
+static void colorBalance_apply(const StripScreenQuad & /*quad*/,
                                SequenceModifierData *smd,
                                ImBuf *ibuf,
                                ImBuf *mask)
@@ -612,8 +611,7 @@ static void whiteBalance_apply_threaded(int width,
   }
 }
 
-static void whiteBalance_apply(bool /*full_quad*/,
-                               const StripScreenQuad & /*quad*/,
+static void whiteBalance_apply(const StripScreenQuad & /*quad*/,
                                SequenceModifierData *smd,
                                ImBuf *ibuf,
                                ImBuf *mask)
@@ -727,8 +725,7 @@ static void curves_apply_threaded(int width,
   }
 }
 
-static void curves_apply(bool /*full_quad*/,
-                         const StripScreenQuad & /*quad*/,
+static void curves_apply(const StripScreenQuad & /*quad*/,
                          SequenceModifierData *smd,
                          ImBuf *ibuf,
                          ImBuf *mask)
@@ -863,8 +860,7 @@ static void hue_correct_apply_threaded(int width,
   }
 }
 
-static void hue_correct_apply(bool /*full_quad*/,
-                              const StripScreenQuad & /*quad*/,
+static void hue_correct_apply(const StripScreenQuad & /*quad*/,
                               SequenceModifierData *smd,
                               ImBuf *ibuf,
                               ImBuf *mask)
@@ -972,8 +968,7 @@ static void brightcontrast_apply_threaded(int width,
   }
 }
 
-static void brightcontrast_apply(bool /*full_quad*/,
-                                 const StripScreenQuad & /*quad*/,
+static void brightcontrast_apply(const StripScreenQuad & /*quad*/,
                                  SequenceModifierData *smd,
                                  ImBuf *ibuf,
                                  ImBuf *mask)
@@ -1053,8 +1048,7 @@ static void maskmodifier_apply_threaded(int width,
   }
 }
 
-static void maskmodifier_apply(bool /*full_quad*/,
-                               const StripScreenQuad & /*quad*/,
+static void maskmodifier_apply(const StripScreenQuad & /*quad*/,
                                SequenceModifierData * /*smd*/,
                                ImBuf *ibuf,
                                ImBuf *mask)
@@ -1233,13 +1227,16 @@ static bool is_point_inside_quad(const StripScreenQuad &quad, int x, int y)
   return isect_point_quad_v2(pt, quad.v0, quad.v1, quad.v2, quad.v3);
 }
 
-static void tonemapmodifier_apply(bool full_quad,
-                                  const StripScreenQuad &quad,
+#include "BLI_timeit.hh"
+
+static void tonemapmodifier_apply(const StripScreenQuad &quad,
                                   SequenceModifierData *smd,
                                   ImBuf *ibuf,
                                   ImBuf *mask)
 {
+  SCOPED_TIMER(__FUNCTION__);
   SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
+
   AvgLogLum data;
   data.tmmd = tmmd;
   data.colorspace = (ibuf->float_buffer.data != nullptr) ? ibuf->float_buffer.colorspace :
@@ -1251,9 +1248,16 @@ static void tonemapmodifier_apply(bool full_quad,
   int pixel_count = 0;
   float Lav = 0.0f;
   float cav[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+
+  /* Pixels outside the pre-transform strip area are ignored for luminance calculations.
+   * If strip area covers whole image, we can trivially accept all pixels. */
+  const bool all_pixels_inside_quad = is_point_inside_quad(quad, 0, 0) &&
+                                      is_point_inside_quad(quad, ibuf->x - 1, 0) &&
+                                      is_point_inside_quad(quad, 0, ibuf->y - 1) &&
+                                      is_point_inside_quad(quad, ibuf->x - 1, ibuf->y - 1);
   for (int y = 0; y < ibuf->y; y++) {
     for (int x = 0; x < ibuf->x; x++) {
-      if (full_quad || is_point_inside_quad(quad, x, y)) {
+      if (all_pixels_inside_quad || is_point_inside_quad(quad, x, y)) {
         pixel_count++;
         float pixel[4];
         if (fp != nullptr) {
@@ -1455,7 +1459,6 @@ void SEQ_modifier_apply_stack(const SeqRenderData *context,
                               int timeline_frame)
 {
   const StripScreenQuad quad = get_strip_screen_quad(context, seq);
-  const bool full_quad = is_strip_covering_screen(context, seq);
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
     SEQ_render_imbuf_from_sequencer_space(context->scene, ibuf);
@@ -1486,7 +1489,7 @@ void SEQ_modifier_apply_stack(const SeqRenderData *context,
       ImBuf *mask = modifier_mask_get(
           smd, context, timeline_frame, frame_offset, ibuf->float_buffer.data != nullptr);
 
-      smti->apply(full_quad, quad, smd, ibuf, mask);
+      smti->apply(quad, smd, ibuf, mask);
 
       if (mask) {
         IMB_freeImBuf(mask);

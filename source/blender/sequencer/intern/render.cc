@@ -496,7 +496,7 @@ static void sequencer_image_crop_init(const Sequence *seq,
   BLI_rctf_init(r_crop, left, in->x - right, bottom, in->y - top);
 }
 
-bool is_strip_covering_screen(const SeqRenderData *context, const Sequence *seq)
+static bool is_strip_covering_screen(const SeqRenderData *context, const Sequence *seq)
 {
   /* The check is done by checking whether all corners of viewport fit inside
    * of the transformed strip. If they do not, the strip does not cover
