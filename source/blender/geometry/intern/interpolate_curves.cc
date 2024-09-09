@@ -366,6 +366,11 @@ void interpolate_curves(const CurvesGeometry &from_curves,
   /* For every attribute, evaluate attributes from every curve in the range in the original
    * curve's "evaluated points", then use linear interpolation to sample to the result. */
   for (const int i_attribute : point_attributes.dst.index_range()) {
+    /* Attributes that exist already on another domain can not be written to. */
+    if (!point_attributes.dst[i_attribute]) {
+      continue;
+    }
+
     const GSpan src_from = point_attributes.src_from[i_attribute];
     const GSpan src_to = point_attributes.src_to[i_attribute];
     GMutableSpan dst = point_attributes.dst[i_attribute].span;
@@ -440,6 +445,11 @@ void interpolate_curves(const CurvesGeometry &from_curves,
   }
 
   for (const int i_attribute : curve_attributes.dst.index_range()) {
+    /* Attributes that exist already on another domain can not be written to. */
+    if (!curve_attributes.dst[i_attribute]) {
+      continue;
+    }
+
     const GSpan src_from = curve_attributes.src_from[i_attribute];
     const GSpan src_to = curve_attributes.src_to[i_attribute];
     GMutableSpan dst = curve_attributes.dst[i_attribute].span;
