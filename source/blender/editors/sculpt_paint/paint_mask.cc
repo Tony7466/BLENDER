@@ -426,7 +426,7 @@ static void fill_mask_grids(Main &bmain,
 
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   if (value == 0.0f && subdiv_ccg.masks.is_empty()) {
-    /* TODO: Delete mask array. */
+    /* NOTE: Deleting the mask array would be possible here. */
     return;
   }
 

@@ -122,14 +122,18 @@ struct SubdivCCG : blender::NonCopyable {
   /* Resolution of grid. All grids have matching resolution, and resolution
    * is same as ptex created for non-quad faces. */
   int grid_size = -1;
+  /** The number of vertices in each grid (grid_size ^2). */
   int grid_area = -1;
+  /** The number of grids (face corners) in the geometry (#faces.total_size()). */
   int grids_num = -1;
-  /* Grids represent limit surface, with displacement applied. Grids are
-   * corresponding to face-corners of coarse mesh, each grid has
-   * grid_size^2 elements.
+  /**
+   * Positions represent limit surface, with displacement applied. The vertices in each grid are
+   * stored in contiguous chunks of size #grid_area in the same order.
    */
   blender::Array<blender::float3> positions;
+  /** Vertex normals with the same indexing as #positions. */
   blender::Array<blender::float3> normals;
+  /** Optional mask values with the same indexing as #positions. */
   blender::Array<float> masks;
 
   /* Faces from which grids are emitted. Owned by base mesh. */
@@ -331,16 +335,17 @@ inline void BKE_subdiv_ccg_foreach_visible_grid_vert(const CCGKey &key,
 
 namespace blender::bke::ccg {
 
+/** Find the range of vertices in the entire geometry that are part of a single grid. */
+inline IndexRange grid_range(const int grid_area, const int grid)
+{
+  return IndexRange(grid * grid_area, grid_area);
+}
 inline IndexRange grid_range(const CCGKey &key, const int grid)
 {
   return IndexRange(grid * key.grid_area, key.grid_area);
 }
 
-inline IndexRange grid_range(const int grid_area, const int grid)
-{
-  return IndexRange(grid * grid_area, grid_area);
-}
-
+/** Find the vertex index in the entire geometry at a specific coordinate in a specific grid. */
 inline int grid_xy_to_vert(const CCGKey &key, const int grid, const int x, const int y)
 {
   return key.grid_area * grid + CCG_grid_xy_to_index(key.grid_size, x, y);
