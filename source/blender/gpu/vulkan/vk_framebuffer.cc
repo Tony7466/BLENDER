@@ -28,9 +28,7 @@ constexpr GPULoadStore default_load_store()
  * \{ */
 
 VKFrameBuffer::VKFrameBuffer(const char *name)
-    : FrameBuffer(name),
-      load_stores(GPU_FB_MAX_ATTACHMENT, default_load_store()),
-      attachment_states_(GPU_FB_MAX_ATTACHMENT, GPU_ATTACHMENT_WRITE)
+    : FrameBuffer(name), load_stores(GPU_FB_MAX_ATTACHMENT, default_load_store())
 {
   size_set(1, 1);
   srgb_ = false;
@@ -63,7 +61,6 @@ void VKFrameBuffer::bind(bool enabled_srgb)
   enabled_srgb_ = enabled_srgb;
   Shader::set_framebuffer_srgb_target(enabled_srgb && srgb_);
   load_stores.fill(default_load_store());
-  attachment_states_.fill(GPU_ATTACHMENT_WRITE);
   viewport_reset();
   scissor_reset();
 }
@@ -282,7 +279,7 @@ static void set_load_store(VkRenderingAttachmentInfo &r_rendering_attachment,
 /** \name Sub-pass transition
  * \{ */
 
-void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState depth_attachment_state,
+void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
                                             Span<GPUAttachmentState> color_attachment_states)
 {
   /* TODO: this is a fallback implementation. We should also provide support for
@@ -299,10 +296,6 @@ void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState depth_attac
     load_stores.fill(default_load_store());
   }
 
-  attachment_states_[GPU_FB_DEPTH_ATTACHMENT] = depth_attachment_state;
-  attachment_states_.as_mutable_span()
-      .slice(GPU_FB_COLOR_ATTACHMENT0, color_attachment_states.size())
-      .copy_from(color_attachment_states);
   for (int index : IndexRange(color_attachment_states.size())) {
     if (color_attachment_states[index] == GPU_ATTACHMENT_READ) {
       VKTexture *texture = unwrap(unwrap(color_tex(index)));
@@ -562,19 +555,15 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
             .color_attachments[begin_rendering.node_data.vk_rendering_info.colorAttachmentCount++];
     attachment_info.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
-    VkImageView vk_image_view = VK_NULL_HANDLE;
     uint32_t layer_base = max_ii(attachment.layer, 0);
-    GPUAttachmentState attachment_state = attachment_states_[color_attachment_index];
-    if (attachment_state == GPU_ATTACHMENT_WRITE) {
-      VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
-                                         IndexRange(layer_base, layer_count),
-                                         IndexRange(attachment.mip, 1),
-                                         {{'r', 'g', 'b', 'a'}},
-                                         false,
-                                         srgb_ && enabled_srgb_,
-                                         VKImageViewArrayed::DONT_CARE};
-      vk_image_view = color_texture.image_view_get(image_view_info).vk_handle();
-    }
+    VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
+                                       IndexRange(layer_base, layer_count),
+                                       IndexRange(attachment.mip, 1),
+                                       {{'r', 'g', 'b', 'a'}},
+                                       false,
+                                       srgb_ && enabled_srgb_,
+                                       VKImageViewArrayed::DONT_CARE};
+    VkImageView vk_image_view = color_texture.image_view_get(image_view_info).vk_handle();
     attachment_info.imageView = vk_image_view;
     attachment_info.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     set_load_store(attachment_info, load_stores[color_attachment_index]);
@@ -605,18 +594,14 @@ void VKFrameBuffer::rendering_ensure(VKContext &context)
                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL :
                                         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     VkFormat vk_format = to_vk_format(depth_texture.device_format_get());
-    GPUAttachmentState attachment_state = attachment_states_[GPU_FB_DEPTH_ATTACHMENT];
-    VkImageView depth_image_view = VK_NULL_HANDLE;
-    if (attachment_state == GPU_ATTACHMENT_WRITE) {
-      VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
-                                         IndexRange(max_ii(attachment.layer, 0), 1),
-                                         IndexRange(attachment.mip, 1),
-                                         {{'r', 'g', 'b', 'a'}},
-                                         is_stencil_attachment,
-                                         false,
-                                         VKImageViewArrayed::DONT_CARE};
-      depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
-    }
+    VKImageViewInfo image_view_info = {eImageViewUsage::Attachment,
+                                       IndexRange(max_ii(attachment.layer, 0), 1),
+                                       IndexRange(attachment.mip, 1),
+                                       {{'r', 'g', 'b', 'a'}},
+                                       is_stencil_attachment,
+                                       false,
+                                       VKImageViewArrayed::DONT_CARE};
+    VkImageView depth_image_view = depth_texture.image_view_get(image_view_info).vk_handle();
 
     /* TODO: we should be able to use a single attachment info and only set the
      * #pDepthAttachment/#pStencilAttachment to the same struct.

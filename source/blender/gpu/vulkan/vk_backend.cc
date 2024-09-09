@@ -82,12 +82,7 @@ bool VKBackend::is_supported()
 
     features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-    VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT
-        dynamic_rendering_unused_attachments = {};
-    dynamic_rendering_unused_attachments.sType =
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT;
     features.pNext = &dynamic_rendering;
-    dynamic_rendering.pNext = &dynamic_rendering_unused_attachments;
 
     vkGetPhysicalDeviceFeatures2(vk_physical_device, &features);
 #ifndef __APPLE__
