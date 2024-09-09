@@ -210,10 +210,16 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.use_custom_socket_order();
   b.allow_any_socket_order();
 
-  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
 
-  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_output<decl::Int>("Index").align_with_previous();
+  b.add_input<decl::Bool>("Selection")
+      .default_value(true)
+      .hide_value()
+      .field_on_all()
+      .description("Selection on the iteration domain");
+  b.add_output<decl::Int>("Index").align_with_previous().description(
+      "Index of the element in the source geometry. Note that the same index can occure more than "
+      "once when iterating over multiple components at once");
 
   const bNode *node = b.node_or_null();
   const bNodeTree *tree = b.tree_or_null();
@@ -232,8 +238,11 @@ static void node_declare(NodeDeclarationBuilder &b)
         auto &input_decl =
             b.add_input(socket_type, name, identifier)
                 .socket_name_ptr(
-                    &tree->id, ForeachGeometryElementInputItemsAccessor::item_srna, &item, "name");
-        b.add_output(socket_type, name, identifier).align_with_previous();
+                    &tree->id, ForeachGeometryElementInputItemsAccessor::item_srna, &item, "name")
+                .description("Field that is evaluated on the iteration domain");
+        b.add_output(socket_type, name, identifier)
+            .align_with_previous()
+            .description("Evaluated field value for the current element");
         input_decl.supports_field();
       }
     }
@@ -315,7 +324,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.allow_any_socket_order();
 
   /* TODO: This propagates attributes from the geometry in the input node. */
-  b.add_output<decl::Geometry>("Geometry");
+  b.add_output<decl::Geometry>("Geometry")
+      .description(
+          "The original input geometry with potentially new attributes that are output by the "
+          "zone");
 
   aal::RelationsInNode &relations = b.get_anonymous_attribute_relations();
 
@@ -345,12 +357,23 @@ static void node_declare(NodeDeclarationBuilder &b)
         relation.from_geometry_input = input_decl.index();
         relation.to_geometry_output = output_decl.index();
         relations.propagate_relations.append(relation);
+
+        input_decl.description(
+            "Geometry generated in the current iteration. Will be joined with geometries from all "
+            "other iterations");
+        output_decl.description("Result of joining generated geometries from each iteration");
       }
       else {
         if (previous_geometry_index > 0) {
           input_decl.supports_field();
+          input_decl.description("Field that will be stored as attribute on the geometry above");
+        }
+        else {
+          input_decl.description(
+              "Attribute value that will be stored for the current element on the main geometry");
         }
         output_decl.field_on({previous_geometry_index});
+        output_decl.description("Attribute on the geometry above");
       }
     }
   }

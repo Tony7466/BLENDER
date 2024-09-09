@@ -2460,8 +2460,8 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
 
       mask.foreach_index([&](const int i, const int pos) {
         const int lf_param_index = pos * node_storage.output_items.items_num + item_i;
-        const SocketValueVariant &value_variant = params.get_input<SocketValueVariant>(
-            lf_param_index);
+        SocketValueVariant &value_variant = params.get_input<SocketValueVariant>(lf_param_index);
+        value_variant.convert_to_single();
         const void *value = value_variant.get_single_ptr_raw();
         base_cpp_type->copy_construct(value, attribute.span[i]);
       });
