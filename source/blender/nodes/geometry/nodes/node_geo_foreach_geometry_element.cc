@@ -19,6 +19,30 @@
 
 namespace blender::nodes::node_geo_foreach_geometry_element_cc {
 
+/** Shared between zone input and output node. */
+static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *current_node_ptr)
+{
+  bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(current_node_ptr->owner_id);
+  bNode *current_node = static_cast<bNode *>(current_node_ptr->data);
+
+  const bke::bNodeTreeZones *zones = ntree.zones();
+  if (!zones) {
+    return;
+  }
+  const bke::bNodeTreeZone *zone = zones->get_zone_by_node(current_node->identifier);
+  if (!zone) {
+    return;
+  }
+  if (!zone->output_node) {
+    return;
+  }
+  bNode &output_node = const_cast<bNode &>(*zone->output_node);
+  PointerRNA output_node_ptr = RNA_pointer_create(
+      current_node_ptr->owner_id, &RNA_Node, &output_node);
+
+  uiItemR(layout, &output_node_ptr, "inspection_index", UI_ITEM_NONE, nullptr, ICON_NONE);
+}
+
 namespace input_node {
 
 NODE_STORAGE_FUNCS(NodeGeometryForeachGeometryElementInput);
@@ -109,6 +133,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
   ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   ntype.labelfunc = node_label;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
@@ -266,6 +291,7 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.labelfunc = input_node::node_label;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
   ntype.no_muting = true;
   blender::bke::node_type_storage(
