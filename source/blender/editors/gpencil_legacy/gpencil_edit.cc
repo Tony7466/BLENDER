@@ -796,7 +796,7 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
 
     /* Just toggle paintmode flag... */
     gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
-    /* set mode */
+    /* Set mode. */
     if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
       mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
     }
@@ -817,7 +817,7 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
   if (is_object) {
     if (ob->type == OB_GPENCIL_LEGACY) {
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-      /* try to back previous mode */
+      /* Try to go to back previous mode. */
       if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
         mode = ob->restore_mode;
       }
@@ -843,11 +843,11 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
     BKE_gpencil_palette_ensure(bmain, scene);
   }
 
-  /* setup other modes */
+  /* Setup other modes. */
   if (ob->type == OB_GPENCIL_LEGACY) {
     bGPdata *gpd = static_cast<bGPdata *>(ob->data);
     ED_gpencil_setup_modes(C, gpd, mode);
-    /* set cache as dirty */
+    /* Set cache as dirty. */
     DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   }
   else if (ob->type == OB_GREASE_PENCIL) {
