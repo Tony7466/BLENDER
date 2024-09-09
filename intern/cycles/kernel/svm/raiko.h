@@ -1995,57 +1995,6 @@ ccl_device void randomize_scale(float scale_randomized[],
                                 int scale_index_list[],
                                 int scale_index_count,
                                 bool uniform_scale_randomness,
-                                float seed_offset)
-{
-  if (!uniform_scale_randomness) {
-    for (int i = 0; i < scale_index_count; ++i) {
-      scale_randomized[scale_index_list[i]] *= powf(
-          2.0f,
-          mix(-scale_randomness[i],
-              scale_randomness[i],
-              hash_float_to_float(float(scale_index_list[i]) + seed_offset)));
-    }
-  }
-  else if (scale_index_count != 0) {
-    float random_scale_factor = powf(
-        2.0f, mix(-scale_randomness[0], scale_randomness[0], hash_float_to_float(seed_offset)));
-    for (int i = 0; i < 4; i++) {
-      scale_randomized[i] *= random_scale_factor;
-    }
-  }
-}
-
-ccl_device void randomize_scale(float scale_randomized[],
-                                float scale_randomness[],
-                                int scale_index_list[],
-                                int scale_index_count,
-                                bool uniform_scale_randomness,
-                                float2 seed_offset)
-{
-  if (!uniform_scale_randomness) {
-    for (int i = 0; i < scale_index_count; ++i) {
-      scale_randomized[scale_index_list[i]] *= powf(
-          2.0f,
-          mix(-scale_randomness[i],
-              scale_randomness[i],
-              hash_float2_to_float(make_float2(scale_index_list[i], scale_index_list[i]) +
-                                   seed_offset)));
-    }
-  }
-  else if (scale_index_count != 0) {
-    float random_scale_factor = powf(
-        2.0f, mix(-scale_randomness[0], scale_randomness[0], hash_float2_to_float(seed_offset)));
-    for (int i = 0; i < 4; i++) {
-      scale_randomized[i] *= random_scale_factor;
-    }
-  }
-}
-
-ccl_device void randomize_scale(float scale_randomized[],
-                                float scale_randomness[],
-                                int scale_index_list[],
-                                int scale_index_count,
-                                bool uniform_scale_randomness,
                                 float3 seed_offset)
 {
   if (!uniform_scale_randomness) {
@@ -2094,26 +2043,6 @@ ccl_device void randomize_scale(float scale_randomized[],
     for (int i = 0; i < 4; i++) {
       scale_randomized[i] *= random_scale_factor;
     }
-  }
-}
-
-ccl_device void randomize_float_array(
-    float array[], float min[], float max[], int index_list[], int index_count, float seed_offset)
-{
-  for (int i = 0; i < index_count; ++i) {
-    array[index_list[i]] = mix(
-        min[i], max[i], hash_float_to_float(float(index_list[i]) + seed_offset));
-  }
-}
-
-ccl_device void randomize_float_array(
-    float array[], float min[], float max[], int index_list[], int index_count, float2 seed_offset)
-{
-  for (int i = 0; i < index_count; ++i) {
-    array[index_list[i]] = mix(
-        min[i],
-        max[i],
-        hash_float2_to_float(make_float2(index_list[i], index_list[i]) + seed_offset));
   }
 }
 
@@ -2508,35 +2437,6 @@ ccl_device float4 rotate_scale(float4 coord,
   return coord;
 }
 
-ccl_device float4 random_float4_offset(float2 seed_offset)
-{
-  return make_float4(100.0f, 100.0f, 100.0f, 100.0f) +
-         100.0f *
-             make_float4(hash_float3_to_float(make_float3(seed_offset.x, seed_offset.y, 1.0f)),
-                         hash_float3_to_float(make_float3(seed_offset.x, seed_offset.y, 2.0f)),
-                         hash_float3_to_float(make_float3(seed_offset.x, seed_offset.y, 3.0f)),
-                         hash_float3_to_float(make_float3(seed_offset.x, seed_offset.y, 4.0f)));
-}
-
-ccl_device float4 random_float4_offset(float3 seed_offset)
-{
-  return make_float4(100.0f, 100.0f, 100.0f, 100.0f) +
-         100.0f * make_float4(hash_float3_to_float(seed_offset + make_float3(0.0f, 0.0f, 1.0f)),
-                              hash_float3_to_float(seed_offset + make_float3(0.0f, 0.0f, 2.0f)),
-                              hash_float3_to_float(seed_offset + make_float3(0.0f, 0.0f, 3.0f)),
-                              hash_float3_to_float(seed_offset + make_float3(0.0f, 0.0f, 4.0f)));
-}
-
-ccl_device float4 random_float4_offset(float4 seed_offset)
-{
-  return make_float4(100.0f, 100.0f, 100.0f, 100.0f) +
-         100.0f *
-             make_float4(hash_float4_to_float(seed_offset + make_float4(0.0f, 0.0f, 1.0f, 1.0f)),
-                         hash_float4_to_float(seed_offset + make_float4(0.0f, 0.0f, 2.0f, 2.0f)),
-                         hash_float4_to_float(seed_offset + make_float4(0.0f, 0.0f, 3.0f, 3.0f)),
-                         hash_float4_to_float(seed_offset + make_float4(0.0f, 0.0f, 4.0f, 4.0f)));
-}
-
 /* Noise Texture fBM optimized for Raiko Texture. */
 ccl_device float raiko_noise_fbm(float4 coord, float detail, float roughness, float lacunarity)
 {
@@ -2586,114 +2486,6 @@ ccl_device float4 raiko_noise_fbm_layer_1(ccl_private const DeterministicVariabl
                       dv.noise_lacunarity_1));
 }
 
-ccl_device float4 raiko_noise_fbm_layer_1(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset + 1.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset + 2.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset + 3.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset + 4.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_1(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float2 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset.x + 1.0f, seed_offset.y)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset.x + 2.0f, seed_offset.y)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset.x + 3.0f, seed_offset.y)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(make_float2(seed_offset.x + 4.0f, seed_offset.y)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_1(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float3 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float3(1.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float3(2.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float3(3.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float3(4.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_1(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float4 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float4(1.0f, 0.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float4(2.0f, 0.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float4(3.0f, 0.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord +
-                          random_float4_offset(seed_offset + make_float4(4.0f, 0.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1));
-}
-
 /* Random offsets are the same as when calling raiko_noise_fbm_layer_2(DeterministicVariables dv,
  * vec4 coord, float seed_offset) with seed_offset == 0.0f */
 ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariables &dv,
@@ -2720,151 +2512,6 @@ ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariabl
                       dv.noise_detail_2,
                       dv.noise_roughness_2,
                       dv.noise_lacunarity_2));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float seed_offset)
-{
-  return make_float4(raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                         random_float4_offset(make_float2(seed_offset, 1.0f)),
-                                     dv.noise_detail_2,
-                                     dv.noise_roughness_2,
-                                     dv.noise_lacunarity_2),
-                     raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                         random_float4_offset(make_float2(seed_offset, 2.0f)),
-                                     dv.noise_detail_2,
-                                     dv.noise_roughness_2,
-                                     dv.noise_lacunarity_2),
-                     raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                         random_float4_offset(make_float2(seed_offset, 3.0f)),
-                                     dv.noise_detail_2,
-                                     dv.noise_roughness_2,
-                                     dv.noise_lacunarity_2),
-                     raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                         random_float4_offset(make_float2(seed_offset, 4.0f)),
-                                     dv.noise_detail_2,
-                                     dv.noise_roughness_2,
-                                     dv.noise_lacunarity_2));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float2 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(make_float2(seed_offset.x, seed_offset.y + 1.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(make_float2(seed_offset.x, seed_offset.y + 2.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(make_float2(seed_offset.x, seed_offset.y + 3.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(make_float2(seed_offset.x, seed_offset.y + 4.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float3 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float3(0.0f, 1.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float3(0.0f, 2.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float3(0.0f, 3.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float3(0.0f, 4.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2));
-}
-
-ccl_device float4 raiko_noise_fbm_layer_2(ccl_private const DeterministicVariables &dv,
-                                          float4 coord,
-                                          float4 seed_offset)
-{
-  return make_float4(
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float4(0.0f, 1.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float4(0.0f, 2.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float4(0.0f, 3.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord +
-                          random_float4_offset(seed_offset + make_float4(0.0f, 4.0f, 0.0f, 0.0f)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2));
-}
-
-ccl_device float4 rotate_noise(float4 noise_vector, float noise_fragmentation, float index)
-{
-  float deterministic_angle = noise_fragmentation * M_TAU_F *
-                              (floored_modulo(index + 0.0625f, 7.0f) +
-                               3.0f * floored_modulo(index + 0.0625f, 2.0f));
-  float4 noise_vector_rotated = make_float4(
-      cosf(deterministic_angle) * noise_vector.x - sinf(deterministic_angle) * noise_vector.y,
-      sinf(deterministic_angle) * noise_vector.x + cosf(deterministic_angle) * noise_vector.y,
-      cosf(deterministic_angle) * noise_vector.z - sinf(deterministic_angle) * noise_vector.w,
-      sinf(deterministic_angle) * noise_vector.z + cosf(deterministic_angle) * noise_vector.w);
-  float random_angle = noise_fragmentation * M_TAU_F * 5.0f * hash_float_to_float(index);
-  return make_float4(
-      cosf(random_angle) * noise_vector_rotated.x - sinf(random_angle) * noise_vector_rotated.z,
-      cosf(random_angle) * noise_vector_rotated.y - sinf(random_angle) * noise_vector_rotated.w,
-      sinf(random_angle) * noise_vector_rotated.x + cosf(random_angle) * noise_vector_rotated.z,
-      sinf(random_angle) * noise_vector_rotated.y + cosf(random_angle) * noise_vector_rotated.w);
-}
-
-ccl_device float4 rotate_noise(float4 noise_vector, float noise_fragmentation, float2 index)
-{
-  float deterministic_angle = noise_fragmentation * M_TAU_F *
-                              (floored_modulo(index.x + 0.0625f, 7.0f) +
-                               3.0f * floored_modulo(index.x + 0.0625f, 2.0f) +
-                               13.0f * (floored_modulo(index.y + 0.0625f, 7.0f) +
-                                        3.0f * floored_modulo(index.y + 0.0625f, 2.0f)));
-  float4 noise_vector_rotated = make_float4(
-      cosf(deterministic_angle) * noise_vector.x - sinf(deterministic_angle) * noise_vector.y,
-      sinf(deterministic_angle) * noise_vector.x + cosf(deterministic_angle) * noise_vector.y,
-      cosf(deterministic_angle) * noise_vector.z - sinf(deterministic_angle) * noise_vector.w,
-      sinf(deterministic_angle) * noise_vector.z + cosf(deterministic_angle) * noise_vector.w);
-  float random_angle = noise_fragmentation * M_TAU_F * 5.0f * hash_float2_to_float(index);
-  return make_float4(
-      cosf(random_angle) * noise_vector_rotated.x - sinf(random_angle) * noise_vector_rotated.z,
-      cosf(random_angle) * noise_vector_rotated.y - sinf(random_angle) * noise_vector_rotated.w,
-      sinf(random_angle) * noise_vector_rotated.x + cosf(random_angle) * noise_vector_rotated.z,
-      sinf(random_angle) * noise_vector_rotated.y + cosf(random_angle) * noise_vector_rotated.w);
 }
 
 ccl_device float4 rotate_noise(float4 noise_vector, float noise_fragmentation, float3 index)
@@ -2964,7 +2611,7 @@ ccl_device OutVariables raiko_select_mode_0d(ccl_private const DeterministicVari
                         r_sphere_max,
                         r_sphere_index_list,
                         r_sphere_index_count,
-                        0.0f);
+                        make_float3(0.0f, 0.0f, 0.0f));
   float translation_rotation_randomized[7];
   for (int n = 0; n < 7; ++n) {
     translation_rotation_randomized[n] = translation_rotation[n];
@@ -2974,14 +2621,14 @@ ccl_device OutVariables raiko_select_mode_0d(ccl_private const DeterministicVari
                         translation_rotation_max,
                         translation_rotation_index_list,
                         translation_rotation_index_count,
-                        0.0f);
+                        make_float3(0.0f, 0.0f, 0.0f));
   float scale_randomized[4] = {scale[0], scale[1], scale[2], scale[3]};
   randomize_scale(scale_randomized,
                   scale_randomness,
                   scale_index_list,
                   scale_index_count,
                   dv.uniform_scale_randomness,
-                  0.0f);
+                  make_float3(0.0f, 0.0f, 0.0f));
 
   float4 iteration_position = make_float4(translation_rotation_randomized[0],
                                           translation_rotation_randomized[1],
@@ -2991,10 +2638,11 @@ ccl_device OutVariables raiko_select_mode_0d(ccl_private const DeterministicVari
                                         translation_rotation_randomized,
                                         scale_randomized,
                                         dv.invert_order_of_transformation);
-  float4 iteration_coord = noiseless_coord +
-                           (dv.noise_fragmentation_non_zero ?
-                                rotate_noise(fields_noise_vector, dv.noise_fragmentation, 0.0) :
-                                fields_noise_vector);
+  float4 iteration_coord = noiseless_coord + (dv.noise_fragmentation_non_zero ?
+                                                  rotate_noise(fields_noise_vector,
+                                                               dv.noise_fragmentation,
+                                                               make_float3(0.0f, 0.0f, 0.0f)) :
+                                                  fields_noise_vector);
 
   if (dv.mode == NODE_RAIKO_ADDITIVE) {
     ov.out_r_sphere_field = chained_elliptical_remap_select_steps(
@@ -3004,7 +2652,7 @@ ccl_device OutVariables raiko_select_mode_0d(ccl_private const DeterministicVari
         remap_max,
         remap_index_list,
         remap_index_count,
-        0.0f,
+        make_float3(0.0f, 0.0f, 0.0f),
         calculate_l_angle_bisector_4d(dv.integer_sides,
                                       dv.elliptical_corners,
                                       r_sphere_randomized[0],
@@ -3035,11 +2683,12 @@ ccl_device OutVariables raiko_select_mode_0d(ccl_private const DeterministicVari
     float4 coordinates_noise_vector = dv.noise_coordinates_strength_1 * coordinates_noise_layer_1 +
                                       dv.noise_coordinates_strength_2 * coordinates_noise_layer_2;
 
-    float4 iteration_r_sphere_coordinates =
-        noiseless_coord +
-        (dv.noise_fragmentation_non_zero ?
-             rotate_noise(coordinates_noise_vector, dv.noise_fragmentation, 0.0) :
-             coordinates_noise_vector);
+    float4 iteration_r_sphere_coordinates = noiseless_coord +
+                                            (dv.noise_fragmentation_non_zero ?
+                                                 rotate_noise(coordinates_noise_vector,
+                                                              dv.noise_fragmentation,
+                                                              make_float3(0.0f, 0.0f, 0.0f)) :
+                                                 coordinates_noise_vector);
 
     float4 out_fields = calculate_out_fields_4d(dv.calculate_r_sphere_field,
                                                 dv.calculate_r_gon_parameter_field,
@@ -3114,7 +2763,8 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                    dv.noise_fields_strength_2 * fields_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        float3 iteration_index = make_float3(i, 0.0f, 0.0f) +
+                                 make_float3(initial_index.x, 0.0f, 0.0f);
         float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
         randomize_float_array(r_sphere_randomized,
                               r_sphere_min,
@@ -3203,7 +2853,8 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                   dv.noise_fields_strength_2 * index_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        float3 iteration_index = make_float3(i, 0.0f, 0.0f) +
+                                 make_float3(initial_index.x, 0.0f, 0.0f);
         float translation_rotation_randomized[7];
         for (int n = 0; n < 7; ++n) {
           translation_rotation_randomized[n] = translation_rotation[n];
@@ -3240,7 +2891,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
         float l_iteration_coord = euclidean_norm(iteration_coord);
         if (l_iteration_coord < min_distance) {
           min_distance = l_iteration_coord;
-          ov.out_index_field.x = iteration_index;
+          ov.out_index_field.x = iteration_index.x;
           ov.out_position_field = iteration_position;
           /* Translation data not needed for subsequent computations. */
           closest_rotation_randomized[4] = translation_rotation_randomized[4];
@@ -3261,8 +2912,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
@@ -3272,8 +2922,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                                closest_fields_noise_layer_1 +
@@ -3287,8 +2936,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       float4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -3298,8 +2946,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       float4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                     closest_coordinates_noise_layer_1 +
@@ -3310,12 +2957,13 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                             closest_rotation_randomized,
                                             closest_scale_randomized,
                                             dv.invert_order_of_transformation);
-      ov.out_r_sphere_coordinates = noiseless_coord +
-                                    (dv.noise_fragmentation_non_zero ?
-                                         rotate_noise(closest_coordinates_noise_vector,
-                                                      dv.noise_fragmentation,
-                                                      7.0f * ov.out_index_field.x) :
-                                         closest_coordinates_noise_vector);
+      ov.out_r_sphere_coordinates =
+          noiseless_coord +
+          (dv.noise_fragmentation_non_zero ?
+               rotate_noise(closest_coordinates_noise_vector,
+                            dv.noise_fragmentation,
+                            7.0f * make_float3(ov.out_index_field.x, 0.0f, 0.0f)) :
+               closest_coordinates_noise_vector);
 
       float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
       randomize_float_array(r_sphere_randomized,
@@ -3323,7 +2971,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                             r_sphere_max,
                             r_sphere_index_list,
                             r_sphere_index_count,
-                            5.0f * ov.out_index_field.x);
+                            5.0f * make_float3(ov.out_index_field.x, 0.0f, 0.0f));
 
       float4 out_fields = calculate_out_fields_4d(
           dv.calculate_r_sphere_field,
@@ -3336,11 +2984,12 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
           r_sphere_randomized[1],
           r_sphere_randomized[2],
           r_sphere_randomized[3],
-          noiseless_coord + (dv.noise_fragmentation_non_zero ?
-                                 rotate_noise(closest_fields_noise_vector,
-                                              dv.noise_fragmentation,
-                                              7.0f * ov.out_index_field.x) :
-                                 closest_fields_noise_vector));
+          noiseless_coord +
+              (dv.noise_fragmentation_non_zero ?
+                   rotate_noise(closest_fields_noise_vector,
+                                dv.noise_fragmentation,
+                                7.0f * make_float3(ov.out_index_field.x, 0.0f, 0.0f)) :
+                   closest_fields_noise_vector));
       ov.out_r_sphere_field = out_fields.x;
       ov.r_gon_parameter_field = out_fields.y;
       ov.max_unit_parameter_field = out_fields.z;
@@ -3405,7 +3054,8 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
                                             coordinates_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        float3 iteration_index = make_float3(i, 0.0f, 0.0f) +
+                                 make_float3(initial_index.x, 0.0f, 0.0f);
         float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
         randomize_float_array(r_sphere_randomized,
                               r_sphere_min,
@@ -3489,7 +3139,8 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
               ov.max_unit_parameter_field, iteration_max_unit_parameter, interpolation_factor);
           ov.segment_id_field = mix(
               ov.segment_id_field, iteration_segment_id, interpolation_factor);
-          ov.out_index_field.x = mix(ov.out_index_field.x, iteration_index, interpolation_factor);
+          ov.out_index_field.x = mix(
+              ov.out_index_field.x, iteration_index.x, interpolation_factor);
           ov.out_position_field = mix(
               ov.out_position_field, iteration_position, interpolation_factor);
           ov.out_r_sphere_coordinates = mix(
@@ -3500,7 +3151,7 @@ ccl_device OutVariables raiko_select_mode_1d(ccl_private const DeterministicVari
           ov.r_gon_parameter_field = iteration_r_gon_parameter;
           ov.max_unit_parameter_field = iteration_max_unit_parameter;
           ov.segment_id_field = iteration_segment_id;
-          ov.out_index_field.x = iteration_index;
+          ov.out_index_field.x = iteration_index.x;
           ov.out_position_field = iteration_position;
           ov.out_r_sphere_coordinates = iteration_r_sphere_coordinates;
         }
@@ -3570,8 +3221,8 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          float2 iteration_index = make_float2(i, j) +
-                                   make_float2(initial_index.x, initial_index.y);
+          float3 iteration_index = make_float3(i, j, 0.0f) +
+                                   make_float3(initial_index.x, initial_index.y, 0.0f);
           float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
           randomize_float_array(r_sphere_randomized,
                                 r_sphere_min,
@@ -3662,8 +3313,8 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          float2 iteration_index = make_float2(i, j) +
-                                   make_float2(initial_index.x, initial_index.y);
+          float3 iteration_index = make_float3(i, j, 0.0f) +
+                                   make_float3(initial_index.x, initial_index.y, 0.0f);
           float translation_rotation_randomized[7];
           for (int n = 0; n < 7; ++n) {
             translation_rotation_randomized[n] = translation_rotation[n];
@@ -3718,25 +3369,23 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
 
       float4 closest_fields_noise_layer_1 =
           dv.calculate_fields_noise_1 ?
-              raiko_noise_fbm_layer_1(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y)) :
+              raiko_noise_fbm_layer_1(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
-              raiko_noise_fbm_layer_2(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y)) :
+              raiko_noise_fbm_layer_2(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                                closest_fields_noise_layer_1 +
@@ -3744,27 +3393,23 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
                                                closest_fields_noise_layer_2;
       float4 closest_coordinates_noise_layer_1 =
           dv.calculate_coordinates_noise_1 ?
-              raiko_noise_fbm_layer_1(
-                  dv,
-                  dv.transform_coordinates_noise ?
-                      rotate_scale(dv.coord - ov.out_position_field,
-                                   closest_rotation_randomized,
-                                   closest_scale_randomized,
-                                   dv.invert_order_of_transformation) :
-                      dv.coord - ov.out_position_field,
-                  7.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y)) :
+              raiko_noise_fbm_layer_1(dv,
+                                      dv.transform_coordinates_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       float4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
-              raiko_noise_fbm_layer_2(
-                  dv,
-                  dv.transform_coordinates_noise ?
-                      rotate_scale(dv.coord - ov.out_position_field,
-                                   closest_rotation_randomized,
-                                   closest_scale_randomized,
-                                   dv.invert_order_of_transformation) :
-                      dv.coord - ov.out_position_field,
-                  7.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y)) :
+              raiko_noise_fbm_layer_2(dv,
+                                      dv.transform_coordinates_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       float4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                     closest_coordinates_noise_layer_1 +
@@ -3775,13 +3420,13 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
                                             closest_rotation_randomized,
                                             closest_scale_randomized,
                                             dv.invert_order_of_transformation);
-      ov.out_r_sphere_coordinates = noiseless_coord +
-                                    (dv.noise_fragmentation_non_zero ?
-                                         rotate_noise(closest_coordinates_noise_vector,
-                                                      dv.noise_fragmentation,
-                                                      7.0f * make_float2(ov.out_index_field.x,
-                                                                         ov.out_index_field.y)) :
-                                         closest_coordinates_noise_vector);
+      ov.out_r_sphere_coordinates =
+          noiseless_coord +
+          (dv.noise_fragmentation_non_zero ?
+               rotate_noise(closest_coordinates_noise_vector,
+                            dv.noise_fragmentation,
+                            7.0f * make_float3(ov.out_index_field.x, ov.out_index_field.y, 0.0f)) :
+               closest_coordinates_noise_vector);
 
       float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
       randomize_float_array(r_sphere_randomized,
@@ -3789,7 +3434,7 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
                             r_sphere_max,
                             r_sphere_index_list,
                             r_sphere_index_count,
-                            5.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y));
+                            5.0f * make_float3(ov.out_index_field.x, ov.out_index_field.y, 0.0f));
 
       float4 out_fields = calculate_out_fields_4d(
           dv.calculate_r_sphere_field,
@@ -3804,9 +3449,10 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
           r_sphere_randomized[3],
           noiseless_coord +
               (dv.noise_fragmentation_non_zero ?
-                   rotate_noise(closest_fields_noise_vector,
-                                dv.noise_fragmentation,
-                                7.0f * make_float2(ov.out_index_field.x, ov.out_index_field.y)) :
+                   rotate_noise(
+                       closest_fields_noise_vector,
+                       dv.noise_fragmentation,
+                       7.0f * make_float3(ov.out_index_field.x, ov.out_index_field.y, 0.0f)) :
                    closest_fields_noise_vector));
       ov.out_r_sphere_field = out_fields.x;
       ov.r_gon_parameter_field = out_fields.y;
@@ -3873,8 +3519,8 @@ ccl_device OutVariables raiko_select_mode_2d(ccl_private const DeterministicVari
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          float2 iteration_index = make_float2(i, j) +
-                                   make_float2(initial_index.x, initial_index.y);
+          float3 iteration_index = make_float3(i, j, 0.0f) +
+                                   make_float3(initial_index.x, initial_index.y, 0.0f);
           float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
           randomize_float_array(r_sphere_randomized,
                                 r_sphere_min,
@@ -4204,27 +3850,23 @@ ccl_device OutVariables raiko_select_mode_3d(ccl_private const DeterministicVari
 
       float4 closest_fields_noise_layer_1 =
           dv.calculate_fields_noise_1 ?
-              raiko_noise_fbm_layer_1(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0f * make_float3(
-                             ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_1(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
-              raiko_noise_fbm_layer_2(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0f * make_float3(
-                             ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_2(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                                closest_fields_noise_layer_1 +
@@ -4238,10 +3880,7 @@ ccl_device OutVariables raiko_select_mode_3d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * make_float3(ov.out_index_field.x,
-                                                         ov.out_index_field.y,
-                                                         ov.out_index_field.z)) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       float4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -4251,10 +3890,7 @@ ccl_device OutVariables raiko_select_mode_3d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * make_float3(ov.out_index_field.x,
-                                                         ov.out_index_field.y,
-                                                         ov.out_index_field.z)) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       float4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                     closest_coordinates_noise_layer_1 +
@@ -4712,8 +4348,7 @@ ccl_device OutVariables raiko_select_mode_4d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
@@ -4723,8 +4358,7 @@ ccl_device OutVariables raiko_select_mode_4d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               make_float4(0.0f, 0.0f, 0.0f, 0.0f);
       float4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                                closest_fields_noise_layer_1 +
@@ -4738,8 +4372,7 @@ ccl_device OutVariables raiko_select_mode_4d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       float4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -4749,8 +4382,7 @@ ccl_device OutVariables raiko_select_mode_4d(ccl_private const DeterministicVari
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0f * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       float4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                     closest_coordinates_noise_layer_1 +

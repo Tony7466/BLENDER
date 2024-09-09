@@ -1677,56 +1677,6 @@ do_not_parse_in_lib randomize_scale(inout float scale_randomized[4],
                                     int scale_index_list[4],
                                     int scale_index_count,
                                     bool uniform_scale_randomness,
-                                    float seed_offset)
-{
-  if (!uniform_scale_randomness) {
-    for (int i = 0; i < scale_index_count; ++i) {
-      scale_randomized[scale_index_list[i]] *= pow(
-          2.0,
-          mix(-scale_randomness[i],
-              scale_randomness[i],
-              hash_float_to_float(float(scale_index_list[i]) + seed_offset)));
-    }
-  }
-  else if (scale_index_count != 0) {
-    float random_scale_factor = pow(
-        2.0, mix(-scale_randomness[0], scale_randomness[0], hash_float_to_float(seed_offset)));
-    for (int i = 0; i < 4; i++) {
-      scale_randomized[i] *= random_scale_factor;
-    }
-  }
-}
-
-do_not_parse_in_lib randomize_scale(inout float scale_randomized[4],
-                                    float scale_randomness[4],
-                                    int scale_index_list[4],
-                                    int scale_index_count,
-                                    bool uniform_scale_randomness,
-                                    vec2 seed_offset)
-{
-  if (!uniform_scale_randomness) {
-    for (int i = 0; i < scale_index_count; ++i) {
-      scale_randomized[scale_index_list[i]] *= pow(
-          2.0,
-          mix(-scale_randomness[i],
-              scale_randomness[i],
-              hash_vec2_to_float(vec2(scale_index_list[i], scale_index_list[i]) + seed_offset)));
-    }
-  }
-  else if (scale_index_count != 0) {
-    float random_scale_factor = pow(
-        2.0, mix(-scale_randomness[0], scale_randomness[0], hash_vec2_to_float(seed_offset)));
-    for (int i = 0; i < 4; i++) {
-      scale_randomized[i] *= random_scale_factor;
-    }
-  }
-}
-
-do_not_parse_in_lib randomize_scale(inout float scale_randomized[4],
-                                    float scale_randomness[4],
-                                    int scale_index_list[4],
-                                    int scale_index_count,
-                                    bool uniform_scale_randomness,
                                     vec3 seed_offset)
 {
   if (!uniform_scale_randomness) {
@@ -1777,42 +1727,6 @@ do_not_parse_in_lib randomize_scale(inout float scale_randomized[4],
     }
   }
 }
-
-#define RANDOMIZE_FLOAT_ARRAY_FLOAT(X) \
-  do_not_parse_in_lib randomize_float_array(inout float array[X], \
-                                            float min[X], \
-                                            float max[X], \
-                                            int index_list[X], \
-                                            int index_count, \
-                                            float seed_offset) \
-  { \
-    for (int i = 0; i < index_count; ++i) { \
-      array[index_list[i]] = mix( \
-          min[i], max[i], hash_float_to_float(float(index_list[i]) + seed_offset)); \
-    } \
-  }
-
-RANDOMIZE_FLOAT_ARRAY_FLOAT(4)
-RANDOMIZE_FLOAT_ARRAY_FLOAT(7)
-RANDOMIZE_FLOAT_ARRAY_FLOAT(24)
-
-#define RANDOMIZE_FLOAT_ARRAY_VEC2(X) \
-  do_not_parse_in_lib randomize_float_array(inout float array[X], \
-                                            float min[X], \
-                                            float max[X], \
-                                            int index_list[X], \
-                                            int index_count, \
-                                            vec2 seed_offset) \
-  { \
-    for (int i = 0; i < index_count; ++i) { \
-      array[index_list[i]] = mix( \
-          min[i], max[i], hash_vec2_to_float(vec2(index_list[i], index_list[i]) + seed_offset)); \
-    } \
-  }
-
-RANDOMIZE_FLOAT_ARRAY_VEC2(4)
-RANDOMIZE_FLOAT_ARRAY_VEC2(7)
-RANDOMIZE_FLOAT_ARRAY_VEC2(24)
 
 #define RANDOMIZE_FLOAT_ARRAY_VEC3(X) \
   do_not_parse_in_lib randomize_float_array(inout float array[X], \
@@ -2147,8 +2061,6 @@ float chained_elliptical_remap_4_steps(float remap[24], float value)
     return result; \
   }
 
-CHAINED_ELLIPTICAL_REMAP_SELECT_STEPS(float)
-CHAINED_ELLIPTICAL_REMAP_SELECT_STEPS(vec2)
 CHAINED_ELLIPTICAL_REMAP_SELECT_STEPS(vec3)
 CHAINED_ELLIPTICAL_REMAP_SELECT_STEPS(vec4)
 
@@ -2221,33 +2133,6 @@ vec4 rotate_scale(vec4 coord,
   return coord;
 }
 
-vec4 random_vec4_offset(vec2 seed_offset)
-{
-  return vec4(100.0, 100.0, 100.0, 100.0) +
-         100.0 * vec4(hash_vec3_to_float(vec3(seed_offset.x, seed_offset.y, 1.0)),
-                      hash_vec3_to_float(vec3(seed_offset.x, seed_offset.y, 2.0)),
-                      hash_vec3_to_float(vec3(seed_offset.x, seed_offset.y, 3.0)),
-                      hash_vec3_to_float(vec3(seed_offset.x, seed_offset.y, 4.0)));
-}
-
-vec4 random_vec4_offset(vec3 seed_offset)
-{
-  return vec4(100.0, 100.0, 100.0, 100.0) +
-         100.0 * vec4(hash_vec3_to_float(seed_offset + vec3(0.0, 0.0, 1.0)),
-                      hash_vec3_to_float(seed_offset + vec3(0.0, 0.0, 2.0)),
-                      hash_vec3_to_float(seed_offset + vec3(0.0, 0.0, 3.0)),
-                      hash_vec3_to_float(seed_offset + vec3(0.0, 0.0, 4.0)));
-}
-
-vec4 random_vec4_offset(vec4 seed_offset)
-{
-  return vec4(100.0, 100.0, 100.0, 100.0) +
-         100.0 * vec4(hash_vec4_to_float(seed_offset + vec4(0.0, 0.0, 1.0, 1.0)),
-                      hash_vec4_to_float(seed_offset + vec4(0.0, 0.0, 2.0, 2.0)),
-                      hash_vec4_to_float(seed_offset + vec4(0.0, 0.0, 3.0, 3.0)),
-                      hash_vec4_to_float(seed_offset + vec4(0.0, 0.0, 4.0, 4.0)));
-}
-
 /* Noise Texture fBM optimized for Raiko Texture. */
 float raiko_noise_fbm(vec4 coord, float detail, float roughness, float lacunarity)
 {
@@ -2295,99 +2180,6 @@ vec4 raiko_noise_fbm_layer_1(DeterministicVariables dv, vec4 coord)
                               dv.noise_lacunarity_1));
 }
 
-vec4 raiko_noise_fbm_layer_1(DeterministicVariables dv, vec4 coord, float seed_offset)
-{
-  return vec4(
-      raiko_noise_fbm(dv.noise_scale_1 * coord + random_vec4_offset(vec2(seed_offset + 1.0, 0.0)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord + random_vec4_offset(vec2(seed_offset + 2.0, 0.0)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord + random_vec4_offset(vec2(seed_offset + 3.0, 0.0)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1),
-      raiko_noise_fbm(dv.noise_scale_1 * coord + random_vec4_offset(vec2(seed_offset + 4.0, 0.0)),
-                      dv.noise_detail_1,
-                      dv.noise_roughness_1,
-                      dv.noise_lacunarity_1));
-}
-
-vec4 raiko_noise_fbm_layer_1(DeterministicVariables dv, vec4 coord, vec2 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x + 1.0, seed_offset.y)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x + 2.0, seed_offset.y)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x + 3.0, seed_offset.y)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x + 4.0, seed_offset.y)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1));
-}
-
-vec4 raiko_noise_fbm_layer_1(DeterministicVariables dv, vec4 coord, vec3 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec3(1.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec3(2.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec3(3.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec3(4.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1));
-}
-
-vec4 raiko_noise_fbm_layer_1(DeterministicVariables dv, vec4 coord, vec4 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec4(1.0, 0.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec4(2.0, 0.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec4(3.0, 0.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1),
-              raiko_noise_fbm(dv.noise_scale_1 * coord +
-                                  random_vec4_offset(seed_offset + vec4(4.0, 0.0, 0.0, 0.0)),
-                              dv.noise_detail_1,
-                              dv.noise_roughness_1,
-                              dv.noise_lacunarity_1));
-}
-
 /* Random offsets are the same as when calling raiko_noise_fbm_layer_2(DeterministicVariables dv,
  * vec4 coord, float seed_offset) with seed_offset == 0.0 */
 vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord)
@@ -2412,137 +2204,6 @@ vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord)
                               dv.noise_detail_2,
                               dv.noise_roughness_2,
                               dv.noise_lacunarity_2));
-}
-
-vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord, float seed_offset)
-{
-  return vec4(
-      raiko_noise_fbm(dv.noise_scale_2 * coord + random_vec4_offset(vec2(seed_offset, 1.0)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord + random_vec4_offset(vec2(seed_offset, 2.0)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord + random_vec4_offset(vec2(seed_offset, 3.0)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2),
-      raiko_noise_fbm(dv.noise_scale_2 * coord + random_vec4_offset(vec2(seed_offset, 4.0)),
-                      dv.noise_detail_2,
-                      dv.noise_roughness_2,
-                      dv.noise_lacunarity_2));
-}
-
-vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord, vec2 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x, seed_offset.y + 1.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x, seed_offset.y + 2.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x, seed_offset.y + 3.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(vec2(seed_offset.x, seed_offset.y + 4.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2));
-}
-
-vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord, vec3 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec3(0.0, 1.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec3(0.0, 2.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec3(0.0, 3.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec3(0.0, 4.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2));
-}
-
-vec4 raiko_noise_fbm_layer_2(DeterministicVariables dv, vec4 coord, vec4 seed_offset)
-{
-  return vec4(raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec4(0.0, 1.0, 0.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec4(0.0, 2.0, 0.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec4(0.0, 3.0, 0.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2),
-              raiko_noise_fbm(dv.noise_scale_2 * coord +
-                                  random_vec4_offset(seed_offset + vec4(0.0, 4.0, 0.0, 0.0)),
-                              dv.noise_detail_2,
-                              dv.noise_roughness_2,
-                              dv.noise_lacunarity_2));
-}
-
-vec4 rotate_noise(vec4 noise_vector, float noise_fragmentation, float index)
-{
-  float deterministic_angle = noise_fragmentation * M_TAU *
-                              (floored_modulo(index + 0.0625, 7.0) +
-                               3.0 * floored_modulo(index + 0.0625, 2.0));
-  vec4 noise_vector_rotated = vec4(
-      cos(deterministic_angle) * noise_vector.x - sin(deterministic_angle) * noise_vector.y,
-      sin(deterministic_angle) * noise_vector.x + cos(deterministic_angle) * noise_vector.y,
-      cos(deterministic_angle) * noise_vector.z - sin(deterministic_angle) * noise_vector.w,
-      sin(deterministic_angle) * noise_vector.z + cos(deterministic_angle) * noise_vector.w);
-  float random_angle = noise_fragmentation * M_TAU * 5.0 * hash_float_to_float(index);
-  return vec4(
-      cos(random_angle) * noise_vector_rotated.x - sin(random_angle) * noise_vector_rotated.z,
-      cos(random_angle) * noise_vector_rotated.y - sin(random_angle) * noise_vector_rotated.w,
-      sin(random_angle) * noise_vector_rotated.x + cos(random_angle) * noise_vector_rotated.z,
-      sin(random_angle) * noise_vector_rotated.y + cos(random_angle) * noise_vector_rotated.w);
-}
-
-vec4 rotate_noise(vec4 noise_vector, float noise_fragmentation, vec2 index)
-{
-  float deterministic_angle = noise_fragmentation * M_TAU *
-                              (floored_modulo(index.x + 0.0625, 7.0) +
-                               3.0 * floored_modulo(index.x + 0.0625, 2.0) +
-                               13.0 * (floored_modulo(index.y + 0.0625, 7.0) +
-                                       3.0 * floored_modulo(index.y + 0.0625, 2.0)));
-  vec4 noise_vector_rotated = vec4(
-      cos(deterministic_angle) * noise_vector.x - sin(deterministic_angle) * noise_vector.y,
-      sin(deterministic_angle) * noise_vector.x + cos(deterministic_angle) * noise_vector.y,
-      cos(deterministic_angle) * noise_vector.z - sin(deterministic_angle) * noise_vector.w,
-      sin(deterministic_angle) * noise_vector.z + cos(deterministic_angle) * noise_vector.w);
-  float random_angle = noise_fragmentation * M_TAU * 5.0 * hash_vec2_to_float(index);
-  return vec4(
-      cos(random_angle) * noise_vector_rotated.x - sin(random_angle) * noise_vector_rotated.z,
-      cos(random_angle) * noise_vector_rotated.y - sin(random_angle) * noise_vector_rotated.w,
-      sin(random_angle) * noise_vector_rotated.x + cos(random_angle) * noise_vector_rotated.z,
-      sin(random_angle) * noise_vector_rotated.y + cos(random_angle) * noise_vector_rotated.w);
 }
 
 vec4 rotate_noise(vec4 noise_vector, float noise_fragmentation, vec3 index)
@@ -2642,7 +2303,7 @@ OutVariables raiko_select_mode_0d(DeterministicVariables dv,
                         r_sphere_max,
                         r_sphere_index_list,
                         r_sphere_index_count,
-                        0.0);
+                        vec3(0.0, 0.0, 0.0));
   float translation_rotation_randomized[7];
   for (int n = 0; n < 7; ++n) {
     translation_rotation_randomized[n] = translation_rotation[n];
@@ -2652,14 +2313,14 @@ OutVariables raiko_select_mode_0d(DeterministicVariables dv,
                         translation_rotation_max,
                         translation_rotation_index_list,
                         translation_rotation_index_count,
-                        0.0);
+                        vec3(0.0, 0.0, 0.0));
   float scale_randomized[4] = {scale[0], scale[1], scale[2], scale[3]};
   randomize_scale(scale_randomized,
                   scale_randomness,
                   scale_index_list,
                   scale_index_count,
                   dv.uniform_scale_randomness,
-                  0.0);
+                  vec3(0.0, 0.0, 0.0));
 
   vec4 iteration_position = vec4(translation_rotation_randomized[0],
                                  translation_rotation_randomized[1],
@@ -2669,10 +2330,11 @@ OutVariables raiko_select_mode_0d(DeterministicVariables dv,
                                       translation_rotation_randomized,
                                       scale_randomized,
                                       dv.invert_order_of_transformation);
-  vec4 iteration_coord = noiseless_coord +
-                         (dv.noise_fragmentation_non_zero ?
-                              rotate_noise(fields_noise_vector, dv.noise_fragmentation, 0.0) :
-                              fields_noise_vector);
+  vec4 iteration_coord = noiseless_coord + (dv.noise_fragmentation_non_zero ?
+                                                rotate_noise(fields_noise_vector,
+                                                             dv.noise_fragmentation,
+                                                             vec3(0.0, 0.0, 0.0)) :
+                                                fields_noise_vector);
 
   if (dv.mode == SHD_RAIKO_ADDITIVE) {
     ov.out_r_sphere_field = chained_elliptical_remap_select_steps(
@@ -2682,7 +2344,7 @@ OutVariables raiko_select_mode_0d(DeterministicVariables dv,
         remap_max,
         remap_index_list,
         remap_index_count,
-        0.0,
+        vec3(0.0, 0.0, 0.0),
         calculate_l_angle_bisector_4d(dv.integer_sides,
                                       dv.elliptical_corners,
                                       r_sphere_randomized[0],
@@ -2718,7 +2380,7 @@ OutVariables raiko_select_mode_0d(DeterministicVariables dv,
     vec4 iteration_r_sphere_coordinates =
         noiseless_coord +
         (dv.noise_fragmentation_non_zero ?
-             rotate_noise(coordinates_noise_vector, dv.noise_fragmentation, 0.0) :
+             rotate_noise(coordinates_noise_vector, dv.noise_fragmentation, vec3(0.0, 0.0, 0.0)) :
              coordinates_noise_vector);
 
     vec4 out_fields = calculate_out_fields_4d(dv.calculate_r_sphere_field,
@@ -2794,7 +2456,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                  dv.noise_fields_strength_2 * fields_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        vec3 iteration_index = vec3(i, 0.0, 0.0) + vec3(initial_index.x, 0.0, 0.0);
         float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
         randomize_float_array(r_sphere_randomized,
                               r_sphere_min,
@@ -2883,7 +2545,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                 dv.noise_fields_strength_2 * index_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        vec3 iteration_index = vec3(i, 0.0, 0.0) + vec3(initial_index.x, 0.0, 0.0);
         float translation_rotation_randomized[7];
         for (int n = 0; n < 7; ++n) {
           translation_rotation_randomized[n] = translation_rotation[n];
@@ -2920,7 +2582,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
         float l_iteration_coord = euclidean_norm(iteration_coord);
         if (l_iteration_coord < min_distance) {
           min_distance = l_iteration_coord;
-          ov.out_index_field.x = iteration_index;
+          ov.out_index_field.x = iteration_index.x;
           ov.out_position_field = iteration_position;
           /* Translation data not needed for subsequent computations. */
           closest_rotation_randomized[4] = translation_rotation_randomized[4];
@@ -2941,8 +2603,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
@@ -2952,8 +2613,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                              closest_fields_noise_layer_1 +
@@ -2966,8 +2626,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       vec4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -2977,8 +2636,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field.x) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       vec4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                   closest_coordinates_noise_layer_1 +
@@ -2993,7 +2651,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                     (dv.noise_fragmentation_non_zero ?
                                          rotate_noise(closest_coordinates_noise_vector,
                                                       dv.noise_fragmentation,
-                                                      7.0 * ov.out_index_field.x) :
+                                                      7.0 * vec3(ov.out_index_field.x, 0.0, 0.0)) :
                                          closest_coordinates_noise_vector);
 
       float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
@@ -3002,24 +2660,24 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                             r_sphere_max,
                             r_sphere_index_list,
                             r_sphere_index_count,
-                            5.0 * ov.out_index_field.x);
+                            5.0 * vec3(ov.out_index_field.x, 0.0, 0.0));
 
-      vec4 out_fields = calculate_out_fields_4d(dv.calculate_r_sphere_field,
-                                                dv.calculate_r_gon_parameter_field,
-                                                dv.calculate_max_unit_parameter_field,
-                                                dv.normalize_r_gon_parameter,
-                                                dv.integer_sides,
-                                                dv.elliptical_corners,
-                                                r_sphere_randomized[0],
-                                                r_sphere_randomized[1],
-                                                r_sphere_randomized[2],
-                                                r_sphere_randomized[3],
-                                                noiseless_coord +
-                                                    (dv.noise_fragmentation_non_zero ?
-                                                         rotate_noise(closest_fields_noise_vector,
-                                                                      dv.noise_fragmentation,
-                                                                      7.0 * ov.out_index_field.x) :
-                                                         closest_fields_noise_vector));
+      vec4 out_fields = calculate_out_fields_4d(
+          dv.calculate_r_sphere_field,
+          dv.calculate_r_gon_parameter_field,
+          dv.calculate_max_unit_parameter_field,
+          dv.normalize_r_gon_parameter,
+          dv.integer_sides,
+          dv.elliptical_corners,
+          r_sphere_randomized[0],
+          r_sphere_randomized[1],
+          r_sphere_randomized[2],
+          r_sphere_randomized[3],
+          noiseless_coord + (dv.noise_fragmentation_non_zero ?
+                                 rotate_noise(closest_fields_noise_vector,
+                                              dv.noise_fragmentation,
+                                              7.0 * vec3(ov.out_index_field.x, 0.0, 0.0)) :
+                                 closest_fields_noise_vector));
       ov.out_r_sphere_field = out_fields.x;
       ov.r_gon_parameter_field = out_fields.y;
       ov.max_unit_parameter_field = out_fields.z;
@@ -3082,7 +2740,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
                                       dv.noise_coordinates_strength_2 * coordinates_noise_layer_2;
 
       for (float i = -scanning_window_size; i <= scanning_window_size; ++i) {
-        float iteration_index = i + initial_index.x;
+        vec3 iteration_index = vec3(i, 0.0, 0.0) + vec3(initial_index.x, 0.0, 0.0);
         float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
         randomize_float_array(r_sphere_randomized,
                               r_sphere_min,
@@ -3165,7 +2823,8 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
               ov.max_unit_parameter_field, iteration_max_unit_parameter, interpolation_factor);
           ov.segment_id_field = mix(
               ov.segment_id_field, iteration_segment_id, interpolation_factor);
-          ov.out_index_field.x = mix(ov.out_index_field.x, iteration_index, interpolation_factor);
+          ov.out_index_field.x = mix(
+              ov.out_index_field.x, iteration_index.x, interpolation_factor);
           ov.out_position_field = mix(
               ov.out_position_field, iteration_position, interpolation_factor);
           ov.out_r_sphere_coordinates = mix(
@@ -3176,7 +2835,7 @@ OutVariables raiko_select_mode_1d(DeterministicVariables dv,
           ov.r_gon_parameter_field = iteration_r_gon_parameter;
           ov.max_unit_parameter_field = iteration_max_unit_parameter;
           ov.segment_id_field = iteration_segment_id;
-          ov.out_index_field.x = iteration_index;
+          ov.out_index_field.x = iteration_index.x;
           ov.out_position_field = iteration_position;
           ov.out_r_sphere_coordinates = iteration_r_sphere_coordinates;
         }
@@ -3246,7 +2905,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          vec2 iteration_index = vec2(i, j) + vec2(initial_index.x, initial_index.y);
+          vec3 iteration_index = vec3(i, j, 0.0) + vec3(initial_index.x, initial_index.y, 0.0);
           float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
           randomize_float_array(r_sphere_randomized,
                                 r_sphere_min,
@@ -3337,7 +2996,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          vec2 iteration_index = vec2(i, j) + vec2(initial_index.x, initial_index.y);
+          vec3 iteration_index = vec3(i, j, 0.0) + vec3(initial_index.x, initial_index.y, 0.0);
           float translation_rotation_randomized[7];
           for (int n = 0; n < 7; ++n) {
             translation_rotation_randomized[n] = translation_rotation[n];
@@ -3398,8 +3057,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * vec2(ov.out_index_field.x, ov.out_index_field.y)) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
@@ -3409,8 +3067,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * vec2(ov.out_index_field.x, ov.out_index_field.y)) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                              closest_fields_noise_layer_1 +
@@ -3423,8 +3080,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * vec2(ov.out_index_field.x, ov.out_index_field.y)) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       vec4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -3434,8 +3090,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * vec2(ov.out_index_field.x, ov.out_index_field.y)) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       vec4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                   closest_coordinates_noise_layer_1 +
@@ -3446,13 +3101,13 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                                           closest_rotation_randomized,
                                           closest_scale_randomized,
                                           dv.invert_order_of_transformation);
-      ov.out_r_sphere_coordinates = noiseless_coord +
-                                    (dv.noise_fragmentation_non_zero ?
-                                         rotate_noise(closest_coordinates_noise_vector,
-                                                      dv.noise_fragmentation,
-                                                      7.0 * vec2(ov.out_index_field.x,
-                                                                 ov.out_index_field.y)) :
-                                         closest_coordinates_noise_vector);
+      ov.out_r_sphere_coordinates =
+          noiseless_coord +
+          (dv.noise_fragmentation_non_zero ?
+               rotate_noise(closest_coordinates_noise_vector,
+                            dv.noise_fragmentation,
+                            7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, 0.0)) :
+               closest_coordinates_noise_vector);
 
       float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
       randomize_float_array(r_sphere_randomized,
@@ -3460,7 +3115,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
                             r_sphere_max,
                             r_sphere_index_list,
                             r_sphere_index_count,
-                            5.0 * vec2(ov.out_index_field.x, ov.out_index_field.y));
+                            5.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, 0.0));
 
       vec4 out_fields = calculate_out_fields_4d(
           dv.calculate_r_sphere_field,
@@ -3477,7 +3132,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
               (dv.noise_fragmentation_non_zero ?
                    rotate_noise(closest_fields_noise_vector,
                                 dv.noise_fragmentation,
-                                7.0 * vec2(ov.out_index_field.x, ov.out_index_field.y)) :
+                                7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, 0.0)) :
                    closest_fields_noise_vector));
       ov.out_r_sphere_field = out_fields.x;
       ov.r_gon_parameter_field = out_fields.y;
@@ -3542,7 +3197,7 @@ OutVariables raiko_select_mode_2d(DeterministicVariables dv,
 
       for (float j = -scanning_window_size.y; j <= scanning_window_size.y; ++j) {
         for (float i = -scanning_window_size.x; i <= scanning_window_size.x; ++i) {
-          vec2 iteration_index = vec2(i, j) + vec2(initial_index.x, initial_index.y);
+          vec3 iteration_index = vec3(i, j, 0.0) + vec3(initial_index.x, initial_index.y, 0.0);
           float r_sphere_randomized[4] = {r_sphere[0], r_sphere[1], r_sphere[2], r_sphere[3]};
           randomize_float_array(r_sphere_randomized,
                                 r_sphere_min,
@@ -3869,52 +3524,46 @@ OutVariables raiko_select_mode_3d(DeterministicVariables dv,
 
       vec4 closest_fields_noise_layer_1 =
           dv.calculate_fields_noise_1 ?
-              raiko_noise_fbm_layer_1(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_1(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
-              raiko_noise_fbm_layer_2(
-                  dv,
-                  dv.transform_fields_noise ? rotate_scale(dv.coord - ov.out_position_field,
-                                                           closest_rotation_randomized,
-                                                           closest_scale_randomized,
-                                                           dv.invert_order_of_transformation) :
-                                              dv.coord - ov.out_position_field,
-                  7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_2(dv,
+                                      dv.transform_fields_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                              closest_fields_noise_layer_1 +
                                          dv.noise_fields_strength_2 * closest_fields_noise_layer_2;
       vec4 closest_coordinates_noise_layer_1 =
           dv.calculate_coordinates_noise_1 ?
-              raiko_noise_fbm_layer_1(
-                  dv,
-                  dv.transform_coordinates_noise ?
-                      rotate_scale(dv.coord - ov.out_position_field,
-                                   closest_rotation_randomized,
-                                   closest_scale_randomized,
-                                   dv.invert_order_of_transformation) :
-                      dv.coord - ov.out_position_field,
-                  7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_1(dv,
+                                      dv.transform_coordinates_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       vec4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
-              raiko_noise_fbm_layer_2(
-                  dv,
-                  dv.transform_coordinates_noise ?
-                      rotate_scale(dv.coord - ov.out_position_field,
-                                   closest_rotation_randomized,
-                                   closest_scale_randomized,
-                                   dv.invert_order_of_transformation) :
-                      dv.coord - ov.out_position_field,
-                  7.0 * vec3(ov.out_index_field.x, ov.out_index_field.y, ov.out_index_field.z)) :
+              raiko_noise_fbm_layer_2(dv,
+                                      dv.transform_coordinates_noise ?
+                                          rotate_scale(dv.coord - ov.out_position_field,
+                                                       closest_rotation_randomized,
+                                                       closest_scale_randomized,
+                                                       dv.invert_order_of_transformation) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       vec4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                   closest_coordinates_noise_layer_1 +
@@ -4369,8 +4018,7 @@ OutVariables raiko_select_mode_4d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_layer_2 =
           dv.calculate_fields_noise_2 ?
@@ -4380,8 +4028,7 @@ OutVariables raiko_select_mode_4d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               vec4(0.0, 0.0, 0.0, 0.0);
       vec4 closest_fields_noise_vector = dv.noise_fields_strength_1 *
                                              closest_fields_noise_layer_1 +
@@ -4394,8 +4041,7 @@ OutVariables raiko_select_mode_4d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_1;
       vec4 closest_coordinates_noise_layer_2 =
           dv.calculate_coordinates_noise_2 ?
@@ -4405,8 +4051,7 @@ OutVariables raiko_select_mode_4d(DeterministicVariables dv,
                                                        closest_rotation_randomized,
                                                        closest_scale_randomized,
                                                        dv.invert_order_of_transformation) :
-                                          dv.coord - ov.out_position_field,
-                                      7.0 * ov.out_index_field) :
+                                          dv.coord - ov.out_position_field) :
               closest_fields_noise_layer_2;
       vec4 closest_coordinates_noise_vector = dv.noise_coordinates_strength_1 *
                                                   closest_coordinates_noise_layer_1 +
