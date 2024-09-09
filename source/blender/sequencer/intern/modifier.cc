@@ -1227,16 +1227,12 @@ static bool is_point_inside_quad(const StripScreenQuad &quad, int x, int y)
   return isect_point_quad_v2(pt, quad.v0, quad.v1, quad.v2, quad.v3);
 }
 
-#include "BLI_timeit.hh"
-
 static void tonemapmodifier_apply(const StripScreenQuad &quad,
                                   SequenceModifierData *smd,
                                   ImBuf *ibuf,
                                   ImBuf *mask)
 {
-  SCOPED_TIMER(__FUNCTION__);
   SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
-
   AvgLogLum data;
   data.tmmd = tmmd;
   data.colorspace = (ibuf->float_buffer.data != nullptr) ? ibuf->float_buffer.colorspace :
@@ -1283,7 +1279,7 @@ static void tonemapmodifier_apply(const StripScreenQuad &quad,
     }
   }
   if (pixel_count == 0) {
-    return; /* Strip is zero size of off-screen. */
+    return; /* Strip is zero size or off-screen. */
   }
   const float sc = 1.0f / pixel_count;
   data.lav = Lav * sc;
