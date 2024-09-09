@@ -489,7 +489,7 @@ CCGKey BKE_subdiv_ccg_key(const SubdivCCG & /*subdiv_ccg*/, int level)
   key.has_mask = false;
   return key;
 #else
-  UNUSED_VARS(subdiv_ccg, level);
+  UNUSED_VARS(level);
   return {};
 #endif
 }
