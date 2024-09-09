@@ -1722,7 +1722,7 @@ class RepeatZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider 
     }
     const ComputeContextHash &context_hash = user_data.compute_context->hash();
     const Span<int> iterations_with_side_effects =
-        call_data.side_effect_nodes->iterations_by_repeat_zone.lookup(
+        call_data.side_effect_nodes->iterations_by_iteration_zone.lookup(
             {context_hash, repeat_output_bnode_->identifier});
 
     Vector<const lf::FunctionNode *> lf_nodes;
@@ -2054,11 +2054,73 @@ struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const override;
 };
 
+class ForeachGeometryElementNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper {
+ public:
+  const bNode *output_bnode_ = nullptr;
+  VectorSet<lf::FunctionNode *> *lf_body_nodes_ = nullptr;
+
+  void execute_node(const lf::FunctionNode &node,
+                    lf::Params &params,
+                    const lf::Context &context) const
+  {
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    const int index = lf_body_nodes_->index_of_try(const_cast<lf::FunctionNode *>(&node));
+    const LazyFunction &fn = node.function();
+    if (index == -1) {
+      /* The node is not a loop body node, just execute it normally. */
+      fn.execute(params, context);
+      return;
+    }
+
+    /* Setup context for the loop body evaluation. */
+    bke::ForeachGeometryElementZoneComputeContext body_compute_context{
+        user_data.compute_context, *output_bnode_, index};
+    GeoNodesLFUserData body_user_data = user_data;
+    body_user_data.compute_context = &body_compute_context;
+    body_user_data.log_socket_values = should_log_socket_values_for_context(
+        user_data, body_compute_context.hash());
+
+    GeoNodesLFLocalUserData body_local_user_data{body_user_data};
+    lf::Context body_context{context.storage, &body_user_data, &body_local_user_data};
+    fn.execute(params, body_context);
+  }
+};
+
+class ForeachGeometryElementZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider {
+ public:
+  const bNode *output_bnode_ = nullptr;
+  Span<lf::FunctionNode *> lf_body_nodes_;
+
+  Vector<const lf::FunctionNode *> get_nodes_with_side_effects(
+      const lf::Context &context) const override
+  {
+    GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    const GeoNodesCallData &call_data = *user_data.call_data;
+    if (!call_data.side_effect_nodes) {
+      return {};
+    }
+    const ComputeContextHash &context_hash = user_data.compute_context->hash();
+    const Span<int> iterations_with_side_effects =
+        call_data.side_effect_nodes->iterations_by_iteration_zone.lookup(
+            {context_hash, output_bnode_->identifier});
+
+    Vector<const lf::FunctionNode *> lf_nodes;
+    for (const int i : iterations_with_side_effects) {
+      if (i >= 0 && i < lf_body_nodes_.size()) {
+        lf_nodes.append(lf_body_nodes_[i]);
+      }
+    }
+    return lf_nodes;
+  }
+};
+
 struct ForeachGeometryElementEvalStorage {
   LinearAllocator<> allocator;
   lf::Graph graph;
   std::optional<LazyFunctionForLogicalOr> or_function;
   std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
+  std::optional<ForeachGeometryElementZoneSideEffectProvider> side_effect_provider;
+  std::optional<ForeachGeometryElementNodeExecuteWrapper> body_execute_wrapper;
   std::optional<lf::GraphExecutor> graph_executor;
   void *graph_executor_storage = nullptr;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
@@ -2367,9 +2429,21 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                         *lf_outputs[zone_info_.indices.outputs.border_link_usages[border_link_i]]);
     }
 
+    eval_storage.side_effect_provider.emplace();
+    eval_storage.side_effect_provider->output_bnode_ = &output_bnode_;
+    eval_storage.side_effect_provider->lf_body_nodes_ = lf_body_nodes;
+
+    eval_storage.body_execute_wrapper.emplace();
+    eval_storage.body_execute_wrapper->output_bnode_ = &output_bnode_;
+    eval_storage.body_execute_wrapper->lf_body_nodes_ = &lf_body_nodes;
+
     lf_graph.update_node_indices();
-    eval_storage.graph_executor.emplace(
-        lf_graph, lf_inputs.as_span(), lf_outputs.as_span(), nullptr, nullptr, nullptr);
+    eval_storage.graph_executor.emplace(lf_graph,
+                                        lf_inputs.as_span(),
+                                        lf_outputs.as_span(),
+                                        nullptr,
+                                        &*eval_storage.side_effect_provider,
+                                        &*eval_storage.body_execute_wrapper);
     eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
         eval_storage.allocator);
   }
@@ -5123,6 +5197,11 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
     }
     else if (dynamic_cast<const bke::SimulationZoneComputeContext *>(context) != nullptr) {
       found.is_in_simulation = true;
+    }
+    else if (dynamic_cast<const bke::ForeachGeometryElementZoneComputeContext *>(context) !=
+             nullptr)
+    {
+      found.is_in_loop = true;
     }
   }
   std::reverse(node_ids.begin(), node_ids.end());
