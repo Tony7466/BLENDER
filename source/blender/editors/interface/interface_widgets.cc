@@ -3375,11 +3375,12 @@ static void widget_numbut_draw(const uiBut *but,
   const int handle_width = min_ii(BLI_rcti_size_x(rect) / 3, BLI_rcti_size_y(rect) * 0.7f);
   const int axis_width = min_ii(BLI_rcti_size_x(rect) / 3, U.widget_unit * zoom * 0.1333f);
   const int draw_axis = (but->rnaprop && ELEM(RNA_property_subtype(but->rnaprop),
-                                              PROP_XYZ,
-                                              PROP_XYZ_LENGTH,
                                               PROP_TRANSLATION,
                                               PROP_EULER,
-                                              PROP_AXISANGLE));
+                                              PROP_QUATERNION,
+                                              PROP_AXISANGLE,
+                                              PROP_XYZ,
+                                              PROP_XYZ_LENGTH));
   int roundboxalign_zone;
 
   if (state->but_flag & UI_SELECT) {
@@ -3492,19 +3493,25 @@ static void widget_numbut_draw(const uiBut *but,
     wcol_zone = *wcol;
 
     bTheme *btheme = UI_GetTheme();
-    /* X Axis. */
-    copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.xaxis);
+    copy_v3_v3_uchar(wcol_zone.inner, wcol_zone.outline);
 
-    if (but->rnaindex == 1) {
+    /* Address subtypes with WXYZ. */
+    const int offset =
+        ((ELEM(RNA_property_subtype(but->rnaprop), PROP_QUATERNION, PROP_AXISANGLE)) ? 1 : 0);
+    const int index = but->rnaindex - offset;
+
+    if (index == 0) {
+      /* X Axis. */
+      copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.xaxis);
+    }
+    else if (index == 1) {
       /* Y Axis. */
       copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.yaxis);
     }
-    else if (but->rnaindex == 2) {
+    else if (index == 2) {
       /* Z Axis. */
       copy_v3_v3_uchar(wcol_zone.inner, btheme->tui.zaxis);
     }
-
-    /* TODO: Support quaternions. */
 
     if ((state->but_flag & UI_HOVER) || state->is_text_input) {
       wcol_zone.inner[3] = 255;
