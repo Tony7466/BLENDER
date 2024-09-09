@@ -337,12 +337,26 @@ GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_common)
     .push_constant(Type::FLOAT, "alpha")
     .push_constant(Type::FLOAT, "dashLength")
     .fragment_out(0, Type::VEC4, "fragColor")
-    .fragment_source("overlay_edit_uv_edges_frag.glsl")
-    .additional_info("draw_mesh", "draw_globals");
+    .fragment_source("overlay_edit_uv_edges_frag.glsl");
 
 GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges)
-    .additional_info("overlay_edit_uv_edges_common")
+    .additional_info("overlay_edit_uv_edges_common", "draw_mesh", "draw_globals")
     .do_static_compilation(true)
+    .vertex_out(overlay_edit_uv_iface)
+    .vertex_out(overlay_edit_uv_flat_iface)
+    .vertex_out(overlay_edit_uv_noperspective_iface)
+    .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
+    .geometry_out(overlay_edit_uv_geom_iface)
+    .geometry_out(overlay_edit_uv_geom_flat_iface)
+    .geometry_out(overlay_edit_uv_geom_noperspective_iface)
+    .vertex_source("overlay_edit_uv_edges_vert.glsl")
+    .geometry_source("overlay_edit_uv_edges_geom.glsl");
+
+/* TODO(fclem): Deduplicate using specialization constant. */
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_select)
+    .do_static_compilation(true)
+    .define("USE_EDGE_SELECT")
+    .additional_info("overlay_edit_uv_edges_common", "draw_mesh", "draw_globals")
     .vertex_out(overlay_edit_uv_iface)
     .vertex_out(overlay_edit_uv_flat_iface)
     .vertex_out(overlay_edit_uv_noperspective_iface)
@@ -356,18 +370,23 @@ GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges)
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_no_geom)
     .metal_backend_only(true)
-    .additional_info("overlay_edit_uv_edges_common")
+    .additional_info("overlay_edit_uv_edges_common", "draw_mesh", "draw_globals")
+    .do_static_compilation(true)
+    .vertex_out(overlay_edit_uv_geom_iface)
+    .vertex_out(overlay_edit_uv_geom_flat_iface)
+    .vertex_out(overlay_edit_uv_geom_noperspective_iface)
+    .vertex_source("overlay_edit_uv_edges_vert_no_geom.glsl");
+
+/* TODO(fclem): Deduplicate using specialization constant. */
+GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_select_no_geom)
+    .metal_backend_only(true)
+    .additional_info("overlay_edit_uv_edges_common", "draw_mesh", "draw_globals")
     .do_static_compilation(true)
     .vertex_out(overlay_edit_uv_geom_iface)
     .vertex_out(overlay_edit_uv_geom_flat_iface)
     .vertex_out(overlay_edit_uv_geom_noperspective_iface)
     .vertex_source("overlay_edit_uv_edges_vert_no_geom.glsl");
 #endif
-
-GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_select)
-    .do_static_compilation(true)
-    .define("USE_EDGE_SELECT")
-    .additional_info("overlay_edit_uv_edges");
 
 GPU_SHADER_CREATE_INFO(overlay_edit_uv_faces)
     .do_static_compilation(true)

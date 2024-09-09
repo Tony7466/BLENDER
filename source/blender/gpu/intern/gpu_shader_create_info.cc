@@ -525,6 +525,7 @@ void gpu_shader_create_info_init()
 
     /* Edit UV Edges. */
     overlay_edit_uv_edges = overlay_edit_uv_edges_no_geom;
+    overlay_edit_uv_edges_select = overlay_edit_uv_edges_select_no_geom;
 
     /* GPencil stroke. */
     gpu_shader_gpencil_stroke = gpu_shader_gpencil_stroke_no_geom;
