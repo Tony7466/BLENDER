@@ -942,9 +942,6 @@ static void fill_vbos_mesh(const Object &object,
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  const bke::AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan hide_poly = *orig_mesh_data.attributes.lookup<bool>(".hide_poly",
-                                                                       bke::AttrDomain::Face);
 
   if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
     switch (*request_type) {
@@ -959,6 +956,7 @@ static void fill_vbos_mesh(const Object &object,
       case CustomRequest::Normal: {
         const Span<float3> vert_normals = bke::pbvh::vert_normals_eval_from_eval(object);
         const Span<float3> face_normals = bke::pbvh::face_normals_eval_from_eval(object);
+        const bke::AttributeAccessor attributes = mesh.attributes();
         const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face",
                                                                 bke::AttrDomain::Face);
         node_mask.foreach_index(GrainSize(1), [&](const int i) {
@@ -1010,6 +1008,7 @@ static void fill_vbos_mesh(const Object &object,
     const StringRef name = attr.name;
     const bke::AttrDomain domain = attr.domain;
     const eCustomDataType data_type = attr.type;
+    const bke::AttributeAccessor attributes = mesh.attributes();
     const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
     node_mask.foreach_index(GrainSize(1), [&](const int i) {
       fill_vbo_attribute_mesh(faces, corner_verts, attribute, domain, nodes[i].faces(), *vbos[i]);
@@ -1516,7 +1515,8 @@ static BitVector<> calc_use_flat_layout(const Object &object, const OrigMeshData
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
-      /* TODO: Use vertex indexing until there are sharp faces or face corner attributes. */
+      /* NOTE: Theoretically it would be possible to used vertex indexed buffers if there are no
+       * face corner attributes, sharp faces, or face sets. */
       return {};
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
