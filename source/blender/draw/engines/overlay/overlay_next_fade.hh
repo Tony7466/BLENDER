@@ -19,10 +19,10 @@ class Fade {
  private:
   const SelectionType selection_type_;
 
-  PassMain mesh_fade_geometry_ps_ = {"MeshFadeGeometry"};
+  PassMain ps_ = {"FadeGeometry"};
 
+  PassMain::Sub *mesh_fade_geometry_ps_;
   /* Passes for Pose Fade Geometry. */
-  PassMain armature_fade_geometry_ps_ = {"ArmatureFadeGeometry"};
   PassMain::Sub *armature_fade_geometry_active_ps_;
   PassMain::Sub *armature_fade_geometry_other_ps_;
 
@@ -40,39 +40,37 @@ class Fade {
 
     if (!enabled_) {
       /* Not used. But release the data. */
-      mesh_fade_geometry_ps_.init();
-      armature_fade_geometry_ps_.init();
+      ps_.init();
       return;
     }
-    mesh_fade_geometry_ps_.init();
-    mesh_fade_geometry_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                                         DRW_STATE_BLEND_ALPHA,
-                                     state.clipping_plane_count);
-    mesh_fade_geometry_ps_.shader_set(res.shaders.uniform_color.get());
-    float4 color = res.background_color_get(state);
-    color[3] = state.overlay.fade_alpha;
-    if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_THEME) {
-      srgb_to_linearrgb_v4(color, color);
-    }
-    mesh_fade_geometry_ps_.push_constant("ucolor", color);
 
-    armature_fade_geometry_ps_.init();
+    ps_.init();
+    ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
+                  state.clipping_plane_count);
+    ps_.shader_set(res.shaders.uniform_color.get());
+    {
+      PassMain::Sub &sub = ps_.sub("edit_mesh.fade");
+      float4 color = res.background_color_get(state);
+      color[3] = state.overlay.fade_alpha;
+      if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_THEME) {
+        srgb_to_linearrgb_v4(color, color);
+      }
+      sub.push_constant("ucolor", color);
+      mesh_fade_geometry_ps_ = &sub;
+    }
+
     /* Fade Geometry. */
     if (state.do_pose_fade_geom) {
       const float alpha = state.overlay.xray_alpha_bone;
       float4 color = {0.0f, 0.0f, 0.0f, alpha};
-      armature_fade_geometry_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-                                               DRW_STATE_BLEND_ALPHA,
-                                           state.clipping_plane_count);
-      armature_fade_geometry_ps_.shader_set(res.shaders.uniform_color.get());
       {
-        auto &sub = armature_fade_geometry_ps_.sub("fade_geometry.active");
+        auto &sub = ps_.sub("fade_geometry.active");
         sub.push_constant("ucolor", color);
         armature_fade_geometry_active_ps_ = &sub;
       }
       {
         color[3] = powf(alpha, 4);
-        auto &sub = armature_fade_geometry_ps_.sub("fade_geometry");
+        auto &sub = ps_.sub("fade_geometry");
         sub.push_constant("ucolor", color);
         armature_fade_geometry_other_ps_ = &sub;
       }
@@ -91,6 +89,28 @@ class Fade {
 
     const bool draw_bone_selection = (ob_ref.object->type == OB_MESH) && state.do_pose_fade_geom;
 
+    auto fade_sync =
+        [](Manager &manager, const ObjectRef &ob_ref, const State &state, PassMain::Sub &sub) {
+          const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob_ref.object,
+                                                                       state.rv3d) &&
+                                       !DRW_state_is_image_render();
+
+          if (use_sculpt_pbvh) {
+            ResourceHandle handle = manager.resource_handle_for_sculpt(ob_ref);
+
+            for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, SCULPT_BATCH_DEFAULT)) {
+              sub.draw(batch.batch, handle);
+            }
+          }
+          else {
+            blender::gpu::Batch *geom = DRW_cache_object_surface_get((Object *)ob_ref.object);
+            if (geom) {
+              ResourceHandle handle = manager.resource_handle(ob_ref);
+              sub.draw(geom, handle);
+            }
+          }
+        };
+
     if (draw_bone_selection) {
       fade_sync(manager,
                 ob_ref,
@@ -100,47 +120,17 @@ class Fade {
                     *armature_fade_geometry_other_ps_);
     }
     else if (draw_fade) {
-      fade_sync(manager, ob_ref, state, mesh_fade_geometry_ps_);
+      fade_sync(manager, ob_ref, state, *mesh_fade_geometry_ps_);
     }
   }
 
-  void mesh_draw(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(mesh_fade_geometry_ps_, view);
-  }
-
-  void armature_draw(Framebuffer &framebuffer, Manager &manager, View &view)
-  {
-    GPU_framebuffer_bind(framebuffer);
-    manager.submit(armature_fade_geometry_ps_, view);
+    manager.submit(ps_, view);
   }
 
  private:
-  static void fade_sync(Manager &manager,
-                        const ObjectRef &ob_ref,
-                        const State &state,
-                        PassMain::Sub &sub)
-  {
-    const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob_ref.object, state.rv3d) &&
-                                 !DRW_state_is_image_render();
-
-    if (use_sculpt_pbvh) {
-      ResourceHandle handle = manager.resource_handle_for_sculpt(ob_ref);
-
-      for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, SCULPT_BATCH_DEFAULT)) {
-        sub.draw(batch.batch, handle);
-      }
-    }
-    else {
-      blender::gpu::Batch *geom = DRW_cache_object_surface_get((Object *)ob_ref.object);
-      if (geom) {
-        ResourceHandle handle = manager.resource_handle(ob_ref);
-        sub.draw(geom, handle);
-      }
-    }
-  }
-
   static bool overlay_should_fade_object(const Object *ob, const Object *active_object)
   {
     if (!active_object || !ob) {

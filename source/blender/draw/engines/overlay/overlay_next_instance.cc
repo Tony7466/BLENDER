@@ -370,9 +370,8 @@ void Instance::draw(Manager &manager)
   outline.draw(resources, manager, view);
 
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
-    layer.fade.mesh_draw(framebuffer, manager, view);
     layer.facing.draw(framebuffer, manager, view);
-    layer.fade.armature_draw(framebuffer, manager, view);
+    layer.fade.draw(framebuffer, manager, view);
   };
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
