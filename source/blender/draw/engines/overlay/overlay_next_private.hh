@@ -229,6 +229,8 @@ class ShaderModule {
   ShaderPtr sculpt_mesh;
   ShaderPtr sculpt_curves;
   ShaderPtr sculpt_curves_cage;
+  ShaderPtr uv_edit_edges = shader("overlay_edit_uv_edges");
+  ShaderPtr uv_edit_edges_flat = shader("overlay_edit_uv_edges_select");
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */

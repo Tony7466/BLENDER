@@ -418,6 +418,8 @@ class MeshUVs {
  private:
   PassSimple analysis_ps_ = {"Mesh Analysis"};
 
+  PassSimple wireframe_ps_ = {"Wireframe"};
+
   PassSimple edges_ps_ = {"Edges"};
   PassSimple faces_ps_ = {"Faces"};
   PassSimple verts_ps_ = {"Verts"};
@@ -436,10 +438,6 @@ class MeshUVs {
   /** Brush stencil. */
   /* TODO(fclem): Maybe should be its own Overlay?. */
   bool show_stencil = false;
-
-  bool select_edge = false;
-  bool select_face = false;
-  bool select_vert = false;
 
   /** Paint Mask overlay. */
   /* TODO(fclem): Maybe should be its own Overlay?. */
@@ -465,7 +463,7 @@ class MeshUVs {
   bool enabled_ = false;
 
  public:
-  void begin_sync(Resources &res, const State &state, const View &view)
+  void begin_sync(Resources &res, const State &state)
   {
     enabled_ = state.space_type == SPACE_IMAGE;
 
@@ -504,7 +502,7 @@ class MeshUVs {
       int sel_mode_2d = tool_setting->uv_selectmode;
       show_vert = (sel_mode_2d != UV_SELECT_EDGE);
       show_face = !show_mesh_analysis && !hide_faces;
-      show_face_dots = (sel_mode_2d == UV_SELECT_FACE) && !hide_faces;
+      show_face_dots = (sel_mode_2d & UV_SELECT_FACE) && !hide_faces;
 
       if (tool_setting->uv_flag & UV_SYNC_SELECTION) {
         int sel_mode_3d = tool_setting->selectmode;
@@ -565,103 +563,260 @@ class MeshUVs {
       show_tiled_image_border = is_tiled_image;
     }
 
-    const float dash_length = 4.0f * UI_SCALE_FAC;
-    OVERLAY_UVLineStyle line_style = edit_uv_line_style_from_space_image(space_image);
-
-    /* -------COPIED CODE------ */
-
-    ToolSettings *tsettings = state.scene->toolsettings;
-    select_edge = (tsettings->selectmode & SCE_SELECT_EDGE);
-    select_face = (tsettings->selectmode & SCE_SELECT_FACE);
-    select_vert = (tsettings->selectmode & SCE_SELECT_VERTEX);
-
-    int edit_flag = state.v3d->overlay.edit_flag;
-    show_mesh_analysis = (edit_flag & V3D_OVERLAY_EDIT_STATVIS);
-    show_face = (edit_flag & V3D_OVERLAY_EDIT_FACES);
-    show_face_dots = ((edit_flag & V3D_OVERLAY_EDIT_FACE_DOT) || state.xray_enabled) & select_face;
-
     const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) == 0;
-    const bool is_wire_shading_mode = (state.v3d->shading.type == OB_WIRE);
+    const float dash_length = 4.0f * UI_SCALE_FAC;
 
-    float backwire_opacity = (state.xray_enabled) ? 0.5f : 1.0f;
-    float face_alpha = (show_face) ? 1.0f : 0.0f;
-
-    GPUTexture **depth_tex = (state.xray_enabled) ? &res.depth_tx : &res.dummy_depth_tx;
-
-    {
-      auto &pass = analysis_ps_;
+    if (show_wireframe) {
+      auto &pass = wireframe_ps_;
       pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA,
-                     state.clipping_plane_count);
-      pass.shader_set(res.shaders.mesh_analysis.get());
-      pass.bind_texture("weightTex", res.weight_ramp_tx);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(show_vert ? res.shaders.uv_edit_edges_flat.get() :
+                                  res.shaders.uv_edit_edges.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("lineStyle", OVERLAY_UV_LINE_STYLE_SHADOW);
+      pass.push_constant("alpha", space_image->uv_opacity);
+      pass.push_constant("dashLength", dash_length);
+      pass.push_constant("doSmoothWire", do_smooth_wire);
     }
 
-    auto mesh_edit_common_resource_bind = [&](PassSimple &pass, float alpha) {
-      pass.bind_texture("depthTex", depth_tex);
-      /* TODO(fclem): UBO. */
-      pass.push_constant("wireShading", is_wire_shading_mode);
-      pass.push_constant("selectFace", select_face);
-      pass.push_constant("selectEdge", select_edge);
-      pass.push_constant("alpha", alpha);
-      pass.bind_ubo("globalsBlock", &res.globals_buf);
-    };
-
-    {
+    if (show_uv_edit) {
       auto &pass = edges_ps_;
       pass.init();
-      /* Change first vertex convention to match blender loop structure. */
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_FIRST_VERTEX_CONVENTION);
-      pass.shader_set(res.shaders.mesh_edit_edge.get());
-      pass.push_constant("do_smooth_wire", do_smooth_wire);
-      pass.push_constant("use_vertex_selection", select_vert);
-      mesh_edit_common_resource_bind(pass, backwire_opacity);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(show_vert ? res.shaders.uv_edit_edges_flat.get() :
+                                  res.shaders.uv_edit_edges.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("lineStyle", int(edit_uv_line_style_from_space_image(space_image)));
+      pass.push_constant("alpha", space_image->uv_opacity);
+      pass.push_constant("dashLength", dash_length);
+      pass.push_constant("doSmoothWire", do_smooth_wire);
     }
-    {
-      auto &pass = faces_ps_;
-      pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA);
-      pass.shader_set(res.shaders.mesh_edit_face.get());
-      mesh_edit_common_resource_bind(pass, face_alpha);
+
+#if 0
+    if (pd->edit_uv.do_uv_overlay) {
+      if (pd->edit_uv.do_verts || pd->edit_uv.do_face_dots) {
+        DRW_PASS_CREATE(psl->edit_uv_verts_ps,
+                        DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                            DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA);
+      }
+
+      /* uv verts */
+      if (pd->edit_uv.do_verts) {
+        GPUShader *sh = OVERLAY_shader_edit_uv_verts_get();
+        pd->edit_uv_verts_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
+
+        const float point_size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
+
+        DRW_shgroup_uniform_block(pd->edit_uv_verts_grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_float_copy(
+            pd->edit_uv_verts_grp, "pointSize", (point_size + 1.5f) * M_SQRT2);
+        DRW_shgroup_uniform_float_copy(pd->edit_uv_verts_grp, "outlineWidth", 0.75f);
+        float theme_color[4];
+        UI_GetThemeColor4fv(TH_VERTEX, theme_color);
+        srgb_to_linearrgb_v4(theme_color, theme_color);
+        DRW_shgroup_uniform_vec4_copy(pd->edit_uv_verts_grp, "color", theme_color);
+      }
+
+      /* uv faces */
+      if (pd->edit_uv.do_faces) {
+        DRW_PASS_CREATE(psl->edit_uv_faces_ps,
+                        DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
+        GPUShader *sh = OVERLAY_shader_edit_uv_face_get();
+        pd->edit_uv_faces_grp = DRW_shgroup_create(sh, psl->edit_uv_faces_ps);
+        DRW_shgroup_uniform_block(pd->edit_uv_faces_grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_float(pd->edit_uv_faces_grp, "uvOpacity", &pd->edit_uv.uv_opacity, 1);
+      }
+
+      /* uv face dots */
+      if (pd->edit_uv.do_face_dots) {
+        const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * UI_SCALE_FAC;
+        GPUShader *sh = OVERLAY_shader_edit_uv_face_dots_get();
+        pd->edit_uv_face_dots_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
+        DRW_shgroup_uniform_block(pd->edit_uv_face_dots_grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_float_copy(pd->edit_uv_face_dots_grp, "pointSize", point_size);
+      }
     }
-    {
-      auto &pass = verts_ps_;
-      pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_WRITE_DEPTH);
-      pass.shader_set(res.shaders.mesh_edit_vert.get());
-      mesh_edit_common_resource_bind(pass, backwire_opacity);
+
+    /* uv stretching */
+    if (pd->edit_uv.do_uv_stretching_overlay) {
+      DRW_PASS_CREATE(psl->edit_uv_stretching_ps,
+                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
+      if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_ANGLE) {
+        GPUShader *sh = OVERLAY_shader_edit_uv_stretching_angle_get();
+        pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
+        DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_vec2_copy(pd->edit_uv_stretching_grp, "aspect", pd->edit_uv.uv_aspect);
+        DRW_shgroup_uniform_float_copy(
+            pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
+      }
+      else /* SI_UVDT_STRETCH_AREA */ {
+        GPUShader *sh = OVERLAY_shader_edit_uv_stretching_area_get();
+        pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
+        DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
+        DRW_shgroup_uniform_float(
+            pd->edit_uv_stretching_grp, "totalAreaRatio", &pd->edit_uv.total_area_ratio, 1);
+        DRW_shgroup_uniform_float_copy(
+            pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
+      }
     }
-    {
-      auto &pass = facedots_ps_;
-      pass.init();
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                     DRW_STATE_WRITE_DEPTH);
-      pass.shader_set(res.shaders.mesh_edit_facedot.get());
-      mesh_edit_common_resource_bind(pass, backwire_opacity);
+
+    if (pd->edit_uv.do_tiled_image_border_overlay) {
+      blender::gpu::Batch *geom = DRW_cache_quad_wires_get();
+      float obmat[4][4];
+      unit_m4(obmat);
+
+      DRW_PASS_CREATE(psl->edit_uv_tiled_image_borders_ps,
+                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
+      GPUShader *sh = OVERLAY_shader_edit_uv_tiled_image_borders_get();
+
+      float theme_color[4], selected_color[4];
+      UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
+      UI_GetThemeColor4fv(TH_FACE_SELECT, selected_color);
+      srgb_to_linearrgb_v4(theme_color, theme_color);
+      srgb_to_linearrgb_v4(selected_color, selected_color);
+
+      DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
+      DRW_shgroup_uniform_vec4_copy(grp, "ucolor", theme_color);
+      const float3 offset = {0.0f, 0.0f, 0.0f};
+      DRW_shgroup_uniform_vec3_copy(grp, "offset", offset);
+
+      LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+        const int tile_x = ((tile->tile_number - 1001) % 10);
+        const int tile_y = ((tile->tile_number - 1001) / 10);
+        obmat[3][1] = float(tile_y);
+        obmat[3][0] = float(tile_x);
+        DRW_shgroup_call_obmat(grp, geom, obmat);
+      }
+      /* Only mark active border when overlays are enabled. */
+      if (pd->edit_uv.do_tiled_image_overlay) {
+        /* Active tile border */
+        ImageTile *active_tile = static_cast<ImageTile *>(
+            BLI_findlink(&image->tiles, image->active_tile_index));
+        if (active_tile) {
+          obmat[3][0] = float((active_tile->tile_number - 1001) % 10);
+          obmat[3][1] = float((active_tile->tile_number - 1001) / 10);
+          grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
+          DRW_shgroup_uniform_vec4_copy(grp, "ucolor", selected_color);
+          DRW_shgroup_call_obmat(grp, geom, obmat);
+        }
+      }
     }
+
+    if (pd->edit_uv.do_tiled_image_overlay) {
+      DRWTextStore *dt = DRW_text_cache_ensure();
+      uchar color[4];
+      /* Color Management: Exception here as texts are drawn in sRGB space directly. */
+      UI_GetThemeColorShade4ubv(TH_BACK, 60, color);
+      char text[16];
+      LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
+        BLI_snprintf(text, 5, "%d", tile->tile_number);
+        float tile_location[3] = {
+            float((tile->tile_number - 1001) % 10), float((tile->tile_number - 1001) / 10), 0.0f};
+        DRW_text_cache_add(
+            dt, tile_location, text, strlen(text), 10, 10, DRW_TEXT_CACHE_GLOBALSPACE, color);
+      }
+    }
+
+    if (pd->edit_uv.do_stencil_overlay) {
+      const Brush *brush = BKE_paint_brush(&ts->imapaint.paint);
+      ::Image *stencil_image = brush->clone.image;
+      GPUTexture *stencil_texture = BKE_image_get_gpu_texture(stencil_image, nullptr);
+
+      if (stencil_texture != nullptr) {
+      DRW_PASS_CREATE(psl->edit_uv_stencil_ps,
+                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS |
+                          DRW_STATE_BLEND_ALPHA_PREMUL);
+      GPUShader *sh = OVERLAY_shader_edit_uv_stencil_image();
+      blender::gpu::Batch *geom = DRW_cache_quad_get();
+      DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_stencil_ps);
+      DRW_shgroup_uniform_texture(grp, "imgTexture", stencil_texture);
+      DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", true);
+      DRW_shgroup_uniform_bool_copy(grp, "imgAlphaBlend", true);
+      const float4 color = {1.0f, 1.0f, 1.0f, brush->clone.alpha};
+      DRW_shgroup_uniform_vec4_copy(grp, "ucolor", color);
+
+      float size_image[2];
+      BKE_image_get_size_fl(image, nullptr, size_image);
+      float size_stencil_image[2] = {float(GPU_texture_original_width(stencil_texture)),
+                                     float(GPU_texture_original_height(stencil_texture))};
+
+      float obmat[4][4];
+      unit_m4(obmat);
+      obmat[3][1] = brush->clone.offset[1];
+      obmat[3][0] = brush->clone.offset[0];
+      obmat[0][0] = size_stencil_image[0] / size_image[0];
+      obmat[1][1] = size_stencil_image[1] / size_image[1];
+
+      DRW_shgroup_call_obmat(grp, geom, obmat);
+      }
+    }
+
+    if (pd->edit_uv.do_mask_overlay) {
+    const bool is_combined_overlay = pd->edit_uv.mask_overlay_mode == MASK_OVERLAY_COMBINED;
+    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS;
+    state |= is_combined_overlay ? DRW_STATE_BLEND_MUL : DRW_STATE_BLEND_ALPHA;
+    DRW_PASS_CREATE(psl->edit_uv_mask_ps, state);
+
+    GPUShader *sh = OVERLAY_shader_edit_uv_mask_image();
+    blender::gpu::Batch *geom = DRW_cache_quad_get();
+    DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_mask_ps);
+    GPUTexture *mask_texture = edit_uv_mask_texture(pd->edit_uv.mask,
+                                                    pd->edit_uv.image_size[0],
+                                                    pd->edit_uv.image_size[1],
+                                                    pd->edit_uv.image_aspect[1],
+                                                    pd->edit_uv.image_aspect[1]);
+    pd->edit_uv.mask_texture = mask_texture;
+    DRW_shgroup_uniform_texture(grp, "imgTexture", mask_texture);
+    const float4 color = {1.0f, 1.0f, 1.0f, 1.0f};
+    DRW_shgroup_uniform_vec4_copy(grp, "color", color);
+    DRW_shgroup_call_obmat(grp, geom, nullptr);
+    }
+
+  /* HACK: When editing objects that share the same mesh we should only draw the
+   * first one in the order that is used during uv editing. We can only trust that the first object
+   * has the correct batches with the correct selection state. See #83187. */
+  if ((pd->edit_uv.do_uv_overlay || pd->edit_uv.do_uv_shadow_overlay) &&
+      draw_ctx->obact->type == OB_MESH)
+  {
+    Vector<Object *> objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
+        draw_ctx->scene, draw_ctx->view_layer, nullptr, draw_ctx->object_mode);
+    for (Object *object : objects) {
+      Object *object_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, object);
+      DRW_mesh_batch_cache_validate(*object_eval, *(Mesh *)object_eval->data);
+      overlay_edit_uv_cache_populate(vedata, *object_eval);
+    }
+  }
+#endif
 
     per_mesh_area_3d.clear();
     per_mesh_area_2d.clear();
   }
 
-  void edit_object_sync(Manager &manager,
-                        const ObjectRef &ob_ref,
-                        const State &state,
-                        Resources & /*res*/)
+  void edit_object_sync(Manager &manager, const ObjectRef &ob_ref)
   {
-    if (!enabled_) {
+    if (!enabled_ || ob_ref.object->type != OB_MESH) {
       return;
     }
 
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
-    Object *ob = ob_ref.object;
-    Mesh &mesh = *static_cast<Mesh *>(ob->data);
+    Object &ob = *ob_ref.object;
+    Mesh &mesh = *static_cast<Mesh *>(ob.data);
+
+    if (show_uv_edit) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
+      edges_ps_.draw(geom, res_handle);
+    }
+
+    if (show_wireframe) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
+      wireframe_ps_.draw(geom, res_handle);
+    }
   }
 
-  void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
+  void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     if (!enabled_) {
       return;
@@ -670,10 +825,16 @@ class MeshUVs {
     GPU_debug_group_begin("Mesh Edit UVs");
 
     GPU_framebuffer_bind(framebuffer);
-    manager.submit(faces_ps_, view);
-    manager.submit(edges_ps_, view);
-    manager.submit(verts_ps_, view);
-    manager.submit(facedots_ps_, view);
+    if (show_wireframe) {
+      manager.submit(wireframe_ps_, view);
+    }
+    // manager.submit(analysis_ps_, view);
+    // manager.submit(faces_ps_, view);
+    if (show_uv_edit) {
+      manager.submit(edges_ps_, view);
+    }
+    // manager.submit(facedots_ps_, view);
+    // manager.submit(verts_ps_, view);
 
     GPU_debug_group_end();
   }

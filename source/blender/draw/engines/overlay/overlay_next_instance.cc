@@ -34,6 +34,7 @@ void Instance::init()
   state.rv3d = ctx->rv3d;
   state.active_base = BKE_view_layer_active_base_get(ctx->view_layer);
   state.object_mode = ctx->object_mode;
+  state.cfra = DEG_get_ctime(state.depsgraph);
 
   /* Note there might be less than 6 planes, but we always compute the 6 of them for simplicity. */
   state.clipping_plane_count = clipping_enabled_ ? 6 : 0;
@@ -50,7 +51,6 @@ void Instance::init()
     state.xray_enabled = XRAY_ACTIVE(state.v3d);
     state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
     state.xray_opacity = XRAY_ALPHA(state.v3d);
-    state.cfra = DEG_get_ctime(state.depsgraph);
 
     if (!state.hide_overlays) {
       state.overlay = state.v3d->overlay;
@@ -73,7 +73,14 @@ void Instance::init()
                               ctx->object_pose != nullptr;
   }
   else if (state.space_type == SPACE_IMAGE) {
-    const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
+    SpaceImage *space_image = (SpaceImage *)state.space_data;
+
+    state.clear_in_front = false;
+    state.use_in_front = false;
+    state.is_wireframe_mode = false;
+    state.hide_overlays = (space_image->overlay.flag & SI_OVERLAY_SHOW_OVERLAYS) == 0;
+    state.xray_enabled = false;
+
     /* During engine initialization phase the `space_image` isn't locked and we are able to
      * retrieve the needed data. During cache_init the image engine locks the `space_image` and
      * makes it impossible to retrieve the data. */
@@ -122,6 +129,7 @@ void Instance::begin_sync()
     layer.light_probes.begin_sync(resources, state);
     layer.metaballs.begin_sync();
     layer.meshes.begin_sync(resources, state, view);
+    layer.mesh_uvs.begin_sync(resources, state);
     layer.particles.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
     layer.relations.begin_sync();
@@ -161,6 +169,8 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     switch (ob_ref.object->type) {
       case OB_MESH:
         layer.meshes.edit_object_sync(manager, ob_ref, state, resources);
+        /* TODO(fclem): Find a better place / condition. */
+        layer.mesh_uvs.edit_object_sync(manager, ob_ref);
         break;
       case OB_ARMATURE:
         layer.armatures.edit_object_sync(ob_ref, resources, shapes, state);
@@ -397,6 +407,7 @@ void Instance::draw(Manager &manager)
     layer.armatures.draw(framebuffer, manager, view);
     layer.sculpts.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
+    layer.mesh_uvs.draw(framebuffer, manager, view);
   };
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
