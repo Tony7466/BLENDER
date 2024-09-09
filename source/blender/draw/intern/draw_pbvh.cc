@@ -1207,7 +1207,6 @@ static void fill_vbos_bmesh(const Object &object,
 }
 
 static gpu::IndexBuf *create_index_faces(const OffsetIndices<int> faces,
-                                         const Span<int3> corner_tris,
                                          const Span<bool> hide_poly,
                                          const Span<int> face_indices)
 {
@@ -1223,29 +1222,25 @@ static gpu::IndexBuf *create_index_faces(const OffsetIndices<int> faces,
   GPU_indexbuf_init(&builder, GPU_PRIM_LINES, corners_count, INT_MAX);
   MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
 
-  int index_offset = 0;
+  int node_corner_offset = 0;
   int line_index = 0;
   for (const int face_index : face_indices) {
+    const int face_size = faces[face_index].size();
     if (!hide_poly.is_empty() && hide_poly[face_index]) {
+      node_corner_offset += face_size;
       continue;
     }
-
-    const IndexRange tris_range = bke::mesh::face_triangles_range(faces, face_index);
-    const Span<int> face_tri_corners = corner_tris.slice(tris_range).cast<int>();
-
-    const IndexRange face = faces[face_index];
-    for (const int corner : face) {
-      const int corner_next = bke::mesh::face_corner_next(face, corner);
-      data[line_index] = index_offset + uint2(face_tri_corners.first_index(corner),
-                                              face_tri_corners.first_index(corner_next));
+    for (const int i : IndexRange(face_size)) {
+      const int next = (i == face_size - 1) ? 0 : i + 1;
+      data[line_index] = uint2(i, next) + node_corner_offset;
       line_index++;
     }
 
-    index_offset += bke::mesh::face_triangles_num(faces[face_index].size()) * 3;
+    node_corner_offset += face_size;
   }
 
   gpu::IndexBuf *ibo = GPU_indexbuf_calloc();
-  GPU_indexbuf_build_in_place_ex(&builder, 0, index_offset, false, ibo);
+  GPU_indexbuf_build_in_place_ex(&builder, 0, node_corner_offset, false, ibo);
   return ibo;
 }
 
@@ -1684,11 +1679,10 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
       const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const OffsetIndices<int> faces = mesh.faces();
-      const Span<int3> corner_tris = mesh.corner_tris();
       const bke::AttributeAccessor attributes = orig_mesh_data.attributes;
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
-        ibos[i] = create_index_faces(faces, corner_tris, hide_poly, nodes[i].faces());
+        ibos[i] = create_index_faces(faces, hide_poly, nodes[i].faces());
       });
       break;
     }
