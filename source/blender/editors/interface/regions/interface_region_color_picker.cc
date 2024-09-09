@@ -830,8 +830,7 @@ static void ui_block_colorpicker(uiBlock *block,
   ui_colorpicker_hide_reveal(block, (ePickerType)colormode);
 }
 
-static int ui_colorpicker_wheel_cb(const bContext * /*C*/,
-                                         uiBlock *block, const wmEvent *event)
+static int ui_colorpicker_wheel_cb(const bContext * /*C*/, uiBlock *block, const wmEvent *event)
 {
   /* Increase/Decrease the Color HSV Value component using the mouse wheel. */
   float add = 0.0f;

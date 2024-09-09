@@ -182,7 +182,8 @@ void ycc_to_rgb(float y, float cb, float cr, float *r_r, float *r_g, float *r_b,
   *r_b = b / 255.0f;
 }
 
-void hex_to_rgb(const char *hexcol, float *r_r, float *r_g, float *r_b) {
+void hex_to_rgb(const char *hexcol, float *r_r, float *r_g, float *r_b)
+{
   hex_to_rgba(hexcol, r_r, r_g, r_b, nullptr);
 }
 
