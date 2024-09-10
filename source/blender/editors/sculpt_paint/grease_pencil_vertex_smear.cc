@@ -24,6 +24,30 @@ struct ColorGrid {
   int cell_size_px;
   /* The center position of the grid (screen space). */
   float2 center;
+
+  /* Compute the screen space position based on a grid position and a center. */
+  float2 pos_to_coords(const int2 pos, const float2 center) const
+  {
+    const float2 centered = float2(pos - this->size / 2) + float2(0.5f);
+    return (centered * this->cell_size_px) + center;
+  }
+
+  /* Compute a grid position based on a screen space position and a center. */
+  int2 coords_to_pos(const float2 coord, const float2 center) const
+  {
+    const int2 pos = int2(math::floor((coord - center) / float(this->cell_size_px)));
+    return pos + this->size / 2;
+  }
+
+  /* Compute a grid index (into the colors array) based on a grid position. Returns -1 if the
+   * position is out of bounds. */
+  int pos_to_index(const int2 pos) const
+  {
+    if (pos.x >= 0 && pos.x < this->size && pos.y >= 0 && pos.y < this->size) {
+      return pos.y * this->size + pos.x;
+    }
+    return -1;
+  }
 };
 
 class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
@@ -36,29 +60,7 @@ class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
 
  private:
   ColorGrid color_grid_;
-
   void init_color_grid(const bContext &C, float2 start_position);
-
-  float2 grid_pos_to_coords(const int2 pos, const float2 center) const
-  {
-    const float2 centered = float2(pos - color_grid_.size / 2) + float2(0.5f);
-    return (centered * color_grid_.cell_size_px) + center;
-  }
-
-  int2 coords_to_grid_pos(const float2 coord, const float2 center) const
-  {
-    const int2 pos = int2(math::floor((coord - center) / float(color_grid_.cell_size_px)));
-    return pos + color_grid_.size / 2;
-  }
-
-  int grid_pos_to_grid_index(const int2 pos) const
-  {
-    const int size = color_grid_.size;
-    if (pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size) {
-      return pos.y * color_grid_.size + pos.x;
-    }
-    return -1;
-  }
 };
 
 void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start_position)
@@ -71,6 +73,7 @@ void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start
   const float radius = brush_radius(scene, brush, 1.0f);
 
   /* Setup grid values. */
+  /* TODO: Make this a setting. */
   color_grid_.cell_size_px = 10.0f;
   color_grid_.center = start_position;
   color_grid_.size = int(math::ceil((radius * 2.0f) / color_grid_.cell_size_px));
@@ -99,7 +102,7 @@ void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start
       const ColorGeometry4f color = vertex_colors[point_i];
 
       const int bounds_size = math::floor(view_radius / color_grid_.cell_size_px) * 2 + 1;
-      const int2 bounds_center = this->coords_to_grid_pos(view_pos, color_grid_.center);
+      const int2 bounds_center = color_grid_.coords_to_pos(view_pos, color_grid_.center);
       const int2 bounds_min = bounds_center - (bounds_size / 2);
       const int2 bounds_max = bounds_center + (bounds_size / 2);
       if (!(bounds_min.x < color_grid_.size && bounds_max.x >= 0 &&
@@ -111,11 +114,11 @@ void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start
       for (int y = bounds_min.y; y <= bounds_max.y; y++) {
         for (int x = bounds_min.x; x <= bounds_max.x; x++) {
           const int2 grid_pos = int2(x, y);
-          const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+          const int cell_i = color_grid_.pos_to_index(grid_pos);
           if (cell_i == -1) {
             continue;
           }
-          const float2 cell_pos = this->grid_pos_to_coords(grid_pos, color_grid_.center);
+          const float2 cell_pos = color_grid_.pos_to_coords(grid_pos, color_grid_.center);
           if (math::distance_squared(cell_pos, view_pos) <= view_radius * view_radius) {
             color_grid_.colors[cell_i] += float4(color.r, color.g, color.b, 1.0f);
             points_per_cell[cell_i]++;
@@ -161,8 +164,8 @@ void VertexSmearOperation::on_stroke_extended(const bContext &C,
     MutableSpan<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors_for_write();
     point_selection.foreach_index(GrainSize(1024), [&](const int64_t point_i) {
       const float2 view_pos = view_positions[point_i];
-      const int2 grid_pos = this->coords_to_grid_pos(view_pos, extension_sample.mouse_position);
-      const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+      const int2 grid_pos = color_grid_.coords_to_pos(view_pos, extension_sample.mouse_position);
+      const int cell_i = color_grid_.pos_to_index(grid_pos);
       if (cell_i == -1 || color_grid_.colors[cell_i][3] == 0.0f) {
         return;
       }
