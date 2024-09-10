@@ -126,17 +126,14 @@ class Grid {
  private:
   bool init(const State &state, const View &view)
   {
-    float grid_steps[SI_GRID_STEPS_LEN] = {
-        0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
     data_.line_size = max_ff(0.0f, U.pixelsize - 1.0f) * 0.5f;
     /* Default, nothing is drawn. */
     grid_flag_ = zneg_flag_ = zpos_flag_ = OVERLAY_GridBits(0);
 
-    return (state.space_type == SPACE_IMAGE) ? init_2d(state, grid_steps) :
-                                               init_3d(state, view, grid_steps);
+    return (state.space_type == SPACE_IMAGE) ? init_2d(state) : init_3d(state, view);
   }
 
-  void copy_steps_to_data(float grid_steps_x[], float grid_steps_y[])
+  void copy_steps_to_data(Span<float> grid_steps_x, Span<float> grid_steps_y)
   {
     /* Convert to UBO alignment. */
     for (const int i : IndexRange(SI_GRID_STEPS_LEN)) {
@@ -145,14 +142,16 @@ class Grid {
     }
   }
 
-  bool init_2d(const State &state, float grid_steps[])
+  bool init_2d(const State &state)
   {
     if (state.hide_overlays) {
       return false;
     }
     SpaceImage *sima = (SpaceImage *)state.space_data;
     const View2D *v2d = &state.region->v2d;
-    float grid_steps_y[SI_GRID_STEPS_LEN] = {0.0f};
+    std::array<float, SI_GRID_STEPS_LEN> grid_steps_x = {
+        0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
+    std::array<float, SI_GRID_STEPS_LEN> grid_steps_y = {0.0f};
 
     /* Only UV Edit mode has the various Overlay options for now. */
     const bool is_uv_edit = sima->mode == SI_MODE_UV;
@@ -186,12 +185,12 @@ class Grid {
     }
 
     data_.zoom_factor = ED_space_image_zoom_level(v2d, SI_GRID_STEPS_LEN);
-    ED_space_image_grid_steps(sima, grid_steps, grid_steps_y, SI_GRID_STEPS_LEN);
-    copy_steps_to_data(grid_steps, grid_steps_y);
+    ED_space_image_grid_steps(sima, grid_steps_x.data(), grid_steps_y.data(), SI_GRID_STEPS_LEN);
+    copy_steps_to_data(grid_steps_x, grid_steps_y);
     return true;
   }
 
-  bool init_3d(const State &state, const View &view, float grid_steps[])
+  bool init_3d(const State &state, const View &view)
   {
     const View3D *v3d = state.v3d;
     const RegionView3D *rv3d = state.rv3d;
@@ -207,6 +206,9 @@ class Grid {
     if (state.hide_overlays || !show_any) {
       return false;
     }
+
+    std::array<float, SI_GRID_STEPS_LEN> grid_steps = {
+        0.001f, 0.01f, 0.1f, 1.0f, 10.0f, 100.0f, 1000.0f, 10000.0f};
 
     /* If perspective view or non-axis aligned view. */
     if (view.is_persp() || rv3d->view == RV3D_VIEW_USER) {
@@ -293,7 +295,7 @@ class Grid {
 
     data_.distance = dist / 2.0f;
 
-    ED_view3d_grid_steps(state.scene, v3d, rv3d, grid_steps);
+    ED_view3d_grid_steps(state.scene, v3d, rv3d, grid_steps.data());
 
     if ((v3d->flag & (V3D_XR_SESSION_SURFACE | V3D_XR_SESSION_MIRROR)) != 0) {
       /* The calculations for the grid parameters assume that the view matrix has no scale
