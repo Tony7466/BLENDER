@@ -34,8 +34,6 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.hh"
-
 #include "BKE_animsys.h"
 #include "BKE_blender_undo.hh"
 #include "BKE_brush.hh"
@@ -3444,9 +3442,10 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   MEM_SAFE_FREE(text_edit.edit_string);
 
+  /* Clear the status bar. */
+  printf("DEBUG: ui_textedit_begin\n");
   WorkspaceStatus status(C);
-  status.item(IFACE_("Copy"), ICON_EVENT_CTRL, ICON_EVENT_C);
-  status.item(IFACE_("Paste"), ICON_EVENT_CTRL, ICON_EVENT_V);
+  status.item(" ", ICON_NONE);
 
 #ifdef USE_DRAG_MULTINUM
   /* this can happen from multi-drag */
@@ -8573,8 +8572,9 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
       else {
         WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, nullptr, true);
       }
+      /* Clear the status bar. */
       WorkspaceStatus status(C);
-      status.item("Snap", ICON_EVENT_CTRL);
+      status.item(" ", ICON_NONE);
     }
     ui_numedit_begin(but, data);
   }
