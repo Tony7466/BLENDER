@@ -835,6 +835,67 @@ static void ANIM_OT_convert_legacy_action(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+static bool merge_actions_selection_poll(bContext *C)
+{
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    CTX_wm_operator_poll_msg_set(C, "No active object");
+    return false;
+  }
+  if (!object->adt || !object->adt->action) {
+    CTX_wm_operator_poll_msg_set(C, "Active object has no action");
+    return false;
+  }
+  return true;
+}
+
+static int merge_actions_selection_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::animrig;
+  Object *active_object = CTX_data_active_object(C);
+  /* Those cases are caught by the poll. */
+  BLI_assert(active_object != nullptr);
+  BLI_assert(active_object->adt->action != nullptr);
+
+  Action &active_action = active_object->adt->action->wrap();
+
+  blender::Vector<PointerRNA> selection;
+  if (!CTX_data_selected_objects(C, &selection)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  for (const PointerRNA &ptr : selection) {
+    Object *selected = (Object *)ptr.owner_id;
+    if (!selected->adt || !selected->adt->action) {
+      /* No action to merge. */
+      continue;
+    }
+
+    Action &action = selected->adt->action->wrap();
+    if (action.is_action_legacy() || selected->adt->slot_handle == Slot::unassigned) {
+      continue;
+    }
+    Slot *slot = action.slot_for_handle(selected->adt->slot_handle);
+    BLI_assert(slot != nullptr);
+    blender::animrig::move_slot(*slot, action, active_action);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_merge_actions_selection(wmOperatorType *ot)
+{
+  ot->name = "Merge Actions";
+  ot->idname = "ANIM_OT_merge_actions_selection";
+  ot->description =
+      "Merge the actions of the selected objects into the action of the active object";
+
+  ot->exec = merge_actions_selection_exec;
+  ot->poll = merge_actions_selection_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -884,6 +945,7 @@ void ED_operatortypes_anim()
 
   WM_operatortype_append(ANIM_OT_slot_new_for_object);
   WM_operatortype_append(ANIM_OT_convert_legacy_action);
+  WM_operatortype_append(ANIM_OT_merge_actions_selection);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)

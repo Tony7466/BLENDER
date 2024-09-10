@@ -942,6 +942,9 @@ TEST_F(ActionLayersTest, action_move_slot)
   /* Action should have been reassigned. */
   ASSERT_EQ(action, cube->adt->action);
   ASSERT_EQ(action, suzanne->adt->action);
+
+  /* Moving to the same action should do nothing. */
+  ASSERT_FALSE(move_slot(slot_suzanne, *action, *action));
 }
 
 /*-----------------------------------------------------------*/
