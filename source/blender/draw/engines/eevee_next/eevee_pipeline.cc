@@ -560,7 +560,6 @@ void DeferredLayer::begin_sync()
     /* Textures. */
     npr_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     npr_ps_.bind_texture(INDEX_NPR_TX_SLOT, &inst_.render_buffers.npr_index_tx);
-    npr_ps_.bind_texture(DEPTH_NPR_TX_SLOT, &inst_.render_buffers.depth_tx);
 #if 0
   npr_ps_.bind_resources(inst_.gbuffer);
 #else
