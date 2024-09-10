@@ -60,7 +60,8 @@ VertOut vertex_main(VertIn v_in)
   vert_out.hs_P.z = is_selected ? 0.25 : 0.35;
 
   /* Avoid precision loss. */
-  vert_out.stipple_start = vert_out.stipple_pos = 500.0 + 500.0 * (gl_Position.xy / gl_Position.w);
+  vert_out.stipple_pos = 500.0 + 500.0 * (vert_out.hs_P.xy / vert_out.hs_P.w);
+  vert_out.stipple_start = vert_out.stipple_pos;
 
   return vert_out;
 }
