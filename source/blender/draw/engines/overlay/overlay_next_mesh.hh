@@ -624,9 +624,6 @@ class MeshUVs {
 
     if (show_face_dots) {
       const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * UI_SCALE_FAC;
-      float4 theme_color;
-      UI_GetThemeColor4fv(TH_VERTEX, theme_color);
-      srgb_to_linearrgb_v4(theme_color, theme_color);
 
       auto &pass = facedots_ps_;
       pass.init();
@@ -637,25 +634,16 @@ class MeshUVs {
       pass.push_constant("pointSize", (point_size + 1.5f) * float(M_SQRT2));
     }
 
-#if 0
-    if (pd->edit_uv.do_uv_overlay) {
-      if (pd->edit_uv.do_verts || pd->edit_uv.do_face_dots) {
-        DRW_PASS_CREATE(psl->edit_uv_verts_ps,
-                        DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                            DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA);
-      }
-
-      /* uv faces */
-      if (pd->edit_uv.do_faces) {
-        DRW_PASS_CREATE(psl->edit_uv_faces_ps,
-                        DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
-        GPUShader *sh = OVERLAY_shader_edit_uv_face_get();
-        pd->edit_uv_faces_grp = DRW_shgroup_create(sh, psl->edit_uv_faces_ps);
-        DRW_shgroup_uniform_block(pd->edit_uv_faces_grp, "globalsBlock", G_draw.block_ubo);
-        DRW_shgroup_uniform_float(pd->edit_uv_faces_grp, "uvOpacity", &pd->edit_uv.uv_opacity, 1);
-      }
+    if (show_face) {
+      auto &pass = faces_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(res.shaders.uv_edit_face.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("uvOpacity", space_image->uv_opacity);
     }
 
+#if 0
     /* uv stretching */
     if (pd->edit_uv.do_uv_stretching_overlay) {
       DRW_PASS_CREATE(psl->edit_uv_stretching_ps,
@@ -834,6 +822,10 @@ class MeshUVs {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_facedots(ob, mesh);
       facedots_ps_.draw(geom, res_handle);
     }
+    if (show_face) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_faces(ob, mesh);
+      faces_ps_.draw(geom, res_handle);
+    }
 
     if (show_wireframe) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
@@ -854,7 +846,9 @@ class MeshUVs {
       manager.submit(wireframe_ps_, view);
     }
     // manager.submit(analysis_ps_, view);
-    // manager.submit(faces_ps_, view);
+    if (show_face) {
+      manager.submit(faces_ps_, view);
+    }
     if (show_uv_edit) {
       manager.submit(edges_ps_, view);
     }

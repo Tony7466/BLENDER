@@ -249,6 +249,8 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
 
   uv_edit_vert = shader("overlay_edit_uv_verts",
                         [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  uv_edit_face = shader("overlay_edit_uv_face_dots",
+                        [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
   uv_edit_facedot = shader("overlay_edit_uv_face_dots",
                            [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 

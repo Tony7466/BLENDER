@@ -230,6 +230,7 @@ class ShaderModule {
   ShaderPtr sculpt_curves;
   ShaderPtr sculpt_curves_cage;
   ShaderPtr uv_edit_edge = shader("overlay_edit_uv_edges_next");
+  ShaderPtr uv_edit_face;
   ShaderPtr uv_edit_facedot;
   ShaderPtr uv_edit_vert;
   ShaderPtr xray_fade;
