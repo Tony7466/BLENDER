@@ -276,6 +276,12 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
                               info.push_constant(gpu::shader::Type::VEC2, "brush_scale");
                               info.additional_info("draw_view");
                             });
+  uv_paint_mask = shader("overlay_edit_uv_mask_image", [](gpu::shader::ShaderCreateInfo &info) {
+    info.additional_infos_.clear();
+    info.push_constant(gpu::shader::Type::VEC2, "brush_offset");
+    info.push_constant(gpu::shader::Type::VEC2, "brush_scale");
+    info.additional_info("draw_view");
+  });
 
   xray_fade = shader("overlay_xray_fade", [](gpu::shader::ShaderCreateInfo &info) {
     info.sampler(2, ImageType::DEPTH_2D, "xrayDepthTexInfront");

@@ -15,6 +15,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_global.hh"
+#include "BKE_mask.h"
 #include "BKE_mesh_types.hh"
 #include "BKE_subdiv_modifier.hh"
 
@@ -434,6 +435,9 @@ class MeshUVs {
   /* TODO(fclem): Should be its own Overlay?. */
   PassSimple brush_stencil_ps_ = {"BrushStencil"};
 
+  /* TODO(fclem): Should be its own Overlay?. */
+  PassSimple paint_mask_ps_ = {"PaintMask"};
+
   bool show_vert = false;
   bool show_face = false;
   bool show_face_dots = false;
@@ -453,6 +457,7 @@ class MeshUVs {
   bool show_mask = false;
   eMaskOverlayMode mask_mode = MASK_OVERLAY_ALPHACHANNEL;
   Mask *mask_id = nullptr;
+  Texture mask_texture_ = {"mask_texture_"};
 
   /** Stretching Overlay. */
   bool show_mesh_analysis = false;
@@ -662,28 +667,7 @@ class MeshUVs {
       pass.push_constant("stretch_opacity", space_image->stretch_opacity);
       pass.push_constant("totalAreaRatio", &total_area_ratio_);
     }
-
 #if 0
-    if (pd->edit_uv.do_mask_overlay) {
-    const bool is_combined_overlay = pd->edit_uv.mask_overlay_mode == MASK_OVERLAY_COMBINED;
-    DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS;
-    state |= is_combined_overlay ? DRW_STATE_BLEND_MUL : DRW_STATE_BLEND_ALPHA;
-    DRW_PASS_CREATE(psl->edit_uv_mask_ps, state);
-
-    GPUShader *sh = OVERLAY_shader_edit_uv_mask_image();
-    blender::gpu::Batch *geom = DRW_cache_quad_get();
-    DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_mask_ps);
-    GPUTexture *mask_texture = edit_uv_mask_texture(pd->edit_uv.mask,
-                                                    pd->edit_uv.image_size[0],
-                                                    pd->edit_uv.image_size[1],
-                                                    pd->edit_uv.image_aspect[1],
-                                                    pd->edit_uv.image_aspect[1]);
-    pd->edit_uv.mask_texture = mask_texture;
-    DRW_shgroup_uniform_texture(grp, "imgTexture", mask_texture);
-    const float4 color = {1.0f, 1.0f, 1.0f, 1.0f};
-    DRW_shgroup_uniform_vec4_copy(grp, "color", color);
-    DRW_shgroup_call_obmat(grp, geom, nullptr);
-    }
 
   /* HACK: When editing objects that share the same mesh we should only draw the
    * first one in the order that is used during uv editing. We can only trust that the first object
@@ -761,6 +745,18 @@ class MeshUVs {
   {
     if (!enabled_) {
       return;
+    }
+
+    {
+      float total_3d = 0.0f;
+      float total_2d = 0.0f;
+      for (const float *mesh_area_2d : per_mesh_area_2d) {
+        total_2d += *mesh_area_2d;
+      }
+      for (const float *mesh_area_3d : per_mesh_area_3d) {
+        total_3d += *mesh_area_3d;
+      }
+      total_area_ratio_ = total_3d * math::safe_rcp(total_2d);
     }
 
     const ToolSettings *tool_setting = state.scene->toolsettings;
@@ -842,6 +838,25 @@ class MeshUVs {
         pass.draw(shapes.quad_solid.get());
       }
     }
+
+    if (show_mask) {
+      paint_mask_texture_ensure(mask_id, state.image_size, state.image_aspect);
+
+      const bool is_combined = mask_mode == MASK_OVERLAY_COMBINED;
+      const float opacity = is_combined ? space_image->mask_info.blend_factor : 1.0f;
+
+      auto &pass = paint_mask_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS |
+                     (is_combined ? DRW_STATE_BLEND_MUL : DRW_STATE_BLEND_ALPHA));
+      pass.shader_set(res.shaders.uv_paint_mask.get());
+      pass.bind_texture("imgTexture", mask_texture_);
+      pass.push_constant("color", float4(1.0f, 1.0f, 1.0f, 1.0f));
+      pass.push_constant("opacity", opacity);
+      pass.push_constant("brush_offset", float2(0.0f));
+      pass.push_constant("brush_scale", float2(1.0f));
+      pass.draw(shapes.quad_solid.get());
+    }
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
@@ -849,21 +864,13 @@ class MeshUVs {
     if (!enabled_) {
       return;
     }
-    {
-      float total_3d = 0.0f;
-      float total_2d = 0.0f;
-      for (const float *mesh_area_2d : per_mesh_area_2d) {
-        total_2d += *mesh_area_2d;
-      }
-      for (const float *mesh_area_3d : per_mesh_area_3d) {
-        total_3d += *mesh_area_3d;
-      }
-      total_area_ratio_ = total_3d * math::safe_rcp(total_2d);
-    }
 
     GPU_debug_group_begin("Mesh Edit UVs");
 
     GPU_framebuffer_bind(framebuffer);
+    if (show_mask && (mask_mode != MASK_OVERLAY_COMBINED)) {
+      manager.submit(paint_mask_ps_, view);
+    }
     if (show_tiled_image_border) {
       manager.submit(image_border_ps_, view);
     }
@@ -892,6 +899,21 @@ class MeshUVs {
     GPU_debug_group_end();
   }
 
+  void draw_on_render(GPUFrameBuffer *framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    GPU_framebuffer_bind(framebuffer);
+    /* Mask in #MASK_OVERLAY_COMBINED mode renders onto the render framebuffer and modifies the
+     * image in scene referred color space. The #MASK_OVERLAY_ALPHACHANNEL renders onto the overlay
+     * framebuffer. */
+    if (show_mask && (mask_mode == MASK_OVERLAY_COMBINED)) {
+      manager.submit(paint_mask_ps_, view);
+    }
+  }
+
  private:
   static OVERLAY_UVLineStyle edit_uv_line_style_from_space_image(const SpaceImage *sima)
   {
@@ -913,6 +935,24 @@ class MeshUVs {
     else {
       return OVERLAY_UV_LINE_STYLE_SHADOW;
     }
+  }
+
+  /* TODO(jbakker): the GPU texture should be cached with the mask. */
+  void paint_mask_texture_ensure(Mask *mask, const int2 &resolution, const float2 &aspect)
+  {
+    const int width = resolution.x;
+    const int height = floor(float(resolution.y) * (aspect.y / aspect.x));
+    float *buffer = static_cast<float *>(MEM_mallocN(sizeof(float) * height * width, __func__));
+
+    MaskRasterHandle *handle = BKE_maskrasterize_handle_new();
+    BKE_maskrasterize_handle_init(handle, mask, width, height, true, true, true);
+    BKE_maskrasterize_buffer(handle, width, height, buffer);
+    BKE_maskrasterize_handle_free(handle);
+
+    mask_texture_.free();
+    mask_texture_.ensure_2d(GPU_R16F, int2(width, height), GPU_TEXTURE_USAGE_SHADER_READ, buffer);
+
+    MEM_freeN(buffer);
   }
 };
 
