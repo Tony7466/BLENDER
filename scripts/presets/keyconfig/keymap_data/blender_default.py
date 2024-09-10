@@ -3463,6 +3463,7 @@ def km_clip_dopesheet_editor(_params):
          {"properties": [("extend", True)]}),
         ("clip.dopesheet_view_all", {"type": 'HOME', "value": 'PRESS'}, None),
         ("clip.dopesheet_view_all", {"type": 'NDOF_BUTTON_FIT', "value": 'PRESS'}, None),
+        ("clip.delete_track", {"type": 'X', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -4633,6 +4634,8 @@ def km_grease_pencil_brush_stroke(_params):
          {"properties": [("mode", 'ERASE')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
+        ("grease_pencil.brush_stroke", {"type": 'ERASER', "value": 'PRESS'},
+         {"properties": [("mode", 'ERASE')]}),
         # Brush size
         ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
          {"properties": [("data_path_primary", 'tool_settings.gpencil_paint.brush.size')]}),
@@ -4838,7 +4841,33 @@ def km_grease_pencil_weight_paint(params):
     return keymap
 
 
+def km_grease_pencil_vertex_paint(params):
+    items = []
+    keymap = (
+        "Grease Pencil Vertex Paint",
+        {"space_type": 'EMPTY', "region_type": 'WINDOW'},
+        {"items": items}
+    )
+
+    items.extend([
+        # Paint vertex
+        ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.vertex_brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+         {"properties": [("mode", 'INVERT')]}),
+        # Increase/Decrease brush size
+        ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 0.9)]}),
+        ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+         {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Radial controls
+        *_template_paint_radial_control("gpencil_vertex_paint"),
+    ])
+
+    return keymap
+
 # Grease Pencil v3 Fill Tool.
+
+
 def km_grease_pencil_fill_tool(_params):
     items = []
     keymap = (
@@ -9144,6 +9173,7 @@ def generate_keymaps(params=None):
         km_grease_pencil_edit_mode(params),
         km_grease_pencil_sculpt_mode(params),
         km_grease_pencil_weight_paint(params),
+        km_grease_pencil_vertex_paint(params),
         km_grease_pencil_brush_stroke(params),
         km_grease_pencil_fill_tool(params),
         # Object mode.
