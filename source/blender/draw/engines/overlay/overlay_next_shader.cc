@@ -247,16 +247,6 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
       "overlay_sculpt_curves_cage",
       [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
-  uv_edit_edges = shader("overlay_edit_uv_edges", [](gpu::shader::ShaderCreateInfo &info) {
-    shader_patch_common(info);
-    info.additional_info("overlay_edit_uv_edges_common");
-  });
-  uv_edit_edges_flat = shader("overlay_edit_uv_edges_select",
-                              [](gpu::shader::ShaderCreateInfo &info) {
-                                shader_patch_common(info);
-                                info.additional_info("overlay_edit_uv_edges_common");
-                              });
-
   xray_fade = shader("overlay_xray_fade", [](gpu::shader::ShaderCreateInfo &info) {
     info.sampler(2, ImageType::DEPTH_2D, "xrayDepthTexInfront");
   });

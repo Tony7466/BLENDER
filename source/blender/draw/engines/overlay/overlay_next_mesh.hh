@@ -571,8 +571,10 @@ class MeshUVs {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA);
-      pass.shader_set(show_vert ? res.shaders.uv_edit_edges_flat.get() :
-                                  res.shaders.uv_edit_edges.get());
+
+      GPUShader *sh = res.shaders.uv_edit_edges.get();
+      pass.specialize_constant(sh, "use_edge_select", !show_vert);
+      pass.shader_set(sh);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       pass.push_constant("lineStyle", OVERLAY_UV_LINE_STYLE_SHADOW);
       pass.push_constant("alpha", space_image->uv_opacity);
@@ -585,8 +587,10 @@ class MeshUVs {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA);
-      pass.shader_set(show_vert ? res.shaders.uv_edit_edges_flat.get() :
-                                  res.shaders.uv_edit_edges.get());
+
+      GPUShader *sh = res.shaders.uv_edit_edges.get();
+      pass.specialize_constant(sh, "use_edge_select", !show_vert);
+      pass.shader_set(sh);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       pass.push_constant("lineStyle", int(edit_uv_line_style_from_space_image(space_image)));
       pass.push_constant("alpha", space_image->uv_opacity);
@@ -807,12 +811,12 @@ class MeshUVs {
 
     if (show_uv_edit) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
-      edges_ps_.draw(geom, res_handle);
+      edges_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
 
     if (show_wireframe) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
-      wireframe_ps_.draw(geom, res_handle);
+      wireframe_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
   }
 
