@@ -231,7 +231,7 @@ typedef struct Sequence {
   float speed_fader;
 
   /* pointers for effects: */
-  struct Sequence *seq1, *seq2, *seq3;
+  struct Sequence *seq1, *seq2, *seq3 DNA_DEPRECATED;
 
   /** List of strips for meta-strips. */
   ListBase seqbase;
