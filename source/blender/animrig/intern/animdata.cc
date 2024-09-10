@@ -210,7 +210,16 @@ bAction *id_action_ensure(Main *bmain, ID *id)
     if (action == nullptr) {
       /* init action name from name of ID block */
       char actname[sizeof(id->name) - 2];
-      SNPRINTF(actname, DATA_("%sAction"), id->name + 2);
+      if (id->flag & ID_FLAG_EMBEDDED_DATA) {
+        /* When the ID is embedded, use the name of the owner ID for clarity. */
+        ID *owner_id = BKE_id_owner_get(id);
+        /* If the ID is embedded it should have an owner. */
+        BLI_assert(owner_id != nullptr);
+        SNPRINTF(actname, DATA_("%sAction"), owner_id->name + 2);
+      }
+      else {
+        SNPRINTF(actname, DATA_("%sAction"), id->name + 2);
+      }
 
       /* create action */
       action = BKE_action_add(bmain, actname);
