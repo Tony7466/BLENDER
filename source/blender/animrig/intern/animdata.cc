@@ -75,14 +75,11 @@ static bAction *find_related_action(Main &bmain, ID &id)
       continue;
     }
 
-    AnimData *adt = BKE_animdata_from_id(related_id);
-    if (adt && adt->action) {
-      Action &action = adt->action->wrap();
-      if (action.is_action_layered()) {
-        /* Returning the first action found means highest priority has the action closest in the
-         * relationship graph. */
-        return adt->action;
-      }
+    Action *action = get_action(*related_id);
+    if (action && action->is_action_layered()) {
+      /* Returning the first action found means highest priority has the action closest in the
+       * relationship graph. */
+      return action;
     }
 
     /* No action found on current ID, add related IDs to the ID Vector. */
@@ -100,29 +97,8 @@ static bAction *find_related_action(Main &bmain, ID &id)
 
       case ID_KE: {
         /* Shapekeys.  */
-
-        /* Find a mesh using this shapekey. */
-        for (Mesh *mesh = static_cast<Mesh *>(bmain.meshes.first); mesh;
-             mesh = static_cast<Mesh *>(mesh->id.next))
-        {
-          if (!mesh->key || &mesh->key->id != related_id) {
-            continue;
-          }
-          related_ids.append_non_duplicates(&mesh->id);
-          break;
-        }
-
-        /* Curves can also have shapekeys. */
-        for (Curve *curve = static_cast<Curve *>(bmain.curves.first); curve;
-             curve = static_cast<Curve *>(curve->id.next))
-        {
-          if (!curve->key || &curve->key->id != related_id) {
-            continue;
-          }
-          related_ids.append_non_duplicates(&curve->id);
-          break;
-        }
-
+        Key *key = (Key *)related_id;
+        related_ids.append_non_duplicates(key->from);
         break;
       }
 
@@ -142,21 +118,10 @@ static bAction *find_related_action(Main &bmain, ID &id)
           break;
         }
         BLI_assert(ID_REAL_USERS(related_id) == 0);
-        ID *foo;
-        /* Search in all IDs to support all cases where node trees are used. */
-        FOREACH_MAIN_ID_BEGIN (&bmain, foo) {
-          bNodeTree *asd = bke::node_tree_from_id(foo);
-          if (!asd) {
-            continue;
-          }
-          if (&asd->id != related_id) {
-            continue;
-          }
-          related_ids.append_non_duplicates(foo);
-          /* Can exit the loop because embedded IDs are used only once. */
-          break;
+        ID *owner_id = BKE_id_owner_get(related_id);
+        if (owner_id) {
+          related_ids.append(owner_id);
         }
-        FOREACH_MAIN_ID_END;
 
         break;
       }
