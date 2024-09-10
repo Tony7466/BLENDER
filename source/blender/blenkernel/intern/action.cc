@@ -192,6 +192,13 @@ static void action_free_data(ID *id)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
+  /* Free keyframe data. */
+  for (animrig::StripKeyframeData *keyframe_data : action.strip_keyframe_data()) {
+    MEM_delete(keyframe_data);
+  }
+  MEM_SAFE_FREE(action.strip_keyframe_data_array);
+  action.strip_keyframe_data_num = 0;
+
   /* Free layers. */
   for (animrig::Layer *layer : action.layers()) {
     MEM_delete(layer);
