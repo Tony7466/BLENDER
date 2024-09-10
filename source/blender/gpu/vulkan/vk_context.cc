@@ -13,6 +13,7 @@
 #include "vk_immediate.hh"
 #include "vk_memory.hh"
 #include "vk_shader.hh"
+#include "vk_shader_compiler.hh"
 #include "vk_shader_interface.hh"
 #include "vk_state_manager.hh"
 #include "vk_texture.hh"
