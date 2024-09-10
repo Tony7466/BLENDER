@@ -706,6 +706,18 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     int *r_prefix_len);
 
 /**
+ * Get name of the data-block that should be shown in the UI.
+ */
+const char *BKE_id_ui_name(const ID &id);
+
+/**
+ * Get the name (without type prefix) of the ID.
+ * This is a macro currently, because it can't be implemented as inline function without adding an
+ * include.
+ */
+#define BKE_id_name(id) ((id).name + 2)
+
+/**
  * Generate a concatenation of ID name (including two-chars type code) and its lib name, if any.
  *
  * \return A unique allocated string key for any ID in the whole Main database.
