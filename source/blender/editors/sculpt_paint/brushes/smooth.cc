@@ -70,7 +70,7 @@ BLI_NOINLINE static void apply_positions_faces(const Depsgraph &depsgraph,
   const StrokeCache &cache = *ss.cache;
   const Mesh &mesh = *static_cast<Mesh *>(object.data);
 
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const Span<int> verts = node.verts();
 
   tls.factors.resize(verts.size());
   const MutableSpan<float> factors = tls.factors;
@@ -110,7 +110,8 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Depsgraph &depsgraph,
                                               const float brush_strength)
 {
   const SculptSession &ss = *object.sculpt;
-  MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+  MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -132,41 +133,37 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Depsgraph &depsgraph,
    * are updated in parallel. Without this there would be non-threadsafe access to changing
    * positions in other bke::pbvh::Tree nodes. */
   for (const float strength : iteration_strengths(brush_strength)) {
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+    node_mask.foreach_index(GrainSize(1), [&](const int i, const int pos) {
       LocalData &tls = all_tls.local();
-      node_mask.slice(range).foreach_index([&](const int i) {
-        const Span<int> verts = bke::pbvh::node_unique_verts(nodes[i]);
-        tls.vert_neighbors.resize(verts.size());
-        calc_vert_neighbors_interior(faces,
-                                     corner_verts,
-                                     ss.vert_to_face_map,
-                                     ss.vertex_info.boundary,
-                                     hide_poly,
-                                     verts,
-                                     tls.vert_neighbors);
-        smooth::neighbor_data_average_mesh_check_loose(
-            positions_eval,
-            verts,
-            tls.vert_neighbors,
-            new_positions.as_mutable_span().slice(node_vert_offsets[i]));
-      });
+      const Span<int> verts = nodes[i].verts();
+      tls.vert_neighbors.resize(verts.size());
+      calc_vert_neighbors_interior(faces,
+                                   corner_verts,
+                                   ss.vert_to_face_map,
+                                   ss.vertex_info.boundary,
+                                   hide_poly,
+                                   verts,
+                                   tls.vert_neighbors);
+      smooth::neighbor_data_average_mesh_check_loose(
+          positions_eval,
+          verts,
+          tls.vert_neighbors,
+          new_positions.as_mutable_span().slice(node_vert_offsets[pos]));
     });
 
-    threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
+    node_mask.foreach_index(GrainSize(1), [&](const int i, const int pos) {
       LocalData &tls = all_tls.local();
-      node_mask.slice(range).foreach_index([&](const int i) {
-        apply_positions_faces(depsgraph,
-                              sd,
-                              brush,
-                              positions_eval,
-                              vert_normals,
-                              nodes[i],
-                              strength,
-                              object,
-                              tls,
-                              new_positions.as_span().slice(node_vert_offsets[i]),
-                              positions_orig);
-      });
+      apply_positions_faces(depsgraph,
+                            sd,
+                            brush,
+                            positions_eval,
+                            vert_normals,
+                            nodes[i],
+                            strength,
+                            object,
+                            tls,
+                            new_positions.as_span().slice(node_vert_offsets[pos]),
+                            positions_orig);
     });
   }
 }
@@ -186,7 +183,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
-  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
   tls.factors.resize(positions.size());
@@ -281,11 +278,12 @@ void do_smooth_brush(const Depsgraph &depsgraph,
                      const float brush_strength)
 {
   SculptSession &ss = *object.sculpt;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
   boundary::ensure_boundary_info(object);
 
-  switch (object.sculpt->pbvh->type()) {
+  switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh:
       do_smooth_brush_mesh(depsgraph, sd, brush, object, node_mask, brush_strength);
       break;
@@ -296,7 +294,7 @@ void do_smooth_brush(const Depsgraph &depsgraph,
 
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       for (const float strength : iteration_strengths(brush_strength)) {
-        MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+        MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
         threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
           node_mask.slice(range).foreach_index([&](const int i) {
@@ -320,7 +318,7 @@ void do_smooth_brush(const Depsgraph &depsgraph,
       BM_mesh_elem_table_ensure(ss.bm, BM_VERT);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       for (const float strength : iteration_strengths(brush_strength)) {
-        MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+        MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
         threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
           node_mask.slice(range).foreach_index([&](const int i) {
