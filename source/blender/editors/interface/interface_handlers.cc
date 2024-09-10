@@ -3443,7 +3443,6 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   MEM_SAFE_FREE(text_edit.edit_string);
 
   /* Clear the status bar. */
-  printf("DEBUG: ui_textedit_begin\n");
   WorkspaceStatus status(C);
   status.item(" ", ICON_NONE);
 
@@ -4345,6 +4344,7 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   void *arg = nullptr;
 
   if (but->type != UI_BTYPE_PULLDOWN) {
+    /* Clear the status bar. */
     WorkspaceStatus status(C);
     status.item(" ", ICON_NONE);
   }
