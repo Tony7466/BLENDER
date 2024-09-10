@@ -263,7 +263,7 @@ static bke::CurvesGeometry interpolate_between_curves(const GreasePencil &grease
   /* Compute curve length and flip mode for each pair. */
   Array<int> dst_curve_offsets(curves_by_pair.size() + 1, 0);
   Array<bool> dst_curve_flip(curves_by_pair.size(), false);
-  const OffsetIndices dst_points_by_curve = [&]() {
+  const OffsetIndices<int> dst_points_by_curve = [&]() {
     /* Last entry for overall size. */
     if (curves_by_pair.is_empty()) {
       return OffsetIndices<int>{};
