@@ -53,8 +53,11 @@ class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
 
   int grid_pos_to_grid_index(const int2 pos) const
   {
-    return math::clamp(
-        pos.y * color_grid_.size + pos.x, 0, (color_grid_.size * color_grid_.size) - 1);
+    const int size = color_grid_.size;
+    if (pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size) {
+      return pos.y * color_grid_.size + pos.x;
+    }
+    return -1;
   }
 
   template<typename Fn>
@@ -64,12 +67,12 @@ class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
                              const GrainSize grain_size,
                              Fn &&fn)
   {
-    const int size = color_grid_.size;
     points.foreach_index(grain_size, [&](const int64_t point) {
       const int2 grid_pos = this->coords_to_grid_pos(positions[point], offset);
       /* Check if we intersect the grid and call the callback if we do. */
-      if (grid_pos.x >= 0 && grid_pos.x < size && grid_pos.y >= 0 && grid_pos.y < size) {
-        fn(point, grid_pos);
+      const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+      if (cell_i != -1) {
+        fn(point, cell_i);
       }
     });
   }
@@ -105,22 +108,36 @@ void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start
       /* Compute the colors in the grid by averaging the vertex colors of the points that
        * intersect each cell. */
       Array<int> points_per_cell(grid_array_length, 0);
-      for (const int y : IndexRange(color_grid_.size)) {
-        for (const int x : IndexRange(color_grid_.size)) {
-          const int2 grid_pos = int2(x, y);
-          const int cell_i = this->grid_pos_to_grid_index(grid_pos);
-          const float2 cell_pos = this->grid_pos_to_coords(grid_pos, color_grid_.center);
-          point_selection.foreach_index([&](const int point_i) {
-            const float2 view_pos = view_positions[point_i];
-            const float view_radius = radii[point_i];
-            const ColorGeometry4f color = vertex_colors[point_i];
+      point_selection.foreach_index([&](const int point_i) {
+        const float2 view_pos = view_positions[point_i];
+        const float view_radius = radii[point_i];
+        const ColorGeometry4f color = vertex_colors[point_i];
+
+        const int bounds_size = math::floor(view_radius / color_grid_.cell_size_px) * 2 + 1;
+        const int2 bounds_center = this->coords_to_grid_pos(view_pos, color_grid_.center);
+        const int2 bounds_min = bounds_center - (bounds_size / 2);
+        const int2 bounds_max = bounds_center + (bounds_size / 2);
+        if (!(bounds_min.x < color_grid_.size && bounds_max.x >= 0 &&
+              bounds_min.y < color_grid_.size && bounds_max.y >= 0))
+        {
+          /* Point is out of bounds. */
+          return;
+        }
+        for (int y = bounds_min.y; y <= bounds_max.y; y++) {
+          for (int x = bounds_min.x; x <= bounds_max.x; x++) {
+            const int2 grid_pos = int2(x, y);
+            const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+            if (cell_i == -1) {
+              continue;
+            }
+            const float2 cell_pos = this->grid_pos_to_coords(grid_pos, color_grid_.center);
             if (math::distance_squared(cell_pos, view_pos) <= view_radius * view_radius) {
               color_grid_.colors[cell_i] += float4(color.r, color.g, color.b, 1.0f);
               points_per_cell[cell_i]++;
             }
-          });
+          }
         }
-      }
+      });
       /* Divide by the total to get the average color per cell. */
       for (const int cell_i : color_grid_.colors.index_range()) {
         if (points_per_cell[cell_i] > 0) {
@@ -160,8 +177,7 @@ void VertexSmearOperation::on_stroke_extended(const bContext &C,
           view_positions,
           extension_sample.mouse_position,
           GrainSize(1024),
-          [&](const int point_i, const int2 grid_pos) {
-            const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+          [&](const int point_i, const int cell_i) {
             if (color_grid_.colors[cell_i][3] == 0.0f) {
               return;
             }
