@@ -3515,9 +3515,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob->data = new_mesh;
         newob->type = OB_MESH;
 
-        bke::AnonymousAttributePropagationInfo propagation_info;
-        propagation_info.propagate_all = false;
-        Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(), propagation_info);
+        Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(),
+                                             bke::ProcessAllAttributes{});
         if (!mesh) {
           mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
         }
