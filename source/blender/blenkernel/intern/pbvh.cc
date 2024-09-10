@@ -52,9 +52,6 @@ namespace blender::bke::pbvh {
 
 // #define DEBUG_BUILD_TIME
 
-constexpr int LEAF_LIMIT = 10000;
-static_assert(LEAF_LIMIT < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
-
 #define STACK_FIXED_DEPTH 100
 
 /** Create invalid bounds for use with #math::min_max. */
@@ -173,7 +170,6 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
 
   int split;
   if (!below_leaf_limit) {
-    /* Find axis with widest range of primitive centroids */
     Bounds<float3> bounds;
     if (bounds_precalc) {
       bounds = *bounds_precalc;
@@ -244,7 +240,8 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
     return pbvh;
   }
 
-  const int leaf_limit = LEAF_LIMIT;
+  constexpr int leaf_limit = 10000;
+  static_assert(leaf_limit < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
 
   Array<float3> face_centers(faces.size());
   const Bounds<float3> bounds = threading::parallel_reduce(
@@ -253,10 +250,10 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
-        for (const int i : range) {
+        for (const int face : range) {
           const Bounds<float3> bounds = calc_face_bounds(vert_positions,
-                                                         corner_verts.slice(faces[i]));
-          face_centers[i] = bounds.center();
+                                                         corner_verts.slice(faces[face]));
+          face_centers[face] = bounds.center();
           current = bounds::merge(current, bounds);
         }
         return current;
@@ -381,6 +378,21 @@ static int sum_group_sizes(const OffsetIndices<int> groups, const Span<int> indi
   return count;
 }
 
+static Bounds<float3> calc_face_grid_bounds(const CCGKey &key,
+                                            const Span<CCGElem *> elems,
+                                            const IndexRange face)
+{
+  Bounds<float3> bounds = negative_bounds();
+  for (const int grid : face) {
+    CCGElem *elem = elems[grid];
+    for (const int i : IndexRange(key.grid_area)) {
+      const float3 &position = CCG_elem_offset_co(key, elem, i);
+      math::min_max(position, bounds.min, bounds.max);
+    }
+  }
+  return bounds;
+}
+
 std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv_ccg)
 {
 #ifdef DEBUG_BUILD_TIME
@@ -389,44 +401,26 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   std::unique_ptr<Tree> pbvh = std::make_unique<Tree>(Type::Grids);
 
   const OffsetIndices faces = base_mesh.faces();
-  const int max_face_size = threading::parallel_reduce(
-      faces.index_range(),
-      4096,
-      0,
-      [&](const IndexRange range, int value) {
-        for (const int i : range) {
-          value = std::max(int(faces[i].size()), value);
-        }
-        return value;
-      },
-      [](const int a, const int b) { return std::max(a, b); });
-
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> elems = subdiv_ccg.grids;
-  if (elems.is_empty()) {
+  if (faces.is_empty()) {
     return pbvh;
   }
 
-  /* See #102209. NOTE: This `max_face_size` limit may be unnecessary. */
-  const int leaf_limit = std::max(LEAF_LIMIT / key.grid_area, max_face_size);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  const Span<CCGElem *> elems = subdiv_ccg.grids;
 
-  /* For each grid, store the AABB and the AABB centroid */
-  Array<float3> face_centers(elems.size());
+  const int leaf_limit = 2500 / key.grid_area;
+
+  Array<float3> face_centers(faces.size());
   const Bounds<float3> bounds = threading::parallel_reduce(
-      elems.index_range(),
-      1024,
+      faces.index_range(),
+      leaf_limit,
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
-        for (const int i : range) {
-          CCGElem *grid = elems[i];
-          Bounds<float3> bounds = negative_bounds();
-          for (const int j : IndexRange(key.grid_area)) {
-            const float3 &position = CCG_elem_offset_co(key, grid, j);
-            math::min_max(position, bounds.min, bounds.max);
-          }
-          face_centers[i] = bounds.center();
-          math::min_max(face_centers[i], current.min, current.max);
+        for (const int face : range) {
+          const Bounds<float3> bounds = calc_face_grid_bounds(key, elems, faces[face]);
+          face_centers[face] = bounds.center();
+          current = bounds::merge(current, bounds);
         }
         return current;
       },
@@ -435,7 +429,7 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   const AttributeAccessor attributes = base_mesh.attributes();
   const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
 
-  Array<int> face_indices(elems.size());
+  Array<int> face_indices(faces.size());
   array_utils::fill_index_range<int>(face_indices);
 
   Vector<GridsNode> &nodes = std::get<Vector<GridsNode>>(pbvh->nodes_);
@@ -448,6 +442,7 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
         material_index, leaf_limit, 0, bounds, face_centers, 0, face_indices, nodes);
   }
 
+  /* Convert face indices into grid indices. */
   pbvh->prim_indices_.reinitialize(faces.total_size());
   {
     int offset = 0;
@@ -459,7 +454,8 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
     }
   }
 
-  Array<int> node_grids_num(nodes.size());
+  /* Change the nodes to reference the BVH prim_indices array instead of the local face indices. */
+  Array<int> node_grids_num(nodes.size() + 1);
   threading::parallel_for(nodes.index_range(), 16, [&](const IndexRange range) {
     for (const int i : range) {
       node_grids_num[i] = sum_group_sizes(faces, nodes[i].prim_indices_);
