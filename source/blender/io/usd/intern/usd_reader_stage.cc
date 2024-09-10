@@ -32,10 +32,9 @@
 #include <pxr/usd/usdGeom/scope.h>
 #include <pxr/usd/usdGeom/sphere.h>
 #include <pxr/usd/usdGeom/xform.h>
-#include <pxr/usd/usdShade/material.h>
-
 #include <pxr/usd/usdLux/boundableLightBase.h>
 #include <pxr/usd/usdLux/nonboundableLightBase.h>
+#include <pxr/usd/usdShade/material.h>
 
 #include "BLI_map.hh"
 #include "BLI_math_base.h"
