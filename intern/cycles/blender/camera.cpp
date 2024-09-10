@@ -271,6 +271,7 @@ static void blender_camera_from_object(BlenderCamera *bcam,
     float current_sensor_size = bcam->sensor_width;
     if (b_camera.sensor_fit() == BL::Camera::sensor_fit_AUTO) {
       bcam->sensor_fit = BlenderCamera::AUTO;
+      current_sensor_size = bcam->sensor_width;
     }
     else if (b_camera.sensor_fit() == BL::Camera::sensor_fit_HORIZONTAL) {
       bcam->sensor_fit = BlenderCamera::HORIZONTAL;
