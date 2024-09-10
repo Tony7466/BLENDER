@@ -408,7 +408,7 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
 
-  const int leaf_limit = 2500 / key.grid_area;
+  const int leaf_limit = std::max(2500 / key.grid_area, 1);
 
   Array<float3> face_centers(faces.size());
   const Bounds<float3> bounds = threading::parallel_reduce(
