@@ -2601,23 +2601,36 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
           const int item_i = attribute_items_range[local_item_i];
           const NodeForeachGeometryElementOutputItem &item =
               node_storage.output_items.items[item_i];
-          const AttrDomain domain = AttrDomain(item.domain);
+          const AttrDomain capture_domain = AttrDomain(item.domain);
           const int field_param_i = body_i * node_storage.output_items.items_num + item_i;
           GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
 
-          /* TODO: modify nested instances + instances component */
-          for (const GeometryComponent::Type component_type :
-               {GeometryComponent::Type::Mesh,
-                GeometryComponent::Type::PointCloud,
-                GeometryComponent::Type::Curve,
-                GeometryComponent::Type::GreasePencil})
-          {
-            if (geometry.has(component_type)) {
-              bke::try_capture_field_on_geometry(geometry.get_component_for_write(component_type),
-                                                 attribute_names[local_item_i],
-                                                 domain,
-                                                 field);
+          if (capture_domain == AttrDomain::Instance) {
+            if (geometry.has_instances()) {
+              bke::try_capture_field_on_geometry(
+                  geometry.get_component_for_write(GeometryComponent::Type::Instance),
+                  attribute_names[local_item_i],
+                  capture_domain,
+                  field);
             }
+          }
+          else {
+            geometry.modify_geometry_sets([&](GeometrySet &sub_geometry) {
+              for (const GeometryComponent::Type component_type :
+                   {GeometryComponent::Type::Mesh,
+                    GeometryComponent::Type::PointCloud,
+                    GeometryComponent::Type::Curve,
+                    GeometryComponent::Type::GreasePencil})
+              {
+                if (sub_geometry.has(component_type)) {
+                  bke::try_capture_field_on_geometry(
+                      sub_geometry.get_component_for_write(component_type),
+                      attribute_names[local_item_i],
+                      capture_domain,
+                      field);
+                }
+              }
+            });
           }
         }
       });
