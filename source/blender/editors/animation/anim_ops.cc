@@ -883,12 +883,12 @@ static int merge_actions_selection_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static void ANIM_OT_merge_actions_selection(wmOperatorType *ot)
+static void ANIM_OT_merge_animation(wmOperatorType *ot)
 {
-  ot->name = "Merge Actions";
-  ot->idname = "ANIM_OT_merge_actions_selection";
+  ot->name = "Merge Animation";
+  ot->idname = "ANIM_OT_merge_animation";
   ot->description =
-      "Merge the actions of the selected objects into the action of the active object";
+      "Merge the animation of the selected objects into the action of the active object";
 
   ot->exec = merge_actions_selection_exec;
   ot->poll = merge_actions_selection_poll;
@@ -945,7 +945,7 @@ void ED_operatortypes_anim()
 
   WM_operatortype_append(ANIM_OT_slot_new_for_object);
   WM_operatortype_append(ANIM_OT_convert_legacy_action);
-  WM_operatortype_append(ANIM_OT_merge_actions_selection);
+  WM_operatortype_append(ANIM_OT_merge_animation);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
