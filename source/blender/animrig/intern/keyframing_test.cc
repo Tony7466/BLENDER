@@ -5,7 +5,7 @@
 #include "ANIM_action.hh"
 #include "ANIM_keyframing.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -15,7 +15,7 @@
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_object.hh"
 
 #include "DNA_anim_types.h"
