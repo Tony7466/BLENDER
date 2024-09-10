@@ -260,6 +260,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                              attribute_filter,
                              geometry_set.get_instances_for_write()->attributes_for_write());
       }
+      geometry_set.replace_grease_pencil(nullptr);
     }
     geometry_set.remove_geometry_during_modify();
   });
