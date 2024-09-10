@@ -44,8 +44,10 @@ struct State {
   const ViewLayer *view_layer;
   const Scene *scene;
   const View3D *v3d;
+  const ARegion *region;
   const RegionView3D *rv3d;
   const Base *active_base;
+  DRWTextStore *dt;
   View3DOverlay overlay;
   float pixelsize;
   enum eSpace_Type space_type;
@@ -218,6 +220,9 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr sculpt_mesh;
+  ShaderPtr sculpt_curves;
+  ShaderPtr sculpt_curves_cage;
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */
@@ -231,7 +236,9 @@ class ShaderModule {
   ShaderPtr armature_stick;
   ShaderPtr armature_wire;
   ShaderPtr depth_curves = selectable_shader("overlay_depth_curves");
+  ShaderPtr depth_grease_pencil = selectable_shader("overlay_depth_gpencil");
   ShaderPtr depth_mesh = selectable_shader("overlay_depth_mesh");
+  ShaderPtr depth_mesh_conservative = selectable_shader("overlay_depth_mesh_conservative");
   ShaderPtr depth_point_cloud = selectable_shader("overlay_depth_pointcloud");
   ShaderPtr extra_grid;
   ShaderPtr extra_shape;
@@ -293,6 +300,11 @@ struct Resources : public select::SelectMap {
 
   /* Output Color. */
   Framebuffer overlay_output_fb = {"overlay_output_fb"};
+
+  /* Render Framebuffers. Only used for multiplicative blending on top of the render. */
+  /* TODO(fclem): Remove the usage of these somehow. This is against design. */
+  GPUFrameBuffer *render_fb = nullptr;
+  GPUFrameBuffer *render_in_front_fb = nullptr;
 
   /* Target containing line direction and data for line expansion and anti-aliasing. */
   TextureFromPool line_tx = {"line_tx"};

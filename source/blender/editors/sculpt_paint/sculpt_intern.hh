@@ -540,8 +540,8 @@ void SCULPT_vertex_neighbors_get(const Object &object,
 
 namespace blender::ed::sculpt_paint {
 
-Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors);
-Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &neighbors);
+Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
+Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 
 Span<int> vert_neighbors_get_mesh(int vert,
                                   OffsetIndices<int> faces,
@@ -718,12 +718,16 @@ struct OrigPositionData {
  * Retrieve positions from the latest undo state. This is often used for modal actions that depend
  * on the initial state of the geometry from before the start of the action.
  */
+std::optional<OrigPositionData> orig_position_data_lookup_mesh_all_verts(
+    const Object &object, const bke::pbvh::MeshNode &node);
 std::optional<OrigPositionData> orig_position_data_lookup_mesh(const Object &object,
                                                                const bke::pbvh::MeshNode &node);
 inline OrigPositionData orig_position_data_get_mesh(const Object &object,
                                                     const bke::pbvh::MeshNode &node)
 {
-  return *orig_position_data_lookup_mesh(object, node);
+  const std::optional<OrigPositionData> result = orig_position_data_lookup_mesh(object, node);
+  BLI_assert(result.has_value());
+  return *result;
 }
 
 std::optional<OrigPositionData> orig_position_data_lookup_grids(const Object &object,
@@ -731,7 +735,9 @@ std::optional<OrigPositionData> orig_position_data_lookup_grids(const Object &ob
 inline OrigPositionData orig_position_data_get_grids(const Object &object,
                                                      const bke::pbvh::GridsNode &node)
 {
-  return *orig_position_data_lookup_grids(object, node);
+  const std::optional<OrigPositionData> result = orig_position_data_lookup_grids(object, node);
+  BLI_assert(result.has_value());
+  return *result;
 }
 
 void orig_position_data_gather_bmesh(const BMLog &bm_log,

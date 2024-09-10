@@ -15,6 +15,7 @@
 
 #include "draw_sculpt.hh"
 
+#include "overlay_next_grease_pencil.hh"
 #include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
@@ -28,19 +29,21 @@ class Prepass {
   PassMain::Sub *hair_ps_ = nullptr;
   PassMain::Sub *curves_ps_ = nullptr;
   PassMain::Sub *point_cloud_ps_ = nullptr;
+  PassMain::Sub *grease_pencil_ps_ = nullptr;
 
   bool enabled_ = false;
+  bool use_selection_ = false;
   bool use_material_slot_selection_ = false;
 
-  /* For working with material. Should be removed at some point with better interface. */
-  Vector<gpu::Batch *> geom_array_;
+  overlay::GreasePencil::ViewParameters grease_pencil_view;
 
  public:
   Prepass(const SelectionType selection_type) : selection_type_(selection_type){};
 
   void begin_sync(Resources &res, const State &state)
   {
-    enabled_ = !state.xray_enabled || (selection_type_ != SelectionType::DISABLED);
+    use_selection_ = (selection_type_ != SelectionType::DISABLED);
+    enabled_ = !state.xray_enabled || use_selection_;
     enabled_ &= state.space_type == SPACE_VIEW3D;
 
     if (!enabled_) {
@@ -50,6 +53,14 @@ class Prepass {
       curves_ps_ = nullptr;
       point_cloud_ps_ = nullptr;
       return;
+    }
+
+    {
+      /* TODO(fclem): This is against design. We should not sync depending on view position.
+       * Eventually, we should do this in a compute shader prepass. */
+      float4x4 viewinv;
+      DRW_view_viewmat_get(nullptr, viewinv.ptr(), true);
+      grease_pencil_view = {DRW_view_is_persp_get(nullptr), viewinv};
     }
 
     use_material_slot_selection_ = DRW_state_is_material_select();
@@ -64,7 +75,8 @@ class Prepass {
     res.select_bind(ps_);
     {
       auto &sub = ps_.sub("Mesh");
-      sub.shader_set(res.shaders.depth_mesh.get());
+      sub.shader_set(use_selection_ ? res.shaders.depth_mesh_conservative.get() :
+                                      res.shaders.depth_mesh.get());
       sub.bind_ubo("globalsBlock", &res.globals_buf);
       mesh_ps_ = &sub;
     }
@@ -85,6 +97,12 @@ class Prepass {
       sub.shader_set(res.shaders.depth_point_cloud.get());
       sub.bind_ubo("globalsBlock", &res.globals_buf);
       point_cloud_ps_ = &sub;
+    }
+    {
+      auto &sub = ps_.sub("GreasePencil");
+      sub.shader_set(res.shaders.depth_grease_pencil.get());
+      sub.bind_ubo("globalsBlock", &res.globals_buf);
+      grease_pencil_ps_ = &sub;
     }
   }
 
@@ -201,6 +219,19 @@ class Prepass {
         geom_single = curves_sub_pass_setup(*curves_ps_, state.scene, ob_ref.object);
         pass = curves_ps_;
         break;
+      case OB_GREASE_PENCIL:
+        if (selection_type_ == SelectionType::DISABLED) {
+          /* Disable during display, only enable for selection.
+           * The grease pencil engine already renders it properly. */
+          return;
+        }
+        GreasePencil::draw_grease_pencil(*grease_pencil_ps_,
+                                         grease_pencil_view,
+                                         state.scene,
+                                         ob_ref.object,
+                                         manager.resource_handle(ob_ref),
+                                         res.select_id(ob_ref));
+        return;
       default:
         break;
     }
@@ -216,7 +247,14 @@ class Prepass {
                                  res.select_id(ob_ref, (material_id + 1) << 16) :
                                  res.select_id(ob_ref);
 
-      pass->draw(geom_list[material_id], res_handle, select_id.get());
+      if (use_selection_ && (pass == mesh_ps_)) {
+        /* Conservative shader needs expanded draw-call. */
+        pass->draw_expand(
+            geom_list[material_id], GPU_PRIM_TRIS, 1, 1, res_handle, select_id.get());
+      }
+      else {
+        pass->draw(geom_list[material_id], res_handle, select_id.get());
+      }
     }
   }
 
