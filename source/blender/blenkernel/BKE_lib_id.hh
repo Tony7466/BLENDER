@@ -706,16 +706,22 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     int *r_prefix_len);
 
 /**
- * Get name of the data-block that should be shown in the UI.
- */
-const char *BKE_id_ui_name(const ID &id);
-
-/**
- * Get the name (without type prefix) of the ID.
+ * Get the name (without type prefix) of the ID. This should be used when the the returned name is
+ * used as identifier. If it's just used to display the name to the user, it's better to use
+ * #BKE_id_ui_name.
+ *
  * This is a macro currently, because it can't be implemented as inline function without adding an
  * include.
  */
 #define BKE_id_name(id) ((id).name + 2)
+
+/**
+ * Get name of the data-block that should be shown in the UI.
+ *
+ * Currently, this is the same as #BKE_id_name, but maybe that will change in the future. It's good
+ * to encode intentions in the function name already.
+ */
+const char *BKE_id_ui_name(const ID &id);
 
 /**
  * Generate a concatenation of ID name (including two-chars type code) and its lib name, if any.

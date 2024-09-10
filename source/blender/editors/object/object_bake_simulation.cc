@@ -641,7 +641,7 @@ static void bake_simulation_validate_paths(bContext *C,
         BKE_reportf(op->reports,
                     RPT_INFO,
                     "Bake directory of object %s, modifier %s is empty, setting default path",
-                    object->id.name + 2,
+                    BKE_id_ui_name(object->id),
                     md->name);
 
         nmd->bake_directory = BLI_strdup(
