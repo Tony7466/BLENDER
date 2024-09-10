@@ -3394,13 +3394,13 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         else if (const GreasePencil *grease_pencil = geometry.get_grease_pencil()) {
           const Vector<ed::greasepencil::DrawingInfo> drawings =
               ed::greasepencil::retrieve_visible_drawings(*scene, *grease_pencil, false);
-          Array<bke::GeometrySet> geometries(drawings.size());
-          for (const int i : drawings.index_range()) {
-            Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
-            curves_id->geometry.wrap() = drawings[i].drawing.strokes();
-            geometries[i] = bke::GeometrySet::from_curves(curves_id);
-          }
-          if (geometries.size() > 0) {
+          if (drawings.size() > 0) {
+            Array<bke::GeometrySet> geometries(drawings.size());
+            for (const int i : drawings.index_range()) {
+              Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
+              curves_id->geometry.wrap() = drawings[i].drawing.strokes();
+              geometries[i] = bke::GeometrySet::from_curves(curves_id);
+            }
             bke::GeometrySet joined_curves = geometry::join_geometries(geometries, {});
 
             new_curves->geometry.wrap() = joined_curves.get_curves()->geometry.wrap();
