@@ -231,6 +231,7 @@ class ShaderModule {
   ShaderPtr sculpt_curves_cage;
   ShaderPtr uv_analysis_stretch_angle;
   ShaderPtr uv_analysis_stretch_area;
+  ShaderPtr uv_brush_stencil;
   ShaderPtr uv_edit_edge = shader("overlay_edit_uv_edges_next");
   ShaderPtr uv_edit_face;
   ShaderPtr uv_edit_facedot;

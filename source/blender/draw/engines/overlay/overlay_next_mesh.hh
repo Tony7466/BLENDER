@@ -431,6 +431,9 @@ class MeshUVs {
   /* TODO(fclem): Should be its own Overlay?. */
   PassSimple image_border_ps_ = {"ImageBorder"};
 
+  /* TODO(fclem): Should be its own Overlay?. */
+  PassSimple brush_stencil_ps_ = {"BrushStencil"};
+
   bool show_vert = false;
   bool show_face = false;
   bool show_face_dots = false;
@@ -666,40 +669,6 @@ class MeshUVs {
     }
 
 #if 0
-    if (pd->edit_uv.do_stencil_overlay) {
-      const Brush *brush = BKE_paint_brush(&ts->imapaint.paint);
-      ::Image *stencil_image = brush->clone.image;
-      GPUTexture *stencil_texture = BKE_image_get_gpu_texture(stencil_image, nullptr);
-
-      if (stencil_texture != nullptr) {
-      DRW_PASS_CREATE(psl->edit_uv_stencil_ps,
-                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS |
-                          DRW_STATE_BLEND_ALPHA_PREMUL);
-      GPUShader *sh = OVERLAY_shader_edit_uv_stencil_image();
-      blender::gpu::Batch *geom = DRW_cache_quad_get();
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_stencil_ps);
-      DRW_shgroup_uniform_texture(grp, "imgTexture", stencil_texture);
-      DRW_shgroup_uniform_bool_copy(grp, "imgPremultiplied", true);
-      DRW_shgroup_uniform_bool_copy(grp, "imgAlphaBlend", true);
-      const float4 color = {1.0f, 1.0f, 1.0f, brush->clone.alpha};
-      DRW_shgroup_uniform_vec4_copy(grp, "ucolor", color);
-
-      float size_image[2];
-      BKE_image_get_size_fl(image, nullptr, size_image);
-      float size_stencil_image[2] = {float(GPU_texture_original_width(stencil_texture)),
-                                     float(GPU_texture_original_height(stencil_texture))};
-
-      float obmat[4][4];
-      unit_m4(obmat);
-      obmat[3][1] = brush->clone.offset[1];
-      obmat[3][0] = brush->clone.offset[0];
-      obmat[0][0] = size_stencil_image[0] / size_image[0];
-      obmat[1][1] = size_stencil_image[1] / size_image[1];
-
-      DRW_shgroup_call_obmat(grp, geom, obmat);
-      }
-    }
-
     if (pd->edit_uv.do_mask_overlay) {
     const bool is_combined_overlay = pd->edit_uv.mask_overlay_mode == MASK_OVERLAY_COMBINED;
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS;
@@ -795,6 +764,14 @@ class MeshUVs {
 
   void end_sync(Resources &res, ShapeCache &shapes, const State &state)
   {
+    if (!enabled_) {
+      return;
+    }
+
+    const ToolSettings *tool_setting = state.scene->toolsettings;
+    const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
+    ::Image *image = space_image->image;
+
     if (show_tiled_image_border) {
       float4 theme_color;
       float4 selected_color;
@@ -834,8 +811,6 @@ class MeshUVs {
         }
       };
 
-      const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
-      ::Image *image = space_image->image;
       ListBaseWrapper<ImageTile> tiles(image->tiles);
 
       for (const ImageTile *tile : tiles) {
@@ -844,6 +819,32 @@ class MeshUVs {
       /* Draw active tile on top. */
       if (show_tiled_image_active) {
         draw_tile(tiles.get(image->active_tile_index), true);
+      }
+    }
+
+    if (show_stencil) {
+      auto &pass = brush_stencil_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS |
+                     DRW_STATE_BLEND_ALPHA_PREMUL);
+
+      const Brush *brush = BKE_paint_brush_for_read(&tool_setting->imapaint.paint);
+      ::Image *stencil_image = brush->clone.image;
+      TextureRef stencil_texture;
+      stencil_texture.wrap(BKE_image_get_gpu_texture(stencil_image, nullptr));
+
+      if (stencil_texture.is_valid()) {
+        float2 size_image;
+        BKE_image_get_size_fl(image, nullptr, &size_image[0]);
+
+        pass.shader_set(res.shaders.uv_brush_stencil.get());
+        pass.bind_texture("imgTexture", stencil_texture);
+        pass.push_constant("imgPremultiplied", true);
+        pass.push_constant("imgAlphaBlend", true);
+        pass.push_constant("ucolor", float4(1.0f, 1.0f, 1.0f, brush->clone.alpha));
+        pass.push_constant("brush_offset", float2(brush->clone.offset));
+        pass.push_constant("brush_scale", float2(stencil_texture.size().xy()) / size_image);
+        pass.draw(shapes.quad_solid.get());
       }
     }
   }
@@ -888,6 +889,9 @@ class MeshUVs {
     }
     if (show_vert) {
       manager.submit(verts_ps_, view);
+    }
+    if (show_stencil) {
+      manager.submit(brush_stencil_ps_, view);
     }
 
     GPU_debug_group_end();
