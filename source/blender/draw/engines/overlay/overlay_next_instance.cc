@@ -170,7 +170,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_MESH:
         layer.meshes.edit_object_sync(manager, ob_ref, state, resources);
         /* TODO(fclem): Find a better place / condition. */
-        layer.mesh_uvs.edit_object_sync(manager, ob_ref);
+        layer.mesh_uvs.edit_object_sync(manager, ob_ref, state);
         break;
       case OB_ARMATURE:
         layer.armatures.edit_object_sync(ob_ref, resources, shapes, state);

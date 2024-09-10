@@ -476,6 +476,9 @@ class MeshUVs {
   bool show_tiled_image_border = false;
   bool show_tiled_image_label = false;
 
+  /* Set of original objects that have been drawn. */
+  Set<const Object *> drawn_object_set_;
+
   bool enabled_ = false;
 
  public:
@@ -667,40 +670,43 @@ class MeshUVs {
       pass.push_constant("stretch_opacity", space_image->stretch_opacity);
       pass.push_constant("totalAreaRatio", &total_area_ratio_);
     }
-#if 0
-
-  /* HACK: When editing objects that share the same mesh we should only draw the
-   * first one in the order that is used during uv editing. We can only trust that the first object
-   * has the correct batches with the correct selection state. See #83187. */
-  if ((pd->edit_uv.do_uv_overlay || pd->edit_uv.do_uv_shadow_overlay) &&
-      draw_ctx->obact->type == OB_MESH)
-  {
-    Vector<Object *> objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
-        draw_ctx->scene, draw_ctx->view_layer, nullptr, draw_ctx->object_mode);
-    for (Object *object : objects) {
-      Object *object_eval = DEG_get_evaluated_object(draw_ctx->depsgraph, object);
-      DRW_mesh_batch_cache_validate(*object_eval, *(Mesh *)object_eval->data);
-      overlay_edit_uv_cache_populate(vedata, *object_eval);
-    }
-  }
-#endif
 
     per_mesh_area_3d.clear();
     per_mesh_area_2d.clear();
+
+    drawn_object_set_.clear();
   }
 
-  void edit_object_sync(Manager &manager, const ObjectRef &ob_ref)
+  void edit_object_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
   {
     if (!enabled_ || ob_ref.object->type != OB_MESH) {
       return;
     }
 
-    /* TODO filter dupli objects. Only display a single instance. */
+    /* When editing objects that share the same mesh we should only draw the
+     * first object to avoid overlapping UVs. Moreove, only the first evalutated object has the
+     * correct batches with the correct selection state.
+     * To this end, we skip duplicates and use the evaluated object returned by the depsgraph.
+     * See #83187. */
+    Object *object_orig = DEG_get_original_object(ob_ref.object);
+    Object *object_eval = DEG_get_evaluated_object(state.depsgraph, object_orig);
+
+    if (drawn_object_set_.contains(object_orig)) {
+      printf("Skip\n");
+      return;
+    }
+    drawn_object_set_.add(object_orig);
 
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
-    Object &ob = *ob_ref.object;
+    Object &ob = *object_eval;
     Mesh &mesh = *static_cast<Mesh *>(ob.data);
+
+    if (object_eval != ob_ref.object) {
+      /* We are requesting batches on an evaluated ID that is potentially not iterated over.
+       * So we have to manually call these cache validation and extraction method. */
+      DRW_mesh_batch_cache_validate(ob, mesh);
+    }
 
     if (show_uv_edit) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
@@ -738,6 +744,11 @@ class MeshUVs {
     if (show_wireframe) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
       wireframe_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
+    }
+
+    if (object_eval != ob_ref.object) {
+      /* TODO(fclem): Refactor. Global access. But as explained above it is a bit complicated. */
+      drw_batch_cache_generate_requested_delayed(&ob);
     }
   }
 
