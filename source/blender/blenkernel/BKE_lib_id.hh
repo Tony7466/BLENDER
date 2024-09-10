@@ -718,8 +718,8 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
 /**
  * Get name of the data-block that should be shown in the UI.
  *
- * Currently, this is the same as #BKE_id_name, but maybe that will change in the future. It's good
- * to encode intentions in the function name already.
+ * Currently, this is the same as #BKE_id_name, but maybe that will change in the future. Even if
+ * not, it's good to encode usage intentions in the function name.
  */
 const char *BKE_id_ui_name(const ID &id);
 
