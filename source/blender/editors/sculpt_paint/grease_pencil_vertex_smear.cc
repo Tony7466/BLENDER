@@ -59,23 +59,6 @@ class VertexSmearOperation : public GreasePencilStrokeOperationCommon {
     }
     return -1;
   }
-
-  template<typename Fn>
-  void foreach_point_on_grid(const IndexMask &points,
-                             const Span<float2> positions,
-                             const float2 offset,
-                             const GrainSize grain_size,
-                             Fn &&fn)
-  {
-    points.foreach_index(grain_size, [&](const int64_t point) {
-      const int2 grid_pos = this->coords_to_grid_pos(positions[point], offset);
-      /* Check if we intersect the grid and call the callback if we do. */
-      const int cell_i = this->grid_pos_to_grid_index(grid_pos);
-      if (cell_i != -1) {
-        fn(point, cell_i);
-      }
-    });
-  }
 };
 
 void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start_position)
@@ -176,32 +159,30 @@ void VertexSmearOperation::on_stroke_extended(const bContext &C,
     }
     const Array<float2> view_positions = calculate_view_positions(params, point_selection);
     MutableSpan<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors_for_write();
-    this->foreach_point_on_grid(
-        point_selection,
-        view_positions,
-        extension_sample.mouse_position,
-        GrainSize(1024),
-        [&](const int point_i, const int cell_i) {
-          if (color_grid_.colors[cell_i][3] == 0.0f) {
-            return;
-          }
-          const ColorGeometry4f mix_color = ColorGeometry4f(color_grid_.colors[cell_i]);
-          const float2 view_pos = view_positions[point_i];
-          const float distance_falloff = math::clamp(
-              1.0f - (math::distance(color_grid_.center, view_pos) / radius * 2), 0.0f, 1.0f);
-          const float influence = brush_point_influence(scene,
-                                                        brush,
-                                                        view_pos,
-                                                        extension_sample,
-                                                        params.multi_frame_falloff) *
-                                  distance_falloff;
-          if (influence > 0.0f) {
-            ColorGeometry4f &color = vertex_colors[point_i];
-            const float alpha = color.a;
-            color = math::interpolate(color, mix_color, influence);
-            color.a = alpha;
-          }
-        });
+    point_selection.foreach_index(GrainSize(1024), [&](const int64_t point_i) {
+      const float2 view_pos = view_positions[point_i];
+      const int2 grid_pos = this->coords_to_grid_pos(view_pos, extension_sample.mouse_position);
+      const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+      if (cell_i == -1 || color_grid_.colors[cell_i][3] == 0.0f) {
+        return;
+      }
+      const ColorGeometry4f mix_color = ColorGeometry4f(color_grid_.colors[cell_i]);
+
+      const float distance_falloff = math::clamp(
+          1.0f - (math::distance(color_grid_.center, view_pos) / radius * 2), 0.0f, 1.0f);
+      const float influence = brush_point_influence(scene,
+                                                    brush,
+                                                    view_pos,
+                                                    extension_sample,
+                                                    params.multi_frame_falloff) *
+                              distance_falloff;
+      if (influence > 0.0f) {
+        ColorGeometry4f &color = vertex_colors[point_i];
+        const float alpha = color.a;
+        color = math::interpolate(color, mix_color, influence);
+        color.a = alpha;
+      }
+    });
     return true;
   });
 }
