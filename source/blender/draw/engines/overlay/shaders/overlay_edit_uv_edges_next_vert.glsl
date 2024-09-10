@@ -19,8 +19,12 @@ VertIn input_assembly(uint in_vertex_id)
   uint v_i = gpu_index_load(in_vertex_id);
 
   VertIn vert_in;
-  vert_in.uv = au[gpu_attr_load_index(v_i, gpu_attr_1)];
+  vert_in.uv = gpu_attr_load_float2(au, gpu_attr_0, v_i);
+#ifdef WIREFRAME
+  vert_in.flag = 0u;
+#else
   vert_in.flag = gpu_attr_load_uchar4(flag, gpu_attr_1, v_i).x;
+#endif
   return vert_in;
 }
 

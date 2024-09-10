@@ -237,6 +237,7 @@ class ShaderModule {
   ShaderPtr uv_edit_facedot;
   ShaderPtr uv_edit_vert;
   ShaderPtr uv_image_borders;
+  ShaderPtr uv_wireframe = shader("overlay_wireframe_uv");
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */

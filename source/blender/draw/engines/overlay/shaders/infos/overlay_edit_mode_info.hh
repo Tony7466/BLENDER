@@ -377,7 +377,7 @@ GPU_SHADER_INTERFACE_INFO(overlay_edit_uv_next_iface, "")
 
 GPU_SHADER_CREATE_INFO(overlay_edit_uv_edges_next)
     .do_static_compilation(true)
-    .storage_buf(0, Qualifier::READ, "vec2", "au[]", Frequency::GEOMETRY)
+    .storage_buf(0, Qualifier::READ, "float", "au[]", Frequency::GEOMETRY)
     .storage_buf(1, Qualifier::READ, "uint", "flag[]", Frequency::GEOMETRY)
     .push_constant(Type::IVEC2, "gpu_attr_0")
     .push_constant(Type::IVEC2, "gpu_attr_1")

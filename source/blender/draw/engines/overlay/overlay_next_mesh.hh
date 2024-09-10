@@ -590,14 +590,9 @@ class MeshUVs {
       pass.init();
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA);
-
-      GPUShader *sh = res.shaders.uv_edit_edge.get();
-      pass.specialize_constant(sh, "use_edge_select", !show_vert);
-      pass.shader_set(sh);
+      pass.shader_set(res.shaders.uv_wireframe.get());
       pass.bind_ubo("globalsBlock", &res.globals_buf);
-      pass.push_constant("lineStyle", OVERLAY_UV_LINE_STYLE_SHADOW);
       pass.push_constant("alpha", space_image->uv_opacity);
-      pass.push_constant("dashLength", dash_length);
       pass.push_constant("doSmoothWire", do_smooth_wire);
     }
 
