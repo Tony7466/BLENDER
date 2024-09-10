@@ -299,8 +299,8 @@ class Grid {
 
     if ((v3d->flag & (V3D_XR_SESSION_SURFACE | V3D_XR_SESSION_MIRROR)) != 0) {
       /* The calculations for the grid parameters assume that the view matrix has no scale
-       * component, which may not be correct if the user is "shrunk" or "enlarged" by zooming in
-       * or out. Therefore, we need to compensate the values here. */
+       * component, which may not be correct if the user is "shrunk" or "enlarged" by zooming in or
+       * out. Therefore, we need to compensate the values here. */
       /* Assumption is uniform scaling (all column vectors are of same length). */
       float viewinvscale = len_v3(view.viewinv()[0]);
       data_.distance *= viewinvscale;
