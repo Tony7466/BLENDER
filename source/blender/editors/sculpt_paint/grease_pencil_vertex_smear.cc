@@ -101,50 +101,52 @@ void VertexSmearOperation::init_color_grid(const bContext &C, const float2 start
   this->foreach_editable_drawing(C, [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory memory;
     const IndexMask point_selection = point_selection_mask(params, is_masking, memory);
-    if (!point_selection.is_empty()) {
-      const Array<float2> view_positions = calculate_view_positions(params, point_selection);
-      const Array<float> radii = calculate_view_radii(params, point_selection);
-      const VArray<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors();
-      /* Compute the colors in the grid by averaging the vertex colors of the points that
-       * intersect each cell. */
-      Array<int> points_per_cell(grid_array_length, 0);
-      point_selection.foreach_index([&](const int point_i) {
-        const float2 view_pos = view_positions[point_i];
-        const float view_radius = radii[point_i];
-        const ColorGeometry4f color = vertex_colors[point_i];
+    if (point_selection.is_empty()) {
+      return false;
+    }
+    const Array<float2> view_positions = calculate_view_positions(params, point_selection);
+    const Array<float> radii = calculate_view_radii(params, point_selection);
+    const VArray<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors();
+    /* Compute the colors in the grid by averaging the vertex colors of the points that
+     * intersect each cell. */
+    Array<int> points_per_cell(grid_array_length, 0);
+    point_selection.foreach_index([&](const int point_i) {
+      const float2 view_pos = view_positions[point_i];
+      const float view_radius = radii[point_i];
+      const ColorGeometry4f color = vertex_colors[point_i];
 
-        const int bounds_size = math::floor(view_radius / color_grid_.cell_size_px) * 2 + 1;
-        const int2 bounds_center = this->coords_to_grid_pos(view_pos, color_grid_.center);
-        const int2 bounds_min = bounds_center - (bounds_size / 2);
-        const int2 bounds_max = bounds_center + (bounds_size / 2);
-        if (!(bounds_min.x < color_grid_.size && bounds_max.x >= 0 &&
-              bounds_min.y < color_grid_.size && bounds_max.y >= 0))
-        {
-          /* Point is out of bounds. */
-          return;
-        }
-        for (int y = bounds_min.y; y <= bounds_max.y; y++) {
-          for (int x = bounds_min.x; x <= bounds_max.x; x++) {
-            const int2 grid_pos = int2(x, y);
-            const int cell_i = this->grid_pos_to_grid_index(grid_pos);
-            if (cell_i == -1) {
-              continue;
-            }
-            const float2 cell_pos = this->grid_pos_to_coords(grid_pos, color_grid_.center);
-            if (math::distance_squared(cell_pos, view_pos) <= view_radius * view_radius) {
-              color_grid_.colors[cell_i] += float4(color.r, color.g, color.b, 1.0f);
-              points_per_cell[cell_i]++;
-            }
+      const int bounds_size = math::floor(view_radius / color_grid_.cell_size_px) * 2 + 1;
+      const int2 bounds_center = this->coords_to_grid_pos(view_pos, color_grid_.center);
+      const int2 bounds_min = bounds_center - (bounds_size / 2);
+      const int2 bounds_max = bounds_center + (bounds_size / 2);
+      if (!(bounds_min.x < color_grid_.size && bounds_max.x >= 0 &&
+            bounds_min.y < color_grid_.size && bounds_max.y >= 0))
+      {
+        /* Point is out of bounds. */
+        return;
+      }
+      for (int y = bounds_min.y; y <= bounds_max.y; y++) {
+        for (int x = bounds_min.x; x <= bounds_max.x; x++) {
+          const int2 grid_pos = int2(x, y);
+          const int cell_i = this->grid_pos_to_grid_index(grid_pos);
+          if (cell_i == -1) {
+            continue;
+          }
+          const float2 cell_pos = this->grid_pos_to_coords(grid_pos, color_grid_.center);
+          if (math::distance_squared(cell_pos, view_pos) <= view_radius * view_radius) {
+            color_grid_.colors[cell_i] += float4(color.r, color.g, color.b, 1.0f);
+            points_per_cell[cell_i]++;
           }
         }
-      });
-      /* Divide by the total to get the average color per cell. */
-      for (const int cell_i : color_grid_.colors.index_range()) {
-        if (points_per_cell[cell_i] > 0) {
-          color_grid_.colors[cell_i] *= 1.0f / float(points_per_cell[cell_i]);
-        }
+      }
+    });
+    /* Divide by the total to get the average color per cell. */
+    for (const int cell_i : color_grid_.colors.index_range()) {
+      if (points_per_cell[cell_i] > 0) {
+        color_grid_.colors[cell_i] *= 1.0f / float(points_per_cell[cell_i]);
       }
     }
+    /* Don't trigger updates for the grid initialization. */
     return false;
   });
 }
@@ -169,38 +171,38 @@ void VertexSmearOperation::on_stroke_extended(const bContext &C,
   this->foreach_editable_drawing(C, GrainSize(1), [&](const GreasePencilStrokeParams &params) {
     IndexMaskMemory memory;
     const IndexMask point_selection = point_selection_mask(params, is_masking, memory);
-    if (!point_selection.is_empty()) {
-      const Array<float2> view_positions = calculate_view_positions(params, point_selection);
-      MutableSpan<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors_for_write();
-      this->foreach_point_on_grid(
-          point_selection,
-          view_positions,
-          extension_sample.mouse_position,
-          GrainSize(1024),
-          [&](const int point_i, const int cell_i) {
-            if (color_grid_.colors[cell_i][3] == 0.0f) {
-              return;
-            }
-            const ColorGeometry4f mix_color = ColorGeometry4f(color_grid_.colors[cell_i]);
-            const float2 view_pos = view_positions[point_i];
-            const float distance_falloff = math::clamp(
-                1.0f - (math::distance(color_grid_.center, view_pos) / radius * 2), 0.0f, 1.0f);
-            const float influence = brush_point_influence(scene,
-                                                          brush,
-                                                          view_pos,
-                                                          extension_sample,
-                                                          params.multi_frame_falloff) *
-                                    distance_falloff;
-            if (influence > 0.0f) {
-              ColorGeometry4f &color = vertex_colors[point_i];
-              const float alpha = color.a;
-              color = math::interpolate(color, mix_color, influence);
-              color.a = alpha;
-            }
-          });
-      return true;
+    if (point_selection.is_empty()) {
+      return false;
     }
-    return false;
+    const Array<float2> view_positions = calculate_view_positions(params, point_selection);
+    MutableSpan<ColorGeometry4f> vertex_colors = params.drawing.vertex_colors_for_write();
+    this->foreach_point_on_grid(
+        point_selection,
+        view_positions,
+        extension_sample.mouse_position,
+        GrainSize(1024),
+        [&](const int point_i, const int cell_i) {
+          if (color_grid_.colors[cell_i][3] == 0.0f) {
+            return;
+          }
+          const ColorGeometry4f mix_color = ColorGeometry4f(color_grid_.colors[cell_i]);
+          const float2 view_pos = view_positions[point_i];
+          const float distance_falloff = math::clamp(
+              1.0f - (math::distance(color_grid_.center, view_pos) / radius * 2), 0.0f, 1.0f);
+          const float influence = brush_point_influence(scene,
+                                                        brush,
+                                                        view_pos,
+                                                        extension_sample,
+                                                        params.multi_frame_falloff) *
+                                  distance_falloff;
+          if (influence > 0.0f) {
+            ColorGeometry4f &color = vertex_colors[point_i];
+            const float alpha = color.a;
+            color = math::interpolate(color, mix_color, influence);
+            color.a = alpha;
+          }
+        });
+    return true;
   });
 }
 
