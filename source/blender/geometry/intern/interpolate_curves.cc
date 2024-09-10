@@ -244,12 +244,12 @@ static void mix_arrays(const GSpan src_from,
                        const IndexMask &selection,
                        const GMutableSpan dst)
 {
-  selection.foreach_index(GrainSize(512), [&](const int curve) {
-    bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
-      using T = decltype(dummy);
-      const Span<T> from = src_from.typed<T>();
-      const Span<T> to = src_to.typed<T>();
-      const MutableSpan<T> dst_typed = dst.typed<T>();
+  bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    const Span<T> from = src_from.typed<T>();
+    const Span<T> to = src_to.typed<T>();
+    const MutableSpan<T> dst_typed = dst.typed<T>();
+    selection.foreach_index(GrainSize(512), [&](const int curve) {
       dst_typed[curve] = math::interpolate(from[curve], to[curve], mix_factor);
     });
   });
