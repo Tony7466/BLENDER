@@ -52,6 +52,14 @@ ShaderModule::ShaderPtr ShaderModule::selectable_shader(const char *create_info_
 
   if (selection_type_ != SelectionType::DISABLED) {
     info.define("SELECT_ENABLE");
+    info.depth_write(gpu::shader::DepthWrite::UNCHANGED);
+    /* Replace additional info. */
+    for (StringRefNull &str : info.additional_infos_) {
+      if (str == "draw_modelmat_new") {
+        str = "draw_modelmat_new_with_custom_id";
+      }
+    }
+    info.additional_info("select_id_patch");
   }
 
   if (clipping_enabled_) {
@@ -228,6 +236,17 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.additional_info("draw_gpencil_new", "draw_object_infos_new");
       });
 
+  sculpt_mesh = shader("overlay_sculpt_mask",
+                       [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  sculpt_curves = shader("overlay_sculpt_curves_selection",
+                         [](gpu::shader::ShaderCreateInfo &info) {
+                           shader_patch_common(info);
+                           info.additional_info("draw_hair_new");
+                         });
+  sculpt_curves_cage = shader(
+      "overlay_sculpt_curves_cage",
+      [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+
   xray_fade = shader("overlay_xray_fade", [](gpu::shader::ShaderCreateInfo &info) {
     info.sampler(2, ImageType::DEPTH_2D, "xrayDepthTexInfront");
   });
@@ -328,12 +347,6 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
         info.vertex_inputs_.pop_last();
         info.vertex_inputs_.pop_last();
       });
-
-  depth_mesh = selectable_shader("overlay_depth_only", [](gpu::shader::ShaderCreateInfo &info) {
-    info.additional_infos_.clear();
-    info.additional_info(
-        "draw_view", "draw_globals", "draw_modelmat_new", "draw_resource_handle_new");
-  });
 
   facing = shader("overlay_facing", [](gpu::shader::ShaderCreateInfo &info) {
     info.additional_infos_.clear();
