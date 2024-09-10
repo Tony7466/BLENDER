@@ -18,14 +18,14 @@
 
 namespace blender::ed::sculpt_paint::hide {
 
-Span<int> node_visible_verts(const bke::pbvh::Node &node,
+Span<int> node_visible_verts(const bke::pbvh::MeshNode &node,
                              const Span<bool> hide_vert,
                              Vector<int> &indices)
 {
   if (BKE_pbvh_node_fully_hidden_get(node)) {
     return {};
   }
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const Span<int> verts = node.verts();
   if (hide_vert.is_empty()) {
     return verts;
   }
@@ -40,7 +40,7 @@ Span<int> node_visible_verts(const bke::pbvh::Node &node,
 bool vert_visible_get(const Object &object, PBVHVertRef vertex)
 {
   const SculptSession &ss = *object.sculpt;
-  switch (ss.pbvh->type()) {
+  switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();

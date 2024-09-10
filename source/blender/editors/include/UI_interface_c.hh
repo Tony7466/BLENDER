@@ -1025,6 +1025,12 @@ void UI_but_disable(uiBut *but, const char *disabled_hint);
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
 /**
+ * Sets the button's color, normally only used to recolor the icon. In the
+ * special case of UI_BTYPE_LABEL without icon this is used as text color.
+ */
+void UI_but_color_set(uiBut *but, const uchar color[4]);
+
+/**
  * Set at hint that describes the expected value when empty.
  */
 void UI_but_placeholder_set(uiBut *but, const char *placeholder_text) ATTR_NONNULL(1);
@@ -3447,6 +3453,7 @@ ARegion *UI_tooltip_create_from_search_item_generic(bContext *C,
 
 /* Typical UI text */
 #define UI_FSTYLE_WIDGET (const uiFontStyle *)&(UI_style_get()->widget)
+#define UI_FSTYLE_TOOLTIP (const uiFontStyle *)&(UI_style_get()->tooltip)
 
 /**
  * Returns the best "UI" precision for given floating value,

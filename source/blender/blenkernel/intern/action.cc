@@ -386,15 +386,13 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
    * `action_blend_write_make_legacy_fcurves_listbase()`, so that they function
    * properly as a list. */
   for (bActionGroup *group : channel_groups) {
-    if (group->fcurve_range_length == 0) {
+    Span<FCurve *> fcurves = group->wrap().fcurves();
+    if (fcurves.is_empty()) {
       group->channels = {nullptr, nullptr};
-      continue;
     }
-    Span<FCurve *> fcurves = group->channel_bag->wrap().fcurves();
-    group->channels = {
-        fcurves[group->fcurve_range_start],
-        fcurves[group->fcurve_range_start + group->fcurve_range_length - 1],
-    };
+    else {
+      group->channels = {fcurves.first(), fcurves.last()};
+    }
   }
 
   /* Determine the prev/next pointers on the elements. */
@@ -410,9 +408,10 @@ static void action_blend_write_make_legacy_channel_groups_listbase(
 
 static void action_blend_write_clear_legacy_channel_groups_listbase(ListBase &listbase)
 {
-  LISTBASE_FOREACH (bActionGroup *, group, &listbase) {
+  LISTBASE_FOREACH_MUTABLE (bActionGroup *, group, &listbase) {
     group->prev = nullptr;
     group->next = nullptr;
+    group->channels = {nullptr, nullptr};
   }
 
   BLI_listbase_clear(&listbase);
@@ -453,7 +452,7 @@ static void action_blend_write_make_legacy_fcurves_listbase(ListBase &listbase,
 
 static void action_blend_write_clear_legacy_fcurves_listbase(ListBase &listbase)
 {
-  LISTBASE_FOREACH (FCurve *, fcurve, &listbase) {
+  LISTBASE_FOREACH_MUTABLE (FCurve *, fcurve, &listbase) {
     fcurve->prev = nullptr;
     fcurve->next = nullptr;
   }
@@ -484,11 +483,11 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
      * forward-compat legacy data is also written, and vice-versa. Both have
      * pointers to each other that won't resolve properly when loaded in older
      * Blender versions if only one is written. */
-    Span<FCurve *> fcurves = fcurves_for_action_slot(action, first_slot.handle);
-    action_blend_write_make_legacy_fcurves_listbase(action.curves, fcurves);
-    Span<bActionGroup *> channel_groups = channel_groups_for_action_slot(action,
-                                                                         first_slot.handle);
-    action_blend_write_make_legacy_channel_groups_listbase(action.groups, channel_groups);
+    animrig::ChannelBag *bag = channelbag_for_action_slot(action, first_slot.handle);
+    if (bag) {
+      action_blend_write_make_legacy_fcurves_listbase(action.curves, bag->fcurves());
+      action_blend_write_make_legacy_channel_groups_listbase(action.groups, bag->channel_groups());
+    }
   }
 #else
   /* Built without Baklava, so ensure that the written data is clean. This should not change
@@ -549,20 +548,18 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
 #ifdef WITH_ANIM_BAKLAVA
 
-static void read_channel_group(BlendDataReader *reader, bActionGroup &channel_group)
-{
-  /* Remap non-owning pointer. */
-  channel_group.channel_bag = static_cast<ActionChannelBag *>(BLO_read_get_new_data_address_no_us(
-      reader, channel_group.channel_bag, sizeof(ActionChannelBag)));
-}
-
 static void read_channelbag(BlendDataReader *reader, animrig::ChannelBag &channelbag)
 {
   BLO_read_pointer_array(
       reader, channelbag.group_array_num, reinterpret_cast<void **>(&channelbag.group_array));
   for (int i = 0; i < channelbag.group_array_num; i++) {
     BLO_read_struct(reader, bActionGroup, &channelbag.group_array[i]);
-    read_channel_group(reader, *channelbag.group_array[i]);
+    channelbag.group_array[i]->channel_bag = &channelbag;
+
+    /* Clear the legacy channels #ListBase, since it will have been set for some
+     * groups for forward compatibility.
+     * See #action_blend_write_make_legacy_channel_groups_listbase. */
+    channelbag.group_array[i]->channels = {nullptr, nullptr};
   }
 
   BLO_read_pointer_array(
@@ -648,6 +645,7 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
 
   if (action.is_action_layered()) {
     /* Clear the forward-compatible storage (see action_blend_write_data()). */
+    BLI_listbase_clear(&action.chanbase);
     BLI_listbase_clear(&action.curves);
     BLI_listbase_clear(&action.groups);
   }
@@ -656,6 +654,11 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
     BLO_read_struct_list(reader, bActionChannel, &action.chanbase);
     BLO_read_struct_list(reader, FCurve, &action.curves);
     BLO_read_struct_list(reader, bActionGroup, &action.groups);
+
+    LISTBASE_FOREACH (bActionChannel *, achan, &action.chanbase) {
+      BLO_read_struct(reader, bActionGroup, &achan->grp);
+      BLO_read_struct_list(reader, bConstraintChannel, &achan->constraintChannels);
+    }
 
     BKE_fcurve_blend_read_data_listbase(reader, &action.curves);
 
@@ -666,11 +669,6 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   }
 
   BLO_read_struct_list(reader, TimeMarker, &action.markers);
-
-  LISTBASE_FOREACH (bActionChannel *, achan, &action.chanbase) {
-    BLO_read_struct(reader, bActionGroup, &achan->grp);
-    BLO_read_struct_list(reader, bConstraintChannel, &achan->constraintChannels);
-  }
 
   /* End of reading legacy data. */
 
