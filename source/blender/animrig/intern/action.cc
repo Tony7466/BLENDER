@@ -5,7 +5,6 @@
 /** \file
  * \ingroup animrig
  */
-
 #include "DNA_action_defaults.h"
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -2205,6 +2204,45 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   }
 
   return &converted_action;
+}
+
+bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
+{
+  if (from_action.slot_array_num == 0) {
+    return false;
+  }
+  if (!from_action.slots().as_span().contains(&source_slot)) {
+    return false;
+  }
+
+  /* No merging of strips or layers is handled. All data is put into the assumed single strip. */
+  assert_baklava_phase_1_invariants(from_action);
+  assert_baklava_phase_1_invariants(to_action);
+
+  KeyframeStrip &from_strip = from_action.layer(0)->strip(0)->as<KeyframeStrip>();
+  KeyframeStrip &to_strip = to_action.layer(0)->strip(0)->as<KeyframeStrip>();
+
+  Slot &target_slot = to_action.slot_add();
+  STRNCPY(target_slot.name, source_slot.name);
+  slot_name_ensure_unique(to_action, target_slot);
+
+  ChannelBag *channel_bag = from_strip.channelbag_for_slot(source_slot.handle);
+  BLI_assert(channel_bag != nullptr);
+  channel_bag->slot_handle = target_slot.handle;
+  grow_array_and_append<ActionChannelBag *>(
+      &to_strip.channelbag_array, &to_strip.channelbag_array_num, channel_bag);
+  int index = from_strip.find_channelbag_index(*channel_bag);
+  shrink_array_and_remove<ActionChannelBag *>(
+      &from_strip.channelbag_array, &from_strip.channelbag_array_num, index);
+
+  for (ID *user : source_slot.runtime_users()) {
+    from_action.unassign_id(*user);
+    to_action.assign_id(&target_slot, *user);
+  }
+
+  from_action.slot_remove(source_slot);
+
+  return true;
 }
 
 }  // namespace blender::animrig

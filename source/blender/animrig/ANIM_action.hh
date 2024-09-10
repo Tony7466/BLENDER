@@ -1231,6 +1231,15 @@ void assert_baklava_phase_1_invariants(const Strip &strip);
 Action *convert_to_layered_action(Main &bmain, const Action &legacy_action);
 
 /**
+ * Move the given slot from `from_action` to `to_action`.
+ * The slot name might not be exactly the same if the name already exists in the slots of
+ * `to_action`.
+ *
+ * \returns true if the move was successful.
+ */
+bool move_slot(Slot &slot, Action &from_action, Action &to_action);
+
+/**
  * Deselect the keys of all actions in the Span. Duplicate entries are only visited once.
  */
 void deselect_keys_actions(blender::Span<bAction *> actions);
