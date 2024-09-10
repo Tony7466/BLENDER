@@ -53,6 +53,7 @@ class VKShaderModule {
    * Is cleared after compilation phase has completed. (VKShader::finalize_post).
    */
   shaderc::SpvCompilationResult compilation_result;
+  Vector<uint32_t> spirv_binary;
 
   /**
    * Is compilation needed and is the compilation step done.

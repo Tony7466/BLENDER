@@ -30,6 +30,81 @@ VKShaderCompiler::~VKShaderCompiler()
 }
 
 /* -------------------------------------------------------------------- */
+/** \name SPIR-V disk cache
+ * \{ */
+
+static std::string cache_dir_get()
+{
+  char tmp_dir_buffer[1024];
+  BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+
+  std::string cache_dir = std::string(tmp_dir_buffer) + "vk-spirv-cache" + SEP_STR;
+  BLI_dir_create_recursive(cache_dir.c_str());
+
+  return cache_dir;
+}
+
+static bool read_spirv_from_disk(VKShaderModule &shader_module)
+{
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    return false;
+  }
+  DefaultHash<std::string> hasher;
+  shader_module.sources_hash = std::to_string(hasher(shader_module.combined_sources));
+
+  std::string cache_path = cache_dir_get() + SEP_STR + shader_module.sources_hash + ".spv";
+
+  if (!BLI_exists(cache_path.c_str())) {
+    return false;
+  }
+
+  BLI_file_touch(cache_path.c_str());
+  fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
+  std::streamsize size = file.tellg();
+  file.seekg(0, std::ios::beg);
+  shader_module.spirv_binary.resize(size / 4);
+  file.read(reinterpret_cast<char *>(shader_module.spirv_binary.data()), size);
+  return true;
+}
+
+static void write_spirv_to_disk(VKShaderModule &shader_module)
+{
+  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
+    return;
+  }
+  BLI_assert(!shader_module.sources_hash.empty());
+  std::string cache_path = cache_dir_get() + SEP_STR + shader_module.sources_hash + ".spv";
+
+  fstream file(cache_path, std::ios::binary | std::ios::out);
+  size_t size = (shader_module.compilation_result.end() -
+                 shader_module.compilation_result.begin()) *
+                sizeof(uint32_t);
+  file.write(reinterpret_cast<const char *>(shader_module.compilation_result.begin()), size);
+}
+
+void VKShaderCompiler::cache_dir_clear_old()
+{
+  std::string cache_dir = cache_dir_get();
+
+  direntry *entries = nullptr;
+  uint32_t dir_len = BLI_filelist_dir_contents(cache_dir.c_str(), &entries);
+  for (int i : blender::IndexRange(dir_len)) {
+    direntry entry = entries[i];
+    if (S_ISDIR(entry.s.st_mode)) {
+      continue;
+    }
+    const time_t ts_now = time(nullptr);
+    const time_t delete_threshold = 60 /*seconds*/ * 60 /*minutes*/ * 24 /*hours*/ * 30 /*days*/;
+    if (entry.s.st_mtime + delete_threshold < ts_now) {
+      BLI_delete(entry.path, false, false);
+    }
+  }
+  BLI_filelist_free(entries, dir_len);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Compilation
  * \{ */
 
@@ -73,6 +148,10 @@ static bool compile_ex(shaderc::Compiler &compiler,
                        shaderc_shader_kind stage,
                        VKShaderModule &shader_module)
 {
+  if (read_spirv_from_disk(shader_module)) {
+    return true;
+  }
+
   shaderc::CompileOptions options;
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
   options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
@@ -86,6 +165,9 @@ static bool compile_ex(shaderc::Compiler &compiler,
       shader_module.combined_sources, stage, full_name.c_str(), options);
   bool compilation_succeeded = shader_module.compilation_result.GetCompilationStatus() ==
                                shaderc_compilation_status_success;
+  if (compilation_succeeded) {
+    write_spirv_to_disk(shader_module);
+  }
   return compilation_succeeded;
 }
 
