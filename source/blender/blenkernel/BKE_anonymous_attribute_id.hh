@@ -50,12 +50,4 @@ class ProcessAllAttributeExceptAnonymous : public AttributeFilter {
   }
 };
 
-class ProcessAllAttributes : public AttributeFilter {
- public:
-  Result filter(const StringRef /*name*/) const override
-  {
-    return AttributeFilter::Result::Process;
-  }
-};
-
 }  // namespace blender::bke

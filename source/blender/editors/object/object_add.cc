@@ -3515,8 +3515,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob->data = new_mesh;
         newob->type = OB_MESH;
 
-        Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(),
-                                             bke::ProcessAllAttributes{});
+        Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(), {});
         if (!mesh) {
           mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
         }
