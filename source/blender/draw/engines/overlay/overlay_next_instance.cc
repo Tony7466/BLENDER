@@ -258,6 +258,7 @@ void Instance::end_sync()
     layer.force_fields.end_sync(resources, shapes, state);
     layer.lights.end_sync(resources, shapes, state);
     layer.light_probes.end_sync(resources, shapes, state);
+    layer.mesh_uvs.end_sync(resources, shapes, state);
     layer.metaballs.end_sync(resources, shapes, state);
     layer.relations.end_sync(resources, state);
     layer.fluids.end_sync(resources, shapes, state);

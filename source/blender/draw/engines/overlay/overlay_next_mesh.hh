@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "DNA_mesh_types.h"
 
 #include "BKE_customdata.hh"
@@ -418,12 +420,16 @@ class MeshUVs {
  private:
   PassSimple analysis_ps_ = {"Mesh Analysis"};
 
+  /* TODO(fclem): Should be its own Overlay?. */
   PassSimple wireframe_ps_ = {"Wireframe"};
 
   PassSimple edges_ps_ = {"Edges"};
   PassSimple faces_ps_ = {"Faces"};
   PassSimple verts_ps_ = {"Verts"};
   PassSimple facedots_ps_ = {"FaceDots"};
+
+  /* TODO(fclem): Should be its own Overlay?. */
+  PassSimple image_border_ps_ = {"ImageBorder"};
 
   bool show_vert = false;
   bool show_face = false;
@@ -460,6 +466,7 @@ class MeshUVs {
   /** UDIM border overlay. */
   bool show_tiled_image_active = false;
   bool show_tiled_image_border = false;
+  bool show_tiled_image_label = false;
 
   bool enabled_ = false;
 
@@ -567,8 +574,9 @@ class MeshUVs {
     {
       /* UDIM Overlay. */
       /* TODO: Always enable this overlay even if overlays are disabled. */
-      show_tiled_image_active = is_tiled_image; /* TODO: Only disable this if overlays are off. */
       show_tiled_image_border = is_tiled_image;
+      show_tiled_image_active = is_tiled_image; /* TODO: Only disable this if overlays are off. */
+      show_tiled_image_label = is_tiled_image;  /* TODO: Only disable this if overlays are off. */
     }
 
     const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0;
@@ -658,63 +666,6 @@ class MeshUVs {
     }
 
 #if 0
-    if (pd->edit_uv.do_tiled_image_border_overlay) {
-      blender::gpu::Batch *geom = DRW_cache_quad_wires_get();
-      float obmat[4][4];
-      unit_m4(obmat);
-
-      DRW_PASS_CREATE(psl->edit_uv_tiled_image_borders_ps,
-                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
-      GPUShader *sh = OVERLAY_shader_edit_uv_tiled_image_borders_get();
-
-      float theme_color[4], selected_color[4];
-      UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
-      UI_GetThemeColor4fv(TH_FACE_SELECT, selected_color);
-      srgb_to_linearrgb_v4(theme_color, theme_color);
-      srgb_to_linearrgb_v4(selected_color, selected_color);
-
-      DRWShadingGroup *grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
-      DRW_shgroup_uniform_vec4_copy(grp, "ucolor", theme_color);
-      const float3 offset = {0.0f, 0.0f, 0.0f};
-      DRW_shgroup_uniform_vec3_copy(grp, "offset", offset);
-
-      LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
-        const int tile_x = ((tile->tile_number - 1001) % 10);
-        const int tile_y = ((tile->tile_number - 1001) / 10);
-        obmat[3][1] = float(tile_y);
-        obmat[3][0] = float(tile_x);
-        DRW_shgroup_call_obmat(grp, geom, obmat);
-      }
-      /* Only mark active border when overlays are enabled. */
-      if (pd->edit_uv.do_tiled_image_overlay) {
-        /* Active tile border */
-        ImageTile *active_tile = static_cast<ImageTile *>(
-            BLI_findlink(&image->tiles, image->active_tile_index));
-        if (active_tile) {
-          obmat[3][0] = float((active_tile->tile_number - 1001) % 10);
-          obmat[3][1] = float((active_tile->tile_number - 1001) / 10);
-          grp = DRW_shgroup_create(sh, psl->edit_uv_tiled_image_borders_ps);
-          DRW_shgroup_uniform_vec4_copy(grp, "ucolor", selected_color);
-          DRW_shgroup_call_obmat(grp, geom, obmat);
-        }
-      }
-    }
-
-    if (pd->edit_uv.do_tiled_image_overlay) {
-      DRWTextStore *dt = DRW_text_cache_ensure();
-      uchar color[4];
-      /* Color Management: Exception here as texts are drawn in sRGB space directly. */
-      UI_GetThemeColorShade4ubv(TH_BACK, 60, color);
-      char text[16];
-      LISTBASE_FOREACH (ImageTile *, tile, &image->tiles) {
-        BLI_snprintf(text, 5, "%d", tile->tile_number);
-        float tile_location[3] = {
-            float((tile->tile_number - 1001) % 10), float((tile->tile_number - 1001) / 10), 0.0f};
-        DRW_text_cache_add(
-            dt, tile_location, text, strlen(text), 10, 10, DRW_TEXT_CACHE_GLOBALSPACE, color);
-      }
-    }
-
     if (pd->edit_uv.do_stencil_overlay) {
       const Brush *brush = BKE_paint_brush(&ts->imapaint.paint);
       ::Image *stencil_image = brush->clone.image;
@@ -842,6 +793,61 @@ class MeshUVs {
     }
   }
 
+  void end_sync(Resources &res, ShapeCache &shapes, const State &state)
+  {
+    if (show_tiled_image_border) {
+      float4 theme_color;
+      float4 selected_color;
+      uchar4 text_color;
+      /* Color Management: Exception here as texts are drawn in sRGB space directly. No conversion
+       * required. */
+      UI_GetThemeColorShade4ubv(TH_BACK, 60, text_color);
+      UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
+      UI_GetThemeColor4fv(TH_FACE_SELECT, selected_color);
+      srgb_to_linearrgb_v4(theme_color, theme_color);
+      srgb_to_linearrgb_v4(selected_color, selected_color);
+
+      auto &pass = image_border_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS);
+      pass.shader_set(res.shaders.uv_image_borders.get());
+
+      auto draw_tile = [&](const ImageTile *tile, const bool is_active) {
+        const int tile_x = ((tile->tile_number - 1001) % 10);
+        const int tile_y = ((tile->tile_number - 1001) / 10);
+        const float3 tile_location(tile_x, tile_y, 0.0f);
+        pass.push_constant("tile_pos", tile_location);
+        pass.push_constant("ucolor", is_active ? selected_color : theme_color);
+        pass.draw(shapes.quad_wire.get());
+
+        /* Note: don't draw label twice for active tile. */
+        if (show_tiled_image_label && !is_active) {
+          std::string text = std::to_string(tile->tile_number);
+          DRW_text_cache_add(state.dt,
+                             tile_location,
+                             text.c_str(),
+                             text.size(),
+                             10,
+                             10,
+                             DRW_TEXT_CACHE_GLOBALSPACE,
+                             text_color);
+        }
+      };
+
+      const SpaceImage *space_image = reinterpret_cast<const SpaceImage *>(state.space_data);
+      ::Image *image = space_image->image;
+      ListBaseWrapper<ImageTile> tiles(image->tiles);
+
+      for (const ImageTile *tile : tiles) {
+        draw_tile(tile, false);
+      }
+      /* Draw active tile on top. */
+      if (show_tiled_image_active) {
+        draw_tile(tiles.get(image->active_tile_index), true);
+      }
+    }
+  }
+
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
   {
     if (!enabled_) {
@@ -862,6 +868,9 @@ class MeshUVs {
     GPU_debug_group_begin("Mesh Edit UVs");
 
     GPU_framebuffer_bind(framebuffer);
+    if (show_tiled_image_border) {
+      manager.submit(image_border_ps_, view);
+    }
     if (show_wireframe) {
       manager.submit(wireframe_ps_, view);
     }

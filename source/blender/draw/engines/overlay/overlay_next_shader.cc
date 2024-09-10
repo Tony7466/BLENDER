@@ -263,6 +263,12 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
                         [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
   uv_edit_facedot = shader("overlay_edit_uv_face_dots",
                            [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  uv_image_borders = shader("overlay_edit_uv_tiled_image_borders",
+                            [](gpu::shader::ShaderCreateInfo &info) {
+                              info.additional_infos_.clear();
+                              info.push_constant(gpu::shader::Type::VEC3, "tile_pos");
+                              info.additional_info("draw_view");
+                            });
 
   xray_fade = shader("overlay_xray_fade", [](gpu::shader::ShaderCreateInfo &info) {
     info.sampler(2, ImageType::DEPTH_2D, "xrayDepthTexInfront");

@@ -235,6 +235,7 @@ class ShaderModule {
   ShaderPtr uv_edit_face;
   ShaderPtr uv_edit_facedot;
   ShaderPtr uv_edit_vert;
+  ShaderPtr uv_image_borders;
   ShaderPtr xray_fade;
 
   /** Selectable Shaders */
