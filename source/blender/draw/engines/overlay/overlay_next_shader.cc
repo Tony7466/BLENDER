@@ -247,6 +247,16 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
       "overlay_sculpt_curves_cage",
       [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
 
+  uv_analysis_stretch_angle = shader("overlay_edit_uv_stretching_angle",
+                                     [](gpu::shader::ShaderCreateInfo &info) {
+                                       shader_patch_common(info);
+                                       info.additional_info("overlay_edit_uv_stretching");
+                                     });
+  uv_analysis_stretch_area = shader("overlay_edit_uv_stretching_area",
+                                    [](gpu::shader::ShaderCreateInfo &info) {
+                                      shader_patch_common(info);
+                                      info.additional_info("overlay_edit_uv_stretching");
+                                    });
   uv_edit_vert = shader("overlay_edit_uv_verts",
                         [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
   uv_edit_face = shader("overlay_edit_uv_face_dots",

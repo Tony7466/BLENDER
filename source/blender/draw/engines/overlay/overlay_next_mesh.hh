@@ -455,6 +455,7 @@ class MeshUVs {
    */
   Vector<float *> per_mesh_area_3d;
   Vector<float *> per_mesh_area_2d;
+  float total_area_ratio_;
 
   /** UDIM border overlay. */
   bool show_tiled_image_active = false;
@@ -643,30 +644,20 @@ class MeshUVs {
       pass.push_constant("uvOpacity", space_image->uv_opacity);
     }
 
-#if 0
-    /* uv stretching */
-    if (pd->edit_uv.do_uv_stretching_overlay) {
-      DRW_PASS_CREATE(psl->edit_uv_stretching_ps,
-                      DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
-      if (pd->edit_uv.draw_type == SI_UVDT_STRETCH_ANGLE) {
-        GPUShader *sh = OVERLAY_shader_edit_uv_stretching_angle_get();
-        pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
-        DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
-        DRW_shgroup_uniform_vec2_copy(pd->edit_uv_stretching_grp, "aspect", pd->edit_uv.uv_aspect);
-        DRW_shgroup_uniform_float_copy(
-            pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
-      }
-      else /* SI_UVDT_STRETCH_AREA */ {
-        GPUShader *sh = OVERLAY_shader_edit_uv_stretching_area_get();
-        pd->edit_uv_stretching_grp = DRW_shgroup_create(sh, psl->edit_uv_stretching_ps);
-        DRW_shgroup_uniform_block(pd->edit_uv_stretching_grp, "globalsBlock", G_draw.block_ubo);
-        DRW_shgroup_uniform_float(
-            pd->edit_uv_stretching_grp, "totalAreaRatio", &pd->edit_uv.total_area_ratio, 1);
-        DRW_shgroup_uniform_float_copy(
-            pd->edit_uv_stretching_grp, "stretch_opacity", pd->edit_uv.stretch_opacity);
-      }
+    if (show_mesh_analysis) {
+      auto &pass = analysis_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_ALWAYS | DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(mesh_analysis_type == SI_UVDT_STRETCH_ANGLE ?
+                          res.shaders.uv_analysis_stretch_angle.get() :
+                          res.shaders.uv_analysis_stretch_area.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("aspect", state.image_uv_aspect);
+      pass.push_constant("stretch_opacity", space_image->stretch_opacity);
+      pass.push_constant("totalAreaRatio", &total_area_ratio_);
     }
 
+#if 0
     if (pd->edit_uv.do_tiled_image_border_overlay) {
       blender::gpu::Batch *geom = DRW_cache_quad_wires_get();
       float obmat[4][4];
@@ -805,6 +796,8 @@ class MeshUVs {
       return;
     }
 
+    /* TODO filter dupli objects. Only display a single instance. */
+
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
     Object &ob = *ob_ref.object;
@@ -827,6 +820,22 @@ class MeshUVs {
       faces_ps_.draw(geom, res_handle);
     }
 
+    if (show_mesh_analysis) {
+      int index_3d, index_2d;
+      if (mesh_analysis_type == SI_UVDT_STRETCH_AREA) {
+        index_3d = per_mesh_area_3d.append_and_get_index(nullptr);
+        index_2d = per_mesh_area_2d.append_and_get_index(nullptr);
+      }
+
+      gpu::Batch *geom =
+          mesh_analysis_type == SI_UVDT_STRETCH_ANGLE ?
+              DRW_mesh_batch_cache_get_edituv_faces_stretch_angle(ob, mesh) :
+              DRW_mesh_batch_cache_get_edituv_faces_stretch_area(
+                  ob, mesh, &per_mesh_area_3d[index_3d], &per_mesh_area_2d[index_2d]);
+
+      analysis_ps_.draw(geom, res_handle);
+    }
+
     if (show_wireframe) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
       wireframe_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
@@ -838,6 +847,17 @@ class MeshUVs {
     if (!enabled_) {
       return;
     }
+    {
+      float total_3d = 0.0f;
+      float total_2d = 0.0f;
+      for (const float *mesh_area_2d : per_mesh_area_2d) {
+        total_2d += *mesh_area_2d;
+      }
+      for (const float *mesh_area_3d : per_mesh_area_3d) {
+        total_3d += *mesh_area_3d;
+      }
+      total_area_ratio_ = total_3d * math::safe_rcp(total_2d);
+    }
 
     GPU_debug_group_begin("Mesh Edit UVs");
 
@@ -845,7 +865,9 @@ class MeshUVs {
     if (show_wireframe) {
       manager.submit(wireframe_ps_, view);
     }
-    // manager.submit(analysis_ps_, view);
+    if (show_mesh_analysis) {
+      manager.submit(analysis_ps_, view);
+    }
     if (show_face) {
       manager.submit(faces_ps_, view);
     }
