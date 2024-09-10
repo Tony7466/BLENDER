@@ -1207,9 +1207,6 @@ typedef struct ActionSlot {
  * \see #blender::animrig::Strip
  */
 typedef struct ActionStrip {
-  /** The action this strip belongs to. */
-  bAction *owning_action;
-
   /**
    * \see #blender::animrig::Strip::type()
    */

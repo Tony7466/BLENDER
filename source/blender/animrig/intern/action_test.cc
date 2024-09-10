@@ -144,8 +144,9 @@ TEST_F(ActionLayersTest, add_strip)
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Slot &slot = action->slot_add();
-  strip.keyframe_data().keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
-  another_strip.keyframe_data().keyframe_insert(
+  strip.keyframe_data(*action).keyframe_insert(
+      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  another_strip.keyframe_data(*action).keyframe_insert(
       bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
 }
 
@@ -159,9 +160,12 @@ TEST_F(ActionLayersTest, remove_strip)
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Slot &slot = action->slot_add();
-  strip0.keyframe_data().keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
-  strip1.keyframe_data().keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
-  strip2.keyframe_data().keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip0.keyframe_data(*action).keyframe_insert(
+      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip1.keyframe_data(*action).keyframe_insert(
+      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip2.keyframe_data(*action).keyframe_insert(
+      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
 
   EXPECT_TRUE(layer.strip_remove(strip1));
   EXPECT_EQ(2, layer.strips().size());
@@ -257,7 +261,7 @@ TEST_F(ActionLayersTest, slot_remove)
 
     /* Create an F-Curve in a ChannelBag for the slot. */
     action->layer_keystrip_ensure();
-    StripKeyframeData &strip_data = action->layer(0)->strip(0)->keyframe_data();
+    StripKeyframeData &strip_data = action->layer(0)->strip(0)->keyframe_data(*action);
     ChannelBag &channelbag = strip_data.channelbag_for_slot_ensure(slot);
     channelbag.fcurve_create_unique(bmain, {"location", 1});
 
@@ -286,7 +290,7 @@ TEST_F(ActionLayersTest, slot_remove)
 
     /* Create a Channelbag for each slot. */
     action->layer_keystrip_ensure();
-    StripKeyframeData &strip_data = action->layer(0)->strip(0)->keyframe_data();
+    StripKeyframeData &strip_data = action->layer(0)->strip(0)->keyframe_data(*action);
     strip_data.channelbag_for_slot_ensure(slot1);
     strip_data.channelbag_for_slot_ensure(slot2);
     strip_data.channelbag_for_slot_ensure(slot3);
@@ -638,7 +642,7 @@ TEST_F(ActionLayersTest, KeyframeStrip__keyframe_insert)
   Layer &layer = action->layer_add("Kübus layer");
 
   Strip &strip = layer.strip_add(*action, Strip::Type::Keyframe);
-  StripKeyframeData &strip_data = strip.keyframe_data();
+  StripKeyframeData &strip_data = strip.keyframe_data(*action);
 
   const KeyframeSettings settings = get_keyframe_settings(false);
   SingleKeyingResult result_loc_a = strip_data.keyframe_insert(
@@ -791,7 +795,7 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   ASSERT_TRUE(converted != action);
   EXPECT_STREQ(converted->id.name, "ACACÄnimåtië_layered");
   Strip *strip = converted->layer(0)->strip(0);
-  StripKeyframeData strip_data = strip->keyframe_data();
+  StripKeyframeData strip_data = strip->keyframe_data(*action);
   ChannelBag *bag = strip_data.channelbag(0);
   ASSERT_EQ(bag->fcurve_array_num, 2);
   ASSERT_EQ(bag->fcurve_array[0]->totvert, 2);
@@ -834,7 +838,7 @@ TEST_F(ActionLayersTest, conversion_to_layered_action_groups)
 
   Action *converted = convert_to_layered_action(*bmain, *action);
   Strip *strip = converted->layer(0)->strip(0);
-  StripKeyframeData &strip_data = strip->keyframe_data();
+  StripKeyframeData &strip_data = strip->keyframe_data(*action);
   ChannelBag *bag = strip_data.channelbag(0);
 
   ASSERT_EQ(BLI_listbase_count(&converted->groups), 0);

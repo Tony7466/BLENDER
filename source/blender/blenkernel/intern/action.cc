@@ -159,10 +159,18 @@ static void action_copy_data(Main * /*bmain*/,
   action_dst.slot_array_num = action_src.slot_array_num;
   action_dst.last_slot_handle = action_src.last_slot_handle;
 
-  /* Layers. */
+  /* Layers, and (recursively) Strips. */
   action_dst.layer_array = MEM_cnew_array<ActionLayer *>(action_src.layer_array_num, __func__);
   for (int i : action_src.layers().index_range()) {
-    action_dst.layer_array[i] = MEM_new<animrig::Layer>(__func__, *action_src.layer(i));
+    action_dst.layer_array[i] = action_src.layer(i)->duplicate_no_strip_data(__func__);
+  }
+
+  /* Strip data. */
+  action_dst.strip_keyframe_data_array = MEM_cnew_array<ActionStripKeyframeData *>(
+      action_src.strip_keyframe_data_num, __func__);
+  for (int i : action_src.strip_keyframe_data().index_range()) {
+    action_dst.strip_keyframe_data_array[i] = MEM_new<animrig::StripKeyframeData>(
+        __func__, *action_src.strip_keyframe_data()[i]);
   }
 
   /* Slots. */

@@ -27,7 +27,7 @@ void action_foreach_fcurve(Action &action,
         if (!strip->is_keyframe_strip()) {
           continue;
         }
-        for (ChannelBag *bag : strip->keyframe_data().channelbags()) {
+        for (ChannelBag *bag : strip->keyframe_data(action).channelbags()) {
           if (bag->slot_handle != handle) {
             continue;
           }

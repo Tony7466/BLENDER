@@ -169,7 +169,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__non_array_property)
   Strip *strip = action.layer(0)->strip(0);
   ASSERT_TRUE(strip->is_infinite());
   ASSERT_EQ(Strip::Type::Keyframe, strip->type());
-  StripKeyframeData *strip_data = &strip->keyframe_data();
+  StripKeyframeData *strip_data = &strip->keyframe_data(action);
 
   /* We have a channel bag for the slot. */
   ChannelBag *channel_bag = strip_data->channelbag_for_slot(*slot);
@@ -243,7 +243,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__single_element)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -276,7 +276,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__all_elements)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -314,7 +314,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__pose_bone_rna_pointer)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -348,7 +348,7 @@ TEST_F(KeyframingTest, insert_keyframes__pose_bone_owner_id_pointer)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -386,7 +386,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_properties)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -433,7 +433,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__multiple_ids)
   ASSERT_TRUE(action.is_action_layered());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
 
   /* We have a single channel bag, and it's for the first object's slot. */
   ASSERT_EQ(1, strip_data->channelbags().size());
@@ -560,7 +560,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_available)
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
   EXPECT_EQ(object->adt->slot_handle, action.slot(0)->handle);
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
 
   EXPECT_EQ(2, result_2.get_count(SingleKeyingResult::SUCCESS));
   ASSERT_EQ(1, strip_data->channelbags().size());
@@ -626,7 +626,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_replace)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 
@@ -707,7 +707,7 @@ TEST_F(KeyframingTest, insert_keyframes__layered_action__only_needed)
   ASSERT_EQ(1, action.slots().size());
   ASSERT_EQ(1, action.layers().size());
   ASSERT_EQ(1, action.layer(0)->strips().size());
-  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data();
+  StripKeyframeData *strip_data = &action.layer(0)->strip(0)->keyframe_data(action);
   ASSERT_EQ(1, strip_data->channelbags().size());
   ChannelBag *channel_bag = strip_data->channelbag(0);
 

@@ -837,6 +837,7 @@ struct KeyInsertData {
 
 static SingleKeyingResult insert_key_layer(
     Main *bmain,
+    Action &action,
     Layer &layer,
     const Slot &slot,
     const std::string &rna_path,
@@ -850,7 +851,7 @@ static SingleKeyingResult insert_key_layer(
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->keyframe_data().keyframe_insert(
+  return strip->keyframe_data(action).keyframe_insert(
       bmain,
       slot,
       {rna_path, key_data.array_index, prop_subtype, channel_group},
@@ -887,6 +888,7 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
    * default layer won't be added by the line above, but there also won't be any
    * layers we can insert keys into. */
   Layer *layer = action.get_layer_for_keyframing();
+
   BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
@@ -924,6 +926,7 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
 
       const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
       const SingleKeyingResult result = insert_key_layer(bmain,
+                                                         action,
                                                          *layer,
                                                          *slot,
                                                          *rna_path_id_to_prop,

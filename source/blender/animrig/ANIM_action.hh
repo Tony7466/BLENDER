@@ -346,7 +346,16 @@ class Strip : public ::ActionStrip {
 
   ~Strip();
 
-  Strip *duplicate(StringRefNull allocation_name) const;
+  Strip *duplicate(Action &owning_action, StringRefNull allocation_name) const;
+
+  /**
+   * Duplicate the `Strip`, but don't duplicate its data, leaving the `Strip`'s
+   * fields is-as.
+   *
+   * NOTE: this method is narrow in its application, and you probably shouldn't
+   * use it unless you really know what you're doing.
+   */
+  Strip *duplicate_no_strip_data(StringRefNull allocation_name) const;
 
   enum class Type : int8_t { Keyframe = 0 };
 
@@ -381,15 +390,15 @@ class Strip : public ::ActionStrip {
     return this->type() == Type::Keyframe;
   }
 
-  const StripKeyframeData &keyframe_data() const;
-  StripKeyframeData &keyframe_data();
+  const StripKeyframeData &keyframe_data(const Action &owning_action) const;
+  StripKeyframeData &keyframe_data(Action &owning_action);
 
   /**
    * Remove all data belonging to the given slot.
    *
    * This is typically only called from Layer::slot_data_remove().
    */
-  void slot_data_remove(slot_handle_t slot_handle);
+  void slot_data_remove(Action &owning_action, slot_handle_t slot_handle);
 };
 static_assert(sizeof(Strip) == sizeof(::ActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -408,8 +417,19 @@ static_assert(sizeof(Strip) == sizeof(::ActionStrip),
 class Layer : public ::ActionLayer {
  public:
   Layer() = default;
-  Layer(const Layer &other);
+  Layer(const Layer &other) = delete;
   ~Layer();
+
+  Layer *duplicate(Action &owning_action, StringRefNull allocation_name) const;
+
+  /**
+   * Duplicate the `Layer` and its `Strip`s, but don't duplicate the strip data,
+   * leaving the `Strip`'s fields is-as.
+   *
+   * NOTE: this method is narrow in its application, and you probably shouldn't
+   * use it unless you really know what you're doing.
+   */
+  Layer *duplicate_no_strip_data(StringRefNull allocation_name) const;
 
   enum class Flags : uint8_t {
     /* Set by default, cleared to mute. */
@@ -482,7 +502,7 @@ class Layer : public ::ActionLayer {
    *
    * This is typically only called from Action::slot_remove().
    */
-  void slot_data_remove(slot_handle_t slot_handle);
+  void slot_data_remove(Action &owning_action, slot_handle_t slot_handle);
 
  protected:
   /** Return the strip's index, or -1 if not found in this layer. */

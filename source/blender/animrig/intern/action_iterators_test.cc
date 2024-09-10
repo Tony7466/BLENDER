@@ -62,7 +62,7 @@ TEST_F(ActionIteratorsTest, iterate_all_fcurves_of_slot)
 
   Layer &layer = action->layer_add("Layer One");
   Strip &strip = layer.strip_add(*action, Strip::Type::Keyframe);
-  StripKeyframeData &strip_data = strip.keyframe_data();
+  StripKeyframeData &strip_data = strip.keyframe_data(*action);
   const KeyframeSettings settings = get_keyframe_settings(false);
 
   /* Insert 3 FCurves for each slot. */

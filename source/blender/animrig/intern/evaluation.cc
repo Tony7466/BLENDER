@@ -49,7 +49,8 @@ EvaluationResult evaluate_action(PointerRNA &animated_id_ptr,
       continue;
     }
 
-    auto layer_result = evaluate_layer(animated_id_ptr, *layer, slot_handle, anim_eval_context);
+    auto layer_result = evaluate_layer(
+        animated_id_ptr, action, *layer, slot_handle, anim_eval_context);
     if (!layer_result) {
       continue;
     }
@@ -190,6 +191,7 @@ void apply_evaluation_result(const EvaluationResult &evaluation_result,
 }
 
 static EvaluationResult evaluate_strip(PointerRNA &animated_id_ptr,
+                                       Action &owning_action,
                                        Strip &strip,
                                        const slot_handle_t slot_handle,
                                        const AnimationEvalContext &anim_eval_context)
@@ -201,7 +203,7 @@ static EvaluationResult evaluate_strip(PointerRNA &animated_id_ptr,
 
   switch (strip.type()) {
     case Strip::Type::Keyframe: {
-      StripKeyframeData &data = strip.keyframe_data();
+      StripKeyframeData &data = strip.keyframe_data(owning_action);
       return evaluate_keyframe_data(animated_id_ptr, data, slot_handle, offset_eval_context);
     }
   }
@@ -260,6 +262,7 @@ EvaluationResult blend_layer_results(const EvaluationResult &last_result,
 namespace internal {
 
 EvaluationResult evaluate_layer(PointerRNA &animated_id_ptr,
+                                Action &owning_action,
                                 Layer &layer,
                                 const slot_handle_t slot_handle,
                                 const AnimationEvalContext &anim_eval_context)
@@ -278,7 +281,7 @@ EvaluationResult evaluate_layer(PointerRNA &animated_id_ptr,
     }
 
     const EvaluationResult strip_result = evaluate_strip(
-        animated_id_ptr, *strip, slot_handle, anim_eval_context);
+        animated_id_ptr, owning_action, *strip, slot_handle, anim_eval_context);
     if (!strip_result) {
       continue;
     }

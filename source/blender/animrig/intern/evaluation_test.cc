@@ -86,7 +86,7 @@ class AnimationEvaluationTest : public testing::Test {
   {
     anim_eval_context.eval_time = eval_time;
     EvaluationResult result = evaluate_layer(
-        cube_rna_ptr, *layer, slot->handle, anim_eval_context);
+        cube_rna_ptr, *action, *layer, slot->handle, anim_eval_context);
 
     const AnimatedProperty *loc0_result = result.lookup_ptr(PropIdentifier(rna_path, array_index));
     if (!loc0_result) {
@@ -146,7 +146,7 @@ class AnimationEvaluationTest : public testing::Test {
 TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 {
   Strip &strip = layer->strip_add(*action, Strip::Type::Keyframe);
-  StripKeyframeData &strip_data = strip.keyframe_data();
+  StripKeyframeData &strip_data = strip.keyframe_data(*action);
 
   /* Set some keys. */
   strip_data.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.1f}, settings);
@@ -165,7 +165,8 @@ TEST_F(AnimationEvaluationTest, evaluate_layer__keyframes)
 
   /* Evaluate. */
   anim_eval_context.eval_time = 3.0f;
-  EvaluationResult result = evaluate_layer(cube_rna_ptr, *layer, slot->handle, anim_eval_context);
+  EvaluationResult result = evaluate_layer(
+      cube_rna_ptr, *action, *layer, slot->handle, anim_eval_context);
 
   /* Check the result. */
   ASSERT_FALSE(result.is_empty());
@@ -188,7 +189,7 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__single_strip)
   strip.resize(1.0f, 10.0f);
 
   /* Set some keys. */
-  StripKeyframeData &strip_data = strip.keyframe_data();
+  StripKeyframeData &strip_data = strip.keyframe_data(*action);
   strip_data.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.0f}, settings);
   strip_data.keyframe_insert(bmain, *slot, {"location", 0}, {5.0f, 327.0f}, settings);
   strip_data.keyframe_insert(bmain, *slot, {"location", 0}, {10.0f, 48.0f}, settings);
@@ -212,13 +213,13 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__nonoverlapping)
 
   /* Set some keys. */
   {
-    StripKeyframeData &strip_data1 = strip1.keyframe_data();
+    StripKeyframeData &strip_data1 = strip1.keyframe_data(*action);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.0f}, settings);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {5.0f, 327.0f}, settings);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {10.0f, 48.0f}, settings);
   }
   {
-    StripKeyframeData &strip_data2 = strip2.keyframe_data();
+    StripKeyframeData &strip_data2 = strip2.keyframe_data(*action);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.0f}, settings);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {5.0f, 327.0f}, settings);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {10.0f, 48.0f}, settings);
@@ -252,13 +253,13 @@ TEST_F(AnimationEvaluationTest, strip_boundaries__overlapping_edge)
 
   /* Set some keys. */
   {
-    StripKeyframeData &strip_data1 = strip1.keyframe_data();
+    StripKeyframeData &strip_data1 = strip1.keyframe_data(*action);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.0f}, settings);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {5.0f, 327.0f}, settings);
     strip_data1.keyframe_insert(bmain, *slot, {"location", 0}, {10.0f, 48.0f}, settings);
   }
   {
-    StripKeyframeData &strip_data2 = strip2.keyframe_data();
+    StripKeyframeData &strip_data2 = strip2.keyframe_data(*action);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {1.0f, 47.0f}, settings);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {5.0f, 327.0f}, settings);
     strip_data2.keyframe_insert(bmain, *slot, {"location", 0}, {10.0f, 48.0f}, settings);

@@ -79,8 +79,6 @@ static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const S
   /* Copy the default ActionStrip fields into the allocated data-block. */
   memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
 
-  strip->owning_action = &owning_action;
-
   switch (type) {
     case Strip::Type::Keyframe: {
       strip->strip_type = int8_t(type);
@@ -515,7 +513,7 @@ bool Action::slot_remove(Slot &slot_to_remove)
 
   /* Remove the slot's data from each layer. */
   for (Layer *layer : this->layers()) {
-    layer->slot_data_remove(slot_to_remove.handle);
+    layer->slot_data_remove(*this, slot_to_remove.handle);
   }
 
   /* Un-assign this slot from its users. Only do this if the list of users is valid, */
@@ -724,15 +722,34 @@ void Action::unassign_id(ID &animated_id)
 
 /* ----- ActionLayer implementation ----------- */
 
-Layer::Layer(const Layer &other)
+Layer *Layer::duplicate(Action &owning_action, StringRefNull allocation_name) const
 {
-  memcpy(this, &other, sizeof(*this));
+  /* Make shallow copy of the layer. */
+  Layer *copy = &MEM_new<ActionLayer>(allocation_name.c_str())->wrap();
+  memcpy(copy, this, sizeof(*this));
 
   /* Strips. */
-  this->strip_array = MEM_cnew_array<ActionStrip *>(other.strip_array_num, __func__);
-  for (int i : other.strips().index_range()) {
-    this->strip_array[i] = other.strip(i)->duplicate(__func__);
+  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
+  for (int i : this->strips().index_range()) {
+    copy->strip_array[i] = this->strip(i)->duplicate(owning_action, __func__);
   }
+
+  return copy;
+}
+
+Layer *Layer::duplicate_no_strip_data(StringRefNull allocation_name) const
+{
+  /* Make shallow copy of the layer. */
+  Layer *copy = &MEM_new<ActionLayer>(allocation_name.c_str())->wrap();
+  memcpy(copy, this, sizeof(*this));
+
+  /* Make a shallow copy of the Strips, without copying their data. */
+  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
+  for (int i : this->strips().index_range()) {
+    copy->strip_array[i] = this->strip(i)->duplicate_no_strip_data(__func__);
+  }
+
+  return copy;
 }
 
 Layer::~Layer()
@@ -803,10 +820,10 @@ int64_t Layer::find_strip_index(const Strip &strip) const
   return -1;
 }
 
-void Layer::slot_data_remove(const slot_handle_t slot_handle)
+void Layer::slot_data_remove(Action &owning_action, const slot_handle_t slot_handle)
 {
   for (Strip *strip : this->strips()) {
-    strip->slot_data_remove(slot_handle);
+    strip->slot_data_remove(owning_action, slot_handle);
   }
 }
 
@@ -982,11 +999,11 @@ void Slot::name_ensure_prefix()
   *reinterpret_cast<short *>(this->name) = this->idtype;
 }
 
-void Strip::slot_data_remove(const slot_handle_t slot_handle)
+void Strip::slot_data_remove(Action &owning_action, const slot_handle_t slot_handle)
 {
   switch (this->type()) {
     case Type::Keyframe:
-      this->keyframe_data().slot_data_remove(slot_handle);
+      this->keyframe_data(owning_action).slot_data_remove(slot_handle);
   }
 }
 
@@ -1126,28 +1143,32 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 
 /* ----- ActionStrip implementation ----------- */
 
-Strip *Strip::duplicate(const StringRefNull allocation_name) const
+Strip *Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
 {
-  Action &action = this->owning_action->wrap();
-
   /* Make shallow copy of the strip. */
-  Strip *copy = nullptr;
-  {
-    ActionStrip *tmp = MEM_new<ActionStrip>(allocation_name.c_str());
-    *tmp = *(ActionStrip *)(this);
-    copy = &tmp->wrap();
-  }
+  Strip *copy = &MEM_new<ActionStrip>(allocation_name.c_str())->wrap();
+  memcpy(copy, this, sizeof(*this));
 
   /* Duplicate the strip's data. */
   switch (copy->type()) {
     case Type::Keyframe: {
-      const StripKeyframeData &strip_data_source = *action.strip_keyframe_data()[copy->data_index];
+      const StripKeyframeData &strip_data_source =
+          *owning_action.strip_keyframe_data()[copy->data_index];
       StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(allocation_name.c_str(),
                                                                       strip_data_source);
-      copy->data_index = action.strip_keyframe_data_append(strip_data_copy);
+      copy->data_index = owning_action.strip_keyframe_data_append(strip_data_copy);
       break;
     }
   }
+
+  return copy;
+}
+
+Strip *Strip::duplicate_no_strip_data(StringRefNull allocation_name) const
+{
+  /* Make shallow copy of the strip. */
+  Strip *copy = &MEM_new<ActionStrip>(allocation_name.c_str())->wrap();
+  memcpy(copy, this, sizeof(*this));
 
   return copy;
 }
@@ -1191,19 +1212,17 @@ void Strip::resize(const float frame_start, const float frame_end)
   this->frame_end = frame_end;
 }
 
-const StripKeyframeData &Strip::keyframe_data() const
+const StripKeyframeData &Strip::keyframe_data(const Action &owning_action) const
 {
-  BLI_assert(this->owning_action != nullptr);
   BLI_assert(this->type() == animrig::Strip::Type::Keyframe);
 
-  return *this->owning_action->wrap().strip_keyframe_data()[this->data_index];
+  return *owning_action.strip_keyframe_data()[this->data_index];
 }
-StripKeyframeData &Strip::keyframe_data()
+StripKeyframeData &Strip::keyframe_data(Action &owning_action)
 {
-  BLI_assert(this->owning_action != nullptr);
   BLI_assert(this->type() == animrig::Strip::Type::Keyframe);
 
-  return *this->owning_action->wrap().strip_keyframe_data()[this->data_index];
+  return *owning_action.strip_keyframe_data()[this->data_index];
 }
 
 /* ----- ActionStripKeyframeData implementation ----------- */
@@ -1821,7 +1840,7 @@ const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
     for (const animrig::Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case animrig::Strip::Type::Keyframe: {
-          const animrig::StripKeyframeData &data = strip->keyframe_data();
+          const animrig::StripKeyframeData &data = strip->keyframe_data(action);
           const animrig::ChannelBag *bag = data.channelbag_for_slot(slot_handle);
           if (bag) {
             return bag;
@@ -1892,7 +1911,7 @@ static Vector<FCurveType *> fcurves_all_into(ActionType &action)
     for (StripType *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
-          StripKeyframeDataType &data = strip->keyframe_data();
+          StripKeyframeDataType &data = strip->keyframe_data(action);
           for (ChannelBagType *bag : data.channelbags()) {
             for (FCurveType *fcurve : bag->fcurves()) {
               all_fcurves.append(fcurve);
@@ -1980,7 +1999,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
     action.layer_keystrip_ensure();
 
     assert_baklava_phase_1_invariants(action);
-    StripKeyframeData &strip_data = action.layer(0)->strip(0)->keyframe_data();
+    StripKeyframeData &strip_data = action.layer(0)->strip(0)->keyframe_data(action);
 
     return &strip_data.channelbag_for_slot_ensure(*slot).fcurve_ensure(bmain, fcurve_descriptor);
   }
@@ -2053,7 +2072,7 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
       if (!(strip->type() == Strip::Type::Keyframe)) {
         continue;
       }
-      StripKeyframeData &data = strip->keyframe_data();
+      StripKeyframeData &data = strip->keyframe_data(action);
       for (ChannelBag *bag : data.channelbags()) {
         const bool removed = bag->fcurve_remove(fcu);
         if (removed) {
@@ -2228,8 +2247,8 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   Slot &slot = converted_action.slot_add();
   Layer &layer = converted_action.layer_add(legacy_action.id.name);
   Strip &strip = layer.strip_add(converted_action, Strip::Type::Keyframe);
-  BLI_assert(strip.keyframe_data().channelbag_array_num == 0);
-  ChannelBag *bag = &strip.keyframe_data().channelbag_for_slot_add(slot);
+  BLI_assert(strip.keyframe_data(converted_action).channelbag_array_num == 0);
+  ChannelBag *bag = &strip.keyframe_data(converted_action).channelbag_for_slot_add(slot);
 
   const int fcu_count = BLI_listbase_count(&legacy_action.curves);
   bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Convert to layered action");
