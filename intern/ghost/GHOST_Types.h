@@ -363,6 +363,9 @@ typedef enum {
   GHOST_kStandardCursorLeftHandle,
   GHOST_kStandardCursorRightHandle,
   GHOST_kStandardCursorBothHandles,
+  GHOST_kStandardCursorHandOpen,
+  GHOST_kStandardCursorHandClosed,
+  GHOST_kStandardCursorHandPoint,
   GHOST_kStandardCursorCustom,
 
 #define GHOST_kStandardCursorNumCursors (int(GHOST_kStandardCursorCustom) + 1)
@@ -716,6 +719,8 @@ typedef struct {
 
 #ifdef WITH_VULKAN_BACKEND
 typedef struct {
+  /** Identifier of the swap chain image in the swap chain. */
+  uint32_t swap_chain_index;
   /** Image handle to the image that will be presented to the user. */
   VkImage image;
   /** Format of the image. */

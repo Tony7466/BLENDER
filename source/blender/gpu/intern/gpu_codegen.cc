@@ -614,8 +614,8 @@ void GPUCodegen::generate_cryptomatte()
   float material_hash = 0.0f;
   Material *material = GPU_material_get_material(&mat);
   if (material) {
-    blender::bke::cryptomatte::CryptomatteHash hash(material->id.name + 2,
-                                                    BLI_strnlen(material->id.name, MAX_NAME - 2));
+    blender::bke::cryptomatte::CryptomatteHash hash(
+        material->id.name + 2, BLI_strnlen(material->id.name + 2, MAX_NAME - 2));
     material_hash = hash.float_encoded();
   }
   cryptomatte_input_->vec[0] = material_hash;
@@ -903,9 +903,14 @@ bool GPU_pass_finalize_compilation(GPUPass *pass, GPUShader *shader)
 void GPU_pass_begin_async_compilation(GPUPass *pass, const char *shname)
 {
   if (pass->async_compilation_handle == -1) {
-    GPUShaderCreateInfo *info = GPU_pass_begin_compilation(pass, shname);
-    BLI_assert(info);
-    pass->async_compilation_handle = GPU_shader_batch_create_from_infos({info});
+    if (GPUShaderCreateInfo *info = GPU_pass_begin_compilation(pass, shname)) {
+      pass->async_compilation_handle = GPU_shader_batch_create_from_infos({info});
+    }
+    else {
+      /* The pass has been already compiled synchronously. */
+      BLI_assert(pass->compiled);
+      pass->async_compilation_handle = 0;
+    }
   }
 }
 
