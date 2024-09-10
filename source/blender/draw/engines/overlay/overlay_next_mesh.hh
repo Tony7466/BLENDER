@@ -563,7 +563,7 @@ class MeshUVs {
       show_tiled_image_border = is_tiled_image;
     }
 
-    const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) == 0;
+    const bool do_smooth_wire = (U.gpu_flag & USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE) != 0;
     const float dash_length = 4.0f * UI_SCALE_FAC;
 
     if (show_wireframe) {
