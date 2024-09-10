@@ -497,19 +497,26 @@ class MeshUVs {
       show_uv_edit = space_mode_is_uv && object_mode_is_edit;
       show_mesh_analysis = show_uv_edit && (space_image->flag & SI_DRAW_STRETCH);
 
-      const bool hide_faces = space_image->flag & SI_NO_DRAWFACES;
+      if (!show_uv_edit) {
+        show_vert = false;
+        show_face = false;
+        show_face_dots = false;
+      }
+      else {
+        const bool hide_faces = space_image->flag & SI_NO_DRAWFACES;
 
-      int sel_mode_2d = tool_setting->uv_selectmode;
-      show_vert = (sel_mode_2d != UV_SELECT_EDGE);
-      show_face = !show_mesh_analysis && !hide_faces;
-      show_face_dots = (sel_mode_2d & UV_SELECT_FACE) && !hide_faces;
+        int sel_mode_2d = tool_setting->uv_selectmode;
+        show_vert = (sel_mode_2d != UV_SELECT_EDGE);
+        show_face = !show_mesh_analysis && !hide_faces;
+        show_face_dots = (sel_mode_2d & UV_SELECT_FACE) && !hide_faces;
 
-      if (tool_setting->uv_flag & UV_SYNC_SELECTION) {
-        int sel_mode_3d = tool_setting->selectmode;
-        /* NOTE: Ignore #SCE_SELECT_VERTEX because a single selected edge
-         * on the mesh may cause single UV vertices to be selected. */
-        show_vert = true /* (sel_mode_3d & SCE_SELECT_VERTEX) */;
-        show_face_dots = (sel_mode_3d & SCE_SELECT_FACE) && !hide_faces;
+        if (tool_setting->uv_flag & UV_SYNC_SELECTION) {
+          int sel_mode_3d = tool_setting->selectmode;
+          /* NOTE: Ignore #SCE_SELECT_VERTEX because a single selected edge
+           * on the mesh may cause single UV vertices to be selected. */
+          show_vert = true /* (sel_mode_3d & SCE_SELECT_VERTEX) */;
+          show_face_dots = (sel_mode_3d & SCE_SELECT_FACE) && !hide_faces;
+        }
       }
 
       if (show_mesh_analysis) {
@@ -572,7 +579,7 @@ class MeshUVs {
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA);
 
-      GPUShader *sh = res.shaders.uv_edit_edges.get();
+      GPUShader *sh = res.shaders.uv_edit_edge.get();
       pass.specialize_constant(sh, "use_edge_select", !show_vert);
       pass.shader_set(sh);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
@@ -588,7 +595,7 @@ class MeshUVs {
       pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
                      DRW_STATE_BLEND_ALPHA);
 
-      GPUShader *sh = res.shaders.uv_edit_edges.get();
+      GPUShader *sh = res.shaders.uv_edit_edge.get();
       pass.specialize_constant(sh, "use_edge_select", !show_vert);
       pass.shader_set(sh);
       pass.bind_ubo("globalsBlock", &res.globals_buf);
@@ -596,6 +603,38 @@ class MeshUVs {
       pass.push_constant("alpha", space_image->uv_opacity);
       pass.push_constant("dashLength", dash_length);
       pass.push_constant("doSmoothWire", do_smooth_wire);
+    }
+
+    if (show_vert) {
+      const float point_size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
+      float4 theme_color;
+      UI_GetThemeColor4fv(TH_VERTEX, theme_color);
+      srgb_to_linearrgb_v4(theme_color, theme_color);
+
+      auto &pass = verts_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(res.shaders.uv_edit_vert.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("pointSize", (point_size + 1.5f) * float(M_SQRT2));
+      pass.push_constant("outlineWidth", 0.75f);
+      pass.push_constant("color", theme_color);
+    }
+
+    if (show_face_dots) {
+      const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * UI_SCALE_FAC;
+      float4 theme_color;
+      UI_GetThemeColor4fv(TH_VERTEX, theme_color);
+      srgb_to_linearrgb_v4(theme_color, theme_color);
+
+      auto &pass = facedots_ps_;
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
+                     DRW_STATE_BLEND_ALPHA);
+      pass.shader_set(res.shaders.uv_edit_facedot.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.push_constant("pointSize", (point_size + 1.5f) * float(M_SQRT2));
     }
 
 #if 0
@@ -606,23 +645,6 @@ class MeshUVs {
                             DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA);
       }
 
-      /* uv verts */
-      if (pd->edit_uv.do_verts) {
-        GPUShader *sh = OVERLAY_shader_edit_uv_verts_get();
-        pd->edit_uv_verts_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
-
-        const float point_size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
-
-        DRW_shgroup_uniform_block(pd->edit_uv_verts_grp, "globalsBlock", G_draw.block_ubo);
-        DRW_shgroup_uniform_float_copy(
-            pd->edit_uv_verts_grp, "pointSize", (point_size + 1.5f) * M_SQRT2);
-        DRW_shgroup_uniform_float_copy(pd->edit_uv_verts_grp, "outlineWidth", 0.75f);
-        float theme_color[4];
-        UI_GetThemeColor4fv(TH_VERTEX, theme_color);
-        srgb_to_linearrgb_v4(theme_color, theme_color);
-        DRW_shgroup_uniform_vec4_copy(pd->edit_uv_verts_grp, "color", theme_color);
-      }
-
       /* uv faces */
       if (pd->edit_uv.do_faces) {
         DRW_PASS_CREATE(psl->edit_uv_faces_ps,
@@ -631,15 +653,6 @@ class MeshUVs {
         pd->edit_uv_faces_grp = DRW_shgroup_create(sh, psl->edit_uv_faces_ps);
         DRW_shgroup_uniform_block(pd->edit_uv_faces_grp, "globalsBlock", G_draw.block_ubo);
         DRW_shgroup_uniform_float(pd->edit_uv_faces_grp, "uvOpacity", &pd->edit_uv.uv_opacity, 1);
-      }
-
-      /* uv face dots */
-      if (pd->edit_uv.do_face_dots) {
-        const float point_size = UI_GetThemeValuef(TH_FACEDOT_SIZE) * UI_SCALE_FAC;
-        GPUShader *sh = OVERLAY_shader_edit_uv_face_dots_get();
-        pd->edit_uv_face_dots_grp = DRW_shgroup_create(sh, psl->edit_uv_verts_ps);
-        DRW_shgroup_uniform_block(pd->edit_uv_face_dots_grp, "globalsBlock", G_draw.block_ubo);
-        DRW_shgroup_uniform_float_copy(pd->edit_uv_face_dots_grp, "pointSize", point_size);
       }
     }
 
@@ -813,6 +826,14 @@ class MeshUVs {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_edges(ob, mesh);
       edges_ps_.draw_expand(geom, GPU_PRIM_TRIS, 2, 1, res_handle);
     }
+    if (show_vert) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_verts(ob, mesh);
+      verts_ps_.draw(geom, res_handle);
+    }
+    if (show_face_dots) {
+      gpu::Batch *geom = DRW_mesh_batch_cache_get_edituv_facedots(ob, mesh);
+      facedots_ps_.draw(geom, res_handle);
+    }
 
     if (show_wireframe) {
       gpu::Batch *geom = DRW_mesh_batch_cache_get_uv_edges(ob, mesh);
@@ -837,8 +858,12 @@ class MeshUVs {
     if (show_uv_edit) {
       manager.submit(edges_ps_, view);
     }
-    // manager.submit(facedots_ps_, view);
-    // manager.submit(verts_ps_, view);
+    if (show_face_dots) {
+      manager.submit(facedots_ps_, view);
+    }
+    if (show_vert) {
+      manager.submit(verts_ps_, view);
+    }
 
     GPU_debug_group_end();
   }
