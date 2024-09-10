@@ -157,7 +157,7 @@ static bAction *find_related_action(Main &bmain, ID &id)
           break;
         }
         FOREACH_MAIN_ID_END;
-        
+
         break;
       }
 
