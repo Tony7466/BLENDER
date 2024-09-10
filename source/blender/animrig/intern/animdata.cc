@@ -46,6 +46,11 @@ namespace blender::animrig {
  * of `related_ids`. */
 static void add_object_data_users(const Main &bmain, const ID &id, Vector<ID *> &related_ids)
 {
+  if (ID_REAL_USERS(&id) != 1) {
+    /* Only find objects if this ID is only used once. */
+    return;
+  }
+
   Object *ob;
   ID *object_id;
   FOREACH_MAIN_LISTBASE_ID_BEGIN (&bmain.objects, object_id) {
@@ -59,7 +64,8 @@ static void add_object_data_users(const Main &bmain, const ID &id, Vector<ID *> 
 }
 
 /* Find an action on an ID that is related to the given ID. Related things are e.g. Object<->Data,
- * Mesh<->Material and so on. The exact relationships are defined per ID type. */
+ * Mesh<->Material and so on. The exact relationships are defined per ID type. Only relationships
+ * of 1:1 are traced. The case of multiple users for 1 ID is treated as not related. */
 static bAction *find_related_action(Main &bmain, ID &id)
 {
   Vector<ID *> related_ids({&id});
@@ -68,12 +74,6 @@ static bAction *find_related_action(Main &bmain, ID &id)
    * code that defines relationships. */
   for (int i = 0; i < related_ids.size(); i++) {
     ID *related_id = related_ids[i];
-
-    /* In the case of more than 1 user we cannot properly determine from which the action should be
-     * taken, so those are skipped. Including the 0 users case for embedded IDs. */
-    if (ID_REAL_USERS(related_id) > 1) {
-      continue;
-    }
 
     Action *action = get_action(*related_id);
     if (action && action->is_action_layered()) {
@@ -91,13 +91,17 @@ static bAction *find_related_action(Main &bmain, ID &id)
           break;
         }
         ID *data = (ID *)ob->data;
-        related_ids.append_non_duplicates(data);
+        if (ID_REAL_USERS(data) == 1) {
+          related_ids.append_non_duplicates(data);
+        }
         break;
       }
 
       case ID_KE: {
         /* Shapekeys.  */
         Key *key = (Key *)related_id;
+        /* Shapekeys are not embedded but there is currently no way to reuse them. */
+        BLI_assert(ID_REAL_USERS(related_id) == 1);
         related_ids.append_non_duplicates(key->from);
         break;
       }
@@ -105,7 +109,7 @@ static bAction *find_related_action(Main &bmain, ID &id)
       case ID_MA: {
         /* Explicitly not relating materials and material users. */
         Material *mat = (Material *)related_id;
-        if (mat->nodetree) {
+        if (mat->nodetree && ID_REAL_USERS(&mat->nodetree->id) == 1) {
           related_ids.append_non_duplicates(&mat->nodetree->id);
         }
         break;
@@ -119,9 +123,9 @@ static bAction *find_related_action(Main &bmain, ID &id)
         }
         BLI_assert(ID_REAL_USERS(related_id) == 0);
         ID *owner_id = BKE_id_owner_get(related_id);
-        if (owner_id) {
-          related_ids.append(owner_id);
-        }
+        /* Embedded IDs should always have an owner. */
+        BLI_assert(owner_id != nullptr);
+        related_ids.append_non_duplicates(owner_id);
 
         break;
       }
@@ -130,6 +134,8 @@ static bAction *find_related_action(Main &bmain, ID &id)
         add_object_data_users(bmain, *related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
         if (mesh->key && !related_ids.contains(&mesh->key->id)) {
+          /* No check for multi user because the Shapekey cannot be shared. */
+          BLI_assert(ID_REAL_USERS(&mesh->key->id) == 1);
           related_ids.append_non_duplicates(&mesh->key->id);
         }
         break;
