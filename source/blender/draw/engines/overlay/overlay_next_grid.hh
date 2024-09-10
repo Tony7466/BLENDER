@@ -16,6 +16,7 @@
 #include "ED_image.hh"
 #include "ED_view3d.hh"
 
+#include "draw_shader_shared.hh"
 #include "overlay_next_private.hh"
 
 namespace blender::draw::overlay {
@@ -23,8 +24,9 @@ namespace blender::draw::overlay {
 class Grid {
  private:
   UniformBuffer<OVERLAY_GridData> data_;
+  StorageVectorBuffer<ObjectMatrices> tile_matrix_buf_;
 
-  PassMain grid_ps_ = {"grid_ps_"};
+  PassSimple grid_ps_ = {"grid_ps_"};
 
   float3 grid_axes_ = float3(0.0f);
   float3 zplane_axes_ = float3(0.0f);
@@ -95,15 +97,19 @@ class Grid {
       sub.shader_set(res.shaders.grid_image.get());
       sub.push_constant("ucolor", theme_color);
       float4x4 mat = math::from_scale<float4x4>(float4(1.0f));
-      draw::Manager &manager = *DRW_manager_get();
+      ObjectMatrices obj_mat;
+      tile_matrix_buf_.clear();
       for (const int x : IndexRange(data_.size[0])) {
         mat[3][0] = x;
         for (const int y : IndexRange(data_.size[1])) {
           mat[3][1] = y;
-          ResourceHandle handle = manager.resource_handle(mat);
-          sub.draw(shapes.quad_wire.get(), handle);
+          obj_mat.sync(mat);
+          tile_matrix_buf_.append(obj_mat);
         }
       }
+      tile_matrix_buf_.push_update();
+      sub.bind_ssbo("tile_matrix_buf", &tile_matrix_buf_);
+      sub.draw(shapes.quad_wire.get(), tile_matrix_buf_.size());
     }
   }
 
@@ -130,7 +136,7 @@ class Grid {
                                                init_3d(state, view, grid_steps);
   }
 
-  void copy_to_data(float grid_steps_x[], float grid_steps_y[])
+  void copy_steps_to_data(float grid_steps_x[], float grid_steps_y[])
   {
     /* Convert to UBO alignment. */
     for (const int i : IndexRange(SI_GRID_STEPS_LEN)) {
@@ -181,7 +187,7 @@ class Grid {
 
     data_.zoom_factor = ED_space_image_zoom_level(v2d, SI_GRID_STEPS_LEN);
     ED_space_image_grid_steps(sima, grid_steps, grid_steps_y, SI_GRID_STEPS_LEN);
-    copy_to_data(grid_steps, grid_steps_y);
+    copy_steps_to_data(grid_steps, grid_steps_y);
     return true;
   }
 
@@ -297,7 +303,7 @@ class Grid {
       float viewinvscale = len_v3(view.viewinv()[0]);
       data_.distance *= viewinvscale;
     }
-    copy_to_data(grid_steps, grid_steps);
+    copy_steps_to_data(grid_steps, grid_steps);
     return true;
   }
 };
