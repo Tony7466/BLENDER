@@ -411,6 +411,7 @@ if(WITH_VULKAN_BACKEND)
   # Vulkan uses Imath/half.h for float to half conversion when available. 
   if(WITH_IMAGE_OPENEXR) 
     add_definitions(-DWITH_IMAGE_OPENEXR)
+    list(APPEND LIB ${IMATH_LIBRARIES})
   else()
     message(WARNING "Using fallback for Imath. Float/half conversion will be less precise.")
   endif()

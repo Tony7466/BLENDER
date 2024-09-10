@@ -14,6 +14,12 @@ set(LIB
   PRIVATE bf_imbuf
 )
 
+if(WITH_IMAGE_OPENEXR)
+  list(APPEND LIB
+    PRIVATE ${IMATH_LIBRARIES}
+  )
+endif()
+
 set(SRC
   IMB_scaling_performance_test.cc
 )
