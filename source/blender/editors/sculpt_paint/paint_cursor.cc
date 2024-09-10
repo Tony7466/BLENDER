@@ -1155,7 +1155,7 @@ static void sculpt_geometry_preview_lines_draw(const Depsgraph &depsgraph,
   }
 
   const SculptSession &ss = *object.sculpt;
-  if (ss.pbvh->type() != bke::pbvh::Type::Mesh) {
+  if (bke::object::pbvh_get(object)->type() != bke::pbvh::Type::Mesh) {
     return;
   }
 
@@ -1769,7 +1769,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   Object &active_object = *pcontext->vc.obact;
   paint_cursor_update_object_space_radius(pcontext);
 
-  SCULPT_vertex_random_access_ensure(*pcontext->ss);
+  SCULPT_vertex_random_access_ensure(active_object);
 
   /* Setup drawing. */
   wmViewport(&pcontext->region->winrct);
@@ -1781,7 +1781,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   float3 active_vertex_co;
   if (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
     SculptSession &ss = *pcontext->ss;
-    if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
+    if (bke::object::pbvh_get(active_object)->type() == bke::pbvh::Type::Mesh) {
       const Span<float3> positions = vert_positions_for_grab_active_get(*pcontext->depsgraph,
                                                                         active_object);
       active_vertex_co = positions[std::get<int>(ss.active_vert())];
@@ -1956,7 +1956,7 @@ static void paint_cursor_cursor_draw_3d_view_brush_cursor_active(PaintCursorCont
   GPU_matrix_push();
   GPU_matrix_mul(pcontext->vc.obact->object_to_world().ptr());
 
-  /* Draw the special active cursors different brushe types may have. */
+  /* Draw the special active cursors different brush types may have. */
 
   if (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_GRAB) {
     sculpt_geometry_preview_lines_draw(

@@ -801,7 +801,7 @@ if(WITH_CYCLES_DEVICE_HIPRT)
   add_custom_command(
     OUTPUT  ${bvh_file_oro}
     COMMAND ${hiprt_compile_command} ${hiprt_compile_flags_bvh_oro}
-    DEPENDS ${HIPRT_INCLUDE_DIR}/Orochi/ParallelPrimitives/RadixSortKernels.h)
+    DEPENDS ${HIPRT_INCLUDE_DIR}/contrib/Orochi/ParallelPrimitives/RadixSortKernels.h)
 
   delayed_install("" "${bvh_file}"     ${cycles_kernel_runtime_lib_target_path})
   delayed_install("" "${bvh_file_oro}" ${cycles_kernel_runtime_lib_target_path})
