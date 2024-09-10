@@ -109,7 +109,7 @@ static void eevee_draw_scene(void *vedata)
   else {
     ved->instance->draw_viewport();
   }
-  STRNCPY(ved->info, ved->instance->info.c_str());
+  STRNCPY(ved->info, ved->instance->info_get());
   /* Reset view for other following engines. */
   DRW_view_set_active(nullptr);
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
@@ -167,7 +167,7 @@ static void eevee_render_to_image(void *vedata,
   rcti visible_rect = rect;
 
   instance->init(size, &rect, &visible_rect, engine, depsgraph, camera_original_ob, layer);
-  instance->render_frame(layer, viewname);
+  instance->render_frame(engine, layer, viewname);
 
   EEVEE_Data *ved = static_cast<EEVEE_Data *>(vedata);
   delete ved->instance;

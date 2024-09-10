@@ -19,6 +19,7 @@
 #  include "BLI_generic_virtual_array.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
+#  include "BLI_memory_counter_fwd.hh"
 #  include "BLI_span.hh"
 namespace blender::bke {
 class AttributeAccessor;
@@ -607,6 +608,12 @@ typedef struct GreasePencil {
   bool remove_frames(blender::bke::greasepencil::Layer &layer, blender::Span<int> frame_numbers);
 
   /**
+   * Adds multiple layers each with its own empty drawing. This can be more efficient than adding
+   * every layer and drawing one by one.
+   */
+  void add_layers_with_empty_drawings_for_eval(int num);
+
+  /**
    * Low-level resizing of drawings array. Only allocates new entries in the array, no drawings are
    * created in case of size increase. In case of size decrease, the removed drawings are deleted.
    */
@@ -687,6 +694,8 @@ typedef struct GreasePencil {
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
+
+  void count_memory(blender::MemoryCounter &memory) const;
 
   /* For debugging purposes. */
   void print_layer_tree();

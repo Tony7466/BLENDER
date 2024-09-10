@@ -325,7 +325,7 @@ void OBJECT_OT_hide_view_clear(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "select", true, "Select", "");
+  RNA_def_boolean(ot->srna, "select", true, "Select", "Select revealed objects");
 }
 
 static int object_hide_view_set_exec(bContext *C, wmOperator *op)
@@ -1604,6 +1604,8 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
     CTX_data_selected_editable_objects(C, &ctx_objects);
   }
 
+  bool modifier_removed = false;
+
   Set<ID *> object_data;
   for (const PointerRNA &ptr : ctx_objects) {
     Object *ob = static_cast<Object *>(ptr.data);
@@ -1616,6 +1618,7 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
             if (is_smooth_by_angle_modifier(*md)) {
               modifier_remove(op->reports, bmain, scene, ob, md);
               DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
+              modifier_removed = true;
               break;
             }
           }
@@ -1651,10 +1654,14 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       changed_multi = true;
-
       DEG_id_tag_update(data, ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, data);
     }
+  }
+
+  if (modifier_removed) {
+    /* Outliner needs to know. #124302. */
+    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, nullptr);
   }
 
   if (has_linked_data) {
@@ -2222,7 +2229,7 @@ static int move_to_collection_menus_create(wmOperator *op, MoveToCollectionData 
   int index = menu->index;
   LISTBASE_FOREACH (CollectionChild *, child, &menu->collection->children) {
     Collection *collection = child->collection;
-    MoveToCollectionData *submenu = MEM_cnew<MoveToCollectionData>(__func__);
+    MoveToCollectionData *submenu = MEM_new<MoveToCollectionData>(__func__);
     BLI_addtail(&menu->submenus, submenu);
     submenu->collection = collection;
     submenu->index = ++index;
@@ -2234,10 +2241,11 @@ static int move_to_collection_menus_create(wmOperator *op, MoveToCollectionData 
 
 static void move_to_collection_menus_free_recursive(MoveToCollectionData *menu)
 {
-  LISTBASE_FOREACH (MoveToCollectionData *, submenu, &menu->submenus) {
+  LISTBASE_FOREACH_MUTABLE (MoveToCollectionData *, submenu, &menu->submenus) {
     move_to_collection_menus_free_recursive(submenu);
+    MEM_delete(submenu);
   }
-  BLI_freelistN(&menu->submenus);
+  BLI_listbase_clear(&menu->submenus);
 }
 
 static void move_to_collection_menus_free(MoveToCollectionData **menu)
@@ -2247,7 +2255,7 @@ static void move_to_collection_menus_free(MoveToCollectionData **menu)
   }
 
   move_to_collection_menus_free_recursive(*menu);
-  MEM_freeN(*menu);
+  MEM_delete(*menu);
   *menu = nullptr;
 }
 
@@ -2346,7 +2354,7 @@ static int move_to_collection_invoke(bContext *C, wmOperator *op, const wmEvent 
    *
    * So we are left with a memory that will necessarily leak. It's a small leak though. */
   if (master_collection_menu == nullptr) {
-    master_collection_menu = MEM_cnew<MoveToCollectionData>(
+    master_collection_menu = MEM_new<MoveToCollectionData>(
         "MoveToCollectionData menu - expected eventual memleak");
   }
 

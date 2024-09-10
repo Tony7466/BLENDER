@@ -107,7 +107,7 @@ void VIEW3D_OT_localview_remove_from(wmOperatorType *ot);
 /**
  * \param rect: optional for picking (can be NULL).
  */
-void view3d_winmatrix_set(Depsgraph *depsgraph,
+void view3d_winmatrix_set(const Depsgraph *depsgraph,
                           ARegion *region,
                           const View3D *v3d,
                           const rcti *rect);
@@ -123,7 +123,7 @@ void view3d_winmatrix_set(Depsgraph *depsgraph,
  *
  * \note don't set windows active in here, is used by renderwin too.
  */
-void view3d_viewmatrix_set(Depsgraph *depsgraph,
+void view3d_viewmatrix_set(const Depsgraph *depsgraph,
                            const Scene *scene,
                            const View3D *v3d,
                            RegionView3D *rv3d,
@@ -207,6 +207,7 @@ void VIEW3D_GGT_mesh_preselect_elem(wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_mesh_preselect_edgering(wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_tool_generic_handle_normal(wmGizmoGroupType *gzgt);
 void VIEW3D_GGT_tool_generic_handle_free(wmGizmoGroupType *gzgt);
+void VIEW3D_GGT_geometry_nodes(struct wmGizmoGroupType *gzgt);
 
 void VIEW3D_GGT_ruler(wmGizmoGroupType *gzgt);
 void VIEW3D_GT_ruler_item(wmGizmoType *gzt);
