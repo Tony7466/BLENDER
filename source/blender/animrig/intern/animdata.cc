@@ -16,6 +16,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
+#include "BKE_node.hh"
 
 #include "BLT_translation.hh"
 
@@ -43,7 +44,7 @@ namespace blender::animrig {
 
 /* Find the users of the given ID within the objects of `bmain` and add non-duplicates to the end
  * of `related_ids`. */
-static void add_object_data_users(const Main &bmain, const ID &id, Vector<const ID *> &related_ids)
+static void add_object_data_users(const Main &bmain, const ID &id, Vector<ID *> &related_ids)
 {
   Object *ob;
   ID *object_id;
@@ -59,14 +60,14 @@ static void add_object_data_users(const Main &bmain, const ID &id, Vector<const 
 
 /* Find an action on an ID that is related to the given ID. Related things are e.g. Object<->Data,
  * Mesh<->Material and so on. The exact relationships are defined per ID type. */
-static bAction *find_related_action(const Main &bmain, const ID &id)
+static bAction *find_related_action(Main &bmain, ID &id)
 {
-  Vector<const ID *> related_ids({&id});
+  Vector<ID *> related_ids({&id});
 
   /* `related_ids` can grow during an iteration if the ID of the current iteration has associated
    * code that defines relationships. */
   for (int i = 0; i < related_ids.size(); i++) {
-    const ID *related_id = related_ids[i];
+    ID *related_id = related_ids[i];
 
     /* In the case of more than 1 user we cannot properly determine from which the action should be
      * taken, so those are skipped. Including the 0 users case for embedded IDs. */
@@ -135,20 +136,28 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       }
 
       case ID_NT: {
+        /* bNodeTree. */
         /* Only allow embedded IDs. */
-        if (ID_REAL_USERS(related_id) > 0) {
+        if (!(related_id->flag & ID_FLAG_EMBEDDED_DATA)) {
           break;
         }
-        /* bNodeTree. */
-        for (Material *material = static_cast<Material *>(bmain.materials.first); material;
-             material = static_cast<Material *>(material->id.next))
-        {
-          if (!material->nodetree || &material->nodetree->id != related_id) {
+        BLI_assert(ID_REAL_USERS(related_id) == 0);
+        ID *foo;
+        /* Search in all IDs to support all cases where node trees are used. */
+        FOREACH_MAIN_ID_BEGIN (&bmain, foo) {
+          bNodeTree *asd = bke::node_tree_from_id(foo);
+          if (!asd) {
             continue;
           }
-          related_ids.append_non_duplicates(&material->id);
+          if (&asd->id != related_id) {
+            continue;
+          }
+          related_ids.append_non_duplicates(foo);
+          /* Can exit the loop because embedded IDs are used only once. */
           break;
         }
+        FOREACH_MAIN_ID_END;
+        
         break;
       }
 
@@ -156,7 +165,7 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
         add_object_data_users(bmain, *related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
         if (mesh->key && !related_ids.contains(&mesh->key->id)) {
-          related_ids.append(&mesh->key->id);
+          related_ids.append_non_duplicates(&mesh->key->id);
         }
         break;
       }
@@ -164,6 +173,10 @@ static bAction *find_related_action(const Main &bmain, const ID &id)
       default: {
         /* Just check if the ID is used as object data somewhere. */
         add_object_data_users(bmain, *related_id, related_ids);
+        bNodeTree *node_tree = bke::node_tree_from_id(related_id);
+        if (node_tree) {
+          related_ids.append_non_duplicates(&node_tree->id);
+        }
         break;
       }
     }
