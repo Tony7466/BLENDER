@@ -36,7 +36,7 @@ struct ColorGrid {
   int2 coords_to_pos(const float2 coord, const float2 center) const
   {
     const int2 pos = int2(math::floor((coord - center) / float(this->cell_size_px)));
-    return pos + this->size / 2;
+    return pos + ((this->size + 1) / 2);
   }
 
   /* Compute a grid index (into the colors array) based on a grid position. Returns -1 if the
