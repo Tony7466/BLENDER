@@ -21,3 +21,4 @@ Referenced by issue #112716, Regression: Custom sockets ignore the draw_color me
 Referenced by commit cbcfca0a19e3071dca999dbbe775c933d5ed059d, Fix #112716: Custom sockets ignore draw_color method
 Referenced by issue #116477, Regression: Warning in Consol when adding Frizz Hair Curves
 Referenced by pull request #127426, Fix: unnecessary node updates
+Referenced by commit 2d936717783434168b642b7bac59b89a90b6e833, Fix: unnecessary node updates
