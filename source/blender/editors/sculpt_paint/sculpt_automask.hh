@@ -42,7 +42,7 @@ struct Settings {
 struct Cache {
   Settings settings;
 
-  /* Cached factor for automasking modes are implemented to process the entire mesh. */
+  /* Cached factor for automasking modes that are implemented to process the entire mesh. */
   Array<float> cached_factor;
 
   bool can_reuse_mask;
