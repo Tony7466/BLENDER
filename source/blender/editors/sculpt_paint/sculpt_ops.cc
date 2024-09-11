@@ -1155,8 +1155,6 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   brush2.automasking_boundary_edges_propagation_steps = 1;
   brush2.automasking_cavity_curve = sd2.automasking_cavity_curve;
 
-  SCULPT_stroke_id_next(ob);
-
   std::unique_ptr<auto_mask::Cache> automasking = auto_mask::cache_init(
       *depsgraph, sd2, &brush2, ob);
 
