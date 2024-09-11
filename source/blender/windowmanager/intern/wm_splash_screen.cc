@@ -297,9 +297,9 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
 
 #if defined(__APPLE__)
   if (is_using_macos_rosetta() > 0) {
-    uiItemS_ex(layout, 0.2f, LayoutSeparatorType::Line);
+    uiItemS_ex(layout, 2.0f, LayoutSeparatorType::Line);
 
-    uiLayout *split = uiLayoutSplit(layout, 0.75f, true);
+    uiLayout *split = uiLayoutSplit(layout, 0.725, true);
     uiLayout *row1 = uiLayoutRow(split, true);
     uiLayout *row2 = uiLayoutRow(split, true);
 
@@ -309,16 +309,14 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
             ICON_ERROR);
 
     PointerRNA op_ptr;
-    wmOperatorType *ot;
-    ot = WM_operatortype_find("WM_OT_url_open", false);
-    uiItemFullO_ptr(row2,
-                    ot,
-                    CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
-                    ICON_URL,
-                    nullptr,
-                    WM_OP_INVOKE_DEFAULT,
-                    UI_ITEM_NONE,
-                    &op_ptr);
+    uiItemFullO(row2,
+                "WM_OT_url_open",
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
+                ICON_URL,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &op_ptr);
     RNA_string_set(
         &op_ptr,
         "url",
