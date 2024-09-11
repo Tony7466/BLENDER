@@ -49,6 +49,8 @@ void mix_baked_data_item(eNodeSocketDatatype socket_type,
                          const void *next,
                          const float factor);
 
+std::optional<std::string> get_abs_file_path(const Main *bmain, StringRef path);
+
 namespace enums {
 
 const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,

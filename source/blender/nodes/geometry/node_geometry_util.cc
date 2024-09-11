@@ -7,6 +7,10 @@
 
 #include "DNA_space_types.h"
 
+#include "BLI_path_util.h"
+#include "BLI_string.h"
+
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 
 #include "NOD_rna_define.hh"
@@ -47,6 +51,21 @@ void search_link_ops_for_import_node(GatherLinkSearchOpParams &params)
   if (U.experimental.use_new_file_import_nodes) {
     nodes::search_link_ops_for_basic_node(params);
   }
+}
+
+std::optional<std::string> get_abs_file_path(const Main *bmain, StringRef path)
+{
+  if (path.is_empty()) {
+    return std::nullopt;
+  }
+  const char *base_path = BKE_main_blendfile_path(bmain);
+  if (StringRef(base_path).is_empty()) {
+    return std::nullopt;
+  }
+  char absolute_path[FILE_MAX];
+  STRNCPY(absolute_path, path.data());
+  BLI_path_abs(absolute_path, base_path);
+  return absolute_path;
 }
 
 namespace enums {
