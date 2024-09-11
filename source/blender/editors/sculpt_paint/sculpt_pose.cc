@@ -820,11 +820,10 @@ static void calc_pose_origin_and_factor_grids(Object &object,
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int num_grids = key.grid_area * grids.size();
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
-  flood_fill::FillDataGrids flood(num_grids);
+  flood_fill::FillDataGrids flood(positions.size());
   flood.add_initial_with_symmetry(
       object, pbvh, subdiv_ccg, std::get<SubdivCCGCoord>(ss.active_vert()), radius);
 
@@ -839,7 +838,7 @@ static void calc_pose_origin_and_factor_grids(Object &object,
 
         r_pose_factor[to_v_i] = 1.0f;
 
-        const float3 co = CCG_grid_elem_co(key, grids[to_v.grid_index], to_v.x, to_v.y);
+        const float3 &co = positions[to_v_i];
         if (math::distance_squared(initial_location, fallback_floodfill_origin) <
             math::distance_squared(initial_location, co))
         {
