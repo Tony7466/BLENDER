@@ -1155,7 +1155,7 @@ static void sculpt_geometry_preview_lines_draw(const Depsgraph &depsgraph,
   }
 
   const SculptSession &ss = *object.sculpt;
-  if (ss.pbvh->type() != bke::pbvh::Type::Mesh) {
+  if (bke::object::pbvh_get(object)->type() != bke::pbvh::Type::Mesh) {
     return;
   }
 
@@ -1415,7 +1415,7 @@ static void paint_cursor_sculpt_session_update_and_init(PaintCursorContext *pcon
 
   /* Ensure that the PBVH is generated before we call #SCULPT_cursor_geometry_info_update because
    * the PBVH is needed to do a ray-cast to find the active vertex. */
-  BKE_sculpt_object_pbvh_ensure(pcontext->depsgraph, pcontext->vc.obact);
+  bke::object::pbvh_ensure(*pcontext->depsgraph, *pcontext->vc.obact);
 
   /* This updates the active vertex, which is needed for most of the Sculpt/Vertex Colors tools to
    * work correctly */
@@ -1451,7 +1451,7 @@ static void paint_update_mouse_cursor(PaintCursorContext *pcontext)
      * with the UI (dragging a number button for e.g.), see: #102792. */
     return;
   }
-  if (pcontext->mode == PaintMode::GPencil) {
+  if (ELEM(pcontext->mode, PaintMode::GPencil, PaintMode::VertexGPencil)) {
     WM_cursor_set(pcontext->win, WM_CURSOR_DOT);
   }
   else {
@@ -1528,8 +1528,10 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
     return;
   }
 
-  /* default radius and color */
-  pcontext->pixel_radius = brush->size;
+  /* Hide the cursor while drawing. */
+  if (grease_pencil->runtime->is_drawing_stroke) {
+    return;
+  }
 
   float3 color(1.0f);
   const int x = pcontext->x;
@@ -1544,10 +1546,10 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       /* If we use the eraser from the draw tool with a "scene" radius unit, we need to draw the
        * cursor with the appropriate size. */
       if (grease_pencil->runtime->temp_use_eraser && (brush->flag & BRUSH_LOCK_SIZE) != 0) {
-        pcontext->pixel_radius = grease_pencil->runtime->temp_eraser_size;
+        pcontext->pixel_radius = int(grease_pencil->runtime->temp_eraser_size);
       }
       else {
-        pcontext->pixel_radius = float(pcontext->brush->size);
+        pcontext->pixel_radius = brush->size;
       }
       grease_pencil_eraser_draw(pcontext);
       return;
@@ -1596,6 +1598,10 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
       color = scale * float3(paint->paint_cursor_col);
     }
   }
+  else if (pcontext->mode == PaintMode::VertexGPencil) {
+    pcontext->pixel_radius = BKE_brush_size_get(pcontext->vc.scene, brush);
+    color = BKE_brush_color_get(pcontext->vc.scene, brush);
+  }
 
   GPU_line_width(1.0f);
   /* Inner Ring: Color from UI panel */
@@ -1611,13 +1617,12 @@ static void grease_pencil_brush_cursor_draw(PaintCursorContext *pcontext)
 static void paint_draw_2D_view_brush_cursor(PaintCursorContext *pcontext)
 {
   switch (pcontext->mode) {
-    case PaintMode::GPencil: {
+    case PaintMode::GPencil:
+    case PaintMode::VertexGPencil:
       grease_pencil_brush_cursor_draw(pcontext);
       break;
-    }
-    default: {
+    default:
       paint_draw_2D_view_brush_cursor_default(pcontext);
-    }
   }
 }
 
@@ -1769,7 +1774,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   Object &active_object = *pcontext->vc.obact;
   paint_cursor_update_object_space_radius(pcontext);
 
-  SCULPT_vertex_random_access_ensure(*pcontext->ss);
+  SCULPT_vertex_random_access_ensure(active_object);
 
   /* Setup drawing. */
   wmViewport(&pcontext->region->winrct);
@@ -1781,7 +1786,7 @@ static void paint_cursor_draw_3d_view_brush_cursor_inactive(PaintCursorContext *
   float3 active_vertex_co;
   if (brush.sculpt_brush_type == SCULPT_BRUSH_TYPE_GRAB && brush.flag & BRUSH_GRAB_ACTIVE_VERTEX) {
     SculptSession &ss = *pcontext->ss;
-    if (ss.pbvh->type() == bke::pbvh::Type::Mesh) {
+    if (bke::object::pbvh_get(active_object)->type() == bke::pbvh::Type::Mesh) {
       const Span<float3> positions = vert_positions_for_grab_active_get(*pcontext->depsgraph,
                                                                         active_object);
       active_vertex_co = positions[std::get<int>(ss.active_vert())];
