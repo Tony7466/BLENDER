@@ -1450,6 +1450,8 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid);
 struct wmDragAssetImportOptions {
   /** Additional linking flags (from #eFileSel_Params_Flag). */
   int flag_extra = 0;
+  /** Automatically link e.g. loose objects to the current scene. */
+  bool instantiate_loose_data = false;
 };
 
 ID *WM_drag_asset_id_import(const bContext *C,

@@ -696,6 +696,9 @@ ID *WM_drag_asset_id_import(const bContext *C,
   BLI_assert(options.flag_extra == (options.flag_extra & FILE_AUTOSELECT));
   eFileSel_Params_Flag flag = static_cast<eFileSel_Params_Flag>(options.flag_extra) |
                               FILE_ACTIVE_COLLECTION;
+  if (options.instantiate_loose_data) {
+    flag |= eFileSel_Params_Flag(BLO_LIBLINK_INSTANTIATE_LOOSE_DATA);
+  }
 
   const char *name = asset_drag->asset->get_name().c_str();
   const std::string blend_path = asset_drag->asset->full_library_path();
