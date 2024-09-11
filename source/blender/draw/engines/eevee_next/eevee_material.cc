@@ -460,6 +460,7 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
 {
   material_array_.materials.clear();
   material_array_.gpu_materials.clear();
+  material_array_.gpu_materials_npr.clear();
 
   const int materials_len = DRW_cache_object_material_count_get(ob);
 
@@ -470,6 +471,7 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
      * (i.e: because of its container growing) */
     material_array_.materials.append(mat);
     material_array_.gpu_materials.append(mat.shading.gpumat);
+    material_array_.gpu_materials_npr.append(mat.npr.gpumat);
   }
   return material_array_;
 }

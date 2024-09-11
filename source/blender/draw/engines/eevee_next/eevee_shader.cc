@@ -969,6 +969,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                                bool deferred_compilation)
 {
   bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
+  bool is_npr = pipeline_type == MAT_PIPE_DEFERRED_NPR;
 
   eMaterialDisplacement displacement_type = to_displacement_type(blender_mat->displacement_method);
   eMaterialThickness thickness_type = to_thickness_type(blender_mat->thickness_mode);
@@ -984,6 +985,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
                                               GPU_MAT_EEVEE,
                                               shader_uuid,
                                               is_volume,
+                                              is_npr,
                                               deferred_compilation,
                                               codegen_callback,
                                               this,
@@ -1022,6 +1024,7 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
   uint64_t shader_uuid = shader_uuid_from_material_type(pipeline_type, geometry_type);
 
   bool is_volume = ELEM(pipeline_type, MAT_PIPE_VOLUME_MATERIAL, MAT_PIPE_VOLUME_OCCUPANCY);
+  bool is_npr = pipeline_type == MAT_PIPE_DEFERRED_NPR;
 
   GPUMaterial *gpumat = GPU_material_from_nodetree(nullptr,
                                                    nullptr,
@@ -1032,6 +1035,7 @@ GPUMaterial *ShaderModule::material_shader_get(const char *name,
                                                    shader_uuid,
                                                    is_volume,
                                                    false,
+                                                   is_npr,
                                                    codegen_callback,
                                                    this);
   GPU_material_status_set(gpumat, GPU_MAT_CREATED);

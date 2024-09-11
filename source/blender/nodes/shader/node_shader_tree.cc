@@ -1281,16 +1281,14 @@ static bNode *ntreeShaderNPROutputNode(bNodeTree *localtree)
   return output;
 }
 
-void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
+void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat, bool is_npr_shader)
 {
   bNodeTreeExec *exec;
 
-  if (bNodeTree *npr_tree = npr_tree_get(localtree)) {
-    /** WORKAROUND:
-     * Embed the NPR nodes into the main tree so:
-     * - NPR shaders can evaluate inputs from the main tree inline.
-     * - GPUAttributes required by the NPR shader are registered in the main shader too. */
-    /* TODO(NPR): This is wasting texture sampler slots. */
+  if (is_npr_shader) {
+    /* Embed the NPR nodes into the main tree so NPR shaders can evaluate inputs from the main tree
+     * inline. */
+    bNodeTree *npr_tree = npr_tree_get(localtree);
     bNodeTree *npr_localtree = blender::bke::node_tree_localize(npr_tree, nullptr);
     ntree_shader_embed_tree(npr_localtree, localtree);
     blender::bke::node_tree_free_local_tree(npr_localtree);
@@ -1303,6 +1301,21 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
   ntree_shader_groups_flatten(localtree);
 
   bNode *output = ntreeShaderOutputNode(localtree, SHD_OUTPUT_EEVEE);
+
+  if (output) {
+    if (is_npr_shader) {
+      /* Unlink Material-only inputs (except the Displacement).  */
+      for (bNodeSocket *input : output->input_sockets()) {
+        if (input->link && !STREQ(input->name, "Displacement")) {
+          blender::bke::node_remove_link(localtree, input->link);
+        }
+      }
+      /* TODO(NPR): Remove Material AOVs, leave NPR AOVs. */
+    }
+    else {
+      /* TODO(NPR): Unlink NPR-only inputs (unless used as textures). */
+    }
+  }
 
   /* Tree is valid if it contains no undefined implicit socket type cast. */
   bool valid_tree = ntree_shader_implicit_closure_cast(localtree);

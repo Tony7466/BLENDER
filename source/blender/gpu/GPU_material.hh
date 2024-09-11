@@ -248,6 +248,7 @@ GPUMaterial *GPU_material_from_nodetree(
     uint64_t shader_uuid,
     bool is_volume_shader,
     bool is_lookdev,
+    bool is_npr_shader,
     GPUCodegenCallbackFn callback,
     void *thunk,
     GPUMaterialPassReplacementCallbackFn pass_replacement_cb = nullptr);

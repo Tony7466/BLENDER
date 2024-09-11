@@ -344,6 +344,7 @@ struct Material {
 struct MaterialArray {
   Vector<Material> materials;
   Vector<GPUMaterial *> gpu_materials;
+  Vector<GPUMaterial *> gpu_materials_npr;
 };
 
 class MaterialModule {
