@@ -39,7 +39,7 @@ VertOut vertex_main(VertIn v_in)
 {
   VertOut vert_out;
 
-  vec3 world_pos = drw_point_object_to_world(vec3(v_in.uv, 0.0));
+  vec3 world_pos = vec3(v_in.uv, 0.0);
   vert_out.hs_P = drw_point_world_to_homogenous(world_pos);
   /* Snap vertices to the pixel grid to reduce artifacts. */
   vec2 half_viewport_res = sizeViewport * 0.5;
