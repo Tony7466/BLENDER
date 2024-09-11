@@ -33,5 +33,6 @@ void main()
   g_specular_direct = vec4(dc.specular_direct, 1.0);
   g_specular_indirect = vec4(dc.specular_indirect, 1.0);
 
-  out_color = nodetree_npr().rgb;
+  out_color.rgb = nodetree_npr().rgb;
+  out_color.a = 1.0 - g_combined_color.a;
 }
