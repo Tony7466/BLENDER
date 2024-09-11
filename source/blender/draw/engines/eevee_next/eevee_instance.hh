@@ -175,8 +175,8 @@ class Instance {
         volume_probes(*this),
         light_probes(*this),
         volume(*this, uniform_data.data.volumes),
-        npr(*this) {};
-  ~Instance() {};
+        npr(*this){};
+  ~Instance(){};
 
   /* Render & Viewport. */
   /* TODO(fclem): Split for clarity. */

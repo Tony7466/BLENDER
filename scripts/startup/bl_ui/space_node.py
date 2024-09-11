@@ -127,7 +127,7 @@ class NODE_HT_header(Header):
                     row = layout.row()
                     row.enabled = not snode.pin
                     row.template_ID(lineset, "linestyle", new="scene.freestyle_linestyle_new")
-            
+
             if snode.shader_type == 'NPR':
                 NODE_MT_editor_menus.draw_collapsible(context, layout)
 

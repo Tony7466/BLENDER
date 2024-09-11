@@ -54,14 +54,17 @@ def object_eevee_shader_nodes_poll(context):
     return (object_shader_nodes_poll(context) and
             eevee_shader_nodes_poll(context))
 
+
 def npr_shader_nodes_poll(context):
     snode = context.space_data
     return (eevee_shader_nodes_poll and
             snode.tree_type == 'ShaderNodeTree' and
             snode.shader_type == 'NPR')
 
+
 def not_npr_shader_nodes_poll(context):
     return not npr_shader_nodes_poll(context)
+
 
 class NODE_MT_category_shader_input(Menu):
     bl_idname = "NODE_MT_category_shader_input"
