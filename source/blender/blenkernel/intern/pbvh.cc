@@ -52,9 +52,6 @@ namespace blender::bke::pbvh {
 
 // #define DEBUG_BUILD_TIME
 
-constexpr int LEAF_LIMIT = 10000;
-static_assert(LEAF_LIMIT < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
-
 #define STACK_FIXED_DEPTH 100
 
 /** Create invalid bounds for use with #math::min_max. */
@@ -68,123 +65,23 @@ static Bounds<float3> merge_bounds(const Bounds<float3> &a, const Bounds<float3>
   return bounds::merge(a, b);
 }
 
-static bool face_materials_match(const Span<int> material_indices, const int a, const int b)
+static int partition_along_axis(const Span<float3> face_centers,
+                                MutableSpan<int> faces,
+                                const int axis,
+                                const float middle)
 {
-  if (!material_indices.is_empty()) {
-    if (material_indices[a] != material_indices[b]) {
-      return false;
-    }
-  }
-  return true;
+  const int *split = std::partition(faces.begin(), faces.end(), [&](const int face) {
+    return face_centers[face][axis] >= middle;
+  });
+  return split - faces.begin();
 }
 
-/* Adapted from BLI_kdopbvh.c */
-/* Returns the index of the first element on the right of the partition */
-static int partition_prim_indices(MutableSpan<int> prim_indices,
-                                  MutableSpan<int> prim_scratch,
-                                  int lo,
-                                  int hi,
-                                  int axis,
-                                  float mid,
-                                  const Span<Bounds<float3>> prim_bounds,
-                                  const Span<int> prim_to_face_map)
+static int partition_material_indices(const Span<int> material_indices, MutableSpan<int> faces)
 {
-  for (int i = lo; i < hi; i++) {
-    prim_scratch[i - lo] = prim_indices[i];
-  }
-
-  int lo2 = lo, hi2 = hi - 1;
-  int i1 = lo, i2 = 0;
-
-  while (i1 < hi) {
-    const int face_i = prim_to_face_map[prim_scratch[i2]];
-    const Bounds<float3> &bounds = prim_bounds[prim_scratch[i2]];
-    const bool side = math::midpoint(bounds.min[axis], bounds.max[axis]) >= mid;
-
-    while (i1 < hi && prim_to_face_map[prim_scratch[i2]] == face_i) {
-      prim_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
-      i1++;
-      i2++;
-    }
-  }
-
-  return lo2;
-}
-
-static int partition_prim_indices(MutableSpan<int> face_indices,
-                                  MutableSpan<int> prim_scratch,
-                                  int lo,
-                                  int hi,
-                                  int axis,
-                                  float mid,
-                                  const Span<Bounds<float3>> face_bounds)
-{
-  for (int i = lo; i < hi; i++) {
-    prim_scratch[i - lo] = face_indices[i];
-  }
-
-  int lo2 = lo, hi2 = hi - 1;
-  int i1 = lo, i2 = 0;
-
-  while (i1 < hi) {
-    const int face_i = prim_scratch[i2];
-    const Bounds<float3> &bounds = face_bounds[prim_scratch[i2]];
-    const bool side = math::midpoint(bounds.min[axis], bounds.max[axis]) >= mid;
-
-    while (i1 < hi && prim_scratch[i2] == face_i) {
-      face_indices[side ? hi2-- : lo2++] = prim_scratch[i2];
-      i1++;
-      i2++;
-    }
-  }
-
-  return lo2;
-}
-
-static int partition_indices_material_faces(MutableSpan<int> face_indices,
-                                            const Span<int> material_indices,
-                                            const int lo,
-                                            const int hi)
-{
-  int i = lo, j = hi;
-  for (;;) {
-    const int first = face_indices[lo];
-    for (; face_materials_match(material_indices, first, face_indices[i]); i++) {
-      /* pass */
-    }
-    for (; !face_materials_match(material_indices, first, face_indices[j]); j--) {
-      /* pass */
-    }
-    if (!(i < j)) {
-      return i;
-    }
-    std::swap(face_indices[i], face_indices[j]);
-    i++;
-  }
-}
-
-/* Returns the index of the first element on the right of the partition */
-static int partition_indices_material_faces(MutableSpan<int> indices,
-                                            const Span<int> prim_to_face_map,
-                                            const Span<int> material_indices,
-                                            const int lo,
-                                            const int hi)
-{
-  int i = lo, j = hi;
-  for (;;) {
-    const int first = prim_to_face_map[indices[lo]];
-    for (; face_materials_match(material_indices, first, prim_to_face_map[indices[i]]); i++) {
-      /* pass */
-    }
-    for (; !face_materials_match(material_indices, first, prim_to_face_map[indices[j]]); j--) {
-      /* pass */
-    }
-    if (!(i < j)) {
-      return i;
-    }
-    std::swap(indices[i], indices[j]);
-    i++;
-  }
+  const int first = material_indices[faces.first()];
+  const int *split = std::partition(
+      faces.begin(), faces.end(), [&](const int face) { return material_indices[face] == first; });
+  return split - faces.begin();
 }
 
 BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
@@ -236,34 +133,14 @@ BLI_NOINLINE static void build_mesh_leaf_nodes(const int verts_num,
   }
 }
 
-/* Return zero if all primitives in the node can be drawn with the
- * same material (including flat/smooth shading), non-zero otherwise */
-static bool leaf_needs_material_split(const Span<int> prim_indices,
-                                      const Span<int> prim_to_face_map,
-                                      const Span<int> material_indices,
-                                      const IndexRange prim_range)
+static bool leaf_needs_material_split(const Span<int> faces, const Span<int> material_indices)
 {
   if (material_indices.is_empty()) {
     return false;
   }
-  const int first = material_indices[prim_to_face_map[prim_indices[prim_range.first()]]];
-  return std::any_of(prim_range.begin(), prim_range.end(), [&](const int i) {
-    return material_indices[prim_to_face_map[prim_indices[i]]] != first;
-  });
-  return false;
-}
-
-static bool leaf_needs_material_split(const Span<int> face_indices,
-                                      const Span<int> material_indices,
-                                      const IndexRange prim_range)
-{
-  if (material_indices.is_empty()) {
-    return false;
-  }
-  const int first = material_indices[face_indices[prim_range.first()]];
-  return std::any_of(prim_range.begin(), prim_range.end(), [&](const int i) {
-    return material_indices[face_indices[i]] != first;
-  });
+  const int first = material_indices[faces.first()];
+  return std::any_of(
+      faces.begin(), faces.end(), [&](const int face) { return material_indices[face] != first; });
   return false;
 }
 
@@ -271,25 +148,18 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                                        const int leaf_limit,
                                        const int node_index,
                                        const std::optional<Bounds<float3>> &bounds_precalc,
-                                       const Span<Bounds<float3>> prim_bounds,
-                                       const int prim_offset,
-                                       const int prims_num,
-                                       MutableSpan<int> prim_scratch,
+                                       const Span<float3> face_centers,
                                        const int depth,
-                                       MutableSpan<int> prim_indices,
+                                       MutableSpan<int> faces,
                                        Vector<MeshNode> &nodes)
 {
-  int end;
-
   /* Decide whether this is a leaf or not */
-  const bool below_leaf_limit = prims_num <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
+  const bool below_leaf_limit = faces.size() <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
   if (below_leaf_limit) {
-    if (!leaf_needs_material_split(
-            prim_indices, material_indices, IndexRange(prim_offset, prims_num)))
-    {
+    if (!leaf_needs_material_split(faces, material_indices)) {
       MeshNode &node = nodes[node_index];
       node.flag_ |= PBVH_Leaf;
-      node.face_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
+      node.face_indices_ = faces;
       return;
     }
   }
@@ -298,22 +168,20 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
   nodes[node_index].children_offset_ = nodes.size();
   nodes.resize(nodes.size() + 2);
 
+  int split;
   if (!below_leaf_limit) {
-    /* Find axis with widest range of primitive centroids */
     Bounds<float3> bounds;
     if (bounds_precalc) {
       bounds = *bounds_precalc;
     }
     else {
       bounds = threading::parallel_reduce(
-          IndexRange(prim_offset, prims_num),
+          faces.index_range(),
           1024,
           negative_bounds(),
           [&](const IndexRange range, Bounds<float3> value) {
-            for (const int i : range) {
-              const int prim = prim_indices[i];
-              const float3 center = math::midpoint(prim_bounds[prim].min, prim_bounds[prim].max);
-              math::min_max(center, value.min, value.max);
+            for (const int face : faces.slice(range)) {
+              math::min_max(face_centers[face], value.min, value.max);
             }
             return value;
           },
@@ -322,18 +190,12 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
     const int axis = math::dominant_axis(bounds.max - bounds.min);
 
     /* Partition primitives along that axis */
-    end = partition_prim_indices(prim_indices,
-                                 prim_scratch,
-                                 prim_offset,
-                                 prim_offset + prims_num,
-                                 axis,
-                                 math::midpoint(bounds.min[axis], bounds.max[axis]),
-                                 prim_bounds);
+    split = partition_along_axis(
+        face_centers, faces, axis, math::midpoint(bounds.min[axis], bounds.max[axis]));
   }
   else {
     /* Partition primitives by material */
-    end = partition_indices_material_faces(
-        prim_indices, material_indices, prim_offset, prim_offset + prims_num - 1);
+    split = partition_material_indices(material_indices, faces);
   }
 
   /* Build children */
@@ -341,23 +203,17 @@ static void build_nodes_recursive_mesh(const Span<int> material_indices,
                              leaf_limit,
                              nodes[node_index].children_offset_,
                              std::nullopt,
-                             prim_bounds,
-                             prim_offset,
-                             end - prim_offset,
-                             prim_scratch,
+                             face_centers,
                              depth + 1,
-                             prim_indices,
+                             faces.take_front(split),
                              nodes);
   build_nodes_recursive_mesh(material_indices,
                              leaf_limit,
                              nodes[node_index].children_offset_ + 1,
                              std::nullopt,
-                             prim_bounds,
-                             end,
-                             prim_offset + prims_num - end,
-                             prim_scratch,
+                             face_centers,
                              depth + 1,
-                             prim_indices,
+                             faces.drop_front(split),
                              nodes);
 }
 
@@ -384,19 +240,21 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
     return pbvh;
   }
 
-  const int leaf_limit = LEAF_LIMIT;
+  constexpr int leaf_limit = 10000;
+  static_assert(leaf_limit < std::numeric_limits<MeshNode::LocalVertMapIndexT>::max());
 
-  /* For each face, store the AABB and the AABB centroid */
-  Array<Bounds<float3>> prim_bounds(faces.size());
+  Array<float3> face_centers(faces.size());
   const Bounds<float3> bounds = threading::parallel_reduce(
       faces.index_range(),
       1024,
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
-        for (const int i : range) {
-          prim_bounds[i] = calc_face_bounds(vert_positions, corner_verts.slice(faces[i]));
-          current = bounds::merge(current, prim_bounds[i]);
+        for (const int face : range) {
+          const Bounds<float3> bounds = calc_face_bounds(vert_positions,
+                                                         corner_verts.slice(faces[face]));
+          face_centers[face] = bounds.center();
+          current = bounds::merge(current, bounds);
         }
         return current;
       },
@@ -415,17 +273,8 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
 #ifdef DEBUG_BUILD_TIME
     SCOPED_TIMER_AVERAGED("build_nodes_recursive_mesh");
 #endif
-    build_nodes_recursive_mesh(material_index,
-                               leaf_limit,
-                               0,
-                               bounds,
-                               prim_bounds,
-                               0,
-                               faces.size(),
-                               Array<int>(pbvh->prim_indices_.size()),
-                               0,
-                               pbvh->prim_indices_,
-                               nodes);
+    build_nodes_recursive_mesh(
+        material_index, leaf_limit, 0, bounds, face_centers, 0, pbvh->prim_indices_, nodes);
   }
 
   build_mesh_leaf_nodes(mesh.verts_num, faces, corner_verts, nodes);
@@ -436,7 +285,7 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
   if (!hide_vert.is_empty()) {
     threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
       for (const int i : range) {
-        const Span<int> verts = node_verts(nodes[i]);
+        const Span<int> verts = nodes[i].all_verts();
         if (std::all_of(verts.begin(), verts.end(), [&](const int i) { return hide_vert[i]; })) {
           nodes[i].flag_ |= PBVH_FullyHidden;
         }
@@ -447,30 +296,22 @@ std::unique_ptr<Tree> build_mesh(const Mesh &mesh)
   return pbvh;
 }
 
-static void build_nodes_recursive_grids(const Span<int> grid_to_face_map,
-                                        const Span<int> material_indices,
+static void build_nodes_recursive_grids(const Span<int> material_indices,
                                         const int leaf_limit,
                                         const int node_index,
                                         const std::optional<Bounds<float3>> &bounds_precalc,
-                                        const Span<Bounds<float3>> prim_bounds,
-                                        const int prim_offset,
-                                        const int prims_num,
-                                        MutableSpan<int> prim_scratch,
+                                        const Span<float3> face_centers,
                                         const int depth,
-                                        MutableSpan<int> prim_indices,
+                                        MutableSpan<int> faces,
                                         Vector<GridsNode> &nodes)
 {
-  int end;
-
   /* Decide whether this is a leaf or not */
-  const bool below_leaf_limit = prims_num <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
+  const bool below_leaf_limit = faces.size() <= leaf_limit || depth >= STACK_FIXED_DEPTH - 1;
   if (below_leaf_limit) {
-    if (!leaf_needs_material_split(
-            prim_indices, grid_to_face_map, material_indices, IndexRange(prim_offset, prims_num)))
-    {
+    if (!leaf_needs_material_split(faces, material_indices)) {
       GridsNode &node = nodes[node_index];
       node.flag_ |= PBVH_Leaf;
-      node.prim_indices_ = prim_indices.as_span().slice(prim_offset, prims_num);
+      node.prim_indices_ = faces;
       return;
     }
   }
@@ -479,6 +320,7 @@ static void build_nodes_recursive_grids(const Span<int> grid_to_face_map,
   nodes[node_index].children_offset_ = nodes.size();
   nodes.resize(nodes.size() + 2);
 
+  int split;
   if (!below_leaf_limit) {
     Bounds<float3> bounds;
     if (bounds_precalc) {
@@ -486,14 +328,12 @@ static void build_nodes_recursive_grids(const Span<int> grid_to_face_map,
     }
     else {
       bounds = threading::parallel_reduce(
-          IndexRange(prim_offset, prims_num),
+          faces.index_range(),
           1024,
           negative_bounds(),
           [&](const IndexRange range, Bounds<float3> value) {
-            for (const int i : range) {
-              const int prim = prim_indices[i];
-              const float3 center = math::midpoint(prim_bounds[prim].min, prim_bounds[prim].max);
-              math::min_max(center, value.min, value.max);
+            for (const int face : faces.slice(range)) {
+              math::min_max(face_centers[face], value.min, value.max);
             }
             return value;
           },
@@ -502,91 +342,85 @@ static void build_nodes_recursive_grids(const Span<int> grid_to_face_map,
     const int axis = math::dominant_axis(bounds.max - bounds.min);
 
     /* Partition primitives along that axis */
-    end = partition_prim_indices(prim_indices,
-                                 prim_scratch,
-                                 prim_offset,
-                                 prim_offset + prims_num,
-                                 axis,
-                                 math::midpoint(bounds.min[axis], bounds.max[axis]),
-                                 prim_bounds,
-                                 grid_to_face_map);
+    split = partition_along_axis(
+        face_centers, faces, axis, math::midpoint(bounds.min[axis], bounds.max[axis]));
   }
   else {
     /* Partition primitives by material */
-    end = partition_indices_material_faces(prim_indices,
-                                           grid_to_face_map,
-                                           material_indices,
-                                           prim_offset,
-                                           prim_offset + prims_num - 1);
+    split = partition_material_indices(material_indices, faces);
   }
 
   /* Build children */
-  build_nodes_recursive_grids(grid_to_face_map,
-                              material_indices,
+  build_nodes_recursive_grids(material_indices,
                               leaf_limit,
                               nodes[node_index].children_offset_,
                               std::nullopt,
-                              prim_bounds,
-                              prim_offset,
-                              end - prim_offset,
-                              prim_scratch,
+                              face_centers,
                               depth + 1,
-                              prim_indices,
+                              faces.take_front(split),
                               nodes);
-  build_nodes_recursive_grids(grid_to_face_map,
-                              material_indices,
+  build_nodes_recursive_grids(material_indices,
                               leaf_limit,
                               nodes[node_index].children_offset_ + 1,
                               std::nullopt,
-                              prim_bounds,
-                              end,
-                              prim_offset + prims_num - end,
-                              prim_scratch,
+                              face_centers,
                               depth + 1,
-                              prim_indices,
+                              faces.drop_front(split),
                               nodes);
+}
+
+static int sum_group_sizes(const OffsetIndices<int> groups, const Span<int> indices)
+{
+  int count = 0;
+  for (const int i : indices) {
+    count += groups[i].size();
+  }
+  return count;
+}
+
+static Bounds<float3> calc_face_grid_bounds(const CCGKey &key,
+                                            const Span<CCGElem *> elems,
+                                            const IndexRange face)
+{
+  Bounds<float3> bounds = negative_bounds();
+  for (const int grid : face) {
+    CCGElem *elem = elems[grid];
+    for (const int i : IndexRange(key.grid_area)) {
+      const float3 &position = CCG_elem_offset_co(key, elem, i);
+      math::min_max(position, bounds.min, bounds.max);
+    }
+  }
+  return bounds;
 }
 
 std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv_ccg)
 {
+#ifdef DEBUG_BUILD_TIME
+  SCOPED_TIMER_AVERAGED(__func__);
+#endif
   std::unique_ptr<Tree> pbvh = std::make_unique<Tree>(Type::Grids);
 
-  /* Find maximum number of grids per face. */
-  int max_grids = 1;
   const OffsetIndices faces = base_mesh.faces();
-  for (const int i : faces.index_range()) {
-    max_grids = max_ii(max_grids, faces[i].size());
+  if (faces.is_empty()) {
+    return pbvh;
   }
 
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<CCGElem *> elems = subdiv_ccg.grids;
-  if (elems.is_empty()) {
-    return pbvh;
-  }
 
-  /* Ensure leaf limit is at least 4 so there's room
-   * to split at original face boundaries.
-   * Fixes #102209.
-   */
-  const int leaf_limit = max_ii(LEAF_LIMIT / (key.grid_area), max_grids);
+  const int leaf_limit = std::max(2500 / key.grid_area, 1);
 
-  /* For each grid, store the AABB and the AABB centroid */
-  Array<Bounds<float3>> prim_bounds(elems.size());
+  Array<float3> face_centers(faces.size());
   const Bounds<float3> bounds = threading::parallel_reduce(
-      elems.index_range(),
-      1024,
+      faces.index_range(),
+      leaf_limit,
       negative_bounds(),
       [&](const IndexRange range, const Bounds<float3> &init) {
         Bounds<float3> current = init;
-        for (const int i : range) {
-          CCGElem *grid = elems[i];
-          prim_bounds[i] = negative_bounds();
-          for (const int j : IndexRange(key.grid_area)) {
-            const float3 &position = CCG_elem_offset_co(key, grid, j);
-            math::min_max(position, prim_bounds[i].min, prim_bounds[i].max);
-          }
-          const float3 center = math::midpoint(prim_bounds[i].min, prim_bounds[i].max);
-          math::min_max(center, current.min, current.max);
+        for (const int face : range) {
+          const Bounds<float3> bounds = calc_face_grid_bounds(key, elems, faces[face]);
+          face_centers[face] = bounds.center();
+          current = bounds::merge(current, bounds);
         }
         return current;
       },
@@ -595,23 +429,46 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   const AttributeAccessor attributes = base_mesh.attributes();
   const VArraySpan material_index = *attributes.lookup<int>("material_index", AttrDomain::Face);
 
-  pbvh->prim_indices_.reinitialize(elems.size());
-  array_utils::fill_index_range<int>(pbvh->prim_indices_);
+  Array<int> face_indices(faces.size());
+  array_utils::fill_index_range<int>(face_indices);
 
   Vector<GridsNode> &nodes = std::get<Vector<GridsNode>>(pbvh->nodes_);
   nodes.resize(1);
-  build_nodes_recursive_grids(subdiv_ccg.grid_to_face_map,
-                              material_index,
-                              leaf_limit,
-                              0,
-                              bounds,
-                              prim_bounds,
-                              0,
-                              elems.size(),
-                              Array<int>(pbvh->prim_indices_.size()),
-                              0,
-                              pbvh->prim_indices_,
-                              nodes);
+  {
+#ifdef DEBUG_BUILD_TIME
+    SCOPED_TIMER_AVERAGED("build_nodes_recursive_grids");
+#endif
+    build_nodes_recursive_grids(
+        material_index, leaf_limit, 0, bounds, face_centers, 0, face_indices, nodes);
+  }
+
+  /* Convert face indices into grid indices. */
+  pbvh->prim_indices_.reinitialize(faces.total_size());
+  {
+    int offset = 0;
+    for (const int face : face_indices) {
+      for (const int corner : faces[face]) {
+        pbvh->prim_indices_[offset] = corner;
+        offset++;
+      }
+    }
+  }
+
+  /* Change the nodes to reference the BVH prim_indices array instead of the local face indices. */
+  Array<int> node_grids_num(nodes.size() + 1);
+  threading::parallel_for(nodes.index_range(), 16, [&](const IndexRange range) {
+    for (const int i : range) {
+      node_grids_num[i] = sum_group_sizes(faces, nodes[i].prim_indices_);
+    }
+  });
+  const OffsetIndices<int> node_grid_offsets = offset_indices::accumulate_counts_to_offsets(
+      node_grids_num);
+
+  threading::parallel_for(nodes.index_range(), 512, [&](const IndexRange range) {
+    for (const int i : range) {
+      nodes[i].prim_indices_ = pbvh->prim_indices_.as_span().slice(node_grid_offsets[i]);
+    }
+  });
 
   update_bounds_grids(key, elems, *pbvh);
   store_bounds_orig(*pbvh);
@@ -620,7 +477,7 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   if (!grid_hidden.is_empty()) {
     threading::parallel_for(nodes.index_range(), 8, [&](const IndexRange range) {
       for (const int i : range) {
-        const Span<int> grids = node_grid_indices(nodes[i]);
+        const Span<int> grids = nodes[i].grids();
         if (std::all_of(grids.begin(), grids.end(), [&](const int i) {
               return !bits::any_bit_unset(grid_hidden[i]);
             }))
@@ -703,11 +560,6 @@ static Node &first_node(Tree &pbvh)
 {
   BLI_assert(!tree_is_empty(pbvh));
   return std::visit([](auto &nodes) -> Node & { return nodes.first(); }, pbvh.nodes_);
-}
-
-void free(std::unique_ptr<Tree> &pbvh)
-{
-  pbvh.reset();
 }
 
 struct StackItem {
@@ -935,7 +787,7 @@ static const SharedCache<Vector<float3>> &vert_normals_cache_eval(const Object &
 {
   const SculptSession &ss = *object_orig.sculpt;
   const Mesh &mesh_orig = *static_cast<const Mesh *>(object_orig.data);
-  BLI_assert(object_orig.sculpt->pbvh->type() == Type::Mesh);
+  BLI_assert(bke::object::pbvh_get(object_orig)->type() == Type::Mesh);
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_count_matches(*mesh_eval, mesh_orig)) {
@@ -966,7 +818,7 @@ static const SharedCache<Vector<float3>> &face_normals_cache_eval(const Object &
 {
   const SculptSession &ss = *object_orig.sculpt;
   const Mesh &mesh_orig = *static_cast<const Mesh *>(object_orig.data);
-  BLI_assert(object_orig.sculpt->pbvh->type() == Type::Mesh);
+  BLI_assert(bke::object::pbvh_get(object_orig)->type() == Type::Mesh);
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_count_matches(*mesh_eval, mesh_orig)) {
@@ -1022,7 +874,7 @@ static void calc_node_face_normals(const Span<float3> positions,
                                    MutableSpan<float3> face_normals)
 {
   nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-    normals_calc_faces(positions, faces, corner_verts, node_faces(nodes[i]), face_normals);
+    normals_calc_faces(positions, faces, corner_verts, nodes[i].faces(), face_normals);
   });
 }
 
@@ -1057,8 +909,7 @@ static void calc_node_vert_normals(const GroupedSpan<int> vert_to_face_map,
                                    MutableSpan<float3> vert_normals)
 {
   nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
-    normals_calc_verts_simple(
-        vert_to_face_map, face_normals, node_unique_verts(nodes[i]), vert_normals);
+    normals_calc_verts_simple(vert_to_face_map, face_normals, nodes[i].verts(), vert_normals);
   });
 }
 
@@ -1190,7 +1041,7 @@ void update_normals_from_eval(Object &object_eval, Tree &pbvh)
 void update_node_bounds_mesh(const Span<float3> positions, MeshNode &node)
 {
   Bounds<float3> bounds = negative_bounds();
-  for (const int vert : node_verts(node)) {
+  for (const int vert : node.all_verts()) {
     math::min_max(positions[vert], bounds.min, bounds.max);
   }
   node.bounds_ = bounds;
@@ -1199,7 +1050,7 @@ void update_node_bounds_mesh(const Span<float3> positions, MeshNode &node)
 void update_node_bounds_grids(const CCGKey &key, const Span<CCGElem *> grids, GridsNode &node)
 {
   Bounds<float3> bounds = negative_bounds();
-  for (const int grid : node_grid_indices(node)) {
+  for (const int grid : node.grids()) {
     for (const int i : IndexRange(key.grid_area)) {
       math::min_max(CCG_elem_offset_co(key, grids[grid], i), bounds.min, bounds.max);
     }
@@ -1334,7 +1185,7 @@ void store_bounds_orig(Tree &pbvh)
 
 void node_update_mask_mesh(const Span<float> mask, MeshNode &node)
 {
-  const Span<int> verts = node_verts(node);
+  const Span<int> verts = node.all_verts();
   const bool fully_masked = std::all_of(
       verts.begin(), verts.end(), [&](const int vert) { return mask[vert] == 1.0f; });
   const bool fully_unmasked = std::all_of(
@@ -1368,7 +1219,7 @@ void node_update_mask_grids(const CCGKey &key, const Span<CCGElem *> grids, Grid
   BLI_assert(key.has_mask);
   bool fully_masked = true;
   bool fully_unmasked = true;
-  for (const int grid : node_grid_indices(node)) {
+  for (const int grid : node.grids()) {
     CCGElem *elem = grids[grid];
     for (const int i : IndexRange(key.grid_area)) {
       const float mask = CCG_elem_offset_mask(key, elem, i);
@@ -1465,7 +1316,7 @@ void update_mask(const Object &object, Tree &pbvh)
 void node_update_visibility_mesh(const Span<bool> hide_vert, MeshNode &node)
 {
   BLI_assert(!hide_vert.is_empty());
-  const Span<int> verts = node_verts(node);
+  const Span<int> verts = node.all_verts();
   const bool fully_hidden = std::all_of(
       verts.begin(), verts.end(), [&](const int vert) { return hide_vert[vert]; });
   SET_FLAG_FROM_TEST(node.flag_, fully_hidden, PBVH_FullyHidden);
@@ -1599,7 +1450,7 @@ int count_grid_quads(const BitGroupVector<> &grid_hidden,
 
 }  // namespace blender::bke::pbvh
 
-blender::Bounds<blender::float3> BKE_pbvh_redraw_BB(blender::bke::pbvh::Tree &pbvh)
+blender::Bounds<blender::float3> BKE_pbvh_redraw_BB(const blender::bke::pbvh::Tree &pbvh)
 {
   using namespace blender;
   using namespace blender::bke::pbvh;
@@ -1609,7 +1460,7 @@ blender::Bounds<blender::float3> BKE_pbvh_redraw_BB(blender::bke::pbvh::Tree &pb
   Bounds<float3> bounds = negative_bounds();
 
   PBVHIter iter;
-  pbvh_iter_begin(&iter, pbvh, {});
+  pbvh_iter_begin(&iter, const_cast<blender::bke::pbvh::Tree &>(pbvh), {});
   Node *node;
   while ((node = pbvh_iter_next(&iter, PBVH_Leaf))) {
     if (node->flag_ & PBVH_UpdateRedraw) {
@@ -1633,7 +1484,7 @@ IndexMask nodes_to_face_selection_grids(const SubdivCCG &subdiv_ccg,
    * overhead regardless of selection size, but that is small. */
   Array<bool> faces_to_update(subdiv_ccg.faces.size(), false);
   nodes_mask.foreach_index(GrainSize(1), [&](const int i) {
-    for (const int grid : node_grid_indices(nodes[i])) {
+    for (const int grid : nodes[i].grids()) {
       faces_to_update[grid_to_face_map[grid]] = true;
     }
   });
@@ -1657,7 +1508,7 @@ Bounds<float3> bounds_get(const Tree &pbvh)
 int BKE_pbvh_get_grid_num_verts(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
-  BLI_assert(ss.pbvh->type() == blender::bke::pbvh::Type::Grids);
+  BLI_assert(blender::bke::object::pbvh_get(object)->type() == blender::bke::pbvh::Type::Grids);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
   return ss.subdiv_ccg->grids.size() * key.grid_area;
 }
@@ -1665,7 +1516,7 @@ int BKE_pbvh_get_grid_num_verts(const Object &object)
 int BKE_pbvh_get_grid_num_faces(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
-  BLI_assert(ss.pbvh->type() == blender::bke::pbvh::Type::Grids);
+  BLI_assert(blender::bke::object::pbvh_get(object)->type() == blender::bke::pbvh::Type::Grids);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
   return ss.subdiv_ccg->grids.size() * square_i(key.grid_size - 1);
 }
@@ -1807,16 +1658,6 @@ void remove_node_draw_tags(bke::pbvh::Tree &pbvh, const IndexMask &node_mask)
   }
 }
 
-Span<int> node_verts(const MeshNode &node)
-{
-  return node.vert_indices_;
-}
-
-Span<int> node_unique_verts(const MeshNode &node)
-{
-  return node.vert_indices_.as_span().take_front(node.unique_verts_num_);
-}
-
 Span<int> node_face_indices_calc_grids(const SubdivCCG &subdiv_ccg,
                                        const GridsNode &node,
                                        Vector<int> &faces)
@@ -1824,7 +1665,7 @@ Span<int> node_face_indices_calc_grids(const SubdivCCG &subdiv_ccg,
   faces.clear();
   const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
   int prev_face = -1;
-  for (const int grid : node_grid_indices(node)) {
+  for (const int grid : node.grids()) {
     const int face = grid_to_face_map[grid];
     if (face != prev_face) {
       faces.append(face);
@@ -1832,16 +1673,6 @@ Span<int> node_face_indices_calc_grids(const SubdivCCG &subdiv_ccg,
     }
   }
   return faces.as_span();
-}
-
-Span<int> node_faces(const MeshNode &node)
-{
-  return node.face_indices_;
-}
-
-Span<int> node_grid_indices(const GridsNode &node)
-{
-  return node.prim_indices_;
 }
 
 }  // namespace blender::bke::pbvh
@@ -2071,7 +1902,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
                                     int *r_active_face_index,
                                     float *r_face_normal)
 {
-  const Span<int> face_indices = node_faces(node);
+  const Span<int> face_indices = node.faces();
 
   bool hit = false;
   if (node_positions.is_empty()) {
@@ -2192,7 +2023,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                     float *r_face_normal)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<int> grids = node_grid_indices(node);
+  const Span<int> grids = node.grids();
   const int grid_size = key.grid_size;
   bool hit = false;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
@@ -2473,7 +2304,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                            float *depth,
                                            float *dist_sq)
 {
-  const Span<int> face_indices = node_faces(node);
+  const Span<int> face_indices = node.faces();
 
   bool hit = false;
   if (node_positions.is_empty()) {
@@ -2528,7 +2359,7 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
                                            float *dist_sq)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<int> grids = node_grid_indices(node);
+  const Span<int> grids = node.grids();
   const int grid_size = key.grid_size;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<CCGElem *> elems = subdiv_ccg.grids;
@@ -2751,7 +2582,7 @@ static Span<float3> vert_positions_eval(const Object &object_orig, const Object 
 {
   const SculptSession &ss = *object_orig.sculpt;
   const Mesh &mesh_orig = *static_cast<const Mesh *>(object_orig.data);
-  BLI_assert(object_orig.sculpt->pbvh->type() == Type::Mesh);
+  BLI_assert(bke::object::pbvh_get(object_orig)->type() == Type::Mesh);
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_count_matches(*mesh_eval, mesh_orig)) {
@@ -2774,7 +2605,7 @@ static MutableSpan<float3> vert_positions_eval_for_write(Object &object_orig, Ob
 {
   SculptSession &ss = *object_orig.sculpt;
   Mesh &mesh_orig = *static_cast<Mesh *>(object_orig.data);
-  BLI_assert(object_orig.sculpt->pbvh->type() == Type::Mesh);
+  BLI_assert(bke::object::pbvh_get(object_orig)->type() == Type::Mesh);
   if (object_orig.mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT)) {
     if (const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(&object_eval)) {
       if (mesh_topology_count_matches(*mesh_eval, mesh_orig)) {
@@ -2849,7 +2680,7 @@ void BKE_pbvh_sync_visibility_from_verts(Object &object)
   using namespace blender;
   using namespace blender::bke;
   const SculptSession &ss = *object.sculpt;
-  switch (ss.pbvh->type()) {
+  switch (object::pbvh_get(object)->type()) {
     case blender::bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
       mesh_hide_vert_flush(mesh);
@@ -2998,7 +2829,7 @@ IndexMask node_draw_update_mask(const Tree &pbvh,
 PBVHVertRef BKE_pbvh_index_to_vertex(const Object &object, int index)
 {
   const SculptSession &ss = *object.sculpt;
-  const blender::bke::pbvh::Tree &pbvh = *ss.pbvh;
+  const blender::bke::pbvh::Tree &pbvh = *blender::bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case blender::bke::pbvh::Type::Mesh:
     case blender::bke::pbvh::Type::Grids:
