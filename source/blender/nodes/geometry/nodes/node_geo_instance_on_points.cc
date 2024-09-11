@@ -229,6 +229,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       using namespace bke::greasepencil;
       const GreasePencil &grease_pencil = *geometry_set.get_grease_pencil();
 
+      Vector<bke::Instances> instances_by_layer(grease_pencil.layers().size(), nullptr);
+      
       bke::Instances *gp_instances = instances_component.get_for_write();
       for (const int layer_index : grease_pencil.layers().index_range()) {
         const Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
@@ -236,37 +238,37 @@ static void node_geo_exec(GeoNodeExecParams params)
           continue;
         }
         const bke::CurvesGeometry &src_curves = drawing->strokes();
+
+        /* TODO: Attributes are not propagating from the curves or the points. */
+        bke::Instances &layer_instances = instances_by_layer[layer_index];
+
         if (src_curves.curves_num() == 0) {
           /* Add an empty reference so the number of layers and instances match.
            * This makes it easy to reconstruct the layers afterwards and keep their attributes.
            * Although in this particular case we don't propagate the attributes. */
-          const int handle = gp_instances->add_reference(bke::InstanceReference());
-          gp_instances->add_instance(handle, float4x4::identity());
+          const int handle = layer_instances.add_reference(bke::InstanceReference());
+          layer_instances.add_instance(handle, float4x4::identity());
           continue;
         }
-        /* TODO: Attributes are not propagating from the curves or the points. */
-        bke::Instances *instances = new bke::Instances();
         const bke::GreasePencilLayerFieldContext field_context(
             grease_pencil, AttrDomain::Point, layer_index);
-        add_instances_from_component(*instances,
+        add_instances_from_component(layer_instances,
                                      src_curves.attributes(),
                                      instance,
                                      field_context,
                                      params,
                                      attributes_to_propagate);
-        GeometrySet temp_set = GeometrySet::from_instances(instances);
-        const int handle = gp_instances->add_reference(bke::InstanceReference{temp_set});
-        gp_instances->add_instance(handle, float4x4::identity());
       }
-
+GeometrySet temp_set = GeometrySet::from_instances(&layer_instances, bke::GeometryOwnershipType::Owned);
       bke::copy_attributes(grease_pencil.attributes(),
                            bke::AttrDomain::Layer,
                            bke::AttrDomain::Instance,
                            attribute_filter,
-                           gp_instances->attributes_for_write());
+                           instances->attributes_for_write());
 
-      geometry_set = geometry::join_geometries(
-          {std::move(geometry_set), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+      GeometrySet joined_frame_instances = geometry::join_geometries(
+          {GeometrySet::from_instances(instances), GeometrySet::from_instances(gp_instances)}, attribute_filter);
+      instances_component.replace_instance(joined_frame_instances.get_instances_for_write().release());
     }
     geometry_set.remove_geometry_during_modify();
   });
