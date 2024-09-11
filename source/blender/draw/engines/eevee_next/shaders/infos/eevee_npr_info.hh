@@ -7,7 +7,6 @@
 
 GPU_SHADER_CREATE_INFO(npr_surface_common)
     .sampler(INDEX_NPR_TX_SLOT, ImageType::UINT_2D, "npr_index_tx")
-    .sampler(HIZ_TEX_SLOT, ImageType::DEPTH_2D, "depth_tx")
     /* eevee_gbuffer_data */
     .define("GBUFFER_LOAD")
     .sampler(GBUF_NORMAL_NPR_TX_SLOT, ImageType::FLOAT_2D_ARRAY, "gbuf_normal_tx")
