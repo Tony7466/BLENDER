@@ -119,7 +119,7 @@ void Instance::begin_sync()
     layer.meshes.begin_sync(resources, state, view);
     layer.particles.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
-    layer.relations.begin_sync();
+    layer.relations.begin_sync(resources, state);
     layer.speakers.begin_sync();
     layer.wireframe.begin_sync(resources, state);
   };
