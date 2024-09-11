@@ -28,6 +28,7 @@
 #include "overlay_next_mesh.hh"
 #include "overlay_next_metaball.hh"
 #include "overlay_next_outline.hh"
+#include "overlay_next_paint.hh"
 #include "overlay_next_particle.hh"
 #include "overlay_next_prepass.hh"
 #include "overlay_next_relation.hh"
@@ -78,6 +79,7 @@ class Instance {
     LightProbes light_probes = {selection_type_};
     Metaballs metaballs = {selection_type_};
     Meshes meshes;
+    Paints paints;
     Particles particles;
     Prepass prepass = {selection_type_};
     Relations relations = {selection_type_};

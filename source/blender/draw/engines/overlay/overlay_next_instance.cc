@@ -112,6 +112,7 @@ void Instance::begin_sync()
     layer.light_probes.begin_sync(resources, state);
     layer.metaballs.begin_sync();
     layer.meshes.begin_sync(resources, state, view);
+    layer.paints.begin_sync(resources, state);
     layer.particles.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
     layer.relations.begin_sync();
@@ -143,6 +144,9 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
     layer.prepass.object_sync(manager, ob_ref, resources, state);
   }
 
+  if (in_paint_mode) {
+    layer.paints.object_sync(manager, ob_ref, state);
+  }
   if (in_sculpt_mode) {
     layer.sculpts.object_sync(manager, ob_ref, state);
   }
@@ -368,6 +372,7 @@ void Instance::draw(Manager &manager)
 
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.facing.draw(framebuffer, manager, view);
+    layer.paints.draw(framebuffer, manager, view);
   };
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
