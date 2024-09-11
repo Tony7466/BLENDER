@@ -39,10 +39,8 @@
 
 #include "BKE_anonymous_attribute_make.hh"
 #include "BKE_compute_contexts.hh"
-#include "BKE_curves.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_mesh.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_zones.hh"

@@ -31,6 +31,6 @@ Mesh *create_cylinder_or_cone_mesh(float radius_top,
                                    int side_segments,
                                    int fill_segments,
                                    ConeFillType fill_type,
-                                   const ConeAttributeOutputs &attribute_outputs);
+                                   ConeAttributeOutputs &attribute_outputs);
 
 }  // namespace blender::geometry

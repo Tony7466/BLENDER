@@ -189,9 +189,9 @@ class NodeAddZoneOperator(NodeAddOperator):
         input_node.location -= Vector(self.offset)
         output_node.location += Vector(self.offset)
 
-        # Connect geometry sockets by default.
-        # Get the sockets by their types, because the name is not guaranteed due to i18n.
         try:
+            # Connect geometry sockets by default if available.
+            # Get the sockets by their types, because the name is not guaranteed due to i18n.
             from_socket = next(s for s in input_node.outputs if s.type == 'GEOMETRY')
             to_socket = next(s for s in output_node.inputs if s.type == 'GEOMETRY')
             tree.links.new(to_socket, from_socket)
