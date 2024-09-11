@@ -15,7 +15,6 @@
 #include "BKE_mesh.h"
 #include "BKE_mesh_types.hh"
 
-struct ModifierData;
 
 namespace blender::bke {
 

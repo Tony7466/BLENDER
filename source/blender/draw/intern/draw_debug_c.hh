@@ -11,7 +11,6 @@
 
 #pragma once
 
-struct DRWDebugModule;
 
 struct BoundBox;
 

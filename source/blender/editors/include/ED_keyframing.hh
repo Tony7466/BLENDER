@@ -13,18 +13,14 @@
 #include "RNA_types.hh"
 
 struct ID;
-struct ListBase;
 struct Main;
 struct Scene;
 
 struct KeyingSet;
 
 struct AnimationEvalContext;
-struct BezTriple;
 struct FCurve;
-struct bAction;
 
-struct bPoseChannel;
 
 struct ReportList;
 struct bContext;
@@ -33,7 +29,6 @@ struct EnumPropertyItem;
 struct PointerRNA;
 struct PropertyRNA;
 
-struct NlaKeyframingContext;
 
 namespace blender::animrig {
 enum class ModifyKeyReturn;

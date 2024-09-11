@@ -11,7 +11,6 @@
 #include <pxr/usd/usdSkel/bindingAPI.h>
 
 struct Depsgraph;
-struct Key;
 struct Main;
 struct Mesh;
 struct Object;
@@ -19,7 +18,6 @@ struct ReportList;
 
 namespace blender::io::usd {
 
-struct ImportSettings;
 
 /**
  * This file contains utilities for converting between `UsdSkel` data and
