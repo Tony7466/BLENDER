@@ -23,7 +23,7 @@ VertIn input_assembly(uint in_vertex_id)
 #ifdef WIREFRAME
   vert_in.flag = 0u;
 #else
-  vert_in.flag = gpu_attr_load_uchar4(flag, gpu_attr_1, v_i).x;
+  vert_in.flag = gpu_attr_load_uchar4(data, gpu_attr_1, v_i).x;
 #endif
   return vert_in;
 }
@@ -48,16 +48,14 @@ VertOut vertex_main(VertIn v_in)
                      half_pixel_offset;
 
   const uint selection_flag = use_edge_select ? uint(EDGE_UV_SELECT) : uint(VERT_UV_SELECT);
-  bool is_selected = flag_test(v_in.flag, selection_flag);
-
-  vert_out.selected = is_selected ? 1.0 : 0.0;
+  vert_out.selected = flag_test(v_in.flag, selection_flag);
 
   /* Move selected edges to the top so that they occlude unselected edges.
    * - Vertices are between 0.0 and 0.2 depth.
    * - Edges between 0.2 and 0.4 depth.
    * - Image pixels are at 0.75 depth.
    * - 1.0 is used for the background. */
-  vert_out.hs_P.z = is_selected ? 0.25 : 0.35;
+  vert_out.hs_P.z = vert_out.selected ? 0.25 : 0.35;
 
   /* Avoid precision loss. */
   vert_out.stipple_pos = 500.0 + 500.0 * (vert_out.hs_P.xy / vert_out.hs_P.w);
