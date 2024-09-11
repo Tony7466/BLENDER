@@ -1,3 +1,4 @@
 Referenced by commit 0e8e219d71cd27cf025a9920ac4fb54ff7c178b3, Undo: support implicit-sharing in memfile undo step
 Referenced by issue #126821, Blender 4.2 - Compress Saving option gets removed when recovering from AutoSave
 Referenced by commit e18aa659731e9ddd2a32f65a5d24b1460e49b1cb, Fix: quit.blend is not saved as recovery file
+Referenced by commit 4c2718e318a9db47eb42d6dcc656c92b2cc47c2d, Fix #126821: compress saving option gets removed when recovering from autosave
