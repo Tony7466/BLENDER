@@ -610,6 +610,15 @@ static const char *wm_context_member_from_ptr(const bContext *C,
               TEST_PTR_DATA_TYPE("space_data.overlay", RNA_SpaceNodeOverlay, ptr, snode);
               break;
             }
+            case SPACE_SEQ: {
+              const SpaceSeq *sseq = (SpaceSeq *)space_data;
+              TEST_PTR_DATA_TYPE(
+                  "space_data.preview_overlay", RNA_SequencerPreviewOverlay, ptr, sseq);
+              TEST_PTR_DATA_TYPE(
+                  "space_data.timeline_overlay", RNA_SequencerTimelineOverlay, ptr, sseq);
+              TEST_PTR_DATA_TYPE("space_data.cache_overlay", RNA_SequencerCacheOverlay, ptr, sseq);
+              break;
+            }
           }
         }
 
@@ -750,7 +759,7 @@ void WM_operator_properties_alloc(PointerRNA **ptr, IDProperty **properties, con
   }
 
   if (*ptr == nullptr) {
-    *ptr = static_cast<PointerRNA *>(MEM_callocN(sizeof(PointerRNA), "wmOpItemPtr"));
+    *ptr = MEM_new<PointerRNA>("wmOpItemPtr");
     WM_operator_properties_create(*ptr, opstring);
   }
 
@@ -1892,7 +1901,7 @@ int WM_operator_redo_popup(bContext *C, wmOperator *op)
 static int wm_debug_menu_exec(bContext *C, wmOperator *op)
 {
   G.debug_value = RNA_int_get(op->ptr, "debug_value");
-  ED_screen_refresh(CTX_wm_manager(C), CTX_wm_window(C));
+  ED_screen_refresh(C, CTX_wm_manager(C), CTX_wm_window(C));
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
 
   return OPERATOR_FINISHED;
@@ -2630,7 +2639,8 @@ static void radial_control_set_initial_mouse(bContext *C, RadialControl *rc, con
   if (rc->ptr.owner_id && GS(rc->ptr.owner_id->name) == ID_BR && rc->prop == &rna_Brush_size) {
     Brush *brush = reinterpret_cast<Brush *>(rc->ptr.owner_id);
     if ((brush && brush->gpencil_settings) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
-        (brush->gpencil_tool == GPAINT_TOOL_DRAW) && (brush->flag & BRUSH_LOCK_SIZE) != 0)
+        (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_DRAW) &&
+        (brush->flag & BRUSH_LOCK_SIZE) != 0)
     {
       const float radius_px = grease_pencil_unprojected_brush_radius_pixel_size(
           C, brush, blender::float2(event->mval));
@@ -3834,10 +3844,10 @@ static int previews_id_ensure_callback(LibraryIDLinkCallbackData *cb_data)
   PreviewsIDEnsureData *data = static_cast<PreviewsIDEnsureData *>(cb_data->user_data);
   ID *id = *cb_data->id_pointer;
 
-  if (id && (id->tag & LIB_TAG_DOIT)) {
+  if (id && (id->tag & ID_TAG_DOIT)) {
     BLI_assert(ELEM(GS(id->name), ID_MA, ID_TE, ID_IM, ID_WO, ID_LA));
     previews_id_ensure(data->C, data->scene, id);
-    id->tag &= ~LIB_TAG_DOIT;
+    id->tag &= ~ID_TAG_DOIT;
   }
 
   return IDWALK_RET_NOP;
@@ -3854,10 +3864,10 @@ static int previews_ensure_exec(bContext *C, wmOperator * /*op*/)
                     nullptr};
   PreviewsIDEnsureData preview_id_data;
 
-  /* We use LIB_TAG_DOIT to check whether we have already handled a given ID or not. */
-  BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+  /* We use ID_TAG_DOIT to check whether we have already handled a given ID or not. */
+  BKE_main_id_tag_all(bmain, ID_TAG_DOIT, false);
   for (int i = 0; lb[i]; i++) {
-    BKE_main_id_tag_listbase(lb[i], LIB_TAG_DOIT, true);
+    BKE_main_id_tag_listbase(lb[i], ID_TAG_DOIT, true);
   }
 
   preview_id_data.C = C;
@@ -3873,9 +3883,9 @@ static int previews_ensure_exec(bContext *C, wmOperator * /*op*/)
    * do our best for those, using current scene... */
   for (int i = 0; lb[i]; i++) {
     LISTBASE_FOREACH (ID *, id, lb[i]) {
-      if (id->tag & LIB_TAG_DOIT) {
+      if (id->tag & ID_TAG_DOIT) {
         previews_id_ensure(C, nullptr, id);
-        id->tag &= ~LIB_TAG_DOIT;
+        id->tag &= ~ID_TAG_DOIT;
       }
     }
   }

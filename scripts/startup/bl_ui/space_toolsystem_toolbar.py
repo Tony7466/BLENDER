@@ -137,12 +137,12 @@ class _defs_view3d_generic:
                 kmi_add = None
                 kmi_remove = None
             return tip_(
-                "Measure distance and angles.\n"
-                "\u2022 {:s} anywhere for new measurement.\n"
-                "\u2022 Drag ruler segment to measure an angle.\n"
-                "\u2022 {:s} to remove the active ruler.\n"
-                "\u2022 Ctrl while dragging to snap.\n"
-                "\u2022 Shift while dragging to measure surface thickness"
+                "Measure distance and angles\n"
+                " \u2022 {:s} anywhere for new measurement\n"
+                " \u2022 Drag ruler segment to measure an angle\n"
+                " \u2022 {:s} to remove the active ruler\n"
+                " \u2022 Ctrl while dragging to snap\n"
+                " \u2022 Shift while dragging to measure surface thickness"
             ).format(
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_remove),
@@ -512,9 +512,9 @@ class _defs_view3d_add:
             kmi_fixed_aspect = None
         return tip_(
             "{:s}\n"
-            "\u2022 {:s} toggles snap while dragging.\n"
-            "\u2022 {:s} toggles dragging from the center.\n"
-            "\u2022 {:s} toggles fixed aspect"
+            " \u2022 {:s} toggles snap while dragging\n"
+            " \u2022 {:s} toggles dragging from the center\n"
+            " \u2022 {:s} toggles fixed aspect"
         ).format(
             prefix,
             kmi_to_string_or_none(kmi_snap),
@@ -779,10 +779,10 @@ class _defs_edit_mesh:
                 kmi_extrude = None
                 kmi_delete = None
             return tip_(
-                "Use multiple operators in an interactive way to add, delete, or move geometry.\n"
-                "\u2022 {:s} - Add geometry by moving the cursor close to an element.\n"
-                "\u2022 {:s} - Extrude edges by moving the cursor.\n"
-                "\u2022 {:s} - Delete mesh element"
+                "Use multiple operators in an interactive way to add, delete, or move geometry\n"
+                " \u2022 {:s} - Add geometry by moving the cursor close to an element\n"
+                " \u2022 {:s} - Extrude edges by moving the cursor\n"
+                " \u2022 {:s} - Delete mesh element"
             ).format(
                 kmi_to_string_or_none(kmi_add),
                 kmi_to_string_or_none(kmi_extrude),
@@ -2204,6 +2204,38 @@ class _defs_grease_pencil_paint:
             label="Interpolate",
             icon="ops.pose.breakdowner",
             cursor='DEFAULT',
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def eyedropper():
+        def draw_settings(context, layout, tool):
+            props = tool.operator_properties("ui.eyedropper_grease_pencil_color")
+            row = layout.row()
+            row.use_property_split = False
+            row.prop(props, "mode", expand=True)
+
+            if props.mode == "MATERIAL":
+                col = layout.column()
+                col.prop(props, "material_mode")
+            elif props.mode == "PALETTE":
+                tool_settings = context.tool_settings
+                settings = tool_settings.gpencil_paint
+
+                col = layout.column()
+
+                row = col.row(align=True)
+                row.template_ID(settings, "palette", new="palette.new")
+                if settings.palette:
+                    col.template_palette(settings, "palette", color=True)
+
+        return dict(
+            idname="builtin.eyedropper",
+            label="Eyedropper",
+            icon="ops.paint.eyedropper_add",
+            cursor='EYEDROPPER',
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
@@ -3777,6 +3809,8 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             _defs_grease_pencil_paint.generate_from_brushes,
             _defs_grease_pencil_paint.cutter,
+            None,
+            _defs_grease_pencil_paint.eyedropper,
             None,
             _defs_grease_pencil_paint.line,
             _defs_grease_pencil_paint.polyline,

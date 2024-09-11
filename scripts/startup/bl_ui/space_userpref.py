@@ -545,6 +545,7 @@ class USERPREF_PT_edit_sequence_editor(EditingPanel, CenterAlignMixIn, Panel):
         edit = prefs.edit
 
         layout.prop(edit, "use_sequencer_simplified_tweaking")
+        layout.prop(edit, "connect_strips_by_default")
 
 
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
@@ -674,6 +675,32 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
             del addon
         else:
             layout.label(text="Cycles is disabled in this build", icon='INFO')
+
+
+class USERPREF_PT_system_display_graphics(SystemPanel, CenterAlignMixIn, Panel):
+    bl_label = "Display Graphics"
+
+    @classmethod
+    def poll(cls, _context):
+        import platform
+        return platform.system() != 'Darwin'
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        system = prefs.system
+
+        col = layout.column()
+        col.prop(system, "gpu_backend", text="Backend")
+
+        import gpu
+        if system.gpu_backend != gpu.platform.backend_type_get():
+            layout.label(text="A restart of Blender is required", icon="INFO")
+
+        if system.gpu_backend == 'VULKAN':
+            col = layout.column()
+            col.label(text="The Vulkan backend is experimental:", icon="INFO")
+            col.label(text="\u2022 OpenXR and GPU subdivision are not supported", icon="BLANK1")
+            col.label(text="\u2022 Expect reduced performance", icon="BLANK1")
 
 
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
@@ -1203,6 +1230,7 @@ class USERPREF_PT_theme_interface_icons(ThemePanel, CenterAlignMixIn, Panel):
         flow.prop(ui, "icon_modifier")
         flow.prop(ui, "icon_shading")
         flow.prop(ui, "icon_folder")
+        flow.prop(ui, "icon_autokey")
         flow.prop(ui, "icon_border_intensity")
 
 
@@ -2860,6 +2888,7 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_animation_baklava"}, ("/blender/blender/issues/120406", "#120406")),
+                ({"property": "enable_new_cpu_compositor"}, ("/blender/blender/issues/125968", "#125968")),
             ),
         )
 
@@ -2953,6 +2982,7 @@ classes = (
     USERPREF_PT_animation_fcurves,
 
     USERPREF_PT_system_cycles_devices,
+    USERPREF_PT_system_display_graphics,
     USERPREF_PT_system_os_settings,
     USERPREF_PT_system_network,
     USERPREF_PT_system_memory,
