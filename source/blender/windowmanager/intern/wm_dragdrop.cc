@@ -688,11 +688,13 @@ AssetMetaData *WM_drag_get_asset_meta_data(const wmDrag *drag, int idcode)
   return nullptr;
 }
 
-ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const int flag_extra)
+ID *WM_drag_asset_id_import(const bContext *C,
+                            wmDragAsset *asset_drag,
+                            const wmDragAssetImportOptions &options)
 {
   /* Only support passing in limited flags. */
-  BLI_assert(flag_extra == (flag_extra & FILE_AUTOSELECT));
-  eFileSel_Params_Flag flag = static_cast<eFileSel_Params_Flag>(flag_extra) |
+  BLI_assert(options.flag_extra == (options.flag_extra & FILE_AUTOSELECT));
+  eFileSel_Params_Flag flag = static_cast<eFileSel_Params_Flag>(options.flag_extra) |
                               FILE_ACTIVE_COLLECTION;
 
   const char *name = asset_drag->asset->get_name().c_str();
@@ -771,7 +773,8 @@ ID *WM_drag_get_local_ID_or_import_from_asset(const bContext *C, const wmDrag *d
   }
 
   /* Link/append the asset. */
-  return WM_drag_asset_id_import(C, asset_drag, 0);
+  wmDragAssetImportOptions import_options;
+  return WM_drag_asset_id_import(C, asset_drag, import_options);
 }
 
 void WM_drag_free_imported_drag_ID(Main *bmain, wmDrag *drag, wmDropBox *drop)

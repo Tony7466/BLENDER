@@ -792,8 +792,10 @@ static void view3d_ob_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDrop
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
+  wmDragAssetImportOptions import_options;
+  import_options.flag_extra |= FILE_AUTOSELECT;
   Object *object = reinterpret_cast<Object *>(
-      WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT));
+      WM_drag_asset_id_import(C, asset_drag, import_options));
 
   LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
   Collection *collection = BKE_collection_parent_editable_find_recursive(view_layer,
@@ -853,7 +855,9 @@ static void view3d_collection_drop_copy_external_asset(bContext *C, wmDrag *drag
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
-  ID *id = WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT);
+  wmDragAssetImportOptions import_options;
+  import_options.flag_extra |= FILE_AUTOSELECT;
+  ID *id = WM_drag_asset_id_import(C, asset_drag, import_options);
   Collection *collection = (Collection *)id;
 
   BKE_view_layer_synced_ensure(scene, view_layer);

@@ -1447,10 +1447,14 @@ ListBase *WM_dropboxmap_find(const char *idname, int spaceid, int regionid);
 
 /* ID drag and drop. */
 
-/**
- * \param flag_extra: Additional linking flags (from #eFileSel_Params_Flag).
- */
-ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, int flag_extra);
+struct wmDragAssetImportOptions {
+  /** Additional linking flags (from #eFileSel_Params_Flag). */
+  int flag_extra = 0;
+};
+
+ID *WM_drag_asset_id_import(const bContext *C,
+                            wmDragAsset *asset_drag,
+                            const wmDragAssetImportOptions &options);
 bool WM_drag_asset_will_import_linked(const wmDrag *drag);
 void WM_drag_add_local_ID(wmDrag *drag, ID *id, ID *from_parent);
 ID *WM_drag_get_local_ID(const wmDrag *drag, short idcode);
