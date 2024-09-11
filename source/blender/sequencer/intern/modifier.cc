@@ -1227,68 +1227,112 @@ static bool is_point_inside_quad(const StripScreenQuad &quad, int x, int y)
   return isect_point_quad_v2(pt, quad.v0, quad.v1, quad.v2, quad.v3);
 }
 
-static void tonemapmodifier_apply(const StripScreenQuad &quad,
-                                  SequenceModifierData *smd,
-                                  ImBuf *ibuf,
-                                  ImBuf *mask)
-{
-  SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
-  AvgLogLum data;
-  data.tmmd = tmmd;
-  data.colorspace = (ibuf->float_buffer.data != nullptr) ? ibuf->float_buffer.colorspace :
-                                                           ibuf->byte_buffer.colorspace;
-  float lsum = 0.0f;
-  float *fp = ibuf->float_buffer.data;
-  uchar *cp = ibuf->byte_buffer.data;
-  float avl, maxl = -FLT_MAX, minl = FLT_MAX;
-  int pixel_count = 0;
-  float Lav = 0.0f;
-  float cav[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+struct AreaLuminance {
+  int64_t pixel_count = 0;
+  float sum = 0.0f;
+  float3 color_sum = {0, 0, 0};
+  float log_sum = 0.0f;
+  float min = FLT_MAX;
+  float max = -FLT_MAX;
+};
 
+static AreaLuminance tonemap_calc_input_luminance(const StripScreenQuad &quad, const ImBuf *ibuf)
+{
   /* Pixels outside the pre-transform strip area are ignored for luminance calculations.
    * If strip area covers whole image, we can trivially accept all pixels. */
   const bool all_pixels_inside_quad = is_point_inside_quad(quad, 0, 0) &&
                                       is_point_inside_quad(quad, ibuf->x - 1, 0) &&
                                       is_point_inside_quad(quad, 0, ibuf->y - 1) &&
                                       is_point_inside_quad(quad, ibuf->x - 1, ibuf->y - 1);
-  for (int y = 0; y < ibuf->y; y++) {
-    for (int x = 0; x < ibuf->x; x++) {
-      if (all_pixels_inside_quad || is_point_inside_quad(quad, x, y)) {
-        pixel_count++;
-        float pixel[4];
-        if (fp != nullptr) {
-          copy_v4_v4(pixel, fp);
+
+  AreaLuminance lum;
+  lum = threading::parallel_reduce(
+      IndexRange(ibuf->y),
+      32,
+      lum,
+      /* Calculate luminance for a chunk. */
+      [&](const IndexRange y_range, const AreaLuminance &init) {
+        AreaLuminance res = init;
+        const bool is_float = ibuf->float_buffer.data != nullptr;
+        ColorSpace *colorspace = is_float ? ibuf->float_buffer.colorspace :
+                                            ibuf->byte_buffer.colorspace;
+        const float4 *fptr = reinterpret_cast<const float4 *>(ibuf->float_buffer.data);
+        const uchar *bptr = ibuf->byte_buffer.data;
+        if (is_float) {
+          fptr += y_range.first() * ibuf->x;
         }
         else {
-          straight_uchar_to_premul_float(pixel, cp);
+          bptr += y_range.first() * ibuf->x * 4;
         }
-        IMB_colormanagement_colorspace_to_scene_linear_v3(pixel, data.colorspace);
-        float L = IMB_colormanagement_get_luminance(pixel);
-        Lav += L;
-        add_v3_v3(cav, pixel);
-        lsum += logf(max_ff(L, 0.0f) + 1e-5f);
-        maxl = (L > maxl) ? L : maxl;
-        minl = (L < minl) ? L : minl;
-      }
-      if (fp != nullptr) {
-        fp += 4;
-      }
-      else {
-        cp += 4;
-      }
-    }
-  }
-  if (pixel_count == 0) {
+        for (const int64_t y : y_range) {
+          for (int x = 0; x < ibuf->x; x++) {
+            if (all_pixels_inside_quad || is_point_inside_quad(quad, x, y)) {
+              res.pixel_count++;
+              float4 pixel;
+              if (is_float) {
+                pixel = *fptr;
+              }
+              else {
+                straight_uchar_to_premul_float(pixel, bptr);
+              }
+              IMB_colormanagement_colorspace_to_scene_linear_v3(pixel, colorspace);
+
+              float L = IMB_colormanagement_get_luminance(pixel);
+              res.sum += L;
+              res.color_sum += pixel.xyz();
+              res.log_sum += logf(math::max(L, 0.0f) + 1e-5f);
+              res.max = math::max(res.max, L);
+              res.min = math::min(res.min, L);
+            }
+            if (is_float) {
+              fptr++;
+            }
+            else {
+              bptr += 4;
+            }
+          }
+        }
+        return res;
+      },
+      /* Reduce luminance results. */
+      [&](const AreaLuminance &a, const AreaLuminance &b) {
+        AreaLuminance res;
+        res.pixel_count = a.pixel_count + b.pixel_count;
+        res.sum = a.sum + b.sum;
+        res.color_sum = a.color_sum + b.color_sum;
+        res.log_sum = a.log_sum + b.log_sum;
+        res.min = math::min(a.min, b.min);
+        res.max = math::max(a.max, b.max);
+        return res;
+      });
+  return lum;
+}
+
+static void tonemapmodifier_apply(const StripScreenQuad &quad,
+                                  SequenceModifierData *smd,
+                                  ImBuf *ibuf,
+                                  ImBuf *mask)
+{
+  SequencerTonemapModifierData *tmmd = (SequencerTonemapModifierData *)smd;
+
+  AreaLuminance lum = tonemap_calc_input_luminance(quad, ibuf);
+  if (lum.pixel_count == 0) {
     return; /* Strip is zero size or off-screen. */
   }
-  const float sc = 1.0f / pixel_count;
-  data.lav = Lav * sc;
-  mul_v3_v3fl(data.cav, cav, sc);
-  maxl = logf(maxl + 1e-5f);
-  minl = logf(minl + 1e-5f);
-  avl = lsum * sc;
+
+  AvgLogLum data;
+  data.tmmd = tmmd;
+  data.colorspace = (ibuf->float_buffer.data != nullptr) ? ibuf->float_buffer.colorspace :
+                                                           ibuf->byte_buffer.colorspace;
+  const float sc = 1.0f / lum.pixel_count;
+  data.lav = lum.sum * sc;
+  mul_v3_v3fl(data.cav, lum.color_sum, sc);
+  float maxl = log(double(lum.max) + 1e-5f);
+  float minl = log(double(lum.min) + 1e-5f);
+  float avl = lum.log_sum * sc;
+
   data.auto_key = (maxl > minl) ? ((maxl - avl) / (maxl - minl)) : 1.0f;
-  float al = expf(avl);
+  float al = exp(double(avl));
   data.al = (al == 0.0f) ? 0.0f : (tmmd->key / al);
   data.igm = (tmmd->gamma == 0.0f) ? 1.0f : (1.0f / tmmd->gamma);
 
