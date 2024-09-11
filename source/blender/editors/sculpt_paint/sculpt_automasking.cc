@@ -736,8 +736,8 @@ static float factor_get(const Depsgraph &depsgraph,
   /* If the cache is initialized with valid info, use the cache. This is used when the
    * automasking information can't be computed in real time per vertex and needs to be
    * initialized for the whole mesh when the stroke starts. */
-  if (!automasking.cached_factor.is_empty()) {
-    float factor = automasking.cached_factor[vert_i];
+  if (!automasking.factor.is_empty()) {
+    float factor = automasking.factor[vert_i];
 
     if (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
       factor *= calc_cavity_factor(depsgraph, automasking, object, vert);
@@ -1426,8 +1426,8 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
   /* Topology builds up the mask from zero which other modes can subtract from.
    * If it isn't enabled, initialize to 1. */
   const float initial_value = !(mode & BRUSH_AUTOMASKING_TOPOLOGY) ? 1.0f : 0.0f;
-  automasking->cached_factor = Array<float>(SCULPT_vertex_count_get(ob), initial_value);
-  MutableSpan<float> factors = automasking->cached_factor;
+  automasking->factor = Array<float>(SCULPT_vertex_count_get(ob), initial_value);
+  MutableSpan<float> factors = automasking->factor;
 
   /* Additive modes. */
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_TOPOLOGY)) {
