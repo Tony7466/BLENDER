@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include "BKE_image.h"
 #include "BKE_paint.hh"
+
 #include "DEG_depsgraph_query.hh"
 
 #include "draw_cache_impl.hh"
@@ -27,11 +29,12 @@ class Paints {
   PassSimple::Sub *paint_region_vert_ps_ = nullptr;
 
   PassSimple weight_ps_ = {"weight_ps_"};
-  PassSimple vertex_paint_ps_ = {"vertex_paint_ps_"};
-  PassSimple texture_paint_ps_ = {"texture_paint_ps_"};
+  /* Black and white mask overlayed on top of mesh to preview painting influence. */
+  PassSimple paint_mask_ps_ = {"paint_mask_ps_"};
 
   bool show_weight_ = false;
   bool show_wires_ = false;
+  bool show_paint_mask_ = false;
 
   bool enabled_ = false;
 
@@ -45,8 +48,7 @@ class Paints {
     /* Init in any case to release the data. */
     paint_region_ps_.init();
     weight_ps_.init();
-    vertex_paint_ps_.init();
-    texture_paint_ps_.init();
+    paint_mask_ps_.init();
 
     if (!enabled_) {
       return;
@@ -112,6 +114,29 @@ class Paints {
         pass.push_constant("light_dir", math::normalize(float3(0.0f, 0.5f, 0.86602f)));
       }
     }
+
+    if (state.ctx_mode == CTX_MODE_PAINT_TEXTURE) {
+      const ImagePaintSettings &paint_settings = state.scene->toolsettings->imapaint;
+      show_paint_mask_ = paint_settings.stencil &&
+                         (paint_settings.flag & IMAGEPAINT_PROJECT_LAYER_STENCIL);
+
+      if (show_paint_mask_) {
+        const bool mask_premult = (paint_settings.stencil->alpha_mode == IMA_ALPHA_PREMUL);
+        const bool mask_inverted = (paint_settings.flag & IMAGEPAINT_PROJECT_LAYER_STENCIL_INV);
+        GPUTexture *mask_texture = BKE_image_get_gpu_texture(paint_settings.stencil, nullptr);
+
+        auto &pass = paint_mask_ps_;
+        pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA,
+                       state.clipping_plane_count);
+        pass.shader_set(res.shaders.paint_texture.get());
+        pass.bind_ubo("globalsBlock", &res.globals_buf);
+        pass.bind_texture("maskImage", mask_texture);
+        pass.push_constant("maskPremult", mask_premult);
+        pass.push_constant("maskInvertStencil", mask_inverted);
+        pass.push_constant("maskColor", float3(paint_settings.stencil_col));
+        pass.push_constant("opacity", state.overlay.texture_paint_mode_opacity);
+      }
+    }
   }
 
   void object_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
@@ -157,10 +182,17 @@ class Paints {
         weight_ps_.draw(geom, handle);
         break;
       }
-      case CTX_MODE_PAINT_VERTEX:
+      case CTX_MODE_PAINT_VERTEX: {
+        /* Drawing of vertex paint color is done by the render engine (i.e. workbench). */
         break;
-      case CTX_MODE_PAINT_TEXTURE:
+      }
+      case CTX_MODE_PAINT_TEXTURE: {
+        if (show_paint_mask_) {
+          gpu::Batch *geom = DRW_cache_mesh_surface_texpaint_single_get(ob_ref.object);
+          paint_mask_ps_.draw(geom, handle);
+        }
         break;
+      }
       default:
         BLI_assert_unreachable();
         return;
@@ -172,8 +204,11 @@ class Paints {
       const Mesh &mesh_orig = *static_cast<Mesh *>(DEG_get_original_object(ob_ref.object)->data);
       const bool use_face_selection = (mesh_orig.editflag & ME_EDIT_PAINT_FACE_SEL);
       const bool use_vert_selection = (mesh_orig.editflag & ME_EDIT_PAINT_VERT_SEL);
+      /* Texture paint mode only draws the face selection without wires or vertices as we don't
+       * draw on the geometry data directly. */
+      const bool in_texture_paint_mode = state.ctx_mode == CTX_MODE_PAINT_TEXTURE;
 
-      if (use_face_selection || show_wires_) {
+      if ((use_face_selection || show_wires_) && !in_texture_paint_mode) {
         gpu::Batch *geom = DRW_cache_mesh_surface_edges_get(ob_ref.object);
         paint_region_edge_ps_->push_constant("useSelect", use_face_selection);
         paint_region_edge_ps_->draw(geom, handle);
@@ -182,7 +217,7 @@ class Paints {
         gpu::Batch *geom = DRW_cache_mesh_surface_get(ob_ref.object);
         paint_region_face_ps_->draw(geom, handle);
       }
-      if (use_vert_selection) {
+      if (use_vert_selection && !in_texture_paint_mode) {
         gpu::Batch *geom = DRW_cache_mesh_all_verts_get(ob_ref.object);
         paint_region_vert_ps_->draw(geom, handle);
       }
@@ -196,8 +231,7 @@ class Paints {
     }
     GPU_framebuffer_bind(framebuffer);
     manager.submit(weight_ps_, view);
-    manager.submit(vertex_paint_ps_, view);
-    manager.submit(texture_paint_ps_, view);
+    manager.submit(paint_mask_ps_, view);
     /* TODO(fclem): Draw this onto the line frame-buffer to get wide-line and anti-aliasing.
      * Just need to make sure the shaders output line data. */
     manager.submit(paint_region_ps_, view);
