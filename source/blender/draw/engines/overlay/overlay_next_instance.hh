@@ -126,6 +126,11 @@ class Instance {
                                  bool in_paint_mode,
                                  bool in_sculpt_mode);
   bool object_is_in_front(const Object *object, const State &state);
+  bool object_needs_prepass(const ObjectRef &ob_ref, bool in_paint_mode);
+
+  /* Returns true if the object is rendered transparent by the render engine.
+   * Overlays should not rely on the correct depth being available (and do a depth pre-pass). */
+  bool object_is_rendered_transparent(const Object *object, const State &state);
 };
 
 }  // namespace blender::draw::overlay

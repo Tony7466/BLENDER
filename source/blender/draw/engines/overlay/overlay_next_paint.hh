@@ -26,6 +26,10 @@ class Paints {
   PassSimple::Sub *paint_region_face_ps_ = nullptr;
   PassSimple::Sub *paint_region_vert_ps_ = nullptr;
 
+  PassSimple weight_ps_ = {"weight_ps_"};
+  PassSimple vertex_paint_ps_ = {"vertex_paint_ps_"};
+  PassSimple texture_paint_ps_ = {"texture_paint_ps_"};
+
   bool show_weight_ = false;
   bool show_wires_ = false;
 
@@ -38,9 +42,13 @@ class Paints {
         (state.space_type == SPACE_VIEW3D) && (res.selection_type == SelectionType::DISABLED) &&
         ELEM(state.ctx_mode, CTX_MODE_PAINT_WEIGHT, CTX_MODE_PAINT_VERTEX, CTX_MODE_PAINT_TEXTURE);
 
+    /* Init in any case to release the data. */
+    paint_region_ps_.init();
+    weight_ps_.init();
+    vertex_paint_ps_.init();
+    texture_paint_ps_.init();
+
     if (!enabled_) {
-      /* Not used. But release the data. */
-      paint_region_ps_.init();
       return;
     }
 
@@ -49,7 +57,6 @@ class Paints {
 
     {
       auto &pass = paint_region_ps_;
-      pass.init();
       {
         auto &sub = pass.sub("Face");
         sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
@@ -78,9 +85,36 @@ class Paints {
         paint_region_vert_ps_ = &sub;
       }
     }
+
+    if (state.ctx_mode == CTX_MODE_PAINT_WEIGHT) {
+      /* Support masked transparency in Workbench.
+       * EEVEE can't be supported since depth won't match. */
+      const eDrawType shading_type = eDrawType(state.v3d->shading.type);
+      const bool masked_transparency_support = (shading_type <= OB_SOLID) ||
+                                               BKE_scene_uses_blender_workbench(state.scene);
+      const bool shadeless = shading_type == OB_WIRE;
+      const bool draw_contours = state.overlay.wpaint_flag & V3D_OVERLAY_WPAINT_CONTOURS;
+
+      auto &pass = weight_ps_;
+      pass.state_set(DRW_STATE_WRITE_COLOR |
+                         (masked_transparency_support ?
+                              (DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA) :
+                              (DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH)),
+                     state.clipping_plane_count);
+      pass.shader_set(shadeless ? res.shaders.paint_weight.get() :
+                                  res.shaders.paint_weight_fake_shading.get());
+      pass.bind_ubo("globalsBlock", &res.globals_buf);
+      pass.bind_texture("colorramp", &res.weight_ramp_tx);
+      pass.push_constant("drawContours", draw_contours);
+      pass.push_constant("opacity", state.overlay.weight_paint_mode_opacity);
+      if (!shadeless) {
+        /* Arbitrary light to give a hint of the geometry behind the weights. */
+        pass.push_constant("light_dir", math::normalize(float3(0.0f, 0.5f, 0.86602f)));
+      }
+    }
   }
 
-  void object_sync(Manager &manager, const ObjectRef &ob_ref, const State & /*state*/)
+  void object_sync(Manager &manager, const ObjectRef &ob_ref, const State &state)
   {
     if (!enabled_) {
       return;
@@ -91,20 +125,44 @@ class Paints {
       return;
     }
 
-    ResourceHandle handle = {0};
-
-    switch (ob_ref.object->mode) {
-      case OB_MODE_WEIGHT_PAINT:
-        handle = manager.resource_handle(ob_ref);
+    switch (state.ctx_mode) {
+      case CTX_MODE_PAINT_WEIGHT:
+        if (ob_ref.object->mode != OB_MODE_WEIGHT_PAINT) {
+          /* Not matching context mode. */
+          return;
+        }
         break;
-      case OB_MODE_VERTEX_PAINT:
-        handle = manager.resource_handle(ob_ref);
+      case CTX_MODE_PAINT_VERTEX:
+        if (ob_ref.object->mode != OB_MODE_VERTEX_PAINT) {
+          /* Not matching context mode. */
+          return;
+        }
         break;
-      case OB_MODE_TEXTURE_PAINT:
-        handle = manager.resource_handle(ob_ref);
+      case CTX_MODE_PAINT_TEXTURE:
+        if (ob_ref.object->mode != OB_MODE_TEXTURE_PAINT) {
+          /* Not matching context mode. */
+          return;
+        }
         break;
       default:
         /* Not in paint mode. */
+        return;
+    }
+
+    ResourceHandle handle = manager.resource_handle(ob_ref);
+
+    switch (state.ctx_mode) {
+      case CTX_MODE_PAINT_WEIGHT: {
+        gpu::Batch *geom = DRW_cache_mesh_surface_weights_get(ob_ref.object);
+        weight_ps_.draw(geom, handle);
+        break;
+      }
+      case CTX_MODE_PAINT_VERTEX:
+        break;
+      case CTX_MODE_PAINT_TEXTURE:
+        break;
+      default:
+        BLI_assert_unreachable();
         return;
     }
 
@@ -137,46 +195,12 @@ class Paints {
       return;
     }
     GPU_framebuffer_bind(framebuffer);
+    manager.submit(weight_ps_, view);
+    manager.submit(vertex_paint_ps_, view);
+    manager.submit(texture_paint_ps_, view);
+    /* TODO(fclem): Draw this onto the line frame-buffer to get wide-line and anti-aliasing.
+     * Just need to make sure the shaders output line data. */
     manager.submit(paint_region_ps_, view);
-  }
-
- private:
-  static bool paint_object_is_rendered_transparent(View3D *v3d, Object *ob)
-  {
-    if (v3d->shading.type == OB_WIRE) {
-      return true;
-    }
-    if (v3d->shading.type == OB_SOLID) {
-      if (v3d->shading.flag & V3D_SHADING_XRAY) {
-        return true;
-      }
-
-      if (ob && v3d->shading.color_type == V3D_SHADING_OBJECT_COLOR) {
-        return ob->color[3] < 1.0f;
-      }
-
-      /* NOTE: The active object might be hidden and hence have inconsistent evaluated state of its
-       * mesh data. So only perform checks dependent on mesh after checking the object is actually
-       * visible. */
-      if (ob && ob->type == OB_MESH && BKE_object_is_visible_in_viewport(v3d, ob) && ob->data &&
-          v3d->shading.color_type == V3D_SHADING_MATERIAL_COLOR)
-      {
-        Mesh *mesh = static_cast<Mesh *>(ob->data);
-        for (int i = 0; i < mesh->totcol; i++) {
-          Material *mat = BKE_object_material_get_eval(ob, i + 1);
-          if (mat && mat->a < 1.0f) {
-            return true;
-          }
-        }
-      }
-    }
-
-    /* Check object display types. */
-    if (ob && ELEM(ob->dt, OB_WIRE, OB_BOUNDBOX)) {
-      return true;
-    }
-
-    return false;
   }
 };
 

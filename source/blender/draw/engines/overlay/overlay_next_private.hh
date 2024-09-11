@@ -223,6 +223,8 @@ class ShaderModule {
   ShaderPtr paint_region_edge;
   ShaderPtr paint_region_face;
   ShaderPtr paint_region_vert;
+  ShaderPtr paint_weight;
+  ShaderPtr paint_weight_fake_shading; /* TODO(fclem): Specialization constant. */
   ShaderPtr sculpt_mesh;
   ShaderPtr sculpt_curves;
   ShaderPtr sculpt_curves_cage;

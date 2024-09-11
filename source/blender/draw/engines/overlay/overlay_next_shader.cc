@@ -245,6 +245,14 @@ ShaderModule::ShaderModule(const SelectionType selection_type, const bool clippi
   paint_region_vert = shader("overlay_paint_point", [](gpu::shader::ShaderCreateInfo &info) {
     shader_patch_common(info);
   });
+  paint_weight = shader("overlay_paint_weight",
+                        [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
+  paint_weight_fake_shading = shader("overlay_paint_weight",
+                                     [](gpu::shader::ShaderCreateInfo &info) {
+                                       shader_patch_common(info);
+                                       info.define("FAKE_SHADING");
+                                       info.push_constant(gpu::shader::Type::VEC3, "light_dir");
+                                     });
 
   sculpt_mesh = shader("overlay_sculpt_mask",
                        [](gpu::shader::ShaderCreateInfo &info) { shader_patch_common(info); });
