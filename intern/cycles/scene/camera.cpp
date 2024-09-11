@@ -354,7 +354,6 @@ void Camera::update(Scene *scene)
   }
 
   if (need_motion == Scene::MOTION_PASS) {
-    /* TODO(sergey): Support perspective (zoom, fov) motion. */
     if (camera_type == CAMERA_PANORAMA) {
       if (have_motion) {
         kcam->motion_pass_pre = transform_inverse(motion[0]);
@@ -366,9 +365,13 @@ void Camera::update(Scene *scene)
       }
     }
     else {
-      if (have_motion) {
-        kcam->perspective_pre = cameratoraster * transform_inverse(motion[0]);
-        kcam->perspective_post = cameratoraster * transform_inverse(motion[motion.size() - 1]);
+      if (have_motion || fov != fov_pre || fov != fov_post) {
+        ProjectionTransform cameratoscreen_pre = projection_perspective(fov_pre, nearclip, farclip);
+        ProjectionTransform cameratoscreen_post = projection_perspective(fov_post, nearclip, farclip);
+        ProjectionTransform cameratoraster_pre = screentoraster * cameratoscreen_pre;
+        ProjectionTransform cameratoraster_post = screentoraster * cameratoscreen_post;
+        kcam->perspective_pre = cameratoraster_pre * transform_inverse(motion[0]);
+        kcam->perspective_post = cameratoraster_post * transform_inverse(motion[motion.size() - 1]);
       }
       else {
         kcam->perspective_pre = worldtoraster;
