@@ -20,7 +20,6 @@ struct bContext;
 struct BlendDataReader;
 struct BlendWriter;
 struct RegionAssetShelf;
-struct SpaceType;
 struct uiLayout;
 
 namespace blender::asset_system {
@@ -28,8 +27,6 @@ class AssetCatalogPath;
 }
 
 namespace blender::ed::asset::shelf {
-
-constexpr short DEFAULT_TILE_SIZE = 64;
 
 void build_asset_view(uiLayout &layout,
                       const AssetLibraryReference &library_ref,

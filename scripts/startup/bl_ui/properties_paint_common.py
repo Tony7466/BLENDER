@@ -13,7 +13,7 @@ class BrushAssetShelf:
 
     @classmethod
     def poll(cls, context):
-        return context.object and context.object.mode == cls.mode
+        return hasattr(context, "object") and context.object and context.object.mode == cls.mode
 
     @classmethod
     def asset_poll(cls, asset):
@@ -60,14 +60,21 @@ class BrushAssetShelf:
             'SCULPT_CURVES': "VIEW3D_AST_brush_sculpt_curves",
         }
         mode = UnifiedPaintPanel.get_brush_mode(context)
+        if not mode:
+            return None
+
         return mode_map[mode]
 
     @staticmethod
     def draw_popup_selector(layout, context, brush, show_name=True):
         preview_icon_id = brush.preview.icon_id if brush and brush.preview else 0
 
+        shelf_name = BrushAssetShelf.get_shelf_name_from_context(context)
+        if not shelf_name:
+            return
+
         layout.template_asset_shelf_popover(
-            BrushAssetShelf.get_shelf_name_from_context(context),
+            shelf_name,
             name=brush.name if (brush and show_name) else None,
             icon='BRUSH_DATA' if not preview_icon_id else 'NONE',
             icon_value=preview_icon_id,
@@ -145,6 +152,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_weight_paint
         elif mode == 'VERTEX_GPENCIL':
             return tool_settings.gpencil_vertex_paint
+        elif mode == 'PAINT_GREASE_PENCIL':
+            return tool_settings.gpencil_paint
         elif mode == 'SCULPT_CURVES':
             return tool_settings.curves_sculpt
         elif mode == 'PAINT_GREASE_PENCIL':
@@ -153,6 +162,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_sculpt_paint
         elif mode == 'WEIGHT_GREASE_PENCIL':
             return tool_settings.gpencil_weight_paint
+        elif mode == 'VERTEX_GREASE_PENCIL':
+            return tool_settings.gpencil_vertex_paint
         return None
 
     @staticmethod
@@ -1630,7 +1641,7 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         layout.use_property_split = use_property_split_prev
     elif grease_pencil_tool == 'ERASE':
         layout.prop(gp_settings, "eraser_mode", expand=True)
-        if gp_settings.eraser_mode == 'HARD':
+        if gp_settings.eraser_mode in {'HARD', 'SOFT'}:
             layout.prop(gp_settings, "use_keep_caps_eraser")
         layout.prop(gp_settings, "use_active_layer_only")
     elif grease_pencil_tool == 'TINT':
@@ -1738,6 +1749,37 @@ def brush_basic_grease_pencil_weight_settings(layout, context, brush, *, compact
             header=compact,
         )
         layout.prop(brush, "direction", expand=True, text="" if compact else "Direction")
+
+
+def brush_basic_grease_pencil_vertex_settings(layout, context, brush, *, compact=False):
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "size",
+        pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
+        text="Radius",
+        slider=True,
+        header=compact,
+    )
+
+    if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            text="Strength",
+            header=compact,
+        )
+
+    gp_settings = brush.gpencil_settings
+    if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
+        row = layout.row(align=True)
+        row.prop(gp_settings, "vertex_mode", text="Mode")
 
 
 classes = (

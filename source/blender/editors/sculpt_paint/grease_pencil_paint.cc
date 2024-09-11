@@ -29,6 +29,7 @@
 #include "DNA_brush_enums.h"
 #include "DNA_material_types.h"
 
+#include "DNA_scene_types.h"
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
@@ -155,24 +156,23 @@ static void create_blank_curve(bke::CurvesGeometry &curves, const bool on_back)
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-  attributes.for_all(
-      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
-        bke::GSpanAttributeWriter dst = attributes.lookup_for_write_span(id);
+  attributes.for_all([&](const StringRef id, const bke::AttributeMetaData /*meta_data*/) {
+    bke::GSpanAttributeWriter dst = attributes.lookup_for_write_span(id);
 
-        GMutableSpan attribute_data = dst.span;
+    GMutableSpan attribute_data = dst.span;
 
-        bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
-          using T = decltype(dummy);
-          MutableSpan<T> span_data = attribute_data.typed<T>();
+    bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      MutableSpan<T> span_data = attribute_data.typed<T>();
 
-          /* Loop through backwards to not overwrite the data. */
-          for (int i = span_data.size() - 2; i >= 0; i--) {
-            span_data[i + 1] = span_data[i];
-          }
-        });
-        dst.finish();
-        return true;
-      });
+      /* Loop through backwards to not overwrite the data. */
+      for (int i = span_data.size() - 2; i >= 0; i--) {
+        span_data[i + 1] = span_data[i];
+      }
+    });
+    dst.finish();
+    return true;
+  });
 }
 
 /**
@@ -199,7 +199,7 @@ static void extend_curve(bke::CurvesGeometry &curves, const bool on_back, const 
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-  attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+  attributes.for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
     if (meta_data.domain != bke::AttrDomain::Point) {
       return true;
     }
@@ -590,7 +590,8 @@ struct PaintOperationExecutor {
 
     bke::SpanAttributeWriter<float> init_times = attributes.lookup_or_add_for_write_span<float>(
         "init_time", bke::AttrDomain::Curve);
-    init_times.span[active_curve] = self.start_time_;
+    /* Truncating time in ms to uint32 then we don't lose precision in lower bits. */
+    init_times.span[active_curve] = float(uint64_t(self.start_time_ * double(1e3))) / float(1e3);
     curve_attributes_to_skip.add("init_time");
     init_times.finish();
 
@@ -599,12 +600,16 @@ struct PaintOperationExecutor {
     curves.update_curve_types();
 
     /* Initialize the rest of the attributes with default values. */
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Point,
-                                      point_attributes_to_skip,
-                                      IndexRange(last_active_point, 1));
     bke::fill_attribute_range_default(
-        attributes, bke::AttrDomain::Curve, curve_attributes_to_skip, IndexRange(active_curve, 1));
+        attributes,
+        bke::AttrDomain::Point,
+        bke::attribute_filter_from_skip_ref(point_attributes_to_skip),
+        IndexRange(last_active_point, 1));
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Curve,
+        bke::attribute_filter_from_skip_ref(curve_attributes_to_skip),
+        IndexRange(active_curve, 1));
 
     drawing_->tag_topology_changed();
   }
@@ -959,10 +964,11 @@ struct PaintOperationExecutor {
     }
 
     /* Initialize the rest of the attributes with default values. */
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Point,
-                                      point_attributes_to_skip,
-                                      curves.points_range().take_back(1));
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Point,
+        bke::attribute_filter_from_skip_ref(point_attributes_to_skip),
+        curves.points_range().take_back(1));
 
     drawing_->set_texture_matrices({self.texture_space_}, IndexRange::from_single(active_curve));
   }
@@ -1006,10 +1012,10 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   /* Initialize helper class for projecting screen space coordinates. */
   placement_ = ed::greasepencil::DrawingPlacement(*scene, *region, *view3d, *eval_object, &layer);
   if (placement_.use_project_to_surface()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
+    placement_.cache_viewport_depths(depsgraph, region, view3d);
   }
   else if (placement_.use_project_to_nearest_stroke()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
+    placement_.cache_viewport_depths(depsgraph, region, view3d);
     placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
   }
 
@@ -1266,6 +1272,11 @@ static int trim_end_points(bke::greasepencil::Drawing &drawing,
     return 0;
   }
 
+  /* Don't remove the entire stroke. Leave at least one point. */
+  if (points.size() - num_points_to_remove < 1) {
+    num_points_to_remove = points.size() - 1;
+  }
+
   if (!on_back) {
     curves.resize(curves.points_num() - num_points_to_remove, curves.curves_num());
     curves.offsets_for_write().last() = curves.points_num();
@@ -1276,7 +1287,7 @@ static int trim_end_points(bke::greasepencil::Drawing &drawing,
   const int last_active_point = curves.points_by_curve()[0].last();
 
   /* Shift the data before resizing to not delete the data at the end. */
-  attributes.for_all([&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+  attributes.for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
     if (meta_data.domain != bke::AttrDomain::Point) {
       return true;
     }
@@ -1339,6 +1350,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   Scene *scene = CTX_data_scene(&C);
   Object *object = CTX_data_active_object(&C);
   RegionView3D *rv3d = CTX_wm_region_view3d(&C);
+  const ARegion *region = CTX_wm_region(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   Paint *paint = &scene->toolsettings->gp_paint->paint;
@@ -1346,6 +1358,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
   BrushGpencilSettings *settings = brush->gpencil_settings;
   const bool on_back = (scene->toolsettings->gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK) != 0;
   const bool do_post_processing = (settings->flag & GP_BRUSH_GROUP_SETTINGS) != 0;
+  const bool do_automerge_endpoints = (scene->toolsettings->gpencil_flags &
+                                       GP_TOOL_FLAG_AUTOMERGE_STROKE) != 0;
 
   /* Grease Pencil should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
@@ -1408,6 +1422,15 @@ void PaintOperation::on_stroke_done(const bContext &C)
   attributes.remove(".draw_tool_screen_space_positions");
 
   drawing.set_texture_matrices({texture_space_}, IndexRange::from_single(active_curve));
+
+  if (do_automerge_endpoints) {
+    constexpr float merge_distance = 20.0f;
+    const float4x4 layer_to_world = active_layer.to_world_space(*object);
+    const IndexMask selection = IndexRange::from_single(active_curve);
+    drawing.strokes_for_write() = ed::greasepencil::curves_merge_endpoints_by_distance(
+        *region, drawing.strokes(), layer_to_world, merge_distance, selection, {});
+  }
+
   drawing.tag_topology_changed();
 
   /* Now we're done drawing. */

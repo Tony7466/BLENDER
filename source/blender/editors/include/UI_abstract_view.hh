@@ -39,7 +39,6 @@ struct uiBlock;
 struct uiButViewItem;
 struct uiLayout;
 struct ViewLink;
-struct wmDrag;
 struct wmNotifier;
 
 namespace blender::ui {
@@ -152,7 +151,7 @@ class AbstractView {
    */
   bool is_reconstructed() const;
 
-  void filter(std::optional<StringRef> str);
+  void filter(std::optional<StringRef> filter_str);
   const AbstractViewItem *search_highlight_item() const;
 };
 

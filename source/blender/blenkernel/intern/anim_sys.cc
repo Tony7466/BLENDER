@@ -36,7 +36,7 @@
 #include "DNA_texture_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
@@ -46,7 +46,7 @@
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_node.hh"
 #include "BKE_report.hh"
 #include "BKE_texture.h"
@@ -58,7 +58,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "BLO_read_write.hh"
 
@@ -1306,6 +1306,7 @@ static void nlaeval_snapshot_free_data(NlaEvalSnapshot *snapshot)
 static void nlaevalchan_free_data(NlaEvalChannel *nec)
 {
   nlavalidmask_free(&nec->domain);
+  nec->key.~NlaEvalChannelKey();
 }
 
 /* Initialize a full NLA evaluation state structure. */
@@ -1494,7 +1495,7 @@ static NlaEvalChannel *nlaevalchan_verify_key(NlaEvalData *nlaeval,
 
   /* Initialize the channel. */
   nec->rna_path = path;
-  nec->key = *key;
+  new (&nec->key) NlaEvalChannelKey(*key);
 
   nec->owner = nlaeval;
   nec->index = nlaeval->num_channels++;
@@ -1540,7 +1541,7 @@ static NlaEvalChannel *nlaevalchan_verify(PointerRNA *ptr, NlaEvalData *nlaeval,
   *p_path_nec = nullptr;
 
   /* Resolve the property and look it up in the key hash. */
-  NlaEvalChannelKey key;
+  NlaEvalChannelKey key{};
 
   if (!RNA_path_resolve_property(ptr, path, &key.ptr, &key.prop)) {
     /* Report failure to resolve the path. */
@@ -3212,12 +3213,10 @@ static void animsys_create_tweak_strip(const AnimData *adt,
     r_tweak_strip->flag |= NLASTRIP_FLAG_NO_TIME_MAP;
   }
 
-  /** Controls whether able to keyframe outside range of tweaked strip. */
   if (keyframing_to_strip) {
-    r_tweak_strip->extendmode = (is_inplace_tweak &&
-                                 !(r_tweak_strip->flag & NLASTRIP_FLAG_SYNC_LENGTH)) ?
-                                    NLASTRIP_EXTEND_NOTHING :
-                                    NLASTRIP_EXTEND_HOLD;
+    /* Since keying cannot happen when there is no NLA influence, this is a workaround to get keys
+     * onto the strip in tweak mode while keyframing. */
+    r_tweak_strip->extendmode = NLASTRIP_EXTEND_HOLD;
   }
 }
 

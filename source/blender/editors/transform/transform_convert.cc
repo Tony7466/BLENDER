@@ -19,14 +19,14 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_modifier.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_scene.hh"
 
 #include "ED_particle.hh"
@@ -1056,11 +1056,11 @@ void create_trans_data(bContext *C, TransInfo *t)
       RegionView3D *rv3d = static_cast<RegionView3D *>(t->region->regiondata);
       if ((rv3d->persp == RV3D_CAMOB) && v3d->camera) {
         /* We could have a flag to easily check an object is being transformed. */
-        if (v3d->camera->id.tag & LIB_TAG_DOIT) {
+        if (v3d->camera->id.tag & ID_TAG_DOIT) {
           t->options |= CTX_CAMERA;
         }
       }
-      else if (v3d->ob_center && v3d->ob_center->id.tag & LIB_TAG_DOIT) {
+      else if (v3d->ob_center && v3d->ob_center->id.tag & ID_TAG_DOIT) {
         t->options |= CTX_CAMERA;
       }
     }

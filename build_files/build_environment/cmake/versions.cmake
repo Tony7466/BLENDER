@@ -37,9 +37,9 @@ set(OPENAL_HASH_TYPE MD5)
 set(OPENAL_FILE openal-soft-${OPENAL_VERSION}.tar.bz2)
 set(OPENAL_HOMEPAGE https://openal-soft.org/)
 
-set(PNG_VERSION 1.6.37)
+set(PNG_VERSION 1.6.43)
 set(PNG_URI http://prdownloads.sourceforge.net/libpng/libpng-${PNG_VERSION}.tar.xz)
-set(PNG_HASH 505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca)
+set(PNG_HASH 6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c)
 set(PNG_HASH_TYPE SHA256)
 set(PNG_FILE libpng-${PNG_VERSION}.tar.xz)
 set(PNG_CPE "cpe:2.3:a:libpng:libpng:${PNG_VERSION}:*:*:*:*:*:*:*")
@@ -147,9 +147,9 @@ set(SDL_FILE SDL2-${SDL_VERSION}.tar.gz)
 set(SDL_CPE "cpe:2.3:a:libsdl:sdl:${SDL_VERSION}:*:*:*:*:*:*:*")
 set(SDL_HOMEPAGE https://www.libsdl.org)
 
-set(OPENCOLLADA_VERSION 717cb7c1041a1796aad3cf843dd8f5095d7a6a33)
+set(OPENCOLLADA_VERSION dfc341ab0b3b23ee307ab8660c0213e64da1eac6)
 set(OPENCOLLADA_URI https://github.com/aras-p/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
-set(OPENCOLLADA_HASH 64cb7f705751790f1a8c6d0dfe6682cd)
+set(OPENCOLLADA_HASH 2120c8c02aab840e81cb87e625a608f7)
 set(OPENCOLLADA_HASH_TYPE MD5)
 set(OPENCOLLADA_FILE opencollada-${OPENCOLLADA_VERSION}.tar.gz)
 
@@ -229,16 +229,27 @@ set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 # it wants to use in PCbuild/get_externals.bat for the following dependencies:
 # BZIP2, FFI, SQLITE and change the versions in this file as well. For compliance
 # reasons there can be no exceptions to this.
+# Additionally, keep the PYTHON_PIP_VERSION in sync with the pip version bundled
+# into Python.
 
-set(PYTHON_VERSION 3.11.7)
+set(PYTHON_VERSION 3.11.9)
 set(PYTHON_SHORT_VERSION 3.11)
 set(PYTHON_SHORT_VERSION_NO_DOTS 311)
 set(PYTHON_URI https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz)
-set(PYTHON_HASH d96c7e134c35a8c46236f8a0e566b69c)
+set(PYTHON_HASH 22ea467e7d915477152e99d5da856ddc)
 set(PYTHON_HASH_TYPE MD5)
 set(PYTHON_FILE Python-${PYTHON_VERSION}.tar.xz)
 set(PYTHON_CPE "cpe:2.3:a:python:python:${PYTHON_VERSION}:-:*:*:*:*:*:*")
 set(PYTHON_HOMEPAGE https://www.python.org/)
+
+# Python bundles pip wheel, and does not track CVEs from it. Add an explicit CPE
+# identifier for pip, so that cve_check can detect vulnerabilities in it.
+# The version needs to be kept in symc with the version bundled in Python.
+# Currently it is done manually by tracking _PIP_VERSION variable in the
+# `Lib/ensurepip/__init__.py`. For example,
+#   https://github.com/python/cpython/tree/v3.11.9/Lib/ensurepip/__init__.py
+set(PYTHON_PIP_VERSION 24.0)
+set(PYTHON_PIP_CPE "cpe:2.3:a:pypa:pip:${PYTHON_PIP_VERSION}:*:*:*:*:*:*:*")
 
 set(TBB_YEAR 2020)
 set(TBB_VERSION ${TBB_YEAR}_U3)
@@ -633,9 +644,9 @@ set(ZSTD_HASH_TYPE SHA256)
 set(ZSTD_FILE zstd-${ZSTD_VERSION}.tar.gz)
 set(ZSTD_CPE "cpe:2.3:a:facebook:zstandard:${ZSTD_VERSION}:*:*:*:*:*:*:*")
 
-set(SSE2NEON_VERSION cfaa59fc04fecb117c0a0f3fe9c82dece6f359ad)
+set(SSE2NEON_VERSION 227cc413fb2d50b2a10073087be96b59d5364aea)
 set(SSE2NEON_URI https://github.com/DLTcollab/sse2neon/archive/${SSE2NEON_VERSION}.tar.gz)
-set(SSE2NEON_HASH 5491c5038a301a6b0ba0531e516568bb50d165d206360f03d8d56558a2490669)
+set(SSE2NEON_HASH 3427a495743bb6fd1b5f9f806b80f57d67b1ac7ccf39a5f44aedd487fd7e6da1)
 set(SSE2NEON_HASH_TYPE SHA256)
 set(SSE2NEON_FILE sse2neon-${SSE2NEON_VERSION}.tar.gz)
 

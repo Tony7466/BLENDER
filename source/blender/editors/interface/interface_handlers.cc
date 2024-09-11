@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <variant>
 
 #include "MEM_guardedalloc.h"
 
@@ -54,6 +55,7 @@
 #include "ED_screen.hh"
 #include "ED_undo.hh"
 
+#include "UI_abstract_view.hh"
 #include "UI_interface.hh"
 #include "UI_interface_c.hh"
 #include "UI_string_search.hh"
@@ -63,7 +65,7 @@
 #include "interface_intern.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -180,7 +182,7 @@ static bool ui_mouse_motion_keynav_test(uiKeyNavLock *keynav, const wmEvent *eve
 
 static void with_but_active_as_semi_modal(bContext *C,
                                           ARegion *region,
-                                          uiBut *semi_modal_but,
+                                          uiBut *but,
                                           blender::FunctionRef<void()> fn);
 static int ui_handle_region_semi_modal_buttons(bContext *C, const wmEvent *event, ARegion *region);
 
@@ -877,9 +879,15 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
     after->popup_op = block->handle->popup_op;
   }
 
-  after->optype = but->optype;
-  after->opcontext = but->opcontext;
-  after->opptr = but->opptr;
+  if (!but->operator_never_call) {
+    after->optype = but->optype;
+    after->opcontext = but->opcontext;
+    after->opptr = but->opptr;
+
+    but->optype = nullptr;
+    but->opcontext = wmOperatorCallContext(0);
+    but->opptr = nullptr;
+  }
 
   after->rnapoin = but->rnapoin;
   after->rnaprop = but->rnaprop;
@@ -918,10 +926,6 @@ static void ui_apply_but_func(bContext *C, uiBut *but)
   }
 
   after->drawstr = ui_but_drawstr_without_sep_char(but);
-
-  but->optype = nullptr;
-  but->opcontext = wmOperatorCallContext(0);
-  but->opptr = nullptr;
 }
 
 /* typically call ui_apply_but_undo(), ui_apply_but_autokey() */
@@ -1041,7 +1045,7 @@ static void ui_apply_but_funcs_after(bContext *C)
     if (after.opptr) {
       /* free in advance to avoid leak on exit */
       opptr = *after.opptr;
-      MEM_freeN(after.opptr);
+      MEM_delete(after.opptr);
     }
 
     if (after.optype) {
@@ -1947,46 +1951,46 @@ static void ui_selectcontext_apply(bContext *C,
     const int index = but->rnaindex;
     const bool use_delta = (selctx_data->is_copy == false);
 
-    union {
-      bool b;
-      int i;
-      float f;
-      char *str;
-      PointerRNA p;
-    } delta, min, max;
+    std::variant<bool, int, float, std::string, PointerRNA> delta, min, max;
 
     const bool is_array = RNA_property_array_check(prop);
     const int rna_type = RNA_property_type(prop);
 
     if (rna_type == PROP_FLOAT) {
-      delta.f = use_delta ? (value - value_orig) : value;
-      RNA_property_float_range(&but->rnapoin, prop, &min.f, &max.f);
+      delta.emplace<float>(use_delta ? (value - value_orig) : value);
+      float min_v, max_v;
+      RNA_property_float_range(&but->rnapoin, prop, &min_v, &max_v);
+      min.emplace<float>(min_v);
+      max.emplace<float>(max_v);
     }
     else if (rna_type == PROP_INT) {
-      delta.i = use_delta ? (int(value) - int(value_orig)) : int(value);
-      RNA_property_int_range(&but->rnapoin, prop, &min.i, &max.i);
+      delta.emplace<int>(int(use_delta ? (value - value_orig) : value));
+      int min_v, max_v;
+      RNA_property_int_range(&but->rnapoin, prop, &min_v, &max_v);
+      min.emplace<int>(min_v);
+      max.emplace<int>(max_v);
     }
     else if (rna_type == PROP_ENUM) {
       /* Not a delta in fact. */
-      delta.i = RNA_property_enum_get(&but->rnapoin, prop);
+      delta.emplace<int>(RNA_property_enum_get(&but->rnapoin, prop));
     }
     else if (rna_type == PROP_BOOLEAN) {
       if (is_array) {
         /* Not a delta in fact. */
-        delta.b = RNA_property_boolean_get_index(&but->rnapoin, prop, index);
+        delta.emplace<bool>(RNA_property_boolean_get_index(&but->rnapoin, prop, index));
       }
       else {
         /* Not a delta in fact. */
-        delta.b = RNA_property_boolean_get(&but->rnapoin, prop);
+        delta.emplace<bool>(RNA_property_boolean_get(&but->rnapoin, prop));
       }
     }
     else if (rna_type == PROP_POINTER) {
       /* Not a delta in fact. */
-      delta.p = RNA_property_pointer_get(&but->rnapoin, prop);
+      delta.emplace<PointerRNA>(RNA_property_pointer_get(&but->rnapoin, prop));
     }
     else if (rna_type == PROP_STRING) {
       /* Not a delta in fact. */
-      delta.str = RNA_property_string_get_alloc(&but->rnapoin, prop, nullptr, 0, nullptr);
+      delta.emplace<std::string>(RNA_property_string_get(&but->rnapoin, prop));
     }
 
 #  ifdef USE_ALLSELECT_LAYER_HACK
@@ -2025,8 +2029,8 @@ static void ui_selectcontext_apply(bContext *C,
       PointerRNA lptr = other->ptr;
 
       if (rna_type == PROP_FLOAT) {
-        float other_value = use_delta ? (other->val_f + delta.f) : delta.f;
-        CLAMP(other_value, min.f, max.f);
+        float other_value = std::get<float>(delta) + (use_delta ? other->val_f : 0.0f);
+        CLAMP(other_value, std::get<float>(min), std::get<float>(max));
         if (is_array) {
           RNA_property_float_set_index(&lptr, lprop, index, other_value);
         }
@@ -2035,8 +2039,8 @@ static void ui_selectcontext_apply(bContext *C,
         }
       }
       else if (rna_type == PROP_INT) {
-        int other_value = use_delta ? (other->val_i + delta.i) : delta.i;
-        CLAMP(other_value, min.i, max.i);
+        int other_value = std::get<int>(delta) + (use_delta ? other->val_i : 0);
+        CLAMP(other_value, std::get<int>(min), std::get<int>(max));
         if (is_array) {
           RNA_property_int_set_index(&lptr, lprop, index, other_value);
         }
@@ -2045,32 +2049,29 @@ static void ui_selectcontext_apply(bContext *C,
         }
       }
       else if (rna_type == PROP_BOOLEAN) {
-        const bool other_value = delta.b;
+        const bool other_value = std::get<bool>(delta);
         if (is_array) {
           RNA_property_boolean_set_index(&lptr, lprop, index, other_value);
         }
         else {
-          RNA_property_boolean_set(&lptr, lprop, delta.b);
+          RNA_property_boolean_set(&lptr, lprop, other_value);
         }
       }
       else if (rna_type == PROP_ENUM) {
-        const int other_value = delta.i;
+        const int other_value = std::get<int>(delta);
         BLI_assert(!is_array);
         RNA_property_enum_set(&lptr, lprop, other_value);
       }
       else if (rna_type == PROP_POINTER) {
-        const PointerRNA other_value = delta.p;
+        const PointerRNA &other_value = std::get<PointerRNA>(delta);
         RNA_property_pointer_set(&lptr, lprop, other_value, nullptr);
       }
       else if (rna_type == PROP_STRING) {
-        const char *other_value = delta.str;
-        RNA_property_string_set(&lptr, lprop, other_value);
+        const std::string &other_value = std::get<std::string>(delta);
+        RNA_property_string_set(&lptr, lprop, other_value.c_str());
       }
 
       RNA_property_update(C, &lptr, prop);
-    }
-    if (rna_type == PROP_STRING) {
-      MEM_freeN(delta.str);
     }
   }
 }
@@ -3441,6 +3442,10 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   MEM_SAFE_FREE(text_edit.edit_string);
 
+  /* Clear the status bar. */
+  WorkspaceStatus status(C);
+  status.item(" ", ICON_NONE);
+
 #ifdef USE_DRAG_MULTINUM
   /* this can happen from multi-drag */
   if (data->applied_interactive) {
@@ -3560,6 +3565,8 @@ static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
   uiTextEdit &text_edit = data->text_edit;
   wmWindow *win = data->window;
+
+  ED_workspace_status_text(C, nullptr);
 
   if (but) {
     if (UI_but_is_utf8(but)) {
@@ -4336,6 +4343,12 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   PanelType *popover_panel_type = nullptr;
   void *arg = nullptr;
 
+  if (but->type != UI_BTYPE_PULLDOWN) {
+    /* Clear the status bar. */
+    WorkspaceStatus status(C);
+    status.item(" ", ICON_NONE);
+  }
+
   switch (but->type) {
     case UI_BTYPE_BLOCK:
     case UI_BTYPE_PULLDOWN:
@@ -4435,6 +4448,8 @@ static void ui_block_open_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 
     but->block->auto_open_last = BLI_time_now_seconds();
   }
+
+  ED_workspace_status_text(C, nullptr);
 
   if (data->menu) {
     ui_popup_block_free(C, data->menu);
@@ -4914,17 +4929,26 @@ static int ui_do_but_TOG(bContext *C, uiBut *but, uiHandleButtonData *data, cons
   return WM_UI_HANDLER_CONTINUE;
 }
 
-static void force_activate_view_item_but(bContext *C, ARegion *region, uiButViewItem *but)
+/**
+ * \param close_popup: In most cases activating the view item should close the popup it is in
+ *                     (unless #AbstractView::keep_open() was called when building the view), if
+ *                     any. But this should only be done when activating the view item directly,
+ *                     things like clicking nested buttons or calling the context menu should keep
+ *                     the popup open for further interaction.
+ */
+static void force_activate_view_item_but(bContext *C,
+                                         ARegion *region,
+                                         uiButViewItem *but,
+                                         const bool close_popup = true)
 {
   if (but->active) {
-    button_activate_state(C, but, BUTTON_STATE_EXIT);
+    ui_apply_but(C, but->block, but, but->active, true);
   }
   else {
     UI_but_execute(C, region, but);
   }
 
-  /* By default, activating a view item closes the popup. */
-  if (!UI_view_item_popup_keep_open(*but->view_item)) {
+  if (close_popup && !UI_view_item_popup_keep_open(*but->view_item)) {
     UI_popup_menu_close_from_but(but);
   }
 }
@@ -4955,6 +4979,9 @@ static int ui_do_but_VIEW_ITEM(bContext *C,
             force_activate_view_item_but(C, data->region, view_item_but);
           }
 
+          /* Always continue for drag and drop handling. Also for cases where keymap items are
+           * registered to add custom activate or drag operators (the pose library does this for
+           * example). */
           return WM_UI_HANDLER_CONTINUE;
         case KM_DBL_CLICK:
           data->cancel = true;
@@ -8129,12 +8156,11 @@ static int ui_do_button(bContext *C, uiBlock *block, uiBut *but, const wmEvent *
        * right-clicking to spawn the context menu should also activate the item. This makes it
        * clear which item will be operated on. Apply the button immediately, so context menu
        * polls get the right active item. */
-      uiBut *clicked_view_item_but = but->type == UI_BTYPE_VIEW_ITEM ?
-                                         but :
-                                         ui_view_item_find_mouse_over(data->region, event->xy);
+      uiButViewItem *clicked_view_item_but = static_cast<uiButViewItem *>(
+          but->type == UI_BTYPE_VIEW_ITEM ? but :
+                                            ui_view_item_find_mouse_over(data->region, event->xy));
       if (clicked_view_item_but) {
-        UI_but_execute(C, data->region, clicked_view_item_but);
-        ui_apply_but_funcs_after(C);
+        clicked_view_item_but->view_item->activate(*C);
       }
 
       /* RMB has two options now */
@@ -8546,11 +8572,18 @@ static void button_activate_state(bContext *C, uiBut *but, uiHandleButtonState s
       else {
         WM_cursor_grab_enable(CTX_wm_window(C), WM_CURSOR_WRAP_XY, nullptr, true);
       }
+      /* Clear the status bar. */
+      WorkspaceStatus status(C);
+      status.item(" ", ICON_NONE);
     }
     ui_numedit_begin(but, data);
   }
   else if (data->state == BUTTON_STATE_NUM_EDITING) {
     ui_numedit_end(but, data);
+
+    if (state != BUTTON_STATE_TEXT_EDITING) {
+      ED_workspace_status_text(C, nullptr);
+    }
 
     if (but->flag & UI_BUT_DRIVEN) {
       /* Only warn when editing stepping/dragging the value.
@@ -9028,7 +9061,7 @@ uiBut *UI_region_active_but_prop_get(const ARegion *region,
     *r_index = activebut->rnaindex;
   }
   else {
-    memset(r_ptr, 0, sizeof(*r_ptr));
+    *r_ptr = {};
     *r_prop = nullptr;
     *r_index = 0;
   }
@@ -10058,7 +10091,9 @@ static int ui_handle_view_item_event(bContext *C,
                 ui_view_item_find_mouse_over(region, event->xy));
         /* Will free active button if there already is one. */
         if (view_but) {
-          force_activate_view_item_but(C, region, view_but);
+          /* Close the popup when clicking on the view item directly, not any overlapped button. */
+          const bool close_popup = view_but == active_but;
+          force_activate_view_item_but(C, region, view_but, close_popup);
         }
       }
       break;
@@ -10534,7 +10569,7 @@ static int ui_handle_menu_letter_press_search(uiPopupBlockHandle *menu, const wm
     wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
     after->optype = ot;
     after->opcontext = WM_OP_INVOKE_DEFAULT;
-    after->opptr = MEM_cnew<PointerRNA>(__func__);
+    after->opptr = MEM_new<PointerRNA>(__func__);
     WM_operator_properties_create_ptr(after->opptr, ot);
     RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
     if (event->type != EVT_SPACEKEY) {
@@ -10580,13 +10615,37 @@ static int ui_handle_menu_event(bContext *C,
   but = ui_region_find_active_but(region);
 
 #ifdef USE_DRAG_POPUP
+
+#  if defined(__APPLE__)
+  constexpr int PopupTitleHoverCursor = WM_CURSOR_HAND;
+  constexpr int PopupTitleDragCursor = WM_CURSOR_HAND_CLOSED;
+#  else
+  constexpr int PopupTitleHoverCursor = WM_CURSOR_MOVE;
+  constexpr int PopupTitleDragCursor = WM_CURSOR_MOVE;
+#  endif
+
+  wmWindow *win = CTX_wm_window(C);
+
+  if (!menu->is_grab && (!but || but->type == UI_BTYPE_IMAGE)) {
+    if (event->type == LEFTMOUSE && event->val == KM_PRESS && inside_title) {
+      /* Initial press before starting to drag. */
+      WM_cursor_set(win, PopupTitleDragCursor);
+    }
+    else if (event->type == MOUSEMOVE && !win->modalcursor) {
+      /* Hover over draggable area. */
+      WM_cursor_set(win, inside_title ? PopupTitleHoverCursor : WM_CURSOR_DEFAULT);
+    }
+  }
+
   if (menu->is_grab) {
     if (event->type == LEFTMOUSE) {
       menu->is_grab = false;
+      WM_cursor_set(win, WM_CURSOR_DEFAULT);
       retval = WM_UI_HANDLER_BREAK;
     }
     else {
       if (event->type == MOUSEMOVE) {
+        WM_cursor_set(win, PopupTitleDragCursor);
         int mdiff[2];
 
         sub_v2_v2v2_int(mdiff, event->xy, menu->grab_xy_prev);
@@ -11102,6 +11161,7 @@ static int ui_handle_menu_event(bContext *C,
         if ((but_default != nullptr) && (but_default->active == nullptr)) {
           if (but_default->type == UI_BTYPE_BUT) {
             UI_but_execute(C, region, but_default);
+            retval = WM_UI_HANDLER_BREAK;
           }
           else {
             ui_handle_button_activate_by_type(C, region, but_default);
@@ -11121,7 +11181,9 @@ static int ui_handle_menu_event(bContext *C,
       else if ((event->type == LEFTMOUSE) && (event->val == KM_PRESS) &&
                (inside && is_floating && inside_title))
       {
-        if (!but || !ui_but_contains_point_px(but, region, event->xy)) {
+        if (!but || but->type == UI_BTYPE_IMAGE ||
+            !ui_but_contains_point_px(but, region, event->xy))
+        {
           if (but) {
             UI_but_tooltip_timer_remove(C, but);
           }

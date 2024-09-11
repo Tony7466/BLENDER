@@ -46,7 +46,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
@@ -149,7 +149,8 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
    * source indices are not ordered. */
   bke::CurvesGeometry dst_curves(src_curves);
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
-  bke::gather_attributes(src_attributes, bke::AttrDomain::Point, {}, {}, indices, dst_attributes);
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Point, bke::AttrDomain::Point, {}, indices, dst_attributes);
 
   return dst_curves;
 }

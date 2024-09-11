@@ -23,14 +23,14 @@
 
 #include "BKE_context.hh"
 #include "BKE_fcurve.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_anim_api.hh"
 

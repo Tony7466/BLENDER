@@ -479,6 +479,7 @@ struct wmNotifier {
 
 /* Influences which menus node assets are included in. */
 #define ND_NODE_ASSET_DATA (1 << 16)
+#define ND_NODE_GIZMO (2 << 16)
 
 /* NC_SPACE. */
 #define ND_SPACE_CONSOLE (1 << 16)     /* General redraw. */
@@ -621,9 +622,9 @@ struct wmGesture {
   /**
    * customdata
    * - for border is a #rcti.
-   * - for circle is #rcti, (xmin, ymin) is center, xmax radius.
+   * - for circle is #rcti, (`xmin`, `ymin`) is center, `xmax` radius.
    * - for lasso is short array.
-   * - for straight line is a #rcti: (xmin, ymin) is start, (xmax, ymax) is end.
+   * - for straight line is a #rcti: (`xmin`, `ymin`) is start, (`xmax`, `ymax`) is end.
    */
   void *customdata;
 

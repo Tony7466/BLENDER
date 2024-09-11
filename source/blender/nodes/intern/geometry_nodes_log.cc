@@ -7,12 +7,14 @@
 
 #include "BKE_compute_contexts.hh"
 #include "BKE_curves.hh"
+#include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_type_conversions.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_openvdb.hh"
 
+#include "DNA_grease_pencil_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_space_types.h"
 
@@ -62,6 +64,8 @@ FieldInfoLog::FieldInfoLog(const GField &field) : type(field.cpp_type())
 
 GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
 {
+  this->name = geometry_set.name;
+
   static std::array all_component_types = {bke::GeometryComponent::Type::Curve,
                                            bke::GeometryComponent::Type::Instance,
                                            bke::GeometryComponent::Type::Mesh,
@@ -77,11 +81,11 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
   geometry_set.attribute_foreach(
       all_component_types,
       true,
-      [&](const bke::AttributeIDRef &attribute_id,
+      [&](const StringRef attribute_id,
           const bke::AttributeMetaData &meta_data,
           const bke::GeometryComponent & /*component*/) {
-        if (!attribute_id.is_anonymous() && names.add(attribute_id.name())) {
-          this->attributes.append({attribute_id.name(), meta_data.domain, meta_data.data_type});
+        if (!bke::attribute_name_is_anonymous(attribute_id) && names.add(attribute_id)) {
+          this->attributes.append({attribute_id, meta_data.domain, meta_data.data_type});
         }
       });
 
@@ -119,11 +123,17 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
       case bke::GeometryComponent::Type::Edit: {
         const auto &edit_component = *static_cast<const bke::GeometryComponentEditData *>(
             component);
+        if (!this->edit_data_info) {
+          this->edit_data_info.emplace(EditDataInfo());
+        }
+        EditDataInfo &info = *this->edit_data_info;
         if (const bke::CurvesEditHints *curve_edit_hints = edit_component.curves_edit_hints_.get())
         {
-          EditDataInfo &info = this->edit_data_info.emplace();
           info.has_deform_matrices = curve_edit_hints->deform_mats.has_value();
           info.has_deformed_positions = curve_edit_hints->positions().has_value();
+        }
+        if (const bke::GizmoEditHints *gizmo_edit_hints = edit_component.gizmo_edit_hints_.get()) {
+          info.gizmo_transforms_num = gizmo_edit_hints->gizmo_transforms.size();
         }
         break;
       }
@@ -136,6 +146,12 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         break;
       }
       case bke::GeometryComponent::Type::GreasePencil: {
+        const auto &grease_pencil_component = *static_cast<const bke::GreasePencilComponent *>(
+            component);
+        if (const GreasePencil *grease_pencil = grease_pencil_component.get()) {
+          GreasePencilInfo &info = this->grease_pencil_info.emplace(GreasePencilInfo());
+          info.layers_num = grease_pencil->layers().size();
+        }
         break;
       }
     }
@@ -250,15 +266,41 @@ void GeoTreeLogger::log_viewer_node(const bNode &viewer_node, bke::GeometrySet g
   this->viewer_node_logs.append(*this->allocator, {viewer_node.identifier, std::move(log)});
 }
 
-void GeoTreeLog::ensure_node_warnings()
+static bool warning_is_propagated(const NodeWarningPropagation propagation,
+                                  const NodeWarningType warning_type)
+{
+  switch (propagation) {
+    case NODE_WARNING_PROPAGATION_ALL:
+      return true;
+    case NODE_WARNING_PROPAGATION_NONE:
+      return false;
+    case NODE_WARNING_PROPAGATION_ONLY_ERRORS:
+      return warning_type == NodeWarningType::Error;
+    case NODE_WARNING_PROPAGATION_ONLY_ERRORS_AND_WARNINGS:
+      return ELEM(warning_type, NodeWarningType::Error, NodeWarningType::Warning);
+  }
+  BLI_assert_unreachable();
+  return true;
+}
+
+void GeoTreeLog::ensure_node_warnings(const bNodeTree *tree)
 {
   if (reduced_node_warnings_) {
     return;
   }
+
   for (GeoTreeLogger *tree_logger : tree_loggers_) {
-    for (const GeoTreeLogger::WarningWithNode &warnings : tree_logger->node_warnings) {
-      this->nodes.lookup_or_add_default(warnings.node_id).warnings.append(warnings.warning);
-      this->all_warnings.append(warnings.warning);
+    for (const GeoTreeLogger::WarningWithNode &warning : tree_logger->node_warnings) {
+      NodeWarningPropagation propagation = NODE_WARNING_PROPAGATION_ALL;
+      if (tree) {
+        if (const bNode *node = tree->node_by_id(warning.node_id)) {
+          propagation = NodeWarningPropagation(node->warning_propagation);
+        }
+      }
+      this->nodes.lookup_or_add_default(warning.node_id).warnings.add(warning.warning);
+      if (warning_is_propagated(propagation, warning.warning.type)) {
+        this->all_warnings.add(warning.warning);
+      }
     }
   }
   for (const ComputeContextHash &child_hash : children_hashes_) {
@@ -266,12 +308,31 @@ void GeoTreeLog::ensure_node_warnings()
     if (child_log.tree_loggers_.is_empty()) {
       continue;
     }
-    child_log.ensure_node_warnings();
+    NodeWarningPropagation propagation = NODE_WARNING_PROPAGATION_ALL;
+    const bNodeTree *child_tree = nullptr;
     const std::optional<int32_t> &parent_node_id = child_log.tree_loggers_[0]->parent_node_id;
-    if (parent_node_id.has_value()) {
-      this->nodes.lookup_or_add_default(*parent_node_id).warnings.extend(child_log.all_warnings);
+    if (tree && parent_node_id) {
+      if (const bNode *node = tree->node_by_id(*parent_node_id)) {
+        propagation = NodeWarningPropagation(node->warning_propagation);
+        if (node->is_group() && node->id) {
+          child_tree = reinterpret_cast<const bNodeTree *>(node->id);
+        }
+        else if (bke::all_zone_output_node_types().contains(node->type)) {
+          child_tree = tree;
+        }
+      }
     }
-    this->all_warnings.extend(child_log.all_warnings);
+    child_log.ensure_node_warnings(child_tree);
+    if (parent_node_id.has_value()) {
+      this->nodes.lookup_or_add_default(*parent_node_id)
+          .warnings.add_multiple(child_log.all_warnings);
+    }
+    for (const NodeWarning &warning : child_log.all_warnings) {
+      if (warning_is_propagated(propagation, warning.type)) {
+        this->all_warnings.add(warning);
+        continue;
+      }
+    }
   }
   reduced_node_warnings_ = true;
 }
@@ -409,6 +470,20 @@ void GeoTreeLog::ensure_debug_messages()
     }
   }
   reduced_debug_messages_ = true;
+}
+
+void GeoTreeLog::ensure_evaluated_gizmo_nodes()
+{
+  if (reduced_evaluated_gizmo_nodes_) {
+    return;
+  }
+  for (const GeoTreeLogger *tree_logger : tree_loggers_) {
+    for (const GeoTreeLogger::EvaluatedGizmoNode &evaluated_gizmo :
+         tree_logger->evaluated_gizmo_nodes)
+    {
+      this->evaluated_gizmo_nodes.add(evaluated_gizmo.node_id);
+    }
+  }
 }
 
 ValueLog *GeoTreeLog::find_socket_value_log(const bNodeSocket &query_socket)

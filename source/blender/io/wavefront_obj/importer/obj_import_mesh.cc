@@ -209,8 +209,13 @@ void MeshFromGeometry::create_faces(Mesh *mesh, bool use_vertex_groups)
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   bke::SpanAttributeWriter<int> material_indices =
       attributes.lookup_or_add_for_write_only_span<int>("material_index", bke::AttrDomain::Face);
-  bke::SpanAttributeWriter<bool> sharp_faces = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_face", bke::AttrDomain::Face);
+
+  const bool do_sharp = !has_normals();
+  bke::SpanAttributeWriter<bool> sharp_faces;
+  if (do_sharp) {
+    sharp_faces = attributes.lookup_or_add_for_write_span<bool>("sharp_face",
+                                                                bke::AttrDomain::Face);
+  }
 
   int corner_index = 0;
 
@@ -223,7 +228,9 @@ void MeshFromGeometry::create_faces(Mesh *mesh, bool use_vertex_groups)
     }
 
     face_offsets[face_idx] = corner_index;
-    sharp_faces.span[face_idx] = !curr_face.shaded_smooth;
+    if (do_sharp) {
+      sharp_faces.span[face_idx] = !curr_face.shaded_smooth;
+    }
     material_indices.span[face_idx] = curr_face.material_index;
     /* Importing obj files without any materials would result in negative indices, which is not
      * supported. */
@@ -252,7 +259,9 @@ void MeshFromGeometry::create_faces(Mesh *mesh, bool use_vertex_groups)
   }
 
   material_indices.finish();
-  sharp_faces.finish();
+  if (do_sharp) {
+    sharp_faces.finish();
+  }
 }
 
 void MeshFromGeometry::create_vertex_groups(Object *obj)
@@ -376,14 +385,14 @@ void MeshFromGeometry::create_materials(Main *bmain,
   }
 }
 
+bool MeshFromGeometry::has_normals() const
+{
+  return !global_vertices_.vert_normals.is_empty() && mesh_geometry_.total_corner_ != 0;
+}
+
 void MeshFromGeometry::create_normals(Mesh *mesh)
 {
-  /* No normal data: nothing to do. */
-  if (global_vertices_.vert_normals.is_empty()) {
-    return;
-  }
-  /* Custom normals can only be stored on face corners. */
-  if (mesh_geometry_.total_corner_ == 0) {
+  if (!has_normals()) {
     return;
   }
 
@@ -411,25 +420,28 @@ void MeshFromGeometry::create_colors(Mesh *mesh)
     return;
   }
 
-  /* Find which vertex color block is for this mesh (if any). */
-  for (const auto &block : global_vertices_.vertex_colors) {
-    if (mesh_geometry_.vertex_index_min_ >= block.start_vertex_index &&
-        mesh_geometry_.vertex_index_max_ < block.start_vertex_index + block.colors.size())
-    {
-      /* This block is suitable, use colors from it. */
-      AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
-      CustomDataLayer *color_layer = BKE_attribute_new(
-          owner, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
-      BKE_id_attributes_active_color_set(&mesh->id, color_layer->name);
-      BKE_id_attributes_default_color_set(&mesh->id, color_layer->name);
-      float4 *colors = (float4 *)color_layer->data;
-      int offset = mesh_geometry_.vertex_index_min_ - block.start_vertex_index;
-      for (int i = 0, n = mesh_geometry_.get_vertex_count(); i != n; ++i) {
-        float3 c = block.colors[offset + i];
-        colors[i] = float4(c.x, c.y, c.z, 1.0f);
-      }
+  /* First pass to determine if we need to create a color attribute. */
+  for (int vi : mesh_geometry_.vertices_) {
+    if (!global_vertices_.has_vertex_color(vi)) {
       return;
     }
+  }
+
+  AttributeOwner owner = AttributeOwner::from_id(&mesh->id);
+  CustomDataLayer *color_layer = BKE_attribute_new(
+      owner, "Color", CD_PROP_COLOR, bke::AttrDomain::Point, nullptr);
+  BKE_id_attributes_active_color_set(&mesh->id, color_layer->name);
+  BKE_id_attributes_default_color_set(&mesh->id, color_layer->name);
+  float4 *colors = (float4 *)color_layer->data;
+
+  /* Second pass to fill out the data. */
+  for (auto item : mesh_geometry_.global_to_local_vertices_.items()) {
+    const int vi = item.key;
+    const int local_vi = item.value;
+    BLI_assert(vi >= 0 && vi < global_vertices_.vertex_colors.size());
+    BLI_assert(local_vi >= 0 && local_vi < mesh->verts_num);
+    const float3 &c = global_vertices_.vertex_colors[vi];
+    colors[local_vi] = float4(c.x, c.y, c.z, 1.0);
   }
 }
 

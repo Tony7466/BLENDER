@@ -21,9 +21,7 @@
 #include "UI_resources.hh"
 
 struct bContext;
-struct PointerRNA;
 struct uiBlock;
-struct uiButViewItem;
 struct uiLayout;
 struct View2D;
 
@@ -210,12 +208,7 @@ class PreviewGridItem : public AbstractGridViewItem {
 
   void build_grid_tile(uiLayout &layout) const override;
 
-  /**
-   * \note Takes ownership of the operator properties defined in \a op_props.
-   */
-  void build_grid_tile_button(uiLayout &layout,
-                              const wmOperatorType *ot = nullptr,
-                              const PointerRNA *op_props = nullptr) const;
+  void build_grid_tile_button(uiLayout &layout) const;
 
   /**
    * Set a custom callback to execute when activating this view item. This way users don't have to

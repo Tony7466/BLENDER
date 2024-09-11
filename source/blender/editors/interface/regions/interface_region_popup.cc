@@ -145,8 +145,8 @@ static void ui_popup_block_position(wmWindow *window,
   const int center_x = (block->direction & UI_DIR_CENTER_X) ? size_x / 2 : 0;
   const int center_y = (block->direction & UI_DIR_CENTER_Y) ? size_y / 2 : 0;
 
-  const int win_x = WM_window_pixels_x(window);
-  const int win_y = WM_window_pixels_y(window);
+  const int win_x = WM_window_native_pixel_x(window);
+  const int win_y = WM_window_native_pixel_y(window);
 
   /* Take into account maximum size so we don't have to flip on refresh. */
   const float max_size_x = max_ff(size_x, handle->max_size_x);
@@ -479,8 +479,8 @@ static void ui_popup_block_clip(wmWindow *window, uiBlock *block)
     return;
   }
 
-  const int winx = WM_window_pixels_x(window);
-  const int winy = WM_window_pixels_y(window);
+  const int winx = WM_window_native_pixel_x(window);
+  const int winy = WM_window_native_pixel_y(window);
 
   /* shift to left if outside of view */
   if (block->rect.xmax > winx - margin) {
@@ -724,8 +724,8 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   if (block->flag & UI_BLOCK_PIE_MENU) {
     const int win_width = UI_SCREEN_MARGIN;
 
-    const int winx = WM_window_pixels_x(window);
-    const int winy = WM_window_pixels_y(window);
+    const int winx = WM_window_native_pixel_x(window);
+    const int winy = WM_window_native_pixel_y(window);
 
     copy_v2_v2(block->pie_data.pie_center_init, block->pie_data.pie_center_spawned);
 
@@ -814,12 +814,15 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     UI_block_translate(block, -region->winrct.xmin, -region->winrct.ymin);
     /* Popups can change size, fix scroll offset if a panel was closed. */
     float ymin = FLT_MAX;
+    float ymax = -FLT_MAX;
     LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
       ymin = min_ff(ymin, bt->rect.ymin);
+      ymax = max_ff(ymax, bt->rect.ymax);
     }
-
-    handle->scrolloffset = std::clamp<float>(
-        handle->scrolloffset, 0.0f, std::max<float>(block->rect.ymin - ymin, 0.0f));
+    const int scroll_pad = ui_block_is_menu(block) ? UI_MENU_SCROLL_PAD : UI_UNIT_Y * 0.5f;
+    const float scroll_min = std::min(block->rect.ymax - ymax - scroll_pad, 0.0f);
+    const float scroll_max = std::max(block->rect.ymin - ymin + scroll_pad, 0.0f);
+    handle->scrolloffset = std::clamp(handle->scrolloffset, scroll_min, scroll_max);
     /* apply scroll offset */
     if (handle->scrolloffset != 0.0f) {
       LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {

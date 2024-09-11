@@ -19,6 +19,7 @@
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -36,6 +37,7 @@
 #include "ED_time_scrub_ui.hh"
 
 #include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "SEQ_iterator.hh"
 #include "SEQ_sequencer.hh"
@@ -713,10 +715,91 @@ static void ANIM_OT_scene_range_frame(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Slots
+/** \name Conversion
  * \{ */
 
-static bool slot_unassign_object_poll(bContext *C)
+static bool slot_new_for_object_poll(bContext *C)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  if (!object) {
+    return false;
+  }
+  animrig::Action *action = animrig::get_action(object->id);
+  if (!action) {
+    CTX_wm_operator_poll_msg_set(
+        C, "Creating a new Action Slot is only possible when an Action is already assigned");
+    return false;
+  }
+  return action->is_action_layered();
+}
+
+static int slot_new_for_object_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  animrig::Action *action = animrig::get_action(object->id);
+  BLI_assert_msg(action, "The poll function should have ensured the Action is not NULL");
+
+  animrig::Slot &slot = action->slot_add_for_id(object->id);
+  { /* Assign the newly created slot. */
+    const bool ok = action->assign_id(&slot, object->id);
+    BLI_assert_msg(ok, "Assigning a slot that was made for this ID should always work");
+    UNUSED_VARS_NDEBUG(ok);
+  }
+
+  DEG_relations_tag_update(CTX_data_main(C));
+  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_slot_new_for_object(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "New Slot";
+  ot->idname = "ANIM_OT_slot_new_for_object";
+  ot->description = "Create a new Slot for this object, on the Action already assigned to it";
+
+  /* api callbacks */
+  ot->exec = slot_new_for_object_exec;
+  ot->poll = slot_new_for_object_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static int convert_action_exec(bContext *C, wmOperator * /*op*/)
+{
+  using namespace blender;
+
+  Object *object = CTX_data_active_object(C);
+  AnimData *adt = BKE_animdata_from_id(&object->id);
+  BLI_assert(adt != nullptr);
+  BLI_assert(adt->action != nullptr);
+
+  animrig::Action &legacy_action = adt->action->wrap();
+  Main *bmain = CTX_data_main(C);
+
+  animrig::Action *layered_action = animrig::convert_to_layered_action(*bmain, legacy_action);
+  /* We did already check if the action can be converted. */
+  BLI_assert(layered_action != nullptr);
+
+  animrig::unassign_action(object->id);
+  BLI_assert(layered_action->slot_array_num == 1);
+  animrig::Slot *slot = layered_action->slot(0);
+  layered_action->slot_name_set(*bmain, *slot, object->id.name);
+  layered_action->assign_id(slot, object->id);
+
+  ANIM_id_update(bmain, &object->id);
+  DEG_relations_tag_update(bmain);
+  WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static bool convert_action_poll(bContext *C)
 {
   Object *object = CTX_data_active_object(C);
   if (!object) {
@@ -724,35 +807,29 @@ static bool slot_unassign_object_poll(bContext *C)
   }
 
   AnimData *adt = BKE_animdata_from_id(&object->id);
-  if (!adt) {
+  if (!adt || !adt->action) {
     return false;
   }
 
-  return adt->slot_handle != blender::animrig::Slot::unassigned;
+  /* This will also convert empty actions to layered by just adding an empty slot. */
+  if (!adt->action->wrap().is_action_legacy()) {
+    CTX_wm_operator_poll_msg_set(C, "Action is already layered");
+    return false;
+  }
+
+  return true;
 }
 
-static int slot_unassign_object_exec(bContext *C, wmOperator * /*op*/)
-{
-  using namespace blender;
-
-  Object *object = CTX_data_active_object(C);
-  animrig::unassign_slot(object->id);
-
-  WM_event_add_notifier(C, NC_ANIMATION | ND_ANIMCHAN, nullptr);
-  return OPERATOR_FINISHED;
-}
-
-static void ANIM_OT_slot_unassign_object(wmOperatorType *ot)
+static void ANIM_OT_convert_legacy_action(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Unassign Slot";
-  ot->idname = "ANIM_OT_slot_unassign_object";
-  ot->description =
-      "Clear the assigned action slot, effectively making this data-block non-animated";
+  ot->name = "Convert Legacy Action";
+  ot->idname = "ANIM_OT_convert_legacy_action";
+  ot->description = "Convert a legacy Action to a layered Action on the active object";
 
   /* api callbacks */
-  ot->exec = slot_unassign_object_exec;
-  ot->poll = slot_unassign_object_poll;
+  ot->exec = convert_action_exec;
+  ot->poll = convert_action_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -805,7 +882,8 @@ void ED_operatortypes_anim()
 
   WM_operatortype_append(ANIM_OT_keying_set_active_set);
 
-  WM_operatortype_append(ANIM_OT_slot_unassign_object);
+  WM_operatortype_append(ANIM_OT_slot_new_for_object);
+  WM_operatortype_append(ANIM_OT_convert_legacy_action);
 }
 
 void ED_keymap_anim(wmKeyConfig *keyconf)
