@@ -1094,7 +1094,9 @@ static int node_get_colorid(TreeDrawContext &tree_draw_ctx, const bNode &node)
       if (node.type == GEO_NODE_VIEWER) {
         return &node == tree_draw_ctx.active_geometry_nodes_viewer ? TH_NODE_OUTPUT : TH_NODE;
       }
-      return (node.flag & NODE_DO_OUTPUT) ? TH_NODE_OUTPUT : TH_NODE;
+      const bool is_output_node = (node.flag & NODE_DO_OUTPUT) ||
+                                  (node.type == CMP_NODE_OUTPUT_FILE);
+      return is_output_node ? TH_NODE_OUTPUT : TH_NODE;
     }
     case NODE_CLASS_CONVERTER:
       return TH_NODE_CONVERTER;
@@ -3420,12 +3422,13 @@ static void node_draw_basis(const bContext &C,
   }
   /* Preview. */
   if (node_is_previewable(snode, ntree, node)) {
+    const bool is_active = node.flag & NODE_PREVIEW;
     iconofs -= iconbutw;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
     uiBut *but = uiDefIconBut(&block,
                               UI_BTYPE_BUT_TOGGLE,
                               0,
-                              ICON_MATERIAL,
+                              is_active ? ICON_HIDE_OFF : ICON_HIDE_ON,
                               iconofs,
                               rct.ymax - NODE_DY,
                               iconbutw,
