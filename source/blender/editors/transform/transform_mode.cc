@@ -735,15 +735,17 @@ void ElementRotation_ex(const TransInfo *t,
         /* Can be called for texture space translate for example, then opt out. */
         if (td->ext->quat) {
           mul_m3_series(fmat, td->smtx, mat, td->mtx);
+          
+          copy_qt_qt(quat, td->ext->iquat);
 
-          if (!is_zero_v3(td->ext->dquat)) {
+          if (!is_zero_v4(td->ext->dquat)) {
             /* Correct for delta quat. */
-            float tmp_mat[3][3];
-            quat_to_mat3(tmp_mat, td->ext->dquat);
-            mul_m3_m3m3(fmat, fmat, tmp_mat);
+            mul_qt_qtqt(quat, td->ext->dquat, quat);
           }
 
-          mat3_to_quat(quat, fmat); /* Actual transform. */
+          float tmp_q[4];
+          mat3_to_quat(tmp_q, fmat); /* Actual transform. */
+          mul_qt_qtqt(quat, tmp_q, quat);
 
           if (!is_zero_v4(td->ext->dquat)) {
             /* Correct back for delta quaternion. */
@@ -752,7 +754,7 @@ void ElementRotation_ex(const TransInfo *t,
             mul_qt_qtqt(quat, idquat, quat);
           }
 
-          mul_qt_qtqt(td->ext->quat, quat, td->ext->iquat);
+          copy_qt_qt(td->ext->quat, quat);
 
           /* This function works on end result. */
           protectedQuaternionBits(td->protectflag, td->ext->quat, td->ext->iquat);

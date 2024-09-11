@@ -253,8 +253,8 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
     td->ext->rotAngle = nullptr;
     td->ext->quat = ob->quat;
 
-    copy_qt_qt(td->ext->iquat, ob->quat);
-    copy_qt_qt(td->ext->dquat, ob->dquat);
+    normalize_qt_qt(td->ext->iquat, ob->quat);
+    normalize_qt_qt(td->ext->dquat, ob->dquat);
   }
   td->ext->rotOrder = ob->rotmode;
 
