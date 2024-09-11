@@ -206,7 +206,6 @@ static int mesh_bisect_modal(bContext *C, wmOperator *op, const wmEvent *event)
     BKE_workspace_status_clear(workspace);
   }
 
-
   if (ret & (OPERATOR_FINISHED | OPERATOR_CANCELLED)) {
     edbm_bisect_exit(&opdata_back);
 
