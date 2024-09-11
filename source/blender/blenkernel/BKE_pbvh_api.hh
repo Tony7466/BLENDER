@@ -38,7 +38,6 @@
 struct BMLog;
 struct BMesh;
 struct CCGKey;
-struct CustomData;
 struct Depsgraph;
 struct IsectRayPrecalc;
 struct Mesh;

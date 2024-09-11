@@ -548,6 +548,8 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PaintMode::GPencil;
         case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return PaintMode::WeightGPencil;
+        case OB_MODE_VERTEX_GPENCIL_LEGACY:
+          return PaintMode::VertexGPencil;
         case OB_MODE_VERTEX_PAINT:
           return PaintMode::Vertex;
         case OB_MODE_WEIGHT_PAINT:
@@ -583,6 +585,7 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
         return PaintMode::GPencil;
       case CTX_MODE_PAINT_TEXTURE:
         return PaintMode::Texture3D;
+      case CTX_MODE_VERTEX_GREASE_PENCIL:
       case CTX_MODE_VERTEX_GPENCIL_LEGACY:
         return PaintMode::VertexGPencil;
       case CTX_MODE_SCULPT_GPENCIL_LEGACY:
@@ -1940,6 +1943,8 @@ static void sculpt_update_object(Depsgraph *depsgraph,
                                  Object *ob_eval,
                                  bool is_paint_tool)
 {
+  using namespace blender;
+  using namespace blender::bke;
   Scene *scene = DEG_get_input_scene(depsgraph);
   Sculpt *sd = scene->toolsettings->sculpt;
   SculptSession &ss = *ob->sculpt;
@@ -2009,9 +2014,9 @@ static void sculpt_update_object(Depsgraph *depsgraph,
 
   ss.subdiv_ccg = mesh_eval->runtime->subdiv_ccg.get();
 
-  blender::bke::pbvh::Tree *pbvh = BKE_sculpt_object_pbvh_ensure(depsgraph, ob);
+  pbvh::Tree &pbvh = object::pbvh_ensure(*depsgraph, *ob);
 
-  sculpt_attribute_update_refs(ob, pbvh->type());
+  sculpt_attribute_update_refs(ob, pbvh.type());
 
   if (ob->type == OB_MESH) {
     ss.vert_to_face_map = mesh_orig->vert_to_face_map();
@@ -2036,7 +2041,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
         BLI_assert(me_eval_deform->verts_num == mesh_orig->verts_num);
 
         ss.deform_cos = mesh_eval->vert_positions();
-        BKE_pbvh_vert_coords_apply(*pbvh, ss.deform_cos);
+        BKE_pbvh_vert_coords_apply(pbvh, ss.deform_cos);
 
         used_me_eval = true;
       }
@@ -2049,7 +2054,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
       BKE_sculptsession_free_deformMats(&ss);
 
       BKE_crazyspace_build_sculpt(depsgraph, scene, ob, ss.deform_imats, ss.deform_cos);
-      BKE_pbvh_vert_coords_apply(*pbvh, ss.deform_cos);
+      BKE_pbvh_vert_coords_apply(pbvh, ss.deform_cos);
 
       for (blender::float3x3 &matrix : ss.deform_imats) {
         matrix = blender::math::invert(matrix);
@@ -2072,7 +2077,7 @@ static void sculpt_update_object(Depsgraph *depsgraph,
                           mesh_orig->verts_num);
 
       if (key_data.data() != nullptr) {
-        BKE_pbvh_vert_coords_apply(*pbvh, key_data);
+        BKE_pbvh_vert_coords_apply(pbvh, key_data);
         if (ss.deform_cos.is_empty()) {
           ss.deform_cos = key_data;
         }
@@ -2085,14 +2090,14 @@ static void sculpt_update_object(Depsgraph *depsgraph,
      *
      * The relevant changes are stored/encoded in the paint canvas key.
      * These include the active uv map, and resolutions. */
-    if (U.experimental.use_sculpt_texture_paint && pbvh) {
+    if (U.experimental.use_sculpt_texture_paint) {
       char *paint_canvas_key = BKE_paint_canvas_key_get(&scene->toolsettings->paint_mode, ob);
       if (ss.last_paint_canvas_key == nullptr ||
           !STREQ(paint_canvas_key, ss.last_paint_canvas_key))
       {
         MEM_SAFE_FREE(ss.last_paint_canvas_key);
         ss.last_paint_canvas_key = paint_canvas_key;
-        BKE_pbvh_mark_rebuild_pixels(*pbvh);
+        BKE_pbvh_mark_rebuild_pixels(pbvh);
       }
       else {
         MEM_freeN(paint_canvas_key);
@@ -2412,40 +2417,36 @@ static std::unique_ptr<pbvh::Tree> build_pbvh_from_ccg(Object *ob, SubdivCCG &su
 
 }  // namespace blender::bke
 
-blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
+namespace blender::bke::object {
+
+pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object)
 {
-  using namespace blender::bke;
-  if (ob->sculpt == nullptr) {
-    return nullptr;
+  if (pbvh::Tree *pbvh = pbvh_get(object)) {
+    return *pbvh;
   }
+  BLI_assert(object.sculpt != nullptr);
+  SculptSession &ss = *object.sculpt;
 
-  if (pbvh::Tree *pbvh = object::pbvh_get(*ob)) {
-    return pbvh;
-  }
-
-  if (ob->sculpt->bm != nullptr) {
+  if (ss.bm != nullptr) {
     /* Sculpting on a BMesh (dynamic-topology) gets a special pbvh::Tree. */
-    ob->sculpt->pbvh = build_pbvh_for_dynamic_topology(ob);
+    ss.pbvh = build_pbvh_for_dynamic_topology(&object);
   }
   else {
-    Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+    Object *object_eval = DEG_get_evaluated_object(&depsgraph, &object);
     Mesh *mesh_eval = static_cast<Mesh *>(object_eval->data);
     if (mesh_eval->runtime->subdiv_ccg != nullptr) {
-      ob->sculpt->pbvh = build_pbvh_from_ccg(ob, *mesh_eval->runtime->subdiv_ccg);
+      ss.pbvh = build_pbvh_from_ccg(&object, *mesh_eval->runtime->subdiv_ccg);
     }
-    else if (ob->type == OB_MESH) {
+    else {
       const Mesh *me_eval_deform = BKE_object_get_mesh_deform_eval(object_eval);
-      ob->sculpt->pbvh = build_pbvh_from_regular_mesh(ob, me_eval_deform);
+      ss.pbvh = build_pbvh_from_regular_mesh(&object, me_eval_deform);
     }
   }
 
-  pbvh::Tree *pbvh = object::pbvh_get(*ob);
-
-  sculpt_attribute_update_refs(ob, pbvh->type());
+  pbvh::Tree &pbvh = *object::pbvh_get(object);
+  sculpt_attribute_update_refs(&object, pbvh.type());
   return pbvh;
 }
-
-namespace blender::bke::object {
 
 const pbvh::Tree *pbvh_get(const Object &object)
 {
@@ -2457,6 +2458,7 @@ const pbvh::Tree *pbvh_get(const Object &object)
 
 pbvh::Tree *pbvh_get(Object &object)
 {
+  BLI_assert(object.type == OB_MESH);
   if (!object.sculpt) {
     return nullptr;
   }

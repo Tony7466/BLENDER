@@ -345,6 +345,13 @@ inline IndexRange grid_range(const CCGKey &key, const int grid)
   return IndexRange(grid * key.grid_area, key.grid_area);
 }
 
+/** Find the range of vertices in the entire geometry that are part of a single face. */
+inline IndexRange face_range(const OffsetIndices<int> faces, const CCGKey &key, const int face)
+{
+  const IndexRange corners = faces[face];
+  return IndexRange(corners.start() * key.grid_area, corners.size() * key.grid_area);
+}
+
 /** Find the vertex index in the entire geometry at a specific coordinate in a specific grid. */
 inline int grid_xy_to_vert(const CCGKey &key, const int grid, const int x, const int y)
 {
