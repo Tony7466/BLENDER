@@ -26,9 +26,8 @@ ccl_device_noinline void svm_node_hsv(KernelGlobals kg,
 
   color = rgb_to_hsv(color);
 
-  /* Remember: `c - floorf(c)` doesn't work for negative numbers here. */
-  float c = color.x + hue + 0.5f;
-  color.x = c - floorf(c);
+  /* Remember: `fractf` doesn't work for negative numbers here. */
+  color.x = fractf(color.x + hue + 0.5f);
   color.y = saturatef(color.y * sat);
   color.z *= val;
 
