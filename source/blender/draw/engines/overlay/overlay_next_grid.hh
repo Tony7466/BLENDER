@@ -92,17 +92,15 @@ class Grid {
       UI_GetThemeColorShade4fv(TH_BACK, 60, theme_color);
       srgb_to_linearrgb_v4(theme_color, theme_color);
 
-      /* add wire border */
+      /* Add wire border. */
       auto &sub = grid_ps_.sub("wire_border");
       sub.shader_set(res.shaders.grid_image.get());
       sub.push_constant("ucolor", theme_color);
-      float4x4 mat = math::from_scale<float4x4>(float4(1.0f));
       ObjectMatrices obj_mat;
       tile_matrix_buf_.clear();
       for (const int x : IndexRange(data_.size[0])) {
-        mat[3][0] = x;
         for (const int y : IndexRange(data_.size[1])) {
-          mat[3][1] = y;
+          float4x4 mat = math::from_location<float4x4>(float3(x, y, 0.0f));
           obj_mat.sync(mat);
           tile_matrix_buf_.append(obj_mat);
         }
