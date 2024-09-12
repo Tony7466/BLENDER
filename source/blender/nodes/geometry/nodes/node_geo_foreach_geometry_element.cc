@@ -406,12 +406,30 @@ static void node_declare(NodeDeclarationBuilder &b)
   const bNodeTree *tree = b.tree_or_null();
   if (node && tree) {
     const NodeGeometryForeachGeometryElementOutput &storage = node_storage(*node);
-    int previous_geometry_index = 0;
+    for (const int i : IndexRange(storage.main_items.items_num)) {
+      const NodeForeachGeometryElementMainItem &item = storage.main_items.items[i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const StringRef name = item.name ? item.name : "";
+      std::string identifier = ForeachGeometryElementMainItemsAccessor::socket_identifier_for_item(
+          item);
+      b.add_input(socket_type, name, identifier)
+          .socket_name_ptr(
+              &tree->id, ForeachGeometryElementMainItemsAccessor::item_srna, &item, "name")
+          .description(
+              "Attribute value that will be stored for the current element on the main geometry");
+      b.add_output(socket_type, name, identifier)
+          .align_with_previous()
+          .field_on({0})
+          .description("Attribute on the geometry above");
+    }
+    b.add_input<decl::Extend>("", "__extend__main");
+    b.add_output<decl::Extend>("", "__extend__main").align_with_previous();
+    b.add_separator();
+    int previous_geometry_index = -1;
     for (const int i : IndexRange(storage.output_items.items_num)) {
       const NodeForeachGeometryElementOutputItem &item = storage.output_items.items[i];
       const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-      if (socket_type == SOCK_GEOMETRY) {
-        previous_geometry_index = i + 1;
+      if (socket_type == SOCK_GEOMETRY && i > 0) {
         b.add_separator();
       }
       const StringRef name = item.name ? item.name : "";
@@ -424,6 +442,7 @@ static void node_declare(NodeDeclarationBuilder &b)
                                               "name");
       auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
       if (socket_type == SOCK_GEOMETRY) {
+        previous_geometry_index = output_decl.index();
         output_decl.propagate_all();
         aal::PropagateRelation relation;
         relation.from_geometry_input = input_decl.index();
@@ -436,22 +455,18 @@ static void node_declare(NodeDeclarationBuilder &b)
         output_decl.description("Result of joining generated geometries from each iteration");
       }
       else {
+        input_decl.supports_field();
         if (previous_geometry_index > 0) {
-          input_decl.supports_field();
           input_decl.description("Field that will be stored as attribute on the geometry above");
+          output_decl.field_on({previous_geometry_index});
         }
-        else {
-          input_decl.description(
-              "Attribute value that will be stored for the current element on the main geometry");
-        }
-        output_decl.field_on({previous_geometry_index});
         output_decl.description("Attribute on the geometry above");
       }
     }
   }
 
-  b.add_input<decl::Extend>("", "__extend__");
-  b.add_output<decl::Extend>("", "__extend__").align_with_previous();
+  b.add_input<decl::Extend>("", "__extend__generated");
+  b.add_output<decl::Extend>("", "__extend__generated").align_with_previous();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -483,6 +498,11 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
+  if (!socket_items::try_add_item_via_any_extend_socket<ForeachGeometryElementMainItemsAccessor>(
+          *ntree, *node, *node, *link, "__extend__main"))
+  {
+    return false;
+  }
   return socket_items::try_add_item_via_any_extend_socket<
       ForeachGeometryElementOutputItemsAccessor>(*ntree, *node, *node, *link);
 }
