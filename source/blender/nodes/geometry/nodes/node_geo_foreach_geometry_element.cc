@@ -65,8 +65,8 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       current_node_ptr->owner_id, &RNA_Node, &output_node);
   auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(output_node.storage);
 
-  if (uiLayout *panel = uiLayoutPanel(C, layout, "foreach_items", false, TIP_("Items"))) {
-    if (is_zone_input_node) {
+  if (is_zone_input_node) {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "input", false, TIP_("Input Items"))) {
       static const uiListType *input_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
         STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_input_items");
@@ -131,7 +131,76 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
         uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
     }
-    else {
+  }
+  else {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "main_items", false, TIP_("Main Items"))) {
+      static const uiListType *generated_main_list = []() {
+        uiListType *list = MEM_cnew<uiListType>(__func__);
+        STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_main_items");
+        list->draw_item = draw_item;
+        WM_uilisttype_add(list);
+        return list;
+      }();
+      uiLayout *row = uiLayoutRow(panel, false);
+      uiTemplateList(row,
+                     C,
+                     generated_main_list->idname,
+                     "",
+                     &output_node_ptr,
+                     "main_items",
+                     &output_node_ptr,
+                     "active_main_index",
+                     nullptr,
+                     3,
+                     5,
+                     UILST_LAYOUT_DEFAULT,
+                     0,
+                     UI_TEMPLATE_LIST_FLAG_NONE);
+      {
+        uiLayout *ops_col = uiLayoutColumn(row, false);
+        {
+          uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
+          uiItemO(
+              add_remove_col, "", ICON_ADD, "node.foreach_geometry_element_zone_main_item_add");
+          uiItemO(add_remove_col,
+                  "",
+                  ICON_REMOVE,
+                  "node.foreach_geometry_element_zone_main_item_remove");
+        }
+        {
+          uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_main_item_move",
+                      "",
+                      ICON_TRIA_UP,
+                      "direction",
+                      0);
+          uiItemEnumO(up_down_col,
+                      "node.foreach_geometry_element_zone_main_item_move",
+                      "",
+                      ICON_TRIA_DOWN,
+                      "direction",
+                      1);
+        }
+      }
+
+      if (storage.main_items.active_index >= 0 &&
+          storage.main_items.active_index < storage.main_items.items_num)
+      {
+        NodeForeachGeometryElementMainItem &active_item =
+            storage.main_items.items[storage.main_items.active_index];
+        PointerRNA item_ptr = RNA_pointer_create(
+            output_node_ptr.owner_id,
+            ForeachGeometryElementMainItemsAccessor::item_srna,
+            &active_item);
+        uiLayoutSetPropSep(panel, true);
+        uiLayoutSetPropDecorate(panel, false);
+        uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
+      }
+    }
+    if (uiLayout *panel = uiLayoutPanel(
+            C, layout, "generated_items", false, TIP_("Generated Items")))
+    {
       static const uiListType *output_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
         STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_output_items");
@@ -397,6 +466,7 @@ static void node_free_storage(bNode *node)
 {
   socket_items::destruct_array<ForeachGeometryElementInputItemsAccessor>(*node);
   socket_items::destruct_array<ForeachGeometryElementOutputItemsAccessor>(*node);
+  socket_items::destruct_array<ForeachGeometryElementMainItemsAccessor>(*node);
   MEM_freeN(node->storage);
 }
 
@@ -408,6 +478,7 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
 
   socket_items::copy_array<ForeachGeometryElementInputItemsAccessor>(*src_node, *dst_node);
   socket_items::copy_array<ForeachGeometryElementOutputItemsAccessor>(*src_node, *dst_node);
+  socket_items::copy_array<ForeachGeometryElementMainItemsAccessor>(*src_node, *dst_node);
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
@@ -449,7 +520,25 @@ static void NODE_OT_foreach_geometry_element_zone_output_item_add(wmOperatorType
 static void NODE_OT_foreach_geometry_element_zone_output_item_move(wmOperatorType *ot)
 {
   socket_items::ops::move_active_item<ForeachGeometryElementOutputItemsAccessor>(
-      ot, "Move For Each Output Item", __func__, "Move active for-each output item");
+      ot, "Move For Each Main Item", __func__, "Move active for-each main item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_main_item_remove(wmOperatorType *ot)
+{
+  socket_items::ops::remove_active_item<ForeachGeometryElementMainItemsAccessor>(
+      ot, "Remove For Each Main Item", __func__, "Remove active for-each main item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_main_item_add(wmOperatorType *ot)
+{
+  socket_items::ops::add_item<ForeachGeometryElementMainItemsAccessor>(
+      ot, "Add For Each Main Item", __func__, "Add for-each main item");
+}
+
+static void NODE_OT_foreach_geometry_element_zone_main_item_move(wmOperatorType *ot)
+{
+  socket_items::ops::move_active_item<ForeachGeometryElementMainItemsAccessor>(
+      ot, "Move For Each Main Item", __func__, "Move active for-each main item");
 }
 
 static void node_operators()
@@ -461,6 +550,10 @@ static void node_operators()
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_add);
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_remove);
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_move);
+
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_add);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_remove);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_move);
 }
 
 static void node_register()
@@ -553,6 +646,39 @@ void ForeachGeometryElementInputItemsAccessor::blend_read_data(BlendDataReader *
                         &storage.input_items.items);
   for (const NodeForeachGeometryElementInputItem &item :
        Span(storage.input_items.items, storage.input_items.items_num))
+  {
+    BLO_read_string(reader, &item.name);
+  }
+}
+
+StructRNA *ForeachGeometryElementMainItemsAccessor::item_srna =
+    &RNA_ForeachGeometryElementMainItem;
+int ForeachGeometryElementMainItemsAccessor::node_type = GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
+
+void ForeachGeometryElementMainItemsAccessor::blend_write(BlendWriter *writer, const bNode &node)
+{
+  const auto &storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+      node.storage);
+  BLO_write_struct_array(writer,
+                         NodeForeachGeometryElementMainItem,
+                         storage.main_items.items_num,
+                         storage.main_items.items);
+  for (const NodeForeachGeometryElementMainItem &item :
+       Span(storage.main_items.items, storage.main_items.items_num))
+  {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+void ForeachGeometryElementMainItemsAccessor::blend_read_data(BlendDataReader *reader, bNode &node)
+{
+  auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
+  BLO_read_struct_array(reader,
+                        NodeForeachGeometryElementMainItem,
+                        storage.main_items.items_num,
+                        &storage.main_items.items);
+  for (const NodeForeachGeometryElementMainItem &item :
+       Span(storage.main_items.items, storage.main_items.items_num))
   {
     BLO_read_string(reader, &item.name);
   }

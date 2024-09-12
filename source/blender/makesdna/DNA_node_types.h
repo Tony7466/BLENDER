@@ -1976,6 +1976,7 @@ typedef struct NodeForeachGeometryElementOutputItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
+  /** #AttrDomain. */
   uint8_t domain;
   char _pad[1];
   /**
@@ -1983,8 +1984,19 @@ typedef struct NodeForeachGeometryElementOutputItem {
    * names change.
    */
   int identifier;
-  /** #AttrDomain. */
 } NodeForeachGeometryElementOutputItem;
+
+typedef struct NodeForeachGeometryElementMainItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+} NodeForeachGeometryElementMainItem;
 
 typedef struct NodeForeachGeometryElementOutputItems {
   NodeForeachGeometryElementOutputItem *items;
@@ -1993,6 +2005,14 @@ typedef struct NodeForeachGeometryElementOutputItems {
   int next_identifier;
   char _pad[4];
 } NodeForeachGeometryElementOutputItems;
+
+typedef struct NodeForeachGeometryElementMainItems {
+  NodeForeachGeometryElementMainItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeForeachGeometryElementMainItems;
 
 typedef struct NodeForeachGeometryElementInputItem {
   char *name;
@@ -2017,6 +2037,7 @@ typedef struct NodeForeachGeometryElementInputItems {
 typedef struct NodeGeometryForeachGeometryElementOutput {
   NodeForeachGeometryElementOutputItems output_items;
   NodeForeachGeometryElementInputItems input_items;
+  NodeForeachGeometryElementMainItems main_items;
   int inspection_index;
   /** #AttrDomain. */
   uint8_t domain;
