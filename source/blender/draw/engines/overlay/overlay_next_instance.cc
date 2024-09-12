@@ -589,7 +589,12 @@ bool Instance::object_needs_prepass(const ObjectRef &ob_ref, bool in_paint_mode)
     /* Allow paint overlays to draw with depth equal test. */
     return object_is_rendered_transparent(ob_ref.object, state);
   }
-  return !state.xray_enabled; /* TODO */
+
+  if (!state.xray_enabled || (selection_type_ != SelectionType::DISABLED)) {
+    return ob_ref.object->dt >= OB_SOLID;
+  }
+
+  return false;
 }
 
 bool Instance::object_is_rendered_transparent(const Object *object, const State &state)
@@ -612,7 +617,7 @@ bool Instance::object_is_rendered_transparent(const Object *object, const State 
     return true;
   }
 
-  if (shading.type != OB_SOLID) {
+  if (shading.type > OB_SOLID) {
     return false;
   }
 
