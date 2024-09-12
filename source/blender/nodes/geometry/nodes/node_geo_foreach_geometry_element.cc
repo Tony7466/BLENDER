@@ -343,6 +343,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
       if (socket_type == SOCK_GEOMETRY) {
         previous_geometry_index = i + 1;
+        b.add_separator();
       }
       const StringRef name = item.name ? item.name : "";
       std::string identifier =
