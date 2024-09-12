@@ -1528,7 +1528,8 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
     stroke->stroke_started = stroke->test_start(C, op, sample_average.mouse);
 
     if (stroke->stroke_started) {
-      /* May have switched the brush temporarily (e.g. to Smooth). */
+      /* StrokeTestStart often updates the currently active brush so we need to re-retrieve it
+       * here. */
       br = BKE_paint_brush(paint);
 
       if (paint_supports_smooth_stroke(stroke, *br, mode)) {
