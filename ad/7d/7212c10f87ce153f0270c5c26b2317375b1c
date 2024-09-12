@@ -1,1 +1,2 @@
 Referenced by issue #127462, Sculpt Mode: Visibility Related Crashes
+Referenced by commit 5ff4e5fcb9cef7c382ef6a589ffc9edb512d014a, Sculpt: Avoid rebuilding draw vertex buffers for visibility changes
