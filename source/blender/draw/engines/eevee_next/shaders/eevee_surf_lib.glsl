@@ -169,3 +169,9 @@ int shadow_view_id_get()
 #  endif
 }
 #endif
+
+#ifdef OBINFO_LIB
+uint receiver_light_set_get(uint object_id) {
+  return floatBitsToUint(drw_infos[object_id].infos.y) & 0xFFu;
+}
+#endif

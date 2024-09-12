@@ -173,7 +173,8 @@ struct ObjectInfos {
 
   float4 ob_color;
   uint index;
-  uint _pad2;
+  /** Used for Light Linking in EEVEE */
+  uint light_set_membership;
   float random;
   eObjectInfoFlag flag;
 #endif

@@ -1008,6 +1008,8 @@ struct LightData {
   /* True if the light uses jittered soft shadows. */
   bool32_t shadow_jitter;
   float _pad2;
+  uint2 light_set_membership;
+  uint2 shadow_set_membership;
 
 #if USE_LIGHT_UNION
   union {
@@ -1725,9 +1727,10 @@ struct Surfel {
   int cluster_id;
   /** True if the light can bounce or be emitted by the surfel back face. */
   bool32_t double_sided;
+  /** Surface receiver light set for light linking. */
+  uint receiver_light_set;
   int _pad0;
   int _pad1;
-  int _pad2;
   /** Surface radiance: Emission + Direct Lighting. */
   SurfelRadiance radiance_direct;
   /** Surface radiance: Indirect Lighting. Double buffered to avoid race conditions. */
