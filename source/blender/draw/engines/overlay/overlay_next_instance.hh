@@ -16,6 +16,7 @@
 #include "overlay_next_bounds.hh"
 #include "overlay_next_camera.hh"
 #include "overlay_next_curve.hh"
+#include "overlay_next_edit_text.hh"
 #include "overlay_next_empty.hh"
 #include "overlay_next_facing.hh"
 #include "overlay_next_fade.hh"
@@ -70,6 +71,7 @@ class Instance {
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Curves curves;
+    EditText edit_text;
     Empties empties = {selection_type_};
     Facing facing = {selection_type_};
     Fade fade = {selection_type_};
