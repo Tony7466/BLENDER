@@ -680,19 +680,19 @@ int settings_hash(const Object &ob, const Cache &automasking)
 static float calc_cavity_factor(const Depsgraph &depsgraph,
                                 const Cache &automasking,
                                 const Object &object,
-                                PBVHVertRef vert_ref,
-                                const int vert)
+                                PBVHVertRef vertex,
+                                const int vert_i)
 {
-  if (automasking.cavity_factor[vert] == -1.0f) {
+  if (automasking.cavity_factor[vert_i] == -1.0f) {
     calc_blurred_cavity(depsgraph,
                         object,
                         automasking,
                         automasking.settings.cavity_blur_steps,
-                        vert_ref,
+                        vertex,
                         const_cast<Cache &>(automasking).cavity_factor);
   }
 
-  float factor = automasking.cavity_factor[vert];
+  float factor = automasking.cavity_factor[vert_i];
   bool inverted = automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED;
 
   if ((automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) &&
