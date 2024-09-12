@@ -55,7 +55,7 @@ struct Cache {
    * Cached occlusion values for each vertex. Since calculating the occlusion is so expensive,
    * it's only calculated at the beginning of a stroke and stored for later.
    *
-   * \todo Ideally the "unkown" state would be stored per node rather than per vertex, with a
+   * \todo Ideally the "unknown" state would be stored per node rather than per vertex, with a
    * lock-protected `Map<const bke::pbvh::Node , BitVector<>>` for example. Currently complications
    * with face domain auto-masking prevent this though. This array can't be a bitmap because it's
    * written to from multiple threads at the same time.
