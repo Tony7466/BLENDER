@@ -2131,7 +2131,7 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
         ED_sequencer_deselect_all(scene);
 
         selection.seq1->flag |= (SELECT) | ((selection.handle == SEQ_HANDLE_RIGHT) ? SEQ_RIGHTSEL :
-                                                                        SEQ_LEFTSEL);
+                                                                                     SEQ_LEFTSEL);
         if (selection.seq2 != nullptr) {
           selection.seq2->flag |= (SELECT) |
                                   ((selection.handle == SEQ_HANDLE_RIGHT) ? SEQ_LEFTSEL :
