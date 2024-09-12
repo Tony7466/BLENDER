@@ -1862,11 +1862,11 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     for (const int i : inputs_.index_range()) {
       const lf::Input &input = inputs_[i];
-      lf_inputs.append(&lf_graph.add_input(*input.type, input.debug_name));
+      lf_inputs.append(&lf_graph.add_input(*input.type, this->input_name(i)));
     }
     for (const int i : outputs_.index_range()) {
       const lf::Output &output = outputs_[i];
-      lf_outputs.append(&lf_graph.add_output(*output.type, output.debug_name));
+      lf_outputs.append(&lf_graph.add_output(*output.type, this->output_name(i)));
     }
 
     /* Create body nodes. */
@@ -1910,6 +1910,8 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       }
     }
 
+    static bool static_true = true;
+
     /* Handle body nodes pair-wise. */
     for (const int iter_i : lf_body_nodes.index_range().drop_back(1)) {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
@@ -1920,7 +1922,6 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         /* TODO: Add back-link after being able to check for cyclic dependencies. */
         // lf_graph.add_link(lf_next_node.output(body_fn_.indices.outputs.input_usages[i]),
         //                   lf_node.input(body_fn_.indices.inputs.output_usages[i]));
-        static bool static_true = true;
         lf_node.input(body_fn_.indices.inputs.output_usages[i]).set_default_value(&static_true);
       }
     }
@@ -1969,6 +1970,8 @@ class LazyFunctionForRepeatZone : public LazyFunction {
             &static_false);
       }
     }
+
+    lf_outputs[zone_info_.indices.outputs.input_usages[0]]->set_default_value(&static_true);
 
     /* The graph is ready, update the node indices which are required by the executor. */
     lf_graph.update_node_indices();
@@ -3137,7 +3140,7 @@ struct GeometryNodesLazyFunctionBuilder {
    */
   ZoneBodyFunction &build_zone_body_function(const bNodeTreeZone &zone)
   {
-    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>();
+    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>("Repeat Body");
 
     BuildGraphParams graph_params{lf_body_graph};
 
