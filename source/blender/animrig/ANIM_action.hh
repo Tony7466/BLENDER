@@ -335,42 +335,38 @@ static_assert(sizeof(Action) == sizeof(::bAction),
  */
 class Strip : public ::ActionStrip {
  public:
-  /**
-   * Strips should never be directly constructed or copied. They should be
-   * created via the APIs on `Layer`, which ensure the strips are properly
-   * initialized and hooked up. Strips don't make sense outside the context of
-   * an owning `Layer` and owning `Action`.
-   */
+  enum class Type : int8_t { Keyframe = 0 };
+
+  /* Strips should never be directly constructed or copied. They should be
+   * created via the APIs on `Layer`, and copied via `Strip::duplicate()`. This
+   * is because strips' data is actually stored in the owning action, and the
+   * creation and duplication of that data must be managed along with the
+   * creation and duplication of the strip. */
   Strip() = delete;
   Strip(const Strip &other) = delete;
 
-  ~Strip();
-
-  Strip *duplicate(Action &owning_action, StringRefNull allocation_name) const;
-
   /**
-   * Duplicate the `Strip`, but don't duplicate its data, leaving the `Strip`'s
-   * fields is-as.
+   * Make a full, deep copy of the strip, including its data.
    *
-   * NOTE: this method is narrow in its application, and you probably shouldn't
-   * use it unless you really know what you're doing.
+   * The strip *must* belong to `owning_action`, as that is where the strip data
+   * is duplicated. And for the same reason, the new duplicate strip must *only*
+   * be placed onto a layer that also belongs to `owning_action`.
+   *
+   * This method does *not* place the new duplicate strip on a layer. That is up
+   * to the caller.
    */
-  Strip *duplicate_no_strip_data(StringRefNull allocation_name) const;
-
-  enum class Type : int8_t { Keyframe = 0 };
+  Strip &duplicate(Action &owning_action) const;
 
   /**
-   * Strip type, so it's known which subclass this can be wrapped in without
-   * having to rely on C++ RTTI.
+   * Strip type.
+   *
+   * Convenience wrapper to avoid having to do the cast to `Strip::Type`
+   * everywhere.
    */
   Type type() const
   {
     return Type(this->strip_type);
   }
-
-  // template<typename T> bool is() const;
-  // template<typename T> T &as();
-  // template<typename T> const T &as() const;
 
   bool is_infinite() const;
   bool contains_frame(float frame_time) const;
@@ -385,11 +381,13 @@ class Strip : public ::ActionStrip {
    */
   void resize(float frame_start, float frame_end);
 
+  // Kill this
   bool is_keyframe_strip() const
   {
     return this->type() == Type::Keyframe;
   }
 
+  // Make these templatized over the data type.
   const StripKeyframeData &keyframe_data(const Action &owning_action) const;
   StripKeyframeData &keyframe_data(Action &owning_action);
 
@@ -420,16 +418,32 @@ class Layer : public ::ActionLayer {
   Layer(const Layer &other) = delete;
   ~Layer();
 
-  Layer *duplicate(Action &owning_action, StringRefNull allocation_name) const;
+  /**
+   * Make a full, deep copy of the layer, including the data of its strips.
+   *
+   * The layer *must* belong to `owning_action`, as that is where the strip data
+   * is duplicated. And for the same reason, the new duplicate layer must
+   * *only* be placed into `owning_action`.
+   *
+   * This method does *not* place the new duplicate layer into the action. That
+   * is up to the caller.
+   */
+  Layer &duplicate(Action &owning_action) const;
 
   /**
-   * Duplicate the `Layer` and its `Strip`s, but don't duplicate the strip data,
-   * leaving the `Strip`'s fields is-as.
+   * Duplicate the `Layer` and its `Strip`s, but only make shallow copies of the
+   * strips.
    *
-   * NOTE: this method is narrow in its application, and you probably shouldn't
-   * use it unless you really know what you're doing.
+   * Specifically, this doesn't duplicate the strip data that's stored in e.g.
+   * `Action::strip_keyframe_data_array`, and it leaves the fields of the strips
+   * themselves exactly as-is.
+   *
+   * WARNING: this method is primarily used in the code that makes full
+   * duplicates of actions, where the arrays of strip data are copied separately
+   * for efficiency. This method's applications are narrow and you probably
+   * shouldn't use it unless you really know what you're doing.
    */
-  Layer *duplicate_no_strip_data(StringRefNull allocation_name) const;
+  Layer &duplicate_with_shallow_strip_copies() const;
 
   enum class Flags : uint8_t {
     /* Set by default, cleared to mute. */
@@ -468,24 +482,8 @@ class Layer : public ::ActionLayer {
 
   /**
    * Add a new Strip of the given type.
-   *
-   * \see strip_add<T>() for a templated version that returns the strip as its
-   * concrete C++ type.
    */
   Strip &strip_add(Action &owning_action, Strip::Type strip_type);
-
-  // /**
-  //  * Add a new strip of the type of T.
-  //  *
-  //  * T must be a concrete subclass of animrig::Strip.
-  //  *
-  //  * \see KeyframeStrip
-  //  */
-  // template<typename T> T &strip_add()
-  // {
-  //   Strip &strip = this->strip_add(T::TYPE);
-  //   return strip.as<T>();
-  // }
 
   /**
    * Remove the strip from this layer.

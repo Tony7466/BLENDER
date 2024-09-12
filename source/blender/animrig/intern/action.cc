@@ -79,6 +79,7 @@ static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const S
   /* Copy the default ActionStrip fields into the allocated data-block. */
   memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
 
+  /* Create the strip's data on the owning Action. */
   switch (type) {
     case Strip::Type::Keyframe: {
       strip->strip_type = int8_t(type);
@@ -722,34 +723,37 @@ void Action::unassign_id(ID &animated_id)
 
 /* ----- ActionLayer implementation ----------- */
 
-Layer *Layer::duplicate(Action &owning_action, StringRefNull allocation_name) const
+Layer &Layer::duplicate(Action &owning_action) const
 {
   /* Make shallow copy of the layer. */
-  Layer *copy = &MEM_new<ActionLayer>(allocation_name.c_str())->wrap();
+  Layer *copy = &MEM_new<ActionLayer>(__func__)->wrap();
   memcpy(copy, this, sizeof(*this));
 
   /* Strips. */
   copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
   for (int i : this->strips().index_range()) {
-    copy->strip_array[i] = this->strip(i)->duplicate(owning_action, __func__);
+    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action);
   }
 
-  return copy;
+  return *copy;
 }
 
-Layer *Layer::duplicate_no_strip_data(StringRefNull allocation_name) const
+Layer &Layer::duplicate_with_shallow_strip_copies() const
 {
   /* Make shallow copy of the layer. */
-  Layer *copy = &MEM_new<ActionLayer>(allocation_name.c_str())->wrap();
+  Layer *copy = &MEM_new<ActionLayer>(__func__)->wrap();
   memcpy(copy, this, sizeof(*this));
 
   /* Make a shallow copy of the Strips, without copying their data. */
   copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
   for (int i : this->strips().index_range()) {
-    copy->strip_array[i] = this->strip(i)->duplicate_no_strip_data(__func__);
+    /* Shallow copy of the strip. */
+    Strip *strip_copy = &MEM_new<ActionStrip>(__func__)->wrap();
+    memcpy(strip_copy, this->strip(i), sizeof(*strip_copy));
+    copy->strip_array[i] = strip_copy;
   }
 
-  return copy;
+  return *copy;
 }
 
 Layer::~Layer()
@@ -1143,44 +1147,24 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 
 /* ----- ActionStrip implementation ----------- */
 
-Strip *Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
+Strip &Strip::duplicate(Action &owning_action) const
 {
-  /* Make shallow copy of the strip. */
-  Strip *copy = &MEM_new<ActionStrip>(allocation_name.c_str())->wrap();
+  /* First make a shallow copy of the strip. */
+  Strip *copy = &MEM_new<ActionStrip>(__func__)->wrap();
   memcpy(copy, this, sizeof(*this));
 
-  /* Duplicate the strip's data. */
+  /* Then duplicate and assign the strip's data. */
   switch (copy->type()) {
     case Type::Keyframe: {
       const StripKeyframeData &strip_data_source =
           *owning_action.strip_keyframe_data()[copy->data_index];
-      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(allocation_name.c_str(),
-                                                                      strip_data_source);
+      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(__func__, strip_data_source);
       copy->data_index = owning_action.strip_keyframe_data_append(strip_data_copy);
       break;
     }
   }
 
-  return copy;
-}
-
-Strip *Strip::duplicate_no_strip_data(StringRefNull allocation_name) const
-{
-  /* Make shallow copy of the strip. */
-  Strip *copy = &MEM_new<ActionStrip>(allocation_name.c_str())->wrap();
-  memcpy(copy, this, sizeof(*this));
-
-  return copy;
-}
-
-Strip::~Strip()
-{
-  // switch (this->type()) {
-  //   case Type::Keyframe:
-  //     this->as<KeyframeStrip>().~KeyframeStrip();
-  //     return;
-  // }
-  // BLI_assert_unreachable();
+  return *copy;
 }
 
 bool Strip::is_infinite() const
