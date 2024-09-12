@@ -1,2 +1,3 @@
 Referenced by issue #127462, Sculpt Mode: Visibility Related Crashes
 Referenced by commit 5ff4e5fcb9cef7c382ef6a589ffc9edb512d014a, Sculpt: Avoid rebuilding draw vertex buffers for visibility changes
+Referenced by commit f52b813c3607ec15c979148c4dd15aa2d231e7fc, Fix #127462: Sculpt drawing crash with hidden mesh faces
