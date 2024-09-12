@@ -22,7 +22,7 @@
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 
@@ -793,7 +793,8 @@ void ED_region_search_filter_update(const ScrArea *area, ARegion *region)
 
   const char *search_filter = ED_area_region_search_filter_get(area, region);
   SET_FLAG_FROM_TEST(region->flag,
-                     region->regiontype == RGN_TYPE_WINDOW && search_filter[0] != '\0',
+                     region->regiontype == RGN_TYPE_WINDOW && search_filter &&
+                         search_filter[0] != '\0',
                      RGN_FLAG_SEARCH_FILTER_ACTIVE);
 }
 
@@ -834,34 +835,141 @@ void ED_area_status_text(ScrArea *area, const char *str)
   }
 }
 
-void ED_workspace_status_text(bContext *C, const char *str)
-{
-  wmWindow *win = CTX_wm_window(C);
-  WorkSpace *workspace = CTX_wm_workspace(C);
+/* *************************************************************** */
 
+static void ed_workspace_status_item(WorkSpace *workspace,
+                                     std::string text,
+                                     const int icon,
+                                     const float space_factor = 0.0f,
+                                     const bool inverted = false)
+{
   /* Can be nullptr when running operators in background mode. */
   if (workspace == nullptr) {
     return;
   }
 
-  if (str) {
-    if (workspace->status_text == nullptr) {
-      workspace->status_text = static_cast<char *>(MEM_mallocN(UI_MAX_DRAW_STR, "headerprint"));
-    }
-    BLI_strncpy(workspace->status_text, str, UI_MAX_DRAW_STR);
-  }
-  else {
-    MEM_SAFE_FREE(workspace->status_text);
-  }
+  blender::bke::WorkSpaceStatusItem item;
+  item.text = std::move(text);
+  item.icon = icon;
+  item.space_factor = space_factor;
+  item.inverted = inverted;
+  workspace->runtime->status.append(std::move(item));
+}
 
-  /* Redraw status bar. */
-  LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {
-    if (area->spacetype == SPACE_STATUSBAR) {
-      ED_area_tag_redraw(area);
-      break;
+static void ed_workspace_status_space(WorkSpace *workspace, const float space_factor)
+{
+  ed_workspace_status_item(workspace, {}, ICON_NONE, space_factor);
+}
+
+WorkspaceStatus::WorkspaceStatus(bContext *C)
+{
+  workspace_ = CTX_wm_workspace(C);
+  wm_ = CTX_wm_manager(C);
+  if (workspace_) {
+    BKE_workspace_status_clear(workspace_);
+  }
+  ED_area_tag_redraw(WM_window_status_area_find(CTX_wm_window(C), CTX_wm_screen(C)));
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Private helper functions to help ensure consistent spacing
+ * \{ */
+
+static constexpr float STATUS_AFTER_TEXT = 0.7f;
+static constexpr float STATUS_MOUSE_ICON_PAD = -0.5f;
+
+static void ed_workspace_status_text_item(WorkSpace *workspace, std::string text)
+{
+  if (!text.empty()) {
+    ed_workspace_status_item(workspace, std::move(text), ICON_NONE);
+    ed_workspace_status_space(workspace, STATUS_AFTER_TEXT);
+  }
+}
+
+static void ed_workspace_status_icon_item(WorkSpace *workspace,
+                                          const int icon,
+                                          const bool inverted = false)
+{
+  if (icon) {
+    ed_workspace_status_item(workspace, {}, icon, 0.0f, inverted);
+    if (icon >= ICON_MOUSE_LMB && icon <= ICON_MOUSE_MMB_SCROLL) {
+      /* Negative space after narrow mice icons. */
+      ed_workspace_status_space(workspace, STATUS_MOUSE_ICON_PAD);
     }
   }
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Public Functions
+ * \{ */
+
+void WorkspaceStatus::item(std::string text, const int icon1, const int icon2)
+{
+  ed_workspace_status_icon_item(workspace_, icon1);
+  ed_workspace_status_icon_item(workspace_, icon2);
+  ed_workspace_status_text_item(workspace_, std::move(text));
+}
+
+void WorkspaceStatus::range(std::string text, const int icon1, const int icon2)
+{
+  ed_workspace_status_item(workspace_, {}, icon1);
+  ed_workspace_status_item(workspace_, "-", ICON_NONE);
+  ed_workspace_status_space(workspace_, -0.5f);
+  ed_workspace_status_item(workspace_, {}, icon2);
+  ed_workspace_status_text_item(workspace_, std::move(text));
+}
+
+void WorkspaceStatus::item_bool(std::string text,
+                                const bool inverted,
+                                const int icon1,
+                                const int icon2)
+{
+  ed_workspace_status_icon_item(workspace_, icon1, inverted);
+  ed_workspace_status_icon_item(workspace_, icon2, inverted);
+  ed_workspace_status_text_item(workspace_, std::move(text));
+}
+
+void WorkspaceStatus::opmodal(std::string text,
+                              const wmOperatorType *ot,
+                              const int propvalue,
+                              const bool inverted)
+{
+  wmKeyMap *keymap = WM_keymap_active(wm_, ot->modalkeymap);
+  if (keymap) {
+    const wmKeyMapItem *kmi = WM_modalkeymap_find_propvalue(keymap, propvalue);
+    if (kmi) {
+#ifdef WITH_HEADLESS
+      int icon = 0;
+#else
+      int icon = UI_icon_from_event_type(kmi->type, kmi->val);
+#endif
+      if (!ELEM(kmi->shift, KM_NOTHING, KM_ANY)) {
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_SHIFT, 0.0f, inverted);
+      }
+      if (!ELEM(kmi->ctrl, KM_NOTHING, KM_ANY)) {
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_CTRL, 0.0f, inverted);
+      }
+      if (!ELEM(kmi->alt, KM_NOTHING, KM_ANY)) {
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_ALT, 0.0f, inverted);
+      }
+      if (!ELEM(kmi->oskey, KM_NOTHING, KM_ANY)) {
+        ed_workspace_status_item(workspace_, {}, ICON_EVENT_OS, 0.0f, inverted);
+      }
+      ed_workspace_status_icon_item(workspace_, icon, inverted);
+      ed_workspace_status_text_item(workspace_, std::move(text));
+    }
+  }
+}
+
+void ED_workspace_status_text(bContext *C, const char *str)
+{
+  WorkspaceStatus status(C);
+  status.item(str ? str : "", ICON_NONE);
+}
+
+/** \} */
 
 /* ************************************************************ */
 
@@ -914,7 +1022,7 @@ static void area_azone_init(wmWindow *win, const bScreen *screen, ScrArea *area)
 #ifdef __APPLE__
     if (!WM_window_is_fullscreen(win) &&
         ((coords[i][0] == 0 && coords[i][1] == 0) ||
-         (coords[i][0] == WM_window_pixels_x(win) && coords[i][1] == 0)))
+         (coords[i][0] == WM_window_native_pixel_x(win) && coords[i][1] == 0)))
     {
       continue;
     }
@@ -1331,7 +1439,9 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
                RGN_TYPE_UI,
                RGN_TYPE_TOOL_PROPS,
                RGN_TYPE_FOOTER,
-               RGN_TYPE_TOOL_HEADER))
+               RGN_TYPE_TOOL_HEADER,
+               RGN_TYPE_ASSET_SHELF,
+               RGN_TYPE_ASSET_SHELF_HEADER))
       {
         return true;
       }
@@ -2019,6 +2129,9 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_azone_init(win, screen, area);
 
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    if (region->flag & RGN_FLAG_POLL_FAILED) {
+      continue;
+    }
     region_evaulate_visibility(region);
 
     /* region size may have changed, init does necessary adjustments */
@@ -2142,11 +2255,22 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
     region_azones_add(screen, area, region);
   }
 
-  /* Avoid re-initializing tools while resizing the window. */
+  /* Avoid re-initializing tools while resizing areas & regions. */
   if ((G.moving & G_TRANSFORM_WM) == 0) {
     if ((1 << area->spacetype) & WM_TOOLSYSTEM_SPACE_MASK) {
-      WM_toolsystem_refresh_screen_area(workspace, scene, view_layer, area);
-      area->flag |= AREA_FLAG_ACTIVE_TOOL_UPDATE;
+      if (WM_toolsystem_refresh_screen_area(workspace, scene, view_layer, area) ||
+          /* When the tool is null it may not be initialized.
+           * This happens when switching to a new area, see: #126990.
+           *
+           * NOTE(@ideasman42): There is a possible down-side here: when refreshing
+           * tools results in a null value, refreshing won't be skipped here as intended.
+           * As it happens, spaces that use tools will practically always have a default tool. */
+          (area->runtime.tool == nullptr))
+      {
+        /* Only re-initialize as needed to prevent redundant updates as they
+         * can cause gizmos to flicker when the flag is set continuously, see: #126525. */
+        area->flag |= AREA_FLAG_ACTIVE_TOOL_UPDATE;
+      }
     }
     else {
       area->runtime.tool = nullptr;
@@ -2620,6 +2744,7 @@ void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2)
 void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_region_exit)
 {
   wmWindow *win = CTX_wm_window(C);
+  SpaceType *st = BKE_spacetype_from_id(type);
 
   if (area->spacetype != type) {
     SpaceLink *slold = static_cast<SpaceLink *>(area->spacedata.first);
@@ -2655,8 +2780,6 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
     if (skip_region_exit && area->type) {
       area->type->exit = area_exit;
     }
-
-    SpaceType *st = BKE_spacetype_from_id(type);
 
     area->spacetype = type;
     area->type = st;
@@ -2729,6 +2852,17 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_CHANGED, area);
 
     ED_area_tag_refresh(area);
+  }
+
+  /* Set area space subtype if applicable. */
+  if (st->space_subtype_item_extend != nullptr) {
+    st->space_subtype_set(area, area->butspacetype_subtype);
+  }
+  area->butspacetype_subtype = 0;
+
+  if (BLI_listbase_is_single(&CTX_wm_screen(C)->areabase)) {
+    /* If there is only one area update the window title. */
+    WM_window_title(CTX_wm_manager(C), CTX_wm_window(C));
   }
 
   /* also redraw when re-used */

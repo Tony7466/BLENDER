@@ -10,7 +10,6 @@
 
 #include "draw_attributes.hh"
 #include "draw_manager_c.hh"
-#include "draw_pbvh.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_curve.hh"
@@ -20,7 +19,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_pbvh_api.hh"
 #include "BKE_volume.hh"
 
 /* For debug cursor position. */
@@ -1101,29 +1099,21 @@ void DRW_shgroup_call_compute(DRWShadingGroup *shgroup,
                               int groups_z_len)
 {
   BLI_assert(groups_x_len > 0 && groups_y_len > 0 && groups_z_len > 0);
-  BLI_assert(GPU_compute_shader_support());
-
   drw_command_compute(shgroup, groups_x_len, groups_y_len, groups_z_len);
 }
 
 void DRW_shgroup_call_compute_ref(DRWShadingGroup *shgroup, int groups_ref[3])
 {
-  BLI_assert(GPU_compute_shader_support());
-
   drw_command_compute_ref(shgroup, groups_ref);
 }
 
 void DRW_shgroup_call_compute_indirect(DRWShadingGroup *shgroup, GPUStorageBuf *indirect_buf)
 {
-  BLI_assert(GPU_compute_shader_support());
-
   drw_command_compute_indirect(shgroup, indirect_buf);
 }
 
 void DRW_shgroup_barrier(DRWShadingGroup *shgroup, eGPUBarrier type)
 {
-  BLI_assert(GPU_compute_shader_support());
-
   drw_command_barrier(shgroup, type);
 }
 
@@ -1256,44 +1246,38 @@ static float sculpt_debug_colors[9][4] = {
     {0.7f, 0.2f, 1.0f, 1.0f},
 };
 
-static void sculpt_draw_cb(DRWSculptCallbackData *scd,
-                           blender::draw::pbvh::PBVHBatches *batches,
-                           const blender::draw::pbvh::PBVH_GPU_Args &pbvh_draw_args)
+static void draw_pbvh_nodes(const Object &object,
+                            const blender::Span<blender::gpu::Batch *> batches,
+                            const blender::Span<int> material_indices,
+                            const blender::Span<DRWShadingGroup *> shading_groups,
+                            const blender::IndexMask &nodes_to_draw)
 {
-  using namespace blender::draw;
-  blender::gpu::Batch *geom;
-
-  if (!scd->use_wire) {
-    geom = pbvh::tris_get(batches, scd->attrs, pbvh_draw_args, scd->fast_mode);
-  }
-  else {
-    geom = pbvh::lines_get(batches, scd->attrs, pbvh_draw_args, scd->fast_mode);
-  }
-
-  short index = 0;
-
-  if (scd->use_mats) {
-    index = pbvh::material_index_get(batches);
-    index = clamp_i(index, 0, scd->num_shading_groups - 1);
-  }
-
-  DRWShadingGroup *shgrp = scd->shading_groups[index];
-  if (geom != nullptr && shgrp != nullptr) {
+  nodes_to_draw.foreach_index([&](const int i) {
+    if (!batches[i]) {
+      return;
+    }
+    const int material_index = material_indices.is_empty() ? 0 : material_indices[i];
+    DRWShadingGroup *shgrp = shading_groups[material_index];
+    if (!shgrp) {
+      return;
+    }
     if (SCULPT_DEBUG_BUFFERS) {
       /* Color each buffers in different colors. Only work in solid/X-ray mode. */
       shgrp = DRW_shgroup_create_sub(shgrp);
-      DRW_shgroup_uniform_vec3(
-          shgrp, "materialDiffuseColor", SCULPT_DEBUG_COLOR(scd->debug_node_nr++), 1);
+      DRW_shgroup_uniform_vec3(shgrp, "materialDiffuseColor", SCULPT_DEBUG_COLOR(i), 1);
     }
 
     /* DRW_shgroup_call_no_cull reuses matrices calculations for all the drawcalls of this
      * object. */
-    DRW_shgroup_call_no_cull(shgrp, geom, scd->ob);
-  }
+    DRW_shgroup_call_no_cull(shgrp, batches[i], &object);
+  });
 }
 
-void DRW_sculpt_debug_cb(
-    PBVHNode *node, void *user_data, const float bmin[3], const float bmax[3], PBVHNodeFlags flag)
+void DRW_sculpt_debug_cb(blender::bke::pbvh::Node *node,
+                         void *user_data,
+                         const float bmin[3],
+                         const float bmax[3],
+                         PBVHNodeFlags flag)
 {
   int *debug_node_nr = (int *)user_data;
   BoundBox bb;
@@ -1310,7 +1294,7 @@ void DRW_sculpt_debug_cb(
   if (flag & (PBVH_Leaf | PBVH_TexLeaf)) {
     DRW_debug_bbox(&bb, SCULPT_DEBUG_COLOR((*debug_node_nr)++));
     int color = (*debug_node_nr)++;
-    color += BKE_pbvh_debug_draw_gen_get(node);
+    color += BKE_pbvh_debug_draw_gen_get(*node);
 
     DRW_debug_bbox(&bb, SCULPT_DEBUG_COLOR(color));
   }
@@ -1335,8 +1319,11 @@ static void drw_sculpt_get_frustum_planes(const Object *ob, float planes[6][4])
 static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 {
   using namespace blender;
-  /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
-  PBVH *pbvh = (scd->ob->sculpt) ? scd->ob->sculpt->pbvh : nullptr;
+  /* pbvh::Tree should always exist for non-empty meshes, created by depsgraph eval. */
+  const Object &object = *scd->ob;
+  bke::pbvh::Tree *pbvh = (object.sculpt) ?
+                              const_cast<bke::pbvh::Tree *>(bke::object::pbvh_get(object)) :
+                              nullptr;
   if (!pbvh) {
     return;
   }
@@ -1345,26 +1332,26 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   RegionView3D *rv3d = drwctx->rv3d;
   const bool navigating = rv3d && (rv3d->rflag & RV3D_NAVIGATING);
 
-  Paint *p = nullptr;
+  Paint *paint = nullptr;
   if (drwctx->evil_C != nullptr) {
-    p = BKE_paint_get_active_from_context(drwctx->evil_C);
+    paint = BKE_paint_get_active_from_context(drwctx->evil_C);
   }
 
-  /* Frustum planes to show only visible PBVH nodes. */
+  /* Frustum planes to show only visible pbvh::Tree nodes. */
   float update_planes[6][4];
   float draw_planes[6][4];
   PBVHFrustumPlanes update_frustum;
   PBVHFrustumPlanes draw_frustum;
 
-  if (p && (p->flags & PAINT_SCULPT_DELAY_UPDATES)) {
+  if (paint && (paint->flags & PAINT_SCULPT_DELAY_UPDATES)) {
     update_frustum.planes = update_planes;
     update_frustum.num_planes = 6;
-    bke::pbvh::get_frustum_planes(pbvh, &update_frustum);
+    bke::pbvh::get_frustum_planes(*pbvh, &update_frustum);
     if (!navigating) {
       drw_sculpt_get_frustum_planes(scd->ob, update_planes);
       update_frustum.planes = update_planes;
       update_frustum.num_planes = 6;
-      bke::pbvh::set_frustum_planes(pbvh, &update_frustum);
+      bke::pbvh::set_frustum_planes(*pbvh, &update_frustum);
     }
   }
   else {
@@ -1379,35 +1366,62 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 
   /* Fast mode to show low poly multires while navigating. */
   scd->fast_mode = false;
-  if (p && (p->flags & PAINT_FAST_NAVIGATE)) {
+  if (paint && (paint->flags & PAINT_FAST_NAVIGATE)) {
     scd->fast_mode = rv3d && (rv3d->rflag & RV3D_NAVIGATING);
   }
 
   /* Update draw buffers only for visible nodes while painting.
    * But do update them otherwise so navigating stays smooth. */
   bool update_only_visible = rv3d && !(rv3d->rflag & RV3D_PAINTING);
-  if (p && (p->flags & PAINT_SCULPT_DELAY_UPDATES)) {
+  if (paint && (paint->flags & PAINT_SCULPT_DELAY_UPDATES)) {
     update_only_visible = true;
   }
 
-  Mesh *mesh = static_cast<Mesh *>(scd->ob->data);
-  bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
+  bke::pbvh::update_normals_from_eval(*const_cast<Object *>(scd->ob), *pbvh);
 
-  bke::pbvh::draw_cb(
-      *mesh,
-      pbvh,
-      update_only_visible,
-      update_frustum,
-      draw_frustum,
-      [&](blender::draw::pbvh::PBVHBatches *batches,
-          const blender::draw::pbvh::PBVH_GPU_Args &args) { sculpt_draw_cb(scd, batches, args); });
+  draw::pbvh::DrawCache &draw_data = draw::pbvh::ensure_draw_data(pbvh->draw_data);
+
+  IndexMaskMemory memory;
+  const IndexMask visible_nodes = bke::pbvh::search_nodes(
+      *pbvh, memory, [&](const bke::pbvh::Node &node) {
+        return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
+      });
+
+  const IndexMask nodes_to_update = update_only_visible ? visible_nodes :
+                                                          bke::pbvh::all_leaf_nodes(*pbvh, memory);
+
+  draw_data.tag_all_attributes_dirty(
+      bke::pbvh::node_draw_update_mask(*pbvh, nodes_to_update, memory));
+
+  const draw::pbvh::ViewportRequest request{scd->attrs, scd->fast_mode};
+  Span<gpu::Batch *> batches;
+  if (scd->use_wire) {
+    batches = draw_data.ensure_lines_batches(object, request, nodes_to_update);
+  }
+  else {
+    batches = draw_data.ensure_tris_batches(object, request, nodes_to_update);
+  }
+
+  bke::pbvh::remove_node_draw_tags(const_cast<bke::pbvh::Tree &>(*pbvh), nodes_to_update);
+
+  Span<int> material_indices;
+  if (scd->use_mats) {
+    material_indices = draw_data.ensure_material_indices(object);
+  }
+
+  draw_pbvh_nodes(object,
+                  batches,
+                  material_indices,
+                  {scd->shading_groups, scd->num_shading_groups},
+                  visible_nodes);
 
   if (SCULPT_DEBUG_BUFFERS) {
     int debug_node_nr = 0;
-    DRW_debug_modelmat(scd->ob->object_to_world().ptr());
+    DRW_debug_modelmat(object.object_to_world().ptr());
     BKE_pbvh_draw_debug_cb(
-        pbvh,
-        (void (*)(PBVHNode *n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
+        *pbvh,
+        (void (*)(
+            bke::pbvh::Node *n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
             DRW_sculpt_debug_cb,
         &debug_node_nr);
   }
@@ -1479,7 +1493,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
   const Mesh *mesh = static_cast<const Mesh *>(ob->data);
 
   if (gpumats) {
-    DRW_mesh_get_attributes(ob, mesh, gpumats, num_shgroups, &draw_attrs, &cd_needed);
+    DRW_mesh_get_attributes(*ob, *mesh, gpumats, num_shgroups, &draw_attrs, &cd_needed);
   }
   else {
     memset(&draw_attrs, 0, sizeof(draw_attrs));
@@ -1514,7 +1528,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
   scd.use_wire = false;
   scd.use_mats = true;
   scd.use_mask = false;
-  scd.attrs = attrs;
+  scd.attrs = std::move(attrs);
 
   drw_sculpt_generate_calls(&scd);
 }
@@ -1589,14 +1603,14 @@ void DRW_buffer_add_entry_struct(DRWCallBuffer *callbuf, const void *data)
   const bool resize = (callbuf->count == GPU_vertbuf_get_vertex_alloc(buf));
 
   if (UNLIKELY(resize)) {
-    GPU_vertbuf_data_resize(buf, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
+    GPU_vertbuf_data_resize(*buf, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
   }
 
   GPU_vertbuf_vert_set(buf, callbuf->count, data);
 
   if (G.f & G_FLAG_PICKSEL) {
     if (UNLIKELY(resize)) {
-      GPU_vertbuf_data_resize(callbuf->buf_select, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
+      GPU_vertbuf_data_resize(*callbuf->buf_select, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
     }
     GPU_vertbuf_attr_set(callbuf->buf_select, 0, callbuf->count, &DST.select_id);
   }
@@ -1613,7 +1627,7 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint
   UNUSED_VARS_NDEBUG(attr_len);
 
   if (UNLIKELY(resize)) {
-    GPU_vertbuf_data_resize(buf, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
+    GPU_vertbuf_data_resize(*buf, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
   }
 
   for (int i = 0; i < attr_len; i++) {
@@ -1622,7 +1636,7 @@ void DRW_buffer_add_entry_array(DRWCallBuffer *callbuf, const void *attr[], uint
 
   if (G.f & G_FLAG_PICKSEL) {
     if (UNLIKELY(resize)) {
-      GPU_vertbuf_data_resize(callbuf->buf_select, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
+      GPU_vertbuf_data_resize(*callbuf->buf_select, callbuf->count + DRW_BUFFER_VERTS_CHUNK);
     }
     GPU_vertbuf_attr_set(callbuf->buf_select, 0, callbuf->count, &DST.select_id);
   }

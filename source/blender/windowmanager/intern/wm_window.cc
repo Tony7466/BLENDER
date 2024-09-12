@@ -41,11 +41,12 @@
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include "BKE_workspace.h"
+#include "BKE_workspace.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -164,7 +165,7 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timers_process(const bContext *C, int *sleep_us);
+static bool wm_window_timers_process(const bContext *C, int *sleep_us_p);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
 bool wm_get_screensize(int *r_width, int *r_height)
@@ -477,21 +478,35 @@ void wm_window_close(bContext *C, wmWindowManager *wm, wmWindow *win)
     BKE_workspace_layout_remove(bmain, workspace, layout);
     WM_event_add_notifier(C, NC_SCREEN | ND_LAYOUTDELETE, nullptr);
   }
+
+  WM_main_add_notifier(NC_WINDOW | NA_REMOVED, nullptr);
 }
 
-void wm_window_title(wmWindowManager *wm, wmWindow *win)
+void WM_window_title(wmWindowManager *wm, wmWindow *win, const char *title)
 {
   if (win->ghostwin == nullptr) {
     return;
   }
 
-  if (WM_window_is_temp_screen(win)) {
-    /* Nothing to do for 'temp' windows,
-     * because #WM_window_open always sets window title. */
+  GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
+
+  if (title) {
+    GHOST_SetTitle(handle, title);
     return;
   }
 
-  GHOST_WindowHandle handle = static_cast<GHOST_WindowHandle>(win->ghostwin);
+  if (win->parent || WM_window_is_temp_screen(win)) {
+    /* Not a main window. */
+    bScreen *screen = WM_window_get_active_screen(win);
+    const bool is_single = screen && BLI_listbase_is_single(&screen->areabase);
+    ScrArea *area = (screen) ? static_cast<ScrArea *>(screen->areabase.first) : nullptr;
+    const char *name = "Blender";
+    if (is_single && area && area->spacetype != SPACE_EMPTY) {
+      name = IFACE_(ED_area_name(area).c_str());
+    }
+    GHOST_SetTitle(handle, name);
+    return;
+  }
 
   const char *filepath = BKE_main_blendfile_path_from_global();
   const char *filename = BLI_path_basename(filepath);
@@ -524,7 +539,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
   }
 
   str += " - Blender ";
-  str += BKE_blender_version_string_compact();
+  str += BKE_blender_version_string();
 
   GHOST_SetTitle(handle, str.c_str());
 
@@ -856,7 +871,7 @@ static void wm_window_ghostwindow_ensure(wmWindowManager *wm, wmWindow *win, boo
     ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
     WM_event_add_dropbox_handler(&win->handlers, lb);
   }
-  wm_window_title(wm, win);
+  WM_window_title(wm, win);
 
   /* Add top-bar. */
   ED_screen_global_areas_refresh(win);
@@ -1078,11 +1093,11 @@ wmWindow *WM_window_open(bContext *C,
   }
 
   /* Refresh screen dimensions, after the effective window size is known. */
-  ED_screen_refresh(wm, win);
+  ED_screen_refresh(C, wm, win);
 
   if (win->ghostwin) {
     wm_window_raise(win);
-    GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), title);
+    WM_window_title(wm, win, title);
     return win;
   }
 
@@ -1119,7 +1134,7 @@ int wm_window_new_exec(bContext *C, wmOperator *op)
   };
 
   bool ok = (WM_window_open(C,
-                            IFACE_("Blender"),
+                            nullptr,
                             &window_rect,
                             area->spacetype,
                             false,
@@ -2047,6 +2062,59 @@ void wm_test_opengl_deprecation_warning(bContext *C)
   message_shown = true;
 }
 
+static uiBlock *block_create_gpu_backend_fallback(bContext *C, ARegion *region, void * /*arg1*/)
+{
+  uiBlock *block = UI_block_begin(C, region, "autorun_warning_popup", UI_EMBOSS);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_emboss_set(block, UI_EMBOSS);
+
+  uiLayout *layout = uiItemsAlertBox(block, 44, ALERT_ICON_ERROR);
+
+  /* Title and explanation text. */
+  uiLayout *col = uiLayoutColumn(layout, false);
+  uiItemL_ex(
+      col, RPT_("Failed to load using Vulkan, using OpenGL instead."), ICON_NONE, true, false);
+  uiItemL(col, RPT_(""), ICON_NONE);
+  uiItemL(col, RPT_("Updating GPU drivers may solve this issue."), ICON_NONE);
+  uiItemL(col,
+          RPT_("The graphics backend can be changed in the System section of the Preferences."),
+          ICON_NONE);
+
+  uiItemS(layout);
+
+  UI_block_bounds_set_centered(block, 14 * UI_SCALE_FAC);
+
+  return block;
+}
+
+void wm_test_gpu_backend_fallback(bContext *C)
+{
+  if (!bool(G.f & G_FLAG_GPU_BACKEND_FALLBACK)) {
+    return;
+  }
+
+  /* Have we already shown a message during this Blender session. */
+  if (bool(G.f & G_FLAG_GPU_BACKEND_FALLBACK_QUIET)) {
+    return;
+  }
+  G.f |= G_FLAG_GPU_BACKEND_FALLBACK_QUIET;
+
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = static_cast<wmWindow *>((wm->winactive) ? wm->winactive : wm->windows.first);
+
+  if (win) {
+    /* We want this warning on the Main window, not a child window even if active. See #118765. */
+    if (win->parent) {
+      win = win->parent;
+    }
+
+    wmWindow *prevwin = CTX_wm_window(C);
+    CTX_wm_window_set(C, win);
+    UI_popup_block_invoke(C, block_create_gpu_backend_fallback, nullptr, nullptr);
+    CTX_wm_window_set(C, prevwin);
+  }
+}
+
 eWM_CapabilitiesFlag WM_capabilities_flag()
 {
   static eWM_CapabilitiesFlag flag = eWM_CapabilitiesFlag(0);
@@ -2076,6 +2144,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   }
   if (ghost_flag & GHOST_kCapabilityInputIME) {
     flag |= WM_CAPABILITY_INPUT_IME;
+  }
+  if (ghost_flag & GHOST_kCapabilityTrackpadPhysicalDirection) {
+    flag |= WM_CAPABILITY_TRACKPAD_PHYSICAL_DIRECTION;
   }
 
   return flag;
@@ -2652,22 +2723,30 @@ void WM_cursor_warp(wmWindow *win, int x, int y)
 /** \name Window Size (public)
  * \{ */
 
-int WM_window_pixels_x(const wmWindow *win)
+int WM_window_native_pixel_x(const wmWindow *win)
 {
-  float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
+  const float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
-  return int(f * float(win->sizex));
+  return int(fac * float(win->sizex));
 }
-int WM_window_pixels_y(const wmWindow *win)
+int WM_window_native_pixel_y(const wmWindow *win)
 {
-  float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
+  const float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
-  return int(f * float(win->sizey));
+  return int(fac * float(win->sizey));
+}
+
+void WM_window_native_pixel_coords(const wmWindow *win, int *x, int *y)
+{
+  const float fac = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
+
+  *x *= fac;
+  *y *= fac;
 }
 
 void WM_window_rect_calc(const wmWindow *win, rcti *r_rect)
 {
-  BLI_rcti_init(r_rect, 0, WM_window_pixels_x(win), 0, WM_window_pixels_y(win));
+  BLI_rcti_init(r_rect, 0, WM_window_native_pixel_x(win), 0, WM_window_native_pixel_y(win));
 }
 void WM_window_screen_rect_calc(const wmWindow *win, rcti *r_rect)
 {

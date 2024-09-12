@@ -12,6 +12,10 @@ endif()
 
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(MSVC_CLANG ON)
+  if(NOT WITH_WINDOWS_EXTERNAL_MANIFEST AND (CMAKE_GENERATOR MATCHES "Visual Studio" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
+    message(WARNING "WITH_WINDOWS_EXTERNAL_MANIFEST is required for clang (all generators on ARM64, VS generator on x64), turning ON")
+    set(WITH_WINDOWS_EXTERNAL_MANIFEST ON)
+  endif()
   set(VC_TOOLS_DIR $ENV{VCToolsRedistDir} CACHE STRING "Location of the msvc redistributables")
   set(MSVC_REDIST_DIR ${VC_TOOLS_DIR})
   if(DEFINED MSVC_REDIST_DIR)
@@ -22,12 +26,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # 1) CMake has issues detecting openmp support in clang-cl so we have to provide
   #    the right switches here.
   # 2) While the /openmp switch *should* work, it currently doesn't as for clang 9.0.0
+  # 3) Using the registry to locate llvmroot doesn't work on some installs. When this happens,
+  #    attempt to locate openmp in the lib directory of the parent of the clang-cl binary
   if(WITH_OPENMP)
     set(OPENMP_CUSTOM ON)
     set(OPENMP_FOUND ON)
     set(OpenMP_C_FLAGS "/clang:-fopenmp")
     set(OpenMP_CXX_FLAGS "/clang:-fopenmp")
-    get_filename_component(LLVMROOT "[HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\LLVM\\LLVM;]" ABSOLUTE CACHE)
+    get_filename_component(LLVMBIN ${CMAKE_CXX_COMPILER} DIRECTORY)
+    get_filename_component(LLVMROOT ${LLVMBIN} DIRECTORY)
     set(CLANG_OPENMP_DLL "${LLVMROOT}/bin/libomp.dll")
     set(CLANG_OPENMP_LIB "${LLVMROOT}/lib/libomp.lib")
     if(NOT EXISTS "${CLANG_OPENMP_DLL}")
@@ -86,6 +93,10 @@ add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 string(APPEND CMAKE_EXE_LINKER_FLAGS " /SAFESEH:NO /ignore:4099")
 string(APPEND CMAKE_SHARED_LINKER_FLAGS " /SAFESEH:NO /ignore:4099")
 string(APPEND CMAKE_MODULE_LINKER_FLAGS " /SAFESEH:NO /ignore:4099")
+
+if(WITH_WINDOWS_EXTERNAL_MANIFEST)
+  string(APPEND CMAKE_EXE_LINKER_FLAGS " /manifest:no")
+endif()
 
 list(APPEND PLATFORM_LINKLIBS
   ws2_32 vfw32 winmm kernel32 user32 gdi32 comdlg32 Comctl32 version
@@ -169,8 +180,8 @@ remove_cc_flag(
 )
 
 if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
-  string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
-  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
+  string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference /clang:-funsigned-char /clang:-fno-strict-aliasing /clang:-ffp-contract=off")
+  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference /clang:-funsigned-char /clang:-fno-strict-aliasing /clang:-ffp-contract=off")
 else()
   string(APPEND CMAKE_CXX_FLAGS " /nologo /J /Gd /MP /EHsc /bigobj")
   string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd /MP /bigobj")
@@ -179,7 +190,7 @@ endif()
 # X64 ASAN is available and usable on MSVC 16.9 preview 4 and up)
 if(WITH_COMPILER_ASAN AND MSVC AND NOT MSVC_CLANG)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.28.29828)
-    #set a flag so we don't have to do this comparison all the time
+    # Set a flag so we don't have to do this comparison all the time.
     set(MSVC_ASAN ON)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fsanitize=address")
     set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /fsanitize=address")
@@ -293,7 +304,6 @@ endif()
 if(NOT DEFINED LIBDIR)
   # Setup 64bit and 64bit windows systems
   if(CMAKE_CL_64)
-    message(STATUS "64 bit compiler detected.")
     if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
       set(LIBDIR_BASE "windows_arm64")
     else()
@@ -302,7 +312,10 @@ if(NOT DEFINED LIBDIR)
   else()
     message(FATAL_ERROR "32 bit compiler detected, blender no longer provides pre-build libraries for 32 bit windows, please set the LIBDIR cmake variable to your own library folder")
   endif()
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.30.30423)
+  if(MSVC_CLANG)
+    message(STATUS "Clang version ${CMAKE_CXX_COMPILER_VERSION} detected, masquerading as MSVC ${MSVC_VERSION}")
+    set(LIBDIR ${CMAKE_SOURCE_DIR}/lib/${LIBDIR_BASE})
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.30.30423)
     message(STATUS "Visual Studio 2022 detected.")
     set(LIBDIR ${CMAKE_SOURCE_DIR}/lib/${LIBDIR_BASE})
   elseif(MSVC_VERSION GREATER 1919)
@@ -432,12 +445,16 @@ endif()
 
 if(WITH_FFTW3)
   set(FFTW3 ${LIBDIR}/fftw3)
-  if(EXISTS ${FFTW3}/lib/libfftw3-3.lib) # 3.6 libraries
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/libfftw3-3.lib ${FFTW3}/lib/libfftw3f.lib)
-  elseif(EXISTS ${FFTW3}/lib/libfftw.lib)
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/libfftw.lib) # 3.5 Libraries
-  else()
-    set(FFTW3_LIBRARIES ${FFTW3}/lib/fftw3.lib ${FFTW3}/lib/fftw3f.lib) # msys2+MSVC Libraries
+  set(FFTW3_LIBRARIES
+    ${FFTW3}/lib/fftw3.lib
+    ${FFTW3}/lib/fftw3f.lib
+  )
+  if(EXISTS ${FFTW3}/lib/fftw3_threads.lib)
+    list(APPEND FFTW3_LIBRARIES
+      ${FFTW3}/lib/fftw3_threads.lib
+      ${FFTW3}/lib/fftw3f_threads.lib
+    )
+    set(WITH_FFTW3_THREADS_SUPPORT ON)
   endif()
   set(FFTW3_INCLUDE_DIRS ${FFTW3}/include)
   set(FFTW3_LIBPATH ${FFTW3}/lib)
@@ -500,12 +517,13 @@ if(WITH_OPENCOLLADA)
   endif()
 
   list(APPEND OPENCOLLADA_LIBRARIES ${OPENCOLLADA}/lib/opencollada/UTF.lib)
+  if(EXISTS ${OPENCOLLADA}/lib/opencollada/pcre.lib)
+    set(PCRE_LIBRARIES
+      optimized ${OPENCOLLADA}/lib/opencollada/pcre.lib
 
-  set(PCRE_LIBRARIES
-    optimized ${OPENCOLLADA}/lib/opencollada/pcre.lib
-
-    debug ${OPENCOLLADA}/lib/opencollada/pcre_d.lib
-  )
+      debug ${OPENCOLLADA}/lib/opencollada/pcre_d.lib
+    )
+  endif()
 endif()
 
 if(WITH_CODEC_FFMPEG)
@@ -681,7 +699,7 @@ if(WITH_BOOST)
     # This is file new in 3.4 if it does not exist, assume we are building against 3.3 libs
     # Note, as ARM64 was introduced in 4.x, this check is not needed
     set(BOOST_34_TRIGGER_FILE ${BOOST_LIBPATH}/${BOOST_PREFIX}boost_python${_PYTHON_VERSION_NO_DOTS}-${BOOST_DEBUG_POSTFIX}.lib)
-    if (NOT EXISTS ${BOOST_34_TRIGGER_FILE})
+    if(NOT EXISTS ${BOOST_34_TRIGGER_FILE})
       set(BOOST_DEBUG_POSTFIX "vc142-mt-gd-x64-${BOOST_VERSION}")
       set(BOOST_PREFIX "lib")
     endif()
@@ -842,8 +860,8 @@ if(WITH_OPENIMAGEDENOISE)
         if(EXISTS ${OPENIMAGEDENOISE_LIBRARIES_RELEASE})
           set(OPENIMAGEDENOISE_LIBRARIES ${OPENIMAGEDENOISE_LIBRARIES_RELEASE})
         else()
-         set(WITH_OPENIMAGEDENOISE OFF)
-         message(STATUS "OpenImageDenoise not found, disabling WITH_OPENIMAGEDENOISE")
+          set(WITH_OPENIMAGEDENOISE OFF)
+          message(STATUS "OpenImageDenoise not found, disabling WITH_OPENIMAGEDENOISE")
         endif()
       endif()
       get_target_property(OPENIMAGEDENOISE_INCLUDE_DIRS OpenImageDenoise INTERFACE_INCLUDE_DIRECTORIES)
@@ -1297,6 +1315,7 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
 
   file(GLOB _sycl_pi_runtime_libraries_glob
     ${SYCL_ROOT_DIR}/bin/pi_*.dll
+    ${SYCL_ROOT_DIR}/bin/ur_*.dll
   )
   list(REMOVE_ITEM _sycl_pi_runtime_libraries_glob "${SYCL_ROOT_DIR}/bin/pi_opencl.dll")
   list(APPEND _sycl_runtime_libraries ${_sycl_pi_runtime_libraries_glob})
@@ -1311,12 +1330,15 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
   )
 endif()
 
-
+# Add the msvc directory to the path so when building with ASAN enabled tools such as
+# msgfmt which run before the install phase can find the asan shared libraries.
+get_filename_component(_msvc_path ${CMAKE_C_COMPILER} DIRECTORY)
 # Environment variables to run precompiled executables that needed libraries.
 list(JOIN PLATFORM_BUNDLED_LIBRARY_DIRS ";" _library_paths)
-set(PLATFORM_ENV_BUILD_DIRS "${LIBDIR}/epoxy/bin\;${LIBDIR}/tbb/bin\;${LIBDIR}/OpenImageIO/bin\;${LIBDIR}/boost/lib\;${LIBDIR}/openexr/bin\;${LIBDIR}/imath/bin\;${LIBDIR}/shaderc/bin\;${PATH}")
+set(PLATFORM_ENV_BUILD_DIRS "${_msvc_path}\;${LIBDIR}/epoxy/bin\;${LIBDIR}/tbb/bin\;${LIBDIR}/OpenImageIO/bin\;${LIBDIR}/boost/lib\;${LIBDIR}/openexr/bin\;${LIBDIR}/imath/bin\;${LIBDIR}/shaderc/bin\;${PATH}")
 set(PLATFORM_ENV_BUILD "PATH=${PLATFORM_ENV_BUILD_DIRS}")
 # Install needs the additional folders from PLATFORM_ENV_BUILD_DIRS as well, as tools like:
 # `idiff` and `abcls` use the release mode dlls.
 set(PLATFORM_ENV_INSTALL "PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/blender.shared/\;${PLATFORM_ENV_BUILD_DIRS}\;$ENV{PATH}")
 unset(_library_paths)
+unset(_msvc_path)

@@ -13,7 +13,8 @@
 struct Curves;
 namespace blender::bke {
 struct GeometrySet;
-}
+class CurvesGeometry;
+}  // namespace blender::bke
 
 namespace blender::io::usd {
 
@@ -42,7 +43,9 @@ class USDCurvesReader : public USDGeomReader {
 
   void read_geometry(bke::GeometrySet &geometry_set,
                      USDMeshReadParams params,
-                     const char **err_str) override;
+                     const char **r_err_str) override;
+
+  void read_custom_data(bke::CurvesGeometry &curves, const double motionSampleTime) const;
 };
 
 }  // namespace blender::io::usd

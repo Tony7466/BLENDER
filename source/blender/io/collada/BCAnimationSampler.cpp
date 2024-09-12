@@ -12,7 +12,7 @@
 #include "ExportSettings.h"
 #include "collada_utils.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_constraint.h"
 #include "BKE_key.hh"
 #include "BKE_lib_id.hh"
@@ -101,7 +101,6 @@ static bool is_object_keyframe(Object *ob, int frame_index)
 static void add_keyframes_from(bAction *action, BCFrameSet &frameset)
 {
   if (action) {
-    FCurve *fcu = nullptr;
     LISTBASE_FOREACH (FCurve *, fcu, &action->curves) {
       BezTriple *bezt = fcu->bezt;
       for (int i = 0; i < fcu->totvert; bezt++, i++) {

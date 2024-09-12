@@ -58,7 +58,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -810,7 +810,8 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
      *
      * This would be unnecessary if the active attribute were stored as a string on the ID. */
     std::string active_attribute;
-    const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id);
+    AttributeOwner owner = AttributeOwner::from_id(&curves_id->id);
+    const CustomDataLayer *layer = BKE_attributes_active_get(owner);
     if (layer) {
       active_attribute = layer->name;
     }
@@ -831,7 +832,7 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
       }
     }
     if (!active_attribute.empty()) {
-      BKE_id_attributes_active_set(&curves_id->id, active_attribute.c_str());
+      BKE_attributes_active_set(owner, active_attribute.c_str());
     }
 
     /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
@@ -949,7 +950,7 @@ static void select_random_ui(bContext * /*C*/, wmOperator *op)
   uiLayout *layout = op->layout;
 
   uiItemR(layout, op->ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, "Probability", ICON_NONE);
+  uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, IFACE_("Probability"), ICON_NONE);
 }
 
 static void CURVES_OT_select_random(wmOperatorType *ot)
@@ -1394,6 +1395,7 @@ namespace curve_type_set {
 static int exec(bContext *C, wmOperator *op)
 {
   const CurveType dst_type = CurveType(RNA_enum_get(op->ptr, "type"));
+  const bool use_handles = RNA_boolean_get(op->ptr, "use_handles");
 
   for (Curves *curves_id : get_unique_editable_curves(*C)) {
     bke::CurvesGeometry &curves = curves_id->geometry.wrap();
@@ -1403,7 +1405,13 @@ static int exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    curves = geometry::convert_curves(curves, selection, dst_type, {});
+    geometry::ConvertCurvesOptions options;
+    options.convert_bezier_handles_to_poly_points = use_handles;
+    options.convert_bezier_handles_to_catmull_rom_points = use_handles;
+    options.keep_bezier_shape_as_nurbs = use_handles;
+    options.keep_catmull_rom_shape_as_nurbs = use_handles;
+
+    curves = geometry::convert_curves(curves, selection, dst_type, {}, options);
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);
@@ -1426,6 +1434,12 @@ static void CURVES_OT_curve_type_set(wmOperatorType *ot)
 
   ot->prop = RNA_def_enum(
       ot->srna, "type", rna_enum_curves_type_items, CURVE_TYPE_POLY, "Type", "Curve type");
+
+  RNA_def_boolean(ot->srna,
+                  "use_handles",
+                  false,
+                  "Handles",
+                  "Take handle information into account in the conversion");
 }
 
 namespace switch_direction {
@@ -1724,7 +1738,7 @@ static int exec(bContext *C, wmOperator *op)
     });
 
     curves.calculate_bezier_auto_handles();
-    curves.tag_positions_changed();
+    curves.tag_topology_changed();
 
     DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, curves_id);

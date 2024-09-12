@@ -505,6 +505,12 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_KEYTYPE_MOVEHOLD_SELECT:
           cp = ts->keytype_movehold_select;
           break;
+        case TH_KEYTYPE_GENERATED:
+          cp = ts->keytype_generated;
+          break;
+        case TH_KEYTYPE_GENERATED_SELECT:
+          cp = ts->keytype_generated_select;
+          break;
         case TH_KEYBORDER:
           cp = ts->keyborder;
           break;
@@ -513,6 +519,12 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           break;
         case TH_CFRAME:
           cp = ts->cframe;
+          break;
+        case TH_FRAME_BEFORE:
+          cp = ts->before_current_frame;
+          break;
+        case TH_FRAME_AFTER:
+          cp = ts->after_current_frame;
           break;
         case TH_TIME_KEYFRAME:
           cp = ts->time_keyframe;
@@ -1001,6 +1013,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_ICON_FOLDER:
           cp = btheme->tui.icon_folder;
           break;
+        case TH_ICON_AUTOKEY:
+          cp = btheme->tui.icon_autokey;
+          break;
         case TH_ICON_FUND: {
           /* Development fund icon color is not part of theme. */
           static const uchar red[4] = {204, 48, 72, 255};
@@ -1071,6 +1086,7 @@ void UI_theme_init_default()
       BLI_findstring(&U.themes, U_theme_default.name, offsetof(bTheme, name)));
   if (btheme == nullptr) {
     btheme = MEM_cnew<bTheme>(__func__);
+    STRNCPY(btheme->name, U_theme_default.name);
     BLI_addhead(&U.themes, btheme);
   }
 
@@ -1122,7 +1138,7 @@ void UI_Theme_Store(bThemeState *theme_state)
 {
   *theme_state = g_theme_state;
 }
-void UI_Theme_Restore(bThemeState *theme_state)
+void UI_Theme_Restore(const bThemeState *theme_state)
 {
   g_theme_state = *theme_state;
 }
@@ -1507,7 +1523,7 @@ void UI_ThemeClearColor(int colorid)
 
 int UI_ThemeMenuShadowWidth()
 {
-  bTheme *btheme = UI_GetTheme();
+  const bTheme *btheme = UI_GetTheme();
   return int(btheme->tui.menu_shadow_width * UI_SCALE_FAC);
 }
 

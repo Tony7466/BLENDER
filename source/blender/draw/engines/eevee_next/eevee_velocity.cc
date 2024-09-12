@@ -153,7 +153,9 @@ bool VelocityModule::step_object_sync(Object *ob,
   VelocityObjectData &vel = velocity_map.lookup_or_add_default(object_key);
   vel.obj.ofs[step_] = object_steps_usage[step_]++;
   vel.obj.resource_id = resource_handle.resource_index();
-  vel.id = object_key.hash();
+  /* While VelocityObjectData is unique for each object/instance, multiple VelocityObjectDatas can
+   * point to the same offset in VelocityGeometryData, since geometry is stored local space. */
+  vel.id = particle_sys ? uint64_t(particle_sys) : uint64_t(ob->data);
   object_steps[step_]->get_or_resize(vel.obj.ofs[step_]) = ob->object_to_world();
   if (step_ == STEP_CURRENT) {
     /* Replace invalid steps. Can happen if object was hidden in one of those steps. */
@@ -262,7 +264,7 @@ void VelocityModule::geometry_steps_fill()
   copy_ps.bind_ssbo("out_buf", *geometry_steps[step_]);
 
   for (VelocityGeometryData &geom : geometry_map.values()) {
-    if (!geom.pos_buf) {
+    if (!geom.pos_buf || geom.len == 0) {
       continue;
     }
     const GPUVertFormat *format = GPU_vertbuf_get_format(geom.pos_buf);
@@ -279,7 +281,9 @@ void VelocityModule::geometry_steps_fill()
       copy_ps.push_constant("start_offset", geom.ofs);
       copy_ps.push_constant("vertex_stride", int(format->stride / 4));
       copy_ps.push_constant("vertex_count", geom.len);
-      copy_ps.dispatch(int3(divide_ceil_u(geom.len, VERTEX_COPY_GROUP_SIZE), 1, 1));
+      uint group_len_x = divide_ceil_u(geom.len, VERTEX_COPY_GROUP_SIZE);
+      uint verts_per_thread = divide_ceil_u(group_len_x, GPU_max_work_group_count(0));
+      copy_ps.dispatch(int3(group_len_x / verts_per_thread, 1, 1));
     }
   }
 

@@ -26,6 +26,24 @@ struct bAction;
 /* AnimData API */
 
 /**
+ * Container for the owning ID and its AnimData struct (`adt`).
+ *
+ * Fetching the `adt` pointer from an ID via BKE_animdata_from_id() involves finding the ID type,
+ * and checking whether that's animatable. This is why the `adt` is often obtained once, and then
+ * passed to other functions.
+ *
+ * However, Action Slot (un)assignment needs to keep track of which ID is being animated. Also
+ * Slots have to be checked whether they are suitable for the given ID, before they can be
+ * assigned. This means that not just the `adt` needs to be known, but also the animated ID itself.
+ *
+ * This struct is here to avoid passing two references all the time.
+ */
+struct OwnedAnimData {
+  ID &owner_id;
+  AnimData &adt;
+};
+
+/**
  * Check if the given ID-block can have AnimData.
  */
 bool id_type_can_have_animdata(short id_type);
@@ -100,7 +118,7 @@ AnimData *BKE_animdata_copy(Main *bmain, AnimData *adt, int flag);
 /**
  * Same as #BKE_animdata_copy, but allows to duplicate Action IDs into a library.
  *
- * \param owner_library the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
+ * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
  * not use any library (i.e. become a local ID). Use `std::nullopt` for default behavior (i.e.
  * behavior of the #BKE_animdata_copy function).
  */
@@ -143,3 +161,12 @@ void BKE_animdata_merge_copy(
 
 void BKE_animdata_blend_write(BlendWriter *writer, ID *id);
 void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id);
+
+/**
+ * Process the AnimData struct after all library overrides have been applied.
+ *
+ * This is necessary as an extra step to fix the NLA, as that requires multiple pointers & various
+ * sets of flags to all be consistent. It's much easier to do that once all overrides have been
+ * applied.
+ */
+void BKE_animdata_liboverride_post_process(ID *id);

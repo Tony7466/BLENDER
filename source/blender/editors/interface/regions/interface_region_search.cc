@@ -176,7 +176,7 @@ int UI_searchbox_size_x()
   return 12 * UI_UNIT_X;
 }
 
-int UI_search_items_find_index(uiSearchItems *items, const char *name)
+int UI_search_items_find_index(const uiSearchItems *items, const char *name)
 {
   if (items->name_prefix_offsets != nullptr) {
     for (int i = 0; i < items->totitem; i++) {
@@ -802,7 +802,7 @@ static void ui_searchbox_region_layout_fn(const bContext *C, ARegion *region)
 
     BLI_rcti_translate(&rect_i, butregion->winrct.xmin, butregion->winrct.ymin);
 
-    int winx = WM_window_pixels_x(win);
+    int winx = WM_window_native_pixel_x(win);
     // winy = WM_window_pixels_y(win);  /* UNUSED */
     // wm_window_get_size(win, &winx, &winy);
 

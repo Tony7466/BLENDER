@@ -15,6 +15,7 @@ from bpy.app.translations import (
     pgettext_rpt as rpt_,
 )
 from bl_ui.utils import PresetPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bl_ui.properties_physics_common import (
     point_cache_ui,
@@ -224,7 +225,7 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
                 row.template_ID(psys, "settings", new="particle.new")
 
             if part.is_fluid:
-                layout.label(text=rpt_("%d fluid particles for this frame") % part.count, translate=False)
+                layout.label(text=rpt_("{:d} fluid particles for this frame").format(part.count), translate=False)
                 return
 
             row = layout.row()
@@ -435,12 +436,18 @@ class PARTICLE_PT_hair_dynamics(ParticleButtonsPanel, Panel):
                 label = "ERROR"
                 icon = 'ERROR'
             box.label(text=label, icon=icon)
-            box.label(text=rpt_("Iterations: %d .. %d (avg. %d)") %
-                      (result.min_iterations, result.max_iterations, result.avg_iterations),
-                      translate=False)
-            box.label(text=rpt_("Error: %.5f .. %.5f (avg. %.5f)")
-                      % (result.min_error, result.max_error, result.avg_error),
-                      translate=False)
+            box.label(
+                text=rpt_("Iterations: {:d} .. {:d} (avg. {:d})").format(
+                    result.min_iterations, result.max_iterations, result.avg_iterations,
+                ),
+                translate=False,
+            )
+            box.label(
+                text=rpt_("Error: {:.5f} .. {:.5f} (avg. {:.5f})").format(
+                    result.min_error, result.max_error, result.avg_error,
+                ),
+                translate=False,
+            )
 
 
 class PARTICLE_PT_hair_dynamics_collision(ParticleButtonsPanel, Panel):
@@ -839,7 +846,7 @@ class PARTICLE_PT_physics_fluid_advanced(ParticleButtonsPanel, Panel):
             particle_volume = part.mass / fluid.rest_density
             spacing = pow(particle_volume, 1.0 / 3.0)
 
-            sub.label(text=iface_("Spacing: %g") % spacing, translate=False)
+            sub.label(text=iface_("Spacing: {:g}").format(spacing), translate=False)
 
 
 class PARTICLE_PT_physics_fluid_springs(ParticleButtonsPanel, Panel):
@@ -1086,8 +1093,10 @@ class PARTICLE_PT_physics_relations(ParticleButtonsPanel, Panel):
         part = particle_get_settings(context)
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_targets", psys, "targets",
-                          psys, "active_particle_target_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_targets", psys, "targets",
+            psys, "active_particle_target_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1144,8 +1153,10 @@ class PARTICLE_PT_physics_fluid_interaction(ParticleButtonsPanel, Panel):
         psys = context.particle_system
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_targets", psys, "targets",
-                          psys, "active_particle_target_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_targets", psys, "targets",
+                          psys, "active_particle_target_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1318,8 +1329,10 @@ class PARTICLE_PT_boidbrain(ParticleButtonsPanel, Panel):
         # layout.prop(state, "name", text="State name")
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_boids_rules", state,
-                          "rules", state, "active_boid_rule_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_boids_rules", state,
+            "rules", state, "active_boid_rule_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1613,8 +1626,10 @@ class PARTICLE_PT_render_collection_use_count(ParticleButtonsPanel, Panel):
         layout.active = part.use_collection_count and not part.use_whole_collection
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_instance_weights", part, "instance_weights",
-                          part, "active_instanceweight_index")
+        row.template_list(
+            "UI_UL_list", "particle_instance_weights", part, "instance_weights",
+            part, "active_instanceweight_index",
+        )
 
         col = row.column()
         sub = col.row()
@@ -2260,6 +2275,20 @@ class PARTICLE_PT_hair_shape(ParticleButtonsPanel, Panel):
         col.prop(part, "use_close_tip")
 
 
+class PARTICLE_PT_animation(ParticleButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    @classmethod
+    def _animated_id(cls, context):
+        psys = getattr(context, 'particle_system', None)
+        return psys and psys.settings
+
+
 class PARTICLE_PT_custom_props(ParticleButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -2323,6 +2352,7 @@ classes = (
     PARTICLE_PT_force_fields_type2_falloff,
     PARTICLE_PT_vertexgroups,
     PARTICLE_PT_textures,
+    PARTICLE_PT_animation,
     PARTICLE_PT_custom_props,
 )
 
