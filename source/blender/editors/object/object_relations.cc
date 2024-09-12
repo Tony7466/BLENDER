@@ -730,7 +730,7 @@ bool parent_set(ReportList *reports,
           reports, depsgraph, scene, ob, par, ARM_GROUPS_AUTO, xmirror);
       WM_cursor_wait(false);
     }
-    /* get corrected inverse */
+    /* Get corrected inverse. */
     ob->partype = PAROBJECT;
 
     invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
