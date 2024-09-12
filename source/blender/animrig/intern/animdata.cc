@@ -86,7 +86,6 @@ static bAction *find_related_action(Main &bmain, ID &id)
     switch (GS(related_id->name)) {
       case ID_OB: {
         Object *ob = (Object *)related_id;
-        BLI_assert(ob != nullptr);
         if (!ob->data) {
           break;
         }
