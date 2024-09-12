@@ -18,6 +18,7 @@
 #include "BLI_offset_indices.hh"
 #include "BLI_ordered_edge.hh"
 #include "BLI_set.hh"
+#include "BLI_shared_cache.hh"
 #include "BLI_utility_mixins.hh"
 
 #include "DNA_brush_enums.h"
@@ -25,9 +26,11 @@
 #include "DNA_object_enums.h"
 
 #include "BKE_pbvh.hh"
+#include "BKE_subdiv_ccg.hh"
 
 struct BMFace;
 struct BMLog;
+struct BMVert;
 struct BMesh;
 struct BlendDataReader;
 struct BlendWriter;
@@ -62,8 +65,6 @@ struct KeyBlock;
 struct Main;
 struct Mesh;
 struct MDeformVert;
-struct MLoopCol;
-struct MPropCol;
 struct MultiresModifierData;
 struct Object;
 struct Paint;
@@ -76,7 +77,6 @@ struct Scene;
 struct Sculpt;
 struct SculptSession;
 struct SubdivCCG;
-struct SubdivCCGCoord;
 struct Tex;
 struct ToolSettings;
 struct UnifiedPaintSettings;
@@ -195,7 +195,9 @@ eObjectMode BKE_paint_object_mode_from_paintmode(PaintMode mode);
 bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode);
 Paint *BKE_paint_get_active_from_paintmode(Scene *sce, PaintMode mode);
 const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
-uint BKE_paint_get_brush_tool_offset_from_paintmode(PaintMode mode);
+uint BKE_paint_get_brush_type_offset_from_paintmode(PaintMode mode);
+std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
+                                                        const eObjectMode ob_mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
 PaintMode BKE_paintmode_get_active_from_context(const bContext *C);
@@ -321,77 +323,6 @@ struct SculptFakeNeighbors {
   blender::Array<int> fake_neighbor_index;
 };
 
-/* Session data (mode-specific) */
-
-/* Custom Temporary Attributes */
-
-struct SculptAttributeParams {
-  /* Allocate a flat array outside the CustomData system.  Cannot be combined with permanent. */
-  int simple_array : 1;
-
-  /* Do not mark CustomData layer as temporary.  Cannot be combined with simple_array.  Doesn't
-   * work with bke::pbvh::Type::Grids.
-   */
-  int permanent : 1;   /* Cannot be combined with simple_array. */
-  int stroke_only : 1; /* Release layer at end of struct */
-};
-
-struct SculptAttribute {
-  /* Domain, data type and name */
-  blender::bke::AttrDomain domain;
-  eCustomDataType proptype = eCustomDataType(0);
-  char name[MAX_CUSTOMDATA_LAYER_NAME] = "";
-
-  /* Source layer on mesh/bmesh, if any. */
-  CustomDataLayer *layer = nullptr;
-
-  /* Data stored as flat array. */
-  void *data = nullptr;
-  int elem_size = 0;
-  int elem_num = 0;
-  bool data_for_bmesh = false; /* Temporary data store as array outside of bmesh. */
-
-  /* Data is a flat array outside the CustomData system.
-   * This will be true if simple_array is requested in
-   * SculptAttributeParams, or the tree type is bke::pbvh::Type::Grids or bke::pbvh::Type::BMesh.
-   */
-  bool simple_array = false;
-  /* Data stored per BMesh element. */
-  int bmesh_cd_offset = 0;
-
-  /* Sculpt usage */
-  SculptAttributeParams params = {};
-
-  /**
-   * Used to keep track of which pre-allocated SculptAttribute instances
-   * inside of SculptSession.temp_attribute are used.
-   */
-  bool used = false;
-};
-
-#define SCULPT_MAX_ATTRIBUTES 64
-
-/* Get a standard attribute name.  Key must match up with a member
- * of SculptAttributePointers.
- */
-
-#define SCULPT_ATTRIBUTE_NAME(key) \
-  (offsetof(SculptAttributePointers, key) >= 0 ? /* Spellcheck name. */ \
-       (".sculpt_" #key)                         /* Make name. */ \
-       : \
-       "You misspelled the layer name key")
-
-/* Convenience pointers for standard sculpt attributes. */
-
-struct SculptAttributePointers {
-  /* Precomputed auto-mask factor indexed by vertex, owned by the auto-masking system and
-   * initialized in #auto_mask::cache_init when needed. */
-  SculptAttribute *automasking_factor = nullptr;
-  SculptAttribute *automasking_occlusion = nullptr; /* CD_PROP_INT8. */
-  SculptAttribute *automasking_stroke_id = nullptr;
-  SculptAttribute *automasking_cavity = nullptr;
-};
-
 struct SculptTopologyIslandCache {
   /**
    * An ID for the island containing each geometry vertex. Will be empty if there is only a single
@@ -470,6 +401,13 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Crazy-space deformation matrices. */
   blender::Array<blender::float3x3, 0> deform_imats;
 
+  /**
+   * Normals corresponding to the #deform_cos evaluated/deform positions. Stored as a #SharedCache
+   * for consistency with mesh caches in #MeshRuntime::vert_normals_cache.
+   */
+  blender::SharedCache<blender::Vector<blender::float3>> vert_normals_deform;
+  blender::SharedCache<blender::Vector<blender::float3>> face_normals_deform;
+
   /* Pool for texture evaluations. */
   ImagePool *tex_pool = nullptr;
 
@@ -500,7 +438,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::Array<int> preview_verts;
 
   /* Pose Brush Preview */
-  blender::float3 pose_origin;
   std::unique_ptr<SculptPoseIKChainPreview> pose_ik_chain_preview;
 
   /* Boundary Brush Preview */
@@ -547,14 +484,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    */
   char needs_flush_to_id = false;
 
-  /* This is a fixed-size array so we can pass pointers to its elements
-   * to client code. This is important to keep bmesh offsets up to date.
-   */
-  SculptAttribute temp_attributes[SCULPT_MAX_ATTRIBUTES];
-
-  /* Convenience #SculptAttribute pointers. */
-  SculptAttributePointers attrs;
-
   /**
    * Some tools follows the shading chosen by the last used tool canvas.
    * When not set the viewport shading color would be used.
@@ -563,16 +492,12 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    */
   bool sticky_shading_color = false;
 
-  uchar stroke_id = 0;
-
   /**
    * Last used painting canvas key.
    */
   char *last_paint_canvas_key = nullptr;
   blender::float3 last_normal;
 
-  int last_automasking_settings_hash = 0;
-  uchar last_automask_stroke_id = 0;
   std::unique_ptr<SculptTopologyIslandCache> topology_island_cache;
 
  private:
@@ -580,7 +505,12 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    * mesh. Changing the underlying mesh type (e.g. enabling dyntopo, changing multires levels)
    * should invalidate this value.
    */
-  PBVHVertRef active_vert_ = PBVHVertRef{PBVH_REF_NONE};
+  ActiveVert active_vert_ = {};
+
+  /* This value should always exist except when the cursor has never been over the mesh, or when
+   * the underlying mesh type has changed and the last `active_vert_` value no longer corresponds
+   * to a value that can be correctly interpreted */
+  ActiveVert last_active_vert_ = {};
 
  public:
   SculptSession();
@@ -588,6 +518,9 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
 
   PBVHVertRef active_vert_ref() const;
   ActiveVert active_vert() const;
+
+  PBVHVertRef last_active_vert_ref() const;
+  ActiveVert last_active_vert() const;
 
   /**
    * Retrieves the corresponding index of the ActiveVert inside a mesh-sized array.
@@ -611,38 +544,17 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    */
   blender::float3 active_vert_position(const Depsgraph &depsgraph, const Object &object) const;
 
-  void set_active_vert(PBVHVertRef vert);
-  void clear_active_vert();
+  void set_active_vert(ActiveVert vert);
+  void clear_active_vert(bool persist_last_active);
 };
 
 void BKE_sculptsession_free(Object *ob);
 void BKE_sculptsession_free_deformMats(SculptSession *ss);
 void BKE_sculptsession_free_vwpaint_data(SculptSession *ss);
-void BKE_sculptsession_free_pbvh(SculptSession *ss);
+void BKE_sculptsession_free_pbvh(Object &object);
 void BKE_sculptsession_bm_to_me(Object *ob, bool reorder);
 void BKE_sculptsession_bm_to_me_for_render(Object *object);
 int BKE_sculptsession_vertex_count(const SculptSession *ss);
-
-/* Ensure an attribute layer exists. */
-SculptAttribute *BKE_sculpt_attribute_ensure(Object *ob,
-                                             blender::bke::AttrDomain domain,
-                                             eCustomDataType proptype,
-                                             const char *name,
-                                             const SculptAttributeParams *params);
-
-/* Returns nullptr if attribute does not exist. */
-SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
-                                          blender::bke::AttrDomain domain,
-                                          eCustomDataType proptype,
-                                          const char *name);
-
-bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr);
-
-/* Destroy all attributes and pseudo-attributes created by sculpt mode. */
-void BKE_sculpt_attribute_destroy_temporary_all(Object *ob);
-
-/* Destroy attributes that were marked as stroke only in SculptAttributeParams. */
-void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob);
 
 /**
  * Create new color layer on object if it doesn't have one and if experimental feature set has
@@ -682,9 +594,7 @@ void BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
                                    MultiresModifierData *mmd);
 void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene);
 
-blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
-
-void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg);
+void BKE_sculpt_sync_face_visibility_to_grids(const Mesh &mesh, SubdivCCG &subdiv_ccg);
 
 /**
  * Test if blender::bke::pbvh::Tree can be used directly for drawing, which is faster than
@@ -692,8 +602,19 @@ void BKE_sculpt_sync_face_visibility_to_grids(Mesh *mesh, SubdivCCG *subdiv_ccg)
  */
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d);
 
-/** C accessor for #Object::sculpt::pbvh. */
-blender::bke::pbvh::Tree *BKE_object_sculpt_pbvh_get(Object *object);
+namespace blender::bke::object {
+
+pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object);
+
+/**
+ * Access the acceleration structure for raycasting, nearest queries, and spatially contiguous mesh
+ * updates and drawing. The BVH tree is used by sculpt, vertex paint, and weight paint object
+ * modes. This just accesses the BVH, to ensure it's built, use #pbvh_ensure.
+ */
+pbvh::Tree *pbvh_get(Object &object);
+const pbvh::Tree *pbvh_get(const Object &object);
+
+}  // namespace blender::bke::object
 bool BKE_object_sculpt_use_dyntopo(const Object *object);
 
 /* paint_canvas.cc */
