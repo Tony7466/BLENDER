@@ -510,8 +510,6 @@ typedef struct GreasePencil {
   const GreasePencilDrawingBase *drawing(int64_t index) const;
   GreasePencilDrawingBase *drawing(int64_t index);
 
-  void transform_drawings(const blender::float4x4 transform);
-
   /* Layers, layer groups and nodes read/write access. */
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;
   blender::Span<blender::bke::greasepencil::Layer *> layers_for_write();

@@ -663,6 +663,25 @@ static void transform_positions(MutableSpan<float3> positions, const float4x4 &m
   });
 }
 
+static void transform_drawings(GreasePencil &grease_pencil, const blender::float4x4 transform)
+{
+  MutableSpan<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+  threading::parallel_for(drawings.index_range(), 64, [&](const blender::IndexRange range) {
+    for (const int drawing_index : range) {
+      if (drawings[drawing_index]->type != GP_DRAWING) {
+        continue;
+      }
+      blender::bke::CurvesGeometry &curves =
+          reinterpret_cast<blender::bke::greasepencil::Drawing *>(drawings[drawing_index])
+              ->strokes_for_write();
+      blender::MutableSpan<float3> positions = curves.positions_for_write();
+      for (const int point_index : positions.index_range()) {
+        positions[point_index] = blender::math::transform_point(transform, positions[point_index]);
+      }
+    }
+  });
+}
+
 static int apply_objects_internal(bContext *C,
                                   ReportList *reports,
                                   bool apply_loc,
@@ -953,7 +972,7 @@ static int apply_objects_internal(bContext *C,
     }
     else if (ob->type == OB_GREASE_PENCIL) {
       GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ob->data);
-      grease_pencil->transform_drawings(float4x4(mat));
+      transform_drawings(*grease_pencil, float4x4(mat));
     }
     else if (ob->type == OB_CURVES) {
       Curves &curves = *static_cast<Curves *>(ob->data);
