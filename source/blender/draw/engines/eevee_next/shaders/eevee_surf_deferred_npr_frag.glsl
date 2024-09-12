@@ -58,6 +58,17 @@ void npr_refraction_impl(vec2 texel_offset,
                          inout vec3 position,
                          inout vec3 normal)
 {
+  /*TODO(NPR): Texel-based offset is pretty bad.*/
+  ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
+  texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
+
+  combined_color = texelFetch(radiance_back_tx, texel, 0);
+
+  float depth = texelFetch(hiz_back_tx, texel, 0).r;
+  vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
+  position = drw_point_screen_to_world(vec3(screen_uv, depth));
+
+  /*TODO(NPR): Normal?*/
 }
 
 void main()

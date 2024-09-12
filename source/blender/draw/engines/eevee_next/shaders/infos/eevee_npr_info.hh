@@ -13,6 +13,8 @@ GPU_SHADER_CREATE_INFO(npr_surface_common)
     .sampler(GBUF_HEADER_NPR_TX_SLOT, ImageType::UINT_2D, "gbuf_header_tx")
     .sampler(GBUF_CLOSURE_NPR_TX_SLOT, ImageType::FLOAT_2D_ARRAY, "gbuf_closure_tx")
     /* eevee_gbuffer_data */
+    .sampler(BACK_RADIANCE_TX_SLOT, ImageType::FLOAT_2D, "radiance_back_tx")
+    .sampler(BACK_HIZ_TX_SLOT, ImageType::FLOAT_2D, "hiz_back_tx")
     /* eevee_deferred_combine */
     .sampler(DIRECT_RADIANCE_NPR_TX_SLOT_1 + 0, ImageType::UINT_2D, "direct_radiance_1_tx")
     .sampler(DIRECT_RADIANCE_NPR_TX_SLOT_1 + 1, ImageType::UINT_2D, "direct_radiance_2_tx")

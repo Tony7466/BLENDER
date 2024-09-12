@@ -573,6 +573,12 @@ void DeferredLayer::begin_sync()
       npr_ps_.bind_texture(INDIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &indirect_result_.closures[i]);
     };
 
+    /*TODO(NPR)*/
+    if (bool is_refraction = true) {
+      npr_ps_.bind_texture(BACK_RADIANCE_TX_SLOT, &radiance_back_tx_);
+      npr_ps_.bind_texture(BACK_HIZ_TX_SLOT, &inst_.hiz_buffer.back.ref_tx_);
+    }
+
     npr_ps_.bind_resources(inst_.uniform_data);
     npr_ps_.bind_resources(inst_.sampling);
 
@@ -903,6 +909,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
       direct_radiance_txs_[0], indirect_result_.closures[0], closure_bits_, render_view);
 
   radiance_feedback_tx_ = rt_buffer.feedback_ensure(!use_feedback_output_, extent);
+  radiance_back_tx_ = radiance_behind_tx ? radiance_behind_tx : radiance_feedback_tx_;
 
   if (use_feedback_output_ && use_clamp_direct_) {
     /* We need to do a copy before the combine pass (otherwise we have a dependency issue) to save
