@@ -23,19 +23,21 @@ class EditText {
   View view_edit_text = {"view_edit_text"};
   float view_dist = 0.0f;
 
-  struct CallBuffers {
-    StorageVectorBuffer<ObjectMatrices> text_selection_buf;
-    StorageVectorBuffer<ObjectMatrices> text_cursor_buf;
-  } call_buffers_;
+  StorageVectorBuffer<ObjectMatrices> text_selection_buf;
+  StorageVectorBuffer<ObjectMatrices> text_cursor_buf;
+  LinePrimitiveBuf box_line_buf_;
 
   bool enabled_ = false;
 
  public:
+  EditText(SelectionType selection_type) : box_line_buf_(selection_type, "box_line_buf_") {}
+
   void begin_sync(const State &state)
   {
     enabled_ = state.v3d;
-    call_buffers_.text_selection_buf.clear();
-    call_buffers_.text_cursor_buf.clear();
+    text_selection_buf.clear();
+    text_cursor_buf.clear();
+    box_line_buf_.clear();
   }
 
   void edit_object_sync(const ObjectRef &ob_ref)
@@ -44,31 +46,30 @@ class EditText {
       return;
     }
 
-    gpu::Batch *geom = DRW_cache_text_edge_wire_get(ob_ref.object);
-    if (geom) {
-    }
     const Curve &cu = *static_cast<Curve *>(ob_ref.object->data);
-    edit_text_add_select(cu, ob_ref.object->object_to_world());
-    edit_text_add_cursor(cu, ob_ref.object->object_to_world());
+    add_select(cu, ob_ref.object->object_to_world());
+    add_cursor(cu, ob_ref.object->object_to_world());
+    add_boxes(cu, ob_ref.object->object_to_world());
   }
 
   void end_sync(Resources &res, const ShapeCache &shapes, const State &state)
   {
     ps_.init();
+    res.select_bind(ps_);
     {
       DRWState default_state = DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA;
-      auto &sub = ps_.sub("text_selection");
-      sub.state_set(default_state, state.clipping_plane_count);
-      sub.shader_set(res.shaders.uniform_color_batch.get());
       float4 color;
 
       /* Selection Boxes. */
       {
+        auto &sub = ps_.sub("text_selection");
+        sub.state_set(default_state, state.clipping_plane_count);
+        sub.shader_set(res.shaders.uniform_color_batch.get());
         UI_GetThemeColor4fv(TH_WIDGET_TEXT_SELECTION, color);
         srgb_to_linearrgb_v4(color, color);
         sub.push_constant("ucolor", color);
 
-        auto &buf = call_buffers_.text_selection_buf;
+        auto &buf = text_selection_buf;
         buf.push_update();
         sub.bind_ssbo("matrix_buf", &buf);
         sub.draw(shapes.quad_solid.get(), buf.size());
@@ -76,14 +77,16 @@ class EditText {
 
       /* Highlight text within selection boxes. */
       {
+        auto &sub = ps_.sub("highlight_text_selection");
         sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA |
                           DRW_STATE_DEPTH_GREATER_EQUAL,
                       state.clipping_plane_count);
+        sub.shader_set(res.shaders.uniform_color_batch.get());
         UI_GetThemeColor4fv(TH_WIDGET_TEXT_HIGHLIGHT, color);
         srgb_to_linearrgb_v4(color, color);
         sub.push_constant("ucolor", color);
 
-        auto &buf = call_buffers_.text_selection_buf;
+        auto &buf = text_selection_buf;
         buf.push_update();
         sub.bind_ssbo("matrix_buf", &buf);
         sub.draw(shapes.quad_solid.get(), buf.size());
@@ -91,14 +94,28 @@ class EditText {
 
       /* Cursor (text caret). */
       {
+        auto &sub = ps_.sub("text_cursor");
+        sub.state_set(default_state, state.clipping_plane_count);
+        sub.shader_set(res.shaders.uniform_color_batch.get());
         sub.state_set(default_state, state.clipping_plane_count);
         UI_GetThemeColor4fv(TH_WIDGET_TEXT_CURSOR, color);
         srgb_to_linearrgb_v4(color, color);
         sub.push_constant("ucolor", color);
-        auto &buf = call_buffers_.text_cursor_buf;
+
+        auto &buf = text_cursor_buf;
         buf.push_update();
         sub.bind_ssbo("matrix_buf", &buf);
         sub.draw(shapes.quad_solid.get(), buf.size());
+      }
+
+      /* Text boxes. */
+      {
+        auto &sub_pass = ps_.sub("text_boxes");
+        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL,
+                           state.clipping_plane_count);
+        sub_pass.shader_set(res.shaders.extra_wire.get());
+        sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
+        box_line_buf_.end_sync(sub_pass);
       }
     }
   }
@@ -109,6 +126,8 @@ class EditText {
       return;
     }
     view_edit_text.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, -5.0f));
+
+    GPU_framebuffer_bind(framebuffer);
     manager.submit(ps_, view_edit_text);
   }
 
@@ -128,7 +147,7 @@ class EditText {
     r_mat_view[3] += r_mat_view[1];
   }
 
-  void edit_text_add_select(const Curve &cu, const float4x4 &ob_to_world)
+  void add_select(const Curve &cu, const float4x4 &ob_to_world)
   {
     EditFont *ef = cu.editfont;
     float4x4 final_mat;
@@ -167,11 +186,11 @@ class EditText {
       final_mat = ob_to_world * final_mat;
       ObjectMatrices obj_mat;
       obj_mat.sync(final_mat);
-      call_buffers_.text_selection_buf.append(obj_mat);
+      text_selection_buf.append(obj_mat);
     }
   }
 
-  void edit_text_add_cursor(const Curve &cu, const float4x4 &ob_to_world)
+  void add_cursor(const Curve &cu, const float4x4 &ob_to_world)
   {
     EditFont *edit_font = cu.editfont;
     float4x2 cursor = float4x2(&edit_font->textcurs[0][0]);
@@ -180,7 +199,35 @@ class EditText {
     v2_quad_corners_to_mat4(cursor, mat);
     ObjectMatrices ob_mat;
     ob_mat.sync(ob_to_world * mat);
-    call_buffers_.text_cursor_buf.append(ob_mat);
+    text_cursor_buf.append(ob_mat);
+  }
+
+  void add_boxes(const Curve &cu, const float4x4 &ob_to_world)
+  {
+    for (const int i : IndexRange(cu.totbox)) {
+      const TextBox &tb = cu.tb[i];
+      const bool is_active = (i == (cu.actbox - 1));
+      const float4 &color = is_active ? G_draw.block.color_active : G_draw.block.color_wire;
+
+      if ((tb.w != 0.0f) || (tb.h != 0.0f)) {
+        float4x3 vecs;
+        vecs[0][0] = vecs[1][0] = vecs[2][0] = vecs[3][0] = cu.xof + tb.x;
+        vecs[0][1] = vecs[1][1] = vecs[2][1] = vecs[3][1] = cu.yof + tb.y + cu.fsize_realtime;
+        vecs[0][2] = vecs[1][2] = vecs[2][2] = vecs[3][2] = 0.001;
+
+        vecs[1][0] += tb.w;
+        vecs[2][0] += tb.w;
+        vecs[2][1] -= tb.h;
+        vecs[3][1] -= tb.h;
+
+        for (const int j : IndexRange(4)) {
+          vecs[j] = math::transform_point(ob_to_world, vecs[j]);
+        }
+        for (const int j : IndexRange(4)) {
+          box_line_buf_.append(vecs[j], vecs[(j + 1) % 4], color);
+        }
+      }
+    }
   }
 };
 }  // namespace blender::draw::overlay
