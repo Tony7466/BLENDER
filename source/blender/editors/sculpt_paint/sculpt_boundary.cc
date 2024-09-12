@@ -2850,7 +2850,7 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       const OffsetIndices<int> faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
@@ -3483,6 +3483,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
+  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
@@ -3490,7 +3491,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
 
   const std::optional<int> boundary_initial_vert = get_closest_boundary_vert_mesh(
       object,
-      ss.vert_to_face_map,
+      vert_to_face_map,
       positions_eval,
       hide_vert,
       hide_poly,
@@ -3509,7 +3510,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
    * be fixed. */
   if (!is_vert_in_editable_boundary_mesh(faces,
                                          corner_verts,
-                                         ss.vert_to_face_map,
+                                         vert_to_face_map,
                                          hide_vert,
                                          hide_poly,
                                          ss.vertex_info.boundary,
@@ -3528,7 +3529,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   indices_init_mesh(object,
                     faces,
                     corner_verts,
-                    ss.vert_to_face_map,
+                    vert_to_face_map,
                     hide_vert,
                     hide_poly,
                     ss.vertex_info.boundary,
@@ -3539,7 +3540,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
   edit_data_init_mesh(faces,
                       corner_verts,
-                      ss.vert_to_face_map,
+                      vert_to_face_map,
                       positions_eval,
                       hide_vert,
                       hide_poly,

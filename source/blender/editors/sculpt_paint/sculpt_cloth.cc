@@ -507,6 +507,7 @@ void ensure_nodes_constraints(const Sculpt &sd,
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert",
                                                                   bke::AttrDomain::Point);
@@ -529,7 +530,7 @@ void ensure_nodes_constraints(const Sculpt &sd,
         const Span<int> verts = hide::node_visible_verts(nodes[i], hide_vert, vert_indices);
         vert_neighbors.resize(verts.size());
         calc_vert_neighbors(
-            faces, corner_verts, ss.vert_to_face_map, hide_poly, verts, vert_neighbors);
+            faces, corner_verts, vert_to_face_map, hide_poly, verts, vert_neighbors);
         add_constraints_for_verts(object,
                                   brush,
                                   initial_location,
@@ -1050,11 +1051,11 @@ static void calc_forces_bmesh(const Depsgraph &depsgraph,
 }
 
 static Vector<ColliderCache> cloth_brush_collider_cache_create(Object &object,
-                                                               Depsgraph *depsgraph)
+                                                               const Depsgraph &depsgraph)
 {
   Vector<ColliderCache> cache;
   DEGObjectIterSettings deg_iter_settings = {nullptr};
-  deg_iter_settings.depsgraph = depsgraph;
+  deg_iter_settings.depsgraph = &const_cast<Depsgraph &>(depsgraph);
   deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY | DEG_ITER_OBJECT_FLAG_VISIBLE |
                             DEG_ITER_OBJECT_FLAG_DUPLI;
   DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
@@ -1748,7 +1749,6 @@ std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgra
                                                         const bool use_collisions,
                                                         const bool needs_deform_coords)
 {
-  SculptSession &ss = *ob.sculpt;
   const int totverts = SCULPT_vertex_count_get(ob);
   std::unique_ptr<SimulationData> cloth_sim = std::make_unique<SimulationData>();
 
@@ -1781,7 +1781,7 @@ std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgra
   cloth_sim->softbody_strength = cloth_softbody_strength;
 
   if (use_collisions) {
-    cloth_sim->collider_list = cloth_brush_collider_cache_create(ob, ss.depsgraph);
+    cloth_sim->collider_list = cloth_brush_collider_cache_create(ob, depsgraph);
   }
 
   cloth_sim_initialize_default_node_state(ob, *cloth_sim);
@@ -2077,6 +2077,7 @@ static void apply_filter_forces_mesh(const Depsgraph &depsgraph,
                                      const float3 &gravity,
                                      const Span<float3> positions_eval,
                                      const Span<float3> vert_normals,
+                                     const GroupedSpan<int> vert_to_face_map,
                                      const bke::pbvh::MeshNode &node,
                                      Object &object,
                                      FilterLocalData &tls)
@@ -2097,7 +2098,7 @@ static void apply_filter_forces_mesh(const Depsgraph &depsgraph,
     for (const int i : verts.index_range()) {
       const int vert = verts[i];
       if (!face_set::vert_has_face_set(
-              ss.vert_to_face_map, ss.face_sets, vert, ss.filter_cache->active_face_set))
+              vert_to_face_map, ss.face_sets, vert, ss.filter_cache->active_face_set))
       {
         factors[i] = 0.0f;
       }
@@ -2331,6 +2332,8 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
     case bke::pbvh::Type::Mesh: {
       const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(*depsgraph, object);
       const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(*depsgraph, object);
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         FilterLocalData &tls = all_tls.local();
@@ -2341,6 +2344,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
                                    gravity,
                                    positions_eval,
                                    vert_normals,
+                                   vert_to_face_map,
                                    nodes[i],
                                    object,
                                    tls);

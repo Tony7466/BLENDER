@@ -341,22 +341,11 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
     int level = 0;
   } multires = {};
 
-  /* Depsgraph for the Cloth Brush solver to get the colliders. */
-  Depsgraph *depsgraph = nullptr;
-
-  /* These are always assigned to base mesh data when using Type::Mesh. */
-  blender::OffsetIndices<int> faces;
-  blender::Span<int> corner_verts;
-
   /* These contain the vertex and poly counts of the final mesh. */
   int totvert = 0;
   int faces_num = 0;
 
   KeyBlock *shapekey_active = nullptr;
-
-  /* Mesh connectivity maps. */
-  /* Vertices to adjacent polys. */
-  blender::GroupedSpan<int> vert_to_face_map;
 
   /* Edges to adjacent faces. */
   blender::Array<int> edge_to_face_offsets;

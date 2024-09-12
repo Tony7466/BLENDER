@@ -1675,7 +1675,6 @@ void BKE_sculptsession_free_pbvh(Object &object)
   }
 
   ss->pbvh.reset();
-  ss->vert_to_face_map = {};
   ss->edge_to_face_offsets = {};
   ss->edge_to_face_indices = {};
   ss->edge_to_face_map = {};
@@ -1975,8 +1974,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     return;
   }
 
-  ss.depsgraph = depsgraph;
-
   ss.deform_modifiers_active = sculpt_modifiers_active(scene, sd, ob);
 
   ss.building_vp_handle = false;
@@ -1994,18 +1991,11 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.totvert = mesh_eval->verts_num;
     ss.faces_num = mesh_eval->faces_num;
     ss.totfaces = mesh_orig->faces_num;
-
-    /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
-     * and tools use the Face Sets data from the base mesh when Multires is active. */
-    ss.faces = mesh_orig->faces();
-    ss.corner_verts = mesh_orig->corner_verts();
   }
   else {
     ss.totvert = mesh_orig->verts_num;
     ss.faces_num = mesh_orig->faces_num;
     ss.totfaces = mesh_orig->faces_num;
-    ss.faces = mesh_orig->faces();
-    ss.corner_verts = mesh_orig->corner_verts();
     ss.multires.active = false;
     ss.multires.modifier = nullptr;
     ss.multires.level = 0;
@@ -2026,10 +2016,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
   ss.subdiv_ccg = mesh_eval->runtime->subdiv_ccg.get();
 
   pbvh::Tree &pbvh = object::pbvh_ensure(*depsgraph, *ob);
-
-  if (ob->type == OB_MESH) {
-    ss.vert_to_face_map = mesh_orig->vert_to_face_map();
-  }
 
   if (ss.deform_modifiers_active) {
     /* Painting doesn't need crazyspace, use already evaluated mesh coordinates if possible. */
