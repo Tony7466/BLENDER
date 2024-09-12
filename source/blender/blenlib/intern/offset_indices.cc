@@ -94,6 +94,22 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
       });
 }
 
+int sum_group_sizes(const OffsetIndices<int> offsets, const Span<int> indices)
+{
+  int count = 0;
+  for (const int i : indices) {
+    count += offsets[i].size();
+  }
+  return count;
+}
+
+int sum_group_sizes(const OffsetIndices<int> offsets, const IndexMask &mask)
+{
+  int count = 0;
+  mask.foreach_index_optimized<int>([&](const int i) { count += offsets[i].size(); });
+  return count;
+}
+
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
                                            const IndexMask &selection,
                                            const int start_offset,
