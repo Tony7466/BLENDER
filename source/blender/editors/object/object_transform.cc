@@ -40,6 +40,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
@@ -1714,6 +1715,75 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       tot_change++;
       curves.translate(-cent);
       curves_id.id.tag |= ID_TAG_DOIT;
+      do_inverse_offset = true;
+    }
+    else if (ob->type == OB_GREASE_PENCIL) {
+      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+      if (ELEM(centermode, ORIGIN_TO_CENTER_OF_MASS_SURFACE, ORIGIN_TO_CENTER_OF_MASS_VOLUME) ||
+          !ELEM(around, V3D_AROUND_CENTER_BOUNDS, V3D_AROUND_CENTER_MEDIAN))
+      {
+        BKE_report(op->reports,
+                   RPT_WARNING,
+                   "Grease Pencil Object does not support this set origin operation");
+        continue;
+      }
+
+      if (centermode == ORIGIN_TO_CURSOR) {
+        /* done */
+      }
+      else if (around == V3D_AROUND_CENTER_BOUNDS) {
+        const int current_frame = scene->r.cfra;
+        const Bounds<float3> bounds = *grease_pencil.bounds_min_max(current_frame);
+        cent = math::midpoint(bounds.min, bounds.max);
+      }
+      else if (around == V3D_AROUND_CENTER_MEDIAN) {
+        Vector<float3> centers;
+
+        for (const int layer_i : grease_pencil.layers().index_range()) {
+          const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+          const float4x4 layer_to_object = layer.to_object_space(*ob);
+          const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+          frames.foreach_item(
+              [&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+                GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+                if (base->type != GP_DRAWING) {
+                  return;
+                }
+                const bke::greasepencil::Drawing &drawing =
+                    reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+                const bke::CurvesGeometry &curves = drawing.strokes();
+
+                centers.append(
+                    math::transform_point(layer_to_object, arithmetic_mean(curves.positions())));
+              });
+        }
+
+        cent = arithmetic_mean(centers.as_span());
+      }
+
+      tot_change++;
+
+      for (const int layer_i : grease_pencil.layers().index_range()) {
+        bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+        const float4x4 layer_to_object = layer.local_transform();
+        const float4x4 object_to_layer = math::invert(layer_to_object);
+        const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+        frames.foreach_item(
+            [&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+              GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+              if (base->type != GP_DRAWING) {
+                return;
+              }
+              bke::greasepencil::Drawing &drawing =
+                  reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+              bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+              curves.translate(math::transform_direction(object_to_layer, -cent));
+              curves.calculate_bezier_auto_handles();
+            });
+      }
+
+      grease_pencil.id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
     }
     else if (ob->type == OB_POINTCLOUD) {
