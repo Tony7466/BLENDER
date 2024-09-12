@@ -15,6 +15,11 @@
 
 #pragma BLENDER_REQUIRE(eevee_deferred_combine_lib.glsl)
 
+vec4 closure_to_rgba(Closure cl)
+{
+  return vec4(0.0);
+}
+
 void main()
 {
   init_globals();
