@@ -2029,11 +2029,6 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 class LazyFunctionForForeachGeometryElementZone;
 struct ForeachGeometryElementEvalStorage;
 
-struct ForeachGeometryElementEvalState {
-  GeometrySet main_geometry;
-  Vector<int> indices_to_evaluate;
-};
-
 struct ForeachElementComponent {
   GeometryComponent *component;
   std::optional<bke::GeometryFieldContext> field_context;
@@ -2125,7 +2120,7 @@ struct ForeachGeometryElementEvalStorage {
   std::optional<lf::GraphExecutor> graph_executor;
   void *graph_executor_storage = nullptr;
   VectorSet<lf::FunctionNode *> lf_body_nodes;
-  ForeachGeometryElementEvalState state;
+  GeometrySet main_geometry;
 
   Array<ForeachElementComponent> components;
 };
@@ -2192,17 +2187,15 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       const NodeGeometryForeachGeometryElementOutput &node_storage) const
   {
     const AttrDomain domain = AttrDomain(node_storage.domain);
-    eval_storage.state.main_geometry = params.extract_input<GeometrySet>(
+    eval_storage.main_geometry = params.extract_input<GeometrySet>(
         zone_info_.indices.inputs.main[0]);
 
     Vector<GeometryComponent *> src_components;
-    for (const GeometryComponent *src_component :
-         eval_storage.state.main_geometry.get_components())
-    {
+    for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
       const int domain_size = src_component->attribute_domain_size(domain);
       if (domain_size > 0) {
         src_components.append(
-            &eval_storage.state.main_geometry.get_component_for_write(src_component->type()));
+            &eval_storage.main_geometry.get_component_for_write(src_component->type()));
       }
     }
 
@@ -2498,7 +2491,7 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
     items_until_geometry++;
   }
 
-  params.set_output(0, eval_storage_.state.main_geometry);
+  params.set_output(0, eval_storage_.main_geometry);
 
   if (items_until_geometry == node_storage.output_items.items_num) {
     return;
