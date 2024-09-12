@@ -41,3 +41,14 @@ void npr_output(vec4 color, out vec4 out_color)
 {
   out_color = color;
 }
+
+void npr_refraction(vec3 offset, out vec4 combined_color, out vec3 position, out vec3 normal)
+{
+#if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
+  npr_refraction_impl(offset.xy, combined_color, position, normal);
+#else
+  combined_color = vec4(0.0);
+  position = vec3(0.0);
+  normal = vec3(0.0);
+#endif
+}

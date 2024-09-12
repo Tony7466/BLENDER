@@ -53,6 +53,13 @@ void npr_input_impl(vec2 texel_offset,
   normal = dc.average_normal;
 }
 
+void npr_refraction_impl(vec2 texel_offset,
+                         inout vec4 combined_color,
+                         inout vec3 position,
+                         inout vec3 normal)
+{
+}
+
 void main()
 {
   init_globals();
