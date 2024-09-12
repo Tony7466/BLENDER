@@ -215,13 +215,13 @@ static bool needs_factors_cache(const Sculpt &sd, const Brush *brush)
 }
 
 static float calc_brush_normal_factor(const Depsgraph &depsgraph,
-                                      const Cache *automasking,
+                                      const Cache &automasking,
                                       const Object &object,
                                       PBVHVertRef vertex,
                                       const std::optional<float3> &orig_normal)
 {
   const SculptSession &ss = *object.sculpt;
-  float falloff = automasking->settings.start_normal_falloff * M_PI;
+  float falloff = automasking.settings.start_normal_falloff * M_PI;
   float3 initial_normal;
 
   if (ss.cache) {
@@ -235,8 +235,8 @@ static float calc_brush_normal_factor(const Depsgraph &depsgraph,
                      object,
                      vertex,
                      initial_normal,
-                     automasking->settings.start_normal_limit - falloff * 0.5f,
-                     automasking->settings.start_normal_limit + falloff * 0.5f,
+                     automasking.settings.start_normal_limit - falloff * 0.5f,
+                     automasking.settings.start_normal_limit + falloff * 0.5f,
                      orig_normal);
 }
 
@@ -278,7 +278,8 @@ static float calc_view_occlusion_factor(const Depsgraph &depsgraph,
 
   if (stroke_id != automasking.current_stroke_id) {
     f = *(char *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_occlusion) =
-        SCULPT_vertex_is_occluded(object, SCULPT_vertex_co_get(depsgraph, object, vertex), true) ?
+        SCULPT_vertex_is_occluded(
+            depsgraph, object, SCULPT_vertex_co_get(depsgraph, object, vertex), true) ?
             2 :
             1;
   }
@@ -287,30 +288,24 @@ static float calc_view_occlusion_factor(const Depsgraph &depsgraph,
 }
 
 /* Updates vertex stroke id. */
-static float automasking_factor_end(SculptSession &ss,
-                                    const Cache *automasking,
-                                    PBVHVertRef vertex,
-                                    float value)
+static void update_vert_stroke_id(SculptSession &ss, const Cache &automasking, PBVHVertRef vertex)
 {
   if (ss.attrs.automasking_stroke_id) {
     *(uchar *)SCULPT_vertex_attr_get(
-        vertex, ss.attrs.automasking_stroke_id) = automasking->current_stroke_id;
+        vertex, ss.attrs.automasking_stroke_id) = automasking.current_stroke_id;
   }
-
-  return value;
 }
 
-static float calc_cavity_factor(const Cache *automasking, float factor)
+static float calc_cavity_factor(const Cache &automasking, float factor)
 {
   float sign = signf(factor);
 
-  factor = fabsf(factor) * automasking->settings.cavity_factor * 50.0f;
+  factor = fabsf(factor) * automasking.settings.cavity_factor * 50.0f;
 
   factor = factor * sign * 0.5f + 0.5f;
   CLAMP(factor, 0.0f, 1.0f);
 
-  return (automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED) ? 1.0f - factor :
-                                                                             factor;
+  return (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED) ? 1.0f - factor : factor;
 }
 
 struct AccumulatedVert {
@@ -322,7 +317,7 @@ struct AccumulatedVert {
 
 static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
                                      const Object &object,
-                                     const Cache *automasking,
+                                     const Cache &automasking,
                                      const int steps,
                                      const int vert)
 {
@@ -429,7 +424,7 @@ static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
 }
 
 static void calc_blurred_cavity_grids(const Object &object,
-                                      const Cache *automasking,
+                                      const Cache &automasking,
                                       const int steps,
                                       const SubdivCCGCoord vert)
 {
@@ -530,7 +525,7 @@ static void calc_blurred_cavity_grids(const Object &object,
 }
 
 static void calc_blurred_cavity_bmesh(const Object &object,
-                                      const Cache *automasking,
+                                      const Cache &automasking,
                                       const int steps,
                                       BMVert *vert)
 {
@@ -627,7 +622,7 @@ static void calc_blurred_cavity_bmesh(const Object &object,
 
 static void calc_blurred_cavity(const Depsgraph &depsgraph,
                                 const Object &object,
-                                const Cache *automasking,
+                                const Cache &automasking,
                                 const int steps,
                                 const PBVHVertRef vertex)
 {
@@ -695,26 +690,26 @@ int settings_hash(const Object &ob, const Cache &automasking)
 }
 
 static float calc_cavity_factor(const Depsgraph &depsgraph,
-                                const Cache *automasking,
+                                const Cache &automasking,
                                 const Object &object,
                                 PBVHVertRef vertex)
 {
   SculptSession &ss = *object.sculpt;
   uchar stroke_id = *(const uchar *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_stroke_id);
 
-  if (stroke_id != automasking->current_stroke_id) {
+  if (stroke_id != automasking.current_stroke_id) {
     calc_blurred_cavity(
-        depsgraph, object, automasking, automasking->settings.cavity_blur_steps, vertex);
+        depsgraph, object, automasking, automasking.settings.cavity_blur_steps, vertex);
   }
 
   float factor = *(const float *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_cavity);
-  bool inverted = automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED;
+  bool inverted = automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED;
 
-  if ((automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) &&
-      (automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_USE_CURVE))
+  if ((automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) &&
+      (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_USE_CURVE))
   {
     factor = inverted ? 1.0f - factor : factor;
-    factor = BKE_curvemapping_evaluateF(automasking->settings.cavity_curve, 0, factor);
+    factor = BKE_curvemapping_evaluateF(automasking.settings.cavity_curve, 0, factor);
     factor = inverted ? 1.0f - factor : factor;
   }
 
@@ -722,18 +717,19 @@ static float calc_cavity_factor(const Depsgraph &depsgraph,
 }
 
 static float factor_get(const Depsgraph &depsgraph,
-                        const Cache *automasking,
+                        const Cache &automasking,
                         const Object &object,
                         PBVHVertRef vert,
                         const std::optional<float3> &orig_normal)
 {
+  const int vert_i = BKE_pbvh_vertex_to_index(*bke::object::pbvh_get(object), vert);
   SculptSession &ss = *object.sculpt;
   float mask = 1.0f;
 
   /* Since brush normal mode depends on the current mirror symmetry pass
    * it is not folded into the factor cache (when it exists). */
   if ((ss.cache || ss.filter_cache) &&
-      (automasking->settings.flags & BRUSH_AUTOMASKING_BRUSH_NORMAL))
+      (automasking.settings.flags & BRUSH_AUTOMASKING_BRUSH_NORMAL))
   {
     mask *= calc_brush_normal_factor(depsgraph, automasking, object, vert, orig_normal);
   }
@@ -741,49 +737,50 @@ static float factor_get(const Depsgraph &depsgraph,
   /* If the cache is initialized with valid info, use the cache. This is used when the
    * automasking information can't be computed in real time per vertex and needs to be
    * initialized for the whole mesh when the stroke starts. */
-  if (ss.attrs.automasking_factor) {
-    float factor = *(const float *)SCULPT_vertex_attr_get(vert, ss.attrs.automasking_factor);
+  if (!automasking.factor.is_empty()) {
+    float factor = automasking.factor[vert_i];
 
-    if (automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
+    if (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
       factor *= calc_cavity_factor(depsgraph, automasking, object, vert);
     }
 
-    return automasking_factor_end(ss, automasking, vert, factor * mask);
+    update_vert_stroke_id(ss, automasking, vert);
+    return factor * mask;
   }
 
   uchar stroke_id = ss.attrs.automasking_stroke_id ?
                         *(uchar *)SCULPT_vertex_attr_get(vert, ss.attrs.automasking_stroke_id) :
                         -1;
 
-  bool do_occlusion = (automasking->settings.flags &
+  bool do_occlusion = (automasking.settings.flags &
                        (BRUSH_AUTOMASKING_VIEW_OCCLUSION | BRUSH_AUTOMASKING_VIEW_NORMAL)) ==
                       (BRUSH_AUTOMASKING_VIEW_OCCLUSION | BRUSH_AUTOMASKING_VIEW_NORMAL);
-  if (do_occlusion && calc_view_occlusion_factor(depsgraph, *automasking, object, vert, stroke_id))
+  if (do_occlusion && calc_view_occlusion_factor(depsgraph, automasking, object, vert, stroke_id))
   {
-    return automasking_factor_end(ss, automasking, vert, 0.0f);
+    update_vert_stroke_id(ss, automasking, vert);
+    return 0.0f;
   }
 
-  if (!automasking->settings.topology_use_brush_limit &&
-      automasking->settings.flags & BRUSH_AUTOMASKING_TOPOLOGY &&
-      islands::vert_id_get(ss, BKE_pbvh_vertex_to_index(*bke::object::pbvh_get(object), vert)) !=
-          automasking->settings.initial_island_nr)
+  if (!automasking.settings.topology_use_brush_limit &&
+      automasking.settings.flags & BRUSH_AUTOMASKING_TOPOLOGY &&
+      islands::vert_id_get(ss, vert_i) != automasking.settings.initial_island_nr)
   {
     return 0.0f;
   }
 
-  if (automasking->settings.flags & BRUSH_AUTOMASKING_FACE_SETS) {
-    if (!face_set::vert_has_face_set(object, vert, automasking->settings.initial_face_set)) {
+  if (automasking.settings.flags & BRUSH_AUTOMASKING_FACE_SETS) {
+    if (!face_set::vert_has_face_set(object, vert, automasking.settings.initial_face_set)) {
       return 0.0f;
     }
   }
 
-  if (automasking->settings.flags & BRUSH_AUTOMASKING_BOUNDARY_EDGES) {
+  if (automasking.settings.flags & BRUSH_AUTOMASKING_BOUNDARY_EDGES) {
     if (boundary::vert_is_boundary(object, vert)) {
       return 0.0f;
     }
   }
 
-  if (automasking->settings.flags & BRUSH_AUTOMASKING_BOUNDARY_FACE_SETS) {
+  if (automasking.settings.flags & BRUSH_AUTOMASKING_BOUNDARY_FACE_SETS) {
     bool ignore = ss.cache && ss.cache->brush &&
                   ss.cache->brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_DRAW_FACE_SETS &&
                   face_set::vert_face_set_get(object, vert) == ss.cache->paint_face_set;
@@ -794,16 +791,17 @@ static float factor_get(const Depsgraph &depsgraph,
   }
 
   if ((ss.cache || ss.filter_cache) &&
-      (automasking->settings.flags & BRUSH_AUTOMASKING_VIEW_NORMAL))
+      (automasking.settings.flags & BRUSH_AUTOMASKING_VIEW_NORMAL))
   {
-    mask *= calc_view_normal_factor(depsgraph, *automasking, object, vert, orig_normal);
+    mask *= calc_view_normal_factor(depsgraph, automasking, object, vert, orig_normal);
   }
 
-  if (automasking->settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
+  if (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
     mask *= calc_cavity_factor(depsgraph, automasking, object, vert);
   }
 
-  return automasking_factor_end(ss, automasking, vert, mask);
+  update_vert_stroke_id(ss, automasking, vert);
+  return mask;
 }
 
 void calc_vert_factors(const Depsgraph &depsgraph,
@@ -822,7 +820,7 @@ void calc_vert_factors(const Depsgraph &depsgraph,
 
   for (const int i : verts.index_range()) {
     factors[i] *= factor_get(depsgraph,
-                             &cache,
+                             cache,
                              object,
                              BKE_pbvh_make_vref(verts[i]),
                              orig_normals.is_empty() ? std::nullopt :
@@ -843,7 +841,7 @@ void calc_face_factors(const Depsgraph &depsgraph,
     const Span<int> face_verts = corner_verts.slice(faces[face_indices[i]]);
     float sum = 0.0f;
     for (const int vert : face_verts) {
-      sum += factor_get(depsgraph, &cache, object, BKE_pbvh_make_vref(vert), std::nullopt);
+      sum += factor_get(depsgraph, cache, object, BKE_pbvh_make_vref(vert), std::nullopt);
     }
     factors[i] *= sum * math::rcp(float(face_verts.size()));
   }
@@ -874,7 +872,7 @@ void calc_grids_factors(const Depsgraph &depsgraph,
     for (const int offset : IndexRange(key.grid_area)) {
       factors[node_start + offset] *= factor_get(
           depsgraph,
-          &cache,
+          cache,
           object,
           BKE_pbvh_make_vref(grids_start + offset),
           orig_normals.is_empty() ? std::nullopt :
@@ -900,7 +898,7 @@ void calc_vert_factors(const Depsgraph &depsgraph,
   int i = 0;
   for (BMVert *vert : verts) {
     factors[i] *= factor_get(depsgraph,
-                             &cache,
+                             cache,
                              object,
                              BKE_pbvh_make_vref(intptr_t(vert)),
                              orig_normals.is_empty() ? std::nullopt :
@@ -912,7 +910,8 @@ void calc_vert_factors(const Depsgraph &depsgraph,
 static void fill_topology_automasking_factors_mesh(const Depsgraph &depsgraph,
                                                    const Sculpt &sd,
                                                    Object &ob,
-                                                   const Span<float3> vert_positions)
+                                                   const Span<float3> vert_positions,
+                                                   MutableSpan<float> factors)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
@@ -929,8 +928,8 @@ static void fill_topology_automasking_factors_mesh(const Depsgraph &depsgraph,
   float3 location = vert_positions[active_vert];
 
   flood.execute(ob, ss.vert_to_face_map, [&](int from_v, int to_v) {
-    *(float *)SCULPT_vertex_attr_get(to_v, ss.attrs.automasking_factor) = 1.0f;
-    *(float *)SCULPT_vertex_attr_get(from_v, ss.attrs.automasking_factor) = 1.0f;
+    factors[from_v] = 1.0f;
+    factors[to_v] = 1.0f;
     return (use_radius || SCULPT_is_vertex_inside_brush_radius_symm(
                               vert_positions[to_v], location, radius, symm));
   });
@@ -938,7 +937,8 @@ static void fill_topology_automasking_factors_mesh(const Depsgraph &depsgraph,
 
 static void fill_topology_automasking_factors_grids(const Sculpt &sd,
                                                     Object &ob,
-                                                    const SubdivCCG &subdiv_ccg)
+                                                    const SubdivCCG &subdiv_ccg,
+                                                    MutableSpan<float> factors)
 
 {
   SculptSession &ss = *ob.sculpt;
@@ -961,14 +961,17 @@ static void fill_topology_automasking_factors_grids(const Sculpt &sd,
 
   flood.execute(
       ob, subdiv_ccg, [&](SubdivCCGCoord from_v, SubdivCCGCoord to_v, bool /*is_duplicate*/) {
-        *(float *)SCULPT_vertex_attr_get(key, to_v, ss.attrs.automasking_factor) = 1.0f;
-        *(float *)SCULPT_vertex_attr_get(key, from_v, ss.attrs.automasking_factor) = 1.0f;
+        factors[from_v.to_index(key)] = 1.0f;
+        factors[to_v.to_index(key)] = 1.0f;
         return (use_radius || SCULPT_is_vertex_inside_brush_radius_symm(
                                   positions[to_v.to_index(key)], location, radius, symm));
       });
 }
 
-static void fill_topology_automasking_factors_bmesh(const Sculpt &sd, Object &ob, BMesh &bm)
+static void fill_topology_automasking_factors_bmesh(const Sculpt &sd,
+                                                    Object &ob,
+                                                    BMesh &bm,
+                                                    MutableSpan<float> factors)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
@@ -986,8 +989,8 @@ static void fill_topology_automasking_factors_bmesh(const Sculpt &sd, Object &ob
   float3 location = active_vert->co;
 
   flood.execute(ob, [&](BMVert *from_v, BMVert *to_v) {
-    *(float *)SCULPT_vertex_attr_get(to_v, ss.attrs.automasking_factor) = 1.0f;
-    *(float *)SCULPT_vertex_attr_get(from_v, ss.attrs.automasking_factor) = 1.0f;
+    factors[BM_elem_index_get(from_v)] = 1.0f;
+    factors[BM_elem_index_get(to_v)] = 1.0f;
     return (use_radius ||
             SCULPT_is_vertex_inside_brush_radius_symm(active_vert->co, location, radius, symm));
   });
@@ -995,7 +998,8 @@ static void fill_topology_automasking_factors_bmesh(const Sculpt &sd, Object &ob
 
 static void fill_topology_automasking_factors(const Depsgraph &depsgraph,
                                               const Sculpt &sd,
-                                              Object &ob)
+                                              Object &ob,
+                                              MutableSpan<float> factors)
 {
   /* TODO: This method is to be removed when more of the automasking code handles the different
    * pbvh types. */
@@ -1004,33 +1008,86 @@ static void fill_topology_automasking_factors(const Depsgraph &depsgraph,
   switch (bke::object::pbvh_get(ob)->type()) {
     case bke::pbvh::Type::Mesh:
       fill_topology_automasking_factors_mesh(
-          depsgraph, sd, ob, bke::pbvh::vert_positions_eval(depsgraph, ob));
+          depsgraph, sd, ob, bke::pbvh::vert_positions_eval(depsgraph, ob), factors);
       break;
     case bke::pbvh::Type::Grids:
-      fill_topology_automasking_factors_grids(sd, ob, *ss.subdiv_ccg);
+      fill_topology_automasking_factors_grids(sd, ob, *ss.subdiv_ccg, factors);
       break;
     case bke::pbvh::Type::BMesh:
-      fill_topology_automasking_factors_bmesh(sd, ob, *ss.bm);
+      fill_topology_automasking_factors_bmesh(sd, ob, *ss.bm, factors);
       break;
   }
 }
 
-static void init_face_sets_masking(const Sculpt &sd, Object &ob)
+static void init_face_sets_masking(const Sculpt &sd, Object &ob, MutableSpan<float> factors)
 {
-  SculptSession &ss = *ob.sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
   if (!is_enabled(sd, ob, brush)) {
     return;
   }
 
-  int tot_vert = SCULPT_vertex_count_get(ob);
-  int active_face_set = face_set::active_face_set_get(ob);
-  for (int i : IndexRange(tot_vert)) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ob, i);
+  const int active_face_set = face_set::active_face_set_get(ob);
+  switch (bke::object::pbvh_get(ob)->type()) {
+    case bke::pbvh::Type::Mesh: {
+      const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
+      const bke::AttributeAccessor attributes = mesh.attributes();
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
+      if (face_sets.is_empty()) {
+        return;
+      }
+      threading::parallel_for(IndexRange(mesh.verts_num), 1024, [&](const IndexRange range) {
+        for (const int vert : range) {
+          if (!face_set::vert_has_face_set(
+                  vert_to_face_map, face_sets.data(), vert, active_face_set))
+          {
+            factors[vert] = 0.0f;
+          }
+        }
+      });
+      break;
+    }
+    case bke::pbvh::Type::Grids: {
+      const Mesh &base_mesh = *static_cast<const Mesh *>(ob.data);
+      const OffsetIndices<int> faces = base_mesh.faces();
+      const bke::AttributeAccessor attributes = base_mesh.attributes();
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
+      if (face_sets.is_empty()) {
+        return;
+      }
+      const SculptSession &ss = *ob.sculpt;
+      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const int grid_area = subdiv_ccg.grid_area;
+      threading::parallel_for(faces.index_range(), 128, [&](const IndexRange range) {
+        for (const int face : range) {
+          if (face_sets[face] != active_face_set) {
+            factors.slice(bke::ccg::face_range(faces, grid_area, face)).fill(0.0f);
+          }
+        }
+      });
 
-    if (!face_set::vert_has_face_set(ob, vertex, active_face_set)) {
-      *(float *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_factor) = 0.0f;
+      break;
+    }
+    case bke::pbvh::Type::BMesh: {
+      const SculptSession &ss = *ob.sculpt;
+      const BMesh &bm = *ss.bm;
+      const int face_set_offset = CustomData_get_offset_named(
+          &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
+      if (face_set_offset == -1) {
+        return;
+      }
+      threading::parallel_for(IndexRange(bm.totvert), 1024, [&](const IndexRange range) {
+        for (const int i : range) {
+          const BMVert *vert = BM_vert_at_index(&const_cast<BMesh &>(bm), i);
+          if (!face_set::vert_has_face_set(face_set_offset, *vert, active_face_set)) {
+            factors[i] = 0.0f;
+          }
+        }
+      });
+      break;
     }
   }
 }
@@ -1045,7 +1102,8 @@ enum class BoundaryAutomaskMode {
 static void init_boundary_masking_mesh(Object &object,
                                        const Depsgraph &depsgraph,
                                        const BoundaryAutomaskMode mode,
-                                       const int propagation_steps)
+                                       const int propagation_steps,
+                                       MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -1100,14 +1158,14 @@ static void init_boundary_masking_mesh(Object &object,
     const float p = 1.0f - (float(edge_distance[i]) / float(propagation_steps));
     const float edge_boundary_automask = pow2f(p);
 
-    *(float *)SCULPT_vertex_attr_get(i, ss.attrs.automasking_factor) *= (1.0f -
-                                                                         edge_boundary_automask);
+    factors[i] *= (1.0f - edge_boundary_automask);
   }
 }
 
 static void init_boundary_masking_grids(Object &object,
                                         const BoundaryAutomaskMode mode,
-                                        const int propagation_steps)
+                                        const int propagation_steps,
+                                        MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
@@ -1164,19 +1222,17 @@ static void init_boundary_masking_grids(Object &object,
       continue;
     }
 
-    const SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, i);
-
     const float p = 1.0f - (float(edge_distance[i]) / float(propagation_steps));
     const float edge_boundary_automask = pow2f(p);
 
-    *(float *)SCULPT_vertex_attr_get(
-        key, coord, ss.attrs.automasking_factor) *= (1.0f - edge_boundary_automask);
+    factors[i] *= (1.0f - edge_boundary_automask);
   }
 }
 
 static void init_boundary_masking_bmesh(Object &object,
                                         const BoundaryAutomaskMode mode,
-                                        const int propagation_steps)
+                                        const int propagation_steps,
+                                        MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
   BMesh *bm = ss.bm;
@@ -1222,30 +1278,28 @@ static void init_boundary_masking_bmesh(Object &object,
       continue;
     }
 
-    BMVert *vert = BM_vert_at_index(bm, i);
-
     const float p = 1.0f - (float(edge_distance[i]) / float(propagation_steps));
     const float edge_boundary_automask = pow2f(p);
 
-    *(float *)SCULPT_vertex_attr_get(
-        vert, ss.attrs.automasking_factor) *= (1.0f - edge_boundary_automask);
+    factors[i] *= (1.0f - edge_boundary_automask);
   }
 }
 
 static void init_boundary_masking(Object &object,
                                   const Depsgraph &depsgraph,
                                   const BoundaryAutomaskMode mode,
-                                  const int propagation_steps)
+                                  const int propagation_steps,
+                                  MutableSpan<float> factors)
 {
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh:
-      init_boundary_masking_mesh(object, depsgraph, mode, propagation_steps);
+      init_boundary_masking_mesh(object, depsgraph, mode, propagation_steps, factors);
       break;
     case bke::pbvh::Type::Grids:
-      init_boundary_masking_grids(object, mode, propagation_steps);
+      init_boundary_masking_grids(object, mode, propagation_steps, factors);
       break;
     case bke::pbvh::Type::BMesh:
-      init_boundary_masking_bmesh(object, mode, propagation_steps);
+      init_boundary_masking_bmesh(object, mode, propagation_steps, factors);
       break;
   }
 }
@@ -1292,7 +1346,8 @@ static void cache_settings_update(Cache &automasking,
 static void normal_occlusion_automasking_fill(const Depsgraph &depsgraph,
                                               Cache &automasking,
                                               Object &ob,
-                                              eAutomasking_flag mode)
+                                              eAutomasking_flag mode,
+                                              MutableSpan<float> factors)
 {
   SculptSession &ss = *ob.sculpt;
   const int totvert = SCULPT_vertex_count_get(ob);
@@ -1301,7 +1356,7 @@ static void normal_occlusion_automasking_fill(const Depsgraph &depsgraph,
   for (int i = 0; i < totvert; i++) {
     PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ob, i);
 
-    float f = *(float *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_factor);
+    float f = factors[i];
 
     if (int(mode) & BRUSH_AUTOMASKING_VIEW_NORMAL) {
       if (int(mode) & BRUSH_AUTOMASKING_VIEW_OCCLUSION) {
@@ -1315,7 +1370,7 @@ static void normal_occlusion_automasking_fill(const Depsgraph &depsgraph,
       *(uchar *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_stroke_id) = ss.stroke_id;
     }
 
-    *(float *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_factor) = f;
+    factors[i] = f;
   }
 }
 
@@ -1420,54 +1475,36 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
   /* Avoid precomputing data on the vertex level if the current auto-masking modes do not require
    * it to function. */
   if (!needs_factors_cache(sd, brush)) {
-    if (ss.attrs.automasking_factor) {
-      BKE_sculpt_attribute_destroy(&ob, ss.attrs.automasking_factor);
-    }
     return automasking;
   }
-
-  SculptAttributeParams params = {0};
-  params.stroke_only = true;
-
-  ss.attrs.automasking_factor = BKE_sculpt_attribute_ensure(
-      &ob,
-      bke::AttrDomain::Point,
-      CD_PROP_FLOAT,
-      SCULPT_ATTRIBUTE_NAME(automasking_factor),
-      &params);
 
   /* Topology builds up the mask from zero which other modes can subtract from.
    * If it isn't enabled, initialize to 1. */
   const float initial_value = !(mode & BRUSH_AUTOMASKING_TOPOLOGY) ? 1.0f : 0.0f;
-
-  const int totvert = SCULPT_vertex_count_get(ob);
-  for (int i : IndexRange(totvert)) {
-    PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ob, i);
-
-    (*(float *)SCULPT_vertex_attr_get(vertex, ss.attrs.automasking_factor)) = initial_value;
-  }
+  automasking->factor = Array<float>(SCULPT_vertex_count_get(ob), initial_value);
+  MutableSpan<float> factors = automasking->factor;
 
   /* Additive modes. */
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_TOPOLOGY)) {
     SCULPT_vertex_random_access_ensure(ob);
 
     automasking->settings.topology_use_brush_limit = is_constrained_by_radius(brush);
-    fill_topology_automasking_factors(depsgraph, sd, ob);
+    fill_topology_automasking_factors(depsgraph, sd, ob, factors);
   }
 
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_FACE_SETS)) {
     SCULPT_vertex_random_access_ensure(ob);
-    init_face_sets_masking(sd, ob);
+    init_face_sets_masking(sd, ob, factors);
   }
 
   const int steps = boundary_propagation_steps(sd, brush);
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_BOUNDARY_EDGES)) {
     SCULPT_vertex_random_access_ensure(ob);
-    init_boundary_masking(ob, depsgraph, BoundaryAutomaskMode::Edges, steps);
+    init_boundary_masking(ob, depsgraph, BoundaryAutomaskMode::Edges, steps, factors);
   }
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_BOUNDARY_FACE_SETS)) {
     SCULPT_vertex_random_access_ensure(ob);
-    init_boundary_masking(ob, depsgraph, BoundaryAutomaskMode::FaceSets, steps);
+    init_boundary_masking(ob, depsgraph, BoundaryAutomaskMode::FaceSets, steps, factors);
   }
 
   /* Subtractive modes. */
@@ -1475,7 +1512,8 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
                     (BRUSH_AUTOMASKING_VIEW_NORMAL | BRUSH_AUTOMASKING_VIEW_OCCLUSION);
 
   if (normal_bits) {
-    normal_occlusion_automasking_fill(depsgraph, *automasking, ob, (eAutomasking_flag)normal_bits);
+    normal_occlusion_automasking_fill(
+        depsgraph, *automasking, ob, (eAutomasking_flag)normal_bits, factors);
   }
 
   return automasking;

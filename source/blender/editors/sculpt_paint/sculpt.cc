@@ -2311,9 +2311,9 @@ void calc_area_normal_and_center(const Depsgraph &depsgraph,
           AreaNormalCenterData{},
           [&](const IndexRange range, AreaNormalCenterData anctd) {
             SampleLocalData &tls = all_tls.local();
-            for (const int i : range) {
+            node_mask.slice(range).foreach_index([&](const int i) {
               calc_area_normal_and_center_node_grids(ob, brush, true, true, nodes[i], tls, anctd);
-            }
+            });
             return anctd;
           },
           calc_area_normal_and_center_reduce);
@@ -4971,7 +4971,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
-    ss.clear_active_vert();
+    ss.clear_active_vert(false);
     return false;
   }
 
@@ -5015,7 +5015,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
-    ss.clear_active_vert();
+    ss.clear_active_vert(true);
     return false;
   }
 
@@ -6244,7 +6244,10 @@ void SCULPT_fake_neighbors_free(Object &ob)
   pose_fake_neighbors_free(ss);
 }
 
-bool SCULPT_vertex_is_occluded(const Object &object, const float3 &position, bool original)
+bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
+                               const Object &object,
+                               const float3 &position,
+                               bool original)
 {
   using namespace blender;
   SculptSession &ss = *object.sculpt;
@@ -6276,6 +6279,7 @@ bool SCULPT_vertex_is_occluded(const Object &object, const float3 &position, boo
   srd.corner_verts = ss.corner_verts;
   if (pbvh.type() == bke::pbvh::Type::Mesh) {
     const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+    srd.vert_positions = bke::pbvh::vert_positions_eval(depsgraph, object);
     srd.faces = mesh.faces();
     srd.corner_tris = mesh.corner_tris();
   }
