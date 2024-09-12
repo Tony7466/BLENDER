@@ -138,16 +138,16 @@ BLOCKLIST_GPU = [
 
 class CyclesReport(render_report.Report):
     def __init__(self, title, output_dir, oiiotool, device=None, blocklist=[], osl=False):
-        # Split device name in format "<device_type>[-<HWRT>]" into individual
-        # tokens, setting the HWRT suffix to an empty string if its not specified.
+        # Split device name in format "<device_type>[-<RT>]" into individual
+        # tokens, setting the RT suffix to an empty string if its not specified.
         device, suffix = (device.split("-") + [""])[:2]
-        self.use_hwrt = (suffix == "HWRT")
+        self.use_hwrt = (suffix == "RT")
 
         super().__init__(title, output_dir, oiiotool, device, blocklist)
 
         if self.use_hwrt:
-            self.title = self.title + " HWRT"
-            self.output_dir = self.output_dir + "_hwrt"
+            self.title = self.title + " RT"
+            self.output_dir = self.output_dir + "_rt"
 
         self.osl = osl
         if self.osl:
