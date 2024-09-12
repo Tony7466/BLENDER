@@ -416,7 +416,7 @@ static float easing_bias(const float t, const float s)
   return t / ((((1.0f / math::clamp(s, 0.0f, 1.0f)) - 2.0f) * (1.0f - t)) + 1.0f);
 }
 
-/* Variable power curve with exponent mapped to [0-1] range.
+/* Variable power/smoothstep curve with exponent mapped to [0-1] range.
  * When s=0 (linear), s=0.5 (smoothstep), s=1.0 (step).*/
 static float easing_variable(const float t, const float s)
 {
