@@ -541,7 +541,7 @@ void update_node_bounds_bmesh(BMeshNode &node);
 
 /**
  * Run the last step of the BVH bounds recalculation process, propagating updated leaf node bounds
- * to their parent/ancestor inner nodes. This is mean to be used after leaf node bounds have been
+ * to their parent/ancestor inner nodes. This is meant to be used after leaf node bounds have been
  * computed separately.
  */
 void flush_bounds_to_parents(Tree &pbvh);
