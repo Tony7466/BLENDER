@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <bitset>
-
 #include "graph/node_enum.h"
 #include "util/array.h"
 #include "util/map.h"
@@ -18,7 +16,7 @@ CCL_NAMESPACE_BEGIN
 struct Node;
 struct NodeType;
 
-typedef std::bitset<128> SocketModifiedFlags;
+typedef uint64_t SocketModifiedFlags;
 
 /* Socket Type */
 

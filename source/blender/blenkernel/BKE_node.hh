@@ -997,12 +997,8 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define SH_NODE_MIX 713
 #define SH_NODE_BSDF_RAY_PORTAL 714
 #define SH_NODE_TEX_GABOR 715
-/* CHANGE TO:
- * #define SH_NODE_BSDF_METALLIC 716
- * #define SH_NODE_TEX_RAIKO 717
- */
-#define SH_NODE_BSDF_METALLIC 717
-#define SH_NODE_TEX_RAIKO 716
+#define SH_NODE_BSDF_METALLIC 716
+#define SH_NODE_TEX_RAIKO_BASE 717
 
 /** \} */
 

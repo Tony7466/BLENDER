@@ -913,22 +913,14 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(gradient, b_texture_mapping);
     node = gradient;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeTexRaiko)) {
-    BL::ShaderNodeTexRaiko b_raiko_node(b_node);
-    RaikoTextureNode *raiko = graph->create_node<RaikoTextureNode>();
-    raiko->set_mode((NodeRaikoMode)b_raiko_node.mode());
-    raiko->set_normalize_r_gon_parameter(b_raiko_node.normalize_r_gon_parameter());
-    raiko->set_integer_sides(b_raiko_node.integer_sides());
-    raiko->set_elliptical_corners(b_raiko_node.elliptical_corners());
-    raiko->set_invert_order_of_transformation(b_raiko_node.invert_order_of_transformation());
-    raiko->set_transform_fields_noise(b_raiko_node.transform_fields_noise());
-    raiko->set_transform_coordinates_noise(b_raiko_node.transform_coordinates_noise());
-    raiko->set_uniform_scale_randomness(b_raiko_node.uniform_scale_randomness());
-    raiko->set_grid_dimensions(b_raiko_node.grid_dimensions());
-    raiko->set_step_count(b_raiko_node.step_count());
-    BL::TexMapping b_texture_mapping(b_raiko_node.texture_mapping());
-    get_tex_mapping(raiko, b_texture_mapping);
-    node = raiko;
+  else if (b_node.is_a(&RNA_ShaderNodeTexRaikoBase)) {
+    BL::ShaderNodeTexRaikoBase b_raiko_base_node(b_node);
+    RaikoBaseTextureNode *raiko_base = graph->create_node<RaikoBaseTextureNode>();
+    raiko_base->set_normalize_r_gon_parameter(b_raiko_base_node.normalize_r_gon_parameter());
+    raiko_base->set_elliptical_corners(b_raiko_base_node.elliptical_corners());
+    BL::TexMapping b_texture_mapping(b_raiko_base_node.texture_mapping());
+    get_tex_mapping(raiko_base, b_texture_mapping);
+    node = raiko_base;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexVoronoi)) {
     BL::ShaderNodeTexVoronoi b_voronoi_node(b_node);

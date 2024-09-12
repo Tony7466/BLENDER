@@ -830,7 +830,7 @@ bool Node::is_modified() const
 
 void Node::tag_modified()
 {
-  socket_modified = ~SocketModifiedFlags(0u);
+  socket_modified = ~0ull;
 }
 
 void Node::clear_modified()

@@ -1220,602 +1220,82 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_noise_texture");
 }
 
-/* Raiko Texture */
+/* Raiko Base Texture */
 
-NODE_DEFINE(RaikoTextureNode)
+NODE_DEFINE(RaikoBaseTextureNode)
 {
-  NodeType *type = NodeType::add("raiko_texture", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("raiko_base_texture", create, NodeType::SHADER);
 
-  TEXTURE_MAPPING_DEFINE(RaikoTextureNode);
-
-  static NodeEnum mode_enum;
-  mode_enum.insert("additive", NODE_RAIKO_ADDITIVE);
-  mode_enum.insert("closest", NODE_RAIKO_CLOSEST);
-  mode_enum.insert("smooth_minimum", NODE_RAIKO_SMOOTH_MINIMUM);
-  SOCKET_ENUM(mode, "Mode", mode_enum, NODE_RAIKO_ADDITIVE);
-
-  static NodeEnum grid_dimensions_enum;
-  grid_dimensions_enum.insert("0D", 0);
-  grid_dimensions_enum.insert("1D", 1);
-  grid_dimensions_enum.insert("2D", 2);
-  grid_dimensions_enum.insert("3D", 3);
-  grid_dimensions_enum.insert("4D", 4);
-  SOCKET_ENUM(grid_dimensions, "Grid Dimensions", grid_dimensions_enum, 2);
-
-  static NodeEnum step_count_enum;
-  step_count_enum.insert("1_step", 1);
-  step_count_enum.insert("2_steps", 2);
-  step_count_enum.insert("3_steps", 3);
-  step_count_enum.insert("4_steps", 4);
-  SOCKET_ENUM(step_count, "Step Count", step_count_enum, 1);
+  TEXTURE_MAPPING_DEFINE(RaikoBaseTextureNode);
 
   SOCKET_BOOLEAN(normalize_r_gon_parameter, "Normalize R-gon Parameter", false);
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
-  SOCKET_IN_FLOAT(accuracy, "Accuracy", 0.1f);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
-  SOCKET_IN_FLOAT(smoothness, "Smoothness", 0.5f);
 
-  /* R-sphere */
-  SOCKET_BOOLEAN(integer_sides, "Integer Sides", false);
   SOCKET_BOOLEAN(elliptical_corners, "Elliptical Corners", false);
   SOCKET_IN_FLOAT(r_gon_sides, "R_gon Sides", 5.0f);
   SOCKET_IN_FLOAT(r_gon_roundness, "R_gon Roundness", 0.0f);
   SOCKET_IN_FLOAT(r_gon_exponent, "R_gon Exponent", 2.0f);
   SOCKET_IN_FLOAT(sphere_exponent, "Sphere Exponent", 2.0f);
 
-  /* Randomize R-sphere */
-  SOCKET_IN_FLOAT(r_gon_sides_randomness, "R_gon Sides Randomness", 0.0f);
-  SOCKET_IN_FLOAT(r_gon_roundness_randomness, "R_gon Roundness Randomness", 0.0f);
-  SOCKET_IN_FLOAT(r_gon_exponent_randomness, "R_gon Exponent Randomness", 0.0f);
-  SOCKET_IN_FLOAT(sphere_exponent_randomness, "Sphere Exponent Randomness", 0.0f);
-
-  /* Transform */
-  SOCKET_BOOLEAN(invert_order_of_transformation, "Invert Order of Transformation", false);
-  SOCKET_BOOLEAN(transform_fields_noise, "Transform Fields Noise", true);
-  SOCKET_BOOLEAN(transform_coordinates_noise, "Transform Coordinates Noise", true);
-  SOCKET_IN_POINT(transform_rotation, "Rotation Transform", make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_POINT(transform_scale, "Scale Transform", make_float3(1.0f, 1.0f, 1.0f));
-  SOCKET_IN_FLOAT(transform_scale_w, "Scale Transform W", 1.0f);
-
-  /* Randomize Transform */
-  SOCKET_BOOLEAN(uniform_scale_randomness, "Uniform Scale Randomness", true);
-  SOCKET_IN_POINT(transform_rotation_randomness,
-                  "Rotation Transform Randomness",
-                  make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_POINT(
-      transform_scale_randomness, "Scale Transform Randomness", make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_FLOAT(transform_scale_w_randomness, "Scale Transform W Randomness", 0.0f);
-
-  /* Add Noise */
-  SOCKET_IN_FLOAT(noise_fragmentation, "Fragmentation", 0.0f);
-  SOCKET_IN_FLOAT(noise_fields_strength_1, "Fields Strength 1", 0.0f);
-  SOCKET_IN_FLOAT(noise_coordinates_strength_1, "Coordinates Strength 1", 0.0f);
-  SOCKET_IN_FLOAT(noise_scale_1, "Scale 1", 5.0f);
-  SOCKET_IN_FLOAT(noise_detail_1, "Detail 1", 2.0f);
-  SOCKET_IN_FLOAT(noise_roughness_1, "Roughness 1", 0.5f);
-  SOCKET_IN_FLOAT(noise_lacunarity_1, "Lacunarity 1", 2.0f);
-  SOCKET_IN_FLOAT(noise_fields_strength_2, "Fields Strength 2", 0.0f);
-  SOCKET_IN_FLOAT(noise_coordinates_strength_2, "Coordinates Strength 2", 0.0f);
-  SOCKET_IN_FLOAT(noise_scale_2, "Scale 2", 5.0f);
-  SOCKET_IN_FLOAT(noise_detail_2, "Detail 2", 2.0f);
-  SOCKET_IN_FLOAT(noise_roughness_2, "Roughness 2", 0.5f);
-  SOCKET_IN_FLOAT(noise_lacunarity_2, "Lacunarity 2", 2.0f);
-
-  /* Grid */
-  SOCKET_IN_POINT(grid_vector_1, "Grid Vector 1", make_float3(1.0f, 0.0f, 0.0f));
-  SOCKET_IN_FLOAT(grid_vector_w_1, "Grid Vector W 1", 0.0f);
-  SOCKET_IN_POINT(grid_vector_2, "Grid Vector 2", make_float3(0.0f, 1.0f, 0.0f));
-  SOCKET_IN_FLOAT(grid_vector_w_2, "Grid Vector W 2", 0.0f);
-  SOCKET_IN_POINT(grid_vector_3, "Grid Vector 3", make_float3(0.0f, 0.0f, 1.0f));
-  SOCKET_IN_FLOAT(grid_vector_w_3, "Grid Vector W 3", 0.0f);
-  SOCKET_IN_POINT(grid_vector_4, "Grid Vector 4", make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_FLOAT(grid_vector_w_4, "Grid Vector W 4", 1.0f);
-
-  /* Randomize Grid */
-  SOCKET_IN_POINT(grid_points_translation_randomness,
-                  "Grid Points Translation Randomness",
-                  make_float3(0.0f, 0.0f, 0.0f));
-  SOCKET_IN_FLOAT(
-      grid_points_translation_w_randomness, "Grid Points Translation W Randomness", 0.0f);
-
-  /* Chained Elliptical Remap */
-  SOCKET_IN_FLOAT(step_center_1, "Step Center 1", 0.1875f);
-  SOCKET_IN_FLOAT(step_width_1, "Step Width 1", 0.125f);
-  SOCKET_IN_FLOAT(step_value_1, "Step Value 1", 0.5f);
-  SOCKET_IN_FLOAT(ellipse_height_1, "Ellipse Height 1", 0.5f);
-  SOCKET_IN_FLOAT(ellipse_width_1, "Ellipse Width 1", 0.5f);
-  SOCKET_IN_FLOAT(inflection_point_1, "Inflection Point 1", 0.5f);
-  SOCKET_IN_FLOAT(step_center_2, "Step Center 2", 0.34375f);
-  SOCKET_IN_FLOAT(step_width_2, "Step Width 2", 0.0625f);
-  SOCKET_IN_FLOAT(step_value_2, "Step Value 2", 0.25f);
-  SOCKET_IN_FLOAT(ellipse_height_2, "Ellipse Height 2", 0.5f);
-  SOCKET_IN_FLOAT(ellipse_width_2, "Ellipse Width 2", 0.5f);
-  SOCKET_IN_FLOAT(inflection_point_2, "Inflection Point 2", 0.5f);
-  SOCKET_IN_FLOAT(step_center_3, "Step Center 3", 0.421875f);
-  SOCKET_IN_FLOAT(step_width_3, "Step Width 3", 0.03125f);
-  SOCKET_IN_FLOAT(step_value_3, "Step Value 3", 0.125f);
-  SOCKET_IN_FLOAT(ellipse_height_3, "Ellipse Height 3", 0.5f);
-  SOCKET_IN_FLOAT(ellipse_width_3, "Ellipse Width 3", 0.5f);
-  SOCKET_IN_FLOAT(inflection_point_3, "Inflection Point 3", 0.5f);
-  SOCKET_IN_FLOAT(step_center_4, "Step Center 4", 0.4609375f);
-  SOCKET_IN_FLOAT(step_width_4, "Step Width 4", 0.015625f);
-  SOCKET_IN_FLOAT(step_value_4, "Step Value 4", 0.0625f);
-  SOCKET_IN_FLOAT(ellipse_height_4, "Ellipse Height 4", 0.5f);
-  SOCKET_IN_FLOAT(ellipse_width_4, "Ellipse Width 4", 0.5f);
-  SOCKET_IN_FLOAT(inflection_point_4, "Inflection Point 4", 0.5f);
-
-  /* Randomize Chained Elliptical Remap */
-  SOCKET_IN_FLOAT(step_center_randomness_1, "Step Center Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(step_width_randomness_1, "Step Width Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(step_value_randomness_1, "Step Value Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_height_randomness_1, "Ellipse Height Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_width_randomness_1, "Ellipse Width Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(inflection_point_randomness_1, "Inflection Point Randomness 1", 0.0f);
-  SOCKET_IN_FLOAT(step_center_randomness_2, "Step Center Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(step_width_randomness_2, "Step Width Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(step_value_randomness_2, "Step Value Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_height_randomness_2, "Ellipse Height Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_width_randomness_2, "Ellipse Width Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(inflection_point_randomness_2, "Inflection Point Randomness 2", 0.0f);
-  SOCKET_IN_FLOAT(step_center_randomness_3, "Step Center Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(step_width_randomness_3, "Step Width Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(step_value_randomness_3, "Step Value Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_height_randomness_3, "Ellipse Height Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_width_randomness_3, "Ellipse Width Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(inflection_point_randomness_3, "Inflection Point Randomness 3", 0.0f);
-  SOCKET_IN_FLOAT(step_center_randomness_4, "Step Center Randomness 4", 0.0f);
-  SOCKET_IN_FLOAT(step_width_randomness_4, "Step Width Randomness 4", 0.0f);
-  SOCKET_IN_FLOAT(step_value_randomness_4, "Step Value Randomness 4", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_height_randomness_4, "Ellipse Height Randomness 4", 0.0f);
-  SOCKET_IN_FLOAT(ellipse_width_randomness_4, "Ellipse Width Randomness 4", 0.0f);
-  SOCKET_IN_FLOAT(inflection_point_randomness_4, "Inflection Point Randomness 4", 0.0f);
-
   SOCKET_OUT_FLOAT(r_sphere_field, "R_sphere Field");
   SOCKET_OUT_FLOAT(r_gon_parameter_field, "R_gon Parameter Field");
   SOCKET_OUT_FLOAT(max_unit_parameter_field, "Max Unit Parameter Field");
-  SOCKET_OUT_FLOAT(segment_id_field, "Segment ID Field");
-  SOCKET_OUT_POINT(index_field, "Index Field");
-  SOCKET_OUT_FLOAT(index_field_w, "Index Field W");
-  SOCKET_OUT_POINT(position_field, "Position Field");
-  SOCKET_OUT_FLOAT(position_field_w, "Position Field W");
-  SOCKET_OUT_POINT(r_sphere_coordinates, "R_sphere Coordinates");
-  SOCKET_OUT_FLOAT(r_sphere_coordinates_w, "R_sphere Coordinates W");
 
   return type;
 }
 
-RaikoTextureNode::RaikoTextureNode() : TextureNode(get_node_type()) {}
+RaikoBaseTextureNode::RaikoBaseTextureNode() : TextureNode(get_node_type()) {}
 
-void RaikoTextureNode::compile(SVMCompiler &compiler)
+void RaikoBaseTextureNode::compile(SVMCompiler &compiler)
 {
   int vector_stack_offset = tex_mapping.compile_begin(compiler, input("Vector"));
   int w_stack_offset = compiler.stack_assign_if_linked(input("W"));
-  int accuracy_stack_offset = compiler.stack_assign_if_linked(input("Accuracy"));
   int scale_stack_offset = compiler.stack_assign_if_linked(input("Scale"));
-  int smoothness_stack_offset = compiler.stack_assign_if_linked(input("Smoothness"));
 
-  /* R-sphere */
   int r_gon_sides_stack_offset = compiler.stack_assign_if_linked(input("R_gon Sides"));
   int r_gon_roundness_stack_offset = compiler.stack_assign_if_linked(input("R_gon Roundness"));
   int r_gon_exponent_stack_offset = compiler.stack_assign_if_linked(input("R_gon Exponent"));
   int sphere_exponent_stack_offset = compiler.stack_assign_if_linked(input("Sphere Exponent"));
-
-  /* Randomize R-sphere */
-  int r_gon_sides_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("R_gon Sides Randomness"));
-  int r_gon_roundness_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("R_gon Roundness Randomness"));
-  int r_gon_exponent_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("R_gon Exponent Randomness"));
-  int sphere_exponent_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Sphere Exponent Randomness"));
-
-  /* Transform */
-  int transform_rotation_stack_offset = compiler.stack_assign_if_linked(
-      input("Rotation Transform"));
-  int transform_scale_stack_offset = compiler.stack_assign_if_linked(input("Scale Transform"));
-  int transform_scale_w_stack_offset = compiler.stack_assign_if_linked(input("Scale Transform W"));
-
-  /* Randomize Transform */
-  int transform_rotation_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Rotation Transform Randomness"));
-  int transform_scale_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Scale Transform Randomness"));
-  int transform_scale_w_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Scale Transform W Randomness"));
-
-  /* Add Noise */
-  int noise_fragmentation_stack_offset = compiler.stack_assign_if_linked(input("Fragmentation"));
-  int noise_fields_strength_1_stack_offset = compiler.stack_assign_if_linked(
-      input("Fields Strength 1"));
-  int noise_coordinates_strength_1_stack_offset = compiler.stack_assign_if_linked(
-      input("Coordinates Strength 1"));
-  int noise_scale_1_stack_offset = compiler.stack_assign_if_linked(input("Scale 1"));
-  int noise_detail_1_stack_offset = compiler.stack_assign_if_linked(input("Detail 1"));
-  int noise_roughness_1_stack_offset = compiler.stack_assign_if_linked(input("Roughness 1"));
-  int noise_lacunarity_1_stack_offset = compiler.stack_assign_if_linked(input("Lacunarity 1"));
-  int noise_fields_strength_2_stack_offset = compiler.stack_assign_if_linked(
-      input("Fields Strength 2"));
-  int noise_coordinates_strength_2_stack_offset = compiler.stack_assign_if_linked(
-      input("Coordinates Strength 2"));
-  int noise_scale_2_stack_offset = compiler.stack_assign_if_linked(input("Scale 2"));
-  int noise_detail_2_stack_offset = compiler.stack_assign_if_linked(input("Detail 2"));
-  int noise_roughness_2_stack_offset = compiler.stack_assign_if_linked(input("Roughness 2"));
-  int noise_lacunarity_2_stack_offset = compiler.stack_assign_if_linked(input("Lacunarity 2"));
-
-  /* Grid */
-  int grid_vector_1_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector 1"));
-  int grid_vector_w_1_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector W 1"));
-  int grid_vector_2_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector 2"));
-  int grid_vector_w_2_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector W 2"));
-  int grid_vector_3_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector 3"));
-  int grid_vector_w_3_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector W 3"));
-  int grid_vector_4_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector 4"));
-  int grid_vector_w_4_stack_offset = compiler.stack_assign_if_linked(input("Grid Vector W 4"));
-
-  /* Randomize Grid */
-  int grid_points_translation_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Grid Points Translation Randomness"));
-  int grid_points_translation_w_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Grid Points Translation W Randomness"));
-
-  /* Chained Elliptical Remap */
-  int step_center_1_stack_offset = compiler.stack_assign_if_linked(input("Step Center 1"));
-  int step_width_1_stack_offset = compiler.stack_assign_if_linked(input("Step Width 1"));
-  int step_value_1_stack_offset = compiler.stack_assign_if_linked(input("Step Value 1"));
-  int ellipse_height_1_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Height 1"));
-  int ellipse_width_1_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Width 1"));
-  int inflection_point_1_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point 1"));
-  int step_center_2_stack_offset = compiler.stack_assign_if_linked(input("Step Center 2"));
-  int step_width_2_stack_offset = compiler.stack_assign_if_linked(input("Step Width 2"));
-  int step_value_2_stack_offset = compiler.stack_assign_if_linked(input("Step Value 2"));
-  int ellipse_height_2_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Height 2"));
-  int ellipse_width_2_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Width 2"));
-  int inflection_point_2_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point 2"));
-  int step_center_3_stack_offset = compiler.stack_assign_if_linked(input("Step Center 3"));
-  int step_width_3_stack_offset = compiler.stack_assign_if_linked(input("Step Width 3"));
-  int step_value_3_stack_offset = compiler.stack_assign_if_linked(input("Step Value 3"));
-  int ellipse_height_3_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Height 3"));
-  int ellipse_width_3_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Width 3"));
-  int inflection_point_3_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point 3"));
-  int step_center_4_stack_offset = compiler.stack_assign_if_linked(input("Step Center 4"));
-  int step_width_4_stack_offset = compiler.stack_assign_if_linked(input("Step Width 4"));
-  int step_value_4_stack_offset = compiler.stack_assign_if_linked(input("Step Value 4"));
-  int ellipse_height_4_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Height 4"));
-  int ellipse_width_4_stack_offset = compiler.stack_assign_if_linked(input("Ellipse Width 4"));
-  int inflection_point_4_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point 4"));
-
-  /* Randomize Chained Elliptical Remap */
-  int step_center_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Center Randomness 1"));
-  int step_width_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Width Randomness 1"));
-  int step_value_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Value Randomness 1"));
-  int ellipse_height_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Height Randomness 1"));
-  int ellipse_width_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Width Randomness 1"));
-  int inflection_point_1_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point Randomness 1"));
-  int step_center_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Center Randomness 2"));
-  int step_width_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Width Randomness 2"));
-  int step_value_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Value Randomness 2"));
-  int ellipse_height_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Height Randomness 2"));
-  int ellipse_width_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Width Randomness 2"));
-  int inflection_point_2_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point Randomness 2"));
-  int step_center_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Center Randomness 3"));
-  int step_width_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Width Randomness 3"));
-  int step_value_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Value Randomness 3"));
-  int ellipse_height_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Height Randomness 3"));
-  int ellipse_width_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Width Randomness 3"));
-  int inflection_point_3_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point Randomness 3"));
-  int step_center_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Center Randomness 4"));
-  int step_width_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Width Randomness 4"));
-  int step_value_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Step Value Randomness 4"));
-  int ellipse_height_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Height Randomness 4"));
-  int ellipse_width_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Ellipse Width Randomness 4"));
-  int inflection_point_4_randomness_stack_offset = compiler.stack_assign_if_linked(
-      input("Inflection Point Randomness 4"));
 
   int r_sphere_field_stack_offset = compiler.stack_assign_if_linked(output("R_sphere Field"));
   int r_gon_parameter_field_stack_offset = compiler.stack_assign_if_linked(
       output("R_gon Parameter Field"));
   int max_unit_parameter_field_stack_offset = compiler.stack_assign_if_linked(
       output("Max Unit Parameter Field"));
-  int segment_id_field_stack_offset = compiler.stack_assign_if_linked(output("Segment ID Field"));
-  int index_field_stack_offset = compiler.stack_assign_if_linked(output("Index Field"));
-  int index_field_w_stack_offset = compiler.stack_assign_if_linked(output("Index Field W"));
-  int position_field_stack_offset = compiler.stack_assign_if_linked(output("Position Field"));
-  int position_field_w_stack_offset = compiler.stack_assign_if_linked(output("Position Field W"));
-  int r_sphere_coordinates_stack_offset = compiler.stack_assign_if_linked(
-      output("R_sphere Coordinates"));
-  int r_sphere_coordinates_w_stack_offset = compiler.stack_assign_if_linked(
-      output("R_sphere Coordinates W"));
 
   compiler.add_node(
-      NODE_TEX_RAIKO,
-      compiler.encode_uchar4(mode, normalize_r_gon_parameter, integer_sides, elliptical_corners),
-      compiler.encode_uchar4(transform_fields_noise,
-                             transform_coordinates_noise,
-                             uniform_scale_randomness,
-                             grid_dimensions),
+      NODE_TEX_RAIKO_BASE,
       compiler.encode_uchar4(
-          step_count, vector_stack_offset, w_stack_offset, accuracy_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(scale_stack_offset,
-                                           smoothness_stack_offset,
-                                           r_gon_sides_stack_offset,
-                                           r_gon_roundness_stack_offset),
-                    compiler.encode_uchar4(r_gon_exponent_stack_offset,
-                                           sphere_exponent_stack_offset,
-                                           r_gon_sides_randomness_stack_offset,
-                                           r_gon_roundness_randomness_stack_offset),
-                    compiler.encode_uchar4(r_gon_exponent_randomness_stack_offset,
-                                           sphere_exponent_randomness_stack_offset,
-                                           transform_rotation_stack_offset,
-                                           transform_scale_stack_offset),
-                    compiler.encode_uchar4(transform_scale_w_stack_offset,
-                                           transform_rotation_randomness_stack_offset,
-                                           transform_scale_randomness_stack_offset,
-                                           transform_scale_w_randomness_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(noise_fragmentation_stack_offset,
-                                           noise_fields_strength_1_stack_offset,
-                                           noise_coordinates_strength_1_stack_offset,
-                                           noise_scale_1_stack_offset),
-                    compiler.encode_uchar4(noise_detail_1_stack_offset,
-                                           noise_roughness_1_stack_offset,
-                                           noise_lacunarity_1_stack_offset,
-                                           noise_fields_strength_2_stack_offset),
-                    compiler.encode_uchar4(noise_coordinates_strength_2_stack_offset,
-                                           noise_scale_2_stack_offset,
-                                           noise_detail_2_stack_offset,
-                                           noise_roughness_2_stack_offset),
-                    compiler.encode_uchar4(noise_lacunarity_2_stack_offset,
-                                           grid_vector_1_stack_offset,
-                                           grid_vector_w_1_stack_offset,
-                                           grid_vector_2_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(grid_vector_w_2_stack_offset,
-                                           grid_vector_3_stack_offset,
-                                           grid_vector_w_3_stack_offset,
-                                           grid_vector_4_stack_offset),
-                    compiler.encode_uchar4(grid_vector_w_4_stack_offset,
-                                           grid_points_translation_randomness_stack_offset,
-                                           grid_points_translation_w_randomness_stack_offset,
-                                           step_center_1_stack_offset),
-                    compiler.encode_uchar4(step_width_1_stack_offset,
-                                           step_value_1_stack_offset,
-                                           ellipse_height_1_stack_offset,
-                                           ellipse_width_1_stack_offset),
-                    compiler.encode_uchar4(inflection_point_1_stack_offset,
-                                           step_center_2_stack_offset,
-                                           step_width_2_stack_offset,
-                                           step_value_2_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(ellipse_height_2_stack_offset,
-                                           ellipse_width_2_stack_offset,
-                                           inflection_point_2_stack_offset,
-                                           step_center_3_stack_offset),
-                    compiler.encode_uchar4(step_width_3_stack_offset,
-                                           step_value_3_stack_offset,
-                                           ellipse_height_3_stack_offset,
-                                           ellipse_width_3_stack_offset),
-                    compiler.encode_uchar4(inflection_point_3_stack_offset,
-                                           step_center_4_stack_offset,
-                                           step_width_4_stack_offset,
-                                           step_value_4_stack_offset),
-                    compiler.encode_uchar4(ellipse_height_4_stack_offset,
-                                           ellipse_width_4_stack_offset,
-                                           inflection_point_4_stack_offset,
-                                           step_center_1_randomness_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(step_width_1_randomness_stack_offset,
-                                           step_value_1_randomness_stack_offset,
-                                           ellipse_height_1_randomness_stack_offset,
-                                           ellipse_width_1_randomness_stack_offset),
-                    compiler.encode_uchar4(inflection_point_1_randomness_stack_offset,
-                                           step_center_2_randomness_stack_offset,
-                                           step_width_2_randomness_stack_offset,
-                                           step_value_2_randomness_stack_offset),
-                    compiler.encode_uchar4(ellipse_height_2_randomness_stack_offset,
-                                           ellipse_width_2_randomness_stack_offset,
-                                           inflection_point_2_randomness_stack_offset,
-                                           step_center_3_randomness_stack_offset),
-                    compiler.encode_uchar4(step_width_3_randomness_stack_offset,
-                                           step_value_3_randomness_stack_offset,
-                                           ellipse_height_3_randomness_stack_offset,
-                                           ellipse_width_3_randomness_stack_offset));
-  compiler.add_node(compiler.encode_uchar4(inflection_point_3_randomness_stack_offset,
-                                           step_center_4_randomness_stack_offset,
-                                           step_width_4_randomness_stack_offset,
-                                           step_value_4_randomness_stack_offset),
-                    compiler.encode_uchar4(ellipse_height_4_randomness_stack_offset,
-                                           ellipse_width_4_randomness_stack_offset,
-                                           inflection_point_4_randomness_stack_offset,
-                                           r_sphere_field_stack_offset),
-                    compiler.encode_uchar4(r_gon_parameter_field_stack_offset,
-                                           max_unit_parameter_field_stack_offset,
-                                           segment_id_field_stack_offset,
-                                           index_field_stack_offset),
-                    compiler.encode_uchar4(index_field_w_stack_offset,
-                                           position_field_stack_offset,
-                                           position_field_w_stack_offset,
-                                           r_sphere_coordinates_stack_offset));
-  /* defaults_1 */
-  compiler.add_node(r_sphere_coordinates_w_stack_offset,
-                    __float_as_int(w),
-                    __float_as_int(accuracy),
-                    __float_as_int(scale));
-  /* defaults_2 */
-  compiler.add_node(__float_as_int(smoothness),
+          normalize_r_gon_parameter, elliptical_corners, vector_stack_offset, w_stack_offset),
+      compiler.encode_uchar4(scale_stack_offset,
+                             r_gon_sides_stack_offset,
+                             r_gon_roundness_stack_offset,
+                             r_gon_exponent_stack_offset),
+      compiler.encode_uchar4(sphere_exponent_stack_offset,
+                             r_sphere_field_stack_offset,
+                             r_gon_parameter_field_stack_offset,
+                             max_unit_parameter_field_stack_offset));
+  compiler.add_node(__float_as_int(w),
+                    __float_as_int(scale),
                     __float_as_int(r_gon_sides),
-                    __float_as_int(r_gon_roundness),
-                    __float_as_int(r_gon_exponent));
-  /* defaults_3 */
-  compiler.add_node(__float_as_int(sphere_exponent),
-                    __float_as_int(r_gon_sides_randomness),
-                    __float_as_int(r_gon_roundness_randomness),
-                    __float_as_int(r_gon_exponent_randomness));
-  /* defaults_4 */
-  compiler.add_node(__float_as_int(sphere_exponent_randomness),
-                    __float_as_int(transform_rotation.x),
-                    __float_as_int(transform_rotation.y),
-                    __float_as_int(transform_rotation.z));
-  /* defaults_5 */
-  compiler.add_node(__float_as_int(transform_scale.x),
-                    __float_as_int(transform_scale.y),
-                    __float_as_int(transform_scale.z),
-                    __float_as_int(transform_scale_w));
-  /* defaults_6 */
-  compiler.add_node(__float_as_int(transform_rotation_randomness.x),
-                    __float_as_int(transform_rotation_randomness.y),
-                    __float_as_int(transform_rotation_randomness.z),
-                    __float_as_int(transform_scale_randomness.x));
-  /* defaults_7 */
-  compiler.add_node(__float_as_int(transform_scale_randomness.y),
-                    __float_as_int(transform_scale_randomness.z),
-                    __float_as_int(transform_scale_w_randomness),
-                    __float_as_int(noise_fragmentation));
-  /* defaults_8 */
-  compiler.add_node(__float_as_int(noise_fields_strength_1),
-                    __float_as_int(noise_coordinates_strength_1),
-                    __float_as_int(noise_scale_1),
-                    __float_as_int(noise_detail_1));
-  /* defaults_9 */
-  compiler.add_node(__float_as_int(noise_roughness_1),
-                    __float_as_int(noise_lacunarity_1),
-                    __float_as_int(noise_fields_strength_2),
-                    __float_as_int(noise_coordinates_strength_2));
-  /* defaults_10 */
-  compiler.add_node(__float_as_int(noise_scale_2),
-                    __float_as_int(noise_detail_2),
-                    __float_as_int(noise_roughness_2),
-                    __float_as_int(noise_lacunarity_2));
-  /* defaults_11 */
-  compiler.add_node(__float_as_int(grid_vector_1.x),
-                    __float_as_int(grid_vector_1.y),
-                    __float_as_int(grid_vector_1.z),
-                    __float_as_int(grid_vector_w_1));
-  /* defaults_12 */
-  compiler.add_node(__float_as_int(grid_vector_2.x),
-                    __float_as_int(grid_vector_2.y),
-                    __float_as_int(grid_vector_2.z),
-                    __float_as_int(grid_vector_w_2));
-  /* defaults_13 */
-  compiler.add_node(__float_as_int(grid_vector_3.x),
-                    __float_as_int(grid_vector_3.y),
-                    __float_as_int(grid_vector_3.z),
-                    __float_as_int(grid_vector_w_3));
-  /* defaults_14 */
-  compiler.add_node(__float_as_int(grid_vector_4.x),
-                    __float_as_int(grid_vector_4.y),
-                    __float_as_int(grid_vector_4.z),
-                    __float_as_int(grid_vector_w_4));
-  /* defaults_15 */
-  compiler.add_node(__float_as_int(grid_points_translation_randomness.x),
-                    __float_as_int(grid_points_translation_randomness.y),
-                    __float_as_int(grid_points_translation_randomness.z),
-                    __float_as_int(grid_points_translation_w_randomness));
-  /* defaults_16 */
-  compiler.add_node(__float_as_int(step_center_1),
-                    __float_as_int(step_width_1),
-                    __float_as_int(step_value_1),
-                    __float_as_int(ellipse_height_1));
-  /* defaults_17 */
-  compiler.add_node(__float_as_int(ellipse_width_1),
-                    __float_as_int(inflection_point_1),
-                    __float_as_int(step_center_2),
-                    __float_as_int(step_width_2));
-  /* defaults_18 */
-  compiler.add_node(__float_as_int(step_value_2),
-                    __float_as_int(ellipse_height_2),
-                    __float_as_int(ellipse_width_2),
-                    __float_as_int(inflection_point_2));
-  /* defaults_19 */
-  compiler.add_node(__float_as_int(step_center_3),
-                    __float_as_int(step_width_3),
-                    __float_as_int(step_value_3),
-                    __float_as_int(ellipse_height_3));
-  /* defaults_20 */
-  compiler.add_node(__float_as_int(ellipse_width_3),
-                    __float_as_int(inflection_point_3),
-                    __float_as_int(step_center_4),
-                    __float_as_int(step_width_4));
-  /* defaults_21 */
-  compiler.add_node(__float_as_int(step_value_4),
-                    __float_as_int(ellipse_height_4),
-                    __float_as_int(ellipse_width_4),
-                    __float_as_int(inflection_point_4));
-  /* defaults_22 */
-  compiler.add_node(__float_as_int(step_center_randomness_1),
-                    __float_as_int(step_width_randomness_1),
-                    __float_as_int(step_value_randomness_1),
-                    __float_as_int(ellipse_height_randomness_1));
-  /* defaults_23 */
-  compiler.add_node(__float_as_int(ellipse_width_randomness_1),
-                    __float_as_int(inflection_point_randomness_1),
-                    __float_as_int(step_center_randomness_2),
-                    __float_as_int(step_width_randomness_2));
-  /* defaults_24 */
-  compiler.add_node(__float_as_int(step_value_randomness_2),
-                    __float_as_int(ellipse_height_randomness_2),
-                    __float_as_int(ellipse_width_randomness_2),
-                    __float_as_int(inflection_point_randomness_2));
-  /* defaults_25 */
-  compiler.add_node(__float_as_int(step_center_randomness_3),
-                    __float_as_int(step_width_randomness_3),
-                    __float_as_int(step_value_randomness_3),
-                    __float_as_int(ellipse_height_randomness_3));
-  /* defaults_26 */
-  compiler.add_node(__float_as_int(ellipse_width_randomness_3),
-                    __float_as_int(inflection_point_randomness_3),
-                    __float_as_int(step_center_randomness_4),
-                    __float_as_int(step_width_randomness_4));
-  /* defaults_27 */
-  compiler.add_node(__float_as_int(step_value_randomness_4),
-                    __float_as_int(ellipse_height_randomness_4),
-                    __float_as_int(ellipse_width_randomness_4),
-                    __float_as_int(inflection_point_randomness_4));
-  /* appendix */
-  compiler.add_node(
-      invert_order_of_transformation, SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID);
+                    __float_as_int(r_gon_roundness));
+  compiler.add_node(__float_as_int(r_gon_exponent),
+                    __float_as_int(sphere_exponent),
+                    SVM_STACK_INVALID,
+                    SVM_STACK_INVALID);
 
   tex_mapping.compile_end(compiler, input("Vector"), vector_stack_offset);
 }
 
-void RaikoTextureNode::compile(OSLCompiler &compiler)
+void RaikoBaseTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
 
-  compiler.parameter(this, "mode");
-  compiler.parameter(this, "integer_sides");
+  compiler.parameter(this, "normalize_r_gon_parameter");
   compiler.parameter(this, "elliptical_corners");
-  compiler.parameter(this, "invert_order_of_transformation");
-  compiler.parameter(this, "transform_fields_noise");
-  compiler.parameter(this, "transform_coordinates_noise");
-  compiler.parameter(this, "uniform_scale_randomness");
-  compiler.parameter(this, "grid_dimensions");
-  compiler.parameter(this, "step_count");
-  compiler.add(this, "node_raiko_texture");
+  compiler.add(this, "node_raiko_base_texture");
 }
 
 /* Gabor Texture */
