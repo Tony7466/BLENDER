@@ -1241,7 +1241,7 @@ NODE_DEFINE(RaikoBaseTextureNode)
 
   SOCKET_OUT_FLOAT(r_sphere_field, "R_sphere Field");
   SOCKET_OUT_FLOAT(r_gon_parameter_field, "R_gon Parameter Field");
-  SOCKET_OUT_FLOAT(max_unit_parameter_field, "Max Unit Parameter Field");
+  SOCKET_OUT_FLOAT(max_unit_parameter, "Max Unit Parameter");
 
   return type;
 }
@@ -1262,8 +1262,8 @@ void RaikoBaseTextureNode::compile(SVMCompiler &compiler)
   int r_sphere_field_stack_offset = compiler.stack_assign_if_linked(output("R_sphere Field"));
   int r_gon_parameter_field_stack_offset = compiler.stack_assign_if_linked(
       output("R_gon Parameter Field"));
-  int max_unit_parameter_field_stack_offset = compiler.stack_assign_if_linked(
-      output("Max Unit Parameter Field"));
+  int max_unit_parameter_stack_offset = compiler.stack_assign_if_linked(
+      output("Max Unit Parameter"));
 
   compiler.add_node(
       NODE_TEX_RAIKO_BASE,
@@ -1276,7 +1276,7 @@ void RaikoBaseTextureNode::compile(SVMCompiler &compiler)
       compiler.encode_uchar4(sphere_exponent_stack_offset,
                              r_sphere_field_stack_offset,
                              r_gon_parameter_field_stack_offset,
-                             max_unit_parameter_field_stack_offset));
+                             max_unit_parameter_stack_offset));
   compiler.add_node(__float_as_int(w),
                     __float_as_int(scale),
                     __float_as_int(r_gon_sides),
