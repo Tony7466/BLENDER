@@ -952,4 +952,3 @@ float sculpt_calc_radius(const ViewContext &vc,
                          const Scene &scene,
                          float3 location);
 }
-
