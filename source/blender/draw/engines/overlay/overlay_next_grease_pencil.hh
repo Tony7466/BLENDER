@@ -69,7 +69,7 @@ class GreasePencil {
       case OB_MODE_VERTEX_GPENCIL_LEGACY:
         /* Vertex paint mode. */
         break;
-      case OB_MODE_EDIT_GPENCIL_LEGACY:
+      case OB_MODE_EDIT:
         /* Edit mode. */
         show_points_ = show_edit_point;
         show_lines_ = show_edit_lines;
