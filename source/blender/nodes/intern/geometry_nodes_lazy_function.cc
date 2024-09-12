@@ -1740,6 +1740,7 @@ struct RepeatEvalStorage {
   std::optional<RepeatZoneSideEffectProvider> side_effect_provider;
   std::optional<RepeatBodyNodeExecuteWrapper> body_execute_wrapper;
   std::optional<lf::GraphExecutor> graph_executor;
+  Array<SocketValueVariant> index_values;
   void *graph_executor_storage = nullptr;
   bool multi_threading_enabled = false;
   Vector<int> input_index_map;
@@ -1852,6 +1853,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     /* Take iterations input into account. */
     const int main_inputs_offset = 1;
+    const int body_inputs_offset = 1;
 
     lf::Graph &lf_graph = eval_storage.graph;
 
@@ -1860,11 +1862,11 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     for (const int i : inputs_.index_range()) {
       const lf::Input &input = inputs_[i];
-      lf_inputs.append(&lf_graph.add_input(*input.type, input.debug_name));
+      lf_inputs.append(&lf_graph.add_input(*input.type, this->input_name(i)));
     }
     for (const int i : outputs_.index_range()) {
       const lf::Output &output = outputs_[i];
-      lf_outputs.append(&lf_graph.add_output(*output.type, output.debug_name));
+      lf_outputs.append(&lf_graph.add_output(*output.type, this->output_name(i)));
     }
 
     /* Create body nodes. */
@@ -1883,9 +1885,18 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       lf_border_link_usage_or_nodes[i] = &lf_node;
     }
 
+    eval_storage.index_values.reinitialize(iterations);
+    threading::parallel_for(IndexRange(iterations), 1024, [&](const IndexRange range) {
+      for (const int i : range) {
+        eval_storage.index_values[i].set(i);
+      }
+    });
+
     /* Handle body nodes one by one. */
     for (const int iter_i : lf_body_nodes.index_range()) {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
+      lf_node.input(body_fn_.indices.inputs.main[0])
+          .set_default_value(&eval_storage.index_values[iter_i]);
       for (const int i : IndexRange(num_border_links)) {
         lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.border_links[i]],
                           lf_node.input(body_fn_.indices.inputs.border_links[i]));
@@ -1908,17 +1919,19 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       }
     }
 
+    static bool static_true = true;
+
     /* Handle body nodes pair-wise. */
     for (const int iter_i : lf_body_nodes.index_range().drop_back(1)) {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
       lf::FunctionNode &lf_next_node = *lf_body_nodes[iter_i + 1];
       for (const int i : IndexRange(num_repeat_items)) {
-        lf_graph.add_link(lf_node.output(body_fn_.indices.outputs.main[i]),
-                          lf_next_node.input(body_fn_.indices.inputs.main[i]));
+        lf_graph.add_link(
+            lf_node.output(body_fn_.indices.outputs.main[i]),
+            lf_next_node.input(body_fn_.indices.inputs.main[i + body_inputs_offset]));
         /* TODO: Add back-link after being able to check for cyclic dependencies. */
         // lf_graph.add_link(lf_next_node.output(body_fn_.indices.outputs.input_usages[i]),
         //                   lf_node.input(body_fn_.indices.inputs.output_usages[i]));
-        static bool static_true = true;
         lf_node.input(body_fn_.indices.inputs.output_usages[i]).set_default_value(&static_true);
       }
     }
@@ -1934,10 +1947,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         /* Link first body node to input/output nodes. */
         lf::FunctionNode &lf_first_body_node = *lf_body_nodes[0];
         for (const int i : IndexRange(num_repeat_items)) {
-          lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.main[i + main_inputs_offset]],
-                            lf_first_body_node.input(body_fn_.indices.inputs.main[i]));
           lf_graph.add_link(
-              lf_first_body_node.output(body_fn_.indices.outputs.input_usages[i]),
+              *lf_inputs[zone_info_.indices.inputs.main[i + main_inputs_offset]],
+              lf_first_body_node.input(body_fn_.indices.inputs.main[i + body_inputs_offset]));
+          lf_graph.add_link(
+              lf_first_body_node.output(
+                  body_fn_.indices.outputs.input_usages[i + body_inputs_offset]),
               *lf_outputs[zone_info_.indices.outputs.input_usages[i + main_inputs_offset]]);
         }
       }
@@ -1967,6 +1982,8 @@ class LazyFunctionForRepeatZone : public LazyFunction {
             &static_false);
       }
     }
+
+    lf_outputs[zone_info_.indices.outputs.input_usages[0]]->set_default_value(&static_true);
 
     /* The graph is ready, update the node indices which are required by the executor. */
     lf_graph.update_node_indices();
@@ -2474,7 +2491,7 @@ struct GeometryNodesLazyFunctionBuilder {
    */
   ZoneBodyFunction &build_zone_body_function(const bNodeTreeZone &zone)
   {
-    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>();
+    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>("Repeat Body");
 
     BuildGraphParams graph_params{lf_body_graph};
 
