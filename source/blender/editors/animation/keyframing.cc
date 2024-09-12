@@ -24,7 +24,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -33,7 +33,7 @@
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 
@@ -445,7 +445,7 @@ static int insert_key_exec(bContext *C, wmOperator *op)
   return insert_key(C, op);
 }
 
-static int insert_key_invoke(bContext *C, wmOperator *op, const wmEvent * /* event */)
+static int insert_key_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   /* The depsgraph needs to be in an evaluated state to ensure the values we get from the
    * properties are actually the values of the current frame. However we cannot do that in the exec

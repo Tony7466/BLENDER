@@ -480,7 +480,7 @@ option(WITH_OPENCOLLADA "Enable OpenCollada Support (http://www.opencollada.org)
 option(WITH_IO_WAVEFRONT_OBJ "Enable Wavefront-OBJ 3D file format support (*.obj)" ON)
 option(WITH_IO_PLY "Enable PLY 3D file format support (*.ply)" ON)
 option(WITH_IO_STL "Enable STL 3D file format support (*.stl)" ON)
-option(WITH_IO_GPENCIL "Enable grease-pencil file format IO (*.svg, *.pdf)" ON)
+option(WITH_IO_GREASE_PENCIL "Enable grease-pencil file format IO (*.svg, *.pdf)" ON)
 
 # Sound output
 option(WITH_SDL "Enable SDL for sound" ON)
@@ -741,10 +741,9 @@ This option is only for debugging purposes."
   )
 
   # https://www.intel.com/content/www/us/en/develop/documentation/oneapi-dpcpp-cpp-compiler-dev-guide-and-reference/top/compilation/ahead-of-time-compilation.html
-  # The target architectures levels can be retrieved from `ocloc` output when running
-  # `ocloc compile -device {device_id} test.c` for given GPUs PCI device IDs.
-  # 12.55.8 is for Arc Alchemist GPUs. 12.70.4 for Meteor Lake iGPUs.
-  set(CYCLES_ONEAPI_INTEL_BINARIES_ARCH 12.55.8 12.70.4 CACHE STRING "\
+  # The supported devices can be retrieved from `ocloc` output when running
+  # `ocloc compile --help`.
+  set(CYCLES_ONEAPI_INTEL_BINARIES_ARCH dg2 mtl CACHE STRING "\
 oneAPI Intel GPU architectures to build binaries for"
   )
   set(CYCLES_ONEAPI_SYCL_TARGETS spir64 spir64_gen CACHE STRING "\
@@ -964,6 +963,28 @@ Can cause linking issues due to too large binary size."
   OFF
 )
 mark_as_advanced(WITH_COMPILER_ASAN_EXTERN)
+
+option(WITH_COMPILER_CODE_COVERAGE "\
+Build and link with code coverage support (only for Debug targets)."
+OFF
+)
+mark_as_advanced(WITH_COMPILER_CODE_COVERAGE)
+
+if(WITH_COMPILER_CODE_COVERAGE)
+  if(NOT CMAKE_COMPILER_IS_GNUCC)
+    message("WITH_COMPILER_CODE_COVERAGE only works with GCC currently.")
+    set(WITH_COMPILER_CODE_COVERAGE OFF)
+  endif()
+endif()
+
+if(WITH_COMPILER_CODE_COVERAGE)
+  set(_code_coverage_defaults "--coverage")
+  set(COMPILER_CODE_COVERAGE_CFLAGS ${_code_coverage_defaults} CACHE STRING "C flags for code coverage")
+  mark_as_advanced(COMPILER_CODE_COVERAGE_CFLAGS)
+  set(COMPILER_CODE_COVERAGE_CXXFLAGS ${_code_coverage_defaults} CACHE STRING "C++ flags for code coverage")
+  mark_as_advanced(COMPILER_CODE_COVERAGE_CXXFLAGS)
+  unset(_code_coverage_defaults)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   if(WITH_COMPILER_ASAN)
@@ -1206,11 +1227,6 @@ set_and_warn_dependency(WITH_PYTHON WITH_CYCLES        OFF)
 set_and_warn_dependency(WITH_PYTHON WITH_DRACO         OFF)
 set_and_warn_dependency(WITH_PYTHON WITH_MOD_FLUID     OFF)
 
-if(WITH_DRACO AND NOT WITH_PYTHON_INSTALL)
-  message(STATUS "WITH_DRACO requires WITH_PYTHON_INSTALL to be ON, disabling WITH_DRACO for now")
-  set(WITH_DRACO OFF)
-endif()
-
 # enable boost for cycles, audaspace or i18n
 # otherwise if the user disabled
 
@@ -1359,6 +1375,11 @@ set(PLATFORM_LINKFLAGS "")
 set(PLATFORM_LINKFLAGS_DEBUG "")
 set(PLATFORM_LINKFLAGS_RELEASE "")
 set(PLATFORM_LINKFLAGS_EXECUTABLE "")
+
+if(WITH_COMPILER_CODE_COVERAGE)
+  string(APPEND CMAKE_C_FLAGS_DEBUG " ${COMPILER_CODE_COVERAGE_CFLAGS}")
+  string(APPEND CMAKE_CXX_FLAGS_DEBUG " ${COMPILER_CODE_COVERAGE_CXXFLAGS}")
+endif()
 
 if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
   if(WITH_COMPILER_ASAN)

@@ -23,9 +23,9 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_fcurve.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_draw.hh"
@@ -966,7 +966,7 @@ void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region)
 void draw_nla_track_list(const bContext *C,
                          bAnimContext *ac,
                          ARegion *region,
-                         const ListBase /* bAnimListElem */ &anim_data)
+                         const ListBase /*bAnimListElem*/ &anim_data)
 {
 
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(ac->sl);

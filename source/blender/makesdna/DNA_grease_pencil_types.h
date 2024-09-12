@@ -19,6 +19,7 @@
 #  include "BLI_generic_virtual_array.hh"
 #  include "BLI_map.hh"
 #  include "BLI_math_vector_types.hh"
+#  include "BLI_memory_counter_fwd.hh"
 #  include "BLI_span.hh"
 namespace blender::bke {
 class AttributeAccessor;
@@ -49,10 +50,7 @@ typedef struct GreasePencilLayerGroupRuntimeHandle GreasePencilLayerGroupRuntime
 
 struct Main;
 struct GreasePencil;
-struct BlendDataReader;
-struct BlendWriter;
 struct Object;
-struct bDeformGroup;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -243,7 +241,7 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_EXPANDED = (1 << 6),
   GP_LAYER_TREE_NODE_HIDE_MASKS = (1 << 7),
   GP_LAYER_TREE_NODE_DISABLE_MASKS_IN_VIEWLAYER = (1 << 8),
-  GP_LAYER_TREE_NODE_USE_LOCKED_MATERIAL = (1 << 9),
+  GP_LAYER_TREE_NODE_IGNORE_LOCKED_MATERIALS = (1 << 9),
 } GreasePencilLayerTreeNodeFlag;
 
 struct GreasePencilLayerTreeGroup;
@@ -693,6 +691,8 @@ typedef struct GreasePencil {
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
+
+  void count_memory(blender::MemoryCounter &memory) const;
 
   /* For debugging purposes. */
   void print_layer_tree();

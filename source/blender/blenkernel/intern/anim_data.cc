@@ -12,7 +12,7 @@
 
 #include "ANIM_action.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
@@ -23,7 +23,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_node.hh"
 #include "BKE_report.hh"
 
@@ -464,7 +464,7 @@ static void animdata_copy_id_action(Main *bmain,
                       BKE_id_copy(bmain, &adt->tmpact->id));
     }
   }
-  bNodeTree *ntree = blender::bke::ntreeFromID(id);
+  bNodeTree *ntree = blender::bke::node_tree_from_id(id);
   if (ntree) {
     animdata_copy_id_action(bmain, &ntree->id, set_newid, do_linked_id);
   }
