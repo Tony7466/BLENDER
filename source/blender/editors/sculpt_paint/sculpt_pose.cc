@@ -1190,7 +1190,7 @@ std::optional<float3> calc_average_face_set_center(const Depsgraph &depsgraph,
   }
 
   if (count != 0) {
-    return sum / count;
+    return sum / float(count);
   }
 
   return std::nullopt;
