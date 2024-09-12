@@ -15,7 +15,6 @@ shader node_hsv(float Hue = 0.5,
 {
   color Color = rgb_to_hsv(ColorIn);
 
-  // remember: fract doesn't work for negative numbers
   Color[0] = fract(Color[0] + Hue + 0.5);
   Color[1] = clamp(Color[1] * Saturation, 0.0, 1.0);
   Color[2] *= Value;
