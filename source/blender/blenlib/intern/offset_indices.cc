@@ -106,7 +106,16 @@ int sum_group_sizes(const OffsetIndices<int> offsets, const Span<int> indices)
 int sum_group_sizes(const OffsetIndices<int> offsets, const IndexMask &mask)
 {
   int count = 0;
-  mask.foreach_index_optimized<int>([&](const int i) { count += offsets[i].size(); });
+  mask.foreach_segment_optimized([&](const auto segment) {
+    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
+      count += offsets[segment].size();
+    }
+    else {
+      for (const int64_t i : segment) {
+        count += offsets[i].size();
+      }
+    }
+  });
   return count;
 }
 
