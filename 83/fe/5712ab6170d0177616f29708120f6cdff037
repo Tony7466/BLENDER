@@ -1,2 +1,3 @@
 Referenced by issue #126990, Regression: A default tool isn't selected when changing editor
 Referenced by commit de7fced7eb8a8bd706b0d128814f519f224134ce, Fix #126990: Changing editors doesn't set the default tool
+Referenced by issue #124452, Blender LTS: Maintenance Task 4.2
