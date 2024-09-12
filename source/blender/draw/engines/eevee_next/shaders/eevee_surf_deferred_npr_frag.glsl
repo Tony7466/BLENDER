@@ -20,24 +20,43 @@ vec4 closure_to_rgba(Closure cl)
   return vec4(0.0);
 }
 
-void main()
+void npr_input_impl(vec2 texel_offset,
+                    inout vec4 combined_color,
+                    inout vec4 diffuse_color,
+                    inout vec4 diffuse_direct,
+                    inout vec4 diffuse_indirect,
+                    inout vec4 specular_color,
+                    inout vec4 specular_direct,
+                    inout vec4 specular_indirect,
+                    inout vec3 position,
+                    inout vec3 normal)
 {
-  init_globals();
+  /*TODO(NPR): Texel-based offset is pretty bad.*/
+  ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
+  texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
-  ivec2 texel = ivec2(gl_FragCoord.xy);
+  float depth = texelFetch(hiz_tx, texel, 0).r;
+  vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
 
   DeferredCombine dc = deferred_combine(texel);
   deferred_combine_clamp(dc);
 
-  g_combined_color = deferred_combine_final_output(dc);
-  g_combined_color.a = saturate(1.0 - g_combined_color.a);
-  g_diffuse_color = vec4(dc.diffuse_color, 1.0);
-  g_diffuse_direct = vec4(dc.diffuse_direct, 1.0);
-  g_diffuse_indirect = vec4(dc.diffuse_indirect, 1.0);
-  g_specular_color = vec4(dc.specular_color, 1.0);
-  g_specular_direct = vec4(dc.specular_direct, 1.0);
-  g_specular_indirect = vec4(dc.specular_indirect, 1.0);
+  combined_color = deferred_combine_final_output(dc);
+  combined_color.a = saturate(1.0 - combined_color.a);
+  diffuse_color = vec4(dc.diffuse_color, 1.0);
+  diffuse_direct = vec4(dc.diffuse_direct, 1.0);
+  diffuse_indirect = vec4(dc.diffuse_indirect, 1.0);
+  specular_color = vec4(dc.specular_color, 1.0);
+  specular_direct = vec4(dc.specular_direct, 1.0);
+  specular_indirect = vec4(dc.specular_indirect, 1.0);
+  position = drw_point_screen_to_world(vec3(screen_uv, depth));
+  normal = dc.average_normal;
+}
 
-  out_color.rgb = nodetree_npr().rgb;
-  out_color.a = 1.0 - g_combined_color.a;
+void main()
+{
+  init_globals();
+
+  out_color = nodetree_npr();
+  out_color.a = 0.0;
 }
