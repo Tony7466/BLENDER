@@ -2029,15 +2029,31 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 class LazyFunctionForForeachGeometryElementZone;
 struct ForeachGeometryElementEvalStorage;
 
+/**
+ * The For Each Geometry Element can iterate over multiple components at the same time. That can
+ * happen when the input geometry is e.g. a mesh and a pointcloud and we're iterating over points.
+ *
+ * This struct contains evaluation data for each component.
+ */
 struct ForeachElementComponent {
+  /** The non-const component that is iterated over. It's owned by the `main_geometry` */
   GeometryComponent *component;
+  /** Used for field evaluation on the output node. */
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
+  /** Index values passed into each body node. */
   Array<SocketValueVariant> index_values;
+  /** Evaluated input values passed into each body node. */
   Array<Array<SocketValueVariant>> item_input_values;
+  /** The set of body evaluation nodes that correspond to this component. This indexes into
+   * `lf_body_nodes`. */
   IndexRange body_nodes_range;
 };
 
+/**
+ * A lazy-function that takes the result from all loop body evaluations and reduces them to the
+ * final output of the entire zone.
+ */
 struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
   const LazyFunctionForForeachGeometryElementZone &parent_;
   ForeachGeometryElementEvalStorage &eval_storage_;
@@ -2050,6 +2066,10 @@ struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const override;
 };
 
+/**
+ * This is called whenever an evaluation node is entered. It sets up the compute context if the
+ * node is a loop body node.
+ */
 class ForeachGeometryElementNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper {
  public:
   const bNode *output_bnode_ = nullptr;
@@ -2082,6 +2102,10 @@ class ForeachGeometryElementNodeExecuteWrapper : public lf::GraphExecutorNodeExe
   }
 };
 
+/**
+ * Tells the lazy-function graph executor which loop bodies should be evaluated even if they are
+ * not requested by the output.
+ */
 class ForeachGeometryElementZoneSideEffectProvider : public lf::GraphExecutorSideEffectProvider {
  public:
   const bNode *output_bnode_ = nullptr;
@@ -2110,18 +2134,33 @@ class ForeachGeometryElementZoneSideEffectProvider : public lf::GraphExecutorSid
   }
 };
 
+/**
+ * This is only evaluated when the zone is actually evaluated. It contains all the temporary data
+ * that is needed for that specific evaluation.
+ */
 struct ForeachGeometryElementEvalStorage {
   LinearAllocator<> allocator;
+
+  /** The lazy-function graph and its executor. */
   lf::Graph graph;
-  std::optional<LazyFunctionForLogicalOr> or_function;
-  std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
   std::optional<ForeachGeometryElementZoneSideEffectProvider> side_effect_provider;
   std::optional<ForeachGeometryElementNodeExecuteWrapper> body_execute_wrapper;
   std::optional<lf::GraphExecutor> graph_executor;
   void *graph_executor_storage = nullptr;
-  VectorSet<lf::FunctionNode *> lf_body_nodes;
-  GeometrySet main_geometry;
 
+  /** Some lazy-functions that are constructed once the total number of iterations is known. */
+  std::optional<LazyFunctionForLogicalOr> or_function;
+  std::optional<LazyFunctionForReduceForeachGeometryElement> reduce_function;
+
+  /**
+   * All the body nodes in the lazy-function graph in order. This only contains nodes for the
+   * selected indices.
+   */
+  VectorSet<lf::FunctionNode *> lf_body_nodes;
+
+  /** The main input geometry that is iterated over. */
+  GeometrySet main_geometry;
+  /** Data for each geometry component that is iterated over. */
   Array<ForeachElementComponent> components;
 };
 
