@@ -32,12 +32,7 @@ class GreasePencil {
   bool show_points_ = false;
   bool show_lines_ = false;
   bool show_grid_ = false;
-
-  bool in_edit_mode_ = false;
-  bool in_paint_mode_ = false;
-  bool in_weight_mode_ = false;
-  bool in_sculpt_mode_ = false;
-  bool in_vertex_mode_ = false;
+  bool show_weight_ = false;
 
   /* TODO(fclem): This is quite wasteful and expensive, prefer in shader Z modification like the
    * retopology offset. */
@@ -59,26 +54,41 @@ class GreasePencil {
 
     const View3D *v3d = state.v3d;
     const ToolSettings *ts = state.scene->toolsettings;
+    const int sculpt_select_mode = ts->gpencil_selectmode_sculpt;
 
     const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(ts);
     const bool show_edit_point = selection_domain == bke::AttrDomain::Point;
     const bool show_edit_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES);
 
-    in_edit_mode_ = (state.object_mode & OB_MODE_EDIT);
-    in_paint_mode_ = (state.object_mode & OB_MODE_VERTEX_PAINT);
-    in_weight_mode_ = (state.object_mode & OB_MODE_WEIGHT_PAINT);
-    in_sculpt_mode_ = (state.object_mode & OB_MODE_SCULPT);
-    in_vertex_mode_ = (state.object_mode & OB_MODE_VERTEX_GPENCIL_LEGACY); /* What is that? */
+    show_points_ = show_lines_ = show_weight_ = false;
 
-    const int sculpt_select_mode = ts->gpencil_selectmode_sculpt;
-    const bool sculpt_point = (sculpt_select_mode & GP_SCULPT_MASK_SELECTMODE_POINT);
-
-    show_points_ = (show_edit_point && in_edit_mode_) || (show_edit_point && in_paint_mode_) ||
-                   (show_edit_point && in_vertex_mode_) || (sculpt_point && in_sculpt_mode_) ||
-                   (true /* We display weight on vertices. */ && in_weight_mode_);
-    show_lines_ = (show_edit_lines && in_edit_mode_) || (show_edit_lines && in_paint_mode_) ||
-                  (show_edit_lines && in_vertex_mode_) || (show_edit_lines && in_weight_mode_) ||
-                  (true /* Always display lines in sculpt mode. */ && in_sculpt_mode_);
+    switch (state.object_mode) {
+      case OB_MODE_PAINT_GPENCIL_LEGACY:
+        /* Draw mode. */
+        break;
+      case OB_MODE_VERTEX_GPENCIL_LEGACY:
+        /* Vertex paint mode. */
+        break;
+      case OB_MODE_EDIT_GPENCIL_LEGACY:
+        /* Edit mode. */
+        show_points_ = show_edit_point;
+        show_lines_ = show_edit_lines;
+        break;
+      case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+        /* Weight paint mode. */
+        show_points_ = true;
+        show_lines_ = show_edit_lines;
+        show_weight_ = true;
+        break;
+      case OB_MODE_SCULPT_GPENCIL_LEGACY:
+        /* Sculpt mode. */
+        show_points_ = sculpt_select_mode & GP_SCULPT_MASK_SELECTMODE_POINT;
+        show_lines_ = show_edit_lines && (sculpt_select_mode != 0);
+        break;
+      default:
+        /* Not a Grease Pencil mode. */
+        break;
+    }
 
     edit_points_ = nullptr;
     edit_lines_ = nullptr;
@@ -95,17 +105,17 @@ class GreasePencil {
         sub.shader_set(res.shaders.curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.bind_texture("weightTex", &res.weight_ramp_tx);
-        sub.push_constant("useWeight", in_weight_mode_);
+        sub.push_constant("useWeight", show_weight_);
         sub.push_constant("useGreasePencil", true);
         edit_points_ = &sub;
       }
 
-      if (show_points_) {
+      if (show_lines_) {
         auto &sub = pass.sub("Lines");
         sub.shader_set(res.shaders.curve_edit_line.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.bind_texture("weightTex", &res.weight_ramp_tx);
-        sub.push_constant("useWeight", in_weight_mode_);
+        sub.push_constant("useWeight", show_weight_);
         sub.push_constant("useGreasePencil", true);
         edit_lines_ = &sub;
       }
@@ -145,17 +155,34 @@ class GreasePencil {
     ResourceHandle res_handle = manager.resource_handle(ob_ref);
 
     if (show_points_) {
-      gpu::Batch *geom = in_weight_mode_ ?
+      gpu::Batch *geom = show_weight_ ?
                              DRW_cache_grease_pencil_weight_points_get(state.scene, ob) :
                              DRW_cache_grease_pencil_edit_points_get(state.scene, ob);
       edit_points_->draw(geom, res_handle);
     }
     if (show_lines_) {
-      gpu::Batch *geom = in_weight_mode_ ?
-                             DRW_cache_grease_pencil_weight_lines_get(state.scene, ob) :
-                             DRW_cache_grease_pencil_edit_lines_get(state.scene, ob);
+      gpu::Batch *geom = show_weight_ ? DRW_cache_grease_pencil_weight_lines_get(state.scene, ob) :
+                                        DRW_cache_grease_pencil_edit_lines_get(state.scene, ob);
       edit_lines_->draw(geom, res_handle);
     }
+  }
+
+  void paint_object_sync(Manager &manager,
+                         const ObjectRef &ob_ref,
+                         const State &state,
+                         Resources &res)
+  {
+    /* Reuse same logic as edit mode. */
+    edit_object_sync(manager, ob_ref, state, res);
+  }
+
+  void sculpt_object_sync(Manager &manager,
+                          const ObjectRef &ob_ref,
+                          const State &state,
+                          Resources &res)
+  {
+    /* Reuse same logic as edit mode. */
+    edit_object_sync(manager, ob_ref, state, res);
   }
 
   void object_sync(const ObjectRef &ob_ref, Resources & /*res*/, State &state)

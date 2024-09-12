@@ -167,10 +167,31 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   }
 
   if (in_paint_mode) {
-    layer.paints.object_sync(manager, ob_ref, state);
+    switch (ob_ref.object->type) {
+      case OB_MESH:
+        /* TODO(fclem): Make it part of a #Meshes. */
+        layer.paints.object_sync(manager, ob_ref, state);
+        break;
+      case OB_GREASE_PENCIL:
+        layer.grease_pencil.paint_object_sync(manager, ob_ref, state, resources);
+        break;
+      default:
+        break;
+    }
   }
+
   if (in_sculpt_mode) {
-    layer.sculpts.object_sync(manager, ob_ref, state);
+    switch (ob_ref.object->type) {
+      case OB_MESH:
+        /* TODO(fclem): Make it part of a #Meshes. */
+        layer.sculpts.object_sync(manager, ob_ref, state);
+        break;
+      case OB_GREASE_PENCIL:
+        layer.grease_pencil.sculpt_object_sync(manager, ob_ref, state, resources);
+        break;
+      default:
+        break;
+    }
   }
 
   if (in_edit_mode && !state.hide_overlays) {
@@ -489,7 +510,7 @@ bool Instance::object_is_selected(const ObjectRef &ob_ref)
 
 bool Instance::object_is_paint_mode(const Object *object)
 {
-  if (object->type == OB_GREASE_PENCIL && (state.object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY)) {
+  if (object->type == OB_GREASE_PENCIL && (state.object_mode & OB_MODE_ALL_PAINT_GPENCIL)) {
     return true;
   }
   return state.active_base && (object == state.active_base->object) &&
