@@ -683,16 +683,16 @@ static float calc_cavity_factor(const Depsgraph &depsgraph,
                                 PBVHVertRef vert_ref,
                                 const int vert)
 {
-  if (automasking.cavity[vert] == -1.0f) {
+  if (automasking.cavity_factor[vert] == -1.0f) {
     calc_blurred_cavity(depsgraph,
                         object,
                         automasking,
                         automasking.settings.cavity_blur_steps,
                         vert_ref,
-                        const_cast<Cache &>(automasking).cavity);
+                        const_cast<Cache &>(automasking).cavity_factor);
   }
 
-  float factor = automasking.cavity[vert];
+  float factor = automasking.cavity_factor[vert];
   bool inverted = automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_INVERTED;
 
   if ((automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) &&
@@ -1412,7 +1412,7 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
 
       BKE_curvemapping_init(sd.automasking_cavity_curve);
     }
-    automasking->cavity = Array<float>(verts_num, -1.0f);
+    automasking->cavity_factor = Array<float>(verts_num, -1.0f);
   }
 
   /* Avoid precomputing data on the vertex level if the current auto-masking modes do not require

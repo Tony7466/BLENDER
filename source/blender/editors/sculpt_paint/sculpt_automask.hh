@@ -63,11 +63,11 @@ struct Cache {
   Array<OcclusionValue> occlusion;
 
   /**
-   * Cached occlusion values for each vertex.
+   * Cached cavity factor values for each vertex.
    *
    * \note -1 means the vertex value still needs to be calculated.
    */
-  Array<float> cavity;
+  Array<float> cavity_factor;
 
   bool can_reuse_mask;
   uchar current_stroke_id;
