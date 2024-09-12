@@ -31,7 +31,6 @@
 
 namespace blender::ed::sculpt_paint {
 namespace auto_mask {
-struct NodeData;
 struct Cache;
 }
 namespace boundary {
@@ -45,7 +44,6 @@ struct IKChain;
 }
 namespace undo {
 struct Node;
-struct StepData;
 enum class Type : int8_t;
 }
 }
@@ -56,14 +54,10 @@ struct Image;
 struct ImageUser;
 struct KeyBlock;
 struct Object;
-struct SculptProjectVector;
 struct bContext;
 struct PaintModeSettings;
-struct WeightPaintInfo;
-struct WPaintData;
 struct wmKeyConfig;
 struct wmKeyMap;
-struct wmOperator;
 struct wmOperatorType;
 
 /* -------------------------------------------------------------------- */
@@ -492,7 +486,8 @@ const blender::float3 SCULPT_vertex_normal_get(const Depsgraph &depsgraph,
                                                const Object &object,
                                                PBVHVertRef vertex);
 
-bool SCULPT_vertex_is_occluded(const Object &object,
+bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
+                               const Object &object,
                                const blender::float3 &position,
                                bool original);
 
@@ -725,7 +720,9 @@ std::optional<OrigPositionData> orig_position_data_lookup_mesh(const Object &obj
 inline OrigPositionData orig_position_data_get_mesh(const Object &object,
                                                     const bke::pbvh::MeshNode &node)
 {
-  return *orig_position_data_lookup_mesh(object, node);
+  const std::optional<OrigPositionData> result = orig_position_data_lookup_mesh(object, node);
+  BLI_assert(result.has_value());
+  return *result;
 }
 
 std::optional<OrigPositionData> orig_position_data_lookup_grids(const Object &object,
@@ -733,7 +730,9 @@ std::optional<OrigPositionData> orig_position_data_lookup_grids(const Object &ob
 inline OrigPositionData orig_position_data_get_grids(const Object &object,
                                                      const bke::pbvh::GridsNode &node)
 {
-  return *orig_position_data_lookup_grids(object, node);
+  const std::optional<OrigPositionData> result = orig_position_data_lookup_grids(object, node);
+  BLI_assert(result.has_value());
+  return *result;
 }
 
 void orig_position_data_gather_bmesh(const BMLog &bm_log,
