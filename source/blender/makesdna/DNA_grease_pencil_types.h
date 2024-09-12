@@ -18,6 +18,7 @@
 #  include "BLI_function_ref.hh"
 #  include "BLI_generic_virtual_array.hh"
 #  include "BLI_map.hh"
+#  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_memory_counter_fwd.hh"
 #  include "BLI_span.hh"
@@ -508,6 +509,8 @@ typedef struct GreasePencil {
   blender::MutableSpan<GreasePencilDrawingBase *> drawings();
   const GreasePencilDrawingBase *drawing(int64_t index) const;
   GreasePencilDrawingBase *drawing(int64_t index);
+
+  void transform_drawings(const blender::float4x4 transform);
 
   /* Layers, layer groups and nodes read/write access. */
   blender::Span<const blender::bke::greasepencil::Layer *> layers() const;

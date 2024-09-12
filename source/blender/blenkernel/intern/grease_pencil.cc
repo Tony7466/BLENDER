@@ -44,6 +44,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
+#include "BLI_task.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 #include "BLI_virtual_array.hh"
@@ -2259,6 +2260,27 @@ blender::MutableSpan<GreasePencilDrawingBase *> GreasePencil::drawings()
 {
   return blender::MutableSpan<GreasePencilDrawingBase *>{this->drawing_array,
                                                          this->drawing_array_num};
+}
+
+void GreasePencil::transform_drawings(const blender::float4x4 transform)
+{
+  blender::MutableSpan<GreasePencilDrawingBase *> drawings = this->drawings();
+  blender::threading::parallel_for(
+      drawings.index_range(), 64, [&](const blender::IndexRange range) {
+        for (const int drawing_index : range) {
+          if (drawings[drawing_index]->type != GP_DRAWING) {
+            continue;
+          }
+          blender::bke::CurvesGeometry &curves =
+              reinterpret_cast<blender::bke::greasepencil::Drawing *>(drawings[drawing_index])
+                  ->strokes_for_write();
+          blender::MutableSpan<float3> positions = curves.positions_for_write();
+          for (const int point_index : positions.index_range()) {
+            positions[point_index] = blender::math::transform_point(transform,
+                                                                    positions[point_index]);
+          }
+        }
+      });
 }
 
 void GreasePencil::resize_drawings(const int new_num)
