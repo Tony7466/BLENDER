@@ -237,9 +237,18 @@ static void sample_data_from_outliner(bContext *C,
     bPoseChannel *pose_bone = (bPoseChannel *)r_sample_data.bone_rna.data;
     /* Special case for pose bones. Because they are not stored in the Armature, the IDs of the
      * search property and the picked result might not match since the comparison would be between
-     * armature and object. As a result it is possible to "pick" bones from a different armature.*/
+     * armature and object. */
     if (bdr.search_ptr.type == &RNA_Object) {
       if (bone_id != search_id) {
+        return;
+      }
+    }
+    /* If looking for an armature, get the Armature object and follow the data pointer. */
+    if (bdr.search_ptr.type == &RNA_Armature) {
+      /* Expecting Pose Bones to be stored on the object. */
+      BLI_assert(GS(r_sample_data.bone_rna.owner_id->name) == ID_OB);
+      Object *armature_object = (Object *)r_sample_data.bone_rna.owner_id;
+      if (armature_object->data != bdr.search_ptr.owner_id) {
         return;
       }
     }
