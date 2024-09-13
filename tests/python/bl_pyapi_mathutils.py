@@ -259,7 +259,6 @@ class VectorTesting(unittest.TestCase):
 
     def test_overloads(self):
         self.assertEqual(sum(Vector()), 0)
-        self.assertEqual(sum(Vector(1)), 3)
         self.assertEqual(sum(Vector(1, 2, 3)), 6)
         self.assertEqual(sum(Vector(1, 2, 3, 4)), 10)
         self.assertEqual(sum(Vector((1, 2, 3, 4))), 10)

@@ -142,7 +142,7 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
   float *vec = nullptr;
   int vec_num = 3; /* default to a 3D vector */
-  PyObject* item = nullptr;
+  
 
   if (kwds && PyDict_Size(kwds)) {
     PyErr_SetString(PyExc_TypeError,
@@ -164,25 +164,8 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       copy_vn_fl(vec, vec_num, 0.0f);
       break;
     case 1:
-      item = PyTuple_GET_ITEM(args, 0);
-
-      if (bool is_float = (PyFloat_Check(item)) || PyLong_Check(item))
-      {
-        vec = static_cast<float*>(PyMem_Malloc(vec_num * sizeof(float)));
-
-        if (vec == nullptr) {
-          PyErr_SetString(PyExc_MemoryError,
-            "Vector(): "
-            "problem allocating pointer space");
-          return nullptr;
-        }
-
-        float value = is_float ? float(PyFloat_AsDouble(item)) : float(PyLong_AsLong(item));
-        copy_vn_fl(vec, vec_num, value);
-        break;
-      }
-      else if ((vec_num = mathutils_array_parse_alloc(
-                 &vec, 2, item, "mathutils.Vector()")) == -1)
+      if ((vec_num = mathutils_array_parse_alloc(
+                 &vec, 2, PyTuple_GET_ITEM(args, 0), "mathutils.Vector()")) == -1)
         {
           return nullptr;
         }
@@ -199,7 +182,7 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       vec = static_cast<float*>(PyMem_Malloc(vec_num * sizeof(float)));
 
       for (int i = 0; i < vec_num; i++) {
-        item = PyTuple_GetItem(args, i);
+        PyObject* item = PyTuple_GetItem(args, i);
 
         if (PyFloat_Check(item)) {
           vec[i] = float(PyFloat_AsDouble(item));
@@ -3444,7 +3427,6 @@ PyDoc_STRVAR(
     /* Wrap. */
     vector_doc,
     ".. class:: Vector()\n"
-    "           Vector(number)\n"
     "           Vector(seq)\n"
     "           Vector(x, y)\n"
     "           Vector(x, y, z)\n"
@@ -3454,8 +3436,6 @@ PyDoc_STRVAR(
     "\n"
     "   :arg seq: Components of the vector, must be a sequence of at least two\n"
     "   :type seq: sequence of numbers\n"
-    "   :arg number: A single number used to initialize all components of a 3D vector.\n"
-    "   :type number: float\n"
     "   :arg x: First component of the vector (optional).\n"
     "   :type x: float\n"
     "   :arg y: Second component of the vector (optional).\n"
@@ -3468,7 +3448,6 @@ PyDoc_STRVAR(
 
     " Example usages:\n"
     " - ``Vector()``: Creates an empty vector.\n"
-    " - ``Vector(1)``: Creates a 3D vector with all components set to 1.\n"
     " - ``Vector(1, 2)``: Creates a 2D vector with values (1, 2).\n"
     " - ``Vector(1, 2, 3)``: Creates a 3D vector with values (1, 2, 3).\n"
     " - ``Vector(1, 2, 3, 4)``: Creates a 4D vector with values (1, 2, 3, 4).\n"
