@@ -28,6 +28,7 @@
 #include "overlay_next_lightprobe.hh"
 #include "overlay_next_mesh.hh"
 #include "overlay_next_metaball.hh"
+#include "overlay_next_origin.hh"
 #include "overlay_next_outline.hh"
 #include "overlay_next_paint.hh"
 #include "overlay_next_particle.hh"
@@ -61,6 +62,7 @@ class Instance {
 
   /** Overlay types. */
   Background background;
+  Origins origins;
   Outline outline;
 
   struct OverlayLayer {
