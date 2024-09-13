@@ -24,7 +24,6 @@
 
 #include <utility>
 
-struct AnimationEvalContext;
 struct FCurve;
 struct FCurve;
 struct ID;
@@ -1201,6 +1200,20 @@ ID *action_slot_get_id_for_keying(Main &bmain,
  * necessary any more.
  */
 ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
+
+/**
+ * Return the handle of the first slot of this Action.
+ *
+ * This is for code that needs to treat Actions as somewhat-legacy Actions, i.e. as holders of
+ * F-Curves for which the specific slot is not interesting.
+ *
+ * TODO: Maybe at some point this function should get extended with an ID type parameter, to return
+ * the first slot that is suitable for that ID type.
+ *
+ * \return The handle of the first slot, or Slot::unassigned if there is no slot (which includes
+ * legacy Actions).
+ */
+slot_handle_t first_slot_handle(const ::bAction &dna_action);
 
 /**
  * Assert the invariants of Project Baklava phase 1.

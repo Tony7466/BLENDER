@@ -35,7 +35,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_anim_visualization.h"
 #include "BKE_animsys.h"
@@ -696,6 +696,12 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
     LISTBASE_FOREACH (bActionGroup *, agrp, &action.groups) {
       BLO_read_struct(reader, FCurve, &agrp->channels.first);
       BLO_read_struct(reader, FCurve, &agrp->channels.last);
+#ifndef WITH_ANIM_BAKLAVA
+      /* Ensure that the group's 'channelbag' pointer is nullptr. This is used to distinguish
+       * groups from legacy vs layered Actions, and since this Blender is built without layered
+       * Actions support, the Action should be treated as legacy. */
+      agrp->channel_bag = nullptr;
+#endif
     }
   }
 
@@ -1794,18 +1800,31 @@ void BKE_pose_remove_group_index(bPose *pose, const int index)
 
 /* ************** F-Curve Utilities for Actions ****************** */
 
-bool BKE_action_has_motion(const bAction *act)
+bool BKE_action_has_motion(const bAction *act, const int32_t action_slot_handle)
 {
-  /* return on the first F-Curve that has some keyframes/samples defined */
-  if (act) {
+  using namespace blender;
+
+  if (!act) {
+    return false;
+  }
+  const animrig::Action &action = act->wrap();
+
+  if (action.is_action_legacy()) {
     LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
       if (fcu->totvert) {
         return true;
       }
     }
+    return false;
   }
 
-  /* nothing found */
+#ifdef WITH_ANIM_BAKLAVA
+  for (const FCurve *fcu : animrig::fcurves_for_action_slot(action, action_slot_handle)) {
+    if (fcu->totvert) {
+      return true;
+    }
+  }
+#endif
   return false;
 }
 
@@ -2069,10 +2088,25 @@ void what_does_obaction(Object *ob,
                         Object *workob,
                         bPose *pose,
                         bAction *act,
+                        const int32_t action_slot_handle,
                         char groupname[],
                         const AnimationEvalContext *anim_eval_context)
 {
-  bActionGroup *agrp = BKE_action_group_find_name(act, groupname);
+  using namespace blender::animrig;
+  BLI_assert(act);
+
+  bActionGroup *agrp = nullptr;
+  if (groupname[0]) {
+    /* Find the named channel group. */
+    Action &action = act->wrap();
+    if (action.is_action_layered()) {
+      ChannelBag *cbag = channelbag_for_action_slot(action, action_slot_handle);
+      agrp = cbag ? cbag->channel_group_find(groupname) : nullptr;
+    }
+    else {
+      agrp = BKE_action_group_find_name(act, groupname);
+    }
+  }
 
   /* clear workob */
   blender::bke::ObjectRuntime workob_runtime;
@@ -2136,6 +2170,7 @@ void what_does_obaction(Object *ob,
     workob->adt = &adt;
 
     adt.action = act;
+    adt.slot_handle = action_slot_handle;
     BKE_animdata_action_ensure_idroot(&workob->id, act);
 
     /* execute effects of Action on to workob (or its PoseChannels) */

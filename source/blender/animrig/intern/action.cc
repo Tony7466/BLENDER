@@ -20,12 +20,12 @@
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 
-#include "BKE_action.h"
 #include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
+#include "BKE_nla.hh"
 #include "BKE_preview_image.hh"
 
 #include "RNA_access.hh"
@@ -43,6 +43,8 @@
 #include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
+#include "ANIM_nla.hh"
+
 #include "action_runtime.hh"
 
 #include "atomic_ops.h"
@@ -653,7 +655,11 @@ bool Action::assign_id(Slot *slot, ID &animated_id)
   /* Unassign any previously-assigned Slot. */
   Slot *slot_to_unassign = this->slot_for_handle(adt->slot_handle);
   if (slot_to_unassign) {
-    slot_to_unassign->users_remove(animated_id);
+    /* There could still be NLA strips on this ID, referring to the same slot, so we cannot just
+     * remove this ID from the slot users. */
+    if (!nla::is_nla_referencing_slot(*adt, *this, slot_to_unassign->handle)) {
+      slot_to_unassign->users_remove(animated_id);
+    }
 
     /* Before unassigning, make sure that the stored Slot name is up to date. The slot name
      * might have changed in a way that wasn't copied into the ADT yet (for example when the
@@ -841,10 +847,7 @@ Slot::Slot()
 
 Slot::Slot(const Slot &other)
 {
-  memset(this, 0, sizeof(*this));
-  STRNCPY(this->name, other.name);
-  this->idtype = other.idtype;
-  this->handle = other.handle;
+  memcpy(this, &other, sizeof(*this));
   this->runtime = MEM_new<SlotRuntime>(__func__);
 }
 
@@ -1543,6 +1546,10 @@ ChannelBag::ChannelBag(const ChannelBag &other)
     this->group_array[i] = static_cast<bActionGroup *>(MEM_dupallocN(group_src));
     this->group_array[i]->channel_bag = this;
   }
+
+  /* BKE_fcurve_copy() resets the FCurve's group pointer. Which is good, because the groups are
+   * duplicated too. This sets the group pointers to the correct values. */
+  this->restore_channel_group_invariants();
 }
 
 ChannelBag::~ChannelBag()
@@ -2179,6 +2186,15 @@ ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id)
     return primary_id;
   }
   return users[0];
+}
+
+slot_handle_t first_slot_handle(const ::bAction &dna_action)
+{
+  const Action &action = dna_action.wrap();
+  if (action.slot_array_num == 0) {
+    return Slot::unassigned;
+  }
+  return action.slot_array[0]->handle;
 }
 
 void assert_baklava_phase_1_invariants(const Action &action)

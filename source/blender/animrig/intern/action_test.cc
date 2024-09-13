@@ -288,7 +288,7 @@ TEST_F(ActionLayersTest, slot_remove)
     /* For referencing the slot handle after the slot is removed. */
     const slot_handle_t slot2_handle = slot2.handle;
 
-    /* Create a Channelbag for each slot. */
+    /* Create a Channel-bag for each slot. */
     action->layer_keystrip_ensure();
     StripKeyframeData &strip_data = action->layer(0)->strip(0)->keyframe_data(*action);
     strip_data.channelbag_for_slot_ensure(slot1);
@@ -299,7 +299,7 @@ TEST_F(ActionLayersTest, slot_remove)
     EXPECT_TRUE(action->slot_remove(slot2));
     EXPECT_EQ(5, action->last_slot_handle);
 
-    /* Check the correct slot + channelbag are removed. */
+    /* Check the correct slot + channel-bag are removed. */
     EXPECT_EQ(action->slot_for_handle(slot1.handle), &slot1);
     EXPECT_EQ(action->slot_for_handle(slot2_handle), nullptr);
     EXPECT_EQ(action->slot_for_handle(slot3.handle), &slot3);
