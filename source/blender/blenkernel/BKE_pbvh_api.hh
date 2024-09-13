@@ -213,6 +213,10 @@ class Tree {
     return this->type_;
   }
 
+  /**
+   * Mark data based on positions for specific BVH nodes dirty. In particular: bounds, normals,
+   * and GPU data buffers. That data is recomputed later on in functions like #update_bounds.
+   */
   void tag_positions_changed(const IndexMask &node_mask);
 };
 
@@ -446,7 +450,7 @@ namespace blender::bke::pbvh {
 
 /**
  * Recalculate node bounding boxes based on the current coordinates. Calculation is only done for
- * affected nodes that have been tagged by #PBVH::tag_positions_change().
+ * affected nodes that have been tagged by #PBVH::tag_positions_changed().
  */
 void update_bounds(const Depsgraph &depsgraph, const Object &object, Tree &pbvh);
 void update_bounds_mesh(Span<float3> vert_positions, Tree &pbvh);
