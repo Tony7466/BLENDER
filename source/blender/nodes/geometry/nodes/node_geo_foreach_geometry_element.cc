@@ -134,7 +134,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
   }
   else {
     if (uiLayout *panel = uiLayoutPanel(C, layout, "main_items", false, TIP_("Main Items"))) {
-      static const uiListType *generated_main_list = []() {
+      static const uiListType *main_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
         STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_main_items");
         list->draw_item = draw_item;
@@ -144,7 +144,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       uiLayout *row = uiLayoutRow(panel, false);
       uiTemplateList(row,
                      C,
-                     generated_main_list->idname,
+                     main_items_list->idname,
                      "",
                      &output_node_ptr,
                      "main_items",
@@ -199,11 +199,11 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       }
     }
     if (uiLayout *panel = uiLayoutPanel(
-            C, layout, "generated_items", false, TIP_("Generated Items")))
+            C, layout, "generation_items", false, TIP_("Generation Items")))
     {
-      static const uiListType *output_items_list = []() {
+      static const uiListType *generation_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
-        STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_output_items");
+        STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_generation_items");
         list->draw_item = draw_item;
         WM_uilisttype_add(list);
         return list;
@@ -211,7 +211,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       uiLayout *row = uiLayoutRow(panel, false);
       uiTemplateList(row,
                      C,
-                     output_items_list->idname,
+                     generation_items_list->idname,
                      "",
                      &output_node_ptr,
                      "generation_items",
@@ -227,23 +227,25 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
         uiLayout *ops_col = uiLayoutColumn(row, false);
         {
           uiLayout *add_remove_col = uiLayoutColumn(ops_col, true);
-          uiItemO(
-              add_remove_col, "", ICON_ADD, "node.foreach_geometry_element_zone_output_item_add");
+          uiItemO(add_remove_col,
+                  "",
+                  ICON_ADD,
+                  "node.foreach_geometry_element_zone_generation_item_add");
           uiItemO(add_remove_col,
                   "",
                   ICON_REMOVE,
-                  "node.foreach_geometry_element_zone_output_item_remove");
+                  "node.foreach_geometry_element_zone_generation_item_remove");
         }
         {
           uiLayout *up_down_col = uiLayoutColumn(ops_col, true);
           uiItemEnumO(up_down_col,
-                      "node.foreach_geometry_element_zone_output_item_move",
+                      "node.foreach_geometry_element_zone_generation_item_move",
                       "",
                       ICON_TRIA_UP,
                       "direction",
                       0);
           uiItemEnumO(up_down_col,
-                      "node.foreach_geometry_element_zone_output_item_move",
+                      "node.foreach_geometry_element_zone_generation_item_move",
                       "",
                       ICON_TRIA_DOWN,
                       "direction",
@@ -394,7 +396,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.use_custom_socket_order();
   b.allow_any_socket_order();
 
-  /* TODO: This propagates attributes from the geometry in the input node. */
   b.add_output<decl::Geometry>("Geometry")
       .description(
           "The original input geometry with potentially new attributes that are output by the "
@@ -526,22 +527,22 @@ static void NODE_OT_foreach_geometry_element_zone_input_item_move(wmOperatorType
       ot, "Move For Each Input Item", __func__, "Move active for-each input item");
 }
 
-static void NODE_OT_foreach_geometry_element_zone_output_item_remove(wmOperatorType *ot)
+static void NODE_OT_foreach_geometry_element_zone_generation_item_remove(wmOperatorType *ot)
 {
   socket_items::ops::remove_active_item<ForeachGeometryElementGenerationItemsAccessor>(
-      ot, "Remove For Each Output Item", __func__, "Remove active for-each output item");
+      ot, "Remove For Each Generation Item", __func__, "Remove active for-each generation item");
 }
 
-static void NODE_OT_foreach_geometry_element_zone_output_item_add(wmOperatorType *ot)
+static void NODE_OT_foreach_geometry_element_zone_generation_item_add(wmOperatorType *ot)
 {
   socket_items::ops::add_item<ForeachGeometryElementGenerationItemsAccessor>(
-      ot, "Add For Each Output Item", __func__, "Add for-each output item");
+      ot, "Add For Each Generation Item", __func__, "Add for-each generation item");
 }
 
-static void NODE_OT_foreach_geometry_element_zone_output_item_move(wmOperatorType *ot)
+static void NODE_OT_foreach_geometry_element_zone_generation_item_move(wmOperatorType *ot)
 {
   socket_items::ops::move_active_item<ForeachGeometryElementGenerationItemsAccessor>(
-      ot, "Move For Each Main Item", __func__, "Move active for-each main item");
+      ot, "Move For Each Generation Item", __func__, "Move active for-each generation item");
 }
 
 static void NODE_OT_foreach_geometry_element_zone_main_item_remove(wmOperatorType *ot)
@@ -568,9 +569,9 @@ static void node_operators()
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_input_item_remove);
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_input_item_move);
 
-  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_add);
-  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_remove);
-  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_output_item_move);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_generation_item_add);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_generation_item_remove);
+  WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_generation_item_move);
 
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_add);
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_remove);
