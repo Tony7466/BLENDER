@@ -18,6 +18,59 @@
 
 namespace blender::math {
 
+/* Similar to macros in #BLI_math_vector_types.hh: doing a loop
+ * that calls into indexing operator per-element generates very suboptimal
+ * code in debug / non-optimized or even release builds with assertions enabled.
+ * Manually implement for common vector sizes (4, 3, 2) without calls into
+ * indexing operators. */
+#define BLI_IMPL_MATH_OP_VEC(op) \
+  VecBase<T, Size> result; \
+  if constexpr (Size == 4) { \
+    result.x = op(a.x); \
+    result.y = op(a.y); \
+    result.z = op(a.z); \
+    result.w = op(a.w); \
+  } \
+  else if constexpr (Size == 3) { \
+    result.x = op(a.x); \
+    result.y = op(a.y); \
+    result.z = op(a.z); \
+  } \
+  else if constexpr (Size == 2) { \
+    result.x = op(a.x); \
+    result.y = op(a.y); \
+  } \
+  else { \
+    for (int i = 0; i < Size; i++) { \
+      result[i] = op(a[i]); \
+    } \
+  } \
+  return result
+
+#define BLI_IMPL_MATH_OP_VEC_VEC(op) \
+  VecBase<T, Size> result; \
+  if constexpr (Size == 4) { \
+    result.x = op(a.x, b.x); \
+    result.y = op(a.y, b.y); \
+    result.z = op(a.z, b.z); \
+    result.w = op(a.w, b.w); \
+  } \
+  else if constexpr (Size == 3) { \
+    result.x = op(a.x, b.x); \
+    result.y = op(a.y, b.y); \
+    result.z = op(a.z, b.z); \
+  } \
+  else if constexpr (Size == 2) { \
+    result.x = op(a.x, b.x); \
+    result.y = op(a.y, b.y); \
+  } \
+  else { \
+    for (int i = 0; i < Size; i++) { \
+      result[i] = op(a[i], b[i]); \
+    } \
+  } \
+  return result
+
 /**
  * Returns true if the given vectors are equal within the given epsilon.
  * The epsilon is scaled for each component by magnitude of the matching component of `a`.
@@ -51,31 +104,19 @@ template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> abs(const V
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> sign(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::sign(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::sign);
 }
 
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> min(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = a[i] < b[i] ? a[i] : b[i];
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC_VEC(math::min);
 }
 
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> max(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = a[i] > b[i] ? a[i] : b[i];
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC_VEC(math::max);
 }
 
 template<typename T, int Size>
@@ -124,12 +165,7 @@ template<typename T, int Size>
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> mod(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    BLI_assert(b[i] != 0);
-    result[i] = math::mod(a[i], b[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC_VEC(math::mod);
 }
 
 template<typename T, int Size>
@@ -188,38 +224,26 @@ template<typename T, int Size>
 }
 
 /**
- * Return the value of x raised to the y power.
- * The result is undefined if x < 0 or if x = 0 and y ≤ 0.
+ * Return the value of a raised to the b power.
+ * The result is undefined if a < 0 or if a = 0 and b ≤ 0.
  */
 template<typename T, int Size>
-[[nodiscard]] inline VecBase<T, Size> pow(const VecBase<T, Size> &x, const VecBase<T, Size> &y)
+[[nodiscard]] inline VecBase<T, Size> pow(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::pow(x[i], y[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC_VEC(math::pow);
 }
 
 /** Per-element square. */
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> square(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::square(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::square);
 }
 
 /* Per-element exponent. */
-template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> exp(const VecBase<T, Size> &x)
+template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> exp(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::exp(x[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::exp);
 }
 
 /**
@@ -290,31 +314,19 @@ template<typename T, int Size>
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> floor(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::floor(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::floor);
 }
 
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> round(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::round(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::round);
 }
 
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> ceil(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::ceil(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::ceil);
 }
 
 /**
@@ -324,11 +336,7 @@ template<typename T, int Size>
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> sqrt(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::sqrt(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::sqrt);
 }
 
 /**
@@ -351,11 +359,7 @@ template<typename T, int Size>
  */
 template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> rcp(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::rcp(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::rcp);
 }
 
 /**
@@ -365,21 +369,13 @@ template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> rcp(const V
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> safe_rcp(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::safe_rcp(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::safe_rcp);
 }
 
 template<typename T, int Size>
 [[nodiscard]] inline VecBase<T, Size> fract(const VecBase<T, Size> &a)
 {
-  VecBase<T, Size> result;
-  for (int i = 0; i < Size; i++) {
-    result[i] = math::fract(a[i]);
-  }
-  return result;
+  BLI_IMPL_MATH_OP_VEC(math::fract);
 }
 
 /**
@@ -790,5 +786,8 @@ template<typename T, int Size>
                                                            const VecBase<T, Size> &v2,
                                                            const VecBase<T, Size> &v3,
                                                            const VecBase<T, Size> &v4);
+
+#undef BLI_IMPL_MATH_OP_VEC
+#undef BLI_IMPL_MATH_OP_VEC_VEC
 
 }  // namespace blender::math
