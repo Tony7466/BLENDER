@@ -72,9 +72,7 @@ static void calc_node(const Depsgraph &depsgraph,
   for (const int i : grids.index_range()) {
     const IndexRange node_grid_range = bke::ccg::grid_range(key.grid_area, i);
     const IndexRange grid_range = bke::ccg::grid_range(key.grid_area, grids[i]);
-    const int node_start = i * key.grid_area;
     const int grid = grids[i];
-    const int start = grid * key.grid_area;
     for (const int y : IndexRange(key.grid_size)) {
       for (const int x : IndexRange(key.grid_size)) {
         const int offset = CCG_grid_xy_to_index(key.grid_size, x, y);
