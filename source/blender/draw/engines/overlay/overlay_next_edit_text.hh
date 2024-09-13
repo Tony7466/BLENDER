@@ -207,15 +207,10 @@ class EditText {
       const float4 &color = is_active ? G_draw.block.color_active : G_draw.block.color_wire;
 
       if ((tb.w != 0.0f) || (tb.h != 0.0f)) {
-        float4x3 vecs;
-        vecs[0][0] = vecs[1][0] = vecs[2][0] = vecs[3][0] = cu.xof + tb.x;
-        vecs[0][1] = vecs[1][1] = vecs[2][1] = vecs[3][1] = cu.yof + tb.y + cu.fsize_realtime;
-        vecs[0][2] = vecs[1][2] = vecs[2][2] = vecs[3][2] = 0.001;
-
-        vecs[1][0] += tb.w;
-        vecs[2][0] += tb.w;
-        vecs[2][1] -= tb.h;
-        vecs[3][1] -= tb.h;
+        const float3 top_left = float3(cu.xof + tb.x, cu.yof + tb.y + cu.fsize_realtime, 0.001);
+        const float3 w = float3(tb.w, 0.0f, 0.0f);
+        const float3 h = float3(0.0f, tb.h, 0.0f);
+        float4x3 vecs = float4x3(top_left, top_left + w, top_left + w - h, top_left - h);
 
         for (const int j : IndexRange(4)) {
           vecs[j] = math::transform_point(ob_to_world, vecs[j]);
