@@ -548,8 +548,8 @@ Tree::~Tree()
 
 void Tree::tag_positions_changed(const IndexMask &node_mask)
 {
-  this->bounds_dirty_.resize(this->nodes_num(), false);
-  // TODO: Use `to_bools` with first clear disabled.
+  this->bounds_dirty_.resize(node_mask.min_array_size(), false);
+  /* TODO: Use `to_bools` with first clear disabled. */
   node_mask.foreach_index_optimized<int>(GrainSize(2048),
                                          [&](const int i) { this->bounds_dirty_[i] = true; });
   return std::visit(
@@ -1087,17 +1087,17 @@ struct BoundsMergeInfo {
 
 template<typename NodeT>
 static BoundsMergeInfo merge_child_bounds(MutableSpan<NodeT> nodes,
-                                          const Span<bool> nodes_to_update,
+                                          const Span<bool> dirty,
                                           const int node_index)
 {
   NodeT &node = nodes[node_index];
   if (node.flag_ & PBVH_Leaf) {
-    const bool update = nodes_to_update[node_index];
+    const bool update = node_index < dirty.size() && dirty[node_index];
     return {node.bounds_, update};
   }
 
-  const BoundsMergeInfo info_0 = merge_child_bounds(nodes, node.children_offset_ + 0);
-  const BoundsMergeInfo info_1 = merge_child_bounds(nodes, node.children_offset_ + 1);
+  const BoundsMergeInfo info_0 = merge_child_bounds(nodes, dirty, node.children_offset_ + 0);
+  const BoundsMergeInfo info_1 = merge_child_bounds(nodes, dirty, node.children_offset_ + 1);
   const bool update = info_0.update || info_1.update;
   if (update) {
     node.bounds_ = bounds::merge(info_0.bounds, info_1.bounds);
