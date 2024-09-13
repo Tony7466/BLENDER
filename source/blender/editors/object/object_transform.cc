@@ -1737,7 +1737,8 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         cent = math::midpoint(bounds.min, bounds.max);
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {
-        Vector<float3> centers;
+        float3 center = float3(0.0f);
+        int total_points = 0;
 
         for (const int layer_i : grease_pencil.layers().index_range()) {
           const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
@@ -1753,12 +1754,16 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
                     reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
                 const bke::CurvesGeometry &curves = drawing.strokes();
 
-                centers.append(
-                    math::transform_point(layer_to_object, arithmetic_mean(curves.positions())));
+                for (const int i : curves.points_range()) {
+                  center += math::transform_point(layer_to_object, curves.positions()[i]);
+                }
+                total_points += curves.points_num();
               });
         }
 
-        cent = arithmetic_mean(centers.as_span());
+        if (total_points != 0) {
+          cent = center / total_points;
+        }
       }
 
       tot_change++;
