@@ -69,7 +69,7 @@ class ModeTransfer {
       return;
     }
 
-    ps_.push_constant("ucolor", float4(flash_color_.xyz(), alpha));
+    ps_.push_constant("ucolor", float4(flash_color_.xyz() * alpha, alpha));
 
     const bool use_sculpt_pbvh = BKE_sculptsession_use_pbvh_draw(ob_ref.object, state.rv3d) &&
                                  !DRW_state_is_image_render();
