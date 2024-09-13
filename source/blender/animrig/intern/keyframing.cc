@@ -851,7 +851,7 @@ static SingleKeyingResult insert_key_layer(
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->keyframe_data(action).keyframe_insert(
+  return strip->data<StripKeyframeData>(action).keyframe_insert(
       bmain,
       slot,
       {rna_path, key_data.array_index, prop_subtype, channel_group},

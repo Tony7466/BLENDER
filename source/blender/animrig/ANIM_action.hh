@@ -380,9 +380,14 @@ class Strip : public ::ActionStrip {
    */
   void resize(float frame_start, float frame_end);
 
-  // Make these templatized over the data type.
-  const StripKeyframeData &keyframe_data(const Action &owning_action) const;
-  StripKeyframeData &keyframe_data(Action &owning_action);
+  /**
+   * Fetch the strip's data from its owning action.
+   *
+   * `T` *must* correspond to the strip's data type. In other words, this must
+   * hold true: `T::TYPE == strip.type()`.
+   */
+  template<typename T> const T &data(const Action &owning_action) const;
+  template<typename T> T &data(Action &owning_action);
 
   /**
    * Remove all data belonging to the given slot.
@@ -646,6 +651,9 @@ ENUM_OPERATORS(Slot::Flags, Slot::Flags::Active);
  */
 class StripKeyframeData : public ::ActionStripKeyframeData {
  public:
+  /* Value of `Strip::type()` that corresponds to this type. */
+  static constexpr Strip::Type TYPE = Strip::Type::Keyframe;
+
   StripKeyframeData() = default;
   StripKeyframeData(const StripKeyframeData &other);
   ~StripKeyframeData();

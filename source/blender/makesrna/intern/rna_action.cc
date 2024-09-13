@@ -468,14 +468,14 @@ static void rna_iterator_strip_channelbags_begin(CollectionPropertyIterator *ite
 {
   animrig::Action &action = reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
   animrig::Strip &strip = rna_data_strip(ptr);
-  return rna_iterator_array_begin(iter, strip.keyframe_data(action).channelbags());
+  rna_iterator_array_begin(iter, strip.data<animrig::StripKeyframeData>(action).channelbags());
 }
 
 static int rna_iterator_strip_channelbags_length(PointerRNA *ptr)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
   animrig::Strip &strip = rna_data_strip(ptr);
-  return strip.keyframe_data(action).channelbags().size();
+  return strip.data<animrig::StripKeyframeData>(action).channelbags().size();
 }
 
 static ActionChannelBag *rna_ChannelBags_new(ID *dna_action_id,
@@ -486,7 +486,7 @@ static ActionChannelBag *rna_ChannelBags_new(ID *dna_action_id,
 {
   animrig::Action &action = reinterpret_cast<bAction *>(dna_action_id)->wrap();
   animrig::Strip &strip = dna_strip->wrap();
-  animrig::StripKeyframeData &strip_data = strip.keyframe_data(action);
+  animrig::StripKeyframeData &strip_data = strip.data<animrig::StripKeyframeData>(action);
   animrig::Slot &slot = dna_slot->wrap();
 
   if (strip_data.channelbag_for_slot(slot) != nullptr) {
@@ -509,7 +509,8 @@ static void rna_ChannelBags_remove(ID *dna_action_id,
                                    PointerRNA *channelbag_ptr)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(dna_action_id)->wrap();
-  animrig::StripKeyframeData &strip_data = dna_strip->wrap().keyframe_data(action);
+  animrig::StripKeyframeData &strip_data = dna_strip->wrap().data<animrig::StripKeyframeData>(
+      action);
   animrig::ChannelBag &channelbag = rna_data_channelbag(channelbag_ptr);
 
   if (!strip_data.channelbag_remove(channelbag)) {
@@ -538,7 +539,8 @@ static bool rna_ActionStrip_key_insert(ID *dna_action_id,
   }
 
   animrig::Action &action = reinterpret_cast<bAction *>(dna_action_id)->wrap();
-  animrig::StripKeyframeData &strip_data = dna_strip->wrap().keyframe_data(action);
+  animrig::StripKeyframeData &strip_data = dna_strip->wrap().data<animrig::StripKeyframeData>(
+      action);
   const animrig::Slot &slot = dna_slot->wrap();
   const animrig::KeyframeSettings settings = animrig::get_keyframe_settings(true);
 
@@ -565,7 +567,8 @@ static std::optional<std::string> rna_ChannelBag_path(const PointerRNA *ptr)
         continue;
       }
 
-      const animrig::StripKeyframeData &strip_data = strip->keyframe_data(action);
+      const animrig::StripKeyframeData &strip_data = strip->data<animrig::StripKeyframeData>(
+          action);
       const int64_t index = strip_data.find_channelbag_index(cbag_to_find);
       if (index < 0) {
         continue;
@@ -705,7 +708,7 @@ static ActionChannelBag *rna_ActionStrip_channels(ID *dna_action_id,
                                                   const animrig::slot_handle_t slot_handle)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(dna_action_id)->wrap();
-  animrig::StripKeyframeData &strip_data = self->wrap().keyframe_data(action);
+  animrig::StripKeyframeData &strip_data = self->wrap().data<animrig::StripKeyframeData>(action);
   return strip_data.channelbag_for_slot(slot_handle);
 }
 

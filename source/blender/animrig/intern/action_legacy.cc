@@ -31,7 +31,7 @@ ChannelBag *channelbag_get(Action &action)
     return nullptr;
   }
 
-  return keystrip->keyframe_data(action).channelbag_for_slot(*action.slot(0));
+  return keystrip->data<StripKeyframeData>(action).channelbag_for_slot(*action.slot(0));
 }
 
 ChannelBag &channelbag_ensure(Action &action)
@@ -52,7 +52,7 @@ ChannelBag &channelbag_ensure(Action &action)
   Strip &keystrip = *action.layer(0)->strip(0);
 
   /* Ensure a ChannelBag. */
-  return keystrip.keyframe_data(action).channelbag_for_slot_ensure(*slot);
+  return keystrip.data<StripKeyframeData>(action).channelbag_for_slot_ensure(*slot);
 }
 
 }  // namespace blender::animrig::legacy

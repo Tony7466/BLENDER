@@ -219,7 +219,7 @@ const FCurve *fcurve_find_by_rna_path(const AnimData &adt,
     for (const Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
-          const StripKeyframeData &data = strip->keyframe_data(action);
+          const StripKeyframeData &data = strip->data<StripKeyframeData>(action);
           const ChannelBag *channelbag_for_slot = data.channelbag_for_slot(*slot);
           if (!channelbag_for_slot) {
             continue;

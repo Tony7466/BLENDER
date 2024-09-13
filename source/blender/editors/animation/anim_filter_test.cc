@@ -73,7 +73,7 @@ TEST_F(ActionFilterTest, slots_expanded_or_not)
 
   Layer &layer = action->layer_add("Kübus layer");
   Strip &key_strip = layer.strip_add(*action, Strip::Type::Keyframe);
-  StripKeyframeData &strip_data = key_strip.keyframe_data(*action);
+  StripKeyframeData &strip_data = key_strip.data<StripKeyframeData>(*action);
 
   /* Create multiple FCurves for multiple Slots. */
   const KeyframeSettings settings = get_keyframe_settings(false);
@@ -233,7 +233,7 @@ TEST_F(ActionFilterTest, layered_action_active_fcurves)
 
   Layer &layer = action->layer_add("Kübus layer");
   Strip &key_strip = layer.strip_add(*action, Strip::Type::Keyframe);
-  StripKeyframeData &strip_data = key_strip.keyframe_data(*action);
+  StripKeyframeData &strip_data = key_strip.data<StripKeyframeData>(*action);
 
   /* Create multiple FCurves. */
   const KeyframeSettings settings = get_keyframe_settings(false);
