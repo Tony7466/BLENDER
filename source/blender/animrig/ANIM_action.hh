@@ -359,8 +359,8 @@ class Strip : public ::ActionStrip {
   /**
    * Strip type.
    *
-   * Convenience wrapper to avoid having to do the cast to `Strip::Type`
-   * everywhere.
+   * Convenience wrapper to avoid having to do the cast from `int` to
+   * `Strip::Type` everywhere.
    */
   Type type() const
   {
