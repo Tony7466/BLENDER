@@ -1,1 +1,2 @@
 Referenced by issue #127556, Sculpt Mode: Smooth brush doesn't update geometry visualization
+Referenced by commit 1241e3a5e461ba9c46a55c90a2e947536d7a1d4c, Fix #127556: Sculpt smooth brush missing updates
