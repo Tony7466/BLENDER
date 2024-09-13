@@ -534,9 +534,9 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
 #ifdef WITH_ANIM_BAKLAVA
   /* Write layered Action data. */
-  write_strip_keyframe_data_array(writer, action.strip_keyframe_data());
   write_layers(writer, action.layers());
   write_slots(writer, action.slots());
+  write_strip_keyframe_data_array(writer, action.strip_keyframe_data());
 
   if (do_write_forward_compat) {
     /* The pointers to the first/last FCurve in the `action.curves` have already
@@ -661,9 +661,9 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   animrig::Action &action = reinterpret_cast<bAction *>(id)->wrap();
 
 #ifdef WITH_ANIM_BAKLAVA
-  read_strip_keyframe_data_array(reader, action);
   read_layers(reader, action);
   read_slots(reader, action);
+  read_strip_keyframe_data_array(reader, action);
 #else
   /* Built without Baklava, so do not read the layers, strips, slots, etc.
    * This ensures the F-Curves in the legacy `curves` ListBase are read & used

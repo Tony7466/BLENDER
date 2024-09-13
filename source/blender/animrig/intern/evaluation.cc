@@ -203,8 +203,8 @@ static EvaluationResult evaluate_strip(PointerRNA &animated_id_ptr,
 
   switch (strip.type()) {
     case Strip::Type::Keyframe: {
-      StripKeyframeData &data = strip.data<StripKeyframeData>(owning_action);
-      return evaluate_keyframe_data(animated_id_ptr, data, slot_handle, offset_eval_context);
+      StripKeyframeData &strip_data = strip.data<StripKeyframeData>(owning_action);
+      return evaluate_keyframe_data(animated_id_ptr, strip_data, slot_handle, offset_eval_context);
     }
   }
 

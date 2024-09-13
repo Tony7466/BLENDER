@@ -464,14 +464,15 @@ static std::optional<std::string> rna_ActionStrip_path(const PointerRNA *ptr)
   return std::nullopt;
 }
 
-static void rna_iterator_strip_channelbags_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+static void rna_iterator_keyframestrip_channelbags_begin(CollectionPropertyIterator *iter,
+                                                         PointerRNA *ptr)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
   animrig::Strip &strip = rna_data_strip(ptr);
   rna_iterator_array_begin(iter, strip.data<animrig::StripKeyframeData>(action).channelbags());
 }
 
-static int rna_iterator_strip_channelbags_length(PointerRNA *ptr)
+static int rna_iterator_keyframestrip_channelbags_length(PointerRNA *ptr)
 {
   animrig::Action &action = reinterpret_cast<bAction *>(ptr->owner_id)->wrap();
   animrig::Strip &strip = rna_data_strip(ptr);
@@ -2118,11 +2119,11 @@ static void rna_def_action_keyframe_strip(BlenderRNA *brna, StructRNA *srna)
   prop = RNA_def_property(srna, "channelbags", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "ActionChannelBag");
   RNA_def_property_collection_funcs(prop,
-                                    "rna_iterator_strip_channelbags_begin",
+                                    "rna_iterator_keyframestrip_channelbags_begin",
                                     "rna_iterator_array_next",
                                     "rna_iterator_array_end",
                                     "rna_iterator_array_dereference_get",
-                                    "rna_iterator_strip_channelbags_length",
+                                    "rna_iterator_keyframestrip_channelbags_length",
                                     nullptr,
                                     nullptr,
                                     nullptr);

@@ -888,7 +888,6 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
    * default layer won't be added by the line above, but there also won't be any
    * layers we can insert keys into. */
   Layer *layer = action.get_layer_for_keyframing();
-
   BLI_assert(layer != nullptr);
 
   const bool use_visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;

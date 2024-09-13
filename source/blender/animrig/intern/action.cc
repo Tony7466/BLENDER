@@ -76,22 +76,24 @@ static animrig::Layer &ActionLayer_alloc()
 }
 static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const Strip::Type type)
 {
+  /* Create the strip. */
   ActionStrip *strip = MEM_new<ActionStrip>(__func__);
-
-  /* Copy the default ActionStrip fields into the allocated data-block. */
   memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
+  strip->strip_type = int8_t(type);
 
   /* Create the strip's data on the owning Action. */
   switch (type) {
     case Strip::Type::Keyframe: {
-      strip->strip_type = int8_t(type);
       StripKeyframeData *strip_data = MEM_new<StripKeyframeData>(__func__);
       strip->data_index = owning_action.strip_keyframe_data_append(strip_data);
       break;
     }
   }
 
-  BLI_assert_msg(strip->data_index != -1, "unsupported strip type");
+  /* This can happen if someone forgets to add a strip type in the `switch`
+   * above, or if someone is evil and passes an invalid strip type to this
+   * function. */
+  BLI_assert_msg(strip->data_index != -1, "Newly created strip has no data.");
 
   return strip->wrap();
 }
@@ -601,6 +603,8 @@ bool Action::is_slot_animated(const slot_handle_t slot_handle) const
 
 int Action::strip_keyframe_data_append(StripKeyframeData *strip_data)
 {
+  BLI_assert(strip_data != nullptr);
+
   grow_array_and_append<ActionStripKeyframeData *>(
       &this->strip_keyframe_data_array, &this->strip_keyframe_data_num, strip_data);
 
@@ -731,8 +735,7 @@ void Action::unassign_id(ID &animated_id)
 
 Layer &Layer::duplicate(Action &owning_action) const
 {
-  /* Make shallow copy of the layer. */
-  Layer *copy = &MEM_new<ActionLayer>(__func__)->wrap();
+  Layer *copy = MEM_new<Layer>(__func__);
   memcpy(copy, this, sizeof(*this));
 
   /* Strips. */
@@ -746,14 +749,12 @@ Layer &Layer::duplicate(Action &owning_action) const
 
 Layer &Layer::duplicate_with_shallow_strip_copies() const
 {
-  /* Make shallow copy of the layer. */
-  Layer *copy = &MEM_new<ActionLayer>(__func__)->wrap();
+  Layer *copy = MEM_new<Layer>(__func__);
   memcpy(copy, this, sizeof(*this));
 
   /* Make a shallow copy of the Strips, without copying their data. */
   copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
   for (int i : this->strips().index_range()) {
-    /* Shallow copy of the strip. */
     Strip *strip_copy = &MEM_new<ActionStrip>(__func__)->wrap();
     memcpy(strip_copy, this->strip(i), sizeof(*strip_copy));
     copy->strip_array[i] = strip_copy;
@@ -1810,8 +1811,9 @@ const animrig::ChannelBag *channelbag_for_action_slot(const Action &action,
     for (const animrig::Strip *strip : layer->strips()) {
       switch (strip->type()) {
         case animrig::Strip::Type::Keyframe: {
-          const animrig::StripKeyframeData &data = strip->data<animrig::StripKeyframeData>(action);
-          const animrig::ChannelBag *bag = data.channelbag_for_slot(slot_handle);
+          const animrig::StripKeyframeData &strip_data = strip->data<animrig::StripKeyframeData>(
+              action);
+          const animrig::ChannelBag *bag = strip_data.channelbag_for_slot(slot_handle);
           if (bag) {
             return bag;
           }
@@ -1881,8 +1883,8 @@ static Vector<FCurveType *> fcurves_all_into(ActionType &action)
     for (StripType *strip : layer->strips()) {
       switch (strip->type()) {
         case Strip::Type::Keyframe: {
-          StripKeyframeDataType &data = strip->template data<StripKeyframeData>(action);
-          for (ChannelBagType *bag : data.channelbags()) {
+          StripKeyframeDataType &strip_data = strip->template data<StripKeyframeData>(action);
+          for (ChannelBagType *bag : strip_data.channelbags()) {
             for (FCurveType *fcurve : bag->fcurves()) {
               all_fcurves.append(fcurve);
             }
@@ -2042,8 +2044,8 @@ bool action_fcurve_remove(Action &action, FCurve &fcu)
       if (!(strip->type() == Strip::Type::Keyframe)) {
         continue;
       }
-      StripKeyframeData &data = strip->data<StripKeyframeData>(action);
-      for (ChannelBag *bag : data.channelbags()) {
+      StripKeyframeData &strip_data = strip->data<StripKeyframeData>(action);
+      for (ChannelBag *bag : strip_data.channelbags()) {
         const bool removed = bag->fcurve_remove(fcu);
         if (removed) {
           return true;
