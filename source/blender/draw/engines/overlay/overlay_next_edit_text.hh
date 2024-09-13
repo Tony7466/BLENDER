@@ -40,7 +40,7 @@ class EditText {
     box_line_buf_.clear();
   }
 
-  void edit_object_sync(const ObjectRef &ob_ref)
+  void edit_object_sync(const ObjectRef &ob_ref, const Resources &res)
   {
     if (!enabled_) {
       return;
@@ -49,7 +49,7 @@ class EditText {
     const Curve &cu = *static_cast<Curve *>(ob_ref.object->data);
     add_select(cu, ob_ref.object->object_to_world());
     add_cursor(cu, ob_ref.object->object_to_world());
-    add_boxes(cu, ob_ref.object->object_to_world());
+    add_boxes(res, cu, ob_ref.object->object_to_world());
   }
 
   void end_sync(Resources &res, const ShapeCache &shapes, const State &state)
@@ -111,7 +111,8 @@ class EditText {
       /* Text boxes. */
       {
         auto &sub_pass = ps_.sub("text_boxes");
-        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL,
+        sub_pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                               DRW_STATE_DEPTH_LESS_EQUAL,
                            state.clipping_plane_count);
         sub_pass.shader_set(res.shaders.extra_wire.get());
         sub_pass.bind_ubo("globalsBlock", &res.globals_buf);
@@ -199,12 +200,13 @@ class EditText {
     text_cursor_buf.append(ob_mat);
   }
 
-  void add_boxes(const Curve &cu, const float4x4 &ob_to_world)
+  void add_boxes(const Resources &res, const Curve &cu, const float4x4 &ob_to_world)
   {
     for (const int i : IndexRange(cu.totbox)) {
       const TextBox &tb = cu.tb[i];
       const bool is_active = (i == (cu.actbox - 1));
-      const float4 &color = is_active ? G_draw.block.color_active : G_draw.block.color_wire;
+      const float4 &color = is_active ? res.theme_settings.color_active :
+                                        res.theme_settings.color_wire;
 
       if ((tb.w != 0.0f) || (tb.h != 0.0f)) {
         const float3 top_left = float3(cu.xof + tb.x, cu.yof + tb.y + cu.fsize_realtime, 0.001);

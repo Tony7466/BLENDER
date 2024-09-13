@@ -198,7 +198,7 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
         layer.metaballs.edit_object_sync(ob_ref, resources);
         break;
       case OB_FONT:
-        layer.edit_text.edit_object_sync(ob_ref);
+        layer.edit_text.edit_object_sync(ob_ref, resources);
         break;
     }
   }
@@ -411,9 +411,9 @@ void Instance::draw(Manager &manager)
   outline.draw(resources, manager, view);
 
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
-    layer.edit_text.draw(framebuffer, manager, view);
     layer.facing.draw(framebuffer, manager, view);
     layer.fade.draw(framebuffer, manager, view);
+    layer.edit_text.draw(framebuffer, manager, view);
     layer.paints.draw(framebuffer, manager, view);
   };
 
