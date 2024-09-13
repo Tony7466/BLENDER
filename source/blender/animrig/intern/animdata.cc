@@ -5,8 +5,6 @@
 /** \file
  * \ingroup animrig
  */
-#include <iostream>
-
 #include "ANIM_action.hh"
 #include "ANIM_animdata.hh"
 
@@ -82,6 +80,15 @@ static bAction *find_related_action(Main &bmain, ID &id)
       return action;
     }
 
+    if (related_id->flag & ID_FLAG_EMBEDDED_DATA) {
+      /* No matter the type of embedded ID, their owner can always be added to the related IDs. */
+      BLI_assert(ID_REAL_USERS(related_id) == 0);
+      ID *owner_id = BKE_id_owner_get(related_id);
+      /* Embedded IDs should always have an owner. */
+      BLI_assert(owner_id != nullptr);
+      related_ids.append_non_duplicates(owner_id);
+    }
+
     /* No action found on current ID, add related IDs to the ID Vector. */
     switch (GS(related_id->name)) {
       case ID_OB: {
@@ -114,21 +121,6 @@ static bAction *find_related_action(Main &bmain, ID &id)
         break;
       }
 
-      case ID_NT: {
-        /* bNodeTree. */
-        /* Only allow embedded IDs. */
-        if (!(related_id->flag & ID_FLAG_EMBEDDED_DATA)) {
-          break;
-        }
-        BLI_assert(ID_REAL_USERS(related_id) == 0);
-        ID *owner_id = BKE_id_owner_get(related_id);
-        /* Embedded IDs should always have an owner. */
-        BLI_assert(owner_id != nullptr);
-        related_ids.append_non_duplicates(owner_id);
-
-        break;
-      }
-
       case ID_ME: {
         add_object_data_users(bmain, *related_id, related_ids);
         Mesh *mesh = (Mesh *)related_id;
@@ -140,11 +132,21 @@ static bAction *find_related_action(Main &bmain, ID &id)
         break;
       }
 
+      case ID_CV: {
+        add_object_data_users(bmain, *related_id, related_ids);
+        Curve *curve = (Curve *)related_id;
+        if (curve->key) {
+          BLI_assert(ID_REAL_USERS(&curve->key->id) == 1);
+          related_ids.append_non_duplicates(&curve->key->id);
+        }
+        break;
+      }
+
       default: {
         /* Just check if the ID is used as object data somewhere. */
         add_object_data_users(bmain, *related_id, related_ids);
         bNodeTree *node_tree = bke::node_tree_from_id(related_id);
-        if (node_tree && ID_REAL_USERS(&node_tree->id)) {
+        if (node_tree && ID_REAL_USERS(&node_tree->id) == 1) {
           related_ids.append_non_duplicates(&node_tree->id);
         }
         break;
