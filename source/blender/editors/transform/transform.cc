@@ -31,6 +31,7 @@
 #include "ED_node.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
+#include "ED_uvedit.hh"
 
 #include "ANIM_keyframing.hh"
 
@@ -1004,7 +1005,9 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
     handled = true;
   }
   else if (event->type == TIMER) {
-    t->redraw |= TREDRAW_HARD;
+    if (uvedit_live_unwrap_timer() == event->customdata) {
+      t->redraw |= TREDRAW_HARD;
+    }
   }
   else if (!is_navigating && event->type == MOUSEMOVE) {
     t->mval = float2(event->mval);

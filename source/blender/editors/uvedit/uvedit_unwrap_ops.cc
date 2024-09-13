@@ -1995,6 +1995,11 @@ static struct {
   wmTimer *timer;
 } g_live_unwrap = {nullptr};
 
+const wmTimer* uvedit_live_unwrap_timer()
+{
+  return g_live_unwrap.timer;
+}
+
 void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
 {
   ParamHandle *handle = nullptr;
