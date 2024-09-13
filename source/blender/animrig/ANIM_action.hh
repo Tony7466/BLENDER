@@ -432,8 +432,8 @@ class Layer : public ::ActionLayer {
    * Make a full, deep copy of the layer, including the data of its strips.
    *
    * The layer *must* belong to `owning_action`, as that is where the strip data
-   * is duplicated. And for the same reason, the new duplicate layer must
-   * *only* be placed into `owning_action`.
+   * is stored. And for the same reason, the new duplicate layer must *only* be
+   * placed into `owning_action`.
    *
    * This method does *not* place the new duplicate layer into the action. That
    * is up to the caller.
