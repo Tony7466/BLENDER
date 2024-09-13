@@ -257,6 +257,22 @@ class MatrixTesting(unittest.TestCase):
 
 class VectorTesting(unittest.TestCase):
 
+    def test_overloads(self):
+        self.assertEqual(sum(Vector()), 0)
+        self.assertEqual(sum(Vector(1)), 3)
+        self.assertEqual(sum(Vector(1, 2, 3)), 6)
+        self.assertEqual(sum(Vector(1, 2, 3, 4)), 10)
+        self.assertEqual(sum(Vector((1, 2, 3, 4))), 10)
+
+        with self.assertRaises(TypeError):
+            Vector(None)
+
+        with self.assertRaises(TypeError):
+            Vector(1, 2, '3')
+
+        with self.assertRaises(TypeError):
+            Vector(1, 2, 3, 4, 5)
+
     def test_orthogonal(self):
 
         angle_90d = math.pi / 2.0

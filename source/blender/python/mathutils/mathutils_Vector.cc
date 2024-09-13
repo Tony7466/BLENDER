@@ -142,15 +142,15 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
   float *vec = nullptr;
   int vec_num = 3; /* default to a 3D vector */
+  PyObject* item = nullptr;
 
   if (kwds && PyDict_Size(kwds)) {
     PyErr_SetString(PyExc_TypeError,
-                    "Vector(): "
-                    "takes no keyword args");
+                    "Vector(): takes no keyword args");
     return nullptr;
   }
 
-  switch (PyTuple_GET_SIZE(args)) {
+  switch (int len = PyTuple_GET_SIZE(args)) {
     case 0:
       vec = static_cast<float *>(PyMem_Malloc(vec_num * sizeof(float)));
 
@@ -164,17 +164,59 @@ static PyObject *Vector_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
       copy_vn_fl(vec, vec_num, 0.0f);
       break;
     case 1:
-      if ((vec_num = mathutils_array_parse_alloc(
-               &vec, 2, PyTuple_GET_ITEM(args, 0), "mathutils.Vector()")) == -1)
+      item = PyTuple_GET_ITEM(args, 0);
+
+      if (bool is_float = (PyFloat_Check(item)) || PyLong_Check(item))
       {
+        vec = static_cast<float*>(PyMem_Malloc(vec_num * sizeof(float)));
+
+        if (vec == nullptr) {
+          PyErr_SetString(PyExc_MemoryError,
+            "Vector(): "
+            "problem allocating pointer space");
+          return nullptr;
+        }
+
+        float value = is_float ? float(PyFloat_AsDouble(item)) : float(PyLong_AsLong(item));
+        copy_vn_fl(vec, vec_num, value);
+        break;
+      }
+      else if ((vec_num = mathutils_array_parse_alloc(
+                 &vec, 2, item, "mathutils.Vector()")) == -1)
+        {
+          return nullptr;
+        }
+        break;
+    default:
+      if ((vec_num = len) > MAX_DIMENSIONS)
+      {
+        PyErr_SetString(PyExc_TypeError,
+          "Vector(args): "
+          "more than a four arguments are given");
         return nullptr;
       }
-      break;
-    default:
-      PyErr_SetString(PyExc_TypeError,
-                      "mathutils.Vector(): "
-                      "more than a single arg given");
-      return nullptr;
+
+      vec = static_cast<float*>(PyMem_Malloc(vec_num * sizeof(float)));
+
+      for (int i = 0; i < vec_num; i++) {
+        item = PyTuple_GetItem(args, i);
+
+        if (PyFloat_Check(item)) {
+          vec[i] = float(PyFloat_AsDouble(item));
+        }
+        else if (PyLong_Check(item)) {
+          vec[i] = float(PyLong_AsLong(item));
+        }
+        else {
+          PyErr_Format(PyExc_TypeError,
+            "Vector(args): "
+            "argument for component '%c' expected a number, "
+            "not %.200s ", "xyzw"[i], Py_TYPE(item)->tp_name);
+
+          PyMem_Free(vec);
+          return nullptr;
+        }
+      }
   }
   return Vector_CreatePyObject_alloc(vec, vec_num, type);
 }
@@ -3401,12 +3443,37 @@ static PyMethodDef Vector_methods[] = {
 PyDoc_STRVAR(
     /* Wrap. */
     vector_doc,
-    ".. class:: Vector(seq)\n"
+    ".. class:: Vector()\n"
+    "           Vector(number)\n"
+    "           Vector(seq)\n"
+    "           Vector(x, y)\n"
+    "           Vector(x, y, z)\n"
+    "           Vector(x, y, z, w)\n"
     "\n"
     "   This object gives access to Vectors in Blender.\n"
     "\n"
     "   :arg seq: Components of the vector, must be a sequence of at least two\n"
-    "   :type seq: sequence of numbers\n");
+    "   :type seq: sequence of numbers\n"
+    "   :arg number: A single number used to initialize all components of a 3D vector.\n"
+    "   :type number: float\n"
+    "   :arg x: First component of the vector (optional).\n"
+    "   :type x: float\n"
+    "   :arg y: Second component of the vector (optional).\n"
+    "   :type y: float\n"
+    "   :arg z: Third component of the vector (optional).\n"
+    "   :type z: float\n"
+    "   :arg w: Fourth component of the vector (optional).\n"
+    "   :type w: float\n\n"
+    "   If no arguments are given, an empty vector is created.\n"
+
+    " Example usages:\n"
+    " - ``Vector()``: Creates an empty vector.\n"
+    " - ``Vector(1)``: Creates a 3D vector with all components set to 1.\n"
+    " - ``Vector(1, 2)``: Creates a 2D vector with values (1, 2).\n"
+    " - ``Vector(1, 2, 3)``: Creates a 3D vector with values (1, 2, 3).\n"
+    " - ``Vector(1, 2, 3, 4)``: Creates a 4D vector with values (1, 2, 3, 4).\n"
+    " - ``Vector([1, 2, 3])``: Creates a vector from a list or other sequence.\n"
+);
 PyTypeObject vector_Type = {
     /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "Vector",
