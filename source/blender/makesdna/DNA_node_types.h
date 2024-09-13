@@ -1972,7 +1972,7 @@ typedef struct NodeGeometryForeachGeometryElementInput {
   int32_t output_node_id;
 } NodeGeometryForeachGeometryElementInput;
 
-typedef struct NodeForeachGeometryElementOutputItem {
+typedef struct NodeForeachGeometryElementGenerationItem {
   char *name;
   /** #eNodeSocketDatatype. */
   short socket_type;
@@ -1984,7 +1984,7 @@ typedef struct NodeForeachGeometryElementOutputItem {
    * names change.
    */
   int identifier;
-} NodeForeachGeometryElementOutputItem;
+} NodeForeachGeometryElementGenerationItem;
 
 typedef struct NodeForeachGeometryElementMainItem {
   char *name;
@@ -1998,13 +1998,13 @@ typedef struct NodeForeachGeometryElementMainItem {
   int identifier;
 } NodeForeachGeometryElementMainItem;
 
-typedef struct NodeForeachGeometryElementOutputItems {
-  NodeForeachGeometryElementOutputItem *items;
+typedef struct NodeForeachGeometryElementGenerationItems {
+  NodeForeachGeometryElementGenerationItem *items;
   int items_num;
   int active_index;
   int next_identifier;
   char _pad[4];
-} NodeForeachGeometryElementOutputItems;
+} NodeForeachGeometryElementGenerationItems;
 
 typedef struct NodeForeachGeometryElementMainItems {
   NodeForeachGeometryElementMainItem *items;
@@ -2035,9 +2035,9 @@ typedef struct NodeForeachGeometryElementInputItems {
 } NodeForeachGeometryElementInputItems;
 
 typedef struct NodeGeometryForeachGeometryElementOutput {
-  NodeForeachGeometryElementOutputItems output_items;
   NodeForeachGeometryElementInputItems input_items;
   NodeForeachGeometryElementMainItems main_items;
+  NodeForeachGeometryElementGenerationItems generation_items;
   int inspection_index;
   /** #AttrDomain. */
   uint8_t domain;

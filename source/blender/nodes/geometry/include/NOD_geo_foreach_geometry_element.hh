@@ -10,8 +10,8 @@
 
 namespace blender::nodes {
 
-struct ForeachGeometryElementOutputItemsAccessor {
-  using ItemT = NodeForeachGeometryElementOutputItem;
+struct ForeachGeometryElementGenerationItemsAccessor {
+  using ItemT = NodeForeachGeometryElementGenerationItem;
   static StructRNA *item_srna;
   static int node_type;
   static constexpr const char *node_idname = "GeometryNodeForeachGeometryElementOutput";
@@ -22,9 +22,9 @@ struct ForeachGeometryElementOutputItemsAccessor {
   static socket_items::SocketItemsRef<ItemT> get_items_from_node(bNode &node)
   {
     auto *storage = static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
-    return {&storage->output_items.items,
-            &storage->output_items.items_num,
-            &storage->output_items.active_index};
+    return {&storage->generation_items.items,
+            &storage->generation_items.items_num,
+            &storage->generation_items.active_index};
   }
 
   static void copy_item(const ItemT &src, ItemT &dst)
@@ -71,8 +71,8 @@ struct ForeachGeometryElementOutputItemsAccessor {
   {
     auto *storage = static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
     item.socket_type = socket_type;
-    item.identifier = storage->output_items.next_identifier++;
-    socket_items::set_item_name_and_make_unique<ForeachGeometryElementOutputItemsAccessor>(
+    item.identifier = storage->generation_items.next_identifier++;
+    socket_items::set_item_name_and_make_unique<ForeachGeometryElementGenerationItemsAccessor>(
         node, item, name);
   }
 
@@ -142,7 +142,7 @@ struct ForeachGeometryElementInputItemsAccessor {
   {
     auto *storage = static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
     item.socket_type = socket_type;
-    item.identifier = storage->output_items.next_identifier++;
+    item.identifier = storage->generation_items.next_identifier++;
     socket_items::set_item_name_and_make_unique<ForeachGeometryElementInputItemsAccessor>(
         node, item, name);
   }
@@ -213,7 +213,7 @@ struct ForeachGeometryElementMainItemsAccessor {
   {
     auto *storage = static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
     item.socket_type = socket_type;
-    item.identifier = storage->output_items.next_identifier++;
+    item.identifier = storage->generation_items.next_identifier++;
     socket_items::set_item_name_and_make_unique<ForeachGeometryElementMainItemsAccessor>(
         node, item, name);
   }

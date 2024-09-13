@@ -594,9 +594,9 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 
 using blender::nodes::BakeItemsAccessor;
 using blender::nodes::CaptureAttributeItemsAccessor;
+using blender::nodes::ForeachGeometryElementGenerationItemsAccessor;
 using blender::nodes::ForeachGeometryElementInputItemsAccessor;
 using blender::nodes::ForeachGeometryElementMainItemsAccessor;
-using blender::nodes::ForeachGeometryElementOutputItemsAccessor;
 using blender::nodes::IndexSwitchItemsAccessor;
 using blender::nodes::MenuSwitchItemsAccessor;
 using blender::nodes::RepeatItemsAccessor;
@@ -9576,17 +9576,17 @@ static void rna_def_geo_foreach_geometry_element_input_items(BlenderRNA *brna)
       srna, "ForeachGeometryElementInputItem", "ForeachGeometryElementInputItemsAccessor");
 }
 
-static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
+static void rna_def_geo_foreach_geometry_element_generation_item(BlenderRNA *brna)
 {
   StructRNA *srna;
   PropertyRNA *prop;
 
-  srna = RNA_def_struct(brna, "ForeachGeometryElementOutputItem", nullptr);
+  srna = RNA_def_struct(brna, "ForeachGeometryElementGenerationItem", nullptr);
   RNA_def_struct_ui_text(srna, "For Each Geometry Element Item", "");
-  RNA_def_struct_sdna(srna, "NodeForeachGeometryElementOutputItem");
+  RNA_def_struct_sdna(srna, "NodeForeachGeometryElementGenerationItem");
 
   rna_def_node_item_array_socket_item_common(
-      srna, "ForeachGeometryElementOutputItemsAccessor", true);
+      srna, "ForeachGeometryElementGenerationItemsAccessor", true);
 
   prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_ui_text(prop, "Domain", "Domain that the field is evaluated on");
@@ -9594,21 +9594,24 @@ static void rna_def_geo_foreach_geometry_element_output_item(BlenderRNA *brna)
   RNA_def_property_update(
       prop,
       NC_NODE | NA_EDITED,
-      "rna_Node_ItemArray_item_update<ForeachGeometryElementOutputItemsAccessor>");
+      "rna_Node_ItemArray_item_update<ForeachGeometryElementGenerationItemsAccessor>");
 }
 
-static void rna_def_geo_foreach_geometry_element_output_items(BlenderRNA *brna)
+static void rna_def_geo_foreach_geometry_element_generation_items(BlenderRNA *brna)
 {
   StructRNA *srna;
 
-  srna = RNA_def_struct(brna, "NodeGeometryForeachGeometryElementOutputItems", nullptr);
+  srna = RNA_def_struct(brna, "NodeGeometryForeachGeometryElementGenerationItems", nullptr);
   RNA_def_struct_sdna(srna, "bNode");
-  RNA_def_struct_ui_text(srna, "Output Items", "Collection of output items");
+  RNA_def_struct_ui_text(srna, "Generation Items", "Collection of generation items");
 
   rna_def_node_item_array_new_with_socket_and_name(
-      srna, "ForeachGeometryElementOutputItem", "ForeachGeometryElementOutputItemsAccessor");
-  rna_def_node_item_array_common_functions(
-      srna, "ForeachGeometryElementOutputItem", "ForeachGeometryElementOutputItemsAccessor");
+      srna,
+      "ForeachGeometryElementGenerationItem",
+      "ForeachGeometryElementGenerationItemsAccessor");
+  rna_def_node_item_array_common_functions(srna,
+                                           "ForeachGeometryElementGenerationItem",
+                                           "ForeachGeometryElementGenerationItemsAccessor");
 }
 
 static void rna_def_geo_foreach_geometry_element_main_item(BlenderRNA *brna)
@@ -9648,10 +9651,11 @@ static void def_geo_foreach_geometry_element_output(StructRNA *srna)
   RNA_def_property_struct_type(prop, "ForeachGeometryElementInputItem");
   RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementInputItems");
 
-  prop = RNA_def_property(srna, "output_items", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "output_items.items", "output_items.items_num");
-  RNA_def_property_struct_type(prop, "ForeachGeometryElementOutputItem");
-  RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementOutputItems");
+  prop = RNA_def_property(srna, "generation_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(
+      prop, nullptr, "generation_items.items", "generation_items.items_num");
+  RNA_def_property_struct_type(prop, "ForeachGeometryElementGenerationItem");
+  RNA_def_property_srna(prop, "NodeGeometryForeachGeometryElementGenerationItems");
 
   prop = RNA_def_property(srna, "main_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "main_items.items", "main_items.items_num");
@@ -9665,8 +9669,8 @@ static void def_geo_foreach_geometry_element_output(StructRNA *srna)
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
-  prop = RNA_def_property(srna, "active_output_index", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "output_items.active_index");
+  prop = RNA_def_property(srna, "active_generation_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "generation_items.active_index");
   RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
@@ -11359,7 +11363,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_simulation_state_item(brna);
   rna_def_repeat_item(brna);
   rna_def_geo_foreach_geometry_element_input_item(brna);
-  rna_def_geo_foreach_geometry_element_output_item(brna);
+  rna_def_geo_foreach_geometry_element_generation_item(brna);
   rna_def_geo_foreach_geometry_element_main_item(brna);
   rna_def_index_switch_item(brna);
   rna_def_menu_switch_item(brna);
@@ -11418,7 +11422,7 @@ void RNA_def_nodetree(BlenderRNA *brna)
   rna_def_geo_simulation_output_items(brna);
   rna_def_geo_repeat_output_items(brna);
   rna_def_geo_foreach_geometry_element_input_items(brna);
-  rna_def_geo_foreach_geometry_element_output_items(brna);
+  rna_def_geo_foreach_geometry_element_generation_items(brna);
   rna_def_geo_foreach_geometry_element_main_items(brna);
   rna_def_geo_index_switch_items(brna);
   rna_def_geo_menu_switch_items(brna);
