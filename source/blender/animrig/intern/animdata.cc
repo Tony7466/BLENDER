@@ -11,6 +11,7 @@
 #include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -121,33 +122,19 @@ static bAction *find_related_action(Main &bmain, ID &id)
         break;
       }
 
-      case ID_ME: {
-        add_object_data_users(bmain, *related_id, related_ids);
-        Mesh *mesh = (Mesh *)related_id;
-        if (mesh->key) {
-          /* No check for multi user because the Shapekey cannot be shared. */
-          BLI_assert(ID_REAL_USERS(&mesh->key->id) == 1);
-          related_ids.append_non_duplicates(&mesh->key->id);
-        }
-        break;
-      }
-
-      case ID_CV: {
-        add_object_data_users(bmain, *related_id, related_ids);
-        Curve *curve = (Curve *)related_id;
-        if (curve->key) {
-          BLI_assert(ID_REAL_USERS(&curve->key->id) == 1);
-          related_ids.append_non_duplicates(&curve->key->id);
-        }
-        break;
-      }
-
       default: {
         /* Just check if the ID is used as object data somewhere. */
         add_object_data_users(bmain, *related_id, related_ids);
         bNodeTree *node_tree = bke::node_tree_from_id(related_id);
         if (node_tree && ID_REAL_USERS(&node_tree->id) == 1) {
           related_ids.append_non_duplicates(&node_tree->id);
+        }
+        Key *key = BKE_key_from_id(related_id);
+
+        if (key) {
+          /* No check for multi user because the Shapekey cannot be shared. */
+          BLI_assert(ID_REAL_USERS(&key->id) == 1);
+          related_ids.append_non_duplicates(&key->id);
         }
         break;
       }
