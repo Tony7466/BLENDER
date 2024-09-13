@@ -2690,9 +2690,11 @@ static void transform_positions(const Span<blender::float3> src,
 {
   BLI_assert(src.size() == dst.size());
 
-  for (const int i : src.index_range()) {
-    dst[i] = blender::math::transform_point(transform, src[i]);
-  }
+  blender::threading::parallel_for(src.index_range(), 4096, [&](const blender::IndexRange range) {
+    for (const int i : range) {
+      dst[i] = blender::math::transform_point(transform, src[i]);
+    }
+  });
 }
 
 std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max(const int frame) const
