@@ -631,7 +631,6 @@ static void restore_hidden_face(Object &object, Node &unode, MutableSpan<bool> m
     }
   }
   hide_poly.finish();
-  BKE_sculpt_hide_poly_pointer_update(object);
 }
 
 static void restore_color(Object &object, StepData &step_data, MutableSpan<bool> modified_vertices)
@@ -705,7 +704,8 @@ static bool restore_face_sets(Object &object,
 {
   const Span<int> face_indices = unode.face_indices;
 
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
   bool modified = false;
   for (const int i : face_indices.index_range()) {
     const int face = face_indices[i];
@@ -965,11 +965,6 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
   ss.pivot_pos = step_data.pivot_pos;
   ss.pivot_rot = step_data.pivot_rot;
 
-  const bool clear_automask_cache = !ELEM(step_data.type, Type::Color, Type::Mask);
-  if (clear_automask_cache) {
-    ss.last_automasking_settings_hash = 0;
-  }
-
   if (bmesh_restore(C, *depsgraph, step_data, object, ss)) {
     return;
   }
@@ -1020,7 +1015,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         if (!restore_active_shape_key(*C, *depsgraph, step_data, object)) {
           return;
         }
-        Array<bool> modified_verts(ss.totvert, false);
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+        Array<bool> modified_verts(mesh.verts_num, false);
         restore_position_mesh(object, step_data.nodes, modified_verts);
         node_mask.foreach_index([&](const int i) {
           if (indices_contain_true(modified_verts, nodes[i].all_verts())) {
@@ -1062,7 +1058,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-        Array<bool> modified_verts(ss.totvert, false);
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+        Array<bool> modified_verts(mesh.verts_num, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_vert_visibility_mesh(object, *unode, modified_verts);
         }
@@ -1089,7 +1086,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         return;
       }
 
-      Array<bool> modified_faces(ss.totfaces, false);
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      Array<bool> modified_faces(mesh.faces_num, false);
       for (std::unique_ptr<Node> &unode : step_data.nodes) {
         restore_hidden_face(object, *unode, modified_faces);
       }
@@ -1144,7 +1142,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
       else {
         MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-        Array<bool> modified_verts(ss.totvert, false);
+        const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+        Array<bool> modified_verts(mesh.verts_num, false);
         for (std::unique_ptr<Node> &unode : step_data.nodes) {
           restore_mask_mesh(object, *unode, modified_verts);
         }
@@ -1167,7 +1166,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
         return;
       }
 
-      Array<bool> modified_faces(ss.totfaces, false);
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      Array<bool> modified_faces(mesh.faces_num, false);
       for (std::unique_ptr<Node> &unode : step_data.nodes) {
         restore_face_sets(object, *unode, modified_faces);
       }
@@ -1205,7 +1205,8 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
       }
 
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
-      Array<bool> modified_verts(ss.totvert, false);
+      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+      Array<bool> modified_verts(mesh.verts_num, false);
       restore_color(object, step_data, modified_verts);
       node_mask.foreach_index([&](const int i) {
         if (indices_contain_true(modified_verts, nodes[i].all_verts())) {
@@ -1836,7 +1837,7 @@ void push_begin_ex(Object &ob, const char *name)
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
-      us->data.mesh_verts_num = ss.totvert;
+      us->data.mesh_verts_num = mesh.verts_num;
       us->data.mesh_corners_num = mesh.corners_num;
       break;
     }
