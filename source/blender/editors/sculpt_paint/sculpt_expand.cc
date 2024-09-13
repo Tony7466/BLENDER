@@ -1363,7 +1363,6 @@ static void calc_falloff_from_vert_and_symmetry(const Depsgraph &depsgraph,
  */
 static void snap_init_from_enabled(const Depsgraph &depsgraph,
                                    const Object &object,
-                                   SculptSession &ss,
                                    Cache &expand_cache)
 {
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
@@ -1382,8 +1381,7 @@ static void snap_init_from_enabled(const Depsgraph &depsgraph,
 
   const BitVector<> enabled_verts = enabled_state_to_bitmap(depsgraph, object, expand_cache);
 
-  const int totface = ss.totfaces;
-  for (int i = 0; i < totface; i++) {
+  for (const int i : faces.index_range()) {
     const int face_set = expand_cache.original_face_sets[i];
     expand_cache.snap_enabled_face_sets->add(face_set);
   }
@@ -1417,7 +1415,8 @@ static void expand_cache_free(SculptSession &ss)
 static void restore_face_set_data(Object &object, Cache &expand_cache)
 {
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
   face_sets.span.copy_from(expand_cache.original_face_sets);
   face_sets.finish();
 
@@ -1686,8 +1685,8 @@ static void update_mask_bmesh(SculptSession &ss,
  */
 static void face_sets_update(Object &object, Cache &expand_cache)
 {
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(mesh);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
@@ -1822,13 +1821,11 @@ static void original_state_store(Object &ob, Cache &expand_cache)
  */
 static void face_sets_restore(Object &object, Cache &expand_cache)
 {
-  SculptSession &ss = *object.sculpt;
-  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
+  Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices<int> faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
-  const int totfaces = ss.totfaces;
-  for (int i = 0; i < totfaces; i++) {
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(mesh);
+  for (const int i : faces.index_range()) {
     if (expand_cache.original_face_sets[i] <= 0) {
       /* Do not modify hidden Face Sets, even when restoring the IDs state. */
       continue;
@@ -2252,7 +2249,7 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
         else {
           expand_cache.snap = true;
           expand_cache.snap_enabled_face_sets = std::make_unique<Set<int>>();
-          snap_init_from_enabled(*depsgraph, ob, ss, expand_cache);
+          snap_init_from_enabled(*depsgraph, ob, expand_cache);
         }
         break;
       }
@@ -2393,8 +2390,6 @@ static int sculpt_expand_modal(bContext *C, wmOperator *op, const wmEvent *event
 static void delete_face_set_id(
     int *r_face_sets, Object &object, Cache &expand_cache, Mesh *mesh, const int delete_id)
 {
-  SculptSession &ss = *object.sculpt;
-  const int totface = ss.totfaces;
   const GroupedSpan<int> vert_to_face_map = mesh->vert_to_face_map();
   const OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
@@ -2402,7 +2397,7 @@ static void delete_face_set_id(
   /* Check that all the face sets IDs in the mesh are not equal to `delete_id`
    * before attempting to delete it. */
   bool all_same_id = true;
-  for (int i = 0; i < totface; i++) {
+  for (const int i : faces.index_range()) {
     if (!is_face_in_active_component(object, faces, corner_verts, expand_cache, i)) {
       continue;
     }
@@ -2421,7 +2416,7 @@ static void delete_face_set_id(
   BLI_LINKSTACK_INIT(queue);
   BLI_LINKSTACK_INIT(queue_next);
 
-  for (int i = 0; i < totface; i++) {
+  for (const int i : faces.index_range()) {
     if (r_face_sets[i] == delete_id) {
       BLI_LINKSTACK_PUSH(queue, POINTER_FROM_INT(i));
     }
@@ -2483,13 +2478,14 @@ static void cache_initial_config_set(bContext *C, wmOperator *op, Cache &expand_
   expand_cache.brush_gradient = false;
 
   /* Texture and color data from the active Brush. */
+  Scene &scene = *CTX_data_scene(C);
   Object &ob = *CTX_data_active_object(C);
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   SculptSession &ss = *ob.sculpt;
   expand_cache.brush = BKE_paint_brush_for_read(&sd.paint);
   BKE_curvemapping_init(expand_cache.brush->curve);
   copy_v4_fl(expand_cache.fill_color, 1.0f);
-  copy_v3_v3(expand_cache.fill_color, BKE_brush_color_get(ss.scene, expand_cache.brush));
+  copy_v3_v3(expand_cache.fill_color, BKE_brush_color_get(&scene, expand_cache.brush));
   IMB_colormanagement_srgb_to_scene_linear_v3(expand_cache.fill_color, expand_cache.fill_color);
 
   expand_cache.scene = CTX_data_scene(C);
@@ -2589,7 +2585,8 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
 
   if (ss.expand_cache->target == TargetType::Mask) {
-    MultiresModifierData *mmd = BKE_sculpt_multires_active(ss.scene, &ob);
+    Scene &scene = *CTX_data_scene(C);
+    MultiresModifierData *mmd = BKE_sculpt_multires_active(&scene, &ob);
     BKE_sculpt_mask_layers_ensure(depsgraph, CTX_data_main(C), &ob, mmd);
 
     if (RNA_boolean_get(op->ptr, "use_auto_mask")) {
