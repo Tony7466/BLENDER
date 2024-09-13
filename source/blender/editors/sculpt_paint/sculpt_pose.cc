@@ -997,7 +997,8 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
     const bool is_first_iteration = i == 0;
 
     flood_fill::FillData flood = flood_fill::init_fill(object);
-    flood_fill::add_initial_with_symmetry(depsgraph, object, flood, current_data.vert, std::numeric_limits<float>::max());
+    flood_fill::add_initial_with_symmetry(
+        depsgraph, object, flood, current_data.vert, std::numeric_limits<float>::max());
 
     visited_face_sets.add(current_data.face_set);
 
