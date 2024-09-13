@@ -115,7 +115,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_func_tooltip_set(
         but,
         [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return std::string("(") + std::to_string( *((int*)argN)) + ")";
+          return fmt::format(TIP_("({})"),std::to_string( *((int*)argN)));
         },
         MEM_cnew<int>(__func__, value),
           MEM_freeN);
@@ -168,7 +168,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_func_tooltip_set(
         but,
         [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return std::string("(") + std::to_string( *((float*)argN)) + ")";
+          return fmt::format(TIP_("({})"),std::to_string( *((float*)argN)));
         },
         MEM_cnew<float>(__func__, value),
           MEM_freeN);
@@ -254,7 +254,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_func_tooltip_set(
         but,
         [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return std::string("(") + (char*)(argN) + ")";
+          return fmt::format(TIP_("({})"),(char*)argN);
         },buf,MEM_freeN);
     }
   }
@@ -285,7 +285,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_func_tooltip_set(
         but,
         [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return std::string("(") + std::to_string( *((float*)argN)) + ")";
+          return fmt::format(TIP_("({})"),std::to_string( *((float*)argN)));
         },
         MEM_cnew<float>(__func__, value),
           MEM_freeN);
@@ -320,7 +320,7 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       UI_but_func_tooltip_set(
         but,
         [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return std::string("(") + std::to_string( *((int*)argN)) + ")";
+          return fmt::format(TIP_("({})"),std::to_string( *((int*)argN)));
         },
         MEM_cnew<int>(__func__, value),
           MEM_freeN);
