@@ -11,7 +11,7 @@ static Strip *first_keyframe_strip(Action &action)
 {
   for (Layer *layer : action.layers()) {
     for (Strip *strip : layer->strips()) {
-      if (strip->is_keyframe_strip()) {
+      if (strip->type() == Strip::Type::Keyframe) {
         return strip;
       }
     }

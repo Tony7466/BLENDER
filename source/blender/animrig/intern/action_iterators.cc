@@ -24,7 +24,7 @@ void action_foreach_fcurve(Action &action,
   else if (action.is_action_layered()) {
     for (Layer *layer : action.layers()) {
       for (Strip *strip : layer->strips()) {
-        if (!strip->is_keyframe_strip()) {
+        if (strip->type() != Strip::Type::Keyframe) {
           continue;
         }
         for (ChannelBag *bag : strip->keyframe_data(action).channelbags()) {

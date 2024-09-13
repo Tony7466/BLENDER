@@ -561,7 +561,7 @@ static std::optional<std::string> rna_ChannelBag_path(const PointerRNA *ptr)
   for (animrig::Layer *layer : action.layers()) {
     for (int64_t strip_index : layer->strips().index_range()) {
       const animrig::Strip *strip = layer->strip(strip_index);
-      if (!strip->is_keyframe_strip()) {
+      if (strip->type() != animrig::Strip::Type::Keyframe) {
         continue;
       }
 

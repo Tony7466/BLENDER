@@ -380,12 +380,6 @@ class Strip : public ::ActionStrip {
    */
   void resize(float frame_start, float frame_end);
 
-  // Kill this
-  bool is_keyframe_strip() const
-  {
-    return this->type() == Type::Keyframe;
-  }
-
   // Make these templatized over the data type.
   const StripKeyframeData &keyframe_data(const Action &owning_action) const;
   StripKeyframeData &keyframe_data(Action &owning_action);
