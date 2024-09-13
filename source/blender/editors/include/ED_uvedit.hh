@@ -261,7 +261,7 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, bool se
 /* `uvedit_unwrap_ops.cc` */
 
 struct wmTimer;
-const wmTimer* uvedit_live_unwrap_timer();
+const wmTimer *uvedit_live_unwrap_timer();
 
 void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit);
 void ED_uvedit_live_unwrap_re_solve();

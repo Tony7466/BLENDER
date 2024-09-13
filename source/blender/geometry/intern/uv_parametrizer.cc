@@ -4604,19 +4604,19 @@ static bool p_chart_correct_degenerate_triangle_point(PFace *f,
                                                       float min_angle_cos)
 {
   static const float3 ref_edges[] = {{1.0f, 0.0f, 0.0f},
-                                       {0.0f, 1.0f, 0.0f},
-                                       {0.0f, 0.0f, 1.0f},
-                                       {0.0f, 1.0f, 1.0f},
-                                       {1.0f, 0.0f, 1.0f},
-                                       {1.0f, 1.0f, 0.0f},
+                                     {0.0f, 1.0f, 0.0f},
+                                     {0.0f, 0.0f, 1.0f},
+                                     {0.0f, 1.0f, 1.0f},
+                                     {1.0f, 0.0f, 1.0f},
+                                     {1.0f, 1.0f, 0.0f},
 
-                                       {0.0f, 0.5f, 1.0f},
-                                       {0.5f, 0.0f, 1.0f},
-                                       {0.5f, 1.0f, 0.0f},
+                                     {0.0f, 0.5f, 1.0f},
+                                     {0.5f, 0.0f, 1.0f},
+                                     {0.5f, 1.0f, 0.0f},
 
-                                       {0.0f, 1.0f, 0.5f},
-                                       {1.0f, 0.0f, 0.5f},
-                                       {1.0f, 0.5f, 0.0f}};
+                                     {0.0f, 1.0f, 0.5f},
+                                     {1.0f, 0.0f, 0.5f},
+                                     {1.0f, 0.5f, 0.0f}};
   static const int ref_edge_count = sizeof(ref_edges) / sizeof(ref_edges[0]);
   static const int LEN_MULTIPLIER_COUNT = 3;
   bool corr_co_found = false;
@@ -4963,11 +4963,11 @@ static void slim_transfer_vertices(const PChart *chart,
                                    slim::MatrixTransfer *mt)
 {
   int r = mt_chart->verts_num;
-  std::vector<double>& v_mat = mt_chart->v_matrices;
-  std::vector<double>& uv_mat = mt_chart->uv_matrices;
-  std::vector<int>& p_mat = mt_chart->p_matrices;
-  std::vector<double>& pp_mat = mt_chart->pp_matrices;
-  std::vector<float>& w_vec = mt_chart->w_vectors;
+  std::vector<double> &v_mat = mt_chart->v_matrices;
+  std::vector<double> &uv_mat = mt_chart->uv_matrices;
+  std::vector<int> &p_mat = mt_chart->p_matrices;
+  std::vector<double> &pp_mat = mt_chart->pp_matrices;
+  std::vector<float> &w_vec = mt_chart->w_vectors;
 
   int p_vid = 0;
   int vid = mt_chart->boundary_vertices_num;
@@ -5164,9 +5164,9 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
                                         slim::MatrixTransferChart &mt_chart,
                                         slim::PinnedVertexData &pinned_vertex_data)
 {
-  std::vector<int>& pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
-  std::vector<double>& pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
-  std::vector<int>& selected_pins = pinned_vertex_data.selected_pins;
+  std::vector<int> &pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
+  std::vector<double> &pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
+  std::vector<int> &selected_pins = pinned_vertex_data.selected_pins;
 
   pinned_vertex_indices.clear();
   pinned_vertex_positions_2D.clear();

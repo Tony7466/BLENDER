@@ -20,6 +20,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_cloth_types.h"
 #include "DNA_constraint_types.h"
+#include "DNA_defaults.h"
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_genfile.h"
@@ -38,7 +39,6 @@
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
-#include "DNA_defaults.h"
 
 #undef DNA_GENFILE_VERSIONING_MACROS
 
@@ -2002,7 +2002,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 264, 5)) {
     /* set a unwrapping margin and ABF by default */
-    const ToolSettings* tool_settings_default = DNA_struct_default_get(ToolSettings);
+    const ToolSettings *tool_settings_default = DNA_struct_default_get(ToolSettings);
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->toolsettings->uvcalc_margin == 0.0f) {

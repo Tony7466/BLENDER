@@ -13,12 +13,12 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_defaults.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_defaults.h"
 #include "DNA_scene_types.h"
-#include "DNA_defaults.h"
 
 #include "BKE_global.hh"
 
@@ -1995,7 +1995,7 @@ static struct {
   wmTimer *timer;
 } g_live_unwrap = {nullptr};
 
-const wmTimer* uvedit_live_unwrap_timer()
+const wmTimer *uvedit_live_unwrap_timer()
 {
   return g_live_unwrap.timer;
 }
@@ -2820,7 +2820,7 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 
 void UV_OT_unwrap(wmOperatorType *ot)
 {
-  const ToolSettings* tool_settings_default = DNA_struct_default_get(ToolSettings);
+  const ToolSettings *tool_settings_default = DNA_struct_default_get(ToolSettings);
 
   static const EnumPropertyItem method_items[] = {
       {0, "ANGLE_BASED", 0, "Angle Based", ""},
