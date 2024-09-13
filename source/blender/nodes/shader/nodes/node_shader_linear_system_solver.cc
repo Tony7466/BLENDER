@@ -32,14 +32,14 @@ static void sh_node_linear_system_solver_declare(NodeDeclarationBuilder &b)
     node_storage(node).matrix_dimension = 1;
   });
 
-    PanelDeclarationBuilder &b_vector = b.add_panel("b Vector").default_closed(false);
+  PanelDeclarationBuilder &b_vector = b.add_panel("b Vector").default_closed(false);
   b_vector.add_input<decl::Vector>("b Vector")
       .min(-1000.0f)
       .max(1000.0f)
       .default_value(float3{0.0f, 0.0f, 0.0f})
       .make_available([](bNode &node) { node_storage(node).matrix_dimension = 2; })
       .description("b Vector in Ax=b");
-    b_vector.add_input<decl::Float>("b Vector W")
+  b_vector.add_input<decl::Float>("b Vector W")
       .min(-1000.0f)
       .max(1000.0f)
       .default_value(0.0f)
@@ -97,7 +97,9 @@ static void sh_node_linear_system_solver_declare(NodeDeclarationBuilder &b)
       .description("4th column vector of the A matrix in Ax=b");
 }
 
-static void node_shader_buts_linear_system_solver(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_shader_buts_linear_system_solver(uiLayout *layout,
+                                                  bContext * /*C*/,
+                                                  PointerRNA *ptr)
 {
   uiItemR(layout, ptr, "matrix_dimension", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 }
@@ -116,22 +118,17 @@ static const char *gpu_shader_get_name()
 }
 
 static int node_shader_gpu_linear_system_solver(GPUMaterial *mat,
-                                          bNode *node,
-                                          bNodeExecData * /*execdata*/,
-                                          GPUNodeStack *in,
-                                          GPUNodeStack *out)
+                                                bNode *node,
+                                                bNodeExecData * /*execdata*/,
+                                                GPUNodeStack *in,
+                                                GPUNodeStack *out)
 {
   const NodeLinearSystemSolver &storage = node_storage(*node);
   float matrix_dimension = storage.matrix_dimension;
 
   const char *name = gpu_shader_get_name();
 
-  return GPU_stack_link(mat,
-                        node,
-                        name,
-                        in,
-                        out,
-                        GPU_constant(&matrix_dimension));
+  return GPU_stack_link(mat, node, name, in, out, GPU_constant(&matrix_dimension));
 }
 
 static void node_shader_update_linear_system_solver(bNodeTree *ntree, bNode *node)
@@ -147,22 +144,20 @@ static void node_shader_update_linear_system_solver(bNodeTree *ntree, bNode *nod
   bNodeSocket *inColumn4Sock = bke::node_find_socket(node, SOCK_IN, "Column 4");
   bNodeSocket *inColumn4WSock = bke::node_find_socket(node, SOCK_IN, "Column 4 W");
 
-    bNodeSocket *outSolutionSock = bke::node_find_socket(node, SOCK_OUT, "Solution");
+  bNodeSocket *outSolutionSock = bke::node_find_socket(node, SOCK_OUT, "Solution");
   bNodeSocket *outSolutionWSock = bke::node_find_socket(node, SOCK_OUT, "Solution W");
 
-    const NodeLinearSystemSolver &storage = node_storage(*node);
+  const NodeLinearSystemSolver &storage = node_storage(*node);
 
-      bke::node_set_socket_availability(ntree, inbVectorSock, storage.matrix_dimension >= 2);
-    bke::node_set_socket_availability(ntree,
-                                        inbVectorWSock,
-                                        (storage.matrix_dimension == 1) ||
-                                            (storage.matrix_dimension == 4));
-    if (storage.matrix_dimension == 1) {
-      node_sock_label(inbVectorWSock, "b Vector");
-    }
-    else {
-      node_sock_label_clear(inbVectorWSock);
-    }
+  bke::node_set_socket_availability(ntree, inbVectorSock, storage.matrix_dimension >= 2);
+  bke::node_set_socket_availability(
+      ntree, inbVectorWSock, (storage.matrix_dimension == 1) || (storage.matrix_dimension == 4));
+  if (storage.matrix_dimension == 1) {
+    node_sock_label(inbVectorWSock, "b Vector");
+  }
+  else {
+    node_sock_label_clear(inbVectorWSock);
+  }
   bke::node_set_socket_availability(ntree, inColumn1Sock, storage.matrix_dimension >= 2);
   bke::node_set_socket_availability(
       ntree, inColumn1WSock, (storage.matrix_dimension == 1) || (storage.matrix_dimension == 4));
@@ -179,13 +174,9 @@ static void node_shader_update_linear_system_solver(bNodeTree *ntree, bNode *nod
   bke::node_set_socket_availability(ntree, inColumn4Sock, storage.matrix_dimension == 4);
   bke::node_set_socket_availability(ntree, inColumn4WSock, storage.matrix_dimension == 4);
 
-    bke::node_set_socket_availability(ntree,
-                                    outSolutionSock, storage.matrix_dimension >= 2);
+  bke::node_set_socket_availability(ntree, outSolutionSock, storage.matrix_dimension >= 2);
   bke::node_set_socket_availability(
-      ntree,
-      outSolutionWSock,
-                                      (storage.matrix_dimension == 1) ||
-                                          (storage.matrix_dimension == 4));
+      ntree, outSolutionWSock, (storage.matrix_dimension == 1) || (storage.matrix_dimension == 4));
   if (storage.matrix_dimension == 1) {
     node_sock_label(outSolutionWSock, "Solution");
   }
@@ -209,8 +200,8 @@ struct rcc_3x3 {
 struct rcc_4x4 {
   /* Determinant of the 4x4 matrix M. */
   float M_det;
-  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row, the
-   * second index j the coloumn being removed from M. */
+  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row,
+   * the second index j the coloumn being removed from M. */
   rcc_3x3 M_1_1_rcc;
   rcc_3x3 M_2_1_rcc;
   rcc_3x3 M_3_1_rcc;
@@ -249,18 +240,18 @@ rcc_4x4 calculate_rcc_4x4(float4 a_1, float4 a_2, float4 a_3, float4 a_4)
   return A_rcc;
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 float2 rc_linear_system_solve_non_singular_2x2(float2 a_1, float2 a_2, float2 b, float M_det)
 {
   /* Use Cramer's rule on both components instead of further recursion because it is faster. */
   return float2((b.x * a_2.y - a_2.x * b.y) / M_det, (a_1.x * b.y - b.x * a_1.y) / M_det);
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 float3 rc_linear_system_solve_non_singular_3x3(
     float3 a_1, float3 a_2, float3 a_3, float3 b, rcc_3x3 A_rcc)
 {
@@ -293,9 +284,9 @@ float3 rc_linear_system_solve_non_singular_3x3(
   }
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 float4 rc_linear_system_solve_non_singular_4x4(
     float4 a_1, float4 a_2, float4 a_3, float4 a_4, float4 b, rcc_4x4 A_rcc)
 {
@@ -348,8 +339,7 @@ class LinearSystemSolverFunction : public mf::MultiFunction {
   mf::Signature signature_;
 
  public:
-  LinearSystemSolverFunction(int matrix_dimension)
-      : matrix_dimension_(matrix_dimension)
+  LinearSystemSolverFunction(int matrix_dimension) : matrix_dimension_(matrix_dimension)
   {
     BLI_assert((matrix_dimension >= 1) && (matrix_dimension <= 4));
 
@@ -362,7 +352,7 @@ class LinearSystemSolverFunction : public mf::MultiFunction {
     mf::Signature signature;
     mf::SignatureBuilder builder{"linear_system_solver", signature};
 
-        if (matrix_dimension >= 2) {
+    if (matrix_dimension >= 2) {
       builder.single_input<float3>("b Vector");
     }
     if ((matrix_dimension == 1) || (matrix_dimension == 4)) {
@@ -389,7 +379,7 @@ class LinearSystemSolverFunction : public mf::MultiFunction {
       builder.single_input<float>("Column 4 W");
     }
 
-          if (matrix_dimension >= 2) {
+    if (matrix_dimension >= 2) {
       builder.single_output<float3>("Solution", mf::ParamFlag::SupportsUnusedOutput);
     }
     if ((matrix_dimension == 1) || (matrix_dimension == 4)) {
@@ -406,57 +396,55 @@ class LinearSystemSolverFunction : public mf::MultiFunction {
     const VArray<float3> &unused_float3 = VArray<float3>{};
     const VArray<float> &unused_float = VArray<float>{};
 
-        const VArray<float3> &b_vector = ELEM(matrix_dimension_, 2, 3, 4) ?
-                                            params.readonly_single_input<float3>(param++,
-                                                                                 "b Vector") :
-                                            unused_float3;
+    const VArray<float3> &b_vector = ELEM(matrix_dimension_, 2, 3, 4) ?
+                                         params.readonly_single_input<float3>(param++,
+                                                                              "b Vector") :
+                                         unused_float3;
     const VArray<float> &b_vector_w = ELEM(matrix_dimension_, 1, 4) ?
-                                             params.readonly_single_input<float>(param++,
-                                                                                 "b Vector W") :
-                                             unused_float;
+                                          params.readonly_single_input<float>(param++,
+                                                                              "b Vector W") :
+                                          unused_float;
     const VArray<float3> &column_1 = ELEM(matrix_dimension_, 2, 3, 4) ?
-                                                 params.readonly_single_input<float3>(
-                                                     param++, "Column 1") :
-                                                 unused_float3;
+                                         params.readonly_single_input<float3>(param++,
+                                                                              "Column 1") :
+                                         unused_float3;
     const VArray<float> &column_1_w = ELEM(matrix_dimension_, 1, 4) ?
-                                                  params.readonly_single_input<float>(
-                                                      param++, "Column 1 W") :
-                                                  unused_float;
+                                          params.readonly_single_input<float>(param++,
+                                                                              "Column 1 W") :
+                                          unused_float;
     const VArray<float3> &column_2 = ELEM(matrix_dimension_, 2, 3, 4) ?
-                                                 params.readonly_single_input<float3>(
-                                                     param++, "Column 2") :
-                                                 unused_float3;
+                                         params.readonly_single_input<float3>(param++,
+                                                                              "Column 2") :
+                                         unused_float3;
     const VArray<float> &column_2_w = ELEM(matrix_dimension_, 4) ?
-                                                  params.readonly_single_input<float>(
-                                                      param++, "Column 2 W") :
-                                                  unused_float;
+                                          params.readonly_single_input<float>(param++,
+                                                                              "Column 2 W") :
+                                          unused_float;
     const VArray<float3> &column_3 = ELEM(matrix_dimension_, 3, 4) ?
-                                                 params.readonly_single_input<float3>(
-                                                     param++, "Column 3") :
-                                                 unused_float3;
+                                         params.readonly_single_input<float3>(param++,
+                                                                              "Column 3") :
+                                         unused_float3;
     const VArray<float> &column_3_w = ELEM(matrix_dimension_, 4) ?
-                                                  params.readonly_single_input<float>(
-                                                      param++, "Column 3 W") :
-                                                  unused_float;
+                                          params.readonly_single_input<float>(param++,
+                                                                              "Column 3 W") :
+                                          unused_float;
     const VArray<float3> &column_4 = ELEM(matrix_dimension_, 4) ?
-                                                 params.readonly_single_input<float3>(
-                                                     param++, "Column 4") :
-                                                 unused_float3;
+                                         params.readonly_single_input<float3>(param++,
+                                                                              "Column 4") :
+                                         unused_float3;
     const VArray<float> &column_4_w = ELEM(matrix_dimension_, 4) ?
-                                                  params.readonly_single_input<float>(
-                                                      param++, "Column 4 W") :
-                                                  unused_float;
+                                          params.readonly_single_input<float>(param++,
+                                                                              "Column 4 W") :
+                                          unused_float;
 
     MutableSpan<float3> r_solution;
     MutableSpan<float> r_solution_w;
 
-          if (ELEM(matrix_dimension_, 2, 3, 4)) {
-      r_solution = params.uninitialized_single_output_if_required<float3>(param++,
-                                                                               "Solution");
+    if (ELEM(matrix_dimension_, 2, 3, 4)) {
+      r_solution = params.uninitialized_single_output_if_required<float3>(param++, "Solution");
     }
     if (ELEM(matrix_dimension_, 1, 4)) {
-      r_solution_w = params.uninitialized_single_output_if_required<float>(param++,
-                                                                                "Solution W");
+      r_solution_w = params.uninitialized_single_output_if_required<float>(param++, "Solution W");
     }
 
     const bool calc_solution = !r_solution.is_empty();
@@ -479,15 +467,15 @@ class LinearSystemSolverFunction : public mf::MultiFunction {
           if (calc_solution) {
             float M_det = column_1[i].x * column_2[i].y - column_2[i].x * column_1[i].y;
             if (M_det != 0.0f) {
-                float2 solution_xy = rc_linear_system_solve_non_singular_2x2(
-                    float2(column_1[i].x, column_1[i].y),
-                    float2(column_2[i].x, column_2[i].y),
-                    float2(b_vector[i].x, b_vector[i].y),
-                    M_det);
-                r_solution[i] = float3(solution_xy.x, solution_xy.y, 0.0f);
+              float2 solution_xy = rc_linear_system_solve_non_singular_2x2(
+                  float2(column_1[i].x, column_1[i].y),
+                  float2(column_2[i].x, column_2[i].y),
+                  float2(b_vector[i].x, b_vector[i].y),
+                  M_det);
+              r_solution[i] = float3(solution_xy.x, solution_xy.y, 0.0f);
             }
             else {
-                r_solution[i] = float3(0.0f, 0.0f, 0.0f);
+              r_solution[i] = float3(0.0f, 0.0f, 0.0f);
             }
           }
           break;
@@ -565,7 +553,8 @@ void register_node_type_sh_linear_system_solver()
 
   static blender::bke::bNodeType ntype;
 
-  sh_fn_node_type_base(&ntype, SH_NODE_LINEAR_SYSTEM_SOLVER, "Linear System Solver", NODE_CLASS_TEXTURE);
+  sh_fn_node_type_base(
+      &ntype, SH_NODE_LINEAR_SYSTEM_SOLVER, "Linear System Solver", NODE_CLASS_TEXTURE);
   ntype.declare = file_ns::sh_node_linear_system_solver_declare;
   ntype.draw_buttons = file_ns::node_shader_buts_linear_system_solver;
   ntype.initfunc = file_ns::node_shader_init_linear_system_solver;

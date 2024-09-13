@@ -24,8 +24,8 @@ struct rcc_3x3 {
 struct rcc_4x4 {
   /* Determinant of the 4x4 matrix M. */
   float M_det;
-  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row, the
-   * second index j the coloumn being removed from M. */
+  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row,
+   * the second index j the coloumn being removed from M. */
   rcc_3x3 M_1_1_rcc;
   rcc_3x3 M_2_1_rcc;
   rcc_3x3 M_3_1_rcc;
@@ -64,18 +64,18 @@ rcc_4x4 calculate_rcc_4x4(vector4 a_1, vector4 a_2, vector4 a_3, vector4 a_4)
   return A_rcc;
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 vector2 rc_linear_system_solve_non_singular_2x2(vector2 a_1, vector2 a_2, vector2 b, float M_det)
 {
   /* Use Cramer's rule on both components instead of further recursion because it is Reduceder. */
   return vector2((b.x * a_2.y - a_2.x * b.y) / M_det, (a_1.x * b.y - b.x * a_1.y) / M_det);
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 vector3 rc_linear_system_solve_non_singular_3x3(
     vector3 a_1, vector3 a_2, vector3 a_3, vector3 b, rcc_3x3 A_rcc)
 {
@@ -108,9 +108,9 @@ vector3 rc_linear_system_solve_non_singular_3x3(
   }
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 vector4 rc_linear_system_solve_non_singular_4x4(
     vector4 a_1, vector4 a_2, vector4 a_3, vector4 a_4, vector4 b, rcc_4x4 A_rcc)
 {
@@ -156,73 +156,70 @@ vector4 rc_linear_system_solve_non_singular_4x4(
   }
 }
 
-shader node_linear_system_solver(
-string matrix_dimension = "3x3",
-                          vector3 bVector = vector3(1.0, 0.0, 0.0),
-                          float bVectorW = 0.0,
-                          vector3 Column1 = vector3(1.0, 0.0, 0.0),
-                          float Column1W = 0.0,
-                          vector3 Column2 = vector3(0.0, 1.0, 0.0),
-                          float Column2W = 0.0,
-                          vector3 Column3 = vector3(0.0, 0.0, 1.0),
-                          float Column3W = 0.0,
-                          vector3 Column4 = vector3(0.0, 0.0, 0.0),
-                          float Column4W = 1.0,
-                                                output vector3 Solution = vector3(0.0, 0.0, 0.0),
-                          output float SolutionW = 0.0)
+shader node_linear_system_solver(string matrix_dimension = "3x3",
+                                 vector3 bVector = vector3(1.0, 0.0, 0.0),
+                                 float bVectorW = 0.0,
+                                 vector3 Column1 = vector3(1.0, 0.0, 0.0),
+                                 float Column1W = 0.0,
+                                 vector3 Column2 = vector3(0.0, 1.0, 0.0),
+                                 float Column2W = 0.0,
+                                 vector3 Column3 = vector3(0.0, 0.0, 1.0),
+                                 float Column3W = 0.0,
+                                 vector3 Column4 = vector3(0.0, 0.0, 0.0),
+                                 float Column4W = 1.0,
+                                 output vector3 Solution = vector3(0.0, 0.0, 0.0),
+                                 output float SolutionW = 0.0)
 {
-        if(matrix_dimension == "1x1") {
-            if (Column1W != 0.0) {
-              SolutionW = bVectorW / Column1W;
-            }
-            else {
-              SolutionW = 0.0;
-            }
-        }
-        else if(matrix_dimension == "2x2") {
-            float M_det = Column1.x * Column2.y - Column2.x * Column1.y;
-            if (M_det != 0.0) {
-                vector2 solution_xy = rc_linear_system_solve_non_singular_2x2(
-                    vector2(Column1.x, Column1.y),
-                    vector2(Column2.x, Column2.y),
-                    vector2(bVector.x, bVector.y),
-                    M_det);
-                Solution = vector3(solution_xy.x, solution_xy.y, 0.0);
-            }
-            else {
-                Solution = vector3(0.0, 0.0, 0.0);
-            }
-        }
-        else if(matrix_dimension == "3x3") {
-            rcc_3x3 A_rcc = calculate_rcc_3x3(Column1, Column2, Column3);
-            if (A_rcc.M_det != 0.0) {
-              Solution = rc_linear_system_solve_non_singular_3x3(
-                  Column1, Column2, Column3, bVector, A_rcc);
-            }
-            else {
-              Solution = vector3(0.0, 0.0, 0.0);
-            }
-        }
-       else if(matrix_dimension == "4x4") {
-            rcc_4x4 A_rcc = calculate_rcc_4x4(
-                vector4(Column1.x, Column1.y, Column1.z, Column1W),
-                vector4(Column2.x, Column2.y, Column2.z, Column2W),
-                vector4(Column3.x, Column3.y, Column3.z, Column3W),
-                vector4(Column4.x, Column4.y, Column4.z, Column4W));
-            if (A_rcc.M_det != 0.0) {
-              vector4 solution_xyzw = rc_linear_system_solve_non_singular_4x4(
-                  vector4(Column1.x, Column1.y, Column1.z, Column1W),
-                  vector4(Column2.x, Column2.y, Column2.z, Column2W),
-                  vector4(Column3.x, Column3.y, Column3.z, Column3W),
-                  vector4(Column4.x, Column4.y, Column4.z, Column4W),
-                  vector4(bVector.x, bVector.y, bVector.z, bVectorW),
-                  A_rcc);
-                Solution = vector3(solution_xyzw.x, solution_xyzw.y, solution_xyzw.z);
-                SolutionW = solution_xyzw.w;
-            }
-            else {
-                Solution = vector3(0.0, 0.0, 0.0);
-                SolutionW = 0.0;
-              }
-        }
+  if (matrix_dimension == "1x1") {
+    if (Column1W != 0.0) {
+      SolutionW = bVectorW / Column1W;
+    }
+    else {
+      SolutionW = 0.0;
+    }
+  }
+  else if (matrix_dimension == "2x2") {
+    float M_det = Column1.x * Column2.y - Column2.x * Column1.y;
+    if (M_det != 0.0) {
+      vector2 solution_xy = rc_linear_system_solve_non_singular_2x2(vector2(Column1.x, Column1.y),
+                                                                    vector2(Column2.x, Column2.y),
+                                                                    vector2(bVector.x, bVector.y),
+                                                                    M_det);
+      Solution = vector3(solution_xy.x, solution_xy.y, 0.0);
+    }
+    else {
+      Solution = vector3(0.0, 0.0, 0.0);
+    }
+  }
+  else if (matrix_dimension == "3x3") {
+    rcc_3x3 A_rcc = calculate_rcc_3x3(Column1, Column2, Column3);
+    if (A_rcc.M_det != 0.0) {
+      Solution = rc_linear_system_solve_non_singular_3x3(
+          Column1, Column2, Column3, bVector, A_rcc);
+    }
+    else {
+      Solution = vector3(0.0, 0.0, 0.0);
+    }
+  }
+  else if (matrix_dimension == "4x4") {
+    rcc_4x4 A_rcc = calculate_rcc_4x4(vector4(Column1.x, Column1.y, Column1.z, Column1W),
+                                      vector4(Column2.x, Column2.y, Column2.z, Column2W),
+                                      vector4(Column3.x, Column3.y, Column3.z, Column3W),
+                                      vector4(Column4.x, Column4.y, Column4.z, Column4W));
+    if (A_rcc.M_det != 0.0) {
+      vector4 solution_xyzw = rc_linear_system_solve_non_singular_4x4(
+          vector4(Column1.x, Column1.y, Column1.z, Column1W),
+          vector4(Column2.x, Column2.y, Column2.z, Column2W),
+          vector4(Column3.x, Column3.y, Column3.z, Column3W),
+          vector4(Column4.x, Column4.y, Column4.z, Column4W),
+          vector4(bVector.x, bVector.y, bVector.z, bVectorW),
+          A_rcc);
+      Solution = vector3(solution_xyzw.x, solution_xyzw.y, solution_xyzw.z);
+      SolutionW = solution_xyzw.w;
+    }
+    else {
+      Solution = vector3(0.0, 0.0, 0.0);
+      SolutionW = 0.0;
+    }
+  }
 }

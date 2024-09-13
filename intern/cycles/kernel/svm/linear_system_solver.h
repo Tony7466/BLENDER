@@ -36,8 +36,8 @@ struct rcc_3x3 {
 struct rcc_4x4 {
   /* Determinant of the 4x4 matrix M. */
   float M_det;
-  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row, the
-   * second index j the coloumn being removed from M. */
+  /* Reduced Cramer Coefficients of the 3x3 submatrices M_i_j. The first index i denotes the row,
+   * the second index j the coloumn being removed from M. */
   rcc_3x3 M_1_1_rcc;
   rcc_3x3 M_2_1_rcc;
   rcc_3x3 M_3_1_rcc;
@@ -80,9 +80,9 @@ ccl_device rcc_4x4 calculate_rcc_4x4(float4 a_1, float4 a_2, float4 a_3, float4 
   return A_rcc;
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 2x2 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 ccl_device float2 rc_linear_system_solve_non_singular_2x2(float2 a_1,
                                                           float2 a_2,
                                                           float2 b,
@@ -92,9 +92,9 @@ ccl_device float2 rc_linear_system_solve_non_singular_2x2(float2 a_1,
   return make_float2((b.x * a_2.y - a_2.x * b.y) / M_det, (a_1.x * b.y - b.x * a_1.y) / M_det);
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 3x3 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 ccl_device float3 rc_linear_system_solve_non_singular_3x3(
     float3 a_1, float3 a_2, float3 a_3, float3 b, rcc_3x3 A_rcc)
 {
@@ -127,9 +127,9 @@ ccl_device float3 rc_linear_system_solve_non_singular_3x3(
   }
 }
 
-/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of the
- * invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or not A
- * is invertible. Calling it on a singular matrix leads to division by 0. */
+/* Solves Ax=b for x using the Reduced Cramer algorithm, with a_n being the nth coloumn vector of
+ * the invertible 4x4 matrix A. rc_linear_system_solve_non_singular_4x4 doesn't check whether or
+ * not A is invertible. Calling it on a singular matrix leads to division by 0. */
 ccl_device float4 rc_linear_system_solve_non_singular_4x4(
     float4 a_1, float4 a_2, float4 a_3, float4 a_4, float4 b, rcc_4x4 A_rcc)
 {
@@ -177,46 +177,45 @@ ccl_device float4 rc_linear_system_solve_non_singular_4x4(
 
 ccl_device_noinline int svm_node_linear_system_solver(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
-  {
+{
   LinearSystemSolverStackOffsets so;
 
   svm_unpack_node_uchar4(
-        node.y, &(so.b_vector), &(so.b_vector_w), &(so.column_1), &(so.column_1_w));
+      node.y, &(so.b_vector), &(so.b_vector_w), &(so.column_1), &(so.column_1_w));
   svm_unpack_node_uchar4(
       node.z, &(so.column_2), &(so.column_2_w), &(so.column_3), &(so.column_3_w));
-  svm_unpack_node_uchar4(node.w,
-                         &(so.column_4),
-                         &(so.column_4_w), &(so.solution), &(so.solution_w));
+  svm_unpack_node_uchar4(
+      node.w, &(so.column_4), &(so.column_4_w), &(so.solution), &(so.solution_w));
 
-    uint4 defaults_1 = read_node(kg, &offset);
-      float3 b_vector = stack_load_float3_default(
+  uint4 defaults_1 = read_node(kg, &offset);
+  float3 b_vector = stack_load_float3_default(
       stack, so.b_vector, make_uint3(defaults_1.x, defaults_1.y, defaults_1.z));
   float b_vector_w = stack_load_float_default(stack, so.b_vector_w, defaults_1.w);
 
-      uint4 defaults_2 = read_node(kg, &offset);
-    float3 column_1 = stack_load_float3_default(
+  uint4 defaults_2 = read_node(kg, &offset);
+  float3 column_1 = stack_load_float3_default(
       stack, so.column_1, make_uint3(defaults_2.x, defaults_2.y, defaults_2.z));
   float column_1_w = stack_load_float_default(stack, so.column_1_w, defaults_2.w);
 
-      uint4 defaults_3 = read_node(kg, &offset);
+  uint4 defaults_3 = read_node(kg, &offset);
   float3 column_2 = stack_load_float3_default(
       stack, so.column_2, make_uint3(defaults_3.x, defaults_3.y, defaults_3.z));
   float column_2_w = stack_load_float_default(stack, so.column_2_w, defaults_3.w);
 
-      uint4 defaults_4 = read_node(kg, &offset);
+  uint4 defaults_4 = read_node(kg, &offset);
   float3 column_3 = stack_load_float3_default(
       stack, so.column_3, make_uint3(defaults_4.x, defaults_4.y, defaults_4.z));
   float column_3_w = stack_load_float_default(stack, so.column_3_w, defaults_4.w);
 
-      uint4 defaults_5 = read_node(kg, &offset);
+  uint4 defaults_5 = read_node(kg, &offset);
   float3 column_4 = stack_load_float3_default(
       stack, so.column_4, make_uint3(defaults_5.x, defaults_5.y, defaults_5.z));
   float column_4_w = stack_load_float_default(stack, so.column_4_w, defaults_5.w);
 
-      uint4 properties = read_node(kg, &offset);
-      uint matrix_dimension = properties.x;
+  uint4 properties = read_node(kg, &offset);
+  uint matrix_dimension = properties.x;
 
-        switch (matrix_dimension) {
+  switch (matrix_dimension) {
     case 1: {
       if (stack_valid(so.solution_w)) {
         if (column_1_w != 0.0f) {
@@ -283,20 +282,20 @@ ccl_device_noinline int svm_node_linear_system_solver(
           if (stack_valid(so.solution_w)) {
             if (stack_valid(so.solution_w)) {
               stack_store_float(stack, so.solution_w, solution_xyzw.w);
+            }
+          }
+          else {
+            if (stack_valid(so.solution)) {
+              stack_store_float3(stack, so.solution, make_float3(0.0f, 0.0f, 0.0f));
+            }
+            if (stack_valid(so.solution_w)) {
+              stack_store_float(stack, so.solution_w, 0.0f);
+            }
           }
         }
-        else {
-          if (stack_valid(so.solution)) {
-            stack_store_float3(stack, so.solution, make_float3(0.0f, 0.0f, 0.0f));
-          }
-          if (stack_valid(so.solution_w)) {
-            stack_store_float(stack, so.solution_w, 0.0f);
-          }
-        }
+        break;
       }
-      break;
     }
-  }
   }
 
   return offset;
