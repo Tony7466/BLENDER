@@ -214,8 +214,12 @@ bke::CurvesGeometry curves_geometry_cut(const bke::CurvesGeometry &src,
 
     /* Copy curve attributes. */
     const Array indices(added_curve_num, curve_i);
-    gather_attributes(
-        src_attributes, bke::AttrDomain::Curve, {}, curve_skip, indices, dst_attributes);
+    gather_attributes(src_attributes,
+                      bke::AttrDomain::Curve,
+                      bke::AttrDomain::Curve,
+                      bke::attribute_filter_from_skip_ref(curve_skip),
+                      indices,
+                      dst_attributes);
 
     const Set<std::string> &point_skip = skipped_attribute_ids(
         keep_caps, is_fill, reproject, bke::AttrDomain::Point);
