@@ -15,6 +15,7 @@
 
 #include "BLI_string.h"
 
+#include "BKE_anonymous_attribute_make.hh"
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.hh"
@@ -115,8 +116,8 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 
 static const CPPType &get_item_cpp_type(const eNodeSocketDatatype socket_type)
 {
-  const char *socket_idname = bke::nodeStaticSocketType(socket_type, 0);
-  const bke::bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(socket_idname);
+  const char *socket_idname = bke::node_static_socket_type(socket_type, 0);
+  const bke::bNodeSocketType *typeinfo = bke::node_socket_type_find(socket_idname);
   BLI_assert(typeinfo);
   BLI_assert(typeinfo->geometry_nodes_cpp_type);
   return *typeinfo->geometry_nodes_cpp_type;
@@ -535,21 +536,17 @@ class LazyFunctionForBakeNode final : public LazyFunction {
         r_output_values);
   }
 
-  std::shared_ptr<AnonymousAttributeFieldInput> make_attribute_field(
-      const Object &self_object,
-      const ComputeContext &compute_context,
-      const NodeGeometryBakeItem &item,
-      const CPPType &type) const
+  std::shared_ptr<AttributeFieldInput> make_attribute_field(const Object &self_object,
+                                                            const ComputeContext &compute_context,
+                                                            const NodeGeometryBakeItem &item,
+                                                            const CPPType &type) const
   {
-    AnonymousAttributeIDPtr attribute_id = AnonymousAttributeIDPtr(
-        MEM_new<NodeAnonymousAttributeID>(__func__,
-                                          self_object,
-                                          compute_context,
-                                          node_,
-                                          std::to_string(item.identifier),
-                                          item.name));
-    return std::make_shared<AnonymousAttributeFieldInput>(
-        attribute_id, type, node_.label_or_name());
+    std::string attribute_name = bke::hash_to_anonymous_attribute_name(
+        compute_context.hash(), self_object.id.name, node_.identifier, item.identifier);
+    std::string socket_inspection_name = make_anonymous_attribute_socket_inspection_string(
+        node_.label_or_name(), item.name);
+    return std::make_shared<AttributeFieldInput>(
+        std::move(attribute_name), type, std::move(socket_inspection_name));
   }
 };
 
@@ -651,7 +648,7 @@ static void node_register()
   ntype.gather_link_search_ops = node_gather_link_searches;
   blender::bke::node_type_storage(
       &ntype, "NodeGeometryBake", node_free_storage, node_copy_storage);
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 

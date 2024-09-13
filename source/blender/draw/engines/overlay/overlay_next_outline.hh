@@ -22,6 +22,7 @@ class Outline {
   PassMain::Sub *prepass_pointcloud_ps_ = nullptr;
   PassMain::Sub *prepass_gpencil_ps_ = nullptr;
   PassMain::Sub *prepass_mesh_ps_ = nullptr;
+  PassMain::Sub *prepass_volume_ps_ = nullptr;
   PassMain::Sub *prepass_wire_ps_ = nullptr;
   /* Detect edges inside the ID pass and output color for each of them. */
   PassSimple outline_resolve_ps_ = {"Resolve"};
@@ -61,8 +62,8 @@ class Outline {
       pass.init();
       pass.framebuffer_set(&prepass_fb_);
       pass.clear_color_depth_stencil(float4(0.0f), 1.0f, 0x0);
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL |
-                     state.clipping_state);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL,
+                     state.clipping_plane_count);
       {
         auto &sub = pass.sub("Curves");
         sub.shader_set(res.shaders.outline_prepass_curves.get());
@@ -90,6 +91,13 @@ class Outline {
         sub.push_constant("isTransform", is_transform);
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         prepass_mesh_ps_ = &sub;
+      }
+      {
+        auto &sub = pass.sub("Volume");
+        sub.shader_set(res.shaders.outline_prepass_mesh.get());
+        sub.push_constant("isTransform", is_transform);
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        prepass_volume_ps_ = &sub;
       }
       {
         auto &sub = pass.sub("Wire");
@@ -174,7 +182,7 @@ class Outline {
         break;
       case OB_VOLUME:
         geom = DRW_cache_volume_selection_surface_get(ob_ref.object);
-        outline_prepass_ps_.draw(geom, res_handle);
+        prepass_volume_ps_->draw(geom, res_handle);
         break;
       default:
         break;

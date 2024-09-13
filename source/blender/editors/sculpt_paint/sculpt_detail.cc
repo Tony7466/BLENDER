@@ -5,6 +5,7 @@
 /** \file
  * \ingroup edsculpt
  */
+#include "sculpt_dyntopo.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,11 +23,10 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.hh"
 #include "GPU_immediate_util.hh"
@@ -39,7 +39,11 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
+
+#include "DEG_depsgraph.hh"
+
 #include "sculpt_intern.hh"
+#include "sculpt_undo.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -104,37 +108,47 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  Vector<bke::pbvh::Node *> nodes = bke::pbvh::search_gather(*ss.pbvh, {});
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
+  MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
+
+  IndexMaskMemory memory;
+  const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
-  for (bke::pbvh::Node *node : nodes) {
-    BKE_pbvh_node_mark_topology_update(node);
-  }
+  node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_topology_update(nodes[i]); });
+
   /* Get the bounding box, its center and size. */
-  const Bounds<float3> bounds = bke::pbvh::bounds_get(*ob.sculpt->pbvh);
+  const Bounds<float3> bounds = bke::pbvh::bounds_get(pbvh);
   const float3 center = math::midpoint(bounds.min, bounds.max);
   const float3 dim = bounds.max - bounds.min;
   const float size = math::reduce_max(dim);
 
   /* Update topology size. */
-  float object_space_constant_detail = 1.0f / (sd->constant_detail *
-                                               mat4_to_scale(ob.object_to_world().ptr()));
-  BKE_pbvh_bmesh_detail_size_set(*ss.pbvh, object_space_constant_detail);
+  const float max_edge_len = 1.0f /
+                             (sd->constant_detail * mat4_to_scale(ob.object_to_world().ptr()));
+  const float min_edge_len = max_edge_len * detail_size::EDGE_LENGTH_MIN_FACTOR;
 
   undo::push_begin(ob, op);
   undo::push_node(depsgraph, ob, nullptr, undo::Type::Position);
 
   const double start_time = BLI_time_now_seconds();
 
-  while (bke::pbvh::bmesh_update_topology(
-      *ss.pbvh, *ss.bm_log, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
+  while (bke::pbvh::bmesh_update_topology(*ss.bm,
+                                          pbvh,
+                                          *ss.bm_log,
+                                          PBVH_Collapse | PBVH_Subdivide,
+                                          min_edge_len,
+                                          max_edge_len,
+                                          center,
+                                          nullptr,
+                                          size,
+                                          false,
+                                          false))
   {
-    for (bke::pbvh::Node *node : nodes) {
-      BKE_pbvh_node_mark_topology_update(node);
-    }
+    node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_topology_update(nodes[i]); });
   }
 
   CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", BLI_time_now_seconds() - start_time);
@@ -142,7 +156,9 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   undo::push_end(ob);
 
   /* Force rebuild of bke::pbvh::Tree for better BB placement. */
-  SCULPT_pbvh_clear(ob);
+  BKE_sculptsession_free_pbvh(ob);
+  DEG_id_tag_update(&ob.id, ID_RECALC_GEOMETRY);
+
   /* Redraw. */
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, &ob);
 
@@ -189,6 +205,7 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   const Span<float3> positions = bke::pbvh::vert_positions_eval(*depsgraph, ob);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
+  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
@@ -205,14 +222,14 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   float edge_length = 0.0f;
   Vector<int> neighbors;
   for (const int neighbor : vert_neighbors_get_mesh(
-           active_vert, faces, corner_verts, ss.vert_to_face_map, hide_poly, neighbors))
+           active_vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
   {
     edge_length += math::distance(active_vert_position, positions[neighbor]);
   }
   mesh.remesh_voxel_size = edge_length / float(neighbors.size());
 }
 
-static void sculpt_raycast_detail_cb(bke::pbvh::Node &node,
+static void sculpt_raycast_detail_cb(bke::pbvh::BMeshNode &node,
                                      SculptDetailRaycastData &srd,
                                      float *tmin)
 {
@@ -245,9 +262,13 @@ static void sample_detail_dyntopo(bContext *C, ViewContext *vc, const int mval[2
   srd.edge_length = 0.0f;
   isect_ray_tri_watertight_v3_precalc(&srd.isect_precalc, ray_normal);
 
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
+
   bke::pbvh::raycast(
-      *ob.sculpt->pbvh,
-      [&](bke::pbvh::Node &node, float *tmin) { sculpt_raycast_detail_cb(node, srd, tmin); },
+      pbvh,
+      [&](bke::pbvh::Node &node, float *tmin) {
+        sculpt_raycast_detail_cb(static_cast<bke::pbvh::BMeshNode &>(node), srd, tmin);
+      },
       ray_start,
       ray_normal,
       false);
@@ -282,8 +303,8 @@ static int sample_detail(bContext *C, const int event_xy[2], const SampleDetailM
     return OPERATOR_CANCELLED;
   }
 
-  SculptSession &ss = *ob->sculpt;
-  if (!ss.pbvh) {
+  bke::pbvh::Tree *pbvh = bke::object::pbvh_get(*ob);
+  if (!pbvh) {
     return OPERATOR_CANCELLED;
   }
 
@@ -301,7 +322,7 @@ static int sample_detail(bContext *C, const int event_xy[2], const SampleDetailM
   /* Pick sample detail. */
   switch (mode) {
     case SampleDetailModeType::Dyntopo:
-      if (ss.pbvh->type() != bke::pbvh::Type::BMesh) {
+      if (pbvh->type() != bke::pbvh::Type::BMesh) {
         CTX_wm_area_set(C, prev_area);
         CTX_wm_region_set(C, prev_region);
         return OPERATOR_CANCELLED;
@@ -309,7 +330,7 @@ static int sample_detail(bContext *C, const int event_xy[2], const SampleDetailM
       sample_detail_dyntopo(C, &vc, mval);
       break;
     case SampleDetailModeType::Voxel:
-      if (ss.pbvh->type() != bke::pbvh::Type::Mesh) {
+      if (pbvh->type() != bke::pbvh::Type::Mesh) {
         CTX_wm_area_set(C, prev_area);
         CTX_wm_region_set(C, prev_region);
         return OPERATOR_CANCELLED;
@@ -840,7 +861,7 @@ static int dyntopo_detail_size_edit_invoke(bContext *C, wmOperator *op, const wm
     rotate_v2_v2fl(cd->preview_tri[i], y_axis, DEG2RAD(120.0f * i));
   }
 
-  SCULPT_vertex_random_access_ensure(ss);
+  SCULPT_vertex_random_access_ensure(active_object);
 
   WM_event_add_modal_handler(C, op);
   ED_region_tag_redraw(region);
