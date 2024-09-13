@@ -206,6 +206,7 @@ class ShaderModule {
   ShaderPtr curve_edit_points;
   ShaderPtr curve_edit_line;
   ShaderPtr curve_edit_handles;
+  ShaderPtr extra_point;
   ShaderPtr facing;
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr grid_background;
@@ -231,6 +232,8 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr particle_edit_vert;
+  ShaderPtr particle_edit_edge;
   ShaderPtr paint_region_edge;
   ShaderPtr paint_region_face;
   ShaderPtr paint_region_vert;
@@ -241,6 +244,7 @@ class ShaderModule {
   ShaderPtr sculpt_curves;
   ShaderPtr sculpt_curves_cage;
   ShaderPtr uniform_color;
+  ShaderPtr uniform_color_batch;
   ShaderPtr uv_analysis_stretch_angle;
   ShaderPtr uv_analysis_stretch_area;
   ShaderPtr uv_brush_stencil;
