@@ -42,14 +42,12 @@ void npr_output(vec4 color, out vec4 out_color)
   out_color = color;
 }
 
-void npr_refraction(vec3 offset, out TextureHandle combined_color, out TextureHandle position)
+void npr_refraction(out TextureHandle combined_color, out TextureHandle position)
 {
-#if 0
-#  if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
-  npr_refraction_impl(offset.xy, combined_color, position);
-#  else
-  combined_color = vec4(0.0);
-  position = vec3(0.0);
-#  endif
+#if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
+  npr_refraction_impl(combined_color, position);
+#else
+  combined_color = TEXTURE_HANDLE_DEFAULT;
+  position = TEXTURE_HANDLE_DEFAULT;
 #endif
 }

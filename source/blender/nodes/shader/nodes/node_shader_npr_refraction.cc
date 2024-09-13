@@ -13,7 +13,6 @@ namespace blender::nodes::node_shader_npr_refraction_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Offset").default_value(float3(0.0)).hide_value();
   b.add_output<decl::Image>("Combined Color");
   b.add_output<decl::Image>("Position");
 }

@@ -15,6 +15,19 @@
 
 #pragma BLENDER_REQUIRE(eevee_deferred_combine_lib.glsl)
 
+#define TEX_HANDLE_NULL 0u
+#define TEX_HANDLE_COMBINED_COLOR 1u
+#define TEX_HANDLE_DIFFUSE_COLOR 2u
+#define TEX_HANDLE_DIFFUSE_DIRECT 3u
+#define TEX_HANDLE_DIFFUSE_INDIRECT 4u
+#define TEX_HANDLE_SPECULAR_COLOR 5u
+#define TEX_HANDLE_SPECULAR_DIRECT 6u
+#define TEX_HANDLE_SPECULAR_INDIRECT 7u
+#define TEX_HANDLE_POSITION 8u
+#define TEX_HANDLE_NORMAL 9u
+#define TEX_HANDLE_BACK_COMBINED_COLOR 10u
+#define TEX_HANDLE_BACK_POSITION 11u
+
 vec4 closure_to_rgba(Closure cl)
 {
   return vec4(0.0);
@@ -65,23 +78,44 @@ void npr_input_impl(vec2 texel_offset,
   }
 }
 
-void npr_refraction_impl(vec2 texel_offset, inout vec4 combined_color, inout vec3 position)
+void npr_refraction_impl(out TextureHandle combined_color, out TextureHandle position)
 {
+  combined_color = TextureHandle(TEX_HANDLE_BACK_COMBINED_COLOR, 0);
+  position = TextureHandle(TEX_HANDLE_BACK_POSITION, 0);
+}
+
+vec4 TextureHandle_eval(TextureHandle tex, ivec2 texel_offset, int channel_count)
+{
+  vec4 result = vec4(0.0);
+
   /*TODO(NPR): Texel-based offset is pretty bad.*/
   ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
   texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
-  float depth = texelFetch(hiz_back_tx, texel, 0).r;
-  vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
-  position = drw_point_screen_to_world(vec3(screen_uv, depth));
+  switch (tex.type) {
+    case TEX_HANDLE_BACK_COMBINED_COLOR: {
+      float depth = texelFetch(hiz_back_tx, texel, 0).r;
+      if (depth != 1.0) {
+        result = texelFetch(radiance_back_tx, texel, 0);
+        result.a = saturate(1.0 - result.a);
+      }
+    } break;
+    case TEX_HANDLE_BACK_POSITION: {
+      float depth = texelFetch(hiz_back_tx, texel, 0).r;
+      vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
+      result.rgb = drw_point_screen_to_world(vec3(screen_uv, depth));
+      result.a = 1.0;
+    } break;
+    default:
+      break;
+  }
 
-  if (depth == 1.0) {
-    combined_color = vec4(0.0);
-  }
-  else {
-    combined_color = texelFetch(radiance_back_tx, texel, 0);
-    combined_color.a = saturate(1.0 - combined_color.a);
-  }
+  return result;
+}
+
+vec4 TextureHandle_eval(TextureHandle tex, int channel_count)
+{
+  return TextureHandle_eval(tex, ivec2(0), channel_count);
 }
 
 void main()
