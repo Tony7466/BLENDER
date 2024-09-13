@@ -355,6 +355,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -376,7 +377,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
           MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
           calc_vert_neighbors_interior(faces,
                                        corner_verts,
-                                       ss.vert_to_face_map,
+                                       vert_to_face_map,
                                        ss.vertex_info.boundary,
                                        {},
                                        verts,
@@ -1015,9 +1016,11 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1041,7 +1044,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
                                                   corner_verts,
                                                   vert_to_face_map,
                                                   ss.vertex_info.boundary,
-                                                  ss.face_sets,
+                                                  face_sets,
                                                   hide_poly,
                                                   false,
                                                   verts,
@@ -1069,6 +1072,9 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
       const OffsetIndices faces = base_mesh.faces();
       const Span<int> corner_verts = base_mesh.corner_verts();
       const GroupedSpan<int> vert_to_face_map = base_mesh.vert_to_face_map();
+      const bke::AttributeAccessor attributes = base_mesh.attributes();
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -1091,7 +1097,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
           smooth::calc_relaxed_translations_grids(subdiv_ccg,
                                                   faces,
                                                   corner_verts,
-                                                  ss.face_sets,
+                                                  face_sets,
                                                   vert_to_face_map,
                                                   ss.vertex_info.boundary,
                                                   grids,
@@ -1179,9 +1185,11 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1198,7 +1206,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
           clamp_factors(factors, 0.0f, 1.0f);
 
           face_set::filter_verts_with_unique_face_sets_mesh(
-              vert_to_face_map, ss.face_sets, relax_face_sets, verts, factors);
+              vert_to_face_map, face_sets, relax_face_sets, verts, factors);
 
           tls.translations.resize(verts.size());
           const MutableSpan<float3> translations = tls.translations;
@@ -1206,9 +1214,9 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
                                                   vert_normals,
                                                   faces,
                                                   corner_verts,
-                                                  ss.vert_to_face_map,
+                                                  vert_to_face_map,
                                                   ss.vertex_info.boundary,
-                                                  ss.face_sets,
+                                                  face_sets,
                                                   hide_poly,
                                                   relax_face_sets,
                                                   verts,
@@ -1236,6 +1244,10 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
       const OffsetIndices faces = base_mesh.faces();
       const Span<int> corner_verts = base_mesh.corner_verts();
       const GroupedSpan<int> vert_to_face_map = base_mesh.vert_to_face_map();
+      const bke::AttributeAccessor attributes = base_mesh.attributes();
+      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
+                                                           bke::AttrDomain::Face);
+
       SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -1257,7 +1269,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
                                                              corner_verts,
                                                              faces,
                                                              subdiv_ccg,
-                                                             ss.face_sets,
+                                                             face_sets,
                                                              relax_face_sets,
                                                              grids,
                                                              factors);
@@ -1267,8 +1279,8 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
           smooth::calc_relaxed_translations_grids(subdiv_ccg,
                                                   faces,
                                                   corner_verts,
-                                                  ss.face_sets,
-                                                  ss.vert_to_face_map,
+                                                  face_sets,
+                                                  vert_to_face_map,
                                                   ss.vertex_info.boundary,
                                                   grids,
                                                   relax_face_sets,
@@ -1354,6 +1366,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
       MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1373,7 +1386,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
 
           tls.vert_neighbors.reinitialize(verts.size());
           calc_vert_neighbors(
-              faces, corner_verts, ss.vert_to_face_map, {}, verts, tls.vert_neighbors);
+              faces, corner_verts, vert_to_face_map, {}, verts, tls.vert_neighbors);
 
           tls.average_positions.reinitialize(verts.size());
           const MutableSpan<float3> average_positions = tls.average_positions;
@@ -1419,7 +1432,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
 
           tls.vert_neighbors.resize(verts.size());
           calc_vert_neighbors(
-              faces, corner_verts, ss.vert_to_face_map, {}, verts, tls.vert_neighbors);
+              faces, corner_verts, vert_to_face_map, {}, verts, tls.vert_neighbors);
 
           tls.average_positions.resize(verts.size());
           const MutableSpan<float3> average_laplacian_disps = tls.average_positions;
@@ -1651,6 +1664,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
 
       const OffsetIndices faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1676,7 +1690,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
 
           tls.vert_neighbors.resize(verts.size());
           const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
-          calc_vert_neighbors(faces, corner_verts, ss.vert_to_face_map, {}, verts, neighbors);
+          calc_vert_neighbors(faces, corner_verts, vert_to_face_map, {}, verts, neighbors);
 
           tls.smooth_positions.resize(verts.size());
           const MutableSpan<float3> smooth_positions = tls.smooth_positions;
@@ -2134,6 +2148,7 @@ static void mesh_filter_sharpen_init(const Depsgraph &depsgraph,
         Mesh &mesh = *static_cast<Mesh *>(object.data);
         const OffsetIndices faces = mesh.faces();
         const Span<int> corner_verts = mesh.corner_verts();
+        const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
         const Span<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
         threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           LocalData &tls = all_tls.local();
@@ -2142,7 +2157,7 @@ static void mesh_filter_sharpen_init(const Depsgraph &depsgraph,
 
             tls.vert_neighbors.resize(verts.size());
             const MutableSpan<Vector<int>> neighbors = tls.vert_neighbors;
-            calc_vert_neighbors(faces, corner_verts, ss.vert_to_face_map, {}, verts, neighbors);
+            calc_vert_neighbors(faces, corner_verts, vert_to_face_map, {}, verts, neighbors);
 
             tls.smooth_directions.resize(verts.size());
             smooth::neighbor_data_average_mesh(
@@ -2293,6 +2308,7 @@ static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)
 
   ss.filter_cache->iteration_count++;
 
+  bke::pbvh::update_bounds(depsgraph, ob, *bke::object::pbvh_get(ob));
   flush_update_step(C, UpdateType::Position);
 }
 

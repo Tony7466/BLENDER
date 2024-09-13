@@ -115,6 +115,7 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Depsgraph &depsgraph,
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
+  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
@@ -139,7 +140,7 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Depsgraph &depsgraph,
       tls.vert_neighbors.resize(verts.size());
       calc_vert_neighbors_interior(faces,
                                    corner_verts,
-                                   ss.vert_to_face_map,
+                                   vert_to_face_map,
                                    ss.vertex_info.boundary,
                                    hide_poly,
                                    verts,
@@ -164,6 +165,7 @@ BLI_NOINLINE static void do_smooth_brush_mesh(const Depsgraph &depsgraph,
                             tls,
                             new_positions.as_span().slice(node_vert_offsets[pos]),
                             positions_orig);
+      BKE_pbvh_node_mark_positions_update(nodes[i]);
     });
   }
 }
@@ -308,6 +310,7 @@ void do_smooth_brush(const Depsgraph &depsgraph,
                        strength,
                        nodes[i],
                        tls);
+            BKE_pbvh_node_mark_positions_update(nodes[i]);
           });
         });
       }
@@ -323,12 +326,14 @@ void do_smooth_brush(const Depsgraph &depsgraph,
           LocalData &tls = all_tls.local();
           node_mask.slice(range).foreach_index([&](const int i) {
             calc_bmesh(depsgraph, sd, object, brush, strength, nodes[i], tls);
+            BKE_pbvh_node_mark_positions_update(nodes[i]);
           });
         });
       }
       break;
     }
   }
+  bke::pbvh::update_bounds(depsgraph, object, pbvh);
 }
 
 }  // namespace blender::ed::sculpt_paint
