@@ -37,20 +37,32 @@ void npr_input_impl(vec2 texel_offset,
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
-
-  DeferredCombine dc = deferred_combine(texel);
-  deferred_combine_clamp(dc);
-
-  combined_color = deferred_combine_final_output(dc);
-  combined_color.a = saturate(1.0 - combined_color.a);
-  diffuse_color = vec4(dc.diffuse_color, 1.0);
-  diffuse_direct = vec4(dc.diffuse_direct, 1.0);
-  diffuse_indirect = vec4(dc.diffuse_indirect, 1.0);
-  specular_color = vec4(dc.specular_color, 1.0);
-  specular_direct = vec4(dc.specular_direct, 1.0);
-  specular_indirect = vec4(dc.specular_indirect, 1.0);
   position = drw_point_screen_to_world(vec3(screen_uv, depth));
-  normal = dc.average_normal;
+
+  if (depth == 1.0) {
+    combined_color = vec4(0.0);
+    diffuse_color = vec4(0.0);
+    diffuse_direct = vec4(0.0);
+    diffuse_indirect = vec4(0.0);
+    specular_color = vec4(0.0);
+    specular_direct = vec4(0.0);
+    specular_indirect = vec4(0.0);
+    normal = drw_world_incident_vector(position);
+  }
+  else {
+    DeferredCombine dc = deferred_combine(texel);
+    deferred_combine_clamp(dc);
+
+    combined_color = deferred_combine_final_output(dc);
+    combined_color.a = saturate(1.0 - combined_color.a);
+    diffuse_color = vec4(dc.diffuse_color, 1.0);
+    diffuse_direct = vec4(dc.diffuse_direct, 1.0);
+    diffuse_indirect = vec4(dc.diffuse_indirect, 1.0);
+    specular_color = vec4(dc.specular_color, 1.0);
+    specular_direct = vec4(dc.specular_direct, 1.0);
+    specular_indirect = vec4(dc.specular_indirect, 1.0);
+    normal = dc.average_normal;
+  }
 }
 
 void npr_refraction_impl(vec2 texel_offset,
@@ -62,12 +74,17 @@ void npr_refraction_impl(vec2 texel_offset,
   ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
   texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
-  combined_color = texelFetch(radiance_back_tx, texel, 0);
-
   float depth = texelFetch(hiz_back_tx, texel, 0).r;
   vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
   position = drw_point_screen_to_world(vec3(screen_uv, depth));
 
+  if (depth == 1.0) {
+    combined_color = vec4(0.0);
+  }
+  else {
+    combined_color = texelFetch(radiance_back_tx, texel, 0);
+    combined_color.a = saturate(1.0 - combined_color.a);
+  }
   /*TODO(NPR): Normal?*/
 }
 
@@ -75,6 +92,7 @@ void main()
 {
   init_globals();
 
-  out_color = nodetree_npr();
-  out_color.a = 0.0;
+  vec4 result = nodetree_npr();
+  out_radiance = vec4(result.rgb * result.a, 0.0);
+  out_transmittance = vec4(1.0 - result.a);
 }

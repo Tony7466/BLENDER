@@ -26,7 +26,8 @@ GPU_SHADER_CREATE_INFO(npr_surface_common)
     /* eevee_deferred_combine */
     .push_constant(Type::INT, "npr_index")
     .define("NPR_SHADER")
-    .fragment_out(0, Type::VEC4, "out_color")
+    .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
+    .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .additional_info("draw_view",
                      "eevee_shared",
                      "eevee_global_ubo",
