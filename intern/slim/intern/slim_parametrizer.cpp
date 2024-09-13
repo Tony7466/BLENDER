@@ -30,9 +30,8 @@ static void transfer_uvs_back_to_native_part(MatrixTransferChart &chart, Eigen::
   int number_of_vertices = chart.verts_num;
 
   for (int i = 0; i < number_of_vertices; i++) {
-    for (int j = 0; j < 2; j++) {
-      uv_coordinate_array[i * 2 + j] = uv(i, j);
-    }
+    uv_coordinate_array[i] = uv(i, 0);
+    uv_coordinate_array[number_of_vertices + i] = uv(i, 1);
   }
 }
 

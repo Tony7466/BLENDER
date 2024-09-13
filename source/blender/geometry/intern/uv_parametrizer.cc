@@ -5133,8 +5133,8 @@ static void slim_flush_uvs(ParamHandle *phandle,
         }
 
         vid = v->slim_id;
-        v->uv[0] = UV[vid * 2];
-        v->uv[1] = UV[vid * 2 + 1];
+        v->uv[0] = UV[vid];
+        v->uv[1] = UV[mt_chart->verts_num + vid];
       }
     }
     else {
