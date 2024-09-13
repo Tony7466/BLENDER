@@ -525,7 +525,7 @@ static int vertex_group_smooth_exec(bContext *C, wmOperator *op)
                                        false,
                                        weights.span);
       weights.finish();
-  }
+    }
   });
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
