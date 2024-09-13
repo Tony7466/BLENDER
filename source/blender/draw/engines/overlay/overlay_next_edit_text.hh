@@ -136,15 +136,14 @@ class EditText {
    * a [-1..1] quad at the right position. */
   static void v2_quad_corners_to_mat4(const float4x2 &corners, float4x4 &r_mat)
   {
-    r_mat = math::from_scale<float4x4>(float4(1.0f));
-    auto r_mat_view = r_mat.view<4, 2>();
-    r_mat_view[0] = corners[1] - corners[0];
-    r_mat_view[1] = corners[3] - corners[0];
-    r_mat_view[0] *= 0.5f;
-    r_mat_view[1] *= 0.5f;
-    r_mat_view[3] = corners[0];
-    r_mat_view[3] += r_mat_view[0];
-    r_mat_view[3] += r_mat_view[1];
+    const float2 &origin = corners[0];
+    const float2 half_size_x = (float2(corners[1]) - float2(corners[0])) * 0.5f;
+    const float2 half_size_y = (float2(corners[3]) - float2(corners[0])) * 0.5f;
+
+    r_mat = float4x4(float4(half_size_x, 0.0f, 0.0f),
+                     float4(half_size_y, 0.0f, 0.0f),
+                     float4(0.0f, 0.0f, 1.0f, 0.0f),
+                     float4(origin + half_size_x + half_size_y, 0.0f, 1.0f));
   }
 
   void add_select(const Curve &cu, const float4x4 &ob_to_world)
@@ -177,10 +176,8 @@ class EditText {
       else {
         float2x2 mat = math::from_rotation<float2x2>(sb->rot);
         box[0] = float2(sb->x, sb->y);
-        box[1] = mat[0] * selboxw;
-        box[1] += float2(&sb->x);
-        box[3] = mat[1] * sb->h;
-        box[3] += float2(&sb->x);
+        box[1] = mat[0] * selboxw + float2(&sb->x);
+        box[3] = mat[1] * sb->h + float2(&sb->x);
       }
       v2_quad_corners_to_mat4(box, final_mat);
       final_mat = ob_to_world * final_mat;
