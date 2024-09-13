@@ -369,15 +369,6 @@ static void build_nodes_recursive_grids(const Span<int> material_indices,
                               nodes);
 }
 
-static int sum_group_sizes(const OffsetIndices<int> groups, const Span<int> indices)
-{
-  int count = 0;
-  for (const int i : indices) {
-    count += groups[i].size();
-  }
-  return count;
-}
-
 static Bounds<float3> calc_face_grid_bounds(const OffsetIndices<int> faces,
                                             const Span<float3> positions,
                                             const CCGKey &key,
@@ -458,7 +449,7 @@ std::unique_ptr<Tree> build_grids(const Mesh &base_mesh, const SubdivCCG &subdiv
   Array<int> node_grids_num(nodes.size() + 1);
   threading::parallel_for(nodes.index_range(), 16, [&](const IndexRange range) {
     for (const int i : range) {
-      node_grids_num[i] = sum_group_sizes(faces, nodes[i].prim_indices_);
+      node_grids_num[i] = offset_indices::sum_group_sizes(faces, nodes[i].prim_indices_);
     }
   });
   const OffsetIndices<int> node_grid_offsets = offset_indices::accumulate_counts_to_offsets(
@@ -1047,11 +1038,11 @@ void update_node_bounds_mesh(const Span<float3> positions, MeshNode &node)
   node.bounds_ = bounds;
 }
 
-void update_node_bounds_grids(const CCGKey &key, const Span<float3> positions, GridsNode &node)
+void update_node_bounds_grids(const int grid_area, const Span<float3> positions, GridsNode &node)
 {
   Bounds<float3> bounds = negative_bounds();
   for (const int grid : node.grids()) {
-    for (const float3 &position : positions.slice(bke::ccg::grid_range(key, grid))) {
+    for (const float3 &position : positions.slice(bke::ccg::grid_range(grid_area, grid))) {
       math::min_max(position, bounds.min, bounds.max);
     }
   }
@@ -1095,7 +1086,7 @@ static BoundsMergeInfo merge_child_bounds(MutableSpan<NodeT> nodes, const int no
   return {node.bounds_, update};
 }
 
-static void flush_bounds_to_parents(Tree &pbvh)
+void flush_bounds_to_parents(Tree &pbvh)
 {
   std::visit(
       [](auto &nodes) {
@@ -1125,8 +1116,9 @@ void update_bounds_grids(const CCGKey &key, const Span<float3> positions, Tree &
       pbvh, memory, [&](const Node &node) { return update_search(node, PBVH_UpdateBB); });
 
   MutableSpan<GridsNode> nodes = pbvh.nodes<GridsNode>();
-  nodes_to_update.foreach_index(
-      GrainSize(1), [&](const int i) { update_node_bounds_grids(key, positions, nodes[i]); });
+  nodes_to_update.foreach_index(GrainSize(1), [&](const int i) {
+    update_node_bounds_grids(key.grid_area, positions, nodes[i]);
+  });
   if (!nodes.is_empty()) {
     flush_bounds_to_parents(pbvh);
   }
@@ -1555,13 +1547,12 @@ void BKE_pbvh_mark_rebuild_pixels(blender::bke::pbvh::Tree &pbvh)
 
 void BKE_pbvh_node_mark_update_visibility(blender::bke::pbvh::Node &node)
 {
-  node.flag_ |= PBVH_UpdateVisibility | PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers |
-                PBVH_UpdateRedraw;
+  node.flag_ |= PBVH_UpdateVisibility | PBVH_RebuildDrawBuffers | PBVH_UpdateRedraw;
 }
 
 void BKE_pbvh_node_mark_rebuild_draw(blender::bke::pbvh::Node &node)
 {
-  node.flag_ |= PBVH_RebuildDrawBuffers | PBVH_UpdateDrawBuffers | PBVH_UpdateRedraw;
+  node.flag_ |= PBVH_RebuildDrawBuffers | PBVH_UpdateRedraw;
 }
 
 void BKE_pbvh_node_mark_redraw(blender::bke::pbvh::Node &node)
