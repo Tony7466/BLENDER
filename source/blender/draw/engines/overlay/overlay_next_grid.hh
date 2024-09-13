@@ -53,14 +53,11 @@ class Grid {
       /* Add quad background. */
       auto &sub = grid_ps_.sub("grid_background");
       sub.shader_set(res.shaders.grid_background.get());
-      float4 color_back;
-      interp_v4_v4v4(color_back, G_draw.block.color_background, G_draw.block.color_grid, 0.5);
+      const float4 color_back = math::interpolate(
+          res.theme_settings.color_background, res.theme_settings.color_grid, 0.5);
       sub.push_constant("ucolor", color_back);
       sub.bind_texture("depthBuffer", &res.depth_tx);
-      float4x4 mat = math::from_scale<float4x4>(float4(1.0f));
-      mat[0][0] = data_.size[0];
-      mat[1][1] = data_.size[1];
-      mat[2][2] = data_.size[2];
+      const float4x4 mat = math::from_scale<float4x4>(data_.size);
       draw::Manager &manager = *DRW_manager_get();
       ResourceHandle handle = manager.resource_handle(mat);
       sub.draw(shapes.quad_solid.get(), handle);
