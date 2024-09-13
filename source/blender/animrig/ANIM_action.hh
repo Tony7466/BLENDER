@@ -715,9 +715,6 @@ class StripKeyframeData : public ::ActionStripKeyframeData {
 static_assert(sizeof(StripKeyframeData) == sizeof(::ActionStripKeyframeData),
               "DNA struct and its C++ wrapper must have the same size");
 
-// template<> KeyframeStrip &Strip::as<KeyframeStrip>();
-// template<> const KeyframeStrip &Strip::as<KeyframeStrip>() const;
-
 /**
  * Collection of F-Curves, intended for a specific Slot handle.
  */
