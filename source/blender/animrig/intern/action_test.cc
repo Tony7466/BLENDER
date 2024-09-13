@@ -795,7 +795,7 @@ TEST_F(ActionLayersTest, conversion_to_layered)
   ASSERT_TRUE(converted != action);
   EXPECT_STREQ(converted->id.name, "ACACÄnimåtië_layered");
   Strip *strip = converted->layer(0)->strip(0);
-  StripKeyframeData strip_data = strip->data<StripKeyframeData>(*action);
+  StripKeyframeData strip_data = strip->data<StripKeyframeData>(*converted);
   ChannelBag *bag = strip_data.channelbag(0);
   ASSERT_EQ(bag->fcurve_array_num, 2);
   ASSERT_EQ(bag->fcurve_array[0]->totvert, 2);
@@ -838,7 +838,7 @@ TEST_F(ActionLayersTest, conversion_to_layered_action_groups)
 
   Action *converted = convert_to_layered_action(*bmain, *action);
   Strip *strip = converted->layer(0)->strip(0);
-  StripKeyframeData &strip_data = strip->data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data = strip->data<StripKeyframeData>(*converted);
   ChannelBag *bag = strip_data.channelbag(0);
 
   ASSERT_EQ(BLI_listbase_count(&converted->groups), 0);
