@@ -1375,7 +1375,7 @@ ShapeCache::ShapeCache()
       steps[i] = -1.0f + float(i * 2) / SI_GRID_STEPS_LEN;
     }
 
-    Vector<Vertex> verts;
+    Vector<Vertex> verts(SI_GRID_STEPS_LEN * SI_GRID_STEPS_LEN * 6);
     for (const int x : IndexRange(SI_GRID_STEPS_LEN)) {
       for (const int y : IndexRange(SI_GRID_STEPS_LEN)) {
         verts.append(Vertex{{steps[x], steps[y], 0.0f}});
