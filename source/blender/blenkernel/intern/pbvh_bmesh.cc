@@ -521,8 +521,7 @@ static int pbvh_bmesh_node_vert_use_count_at_most(MutableSpan<BMeshNode> nodes,
 }
 
 /** Return a node that uses vertex `v` other than its current owner. */
-static std::optional<int> pbvh_bmesh_vert_other_node_find(MutableSpan<BMeshNode> nodes,
-                                                          const int cd_vert_node_offset,
+static std::optional<int> pbvh_bmesh_vert_other_node_find(const int cd_vert_node_offset,
                                                           const int cd_face_node_offset,
                                                           BMVert *v)
 {
@@ -624,7 +623,7 @@ static void pbvh_bmesh_face_remove(MutableSpan<BMeshNode> nodes,
         /* Find a different node that uses 'v'. */
 
         const std::optional<int> new_node = pbvh_bmesh_vert_other_node_find(
-            nodes, cd_vert_node_offset, cd_face_node_offset, v);
+            cd_vert_node_offset, cd_face_node_offset, v);
         BLI_assert(new_node || BM_vert_face_count_is_equal(v, 1));
 
         if (new_node) {
