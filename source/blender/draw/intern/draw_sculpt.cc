@@ -40,7 +40,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
                                                  const Span<pbvh::AttributeRequest> attrs)
 {
   /* pbvh::Tree should always exist for non-empty meshes, created by depsgraph eval. */
-  bke::pbvh::Tree *pbvh = ob->sculpt ? ob->sculpt->pbvh.get() : nullptr;
+  bke::pbvh::Tree *pbvh = ob->sculpt ? const_cast<bke::pbvh::Tree *>(bke::object::pbvh_get(*ob)) :
+                                       nullptr;
   if (!pbvh) {
     return {};
   }
@@ -101,7 +102,8 @@ static Vector<SculptBatch> sculpt_batches_get_ex(const Object *ob,
   IndexMaskMemory memory;
   const IndexMask visible_nodes = bke::pbvh::search_nodes(
       *pbvh, memory, [&](const bke::pbvh::Node &node) {
-        return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
+        return !BKE_pbvh_node_fully_hidden_get(node) &&
+               BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
       });
 
   const IndexMask nodes_to_update = update_only_visible ? visible_nodes :

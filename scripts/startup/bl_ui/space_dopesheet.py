@@ -306,26 +306,46 @@ class DOPESHEET_HT_editor_buttons:
             panel="DOPESHEET_PT_proportional_edit",
         )
 
-    @staticmethod
-    def _draw_action_selector(context, layout):
-        layout.template_action(context.object, new="action.new", unlink="action.unlink")
+    @classmethod
+    def _draw_action_selector(cls, context, layout):
+        animated_id = cls._get_animated_id(context)
+        if not animated_id:
+            return
+
+        row = layout.row()
+        if animated_id.animation_data and animated_id.animation_data.use_tweak_mode:
+            row.enabled = False
+
+        row.template_action(animated_id, new="action.new", unlink="action.unlink")
 
         if not context.preferences.experimental.use_animation_baklava:
             return
 
-        adt = context.object and context.object.animation_data
+        adt = animated_id and animated_id.animation_data
         if not adt or not adt.action or not adt.action.is_action_layered:
             return
 
         # Store the animated ID in the context, so that the new/unlink operators
         # have access to it.
-        layout.context_pointer_set("animated_id", context.object)
-        layout.template_search(
+        row.context_pointer_set("animated_id", animated_id)
+        row.template_search(
             adt, "action_slot",
             adt, "action_slots",
             new="anim.slot_new_for_id",
             unlink="anim.slot_unassign_from_id",
         )
+
+    @staticmethod
+    def _get_animated_id(context):
+        st = context.space_data
+        match st.mode:
+            case 'ACTION':
+                return context.object
+            case 'SHAPEKEY':
+                return context.object.data and getattr(context.object.data, 'shape_keys', None)
+            case _:
+                print("Dope Sheet mode '{}' not expected to have an Action selector".format(st.mode))
+                return context.object
 
 
 class DOPESHEET_PT_snapping(Panel):

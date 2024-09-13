@@ -13,34 +13,34 @@ namespace blender::bke::polygonboolean {
 
 template<typename T>
 static void interpolate_attribute_of_a_intersection_point(
-    attribute_math::DefaultMixer<T> &mixer,
     const int i,
-    const VArray<T> src_a,
+    const VArray<T> &src_a,
     const blender::polygonboolean::IntersectionPoint &inter_point,
+    attribute_math::DefaultMixer<T> &mixer,
     const float weight = 1.0f)
 {
   const T a0 = src_a[inter_point.point_a];
   const T a1 = src_a[(inter_point.point_a + 1) % src_a.size()];
   const float alpha_a = inter_point.alpha_a;
 
-  mixer.mix_in(i, a0, alpha_a * weight);
-  mixer.mix_in(i, a1, (1.0f - alpha_a) * weight);
+  mixer.mix_in(i, a0, (1.0f - alpha_a) * weight);
+  mixer.mix_in(i, a1, alpha_a * weight);
 }
 
 template<typename T>
 static void interpolate_attribute_of_b_intersection_point(
-    attribute_math::DefaultMixer<T> &mixer,
     const int i,
-    const VArray<T> src_b,
+    const VArray<T> &src_b,
     const blender::polygonboolean::IntersectionPoint &inter_point,
+    attribute_math::DefaultMixer<T> &mixer,
     const float weight = 1.0f)
 {
   const T b0 = src_b[inter_point.point_b];
   const T b1 = src_b[(inter_point.point_b + 1) % src_b.size()];
   const float alpha_b = inter_point.alpha_b;
 
-  mixer.mix_in(i, b0, alpha_b * weight);
-  mixer.mix_in(i, b1, (1.0f - alpha_b) * weight);
+  mixer.mix_in(i, b0, (1.0f - alpha_b) * weight);
+  mixer.mix_in(i, b1, alpha_b * weight);
 }
 
 static Array<int2> calculate_segments(const blender::polygonboolean::BooleanResult &result)
@@ -127,14 +127,14 @@ void interpolate_attribute_from_a_result(const VArray<T> src_a,
 
       const float alpha = (vert.point_id - min_b) / (max_b - min_b);
 
-      interpolate_attribute_of_a_intersection_point<T>(mixer, i, src_a, i0, alpha);
-      interpolate_attribute_of_a_intersection_point<T>(mixer, i, src_a, i1, 1.0f - alpha);
+      interpolate_attribute_of_a_intersection_point<T>(i, src_a, i0, mixer, alpha);
+      interpolate_attribute_of_a_intersection_point<T>(i, src_a, i1, mixer, 1.0f - alpha);
     }
     else if (type == blender::polygonboolean::VertexType::Intersection) {
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
 
-      interpolate_attribute_of_a_intersection_point<T>(mixer, i, src_a, inter_point);
+      interpolate_attribute_of_a_intersection_point<T>(i, src_a, inter_point, mixer);
     }
   }
 
@@ -164,8 +164,8 @@ void interpolate_attribute_from_b_result(const VArray<T> src_b,
 
       const float alpha = (vert.point_id - min_a) / (max_a - min_a);
 
-      interpolate_attribute_of_b_intersection_point<T>(mixer, i, src_b, i0, alpha);
-      interpolate_attribute_of_b_intersection_point<T>(mixer, i, src_b, i1, 1.0f - alpha);
+      interpolate_attribute_of_b_intersection_point<T>(i, src_b, i0, mixer, alpha);
+      interpolate_attribute_of_b_intersection_point<T>(i, src_b, i1, mixer, 1.0f - alpha);
     }
     else if (type == blender::polygonboolean::VertexType::PointB) {
       mixer.set(i, src_b[vert.point_id]);
@@ -174,7 +174,7 @@ void interpolate_attribute_from_b_result(const VArray<T> src_b,
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
 
-      interpolate_attribute_of_b_intersection_point<T>(mixer, i, src_b, inter_point);
+      interpolate_attribute_of_b_intersection_point<T>(i, src_b, inter_point, mixer);
     }
   }
 
@@ -202,8 +202,8 @@ void interpolate_attribute_from_ab_result(const VArray<T> src_a,
       const blender::polygonboolean::IntersectionPoint &inter_point =
           result.intersections_data[vert.point_id];
 
-      interpolate_attribute_of_a_intersection_point<T>(mixer, i, src_a, inter_point);
-      interpolate_attribute_of_b_intersection_point<T>(mixer, i, src_b, inter_point);
+      interpolate_attribute_of_a_intersection_point<T>(i, src_a, inter_point, mixer);
+      interpolate_attribute_of_b_intersection_point<T>(i, src_b, inter_point, mixer);
     }
   }
 

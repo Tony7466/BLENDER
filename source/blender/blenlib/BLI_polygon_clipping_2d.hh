@@ -74,8 +74,8 @@ struct BooleanResult {
   Array<IntersectionPoint> intersections_data;
 };
 
-void interpolate_position_ab(const Span<float2> pos_a,
-                             const Span<float2> pos_b,
+void interpolate_position_ab(Span<float2> pos_a,
+                             Span<float2> pos_b,
                              const BooleanResult &result,
                              MutableSpan<float2> dst_pos);
 void interpolate_position_a(const Span<float2> pos_a,
@@ -83,28 +83,26 @@ void interpolate_position_a(const Span<float2> pos_a,
                             MutableSpan<float2> dst_pos);
 
 std::optional<BooleanResult> curve_boolean_calc(const Operation boolean_mode,
-                                                const Span<float2> curve_a,
-                                                const Span<float2> curve_b);
+                                                Span<float2> curve_a,
+                                                Span<float2> curve_b);
 /**
  * `Cut` behaves like `NotB` but with `A` not having any fill, and so `A` is cut into separate
  * parts without any segments of `B` is left in the result.
  */
 std::optional<BooleanResult> curve_boolean_cut(const bool is_a_cyclic,
-                                               const Span<float2> curve_a,
-                                               const Span<float2> curve_b);
+                                               Span<float2> curve_a,
+                                               Span<float2> curve_b);
 
 BooleanResult result_remove_holes(const BooleanResult &in_result,
-                                  const Span<float2> curve_a,
-                                  const Span<float2> curve_b);
+                                  Span<float2> curve_a,
+                                  Span<float2> curve_b);
 BooleanResult result_sort_holes(const BooleanResult &in_result,
-                                const Span<float2> curve_a,
-                                const Span<float2> curve_b);
+                                Span<float2> curve_a,
+                                Span<float2> curve_b);
 
 /**
  * This returns the most appropriate result when the inputted geometry has an degeneracies.
  */
-BooleanResult invalid_result(const Operation mode,
-                             const Span<float2> curve_a,
-                             const Span<float2> curve_b);
+BooleanResult invalid_result(const Operation mode, Span<float2> curve_a, Span<float2> curve_b);
 
 }  // namespace blender::polygonboolean
