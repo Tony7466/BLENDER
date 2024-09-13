@@ -129,8 +129,8 @@ static bAction *find_related_action(Main &bmain, ID &id)
         if (node_tree && ID_REAL_USERS(&node_tree->id) == 1) {
           related_ids.append_non_duplicates(&node_tree->id);
         }
-        Key *key = BKE_key_from_id(related_id);
 
+        Key *key = BKE_key_from_id(related_id);
         if (key) {
           /* No check for multi user because the Shapekey cannot be shared. */
           BLI_assert(ID_REAL_USERS(&key->id) == 1);
@@ -169,14 +169,14 @@ bAction *id_action_ensure(Main *bmain, ID *id)
     if (action == nullptr) {
       /* init action name from name of ID block */
       char actname[sizeof(id->name) - 2];
-      if (id->flag & ID_FLAG_EMBEDDED_DATA) {
+      if (id->flag & ID_FLAG_EMBEDDED_DATA && USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
         /* When the ID is embedded, use the name of the owner ID for clarity. */
         ID *owner_id = BKE_id_owner_get(id);
         /* If the ID is embedded it should have an owner. */
         BLI_assert(owner_id != nullptr);
         SNPRINTF(actname, DATA_("%sAction"), owner_id->name + 2);
       }
-      else if (GS(id->name) == ID_KE) {
+      else if (GS(id->name) == ID_KE && USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
         Key *key = (Key *)id;
         SNPRINTF(actname, DATA_("%sAction"), key->from->name + 2);
       }
