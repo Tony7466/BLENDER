@@ -191,6 +191,11 @@ class Tree {
   /* Memory backing for Node.prim_indices. */
   Array<int> prim_indices_;
 
+  /**
+   * If true, the bounds for the corresponding node index is out of dat.
+   * \note Values are only meaningful for leaf nodes.
+   * \note The vector's size may not match the size of the nodes array.
+   */
   Vector<bool> bounds_dirty_;
 
   float planes_[6][4];
