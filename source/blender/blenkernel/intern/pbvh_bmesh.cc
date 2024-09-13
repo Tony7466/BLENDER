@@ -2269,6 +2269,7 @@ std::unique_ptr<Tree> build_bmesh(BMesh *bm)
   pbvh_bmesh_create_nodes_fast_recursive(
       nodes, cd_vert_node_offset, cd_face_node_offset, nodeinfo, face_bounds, &rootnode, 0);
 
+  pbvh->tag_positions_changed(nodes.index_range());
   update_bounds_bmesh(*bm, *pbvh);
   store_bounds_orig(*pbvh);
 
