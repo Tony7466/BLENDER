@@ -327,13 +327,25 @@ static_assert(sizeof(Action) == sizeof(::bAction),
               "DNA struct and its C++ wrapper must have the same size");
 
 /**
- * Strips contain the actual animation data.
+ * Strips define how the actual animation data is mapped onto the layers.
  *
- * Although the data model allows for different strip types, currently only a
- * single type is implemented: keyframe strips.
+ * Strips do not technically own their own data, but instead refer to data
+ * that's stored in arrays directly on the action itself, and specify how that
+ * data is mapped onto a layer.
+ *
+ * Different strips can refer to different types of data, although at the moment
+ * only one type of strip data is implemented: keyframe animation data.
  */
 class Strip : public ::ActionStrip {
  public:
+  /**
+   * The possible types of strip data.
+   *
+   * Each enum value here corresponds to one data type. It is used to record
+   * which type of data a strip refers to in the strip's `data_type` field (also
+   * returned by `Strip::type()`). Each data type also knows which enum value it
+   * corresponds to, stored in the type's static `TYPE` field.
+   */
   enum class Type : int8_t { Keyframe = 0 };
 
   /* Strips should never be directly constructed or copied. They should be
@@ -348,7 +360,7 @@ class Strip : public ::ActionStrip {
    * Make a full, deep copy of the strip, including its data.
    *
    * The strip *must* belong to `owning_action`, as that is where the strip data
-   * is duplicated. And for the same reason, the new duplicate strip must *only*
+   * is stored. And for the same reason, the new duplicate strip must *only*
    * be placed onto a layer that also belongs to `owning_action`.
    *
    * This method does *not* place the new duplicate strip on a layer. That is up
