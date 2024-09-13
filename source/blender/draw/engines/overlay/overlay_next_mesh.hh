@@ -173,23 +173,17 @@ class Meshes {
     {
       /* Support masked transparency in Workbench.
        * EEVEE can't be supported since depth won't match. */
-      const eDrawType shading_type = eDrawType(state.v3d->shading.type);
-      const bool masked_transparency_support = (shading_type <= OB_SOLID) ||
-                                               BKE_scene_uses_blender_workbench(state.scene);
-      const bool shadeless = shading_type == OB_WIRE;
-      const bool draw_contours = state.overlay.wpaint_flag & V3D_OVERLAY_WPAINT_CONTOURS;
+      const bool shadeless = eDrawType(state.v3d->shading.type) == OB_WIRE;
 
       auto &pass = edit_mesh_weight_ps_;
-      pass.state_set(DRW_STATE_WRITE_COLOR |
-                         (masked_transparency_support ?
-                              (DRW_STATE_DEPTH_EQUAL | DRW_STATE_BLEND_ALPHA) :
-                              (DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH)),
+      pass.init();
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH,
                      state.clipping_plane_count);
       pass.shader_set(shadeless ? res.shaders.paint_weight.get() :
                                   res.shaders.paint_weight_fake_shading.get());
       pass.bind_ubo("globalsBlock", &res.globals_buf);
       pass.bind_texture("colorramp", &res.weight_ramp_tx);
-      pass.push_constant("drawContours", draw_contours);
+      pass.push_constant("drawContours", false);
       pass.push_constant("opacity", state.overlay.weight_paint_mode_opacity);
       if (!shadeless) {
         /* Arbitrary light to give a hint of the geometry behind the weights. */
