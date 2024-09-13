@@ -56,11 +56,9 @@ class Grid {
       const float4 color_back = math::interpolate(
           res.theme_settings.color_background, res.theme_settings.color_grid, 0.5);
       sub.push_constant("ucolor", color_back);
+      sub.push_constant("tile_scale", data_.size);
       sub.bind_texture("depthBuffer", &res.depth_tx);
-      const float4x4 mat = math::from_scale<float4x4>(data_.size);
-      draw::Manager &manager = *DRW_manager_get();
-      ResourceHandle handle = manager.resource_handle(mat);
-      sub.draw(shapes.quad_solid.get(), handle);
+      sub.draw(shapes.quad_solid.get());
     }
     {
       auto &sub = grid_ps_.sub("grid");
