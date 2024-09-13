@@ -134,6 +134,7 @@ void Instance::begin_sync()
     layer.metaballs.begin_sync();
     layer.meshes.begin_sync(resources, state, view);
     layer.mesh_uvs.begin_sync(resources, state);
+    layer.mode_transfer.begin_sync(resources, state);
     layer.paints.begin_sync(resources, state);
     layer.particles.begin_sync(resources, state);
     layer.prepass.begin_sync(resources, state);
@@ -156,14 +157,21 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
   const bool in_edit_mode = object_is_edit_mode(ob_ref.object);
   const bool in_paint_mode = object_is_paint_mode(ob_ref.object);
   const bool in_sculpt_mode = object_is_sculpt_mode(ob_ref);
+  const bool in_particle_edit_mode = object_is_particle_edit_mode(ob_ref);
   const bool in_edit_paint_mode = object_is_edit_paint_mode(
       ob_ref, in_edit_mode, in_paint_mode, in_sculpt_mode);
   const bool needs_prepass = object_needs_prepass(ob_ref, in_paint_mode);
 
   OverlayLayer &layer = object_is_in_front(ob_ref.object, state) ? infront : regular;
 
+  layer.mode_transfer.object_sync(manager, ob_ref, state);
+
   if (needs_prepass) {
     layer.prepass.object_sync(manager, ob_ref, resources, state);
+  }
+
+  if (in_particle_edit_mode) {
+    layer.particles.edit_object_sync(manager, ob_ref, resources, state);
   }
 
   if (in_paint_mode) {
@@ -436,7 +444,9 @@ void Instance::draw(Manager &manager)
   auto overlay_fb_draw = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
     layer.facing.draw(framebuffer, manager, view);
     layer.fade.draw(framebuffer, manager, view);
+    layer.mode_transfer.draw(framebuffer, manager, view);
     layer.paints.draw(framebuffer, manager, view);
+    layer.particles.draw_no_line(framebuffer, manager, view);
   };
 
   auto draw_layer = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
@@ -535,6 +545,11 @@ bool Instance::object_is_sculpt_mode(const ObjectRef &ob_ref)
   }
 
   return false;
+}
+
+bool Instance::object_is_particle_edit_mode(const ObjectRef &ob_ref)
+{
+  return (ob_ref.object->mode == OB_MODE_PARTICLE_EDIT) && (state.ctx_mode == CTX_MODE_PARTICLE);
 }
 
 bool Instance::object_is_sculpt_mode(const Object *object)
