@@ -16,7 +16,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Offset").default_value(float3(0.0)).hide_value();
   b.add_output<decl::Color>("Combined Color");
   b.add_output<decl::Vector>("Position");
-  b.add_output<decl::Vector>("Normal");
 }
 
 static int node_shader_fn(GPUMaterial *mat,

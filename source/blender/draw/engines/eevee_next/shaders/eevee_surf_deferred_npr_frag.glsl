@@ -65,10 +65,7 @@ void npr_input_impl(vec2 texel_offset,
   }
 }
 
-void npr_refraction_impl(vec2 texel_offset,
-                         inout vec4 combined_color,
-                         inout vec3 position,
-                         inout vec3 normal)
+void npr_refraction_impl(vec2 texel_offset, inout vec4 combined_color, inout vec3 position)
 {
   /*TODO(NPR): Texel-based offset is pretty bad.*/
   ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
@@ -85,7 +82,6 @@ void npr_refraction_impl(vec2 texel_offset,
     combined_color = texelFetch(radiance_back_tx, texel, 0);
     combined_color.a = saturate(1.0 - combined_color.a);
   }
-  /*TODO(NPR): Normal?*/
 }
 
 void main()
