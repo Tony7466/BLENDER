@@ -548,7 +548,8 @@ Tree::~Tree()
 
 void Tree::tag_positions_changed(const IndexMask &node_mask)
 {
-  this->bounds_dirty_.resize(node_mask.min_array_size(), false);
+  this->bounds_dirty_.resize(std::max(this->bounds_dirty_.size(), node_mask.min_array_size()),
+                             false);
   /* TODO: Use `to_bools` with first clear disabled. */
   node_mask.foreach_index_optimized<int>(GrainSize(2048),
                                          [&](const int i) { this->bounds_dirty_[i] = true; });
