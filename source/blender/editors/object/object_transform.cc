@@ -1737,28 +1737,26 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         cent = math::midpoint(bounds.min, bounds.max);
       }
       else if (around == V3D_AROUND_CENTER_MEDIAN) {
+        const int current_frame = scene->r.cfra;
         float3 center = float3(0.0f);
         int total_points = 0;
 
         for (const int layer_i : grease_pencil.layers().index_range()) {
           const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
-          const float4x4 layer_to_object = layer.to_object_space(*ob);
-          const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
-          frames.foreach_item(
-              [&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
-                GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
-                if (base->type != GP_DRAWING) {
-                  return;
-                }
-                const bke::greasepencil::Drawing &drawing =
-                    reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
-                const bke::CurvesGeometry &curves = drawing.strokes();
+          const float4x4 layer_to_object = layer.local_transform();
+          if (!layer.is_visible()) {
+            continue;
+          }
+          if (const bke::greasepencil::Drawing *drawing = grease_pencil.get_drawing_at(
+                  layer, current_frame))
+          {
+            const bke::CurvesGeometry &curves = drawing->strokes();
 
-                for (const int i : curves.points_range()) {
-                  center += math::transform_point(layer_to_object, curves.positions()[i]);
-                }
-                total_points += curves.points_num();
-              });
+            for (const int i : curves.points_range()) {
+              center += math::transform_point(layer_to_object, curves.positions()[i]);
+            }
+            total_points += curves.points_num();
+          }
         }
 
         if (total_points != 0) {
