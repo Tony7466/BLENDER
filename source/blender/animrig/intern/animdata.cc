@@ -29,6 +29,7 @@
 #include "DNA_key_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_particle_types.h"
 
 #include "ED_anim_api.hh"
 
@@ -101,6 +102,15 @@ static bAction *find_related_action(Main &bmain, ID &id)
         if (ID_REAL_USERS(data) == 1) {
           related_ids.append_non_duplicates(data);
         }
+        LISTBASE_FOREACH (ParticleSystem *, particle_system, &ob->particlesystem) {
+          if (!particle_system) {
+            continue;
+          }
+          if (ID_REAL_USERS(&particle_system->part->id) != 1) {
+            continue;
+          }
+          related_ids.append_non_duplicates(&particle_system->part->id);
+        }
         break;
       }
 
@@ -119,6 +129,36 @@ static bAction *find_related_action(Main &bmain, ID &id)
         if (mat->nodetree && ID_REAL_USERS(&mat->nodetree->id) == 1) {
           related_ids.append_non_duplicates(&mat->nodetree->id);
         }
+        break;
+      }
+
+      case ID_PA: {
+        if (ID_REAL_USERS(related_id) != 1) {
+          continue;
+        }
+        Object *ob;
+        ID *object_id;
+        /* Find users of this particle setting. */
+        FOREACH_MAIN_LISTBASE_ID_BEGIN (&bmain.objects, object_id) {
+          ob = (Object *)object_id;
+          bool object_uses_particle_settings = false;
+          LISTBASE_FOREACH (ParticleSystem *, particle_system, &ob->particlesystem) {
+            if (!particle_system) {
+              continue;
+            }
+            if (&particle_system->part->id != related_id) {
+              continue;
+            }
+            object_uses_particle_settings = true;
+            break;
+          }
+          if (object_uses_particle_settings) {
+            related_ids.append_non_duplicates(&ob->id);
+            break;
+          }
+        }
+        FOREACH_MAIN_LISTBASE_ID_END;
+
         break;
       }
 
