@@ -182,6 +182,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/image.h"
 #include "kernel/svm/invert.h"
 #include "kernel/svm/light_path.h"
+#include "kernel/svm/linear_system_solver.h"
 #include "kernel/svm/magic.h"
 #include "kernel/svm/map_range.h"
 #include "kernel/svm/mapping.h"
@@ -570,6 +571,9 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_BLACKBODY)
       svm_node_blackbody(kg, sd, stack, node.y, node.z);
+      break;
+      SVM_CASE(NODE_LINEAR_SYSTEM_SOLVER)
+      offset = svm_node_linear_system_solver(kg, sd, stack, node, offset);
       break;
       SVM_CASE(NODE_MAP_RANGE)
       offset = svm_node_map_range(kg, sd, stack, node.y, node.z, node.w, offset);

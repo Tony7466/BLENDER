@@ -172,6 +172,7 @@ set(SRC_KERNEL_SVM_HEADERS
   svm/image.h
   svm/invert.h
   svm/light_path.h
+  svm/linear_system_solver.h
   svm/magic.h
   svm/map_range.h
   svm/mapping.h

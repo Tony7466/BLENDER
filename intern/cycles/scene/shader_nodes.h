@@ -1376,6 +1376,23 @@ class BlackbodyNode : public ShaderNode {
   NODE_SOCKET_API(float, temperature)
 };
 
+class LinearSystemSolverNode : public ShaderNode {
+ public:
+  SHADER_NODE_CLASS(LinearSystemSolverNode)
+
+  NODE_SOCKET_API(int, matrix_dimension)
+  NODE_SOCKET_API(float3, b_vector)
+  NODE_SOCKET_API(float, b_vector_w)
+  NODE_SOCKET_API(float3, column_1)
+  NODE_SOCKET_API(float, column_1_w)
+  NODE_SOCKET_API(float3, column_2)
+  NODE_SOCKET_API(float, column_2_w)
+  NODE_SOCKET_API(float3, column_3)
+  NODE_SOCKET_API(float, column_3_w)
+  NODE_SOCKET_API(float3, column_4)
+  NODE_SOCKET_API(float, column_4_w)
+};
+
 class VectorMapRangeNode : public ShaderNode {
  public:
   SHADER_NODE_CLASS(VectorMapRangeNode)

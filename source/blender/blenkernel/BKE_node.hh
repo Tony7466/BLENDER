@@ -999,6 +999,7 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define SH_NODE_TEX_GABOR 715
 #define SH_NODE_BSDF_METALLIC 716
 #define SH_NODE_TEX_RAIKO_BASE 717
+#define SH_NODE_LINEAR_SYSTEM_SOLVER 718
 
 /** \} */
 

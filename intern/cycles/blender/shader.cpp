@@ -434,6 +434,12 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeRGBToBW)) {
     node = graph->create_node<RGBToBWNode>();
   }
+  else if (b_node.is_a(&RNA_ShaderNodeLinearSystemSolver)) {
+    BL::ShaderNodeLinearSystemSolver b_linear_system_solver_node(b_node);
+    LinearSystemSolverNode *linear_system_solver = graph->create_node<LinearSystemSolverNode>();
+    linear_system_solver->set_matrix_dimension(b_linear_system_solver_node.matrix_dimension());
+    node = linear_system_solver;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeMapRange)) {
     BL::ShaderNodeMapRange b_map_range_node(b_node);
     if (b_map_range_node.data_type() == BL::ShaderNodeMapRange::data_type_FLOAT_VECTOR) {

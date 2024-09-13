@@ -577,6 +577,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_layer_weight.glsl
   shaders/material/gpu_shader_material_light_falloff.glsl
   shaders/material/gpu_shader_material_light_path.glsl
+  shaders/material/gpu_shader_material_linear_system_solver.glsl
   shaders/material/gpu_shader_material_mapping.glsl
   shaders/material/gpu_shader_material_map_range.glsl
   shaders/material/gpu_shader_material_metallic.glsl

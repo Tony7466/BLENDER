@@ -1565,6 +1565,11 @@ typedef struct NodeDenoise {
   char prefilter;
 } NodeDenoise;
 
+typedef struct NodeLinearSystemSolver {
+  uint8_t matrix_dimension;
+  char _pad[7];
+} NodeLinearSystemSolver;
+
 typedef struct NodeMapRange {
   /** #eCustomDataType */
   uint8_t data_type;

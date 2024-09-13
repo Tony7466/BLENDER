@@ -55,6 +55,7 @@ void register_shader_nodes()
   register_node_type_sh_layer_weight();
   register_node_type_sh_light_falloff();
   register_node_type_sh_light_path();
+  register_node_type_sh_linear_system_solver();
   register_node_type_sh_map_range();
   register_node_type_sh_mapping();
   register_node_type_sh_math();

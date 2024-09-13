@@ -4397,6 +4397,32 @@ static void def_clamp(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
+static void def_linear_system_solver(StructRNA *srna)
+{
+  static const EnumPropertyItem rna_enum_node_tex_matrix_dimension_items[] = {
+      {1, "1x1", 0, "1x1", "A is a 1x1 matrix in Ax=b. Solve for x"},
+      {2,
+       "2x2",
+       0,
+       "2x2",
+       "A is a 2x2 matrix in Ax=b. Solve for x. The Z components of all inputs and outputs are "
+       "ignored"},
+      {3, "3x3", 0, "3x3", "A is a 3x3 matrix in Ax=b. Solve for x"},
+      {4, "4x4", 0, "4x4", "A is a 4x4 matrix in Ax=b. Solve for x"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeLinearSystemSolver", "storage");
+
+  prop = RNA_def_property(srna, "matrix_dimension", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "matrix_dimension");
+  RNA_def_property_enum_items(prop, rna_enum_node_tex_matrix_dimension_items);
+  RNA_def_property_ui_text(prop, "Matrix Dimension", "Dimension of the A matrix in Ax=b");
+  RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+}
+
 static void def_map_range(StructRNA *srna)
 {
   static const EnumPropertyItem rna_enum_data_type_items[] = {
