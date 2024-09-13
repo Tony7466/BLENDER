@@ -44,19 +44,6 @@ static gpu::VertBuf *vbo_from_vector(const Vector<Vertex> &vector)
   return vbo;
 }
 
-static gpu::VertBuf *vbo_from_vector(const Vector<float2> &vector)
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-  }
-
-  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
-  GPU_vertbuf_data_alloc(*vbo, vector.size());
-  vbo->data<float2>().copy_from(vector);
-  return vbo;
-}
-
 static gpu::VertBuf *vbo_from_vector(Vector<VertShaded> &vector)
 {
   static GPUVertFormat format = {0};
@@ -1388,16 +1375,16 @@ ShapeCache::ShapeCache()
       steps[i] = -1.0f + float(i * 2) / SI_GRID_STEPS_LEN;
     }
 
-    Vector<float2> verts;
+    Vector<Vertex> verts;
     for (const int x : IndexRange(SI_GRID_STEPS_LEN)) {
       for (const int y : IndexRange(SI_GRID_STEPS_LEN)) {
-        verts.append(float2(steps[x], steps[y]));
-        verts.append(float2(steps[x + 1], steps[y]));
-        verts.append(float2(steps[x], steps[y + 1]));
+        verts.append(Vertex{{steps[x], steps[y], 0.0f}});
+        verts.append(Vertex{{steps[x + 1], steps[y], 0.0f}});
+        verts.append(Vertex{{steps[x], steps[y + 1], 0.0f}});
 
-        verts.append(float2(steps[x], steps[y + 1]));
-        verts.append(float2(steps[x + 1], steps[y]));
-        verts.append(float2(steps[x + 1], steps[y + 1]));
+        verts.append(Vertex{{steps[x], steps[y + 1], 0.0f}});
+        verts.append(Vertex{{steps[x + 1], steps[y], 0.0f}});
+        verts.append(Vertex{{steps[x + 1], steps[y + 1], 0.0f}});
       }
     }
     grid = BatchPtr(
