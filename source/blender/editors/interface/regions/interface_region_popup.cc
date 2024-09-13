@@ -831,7 +831,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
       }
     }
     /* Layout panels are relative to `block->rect.ymax`. Rather than a
-     * scroll, this is a offsetapplied due to the overflow at the top. */
+     * scroll, this is a offset applied due to the overflow at the top. */
     ui_layout_panel_popup_scroll_apply(block->panel, -scroll_min);
   }
   /* Apply popup scroll offset to layout panels. */
