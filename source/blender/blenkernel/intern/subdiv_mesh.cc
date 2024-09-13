@@ -1162,7 +1162,7 @@ Mesh *subdiv_to_mesh(Subdiv *subdiv, const ToMeshSettings *settings, const Mesh 
   stats_begin(&subdiv->stats, SUBDIV_STATS_SUBDIV_TO_MESH);
   /* Make sure evaluator is up to date with possible new topology, and that
    * it is refined for the new positions of coarse vertices. */
-  if (!eval_begin_from_mesh(subdiv, coarse_mesh, nullptr, SUBDIV_EVALUATOR_TYPE_CPU, nullptr)) {
+  if (!eval_begin_from_mesh(subdiv, coarse_mesh, {}, SUBDIV_EVALUATOR_TYPE_CPU, nullptr)) {
     /* This could happen in two situations:
      * - OpenSubdiv is disabled.
      * - Something totally bad happened, and OpenSubdiv rejected our
@@ -1226,16 +1226,8 @@ Mesh *subdiv_to_mesh(Subdiv *subdiv, const ToMeshSettings *settings, const Mesh 
 
   /* Move the optimal display edge array to the final bit vector. */
   if (!subdiv_context.subdiv_display_edges.is_empty()) {
-    const Span<bool> span = subdiv_context.subdiv_display_edges;
-    BitVector<> &bit_vector = result->runtime->subsurf_optimal_display_edges;
-    bit_vector.clear();
-    bit_vector.resize(subdiv_context.subdiv_display_edges.size());
-    threading::parallel_for_aligned(
-        span.index_range(), 4096, bits::BitsPerInt, [&](const IndexRange range) {
-          for (const int i : range) {
-            bit_vector[i].set(span[i]);
-          }
-        });
+    result->runtime->subsurf_optimal_display_edges = BitVector<>(
+        subdiv_context.subdiv_display_edges);
   }
 
   if (coarse_mesh->verts_no_face().count == 0) {
