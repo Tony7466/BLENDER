@@ -41,7 +41,6 @@ namespace bke {
 enum class AttrDomain : int8_t;
 class CurvesGeometry;
 namespace crazyspace {
-struct GeometryDeformation;
 }
 }  // namespace bke
 }  // namespace blender
@@ -270,6 +269,7 @@ bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 bool grease_pencil_sculpting_poll(bContext *C);
 bool grease_pencil_weight_painting_poll(bContext *C);
+bool grease_pencil_vertex_painting_poll(bContext *C);
 
 float opacity_from_input_sample(const float pressure,
                                 const Brush *brush,
@@ -323,6 +323,10 @@ IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
                                     int layer_index,
                                     IndexMaskMemory &memory);
+IndexMask retrieve_editable_fill_strokes(Object &grease_pencil_object,
+                                         const bke::greasepencil::Drawing &drawing,
+                                         int layer_index,
+                                         IndexMaskMemory &memory);
 IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 const int mat_i,
@@ -357,6 +361,10 @@ IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
                                                  const bke::greasepencil::Drawing &drawing,
                                                  int layer_index,
                                                  IndexMaskMemory &memory);
+IndexMask retrieve_editable_and_selected_fill_strokes(Object &grease_pencil_object,
+                                                      const bke::greasepencil::Drawing &drawing,
+                                                      int layer_index,
+                                                      IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 int layer_index,
@@ -488,6 +496,9 @@ void normalize_vertex_weights(MDeformVert &dvert,
                               int active_vertex_group,
                               Span<bool> vertex_group_is_locked,
                               Span<bool> vertex_group_is_bone_deformed);
+
+/** Adds vertex groups for the bones in the armature (with matching names). */
+bool add_armature_vertex_groups(Object &object, const Object &armature);
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
