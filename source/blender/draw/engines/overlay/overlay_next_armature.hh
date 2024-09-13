@@ -34,7 +34,7 @@ class Armatures {
 
   PassSimple armature_ps_ = {"Armature"};
 
-  /* Force transparent drawing in Xray mode. */
+  /* Force transparent drawing in X-ray mode. */
   bool draw_transparent = false;
   /* Force disable drawing relation is relations are off in viewport. */
   bool show_relations = false;
@@ -133,7 +133,7 @@ class Armatures {
 
   void begin_sync(Resources &res, const State &state)
   {
-    enabled_ = !(state.overlay.flag & V3D_OVERLAY_HIDE_BONES);
+    enabled_ = state.v3d && !(state.overlay.flag & V3D_OVERLAY_HIDE_BONES);
 
     if (!enabled_) {
       return;
@@ -497,7 +497,7 @@ class Armatures {
 
     DrawContext() = default;
 
-    /* Runtime switch between legacy and new overlay codebase.
+    /* Runtime switch between legacy and new overlay code-base.
      * Should be removed once the legacy code is removed. */
     bool is_overlay_next() const
     {

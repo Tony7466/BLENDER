@@ -1321,7 +1321,9 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   using namespace blender;
   /* pbvh::Tree should always exist for non-empty meshes, created by depsgraph eval. */
   const Object &object = *scd->ob;
-  bke::pbvh::Tree *pbvh = (object.sculpt) ? object.sculpt->pbvh.get() : nullptr;
+  bke::pbvh::Tree *pbvh = (object.sculpt) ?
+                              const_cast<bke::pbvh::Tree *>(bke::object::pbvh_get(object)) :
+                              nullptr;
   if (!pbvh) {
     return;
   }
@@ -1382,7 +1384,8 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   IndexMaskMemory memory;
   const IndexMask visible_nodes = bke::pbvh::search_nodes(
       *pbvh, memory, [&](const bke::pbvh::Node &node) {
-        return BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
+        return !BKE_pbvh_node_fully_hidden_get(node) &&
+               BKE_pbvh_node_frustum_contain_AABB(&node, &draw_frustum);
       });
 
   const IndexMask nodes_to_update = update_only_visible ? visible_nodes :

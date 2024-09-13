@@ -579,6 +579,7 @@ if(WITH_GTESTS)
     tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
     tests/BLI_multi_value_map_test.cc
+    tests/BLI_offset_indices_test.cc
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
     tests/BLI_polygon_clipping_2d_test.cc
