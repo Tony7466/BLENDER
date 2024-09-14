@@ -5671,7 +5671,7 @@ void ui_draw_menu_item(const uiFontStyle *fstyle,
         }
       }
 
-      rect->xmax = _rect.xmax - 5;
+      rect->xmax = xs;
       uiFontStyleDraw_Params params{};
       params.align = UI_STYLE_TEXT_RIGHT;
       UI_fontstyle_draw(fstyle, rect, hint_drawstr, sizeof(hint_drawstr), wt->wcol.text, &params);
