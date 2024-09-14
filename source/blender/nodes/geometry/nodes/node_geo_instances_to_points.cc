@@ -6,6 +6,7 @@
 
 #include "DNA_pointcloud_types.h"
 
+#include "BKE_attribute_filters.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_instances.hh"
 #include "BKE_pointcloud.hh"
@@ -52,13 +53,13 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
   geometry_set.replace_pointcloud(pointcloud);
   MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
 
-  /* TODO: Compose filter to include skip of positions ans radius attribute from gathering. */
-  bke::gather_attributes(instances.attributes(),
-                         bke::AttrDomain::Instance,
-                         bke::AttrDomain::Point,
-                         attribute_filter,
-                         selection,
-                         dst_attributes);
+  bke::gather_attributes(
+      instances.attributes(),
+      bke::AttrDomain::Instance,
+      bke::AttrDomain::Point,
+      bke::attribute_filter_with_skip_ref(attribute_filter, {"position", "radius"}),
+      selection,
+      dst_attributes);
 
   bke::GSpanAttributeWriter point_positions = dst_attributes.lookup_or_add_for_write_only_span(
       "position", AttrDomain::Point, CD_PROP_FLOAT3);
