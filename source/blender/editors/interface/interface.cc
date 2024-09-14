@@ -386,7 +386,7 @@ void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 
 /* ******************* block calc ************************* */
 
-void UI_block_translate(uiBlock *block, int x, int y)
+void UI_block_translate(uiBlock *block, float x, float y)
 {
   for (const std::unique_ptr<uiBut> &but : block->buttons) {
     BLI_rctf_translate(&but->rect, x, y);
@@ -3517,7 +3517,7 @@ static void ui_block_free_active_operator(uiBlock *block)
   if (block->ui_operator_free) {
     /* This assumes the operator instance owns the pointer. This is not
      * true for all operators by default, but it can be copied when needed. */
-    MEM_freeN(block->ui_operator->ptr);
+    MEM_delete(block->ui_operator->ptr);
     MEM_freeN(block->ui_operator);
   }
 
