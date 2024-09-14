@@ -19,13 +19,13 @@
 #include "ANIM_rna.hh"
 #include "ANIM_visualkey.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_fcurve.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_report.hh"
 
 #include "DNA_scene_types.h"
@@ -533,7 +533,7 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
   const bool is_new_curve = (fcu->totvert == 0);
 
   /* If the curve has only one key, make it cyclic if appropriate. */
-  const bool is_cyclic_action = (flag & INSERTKEY_CYCLE_AWARE) && BKE_action_is_cyclic(act);
+  const bool is_cyclic_action = (flag & INSERTKEY_CYCLE_AWARE) && act->wrap().is_cyclic();
 
   if (is_cyclic_action && fcu->totvert == 1) {
     make_new_fcurve_cyclic(fcu, {act->frame_start, act->frame_end});
@@ -868,12 +868,14 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
                                                       const eInsertKeyFlags insert_key_flags)
 {
   BLI_assert(action.is_action_layered());
-
-  Slot &slot = action.slot_ensure_for_id(*rna_pointer->owner_id);
-  const bool success = action.assign_id(&slot, *rna_pointer->owner_id);
-  UNUSED_VARS_NDEBUG(success);
+  ID &animated_id = *rna_pointer->owner_id;
   BLI_assert_msg(
-      success,
+      ELEM(get_action(animated_id), &action, nullptr),
+      "The animated ID should not be using another Action than the one passed to this function");
+
+  Slot *slot = assign_action_ensure_slot_for_keying(action, animated_id);
+  BLI_assert_msg(
+      slot,
       "The conditions that would cause this Slot assigment to fail (such as the ID not being "
       "animatible) should have been caught and handled by higher-level functions.");
 
@@ -898,7 +900,7 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
     if (!path_resolved) {
       std::fprintf(stderr,
                    "Failed to insert key on slot %s due to unresolved RNA path: %s\n",
-                   slot.name,
+                   slot->name,
                    rna_path.path.c_str());
       combined_result.add(SingleKeyingResult::CANNOT_RESOLVE_PATH);
       continue;
@@ -923,7 +925,7 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
       const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
       const SingleKeyingResult result = insert_key_layer(bmain,
                                                          *layer,
-                                                         slot,
+                                                         *slot,
                                                          *rna_path_id_to_prop,
                                                          prop_subtype,
                                                          channel_group,

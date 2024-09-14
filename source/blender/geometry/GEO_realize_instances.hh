@@ -29,7 +29,8 @@ struct RealizeInstancesOptions {
    */
   bool move_physics_world_data = false;
 
-  bke::AnonymousAttributePropagationInfo propagation_info;
+  std::reference_wrapper<const bke::AttributeFilter> attribute_filter =
+      bke::AttributeFilter::default_filter();
 };
 
 /**
