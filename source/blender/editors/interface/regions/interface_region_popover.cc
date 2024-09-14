@@ -210,7 +210,7 @@ static uiBlock *ui_block_func_POPOVER(bContext *C, uiPopupBlockHandle *handle, v
     if (!handle->refresh) {
       uiBut *but = nullptr;
       uiBut *but_first = nullptr;
-      for (std::unique_ptr<uiBut> &but_iter : block->buttons) {
+      for (const std::unique_ptr<uiBut> &but_iter : block->buttons) {
         if ((but_first == nullptr) && ui_but_is_editable(but_iter.get())) {
           but_first = but_iter.get();
         }

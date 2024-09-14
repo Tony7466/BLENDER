@@ -281,7 +281,7 @@ uiBut *uiBlock::prev_but(const uiBut *but) const
   return idx >= 0 ? this->buttons[idx].get() : nullptr;
 }
 
-void uiBlock::remove_but(uiBut *but)
+void uiBlock::remove_but(const uiBut *but)
 {
   int64_t target_index = this->but_index(but);
   this->buttons.remove(target_index);
@@ -300,7 +300,7 @@ uiBut *uiBlock::last_but_or_null() const
 static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 {
   int sepr_flex_len = 0;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       sepr_flex_len++;
     }
@@ -321,7 +321,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
 
   /* We could get rid of this loop if we agree on a max number of spacer */
   Vector<int, 8> spacers_pos;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       ui_but_to_pixelrect(&rect, region, block, but.get());
       spacers_pos.append(rect.xmax + UI_HEADER_OFFSET);
@@ -332,7 +332,7 @@ static void ui_update_flexible_spacing(const ARegion *region, uiBlock *block)
   const float segment_width = region_width / float(sepr_flex_len);
   float offset = 0, remaining_space = region_width - buttons_width;
   int i = 0;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     BLI_rctf_translate(&but->rect, offset / view_scale_x, 0);
     if (but->type == UI_BTYPE_SEPR_SPACER) {
       /* How much the next block overlap with the current segment */
@@ -388,7 +388,7 @@ void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 
 void UI_block_translate(uiBlock *block, int x, int y)
 {
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     BLI_rctf_translate(&but->rect, x, y);
   }
 
@@ -492,7 +492,7 @@ void ui_block_bounds_calc(uiBlock *block)
 
     BLI_rctf_init_minmax(&block->rect);
 
-    for (std::unique_ptr<uiBut> &bt : block->buttons) {
+    for (const std::unique_ptr<uiBut> &bt : block->buttons) {
       BLI_rctf_union(&block->rect, &bt->rect);
     }
 
@@ -838,7 +838,7 @@ static bool ui_but_equals_old(const uiBut *but, const uiBut *oldbut)
 
 uiBut *ui_but_find_old(uiBlock *block_old, const uiBut *but_new)
 {
-  for (std::unique_ptr<uiBut> &but : block_old->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block_old->buttons) {
     if (ui_but_equals_old(but_new, but.get())) {
       return but.get();
     }
@@ -848,7 +848,7 @@ uiBut *ui_but_find_old(uiBlock *block_old, const uiBut *but_new)
 
 uiBut *ui_but_find_new(uiBlock *block_new, const uiBut *but_old)
 {
-  for (std::unique_ptr<uiBut> &but : block_new->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block_new->buttons) {
     if (ui_but_equals_old(but.get(), but_old)) {
       return but.get();
     }
@@ -998,11 +998,7 @@ static void ui_but_update_old_active_from_new(uiBut *oldbut, uiBut *but)
   /* NOTE: if layout hasn't been applied yet, it uses old button pointers... */
 }
 
-/**
- * \return true when \a but_p is set (only done for active buttons).
- */
-
-static bool but_itr_in_range(std::unique_ptr<uiBut> *but, uiBlock *block)
+static bool but_itr_in_range(const std::unique_ptr<uiBut> *but, const uiBlock *block)
 {
   return block->buttons.begin() <= but && but < block->buttons.end();
 }
@@ -1019,6 +1015,9 @@ std::unique_ptr<uiBut> *but_rfind_old_itr(uiBlock *block_old,
   return nullptr;
 }
 
+/**
+ * \return true when \a but_p is set (only done for active buttons).
+ */
 static bool ui_but_update_from_old_block(const bContext *C,
                                          uiBlock *block,
                                          std::unique_ptr<uiBut> &but,
@@ -1028,7 +1027,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
 
 #if 0
   /* Simple method - search every time. Keep this for easy testing of the "fast path." */
-  uiBut *oldbut = but_rfind_old_itr(oldblock, but);
+  oldbut = but_rfind_old_itr(oldblock, but);
   UNUSED_VARS(oldbut);
 #else
   BLI_assert(oldbut == nullptr || but_itr_in_range(oldbut, oldblock));
@@ -1134,7 +1133,7 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, ui
   BLI_assert(block->endblock);
 
   bool done = false;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->flag & UI_BUT_ACTIVATE_ON_INIT) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
       if (ui_but_is_editable(but.get())) {
@@ -1149,7 +1148,7 @@ bool UI_block_active_only_flagged_buttons(const bContext *C, ARegion *region, ui
   if (done) {
     /* Run this in a second pass since it's possible activating the button
      * removes the buttons being looped over. */
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       but->flag &= ~UI_BUT_ACTIVATE_ON_INIT;
     }
   }
@@ -1198,7 +1197,7 @@ static void ui_menu_block_set_keyaccels(uiBlock *block)
     /* 2 Passes: One for first letter only, second for any letter if the first pass fails.
      * Run first pass on all buttons so first word chars always get first priority. */
 
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (!ELEM(but->type,
                 UI_BTYPE_BUT,
                 UI_BTYPE_BUT_MENU,
@@ -1605,7 +1604,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
   }
 
   if (block->flag & UI_BLOCK_PIE_MENU) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but->pie_dir != UI_RADIAL_NONE) {
         const std::string str = ui_but_pie_direction_string(but.get());
         ui_but_add_shortcut(but.get(), str.c_str(), false);
@@ -1613,7 +1612,7 @@ static void ui_menu_block_set_keymaps(const bContext *C, uiBlock *block)
     }
   }
   else {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (block->flag & UI_BLOCK_SHOW_SHORTCUT_ALWAYS) {
         /* Skip icon-only buttons (as used in the toolbar). */
         if (but->drawstr[0] == '\0') {
@@ -1965,7 +1964,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
   BLI_assert(block->active);
 
   /* Extend button data. This needs to be done before the block updating. */
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     ui_but_predefined_extra_operator_icons_add(but.get());
   }
 
@@ -1975,7 +1974,7 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
    * on matching buttons, we need this to make button event handling non
    * blocking, while still allowing buttons to be remade each redraw as it
    * is expected by blender code */
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     /* temp? Proper check for graying out */
     if (but->optype) {
       wmOperatorType *ot = but->optype;
@@ -2164,7 +2163,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   UI_widgetbase_draw_cache_begin();
 
   /* widgets */
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->flag & (UI_HIDDEN | UI_SCROLLED)) {
       continue;
     }
@@ -2196,7 +2195,7 @@ static void ui_block_message_subscribe(ARegion *region, wmMsgBus *mbus, uiBlock 
 {
   uiBut *but_prev = nullptr;
   /* possibly we should keep the region this block is contained in? */
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->rnapoin.type && but->rnaprop) {
       /* quick check to avoid adding buttons representing a vector, multiple times. */
       if ((but_prev && (but_prev->rnaprop == but->rnaprop) &&
@@ -2742,7 +2741,7 @@ uiBut *ui_but_drag_multi_edit_get(uiBut *but)
 
   BLI_assert(but->flag & UI_BUT_DRAG_MULTI);
 
-  for (std::unique_ptr<uiBut> &but_iter : but->block->buttons) {
+  for (const std::unique_ptr<uiBut> &but_iter : but->block->buttons) {
     if (but_iter->editstr) {
       return_but = but_iter.get();
       break;
@@ -3540,7 +3539,7 @@ void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
 
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     ui_but_free(C, but.get());
   }
   block->buttons.clear();

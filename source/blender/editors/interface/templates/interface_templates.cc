@@ -2865,7 +2865,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   if (block->oldblock == nullptr) {
     const bool is_popup = (block->flag & UI_BLOCK_KEEP_OPEN) != 0;
 
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       /* no undo for buttons for operator redo panels */
       UI_but_flag_disable(but.get(), UI_BUT_UNDO);
 

@@ -126,7 +126,7 @@ static uiBut *ui_popup_menu_memory__internal(uiBlock *block, uiBut *but)
   }
 
   /* get */
-  for (std::unique_ptr<uiBut> &but_iter : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but_iter : block->buttons) {
     /* Prevent labels (typically headings), from being returned in the case the text
      * happens to matches one of the menu items.
      * Skip separators too as checking them is redundant. */
@@ -317,14 +317,14 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
         /* position mouse at 0.8*width of the button and below the tile
          * on the first item */
         offset[0] = 0;
-        for (std::unique_ptr<uiBut> &but_iter : block->buttons) {
+        for (const std::unique_ptr<uiBut> &but_iter : block->buttons) {
           offset[0] = min_ii(offset[0],
                              -(but_iter->rect.xmin + 0.8f * BLI_rctf_size_x(&but_iter->rect)));
         }
 
         offset[1] = 2.1 * UI_UNIT_Y;
 
-        for (std::unique_ptr<uiBut> &but_iter : block->buttons) {
+        for (const std::unique_ptr<uiBut> &but_iter : block->buttons) {
           if (ui_but_is_editable(but_iter.get())) {
             but_activate = but_iter.get();
             break;

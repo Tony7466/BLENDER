@@ -294,7 +294,7 @@ uiButViewItem *ui_block_view_find_matching_view_item_but_in_old_block(
     return nullptr;
   }
 
-  for (std::unique_ptr<uiBut> &old_but : old_block->buttons) {
+  for (const std::unique_ptr<uiBut> &old_but : old_block->buttons) {
     if (old_but->type != UI_BTYPE_VIEW_ITEM) {
       continue;
     }

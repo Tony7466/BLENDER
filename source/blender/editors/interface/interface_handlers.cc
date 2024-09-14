@@ -1178,7 +1178,7 @@ static void ui_apply_but_ROW(bContext *C, uiBlock *block, uiBut *but, uiHandleBu
   ui_apply_but_func(C, but);
 
   /* states of other row buttons */
-  for (std::unique_ptr<uiBut> &bt : block->buttons) {
+  for (const std::unique_ptr<uiBut> &bt : block->buttons) {
     if (bt.get() != but && bt->poin == but->poin && ELEM(bt->type, UI_BTYPE_ROW, UI_BTYPE_LISTROW))
     {
       ui_but_update_edited(bt.get());
@@ -1406,7 +1406,7 @@ static uiButMultiState *ui_multibut_lookup(uiHandleButtonData *data, const uiBut
 
 static void ui_multibut_restore(bContext *C, uiHandleButtonData *data, uiBlock *block)
 {
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->flag & UI_BUT_DRAG_MULTI) {
       uiButMultiState *mbut_state = ui_multibut_lookup(data, but.get());
       if (mbut_state) {
@@ -1479,7 +1479,7 @@ static bool ui_multibut_states_tag(uiBut *but_active,
   data->multi_data.has_mbuts = false;
 
   /* follow ui_but_find_mouse_over_ex logic */
-  for (std::unique_ptr<uiBut> &but : but_active->block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : but_active->block->buttons) {
     bool drag_prev = false;
     bool drag_curr = false;
 
@@ -1521,7 +1521,7 @@ static void ui_multibut_states_create(uiBut *but_active, uiHandleButtonData *dat
 
   data->multi_data.bs_mbuts = UI_butstore_create(but_active->block);
 
-  for (std::unique_ptr<uiBut> &but : but_active->block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : but_active->block->buttons) {
     if (but->flag & UI_BUT_DRAG_MULTI) {
       ui_multibut_add(data, but.get());
     }
@@ -1549,7 +1549,7 @@ static void ui_multibut_states_apply(bContext *C, uiHandleButtonData *data, uiBl
   BLI_assert(data->multi_data.init == uiHandleButtonMulti::INIT_ENABLE);
   BLI_assert(data->multi_data.skip == false);
 
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (!(but->flag & UI_BUT_DRAG_MULTI)) {
       continue;
     }
@@ -1680,7 +1680,7 @@ static bool ui_drag_toggle_set_xy_xy(
     ui_window_to_block_fl(region, block, &xy_a_block[0], &xy_a_block[1]);
     ui_window_to_block_fl(region, block, &xy_b_block[0], &xy_b_block[1]);
 
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       /* NOTE: ctrl is always true here because (at least for now)
        * we always want to consider text control in this case, even when not embossed. */
 
@@ -3658,7 +3658,7 @@ static void ui_textedit_next_but(uiBlock *block, uiBut *actbut, uiHandleButtonDa
       }
     }
   }
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but.get() == actbut) {
       break;
     }
@@ -8814,7 +8814,7 @@ static void button_activate_exit(
 
 #ifdef USE_DRAG_MULTINUM
   if (data->multi_data.has_mbuts) {
-    for (std::unique_ptr<uiBut> &bt : block->buttons) {
+    for (const std::unique_ptr<uiBut> &bt : block->buttons) {
       if (bt->flag & UI_BUT_DRAG_MULTI) {
         bt->flag &= ~UI_BUT_DRAG_MULTI;
 
@@ -8871,7 +8871,7 @@ static void button_activate_exit(
 
   /* Disable tool-tips until mouse-move + last active flag. */
   LISTBASE_FOREACH (uiBlock *, block_iter, &data->region->uiblocks) {
-    for (std::unique_ptr<uiBut> &bt : block_iter->buttons) {
+    for (const std::unique_ptr<uiBut> &bt : block_iter->buttons) {
       bt->flag &= ~UI_BUT_LAST_ACTIVE;
     }
 
@@ -8975,7 +8975,7 @@ static uiBut *ui_context_button_active(const ARegion *region, bool (*but_check_c
 
     /* find active button */
     LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-      for (std::unique_ptr<uiBut> &but : block->buttons) {
+      for (const std::unique_ptr<uiBut> &but : block->buttons) {
         if (but->flag & UI_BUT_ACTIVE_OVERRIDE) {
           active_but_override = but.get();
         }
@@ -9153,7 +9153,7 @@ void UI_context_update_anim_flag(const bContext *C)
     uiBut *activebut = nullptr;
 
     LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-      for (std::unique_ptr<uiBut> &but : block->buttons) {
+      for (const std::unique_ptr<uiBut> &but : block->buttons) {
         ui_but_anim_flag(but.get(), &anim_eval_context);
         ui_but_override_flag(CTX_data_main(C), but.get());
         if (UI_but_is_decorator(but)) {
@@ -9213,7 +9213,7 @@ void ui_but_update_view_for_active(const bContext *C, const uiBlock *block)
 static uiBut *ui_but_find_open_event(ARegion *region, const wmEvent *event)
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but.get() == event->customdata) {
         return but.get();
       }
@@ -9400,7 +9400,7 @@ static void foreach_semi_modal_but_as_active(bContext *C,
    * every actually a use-case for multiple semi-active buttons at the same time. */
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if ((but->flag2 & UI_BUT2_FORCE_SEMI_MODAL_ACTIVE) || but->semi_modal_state) {
         with_but_active_as_semi_modal(C, region, but.get(), [&]() { fn(but.get()); });
       }
@@ -10044,7 +10044,7 @@ static int ui_handle_viewlist_items_hover(const wmEvent *event, ARegion *region)
   }
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but.get() == highlight_row_but) {
         continue;
       }
@@ -10336,7 +10336,7 @@ static void ui_menu_scroll_apply_offset_y(ARegion *region, uiBlock *block, float
   if (dy < 0.0f) {
     /* Stop at top item, extra 0.5 UI_UNIT_Y makes it snap nicer. */
     float ymax = -FLT_MAX;
-    for (std::unique_ptr<uiBut> &bt : block->buttons) {
+    for (const std::unique_ptr<uiBut> &bt : block->buttons) {
       ymax = max_ff(ymax, bt->rect.ymax);
     }
     if (ymax + dy - UI_UNIT_Y * 0.5f < block->rect.ymax - scroll_pad) {
@@ -10346,7 +10346,7 @@ static void ui_menu_scroll_apply_offset_y(ARegion *region, uiBlock *block, float
   else {
     /* Stop at bottom item, extra 0.5 UI_UNIT_Y makes it snap nicer. */
     float ymin = FLT_MAX;
-    for (std::unique_ptr<uiBut> &bt : block->buttons) {
+    for (const std::unique_ptr<uiBut> &bt : block->buttons) {
       ymin = min_ff(ymin, bt->rect.ymin);
     }
     if (ymin + dy + UI_UNIT_Y * 0.5f > block->rect.ymin + scroll_pad) {
@@ -10360,7 +10360,7 @@ static void ui_menu_scroll_apply_offset_y(ARegion *region, uiBlock *block, float
   ui_layout_panel_popup_scroll_apply(block->panel, dy);
 
   /* apply scroll offset */
-  for (std::unique_ptr<uiBut> &bt : block->buttons) {
+  for (const std::unique_ptr<uiBut> &bt : block->buttons) {
     bt->rect.ymin += dy;
     bt->rect.ymax += dy;
   }
@@ -10941,7 +10941,7 @@ static int ui_handle_menu_event(bContext *C,
             }
 
             count = 0;
-            for (std::unique_ptr<uiBut> &but : block->buttons) {
+            for (const std::unique_ptr<uiBut> &but : block->buttons) {
               bool doit = false;
 
               if (!ELEM(but->type,
@@ -11048,7 +11048,7 @@ static int ui_handle_menu_event(bContext *C,
             }
 
             /* Accelerator keys that allow "pressing" a menu entry by pressing a single key. */
-            for (std::unique_ptr<uiBut> &but_iter : block->buttons) {
+            for (const std::unique_ptr<uiBut> &but_iter : block->buttons) {
               if (!(but_iter->flag & UI_BUT_DISABLED) && but_iter->menu_key == event->type) {
                 if (but_iter->type == UI_BTYPE_BUT) {
                   UI_but_execute(C, region, but_iter.get());
@@ -11341,7 +11341,7 @@ static int ui_but_pie_menu_apply(bContext *C,
 static uiBut *ui_block_pie_dir_activate(uiBlock *block, const wmEvent *event, RadialDirection dir)
 {
   if ((block->flag & UI_BLOCK_NUMSELECT) && event->val == KM_PRESS) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but->pie_dir == dir && !ELEM(but->type, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE)) {
         return but.get();
       }
@@ -11425,7 +11425,7 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
             block->pie_data.flags |= UI_PIE_ANIMATION_FINISHED;
           }
 
-          for (std::unique_ptr<uiBut> &but : block->buttons) {
+          for (const std::unique_ptr<uiBut> &but : block->buttons) {
             if (but->pie_dir != UI_RADIAL_NONE) {
               float vec[2];
               float center[2];
@@ -11578,7 +11578,7 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
           if (ELEM(event->val, KM_PRESS, KM_DBL_CLICK) &&
               ((event->modifier & (KM_SHIFT | KM_CTRL | KM_OSKEY)) == 0))
           {
-            for (std::unique_ptr<uiBut> &but : block->buttons) {
+            for (const std::unique_ptr<uiBut> &but : block->buttons) {
               if (but->menu_key == event->type) {
                 ui_but_pie_button_activate(C, but.get(), menu);
               }
@@ -12144,7 +12144,7 @@ bool UI_textbutton_activate_rna(const bContext *C,
   uiBut *but_text = nullptr;
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but->type == UI_BTYPE_TEXT) {
         if (but->rnaprop && but->rnapoin.data == rna_poin_data) {
           if (STREQ(RNA_property_identifier(but->rnaprop), rna_prop_id)) {
@@ -12179,7 +12179,7 @@ bool UI_textbutton_activate_but(const bContext *C, uiBut *actbut)
   uiBut *but_text = nullptr;
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but.get() == actbut && but->type == UI_BTYPE_TEXT) {
         block_text = block;
         but_text = but.get();
@@ -12208,7 +12208,7 @@ bool UI_textbutton_activate_but(const bContext *C, uiBut *actbut)
 void UI_region_free_active_but_all(bContext *C, ARegion *region)
 {
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but->active == nullptr) {
         continue;
       }
@@ -12290,7 +12290,7 @@ static uiBlockInteraction_Handle *ui_block_interaction_begin(bContext *C,
   uiBlockInteraction_Handle *interaction = MEM_cnew<uiBlockInteraction_Handle>(__func__);
 
   int unique_retval_ids_len = 0;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->active || (but->flag & UI_BUT_DRAG_MULTI)) {
       unique_retval_ids_len++;
     }
@@ -12299,7 +12299,7 @@ static uiBlockInteraction_Handle *ui_block_interaction_begin(bContext *C,
   int *unique_retval_ids = static_cast<int *>(
       MEM_mallocN(sizeof(*unique_retval_ids) * unique_retval_ids_len, __func__));
   unique_retval_ids_len = 0;
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (but->active || (but->flag & UI_BUT_DRAG_MULTI)) {
       unique_retval_ids[unique_retval_ids_len++] = but->retval;
     }

@@ -512,7 +512,7 @@ static void ui_layer_but_cb(bContext *C, void *arg_but, void *arg_index)
 
     RNA_property_update(C, ptr, prop);
 
-    for (std::unique_ptr<uiBut> &cbut : but->block->buttons) {
+    for (const std::unique_ptr<uiBut> &cbut : but->block->buttons) {
       ui_but_update(cbut.get());
     }
   }
@@ -1144,7 +1144,7 @@ void UI_context_active_but_prop_get_filebrowser(const bContext *C,
   }
 
   LISTBASE_FOREACH (uiBlock *, block, &region->uiblocks) {
-    for (std::unique_ptr<uiBut> &but : block->buttons) {
+    for (const std::unique_ptr<uiBut> &but : block->buttons) {
       if (but && but->rnapoin.data) {
         if (RNA_property_type(but->rnaprop) == PROP_STRING) {
           prevbut = but.get();

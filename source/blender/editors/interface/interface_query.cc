@@ -560,7 +560,7 @@ uiBut *ui_but_next(uiBut *but)
 
 uiBut *ui_but_first(uiBlock *block)
 {
-  for (std::unique_ptr<uiBut> &but : block->buttons) {
+  for (const std::unique_ptr<uiBut> &but : block->buttons) {
     if (ui_but_is_editable(but.get())) {
       return but.get();
     }
