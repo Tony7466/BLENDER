@@ -121,6 +121,13 @@ void CurveComponent::ensure_owns_direct_data()
   }
 }
 
+void CurveComponent::count_memory(MemoryCounter &memory) const
+{
+  if (curves_) {
+    curves_->geometry.wrap().count_memory(memory);
+  }
+}
+
 const Curve *CurveComponent::get_curve_for_render() const
 {
   if (curves_ == nullptr) {
@@ -349,17 +356,16 @@ static void tag_component_normals_changed(void *owner)
  */
 class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvider {
  public:
-  GAttributeReader try_get_for_read(const void *owner,
-                                    const AttributeIDRef &attribute_id) const final
+  GAttributeReader try_get_for_read(const void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return {};
     }
     const CurvesGeometry *curves = static_cast<const CurvesGeometry *>(owner);
     if (curves == nullptr) {
       return {};
     }
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
     const int vertex_group_index = BLI_findstringindex(
         &curves->vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
     if (vertex_group_index < 0) {
@@ -372,16 +378,16 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
-  GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
+  GAttributeWriter try_get_for_write(void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return {};
     }
     CurvesGeometry *curves = static_cast<CurvesGeometry *>(owner);
     if (curves == nullptr) {
       return {};
     }
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
     const int vertex_group_index = BLI_findstringindex(
         &curves->vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
     if (vertex_group_index < 0) {
@@ -391,16 +397,16 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
-  bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
+  bool try_delete(void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return false;
     }
     CurvesGeometry *curves = static_cast<CurvesGeometry *>(owner);
     if (curves == nullptr) {
       return true;
     }
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
 
     int index;
     bDeformGroup *group;
@@ -548,13 +554,15 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
       "NURBS Order Validate",
       [](int8_t value) { return std::max<int8_t>(value, 1); },
       mf::build::exec_presets::AllSpanOrSingle());
+  static int nurbs_order_default = 4;
   static BuiltinCustomDataLayerProvider nurbs_order("nurbs_order",
                                                     AttrDomain::Curve,
                                                     CD_PROP_INT8,
                                                     BuiltinAttributeProvider::Deletable,
                                                     curve_access,
                                                     tag_component_topology_changed,
-                                                    AttributeValidator{&nurbs_order_clamp});
+                                                    AttributeValidator{&nurbs_order_clamp},
+                                                    &nurbs_order_default);
 
   static const auto normal_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Normal Mode Validate",
@@ -609,13 +617,15 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
       "Resolution Validate",
       [](int value) { return std::max<int>(value, 1); },
       mf::build::exec_presets::AllSpanOrSingle());
+  static int resolution_default = 12;
   static BuiltinCustomDataLayerProvider resolution("resolution",
                                                    AttrDomain::Curve,
                                                    CD_PROP_INT32,
                                                    BuiltinAttributeProvider::Deletable,
                                                    curve_access,
                                                    tag_component_topology_changed,
-                                                   AttributeValidator{&resolution_clamp});
+                                                   AttributeValidator{&resolution_clamp},
+                                                   &resolution_default);
 
   static BuiltinCustomDataLayerProvider cyclic("cyclic",
                                                AttrDomain::Curve,

@@ -6,7 +6,7 @@
 """
 Script for checking source code spelling.
 
-   python3 tools/check_source/check_spelling.py some_soure_file.py
+   python3 tools/check_source/check_spelling.py some_source_file.py
 
 - Pass in a path for it to be checked recursively.
 - Pass in '--strings' to check strings instead of comments.
@@ -183,7 +183,7 @@ re_ignore = re.compile(
     r"<\w+@[\w\.\-]+>|"
 
     # Convention for TODO/FIXME messages: TODO(my name) OR FIXME(name+name) OR XXX(some-name) OR NOTE(name/other-name):
-    r"\b(TODO|FIXME|XXX|NOTE|WARNING)\(@?[\w\s\+\-/]+\)|"
+    r"\b(TODO|FIXME|XXX|NOTE|WARNING|WORKAROUND)\(@?[\w\s\+\-/]+\)|"
 
     # DOXYGEN style: <pre> ... </pre>
     r"<pre>.+</pre>|"

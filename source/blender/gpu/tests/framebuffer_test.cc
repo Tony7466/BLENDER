@@ -255,6 +255,13 @@ GPU_TEST(framebuffer_cube)
 static void test_framebuffer_multi_viewport()
 {
   using namespace gpu::shader;
+  if (GPU_type_matches_ex(
+          GPU_DEVICE_NVIDIA, GPU_OS_ANY, GPU_DRIVER_OFFICIAL, GPU_BACKEND_OPENGL) &&
+      G.debug & G_DEBUG_GPU_FORCE_WORKAROUNDS)
+  {
+    GTEST_SKIP() << "NVIDIA fails to compile workaround due to reserved names. Gladly it doesn't "
+                    "need the workaround.";
+  }
 
   GPU_render_begin();
 
@@ -378,14 +385,14 @@ static void test_framebuffer_subpass_input()
 
   /* Metal Raster Order Group does not need that. */
   GPU_framebuffer_subpass_transition(
-      framebuffer, {GPU_ATTACHEMENT_IGNORE, GPU_ATTACHEMENT_WRITE, GPU_ATTACHEMENT_IGNORE});
+      framebuffer, {GPU_ATTACHMENT_IGNORE, GPU_ATTACHMENT_WRITE, GPU_ATTACHMENT_IGNORE});
 
   GPU_batch_set_shader(batch, shader_write);
   GPU_batch_draw(batch);
 
   /* Metal Raster Order Group does not need that. */
   GPU_framebuffer_subpass_transition(
-      framebuffer, {GPU_ATTACHEMENT_IGNORE, GPU_ATTACHEMENT_READ, GPU_ATTACHEMENT_WRITE});
+      framebuffer, {GPU_ATTACHMENT_IGNORE, GPU_ATTACHMENT_READ, GPU_ATTACHMENT_WRITE});
 
   GPU_batch_set_shader(batch, shader_read);
   GPU_batch_draw(batch);

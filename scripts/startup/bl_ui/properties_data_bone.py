@@ -294,7 +294,7 @@ class BONE_PT_collections(BoneButtonsPanel, Panel):
 
             row.prop(bcoll, "is_solo", text="", icon='SOLO_ON' if bcoll.is_solo else 'SOLO_OFF')
 
-            # Unassignment operator, less safe so with a bit of spacing.
+            # Unassign operator, less safe so with a bit of spacing.
             props = bcoll_row.operator("armature.collection_unassign_named", text="", icon='X')
             props.name = bcoll.name
             props.bone_name = bone.name
@@ -384,6 +384,7 @@ class BONE_PT_display_custom_shape(BoneButtonsPanel, Panel):
         return context.bone
 
     def draw(self, context):
+        import platform
         layout = self.layout
         layout.use_property_split = True
 
@@ -413,7 +414,16 @@ class BONE_PT_display_custom_shape(BoneButtonsPanel, Panel):
 
             sub.separator()
             sub.prop(bone, "show_wire", text="Wireframe")
-            sub.prop(pchan, "custom_shape_wire_width")
+
+            # Disabled on Mac due to drawing issues with lacking geometry shader support. See #124691.
+            is_darwin = platform.system() == "Darwin"
+
+            width_sub = sub.column()
+            width_sub.active = not is_darwin
+            width_sub.prop(pchan, "custom_shape_wire_width")
+
+            if is_darwin:
+                sub.label(text="Custom wire width not available on MacOS", icon='INFO')
 
 
 class BONE_PT_inverse_kinematics(BoneButtonsPanel, Panel):

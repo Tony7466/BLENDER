@@ -72,7 +72,7 @@ blender::gpu::Batch *DRW_cache_object_loose_edges_get(Object *ob);
 blender::gpu::Batch **DRW_cache_object_surface_material_get(Object *ob,
                                                             GPUMaterial **gpumat_array,
                                                             uint gpumat_array_len);
-blender::gpu::Batch *DRW_cache_object_face_wireframe_get(Object *ob);
+blender::gpu::Batch *DRW_cache_object_face_wireframe_get(const Scene *scene, Object *ob);
 int DRW_cache_object_material_count_get(const Object *ob);
 
 /**
@@ -253,7 +253,8 @@ struct DRWVolumeGrid {
 
 namespace blender::draw {
 
-DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume, const bke::VolumeGridData *grid);
+DRWVolumeGrid *DRW_volume_batch_cache_get_grid(Volume *volume,
+                                               const bke::VolumeGridData *volume_grid);
 blender::gpu::Batch *DRW_cache_volume_face_wireframe_get(Object *ob);
 blender::gpu::Batch *DRW_cache_volume_selection_surface_get(Object *ob);
 
@@ -288,4 +289,6 @@ gpu::VertBuf *DRW_cache_grease_pencil_position_buffer_get(const Scene *scene, Ob
 gpu::VertBuf *DRW_cache_grease_pencil_color_buffer_get(const Scene *scene, Object *ob);
 blender::gpu::Batch *DRW_cache_grease_pencil_weight_points_get(const Scene *scene, Object *ob);
 blender::gpu::Batch *DRW_cache_grease_pencil_weight_lines_get(const Scene *scene, Object *ob);
+blender::gpu::Batch *DRW_cache_grease_pencil_face_wireframe_get(const Scene *scene, Object *ob);
+
 }  // namespace blender::draw
