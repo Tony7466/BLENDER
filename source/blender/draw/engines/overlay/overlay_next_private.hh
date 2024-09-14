@@ -51,9 +51,9 @@ struct State {
   DRWTextStore *dt;
   View3DOverlay overlay;
   float pixelsize;
-  enum eSpace_Type space_type;
-  enum eContextObjectMode ctx_mode;
-  enum eObjectMode object_mode;
+  eSpace_Type space_type;
+  eContextObjectMode ctx_mode;
+  eObjectMode object_mode;
   const Object *object_active;
   bool clear_in_front;
   bool use_in_front;
@@ -122,6 +122,8 @@ class ShapeCache {
 
   BatchPtr bone_degrees_of_freedom;
   BatchPtr bone_degrees_of_freedom_wire;
+
+  BatchPtr grid;
 
   BatchPtr quad_wire;
   BatchPtr quad_solid;
@@ -206,9 +208,11 @@ class ShaderModule {
   ShaderPtr curve_edit_points;
   ShaderPtr curve_edit_line;
   ShaderPtr curve_edit_handles;
+  ShaderPtr extra_point;
   ShaderPtr facing;
   ShaderPtr grid = shader("overlay_grid");
   ShaderPtr grid_background;
+  ShaderPtr grid_grease_pencil = shader("overlay_gpencil_canvas");
   ShaderPtr grid_image;
   ShaderPtr legacy_curve_edit_wires;
   ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
@@ -230,10 +234,19 @@ class ShaderModule {
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;
   ShaderPtr outline_detect = shader("overlay_outline_detect");
+  ShaderPtr particle_edit_vert;
+  ShaderPtr particle_edit_edge;
+  ShaderPtr paint_region_edge;
+  ShaderPtr paint_region_face;
+  ShaderPtr paint_region_vert;
+  ShaderPtr paint_texture;
+  ShaderPtr paint_weight;
+  ShaderPtr paint_weight_fake_shading; /* TODO(fclem): Specialization constant. */
   ShaderPtr sculpt_mesh;
   ShaderPtr sculpt_curves;
   ShaderPtr sculpt_curves_cage;
   ShaderPtr uniform_color;
+  ShaderPtr uniform_color_batch;
   ShaderPtr uv_analysis_stretch_angle;
   ShaderPtr uv_analysis_stretch_area;
   ShaderPtr uv_brush_stencil;
@@ -321,7 +334,7 @@ struct Resources : public select::SelectMap {
   /* Output Color. */
   Framebuffer overlay_output_fb = {"overlay_output_fb"};
 
-  /* Render Framebuffers. Only used for multiplicative blending on top of the render. */
+  /* Render Frame-buffers. Only used for multiplicative blending on top of the render. */
   /* TODO(fclem): Remove the usage of these somehow. This is against design. */
   GPUFrameBuffer *render_fb = nullptr;
   GPUFrameBuffer *render_in_front_fb = nullptr;
