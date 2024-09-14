@@ -731,7 +731,7 @@ void IndexMask::to_bits(MutableBitSpan r_bits, const int64_t offset) const
 {
   BLI_assert(r_bits.size() >= this->min_array_size() + offset);
   r_bits.reset_all();
-  this->set_bits(r_bits);
+  this->set_bits(r_bits, offset);
 }
 
 void IndexMask::to_bools(MutableSpan<bool> r_bools) const
