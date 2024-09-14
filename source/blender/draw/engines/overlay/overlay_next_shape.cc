@@ -1369,15 +1369,16 @@ ShapeCache::ShapeCache()
   }
   /* grid */
   {
-    std::array<float, SI_GRID_STEPS_LEN + 1> steps;
+    constexpr int resolution = 8;
+    std::array<float, resolution + 1> steps;
     /* [-1, 1] divided into SI_GRID_STEPS_LEN steps. */
-    for (const int i : IndexRange(SI_GRID_STEPS_LEN + 1)) {
-      steps[i] = -1.0f + float(i * 2) / SI_GRID_STEPS_LEN;
+    for (const int i : IndexRange(resolution + 1)) {
+      steps[i] = -1.0f + float(i * 2) / resolution;
     }
 
-    Vector<Vertex> verts(SI_GRID_STEPS_LEN * SI_GRID_STEPS_LEN * 6);
-    for (const int x : IndexRange(SI_GRID_STEPS_LEN)) {
-      for (const int y : IndexRange(SI_GRID_STEPS_LEN)) {
+    Vector<Vertex> verts(resolution * resolution * 6);
+    for (const int x : IndexRange(resolution)) {
+      for (const int y : IndexRange(resolution)) {
         verts.append(Vertex{{steps[x], steps[y], 0.0f}});
         verts.append(Vertex{{steps[x + 1], steps[y], 0.0f}});
         verts.append(Vertex{{steps[x], steps[y + 1], 0.0f}});
