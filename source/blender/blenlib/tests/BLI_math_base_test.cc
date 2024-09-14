@@ -223,28 +223,28 @@ TEST(math_base, ModPeriodic)
   EXPECT_FLOAT_EQ(math::mod_periodic(12344.999f, 12345.0f), 12344.999f);
   EXPECT_FLOAT_EQ(math::mod_periodic(12345.0f, 12345.0f), 0.0f);
 
-  EXPECT_FLOAT_EQ(math::mod_periodic(1, 10), 1);
-  EXPECT_FLOAT_EQ(math::mod_periodic(11, 10), 1);
-  EXPECT_FLOAT_EQ(math::mod_periodic(-1, 10), 9);
-  EXPECT_FLOAT_EQ(math::mod_periodic(-11, 10), 9);
-  EXPECT_FLOAT_EQ(math::mod_periodic(1, 1), 0);
-  EXPECT_FLOAT_EQ(math::mod_periodic(0, 99999), 0);
-  EXPECT_FLOAT_EQ(math::mod_periodic(99999, 99999), 0);
+  EXPECT_EQ(math::mod_periodic(1, 10), 1);
+  EXPECT_EQ(math::mod_periodic(11, 10), 1);
+  EXPECT_EQ(math::mod_periodic(-1, 10), 9);
+  EXPECT_EQ(math::mod_periodic(-11, 10), 9);
+  EXPECT_EQ(math::mod_periodic(1, 1), 0);
+  EXPECT_EQ(math::mod_periodic(0, 99999), 0);
+  EXPECT_EQ(math::mod_periodic(99999, 99999), 0);
 
-  EXPECT_FLOAT_EQ(
+  EXPECT_EQ(
       math::mod_periodic(std::numeric_limits<int>::max() / 2, std::numeric_limits<int>::max() / 2),
       0);
-  EXPECT_FLOAT_EQ(
+  EXPECT_EQ(
       math::mod_periodic(std::numeric_limits<int>::min() / 2, std::numeric_limits<int>::max() / 2),
       std::numeric_limits<int>::max() / 2 - 1);
 
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(1, 10), 1);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(11, 10), 1);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(-1, 10), 9);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(-11, 10), 9);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(1, 1), 0);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(0, 99999), 0);
-  EXPECT_FLOAT_EQ(math::mod_periodic<int64_t>(99999, 99999), 0);
+  EXPECT_EQ(math::mod_periodic<int64_t>(1, 10), 1);
+  EXPECT_EQ(math::mod_periodic<int64_t>(11, 10), 1);
+  EXPECT_EQ(math::mod_periodic<int64_t>(-1, 10), 9);
+  EXPECT_EQ(math::mod_periodic<int64_t>(-11, 10), 9);
+  EXPECT_EQ(math::mod_periodic<int64_t>(1, 1), 0);
+  EXPECT_EQ(math::mod_periodic<int64_t>(0, 99999), 0);
+  EXPECT_EQ(math::mod_periodic<int64_t>(99999, 99999), 0);
 }
 
 }  // namespace blender::tests
