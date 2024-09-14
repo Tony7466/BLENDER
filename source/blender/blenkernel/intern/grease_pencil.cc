@@ -9,7 +9,7 @@
 #include <iostream>
 #include <optional>
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_bake_data_block_id.hh"
@@ -127,10 +127,10 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
     grease_pencil_dst->set_active_node(active_node);
   }
 
-  CustomData_copy(&grease_pencil_src->layers_data,
-                  &grease_pencil_dst->layers_data,
-                  CD_MASK_ALL,
-                  grease_pencil_dst->layers().size());
+  CustomData_init_from(&grease_pencil_src->layers_data,
+                       &grease_pencil_dst->layers_data,
+                       CD_MASK_ALL,
+                       grease_pencil_dst->layers().size());
 
   BKE_defgroup_copy_list(&grease_pencil_dst->vertex_group_names,
                          &grease_pencil_src->vertex_group_names);
@@ -1837,10 +1837,10 @@ void BKE_grease_pencil_nomain_to_grease_pencil(GreasePencil *grease_pencil_src,
       __func__, grease_pencil_src->root_group_ptr->wrap());
   BLI_assert(grease_pencil_src->layers().size() == grease_pencil_dst->layers().size());
 
-  CustomData_copy(&grease_pencil_src->layers_data,
-                  &grease_pencil_dst->layers_data,
-                  eCustomDataMask(CD_MASK_ALL),
-                  grease_pencil_src->layers().size());
+  CustomData_init_from(&grease_pencil_src->layers_data,
+                       &grease_pencil_dst->layers_data,
+                       eCustomDataMask(CD_MASK_ALL),
+                       grease_pencil_src->layers().size());
 
   DEG_id_tag_update(&grease_pencil_dst->id, ID_RECALC_GEOMETRY);
 
@@ -1954,6 +1954,131 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
       grease_pencil_src->drawing_array_num, __func__);
   bke::greasepencil::copy_drawing_array(grease_pencil_src->drawings(),
                                         grease_pencil_dst->drawings());
+}
+
+/** \} */
+
+/* ------------------------------------------------------------------- */
+/** \name Grease Pencil origin functions
+ *  \note Used for "move only origins" in object_data_transform.cc.
+ * \{ */
+
+int BKE_grease_pencil_stroke_point_count(const GreasePencil &grease_pencil)
+{
+  using namespace blender;
+
+  int total_points = 0;
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+    frames.foreach_item(
+        [&](const bke::greasepencil::FramesMapKeyT /*key*/, const GreasePencilFrame frame) {
+          const GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+          if (base->type != GP_DRAWING) {
+            return;
+          }
+          const bke::greasepencil::Drawing &drawing =
+              reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+          const bke::CurvesGeometry &curves = drawing.strokes();
+          total_points += curves.points_num();
+        });
+  }
+
+  return total_points;
+}
+
+void BKE_grease_pencil_point_coords_get(const GreasePencil &grease_pencil,
+                                        GreasePencilPointCoordinates *elem_data)
+{
+  using namespace blender;
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const float4x4 layer_to_object = layer.local_transform();
+    const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+    frames.foreach_item(
+        [&](const bke::greasepencil::FramesMapKeyT /*key*/, const GreasePencilFrame frame) {
+          const GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+          if (base->type != GP_DRAWING) {
+            return;
+          }
+          const bke::greasepencil::Drawing &drawing =
+              reinterpret_cast<const GreasePencilDrawing *>(base)->wrap();
+          const bke::CurvesGeometry &curves = drawing.strokes();
+          const Span<float3> positions = curves.positions();
+          const VArray<float> radii = drawing.radii();
+
+          for (const int i : curves.points_range()) {
+            copy_v3_v3(elem_data->co, math::transform_point(layer_to_object, positions[i]));
+            elem_data->radius = radii[i];
+            elem_data++;
+          }
+        });
+  }
+}
+
+void BKE_grease_pencil_point_coords_apply(GreasePencil &grease_pencil,
+                                          GreasePencilPointCoordinates *elem_data)
+{
+  using namespace blender;
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const float4x4 layer_to_object = layer.local_transform();
+    const float4x4 object_to_layer = math::invert(layer_to_object);
+    const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+    frames.foreach_item([&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+      GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+      if (base->type != GP_DRAWING) {
+        return;
+      }
+      bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+      bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+      MutableSpan<float3> positions = curves.positions_for_write();
+      MutableSpan<float> radii = drawing.radii_for_write();
+
+      for (const int i : curves.points_range()) {
+        positions[i] = math::transform_point(object_to_layer, float3(elem_data->co));
+        radii[i] = elem_data->radius;
+        elem_data++;
+      }
+    });
+  }
+}
+
+void BKE_grease_pencil_point_coords_apply_with_mat4(GreasePencil &grease_pencil,
+                                                    GreasePencilPointCoordinates *elem_data,
+                                                    const blender::float4x4 &mat)
+{
+  using namespace blender;
+
+  const float scalef = mat4_to_scale(mat.ptr());
+
+  for (const int layer_i : grease_pencil.layers().index_range()) {
+    bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+    const float4x4 layer_to_object = layer.local_transform();
+    const float4x4 object_to_layer = math::invert(layer_to_object);
+    const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+    frames.foreach_item([&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+      GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+      if (base->type != GP_DRAWING) {
+        return;
+      }
+      bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+      bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+      MutableSpan<float3> positions = curves.positions_for_write();
+      MutableSpan<float> radii = drawing.radii_for_write();
+
+      for (const int i : curves.points_range()) {
+        positions[i] = math::transform_point(object_to_layer * mat, float3(elem_data->co));
+        radii[i] = elem_data->radius * scalef;
+        elem_data++;
+      }
+    });
+  }
 }
 
 /** \} */
@@ -2220,7 +2345,7 @@ template<typename T> static void grow_array(T **array, int *num, const int add_n
 {
   BLI_assert(add_num > 0);
   const int new_array_num = *num + add_num;
-  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
 
   blender::uninitialized_relocate_n(*array, *num, new_array);
   if (*array != nullptr) {
@@ -2241,7 +2366,7 @@ template<typename T> static void shrink_array(T **array, int *num, const int shr
     return;
   }
 
-  T *new_array = reinterpret_cast<T *>(MEM_cnew_array<T *>(new_array_num, __func__));
+  T *new_array = MEM_cnew_array<T>(new_array_num, __func__);
 
   blender::uninitialized_move_n(*array, new_array_num, new_array);
   MEM_freeN(*array);
@@ -2979,7 +3104,7 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(
 static void reorder_customdata(CustomData &data, const Span<int> new_by_old_map)
 {
   CustomData new_data;
-  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
+  CustomData_init_layout_from(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, new_by_old_map.size());
 
   for (const int old_i : new_by_old_map.index_range()) {
     const int new_i = new_by_old_map[old_i];
@@ -3306,7 +3431,7 @@ static void shrink_customdata(CustomData &data, const int index_to_remove, const
 {
   using namespace blender;
   CustomData new_data;
-  CustomData_copy_layout(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
+  CustomData_init_layout_from(&data, &new_data, CD_MASK_ALL, CD_CONSTRUCT, size);
   CustomData_realloc(&new_data, size, size - 1);
 
   const IndexRange range_before(index_to_remove);

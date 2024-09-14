@@ -9,6 +9,8 @@
 
 #include <memory>
 
+#include "BLI_array.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_sys_types.h"
 
 #include "DNA_brush_enums.h"
@@ -41,6 +43,32 @@ struct Settings {
 struct Cache {
   Settings settings;
 
+  /* Cached factor for automasking modes that are implemented to process the entire mesh. */
+  Array<float> factor;
+
+  enum class OcclusionValue : int8_t {
+    Unknown = 0,
+    Visible = 1,
+    Occluded = 2,
+  };
+  /**
+   * Cached occlusion values for each vertex. Since calculating the occlusion is so expensive,
+   * it's only calculated at the beginning of a stroke and stored for later.
+   *
+   * \todo Ideally the "unknown" state would be stored per node rather than per vertex, with a
+   * lock-protected `Map<const bke::pbvh::Node , BitVector<>>` for example. Currently complications
+   * with face domain auto-masking prevent this though. This array can't be a bitmap because it's
+   * written to from multiple threads at the same time.
+   */
+  Array<OcclusionValue> occlusion;
+
+  /**
+   * Cached cavity factor values for each vertex.
+   *
+   * \note -1 means the vertex value still needs to be calculated.
+   */
+  Array<float> cavity_factor;
+
   bool can_reuse_mask;
   uchar current_stroke_id;
 };
@@ -62,11 +90,11 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
                                   Object &ob);
 
 bool mode_enabled(const Sculpt &sd, const Brush *br, eAutomasking_flag mode);
-bool is_enabled(const Sculpt &sd, const SculptSession *ss, const Brush *br);
+bool is_enabled(const Sculpt &sd, const Object &object, const Brush *br);
 
 bool needs_normal(const SculptSession &ss, const Sculpt &sd, const Brush *brush);
 int settings_hash(const Object &ob, const Cache &automasking);
 
-bool tool_can_reuse_automask(int sculpt_tool);
+bool brush_type_can_reuse_automask(int sculpt_brush_type);
 
 }  // namespace blender::ed::sculpt_paint::auto_mask
