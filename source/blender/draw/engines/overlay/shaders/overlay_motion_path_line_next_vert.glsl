@@ -54,29 +54,13 @@ VertOut vertex_main(VertIn vert_in)
   bool use_custom_color = customColorPre.x >= 0.0;
 
   if (frame < frameCurrent) {
-    if (use_custom_color) {
-      vert_out.color.rgb = customColorPre;
-    }
-    else {
-      vert_out.color.rgb = colorBeforeFrame.rgb;
-    }
+    vert_out.color.rgb = use_custom_color ? customColorPre : colorBeforeFrame.rgb;
   }
   else if (frame > frameCurrent) {
-    if (use_custom_color) {
-      vert_out.color.rgb = customColorPost;
-    }
-    else {
-      vert_out.color.rgb = colorAfterFrame.rgb;
-    }
+    vert_out.color.rgb = use_custom_color ? customColorPost : colorAfterFrame.rgb;
   }
-  else {
-    /* Current Frame. */
-    if (use_custom_color) {
-      vert_out.color.rgb = colorCurrentFrame.rgb;
-    }
-    else {
-      vert_out.color.rgb = blend_base;
-    }
+  else /* if (frame == frameCurrent) */ {
+    vert_out.color.rgb = use_custom_color ? colorCurrentFrame.rgb : blend_base;
   }
   vert_out.color.a = 1.0;
 
@@ -145,8 +129,8 @@ void geometry_main(VertOut geom_in[2],
 
 void main()
 {
-  /* Line list primitive. */
-  const uint input_primitive_vertex_count = 2u;
+  /* Point list primitive. */
+  const uint input_primitive_vertex_count = 1u;
   /* Triangle list primitive. */
   const uint ouput_primitive_vertex_count = 3u;
   const uint ouput_primitive_count = 2u;
@@ -166,11 +150,12 @@ void main()
   uint out_invocation_id = (uint(gl_VertexID) / output_vertex_count_per_invocation) %
                            ouput_invocation_count;
 
-  VertIn vert_in[input_primitive_vertex_count];
+  /* Read current and next point. */
+  VertIn vert_in[2];
   vert_in[0] = input_assembly(in_primitive_first_vertex + 0u);
   vert_in[1] = input_assembly(in_primitive_first_vertex + 1u);
 
-  VertOut vert_out[input_primitive_vertex_count];
+  VertOut vert_out[2];
   vert_out[0] = vertex_main(vert_in[0]);
   vert_out[1] = vertex_main(vert_in[1]);
 
