@@ -2482,7 +2482,7 @@ void uiItemFullR(uiLayout *layout,
     uiBut *but_decorate = ui_decorate.but ? block->next_but(ui_decorate.but) :
                                             block->first_but_or_null();
 
-    /** Move temporarily last but to avoid multiple reallocations while inserting decorators. */
+    /* Move temporarily last buts to avoid multiple reallocations while inserting decorators. */
     blender::Vector<std::unique_ptr<uiBut>> tmp;
     tmp.reserve(block->buttons.capacity());
     while (but_decorate && but_decorate != block->buttons.last().get()) {

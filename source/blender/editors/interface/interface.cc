@@ -442,7 +442,7 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
       bt = col_bt != end ? col_bt-- : nullptr;
     }
 
-    if (bt < end && (bt + 1 < end) && (*bt)->rect.xmin < (bt[1])->rect.xmin) {
+    if (bt < end && (bt + 1 < end) && (*bt)->rect.xmin < bt[1]->rect.xmin) {
       /* End of this column, and it's not the last one. */
       for (col_bt = init_col_bt; (col_bt - 1) != bt; col_bt++) {
         (*col_bt)->rect.xmin = x1addval;
@@ -461,7 +461,7 @@ static void ui_block_bounds_calc_text(uiBlock *block, float offset)
   /* Last column. */
   for (col_bt = init_col_bt; col_bt < end; col_bt++) {
     /* Recognize a horizontally arranged alignment group and skip its items. */
-    if ((col_bt + 1 < end) && ui_but_is_row_alignment_group((*col_bt).get(), (col_bt[1]).get())) {
+    if ((col_bt + 1 < end) && ui_but_is_row_alignment_group((*col_bt).get(), col_bt[1].get())) {
       const int alignnr = (*col_bt)->alignnr;
       for (; col_bt < end && (*col_bt)->alignnr == alignnr; col_bt++) {
         /* pass */
