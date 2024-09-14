@@ -872,7 +872,7 @@ class TOPBAR_PT_grease_pencil_layers(Panel):
 
     @classmethod
     def poll(cls, context):
-        object  = context.object
+        object = context.object
         if object is None:
             return False
         if object.type != "GREASEPENCIL":

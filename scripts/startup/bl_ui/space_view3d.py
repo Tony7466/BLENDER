@@ -250,7 +250,7 @@ class VIEW3D_HT_tool_header(Header):
                 text = "Group"
                 node_name = group.name
 
-            layout.label(text= text + ":")
+            layout.label(text=text + ":")
             sub = layout.row()
             sub.popover(
                 panel="TOPBAR_PT_grease_pencil_layers",
