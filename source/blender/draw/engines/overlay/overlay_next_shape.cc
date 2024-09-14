@@ -1371,7 +1371,7 @@ ShapeCache::ShapeCache()
   {
     constexpr int resolution = 8;
     std::array<float, resolution + 1> steps;
-    /* [-1, 1] divided into SI_GRID_STEPS_LEN steps. */
+    /* [-1, 1] divided into "resolution" steps. */
     for (const int i : IndexRange(resolution + 1)) {
       steps[i] = -1.0f + float(i * 2) / resolution;
     }
