@@ -53,7 +53,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_bpath.hh"
@@ -352,6 +352,10 @@ static void scene_copy_data(Main *bmain,
   if (scene_src->ed) {
     scene_dst->ed = MEM_cnew<Editing>(__func__);
     scene_dst->ed->seqbasep = &scene_dst->ed->seqbase;
+    scene_dst->ed->cache_flag = scene_src->ed->cache_flag;
+    scene_dst->ed->show_missing_media_flag = scene_src->ed->show_missing_media_flag;
+    scene_dst->ed->proxy_storage = scene_src->ed->proxy_storage;
+    STRNCPY(scene_dst->ed->proxy_dir, scene_src->ed->proxy_dir);
     SEQ_sequence_base_dupli_recursive(scene_src,
                                       scene_dst,
                                       &scene_dst->ed->seqbase,
@@ -1861,6 +1865,7 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
      * duplicate along the object itself). */
     BKE_collection_duplicate(bmain,
                              nullptr,
+                             nullptr,
                              sce_copy->master_collection,
                              duplicate_flags,
                              LIB_ID_DUPLICATE_IS_SUBPROCESS);
@@ -1871,12 +1876,14 @@ Scene *BKE_scene_duplicate(Main *bmain, Scene *sce, eSceneCopyMethod type)
       if (sce_copy->rigidbody_world->group != nullptr) {
         BKE_collection_duplicate(bmain,
                                  nullptr,
+                                 nullptr,
                                  sce_copy->rigidbody_world->group,
                                  duplicate_flags,
                                  LIB_ID_DUPLICATE_IS_SUBPROCESS);
       }
       if (sce_copy->rigidbody_world->constraints != nullptr) {
         BKE_collection_duplicate(bmain,
+                                 nullptr,
                                  nullptr,
                                  sce_copy->rigidbody_world->constraints,
                                  duplicate_flags,
