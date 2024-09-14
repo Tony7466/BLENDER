@@ -8,16 +8,14 @@
 
 #  include <cstring>
 
-#  include "BKE_attribute.hh"
-#  include "BKE_curves.hh"
-
-#  include "BLI_function_ref.hh"
 #  include "BLI_index_mask_fwd.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 
 struct potrace_state_s;
 typedef struct potrace_state_s potrace_state_t;
+
+struct Curves;
 
 namespace blender::geometry::potrace {
 
@@ -39,7 +37,8 @@ potrace_state_t *image_from_mask(Params params, const IndexMask &mask);
 
 void free_image(potrace_state_t *image);
 
-Curves *image_to_curve(const potrace_state_t *image, const bke::AttributeIDRef &uv_map_id);
+Curves *image_to_curve(const potrace_state_t *image,
+                       const std::optional<std::string> &parent_index_id);
 
 float4x4 to_plane(int2 resolution, float2 min_point, float2 max_point);
 

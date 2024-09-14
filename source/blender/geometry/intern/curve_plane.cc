@@ -58,9 +58,6 @@ potrace_state_t *image_from_mask(const Params params, const IndexMask &mask)
   const int64_t line_bits_num = line_words_num * word_size;
   Array<potrace_word> segments(line_words_num * params.resolution.y, potrace_word(0));
 
-  const int extra_bits_num = line_words_num * word_size - params.resolution.x;
-  const potrace_word end_mask = (potrace_word(1) << extra_bits_num) - 1;
-
   threading::parallel_for(
       IndexRange(params.resolution.y),
       4096,
@@ -169,10 +166,8 @@ static void potrace_gather_curves(const potrace_state_t *potrace,
 }
 
 static void potrace_curve_parent_index(const Span<const potrace_path_t *> src_curves,
-                                       Array<int> &r_parent_index)
+                                       MutableSpan<int> parent_index)
 {
-  r_parent_index.reinitialize(src_curves.size());
-
   Map<const potrace_path_t *, int> child_parent_index;
 
   for (const int parent_i : src_curves.index_range()) {
@@ -185,7 +180,7 @@ static void potrace_curve_parent_index(const Span<const potrace_path_t *> src_cu
 
   threading::parallel_for(src_curves.index_range(), 4096, [&](const IndexRange range) {
     const Span<const potrace_path_t *> src_slice = src_curves.slice(range);
-    MutableSpan<int> dst_slice = r_parent_index.as_mutable_span().slice(range);
+    MutableSpan<int> dst_slice = parent_index.slice(range);
     for (const int64_t i : range) {
       dst_slice[i] = child_parent_index.lookup_default(src_slice[i], int(i));
     }
@@ -505,7 +500,7 @@ static void potrace_fill_bezier_or_poly_curve(
 namespace potrace {
 
 Curves *image_to_curve(const potrace_state_t *potrace_result,
-                       const bke::AttributeIDRef &parent_index_id)
+                       const std::optional<std::string> &parent_index_id)
 {
   Vector<const potrace_path_t *> curves_list;
   potrace_gather_curves(potrace_result, curves_list);
@@ -514,7 +509,8 @@ Curves *image_to_curve(const potrace_state_t *potrace_result,
   }
 
   Array<int> parent_index_data;
-  if (parent_index_id) {
+  if (parent_index_id.has_value()) {
+    parent_index_data.reinitialize(curves_list.size());
     potrace_curve_parent_index(curves_list, parent_index_data);
   }
 
@@ -613,10 +609,10 @@ Curves *image_to_curve(const potrace_state_t *potrace_result,
                                       positions_right.slice(curve_offsets[curve_i]));
   });
 
-  if (!parent_index_data.is_empty()) {
+  if (parent_index_id.has_value()) {
     bke::SpanAttributeWriter<int> parent_attribute =
         curves.attributes_for_write().lookup_or_add_for_write_only_span<int>(
-            parent_index_id, bke::AttrDomain::Curve);
+            *parent_index_id, bke::AttrDomain::Curve);
     array_utils::copy(parent_index_data.as_span(), parent_attribute.span);
   }
 

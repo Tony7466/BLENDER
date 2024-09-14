@@ -138,8 +138,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   evaluator.set_selection(std::move(input_field));
   evaluator.evaluate();
 
-  AnonymousAttributeIDPtr parent_curve_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Parent Curve");
+  const std::optional<std::string> parent_curve_id =
+      params.get_output_anonymous_attribute_id_if_needed("Parent Curve");
 
   geometry::potrace::Params curves_params;
   curves_params.resolution = resolution;
@@ -159,7 +159,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   BLI_SCOPED_DEFER([&]() { geometry::potrace::free_image(potrace_image); });
 
-  Curves *curve = geometry::potrace::image_to_curve(potrace_image, parent_curve_id.get());
+  Curves *curve = geometry::potrace::image_to_curve(potrace_image, parent_curve_id);
   if (curve == nullptr) {
     params.set_default_remaining_outputs();
     return;
@@ -186,7 +186,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_CURVE_PLANE, "Curve Plane", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
