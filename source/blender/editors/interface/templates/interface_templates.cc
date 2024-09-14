@@ -399,9 +399,6 @@ static bool id_search_allows_id(TemplateID *template_ui, const int flag, ID *id,
 
 static bool id_search_add(const bContext *C, TemplateID *template_ui, uiSearchItems *items, ID *id)
 {
-  /* +1 is needed because BKE_id_ui_prefix used 3 letter prefix
-   * followed by ID_NAME-2 characters from id->name
-   */
   char name_ui[MAX_ID_FULL_NAME_UI];
   BKE_id_full_name_get(name_ui, id, UI_SEP_CHAR);
 
@@ -410,13 +407,8 @@ static bool id_search_add(const bContext *C, TemplateID *template_ui, uiSearchIt
     iconid = UI_icon_from_library(id);
   }
 
-  if (!UI_search_item_add(
-          items, name_ui, id, iconid, ID_IS_LINKED(id) ? int(UI_BUT_HAS_SEP_CHAR) : 0, 0, id))
-  {
-    return false;
-  }
-
-  return true;
+  return UI_search_item_add(
+      items, name_ui, id, iconid, ID_IS_LINKED(id) ? int(UI_BUT_HAS_SEP_CHAR) : 0, 0, id);
 }
 
 /* ID Search browse menu, do the search */
