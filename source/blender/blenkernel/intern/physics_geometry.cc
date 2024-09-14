@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "BKE_attribute.hh"
+#include "BKE_attribute_filter.hh"
 #include "BKE_collision_shape.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
@@ -28,11 +29,14 @@
 #include "DNA_customdata_types.h"
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_intern.hh"
-#include "physics_geometry_world.hh"
+#include "physics_geometry_world_bullet.hh"
+#include "physics_geometry_world_jolt.hh"
 
 namespace blender::bke {
 
 #ifdef WITH_BULLET
+
+using namespace physics_attributes;
 
 /* -------------------------------------------------------------------- */
 /** \name Physics Geometry
@@ -59,9 +63,9 @@ static void ensure_cache(std::mutex &mutex,
 }
 
 /* Same as ensure_cache but updates if any flag is dirty. */
-static void ensure_cache_any(std::mutex &mutex,
-                             Span<std::atomic<bool> *> flags,
-                             Span<const FunctionRef<void()>> compute_caches)
+[[maybe_unused]] static void ensure_cache_any(std::mutex &mutex,
+                                              Span<std::atomic<bool> *> flags,
+                                              Span<const FunctionRef<void()>> compute_caches)
 {
   bool all_valid = true;
   for (const int i : flags.index_range()) {
@@ -97,20 +101,23 @@ static bool is_cache_dirty(const std::atomic<bool> &flag)
 }
 
 PhysicsWorldState::PhysicsWorldState()
-    : body_num_(0), constraint_num_(0), body_data_({}), constraint_data_({})
+    : body_num_(0), constraint_num_(0), body_custom_data_({}), constraint_custom_data_({})
 {
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
+  CustomData_reset(&body_custom_data_);
+  CustomData_reset(&constraint_custom_data_);
   this->tag_read_cache_changed();
 }
 
 PhysicsWorldState::PhysicsWorldState(int body_num, int constraint_num, int shape_num)
-    : body_num_(body_num), constraint_num_(constraint_num), body_data_({}), constraint_data_({})
+    : body_num_(body_num),
+      constraint_num_(constraint_num),
+      body_custom_data_({}),
+      constraint_custom_data_({})
 {
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
-  CustomData_realloc(&body_data_, 0, body_num);
-  CustomData_realloc(&constraint_data_, 0, constraint_num);
+  CustomData_reset(&body_custom_data_);
+  CustomData_reset(&constraint_custom_data_);
+  CustomData_realloc(&body_custom_data_, 0, body_num);
+  CustomData_realloc(&constraint_custom_data_, 0, constraint_num);
   shapes_.reinitialize(shape_num);
   this->tag_read_cache_changed();
 }
@@ -118,13 +125,12 @@ PhysicsWorldState::PhysicsWorldState(int body_num, int constraint_num, int shape
 PhysicsWorldState::PhysicsWorldState(const PhysicsWorldState &other)
 {
   *this = other;
-  this->tag_read_cache_changed();
 }
 
 PhysicsWorldState::~PhysicsWorldState()
 {
-  CustomData_free(&body_data_, body_num_);
-  CustomData_free(&constraint_data_, constraint_num_);
+  CustomData_free(&body_custom_data_, body_num_);
+  CustomData_free(&constraint_custom_data_, constraint_num_);
 
   /* World data is owned by the geometry when it's mutable (always the case on destruction). */
   delete world_data_;
@@ -132,14 +138,19 @@ PhysicsWorldState::~PhysicsWorldState()
 
 PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
 {
-  CustomData_reset(&body_data_);
-  CustomData_reset(&constraint_data_);
+  body_data_ = other.body_data_;
+  constraint_data_ = other.constraint_data_;
+  shapes_ = other.shapes_;
+
+  CustomData_reset(&body_custom_data_);
+  CustomData_reset(&constraint_custom_data_);
   body_num_ = other.body_num_;
   constraint_num_ = other.constraint_num_;
-  CustomData_copy(&other.body_data_, &body_data_, CD_MASK_ALL, other.body_num_);
-  CustomData_copy(&other.constraint_data_, &constraint_data_, CD_MASK_ALL, other.constraint_num_);
-
-  shapes_ = other.shapes_;
+  CustomData_init_from(&other.body_custom_data_, &body_custom_data_, CD_MASK_ALL, other.body_num_);
+  CustomData_init_from(&other.constraint_custom_data_,
+                       &constraint_custom_data_,
+                       CD_MASK_ALL,
+                       other.constraint_num_);
 
   if (other.world_data_) {
     try_move_data(other,
@@ -151,7 +162,16 @@ PhysicsWorldState &PhysicsWorldState::operator=(const PhysicsWorldState &other)
                   0);
   }
 
-  this->tag_read_cache_changed();
+  if (is_cache_dirty(other.read_cache_valid_)) {
+    tag_cache_dirty(read_cache_valid_);
+  }
+  if (is_cache_dirty(other.body_collision_shapes_valid_)) {
+    tag_cache_dirty(body_collision_shapes_valid_);
+  }
+  if (is_cache_dirty(other.constraints_valid_)) {
+    tag_cache_dirty(constraints_valid_);
+  }
+
   return *this;
 }
 
@@ -199,13 +219,13 @@ void PhysicsWorldState::tag_read_cache_changed()
 {
   /* Cache only becomes invalid if there is world data that can change. */
   if (world_data_ != nullptr) {
-    tag_cache_dirty(custom_data_read_cache_valid_);
+    tag_cache_dirty(read_cache_valid_);
   }
 }
 
 void PhysicsWorldState::tag_body_topology_changed()
 {
-  this->tag_constraint_disable_collision_changed();
+  // this->tag_constraint_disable_collision_changed();
 }
 
 void PhysicsWorldState::tag_body_collision_shape_changed()
@@ -213,25 +233,15 @@ void PhysicsWorldState::tag_body_collision_shape_changed()
   tag_cache_dirty(body_collision_shapes_valid_);
 }
 
-void PhysicsWorldState::tag_body_is_static_changed()
-{
-  tag_cache_dirty(body_is_static_valid_);
-}
-
-void PhysicsWorldState::tag_body_mass_changed()
-{
-  tag_cache_dirty(body_mass_valid_);
-}
-
 void PhysicsWorldState::tag_constraints_changed()
 {
   tag_cache_dirty(constraints_valid_);
 }
 
-void PhysicsWorldState::tag_constraint_disable_collision_changed()
-{
-  tag_cache_dirty(constraint_disable_collision_valid_);
-}
+// void PhysicsWorldState::tag_constraint_disable_collision_changed()
+//{
+//   tag_cache_dirty(constraint_disable_collision_valid_);
+// }
 
 void PhysicsWorldState::tag_shapes_changed()
 {
@@ -239,27 +249,21 @@ void PhysicsWorldState::tag_shapes_changed()
   this->tag_body_collision_shape_changed();
 }
 
-bool PhysicsWorldState::has_builtin_attribute_custom_data_layer(
+bool PhysicsWorldState::has_builtin_attribute_cache(
     PhysicsWorldState::BodyAttribute attribute) const
 {
-  AttributeAccessor dst_attributes = this->custom_data_attributes();
-  StringRef name = physics_attribute_name(attribute);
-  return bool(dst_attributes.lookup_meta_data(name));
+  return this->body_data_.contains(attribute);
 }
 
-bool PhysicsWorldState::has_builtin_attribute_custom_data_layer(
+bool PhysicsWorldState::has_builtin_attribute_cache(
     PhysicsWorldState::ConstraintAttribute attribute) const
 {
-  AttributeAccessor dst_attributes = this->custom_data_attributes();
-  StringRef name = physics_attribute_name(attribute);
-  return bool(dst_attributes.lookup_meta_data(name));
+  return this->constraint_data_.contains(attribute);
 }
 
 void PhysicsWorldState::ensure_read_cache() const
 {
-  ensure_cache(world_data_mutex_, custom_data_read_cache_valid_, [&]() {
-    this->ensure_read_cache_no_lock();
-  });
+  ensure_cache(world_data_mutex_, read_cache_valid_, [&]() { this->ensure_read_cache_no_lock(); });
 }
 
 void PhysicsWorldState::ensure_read_cache_no_lock() const
@@ -267,85 +271,73 @@ void PhysicsWorldState::ensure_read_cache_no_lock() const
   using BodyAttribute = PhysicsBodyAttribute;
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
-  const static StringRef collision_shape_id = physics_attribute_name(
-      BodyAttribute::collision_shape);
-  const static StringRef is_static_id = physics_attribute_name(BodyAttribute::is_static);
-  const static StringRef mass_id = physics_attribute_name(BodyAttribute::mass);
-  const static StringRef constraint_type_id = physics_attribute_name(
-      ConstraintAttribute::constraint_type);
-  const static StringRef constraint_body1_id = physics_attribute_name(
-      ConstraintAttribute::constraint_body1);
-  const static StringRef constraint_body2_id = physics_attribute_name(
-      ConstraintAttribute::constraint_body2);
-  const static StringRef disable_collision_id = physics_attribute_name(
-      ConstraintAttribute::disable_collision);
-
   PhysicsWorldState &dst = *const_cast<PhysicsWorldState *>(this);
 
+  /* For inactive states just create default attributes. */
   if (world_data_ == nullptr) {
     for (const BodyAttribute attribute : all_body_attributes()) {
-      dst.ensure_custom_data_attribute_no_lock(attribute);
+      dst.ensure_attribute_cache(attribute);
     }
     for (const ConstraintAttribute attribute : all_constraint_attributes()) {
-      dst.ensure_custom_data_attribute_no_lock(attribute);
+      dst.ensure_attribute_cache(attribute);
     }
     return;
   }
 
   /* Some attributes require other updates before valid world data can be read. */
-  dst.ensure_motion_type_no_lock();
+  dst.ensure_bodies_no_lock();
   dst.ensure_constraints_no_lock();
 
   /* Write to cache attributes. */
-  MutableAttributeAccessor dst_attributes = dst.custom_data_attributes_for_write();
+  MutableAttributeAccessor dst_attributes = dst.state_attributes_for_write();
 
   /* Read from world data and ignore the cache.
    * Important! This also prevents deadlock caused by re-entering this function. */
   const AttributeAccessor src_attributes = this->world_data_attributes();
-  Set<std::string> skip_attributes = {collision_shape_id,
-                                      is_static_id,
-                                      mass_id,
-                                      constraint_type_id,
-                                      constraint_body1_id,
-                                      constraint_body2_id,
-                                      disable_collision_id};
+  Set<std::string> local_body_attribute_names, local_constraint_attribute_names;
+  for (const BodyAttribute attribute : all_body_attributes()) {
+    if (physics_attribute_use_write_cache(attribute)) {
+      local_body_attribute_names.add_new(physics_attribute_name(attribute));
+    }
+  }
+  for (const ConstraintAttribute attribute : all_constraint_attributes()) {
+    if (physics_attribute_use_write_cache(attribute)) {
+      local_constraint_attribute_names.add_new(physics_attribute_name(attribute));
+    }
+  }
   /* Only use builtin attributes, dynamic attributes are already in custom data. */
   src_attributes.for_all(
-      [&](const AttributeIDRef &id, const AttributeMetaData & /*meta_data*/) -> bool {
+      [&](const StringRefNull id, const AttributeMetaData & /*meta_data*/) -> bool {
         if (!src_attributes.is_builtin(id)) {
-          skip_attributes.add(id.name());
+          local_body_attribute_names.add_new(id);
+          local_constraint_attribute_names.add_new(id);
         }
         return true;
       });
 
   gather_attributes(src_attributes,
                     bke::AttrDomain::Point,
-                    {},
-                    skip_attributes,
+                    bke::AttrDomain::Point,
+                    attribute_filter_from_skip_ref(local_body_attribute_names),
                     IndexRange(body_num_),
                     dst_attributes);
   gather_attributes(src_attributes,
                     bke::AttrDomain::Edge,
-                    {},
-                    skip_attributes,
+                    bke::AttrDomain::Edge,
+                    attribute_filter_from_skip_ref(local_constraint_attribute_names),
                     IndexRange(constraint_num_),
                     dst_attributes);
 }
 
-void PhysicsWorldState::ensure_motion_type()
+void PhysicsWorldState::ensure_bodies()
 {
-  ensure_cache_any(world_data_mutex_,
-                   {&body_collision_shapes_valid_, &body_is_static_valid_, &body_mass_valid_},
-                   {[&]() { this->ensure_body_collision_shapes_no_lock(); },
-                    [&]() { this->ensure_body_is_static_no_lock(); },
-                    [&]() { this->ensure_body_masses_no_lock(); }});
+  ensure_cache(
+      world_data_mutex_, body_collision_shapes_valid_, [&]() { this->ensure_bodies_no_lock(); });
 }
 
-void PhysicsWorldState::ensure_motion_type_no_lock()
+void PhysicsWorldState::ensure_bodies_no_lock()
 {
   this->ensure_body_collision_shapes_no_lock();
-  this->ensure_body_is_static_no_lock();
-  this->ensure_body_masses_no_lock();
 }
 
 void PhysicsWorldState::ensure_body_collision_shapes_no_lock()
@@ -360,71 +352,22 @@ void PhysicsWorldState::ensure_body_collision_shapes_no_lock()
     return;
   }
 
-  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
-  const VArraySpan<int> body_shapes = *custom_data_attributes.lookup_or_default(
+  AttributeAccessor cached_attributes = this->state_attributes();
+  const VArraySpan<int> body_shapes = *cached_attributes.lookup_or_default(
       collision_shape_id, AttrDomain::Point, -1);
 
   const IndexMask selection = world_data_->bodies().index_range();
   world_data_->set_body_shapes(selection, shapes_, body_shapes);
 }
 
-void PhysicsWorldState::ensure_body_is_static_no_lock()
-{
-  const static StringRef is_static_id = physics_attribute_name(PhysicsBodyAttribute::is_static);
-
-  if (!is_cache_dirty(body_is_static_valid_)) {
-    return;
-  }
-  if (world_data_ == nullptr) {
-    return;
-  }
-
-  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
-  const VArraySpan<bool> is_static = *custom_data_attributes.lookup_or_default<bool>(
-      is_static_id, AttrDomain::Point, -1);
-
-  const IndexMask selection = world_data_->bodies().index_range();
-  world_data_->set_body_static(selection, is_static);
-}
-
-void PhysicsWorldState::ensure_body_masses_no_lock()
-{
-  const static StringRef mass_id = physics_attribute_name(PhysicsBodyAttribute::mass);
-
-  if (!is_cache_dirty(body_mass_valid_)) {
-    return;
-  }
-  if (world_data_ == nullptr) {
-    return;
-  }
-
-  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
-  const VArraySpan<float> masses = *custom_data_attributes.lookup_or_default<float>(
-      mass_id, AttrDomain::Point, 0.0f);
-
-  const IndexMask selection = world_data_->bodies().index_range();
-  world_data_->set_body_mass(selection, masses);
-}
-
 void PhysicsWorldState::ensure_constraints()
 {
-  ensure_cache_any(world_data_mutex_,
-                   {&constraints_valid_, &constraint_disable_collision_valid_},
-                   {[&]() { this->ensure_constraints_no_lock(); },
-                    [&]() { this->ensure_constraint_disable_collision_no_lock(); }});
+  ensure_cache(
+      world_data_mutex_, constraints_valid_, [&]() { this->ensure_constraints_no_lock(); });
 }
 
 void PhysicsWorldState::ensure_constraints_no_lock()
 {
-  using ConstraintType = PhysicsConstraintType;
-
-  const static StringRef constraint_type_id = physics_attribute_name(
-      PhysicsConstraintAttribute::constraint_type);
-  const static StringRef constraint_body1_id = physics_attribute_name(
-      PhysicsConstraintAttribute::constraint_body1);
-  const static StringRef constraint_body2_id = physics_attribute_name(
-      PhysicsConstraintAttribute::constraint_body2);
-
   if (!is_cache_dirty(constraints_valid_)) {
     return;
   }
@@ -432,111 +375,77 @@ void PhysicsWorldState::ensure_constraints_no_lock()
     return;
   }
 
-  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
-  const VArray<int> types = *custom_data_attributes.lookup_or_default<int>(
-      constraint_type_id, AttrDomain::Edge, int(ConstraintType::Fixed));
-  const VArray<int> body1 = *custom_data_attributes.lookup_or_default<int>(
-      constraint_body1_id, AttrDomain::Edge, -1);
-  const VArray<int> body2 = *custom_data_attributes.lookup_or_default<int>(
-      constraint_body2_id, AttrDomain::Edge, -1);
-
+  AttributeAccessor custom_data_attributes = this->state_attributes();
   const IndexMask selection = world_data_->constraints().index_range();
-  world_data_->create_constraints(selection, types, body1, body2);
+  world_data_->update_constraints(selection, custom_data_attributes);
 }
 
-void PhysicsWorldState::ensure_constraint_disable_collision()
+// void PhysicsWorldState::ensure_constraint_disable_collision()
+//{
+//  ensure_cache(world_data_mutex_, constraint_disable_collision_valid_, [&]() {
+//    this->ensure_constraint_disable_collision_no_lock();
+//  });
+//}
+
+// void PhysicsWorldState::ensure_constraint_disable_collision_no_lock()
+//{
+//   const static StringRef disable_collision_id = physics_attribute_name(
+//       PhysicsConstraintAttribute::disable_collision);
+//
+//   if (!is_cache_dirty(constraint_disable_collision_valid_)) {
+//     return;
+//   }
+//   if (world_data_ == nullptr) {
+//     return;
+//   }
+//
+//   AttributeAccessor custom_data_attributes = this->custom_data_attributes();
+//   const VArray<bool> disable_collision = *custom_data_attributes.lookup_or_default<bool>(
+//       disable_collision_id, AttrDomain::Edge, false);
+//
+//   const IndexMask selection = world_data_->constraints().index_range();
+//   world_data_->set_disable_collision(selection, disable_collision);
+// }
+
+void PhysicsWorldState::ensure_attribute_cache(PhysicsWorldState::BodyAttribute attribute)
 {
-  ensure_cache(world_data_mutex_, constraint_disable_collision_valid_, [&]() {
-    this->ensure_constraint_disable_collision_no_lock();
-  });
-}
-
-void PhysicsWorldState::ensure_constraint_disable_collision_no_lock()
-{
-  const static StringRef disable_collision_id = physics_attribute_name(
-      PhysicsConstraintAttribute::disable_collision);
-
-  if (!is_cache_dirty(constraint_disable_collision_valid_)) {
-    return;
-  }
-  if (world_data_ == nullptr) {
+  if (body_data_.contains(attribute)) {
     return;
   }
 
-  AttributeAccessor custom_data_attributes = this->custom_data_attributes();
-  const VArray<bool> disable_collision = *custom_data_attributes.lookup_or_default<bool>(
-      disable_collision_id, AttrDomain::Edge, false);
-
-  const IndexMask selection = world_data_->constraints().index_range();
-  world_data_->set_disable_collision(selection, disable_collision);
-}
-
-void PhysicsWorldState::ensure_custom_data_attribute(
-    PhysicsWorldState::BodyAttribute attribute) const
-{
-  if (has_builtin_attribute_custom_data_layer(attribute)) {
-    return;
-  }
-  std::scoped_lock lock(world_data_mutex_);
-  if (has_builtin_attribute_custom_data_layer(attribute)) {
-    return;
-  }
-
-  PhysicsWorldState &dst = *const_cast<PhysicsWorldState *>(this);
-  dst.ensure_custom_data_attribute_no_lock(attribute);
-}
-
-void PhysicsWorldState::ensure_custom_data_attribute(
-    PhysicsWorldState::ConstraintAttribute attribute) const
-{
-  if (has_builtin_attribute_custom_data_layer(attribute)) {
-    return;
-  }
-  std::scoped_lock lock(world_data_mutex_);
-  if (has_builtin_attribute_custom_data_layer(attribute)) {
-    return;
-  }
-
-  PhysicsWorldState &dst = *const_cast<PhysicsWorldState *>(this);
-  dst.ensure_custom_data_attribute_no_lock(attribute);
-}
-
-void PhysicsWorldState::ensure_custom_data_attribute_no_lock(BodyAttribute attribute)
-{
-  MutableAttributeAccessor dst_attributes = this->custom_data_attributes_for_write();
-  StringRef name = physics_attribute_name(attribute);
   const CPPType &type = physics_attribute_type(attribute);
-  GVArray varray = GVArray::ForSingle(type, body_num_, physics_attribute_default_value(attribute));
-  eCustomDataType data_type = cpp_type_to_custom_data_type(type);
-  dst_attributes.add(name, AttrDomain::Point, data_type, AttributeInitVArray(varray));
+  GArray<> data(type, this->bodies_num());
+  type.fill_construct_n(physics_attribute_default_value(attribute), data.data(), data.size());
+  body_data_.add(attribute, std::move(data));
 }
 
-void PhysicsWorldState::ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute)
+void PhysicsWorldState::ensure_attribute_cache(PhysicsWorldState::ConstraintAttribute attribute)
 {
-  MutableAttributeAccessor dst_attributes = this->custom_data_attributes_for_write();
-  StringRef name = physics_attribute_name(attribute);
+  if (constraint_data_.contains(attribute)) {
+    return;
+  }
+
   const CPPType &type = physics_attribute_type(attribute);
-  GVArray varray = GVArray::ForSingle(
-      type, constraint_num_, physics_attribute_default_value(attribute));
-  eCustomDataType data_type = cpp_type_to_custom_data_type(type);
-  dst_attributes.add(name, AttrDomain::Edge, data_type, AttributeInitVArray(varray));
+  GArray<> data(type, this->constraints_num());
+  type.fill_construct_n(physics_attribute_default_value(attribute), data.data(), data.size());
+  constraint_data_.add(attribute, std::move(data));
 }
 
-void PhysicsWorldState::remove_attributes_from_customdata()
+void PhysicsWorldState::remove_attribute_caches()
 {
   /* Force use of cache for writing. */
-  MutableAttributeAccessor attributes = this->custom_data_attributes_for_write();
+  MutableAttributeAccessor attributes = this->state_attributes_for_write();
   attributes.for_all(
-      [&](const AttributeIDRef &attribute_id, const AttributeMetaData &meta_data) -> bool {
+      [&](const StringRefNull attribute_id, const AttributeMetaData &meta_data) -> bool {
         CustomData *custom_data = nullptr;
         int totelem = 0;
         switch (meta_data.domain) {
           case AttrDomain::Point:
-            custom_data = &body_data_;
+            custom_data = &body_custom_data_;
             totelem = body_num_;
             break;
           case AttrDomain::Edge:
-            custom_data = &constraint_data_;
+            custom_data = &constraint_custom_data_;
             totelem = constraint_num_;
             break;
           case AttrDomain::Instance:
@@ -548,17 +457,13 @@ void PhysicsWorldState::remove_attributes_from_customdata()
         if (custom_data == nullptr) {
           return true;
         }
-        CustomData_free_layer_named(custom_data, attribute_id.name(), totelem);
+        CustomData_free_layer_named(custom_data, attribute_id, totelem);
         return true;
       });
 }
 
 void PhysicsWorldState::create_world()
 {
-  // using BodyAttribute = PhysicsBodyAttribute;
-  using ConstraintAttribute = PhysicsConstraintAttribute;
-  using ConstraintType = PhysicsConstraintType;
-
   /* Avoid locking later on. */
   this->ensure_read_cache();
 
@@ -571,26 +476,16 @@ void PhysicsWorldState::create_world()
   }
 
   /* Read from custom data, write to world data. */
-  const AttributeAccessor src_attributes = this->custom_data_attributes();
+  const AttributeAccessor src_attributes = this->state_attributes();
 
   const IndexRange body_range = IndexRange(body_num_);
   const IndexRange constraint_range = IndexRange(constraint_num_);
 
   const VArraySpan<int> body_shapes = *src_attributes.lookup_or_default(
       physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point, -1);
-  const VArray<int> constraint_types = *src_attributes.lookup_or_default(
-      physics_attribute_name(ConstraintAttribute::constraint_type),
-      AttrDomain::Edge,
-      int(ConstraintType::Fixed));
-  const VArray<int> constraint_bodies1 = *src_attributes.lookup_or_default(
-      physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge, -1);
-  const VArray<int> constraint_bodies2 = *src_attributes.lookup_or_default(
-      physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge, -1);
-
   world_data_ = new PhysicsWorldData(body_num_, constraint_num_);
   world_data_->set_body_shapes(body_range, shapes_, body_shapes);
-  world_data_->create_constraints(
-      constraint_range, constraint_types, constraint_bodies1, constraint_bodies2);
+  world_data_->update_constraints(constraint_range, src_attributes);
 }
 
 void PhysicsWorldState::destroy_world()
@@ -630,16 +525,15 @@ static void remap_bodies(const int src_bodies_num,
   });
 }
 
-void PhysicsWorldState::move_or_copy_selection(
-    const PhysicsWorldState &src,
-    const IndexMask &src_body_mask,
-    const IndexMask &src_constraint_mask,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+void PhysicsWorldState::move_or_copy_selection(const PhysicsWorldState &src,
+                                               const IndexMask &src_body_mask,
+                                               const IndexMask &src_constraint_mask,
+                                               const AttributeFilter &attribute_filter)
 {
   this->try_move_data(src, body_num_, constraint_num_, src_body_mask, src_constraint_mask, 0, 0);
 
-  const bke::AttributeAccessor src_attributes = src.attributes();
-  bke::MutableAttributeAccessor dst_attributes = this->attributes_for_write();
+  const AttributeAccessor src_attributes = src.attributes();
+  MutableAttributeAccessor dst_attributes = this->attributes_for_write();
 
   Set<std::string> ignored_attributes = {};
   if (world_data_) {
@@ -648,27 +542,26 @@ void PhysicsWorldState::move_or_copy_selection(
     ignored_attributes.add_multiple(all_constraint_attribute_names());
   }
   else {
-    /* Map index references in custom data that is no longer based on world data. */
-    static const StringRef constraint_type_id = physics_attribute_name(
-        PhysicsConstraintAttribute::constraint_type);
-    static const StringRef constraint_body1_id = physics_attribute_name(
-        PhysicsConstraintAttribute::constraint_body1);
-    static const StringRef constraint_body2_id = physics_attribute_name(
-        PhysicsConstraintAttribute::constraint_body2);
+    ignored_attributes.add_multiple({physics_attribute_name(PhysicsConstraintAttribute::type),
+                                     physics_attribute_name(PhysicsConstraintAttribute::body1),
+                                     physics_attribute_name(PhysicsConstraintAttribute::body2)});
 
-    ignored_attributes.add_multiple(
-        {constraint_type_id, constraint_body1_id, constraint_body2_id});
+    const VArraySpan<int> src_types = physics_attribute_lookup_or_default<int>(
+        src_attributes, ConstraintAttribute::type);
+    ;
+    const VArraySpan<int> src_body1 = physics_attribute_lookup_or_default<int>(
+        src_attributes, ConstraintAttribute::body1);
+    ;
+    const VArraySpan<int> src_body2 = physics_attribute_lookup_or_default<int>(
+        src_attributes, ConstraintAttribute::body2);
+    ;
 
-    const VArraySpan<int> src_types = *src_attributes.lookup<int>(constraint_type_id);
-    const VArraySpan<int> src_body1 = *src_attributes.lookup<int>(constraint_body1_id);
-    const VArraySpan<int> src_body2 = *src_attributes.lookup<int>(constraint_body2_id);
-
-    SpanAttributeWriter<int> dst_types = dst_attributes.lookup_for_write_span<int>(
-        constraint_type_id);
-    SpanAttributeWriter<int> dst_body1 = dst_attributes.lookup_for_write_span<int>(
-        constraint_body1_id);
-    SpanAttributeWriter<int> dst_body2 = dst_attributes.lookup_for_write_span<int>(
-        constraint_body2_id);
+    SpanAttributeWriter<int> dst_types = physics_attribute_lookup_for_write_only_span<int>(
+        dst_attributes, ConstraintAttribute::type);
+    SpanAttributeWriter<int> dst_body1 = physics_attribute_lookup_for_write_only_span<int>(
+        dst_attributes, ConstraintAttribute::body1);
+    SpanAttributeWriter<int> dst_body2 = physics_attribute_lookup_for_write_only_span<int>(
+        dst_attributes, ConstraintAttribute::body2);
 
     remap_bodies(src.body_num_,
                  src_body_mask,
@@ -683,14 +576,14 @@ void PhysicsWorldState::move_or_copy_selection(
 
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Point,
-                         propagation_info,
-                         ignored_attributes,
+                         bke::AttrDomain::Point,
+                         bke::attribute_filter_with_skip_ref(attribute_filter, ignored_attributes),
                          src_body_mask,
                          dst_attributes);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Edge,
-                         propagation_info,
-                         ignored_attributes,
+                         bke::AttrDomain::Edge,
+                         bke::attribute_filter_with_skip_ref(attribute_filter, ignored_attributes),
                          src_constraint_mask,
                          dst_attributes);
 }
@@ -742,7 +635,7 @@ MutableSpan<CollisionShapePtr> PhysicsWorldState::shapes_for_write()
   return shapes_;
 }
 
-void PhysicsWorldState::set_overlap_filter(OverlapFilterFn fn)
+void PhysicsWorldState::set_overlap_filter(OverlapFilterFn /*fn*/)
 {
   if (world_data_ == nullptr) {
     return;
@@ -752,7 +645,7 @@ void PhysicsWorldState::set_overlap_filter(OverlapFilterFn fn)
     return;
   }
 
-  world_data_->set_overlap_filter(fn);
+  // world_data_->set_overlap_filter(fn);
 }
 
 void PhysicsWorldState::clear_overlap_filter()
@@ -765,7 +658,7 @@ void PhysicsWorldState::clear_overlap_filter()
     return;
   }
 
-  world_data_->clear_overlap_filter();
+  // world_data_->clear_overlap_filter();
 }
 
 float3 PhysicsWorldState::gravity() const
@@ -795,7 +688,7 @@ void PhysicsWorldState::set_gravity(const float3 &gravity)
   world_data_->set_gravity(gravity);
 }
 
-void PhysicsWorldState::set_solver_iterations(const int num_solver_iterations)
+void PhysicsWorldState::set_solver_iterations(const int /*num_solver_iterations*/)
 {
   if (world_data_ == nullptr) {
     return;
@@ -805,10 +698,10 @@ void PhysicsWorldState::set_solver_iterations(const int num_solver_iterations)
     return;
   }
 
-  world_data_->set_solver_iterations(num_solver_iterations);
+  // world_data_->set_solver_iterations(num_solver_iterations);
 }
 
-void PhysicsWorldState::set_split_impulse(const bool split_impulse)
+void PhysicsWorldState::set_split_impulse(const bool /*split_impulse*/)
 {
   if (world_data_ == nullptr) {
     return;
@@ -818,10 +711,10 @@ void PhysicsWorldState::set_split_impulse(const bool split_impulse)
     return;
   }
 
-  world_data_->set_split_impulse(split_impulse);
+  // world_data_->set_split_impulse(split_impulse);
 }
 
-void PhysicsWorldState::step_simulation(float delta_time)
+void PhysicsWorldState::step_simulation(float delta_time, int collision_steps)
 {
   if (world_data_ == nullptr) {
     return;
@@ -831,9 +724,9 @@ void PhysicsWorldState::step_simulation(float delta_time)
     return;
   }
 
-  this->ensure_motion_type_no_lock();
+  this->ensure_bodies_no_lock();
   this->ensure_constraints_no_lock();
-  world_data_->step_simulation(delta_time);
+  world_data_->step_simulation(delta_time, collision_steps);
 
   this->tag_read_cache_changed();
 }
@@ -929,8 +822,9 @@ void PhysicsWorldState::apply_angular_impulse(const IndexMask &selection,
   this->tag_read_cache_changed();
 }
 
-void PhysicsWorldState::clear_forces(const IndexMask &selection)
+void PhysicsWorldState::clear_forces(const IndexMask & /*selection*/)
 {
+  BLI_assert_unreachable();
   if (world_data_ == nullptr) {
     return;
   }
@@ -938,22 +832,9 @@ void PhysicsWorldState::clear_forces(const IndexMask &selection)
   if (world_data_ == nullptr) {
     return;
   }
-  world_data_->clear_forces(selection);
+  // world_data_->clear_forces(selection);
 
   this->tag_read_cache_changed();
-}
-
-[[maybe_unused]] static bool has_constraint_ref(const btRigidBody &body,
-                                                const btTypedConstraint &constraint)
-{
-  for (const int i_ref : IndexRange(body.getNumConstraintRefs())) {
-    const btTypedConstraint *ref_constraint = const_cast<btRigidBody &>(body).getConstraintRef(
-        i_ref);
-    if (ref_constraint == &constraint) {
-      return true;
-    }
-  }
-  return false;
 }
 
 bool PhysicsWorldState::validate_world_data()
@@ -964,180 +845,182 @@ bool PhysicsWorldState::validate_world_data()
     return ok;
   }
 
-  this->ensure_motion_type();
+  this->ensure_bodies();
   this->ensure_constraints();
   this->ensure_read_cache();
-  world_data_->ensure_body_and_constraint_indices();
-  world_data_->ensure_bodies_and_constraints_in_world();
 
-  AttributeAccessor cached_attributes = custom_data_attributes();
-  const Span<btRigidBody *> rigid_bodies = world_data_->bodies();
-  const Span<btTypedConstraint *> constraints = world_data_->constraints();
-  const btCollisionObjectArray &bt_collision_objects =
-      world_data_->world().getCollisionObjectArray();
+  return world_data_->validate(state_attributes(), shapes_);
 
-  for (const int i : rigid_bodies.index_range()) {
-    const btRigidBody *body = rigid_bodies[i];
+  // world_data_->ensure_body_and_constraint_indices();
+  // world_data_->ensure_bodies_and_constraints_in_world();
 
-    /* Bodies should always be allocated. */
-    if (body == nullptr) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
-    if (get_body_index(*body) != i) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
+  // const Span<JPH::Body *> rigid_bodies = world_data_->bodies();
+  // const Span<btTypedConstraint *> constraints = world_data_->constraints();
+  // const btCollisionObjectArray &bt_collision_objects =
+  //     world_data_->world().getCollisionObjectArray();
 
-    /* All bodies must be in the world, except if they don't have a collision shape. */
-    if (body->getCollisionShape() != nullptr) {
-      if (!body->isInWorld()) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-      if (bt_collision_objects.findLinearSearch(const_cast<btRigidBody *>(body)) >=
-          bt_collision_objects.size())
-      {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
+  // for (const int i : rigid_bodies.index_range()) {
+  //   const JPH::Body *body = rigid_bodies[i];
 
-    /* Bodies with a non-moving collision shape must be static and zero-mass. */
-    if (body->getCollisionShape() != nullptr && body->getCollisionShape()->isNonMoving()) {
-      if (!body->isStaticObject() || body->getMass() != 0.0f) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-    /* Static bodies must have zero mass. */
-    if (body->isStaticObject()) {
-      if (body->getMass() != 0.0f) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-    /* Zero mass bodies must be static. */
-    if (body->getMass() == 0.0f) {
-      if (!body->isStaticObject()) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-  }
+  //  /* Bodies should always be allocated. */
+  //  if (body == nullptr) {
+  //    BLI_assert_unreachable();
+  //    ok = false;
+  //  }
+  //  if (get_body_index(*body) != i) {
+  //    BLI_assert_unreachable();
+  //    ok = false;
+  //  }
 
-  const VArray<int> cached_constraint_types = *cached_attributes.lookup<int>(
-      physics_attribute_name(ConstraintAttribute::constraint_type), AttrDomain::Edge);
-  const VArray<int> cached_constraint_body1 = *cached_attributes.lookup<int>(
-      physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge);
-  const VArray<int> cached_constraint_body2 = *cached_attributes.lookup<int>(
-      physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge);
-  const VArray<bool> cached_constraint_disable_collision = *cached_attributes.lookup<bool>(
-      physics_attribute_name(ConstraintAttribute::disable_collision), AttrDomain::Edge);
-  for (const int i : constraints.index_range()) {
-    const btTypedConstraint *constraint = constraints[i];
-    if (constraint == nullptr) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
-    /* Constraint class should match the type enum. */
-    if (!validate_bullet_constraint_type(PhysicsConstraintType(cached_constraint_types[i]),
-                                         constraint))
-    {
-      BLI_assert_unreachable();
-      ok = false;
-    }
-    if (get_constraint_index(*constraint) != i) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
+  //  /* All bodies must be in the world, except if they don't have a collision shape. */
+  //  if (body->getCollisionShape() != nullptr) {
+  //    if (!body->isInWorld()) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //    if (bt_collision_objects.findLinearSearch(const_cast<JPH::Body *>(body)) >=
+  //        bt_collision_objects.size())
+  //    {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
 
-    const int cached_body1 = cached_constraint_body1[i];
-    const int cached_body2 = cached_constraint_body2[i];
-    const btRigidBody *bt_body1_expected = (rigid_bodies.index_range().contains(cached_body1) ?
-                                                rigid_bodies[cached_body1] :
-                                                &btTypedConstraint::getFixedBody());
-    const btRigidBody *bt_body2_expected = (rigid_bodies.index_range().contains(cached_body2) ?
-                                                rigid_bodies[cached_body2] :
-                                                &btTypedConstraint::getFixedBody());
-    if (&constraint->getRigidBodyA() != bt_body1_expected) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
-    if (&constraint->getRigidBodyB() != bt_body2_expected) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
+  //  /* Bodies with a non-moving collision shape must be static and zero-mass. */
+  //  if (body->getCollisionShape() != nullptr && body->getCollisionShape()->isNonMoving()) {
+  //    if (!body->isStaticObject() || body->getMass() != 0.0f) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
+  //  /* Static bodies must have zero mass. */
+  //  if (body->isStaticObject()) {
+  //    if (body->getMass() != 0.0f) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
+  //  /* Zero mass bodies must be static. */
+  //  if (body->getMass() == 0.0f) {
+  //    if (!body->isStaticObject()) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
+  //}
 
-    /* Bullet does not keep track of which constraints have been added to the world. This flag is
-     * set by us to know when to add or remove a constraint. */
-    if (!is_constraint_in_world(*constraint)) {
-      BLI_assert_unreachable();
-      ok = false;
-    }
-    /* Constraints with body1 == body2 are not actually added to the world (Bullet crashes
-     * otherwise). */
-    if (&constraint->getRigidBodyA() != &constraint->getRigidBodyB()) {
-      bool world_has_constraint_ref = false;
-      for (const int i : IndexRange(world_data_->world().getNumConstraints())) {
-        if (world_data_->world().getConstraint(i) == constraint) {
-          world_has_constraint_ref = true;
-        }
-      }
-      if (!world_has_constraint_ref) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
+  // const VArray<int> cached_constraint_types = *cached_attributes.lookup<int>(
+  //     physics_attribute_name(ConstraintAttribute::constraint_type), AttrDomain::Edge);
+  // const VArray<int> cached_constraint_body1 = *cached_attributes.lookup<int>(
+  //     physics_attribute_name(ConstraintAttribute::constraint_body1), AttrDomain::Edge);
+  // const VArray<int> cached_constraint_body2 = *cached_attributes.lookup<int>(
+  //     physics_attribute_name(ConstraintAttribute::constraint_body2), AttrDomain::Edge);
+  // const VArray<bool> cached_constraint_disable_collision = *cached_attributes.lookup<bool>(
+  //     physics_attribute_name(ConstraintAttribute::disable_collision), AttrDomain::Edge);
+  // for (const int i : constraints.index_range()) {
+  //   const btTypedConstraint *constraint = constraints[i];
+  //   if (constraint == nullptr) {
+  //     BLI_assert_unreachable();
+  //     ok = false;
+  //   }
+  //   /* Constraint class should match the type enum. */
+  //   if (!validate_bullet_constraint_type(PhysicsConstraintType(cached_constraint_types[i]),
+  //                                        constraint))
+  //   {
+  //     BLI_assert_unreachable();
+  //     ok = false;
+  //   }
+  //   if (get_constraint_index(*constraint) != i) {
+  //     BLI_assert_unreachable();
+  //     ok = false;
+  //   }
 
-    /* Constraints that disable the collision between its bodies add a reference on each body. */
-    const btRigidBody &body1 = constraint->getRigidBodyA();
-    const btRigidBody &body2 = constraint->getRigidBodyB();
-    const bool is_fixed1 = (&body1 == &btTypedConstraint::getFixedBody());
-    const bool is_fixed2 = (&body2 == &btTypedConstraint::getFixedBody());
-    const bool found_ref_in_body1 = has_constraint_ref(body1, *constraint);
-    const bool found_ref_in_body2 = has_constraint_ref(body2, *constraint);
+  //  const int cached_body1 = cached_constraint_body1[i];
+  //  const int cached_body2 = cached_constraint_body2[i];
+  //  const JPH::Body *bt_body1_expected = (rigid_bodies.index_range().contains(cached_body1) ?
+  //                                              rigid_bodies[cached_body1] :
+  //                                              &btTypedConstraint::getFixedBody());
+  //  const JPH::Body *bt_body2_expected = (rigid_bodies.index_range().contains(cached_body2) ?
+  //                                              rigid_bodies[cached_body2] :
+  //                                              &btTypedConstraint::getFixedBody());
+  //  if (&constraint->getRigidBodyA() != bt_body1_expected) {
+  //    BLI_assert_unreachable();
+  //    ok = false;
+  //  }
+  //  if (&constraint->getRigidBodyB() != bt_body2_expected) {
+  //    BLI_assert_unreachable();
+  //    ok = false;
+  //  }
 
-    if (cached_constraint_disable_collision[i]) {
-      if ((!is_fixed1 && !found_ref_in_body1) || (!is_fixed2 && !found_ref_in_body2)) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-    else {
-      if ((!is_fixed1 && found_ref_in_body1) || (!is_fixed2 && found_ref_in_body2)) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-  }
+  //  /* Bullet does not keep track of which constraints have been added to the world. This flag is
+  //   * set by us to know when to add or remove a constraint. */
+  //  if (!is_constraint_in_world(*constraint)) {
+  //    BLI_assert_unreachable();
+  //    ok = false;
+  //  }
+  //  /* Constraints with body1 == body2 are not actually added to the world (Bullet crashes
+  //   * otherwise). */
+  //  if (&constraint->getRigidBodyA() != &constraint->getRigidBodyB()) {
+  //    bool world_has_constraint_ref = false;
+  //    for (const int i : IndexRange(world_data_->world().getNumConstraints())) {
+  //      if (world_data_->world().getConstraint(i) == constraint) {
+  //        world_has_constraint_ref = true;
+  //      }
+  //    }
+  //    if (!world_has_constraint_ref) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
 
-  const VArray<int> cached_body_shapes = *cached_attributes.lookup<int>(
-      physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point);
-  const IndexRange shape_range = shapes_.index_range();
-  if (rigid_bodies.size() != cached_body_shapes.size()) {
-    BLI_assert_unreachable();
-    ok = false;
-  }
-  for (const int i : cached_body_shapes.index_range()) {
-    /* Internal shape pointers must match the body shape index attribute. */
-    const int shape_index = cached_body_shapes[i];
-    if (shape_range.contains(shape_index)) {
-      /* Shape pointer must match indicated shape. */
-      const CollisionShapePtr shape_ptr = shapes_[shape_index];
-      if (!validate_bullet_body_shape(*rigid_bodies[i], shape_ptr)) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-    else {
-      const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
-      if (bt_shape != nullptr) {
-        BLI_assert_unreachable();
-        ok = false;
-      }
-    }
-  }
+  //  /* Constraints that disable the collision between its bodies add a reference on each body. */
+  //  const JPH::Body &body1 = constraint->getRigidBodyA();
+  //  const JPH::Body &body2 = constraint->getRigidBodyB();
+  //  const bool is_fixed1 = (&body1 == &btTypedConstraint::getFixedBody());
+  //  const bool is_fixed2 = (&body2 == &btTypedConstraint::getFixedBody());
+  //  const bool found_ref_in_body1 = has_constraint_ref(body1, *constraint);
+  //  const bool found_ref_in_body2 = has_constraint_ref(body2, *constraint);
+
+  //  if (cached_constraint_disable_collision[i]) {
+  //    if ((!is_fixed1 && !found_ref_in_body1) || (!is_fixed2 && !found_ref_in_body2)) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
+  //  else {
+  //    if ((!is_fixed1 && found_ref_in_body1) || (!is_fixed2 && found_ref_in_body2)) {
+  //      BLI_assert_unreachable();
+  //      ok = false;
+  //    }
+  //  }
+  //}
+
+  // const VArray<int> cached_body_shapes = *cached_attributes.lookup<int>(
+  //     physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point);
+  // const IndexRange shape_range = shapes_.index_range();
+  // if (rigid_bodies.size() != cached_body_shapes.size()) {
+  //   BLI_assert_unreachable();
+  //   ok = false;
+  // }
+  // for (const int i : cached_body_shapes.index_range()) {
+  //   /* Internal shape pointers must match the body shape index attribute. */
+  //   const int shape_index = cached_body_shapes[i];
+  //   if (shape_range.contains(shape_index)) {
+  //     /* Shape pointer must match indicated shape. */
+  //     const CollisionShapePtr shape_ptr = shapes_[shape_index];
+  //     if (!validate_bullet_body_shape(*rigid_bodies[i], shape_ptr)) {
+  //       BLI_assert_unreachable();
+  //       ok = false;
+  //     }
+  //   }
+  //   else {
+  //     const btCollisionShape *bt_shape = rigid_bodies[i]->getCollisionShape();
+  //     if (bt_shape != nullptr) {
+  //       BLI_assert_unreachable();
+  //       ok = false;
+  //     }
+  //   }
+  // }
 
   return ok;
 }
@@ -1152,14 +1035,14 @@ MutableAttributeAccessor PhysicsWorldState::attributes_for_write()
   return MutableAttributeAccessor(this, bke::get_physics_accessor_functions_ref());
 }
 
-AttributeAccessor PhysicsWorldState::custom_data_attributes() const
+AttributeAccessor PhysicsWorldState::state_attributes() const
 {
-  return AttributeAccessor(this, bke::get_physics_custom_data_accessor_functions_ref());
+  return AttributeAccessor(this, bke::get_physics_state_accessor_functions_ref());
 }
 
-MutableAttributeAccessor PhysicsWorldState::custom_data_attributes_for_write()
+MutableAttributeAccessor PhysicsWorldState::state_attributes_for_write()
 {
-  return MutableAttributeAccessor(this, bke::get_physics_custom_data_accessor_functions_ref());
+  return MutableAttributeAccessor(this, bke::get_physics_state_accessor_functions_ref());
 }
 
 AttributeAccessor PhysicsWorldState::world_data_attributes() const
@@ -1191,11 +1074,11 @@ const CustomDataAccessInfo &PhysicsWorldState::body_custom_data_access_info()
   static CustomDataAccessInfo body_custom_data_access = {
       [](void *owner) -> CustomData * {
         auto &state = *static_cast<PhysicsWorldState *>(owner);
-        return &state.body_data_;
+        return &state.body_custom_data_;
       },
       [](const void *owner) -> const CustomData * {
         const auto &state = static_cast<const PhysicsWorldState *>(owner);
-        return &state->body_data_;
+        return &state->body_custom_data_;
       },
       [](const void *owner) -> int {
         const auto &state = static_cast<const PhysicsWorldState *>(owner);
@@ -1209,17 +1092,25 @@ const CustomDataAccessInfo &PhysicsWorldState::constraint_custom_data_access_inf
   static CustomDataAccessInfo constraint_custom_data_access = {
       [](void *owner) -> CustomData * {
         auto &state = *static_cast<PhysicsWorldState *>(owner);
-        return &state.constraint_data_;
+        return &state.constraint_custom_data_;
       },
       [](const void *owner) -> const CustomData * {
         const auto &state = static_cast<const PhysicsWorldState *>(owner);
-        return &state->constraint_data_;
+        return &state->constraint_custom_data_;
       },
       [](const void *owner) -> int {
         const auto &state = static_cast<const PhysicsWorldState *>(owner);
         return state->constraint_num_;
       }};
   return constraint_custom_data_access;
+}
+
+template<typename T>
+VArray<T> PhysicsGeometry::lookup_attribute(const PhysicsBodyAttribute attribute) const
+{
+  return *attributes().lookup_or_default<int>(physics_attribute_name(attribute),
+                                              AttrDomain::Point,
+                                              physics_attribute_default_value<int>(attribute));
 }
 
 PhysicsGeometry::PhysicsGeometry()
@@ -1302,156 +1193,122 @@ IndexRange PhysicsGeometry::shapes_range() const
   return world_state_->shapes_range();
 }
 
-VArray<int> PhysicsGeometry::body_ids() const
-{
-  return *attributes().lookup<int>(body_attribute_name(BodyAttribute::id));
-}
-
-AttributeWriter<int> PhysicsGeometry::body_ids_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(body_attribute_name(BodyAttribute::id));
-}
-
 VArray<int> PhysicsGeometry::body_shapes() const
 {
   return *attributes().lookup_or_default<int>(
-      body_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point, -1);
+      physics_attribute_name(BodyAttribute::collision_shape), AttrDomain::Point, -1);
 }
 
 AttributeWriter<int> PhysicsGeometry::body_shapes_for_write()
 {
   const GVArray init_varray = VArray<int>::ForSingle(-1, this->state().bodies_num());
   return attributes_for_write().lookup_or_add_for_write<int>(
-      body_attribute_name(BodyAttribute::collision_shape),
+      physics_attribute_name(BodyAttribute::collision_shape),
       AttrDomain::Point,
       AttributeInitVArray(init_varray));
 }
 
-VArray<bool> PhysicsGeometry::body_is_static() const
+VArray<int> PhysicsGeometry::body_motion_types() const
 {
-  return *attributes().lookup<bool>(body_attribute_name(BodyAttribute::is_static));
+  return lookup_attribute<int>(BodyAttribute::motion_type);
 }
 
-AttributeWriter<bool> PhysicsGeometry::body_is_static_for_write()
+AttributeWriter<int> PhysicsGeometry::body_motion_types_for_write()
 {
-  return attributes_for_write().lookup_or_add_for_write<bool>(
-      body_attribute_name(BodyAttribute::is_static), AttrDomain::Point);
-}
-
-VArray<bool> PhysicsGeometry::body_is_kinematic() const
-{
-  return *attributes().lookup<bool>(body_attribute_name(BodyAttribute::is_kinematic));
-}
-
-AttributeWriter<bool> PhysicsGeometry::body_is_kinematic_for_write()
-{
-  return attributes_for_write().lookup_for_write<bool>(
-      body_attribute_name(BodyAttribute::is_kinematic));
+  return attributes_for_write().lookup_or_add_for_write<int>(
+      physics_attribute_name(BodyAttribute::motion_type), AttrDomain::Point);
 }
 
 VArray<float> PhysicsGeometry::body_masses() const
 {
-  return *attributes().lookup<float>(body_attribute_name(BodyAttribute::mass));
+  return *attributes().lookup<float>(physics_attribute_name(BodyAttribute::mass));
 }
 
 AttributeWriter<float> PhysicsGeometry::body_masses_for_write()
 {
   return attributes_for_write().lookup_or_add_for_write<float>(
-      body_attribute_name(BodyAttribute::mass), AttrDomain::Point);
+      physics_attribute_name(BodyAttribute::mass), AttrDomain::Point);
 }
 
 VArray<float3> PhysicsGeometry::body_inertias() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::inertia));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::inertia));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_inertias_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(
-      body_attribute_name(BodyAttribute::inertia));
+      physics_attribute_name(BodyAttribute::inertia));
 }
 
 VArray<float3> PhysicsGeometry::body_positions() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::position));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::position));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_positions_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(
-      body_attribute_name(BodyAttribute::position));
+      physics_attribute_name(BodyAttribute::position));
 }
 
 VArray<math::Quaternion> PhysicsGeometry::body_rotations() const
 {
-  return *attributes().lookup<math::Quaternion>(body_attribute_name(BodyAttribute::rotation));
+  return *attributes().lookup<math::Quaternion>(physics_attribute_name(BodyAttribute::rotation));
 }
 
 AttributeWriter<math::Quaternion> PhysicsGeometry::body_rotations_for_write()
 {
   return attributes_for_write().lookup_for_write<math::Quaternion>(
-      body_attribute_name(BodyAttribute::rotation));
+      physics_attribute_name(BodyAttribute::rotation));
 }
 
 VArray<float3> PhysicsGeometry::body_velocities() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::velocity));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::velocity));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_velocities_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(
-      body_attribute_name(BodyAttribute::velocity));
+      physics_attribute_name(BodyAttribute::velocity));
 }
 
 VArray<float3> PhysicsGeometry::body_angular_velocities() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::angular_velocity));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::angular_velocity));
 }
 
 AttributeWriter<float3> PhysicsGeometry::body_angular_velocities_for_write()
 {
   return attributes_for_write().lookup_for_write<float3>(
-      body_attribute_name(BodyAttribute::angular_velocity));
-}
-
-VArray<int> PhysicsGeometry::body_activation_states() const
-{
-  return *attributes().lookup<int>(body_attribute_name(BodyAttribute::activation_state));
-}
-
-AttributeWriter<int> PhysicsGeometry::body_activation_states_for_write()
-{
-  return attributes_for_write().lookup_for_write<int>(
-      body_attribute_name(BodyAttribute::activation_state));
+      physics_attribute_name(BodyAttribute::angular_velocity));
 }
 
 VArray<float3> PhysicsGeometry::body_total_force() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_force));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::total_force));
 }
 
 VArray<float3> PhysicsGeometry::body_total_torque() const
 {
-  return *attributes().lookup<float3>(body_attribute_name(BodyAttribute::total_torque));
+  return *attributes().lookup<float3>(physics_attribute_name(BodyAttribute::total_torque));
 }
 
 VArray<bool> PhysicsGeometry::constraint_enabled() const
 {
-  return *attributes().lookup<bool>(
-      constraint_attribute_name(ConstraintAttribute::constraint_enabled));
+  return *attributes().lookup<bool>(physics_attribute_name(ConstraintAttribute::enabled));
 }
 
 AttributeWriter<bool> PhysicsGeometry::constraint_enabled_for_write()
 {
   return attributes_for_write().lookup_for_write<bool>(
-      constraint_attribute_name(ConstraintAttribute::constraint_enabled));
+      physics_attribute_name(ConstraintAttribute::enabled));
 }
 
 VArray<int> PhysicsGeometry::constraint_types() const
 {
-  return *attributes().lookup<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_type));
+  return *attributes().lookup<int>(physics_attribute_name(ConstraintAttribute::type));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
@@ -1459,103 +1316,109 @@ AttributeWriter<int> PhysicsGeometry::constraint_types_for_write()
   const VArray<int> default_varray = VArray<int>::ForSingle(
       int(PhysicsGeometry::ConstraintType::Fixed), this->constraints_num());
   return attributes_for_write().lookup_or_add_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_type),
+      physics_attribute_name(ConstraintAttribute::type),
       AttrDomain::Edge,
       AttributeInitVArray(default_varray));
 }
 
 VArray<int> PhysicsGeometry::constraint_body1() const
 {
-  return *attributes().lookup<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body1));
+  return *attributes().lookup<int>(physics_attribute_name(ConstraintAttribute::body1));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_body1_for_write()
 {
   const VArray<int> default_varray = VArray<int>::ForSingle(-1, this->constraints_num());
   return attributes_for_write().lookup_or_add_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body1),
+      physics_attribute_name(ConstraintAttribute::body1),
       AttrDomain::Edge,
       AttributeInitVArray(default_varray));
 }
 
 VArray<int> PhysicsGeometry::constraint_body2() const
 {
-  return *attributes().lookup<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body2));
+  return *attributes().lookup<int>(physics_attribute_name(ConstraintAttribute::body2));
 }
 
 AttributeWriter<int> PhysicsGeometry::constraint_body2_for_write()
 {
   const VArray<int> default_varray = VArray<int>::ForSingle(-1, this->constraints_num());
   return attributes_for_write().lookup_or_add_for_write<int>(
-      constraint_attribute_name(ConstraintAttribute::constraint_body2),
+      physics_attribute_name(ConstraintAttribute::body2),
       AttrDomain::Edge,
       AttributeInitVArray(default_varray));
 }
 
 VArray<float4x4> PhysicsGeometry::constraint_frame1() const
 {
-  return *attributes().lookup<float4x4>(
-      constraint_attribute_name(ConstraintAttribute::constraint_frame1));
+  return *attributes().lookup<float4x4>(physics_attribute_name(ConstraintAttribute::frame1));
 }
 
 AttributeWriter<float4x4> PhysicsGeometry::constraint_frame1_for_write()
 {
   return attributes_for_write().lookup_for_write<float4x4>(
-      constraint_attribute_name(ConstraintAttribute::constraint_frame1));
+      physics_attribute_name(ConstraintAttribute::frame1));
 }
 
 VArray<float4x4> PhysicsGeometry::constraint_frame2() const
 {
-  return *attributes().lookup<float4x4>(
-      constraint_attribute_name(ConstraintAttribute::constraint_frame2));
+  return *attributes().lookup<float4x4>(physics_attribute_name(ConstraintAttribute::frame2));
 }
 
 AttributeWriter<float4x4> PhysicsGeometry::constraint_frame2_for_write()
 {
   return attributes_for_write().lookup_for_write<float4x4>(
-      constraint_attribute_name(ConstraintAttribute::constraint_frame2));
+      physics_attribute_name(ConstraintAttribute::frame2));
 }
 
-VArray<float> PhysicsGeometry::constraint_applied_impulse() const
+Span<PhysicsGeometry::BodyAttribute> PhysicsGeometry::all_body_attributes()
 {
-  return *attributes().lookup<float>(
-      constraint_attribute_name(ConstraintAttribute::applied_impulse));
+  return bke::all_body_attributes();
 }
 
-VArray<float> PhysicsGeometry::constraint_breaking_impulse_threshold_impulse() const
+Span<PhysicsGeometry::ConstraintAttribute> PhysicsGeometry::all_constraint_attributes()
 {
-  return *attributes().lookup<float>(
-      constraint_attribute_name(ConstraintAttribute::breaking_impulse_threshold));
+  return bke::all_constraint_attributes();
 }
 
-AttributeWriter<float> PhysicsGeometry::constraint_breaking_impulse_threshold_for_write()
-{
-  return attributes_for_write().lookup_for_write<float>(
-      constraint_attribute_name(ConstraintAttribute::breaking_impulse_threshold));
-}
-
-VArray<bool> PhysicsGeometry::constraint_disable_collision() const
-{
-  return *attributes().lookup<bool>(
-      constraint_attribute_name(ConstraintAttribute::disable_collision));
-}
-
-AttributeWriter<bool> PhysicsGeometry::constraint_disable_collision_for_write()
-{
-  return attributes_for_write().lookup_or_add_for_write<bool>(
-      constraint_attribute_name(ConstraintAttribute::disable_collision), AttrDomain::Edge);
-}
-
-StringRef PhysicsGeometry::body_attribute_name(BodyAttribute attribute)
+StringRef PhysicsGeometry::attribute_name(BodyAttribute attribute)
 {
   return bke::physics_attribute_name(attribute);
 }
 
-StringRef PhysicsGeometry::constraint_attribute_name(ConstraintAttribute attribute)
+StringRef PhysicsGeometry::attribute_name(ConstraintAttribute attribute)
 {
   return bke::physics_attribute_name(attribute);
+}
+
+Span<std::string> PhysicsGeometry::all_body_attribute_names()
+{
+  return bke::all_body_attribute_names();
+}
+
+Span<std::string> PhysicsGeometry::all_constraint_attribute_names()
+{
+  return bke::all_constraint_attribute_names();
+}
+
+const CPPType &PhysicsGeometry::attribute_type(PhysicsBodyAttribute attribute)
+{
+  return bke::physics_attribute_type(attribute);
+}
+
+const CPPType &PhysicsGeometry::attribute_type(PhysicsConstraintAttribute attribute)
+{
+  return bke::physics_attribute_type(attribute);
+}
+
+const void *PhysicsGeometry::attribute_default_value(PhysicsBodyAttribute attribute)
+{
+  return bke::physics_attribute_default_value(attribute);
+}
+
+const void *PhysicsGeometry::attribute_default_value(PhysicsConstraintAttribute attribute)
+{
+  return bke::physics_attribute_default_value(attribute);
 }
 
 bool PhysicsGeometry::validate_world_data()
@@ -1585,38 +1448,6 @@ MutableAttributeAccessor PhysicsGeometry::dummy_attributes_for_write()
 }
 
 /** \} */
-
-bool validate_bullet_constraint_type(const PhysicsConstraintType type,
-                                     const btTypedConstraint *constraint)
-{
-  using ConstraintType = PhysicsConstraintType;
-
-  switch (type) {
-    case ConstraintType::Fixed:
-      return dynamic_cast<const btFixedConstraint *>(constraint) != nullptr;
-    case ConstraintType::Point:
-      return dynamic_cast<const btPoint2PointConstraint *>(constraint) != nullptr;
-    case ConstraintType::Hinge:
-      return dynamic_cast<const btHinge2Constraint *>(constraint) != nullptr;
-    case ConstraintType::Slider:
-      return dynamic_cast<const btSliderConstraint *>(constraint) != nullptr;
-    case ConstraintType::ConeTwist:
-      return dynamic_cast<const btConeTwistConstraint *>(constraint) != nullptr;
-    case ConstraintType::SixDoF:
-      return dynamic_cast<const btGeneric6DofConstraint *>(constraint) != nullptr;
-    case ConstraintType::SixDoFSpring:
-      return dynamic_cast<const btGeneric6DofSpringConstraint *>(constraint) != nullptr;
-    case ConstraintType::SixDoFSpring2:
-      return dynamic_cast<const btGeneric6DofSpring2Constraint *>(constraint) != nullptr;
-    case ConstraintType::Contact:
-      /* XXX Currently unsupported. */
-      return false;
-    case ConstraintType::Gear:
-      return dynamic_cast<const btGearConstraint *>(constraint) != nullptr;
-  }
-  BLI_assert_unreachable();
-  return false;
-}
 
 #else
 

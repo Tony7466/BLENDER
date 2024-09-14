@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_generic_array.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_quaternion_types.hh"
@@ -37,56 +38,71 @@ struct PhysicsWorldDataAccessInfo;
 using CollisionShapePtr = ImplicitSharingPtr<CollisionShape>;
 
 enum class PhysicsBodyAttribute {
-  id,
   collision_shape,
-  is_static,
-  is_kinematic,
+  motion_type,
   mass,
   inertia,
   position,
   rotation,
   velocity,
   angular_velocity,
-  activation_state,
+  is_active,
+  allow_sleep,
   friction,
-  rolling_friction,
-  spinning_friction,
   restitution,
   linear_damping,
   angular_damping,
-  linear_sleeping_threshold,
-  angular_sleeping_threshold,
   total_force,
   total_torque,
 };
 
 enum class PhysicsConstraintAttribute {
-  constraint_type,
-  constraint_body1,
-  constraint_body2,
-  constraint_enabled,
-  constraint_frame1,
-  constraint_frame2,
-  applied_impulse,
-  applied_force1,
-  applied_force2,
-  applied_torque1,
-  applied_torque2,
-  breaking_impulse_threshold,
-  disable_collision,
+  type,
+  body1,
+  body2,
+  enabled,
+  frame1,
+  frame2,
+  limit_min_axis,
+  limit_max_axis,
+  limit_min_angle,
+  limit_max_angle,
+  spring_stiffness_axis,
+  spring_stiffness_angle,
+  spring_damping_axis,
+  spring_damping_angle,
+  max_friction_axis,
+  max_friction_angle,
+  motor_spring_stiffness_axis,
+  motor_spring_stiffness_angle,
+  motor_spring_damping_axis,
+  motor_spring_damping_angle,
+  min_motor_force_axis,
+  min_motor_force_angle,
+  max_motor_force_axis,
+  max_motor_force_angle,
+};
+
+enum class PhysicsMotionType {
+  Dynamic,
+  Static,
+  Kinematic,
 };
 
 enum class PhysicsConstraintType {
-  Fixed = 0,
+  Fixed,
+  Distance,
   Point,
   Hinge,
+  Cone,
   Slider,
-  ConeTwist,
-  SixDoF,
-  SixDoFSpring,
-  SixDoFSpring2,
-  Contact,
+  SwingTwist,
+  SixDOF,
+  Path,
   Gear,
+  RackAndPinion,
+  Pulley,
+  Vehicle,
 };
 
 enum class PhysicsBodyActivationState {
@@ -124,23 +140,21 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   using CacheFlag = std::atomic<bool>;
 
   /* Cache for readers storing copies of physics data in custom data. */
-  mutable CacheFlag custom_data_read_cache_valid_ = false;
+  mutable CacheFlag read_cache_valid_ = false;
   /* Valid when body collision shape pointers match pointers from the
    * shapes list, as stored in the body shapes index attribute. */
   mutable CacheFlag body_collision_shapes_valid_ = false;
-  /* Valid when is_static flags match the world data motion type for each body. */
-  mutable CacheFlag body_is_static_valid_ = false;
-  /* Valid when mass matches the world data motion type for each body. */
-  mutable CacheFlag body_mass_valid_ = false;
   /* Valid when internal constraints have been updated to specified types and bodies. */
   mutable CacheFlag constraints_valid_ = false;
-  /* Valid when constraint references to disable collisions have been updated. */
-  mutable CacheFlag constraint_disable_collision_valid_ = false;
+  ///* Valid when constraint references to disable collisions have been updated. */
+  // mutable CacheFlag constraint_disable_collision_valid_ = false;
 
   int body_num_;
   int constraint_num_;
-  CustomData body_data_;
-  CustomData constraint_data_;
+  Map<BodyAttribute, GArray<>> body_data_;
+  Map<ConstraintAttribute, GArray<>> constraint_data_;
+  CustomData body_custom_data_;
+  CustomData constraint_custom_data_;
 
   Array<CollisionShapePtr> shapes_;
 
@@ -171,31 +185,25 @@ class PhysicsWorldState : public ImplicitSharingMixin {
   void tag_read_cache_changed();
   void tag_body_topology_changed();
   void tag_body_collision_shape_changed();
-  void tag_body_is_static_changed();
-  void tag_body_mass_changed();
   void tag_constraints_changed();
-  void tag_constraint_disable_collision_changed();
+  // void tag_constraint_disable_collision_changed();
   void tag_shapes_changed();
 
-  bool has_builtin_attribute_custom_data_layer(BodyAttribute attribute) const;
-  bool has_builtin_attribute_custom_data_layer(ConstraintAttribute attribute) const;
+  bool has_builtin_attribute_cache(BodyAttribute attribute) const;
+  bool has_builtin_attribute_cache(ConstraintAttribute attribute) const;
 
   /* Make sure all world data has been copied to the custom data read cache. */
   void ensure_read_cache() const;
   /* Make sure attributes with write caches have been transferred to world data. */
-  void ensure_motion_type();
+  void ensure_bodies();
   void ensure_constraints();
-  void ensure_constraint_disable_collision();
-  void ensure_custom_data_attribute(BodyAttribute attribute) const;
-  void ensure_custom_data_attribute(ConstraintAttribute attribute) const;
-  void remove_attributes_from_customdata();
 
   void create_world();
   void destroy_world();
   void move_or_copy_selection(const PhysicsWorldState &src,
                               const IndexMask &src_body_mask,
                               const IndexMask &src_constraint_mask,
-                              const bke::AnonymousAttributePropagationInfo &propagation_info);
+                              const AttributeFilter &attribute_filter);
   bool try_move_data(const PhysicsWorldState &src,
                      int body_num,
                      int constraint_num,
@@ -217,7 +225,7 @@ class PhysicsWorldState : public ImplicitSharingMixin {
 
   void compute_local_inertia(const IndexMask &selection);
 
-  void step_simulation(float delta_time);
+  void step_simulation(float delta_time, int collision_steps = 1);
 
   void apply_force(const IndexMask &selection,
                    const VArray<float3> &forces,
@@ -243,19 +251,21 @@ class PhysicsWorldState : public ImplicitSharingMixin {
 
  private:
   void ensure_read_cache_no_lock() const;
-  void ensure_motion_type_no_lock();
+  void ensure_bodies_no_lock();
   void ensure_body_collision_shapes_no_lock();
-  void ensure_body_is_static_no_lock();
-  void ensure_body_masses_no_lock();
   void ensure_constraints_no_lock();
-  void ensure_constraint_disable_collision_no_lock();
-  void ensure_custom_data_attribute_no_lock(BodyAttribute attribute);
-  void ensure_custom_data_attribute_no_lock(ConstraintAttribute attribute);
+  // void ensure_constraint_disable_collision_no_lock();
+  void ensure_attribute_cache(BodyAttribute attribute);
+  void ensure_attribute_cache(ConstraintAttribute attribute);
+  void remove_attribute_caches();
 
-  bke::AttributeAccessor custom_data_attributes() const;
-  bke::MutableAttributeAccessor custom_data_attributes_for_write();
+  bke::AttributeAccessor state_attributes() const;
+  bke::MutableAttributeAccessor state_attributes_for_write();
   bke::AttributeAccessor world_data_attributes() const;
   bke::MutableAttributeAccessor world_data_attributes_for_write();
+
+  friend class PhysicsStateBodyAttributeProvider;
+  friend class PhysicsStateConstraintAttributeProvider;
 };
 
 class PhysicsGeometry {
@@ -292,19 +302,12 @@ class PhysicsGeometry {
   IndexRange constraints_range() const;
   IndexRange shapes_range() const;
 
-  VArray<int> body_ids() const;
-  AttributeWriter<int> body_ids_for_write();
-
   VArray<int> body_shapes() const;
   AttributeWriter<int> body_shapes_for_write();
 
-  VArray<bool> body_is_static() const;
-  AttributeWriter<bool> body_is_static_for_write();
+  VArray<int> body_motion_types() const;
+  AttributeWriter<int> body_motion_types_for_write();
 
-  VArray<bool> body_is_kinematic() const;
-  AttributeWriter<bool> body_is_kinematic_for_write();
-
-  /* Set to zero to make static bodies. */
   VArray<float> body_masses() const;
   AttributeWriter<float> body_masses_for_write();
 
@@ -322,10 +325,6 @@ class PhysicsGeometry {
 
   VArray<float3> body_angular_velocities() const;
   AttributeWriter<float3> body_angular_velocities_for_write();
-
-  /* Type is #BodyActivationState, can't return enum as VArray (no CPPType). */
-  VArray<int> body_activation_states() const;
-  AttributeWriter<int> body_activation_states_for_write();
 
   VArray<float3> body_total_force() const;
   VArray<float3> body_total_torque() const;
@@ -346,16 +345,20 @@ class PhysicsGeometry {
   VArray<float4x4> constraint_frame2() const;
   AttributeWriter<float4x4> constraint_frame2_for_write();
 
-  VArray<float> constraint_applied_impulse() const;
+  static Span<BodyAttribute> all_body_attributes();
+  static Span<ConstraintAttribute> all_constraint_attributes();
 
-  VArray<float> constraint_breaking_impulse_threshold_impulse() const;
-  AttributeWriter<float> constraint_breaking_impulse_threshold_for_write();
+  static StringRef attribute_name(BodyAttribute attribute);
+  static StringRef attribute_name(ConstraintAttribute attribute);
 
-  VArray<bool> constraint_disable_collision() const;
-  AttributeWriter<bool> constraint_disable_collision_for_write();
+  static Span<std::string> all_body_attribute_names();
+  static Span<std::string> all_constraint_attribute_names();
 
-  static StringRef body_attribute_name(BodyAttribute attribute);
-  static StringRef constraint_attribute_name(ConstraintAttribute attribute);
+  static const CPPType &attribute_type(PhysicsBodyAttribute attribute);
+  static const CPPType &attribute_type(PhysicsConstraintAttribute attribute);
+
+  static const void *attribute_default_value(PhysicsBodyAttribute attribute);
+  static const void *attribute_default_value(PhysicsConstraintAttribute attribute);
 
   bke::AttributeAccessor attributes() const;
   bke::MutableAttributeAccessor attributes_for_write();
@@ -371,6 +374,85 @@ class PhysicsGeometry {
   /* Validate internal world data.
    * Should only be used in tests. */
   bool validate_world_data();
+
+ private:
+  template<typename T> VArray<T> lookup_attribute(const PhysicsBodyAttribute attribute) const;
 };
+
+/* -------------------------------------------------------------------- */
+/** \name Attribute Info for Physics Geometry
+ * \{ */
+
+namespace physics_attributes {
+
+Span<PhysicsBodyAttribute> all_body_attributes();
+Span<PhysicsConstraintAttribute> all_constraint_attributes();
+
+StringRef physics_attribute_name(PhysicsBodyAttribute attribute);
+StringRef physics_attribute_name(PhysicsConstraintAttribute attribute);
+
+Span<std::string> all_body_attribute_names();
+Span<std::string> all_constraint_attribute_names();
+
+const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute);
+const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute);
+
+const void *physics_attribute_default_value(PhysicsBodyAttribute attribute);
+const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute);
+template<typename T> const T &physics_attribute_default_value(PhysicsBodyAttribute attribute)
+{
+  BLI_assert(physics_attribute_type(attribute).is<T>());
+  return *static_cast<const T *>(physics_attribute_default_value(attribute));
+}
+template<typename T> const T &physics_attribute_default_value(PhysicsConstraintAttribute attribute)
+{
+  BLI_assert(physics_attribute_type(attribute).is<T>());
+  return *static_cast<const T *>(physics_attribute_default_value(attribute));
+}
+
+/* Writes to cache first, then updates engine data afterward.
+ * This is used for attributes which do not have a direct property in engine data.
+ * Example: Mass is stored as inverse mass, the "mass" attribute is stored in a cache to avoid
+ * loss of accuracy through repeated conversion. */
+bool physics_attribute_use_write_cache(const PhysicsBodyAttribute attribute);
+bool physics_attribute_use_write_cache(const PhysicsConstraintAttribute attribute);
+
+template<typename T>
+VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes,
+                                              PhysicsBodyAttribute physics_attribute)
+{
+  return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
+                                          AttrDomain::Point,
+                                          physics_attribute_default_value<T>(physics_attribute));
+}
+
+template<typename T>
+VArray<T> physics_attribute_lookup_or_default(const AttributeAccessor attributes,
+                                              PhysicsConstraintAttribute physics_attribute)
+{
+  return *attributes.lookup_or_default<T>(physics_attribute_name(physics_attribute),
+                                          AttrDomain::Edge,
+                                          physics_attribute_default_value<T>(physics_attribute));
+}
+
+template<typename T>
+static SpanAttributeWriter<T> physics_attribute_lookup_for_write_only_span(
+    MutableAttributeAccessor attributes, PhysicsBodyAttribute physics_attribute)
+{
+  return attributes.lookup_or_add_for_write_only_span<T>(physics_attribute_name(physics_attribute),
+                                                         AttrDomain::Point);
+}
+
+template<typename T>
+static SpanAttributeWriter<T> physics_attribute_lookup_for_write_only_span(
+    MutableAttributeAccessor attributes, PhysicsConstraintAttribute physics_attribute)
+{
+  return attributes.lookup_or_add_for_write_only_span<T>(physics_attribute_name(physics_attribute),
+                                                         AttrDomain::Edge);
+}
+
+}  // namespace physics_attributes
+
+/** \} */
 
 }  // namespace blender::bke

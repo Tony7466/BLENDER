@@ -31,6 +31,7 @@
 #include "BKE_callbacks.hh"
 #include "BKE_global.hh"
 #include "BKE_idprop.hh"
+#include "BKE_jolt_physics.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_report.hh"
@@ -81,6 +82,8 @@ void BKE_blender_free()
 #endif
 
   blender::bke::node_system_exit();
+
+  blender::bke::jolt_physics_exit();
 }
 
 /** \} */

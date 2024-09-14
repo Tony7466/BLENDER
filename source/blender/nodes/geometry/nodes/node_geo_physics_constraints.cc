@@ -99,22 +99,18 @@ static void node_geo_exec(GeoNodeExecParams params)
   bke::AttributeWriter<int> dst_body2 = physics->constraint_body2_for_write();
   bke::AttributeWriter<float4x4> dst_frame1 = physics->constraint_frame1_for_write();
   bke::AttributeWriter<float4x4> dst_frame2 = physics->constraint_frame2_for_write();
-  bke::AttributeWriter<bool> dst_disable_collision =
-      physics->constraint_disable_collision_for_write();
   constraints.foreach_index([&](const int index) {
     dst_types.varray.set(index, src_types[index]);
     dst_body1.varray.set(index, src_body1[index]);
     dst_body2.varray.set(index, src_body2[index]);
     dst_frame1.varray.set(index, src_frame1[index]);
     dst_frame2.varray.set(index, src_frame2[index]);
-    dst_disable_collision.varray.set(index, src_disable_collision[index]);
   });
   dst_types.finish();
   dst_body1.finish();
   dst_body2.finish();
   dst_frame1.finish();
   dst_frame2.finish();
-  dst_disable_collision.finish();
 
   GeometrySet output_geometry = geometry::join_geometries(
       {std::move(geometry_set), bke::GeometrySet::from_physics(physics)}, {});
@@ -128,15 +124,18 @@ static void node_rna(StructRNA *srna)
 
   static EnumPropertyItem constraint_type_items[] = {
       {int(ConstraintType::Fixed), "FIXED", 0, "Fixed", ""},
+      {int(ConstraintType::Distance), "DISTANCE", 0, "Distance", ""},
       {int(ConstraintType::Point), "POINT", 0, "Point", ""},
       {int(ConstraintType::Hinge), "HINGE", 0, "Hinge", ""},
+      {int(ConstraintType::Cone), "CONE", 0, "Cone", ""},
       {int(ConstraintType::Slider), "SLIDER", 0, "Slider", ""},
-      {int(ConstraintType::ConeTwist), "CONE_TWIST", 0, "Cone-Twist", ""},
-      {int(ConstraintType::SixDoF), "SIX_DOF", 0, "6DoF", ""},
-      {int(ConstraintType::SixDoFSpring), "SIX_DOF_SPRING", 0, "6DoF Spring", ""},
-      {int(ConstraintType::SixDoFSpring2), "SIX_DOF_SPRING2", 0, "6DoF Spring 2", ""},
-      {int(ConstraintType::Contact), "CONTACT", 0, "Contact", ""},
+      {int(ConstraintType::SwingTwist), "SWING_TWIST", 0, "SwingTwist", ""},
+      {int(ConstraintType::SixDOF), "SIX_DOF", 0, "SixDOF", ""},
+      {int(ConstraintType::Path), "PATH", 0, "Path", ""},
       {int(ConstraintType::Gear), "GEAR", 0, "Gear", ""},
+      {int(ConstraintType::RackAndPinion), "RACK_AND_PINION", 0, "RackAndPinion", ""},
+      {int(ConstraintType::Pulley), "PULLEY", 0, "Pulley", ""},
+      {int(ConstraintType::Vehicle), "VEHICLE", 0, "Vehicle", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

@@ -19,65 +19,17 @@
 #include "attribute_access_intern.hh"
 #include "physics_geometry_attributes.hh"
 #include "physics_geometry_intern.hh"
-#include "physics_geometry_world.hh"
-
-#ifdef WITH_BULLET
-#  include <BulletCollision/CollisionDispatch/btCollisionObject.h>
-#  include <BulletCollision/CollisionShapes/btBoxShape.h>
-#  include <BulletCollision/CollisionShapes/btCollisionShape.h>
-#  include <BulletCollision/Gimpact/btGImpactCollisionAlgorithm.h>
-#  include <BulletCollision/Gimpact/btGImpactShape.h>
-#  include <BulletDynamics/ConstraintSolver/btConeTwistConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btFixedConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btGearConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btGeneric6DofConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btGeneric6DofSpring2Constraint.h>
-#  include <BulletDynamics/ConstraintSolver/btGeneric6DofSpringConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h>
-#  include <BulletDynamics/ConstraintSolver/btTypedConstraint.h>
-#  include <BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h>
-#  include <BulletDynamics/Dynamics/btRigidBody.h>
-#  include <LinearMath/btDefaultMotionState.h>
-#  include <LinearMath/btMotionState.h>
-#  include <LinearMath/btTransform.h>
-#  include <btBulletDynamicsCommon.h>
-#endif
 
 namespace blender::bke {
-
-#ifdef WITH_BULLET
-
-struct DefaultOverlapFilter : public btOverlapFilterCallback {
-  virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
-  {
-    return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
-           (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask);
-  }
-};
-
-struct OverlapFilterWrapper : public btOverlapFilterCallback {
-  using OverlapFilterFn = std::function<bool(const int a, const int b)>;
-
-  OverlapFilterFn fn;
-
-  OverlapFilterWrapper(OverlapFilterFn fn) : fn(fn) {}
-
-  virtual bool needBroadphaseCollision(btBroadphaseProxy *proxy0, btBroadphaseProxy *proxy1) const
-  {
-    const int64_t body0 = int64_t(proxy0->m_clientObject);
-    const int64_t body1 = int64_t(proxy1->m_clientObject);
-    return (proxy0->m_collisionFilterGroup & proxy1->m_collisionFilterMask) &&
-           (proxy1->m_collisionFilterGroup & proxy0->m_collisionFilterMask) && fn(body0, body1);
-  }
-};
 
 /* -------------------------------------------------------------------- */
 /** \name Physics Geometry
  * \{ */
 
-template<bool allow_cache>
+template<PhysicsStateAttributeAccessMode access_mode>
 static ComponentAttributeProviders create_attribute_providers_for_physics()
 {
+  using namespace physics_attributes;
   using BodyAttribute = PhysicsBodyAttribute;
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
@@ -93,11 +45,11 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   body_attribute_providers.reserve(body_attributes.size());
   constraint_attribute_providers.reserve(constraint_attributes.size());
   for (const BodyAttribute attribute : body_attributes) {
-    PhysicsStateBodyAttributeProvider provider(attribute, allow_cache, {});
+    PhysicsStateBodyAttributeProvider provider(access_mode, attribute);
     body_attribute_providers.append(std::move(provider));
   }
   for (const ConstraintAttribute attribute : constraint_attributes) {
-    PhysicsStateConstraintAttributeProvider provider(attribute, allow_cache, {});
+    PhysicsStateConstraintAttributeProvider provider(access_mode, attribute);
     constraint_attribute_providers.append(std::move(provider));
   }
 
@@ -114,57 +66,7 @@ static ComponentAttributeProviders create_attribute_providers_for_physics()
   }
 
   static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
-  static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Point,
-                                                            constraint_custom_data_access);
-
-  return ComponentAttributeProviders(builtin_providers,
-                                     {&body_custom_data, &constraint_custom_data});
-}
-
-static ComponentAttributeProviders create_attribute_providers_for_physics_custom_data()
-{
-  using BodyAttribute = PhysicsBodyAttribute;
-  using ConstraintAttribute = PhysicsConstraintAttribute;
-
-  static CustomDataAccessInfo body_custom_data_access =
-      PhysicsWorldState::body_custom_data_access_info();
-  static CustomDataAccessInfo constraint_custom_data_access =
-      PhysicsWorldState::constraint_custom_data_access_info();
-
-  const Span<BodyAttribute> body_attributes = all_body_attributes();
-  const Span<ConstraintAttribute> constraint_attributes = all_constraint_attributes();
-  static Vector<BuiltinCustomDataLayerProvider> builtin_providers_data;
-  builtin_providers_data.reserve(body_attributes.size() + constraint_attributes.size());
-  for (const BodyAttribute attribute : body_attributes) {
-    BuiltinCustomDataLayerProvider provider(
-        physics_attribute_name(attribute),
-        AttrDomain::Point,
-        cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
-        BuiltinAttributeProvider::NonDeletable,
-        body_custom_data_access,
-        {},
-        {});
-    builtin_providers_data.append(std::move(provider));
-  }
-  for (const ConstraintAttribute attribute : constraint_attributes) {
-    BuiltinCustomDataLayerProvider provider(
-        physics_attribute_name(attribute),
-        AttrDomain::Edge,
-        cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
-        BuiltinAttributeProvider::NonDeletable,
-        constraint_custom_data_access,
-        {},
-        {});
-    builtin_providers_data.append(std::move(provider));
-  }
-
-  Array<const BuiltinAttributeProvider *> builtin_providers(builtin_providers_data.size());
-  for (const int i : builtin_providers.index_range()) {
-    builtin_providers[i] = &builtin_providers_data[i];
-  }
-
-  static CustomDataAttributeProvider body_custom_data(AttrDomain::Point, body_custom_data_access);
-  static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Point,
+  static CustomDataAttributeProvider constraint_custom_data(AttrDomain::Edge,
                                                             constraint_custom_data_access);
 
   return ComponentAttributeProviders(builtin_providers,
@@ -182,24 +84,23 @@ static GVArray adapt_physics_attribute_domain(const PhysicsWorldState & /*state*
   return {};
 }
 
-static AttributeAccessorFunctions get_physics_accessor_functions(const bool enable_custom_data,
+static AttributeAccessorFunctions get_physics_accessor_functions(const bool enable_cache,
                                                                  const bool enable_world_data)
 {
   static const ComponentAttributeProviders providers =
-      create_attribute_providers_for_physics<true>();
-  static const ComponentAttributeProviders custom_data_providers =
-      create_attribute_providers_for_physics_custom_data();
+      create_attribute_providers_for_physics<PhysicsStateAttributeAccessMode::CachedRead>();
+  static const ComponentAttributeProviders cache_providers =
+      create_attribute_providers_for_physics<PhysicsStateAttributeAccessMode::CachedReadWrite>();
   static const ComponentAttributeProviders world_data_providers =
-      create_attribute_providers_for_physics<false>();
-  BLI_assert(enable_custom_data || enable_world_data);
+      create_attribute_providers_for_physics<PhysicsStateAttributeAccessMode::DirectReadWrite>();
+  BLI_assert(enable_cache || enable_world_data);
   AttributeAccessorFunctions fn =
       (enable_world_data ?
-           (enable_custom_data ?
+           (enable_cache ?
                 attribute_accessor_functions::accessor_functions_for_providers<providers>() :
                 attribute_accessor_functions::accessor_functions_for_providers<
                     world_data_providers>()) :
-           attribute_accessor_functions::accessor_functions_for_providers<
-               custom_data_providers>());
+           attribute_accessor_functions::accessor_functions_for_providers<cache_providers>());
   fn.domain_size = [](const void *owner, const AttrDomain domain) {
     if (owner == nullptr) {
       return 0;
@@ -239,7 +140,7 @@ const AttributeAccessorFunctions &get_physics_accessor_functions_ref()
   return fn;
 }
 
-const AttributeAccessorFunctions &get_physics_custom_data_accessor_functions_ref()
+const AttributeAccessorFunctions &get_physics_state_accessor_functions_ref()
 {
   static const AttributeAccessorFunctions fn = get_physics_accessor_functions(true, false);
   return fn;
@@ -257,29 +158,26 @@ const AttributeAccessorFunctions &get_physics_world_data_accessor_functions_ref(
 /** \name Attribute Info for Physics Geometry
  * \{ */
 
+namespace physics_attributes {
+
 Span<PhysicsBodyAttribute> all_body_attributes()
 {
   using BodyAttribute = PhysicsBodyAttribute;
   static Array<BodyAttribute> attributes = {
-      BodyAttribute::id,
       BodyAttribute::collision_shape,
-      BodyAttribute::is_static,
-      BodyAttribute::is_kinematic,
+      BodyAttribute::motion_type,
       BodyAttribute::mass,
       BodyAttribute::inertia,
       BodyAttribute::position,
       BodyAttribute::rotation,
       BodyAttribute::velocity,
       BodyAttribute::angular_velocity,
-      BodyAttribute::activation_state,
+      BodyAttribute::is_active,
+      BodyAttribute::allow_sleep,
       BodyAttribute::friction,
-      BodyAttribute::rolling_friction,
-      BodyAttribute::spinning_friction,
       BodyAttribute::restitution,
       BodyAttribute::linear_damping,
       BodyAttribute::angular_damping,
-      BodyAttribute::linear_sleeping_threshold,
-      BodyAttribute::angular_sleeping_threshold,
       BodyAttribute::total_force,
       BodyAttribute::total_torque,
   };
@@ -290,19 +188,30 @@ Span<PhysicsConstraintAttribute> all_constraint_attributes()
 {
   using ConstraintAttribute = PhysicsConstraintAttribute;
   static Array<ConstraintAttribute> attributes = {
-      ConstraintAttribute::constraint_type,
-      ConstraintAttribute::constraint_body1,
-      ConstraintAttribute::constraint_body2,
-      ConstraintAttribute::constraint_enabled,
-      ConstraintAttribute::constraint_frame1,
-      ConstraintAttribute::constraint_frame2,
-      ConstraintAttribute::applied_impulse,
-      ConstraintAttribute::applied_force1,
-      ConstraintAttribute::applied_force2,
-      ConstraintAttribute::applied_torque1,
-      ConstraintAttribute::applied_torque2,
-      ConstraintAttribute::breaking_impulse_threshold,
-      ConstraintAttribute::disable_collision,
+      ConstraintAttribute::type,
+      ConstraintAttribute::body1,
+      ConstraintAttribute::body2,
+      ConstraintAttribute::enabled,
+      ConstraintAttribute::frame1,
+      ConstraintAttribute::frame2,
+      ConstraintAttribute::limit_min_axis,
+      ConstraintAttribute::limit_max_axis,
+      ConstraintAttribute::limit_min_angle,
+      ConstraintAttribute::limit_max_angle,
+      ConstraintAttribute::spring_stiffness_axis,
+      ConstraintAttribute::spring_stiffness_angle,
+      ConstraintAttribute::spring_damping_axis,
+      ConstraintAttribute::spring_damping_angle,
+      ConstraintAttribute::max_friction_axis,
+      ConstraintAttribute::max_friction_angle,
+      ConstraintAttribute::motor_spring_stiffness_axis,
+      ConstraintAttribute::motor_spring_stiffness_angle,
+      ConstraintAttribute::motor_spring_damping_axis,
+      ConstraintAttribute::motor_spring_damping_angle,
+      ConstraintAttribute::min_motor_force_axis,
+      ConstraintAttribute::min_motor_force_angle,
+      ConstraintAttribute::max_motor_force_axis,
+      ConstraintAttribute::max_motor_force_angle,
   };
   return attributes;
 }
@@ -312,14 +221,10 @@ StringRef physics_attribute_name(PhysicsBodyAttribute attribute)
   using BodyAttribute = PhysicsBodyAttribute;
 
   switch (attribute) {
-    case BodyAttribute::id:
-      return "id";
     case BodyAttribute::collision_shape:
       return "collision_shape";
-    case BodyAttribute::is_static:
-      return "is_static";
-    case BodyAttribute::is_kinematic:
-      return "is_kinematic";
+    case BodyAttribute::motion_type:
+      return "motion_type";
     case BodyAttribute::mass:
       return "mass";
     case BodyAttribute::inertia:
@@ -332,24 +237,18 @@ StringRef physics_attribute_name(PhysicsBodyAttribute attribute)
       return "velocity";
     case BodyAttribute::angular_velocity:
       return "angular_velocity";
-    case BodyAttribute::activation_state:
-      return "activation_state";
+    case BodyAttribute::is_active:
+      return "is_active";
+    case BodyAttribute::allow_sleep:
+      return "allow_sleep";
     case BodyAttribute::friction:
       return "friction";
-    case BodyAttribute::rolling_friction:
-      return "rolling_friction";
-    case BodyAttribute::spinning_friction:
-      return "spinning_friction";
     case BodyAttribute::restitution:
       return "restitution";
     case BodyAttribute::linear_damping:
       return "linear_damping";
     case BodyAttribute::angular_damping:
       return "angular_damping";
-    case BodyAttribute::linear_sleeping_threshold:
-      return "linear_sleeping_threshold";
-    case BodyAttribute::angular_sleeping_threshold:
-      return "angular_sleeping_threshold";
     case BodyAttribute::total_force:
       return "total_force";
     case BodyAttribute::total_torque:
@@ -364,32 +263,54 @@ StringRef physics_attribute_name(PhysicsConstraintAttribute attribute)
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
   switch (attribute) {
-    case ConstraintAttribute::constraint_type:
-      return "constraint_type";
-    case ConstraintAttribute::constraint_body1:
-      return "constraint_body1";
-    case ConstraintAttribute::constraint_body2:
-      return "constraint_body2";
-    case ConstraintAttribute::constraint_enabled:
-      return "constraint_enabled";
-    case ConstraintAttribute::constraint_frame1:
-      return "constraint_frame1";
-    case ConstraintAttribute::constraint_frame2:
-      return "constraint_frame2";
-    case ConstraintAttribute::applied_impulse:
-      return "applied_impulse";
-    case ConstraintAttribute::applied_force1:
-      return "applied_force1";
-    case ConstraintAttribute::applied_force2:
-      return "applied_force2";
-    case ConstraintAttribute::applied_torque1:
-      return "applied_torque1";
-    case ConstraintAttribute::applied_torque2:
-      return "applied_torque2";
-    case ConstraintAttribute::breaking_impulse_threshold:
-      return "breaking_impulse_threshold";
-    case ConstraintAttribute::disable_collision:
-      return "disable_collision";
+    case ConstraintAttribute::type:
+      return "type";
+    case ConstraintAttribute::body1:
+      return "body1";
+    case ConstraintAttribute::body2:
+      return "body2";
+    case ConstraintAttribute::enabled:
+      return "enabled";
+    case ConstraintAttribute::frame1:
+      return "frame1";
+    case ConstraintAttribute::frame2:
+      return "frame2";
+    case ConstraintAttribute::limit_min_axis:
+      return "limit_min_axis";
+    case ConstraintAttribute::limit_max_axis:
+      return "limit_max_axis";
+    case ConstraintAttribute::limit_min_angle:
+      return "limit_min_angle";
+    case ConstraintAttribute::limit_max_angle:
+      return "limit_max_angle";
+    case ConstraintAttribute::spring_stiffness_axis:
+      return "spring_stiffness_axis";
+    case ConstraintAttribute::spring_stiffness_angle:
+      return "spring_stiffness_angle";
+    case ConstraintAttribute::spring_damping_axis:
+      return "spring_damping_axis";
+    case ConstraintAttribute::spring_damping_angle:
+      return "spring_damping_angle";
+    case ConstraintAttribute::max_friction_axis:
+      return "max_friction_axis";
+    case ConstraintAttribute::max_friction_angle:
+      return "max_friction_angle";
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+      return "motor_spring_stiffness_axis";
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+      return "motor_spring_stiffness_angle";
+    case ConstraintAttribute::motor_spring_damping_axis:
+      return "motor_spring_damping_axis";
+    case ConstraintAttribute::motor_spring_damping_angle:
+      return "motor_spring_damping_angle";
+    case ConstraintAttribute::min_motor_force_axis:
+      return "min_motor_force_axis";
+    case ConstraintAttribute::min_motor_force_angle:
+      return "min_motor_force_angle";
+    case ConstraintAttribute::max_motor_force_axis:
+      return "max_motor_force_axis";
+    case ConstraintAttribute::max_motor_force_angle:
+      return "max_motor_force_angle";
   }
   BLI_assert_unreachable();
   return "";
@@ -426,14 +347,10 @@ const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute)
   using BodyAttribute = PhysicsBodyAttribute;
 
   switch (attribute) {
-    case BodyAttribute::id:
-      return CPPType::get<int>();
     case BodyAttribute::collision_shape:
       return CPPType::get<int>();
-    case BodyAttribute::is_static:
-      return CPPType::get<bool>();
-    case BodyAttribute::is_kinematic:
-      return CPPType::get<bool>();
+    case BodyAttribute::motion_type:
+      return CPPType::get<int>();
     case BodyAttribute::mass:
       return CPPType::get<float>();
     case BodyAttribute::inertia:
@@ -446,23 +363,17 @@ const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute)
       return CPPType::get<float3>();
     case BodyAttribute::angular_velocity:
       return CPPType::get<float3>();
-    case BodyAttribute::activation_state:
-      return CPPType::get<int>();
+    case BodyAttribute::is_active:
+      return CPPType::get<bool>();
+    case BodyAttribute::allow_sleep:
+      return CPPType::get<bool>();
     case BodyAttribute::friction:
-      return CPPType::get<float>();
-    case BodyAttribute::rolling_friction:
-      return CPPType::get<float>();
-    case BodyAttribute::spinning_friction:
       return CPPType::get<float>();
     case BodyAttribute::restitution:
       return CPPType::get<float>();
     case BodyAttribute::linear_damping:
       return CPPType::get<float>();
     case BodyAttribute::angular_damping:
-      return CPPType::get<float>();
-    case BodyAttribute::linear_sleeping_threshold:
-      return CPPType::get<float>();
-    case BodyAttribute::angular_sleeping_threshold:
       return CPPType::get<float>();
     case BodyAttribute::total_force:
       return CPPType::get<float3>();
@@ -478,32 +389,35 @@ const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute)
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
   switch (attribute) {
-    case ConstraintAttribute::constraint_type:
+    case ConstraintAttribute::type:
       return CPPType::get<int>();
-    case ConstraintAttribute::constraint_body1:
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2:
       return CPPType::get<int>();
-    case ConstraintAttribute::constraint_body2:
-      return CPPType::get<int>();
-    case ConstraintAttribute::constraint_enabled:
+    case ConstraintAttribute::enabled:
       return CPPType::get<bool>();
-    case ConstraintAttribute::constraint_frame1:
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2:
       return CPPType::get<float4x4>();
-    case ConstraintAttribute::constraint_frame2:
-      return CPPType::get<float4x4>();
-    case ConstraintAttribute::applied_impulse:
-      return CPPType::get<float>();
-    case ConstraintAttribute::applied_force1:
+    case ConstraintAttribute::limit_min_axis:
+    case ConstraintAttribute::limit_max_axis:
+    case ConstraintAttribute::limit_min_angle:
+    case ConstraintAttribute::limit_max_angle:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle:
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle:
       return CPPType::get<float3>();
-    case ConstraintAttribute::applied_force2:
-      return CPPType::get<float3>();
-    case ConstraintAttribute::applied_torque1:
-      return CPPType::get<float3>();
-    case ConstraintAttribute::applied_torque2:
-      return CPPType::get<float3>();
-    case ConstraintAttribute::breaking_impulse_threshold:
-      return CPPType::get<float>();
-    case ConstraintAttribute::disable_collision:
-      return CPPType::get<bool>();
   }
   BLI_assert_unreachable();
   return CPPType::get<int>();
@@ -527,32 +441,24 @@ const void *physics_attribute_default_value(PhysicsBodyAttribute attribute)
       static const float3 default_value = float3(1.0f);
       return &default_value;
     }
-    case BodyAttribute::activation_state: {
-      static const int default_value = int(PhysicsWorldData::BodyActivationState::Active);
+    case BodyAttribute::is_active: {
+      static const bool default_value = false;
+      return &default_value;
+    }
+    case BodyAttribute::allow_sleep: {
+      static const bool default_value = true;
       return &default_value;
     }
     case BodyAttribute::friction: {
       static const float default_value = 0.5f;
       return &default_value;
     }
-    case BodyAttribute::linear_sleeping_threshold: {
-      static const float default_value = 0.8f;
-      return &default_value;
-    }
-    case BodyAttribute::angular_sleeping_threshold: {
-      static const float default_value = 1.0f;
-      return &default_value;
-    }
 
-    case BodyAttribute::id:
-    case BodyAttribute::is_static:
-    case BodyAttribute::is_kinematic:
+    case BodyAttribute::motion_type:
     case BodyAttribute::position:
     case BodyAttribute::rotation:
     case BodyAttribute::velocity:
     case BodyAttribute::angular_velocity:
-    case BodyAttribute::rolling_friction:
-    case BodyAttribute::spinning_friction:
     case BodyAttribute::restitution:
     case BodyAttribute::linear_damping:
     case BodyAttribute::angular_damping:
@@ -570,35 +476,61 @@ const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute
 
   const CPPType &type = physics_attribute_type(attribute);
   switch (attribute) {
-    case ConstraintAttribute::constraint_type: {
+    case ConstraintAttribute::type: {
       static const int default_value = int(PhysicsConstraintType::Fixed);
       return &default_value;
     }
-    case ConstraintAttribute::constraint_body1:
-    case ConstraintAttribute::constraint_body2: {
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2: {
       static const int default_value = -1;
       return &default_value;
     }
-    case ConstraintAttribute::constraint_frame1:
-    case ConstraintAttribute::constraint_frame2: {
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2: {
       static const float4x4 default_value = float4x4::identity();
       return &default_value;
     }
-    case ConstraintAttribute::constraint_enabled: {
+    case ConstraintAttribute::enabled: {
       static const bool default_value = true;
       return &default_value;
     }
-    case ConstraintAttribute::breaking_impulse_threshold: {
-      static const float default_value = std::numeric_limits<float>::infinity();
+    case ConstraintAttribute::limit_min_axis: {
+      static const float3 default_value = float3(-FLT_MAX);
+      return &default_value;
+    }
+    case ConstraintAttribute::limit_min_angle: {
+      static const float3 default_value = float3(-M_PI);
+      return &default_value;
+    }
+    case ConstraintAttribute::limit_max_axis: {
+      static const float3 default_value = float3(FLT_MAX);
+      return &default_value;
+    }
+    case ConstraintAttribute::limit_max_angle: {
+      static const float3 default_value = float3(M_PI);
+      return &default_value;
+    }
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle: {
+      static const float3 default_value = float3(-FLT_MAX);
+      return &default_value;
+    }
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle: {
+      static const float3 default_value = float3(FLT_MAX);
       return &default_value;
     }
 
-    case ConstraintAttribute::applied_impulse:
-    case ConstraintAttribute::applied_force1:
-    case ConstraintAttribute::applied_force2:
-    case ConstraintAttribute::applied_torque1:
-    case ConstraintAttribute::applied_torque2:
-    case ConstraintAttribute::disable_collision:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
       return type.default_value();
   }
   BLI_assert_unreachable();
@@ -607,32 +539,27 @@ const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute
 
 /** True if the attribute is stored in the physics state and world data is updated after writing.
  */
-bool physics_attribute_is_state_local(const PhysicsBodyAttribute attribute)
+static bool physics_attribute_use_write_cache_bullet(const PhysicsBodyAttribute attribute)
 {
   using BodyAttribute = PhysicsBodyAttribute;
 
   switch (attribute) {
     case BodyAttribute::collision_shape:
-    case BodyAttribute::is_static:
     case BodyAttribute::mass:
       return true;
 
-    case BodyAttribute::id:
-    case BodyAttribute::is_kinematic:
+    case BodyAttribute::motion_type:
     case BodyAttribute::inertia:
     case BodyAttribute::position:
     case BodyAttribute::rotation:
     case BodyAttribute::velocity:
     case BodyAttribute::angular_velocity:
     case BodyAttribute::friction:
-    case BodyAttribute::rolling_friction:
-    case BodyAttribute::spinning_friction:
     case BodyAttribute::restitution:
-    case BodyAttribute::activation_state:
+    case BodyAttribute::is_active:
+    case BodyAttribute::allow_sleep:
     case BodyAttribute::linear_damping:
     case BodyAttribute::angular_damping:
-    case BodyAttribute::linear_sleeping_threshold:
-    case BodyAttribute::angular_sleeping_threshold:
     case BodyAttribute::total_force:
     case BodyAttribute::total_torque:
       return false;
@@ -643,156 +570,242 @@ bool physics_attribute_is_state_local(const PhysicsBodyAttribute attribute)
 
 /** True if the attribute is stored in the physics state and world data is updated after writing.
  */
-bool physics_attribute_is_state_local(const PhysicsConstraintAttribute attribute)
+static bool physics_attribute_use_write_cache_bullet(const PhysicsConstraintAttribute attribute)
 {
+  // TODO make these mostly local for Jolt physics constraints
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
   switch (attribute) {
-    case ConstraintAttribute::constraint_type:
-    case ConstraintAttribute::constraint_body1:
-    case ConstraintAttribute::constraint_body2:
-    case ConstraintAttribute::disable_collision:
+    case ConstraintAttribute::type:
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2:
       return true;
 
-    case ConstraintAttribute::constraint_frame1:
-    case ConstraintAttribute::constraint_frame2:
-    case ConstraintAttribute::constraint_enabled:
-    case ConstraintAttribute::breaking_impulse_threshold:
-    case ConstraintAttribute::applied_impulse:
-    case ConstraintAttribute::applied_force1:
-    case ConstraintAttribute::applied_force2:
-    case ConstraintAttribute::applied_torque1:
-    case ConstraintAttribute::applied_torque2:
+    case ConstraintAttribute::enabled:
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2:
+    case ConstraintAttribute::limit_min_axis:
+    case ConstraintAttribute::limit_max_axis:
+    case ConstraintAttribute::limit_min_angle:
+    case ConstraintAttribute::limit_max_angle:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle:
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle:
       return false;
   }
   BLI_assert_unreachable();
   return true;
 }
 
-/** \} */
-
-using CustomDataUpdateOnChange = void (*)(void *owner);
-using WorldDataUpdateOnChange = void (*)(void *owner);
-
-static CustomDataUpdateOnChange custom_data_update_on_change_fn(
-    const PhysicsBodyAttribute attribute)
-{
-  using BodyAttribute = PhysicsBodyAttribute;
-
-  switch (attribute) {
-    case BodyAttribute::collision_shape: {
-      static CustomDataUpdateOnChange update = [](void *owner) {
-        PhysicsWorldState &state = get_physics_owner(owner);
-        state.tag_body_collision_shape_changed();
-      };
-      return update;
-    }
-    case BodyAttribute::is_static: {
-      static CustomDataUpdateOnChange update = [](void *owner) {
-        PhysicsWorldState &state = get_physics_owner(owner);
-        state.tag_body_is_static_changed();
-      };
-      return update;
-    }
-    case BodyAttribute::mass: {
-      static CustomDataUpdateOnChange update = [](void *owner) {
-        PhysicsWorldState &state = get_physics_owner(owner);
-        state.tag_body_mass_changed();
-      };
-      return update;
-    }
-
-    case BodyAttribute::id:
-    case BodyAttribute::is_kinematic:
-    case BodyAttribute::inertia:
-    case BodyAttribute::position:
-    case BodyAttribute::rotation:
-    case BodyAttribute::velocity:
-    case BodyAttribute::angular_velocity:
-    case BodyAttribute::activation_state:
-    case BodyAttribute::friction:
-    case BodyAttribute::rolling_friction:
-    case BodyAttribute::spinning_friction:
-    case BodyAttribute::restitution:
-    case BodyAttribute::linear_damping:
-    case BodyAttribute::angular_damping:
-    case BodyAttribute::linear_sleeping_threshold:
-    case BodyAttribute::angular_sleeping_threshold:
-    case BodyAttribute::total_force:
-    case BodyAttribute::total_torque:
-      return nullptr;
-  }
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-static CustomDataUpdateOnChange custom_data_update_on_change_fn(
-    const PhysicsConstraintAttribute attribute)
-{
-  using ConstraintAttribute = PhysicsConstraintAttribute;
-
-  switch (attribute) {
-    case ConstraintAttribute::constraint_type:
-    case ConstraintAttribute::constraint_body1:
-    case ConstraintAttribute::constraint_body2: {
-      static CustomDataUpdateOnChange update = [](void *owner) {
-        PhysicsWorldState &state = get_physics_owner(owner);
-        state.tag_constraints_changed();
-      };
-      return update;
-    }
-    case ConstraintAttribute::disable_collision: {
-      static CustomDataUpdateOnChange update = [](void *owner) {
-        PhysicsWorldState &state = get_physics_owner(owner);
-        state.tag_constraint_disable_collision_changed();
-      };
-      return update;
-    }
-
-    case ConstraintAttribute::constraint_frame1:
-    case ConstraintAttribute::constraint_frame2:
-    case ConstraintAttribute::constraint_enabled:
-    case ConstraintAttribute::applied_impulse:
-    case ConstraintAttribute::applied_force1:
-    case ConstraintAttribute::applied_force2:
-    case ConstraintAttribute::applied_torque1:
-    case ConstraintAttribute::applied_torque2:
-    case ConstraintAttribute::breaking_impulse_threshold:
-      return nullptr;
-  }
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-static WorldDataUpdateOnChange world_data_update_on_change_fn(const PhysicsBodyAttribute attribute)
+/** True if the attribute is stored in the physics state and world data is updated after writing.
+ */
+static bool physics_attribute_use_write_cache_jolt(const PhysicsBodyAttribute attribute)
 {
   using BodyAttribute = PhysicsBodyAttribute;
 
   switch (attribute) {
     case BodyAttribute::collision_shape:
-    case BodyAttribute::is_static:
+    case BodyAttribute::mass:
+    case BodyAttribute::inertia:
+      return true;
+
+    case BodyAttribute::motion_type:
+    case BodyAttribute::position:
+    case BodyAttribute::rotation:
+    case BodyAttribute::velocity:
+    case BodyAttribute::angular_velocity:
+    case BodyAttribute::friction:
+    case BodyAttribute::restitution:
+    case BodyAttribute::is_active:
+    case BodyAttribute::allow_sleep:
+    case BodyAttribute::linear_damping:
+    case BodyAttribute::angular_damping:
+    case BodyAttribute::total_force:
+    case BodyAttribute::total_torque:
+      return false;
+  }
+  BLI_assert_unreachable();
+  return true;
+}
+
+/** True if the attribute is stored in the physics state and world data is updated after writing.
+ */
+static bool physics_attribute_use_write_cache_jolt(const PhysicsConstraintAttribute attribute)
+{
+  // TODO make these mostly local for Jolt physics constraints
+  using ConstraintAttribute = PhysicsConstraintAttribute;
+
+  switch (attribute) {
+    case ConstraintAttribute::type:
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2:
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2:
+    case ConstraintAttribute::limit_min_axis:
+    case ConstraintAttribute::limit_max_axis:
+    case ConstraintAttribute::limit_min_angle:
+    case ConstraintAttribute::limit_max_angle:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle:
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle:
+      return true;
+
+    case ConstraintAttribute::enabled:
+      return false;
+  }
+  BLI_assert_unreachable();
+  return true;
+}
+
+bool physics_attribute_use_write_cache(const PhysicsBodyAttribute attribute)
+{
+  if (use_jolt) {
+    return physics_attribute_use_write_cache_jolt(attribute);
+  }
+  return physics_attribute_use_write_cache_bullet(attribute);
+}
+
+bool physics_attribute_use_write_cache(const PhysicsConstraintAttribute attribute)
+{
+  if (use_jolt) {
+    return physics_attribute_use_write_cache_jolt(attribute);
+  }
+  return physics_attribute_use_write_cache_bullet(attribute);
+}
+
+}  // namespace physics_attributes
+
+/** \} */
+
+using namespace physics_attributes;
+
+// using CustomDataUpdateOnChange = void (*)(void *owner);
+using WorldStateUpdateOnChange = void (*)(void *owner);
+
+// static CustomDataUpdateOnChange custom_data_update_on_change_fn(
+//     const PhysicsBodyAttribute attribute)
+//{
+//   using BodyAttribute = PhysicsBodyAttribute;
+//
+//   switch (attribute) {
+//     case BodyAttribute::collision_shape: {
+//       static CustomDataUpdateOnChange update = [](void *owner) {
+//         PhysicsWorldState &state = get_physics_owner(owner);
+//         state.tag_body_collision_shape_changed();
+//       };
+//       return update;
+//     }
+//     case BodyAttribute::mass: {
+//       static CustomDataUpdateOnChange update = [](void * /*owner*/) {
+//         // PhysicsWorldState &state = get_physics_owner(owner);
+//         //  state.tag_body_mass_changed();
+//       };
+//       return update;
+//     }
+//
+//     case BodyAttribute::is_static:
+//     case BodyAttribute::is_kinematic:
+//     case BodyAttribute::inertia:
+//     case BodyAttribute::position:
+//     case BodyAttribute::rotation:
+//     case BodyAttribute::velocity:
+//     case BodyAttribute::angular_velocity:
+//     case BodyAttribute::is_active:
+//     case BodyAttribute::allow_sleep:
+//     case BodyAttribute::friction:
+//     case BodyAttribute::restitution:
+//     case BodyAttribute::linear_damping:
+//     case BodyAttribute::angular_damping:
+//     case BodyAttribute::total_force:
+//     case BodyAttribute::total_torque:
+//       return nullptr;
+//   }
+//   BLI_assert_unreachable();
+//   return nullptr;
+// }
+//
+// static CustomDataUpdateOnChange custom_data_update_on_change_fn(
+//     const PhysicsConstraintAttribute attribute)
+//{
+//   using ConstraintAttribute = PhysicsConstraintAttribute;
+//
+//   switch (attribute) {
+//     case ConstraintAttribute::constraint_type:
+//     case ConstraintAttribute::constraint_body1:
+//     case ConstraintAttribute::constraint_body2: {
+//       static CustomDataUpdateOnChange update = [](void *owner) {
+//         PhysicsWorldState &state = get_physics_owner(owner);
+//         state.tag_constraints_changed();
+//       };
+//       return update;
+//     }
+//     case ConstraintAttribute::disable_collision: {
+//       // static CustomDataUpdateOnChange update = [](void *owner) {
+//       //   PhysicsWorldState &state = get_physics_owner(owner);
+//       //   state.tag_constraint_disable_collision_changed();
+//       // };
+//       // return update;
+//       return nullptr;
+//     }
+//
+//     case ConstraintAttribute::constraint_frame1:
+//     case ConstraintAttribute::constraint_frame2:
+//     case ConstraintAttribute::constraint_enabled:
+//     case ConstraintAttribute::breaking_impulse_threshold:
+//       return nullptr;
+//   }
+//   BLI_assert_unreachable();
+//   return nullptr;
+// }
+
+static WorldStateUpdateOnChange world_state_update_on_change_bullet_fn(
+    const PhysicsBodyAttribute attribute)
+{
+  using BodyAttribute = PhysicsBodyAttribute;
+
+  switch (attribute) {
+    case BodyAttribute::collision_shape:
     case BodyAttribute::mass:
       return nullptr;
 
-    case BodyAttribute::id:
-    case BodyAttribute::is_kinematic:
+    case BodyAttribute::motion_type:
     case BodyAttribute::inertia:
     case BodyAttribute::position:
     case BodyAttribute::rotation:
     case BodyAttribute::velocity:
     case BodyAttribute::angular_velocity:
-    case BodyAttribute::activation_state:
+    case BodyAttribute::is_active:
+    case BodyAttribute::allow_sleep:
     case BodyAttribute::friction:
-    case BodyAttribute::rolling_friction:
-    case BodyAttribute::spinning_friction:
     case BodyAttribute::restitution:
     case BodyAttribute::linear_damping:
     case BodyAttribute::angular_damping:
-    case BodyAttribute::linear_sleeping_threshold:
-    case BodyAttribute::angular_sleeping_threshold:
     case BodyAttribute::total_force:
     case BodyAttribute::total_torque: {
-      static WorldDataUpdateOnChange update = [](void *owner) {
+      BLI_assert(!physics_attribute_use_write_cache_bullet(attribute));
+      static WorldStateUpdateOnChange update = [](void *owner) {
         PhysicsWorldState &state = get_physics_owner(owner);
         state.tag_read_cache_changed();
       };
@@ -803,28 +816,40 @@ static WorldDataUpdateOnChange world_data_update_on_change_fn(const PhysicsBodyA
   return nullptr;
 }
 
-static WorldDataUpdateOnChange world_data_update_on_change_fn(
+static WorldStateUpdateOnChange world_state_update_on_change_bullet_fn(
     const PhysicsConstraintAttribute attribute)
 {
   using ConstraintAttribute = PhysicsConstraintAttribute;
 
   switch (attribute) {
-    case ConstraintAttribute::constraint_type:
-    case ConstraintAttribute::constraint_body1:
-    case ConstraintAttribute::constraint_body2:
-    case ConstraintAttribute::disable_collision:
+    case ConstraintAttribute::type:
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2:
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2:
+    case ConstraintAttribute::limit_min_axis:
+    case ConstraintAttribute::limit_max_axis:
+    case ConstraintAttribute::limit_min_angle:
+    case ConstraintAttribute::limit_max_angle:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle:
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle:
       return nullptr;
 
-    case ConstraintAttribute::constraint_frame1:
-    case ConstraintAttribute::constraint_frame2:
-    case ConstraintAttribute::constraint_enabled:
-    case ConstraintAttribute::applied_impulse:
-    case ConstraintAttribute::applied_force1:
-    case ConstraintAttribute::applied_force2:
-    case ConstraintAttribute::applied_torque1:
-    case ConstraintAttribute::applied_torque2:
-    case ConstraintAttribute::breaking_impulse_threshold: {
-      static WorldDataUpdateOnChange update = [](void *owner) {
+    case ConstraintAttribute::enabled: {
+      BLI_assert(!physics_attribute_use_write_cache_bullet(attribute));
+      static WorldStateUpdateOnChange update = [](void *owner) {
         PhysicsWorldState &state = get_physics_owner(owner);
         state.tag_read_cache_changed();
       };
@@ -835,26 +860,123 @@ static WorldDataUpdateOnChange world_data_update_on_change_fn(
   return nullptr;
 }
 
+static WorldStateUpdateOnChange world_state_update_on_change_jolt_fn(
+    const PhysicsBodyAttribute attribute)
+{
+  using BodyAttribute = PhysicsBodyAttribute;
+
+  switch (attribute) {
+    case BodyAttribute::collision_shape:
+    case BodyAttribute::mass:
+    case BodyAttribute::inertia:
+      return nullptr;
+
+    case BodyAttribute::motion_type:
+    case BodyAttribute::position:
+    case BodyAttribute::rotation:
+    case BodyAttribute::velocity:
+    case BodyAttribute::angular_velocity:
+    case BodyAttribute::is_active:
+    case BodyAttribute::allow_sleep:
+    case BodyAttribute::friction:
+    case BodyAttribute::restitution:
+    case BodyAttribute::linear_damping:
+    case BodyAttribute::angular_damping:
+    case BodyAttribute::total_force:
+    case BodyAttribute::total_torque: {
+      BLI_assert(!physics_attribute_use_write_cache_jolt(attribute));
+      static WorldStateUpdateOnChange update = [](void *owner) {
+        PhysicsWorldState &state = get_physics_owner(owner);
+        state.tag_read_cache_changed();
+      };
+      return update;
+    }
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static WorldStateUpdateOnChange world_state_update_on_change_jolt_fn(
+    const PhysicsConstraintAttribute attribute)
+{
+  using ConstraintAttribute = PhysicsConstraintAttribute;
+
+  switch (attribute) {
+    case ConstraintAttribute::type:
+    case ConstraintAttribute::body1:
+    case ConstraintAttribute::body2:
+    case ConstraintAttribute::frame1:
+    case ConstraintAttribute::frame2:
+    case ConstraintAttribute::limit_min_axis:
+    case ConstraintAttribute::limit_max_axis:
+    case ConstraintAttribute::limit_min_angle:
+    case ConstraintAttribute::limit_max_angle:
+    case ConstraintAttribute::spring_stiffness_axis:
+    case ConstraintAttribute::spring_stiffness_angle:
+    case ConstraintAttribute::spring_damping_axis:
+    case ConstraintAttribute::spring_damping_angle:
+    case ConstraintAttribute::max_friction_axis:
+    case ConstraintAttribute::max_friction_angle:
+    case ConstraintAttribute::motor_spring_stiffness_axis:
+    case ConstraintAttribute::motor_spring_stiffness_angle:
+    case ConstraintAttribute::motor_spring_damping_axis:
+    case ConstraintAttribute::motor_spring_damping_angle:
+    case ConstraintAttribute::min_motor_force_axis:
+    case ConstraintAttribute::min_motor_force_angle:
+    case ConstraintAttribute::max_motor_force_axis:
+    case ConstraintAttribute::max_motor_force_angle: {
+      BLI_assert(physics_attribute_use_write_cache_jolt(attribute));
+      static WorldStateUpdateOnChange update = [](void *owner) {
+        PhysicsWorldState &state = get_physics_owner(owner);
+        state.tag_constraints_changed();
+      };
+      return update;
+    }
+
+    case ConstraintAttribute::enabled: {
+      BLI_assert(!physics_attribute_use_write_cache_jolt(attribute));
+      static WorldStateUpdateOnChange update = [](void *owner) {
+        PhysicsWorldState &state = get_physics_owner(owner);
+        state.tag_read_cache_changed();
+      };
+      return update;
+    }
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static WorldStateUpdateOnChange world_state_update_on_change_fn(
+    const PhysicsBodyAttribute attribute)
+{
+  if (use_jolt) {
+    return world_state_update_on_change_jolt_fn(attribute);
+  }
+  return world_state_update_on_change_bullet_fn(attribute);
+}
+
+static WorldStateUpdateOnChange world_state_update_on_change_fn(
+    const PhysicsConstraintAttribute attribute)
+{
+  if (use_jolt) {
+    return world_state_update_on_change_jolt_fn(attribute);
+  }
+  return world_state_update_on_change_bullet_fn(attribute);
+}
+
 PhysicsStateBodyAttributeProvider::PhysicsStateBodyAttributeProvider(
-    PhysicsBodyAttribute attribute, const bool allow_cache, const AttributeValidator validator)
+    PhysicsStateAttributeAccessMode access_mode, PhysicsBodyAttribute attribute)
     : BuiltinAttributeProvider(physics_attribute_name(attribute),
                                bke::AttrDomain::Point,
                                cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
                                NonDeletable,
-                               validator),
+                               {}),
       attribute_(attribute),
-      custom_data_provider_(physics_attribute_name(attribute),
-                            bke::AttrDomain::Point,
-                            cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
-                            NonDeletable,
-                            PhysicsWorldState::body_custom_data_access_info(),
-                            custom_data_update_on_change_fn(attribute),
-                            validator),
       world_data_provider_(attribute,
                            PhysicsWorldState::world_data_access_info(),
-                           world_data_update_on_change_fn(attribute),
+                           world_state_update_on_change_fn(attribute),
                            {}),
-      allow_cache_(allow_cache)
+      access_mode_(access_mode)
 {
 }
 
@@ -862,25 +984,53 @@ GAttributeReader PhysicsStateBodyAttributeProvider::try_get_for_read(const void 
 {
   const PhysicsWorldState &state = get_physics_owner(owner);
 
-  if (allow_cache_) {
-    state.ensure_read_cache();
-    return custom_data_provider_.try_get_for_read(owner);
+  /* Only read from world data in Direct mode. */
+  if (access_mode_ == PhysicsStateAttributeAccessMode::DirectReadWrite) {
+    return world_data_provider_.try_get_for_read(owner);
   }
 
-  return world_data_provider_.try_get_for_read(owner);
+  /* Update the read cache from world data.
+   * In cached read+write mode this should be ignored, among other things to avoid deadlock since
+   * building the cache will try reading the attribute in turn. */
+  if (access_mode_ != PhysicsStateAttributeAccessMode::CachedReadWrite) {
+    state.ensure_read_cache();
+  }
+
+  const GArray<> *data = state.body_data_.lookup_ptr(attribute_);
+  GVArray varray;
+  if (data == nullptr) {
+    varray = GVArray::ForSingle(physics_attribute_type(attribute_),
+                                state.bodies_num(),
+                                physics_attribute_default_value(attribute_));
+  }
+  else {
+    BLI_assert(data->size() == state.bodies_num());
+    varray = GVArray::ForSpan(data->as_span());
+  }
+  return {std::move(varray), domain_, nullptr};
 }
 
 GAttributeWriter PhysicsStateBodyAttributeProvider::try_get_for_write(void *owner) const
 {
   PhysicsWorldState &state = get_physics_owner(owner);
+  const bool is_state_local = physics_attribute_use_write_cache(attribute_);
 
-  if (allow_cache_ && (!state.has_world_data() || physics_attribute_is_state_local(attribute_))) {
-    state.ensure_custom_data_attribute(attribute_);
-    return custom_data_provider_.try_get_for_write(owner);
+  /* Write to world data unless the attribute is stored on the state. */
+  if (ELEM(access_mode_,
+           PhysicsStateAttributeAccessMode::DirectReadWrite,
+           PhysicsStateAttributeAccessMode::CachedRead) &&
+      state.has_world_data() && !is_state_local)
+  {
+    return world_data_provider_.try_get_for_write(owner);
   }
 
-  BLI_assert(state.has_world_data());
-  return world_data_provider_.try_get_for_write(owner);
+  state.ensure_attribute_cache(attribute_);
+
+  GArray<> *data = state.body_data_.lookup_ptr(attribute_);
+  BLI_assert(data != nullptr);
+
+  GVMutableArray varray = physics_attribute_cache_vmutablearray(attribute_, *data);
+  return {std::move(varray), domain_, nullptr};
 }
 
 bool PhysicsStateBodyAttributeProvider::try_delete(void * /*owner*/) const
@@ -900,27 +1050,18 @@ bool PhysicsStateBodyAttributeProvider::exists(const void * /*owner*/) const
 }
 
 PhysicsStateConstraintAttributeProvider::PhysicsStateConstraintAttributeProvider(
-    PhysicsConstraintAttribute attribute,
-    const bool allow_cache,
-    const AttributeValidator validator)
+    PhysicsStateAttributeAccessMode access_mode, PhysicsConstraintAttribute attribute)
     : BuiltinAttributeProvider(physics_attribute_name(attribute),
                                bke::AttrDomain::Edge,
                                cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
                                NonDeletable,
-                               validator),
+                               {}),
       attribute_(attribute),
-      custom_data_provider_(physics_attribute_name(attribute),
-                            bke::AttrDomain::Edge,
-                            cpp_type_to_custom_data_type(physics_attribute_type(attribute)),
-                            NonDeletable,
-                            PhysicsWorldState::constraint_custom_data_access_info(),
-                            custom_data_update_on_change_fn(attribute),
-                            validator),
       world_data_provider_(attribute,
                            PhysicsWorldState::world_data_access_info(),
-                           world_data_update_on_change_fn(attribute),
+                           world_state_update_on_change_fn(attribute),
                            {}),
-      allow_cache_(allow_cache)
+      access_mode_(access_mode)
 {
 }
 
@@ -928,25 +1069,53 @@ GAttributeReader PhysicsStateConstraintAttributeProvider::try_get_for_read(const
 {
   const PhysicsWorldState &state = get_physics_owner(owner);
 
-  if (allow_cache_) {
-    state.ensure_read_cache();
-    return custom_data_provider_.try_get_for_read(owner);
+  /* Only read from world data in Direct mode. */
+  if (access_mode_ == PhysicsStateAttributeAccessMode::DirectReadWrite) {
+    return world_data_provider_.try_get_for_read(owner);
   }
 
-  return world_data_provider_.try_get_for_read(owner);
+  /* Update the read cache from world data.
+   * In cached read+write mode this should be ignored, among other things to avoid deadlock since
+   * building the cache will try reading the attribute in turn. */
+  if (access_mode_ != PhysicsStateAttributeAccessMode::CachedReadWrite) {
+    state.ensure_read_cache();
+  }
+
+  const GArray<> *data = state.constraint_data_.lookup_ptr(attribute_);
+  GVArray varray;
+  if (data == nullptr) {
+    varray = GVArray::ForSingle(physics_attribute_type(attribute_),
+                                state.constraints_num(),
+                                physics_attribute_default_value(attribute_));
+  }
+  else {
+    BLI_assert(data->size() == state.constraints_num());
+    varray = GVArray::ForSpan(data->as_span());
+  }
+  return {std::move(varray), domain_, nullptr};
 }
 
 GAttributeWriter PhysicsStateConstraintAttributeProvider::try_get_for_write(void *owner) const
 {
   PhysicsWorldState &state = get_physics_owner(owner);
+  const bool is_state_local = physics_attribute_use_write_cache(attribute_);
 
-  if (allow_cache_ && (!state.has_world_data() || physics_attribute_is_state_local(attribute_))) {
-    state.ensure_custom_data_attribute(attribute_);
-    return custom_data_provider_.try_get_for_write(owner);
+  /* Write to world data unless the attribute is stored on the state. */
+  if (ELEM(access_mode_,
+           PhysicsStateAttributeAccessMode::DirectReadWrite,
+           PhysicsStateAttributeAccessMode::CachedRead) &&
+      state.has_world_data() && !is_state_local)
+  {
+    return world_data_provider_.try_get_for_write(owner);
   }
 
-  BLI_assert(state.has_world_data());
-  return world_data_provider_.try_get_for_write(owner);
+  state.ensure_attribute_cache(attribute_);
+
+  GArray<> *data = state.constraint_data_.lookup_ptr(attribute_);
+  BLI_assert(data != nullptr);
+
+  GVMutableArray varray = physics_attribute_cache_vmutablearray(attribute_, *data);
+  return {std::move(varray), domain_, nullptr};
 }
 
 bool PhysicsStateConstraintAttributeProvider::try_delete(void * /*owner*/) const
@@ -964,7 +1133,5 @@ bool PhysicsStateConstraintAttributeProvider::exists(const void * /*owner*/) con
 {
   return true;
 }
-
-#endif
 
 }  // namespace blender::bke

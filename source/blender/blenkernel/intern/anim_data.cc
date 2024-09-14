@@ -8,6 +8,7 @@
 #include "MEM_guardedalloc.h"
 
 #include <cstring>
+#include <malloc.h>
 #include <optional>
 
 #include "ANIM_action.hh"

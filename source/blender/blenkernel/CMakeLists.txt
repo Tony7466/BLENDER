@@ -168,6 +168,7 @@ set(SRC
   intern/image_save.cc
   intern/instances.cc
   intern/ipo.cc
+  intern/jolt_physics.cc
   intern/kelvinlet.cc
   intern/key.cc
   intern/keyconfig.cc
@@ -266,7 +267,8 @@ set(SRC
   intern/pbvh_uv_islands.cc
   intern/physics_geometry.cc
   intern/physics_geometry_attributes.cc
-  intern/physics_geometry_world.cc
+  intern/physics_geometry_world_bullet.cc
+  intern/physics_geometry_world_jolt.cc
   intern/pointcache.cc
   intern/pointcloud.cc
   intern/pose_backup.cc
@@ -428,6 +430,7 @@ set(SRC
   BKE_image_wrappers.hh
   BKE_instances.hh
   BKE_ipo.h
+  BKE_jolt_physics.hh
   BKE_kelvinlet.h
   BKE_key.hh
   BKE_keyconfig.h
@@ -559,7 +562,8 @@ set(SRC
   intern/pbvh_uv_islands.hh
   intern/physics_geometry_attributes.hh
   intern/physics_geometry_intern.hh
-  intern/physics_geometry_world.hh
+  intern/physics_geometry_world_bullet.hh
+  intern/physics_geometry_world_jolt.hh
   intern/subdiv_converter.hh
   intern/subdiv_inline.hh
 )
@@ -642,6 +646,16 @@ if(WITH_BULLET)
   )
   add_definitions(-DWITH_BULLET)
   add_definitions(-DBT_USE_DOUBLE_PRECISION)
+endif()
+
+if(WITH_JOLT)
+  list(APPEND INC_SYS
+    ${JOLT_INCLUDE_DIRS}
+  )
+  list(APPEND LIB
+    ${JOLT_LIBRARIES}
+  )
+  add_definitions(-DWITH_JOLT)
 endif()
 
 if(WITH_IMAGE_OPENEXR)

@@ -2259,30 +2259,16 @@ static void execute_realize_edit_data_tasks(const Span<RealizeEditDataTask> task
 /** \name Physics
  * \{ */
 
-static StringRef body_shape_attribute_id = bke::PhysicsGeometry::body_attribute_name(
-    bke::PhysicsGeometry::BodyAttribute::collision_shape);
-static StringRef position_attribute_id = bke::PhysicsGeometry::body_attribute_name(
-    bke::PhysicsGeometry::BodyAttribute::position);
-static StringRef rotation_attribute_id = bke::PhysicsGeometry::body_attribute_name(
-    bke::PhysicsGeometry::BodyAttribute::rotation);
-static StringRef velocity_attribute_id = bke::PhysicsGeometry::body_attribute_name(
-    bke::PhysicsGeometry::BodyAttribute::velocity);
-static StringRef angular_velocity_attribute_id = bke::PhysicsGeometry::body_attribute_name(
-    bke::PhysicsGeometry::BodyAttribute::angular_velocity);
-static StringRef constraint_type_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
-    bke::PhysicsGeometry::ConstraintAttribute::constraint_type);
-static StringRef constraint_body1_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
-    bke::PhysicsGeometry::ConstraintAttribute::constraint_body1);
-static StringRef constraint_body2_attribute_id = bke::PhysicsGeometry::constraint_attribute_name(
-    bke::PhysicsGeometry::ConstraintAttribute::constraint_body2);
-
 static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
     const VariedDepthOptions &varied_depth_options,
     bool & /*r_create_id*/)
 {
+  using namespace bke::physics_attributes;
   using bke::PhysicsGeometry;
+  using BodyAttribute = bke::PhysicsBodyAttribute;
+  using ConstraintAttribute = bke::PhysicsConstraintAttribute;
 
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Physics);
@@ -2290,21 +2276,21 @@ static OrderedAttributes gather_generic_physics_attributes_to_propagate(
     src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
 
-  Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
+  Map<StringRef, AttributeKind> attributes_to_propagate;
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::Physics,
                                     varied_depth_options.depths,
                                     varied_depth_options.selection,
-                                    options.propagation_info,
+                                    options.attribute_filter,
                                     attributes_to_propagate);
 
   OrderedAttributes ordered_attributes;
-  attributes_to_propagate.remove(body_shape_attribute_id);
-  attributes_to_propagate.remove(position_attribute_id);
-  attributes_to_propagate.remove(rotation_attribute_id);
-  attributes_to_propagate.remove(velocity_attribute_id);
-  attributes_to_propagate.remove(angular_velocity_attribute_id);
+  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::collision_shape));
+  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::position));
+  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::rotation));
+  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::velocity));
+  attributes_to_propagate.remove(physics_attribute_name(BodyAttribute::angular_velocity));
   // r_create_id = attributes_to_propagate.pop_try("id").has_value();
   for (auto &&item : attributes_to_propagate.items()) {
     ordered_attributes.ids.add_new(item.key);
@@ -2361,7 +2347,7 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     bke::AttributeAccessor attributes = physics->attributes();
     physics_info.attributes.reinitialize(info.attributes.size());
     for (const int attribute_index : info.attributes.index_range()) {
-      const AttributeIDRef &attribute_id = info.attributes.ids[attribute_index];
+      const StringRef attribute_id = info.attributes.ids[attribute_index];
       const eCustomDataType data_type = info.attributes.kinds[attribute_index].data_type;
       const bke::AttrDomain domain = info.attributes.kinds[attribute_index].domain;
       if (attributes.contains(attribute_id)) {
@@ -2516,6 +2502,10 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
                                           const OrderedAttributes &ordered_attributes,
                                           bke::GeometrySet &r_realized_geometry)
 {
+  using namespace bke::physics_attributes;
+  using BodyAttribute = bke::PhysicsBodyAttribute;
+  using ConstraintAttribute = bke::PhysicsConstraintAttribute;
+
   if (tasks.is_empty()) {
     return;
   }
@@ -2566,29 +2556,27 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   }
 
   MutableSpan<bke::CollisionShapePtr> shapes = dst_physics->state_for_write().shapes_for_write();
-  SpanAttributeWriter<int> body_shapes = dst_attributes.lookup_or_add_for_write_only_span<int>(
-      body_shape_attribute_id, bke::AttrDomain::Point);
-  SpanAttributeWriter<float3> position = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-      position_attribute_id, bke::AttrDomain::Point);
+  SpanAttributeWriter<int> body_shapes = physics_attribute_lookup_for_write_only_span<int>(
+      dst_attributes, BodyAttribute::collision_shape);
+  SpanAttributeWriter<float3> position = physics_attribute_lookup_for_write_only_span<float3>(
+      dst_attributes, BodyAttribute::position);
   SpanAttributeWriter<math::Quaternion> rotation =
-      dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(rotation_attribute_id,
-                                                                         bke::AttrDomain::Point);
-  SpanAttributeWriter<float3> velocity = dst_attributes.lookup_or_add_for_write_only_span<float3>(
-      velocity_attribute_id, bke::AttrDomain::Point);
+      physics_attribute_lookup_for_write_only_span<math::Quaternion>(dst_attributes,
+                                                                     BodyAttribute::rotation);
+  SpanAttributeWriter<float3> velocity = physics_attribute_lookup_for_write_only_span<float3>(
+      dst_attributes, BodyAttribute::velocity);
   SpanAttributeWriter<float3> angular_velocity =
-      dst_attributes.lookup_or_add_for_write_only_span<float3>(angular_velocity_attribute_id,
-                                                               bke::AttrDomain::Point);
-  SpanAttributeWriter<int> constraint_body1 =
-      dst_attributes.lookup_or_add_for_write_only_span<int>(constraint_body1_attribute_id,
-                                                            bke::AttrDomain::Edge);
-  SpanAttributeWriter<int> constraint_body2 =
-      dst_attributes.lookup_or_add_for_write_only_span<int>(constraint_body2_attribute_id,
-                                                            bke::AttrDomain::Edge);
+      physics_attribute_lookup_for_write_only_span<float3>(dst_attributes,
+                                                           BodyAttribute::angular_velocity);
+  SpanAttributeWriter<int> constraint_body1 = physics_attribute_lookup_for_write_only_span<int>(
+      dst_attributes, ConstraintAttribute::body1);
+  SpanAttributeWriter<int> constraint_body2 = physics_attribute_lookup_for_write_only_span<int>(
+      dst_attributes, ConstraintAttribute::body2);
 
   /* Prepare generic output attributes. */
   Vector<GSpanAttributeWriter> dst_attribute_writers;
   for (const int attribute_index : ordered_attributes.index_range()) {
-    const AttributeIDRef &attribute_id = ordered_attributes.ids[attribute_index];
+    const StringRef attribute_id = ordered_attributes.ids[attribute_index];
     const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
     const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
     dst_attribute_writers.append(
@@ -2620,17 +2608,9 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   });
 
   /* Tag modified attributes. */
-  const float4x4 *f = nullptr;
-  for (const int i : ordered_attributes.ids.index_range()) {
-    GSpanAttributeWriter &dst_attribute = dst_attribute_writers[i];
+  for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
     dst_attribute.finish();
-    if (ordered_attributes.ids[i] == "center_of_mass") {
-      f = (float4x4 *)dst_attribute.span.data();
-    }
   }
-  // for (GSpanAttributeWriter &dst_attribute : dst_attribute_writers) {
-  //   dst_attribute.finish();
-  // }
   dst_physics->state_for_write().tag_shapes_changed();
   body_shapes.finish();
   position.finish();

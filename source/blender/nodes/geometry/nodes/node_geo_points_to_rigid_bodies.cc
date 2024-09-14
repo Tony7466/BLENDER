@@ -16,7 +16,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Points").supported_type(GeometryComponent::Type::PointCloud);
   b.add_input<decl::Bool>("Selection").default_value(true).field_on({0}).hide_value();
-  b.add_input<decl::Int>("ID").default_value(-1).field_on({0}).hide_value();
   b.add_input<decl::Float>("Mass").default_value(1.0f).field_on({0});
   b.add_input<decl::Vector>("Inertia").field_on({0}).hide_value();
   b.add_input<decl::Geometry>("Shapes").description(
@@ -33,19 +32,17 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Rigid Bodies").propagate_all();
 }
 
-static void geometry_set_points_to_rigid_bodies(
-    GeometrySet &geometry_set,
-    Field<bool> &selection_field,
-    Field<int> &id_field,
-    Field<float> &mass_field,
-    Field<float3> &inertia_field,
-    Field<float3> &position_field,
-    Field<math::Quaternion> &rotation_field,
-    Field<float3> &velocity_field,
-    Field<float3> &angular_velocity_field,
-    const GeometrySet shapes_geometry,
-    Field<int> shape_index_field,
-    const AnonymousAttributePropagationInfo & /*propagation_info*/)
+static void geometry_set_points_to_rigid_bodies(GeometrySet &geometry_set,
+                                                Field<bool> &selection_field,
+                                                Field<float> &mass_field,
+                                                Field<float3> &inertia_field,
+                                                Field<float3> &position_field,
+                                                Field<math::Quaternion> &rotation_field,
+                                                Field<float3> &velocity_field,
+                                                Field<float3> &angular_velocity_field,
+                                                const GeometrySet shapes_geometry,
+                                                Field<int> shape_index_field,
+                                                const AttributeFilter & /*attribute_filter*/)
 {
   using CollisionShapePtr = ImplicitSharingPtr<bke::CollisionShape>;
 
@@ -58,7 +55,6 @@ static void geometry_set_points_to_rigid_bodies(
   const bke::PointCloudFieldContext field_context{*points};
   fn::FieldEvaluator field_evaluator{field_context, points->totpoint};
   field_evaluator.set_selection(selection_field);
-  field_evaluator.add(id_field);
   field_evaluator.add(mass_field);
   field_evaluator.add(inertia_field);
   field_evaluator.add(position_field);
@@ -69,15 +65,14 @@ static void geometry_set_points_to_rigid_bodies(
   field_evaluator.evaluate();
   const IndexMask selection = field_evaluator.get_evaluated_selection_as_mask();
 
-  const VArray<int> src_ids = field_evaluator.get_evaluated<int>(0);
-  const VArray<float> src_masses = field_evaluator.get_evaluated<float>(1);
-  const VArray<float3> src_inertias = field_evaluator.get_evaluated<float3>(2);
-  const VArray<float3> src_positions = field_evaluator.get_evaluated<float3>(3);
+  const VArray<float> src_masses = field_evaluator.get_evaluated<float>(0);
+  const VArray<float3> src_inertias = field_evaluator.get_evaluated<float3>(1);
+  const VArray<float3> src_positions = field_evaluator.get_evaluated<float3>(2);
   const VArray<math::Quaternion> src_rotations = field_evaluator.get_evaluated<math::Quaternion>(
-      4);
-  const VArray<float3> src_velocities = field_evaluator.get_evaluated<float3>(5);
-  const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(6);
-  const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(7);
+      3);
+  const VArray<float3> src_velocities = field_evaluator.get_evaluated<float3>(4);
+  const VArray<float3> src_angular_velocities = field_evaluator.get_evaluated<float3>(5);
+  const VArray<int> src_shape_index = field_evaluator.get_evaluated<int>(6);
 
   const Span<CollisionShapePtr> shapes = shapes_geometry.has_physics() ?
                                              shapes_geometry.get_physics()->state().shapes() :
@@ -93,7 +88,6 @@ static void geometry_set_points_to_rigid_bodies(
   //   body_shape_handles[pos] = shapes.index_range().contains(shape_index) ? shape_index : -1;
   // });
 
-  AttributeWriter<int> dst_ids = physics->body_ids_for_write();
   AttributeWriter<int> dst_body_shapes = physics->body_shapes_for_write();
   AttributeWriter<float> dst_masses = physics->body_masses_for_write();
   AttributeWriter<float3> dst_inertias = physics->body_inertias_for_write();
@@ -103,7 +97,6 @@ static void geometry_set_points_to_rigid_bodies(
   AttributeWriter<float3> dst_angular_velocities = physics->body_angular_velocities_for_write();
 
   selection.foreach_index(GrainSize(512), [&](const int index, const int pos) {
-    dst_ids.varray.set(pos, src_ids[index]);
     dst_body_shapes.varray.set(pos, src_shape_index[index]);
     dst_masses.varray.set(pos, src_masses[index]);
     dst_inertias.varray.set(pos, src_inertias[index]);
@@ -113,7 +106,6 @@ static void geometry_set_points_to_rigid_bodies(
     dst_angular_velocities.varray.set(pos, src_angular_velocities[index]);
   });
 
-  dst_ids.finish();
   dst_body_shapes.finish();
   dst_masses.finish();
   dst_inertias.finish();
@@ -130,7 +122,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  Field<int> id_field = params.extract_input<Field<int>>("ID");
   Field<float> mass_field = params.extract_input<Field<float>>("Mass");
   Field<float3> inertia_field = params.extract_input<Field<float3>>("Inertia");
   Field<float3> position_field = params.extract_input<Field<float3>>("Position");
@@ -144,7 +135,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     geometry_set_points_to_rigid_bodies(geometry_set,
                                         selection_field,
-                                        id_field,
                                         mass_field,
                                         inertia_field,
                                         position_field,
@@ -153,7 +143,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                                         angular_velocity_field,
                                         shapes_geometry,
                                         shape_index_field,
-                                        params.get_output_propagation_info("Rigid Bodies"));
+                                        params.get_attribute_filter("Rigid Bodies"));
   });
 
   params.set_output("Rigid Bodies", std::move(geometry_set));

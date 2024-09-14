@@ -166,7 +166,7 @@ static std::optional<bke::PhysicsGeometry *> separate_physics_selection(
     const fn::Field<bool> &selection_field,
     const AttrDomain selection_domain,
     const GeometryNodeDeleteGeometryMode mode,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const bke::AttributeAccessor attributes = physics.attributes();
   const bke::PhysicsFieldContext context(physics, selection_domain);
@@ -177,10 +177,10 @@ static std::optional<bke::PhysicsGeometry *> separate_physics_selection(
 
   switch (mode) {
     case GEO_NODE_DELETE_GEOMETRY_MODE_ALL:
-      return physics_copy_selection(physics, selection, selection_domain, propagation_info);
+      return physics_copy_selection(physics, selection, selection_domain, attribute_filter);
     case GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE:
       return physics_copy_selection_keep_bodies(
-          physics, selection, selection_domain, propagation_info);
+          physics, selection, selection_domain, attribute_filter);
     case GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE:
       return nullptr;
   }
@@ -289,7 +289,7 @@ void separate_geometry(bke::GeometrySet &geometry_set,
   if (const bke::PhysicsGeometry *physics = geometry_set.get_physics()) {
     if (ELEM(domain, AttrDomain::Point, AttrDomain::Edge)) {
       std::optional<bke::PhysicsGeometry *> dst_physics = separate_physics_selection(
-          *physics, selection, domain, mode, propagation_info);
+          *physics, selection, domain, mode, attribute_filter);
       if (dst_physics) {
         geometry_set.replace_physics(*dst_physics);
       }

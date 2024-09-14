@@ -20,7 +20,8 @@
 #include "DNA_customdata_types.h"
 
 #include "attribute_access_intern.hh"
-#include "physics_geometry_world.hh"
+#include "physics_geometry_world_bullet.hh"
+#include "physics_geometry_world_jolt.hh"
 
 class btRigidBody;
 class btMotionState;
@@ -29,30 +30,10 @@ class btTypedConstraint;
 
 namespace blender::bke {
 
-/* -------------------------------------------------------------------- */
-/** \name Attribute Info for Physics Geometry
- * \{ */
-
-Span<PhysicsBodyAttribute> all_body_attributes();
-Span<PhysicsConstraintAttribute> all_constraint_attributes();
-
-StringRef physics_attribute_name(PhysicsBodyAttribute attribute);
-StringRef physics_attribute_name(PhysicsConstraintAttribute attribute);
-
-Span<std::string> all_body_attribute_names();
-Span<std::string> all_constraint_attribute_names();
-
-const CPPType &physics_attribute_type(PhysicsBodyAttribute attribute);
-const CPPType &physics_attribute_type(PhysicsConstraintAttribute attribute);
-
-const void *physics_attribute_default_value(PhysicsBodyAttribute attribute);
-const void *physics_attribute_default_value(PhysicsConstraintAttribute attribute);
-
-/* True if the attribute is stored in the physics state and world data is updated after writing. */
-bool physics_attribute_is_state_local(const PhysicsBodyAttribute attribute);
-bool physics_attribute_is_state_local(const PhysicsConstraintAttribute attribute);
-
-/** \} */
+GVMutableArray physics_attribute_cache_vmutablearray(PhysicsBodyAttribute attribute,
+                                                     GArray<> &data);
+GVMutableArray physics_attribute_cache_vmutablearray(PhysicsConstraintAttribute attribute,
+                                                     GArray<> &data);
 
 /* -------------------------------------------------------------------- */
 /** \name Attribute Providers for Physics Geometry
@@ -130,19 +111,27 @@ class PhysicsWorldConstraintAttributeProvider final : public BuiltinAttributePro
   bool exists(const void *owner) const final;
 };
 
+/* What data is accessed when reading and writing attributes. */
+enum class PhysicsStateAttributeAccessMode {
+  /* Read from cache, write to world data. Default behavior. */
+  CachedRead = 0,
+  /* Use cache for read and write, ignore world data. */
+  CachedReadWrite,
+  /* Read and write world data directly. Internal use only. */
+  DirectReadWrite,
+};
+
 /**
  * Provider for builtin rigid body attributes.
  */
 class PhysicsStateBodyAttributeProvider final : public BuiltinAttributeProvider {
  public:
   PhysicsBodyAttribute attribute_;
-  BuiltinCustomDataLayerProvider custom_data_provider_;
   PhysicsWorldBodyAttributeProvider world_data_provider_;
-  bool allow_cache_;
+  PhysicsStateAttributeAccessMode access_mode_;
 
-  PhysicsStateBodyAttributeProvider(PhysicsBodyAttribute attribute,
-                                    const bool allow_cache,
-                                    const AttributeValidator validator = {});
+  PhysicsStateBodyAttributeProvider(PhysicsStateAttributeAccessMode access_mode,
+                                    PhysicsBodyAttribute attribute);
 
   GAttributeReader try_get_for_read(const void *owner) const final;
   GAttributeWriter try_get_for_write(void *owner) const final;
@@ -154,18 +143,15 @@ class PhysicsStateBodyAttributeProvider final : public BuiltinAttributeProvider 
 
 /**
  * Provider for builtin constraint attributes.
- * Reads from customdata if use_cached_read is true.
  */
 class PhysicsStateConstraintAttributeProvider final : public BuiltinAttributeProvider {
  public:
   PhysicsConstraintAttribute attribute_;
-  bke::BuiltinCustomDataLayerProvider custom_data_provider_;
   PhysicsWorldConstraintAttributeProvider world_data_provider_;
-  bool allow_cache_;
+  PhysicsStateAttributeAccessMode access_mode_;
 
-  PhysicsStateConstraintAttributeProvider(PhysicsConstraintAttribute attribute,
-                                          const bool allow_cache,
-                                          const AttributeValidator validator = {});
+  PhysicsStateConstraintAttributeProvider(PhysicsStateAttributeAccessMode access_mode,
+                                          PhysicsConstraintAttribute attribute);
 
   GAttributeReader try_get_for_read(const void *owner) const final;
   GAttributeWriter try_get_for_write(void *owner) const final;
@@ -177,7 +163,7 @@ class PhysicsStateConstraintAttributeProvider final : public BuiltinAttributePro
 /** \} */
 
 const AttributeAccessorFunctions &get_physics_accessor_functions_ref();
-const AttributeAccessorFunctions &get_physics_custom_data_accessor_functions_ref();
+const AttributeAccessorFunctions &get_physics_state_accessor_functions_ref();
 const AttributeAccessorFunctions &get_physics_world_data_accessor_functions_ref();
 
 }  // namespace blender::bke

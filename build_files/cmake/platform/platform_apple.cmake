@@ -397,6 +397,10 @@ if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
   endif()
 endif()
 
+if(WITH_JOLT)
+  find_package(Jolt REQUIRED)
+endif()
+
 set(ZSTD_ROOT_DIR ${LIBDIR}/zstd)
 find_package(Zstd REQUIRED)
 

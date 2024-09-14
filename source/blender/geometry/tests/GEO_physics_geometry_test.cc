@@ -7,6 +7,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_idtype.hh"
 #include "BKE_instances.hh"
+#include "BKE_jolt_physics.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.h"
 #include "BKE_mesh.hh"
@@ -37,10 +38,14 @@ class PhysicsGeometryTest : public testing::Test {
 
     /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
     BKE_idtype_init();
+
+    blender::bke::jolt_physics_init();
   }
 
   static void TearDownTestSuite()
   {
+    blender::bke::jolt_physics_exit();
+
     CLG_exit();
   }
 
@@ -158,10 +163,10 @@ static Mesh *create_test_triangle_mesh()
                                           {0.453125, -0.234375, 0.8515625},
                                           {0.4609375, -0.4296875, 0.5234375},
                                           {0.7265625, -0.3359375, 0.40625}};
-  static const Array<int2> edges = {{0, 3}, {3, 1}, {1, 0}, {1, 3}, {3, 4}, {4, 1}};
+  static const Array<int2> edges = {{0, 1}, {1, 2}, {2, 0}, {0, 3}, {2, 3}};
   static const Array<int> face_offsets = {0, 3, 6};
-  static const Array<int> corner_verts = {0, 3, 1, 1, 3, 4};
-  static const Array<int> corner_edges = {0, 1, 2, 3, 4, 5};
+  static const Array<int> corner_verts = {0, 1, 2, 2, 3, 0};
+  static const Array<int> corner_edges = {0, 1, 2, 4, 3, 2};
 
   Mesh *mesh = BKE_mesh_new_nomain(
       positions.size(), edges.size(), face_offsets.size() - 1, corner_verts.size());
@@ -181,19 +186,15 @@ static Mesh *create_test_triangle_mesh()
 struct AllShapesData {
   Vector<CollisionShapePtr> shapes;
 
-  const EmptyCollisionShape *empty_shape = nullptr;
   const BoxCollisionShape *box_shape = nullptr;
   const SphereCollisionShape *sphere_shape = nullptr;
   const CylinderCollisionShape *cylinder_shape = nullptr;
   const CapsuleCollisionShape *capsule_shape = nullptr;
-  const ConeCollisionShape *cone_shape = nullptr;
   const TriangleCollisionShape *triangle_shape = nullptr;
   const ConvexHullCollisionShape *convex_hull_shape = nullptr;
-  const TriangleMeshCollisionShape *triangle_mesh_shape = nullptr;
-  const ScaledTriangleMeshCollisionShape *scaled_triangle_mesh_shape = nullptr;
-  const UniformScalingCollisionShape *uniform_scaling_shape = nullptr;
-  const StaticPlaneCollisionShape *static_plane_shape = nullptr;
-  const CompoundCollisionShape *compound_shape = nullptr;
+  const MeshCollisionShape *mesh_shape = nullptr;
+  const ScaledCollisionShape *scaled_shape = nullptr;
+  const MutableCompoundCollisionShape *compound_shape = nullptr;
 
   Mesh *empty_mesh = nullptr;
   Mesh *quad_mesh = nullptr;
@@ -213,46 +214,35 @@ struct AllShapesData {
     Array<float3> points = {
         float3(1, 0.5f, -1), float3(-1, 0, 0), float3(-0.5f, 1, 0), float3(0, -1, -0.5f)};
 
-    empty_shape = new EmptyCollisionShape();
     box_shape = new BoxCollisionShape(float3(1, 2, 3));
     sphere_shape = new SphereCollisionShape(1.5f);
     cylinder_shape = new CylinderCollisionShape(0.5f, 1.0f);
     capsule_shape = new CapsuleCollisionShape(0.5f, 1.5f);
-    cone_shape = new ConeCollisionShape(1.0f, 0.5f);
     triangle_shape = new TriangleCollisionShape(float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1));
     convex_hull_shape = new ConvexHullCollisionShape(VArray<float3>::ForSpan(points));
-    triangle_mesh_shape = bke::TriangleMeshCollisionShape::from_mesh(*triangle_mesh);
-    scaled_triangle_mesh_shape = new ScaledTriangleMeshCollisionShape(triangle_mesh_shape,
-                                                                      float3(0.4f));
+    mesh_shape = new bke::MeshCollisionShape(*triangle_mesh);
     cylinder_shape->add_user();
-    uniform_scaling_shape = new UniformScalingCollisionShape(CollisionShapePtr(cylinder_shape),
-                                                             2.5f);
-    static_plane_shape = new StaticPlaneCollisionShape(float3(0.1, -2, 0), -0.5f);
+    scaled_shape = new ScaledCollisionShape(CollisionShapePtr(cylinder_shape), float3(2.5f));
     capsule_shape->add_user();
-    triangle_mesh_shape->add_user();
+    mesh_shape->add_user();
     capsule_shape->add_user();
     Array<CollisionShapePtr> compound_child_shapes = {CollisionShapePtr(capsule_shape),
-                                                      CollisionShapePtr(triangle_mesh_shape),
+                                                      CollisionShapePtr(mesh_shape),
                                                       CollisionShapePtr(capsule_shape)};
     Array<float4x4> compound_child_transforms = {
         float4x4::identity(), float4x4::identity(), float4x4::identity()};
-    compound_shape = new CompoundCollisionShape(
-        VArray<CollisionShapePtr>::ForSpan(compound_child_shapes),
-        VArray<float4x4>::ForSpan(compound_child_transforms));
+    compound_shape = new MutableCompoundCollisionShape(compound_child_shapes,
+                                                       compound_child_transforms);
 
     shapes.reserve(20);
-    shapes.append_as(empty_shape);
     shapes.append_as(box_shape);
     shapes.append_as(sphere_shape);
     shapes.append_as(cylinder_shape);
     shapes.append_as(capsule_shape);
-    shapes.append_as(cone_shape);
     shapes.append_as(triangle_shape);
     shapes.append_as(convex_hull_shape);
-    shapes.append_as(triangle_mesh_shape);
-    shapes.append_as(scaled_triangle_mesh_shape);
-    shapes.append_as(uniform_scaling_shape);
-    shapes.append_as(static_plane_shape);
+    shapes.append_as(mesh_shape);
+    shapes.append_as(scaled_shape);
     shapes.append_as(compound_shape);
   }
 };
@@ -273,6 +263,226 @@ TEST_F(PhysicsGeometryTest, construct)
 
   bke::PhysicsGeometry geo5 = bke::PhysicsGeometry(1, 1, 1);
   test_data(geo5, false, 1, 1, 1);
+}
+
+/* Get a non-default attribute value for testing. */
+static const void *attribute_value_by_type(const eCustomDataType type)
+{
+  switch (type) {
+    case CD_PROP_FLOAT: {
+      static const float v = 123.0f;
+      return &v;
+    }
+    case CD_PROP_INT32: {
+      static const int v = 123;
+      return &v;
+    }
+    case CD_PROP_BOOL: {
+      static const bool v = true;
+      return &v;
+    }
+    case CD_PROP_FLOAT3: {
+      static const float3 v = float3(11.1f, 22.2f, 33.3f);
+      return &v;
+    }
+    case CD_PROP_QUATERNION: {
+      static const math::Quaternion v = math::to_quaternion(math::EulerXYZ(10.0f, 20.0f, 30.0f));
+      return &v;
+    }
+    case CD_PROP_FLOAT4X4: {
+      static const float4x4 v = float4x4(
+          float4(11.0f), float4(22.0f), float4(33.0f), float4(44.0f));
+      return &v;
+    }
+
+    default:
+      BLI_assert_unreachable();
+      return nullptr;
+  }
+}
+
+static const void *expected_attribute_value(const PhysicsBodyAttribute attribute)
+{
+  const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+  const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+  switch (attribute) {
+    /* Motion type gets clamped to valid enum value. */
+    case PhysicsBodyAttribute::motion_type: {
+      static const int default_value = int(bke::PhysicsMotionType::Dynamic);
+      return &default_value;
+    }
+    /* Force attributes are only changed by adding forces, writes are ignored. */
+    case PhysicsBodyAttribute::total_force:
+    case PhysicsBodyAttribute::total_torque: {
+      static const float3 zero_vec = float3(0.0f);
+      return &zero_vec;
+    }
+
+    default:
+      return attribute_value_by_type(type);
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static const void *expected_attribute_value(const PhysicsConstraintAttribute attribute)
+{
+  const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+  const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+  switch (attribute) {
+    case PhysicsConstraintAttribute::type: {
+      static const int expected_type = int(PhysicsConstraintType::Fixed);
+      return &expected_type;
+    }
+
+    default:
+      return attribute_value_by_type(type);
+  }
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+static void test_state_attributes(bke::PhysicsGeometry &geo)
+{
+  using BodyAttribute = PhysicsGeometry::BodyAttribute;
+  using ConstraintAttribute = PhysicsGeometry::ConstraintAttribute;
+
+  {
+    bke::MutableAttributeAccessor attributes = geo.attributes_for_write();
+    for (const BodyAttribute attribute : PhysicsGeometry::all_body_attributes()) {
+      const StringRef name = bke::PhysicsGeometry::attribute_name(attribute);
+      const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+      const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+      const void *value = attribute_value_by_type(type);
+      bke::GAttributeWriter writer = attributes.lookup_or_add_for_write(
+          name, bke::AttrDomain::Point, type);
+      writer.varray.fill(value);
+
+      BUFFER_FOR_CPP_TYPE_VALUE(cpptype, buffer);
+      writer.varray.get(0, buffer);
+      EXPECT_TRUE(cpptype.is_equal(expected_attribute_value(attribute), buffer));
+
+      writer.finish();
+    }
+    for (const ConstraintAttribute attribute : PhysicsGeometry::all_constraint_attributes()) {
+      const StringRef name = bke::PhysicsGeometry::attribute_name(attribute);
+      const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+      const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+      const void *value = attribute_value_by_type(type);
+      bke::GAttributeWriter writer = attributes.lookup_or_add_for_write(
+          name, bke::AttrDomain::Edge, type);
+      writer.varray.fill(value);
+
+      BUFFER_FOR_CPP_TYPE_VALUE(cpptype, buffer);
+      writer.varray.get(0, buffer);
+      EXPECT_TRUE(cpptype.is_equal(expected_attribute_value(attribute), buffer));
+
+      writer.finish();
+    }
+  }
+
+  geo.state().ensure_read_cache();
+  {
+    bke::AttributeAccessor attributes = geo.attributes();
+    for (const BodyAttribute attribute : PhysicsGeometry::all_body_attributes()) {
+      const StringRef name = bke::PhysicsGeometry::attribute_name(attribute);
+      const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+      const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+      GVArray varray = *attributes.lookup_or_default(
+          name, bke::AttrDomain::Point, type, PhysicsGeometry::attribute_default_value(attribute));
+
+      BUFFER_FOR_CPP_TYPE_VALUE(cpptype, buffer);
+      varray.get(0, buffer);
+      EXPECT_TRUE(cpptype.is_equal(expected_attribute_value(attribute), buffer));
+    }
+    for (const ConstraintAttribute attribute : PhysicsGeometry::all_constraint_attributes()) {
+      const StringRef name = bke::PhysicsGeometry::attribute_name(attribute);
+      const CPPType &cpptype = bke::PhysicsGeometry::attribute_type(attribute);
+      const eCustomDataType type = cpp_type_to_custom_data_type(cpptype);
+
+      GVArray varray = *attributes.lookup_or_default(
+          name, bke::AttrDomain::Edge, type, PhysicsGeometry::attribute_default_value(attribute));
+
+      BUFFER_FOR_CPP_TYPE_VALUE(cpptype, buffer);
+      varray.get(0, buffer);
+      EXPECT_TRUE(cpptype.is_equal(expected_attribute_value(attribute), buffer));
+    }
+  }
+}
+
+TEST_F(PhysicsGeometryTest, inactive_state_attributes)
+{
+  bke::PhysicsGeometry geo = bke::PhysicsGeometry(1, 1, 0);
+  test_state_attributes(geo);
+  test_data(geo, false, 1, 1, 0);
+}
+
+TEST_F(PhysicsGeometryTest, active_state_attributes)
+{
+  bke::PhysicsGeometry geo = bke::PhysicsGeometry(1, 1, 0);
+  geo.state_for_write().create_world();
+  test_state_attributes(geo);
+  test_data(geo, true, 1, 1, 0);
+}
+
+/* Bodies should be deactivated when made static. */
+TEST_F(PhysicsGeometryTest, deactivate_when_static)
+{
+  const static StringRef is_active_id = PhysicsGeometry::attribute_name(
+      PhysicsBodyAttribute::is_active);
+  const static StringRef motion_type_id = PhysicsGeometry::attribute_name(
+      PhysicsBodyAttribute::motion_type);
+
+  /* Test physics with and without world data. */
+  bke::PhysicsGeometry geo1 = bke::PhysicsGeometry(1, 0, 0);
+  bke::PhysicsGeometry geo2 = bke::PhysicsGeometry(1, 0, 0);
+  geo2.state_for_write().create_world();
+
+  {
+    const VArray<bool> is_active1 = *geo1.state().attributes().lookup<bool>(
+        is_active_id, bke::AttrDomain::Point);
+    const VArray<bool> is_active2 = *geo2.state().attributes().lookup<bool>(
+        is_active_id, bke::AttrDomain::Point);
+    const VArray<int> motion_type1 = *geo1.state().attributes().lookup<int>(
+        motion_type_id, bke::AttrDomain::Point);
+    const VArray<int> motion_type2 = *geo2.state().attributes().lookup<int>(
+        motion_type_id, bke::AttrDomain::Point);
+    EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_type1.get(0)));
+    EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_type2.get(0)));
+    EXPECT_FALSE(is_active1.get(0));
+    EXPECT_FALSE(is_active2.get(0));
+  }
+
+  {
+    bke::AttributeWriter writer1 = geo1.body_motion_types_for_write();
+    bke::AttributeWriter writer2 = geo2.body_motion_types_for_write();
+    writer1.varray.set(0, int(PhysicsMotionType::Static));
+    writer2.varray.set(0, int(PhysicsMotionType::Static));
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(writer1.varray.get(0)));
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(writer2.varray.get(0)));
+    writer1.finish();
+    writer2.finish();
+  }
+
+  {
+    const VArray<bool> is_active1 = *geo1.state().attributes().lookup<bool>(
+        is_active_id, bke::AttrDomain::Point);
+    const VArray<bool> is_active2 = *geo2.state().attributes().lookup<bool>(
+        is_active_id, bke::AttrDomain::Point);
+    const VArray<int> motion_type1 = *geo1.state().attributes().lookup<int>(
+        motion_type_id, bke::AttrDomain::Point);
+    const VArray<int> motion_type2 = *geo2.state().attributes().lookup<int>(
+        motion_type_id, bke::AttrDomain::Point);
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_type1.get(0)));
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_type2.get(0)));
+    EXPECT_FALSE(is_active1.get(0));
+    EXPECT_FALSE(is_active2.get(0));
+  }
 }
 
 TEST_F(PhysicsGeometryTest, custom_data_body_shapes)
@@ -359,10 +569,10 @@ TEST_F(PhysicsGeometryTest, assign_collision_shapes)
   }
 
   /* Set actual shape pointers. */
-  all_shapes_data.empty_shape->add_user();
+  all_shapes_data.box_shape->add_user();
   all_shapes_data.convex_hull_shape->add_user();
   geo1.state_for_write().shapes_for_write().copy_from(
-      {CollisionShapePtr(all_shapes_data.empty_shape),
+      {CollisionShapePtr(all_shapes_data.box_shape),
        CollisionShapePtr(all_shapes_data.convex_hull_shape)});
   geo1.state_for_write().tag_shapes_changed();
   test_data(geo1, false, 4, 0, 2);
@@ -483,7 +693,6 @@ TEST_F(PhysicsGeometryTest, realize_instances)
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
-  options.propagation_info = {};
   GeometrySet result = geometry::realize_instances(instances_geo, options);
 
   EXPECT_TRUE(result.has_physics());
@@ -552,7 +761,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_body2 = geo1->constraint_body2_for_write();
     AttributeWriter<float4x4> constraint_frame1 = geo1->constraint_frame1_for_write();
     AttributeWriter<float4x4> constraint_frame2 = geo1->constraint_frame2_for_write();
-    AttributeWriter<bool> disable_collision = geo1->constraint_disable_collision_for_write();
     body_shapes.varray.set_all({2, 0, 2, -1, 1});
     masses.varray.set_all({5, 15, 25, 35, 45});
     constraint_types.varray.set_all({int(ConstraintType::Point), int(ConstraintType::Slider)});
@@ -560,7 +768,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1, 2});
     constraint_frame1.varray.set_all(frame1.as_span().slice(0, 2));
     constraint_frame2.varray.set_all(frame2.as_span().slice(0, 2));
-    disable_collision.varray.set_all({true, false});
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
@@ -568,7 +775,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.finish();
     constraint_frame1.finish();
     constraint_frame2.finish();
-    disable_collision.finish();
     geo1->state_for_write().compute_local_inertia(geo1->bodies_range());
   }
   test_data(*geo1, false, 5, 2, 3);
@@ -594,7 +800,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     AttributeWriter<int> constraint_body2 = geo3->constraint_body2_for_write();
     AttributeWriter<float4x4> constraint_frame1 = geo3->constraint_frame1_for_write();
     AttributeWriter<float4x4> constraint_frame2 = geo3->constraint_frame2_for_write();
-    AttributeWriter<bool> disable_collision = geo3->constraint_disable_collision_for_write();
     body_shapes.varray.set_all({0, 100});
     masses.varray.set_all({3, 33});
     constraint_types.varray.set_all({int(ConstraintType::Fixed)});
@@ -602,7 +807,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.varray.set_all({1});
     constraint_frame1.varray.set_all(frame1.as_span().slice(2, 1));
     constraint_frame2.varray.set_all(frame2.as_span().slice(2, 1));
-    disable_collision.varray.set_all({true});
     body_shapes.finish();
     masses.finish();
     constraint_types.finish();
@@ -610,7 +814,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
     constraint_body2.finish();
     constraint_frame1.finish();
     constraint_frame2.finish();
-    disable_collision.finish();
     geo3->state_for_write().compute_local_inertia(geo3->bodies_range());
   }
   test_data(*geo3, true, 2, 1, 1);
@@ -649,7 +852,6 @@ TEST_F(PhysicsGeometryTest, join_geometry)
   const VArraySpan<int> constraint_body2 = geo_result.constraint_body2();
   const VArraySpan<float4x4> constraint_frame1 = geo_result.constraint_frame1();
   const VArraySpan<float4x4> constraint_frame2 = geo_result.constraint_frame2();
-  const VArraySpan<bool> disable_collision = geo_result.constraint_disable_collision();
   EXPECT_EQ_ARRAY(Span<int>{int(ConstraintType::Point),
                             int(ConstraintType::Slider),
                             int(ConstraintType::Fixed)}
@@ -657,18 +859,9 @@ TEST_F(PhysicsGeometryTest, join_geometry)
                   constraint_types.data(),
                   constraint_types.size());
   EXPECT_EQ_ARRAY(Span<int>{2, 0, -1}.data(), constraint_body1.data(), constraint_body1.size());
-  EXPECT_EQ_ARRAY(Span<int>{1, 2, 1}.data(), constraint_body2.data(), constraint_body2.size());
-  /* Point constraint only retains the translation part of the frame matrix. */
-  const float4x4 frame1_loc0 = math::from_location<float4x4>(frame1[0].location());
-  EXPECT_EQ_ARRAY(Span<float4x4>({frame1_loc0, frame1[1], frame1[2]}).data(),
-                  constraint_frame1.data(),
-                  constraint_frame1.size());
-  const float4x4 frame2_loc0 = math::from_location<float4x4>(frame2[0].location());
-  EXPECT_EQ_ARRAY(Span<float4x4>({frame2_loc0, frame2[1], frame2[2]}).data(),
-                  constraint_frame2.data(),
-                  constraint_frame2.size());
-  EXPECT_EQ_ARRAY(
-      Span<bool>({true, false, true}).data(), disable_collision.data(), disable_collision.size());
+  EXPECT_EQ_ARRAY(Span<int>{1, 2, 6}.data(), constraint_body2.data(), constraint_body2.size());
+  EXPECT_EQ_ARRAY(frame1.data(), constraint_frame1.data(), constraint_frame1.size());
+  EXPECT_EQ_ARRAY(frame2.data(), constraint_frame2.data(), constraint_frame2.size());
 
   /* Original geometries should be unmodified. */
   test_data(*geo1, false, 5, 2, 3);
@@ -728,56 +921,45 @@ TEST_F(PhysicsGeometryTest, update_read_cache)
   bke::PhysicsGeometry *geo2 = new bke::PhysicsGeometry(3, 2, 0);
   test_data(*geo2, false, 3, 2, 0);
   {
-    AttributeWriter<int> body_ids = geo2->body_ids_for_write();
-    body_ids.varray.set_all({123, 456, 789});
-    body_ids.finish();
     AttributeWriter<float3> positions = geo2->body_positions_for_write();
     positions.varray.set_all({float3(123), float3(456), float3(789)});
     positions.finish();
-    AttributeWriter<bool> is_static = geo2->attributes_for_write().lookup_or_add_for_write<bool>(
-        "is_static", AttrDomain::Point);
-    is_static.varray.set_all({true, false, true});
-    is_static.finish();
+    AttributeWriter<int> motion_type = geo2->attributes_for_write().lookup_or_add_for_write<int>(
+        "motion_type", AttrDomain::Point);
+    motion_type.varray.set_all({int(PhysicsMotionType::Static),
+                                int(PhysicsMotionType::Dynamic),
+                                int(PhysicsMotionType::Static)});
+    motion_type.finish();
   }
   {
-    const VArray<int> body_ids = geo2->body_ids();
-    EXPECT_EQ(3, body_ids.size());
-    EXPECT_EQ(123, body_ids[0]);
-    EXPECT_EQ(456, body_ids[1]);
-    EXPECT_EQ(789, body_ids[2]);
     const VArray<float3> positions = geo2->body_positions();
     EXPECT_EQ(3, positions.size());
     EXPECT_EQ(float3(123), positions[0]);
     EXPECT_EQ(float3(456), positions[1]);
     EXPECT_EQ(float3(789), positions[2]);
-    const VArray<bool> is_static = geo2->body_is_static();
-    EXPECT_EQ(3, is_static.size());
-    EXPECT_EQ(true, is_static[0]);
-    EXPECT_EQ(false, is_static[1]);
-    EXPECT_EQ(true, is_static[2]);
+    const VArray<int> motion_types = geo2->body_motion_types();
+    EXPECT_EQ(3, motion_types.size());
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_types[0]));
+    EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_types[1]));
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_types[2]));
   }
 
   Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_physics(geo1),
                                            bke::GeometrySet::from_physics(geo2)};
   GeometrySet result = geometry::join_geometries(geometry_sets, {});
 
-  const PhysicsGeometry *geo_result = result.get_physics();
+  /*const PhysicsGeometry *geo_result =*/result.get_physics();
   {
-    const VArray<int> body_ids = geo_result->body_ids();
-    EXPECT_EQ(3, body_ids.size());
-    EXPECT_EQ(123, body_ids[0]);
-    EXPECT_EQ(456, body_ids[1]);
-    EXPECT_EQ(789, body_ids[2]);
     const VArray<float3> positions = geo2->body_positions();
     EXPECT_EQ(3, positions.size());
     EXPECT_EQ(float3(123), positions[0]);
     EXPECT_EQ(float3(456), positions[1]);
     EXPECT_EQ(float3(789), positions[2]);
-    const VArray<bool> is_static = geo2->body_is_static();
-    EXPECT_EQ(3, is_static.size());
-    EXPECT_EQ(true, is_static[0]);
-    EXPECT_EQ(false, is_static[1]);
-    EXPECT_EQ(true, is_static[2]);
+    const VArray<int> motion_types = geo2->body_motion_types();
+    EXPECT_EQ(3, motion_types.size());
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_types[0]));
+    EXPECT_EQ(PhysicsMotionType::Dynamic, PhysicsMotionType(motion_types[1]));
+    EXPECT_EQ(PhysicsMotionType::Static, PhysicsMotionType(motion_types[2]));
   }
 }
 
@@ -792,33 +974,49 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   geo.state_for_write().create_world();
   test_data(geo, true, 9, 0, 3);
 
-  /* Static plane is a non-moveable shape and makes any body using it static. */
   all_shapes_data.sphere_shape->add_user();
   all_shapes_data.box_shape->add_user();
-  all_shapes_data.static_plane_shape->add_user();
+  all_shapes_data.cylinder_shape->add_user();
   geo.state_for_write().shapes_for_write().copy_from(
-      {CollisionShapePtr(all_shapes_data.static_plane_shape),
+      {CollisionShapePtr(all_shapes_data.cylinder_shape),
        CollisionShapePtr(all_shapes_data.box_shape),
        CollisionShapePtr(all_shapes_data.sphere_shape)});
   geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
-    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<int> motion_types = geo.body_motion_types_for_write();
     AttributeWriter<float> masses = geo.body_masses_for_write();
     body_shapes.varray.set_all({0, 0, 0, 1, 1, 1, 2, 2, 2});
-    is_static.varray.set_all({true, true, true, false, false, false, false, false, false});
+    motion_types.varray.set_all({int(PhysicsMotionType::Static),
+                                 int(PhysicsMotionType::Static),
+                                 int(PhysicsMotionType::Static),
+                                 int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Dynamic)});
     masses.varray.set_all({0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f});
     body_shapes.finish();
-    is_static.finish();
+    motion_types.finish();
     masses.finish();
   }
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
-    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<int> motion_types = geo.body_motion_types();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{0, 0, 0, 1, 1, 1, 2, 2, 2}.data(), body_shapes.data(), 9);
-    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, false, false, false, false, false, false}.data(),
-                    is_static.data(),
+    EXPECT_EQ_ARRAY(Span<int>{int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic)}
+                        .data(),
+                    motion_types.data(),
                     9);
     EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
                     masses.data(),
@@ -835,11 +1033,20 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   }
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
-    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<int> motion_types = geo.body_motion_types();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
-    EXPECT_EQ_ARRAY(Span<bool>{true, true, true, false, false, false, false, false, false}.data(),
-                    is_static.data(),
+    EXPECT_EQ_ARRAY(Span<int>{int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Dynamic)}
+                        .data(),
+                    motion_types.data(),
                     9);
     EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
                     masses.data(),
@@ -852,17 +1059,34 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
    * Making a body dynamic enforces non-zero mass (1.0 by default).
    */
   {
-    AttributeWriter<bool> body_is_static = geo.body_is_static_for_write();
-    body_is_static.varray.set_all({true, false, true, true, true, false, true, true, false});
-    body_is_static.finish();
+    AttributeWriter<int> body_motion_types = geo.body_motion_types_for_write();
+    body_motion_types.varray.set_all({int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Dynamic),
+                                      int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Dynamic),
+                                      int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Static),
+                                      int(PhysicsMotionType::Dynamic)});
+    body_motion_types.finish();
   }
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
-    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<int> motion_types = geo.body_motion_types();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
-    EXPECT_EQ_ARRAY(Span<bool>{true, false, true, true, true, false, true, true, false}.data(),
-                    is_static.data(),
+    EXPECT_EQ_ARRAY(Span<int>{int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic)}
+                        .data(),
+                    motion_types.data(),
                     9);
     EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 0.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f, 5.0f}.data(),
                     masses.data(),
@@ -879,11 +1103,20 @@ TEST_F(PhysicsGeometryTest, motion_type_attribute_dependencies)
   }
   {
     const VArraySpan<int> body_shapes = geo.body_shapes();
-    const VArraySpan<bool> is_static = geo.body_is_static();
+    const VArraySpan<int> motion_types = geo.body_motion_types();
     const VArraySpan<float> masses = geo.body_masses();
     EXPECT_EQ_ARRAY(Span<int>{1, 0, 0, 0, 1, 1, 0, 2, 2}.data(), body_shapes.data(), 9);
-    EXPECT_EQ_ARRAY(Span<bool>{true, false, true, true, true, false, true, true, false}.data(),
-                    is_static.data(),
+    EXPECT_EQ_ARRAY(Span<int>{int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Static),
+                              int(PhysicsMotionType::Dynamic)}
+                        .data(),
+                    motion_types.data(),
                     9);
     EXPECT_EQ_ARRAY(Span<float>{0.0f, 0.0f, 10.0f, 5.0f, 5.0f, 10.0f, 5.0f, 5.0f, 10.0f}.data(),
                     masses.data(),
@@ -905,19 +1138,21 @@ TEST_F(PhysicsGeometryTest, change_constraint_types)
   geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
-    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<int> motion_types = geo.body_motion_types_for_write();
     AttributeWriter<float> masses = geo.body_masses_for_write();
     AttributeWriter<int> constraint_types = geo.constraint_types_for_write();
     AttributeWriter<int> constraint_body1 = geo.constraint_body1_for_write();
     AttributeWriter<int> constraint_body2 = geo.constraint_body2_for_write();
     body_shapes.varray.set_all({0, 0, 0});
-    is_static.varray.set_all({false, true, false});
+    motion_types.varray.set_all({int(PhysicsMotionType::Dynamic),
+                                 int(PhysicsMotionType::Static),
+                                 int(PhysicsMotionType::Dynamic)});
     masses.varray.set_all({1.0f, 1.0f, 1.0f});
     constraint_types.varray.set_all({int(ConstraintType::Fixed), int(ConstraintType::Hinge)});
     constraint_body1.varray.set_all({1, 1});
     constraint_body2.varray.set_all({0, 2});
     body_shapes.finish();
-    is_static.finish();
+    motion_types.finish();
     masses.finish();
     constraint_types.finish();
     constraint_body1.finish();
@@ -953,13 +1188,13 @@ TEST_F(PhysicsGeometryTest, simple_time_step)
   geo.state_for_write().tag_shapes_changed();
   {
     AttributeWriter<int> body_shapes = geo.body_shapes_for_write();
-    AttributeWriter<bool> is_static = geo.body_is_static_for_write();
+    AttributeWriter<int> motion_types = geo.body_motion_types_for_write();
     AttributeWriter<float> masses = geo.body_masses_for_write();
     body_shapes.varray.set(0, 0);
-    is_static.varray.set(0, false);
+    motion_types.varray.set(0, int(PhysicsMotionType::Dynamic));
     masses.varray.set(0, 1.0f);
     body_shapes.finish();
-    is_static.finish();
+    motion_types.finish();
     masses.finish();
   }
 

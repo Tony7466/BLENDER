@@ -18,10 +18,10 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   params.set_output("Mass",
-                    AttributeFieldInput::Create<float>(bke::PhysicsGeometry::body_attribute_name(
+                    AttributeFieldInput::Create<float>(bke::PhysicsGeometry::attribute_name(
                         bke::PhysicsGeometry::BodyAttribute::mass)));
   params.set_output("Inertia",
-                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::body_attribute_name(
+                    AttributeFieldInput::Create<float3>(bke::PhysicsGeometry::attribute_name(
                         bke::PhysicsGeometry::BodyAttribute::inertia)));
 }
 

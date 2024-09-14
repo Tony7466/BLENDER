@@ -17,7 +17,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Physics").supported_type(bke::GeometryComponent::Type::Physics);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Vector>("Impulse").field_on_all();
-  b.add_input<decl::Vector>("Relative Position").hide_value().field_on_all();
+  b.add_input<decl::Vector>("Position").hide_value().field_on_all();
   b.add_output<decl::Geometry>("Physics").propagate_all();
 }
 
@@ -26,8 +26,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Physics");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<float3> impulses_field = params.extract_input<Field<float3>>("Impulse");
-  Field<float3> relative_positions_field = params.extract_input<Field<float3>>(
-      "Relative Position");
+  Field<float3> relative_positions_field = params.extract_input<Field<float3>>("Position");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {

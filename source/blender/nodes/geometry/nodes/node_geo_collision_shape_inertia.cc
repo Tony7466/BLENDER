@@ -23,9 +23,12 @@ class ShapeInertiaFieldInput : public bke::PhysicsFieldInput {
                                  const IndexMask & /*mask*/) const override
   {
     if (domain == bke::AttrDomain::Instance) {
-      const Span<bke::CollisionShape::Ptr> shapes = physics.state().shapes();
-      return VArray<float3>::ForFunc(shapes.size(), [shapes](const int index) {
-        const bke::CollisionShape::Ptr &shape = shapes[index];
+      const bke::PhysicsWorldState &state = physics.state();
+      return VArray<float3>::ForFunc(state.shapes_num(), [&state](const int index) {
+        const bke::CollisionShape::Ptr &shape = state.shapes()[index];
+        if (!shape) {
+          return float3(0.0f);
+        }
         return shape->calculate_local_inertia(1.0f);
       });
     }

@@ -11,6 +11,7 @@ namespace blender::nodes::node_geo_physics_time_step_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Float>("Delta Time").default_value(0.0167f);
+  b.add_input<decl::Int>("Collision Steps").default_value(1);
   b.add_input<decl::Geometry>("Physics").supported_type(GeometryComponent::Type::Physics);
   b.add_output<decl::Geometry>("Physics").propagate_all();
 }
@@ -18,6 +19,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const float delta_time = params.extract_input<float>("Delta Time");
+  const int collision_steps = params.extract_input<int>("Collision Steps");
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Physics");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
@@ -26,7 +28,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
 
     if (bke::PhysicsGeometry *physics = geometry_set.get_physics_for_write()) {
-      physics->state_for_write().step_simulation(delta_time);
+      physics->state_for_write().step_simulation(delta_time, collision_steps);
     }
   });
 

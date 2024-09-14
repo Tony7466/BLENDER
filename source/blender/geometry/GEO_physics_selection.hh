@@ -52,12 +52,12 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::PhysicsGeometry &src_physics,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter);
 
 std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     const bke::PhysicsGeometry &src_physics,
     const VArray<bool> &selection,
     bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

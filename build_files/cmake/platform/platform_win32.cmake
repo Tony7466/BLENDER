@@ -1330,6 +1330,13 @@ if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_
   )
 endif()
 
+if(WITH_JOLT)
+  set(JOLT_FOUND ON)
+  set(JOLT_ROOT_DIR ${LIBDIR}/jolt)
+  set(JOLT_INCLUDE_DIRS ${JOLT_ROOT_DIR}/inc)
+  set(JOLT_LIBRARIES ${JOLT_ROOT_DIR}/lib/jolt.lib)
+endif()
+
 # Add the msvc directory to the path so when building with ASAN enabled tools such as
 # msgfmt which run before the install phase can find the asan shared libraries.
 get_filename_component(_msvc_path ${CMAKE_C_COMPILER} DIRECTORY)

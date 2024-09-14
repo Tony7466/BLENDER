@@ -315,6 +315,9 @@ Use the systems bullet library (currently unsupported due to missing features in
   OFF
 )
 mark_as_advanced(WITH_SYSTEM_BULLET)
+option(WITH_JOLT "Enable Jolt Physics support" ON)
+option(WITH_SYSTEM_JOLT "Use the systems Jolt library" OFF)
+mark_as_advanced(WITH_SYSTEM_JOLT)
 option(WITH_OPENCOLORIO "Enable OpenColorIO color management" ON)
 
 set(_option_default ON)
@@ -1663,6 +1666,20 @@ endif()
 
 
 # -----------------------------------------------------------------------------
+# Configure Jolt
+
+if(WITH_JOLT)
+  if(WITH_SYSTEM_JOLT)
+    find_package(Jolt)
+    set_and_warn_library_found("Jolt" JOLT_FOUND WITH_JOLT)
+  else()
+    set(JOLT_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/extern/jolt/")
+    set(JOLT_LIBRARIES "Jolt")
+  endif()
+endif()
+
+
+# -----------------------------------------------------------------------------
 # Configure Python
 
 # Not currently supported due to different required Python link flags.
@@ -2725,6 +2742,7 @@ if(FIRST_RUN)
   info_cfg_option(WITH_INPUT_NDOF)
   info_cfg_option(WITH_INPUT_IME)
   info_cfg_option(WITH_INTERNATIONAL)
+  info_cfg_option(WITH_JOLT)
   info_cfg_option(WITH_OPENCOLLADA)
   info_cfg_option(WITH_OPENCOLORIO)
   info_cfg_option(WITH_OPENIMAGEDENOISE)

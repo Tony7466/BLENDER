@@ -84,7 +84,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
     const bke::PhysicsGeometry &src_physics,
     const VArray<bool> &selection,
     const bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const VArraySpan<int> src_body_shapes = src_physics.body_shapes();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
@@ -153,7 +153,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection(
       body_mask.size(), constraint_mask.size(), shape_mask.size());
 
   dst_physics->state_for_write().move_or_copy_selection(
-      src_physics.state(), body_mask, constraint_mask, propagation_info);
+      src_physics.state(), body_mask, constraint_mask, attribute_filter);
 
   return dst_physics;
 }
@@ -162,7 +162,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
     const bke::PhysicsGeometry &src_physics,
     const VArray<bool> &selection,
     const bke::AttrDomain selection_domain,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+    const bke::AttributeFilter &attribute_filter)
 {
   const VArraySpan<int> src_body_shapes = src_physics.body_shapes();
   const VArraySpan<int> src_body1 = src_physics.constraint_body1();
@@ -205,7 +205,7 @@ std::optional<bke::PhysicsGeometry *> physics_copy_selection_keep_bodies(
       src_physics.bodies_num(), constraint_mask.size(), src_physics.shapes_num());
 
   dst_physics->state_for_write().move_or_copy_selection(
-      src_physics.state(), body_mask, constraint_mask, propagation_info);
+      src_physics.state(), body_mask, constraint_mask, attribute_filter);
 
   return dst_physics;
 }

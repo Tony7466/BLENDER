@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <malloc.h>
 
 #include "MEM_guardedalloc.h"
 

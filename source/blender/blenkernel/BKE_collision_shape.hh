@@ -9,9 +9,12 @@
 #pragma once
 
 #include "BLI_array.hh"
+#include "BLI_bounds_types.hh"
 #include "BLI_implicit_sharing_ptr.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_utility_mixins.hh"
 #include "BLI_virtual_array_fwd.hh"
@@ -35,39 +38,21 @@ class CollisionShape : public ImplicitSharingMixin {
 
   /* Not all shape types may be supported. */
   enum class ShapeType {
-    Invalid,
-    Empty,
-
-    /* Polyhedral convex shapes. */
+    Sphere,
     Box,
     Triangle,
-    Tetrahedral,
-    ConvexTriangleMesh,
-    ConvexHull,
-    ConvexPointCloud,
-    // CustomPolyhedral,
-
-    /* Implicit convex shapes. */
-    Sphere,
-    MultiSphere,
     Capsule,
-    Cone,
+    TaperedCapsule,
     Cylinder,
-    UniformScaling,
-    MinkowskiSum,
-    MinkowskiDifference,
-    Box2D,
-    Convex2D,
-    // CustomConvex,
-
-    /* Concave shapes. */
-    TriangleMesh,
-    ScaledTriangleMesh,
-    StaticPlane,
-    // CustomConcave,
-
-    /* Others */
-    Compound,
+    ConvexHull,
+    StaticCompound,
+    MutableCompound,
+    RotatedTranslated,
+    Scaled,
+    OffsetCenterOfMass,
+    Mesh,
+    HeightField,
+    SoftBody,
   };
 
  protected:
@@ -111,6 +96,9 @@ class CollisionShape : public ImplicitSharingMixin {
   bool is_convex() const;
   bool is_concave() const;
 
+  float3 center_of_mass() const;
+  Bounds<float3> local_bounds() const;
+
   float3 calculate_local_inertia(float mass) const;
 
  protected:
@@ -119,10 +107,12 @@ class CollisionShape : public ImplicitSharingMixin {
   friend class PhysicsGeometry;
 };
 
-class EmptyCollisionShape : public CollisionShape {
- public:
-  EmptyCollisionShape();
-};
+using CollisionShapePtr = CollisionShape::Ptr;
+
+// class EmptyCollisionShape : public CollisionShape {
+//  public:
+//   EmptyCollisionShape();
+// };
 
 class BoxCollisionShape : public CollisionShape {
  public:
@@ -153,9 +143,9 @@ class CapsuleCollisionShape : public CollisionShape {
   CapsuleCollisionShape(float radius, float height);
 };
 
-class ConeCollisionShape : public CollisionShape {
+class TaperedCapsuleCollisionShape : public CollisionShape {
  public:
-  ConeCollisionShape(float radius, float height);
+  TaperedCapsuleCollisionShape(float top_radius, float bottom_radius, float height);
 };
 
 class CylinderCollisionShape : public CollisionShape {
@@ -163,40 +153,73 @@ class CylinderCollisionShape : public CollisionShape {
   CylinderCollisionShape(float radius, float height);
 };
 
-class UniformScalingCollisionShape : public CollisionShape {
+class ScaledCollisionShape : public CollisionShape {
  public:
-  CollisionShape::Ptr child_shape_;
+  CollisionShapePtr child_shape_;
 
-  UniformScalingCollisionShape(const CollisionShape::Ptr &child_shape, float scale);
+  ScaledCollisionShape(const CollisionShapePtr &child_shape, const float3 &scale);
 };
 
-class TriangleMeshCollisionShape : public CollisionShape {
+class OffsetCenterOfMassShape : public CollisionShape {
  public:
-  struct TriangleMeshInterface *mesh_interface = nullptr;
+  CollisionShapePtr child_shape_;
 
-  TriangleMeshCollisionShape(TriangleMeshInterface *mesh_interface);
-
-  static TriangleMeshCollisionShape *from_mesh(const Mesh &mesh);
-
-  virtual ~TriangleMeshCollisionShape();
+  OffsetCenterOfMassShape(const CollisionShapePtr &child_shape, const float3 &offset);
 };
 
-class ScaledTriangleMeshCollisionShape : public CollisionShape {
+class RotatedTranslatedCollisionShape : public CollisionShape {
  public:
-  ScaledTriangleMeshCollisionShape(const TriangleMeshCollisionShape *child_shape, float3 scale);
+  CollisionShapePtr child_shape_;
+
+  RotatedTranslatedCollisionShape(const CollisionShapePtr &child_shape,
+                                  const math::Quaternion &rotation,
+                                  const float3 &translation);
 };
 
-class StaticPlaneCollisionShape : public CollisionShape {
+class MutableCompoundCollisionShape : public CollisionShape {
  public:
-  StaticPlaneCollisionShape(const float3 &plane_normal, float plane_constant);
+  MutableCompoundCollisionShape(Span<CollisionShapePtr> child_shapes,
+                                Span<float4x4> child_transforms);
 };
 
-class CompoundCollisionShape : public CollisionShape {
+class StaticCompoundCollisionShape : public CollisionShape {
  public:
-  Array<CollisionShape::Ptr> child_shapes_;
-
-  CompoundCollisionShape(const VArray<CollisionShape::Ptr> &child_shapes,
-                         const VArray<float4x4> &child_transforms);
+  StaticCompoundCollisionShape(Span<CollisionShapePtr> child_shapes,
+                               Span<float4x4> child_transforms);
 };
+
+class MeshCollisionShape : public CollisionShape {
+ public:
+  MeshCollisionShape(const Mesh &mesh);
+};
+
+// class TriangleMeshCollisionShape : public CollisionShape {
+//  public:
+//   struct TriangleMeshInterface *mesh_interface = nullptr;
+//
+//   TriangleMeshCollisionShape(TriangleMeshInterface *mesh_interface);
+//
+//   static TriangleMeshCollisionShape *from_mesh(const Mesh &mesh);
+//
+//   virtual ~TriangleMeshCollisionShape();
+// };
+
+// class ScaledTriangleMeshCollisionShape : public CollisionShape {
+//  public:
+//   ScaledTriangleMeshCollisionShape(const TriangleMeshCollisionShape *child_shape, float3 scale);
+// };
+//
+// class StaticPlaneCollisionShape : public CollisionShape {
+//  public:
+//   StaticPlaneCollisionShape(const float3 &plane_normal, float plane_constant);
+// };
+//
+// class CompoundCollisionShape : public CollisionShape {
+//  public:
+//   Array<CollisionShape::Ptr> child_shapes_;
+//
+//   CompoundCollisionShape(const VArray<CollisionShape::Ptr> &child_shapes,
+//                          const VArray<float4x4> &child_transforms);
+// };
 
 }  // namespace blender::bke

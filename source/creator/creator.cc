@@ -44,6 +44,7 @@
 #include "BKE_cpp_types.hh"
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
+#include "BKE_jolt_physics.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
@@ -416,6 +417,8 @@ int main(int argc,
 #ifdef __FreeBSD__
   fpsetmask(0);
 #endif
+
+  blender::bke::jolt_physics_init();
 
   /* Initialize path to executable. */
   BKE_appdir_program_path_init(argv[0]);
