@@ -8911,7 +8911,7 @@ class VIEW3D_PT_greasepencil_vertex_paint_context_menu(Panel):
 
             col = layout.column()
             col.separator()
-            col.prop_menu_enum(gp_settings, "vertex_mode", text="Mode")
+            col.prop(gp_settings, "vertex_mode", text="")
             col.separator()
 
         row = col.row(align=True)
