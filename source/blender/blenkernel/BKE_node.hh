@@ -1397,7 +1397,6 @@ void node_tree_remove_layer_n(bNodeTree *ntree, Scene *scene, int layer_index);
 #define GEO_NODE_PHYSICS_WORLD 2166
 #define GEO_NODE_INPUT_SHAPE_CENTER_OF_MASS 2167
 #define GEO_NODE_INPUT_SHAPE_BOUNDS 2168
-#define GEO_NODE_PHYSICS_WORLD 2169
 
 /** \} */
 
