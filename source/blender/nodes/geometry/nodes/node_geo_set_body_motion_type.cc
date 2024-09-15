@@ -51,7 +51,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         return;
       }
 
-      bke::AttributeWriter motion_type_writer = physics->body_motion_types_for_write();
+      bke::AttributeWriter<int> motion_type_writer = physics->body_motion_types_for_write();
       selection.foreach_index(GrainSize(512), [&](const int index) {
         motion_type_writer.varray.set(index, int(motion_type));
       });
