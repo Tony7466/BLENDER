@@ -63,8 +63,6 @@ void ED_init_custom_node_socket_type(blender::bke::bNodeSocketType *stype);
 void ED_init_standard_node_socket_type(blender::bke::bNodeSocketType *stype);
 void ED_init_node_socket_type_virtual(blender::bke::bNodeSocketType *stype);
 void ED_node_sample_set(const float col[4]);
-void ED_node_draw_snap(
-    View2D *v2d, const float cent[2], float size, NodeBorder border, unsigned int pos);
 void ED_node_type_draw_color(const char *idname, float *r_color);
 
 /* `node_draw.cc` */

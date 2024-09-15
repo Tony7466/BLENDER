@@ -338,15 +338,10 @@ void drawSnapping(TransInfo *t)
       else {
         immUniformColor4ubv(col);
       }
-
-      ED_node_draw_snap(&region->v2d, p->co, size, NodeBorder(0), pos);
     }
 
     if (t->tsnap.status & SNAP_TARGET_FOUND) {
       immUniformColor4ubv(activeCol);
-
-      ED_node_draw_snap(
-          &region->v2d, t->tsnap.snap_target, size, NodeBorder(t->tsnap.snapNodeBorder), pos);
     }
 
     immUnbindProgram();
@@ -623,8 +618,6 @@ void resetSnapping(TransInfo *t)
   t->tsnap.snapNormal[0] = 0;
   t->tsnap.snapNormal[1] = 0;
   t->tsnap.snapNormal[2] = 0;
-
-  t->tsnap.snapNodeBorder = 0;
 }
 
 bool usingSnappingNormal(const TransInfo *t)
@@ -1342,7 +1335,6 @@ static void snap_source_center_fn(TransInfo *t)
   /* Only need to calculate once. */
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     copy_v3_v3(t->tsnap.snap_source, t->center_global);
-    TargetSnapOffset(t, nullptr);
 
     t->tsnap.status |= SNAP_SOURCE_FOUND;
     t->tsnap.source_type = SCE_SNAP_TO_NONE;
@@ -1354,7 +1346,6 @@ static void snap_source_active_fn(TransInfo *t)
   /* Only need to calculate once. */
   if ((t->tsnap.status & SNAP_SOURCE_FOUND) == 0) {
     if (calculateCenterActive(t, true, t->tsnap.snap_source)) {
-      TargetSnapOffset(t, nullptr);
       t->tsnap.status |= SNAP_SOURCE_FOUND;
       t->tsnap.source_type = SCE_SNAP_TO_NONE;
     }
@@ -1475,8 +1466,6 @@ static void snap_source_closest_fn(TransInfo *t)
         }
       }
     }
-
-    TargetSnapOffset(t, closest);
   }
 
   t->tsnap.status |= SNAP_SOURCE_FOUND;
