@@ -17,10 +17,12 @@
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
+#include "BLI_array_utils.hh"
 #include "BLI_assert.h"
 #include "BLI_color.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_kdopbvh.h"
+#include "BLI_kdtree.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
@@ -91,60 +93,76 @@ static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContex
   const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
 
   if (mode == PaintMode::GPencil) {
-    if (eBrushGPaintTool(brush.gpencil_tool) == GPAINT_TOOL_DRAW &&
+    if (eBrushGPaintType(brush.gpencil_brush_type) == GPAINT_BRUSH_TYPE_DRAW &&
         stroke_mode == BRUSH_STROKE_ERASE)
     {
-      /* Special case: We're using the draw tool but with the eraser mode. */
-      Object *object = CTX_data_active_object(&C);
-      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-      grease_pencil.runtime->use_eraser_temp = true;
-      return greasepencil::new_erase_operation();
+      /* Special case: We're using the draw tool but with the eraser mode, so create an erase
+       * operation. */
+      return greasepencil::new_erase_operation(true);
     }
     /* FIXME: Somehow store the unique_ptr in the PaintStroke. */
-    switch (eBrushGPaintTool(brush.gpencil_tool)) {
-      case GPAINT_TOOL_DRAW:
+    switch (eBrushGPaintType(brush.gpencil_brush_type)) {
+      case GPAINT_BRUSH_TYPE_DRAW:
         return greasepencil::new_paint_operation();
-      case GPAINT_TOOL_ERASE:
-        return greasepencil::new_erase_operation();
-      case GPAINT_TOOL_FILL:
+      case GPAINT_BRUSH_TYPE_ERASE:
+        return greasepencil::new_erase_operation(false);
+      case GPAINT_BRUSH_TYPE_FILL:
         /* Fill tool keymap uses the paint operator as alternative mode. */
         return greasepencil::new_paint_operation();
-      case GPAINT_TOOL_TINT:
+      case GPAINT_BRUSH_TYPE_TINT:
         return greasepencil::new_tint_operation();
     }
   }
   else if (mode == PaintMode::SculptGreasePencil) {
-    switch (eBrushGPSculptTool(brush.gpencil_sculpt_tool)) {
-      case GPSCULPT_TOOL_SMOOTH:
+    switch (eBrushGPSculptType(brush.gpencil_sculpt_brush_type)) {
+      case GPSCULPT_BRUSH_TYPE_SMOOTH:
         return greasepencil::new_smooth_operation(stroke_mode);
-      case GPSCULPT_TOOL_THICKNESS:
+      case GPSCULPT_BRUSH_TYPE_THICKNESS:
         return greasepencil::new_thickness_operation(stroke_mode);
-      case GPSCULPT_TOOL_STRENGTH:
+      case GPSCULPT_BRUSH_TYPE_STRENGTH:
         return greasepencil::new_strength_operation(stroke_mode);
-      case GPSCULPT_TOOL_GRAB:
+      case GPSCULPT_BRUSH_TYPE_GRAB:
         return greasepencil::new_grab_operation(stroke_mode);
-      case GPSCULPT_TOOL_PUSH:
+      case GPSCULPT_BRUSH_TYPE_PUSH:
         return greasepencil::new_push_operation(stroke_mode);
-      case GPSCULPT_TOOL_TWIST:
+      case GPSCULPT_BRUSH_TYPE_TWIST:
         return greasepencil::new_twist_operation(stroke_mode);
-      case GPSCULPT_TOOL_PINCH:
+      case GPSCULPT_BRUSH_TYPE_PINCH:
         return greasepencil::new_pinch_operation(stroke_mode);
-      case GPSCULPT_TOOL_RANDOMIZE:
+      case GPSCULPT_BRUSH_TYPE_RANDOMIZE:
         return greasepencil::new_randomize_operation(stroke_mode);
-      case GPSCULPT_TOOL_CLONE:
+      case GPSCULPT_BRUSH_TYPE_CLONE:
         return greasepencil::new_clone_operation(stroke_mode);
     }
   }
   else if (mode == PaintMode::WeightGPencil) {
-    switch (eBrushGPWeightTool(brush.gpencil_weight_tool)) {
-      case GPWEIGHT_TOOL_DRAW:
+    switch (eBrushGPWeightType(brush.gpencil_weight_brush_type)) {
+      case GPWEIGHT_BRUSH_TYPE_DRAW:
         return greasepencil::new_weight_paint_draw_operation(stroke_mode);
-      case GPWEIGHT_TOOL_BLUR:
+      case GPWEIGHT_BRUSH_TYPE_BLUR:
         return greasepencil::new_weight_paint_blur_operation();
-      case GPWEIGHT_TOOL_AVERAGE:
+      case GPWEIGHT_BRUSH_TYPE_AVERAGE:
         return greasepencil::new_weight_paint_average_operation();
-      case GPWEIGHT_TOOL_SMEAR:
+      case GPWEIGHT_BRUSH_TYPE_SMEAR:
         return greasepencil::new_weight_paint_smear_operation();
+    }
+  }
+  else if (mode == PaintMode::VertexGPencil) {
+    switch (eBrushGPVertexType(brush.gpencil_vertex_brush_type)) {
+      case GPVERTEX_BRUSH_TYPE_DRAW:
+        return greasepencil::new_vertex_paint_operation(stroke_mode);
+      case GPVERTEX_BRUSH_TYPE_BLUR:
+        return greasepencil::new_vertex_blur_operation();
+      case GPVERTEX_BRUSH_TYPE_AVERAGE:
+        return greasepencil::new_vertex_average_operation();
+      case GPVERTEX_BRUSH_TYPE_SMEAR:
+        return greasepencil::new_vertex_smear_operation();
+      case GPVERTEX_BRUSH_TYPE_REPLACE:
+        return greasepencil::new_vertex_replace_operation();
+      case GPVERTEX_BRUSH_TYPE_TINT:
+        /* Unused. */
+        BLI_assert_unreachable();
+        return nullptr;
     }
   }
   return nullptr;
@@ -212,7 +230,36 @@ static bool grease_pencil_brush_stroke_poll(bContext *C)
 
 static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  int return_value = ed::greasepencil::grease_pencil_draw_operator_invoke(C, op);
+  if (event->tablet.active == EVT_TABLET_ERASER) {
+    RNA_enum_set(op->ptr, "mode", BRUSH_STROKE_ERASE);
+  }
+
+  const bool use_duplicate_previous_key = [&]() -> bool {
+    const Paint *paint = BKE_paint_get_active_from_context(C);
+    const Brush &brush = *BKE_paint_brush_for_read(paint);
+    const PaintMode mode = BKE_paintmode_get_active_from_context(C);
+    const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
+
+    if (mode == PaintMode::GPencil) {
+      /* For the eraser and tint tool, we don't want auto-key to create an empty keyframe, so we
+       * duplicate the previous frame. */
+      if (ELEM(eBrushGPaintType(brush.gpencil_brush_type),
+               GPAINT_BRUSH_TYPE_ERASE,
+               GPAINT_BRUSH_TYPE_TINT))
+      {
+        return true;
+      }
+      /* Same for the temporary eraser when using the draw tool. */
+      if (eBrushGPaintType(brush.gpencil_brush_type) == GPAINT_BRUSH_TYPE_DRAW &&
+          stroke_mode == BRUSH_STROKE_ERASE)
+      {
+        return true;
+      }
+    }
+    return false;
+  }();
+  int return_value = ed::greasepencil::grease_pencil_draw_operator_invoke(
+      C, op, use_duplicate_previous_key);
   if (return_value != OPERATOR_RUNNING_MODAL) {
     return return_value;
   }
@@ -298,7 +345,6 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
   }
 
   bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
-
   if (!active_layer.is_editable()) {
     BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
     return OPERATOR_CANCELLED;
@@ -306,7 +352,12 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
 
   /* Ensure a drawing at the current keyframe. */
   bool inserted_keyframe = false;
-  if (!ed::greasepencil::ensure_active_keyframe(C, grease_pencil, inserted_keyframe)) {
+  /* For the sculpt tools, we don't want the auto-key to create an empty keyframe, so we duplicate
+   * the previous key. */
+  const bool use_duplicate_previous_key = true;
+  if (!ed::greasepencil::ensure_active_keyframe(
+          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
+  {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
@@ -344,9 +395,9 @@ static void grease_pencil_sculpt_paint_cancel(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_sculpt_paint(wmOperatorType *ot)
 {
-  ot->name = "Grease Pencil Draw";
+  ot->name = "Grease Pencil Sculpt";
   ot->idname = "GREASE_PENCIL_OT_sculpt_paint";
-  ot->description = "Draw a new stroke in the active Grease Pencil object";
+  ot->description = "Sculpt strokes in the active Grease Pencil object";
 
   ot->poll = grease_pencil_sculpt_paint_poll;
   ot->invoke = grease_pencil_sculpt_paint_invoke;
@@ -454,6 +505,111 @@ static void GREASE_PENCIL_OT_weight_brush_stroke(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Vertex Brush Stroke Operator
+ * \{ */
+
+static bool grease_pencil_vertex_brush_stroke_poll(bContext *C)
+{
+  if (!ed::greasepencil::grease_pencil_vertex_painting_poll(C)) {
+    return false;
+  }
+  if (!WM_toolsystem_active_tool_is_brush(C)) {
+    return false;
+  }
+  return true;
+}
+
+static int grease_pencil_vertex_brush_stroke_invoke(bContext *C,
+                                                    wmOperator *op,
+                                                    const wmEvent *event)
+{
+  const Object *object = CTX_data_active_object(C);
+  if (!object || object->type != OB_GREASE_PENCIL) {
+    return OPERATOR_CANCELLED;
+  }
+
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  if (!grease_pencil.has_active_layer()) {
+    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
+    return OPERATOR_CANCELLED;
+  }
+
+  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+  if (!active_layer.is_editable()) {
+    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
+    return OPERATOR_CANCELLED;
+  }
+
+  const Paint *paint = BKE_paint_get_active_from_context(C);
+  const Brush *brush = BKE_paint_brush_for_read(paint);
+  if (brush == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Ensure a drawing at the current keyframe. */
+  bool inserted_keyframe = false;
+  /* For the vertex paint tools, we don't want the auto-key to create an empty keyframe, so we
+   * duplicate the previous key. */
+  const bool use_duplicate_previous_key = true;
+  if (!ed::greasepencil::ensure_active_keyframe(
+          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
+  {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+    return OPERATOR_CANCELLED;
+  }
+  if (inserted_keyframe) {
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+  }
+
+  op->customdata = paint_stroke_new(C,
+                                    op,
+                                    stroke_get_location,
+                                    stroke_test_start,
+                                    stroke_update_step,
+                                    stroke_redraw,
+                                    stroke_done,
+                                    event->type);
+
+  const int return_value = op->type->modal(C, op, event);
+  if (return_value == OPERATOR_FINISHED) {
+    return OPERATOR_FINISHED;
+  }
+
+  WM_event_add_modal_handler(C, op);
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_vertex_brush_stroke_modal(bContext *C,
+                                                   wmOperator *op,
+                                                   const wmEvent *event)
+{
+  return paint_stroke_modal(C, op, event, reinterpret_cast<PaintStroke **>(&op->customdata));
+}
+
+static void grease_pencil_vertex_brush_stroke_cancel(bContext *C, wmOperator *op)
+{
+  paint_stroke_cancel(C, op, static_cast<PaintStroke *>(op->customdata));
+}
+
+static void GREASE_PENCIL_OT_vertex_brush_stroke(wmOperatorType *ot)
+{
+  ot->name = "Grease Pencil Paint Vertex";
+  ot->idname = "GREASE_PENCIL_OT_vertex_brush_stroke";
+  ot->description = "Draw on vertex colors in the active Grease Pencil object";
+
+  ot->poll = grease_pencil_vertex_brush_stroke_poll;
+  ot->invoke = grease_pencil_vertex_brush_stroke_invoke;
+  ot->modal = grease_pencil_vertex_brush_stroke_modal;
+  ot->cancel = grease_pencil_vertex_brush_stroke_cancel;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  paint_stroke_operator_properties(ot);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Bucket Fill Operator
  * \{ */
 
@@ -503,12 +659,16 @@ struct GreasePencilFillOpData {
         brush.gpencil_settings->fill_extend_mode);
     const bool show_boundaries = brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_HELPLINES;
     const bool show_extension = brush.gpencil_settings->flag & GP_BRUSH_FILL_SHOW_EXTENDLINES;
-    const float extension_length = brush.gpencil_settings->fill_extend_fac;
+    const float extension_length = brush.gpencil_settings->fill_extend_fac *
+                                   bke::greasepencil::LEGACY_RADIUS_CONVERSION_FACTOR;
     const bool extension_cut = brush.gpencil_settings->flag & GP_BRUSH_FILL_STROKE_COLLIDE;
+    const bool brush_invert = brush.gpencil_settings->fill_direction == BRUSH_DIR_IN;
+    /* Both operator properties and brush properties can invert. Actual invert is XOR of both. */
+    const bool combined_invert = (invert != brush_invert);
 
     return {layer,
             material_index,
-            invert,
+            combined_invert,
             precision,
             extension_mode,
             extension_length,
@@ -679,6 +839,118 @@ static void grease_pencil_fill_extension_cut(const bContext &C,
   extension_data.lines.ends = std::move(new_extension_ends);
 }
 
+/* Find closest point in each circle and generate extension lines between such pairs. */
+static void grease_pencil_fill_extension_lines_from_circles(
+    const bContext &C,
+    ed::greasepencil::ExtensionData &extension_data,
+    Span<int> /*origin_drawings*/,
+    Span<int> /*origin_points*/)
+{
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+  const Scene &scene = *CTX_data_scene(&C);
+  const Object &object = *CTX_data_active_object(&C);
+  const GreasePencil &grease_pencil = *static_cast<const GreasePencil *>(object.data);
+
+  const float4x4 view_matrix = float4x4(rv3d.viewmat);
+
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil, false);
+
+  const IndexRange circles_range = extension_data.circles.centers.index_range();
+  /* TODO Include high-curvature feature points. */
+  const IndexRange feature_points_range = circles_range.after(0);
+  const IndexRange kd_points_range = IndexRange(circles_range.size() +
+                                                feature_points_range.size());
+
+  /* Upper bound for segment count. Arrays are sized for easy index mapping, exact count isn't
+   * necessary. Not all entries are added to the BVH tree. */
+  const int max_kd_entries = kd_points_range.size();
+  /* Cached view positions for lines. */
+  Array<float2> view_centers(max_kd_entries);
+  Array<float> view_radii(max_kd_entries);
+
+  KDTree_2d *kdtree = BLI_kdtree_2d_new(max_kd_entries);
+
+  /* Insert points for overlap tests. */
+  for (const int point_i : circles_range.index_range()) {
+    const float2 center =
+        math::transform_point(view_matrix, extension_data.circles.centers[point_i]).xy();
+    const float radius = math::average(math::to_scale(view_matrix)) *
+                         extension_data.circles.radii[point_i];
+
+    const int kd_index = circles_range[point_i];
+    view_centers[kd_index] = center;
+    view_radii[kd_index] = radius;
+
+    BLI_kdtree_2d_insert(kdtree, kd_index, center);
+  }
+  for (const int i_point : feature_points_range.index_range()) {
+    /* TODO Insert feature points into the KDTree. */
+    UNUSED_VARS(i_point);
+  }
+  BLI_kdtree_2d_balance(kdtree);
+
+  struct {
+    Vector<float3> starts;
+    Vector<float3> ends;
+  } connection_lines;
+  /* Circles which can be kept because they generate no extension lines. */
+  Vector<int> keep_circle_indices;
+  keep_circle_indices.reserve(circles_range.size());
+
+  for (const int point_i : circles_range.index_range()) {
+    const int kd_index = circles_range[point_i];
+    const float2 center = view_centers[kd_index];
+    const float radius = view_radii[kd_index];
+
+    bool found = false;
+    BLI_kdtree_2d_range_search_cb_cpp(
+        kdtree,
+        center,
+        radius,
+        [&](const int other_point_i, const float * /*co*/, float /*dist_sq*/) {
+          if (other_point_i == kd_index) {
+            return true;
+          }
+
+          found = true;
+          connection_lines.starts.append(extension_data.circles.centers[point_i]);
+          if (circles_range.contains(other_point_i)) {
+            connection_lines.ends.append(extension_data.circles.centers[other_point_i]);
+          }
+          else if (feature_points_range.contains(other_point_i)) {
+            /* TODO copy feature point to connection_lines (beware of start index!). */
+            connection_lines.ends.append(float3(0));
+          }
+          else {
+            BLI_assert_unreachable();
+          }
+          return true;
+        });
+    /* Keep the circle if no extension line was found. */
+    if (!found) {
+      keep_circle_indices.append(point_i);
+    }
+  }
+
+  BLI_kdtree_2d_free(kdtree);
+
+  /* Add new extension lines. */
+  extension_data.lines.starts.extend(connection_lines.starts);
+  extension_data.lines.ends.extend(connection_lines.ends);
+  /* Remove circles that formed extension lines. */
+  Vector<float3> old_centers = std::move(extension_data.circles.centers);
+  Vector<float> old_radii = std::move(extension_data.circles.radii);
+  extension_data.circles.centers.resize(keep_circle_indices.size());
+  extension_data.circles.radii.resize(keep_circle_indices.size());
+  array_utils::gather(old_centers.as_span(),
+                      keep_circle_indices.as_span(),
+                      extension_data.circles.centers.as_mutable_span());
+  array_utils::gather(old_radii.as_span(),
+                      keep_circle_indices.as_span(),
+                      extension_data.circles.radii.as_mutable_span());
+}
+
 static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
     const bContext &C, const GreasePencilFillOpData &op_data)
 {
@@ -750,9 +1022,17 @@ static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
     }
   }
 
-  /* Intersection test against strokes and other extension lines. */
-  if (op_data.extension_cut) {
-    grease_pencil_fill_extension_cut(C, extension_data, origin_drawings, origin_points);
+  switch (op_data.extension_mode) {
+    case GP_FILL_EMODE_EXTEND:
+      /* Intersection test against strokes and other extension lines. */
+      if (op_data.extension_cut) {
+        grease_pencil_fill_extension_cut(C, extension_data, origin_drawings, origin_points);
+      }
+      break;
+    case GP_FILL_EMODE_RADIUS:
+      grease_pencil_fill_extension_lines_from_circles(
+          C, extension_data, origin_drawings, origin_points);
+      break;
   }
 
   return extension_data;
@@ -1074,6 +1354,7 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
       (brush.gpencil_settings->flag & GP_BRUSH_FILL_HIDE) ?
           std::nullopt :
           std::make_optional(brush.gpencil_settings->fill_threshold);
+  const bool on_back = (ts.gpencil_flags & GP_TOOL_FLAG_PAINT_ONBACK);
 
   if (!grease_pencil.has_active_layer()) {
     return false;
@@ -1113,8 +1394,9 @@ static bool grease_pencil_apply_fill(bContext &C, wmOperator &op, const wmEvent 
 
     Curves *dst_curves_id = curves_new_nomain(std::move(info.target.drawing.strokes_for_write()));
     Curves *fill_curves_id = curves_new_nomain(fill_curves);
-    Array<bke::GeometrySet> geometry_sets = {bke::GeometrySet::from_curves(dst_curves_id),
-                                             bke::GeometrySet::from_curves(fill_curves_id)};
+    Array<bke::GeometrySet> geometry_sets = {
+        bke::GeometrySet::from_curves(on_back ? fill_curves_id : dst_curves_id),
+        bke::GeometrySet::from_curves(on_back ? dst_curves_id : fill_curves_id)};
     bke::GeometrySet joined_geometry_set = geometry::join_geometries(geometry_sets, {});
     bke::CurvesGeometry joined_curves =
         (joined_geometry_set.has_curves() ?
@@ -1442,6 +1724,7 @@ void ED_operatortypes_grease_pencil_draw()
   WM_operatortype_append(GREASE_PENCIL_OT_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_sculpt_paint);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_brush_stroke);
+  WM_operatortype_append(GREASE_PENCIL_OT_vertex_brush_stroke);
   WM_operatortype_append(GREASE_PENCIL_OT_fill);
 }
 

@@ -448,13 +448,13 @@ static void find_nearest_edges(const Span<float3> src_positions,
   });
 }
 
-static void gather_attributes(const Span<AttributeIDRef> ids,
+static void gather_attributes(const Span<StringRef> ids,
                               const AttributeAccessor src_attributes,
                               const AttrDomain domain,
                               const Span<int> index_map,
                               MutableAttributeAccessor dst_attributes)
 {
-  for (const AttributeIDRef &id : ids) {
+  for (const StringRef id : ids) {
     const GVArraySpan src = *src_attributes.lookup(id, domain);
     const eCustomDataType type = cpp_type_to_custom_data_type(src.type());
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(id, domain, type);
@@ -468,12 +468,12 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
   /* Gather attributes to transfer for each domain. This makes it possible to skip
    * building index maps and even the main BVH tree if there are no attributes. */
   const AttributeAccessor src_attributes = src.attributes();
-  Vector<AttributeIDRef> point_ids;
-  Vector<AttributeIDRef> edge_ids;
-  Vector<AttributeIDRef> face_ids;
-  Vector<AttributeIDRef> corner_ids;
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData &meta_data) {
-    if (ELEM(id.name(), "position", ".edge_verts", ".corner_vert", ".corner_edge")) {
+  Vector<StringRef> point_ids;
+  Vector<StringRef> edge_ids;
+  Vector<StringRef> face_ids;
+  Vector<StringRef> corner_ids;
+  src_attributes.for_all([&](const StringRef id, const AttributeMetaData &meta_data) {
+    if (ELEM(id, "position", ".edge_verts", ".corner_vert", ".corner_edge")) {
       return true;
     }
     switch (meta_data.domain) {
@@ -509,8 +509,8 @@ void mesh_remesh_reproject_attributes(const Mesh &src, Mesh &dst)
   /* The main idea in the following code is to trade some complexity in sampling for the benefit of
    * only using and building a single BVH tree. Since sculpt mode doesn't generally deal with loose
    * vertices and edges, we use the standard "triangles" BVH which won't contain them. Also, only
-   * relying on a single BVH should reduce memory usage, and work better if the BVH and PBVH are
-   * ever merged.
+   * relying on a single BVH should reduce memory usage, and work better if the BVH and #pbvh::Tree
+   * are ever merged.
    *
    * One key decision is separating building transfer index maps from actually transferring any
    * attribute data. This is important to keep attribute storage independent from the specifics of

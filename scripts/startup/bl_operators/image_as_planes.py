@@ -22,7 +22,6 @@ from bpy.props import (
 
 from bpy.app.translations import (
     pgettext_tip as tip_,
-    contexts as i18n_contexts,
 )
 from mathutils import Vector
 
@@ -295,10 +294,12 @@ class MaterialProperties_MixIn:
         items=(
             ('DITHERED',
              "Dithered",
-             "Allows for grayscale hashed transparency, and compatible with render passes and raytracing. Also known as deferred rendering."),
+             "Allows for grayscale hashed transparency, and compatible with render passes and ray-tracing. "
+             "Also known as deferred rendering."),
             ('BLENDED',
              "Blended",
-             "Allows for colored transparency, but incompatible with render passes and raytracing. Also known as forward rendering.")))
+             "Allows for colored transparency, but incompatible with render passes and ray-tracing. "
+             "Also known as forward rendering.")))
 
     use_backface_culling: BoolProperty(
         name="Backface Culling",
@@ -325,11 +326,11 @@ class MaterialProperties_MixIn:
         header, body = layout.panel("import_image_plane_material", default_closed=False)
         header.label(text="Material")
         if body:
-            body.prop(self, 'shader')
+            body.prop(self, "shader")
             if self.shader == 'EMISSION':
                 body.prop(self, "emit_strength")
 
-            body.prop(self, 'render_method')
+            body.prop(self, "render_method")
             if self.render_method == 'BLENDED':
                 body.prop(self, "show_transparent_back")
 
@@ -394,8 +395,8 @@ class TextureProperties_MixIn:
         header, body = layout.panel("import_image_plane_texture", default_closed=False)
         header.label(text="Texture")
         if body:
-            body.prop(self, 'interpolation')
-            body.prop(self, 'extension')
+            body.prop(self, "interpolation")
+            body.prop(self, "extension")
 
             row = body.row(align=False, heading="Alpha")
             row.prop(self, "use_transparency", text="")

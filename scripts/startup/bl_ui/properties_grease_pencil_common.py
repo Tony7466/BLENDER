@@ -69,7 +69,14 @@ class GreasePencilDisplayPanel:
     @classmethod
     def poll(cls, context):
         ob = context.active_object
-        brush = context.tool_settings.gpencil_paint.brush
+
+        if context.mode == 'SCULPT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_sculpt_paint.brush
+        elif context.mode == 'WEIGHT_GREASE_PENCIL':
+            brush = context.tool_settings.gpencil_weight_paint.brush
+        else:
+            brush = context.tool_settings.gpencil_paint.brush
+
         if ob and ob.type in {'GPENCIL', 'GREASEPENCIL'} and brush:
             return True
 
@@ -86,7 +93,7 @@ class GreasePencilDisplayPanel:
             settings = tool_settings.gpencil_sculpt_paint
         elif context.mode == 'WEIGHT_GPENCIL' or context.mode == 'WEIGHT_GREASE_PENCIL':
             settings = tool_settings.gpencil_weight_paint
-        elif context.mode == 'VERTEX_GPENCIL':
+        elif context.mode == 'VERTEX_GPENCIL' or context.mode == 'VERTEX_GREASE_PENCIL':
             settings = tool_settings.gpencil_vertex_paint
         brush = settings.brush
         if brush:
@@ -104,7 +111,7 @@ class GreasePencilDisplayPanel:
             settings = tool_settings.gpencil_sculpt_paint
         elif context.mode == 'WEIGHT_GPENCIL' or context.mode == 'WEIGHT_GREASE_PENCIL':
             settings = tool_settings.gpencil_weight_paint
-        elif context.mode == 'VERTEX_GPENCIL':
+        elif context.mode == 'VERTEX_GPENCIL' or context.mode == 'VERTEX_GREASE_PENCIL':
             settings = tool_settings.gpencil_vertex_paint
         brush = settings.brush
         gp_settings = brush.gpencil_settings
@@ -139,7 +146,7 @@ class GreasePencilDisplayPanel:
 
             col.prop(brush, "cursor_color_add", text="Cursor Color")
 
-        elif ob.mode == 'VERTEX_GPENCIL':
+        elif ob.mode == 'VERTEX_GPENCIL' or ob.mode == 'VERTEX_GREASE_PENCIL':
             row = layout.row(align=True)
             row.prop(settings, "show_brush", text="Display Cursor")
 
@@ -291,7 +298,7 @@ class GREASE_PENCIL_MT_move_to_layer(Menu):
 
         for i in range(len(grease_pencil.layers) - 1, -1, -1):
             layer = grease_pencil.layers[i]
-            if layer == grease_pencil.layers.active_layer:
+            if layer == grease_pencil.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'
@@ -316,7 +323,7 @@ class GREASE_PENCIL_MT_layer_active(Menu):
 
         for i in range(len(obd.layers) - 1, -1, -1):
             layer = obd.layers[i]
-            if layer == obd.layers.active_layer:
+            if layer == obd.layers.active:
                 icon = 'GREASEPENCIL'
             else:
                 icon = 'NONE'

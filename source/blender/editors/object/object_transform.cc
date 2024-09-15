@@ -15,6 +15,7 @@
 #include "DNA_armature_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_light_types.h"
 #include "DNA_mesh_types.h"
@@ -40,6 +41,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
@@ -567,10 +569,10 @@ static void append_sorted_object_parent_hierarchy(Object *root_object,
     append_sorted_object_parent_hierarchy(
         root_object, object->parent, sorted_objects, object_index);
   }
-  if (object->id.tag & LIB_TAG_DOIT) {
+  if (object->id.tag & ID_TAG_DOIT) {
     sorted_objects[*object_index] = object;
     (*object_index)++;
-    object->id.tag &= ~LIB_TAG_DOIT;
+    object->id.tag &= ~ID_TAG_DOIT;
   }
 }
 
@@ -579,22 +581,22 @@ static Array<Object *> sorted_selected_editable_objects(bContext *C)
   Main *bmain = CTX_data_main(C);
 
   /* Count all objects, but also tag all the selected ones. */
-  BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
-  int num_objects = 0;
+  BKE_main_id_tag_all(bmain, ID_TAG_DOIT, false);
+  int objects_num = 0;
   CTX_DATA_BEGIN (C, Object *, object, selected_editable_objects) {
-    object->id.tag |= LIB_TAG_DOIT;
-    num_objects++;
+    object->id.tag |= ID_TAG_DOIT;
+    objects_num++;
   }
   CTX_DATA_END;
-  if (num_objects == 0) {
+  if (objects_num == 0) {
     return {};
   }
 
   /* Append all the objects. */
-  Array<Object *> sorted_objects(num_objects);
+  Array<Object *> sorted_objects(objects_num);
   int object_index = 0;
   CTX_DATA_BEGIN (C, Object *, object, selected_editable_objects) {
-    if ((object->id.tag & LIB_TAG_DOIT) == 0) {
+    if ((object->id.tag & ID_TAG_DOIT) == 0) {
       continue;
     }
     append_sorted_object_parent_hierarchy(object, object, sorted_objects.data(), &object_index);
@@ -717,7 +719,8 @@ static int apply_objects_internal(bContext *C,
              OB_FONT,
              OB_GPENCIL_LEGACY,
              OB_CURVES,
-             OB_POINTCLOUD))
+             OB_POINTCLOUD,
+             OB_GREASE_PENCIL))
     {
       ID *obdata = static_cast<ID *>(ob->data);
       if (!do_multi_user && ID_REAL_USERS(obdata) > 1) {
@@ -953,6 +956,37 @@ static int apply_objects_internal(bContext *C,
       Curves &curves = *static_cast<Curves *>(ob->data);
       curves.geometry.wrap().transform(float4x4(mat));
       curves.geometry.wrap().calculate_bezier_auto_handles();
+    }
+    else if (ob->type == OB_GREASE_PENCIL) {
+      GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
+
+      const float scalef = mat4_to_scale(mat);
+
+      for (const int layer_i : grease_pencil.layers().index_range()) {
+        bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+        const float4x4 layer_to_object = layer.to_object_space(*ob);
+        const float4x4 object_to_layer = math::invert(layer_to_object);
+        const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
+        frames.foreach_item(
+            [&](bke::greasepencil::FramesMapKeyT /*key*/, GreasePencilFrame frame) {
+              GreasePencilDrawingBase *base = grease_pencil.drawing(frame.drawing_index);
+              if (base->type != GP_DRAWING) {
+                return;
+              }
+              bke::greasepencil::Drawing &drawing =
+                  reinterpret_cast<GreasePencilDrawing *>(base)->wrap();
+              bke::CurvesGeometry &curves = drawing.strokes_for_write();
+              MutableSpan<float> radii = drawing.radii_for_write();
+              threading::parallel_for(radii.index_range(), 8192, [&](const IndexRange range) {
+                for (const int i : range) {
+                  radii[i] *= scalef;
+                }
+              });
+
+              curves.transform(object_to_layer * float4x4(mat) * layer_to_object);
+              curves.calculate_bezier_auto_handles();
+            });
+      }
     }
     else if (ob->type == OB_POINTCLOUD) {
       PointCloud &pointcloud = *static_cast<PointCloud *>(ob->data);
@@ -1379,10 +1413,10 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
   LISTBASE_FOREACH (Object *, tob, &bmain->objects) {
     if (tob->data) {
-      ((ID *)tob->data)->tag &= ~LIB_TAG_DOIT;
+      ((ID *)tob->data)->tag &= ~ID_TAG_DOIT;
     }
     if (tob->instance_collection) {
-      ((ID *)tob->instance_collection)->tag &= ~LIB_TAG_DOIT;
+      ((ID *)tob->instance_collection)->tag &= ~ID_TAG_DOIT;
     }
   }
 
@@ -1403,7 +1437,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
     if (ob->data == nullptr) {
       /* Special support for instanced collections. */
       if ((ob->transflag & OB_DUPLICOLLECTION) && ob->instance_collection &&
-          (ob->instance_collection->id.tag & LIB_TAG_DOIT) == 0)
+          (ob->instance_collection->id.tag & ID_TAG_DOIT) == 0)
       {
         if (!BKE_id_is_editable(bmain, &ob->instance_collection->id)) {
           tot_lib_error++;
@@ -1425,7 +1459,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
           add_v3_v3(ob->instance_collection->instance_offset, cent);
 
           tot_change++;
-          ob->instance_collection->id.tag |= LIB_TAG_DOIT;
+          ob->instance_collection->id.tag |= ID_TAG_DOIT;
           do_inverse_offset = true;
         }
       }
@@ -1459,7 +1493,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         BKE_mesh_translate(mesh, cent_neg, true);
 
         tot_change++;
-        mesh->id.tag |= LIB_TAG_DOIT;
+        mesh->id.tag |= ID_TAG_DOIT;
         do_inverse_offset = true;
       }
     }
@@ -1487,7 +1521,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       BKE_curve_translate(cu, cent_neg, true);
 
       tot_change++;
-      cu->id.tag |= LIB_TAG_DOIT;
+      cu->id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
 
       if (obedit) {
@@ -1521,7 +1555,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         cu->yof = cu->yof - cent[1];
 
         tot_change++;
-        cu->id.tag |= LIB_TAG_DOIT;
+        cu->id.tag |= ID_TAG_DOIT;
         do_inverse_offset = true;
       }
     }
@@ -1542,7 +1576,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
         ED_armature_origin_set(bmain, ob, cursor, centermode, around);
 
         tot_change++;
-        arm->id.tag |= LIB_TAG_DOIT;
+        arm->id.tag |= ID_TAG_DOIT;
         // do_inverse_offset = true; /* docenter_armature() handles this. */
 
         Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
@@ -1576,7 +1610,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       BKE_mball_translate(mb, cent_neg);
 
       tot_change++;
-      mb->id.tag |= LIB_TAG_DOIT;
+      mb->id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
 
       if (obedit) {
@@ -1605,7 +1639,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       BKE_lattice_translate(lt, cent_neg, true);
 
       tot_change++;
-      lt->id.tag |= LIB_TAG_DOIT;
+      lt->id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
     }
     else if (ob->type == OB_GPENCIL_LEGACY) {
@@ -1675,7 +1709,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
           DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
           DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
 
-          ob->id.tag |= LIB_TAG_DOIT;
+          ob->id.tag |= ID_TAG_DOIT;
           do_inverse_offset = true;
         }
         else {
@@ -1713,7 +1747,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
 
       tot_change++;
       curves.translate(-cent);
-      curves_id.id.tag |= LIB_TAG_DOIT;
+      curves_id.id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
     }
     else if (ob->type == OB_POINTCLOUD) {
@@ -1743,7 +1777,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       tot_change++;
       translate_positions(positions, -cent);
       pointcloud.tag_positions_changed();
-      pointcloud.id.tag |= LIB_TAG_DOIT;
+      pointcloud.id.tag |= ID_TAG_DOIT;
       do_inverse_offset = true;
     }
 
@@ -1807,12 +1841,12 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
   }
 
   LISTBASE_FOREACH (Object *, tob, &bmain->objects) {
-    if (tob->data && (((ID *)tob->data)->tag & LIB_TAG_DOIT)) {
+    if (tob->data && (((ID *)tob->data)->tag & ID_TAG_DOIT)) {
       BKE_object_batch_cache_dirty_tag(tob);
       DEG_id_tag_update(&tob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
     }
     /* Special support for dupli-groups. */
-    else if (tob->instance_collection && tob->instance_collection->id.tag & LIB_TAG_DOIT) {
+    else if (tob->instance_collection && tob->instance_collection->id.tag & ID_TAG_DOIT) {
       DEG_id_tag_update(&tob->id, ID_RECALC_TRANSFORM);
       DEG_id_tag_update(&tob->instance_collection->id, ID_RECALC_SYNC_TO_EVAL);
     }
