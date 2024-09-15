@@ -2102,6 +2102,17 @@ struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
       ForeachGeometryElementEvalStorage &eval_storage);
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override;
+
+  void handle_main_items_and_geometry(lf::Params &params, const lf::Context &context) const;
+  void handle_generation_items(lf::Params &params, const lf::Context &context) const;
+  int handle_invalid_generation_items(lf::Params &params) const;
+  void handle_generation_item_groups(lf::Params &params,
+                                     const lf::Context &context,
+                                     int first_valid_item_i) const;
+  void handle_generation_items_group(lf::Params &params,
+                                     const lf::Context &context,
+                                     int geometry_item_i,
+                                     IndexRange generation_items_range) const;
 };
 
 /**
@@ -2595,12 +2606,23 @@ static std::optional<AttrDomain> get_foreach_attribute_propagation_target_domain
 void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &params,
                                                                const lf::Context &context) const
 {
-  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
 
+  this->handle_main_items_and_geometry(params, context);
+  if (node_storage.generation_items.items_num == 0) {
+    return;
+  }
+  this->handle_generation_items(params, context);
+}
+
+void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry(
+    lf::Params &params, const lf::Context &context) const
+{
+  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent_.output_bnode_.storage);
   const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
-
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
@@ -2651,167 +2673,26 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
   }
 
   params.set_output(0, eval_storage_.main_geometry);
+}
 
-  if (node_storage.generation_items.items_num == 0) {
+void LazyFunctionForReduceForeachGeometryElement::handle_generation_items(
+    lf::Params &params, const lf::Context &context) const
+{
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
+
+  const int first_valid_item_i = this->handle_invalid_generation_items(params);
+  if (first_valid_item_i == node_storage.generation_items.items_num) {
     return;
   }
+  this->handle_generation_item_groups(params, context, first_valid_item_i);
+}
 
-  /* TODO: Get from input. */
-  AttributeFilter attribute_filter;
-
-  auto handle_new_geometry_output = [&](const int geometry_item_i,
-                                        const IndexRange generation_items_range) {
-    const int bodies_num = eval_storage_.lf_body_nodes.size();
-    Array<GeometrySet> geometries(bodies_num);
-
-    Array<std::string> attribute_names(generation_items_range.size());
-    for (const int i : generation_items_range.index_range()) {
-      const int item_i = generation_items_range[i];
-      const NodeForeachGeometryElementGenerationItem &item =
-          node_storage.generation_items.items[item_i];
-      attribute_names[i] = bke::hash_to_anonymous_attribute_name(
-          user_data.call_data->self_object()->id.name,
-          user_data.compute_context->hash(),
-          parent_.output_bnode_.identifier,
-          item.identifier);
-    }
-
-    for (const ForeachElementComponent &component_info : eval_storage_.components) {
-      const GeometryComponent &src_component = *component_info.component;
-      const AttributeAccessor src_attributes = *src_component.attributes();
-
-      Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
-      src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
-        if (meta_data.data_type == CD_PROP_STRING) {
-          return true;
-        }
-        if (attribute_filter.allow_skip(name)) {
-          return true;
-        }
-        attributes_to_propagate.append({name, meta_data.data_type});
-        return true;
-      });
-      Map<StringRef, GVArray> cached_adapted_src_attributes;
-
-      const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
-
-      mask.foreach_index([&](const int element_i, const int local_body_i) {
-        const int body_i = component_info.body_nodes_range[local_body_i];
-        const int geometry_param_i = body_i * body_main_outputs_num +
-                                     node_storage.main_items.items_num + geometry_item_i;
-        GeometrySet &geometry = geometries[body_i];
-        geometry = params.extract_input<GeometrySet>(geometry_param_i);
-
-        for (const GeometryComponent::Type dst_component_type :
-             {GeometryComponent::Type::Mesh,
-              GeometryComponent::Type::PointCloud,
-              GeometryComponent::Type::Curve,
-              GeometryComponent::Type::GreasePencil,
-              GeometryComponent::Type::Instance})
-        {
-          if (!geometry.has(dst_component_type)) {
-            continue;
-          }
-          GeometryComponent &dst_component = geometry.get_component_for_write(dst_component_type);
-          MutableAttributeAccessor dst_attributes = *dst_component.attributes_for_write();
-
-          const std::optional<AttrDomain> propagation_domain =
-              get_foreach_attribute_propagation_target_domain(dst_component_type);
-          if (!propagation_domain) {
-            continue;
-          }
-
-          for (auto &&[name, cd_type] : attributes_to_propagate) {
-            if (src_attributes.is_builtin(name) && !dst_attributes.is_builtin(name)) {
-              continue;
-            }
-            if (dst_attributes.contains(name)) {
-              continue;
-            }
-            const GVArray &src_attribute = cached_adapted_src_attributes.lookup_or_add_cb(
-                name, [&]() {
-                  GAttributeReader attribute = src_attributes.lookup(name);
-                  return src_attributes.adapt_domain(
-                      *attribute, attribute.domain, iteration_domain);
-                });
-            if (!src_attribute) {
-              continue;
-            }
-            const CPPType &type = src_attribute.type();
-            BUFFER_FOR_CPP_TYPE_VALUE(type, element_value);
-            src_attribute.get_to_uninitialized(element_i, element_value);
-
-            GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
-                name, *propagation_domain, cd_type);
-            type.fill_assign_n(
-                element_value, dst_attribute.span.data(), dst_attribute.span.size());
-            dst_attribute.finish();
-
-            type.destruct(element_value);
-          }
-        }
-
-        for (const int local_item_i : generation_items_range.index_range()) {
-          const int item_i = generation_items_range[local_item_i];
-          const NodeForeachGeometryElementGenerationItem &item =
-              node_storage.generation_items.items[item_i];
-          const AttrDomain capture_domain = AttrDomain(item.domain);
-          const int field_param_i = body_i * body_main_outputs_num +
-                                    node_storage.main_items.items_num + item_i;
-          GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
-
-          if (capture_domain == AttrDomain::Instance) {
-            if (geometry.has_instances()) {
-              bke::try_capture_field_on_geometry(
-                  geometry.get_component_for_write(GeometryComponent::Type::Instance),
-                  attribute_names[local_item_i],
-                  capture_domain,
-                  field);
-            }
-          }
-          else {
-            geometry.modify_geometry_sets([&](GeometrySet &sub_geometry) {
-              for (const GeometryComponent::Type component_type :
-                   {GeometryComponent::Type::Mesh,
-                    GeometryComponent::Type::PointCloud,
-                    GeometryComponent::Type::Curve,
-                    GeometryComponent::Type::GreasePencil})
-              {
-                if (sub_geometry.has(component_type)) {
-                  bke::try_capture_field_on_geometry(
-                      sub_geometry.get_component_for_write(component_type),
-                      attribute_names[local_item_i],
-                      capture_domain,
-                      field);
-                }
-              }
-            });
-          }
-        }
-      });
-    }
-
-    GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
-    params.set_output(1 + node_storage.main_items.items_num + geometry_item_i,
-                      std::move(joined_geometry));
-
-    for (const int local_item_i : generation_items_range.index_range()) {
-      const int item_i = generation_items_range[local_item_i];
-      const NodeForeachGeometryElementGenerationItem &item =
-          node_storage.generation_items.items[item_i];
-      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-      const CPPType &base_cpp_type = *bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
-      const StringRef attribute_name = attribute_names[local_item_i];
-      auto attribute_field = std::make_shared<AttributeFieldInput>(
-          attribute_name,
-          base_cpp_type,
-          make_anonymous_attribute_socket_inspection_string(parent_.output_bnode_.output_socket(
-              2 + node_storage.main_items.items_num + item_i)));
-      SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
-      params.set_output(1 + node_storage.main_items.items_num + item_i,
-                        std::move(attribute_value_variant));
-    }
-  };
+int LazyFunctionForReduceForeachGeometryElement::handle_invalid_generation_items(
+    lf::Params &params) const
+{
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
 
   int item_i = 0;
   /* Handle invalid generation items that come before a geometry. */
@@ -2829,25 +2710,202 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
           params, lf_socket_i, parent_.zone_.output_node->output_socket(bsocket_i));
     }
   }
-  if (item_i == node_storage.generation_items.items_num) {
-    return;
-  }
+  return item_i;
+}
 
-  int previous_geometry_item_i = item_i;
-  item_i++;
-  for (; item_i < node_storage.generation_items.items_num; item_i++) {
+void LazyFunctionForReduceForeachGeometryElement::handle_generation_item_groups(
+    lf::Params &params, const lf::Context &context, const int first_valid_item_i) const
+{
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
+  int previous_geometry_item_i = first_valid_item_i;
+  for (const int item_i :
+       IndexRange::from_begin_end(first_valid_item_i + 1, node_storage.generation_items.items_num))
+  {
     const NodeForeachGeometryElementGenerationItem &item =
         node_storage.generation_items.items[item_i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     if (socket_type == SOCK_GEOMETRY) {
-      handle_new_geometry_output(previous_geometry_item_i,
-                                 IndexRange::from_begin_end(previous_geometry_item_i + 1, item_i));
+      this->handle_generation_items_group(
+          params,
+          context,
+          previous_geometry_item_i,
+          IndexRange::from_begin_end(previous_geometry_item_i + 1, item_i));
       previous_geometry_item_i = item_i;
     }
   }
-  handle_new_geometry_output(previous_geometry_item_i,
-                             IndexRange::from_begin_end(previous_geometry_item_i + 1,
-                                                        node_storage.generation_items.items_num));
+  this->handle_generation_items_group(
+      params,
+      context,
+      previous_geometry_item_i,
+      IndexRange::from_begin_end(previous_geometry_item_i + 1,
+                                 node_storage.generation_items.items_num));
+}
+
+void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
+    lf::Params &params,
+    const lf::Context &context,
+    int geometry_item_i,
+    IndexRange generation_items_range) const
+{
+  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
+  const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
+  const int body_main_outputs_num = node_storage.main_items.items_num +
+                                    node_storage.generation_items.items_num;
+
+  /* TODO: Get from input. */
+  AttributeFilter attribute_filter;
+
+  const int bodies_num = eval_storage_.lf_body_nodes.size();
+  Array<GeometrySet> geometries(bodies_num);
+
+  Array<std::string> attribute_names(generation_items_range.size());
+  for (const int i : generation_items_range.index_range()) {
+    const int item_i = generation_items_range[i];
+    const NodeForeachGeometryElementGenerationItem &item =
+        node_storage.generation_items.items[item_i];
+    attribute_names[i] = bke::hash_to_anonymous_attribute_name(
+        user_data.call_data->self_object()->id.name,
+        user_data.compute_context->hash(),
+        parent_.output_bnode_.identifier,
+        item.identifier);
+  }
+
+  for (const ForeachElementComponent &component_info : eval_storage_.components) {
+    const GeometryComponent &src_component = *component_info.component;
+    const AttributeAccessor src_attributes = *src_component.attributes();
+
+    Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
+    src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
+      if (meta_data.data_type == CD_PROP_STRING) {
+        return true;
+      }
+      if (attribute_filter.allow_skip(name)) {
+        return true;
+      }
+      attributes_to_propagate.append({name, meta_data.data_type});
+      return true;
+    });
+    Map<StringRef, GVArray> cached_adapted_src_attributes;
+
+    const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
+
+    mask.foreach_index([&](const int element_i, const int local_body_i) {
+      const int body_i = component_info.body_nodes_range[local_body_i];
+      const int geometry_param_i = body_i * body_main_outputs_num +
+                                   node_storage.main_items.items_num + geometry_item_i;
+      GeometrySet &geometry = geometries[body_i];
+      geometry = params.extract_input<GeometrySet>(geometry_param_i);
+
+      for (const GeometryComponent::Type dst_component_type :
+           {GeometryComponent::Type::Mesh,
+            GeometryComponent::Type::PointCloud,
+            GeometryComponent::Type::Curve,
+            GeometryComponent::Type::GreasePencil,
+            GeometryComponent::Type::Instance})
+      {
+        if (!geometry.has(dst_component_type)) {
+          continue;
+        }
+        GeometryComponent &dst_component = geometry.get_component_for_write(dst_component_type);
+        MutableAttributeAccessor dst_attributes = *dst_component.attributes_for_write();
+
+        const std::optional<AttrDomain> propagation_domain =
+            get_foreach_attribute_propagation_target_domain(dst_component_type);
+        if (!propagation_domain) {
+          continue;
+        }
+
+        for (auto &&[name, cd_type] : attributes_to_propagate) {
+          if (src_attributes.is_builtin(name) && !dst_attributes.is_builtin(name)) {
+            continue;
+          }
+          if (dst_attributes.contains(name)) {
+            continue;
+          }
+          const GVArray &src_attribute = cached_adapted_src_attributes.lookup_or_add_cb(
+              name, [&]() {
+                GAttributeReader attribute = src_attributes.lookup(name);
+                return src_attributes.adapt_domain(*attribute, attribute.domain, iteration_domain);
+              });
+          if (!src_attribute) {
+            continue;
+          }
+          const CPPType &type = src_attribute.type();
+          BUFFER_FOR_CPP_TYPE_VALUE(type, element_value);
+          src_attribute.get_to_uninitialized(element_i, element_value);
+
+          GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
+              name, *propagation_domain, cd_type);
+          type.fill_assign_n(element_value, dst_attribute.span.data(), dst_attribute.span.size());
+          dst_attribute.finish();
+
+          type.destruct(element_value);
+        }
+      }
+
+      for (const int local_item_i : generation_items_range.index_range()) {
+        const int item_i = generation_items_range[local_item_i];
+        const NodeForeachGeometryElementGenerationItem &item =
+            node_storage.generation_items.items[item_i];
+        const AttrDomain capture_domain = AttrDomain(item.domain);
+        const int field_param_i = body_i * body_main_outputs_num +
+                                  node_storage.main_items.items_num + item_i;
+        GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
+
+        if (capture_domain == AttrDomain::Instance) {
+          if (geometry.has_instances()) {
+            bke::try_capture_field_on_geometry(
+                geometry.get_component_for_write(GeometryComponent::Type::Instance),
+                attribute_names[local_item_i],
+                capture_domain,
+                field);
+          }
+        }
+        else {
+          geometry.modify_geometry_sets([&](GeometrySet &sub_geometry) {
+            for (const GeometryComponent::Type component_type :
+                 {GeometryComponent::Type::Mesh,
+                  GeometryComponent::Type::PointCloud,
+                  GeometryComponent::Type::Curve,
+                  GeometryComponent::Type::GreasePencil})
+            {
+              if (sub_geometry.has(component_type)) {
+                bke::try_capture_field_on_geometry(
+                    sub_geometry.get_component_for_write(component_type),
+                    attribute_names[local_item_i],
+                    capture_domain,
+                    field);
+              }
+            }
+          });
+        }
+      }
+    });
+  }
+
+  GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
+  params.set_output(1 + node_storage.main_items.items_num + geometry_item_i,
+                    std::move(joined_geometry));
+
+  for (const int local_item_i : generation_items_range.index_range()) {
+    const int item_i = generation_items_range[local_item_i];
+    const NodeForeachGeometryElementGenerationItem &item =
+        node_storage.generation_items.items[item_i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    const CPPType &base_cpp_type = *bke::socket_type_to_geo_nodes_base_cpp_type(socket_type);
+    const StringRef attribute_name = attribute_names[local_item_i];
+    auto attribute_field = std::make_shared<AttributeFieldInput>(
+        attribute_name,
+        base_cpp_type,
+        make_anonymous_attribute_socket_inspection_string(
+            parent_.output_bnode_.output_socket(2 + node_storage.main_items.items_num + item_i)));
+    SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
+    params.set_output(1 + node_storage.main_items.items_num + item_i,
+                      std::move(attribute_value_variant));
+  }
 }
 
 /**
