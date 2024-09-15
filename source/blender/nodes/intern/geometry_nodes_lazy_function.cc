@@ -2789,8 +2789,8 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
       auto attribute_field = std::make_shared<AttributeFieldInput>(
           attribute_name,
           base_cpp_type,
-          make_anonymous_attribute_socket_inspection_string(
-              parent_.output_bnode_.output_socket(1 + item_i)));
+          make_anonymous_attribute_socket_inspection_string(parent_.output_bnode_.output_socket(
+              2 + node_storage.main_items.items_num + item_i)));
       SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
       params.set_output(1 + node_storage.main_items.items_num + item_i,
                         std::move(attribute_value_variant));
