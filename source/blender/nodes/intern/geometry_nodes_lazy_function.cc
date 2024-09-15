@@ -2067,6 +2067,27 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 class LazyFunctionForForeachGeometryElementZone;
 struct ForeachGeometryElementEvalStorage;
 
+struct ForeachElementComponentID {
+  GeometryComponent::Type component_type;
+  AttrDomain domain;
+
+  AttributeAccessor attributes(const GeometrySet &geometry) const
+  {
+    return *geometry.get_component(this->component_type)->attributes();
+  }
+
+  MutableAttributeAccessor attributes_for_write(GeometrySet &geometry) const
+  {
+    return *geometry.get_component_for_write(this->component_type).attributes_for_write();
+  }
+
+  void emplace_field_context(const GeometrySet &geometry,
+                             std::optional<bke::GeometryFieldContext> &r_field_context) const
+  {
+    r_field_context.emplace(*geometry.get_component(this->component_type), this->domain);
+  }
+};
+
 /**
  * The For Each Geometry Element can iterate over multiple components at the same time. That can
  * happen when the input geometry is e.g. a mesh and a pointcloud and we're iterating over points.
@@ -2074,7 +2095,7 @@ struct ForeachGeometryElementEvalStorage;
  * This struct contains evaluation data for each component.
  */
 struct ForeachElementComponent {
-  GeometryComponent::Type type;
+  ForeachElementComponentID id;
   /** Used for field evaluation on the output node. */
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
@@ -2330,12 +2351,12 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                           ForeachGeometryElementEvalStorage &eval_storage,
                           const NodeGeometryForeachGeometryElementOutput &node_storage) const
   {
-    const AttrDomain domain = AttrDomain(node_storage.domain);
+    const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
 
     /* Gather components to process. */
     Vector<const GeometryComponent *> src_components;
     for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
-      const int domain_size = src_component->attribute_domain_size(domain);
+      const int domain_size = src_component->attribute_domain_size(iteration_domain);
       if (domain_size > 0) {
         src_components.append(
             &eval_storage.main_geometry.get_component_for_write(src_component->type()));
@@ -2352,13 +2373,15 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     eval_storage.components.reinitialize(src_components.size());
     for (const int component_i : src_components.index_range()) {
       const GeometryComponent *component = src_components[component_i];
-      const int domain_size = component->attribute_domain_size(domain);
+      const int domain_size = component->attribute_domain_size(iteration_domain);
       BLI_assert(domain_size > 0);
       ForeachElementComponent &component_info = eval_storage.components[component_i];
-      component_info.type = component->type();
+      component_info.id.component_type = component->type();
+      component_info.id.domain = iteration_domain;
 
       /* Prepare field evaluation for the zone inputs. */
-      component_info.field_context.emplace(*component, domain);
+      component_info.id.emplace_field_context(eval_storage.main_geometry,
+                                              component_info.field_context);
       component_info.field_evaluator.emplace(*component_info.field_context, domain_size);
       component_info.field_evaluator->set_selection(selection_field);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
@@ -2621,7 +2644,6 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
   auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent_.output_bnode_.storage);
-  const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
@@ -2643,11 +2665,11 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
         item.identifier);
 
     for (const ForeachElementComponent &component_info : eval_storage_.components) {
-      GeometryComponent &component = output_geometry.get_component_for_write(component_info.type);
-      const int domain_size = component.attribute_domain_size(iteration_domain);
-      MutableAttributeAccessor attributes = *component.attributes_for_write();
+      MutableAttributeAccessor attributes = component_info.id.attributes_for_write(
+          output_geometry);
+      const int domain_size = attributes.domain_size(component_info.id.domain);
       GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
-          attribute_name, iteration_domain, cd_type);
+          attribute_name, component_info.id.domain, cd_type);
       const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
 
       IndexMaskMemory memory;
@@ -2753,7 +2775,6 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent_.output_bnode_.storage);
-  const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
@@ -2776,9 +2797,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   }
 
   for (const ForeachElementComponent &component_info : eval_storage_.components) {
-    const GeometryComponent &src_component = *eval_storage_.main_geometry.get_component(
-        component_info.type);
-    const AttributeAccessor src_attributes = *src_component.attributes();
+    const AttributeAccessor src_attributes = component_info.id.attributes(
+        eval_storage_.main_geometry);
 
     Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
     src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
@@ -2831,7 +2851,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
           const GVArray &src_attribute = cached_adapted_src_attributes.lookup_or_add_cb(
               name, [&]() {
                 GAttributeReader attribute = src_attributes.lookup(name);
-                return src_attributes.adapt_domain(*attribute, attribute.domain, iteration_domain);
+                return src_attributes.adapt_domain(
+                    *attribute, attribute.domain, component_info.id.domain);
               });
           if (!src_attribute) {
             continue;
