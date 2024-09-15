@@ -859,7 +859,8 @@ void JoltPhysicsWorldData::step_simulation(const float delta_time, const int col
 {
   this->ensure_bodies_and_constraints_in_world();
 
-  physics_system_.Update(std::max(delta_time, 0.0f), std::max(collision_steps, 1), &temp_allocator_, &job_system_);
+  physics_system_.Update(
+      std::max(delta_time, 0.0f), std::max(collision_steps, 1), &temp_allocator_, &job_system_);
 }
 
 void JoltPhysicsWorldData::set_body_shapes(const IndexMask &selection,
