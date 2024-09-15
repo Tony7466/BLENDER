@@ -1652,27 +1652,43 @@ static void initialize_zone_wrapper(const bNodeTreeZone &zone,
 static std::string zone_wrapper_input_name(const ZoneBuildInfo &zone_info,
                                            const bNodeTreeZone &zone,
                                            const Span<lf::Input> inputs,
-                                           const int i)
+                                           const int lf_socket_i)
 {
-  if (zone_info.indices.inputs.output_usages.contains(i)) {
-    const bNodeSocket &bsocket = zone.output_node->output_socket(
-        i - zone_info.indices.inputs.output_usages.first());
-    return "Usage: " + StringRef(bsocket.name);
+  if (zone_info.indices.inputs.output_usages.contains(lf_socket_i)) {
+    const int output_usage_i = lf_socket_i - zone_info.indices.inputs.output_usages.first();
+    int current_valid_i = 0;
+    for (const bNodeSocket *bsocket : zone.output_node->output_sockets()) {
+      if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+        continue;
+      }
+      if (current_valid_i == output_usage_i) {
+        return "Usage: " + StringRef(bsocket->name);
+      }
+      current_valid_i++;
+    }
   }
-  return inputs[i].debug_name;
+  return inputs[lf_socket_i].debug_name;
 }
 
 static std::string zone_wrapper_output_name(const ZoneBuildInfo &zone_info,
                                             const bNodeTreeZone &zone,
                                             const Span<lf::Output> outputs,
-                                            const int i)
+                                            const int lf_socket_i)
 {
-  if (zone_info.indices.outputs.input_usages.contains(i)) {
-    const bNodeSocket &bsocket = zone.input_node->input_socket(
-        i - zone_info.indices.outputs.input_usages.first());
-    return "Usage: " + StringRef(bsocket.name);
+  if (zone_info.indices.outputs.input_usages.contains(lf_socket_i)) {
+    const int input_usage_i = lf_socket_i - zone_info.indices.outputs.input_usages.first();
+    int current_valid_i = 0;
+    for (const bNodeSocket *bsocket : zone.input_node->input_sockets()) {
+      if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+        continue;
+      }
+      if (current_valid_i == input_usage_i) {
+        return "Usage: " + StringRef(bsocket->name);
+      }
+      current_valid_i++;
+    }
   }
-  return outputs[i].debug_name;
+  return outputs[lf_socket_i].debug_name;
 }
 
 /**
