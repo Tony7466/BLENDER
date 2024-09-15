@@ -5595,9 +5595,9 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 281, 15)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      if (scene->toolsettings->snap_node_mode == SCE_SNAP_TO_NODE_X) {
-        scene->toolsettings->snap_node_mode = SCE_SNAP_TO_GRID;
-      }
+//      if (scene->toolsettings->snap_node_mode == SCE_SNAP_TO_NODE_X) {
+//        scene->toolsettings->snap_node_mode = SCE_SNAP_TO_GRID;
+//      }
     }
 
     if (!DNA_struct_member_exists(

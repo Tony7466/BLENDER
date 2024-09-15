@@ -60,7 +60,6 @@ static void setSnappingCallback(TransInfo *t);
 
 static void snap_target_view3d_fn(TransInfo *t, float *vec);
 static void snap_target_uv_fn(TransInfo *t, float *vec);
-static void snap_target_node_fn(TransInfo *t, float *vec);
 static void snap_target_sequencer_fn(TransInfo *t, float *vec);
 static void snap_target_nla_fn(TransInfo *t, float *vec);
 
@@ -79,7 +78,7 @@ static eSnapMode snapObjectsTransform(
  * \{ */
 
 static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_select);
-static NodeBorder snapNodeBorder(eSnapMode snap_node_mode);
+//static NodeBorder snapNodeBorder(eSnapMode snap_node_mode);
 
 #if 0
 int BIF_snappingSupported(Object *obedit)
@@ -1007,7 +1006,7 @@ static void setSnappingCallback(TransInfo *t)
     }
   }
   else if (t->spacetype == SPACE_NODE) {
-    t->tsnap.snap_target_fn = snap_target_node_fn;
+    /* Pass. */
   }
   else if (t->spacetype == SPACE_SEQ) {
     t->tsnap.snap_target_fn = snap_target_sequencer_fn;
@@ -1276,26 +1275,6 @@ static void snap_target_uv_fn(TransInfo *t, float * /*vec*/)
   SET_FLAG_FROM_TEST(t->tsnap.status, found, SNAP_TARGET_FOUND);
 }
 
-static void snap_target_node_fn(TransInfo *t, float * /*vec*/)
-{
-  BLI_assert(t->spacetype == SPACE_NODE);
-  if (t->tsnap.mode & (SCE_SNAP_TO_NODE_X | SCE_SNAP_TO_NODE_Y)) {
-    float loc[2];
-    float dist_px = SNAP_MIN_DISTANCE; /* Use a user defined value here. */
-    char node_border;
-
-    if (snapNodesTransform(t, t->mval, loc, &dist_px, &node_border)) {
-      copy_v2_v2(t->tsnap.snap_target, loc);
-      t->tsnap.snapNodeBorder = node_border;
-
-      t->tsnap.status |= SNAP_TARGET_FOUND;
-    }
-    else {
-      t->tsnap.status &= ~SNAP_TARGET_FOUND;
-    }
-  }
-}
-
 static void snap_target_sequencer_fn(TransInfo *t, float * /*vec*/)
 {
   BLI_assert(t->spacetype == SPACE_SEQ);
@@ -1356,29 +1335,6 @@ void tranform_snap_target_median_calc(const TransInfo *t, float r_median[3])
   }
 
   mul_v3_fl(r_median, 1.0 / i_accum);
-
-  // TargetSnapOffset(t, nullptr);
-}
-
-static void TargetSnapOffset(TransInfo *t, TransData *td)
-{
-  if (t->spacetype == SPACE_NODE && td != nullptr) {
-    bNode *node = static_cast<bNode *>(td->extra);
-    char border = t->tsnap.snapNodeBorder;
-
-    if (border & NODE_LEFT) {
-      t->tsnap.snap_source[0] -= 0.0f;
-    }
-    if (border & NODE_RIGHT) {
-      t->tsnap.snap_source[0] += BLI_rctf_size_x(&node->runtime->totr);
-    }
-    if (border & NODE_BOTTOM) {
-      t->tsnap.snap_source[1] -= BLI_rctf_size_y(&node->runtime->totr);
-    }
-    if (border & NODE_TOP) {
-      t->tsnap.snap_source[1] += 0.0f;
-    }
-  }
 }
 
 static void snap_source_center_fn(TransInfo *t)
@@ -1663,114 +1619,6 @@ static bool snapNodeTest(View2D *v2d, bNode *node, eSnapTargetOP snap_target_sel
           (snap_target_select == SCE_SNAP_TARGET_ALL && !(node->flag & NODE_ACTIVE))) &&
          (node->runtime->totr.xmin < v2d->cur.xmax && node->runtime->totr.xmax > v2d->cur.xmin &&
           node->runtime->totr.ymin < v2d->cur.ymax && node->runtime->totr.ymax > v2d->cur.ymin);
-}
-
-static NodeBorder snapNodeBorder(eSnapMode snap_node_mode)
-{
-  NodeBorder flag = NodeBorder(0);
-  if (snap_node_mode & SCE_SNAP_TO_NODE_X) {
-    flag |= NODE_LEFT | NODE_RIGHT;
-  }
-  if (snap_node_mode & SCE_SNAP_TO_NODE_Y) {
-    flag |= NODE_TOP | NODE_BOTTOM;
-  }
-  return flag;
-}
-
-static bool snapNode(ToolSettings *ts,
-                     SpaceNode * /*snode*/,
-                     ARegion *region,
-                     bNode *node,
-                     const float2 &mval,
-                     float r_loc[2],
-                     float *r_dist_px,
-                     char *r_node_border)
-{
-  View2D *v2d = &region->v2d;
-  NodeBorder border = snapNodeBorder(eSnapMode(ts->snap_node_mode));
-  bool retval = false;
-  rcti totr;
-  int new_dist;
-
-  UI_view2d_view_to_region_rcti(v2d, &node->runtime->totr, &totr);
-
-  if (border & NODE_LEFT) {
-    new_dist = abs(totr.xmin - mval[0]);
-    if (new_dist < *r_dist_px) {
-      UI_view2d_region_to_view(v2d, totr.xmin, mval[1], &r_loc[0], &r_loc[1]);
-      *r_dist_px = new_dist;
-      *r_node_border = NODE_LEFT;
-      retval = true;
-    }
-  }
-
-  if (border & NODE_RIGHT) {
-    new_dist = abs(totr.xmax - mval[0]);
-    if (new_dist < *r_dist_px) {
-      UI_view2d_region_to_view(v2d, totr.xmax, mval[1], &r_loc[0], &r_loc[1]);
-      *r_dist_px = new_dist;
-      *r_node_border = NODE_RIGHT;
-      retval = true;
-    }
-  }
-
-  if (border & NODE_BOTTOM) {
-    new_dist = abs(totr.ymin - mval[1]);
-    if (new_dist < *r_dist_px) {
-      UI_view2d_region_to_view(v2d, mval[0], totr.ymin, &r_loc[0], &r_loc[1]);
-      *r_dist_px = new_dist;
-      *r_node_border = NODE_BOTTOM;
-      retval = true;
-    }
-  }
-
-  if (border & NODE_TOP) {
-    new_dist = abs(totr.ymax - mval[1]);
-    if (new_dist < *r_dist_px) {
-      UI_view2d_region_to_view(v2d, mval[0], totr.ymax, &r_loc[0], &r_loc[1]);
-      *r_dist_px = new_dist;
-      *r_node_border = NODE_TOP;
-      retval = true;
-    }
-  }
-
-  return retval;
-}
-
-static bool snapNodes(ToolSettings *ts,
-                      SpaceNode *snode,
-                      ARegion *region,
-                      const float2 &mval,
-                      eSnapTargetOP snap_target_select,
-                      float r_loc[2],
-                      float *r_dist_px,
-                      char *r_node_border)
-{
-  bNodeTree *ntree = snode->edittree;
-  bool retval = false;
-
-  *r_node_border = 0;
-
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (snapNodeTest(&region->v2d, node, snap_target_select)) {
-      retval |= snapNode(ts, snode, region, node, mval, r_loc, r_dist_px, r_node_border);
-    }
-  }
-
-  return retval;
-}
-
-bool snapNodesTransform(
-    TransInfo *t, const float2 &mval, float r_loc[2], float *r_dist_px, char *r_node_border)
-{
-  return snapNodes(t->settings,
-                   static_cast<SpaceNode *>(t->area->spacedata.first),
-                   t->region,
-                   mval,
-                   t->tsnap.target_operation,
-                   r_loc,
-                   r_dist_px,
-                   r_node_border);
 }
 
 /** \} */

@@ -3335,12 +3335,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       auto versioning_snap_to = [](short snap_to_old, int type) {
         eSnapMode snap_to_new = SCE_SNAP_TO_NONE;
         if (snap_to_old & (1 << 0)) {
-          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NODE_X :
+          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NONE :
                          type == IS_ANIM ? SCE_SNAP_TO_FRAME :
                                            SCE_SNAP_TO_VERTEX;
         }
         if (snap_to_old & (1 << 1)) {
-          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NODE_Y :
+          snap_to_new |= type == IS_NODE ? SCE_SNAP_TO_NONE :
                          type == IS_ANIM ? SCE_SNAP_TO_SECOND :
                                            SCE_SNAP_TO_EDGE;
         }
