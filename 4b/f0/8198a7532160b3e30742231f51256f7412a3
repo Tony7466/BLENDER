@@ -1,3 +1,4 @@
 Referenced by issue #127209, Crop node returns no image
 Referenced by issue #127253, Compositor crop gizmo can produce invalid crop configurations
 Referenced by issue #127254, Compositor crop gizmo suggests there is a valid crop when there isn't one
+Referenced by pull request #127656, Fix #127253: Compositor crop gizmo can produce invalid crop configurations
