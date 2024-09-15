@@ -6,7 +6,9 @@
  * \ingroup bke
  */
 
-#include <malloc.h>
+#ifdef _MSC_VER
+#  include <malloc.h>
+#endif
 
 #include "BLI_sys_types.h" /* for intptr_t support */
 #include "MEM_guardedalloc.h"

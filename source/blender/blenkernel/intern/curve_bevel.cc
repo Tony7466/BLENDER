@@ -9,8 +9,11 @@
  * both extruding
  */
 
+#ifdef _MSC_VER
+#  include <malloc.h>
+#endif
+
 #include <cstring>
-#include <malloc.h>
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.h" /* Needed with MSVC for M_PI & M_PI_2. */
