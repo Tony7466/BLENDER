@@ -1075,7 +1075,7 @@ static bool ui_but_update_from_old_block(const bContext *C,
   /* In the reversed `oldblock->buttons` vector and as long as old and new buttons
    * are aligned this is likely `oldblock->buttons.remove_last()`, with O(1). */
   oldblock->buttons.remove(oldbut - oldblock->buttons.begin());
-  oldbut = oldblock->buttons.begin() < oldbut ? oldbut-- : nullptr;
+  oldbut = oldblock->buttons.begin() < oldbut ? oldbut - 1 : nullptr;
   return found_active;
 }
 
