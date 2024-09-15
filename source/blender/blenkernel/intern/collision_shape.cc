@@ -534,6 +534,11 @@ MeshCollisionShape::MeshCollisionShape(const Mesh &mesh) : CollisionShape(make_m
 #else
 #  ifdef WITH_JOLT
 
+/* Limit for shape parameters that may never be zero. */
+static constexpr float shape_size_epsilon = 0.0001f;
+static constexpr float shape_convex_radius = JPH::cDefaultConvexRadius;
+static constexpr JPH::PhysicsMaterial *shape_physics_material = nullptr;
+
 /* Fallback shape that can be used when an input pointer is null but some shape is required. */
 static const JPH::Shape *get_shape_or_fallback(const CollisionShape *shape)
 {
@@ -593,9 +598,10 @@ float3 CollisionShape::calculate_local_inertia(const float mass) const
 
 static CollisionShapeImpl *make_box_shape(const float3 &half_extent)
 {
-  const float convex_radius = to_blender(JPH::cDefaultConvexRadius);
-  const float3 safe_half_extent = math::max(half_extent, float3(convex_radius));
-  return CollisionShapeImpl::wrap(new JPH::BoxShape(to_jolt(safe_half_extent)));
+  JPH::BoxShapeSettings settings(to_jolt(math::max(half_extent, float3(shape_convex_radius))),
+                                 shape_convex_radius,
+                                 shape_physics_material);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 BoxCollisionShape::BoxCollisionShape(const float3 &half_extent)
@@ -612,8 +618,9 @@ static CollisionShapeImpl *make_triangle_shape(const float3 &pt0,
                                                const float3 &pt1,
                                                const float3 &pt2)
 {
-  return CollisionShapeImpl::wrap(
-      new JPH::TriangleShape(to_jolt(pt0), to_jolt(pt1), to_jolt(pt2)));
+  JPH::TriangleShapeSettings settings(
+      to_jolt(pt0), to_jolt(pt1), to_jolt(pt2), shape_convex_radius, shape_physics_material);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 TriangleCollisionShape::TriangleCollisionShape(const float3 &pt0,
@@ -630,6 +637,8 @@ static CollisionShapeImpl *make_convex_hull_shape(const VArray<float3> &points)
   for (const int i : points.index_range()) {
     settings.mPoints.push_back(to_jolt(points[i]));
   }
+  settings.mMaxConvexRadius = shape_convex_radius;
+  settings.mMaterial = shape_physics_material;
   return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
@@ -640,7 +649,9 @@ ConvexHullCollisionShape::ConvexHullCollisionShape(const VArray<float3> &points)
 
 static CollisionShapeImpl *make_sphere_shape(const float radius)
 {
-  return CollisionShapeImpl::wrap(new JPH::SphereShape(to_jolt(radius)));
+  JPH::SphereShapeSettings settings(to_jolt(std::max(radius, shape_size_epsilon)),
+                                    shape_physics_material);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 SphereCollisionShape::SphereCollisionShape(const float radius)
@@ -655,7 +666,10 @@ float SphereCollisionShape::radius() const
 
 static CollisionShapeImpl *make_capsule_shape(const float radius, const float height)
 {
-  return CollisionShapeImpl::wrap(new JPH::CapsuleShape(to_jolt(height), to_jolt(radius)));
+  JPH::CapsuleShapeSettings settings(to_jolt(std::max(0.5f * height, shape_size_epsilon)),
+                                     to_jolt(std::max(radius, shape_size_epsilon)),
+                                     shape_physics_material);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 CapsuleCollisionShape::CapsuleCollisionShape(const float radius, const float height)
@@ -668,9 +682,10 @@ static CollisionShapeImpl *make_tapered_capsule_shape(const float top_radius,
                                                       const float height)
 {
   JPH::TaperedCapsuleShapeSettings settings;
-  settings.mTopRadius = to_jolt(top_radius);
-  settings.mBottomRadius = to_jolt(bottom_radius);
-  settings.mHalfHeightOfTaperedCylinder = to_jolt(0.5f * height);
+  settings.mTopRadius = to_jolt(std::max(top_radius, shape_size_epsilon));
+  settings.mBottomRadius = to_jolt(std::max(bottom_radius, shape_size_epsilon));
+  settings.mHalfHeightOfTaperedCylinder = to_jolt(std::max(0.5f * height, shape_size_epsilon));
+  settings.mMaterial = shape_physics_material;
   return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
@@ -683,7 +698,11 @@ TaperedCapsuleCollisionShape::TaperedCapsuleCollisionShape(const float top_radiu
 
 static CollisionShapeImpl *make_cylinder_shape(const float radius, const float height)
 {
-  return CollisionShapeImpl::wrap(new JPH::CylinderShape(height * 0.5f, radius));
+  JPH::CylinderShapeSettings settings(to_jolt(std::max(0.5f * height, shape_convex_radius)),
+                                      to_jolt(std::max(radius, shape_convex_radius)),
+                                      shape_convex_radius,
+                                      shape_physics_material);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 CylinderCollisionShape::CylinderCollisionShape(const float radius, const float height)
@@ -694,8 +713,10 @@ CylinderCollisionShape::CylinderCollisionShape(const float radius, const float h
 static CollisionShapeImpl *make_scaled_shape(const CollisionShape *child_shape,
                                              const float3 &scale)
 {
-  return CollisionShapeImpl::wrap(
-      new JPH::ScaledShape(get_shape_or_fallback(child_shape), to_jolt(scale)));
+  JPH::ScaledShapeSettings settings;
+  settings.mInnerShapePtr = get_shape_or_fallback(child_shape);
+  settings.mScale = to_jolt(math::is_zero(scale) ? float3(1.0f) : scale);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 ScaledCollisionShape::ScaledCollisionShape(const CollisionShapePtr &child_shape,
@@ -707,8 +728,10 @@ ScaledCollisionShape::ScaledCollisionShape(const CollisionShapePtr &child_shape,
 static CollisionShapeImpl *make_offset_com_shape(const CollisionShape *child_shape,
                                                  const float3 &offset)
 {
-  return CollisionShapeImpl::wrap(
-      new JPH::OffsetCenterOfMassShape(get_shape_or_fallback(child_shape), to_jolt(offset)));
+  JPH::OffsetCenterOfMassShapeSettings settings;
+  settings.mInnerShapePtr = get_shape_or_fallback(child_shape);
+  settings.mOffset = to_jolt(offset);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 OffsetCenterOfMassShape::OffsetCenterOfMassShape(const CollisionShapePtr &child_shape,
@@ -721,8 +744,11 @@ static CollisionShapeImpl *make_rotated_translated_shape(const CollisionShape *c
                                                          const math::Quaternion &rotation,
                                                          const float3 &translation)
 {
-  return CollisionShapeImpl::wrap(new JPH::RotatedTranslatedShape(
-      to_jolt(translation), to_jolt(rotation), get_shape_or_fallback(child_shape)));
+  JPH::RotatedTranslatedShapeSettings settings;
+  settings.mInnerShapePtr = get_shape_or_fallback(child_shape);
+  settings.mRotation = to_jolt(rotation);
+  settings.mPosition = to_jolt(translation);
+  return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
 RotatedTranslatedCollisionShape::RotatedTranslatedCollisionShape(

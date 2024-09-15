@@ -883,7 +883,14 @@ void JoltPhysicsWorldData::set_body_shapes(const IndexMask &selection,
 
     const JPH::Shape *jolt_shape = &shape_ptr->impl().as_jolt_shape();
     JPH::Body *body = this->bodies_[index];
-    body_interface.SetShape(body->GetID(), jolt_shape, true, activation_mode);
+    /* XXX Jolt bug: triangle shapes always compute zero mass from density,
+     * updating motion properties will trigger an assert. */
+    const bool update_motion_props = shape_ptr->supports_motion() &&
+                                     (shape_ptr->type() != CollisionShape::ShapeType::Triangle);
+    const JPH::EActivation body_activation_mode = shape_ptr->supports_motion() ?
+                                                      activation_mode :
+                                                      JPH::EActivation::DontActivate;
+    body_interface.SetShape(body->GetID(), jolt_shape, update_motion_props, body_activation_mode);
   });
 }
 
