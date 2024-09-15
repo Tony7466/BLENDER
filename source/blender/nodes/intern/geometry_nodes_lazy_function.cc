@@ -2074,8 +2074,7 @@ struct ForeachGeometryElementEvalStorage;
  * This struct contains evaluation data for each component.
  */
 struct ForeachElementComponent {
-  /** The non-const component that is iterated over. It's owned by the `main_geometry` */
-  GeometryComponent *component;
+  GeometryComponent::Type type;
   /** Used for field evaluation on the output node. */
   std::optional<bke::GeometryFieldContext> field_context;
   std::optional<FieldEvaluator> field_evaluator;
@@ -2334,7 +2333,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const AttrDomain domain = AttrDomain(node_storage.domain);
 
     /* Gather components to process. */
-    Vector<GeometryComponent *> src_components;
+    Vector<const GeometryComponent *> src_components;
     for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
       const int domain_size = src_component->attribute_domain_size(domain);
       if (domain_size > 0) {
@@ -2352,11 +2351,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     int body_nodes_offset = 0;
     eval_storage.components.reinitialize(src_components.size());
     for (const int component_i : src_components.index_range()) {
-      GeometryComponent *component = src_components[component_i];
+      const GeometryComponent *component = src_components[component_i];
       const int domain_size = component->attribute_domain_size(domain);
       BLI_assert(domain_size > 0);
       ForeachElementComponent &component_info = eval_storage.components[component_i];
-      component_info.component = component;
+      component_info.type = component->type();
 
       /* Prepare field evaluation for the zone inputs. */
       component_info.field_context.emplace(*component, domain);
@@ -2626,6 +2625,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
+  GeometrySet output_geometry = eval_storage_.main_geometry;
+
   for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
     const NodeForeachGeometryElementMainItem &item = node_storage.main_items.items[item_i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
@@ -2642,8 +2643,9 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
         item.identifier);
 
     for (const ForeachElementComponent &component_info : eval_storage_.components) {
-      const int domain_size = component_info.component->attribute_domain_size(iteration_domain);
-      MutableAttributeAccessor attributes = *component_info.component->attributes_for_write();
+      GeometryComponent &component = output_geometry.get_component_for_write(component_info.type);
+      const int domain_size = component.attribute_domain_size(iteration_domain);
+      MutableAttributeAccessor attributes = *component.attributes_for_write();
       GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
           attribute_name, iteration_domain, cd_type);
       const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
@@ -2672,7 +2674,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
     params.set_output(1 + item_i, std::move(attribute_value_variant));
   }
 
-  params.set_output(0, eval_storage_.main_geometry);
+  params.set_output(0, std::move(output_geometry));
 }
 
 void LazyFunctionForReduceForeachGeometryElement::handle_generation_items(
@@ -2774,7 +2776,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   }
 
   for (const ForeachElementComponent &component_info : eval_storage_.components) {
-    const GeometryComponent &src_component = *component_info.component;
+    const GeometryComponent &src_component = *eval_storage_.main_geometry.get_component(
+        component_info.type);
     const AttributeAccessor src_attributes = *src_component.attributes();
 
     Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
