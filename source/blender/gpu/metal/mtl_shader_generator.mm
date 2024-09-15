@@ -947,31 +947,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     shd_builder_->glsl_fragment_source_ = msl_defines_string + shd_builder_->glsl_fragment_source_;
   }
 
-  /* Extract SSBO usage information from shader pragma:
-   *
-   * #pragma USE_SSBO_VERTEX_FETCH(Output Prim Type, num output vertices per input primitive)
-   *
-   * This will determine whether SSBO-vertex-fetch
-   * mode is used for this shader. Returns true if used, and populates output reference
-   * values with the output prim type and output number of vertices. */
-  MTLPrimitiveType vertex_fetch_ssbo_output_prim_type = MTLPrimitiveTypeTriangle;
-  uint32_t vertex_fetch_ssbo_num_output_verts = 0;
-  msl_iface.uses_ssbo_vertex_fetch_mode = extract_ssbo_pragma_info(
-      this,
-      msl_iface,
-      shd_builder_->glsl_vertex_source_,
-      vertex_fetch_ssbo_output_prim_type,
-      vertex_fetch_ssbo_num_output_verts);
-
-  if (msl_iface.uses_ssbo_vertex_fetch_mode) {
-    shader_debug_printf(
-        "[Shader] SSBO VERTEX FETCH Enabled for Shader '%s' With Output primitive type: %s, "
-        "vertex count: %u\n",
-        this->name_get(),
-        output_primitive_type.c_str(),
-        vertex_fetch_ssbo_num_output_verts);
-  }
-
   /* Special condition - mat3 and array constructor replacement. */
   replace_matrix_constructors(shd_builder_->glsl_vertex_source_);
   replace_array_initializers_func(shd_builder_->glsl_vertex_source_);
@@ -996,8 +971,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
                                  shd_builder_->glsl_vertex_source_.find("gl_InstanceID") !=
                                      std::string::npos ||
                                  shd_builder_->glsl_vertex_source_.find("gpu_InstanceIndex") !=
-                                     std::string::npos ||
-                                 msl_iface.uses_ssbo_vertex_fetch_mode;
+                                     std::string::npos;
 
   /* instance ID in GL is `[0, instance_count]` in metal it is
    * `[base_instance, base_instance + instance_count]`,
@@ -1050,11 +1024,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     msl_iface.uses_early_fragment_test = info->early_fragment_test_;
   }
 
-  /* Generate SSBO vertex fetch mode uniform data hooks. */
-  if (msl_iface.uses_ssbo_vertex_fetch_mode) {
-    msl_iface.prepare_ssbo_vertex_fetch_uniforms();
-  }
-
   /* Extract gl_ClipDistances. */
   extract_and_replace_clipping_distances(shd_builder_->glsl_vertex_source_, msl_iface);
 
@@ -1088,32 +1057,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
     ss_vertex << "#define USE_ARGUMENT_BUFFER_FOR_SAMPLERS 1" << std::endl;
     ss_vertex << "#define ARGUMENT_BUFFER_NUM_SAMPLERS "
               << msl_iface.max_sampler_index_for_stage(ShaderStage::VERTEX) + 1 << std::endl;
-  }
-  if (msl_iface.uses_ssbo_vertex_fetch_mode) {
-    ss_vertex << "#define MTL_SSBO_VERTEX_FETCH 1" << std::endl;
-    for (const MSLVertexInputAttribute &attr : msl_iface.vertex_input_attributes) {
-      ss_vertex << "#define SSBO_ATTR_TYPE_" << attr.name << " " << attr.type << std::endl;
-    }
-
-    /* Macro's */
-    ss_vertex << "#define "
-                 "UNIFORM_SSBO_USES_INDEXED_RENDERING_STR " UNIFORM_SSBO_USES_INDEXED_RENDERING_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_INDEX_MODE_U16_STR " UNIFORM_SSBO_INDEX_MODE_U16_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_INPUT_PRIM_TYPE_STR " UNIFORM_SSBO_INPUT_PRIM_TYPE_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_INPUT_VERT_COUNT_STR " UNIFORM_SSBO_INPUT_VERT_COUNT_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_OFFSET_STR " UNIFORM_SSBO_OFFSET_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_STRIDE_STR " UNIFORM_SSBO_STRIDE_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_FETCHMODE_STR " UNIFORM_SSBO_FETCHMODE_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_VBO_ID_STR " UNIFORM_SSBO_VBO_ID_STR
-                 "\n"
-                 "#define UNIFORM_SSBO_TYPE_STR " UNIFORM_SSBO_TYPE_STR "\n";
   }
 
   /* Inject common Metal header. */
@@ -1203,9 +1146,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
 
   /** Generate structs from MSL Interface. **/
   /* Generate VertexIn struct. */
-  if (!msl_iface.uses_ssbo_vertex_fetch_mode) {
-    ss_vertex << msl_iface.generate_msl_vertex_in_struct();
-  }
+  ss_vertex << msl_iface.generate_msl_vertex_in_struct();
   /* Generate Uniform data structs. */
   ss_vertex << msl_iface.generate_msl_uniform_structs(ShaderStage::VERTEX);
 
@@ -1235,16 +1176,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   }
   if (msl_iface.uses_gpu_viewport_index) {
     ss_vertex << "int gpu_ViewportIndex = 0;" << std::endl;
-  }
-
-  /* Global vertex data pointers when using SSBO vertex fetch mode.
-   * Bound vertex buffers passed in via the entry point function
-   * are assigned to these pointers to be globally accessible
-   * from any function within the GLSL source shader. */
-  if (msl_iface.uses_ssbo_vertex_fetch_mode) {
-    ss_vertex << "constant uchar** MTL_VERTEX_DATA;" << std::endl;
-    ss_vertex << "constant ushort* MTL_INDEX_DATA_U16 = nullptr;" << std::endl;
-    ss_vertex << "constant uint32_t* MTL_INDEX_DATA_U32 = nullptr;" << std::endl;
   }
 
   /* Add Texture members.
@@ -1455,12 +1386,6 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
   /* Update other shader properties. */
   uses_gpu_layer = msl_iface.uses_gpu_layer;
   uses_gpu_viewport_index = msl_iface.uses_gpu_viewport_index;
-  use_ssbo_vertex_fetch_mode_ = msl_iface.uses_ssbo_vertex_fetch_mode;
-  if (msl_iface.uses_ssbo_vertex_fetch_mode) {
-    ssbo_vertex_fetch_output_prim_type_ = vertex_fetch_ssbo_output_prim_type;
-    ssbo_vertex_fetch_output_num_verts_ = vertex_fetch_ssbo_num_output_verts;
-    this->prepare_ssbo_vertex_fetch_metadata();
-  }
 
   /* Successfully completed GLSL to MSL translation. */
   return true;
@@ -1720,106 +1645,6 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
 constexpr size_t const_strlen(const char *str)
 {
   return (*str == '\0') ? 0 : const_strlen(str + 1) + 1;
-}
-
-void MTLShader::prepare_ssbo_vertex_fetch_metadata()
-{
-  BLI_assert(use_ssbo_vertex_fetch_mode_);
-
-  /* Cache global SSBO-vertex-fetch uniforms locations. */
-  const ShaderInput *inp_prim_type = interface->uniform_get(UNIFORM_SSBO_INPUT_PRIM_TYPE_STR);
-  const ShaderInput *inp_vert_count = interface->uniform_get(UNIFORM_SSBO_INPUT_VERT_COUNT_STR);
-  const ShaderInput *inp_uses_indexed_rendering = interface->uniform_get(
-      UNIFORM_SSBO_USES_INDEXED_RENDERING_STR);
-  const ShaderInput *inp_uses_index_mode_u16 = interface->uniform_get(
-      UNIFORM_SSBO_INDEX_MODE_U16_STR);
-
-  this->uni_ssbo_input_prim_type_loc = (inp_prim_type != nullptr) ? inp_prim_type->location : -1;
-  this->uni_ssbo_input_vert_count_loc = (inp_vert_count != nullptr) ? inp_vert_count->location :
-                                                                      -1;
-  this->uni_ssbo_uses_indexed_rendering = (inp_uses_indexed_rendering != nullptr) ?
-                                              inp_uses_indexed_rendering->location :
-                                              -1;
-  this->uni_ssbo_uses_index_mode_u16 = (inp_uses_index_mode_u16 != nullptr) ?
-                                           inp_uses_index_mode_u16->location :
-                                           -1;
-
-  BLI_assert_msg(this->uni_ssbo_input_prim_type_loc != -1,
-                 "uni_ssbo_input_prim_type_loc uniform location invalid!");
-  BLI_assert_msg(this->uni_ssbo_input_vert_count_loc != -1,
-                 "uni_ssbo_input_vert_count_loc uniform location invalid!");
-  BLI_assert_msg(this->uni_ssbo_uses_indexed_rendering != -1,
-                 "uni_ssbo_uses_indexed_rendering uniform location invalid!");
-  BLI_assert_msg(this->uni_ssbo_uses_index_mode_u16 != -1,
-                 "uni_ssbo_uses_index_mode_u16 uniform location invalid!");
-
-  /* Prepare SSBO-vertex-fetch attribute uniform location cache. */
-  MTLShaderInterface *mtl_interface = this->get_interface();
-  for (int i = 0; i < mtl_interface->get_total_attributes(); i++) {
-    const MTLShaderInputAttribute &mtl_shader_attribute = mtl_interface->get_attribute(i);
-    const char *attr_name = mtl_interface->get_name_at_offset(mtl_shader_attribute.name_offset);
-
-    /* SSBO-vertex-fetch Attribute data is passed via uniforms. here we need to extract the uniform
-     * address for each attribute, and we can cache it for later use. */
-    ShaderSSBOAttributeBinding &cached_ssbo_attr = cached_ssbo_attribute_bindings_[i];
-    cached_ssbo_attr.attribute_index = i;
-
-    constexpr int len_UNIFORM_SSBO_STRIDE_STR = const_strlen(UNIFORM_SSBO_STRIDE_STR);
-    constexpr int len_UNIFORM_SSBO_OFFSET_STR = const_strlen(UNIFORM_SSBO_OFFSET_STR);
-    constexpr int len_UNIFORM_SSBO_FETCHMODE_STR = const_strlen(UNIFORM_SSBO_FETCHMODE_STR);
-    constexpr int len_UNIFORM_SSBO_VBO_ID_STR = const_strlen(UNIFORM_SSBO_VBO_ID_STR);
-    constexpr int len_UNIFORM_SSBO_TYPE_STR = const_strlen(UNIFORM_SSBO_TYPE_STR);
-
-    char strattr_buf_stride[GPU_VERT_ATTR_MAX_LEN + len_UNIFORM_SSBO_STRIDE_STR + 1] =
-        UNIFORM_SSBO_STRIDE_STR;
-    char strattr_buf_offset[GPU_VERT_ATTR_MAX_LEN + len_UNIFORM_SSBO_OFFSET_STR + 1] =
-        UNIFORM_SSBO_OFFSET_STR;
-    char strattr_buf_fetchmode[GPU_VERT_ATTR_MAX_LEN + len_UNIFORM_SSBO_FETCHMODE_STR + 1] =
-        UNIFORM_SSBO_FETCHMODE_STR;
-    char strattr_buf_vbo_id[GPU_VERT_ATTR_MAX_LEN + len_UNIFORM_SSBO_VBO_ID_STR + 1] =
-        UNIFORM_SSBO_VBO_ID_STR;
-    char strattr_buf_type[GPU_VERT_ATTR_MAX_LEN + len_UNIFORM_SSBO_TYPE_STR + 1] =
-        UNIFORM_SSBO_TYPE_STR;
-
-    BLI_strncpy(
-        &strattr_buf_stride[len_UNIFORM_SSBO_STRIDE_STR], attr_name, GPU_VERT_ATTR_MAX_LEN);
-    BLI_strncpy(
-        &strattr_buf_offset[len_UNIFORM_SSBO_OFFSET_STR], attr_name, GPU_VERT_ATTR_MAX_LEN);
-    BLI_strncpy(
-        &strattr_buf_fetchmode[len_UNIFORM_SSBO_FETCHMODE_STR], attr_name, GPU_VERT_ATTR_MAX_LEN);
-    BLI_strncpy(
-        &strattr_buf_vbo_id[len_UNIFORM_SSBO_VBO_ID_STR], attr_name, GPU_VERT_ATTR_MAX_LEN);
-    BLI_strncpy(&strattr_buf_type[len_UNIFORM_SSBO_TYPE_STR], attr_name, GPU_VERT_ATTR_MAX_LEN);
-
-    /* Fetch uniform locations and cache for fast access. */
-    const ShaderInput *inp_unf_stride = mtl_interface->uniform_get(strattr_buf_stride);
-    const ShaderInput *inp_unf_offset = mtl_interface->uniform_get(strattr_buf_offset);
-    const ShaderInput *inp_unf_fetchmode = mtl_interface->uniform_get(strattr_buf_fetchmode);
-    const ShaderInput *inp_unf_vbo_id = mtl_interface->uniform_get(strattr_buf_vbo_id);
-    const ShaderInput *inp_unf_attr_type = mtl_interface->uniform_get(strattr_buf_type);
-
-    BLI_assert(inp_unf_stride != nullptr);
-    BLI_assert(inp_unf_offset != nullptr);
-    BLI_assert(inp_unf_fetchmode != nullptr);
-    BLI_assert(inp_unf_vbo_id != nullptr);
-    BLI_assert(inp_unf_attr_type != nullptr);
-
-    cached_ssbo_attr.uniform_stride = (inp_unf_stride != nullptr) ? inp_unf_stride->location : -1;
-    cached_ssbo_attr.uniform_offset = (inp_unf_offset != nullptr) ? inp_unf_offset->location : -1;
-    cached_ssbo_attr.uniform_fetchmode = (inp_unf_fetchmode != nullptr) ?
-                                             inp_unf_fetchmode->location :
-                                             -1;
-    cached_ssbo_attr.uniform_vbo_id = (inp_unf_vbo_id != nullptr) ? inp_unf_vbo_id->location : -1;
-    cached_ssbo_attr.uniform_attr_type = (inp_unf_attr_type != nullptr) ?
-                                             inp_unf_attr_type->location :
-                                             -1;
-
-    BLI_assert(cached_ssbo_attr.uniform_offset != -1);
-    BLI_assert(cached_ssbo_attr.uniform_stride != -1);
-    BLI_assert(cached_ssbo_attr.uniform_fetchmode != -1);
-    BLI_assert(cached_ssbo_attr.uniform_vbo_id != -1);
-    BLI_assert(cached_ssbo_attr.uniform_attr_type != -1);
-  }
 }
 
 void MSLGeneratorInterface::prepare_from_createinfo(const shader::ShaderCreateInfo *info)
@@ -2223,26 +2048,6 @@ uint32_t MSLGeneratorInterface::get_sampler_argument_buffer_bind_index(ShaderSta
   return sampler_argument_buffer_bind_index[get_shader_stage_index(stage)];
 }
 
-void MSLGeneratorInterface::prepare_ssbo_vertex_fetch_uniforms()
-{
-  BLI_assert(this->uses_ssbo_vertex_fetch_mode);
-
-  /* Add Special Uniforms for SSBO vertex fetch mode. */
-  this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_INPUT_PRIM_TYPE_STR, false));
-  this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_INPUT_VERT_COUNT_STR, false));
-  this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_USES_INDEXED_RENDERING_STR, false));
-  this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_INDEX_MODE_U16_STR, false));
-
-  for (const MSLVertexInputAttribute &attr : this->vertex_input_attributes) {
-    const std::string &uname = attr.name;
-    this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_STRIDE_STR + uname, false));
-    this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_OFFSET_STR + uname, false));
-    this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_FETCHMODE_STR + uname, false));
-    this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_VBO_ID_STR + uname, false));
-    this->uniforms.append(MSLUniform(Type::INT, UNIFORM_SSBO_TYPE_STR + uname, false));
-  }
-}
-
 std::string MSLGeneratorInterface::generate_msl_vertex_entry_stub()
 {
   static const char *shader_stage_inst_name = get_shader_stage_instance_name(ShaderStage::VERTEX);
@@ -2593,21 +2398,10 @@ std::string MSLGeneratorInterface::generate_msl_vertex_inputs_string()
   std::stringstream out;
   bool is_first_parameter = true;
 
-  if (this->uses_ssbo_vertex_fetch_mode) {
-    /* Vertex Buffers bound as raw buffers. */
-    for (int i = 0; i < MTL_SSBO_VERTEX_FETCH_MAX_VBOS; i++) {
-      out << parameter_delimiter(is_first_parameter) << "\tconstant uchar* MTL_VERTEX_DATA_" << i
-          << " [[buffer(" << i << ")]]\n";
-    }
-    out << parameter_delimiter(is_first_parameter)
-        << "\tconstant ushort* MTL_INDEX_DATA[[buffer(MTL_SSBO_VERTEX_FETCH_IBO_INDEX)]]";
-  }
-  else {
-    if (this->vertex_input_attributes.size() > 0) {
-      /* Vertex Buffers use input assembly. */
-      out << get_stage_class_name(ShaderStage::VERTEX) << "::VertexIn v_in [[stage_in]]";
-      is_first_parameter = false;
-    }
+  if (this->vertex_input_attributes.size() > 0) {
+    /* Vertex Buffers use input assembly. */
+    out << get_stage_class_name(ShaderStage::VERTEX) << "::VertexIn v_in [[stage_in]]";
+    is_first_parameter = false;
   }
 
   if (this->uniforms.size() > 0) {
@@ -2812,7 +2606,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_in_struct()
      * float4 __internal_modelmatrix_2 [[attribute(2)]];
      * float4 __internal_modelmatrix_3 [[attribute(3)]];
      */
-    if (is_matrix_type(in_attr.type) && !this->uses_ssbo_vertex_fetch_mode) {
+    if (is_matrix_type(in_attr.type)) {
       for (int elem = 0; elem < get_matrix_location_count(in_attr.type); elem++) {
         out << "\t" << get_matrix_subtype(in_attr.type) << " __internal_" << in_attr.name << elem
             << " [[attribute(" << (in_attr.layout_location + elem) << ")]];" << std::endl;
@@ -3175,27 +2969,6 @@ std::string MSLGeneratorInterface::generate_msl_uniform_block_population(ShaderS
 std::string MSLGeneratorInterface::generate_msl_vertex_attribute_input_population()
 {
   static const char *shader_stage_inst_name = get_shader_stage_instance_name(ShaderStage::VERTEX);
-
-  /* SSBO Vertex Fetch mode does not require local attribute population,
-   * we only need to pass over the buffer pointer references. */
-  if (this->uses_ssbo_vertex_fetch_mode) {
-    std::stringstream out;
-    out << "const constant uchar* GLOBAL_MTL_VERTEX_DATA[MTL_SSBO_VERTEX_FETCH_MAX_VBOS] = {"
-        << std::endl;
-    for (int i = 0; i < MTL_SSBO_VERTEX_FETCH_MAX_VBOS; i++) {
-      char delimiter = (i < MTL_SSBO_VERTEX_FETCH_MAX_VBOS - 1) ? ',' : ' ';
-      out << "\t\tMTL_VERTEX_DATA_" << i << delimiter << std::endl;
-    }
-    out << "};" << std::endl;
-    out << "\t" << shader_stage_inst_name << ".MTL_VERTEX_DATA = GLOBAL_MTL_VERTEX_DATA;"
-        << std::endl;
-    out << "\t" << shader_stage_inst_name << ".MTL_INDEX_DATA_U16 = MTL_INDEX_DATA;" << std::endl;
-    out << "\t" << shader_stage_inst_name
-        << ".MTL_INDEX_DATA_U32 = reinterpret_cast<constant "
-           "uint32_t*>(MTL_INDEX_DATA);"
-        << std::endl;
-    return out.str();
-  }
 
   /* Populate local attribute variables. */
   std::stringstream out;
@@ -3739,24 +3512,19 @@ MTLShaderInterface *MSLGeneratorInterface::bake_shader_interface(
                                              this->vertex_input_attributes[attribute].name +
                                              std::to_string(elem);
 
-        /* IF Using SSBO vertex Fetch, we do not need to expose other dummy attributes in the
-         * shader interface, only the first one for the whole matrix, as we can pass whatever data
-         * we want in this mode, and do not need to split attributes. */
-        if (elem == 0 || !this->uses_ssbo_vertex_fetch_mode) {
-          interface->add_input_attribute(
-              name_buffer_copystr(&interface->name_buffer_,
-                                  _internal_name.c_str(),
-                                  name_buffer_size,
-                                  name_buffer_offset),
-              this->vertex_input_attributes[attribute].layout_location + elem,
-              mtl_datatype_to_vertex_type(mtl_type),
-              0,
-              size,
-              c_offset,
-              (elem == 0) ?
-                  get_matrix_location_count(this->vertex_input_attributes[attribute].type) :
-                  0);
-        }
+        interface->add_input_attribute(
+            name_buffer_copystr(&interface->name_buffer_,
+                                _internal_name.c_str(),
+                                name_buffer_size,
+                                name_buffer_offset),
+            this->vertex_input_attributes[attribute].layout_location + elem,
+            mtl_datatype_to_vertex_type(mtl_type),
+            0,
+            size,
+            c_offset,
+            (elem == 0) ?
+                get_matrix_location_count(this->vertex_input_attributes[attribute].type) :
+                0);
         c_offset += size;
       }
       shader_debug_printf(

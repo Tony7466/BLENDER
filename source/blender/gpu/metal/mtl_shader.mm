@@ -982,148 +982,133 @@ MTLRenderPipelineStateInstance *MTLShader::bake_pipeline_state(
      * bound VBOs #VertexFormat. */
     int null_buffer_index = pipeline_descriptor.vertex_descriptor.num_vert_buffers;
     bool using_null_buffer = false;
+    for (const uint i : IndexRange(pipeline_descriptor.vertex_descriptor.max_attribute_value + 1))
+    {
 
-    if (this->get_uses_ssbo_vertex_fetch()) {
-      /* If using SSBO Vertex fetch mode, no vertex descriptor is required
-       * as we wont be using stage-in. */
-      desc.vertexDescriptor = nil;
-      desc.inputPrimitiveTopology = MTLPrimitiveTopologyClassUnspecified;
+      /* Metal back-end attribute descriptor state. */
+      const MTLVertexAttributeDescriptorPSO &attribute_desc =
+          pipeline_descriptor.vertex_descriptor.attributes[i];
 
-      /* We want to offset the uniform buffer base to allow for sufficient VBO binding slots - We
-       * also require +1 slot for the Index buffer. */
-      MTL_uniform_buffer_base_index = MTL_SSBO_VERTEX_FETCH_IBO_INDEX + 1;
-    }
-    else {
-      for (const uint i :
-           IndexRange(pipeline_descriptor.vertex_descriptor.max_attribute_value + 1))
-      {
+      /* Flag format conversion */
+      /* In some cases, Metal cannot implicitly convert between data types.
+       * In these instances, the fetch mode #GPUVertFetchMode as provided in the vertex format
+       * is passed in, and used to populate function constants named: MTL_AttributeConvert0..15.
+       *
+       * It is then the responsibility of the vertex shader to perform any necessary type
+       * casting.
+       *
+       * See `mtl_shader.hh` for more information. Relevant Metal API documentation:
+       * https://developer.apple.com/documentation/metal/mtlvertexattributedescriptor/1516081-format?language=objc
+       */
+      if (attribute_desc.format == MTLVertexFormatInvalid) {
+        /* If attributes are non-contiguous, we can skip over gaps. */
+        MTL_LOG_WARNING(
+            "MTLShader: baking pipeline state for '%s'- skipping input attribute at "
+            "index '%d' but none was specified in the current vertex state",
+            mtl_interface->get_name(),
+            i);
 
-        /* Metal back-end attribute descriptor state. */
-        const MTLVertexAttributeDescriptorPSO &attribute_desc =
-            pipeline_descriptor.vertex_descriptor.attributes[i];
-
-        /* Flag format conversion */
-        /* In some cases, Metal cannot implicitly convert between data types.
-         * In these instances, the fetch mode #GPUVertFetchMode as provided in the vertex format
-         * is passed in, and used to populate function constants named: MTL_AttributeConvert0..15.
-         *
-         * It is then the responsibility of the vertex shader to perform any necessary type
-         * casting.
-         *
-         * See `mtl_shader.hh` for more information. Relevant Metal API documentation:
-         * https://developer.apple.com/documentation/metal/mtlvertexattributedescriptor/1516081-format?language=objc
-         */
-        if (attribute_desc.format == MTLVertexFormatInvalid) {
-          /* If attributes are non-contiguous, we can skip over gaps. */
-          MTL_LOG_WARNING(
-              "MTLShader: baking pipeline state for '%s'- skipping input attribute at "
-              "index '%d' but none was specified in the current vertex state",
-              mtl_interface->get_name(),
-              i);
-
-          /* Write out null conversion constant if attribute unused. */
-          int MTL_attribute_conversion_mode = 0;
-          [values setConstantValue:&MTL_attribute_conversion_mode
-                              type:MTLDataTypeInt
-                          withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
-          continue;
-        }
-
-        int MTL_attribute_conversion_mode = (int)attribute_desc.format_conversion_mode;
-        [values setConstantValue:&MTL_attribute_conversion_mode
-                            type:MTLDataTypeInt
-                        withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
-        if (MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT_UNIT ||
-            MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT)
-        {
-          shader_debug_printf(
-              "TODO(Metal): Shader %s needs to support internal format conversion\n",
-              mtl_interface->get_name());
-        }
-
-        /* Copy metal back-end attribute descriptor state into PSO descriptor.
-         * NOTE: need to copy each element due to direct assignment restrictions.
-         * Also note */
-        MTLVertexAttributeDescriptor *mtl_attribute = desc.vertexDescriptor.attributes[i];
-
-        mtl_attribute.format = attribute_desc.format;
-        mtl_attribute.offset = attribute_desc.offset;
-        mtl_attribute.bufferIndex = attribute_desc.buffer_index;
-      }
-
-      for (const uint i : IndexRange(pipeline_descriptor.vertex_descriptor.num_vert_buffers)) {
-        /* Metal back-end state buffer layout. */
-        const MTLVertexBufferLayoutDescriptorPSO &buf_layout =
-            pipeline_descriptor.vertex_descriptor.buffer_layouts[i];
-        /* Copy metal back-end buffer layout state into PSO descriptor.
-         * NOTE: need to copy each element due to copying from internal
-         * back-end descriptor to Metal API descriptor. */
-        MTLVertexBufferLayoutDescriptor *mtl_buf_layout = desc.vertexDescriptor.layouts[i];
-
-        mtl_buf_layout.stepFunction = buf_layout.step_function;
-        mtl_buf_layout.stepRate = buf_layout.step_rate;
-        mtl_buf_layout.stride = buf_layout.stride;
-      }
-
-      /* Mark empty attribute conversion. */
-      for (int i = pipeline_descriptor.vertex_descriptor.max_attribute_value + 1;
-           i < GPU_VERT_ATTR_MAX_LEN;
-           i++)
-      {
+        /* Write out null conversion constant if attribute unused. */
         int MTL_attribute_conversion_mode = 0;
         [values setConstantValue:&MTL_attribute_conversion_mode
                             type:MTLDataTypeInt
                         withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
+        continue;
       }
 
-      /* DEBUG: Missing/empty attributes. */
-      /* Attributes are normally mapped as part of the state setting based on the used
-       * #GPUVertFormat, however, if attributes have not been set, we can sort them out here. */
-      for (const uint i : IndexRange(mtl_interface->get_total_attributes())) {
-        const MTLShaderInputAttribute &attribute = mtl_interface->get_attribute(i);
-        MTLVertexAttributeDescriptor *current_attribute =
-            desc.vertexDescriptor.attributes[attribute.location];
+      int MTL_attribute_conversion_mode = (int)attribute_desc.format_conversion_mode;
+      [values setConstantValue:&MTL_attribute_conversion_mode
+                          type:MTLDataTypeInt
+                      withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
+      if (MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT_UNIT ||
+          MTL_attribute_conversion_mode == GPU_FETCH_INT_TO_FLOAT)
+      {
+        shader_debug_printf("TODO(Metal): Shader %s needs to support internal format conversion\n",
+                            mtl_interface->get_name());
+      }
 
-        if (current_attribute.format == MTLVertexFormatInvalid) {
+      /* Copy metal back-end attribute descriptor state into PSO descriptor.
+       * NOTE: need to copy each element due to direct assignment restrictions.
+       * Also note */
+      MTLVertexAttributeDescriptor *mtl_attribute = desc.vertexDescriptor.attributes[i];
+
+      mtl_attribute.format = attribute_desc.format;
+      mtl_attribute.offset = attribute_desc.offset;
+      mtl_attribute.bufferIndex = attribute_desc.buffer_index;
+    }
+
+    for (const uint i : IndexRange(pipeline_descriptor.vertex_descriptor.num_vert_buffers)) {
+      /* Metal back-end state buffer layout. */
+      const MTLVertexBufferLayoutDescriptorPSO &buf_layout =
+          pipeline_descriptor.vertex_descriptor.buffer_layouts[i];
+      /* Copy metal back-end buffer layout state into PSO descriptor.
+       * NOTE: need to copy each element due to copying from internal
+       * back-end descriptor to Metal API descriptor. */
+      MTLVertexBufferLayoutDescriptor *mtl_buf_layout = desc.vertexDescriptor.layouts[i];
+
+      mtl_buf_layout.stepFunction = buf_layout.step_function;
+      mtl_buf_layout.stepRate = buf_layout.step_rate;
+      mtl_buf_layout.stride = buf_layout.stride;
+    }
+
+    /* Mark empty attribute conversion. */
+    for (int i = pipeline_descriptor.vertex_descriptor.max_attribute_value + 1;
+         i < GPU_VERT_ATTR_MAX_LEN;
+         i++)
+    {
+      int MTL_attribute_conversion_mode = 0;
+      [values setConstantValue:&MTL_attribute_conversion_mode
+                          type:MTLDataTypeInt
+                      withName:[NSString stringWithFormat:@"MTL_AttributeConvert%d", i]];
+    }
+
+    /* DEBUG: Missing/empty attributes. */
+    /* Attributes are normally mapped as part of the state setting based on the used
+     * #GPUVertFormat, however, if attributes have not been set, we can sort them out here. */
+    for (const uint i : IndexRange(mtl_interface->get_total_attributes())) {
+      const MTLShaderInputAttribute &attribute = mtl_interface->get_attribute(i);
+      MTLVertexAttributeDescriptor *current_attribute =
+          desc.vertexDescriptor.attributes[attribute.location];
+
+      if (current_attribute.format == MTLVertexFormatInvalid) {
 #if MTL_DEBUG_SHADER_ATTRIBUTES == 1
-          printf("-> Filling in unbound attribute '%s' for shader PSO '%s' with location: %u\n",
-                 mtl_interface->get_name_at_offset(attribute.name_offset),
-                 mtl_interface->get_name(),
-                 attribute.location);
+        printf("-> Filling in unbound attribute '%s' for shader PSO '%s' with location: %u\n",
+               mtl_interface->get_name_at_offset(attribute.name_offset),
+               mtl_interface->get_name(),
+               attribute.location);
 #endif
-          current_attribute.format = attribute.format;
-          current_attribute.offset = 0;
-          current_attribute.bufferIndex = null_buffer_index;
+        current_attribute.format = attribute.format;
+        current_attribute.offset = 0;
+        current_attribute.bufferIndex = null_buffer_index;
 
-          /* Add Null vert buffer binding for invalid attributes. */
-          if (!using_null_buffer) {
-            MTLVertexBufferLayoutDescriptor *null_buf_layout =
-                desc.vertexDescriptor.layouts[null_buffer_index];
+        /* Add Null vert buffer binding for invalid attributes. */
+        if (!using_null_buffer) {
+          MTLVertexBufferLayoutDescriptor *null_buf_layout =
+              desc.vertexDescriptor.layouts[null_buffer_index];
 
-            /* Use constant step function such that null buffer can
-             * contain just a singular dummy attribute. */
-            null_buf_layout.stepFunction = MTLVertexStepFunctionConstant;
-            null_buf_layout.stepRate = 0;
-            null_buf_layout.stride = max_ii(null_buf_layout.stride, attribute.size);
+          /* Use constant step function such that null buffer can
+           * contain just a singular dummy attribute. */
+          null_buf_layout.stepFunction = MTLVertexStepFunctionConstant;
+          null_buf_layout.stepRate = 0;
+          null_buf_layout.stride = max_ii(null_buf_layout.stride, attribute.size);
 
-            /* If we are using the maximum number of vertex buffers, or tight binding indices,
-             * MTL_uniform_buffer_base_index needs shifting to the bind slot after the null buffer
-             * index. */
-            if (null_buffer_index >= MTL_uniform_buffer_base_index) {
-              MTL_uniform_buffer_base_index = null_buffer_index + 1;
-            }
-            using_null_buffer = true;
-#if MTL_DEBUG_SHADER_ATTRIBUTES == 1
-            MTL_LOG_INFO("Setting up buffer binding for null attribute with buffer index %d",
-                         null_buffer_index);
-#endif
+          /* If we are using the maximum number of vertex buffers, or tight binding indices,
+           * MTL_uniform_buffer_base_index needs shifting to the bind slot after the null buffer
+           * index. */
+          if (null_buffer_index >= MTL_uniform_buffer_base_index) {
+            MTL_uniform_buffer_base_index = null_buffer_index + 1;
           }
+          using_null_buffer = true;
+#if MTL_DEBUG_SHADER_ATTRIBUTES == 1
+          MTL_LOG_INFO("Setting up buffer binding for null attribute with buffer index %d",
+                       null_buffer_index);
+#endif
         }
       }
-
-      /* Primitive Topology. */
-      desc.inputPrimitiveTopology = pipeline_descriptor.vertex_descriptor.prim_topology_class;
     }
+
+    /* Primitive Topology. */
+    desc.inputPrimitiveTopology = pipeline_descriptor.vertex_descriptor.prim_topology_class;
 
     /* Update constant value for 'MTL_uniform_buffer_base_index'. */
     [values setConstantValue:&MTL_uniform_buffer_base_index
@@ -1688,104 +1673,6 @@ int MTLShader::ssbo_vertex_type_to_attr_type(MTLVertexFormat attribute_type)
       return -1;
   }
   return -1;
-}
-
-void MTLShader::ssbo_vertex_fetch_bind_attributes_begin()
-{
-  MTLShaderInterface *mtl_interface = this->get_interface();
-  ssbo_vertex_attribute_bind_active_ = true;
-  ssbo_vertex_attribute_bind_mask_ = (1 << mtl_interface->get_total_attributes()) - 1;
-
-  /* Reset tracking of actively used VBO bind slots for SSBO vertex fetch mode. */
-  for (int i = 0; i < MTL_SSBO_VERTEX_FETCH_MAX_VBOS; i++) {
-    ssbo_vbo_slot_used_[i] = false;
-  }
-}
-
-void MTLShader::ssbo_vertex_fetch_bind_attribute(const MTLSSBOAttribute &ssbo_attr)
-{
-  /* Fetch attribute. */
-  MTLShaderInterface *mtl_interface = this->get_interface();
-  BLI_assert(ssbo_attr.mtl_attribute_index >= 0 &&
-             ssbo_attr.mtl_attribute_index < mtl_interface->get_total_attributes());
-  UNUSED_VARS_NDEBUG(mtl_interface);
-
-  /* Update bind-mask to verify this attribute has been used. */
-  BLI_assert((ssbo_vertex_attribute_bind_mask_ & (1 << ssbo_attr.mtl_attribute_index)) ==
-                 (1 << ssbo_attr.mtl_attribute_index) &&
-             "Attribute has already been bound");
-  ssbo_vertex_attribute_bind_mask_ &= ~(1 << ssbo_attr.mtl_attribute_index);
-
-  /* Fetch attribute uniform addresses from cache. */
-  ShaderSSBOAttributeBinding &cached_ssbo_attribute =
-      cached_ssbo_attribute_bindings_[ssbo_attr.mtl_attribute_index];
-  BLI_assert(cached_ssbo_attribute.attribute_index >= 0);
-
-  /* Write attribute descriptor properties to shader uniforms. */
-  this->uniform_int(cached_ssbo_attribute.uniform_offset, 1, 1, &ssbo_attr.attribute_offset);
-  this->uniform_int(cached_ssbo_attribute.uniform_stride, 1, 1, &ssbo_attr.per_vertex_stride);
-  int inst_val = (ssbo_attr.is_instance ? 1 : 0);
-  this->uniform_int(cached_ssbo_attribute.uniform_fetchmode, 1, 1, &inst_val);
-  this->uniform_int(cached_ssbo_attribute.uniform_vbo_id, 1, 1, &ssbo_attr.vbo_id);
-  BLI_assert(ssbo_attr.attribute_format >= 0);
-  this->uniform_int(cached_ssbo_attribute.uniform_attr_type, 1, 1, &ssbo_attr.attribute_format);
-  ssbo_vbo_slot_used_[ssbo_attr.vbo_id] = true;
-}
-
-void MTLShader::ssbo_vertex_fetch_bind_attributes_end(
-    id<MTLRenderCommandEncoder> /*active_encoder*/)
-{
-  ssbo_vertex_attribute_bind_active_ = false;
-
-  /* If our mask is non-zero, we have unassigned attributes. */
-  if (ssbo_vertex_attribute_bind_mask_ != 0) {
-    MTLShaderInterface *mtl_interface = this->get_interface();
-
-    /* Determine if there is a free slot we can bind the null buffer to -- We should have at
-     * least ONE free slot in this instance. */
-    int null_attr_buffer_slot = -1;
-    for (int i = 0; i < MTL_SSBO_VERTEX_FETCH_MAX_VBOS; i++) {
-      if (!ssbo_vbo_slot_used_[i]) {
-        null_attr_buffer_slot = i;
-        break;
-      }
-    }
-    BLI_assert_msg(null_attr_buffer_slot >= 0,
-                   "No suitable bind location for a NULL buffer was found");
-
-    for (int i = 0; i < mtl_interface->get_total_attributes(); i++) {
-      if (ssbo_vertex_attribute_bind_mask_ & (1 << i)) {
-        const MTLShaderInputAttribute *mtl_shader_attribute = &mtl_interface->get_attribute(i);
-#if MTL_DEBUG_SHADER_ATTRIBUTES == 1
-        MTL_LOG_WARNING(
-            "SSBO Vertex Fetch missing attribute with index: %d. Shader: %s, Attr "
-            "Name: "
-            "%s - Null buffer bound",
-            i,
-            this->name_get(),
-            mtl_shader_attribute->name);
-#endif
-        /* Bind Attribute with NULL buffer index and stride zero (for constant access). */
-        MTLSSBOAttribute ssbo_attr(
-            i, null_attr_buffer_slot, 0, 0, GPU_SHADER_ATTR_TYPE_FLOAT, false);
-        ssbo_vertex_fetch_bind_attribute(ssbo_attr);
-        MTL_LOG_WARNING(
-            "Unassigned Shader attribute: %s, Attr Name: %s -- Binding NULL BUFFER to "
-            "slot %d",
-            this->name_get(),
-            mtl_interface->get_name_at_offset(mtl_shader_attribute->name_offset),
-            null_attr_buffer_slot);
-      }
-    }
-
-    /* Bind NULL buffer to given VBO slot. */
-    MTLContext *ctx = MTLContext::get();
-    id<MTLBuffer> null_buf = ctx->get_null_attribute_buffer();
-    BLI_assert(null_buf);
-
-    MTLRenderPassState &rps = ctx->main_command_buffer.get_render_pass_state();
-    rps.bind_vertex_buffer(null_buf, 0, null_attr_buffer_slot);
-  }
 }
 
 blender::gpu::VertBuf *MTLShader::get_transform_feedback_active_buffer()
