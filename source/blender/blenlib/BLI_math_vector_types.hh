@@ -206,6 +206,14 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
 
   /** Conversion from pointers (from C-style vectors). */
 
+  /* False positive warning with GCC: it sees array access like [3] but
+   * input is only a 3-element array. But it fails to realize that the
+   * [3] access is within "if constexpr (Size == 4)" check already. */
+#ifdef __GNUC__
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
+
   VecBase(const T *ptr)
   {
     BLI_UNROLL_MATH_VEC_OP_INIT_INDEX(ptr);
@@ -217,6 +225,10 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
   }
 
   VecBase(const T (*ptr)[Size]) : VecBase(static_cast<const T *>(ptr[0])) {}
+
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
 
   /** Conversion from other vector types. */
 
