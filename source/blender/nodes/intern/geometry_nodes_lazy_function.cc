@@ -2523,17 +2523,15 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
 
   outputs_.append_as("Geometry", CPPType::get<GeometrySet>());
 
-  /* Add parameters for main items. */
   for ([[maybe_unused]] const int i : eval_storage.lf_body_nodes.index_range()) {
+    /* Add parameters for main items. */
     for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
       const NodeForeachGeometryElementMainItem &item = node_storage.main_items.items[item_i];
       const bNodeSocket &socket = parent.output_bnode_.input_socket(item_i);
       inputs_.append_as(
           item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
     }
-  }
-  /* Add parameters for generation items. */
-  for ([[maybe_unused]] const int i : eval_storage.lf_body_nodes.index_range()) {
+    /* Add parameters for generation items. */
     for (const int item_i : IndexRange(node_storage.generation_items.items_num)) {
       const NodeForeachGeometryElementGenerationItem &item =
           node_storage.generation_items.items[item_i];
@@ -2799,26 +2797,41 @@ void LazyFunctionForReduceForeachGeometryElement::execute_impl(lf::Params &param
     }
   };
 
-  std::optional<int> previous_geometry_item_i;
-  for (const int item_i : IndexRange(node_storage.generation_items.items_num)) {
+  int item_i = 0;
+  /* Handle invalid generation items that come before a geometry. */
+  for (; item_i < node_storage.generation_items.items_num; item_i++) {
     const NodeForeachGeometryElementGenerationItem &item =
         node_storage.generation_items.items[item_i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
     if (socket_type == SOCK_GEOMETRY) {
-      if (previous_geometry_item_i) {
-        handle_new_geometry_output(
-            *previous_geometry_item_i,
-            IndexRange::from_begin_end(*previous_geometry_item_i + 1, item_i));
-      }
+      break;
+    }
+    const int lf_socket_i = 1 + node_storage.main_items.items_num + item_i;
+    if (!params.output_was_set(lf_socket_i)) {
+      const int bsocket_i = 2 + node_storage.main_items.items_num + item_i;
+      set_default_value_for_output_socket(
+          params, lf_socket_i, parent_.zone_.output_node->output_socket(bsocket_i));
+    }
+  }
+  if (item_i == node_storage.generation_items.items_num) {
+    return;
+  }
+
+  int previous_geometry_item_i = item_i;
+  item_i++;
+  for (; item_i < node_storage.generation_items.items_num; item_i++) {
+    const NodeForeachGeometryElementGenerationItem &item =
+        node_storage.generation_items.items[item_i];
+    const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    if (socket_type == SOCK_GEOMETRY) {
+      handle_new_geometry_output(previous_geometry_item_i,
+                                 IndexRange::from_begin_end(previous_geometry_item_i + 1, item_i));
       previous_geometry_item_i = item_i;
     }
   }
-  if (previous_geometry_item_i) {
-    handle_new_geometry_output(
-        *previous_geometry_item_i,
-        IndexRange::from_begin_end(*previous_geometry_item_i + 1,
-                                   node_storage.generation_items.items_num));
-  }
+  handle_new_geometry_output(previous_geometry_item_i,
+                             IndexRange::from_begin_end(previous_geometry_item_i + 1,
+                                                        node_storage.generation_items.items_num));
 }
 
 /**
