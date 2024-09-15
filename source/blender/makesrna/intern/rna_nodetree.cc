@@ -35,12 +35,14 @@
 
 #include "BKE_animsys.h"
 #include "BKE_attribute.hh"
+#include "BKE_context.hh"
 #include "BKE_cryptomatte.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_image.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
+#include "BKE_scene.hh"
 #include "BKE_texture.h"
 
 #include "RNA_access.hh"
@@ -62,6 +64,7 @@
 
 #include "NOD_composite.hh"
 #include "NOD_geometry.hh"
+#include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_socket.hh"
 
 #include "DEG_depsgraph.hh"
@@ -1375,6 +1378,83 @@ static void rna_NodeTree_link_clear(bNodeTree *ntree, Main *bmain, ReportList *r
 static bool rna_NodeTree_contains_tree(bNodeTree *tree, bNodeTree *sub_tree)
 {
   return blender::bke::node_tree_contains_tree(tree, sub_tree);
+}
+
+static void rna_NodeTree_debug_lazy_function_graph(bNodeTree *tree,
+                                                   bContext *C,
+                                                   const char **r_str,
+                                                   int *r_len)
+{
+  *r_len = 0;
+  *r_str = nullptr;
+  if (DEG_is_original_id(&tree->id)) {
+    /* The graph is only stored on the evaluated data. */
+    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    tree = reinterpret_cast<bNodeTree *>(DEG_get_evaluated_id(depsgraph, &tree->id));
+  }
+  std::lock_guard lock{tree->runtime->geometry_nodes_lazy_function_graph_info_mutex};
+  if (!tree->runtime->geometry_nodes_lazy_function_graph_info) {
+    return;
+  }
+  std::string dot_str = tree->runtime->geometry_nodes_lazy_function_graph_info->graph.to_dot();
+  *r_str = BLI_strdup(dot_str.c_str());
+  *r_len = dot_str.size();
+}
+
+static void rna_NodeTree_debug_zone_body_lazy_function_graph(
+    ID *tree_id, bNode *node, bContext *C, const char **r_str, int *r_len)
+{
+  *r_len = 0;
+  *r_str = nullptr;
+  bNodeTree *tree = reinterpret_cast<bNodeTree *>(tree_id);
+  if (DEG_is_original_id(&tree->id)) {
+    /* The graph is only stored on the evaluated data. */
+    Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+    tree = reinterpret_cast<bNodeTree *>(DEG_get_evaluated_id(depsgraph, &tree->id));
+  }
+  std::lock_guard lock{tree->runtime->geometry_nodes_lazy_function_graph_info_mutex};
+  if (!tree->runtime->geometry_nodes_lazy_function_graph_info) {
+    return;
+  }
+  const auto *graph = tree->runtime->geometry_nodes_lazy_function_graph_info
+                          ->debug_zone_body_graphs.lookup_default(node->identifier, nullptr);
+  if (!graph) {
+    return;
+  }
+  std::string dot_str = graph->to_dot();
+  *r_str = BLI_strdup(dot_str.c_str());
+  *r_len = dot_str.size();
+}
+
+static void rna_NodeTree_debug_zone_lazy_function_graph(
+    ID *tree_id, bNode *node, bContext *C, const char **r_str, int *r_len)
+{
+  *r_len = 0;
+  *r_str = nullptr;
+  Main *bmain = CTX_data_main(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  bNodeTree *tree = reinterpret_cast<bNodeTree *>(tree_id);
+
+  if (tree->type != NTREE_GEOMETRY) {
+    return;
+  }
+  /* By creating this data we tell the evaluation that we want to log it. */
+  tree->runtime->logged_zone_graphs = std::make_unique<blender::bke::LoggedZoneGraphs>();
+  BLI_SCOPED_DEFER([&]() { tree->runtime->logged_zone_graphs.reset(); })
+
+  /* Make sure that dependencies of this tree will be evaluated. */
+  DEG_id_tag_update_for_side_effect_request(depsgraph, &tree->id, ID_RECALC_NTREE_OUTPUT);
+  /* Actually do evaluation. */
+  BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
+
+  /* Get logged graph if it was evaluated. */
+  std::optional<std::string> dot_str = tree->runtime->logged_zone_graphs->graph_by_zone_id.pop_try(
+      node->identifier);
+  if (!dot_str) {
+    return;
+  }
+  *r_str = BLI_strdup(dot_str->c_str());
+  *r_len = dot_str->size();
 }
 
 static void rna_NodeTree_interface_update(bNodeTree *ntree, bContext *C)
@@ -4137,6 +4217,33 @@ static const EnumPropertyItem node_ycc_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem node_metallic_distribution_items[] = {
+    {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
+    {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
+    {SHD_GLOSSY_MULTI_GGX,
+     "MULTI_GGX",
+     0,
+     "Multiscatter GGX",
+     "GGX with additional correction to account for multiple scattering, preserve energy and "
+     "prevent unexpected darkening at high roughness"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem node_metallic_fresnel_type_items[] = {
+    {SHD_PHYSICAL_CONDUCTOR,
+     "PHYSICAL_CONDUCTOR",
+     0,
+     "Physical Conductor",
+     "Fresnel conductor based on the complex refractive index per color channel"},
+    {SHD_CONDUCTOR_F82,
+     "F82",
+     0,
+     "F82 Tint",
+     "An approximation of the Fresnel conductor curve based on the colors at perpendicular and "
+     "near-grazing (roughly 82°) angles"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static const EnumPropertyItem node_glossy_items[] = {
     {SHD_GLOSSY_BECKMANN, "BECKMANN", 0, "Beckmann", ""},
     {SHD_GLOSSY_GGX, "GGX", 0, "GGX", ""},
@@ -5674,6 +5781,23 @@ static void def_sh_tex_pointdensity(StructRNA *srna)
   RNA_def_property_array(parm, 3);
   RNA_def_parameter_flags(parm, PROP_THICK_WRAP, ParameterFlag(0));
   RNA_def_function_output(func, parm);
+}
+
+static void def_metallic(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "distribution", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, node_metallic_distribution_items);
+  RNA_def_property_ui_text(prop, "Distribution", "Light scattering distribution on rough surface");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "fresnel_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_items(prop, node_metallic_fresnel_type_items);
+  RNA_def_property_ui_text(prop, "Fresnel Type", "Fresnel method used to tint the metal");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_glossy(StructRNA *srna)
@@ -10287,6 +10411,18 @@ static void rna_def_node(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem warning_propagation_items[] = {
+      {NODE_WARNING_PROPAGATION_ALL, "ALL", 0, "All", ""},
+      {NODE_WARNING_PROPAGATION_NONE, "NONE", 0, "None", ""},
+      {NODE_WARNING_PROPAGATION_ONLY_ERRORS, "ERRORS", 0, "Errors", ""},
+      {NODE_WARNING_PROPAGATION_ONLY_ERRORS_AND_WARNINGS,
+       "ERRORS_AND_WARNINGS",
+       0,
+       "Errors and Warnings",
+       ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "Node", nullptr);
   RNA_def_struct_ui_text(srna, "Node", "Node in a node tree");
   RNA_def_struct_sdna(srna, "bNode");
@@ -10398,6 +10534,14 @@ static void rna_def_node(BlenderRNA *brna)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_NO_COMPARISON);
   RNA_def_property_struct_type(prop, "Node");
   RNA_def_property_ui_text(prop, "Parent", "Parent this node is attached to");
+
+  prop = RNA_def_property(srna, "warning_propagation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, warning_propagation_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Warning Propagation",
+      "The kinds of messages that should be propagated from this node to the parent group node");
+  RNA_def_property_update(prop, 0, "rna_Node_update");
 
   prop = RNA_def_property(srna, "use_custom_color", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_CUSTOM_COLOR);
@@ -10590,6 +10734,26 @@ static void rna_def_node(BlenderRNA *brna)
   parm = RNA_def_string(func, "label", nullptr, MAX_NAME, "Label", "");
   RNA_def_parameter_flags(
       parm, PROP_THICK_WRAP, ParameterFlag(0)); /* needed for string return value */
+  RNA_def_function_output(func, parm);
+
+  func = RNA_def_function(srna,
+                          "debug_zone_body_lazy_function_graph",
+                          "rna_NodeTree_debug_zone_body_lazy_function_graph");
+  RNA_def_function_ui_description(
+      func, "Get the internal lazy-function graph for the body of this zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func, "dot_graph", nullptr, INT32_MAX, "Dot Graph", "Graph in dot format");
+  RNA_def_parameter_flags(parm, PROP_DYNAMIC, ParameterFlag(0));
+  RNA_def_parameter_clear_flags(parm, PROP_NEVER_NULL, ParameterFlag(0));
+  RNA_def_function_output(func, parm);
+
+  func = RNA_def_function(
+      srna, "debug_zone_lazy_function_graph", "rna_NodeTree_debug_zone_lazy_function_graph");
+  RNA_def_function_ui_description(func, "Get the internal lazy-function graph for this zone");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func, "dot_graph", nullptr, INT32_MAX, "Dot Graph", "Graph in dot format");
+  RNA_def_parameter_flags(parm, PROP_DYNAMIC, ParameterFlag(0));
+  RNA_def_parameter_clear_flags(parm, PROP_NEVER_NULL, ParameterFlag(0));
   RNA_def_function_output(func, parm);
 }
 
@@ -10939,6 +11103,15 @@ static void rna_def_nodetree(BlenderRNA *brna)
       func, "idname", "NodeSocket", MAX_NAME, "Socket Type", "Identifier of the socket type");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL | PROP_THICK_WRAP, PARM_REQUIRED);
   RNA_def_function_return(func, RNA_def_boolean(func, "valid", false, "", ""));
+
+  func = RNA_def_function(
+      srna, "debug_lazy_function_graph", "rna_NodeTree_debug_lazy_function_graph");
+  RNA_def_function_ui_description(func, "Get the internal lazy-function graph for this node tree");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func, "dot_graph", nullptr, INT32_MAX, "Dot Graph", "Graph in dot format");
+  RNA_def_parameter_flags(parm, PROP_DYNAMIC, ParameterFlag(0));
+  RNA_def_parameter_clear_flags(parm, PROP_NEVER_NULL, ParameterFlag(0));
+  RNA_def_function_output(func, parm);
 }
 
 static void rna_def_composite_nodetree(BlenderRNA *brna)
