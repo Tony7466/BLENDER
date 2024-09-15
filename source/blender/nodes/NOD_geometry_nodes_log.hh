@@ -198,6 +198,7 @@ class GeoTreeLogger {
   std::optional<ComputeContextHash> parent_hash;
   std::optional<int32_t> parent_node_id;
   Vector<ComputeContextHash> children_hashes;
+  /** The time spend in the compute context that this logger corresponds to. */
   std::chrono::nanoseconds execution_time{};
 
   LinearAllocator<> *allocator = nullptr;
@@ -262,10 +263,7 @@ class GeoNodeLog {
  public:
   /** Warnings generated for that node. */
   VectorSet<NodeWarning> warnings;
-  /**
-   * Time spent in this node. For node groups this is the sum of the run times of the nodes
-   * inside.
-   */
+  /** Time spent in this node. */
   std::chrono::nanoseconds execution_time{0};
   /** Maps from socket indices to their values. */
   Map<int, ValueLog *> input_values_;

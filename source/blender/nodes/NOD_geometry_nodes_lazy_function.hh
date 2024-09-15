@@ -471,6 +471,10 @@ std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &u
 const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_graph(
     const bNodeTree &btree);
 
+/**
+ * Utility to measure the time that is spend in a specific compute context during geometry nodes
+ * evaluation.
+ */
 class ScopedComputeContextTimer {
  private:
   lf::Context &context_;
