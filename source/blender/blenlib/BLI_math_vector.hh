@@ -180,9 +180,9 @@ template<typename T, int Size>
 }
 
 /* Per-element exponent. */
-template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> exp(const VecBase<T, Size> &a)
+template<typename T, int Size> [[nodiscard]] inline VecBase<T, Size> exp(const VecBase<T, Size> &x)
 {
-  BLI_UNROLL_MATH_VEC_OP_VEC(math::exp, a);
+  BLI_UNROLL_MATH_VEC_OP_VEC(math::exp, x);
 }
 
 /**
@@ -283,7 +283,7 @@ template<typename T, int Size>
 {
   VecBase<T, Size> result;
   for (int i = 0; i < Size; i++) {
-    result[i] = a[i] >= T(0) ? math::sqrt(a[i]) : T(0);
+    result[i] = a[i] >= T(0) ? math ::sqrt(a[i]) : T(0);
   }
   return result;
 }
