@@ -39,8 +39,10 @@
 
 #include "BKE_anonymous_attribute_make.hh"
 #include "BKE_compute_contexts.hh"
+#include "BKE_curves.hh"
 #include "BKE_geometry_nodes_gizmos_transforms.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_node_socket_value.hh"
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_zones.hh"
@@ -2070,22 +2072,7 @@ struct ForeachGeometryElementEvalStorage;
 struct ForeachElementComponentID {
   GeometryComponent::Type component_type;
   AttrDomain domain;
-
-  AttributeAccessor attributes(const GeometrySet &geometry) const
-  {
-    return *geometry.get_component(this->component_type)->attributes();
-  }
-
-  MutableAttributeAccessor attributes_for_write(GeometrySet &geometry) const
-  {
-    return *geometry.get_component_for_write(this->component_type).attributes_for_write();
-  }
-
-  void emplace_field_context(const GeometrySet &geometry,
-                             std::optional<bke::GeometryFieldContext> &r_field_context) const
-  {
-    r_field_context.emplace(*geometry.get_component(this->component_type), this->domain);
-  }
+  std::optional<int> layer_index;
 };
 
 /**
@@ -2106,6 +2093,42 @@ struct ForeachElementComponent {
   /** The set of body evaluation nodes that correspond to this component. This indexes into
    * `lf_body_nodes`. */
   IndexRange body_nodes_range;
+
+  void emplace_field_context(const GeometrySet &geometry)
+  {
+    if (this->id.component_type == GeometryComponent::Type::GreasePencil &&
+        ELEM(this->id.domain, AttrDomain::Point, AttrDomain::Curve))
+    {
+      this->field_context.emplace(
+          *geometry.get_grease_pencil(), this->id.domain, *this->id.layer_index);
+    }
+    else {
+      this->field_context.emplace(*geometry.get_component(this->id.component_type),
+                                  this->id.domain);
+    }
+  }
+
+  AttributeAccessor input_attributes() const
+  {
+    return *this->field_context->attributes();
+  }
+
+  MutableAttributeAccessor attributes_for_write(GeometrySet &geometry) const
+  {
+    if (this->id.component_type == GeometryComponent::Type::GreasePencil &&
+        ELEM(this->id.domain, AttrDomain::Point, AttrDomain::Curve))
+    {
+      BLI_assert(this->id.layer_index.has_value());
+      GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write();
+      const bke::greasepencil::Layer *layer = grease_pencil->layer(*this->id.layer_index);
+      BLI_assert(layer);
+      bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(*layer);
+      BLI_assert(drawing);
+      return drawing->strokes_for_write().attributes_for_write();
+    }
+    GeometryComponent &component = geometry.get_component_for_write(this->id.component_type);
+    return *component.attributes_for_write();
+  }
 };
 
 /**
@@ -2354,12 +2377,31 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
 
     /* Gather components to process. */
-    Vector<const GeometryComponent *> src_components;
+    Vector<ForeachElementComponentID> component_ids;
     for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
-      const int domain_size = src_component->attribute_domain_size(iteration_domain);
-      if (domain_size > 0) {
-        src_components.append(
-            &eval_storage.main_geometry.get_component_for_write(src_component->type()));
+      const GeometryComponent::Type component_type = src_component->type();
+      if (src_component->type() == GeometryComponent::Type::GreasePencil &&
+          ELEM(iteration_domain, AttrDomain::Point, AttrDomain::Curve))
+      {
+        const GreasePencil &grease_pencil = *eval_storage.main_geometry.get_grease_pencil();
+        for (const int layer_i : grease_pencil.layers().index_range()) {
+          const bke::greasepencil::Drawing *drawing = grease_pencil.get_eval_drawing(
+              *grease_pencil.layer(layer_i));
+          if (drawing == nullptr) {
+            continue;
+          }
+          const bke::CurvesGeometry &curves = drawing->strokes();
+          if (curves.curves_num() == 0) {
+            continue;
+          }
+          component_ids.append({component_type, iteration_domain, layer_i});
+        }
+      }
+      else {
+        const int domain_size = src_component->attribute_domain_size(iteration_domain);
+        if (domain_size > 0) {
+          component_ids.append({component_type, iteration_domain});
+        }
       }
     }
 
@@ -2370,18 +2412,17 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
     /* Evaluate the selection and field inputs for all components. */
     int body_nodes_offset = 0;
-    eval_storage.components.reinitialize(src_components.size());
-    for (const int component_i : src_components.index_range()) {
-      const GeometryComponent *component = src_components[component_i];
-      const int domain_size = component->attribute_domain_size(iteration_domain);
-      BLI_assert(domain_size > 0);
+    eval_storage.components.reinitialize(component_ids.size());
+    for (const int component_i : component_ids.index_range()) {
+      const ForeachElementComponentID id = component_ids[component_i];
       ForeachElementComponent &component_info = eval_storage.components[component_i];
-      component_info.id.component_type = component->type();
-      component_info.id.domain = iteration_domain;
+      component_info.id = id;
+      component_info.emplace_field_context(eval_storage.main_geometry);
+
+      const int domain_size = component_info.input_attributes().domain_size(id.domain);
+      BLI_assert(domain_size > 0);
 
       /* Prepare field evaluation for the zone inputs. */
-      component_info.id.emplace_field_context(eval_storage.main_geometry,
-                                              component_info.field_context);
       component_info.field_evaluator.emplace(*component_info.field_context, domain_size);
       component_info.field_evaluator->set_selection(selection_field);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
@@ -2665,8 +2706,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
         item.identifier);
 
     for (const ForeachElementComponent &component_info : eval_storage_.components) {
-      MutableAttributeAccessor attributes = component_info.id.attributes_for_write(
-          output_geometry);
+      MutableAttributeAccessor attributes = component_info.attributes_for_write(output_geometry);
       const int domain_size = attributes.domain_size(component_info.id.domain);
       GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
           attribute_name, component_info.id.domain, cd_type);
@@ -2797,8 +2837,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   }
 
   for (const ForeachElementComponent &component_info : eval_storage_.components) {
-    const AttributeAccessor src_attributes = component_info.id.attributes(
-        eval_storage_.main_geometry);
+    const AttributeAccessor src_attributes = component_info.input_attributes();
 
     Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
     src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
