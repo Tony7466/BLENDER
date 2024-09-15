@@ -2029,19 +2029,6 @@ class _defs_weight_paint:
         )
 
 
-class _defs_grease_pencil_edit:
-
-    @ToolDef.from_fn
-    def texture_gradient():
-        return dict(
-            idname="builtin.texture_gradient",
-            label="Gradient",
-            icon="ops.paint.weight_gradient",
-            widget=None,
-            keymap=(),
-        )
-
-
 class _defs_grease_pencil_paint:
 
     @staticmethod
@@ -2274,6 +2261,16 @@ class _defs_grease_pencil_edit:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def texture_gradient():
+        return dict(
+            idname="builtin.texture_gradient",
+            label="Gradient",
+            icon="ops.paint.weight_gradient",
+            widget=None,
+            keymap=(),
         )
 
 
