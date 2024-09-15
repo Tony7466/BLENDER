@@ -588,9 +588,7 @@ JoltPhysicsWorldData::~JoltPhysicsWorldData()
   body_interface.DestroyBodies(body_ids.data(), body_ids.size());
 
   for (const int i : constraints_.index_range()) {
-    /* XXX Constraints are allocated by `new` via settings.Create but there doesn't seem to be a
-     * matching Destroy function. */
-    delete constraints_[i];
+    constraints_[i]->Release();
   }
 }
 
