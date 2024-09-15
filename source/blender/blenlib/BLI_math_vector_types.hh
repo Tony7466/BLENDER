@@ -13,6 +13,7 @@
 #include <ostream>
 #include <type_traits>
 
+#include "BLI_math_vector_unroll.hh"
 #include "BLI_unroll.hh"
 #include "BLI_utildefines.h"
 
@@ -207,46 +208,12 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
 
   VecBase(const T *ptr)
   {
-    if constexpr (Size == 4) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-      this->z = ptr[2];
-      this->w = ptr[3];
-    }
-    else if constexpr (Size == 3) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-      this->z = ptr[2];
-    }
-    else if constexpr (Size == 2) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-    }
-    else {
-      unroll<Size>([&](auto i) { (*this)[i] = ptr[i]; });
-    }
+    BLI_UNROLL_MATH_VEC_OP_INIT_INDEX(ptr);
   }
 
   template<typename U, BLI_ENABLE_IF((std::is_convertible_v<U, T>))> explicit VecBase(const U *ptr)
   {
-    if constexpr (Size == 4) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-      this->z = ptr[2];
-      this->w = ptr[3];
-    }
-    else if constexpr (Size == 3) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-      this->z = ptr[2];
-    }
-    else if constexpr (Size == 2) {
-      this->x = ptr[0];
-      this->y = ptr[1];
-    }
-    else {
-      unroll<Size>([&](auto i) { (*this)[i] = ptr[i]; });
-    }
+    BLI_UNROLL_MATH_VEC_OP_INIT_INDEX(ptr);
   }
 
   VecBase(const T (*ptr)[Size]) : VecBase(static_cast<const T *>(ptr[0])) {}
@@ -255,24 +222,7 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
 
   template<typename U> explicit VecBase(const VecBase<U, Size> &vec)
   {
-    if constexpr (Size == 4) {
-      this->x = T(vec.x);
-      this->y = T(vec.y);
-      this->z = T(vec.z);
-      this->w = T(vec.w);
-    }
-    else if constexpr (Size == 3) {
-      this->x = T(vec.x);
-      this->y = T(vec.y);
-      this->z = T(vec.z);
-    }
-    else if constexpr (Size == 2) {
-      this->x = T(vec.x);
-      this->y = T(vec.y);
-    }
-    else {
-      unroll<Size>([&](auto i) { (*this)[i] = T(vec[i]); });
-    }
+    BLI_UNROLL_MATH_VEC_OP_INIT_VECTOR(vec);
   }
 
   /** C-style pointer dereference. */
@@ -303,201 +253,90 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     return reinterpret_cast<T *>(this)[index];
   }
 
-  /** Internal Operator Macros. */
+  /** Internal Operators Macro. */
 
 #define BLI_INT_OP(_T) template<typename U = _T, BLI_ENABLE_IF((std::is_integral_v<U>))>
-
-  /* Macros that implement an "op" arithmetic operator. Just doing
-   * the unroll<Size> is enough for correct result, however in debug / non-optimized
-   * builds (or even release builds with assertions enabled), these result in very
-   * sub-optimal generated code. So instead of just unroll<>, also explicitly
-   * implement the operator for common vector sizes (4, 3, 2). */
-#define BLI_IMPL_OP_VEC_VEC(op) \
-  if constexpr (Size == 4) { \
-    return VecBase(a.x op b.x, a.y op b.y, a.z op b.z, a.w op b.w); \
-  } \
-  else if constexpr (Size == 3) { \
-    return VecBase(a.x op b.x, a.y op b.y, a.z op b.z); \
-  } \
-  else if constexpr (Size == 2) { \
-    return VecBase(a.x op b.x, a.y op b.y); \
-  } \
-  else { \
-    VecBase result; \
-    unroll<Size>([&](auto i) { result[i] = a[i] op b[i]; }); \
-    return result; \
-  }
-
-#define BLI_IMPL_OP_VEC(op) \
-  if constexpr (Size == 4) { \
-    return VecBase(op a.x, op a.y, op a.z, op a.w); \
-  } \
-  else if constexpr (Size == 3) { \
-    return VecBase(op a.x, op a.y, op a.z); \
-  } \
-  else if constexpr (Size == 2) { \
-    return VecBase(op a.x, op a.y); \
-  } \
-  else { \
-    VecBase result; \
-    unroll<Size>([&](auto i) { result[i] = op a[i]; }); \
-    return result; \
-  }
-
-#define BLI_IMPL_OP_SCALAR_VEC(op) \
-  if constexpr (Size == 4) { \
-    return VecBase(a op b.x, a op b.y, a op b.z, a op b.w); \
-  } \
-  else if constexpr (Size == 3) { \
-    return VecBase(a op b.x, a op b.y, a op b.z); \
-  } \
-  else if constexpr (Size == 2) { \
-    return VecBase(a op b.x, a op b.y); \
-  } \
-  else { \
-    VecBase result; \
-    unroll<Size>([&](auto i) { result[i] = a op b[i]; }); \
-    return result; \
-  }
-
-#define BLI_IMPL_OP_VEC_SCALAR(op) \
-  if constexpr (Size == 4) { \
-    return VecBase(a.x op b, a.y op b, a.z op b, a.w op b); \
-  } \
-  else if constexpr (Size == 3) { \
-    return VecBase(a.x op b, a.y op b, a.z op b); \
-  } \
-  else if constexpr (Size == 2) { \
-    return VecBase(a.x op b, a.y op b); \
-  } \
-  else { \
-    VecBase result; \
-    unroll<Size>([&](auto i) { result[i] = a[i] op b; }); \
-    return result; \
-  }
-
-#define BLI_IMPL_ASSIGN_VEC(op) \
-  if constexpr (Size == 4) { \
-    this->x op b.x; \
-    this->y op b.y; \
-    this->z op b.z; \
-    this->w op b.w; \
-  } \
-  else if constexpr (Size == 3) { \
-    this->x op b.x; \
-    this->y op b.y; \
-    this->z op b.z; \
-  } \
-  else if constexpr (Size == 2) { \
-    this->x op b.x; \
-    this->y op b.y; \
-  } \
-  else { \
-    unroll<Size>([&](auto i) { (*this)[i] op b[i]; }); \
-  } \
-  return *this
-
-#define BLI_IMPL_ASSIGN_SCALAR(op) \
-  if constexpr (Size == 4) { \
-    this->x op b; \
-    this->y op b; \
-    this->z op b; \
-    this->w op b; \
-  } \
-  else if constexpr (Size == 3) { \
-    this->x op b; \
-    this->y op b; \
-    this->z op b; \
-  } \
-  else if constexpr (Size == 2) { \
-    this->x op b; \
-    this->y op b; \
-  } \
-  else { \
-    unroll<Size>([&](auto i) { (*this)[i] op b; }); \
-  } \
-  return *this
 
   /** Arithmetic operators. */
 
   friend VecBase operator+(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(+);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(+, a, b);
   }
 
   friend VecBase operator+(const VecBase &a, const T &b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(+);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(+, a, b);
   }
 
   friend VecBase operator+(const T &a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(+);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(+, a, b);
   }
 
   VecBase &operator+=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(+=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(+=, b);
   }
 
   VecBase &operator+=(const T &b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(+=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(+=, b);
   }
 
   friend VecBase operator-(const VecBase &a)
   {
-    BLI_IMPL_OP_VEC(-);
+    BLI_UNROLL_MATH_VEC_OP_VEC(-, a);
   }
 
   friend VecBase operator-(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(-);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(-, a, b);
   }
 
   friend VecBase operator-(const VecBase &a, const T &b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(-);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(-, a, b);
   }
 
   friend VecBase operator-(const T &a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(-);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(-, a, b);
   }
 
   VecBase &operator-=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(-=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(-=, b);
   }
 
   VecBase &operator-=(const T &b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(-=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(-=, b);
   }
 
   friend VecBase operator*(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(*);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(*, a, b);
   }
 
   template<typename FactorT> friend VecBase operator*(const VecBase &a, FactorT b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(*);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(*, a, b);
   }
 
   friend VecBase operator*(T a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(*);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(*, a, b);
   }
 
   VecBase &operator*=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(*=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(*=, b);
   }
 
   VecBase &operator*=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(*=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(*=, b);
   }
 
   friend VecBase operator/(const VecBase &a, const VecBase &b)
@@ -505,13 +344,13 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     for (int i = 0; i < Size; i++) {
       BLI_assert(b[i] != T(0));
     }
-    BLI_IMPL_OP_VEC_VEC(/);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(/, a, b);
   }
 
   friend VecBase operator/(const VecBase &a, T b)
   {
     BLI_assert(b != T(0));
-    BLI_IMPL_OP_VEC_SCALAR(/);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(/, a, b);
   }
 
   friend VecBase operator/(T a, const VecBase &b)
@@ -519,13 +358,13 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     for (int i = 0; i < Size; i++) {
       BLI_assert(b[i] != T(0));
     }
-    BLI_IMPL_OP_SCALAR_VEC(/);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(/, a, b);
   }
 
   VecBase &operator/=(T b)
   {
     BLI_assert(b != T(0));
-    BLI_IMPL_ASSIGN_SCALAR(/=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(/=, b);
   }
 
   VecBase &operator/=(const VecBase &b)
@@ -533,131 +372,131 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     for (int i = 0; i < Size; i++) {
       BLI_assert(b[i] != T(0));
     }
-    BLI_IMPL_ASSIGN_VEC(/=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(/=, b);
   }
 
   /** Binary operators. */
 
   BLI_INT_OP(T) friend VecBase operator&(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(&);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(&, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator&(const VecBase &a, T b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(&);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(&, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator&(T a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(&);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(&, a, b);
   }
 
   BLI_INT_OP(T) VecBase &operator&=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(&=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(&=, b);
   }
 
   BLI_INT_OP(T) VecBase &operator&=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(&=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(&=, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator|(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(|);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(|, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator|(const VecBase &a, T b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(|);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(|, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator|(T a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(|);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(|, a, b);
   }
 
   BLI_INT_OP(T) VecBase &operator|=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(|=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(|=, b);
   }
 
   BLI_INT_OP(T) VecBase &operator|=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(|=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(|=, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator^(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(^);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(^, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator^(const VecBase &a, T b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(^);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(^, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator^(T a, const VecBase &b)
   {
-    BLI_IMPL_OP_SCALAR_VEC(^);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(^, a, b);
   }
 
   BLI_INT_OP(T) VecBase &operator^=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(^=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(^=, b);
   }
 
   BLI_INT_OP(T) VecBase &operator^=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(^=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(^=, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator~(const VecBase &a)
   {
-    BLI_IMPL_OP_VEC(~);
+    BLI_UNROLL_MATH_VEC_OP_VEC(~, a);
   }
 
   /** Bit-shift operators. */
 
   BLI_INT_OP(T) friend VecBase operator<<(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(<<);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(<<, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator<<(const VecBase &a, T b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(<<);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(<<, a, b);
   }
 
   BLI_INT_OP(T) VecBase &operator<<=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(<<=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(<<=, b);
   }
 
   BLI_INT_OP(T) VecBase &operator<<=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(<<=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(<<=, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator>>(const VecBase &a, const VecBase &b)
   {
-    BLI_IMPL_OP_VEC_VEC(>>);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(>>, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator>>(const VecBase &a, T b)
   {
-    BLI_IMPL_OP_VEC_SCALAR(>>);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(>>, a, b);
   }
 
   BLI_INT_OP(T) VecBase &operator>>=(T b)
   {
-    BLI_IMPL_ASSIGN_SCALAR(>>=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_SCALAR(>>=, b);
   }
 
   BLI_INT_OP(T) VecBase &operator>>=(const VecBase &b)
   {
-    BLI_IMPL_ASSIGN_VEC(>>=);
+    BLI_UNROLL_MATH_VEC_OP_ASSIGN_VEC(>>=, b);
   }
 
   /** Modulo operators. */
@@ -667,13 +506,13 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     for (int i = 0; i < Size; i++) {
       BLI_assert(b[i] != T(0));
     }
-    BLI_IMPL_OP_VEC_VEC(%);
+    BLI_UNROLL_MATH_VEC_OP_VEC_VEC(%, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator%(const VecBase &a, T b)
   {
     BLI_assert(b != 0);
-    BLI_IMPL_OP_VEC_SCALAR(%);
+    BLI_UNROLL_MATH_VEC_OP_VEC_SCALAR(%, a, b);
   }
 
   BLI_INT_OP(T) friend VecBase operator%(T a, const VecBase &b)
@@ -681,16 +520,10 @@ template<typename T, int Size> struct VecBase : public vec_struct_base<T, Size> 
     for (int i = 0; i < Size; i++) {
       BLI_assert(b[i] != T(0));
     }
-    BLI_IMPL_OP_SCALAR_VEC(%);
+    BLI_UNROLL_MATH_VEC_OP_SCALAR_VEC(%, a, b);
   }
 
 #undef BLI_INT_OP
-#undef BLI_IMPL_OP_VEC_VEC
-#undef BLI_IMPL_OP_VEC
-#undef BLI_IMPL_OP_SCALAR_VEC
-#undef BLI_IMPL_OP_VEC_SCALAR
-#undef BLI_IMPL_ASSIGN_VEC
-#undef BLI_IMPL_ASSIGN_SCALAR
 
   /** Compare. */
 
