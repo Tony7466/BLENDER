@@ -262,9 +262,11 @@ static void unlink_material_fn(bContext * /*C*/,
     return;
   }
 
-  if (ID_IS_LINKED(tselem->id) || ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
-    BKE_reportf(
-        reports, RPT_WARNING, "Cannot unlink the linked material %s", tselem->id->name + 2);
+  if (ID_IS_LINKED(tsep->id) || ID_IS_OVERRIDE_LIBRARY(tsep->id)) {
+    BKE_reportf(reports,
+                RPT_WARNING,
+                "Cannot unlink the material '%s' from linked object data",
+                tselem->id->name + 2);
     return;
   }
 
