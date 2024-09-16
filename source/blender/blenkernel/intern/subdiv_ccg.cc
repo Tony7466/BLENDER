@@ -81,7 +81,6 @@ static void subdiv_ccg_alloc_elements(SubdivCCG &subdiv_ccg,
                                       const SubdivToCCGSettings &settings)
 {
   const blender::opensubdiv::TopologyRefinerImpl *topology_refiner = subdiv.topology_refiner;
-  const int64_t element_size = element_size_bytes_get(subdiv_ccg);
   /* Allocate memory for surface grids. */
   const int64_t num_grids = topology_refiner_count_face_corners(topology_refiner);
   const int64_t grid_size = grid_size_from_level(subdiv_ccg.level);
