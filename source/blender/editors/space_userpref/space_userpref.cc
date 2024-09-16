@@ -30,7 +30,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "userpref_intern.h"
+#include "userpref_intern.hh"
 
 /* ******************** default callbacks for userpref space ***************** */
 
