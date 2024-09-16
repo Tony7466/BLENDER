@@ -430,7 +430,6 @@ void VKBackend::render_end()
 
 void VKBackend::render_step() {}
 
-
 void VKBackend::capabilities_init(VKDevice &device)
 {
   const VkPhysicalDeviceProperties &properties = device.physical_device_properties_get();
