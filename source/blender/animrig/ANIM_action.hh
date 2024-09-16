@@ -494,7 +494,7 @@ class Layer : public ::ActionLayer {
    * This method does *not* place the new duplicate layer into the action. That
    * is up to the caller.
    */
-  Layer &duplicate(Action &owning_action) const;
+  Layer &duplicate(Action &owning_action, StringRefNull allocation_name) const;
 
   /**
    * Duplicate the `Layer` and its `Strip`s, but only make shallow copies of the
@@ -509,7 +509,7 @@ class Layer : public ::ActionLayer {
    * for efficiency. This method's applications are narrow and you probably
    * shouldn't use it unless you really know what you're doing.
    */
-  Layer &duplicate_with_shallow_strip_copies() const;
+  Layer &duplicate_with_shallow_strip_copies(StringRefNull allocation_name) const;
 
   enum class Flags : uint8_t {
     /* Set by default, cleared to mute. */

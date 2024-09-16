@@ -78,7 +78,7 @@ static animrig::Layer &ActionLayer_alloc()
 static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const Strip::Type type)
 {
   /* Create the strip. */
-  ActionStrip *strip = MEM_new<ActionStrip>(__func__);
+  ActionStrip *strip = MEM_cnew<ActionStrip>(__func__);
   memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
   strip->strip_type = int8_t(type);
 
@@ -922,29 +922,31 @@ static float2 get_frame_range_of_fcurves(Span<const FCurve *> fcurves,
 
 /* ----- ActionLayer implementation ----------- */
 
-Layer &Layer::duplicate(Action &owning_action) const
+Layer &Layer::duplicate(Action &owning_action, const StringRefNull allocation_name) const
 {
-  Layer *copy = MEM_new<Layer>(__func__);
+  Layer *copy = MEM_new<Layer>(allocation_name.c_str());
   memcpy(copy, this, sizeof(*this));
 
   /* Strips. */
-  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
+  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num,
+                                                    allocation_name.c_str());
   for (int i : this->strips().index_range()) {
-    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action, __func__);
+    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action, allocation_name.c_str());
   }
 
   return *copy;
 }
 
-Layer &Layer::duplicate_with_shallow_strip_copies() const
+Layer &Layer::duplicate_with_shallow_strip_copies(const StringRefNull allocation_name) const
 {
-  Layer *copy = MEM_new<Layer>(__func__);
+  Layer *copy = MEM_new<Layer>(allocation_name.c_str());
   memcpy(copy, this, sizeof(*this));
 
   /* Make a shallow copy of the Strips, without copying their data. */
-  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
+  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num,
+                                                    allocation_name.c_str());
   for (int i : this->strips().index_range()) {
-    Strip *strip_copy = &MEM_new<ActionStrip>(__func__)->wrap();
+    Strip *strip_copy = &MEM_cnew<ActionStrip>(allocation_name.c_str())->wrap();
     memcpy(strip_copy, this->strip(i), sizeof(*strip_copy));
     copy->strip_array[i] = strip_copy;
   }
