@@ -6,6 +6,8 @@
  * \ingroup edgreasepencil
  */
 
+#include <fmt/format.h>
+
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
@@ -197,10 +199,8 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
           source_object_eval->data);
 
       for (const Layer *source_layer : source_eval_grease_pencil.layers()) {
-        char *layer_name;
-        BLI_SCOPED_DEFER([&] { MEM_SAFE_FREE(layer_name); });
-        layer_name = BLI_sprintfN(
-            "%s_%s", source_object->id.name + 2, source_layer->name().c_str());
+        std::string layer_name = fmt::format(
+            "{}_{}", source_object->id.name + 2, source_layer->name());
         TreeNode *node = target.find_node_by_name(layer_name);
         if (node == nullptr) {
           target.add_layer(layer_name);
