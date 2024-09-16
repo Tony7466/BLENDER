@@ -167,7 +167,7 @@ static void action_copy_data(Main * /*bmain*/,
 
   /* Strip data. */
   action_dst.strip_keyframe_data_array = MEM_cnew_array<ActionStripKeyframeData *>(
-      action_src.strip_keyframe_data_num, __func__);
+      action_src.strip_keyframe_data_array_num, __func__);
   for (int i : action_src.strip_keyframe_data().index_range()) {
     action_dst.strip_keyframe_data_array[i] = MEM_new<animrig::StripKeyframeData>(
         __func__, *action_src.strip_keyframe_data()[i]);
@@ -197,7 +197,7 @@ static void action_free_data(ID *id)
     MEM_delete(keyframe_data);
   }
   MEM_SAFE_FREE(action.strip_keyframe_data_array);
-  action.strip_keyframe_data_num = 0;
+  action.strip_keyframe_data_array_num = 0;
 
   /* Free layers. */
   for (animrig::Layer *layer : action.layers()) {
@@ -617,10 +617,10 @@ static void read_strip_keyframe_data(BlendDataReader *reader,
 static void read_strip_keyframe_data_array(BlendDataReader *reader, animrig::Action &action)
 {
   BLO_read_pointer_array(reader,
-                         action.strip_keyframe_data_num,
+                         action.strip_keyframe_data_array_num,
                          reinterpret_cast<void **>(&action.strip_keyframe_data_array));
 
-  for (int i = 0; i < action.strip_keyframe_data_num; i++) {
+  for (int i = 0; i < action.strip_keyframe_data_array_num; i++) {
     BLO_read_struct(reader, ActionStripKeyframeData, &action.strip_keyframe_data_array[i]);
     ActionStripKeyframeData *keyframe_data = action.strip_keyframe_data_array[i];
     read_strip_keyframe_data(reader, keyframe_data->wrap());
@@ -673,7 +673,7 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   action.slot_array = nullptr;
   action.slot_array_num = 0;
   action.strip_keyframe_data_array = nullptr;
-  action.strip_keyframe_data_num = nullptr;
+  action.strip_keyframe_data_array_num = nullptr;
 #endif /* WITH_ANIM_BAKLAVA */
 
   if (action.is_action_layered()) {

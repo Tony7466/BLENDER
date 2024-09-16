@@ -607,9 +607,9 @@ int Action::strip_keyframe_data_append(StripKeyframeData *strip_data)
   BLI_assert(strip_data != nullptr);
 
   grow_array_and_append<ActionStripKeyframeData *>(
-      &this->strip_keyframe_data_array, &this->strip_keyframe_data_num, strip_data);
+      &this->strip_keyframe_data_array, &this->strip_keyframe_data_array_num, strip_data);
 
-  return this->strip_keyframe_data_num - 1;
+  return this->strip_keyframe_data_array_num - 1;
 }
 
 Span<const StripKeyframeData *> Action::strip_keyframe_data() const
@@ -619,7 +619,7 @@ Span<const StripKeyframeData *> Action::strip_keyframe_data() const
    * wrapper type `StripKeyframeData`. */
   return Span<StripKeyframeData *>{
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
-      this->strip_keyframe_data_num};
+      this->strip_keyframe_data_array_num};
 }
 MutableSpan<StripKeyframeData *> Action::strip_keyframe_data()
 {
@@ -628,7 +628,7 @@ MutableSpan<StripKeyframeData *> Action::strip_keyframe_data()
    * wrapper type `StripKeyframeData`. */
   return MutableSpan<StripKeyframeData *>{
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
-      this->strip_keyframe_data_num};
+      this->strip_keyframe_data_array_num};
 }
 
 Layer *Action::get_layer_for_keyframing()

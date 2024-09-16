@@ -779,7 +779,7 @@ typedef struct bAction {
    * array, and strips reference this data with an enum indicating the strip
    * type and an int containing the index in the array to use. */
   struct ActionStripKeyframeData **strip_keyframe_data_array;
-  int strip_keyframe_data_num;
+  int strip_keyframe_data_array_num;
 
   char _pad0[4];
 
