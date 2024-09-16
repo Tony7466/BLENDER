@@ -2234,9 +2234,7 @@ static void rna_def_action_strip(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, prop_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
-  /* Define methods and properties specific to different strip types.
-   *
-   * TODO: move these to a data property on the strip. */
+  /* Define methods and properties specific to different strip types. */
   rna_def_action_keyframe_strip(brna, srna);
 }
 
