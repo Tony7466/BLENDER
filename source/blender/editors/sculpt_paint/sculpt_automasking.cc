@@ -1031,9 +1031,7 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob, MutableSpan<flo
       }
       threading::parallel_for(IndexRange(mesh.verts_num), 1024, [&](const IndexRange range) {
         for (const int vert : range) {
-          if (!face_set::vert_has_face_set(
-                  vert_to_face_map, face_sets.data(), vert, active_face_set))
-          {
+          if (!face_set::vert_has_face_set(vert_to_face_map, face_sets, vert, active_face_set)) {
             factors[vert] = 0.0f;
           }
         }
@@ -1104,6 +1102,7 @@ static void init_boundary_masking_mesh(Object &object,
   const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const bke::AttributeAccessor attributes = mesh.attributes();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+  const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
 
   const int num_verts = bke::pbvh::vert_positions_eval(depsgraph, object).size();
   Array<int> edge_distance(num_verts, EDGE_DISTANCE_INF);
@@ -1116,7 +1115,7 @@ static void init_boundary_masking_mesh(Object &object,
         }
         break;
       case BoundaryAutomaskMode::FaceSets:
-        if (!face_set::vert_has_unique_face_set(vert_to_face_map, ss.face_sets, i)) {
+        if (!face_set::vert_has_unique_face_set(vert_to_face_map, face_sets, i)) {
           edge_distance[i] = 0;
         }
         break;
@@ -1167,6 +1166,8 @@ static void init_boundary_masking_grids(Object &object,
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
+  const bke::AttributeAccessor attributes = mesh.attributes();
+  const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
 
   Array<int> edge_distance(positions.size(), EDGE_DISTANCE_INF);
   for (const int i : positions.index_range()) {
@@ -1181,7 +1182,7 @@ static void init_boundary_masking_grids(Object &object,
         break;
       case BoundaryAutomaskMode::FaceSets:
         if (!face_set::vert_has_unique_face_set(
-                vert_to_face_map, corner_verts, faces, ss.face_sets, subdiv_ccg, coord))
+                vert_to_face_map, corner_verts, faces, face_sets, subdiv_ccg, coord))
         {
           edge_distance[i] = 0;
         }
@@ -1226,13 +1227,15 @@ static void init_boundary_masking_bmesh(Object &object,
                                         MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
-  BMesh *bm = ss.bm;
-  const int num_verts = BM_mesh_elem_count(bm, BM_VERT);
+  BMesh &bm = *ss.bm;
+  const int face_set_offset = CustomData_get_offset_named(
+      &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
+  const int num_verts = BM_mesh_elem_count(&bm, BM_VERT);
 
   Array<int> edge_distance(num_verts, EDGE_DISTANCE_INF);
 
   for (const int i : IndexRange(num_verts)) {
-    BMVert *vert = BM_vert_at_index(bm, i);
+    BMVert *vert = BM_vert_at_index(&bm, i);
     switch (mode) {
       case BoundaryAutomaskMode::Edges:
         if (boundary::vert_is_boundary(vert)) {
@@ -1240,7 +1243,7 @@ static void init_boundary_masking_bmesh(Object &object,
         }
         break;
       case BoundaryAutomaskMode::FaceSets:
-        if (!face_set::vert_has_unique_face_set(vert)) {
+        if (!face_set::vert_has_unique_face_set(face_set_offset, *vert)) {
           edge_distance[i] = 0;
         }
     }
@@ -1253,7 +1256,7 @@ static void init_boundary_masking_bmesh(Object &object,
         continue;
       }
 
-      BMVert *vert = BM_vert_at_index(bm, i);
+      BMVert *vert = BM_vert_at_index(&bm, i);
       for (BMVert *neighbor : vert_neighbors_get_bmesh(*vert, neighbors)) {
         const int neighbor_idx = BM_elem_index_get(neighbor);
 

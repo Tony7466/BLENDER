@@ -281,8 +281,33 @@ class Action : public ::bAction {
 
   /**
    * Return whether this Action actually has any animation data for the given slot.
+   *
+   * \see has_keyframes()
    */
   bool is_slot_animated(slot_handle_t slot_handle) const;
+
+  /**
+   * Check if the slot with this handle has any keyframes.
+   *
+   * \see is_slot_animated()
+   */
+  bool has_keyframes(slot_handle_t action_slot_handle) const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Return whether the action has one unique point in time keyed.
+   *
+   * This is mostly for the pose library, which will have different behavior depending on whether
+   * an Action corresponds to a "pose" (one keyframe) or "animation snippet" (multiple keyframes).
+   *
+   * \return `false` when there is no keyframe at all or keys on different points in time, `true`
+   * when exactly one point in time is keyed.
+   */
+  bool has_single_frame() const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Returns whether this Action is configured as cyclic.
+   */
+  bool is_cyclic() const ATTR_WARN_UNUSED_RESULT;
 
   /**
    * Get the layer that should be used for user-level keyframe insertion.
@@ -292,6 +317,37 @@ class Action : public ::bAction {
    * locking).
    */
   Layer *get_layer_for_keyframing();
+
+  /**
+   * Retrieve the intended playback frame range of the entire Action.
+   *
+   * \return a tuple (start frame, end frame). This is either the manually set range (if enabled),
+   * or the result of a scan of all F-Curves for their first & last frames.
+   *
+   * \see get_frame_range_of_keys()
+   * \see get_frame_range_of_slot()
+   */
+  float2 get_frame_range() const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Retrieve the intended playback frame range of a slot.
+   *
+   * \return a tuple (start frame, end frame). This is either the manually set range (if enabled)
+   * of the Action, or the result of a scan of all F-Curves of the slot for their first & last
+   * frames.
+   *
+   * \see get_frame_range()
+   */
+  float2 get_frame_range_of_slot(slot_handle_t slot_handle) const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Calculate the extents of this Action.
+   *
+   * Performs a scan of all F-Curves for their first & last key frames.
+   *
+   * \return tuple (first key frame, last key frame).
+   */
+  float2 get_frame_range_of_keys(bool include_modifiers) const ATTR_WARN_UNUSED_RESULT;
 
  protected:
   /** Return the layer's index, or -1 if not found in this Action. */
@@ -776,6 +832,17 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve *fcurve_create_unique(Main *bmain, FCurveDescriptor fcurve_descriptor);
 
   /**
+   * Append an F-Curve to this ChannelBag.
+   *
+   * Ownership of the F-Curve is also transferred to the ChannelBag. The F-Curve
+   * will not belong to any channel group after appending.
+   *
+   * This is considered a low-level function. Things like depsgraph relations
+   * tagging is left to the caller.
+   */
+  void fcurve_append(FCurve &fcurve);
+
+  /**
    * Remove an F-Curve from the ChannelBag.
    *
    * Additionally, if the fcurve was the last fcurve in a channel group, that
@@ -884,7 +951,7 @@ class ChannelBag : public ::ActionChannelBag {
    *
    * \return True on success, false on failure.
    */
-  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group);
+  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group);
 
   /**
    * Removes the the given FCurve from the channel group it's in, if any.
@@ -932,7 +999,7 @@ class ChannelBag : public ::ActionChannelBag {
    *
    * \see `restore_channel_group_invariants()`
    */
-  void channel_group_remove_raw(int channel_group_index);
+  void channel_group_remove_raw(int group_index);
 
   /**
    * Restore invariants related to channel groups.
