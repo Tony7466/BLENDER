@@ -16,7 +16,7 @@ set(LIB
 
 if(WITH_IMAGE_OPENEXR)
   list(APPEND LIB
-    PRIVATE ${IMATH_LIBRARIES}
+    ${IMATH_LIBRARIES}
   )
 endif()
 
