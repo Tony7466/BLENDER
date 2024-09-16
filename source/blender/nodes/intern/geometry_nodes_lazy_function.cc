@@ -2359,7 +2359,6 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     if (!eval_storage.graph_executor) {
       /* Create the execution graph in the first evaluation. */
       this->initialize_execution_graph(params, eval_storage, node_storage);
-      // std::cout << "\n\n" << eval_storage.graph.to_dot() << "\n\n";
     }
 
     lf::Context eval_graph_context{
@@ -2663,8 +2662,6 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent.output_bnode_.storage);
 
-  outputs_.append_as("Geometry", CPPType::get<GeometrySet>());
-
   for ([[maybe_unused]] const int i : eval_storage.lf_body_nodes.index_range()) {
     /* Add parameters for main items. */
     for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
@@ -2685,12 +2682,16 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
     }
   }
 
+  /* Add output for main geometry. */
+  outputs_.append_as("Geometry", CPPType::get<GeometrySet>());
+  /* Add outputs for main items. */
   for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
     const NodeForeachGeometryElementMainItem &item = node_storage.main_items.items[item_i];
     const bNodeSocket &socket = parent.output_bnode_.output_socket(
         parent_.indices_.main.bsocket_outer[item_i]);
     outputs_.append_as(item.name, *socket.typeinfo->geometry_nodes_cpp_type);
   }
+  /* Add outputs for generation items. */
   for (const int item_i : IndexRange(node_storage.generation_items.items_num)) {
     const NodeForeachGeometryElementGenerationItem &item =
         node_storage.generation_items.items[item_i];
