@@ -906,8 +906,8 @@ static void add_fcurve_to_action(Action &action, FCurve &fcu)
 {
   Slot &slot = action.slot_array_num > 0 ? *action.slot(0) : action.slot_add();
   action.layer_keystrip_ensure();
-  KeyframeStrip &strip = action.layer(0)->strip(0)->as<KeyframeStrip>();
-  ChannelBag &cbag = strip.channelbag_for_slot_ensure(slot);
+  StripKeyframeData &strip_data = action.layer(0)->strip(0)->data<StripKeyframeData>(action);
+  ChannelBag &cbag = strip_data.channelbag_for_slot_ensure(slot);
   cbag.fcurve_append(fcu);
 }
 
