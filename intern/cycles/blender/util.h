@@ -345,7 +345,7 @@ static inline bool image_is_builtin(BL::Image &ima, BL::RenderEngine &engine)
   if (image_source == BL::Image::source_TILED) {
     /* If any tile is marked as generated, then treat the entire Image as built-in. */
     for (BL::UDIMTile &tile : ima.tiles) {
-      if (tile.is_generated()) {
+      if (tile.is_generated_tile()) {
         return true;
       }
     }
