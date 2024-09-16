@@ -38,7 +38,7 @@ enum {
 typedef struct bToolRef_Runtime {
   int cursor;
 
-  /** One of these 3 must be defined. */
+  /** One of these 4 must be defined. */
   char keymap[64];
   char gizmo_group[64];
   char brush_type[64];

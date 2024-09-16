@@ -231,16 +231,15 @@ static void toolsystem_brush_type_binding_update(Paint *paint, const char *brush
   {
     MEM_delete(existing_brush_ref->brush_asset_reference);
     existing_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
-        "NamedBrushAssetRefernce update asset ref", *paint->brush_asset_reference);
+        __func__, *paint->brush_asset_reference);
   }
   /* Add new reference. */
   else {
-    NamedBrushAssetReference *new_brush_ref = MEM_cnew<NamedBrushAssetReference>(
-        "NamedBrushAssetReference");
+    NamedBrushAssetReference *new_brush_ref = MEM_cnew<NamedBrushAssetReference>(__func__);
 
     new_brush_ref->name = BLI_strdup(brush_type);
     new_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
-        "NamedBrushAssetRefernce new asset ref", *paint->brush_asset_reference);
+        __func__, *paint->brush_asset_reference);
     BLI_addhead(&paint->tool_brush_bindings.active_brush_per_brush_type, new_brush_ref);
   }
 }
@@ -281,91 +280,113 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
   }
 }
 
-/**
- * Activate a brush compatible with \a tref, call when the active tool changes.
- */
-static void activate_compatible_brush_from_toolref(const bContext *C,
-                                                   WorkSpace *workspace,
-                                                   bToolRef *tref)
+static void toolsystem_brush_activate_from_toolref_for_object_particle(const bContext *C,
+                                                                       const WorkSpace *workspace,
+                                                                       const bToolRef *tref)
 {
-  bToolRef_Runtime *tref_rt = tref->runtime;
+  const Main *bmain = CTX_data_main(C);
+  const bToolRef_Runtime *tref_rt = tref->runtime;
+
+  if (!tref_rt->data_block[0]) {
+    return;
+  }
+
+  const EnumPropertyItem *items = rna_enum_particle_edit_hair_brush_items;
+  const int i = RNA_enum_from_identifier(items, tref_rt->data_block);
+  if (i == -1) {
+    return;
+  }
+
+  const wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    if (workspace == WM_window_get_active_workspace(win)) {
+      Scene *scene = WM_window_get_active_scene(win);
+      ToolSettings *ts = scene->toolsettings;
+      ts->particle.brushtype = items[i].value;
+    }
+  }
+}
+
+static void toolsystem_brush_activate_from_toolref_for_object_paint(const bContext *C,
+                                                                    const WorkSpace *workspace,
+                                                                    const bToolRef *tref)
+{
   Main *bmain = CTX_data_main(C);
+  bToolRef_Runtime *tref_rt = tref->runtime;
 
-  BLI_assert(tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES);
+  const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+  BLI_assert(paint_mode != PaintMode::Invalid);
+  const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
+  BLI_assert(items != nullptr);
 
-  if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE)) {
-    if (tref_rt->data_block[0]) {
-      const EnumPropertyItem *items = rna_enum_particle_edit_hair_brush_items;
-      const int i = RNA_enum_from_identifier(items, tref_rt->data_block);
-      if (i != -1) {
-        const int value = items[i].value;
-        wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-        LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-          if (workspace == WM_window_get_active_workspace(win)) {
-            Scene *scene = WM_window_get_active_scene(win);
-            ToolSettings *ts = scene->toolsettings;
-            ts->particle.brushtype = value;
+  wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    if (workspace != WM_window_get_active_workspace(win)) {
+      continue;
+    }
+    Scene *scene = WM_window_get_active_scene(win);
+    BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
+    Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
+
+    /* Attempt to re-activate a brush remembered for this brush type, as stored in a brush
+     * binding. */
+    if (tref_rt->brush_type[0]) {
+      std::optional<AssetWeakReference> brush_asset_reference =
+          [&]() -> std::optional<AssetWeakReference> {
+        const NamedBrushAssetReference *brush_ref = toolsystem_brush_type_binding_lookup(
+            paint, tref_rt->brush_type);
+        if (brush_ref && brush_ref->brush_asset_reference) {
+          return *brush_ref->brush_asset_reference;
+        }
+        /* No remembered brush found for this type, use a default for the type. */
+        return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
+                                                      tref_rt->brush_type);
+      }();
+
+      if (brush_asset_reference) {
+        BKE_paint_brush_set(bmain, paint, &*brush_asset_reference);
+      }
+    }
+    /* Re-activate the main brush, regardless of the brush type. */
+    else {
+      if (paint->tool_brush_bindings.main_brush_asset_reference) {
+        BKE_paint_brush_set(bmain, paint, paint->tool_brush_bindings.main_brush_asset_reference);
+        toolsystem_main_brush_binding_update_from_active(paint);
+      }
+      else {
+        std::optional<AssetWeakReference> main_brush_asset_reference =
+            [&]() -> std::optional<AssetWeakReference> {
+          if (paint->tool_brush_bindings.main_brush_asset_reference) {
+            return *paint->tool_brush_bindings.main_brush_asset_reference;
           }
+          return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
+                                                        std::nullopt);
+        }();
+
+        if (main_brush_asset_reference) {
+          BKE_paint_brush_set(bmain, paint, &*main_brush_asset_reference);
+          toolsystem_main_brush_binding_update_from_active(paint);
         }
       }
     }
   }
-  else if (tref->space_type == SPACE_VIEW3D) {
-    const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
-    BLI_assert(paint_mode != PaintMode::Invalid);
-    const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-    BLI_assert(items != nullptr);
+}
 
-    wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
-      if (workspace != WM_window_get_active_workspace(win)) {
-        continue;
-      }
-      Scene *scene = WM_window_get_active_scene(win);
-      BKE_paint_ensure_from_paintmode(bmain, scene, paint_mode);
-      Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
+/**
+ * Activate a brush compatible with \a tref, call when the active tool changes.
+ */
+static void toolsystem_brush_activate_from_toolref(const bContext *C,
+                                                   WorkSpace *workspace,
+                                                   bToolRef *tref)
+{
+  BLI_assert(tref->runtime->flag & TOOLREF_FLAG_USE_BRUSHES);
 
-      /* Attempt to re-activate a brush remembered for this brush type, as stored in a brush
-       * binding. */
-      if (tref_rt->brush_type[0]) {
-        std::optional<AssetWeakReference> brush_asset_reference =
-            [&]() -> std::optional<AssetWeakReference> {
-          const NamedBrushAssetReference *brush_ref = toolsystem_brush_type_binding_lookup(
-              paint, tref_rt->brush_type);
-          if (brush_ref && brush_ref->brush_asset_reference) {
-            return *brush_ref->brush_asset_reference;
-          }
-          /* No remembered brush found for this type, use a default for the type. */
-          return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
-                                                        tref_rt->brush_type);
-        }();
-
-        if (brush_asset_reference) {
-          BKE_paint_brush_set(bmain, paint, &*brush_asset_reference);
-        }
-      }
-      /* Re-activate the main brush, regardless of the brush type. */
-      else {
-        if (paint->tool_brush_bindings.main_brush_asset_reference) {
-          BKE_paint_brush_set(bmain, paint, paint->tool_brush_bindings.main_brush_asset_reference);
-          toolsystem_main_brush_binding_update_from_active(paint);
-        }
-        else {
-          std::optional<AssetWeakReference> main_brush_asset_reference =
-              [&]() -> std::optional<AssetWeakReference> {
-            if (paint->tool_brush_bindings.main_brush_asset_reference) {
-              return *paint->tool_brush_bindings.main_brush_asset_reference;
-            }
-            return BKE_paint_brush_type_default_reference(eObjectMode(paint->runtime.ob_mode),
-                                                          std::nullopt);
-          }();
-
-          if (main_brush_asset_reference) {
-            BKE_paint_brush_set(bmain, paint, &*main_brush_asset_reference);
-            toolsystem_main_brush_binding_update_from_active(paint);
-          }
-        }
-      }
+  if (tref->space_type == SPACE_VIEW3D) {
+    if (tref->mode == CTX_MODE_PARTICLE) {
+      toolsystem_brush_activate_from_toolref_for_object_particle(C, workspace, tref);
+    }
+    else {
+      toolsystem_brush_activate_from_toolref_for_object_paint(C, workspace, tref);
     }
   }
 }
@@ -394,7 +415,7 @@ static void toolsystem_ref_link(const bContext *C, WorkSpace *workspace, bToolRe
   }
 
   if (tref_rt->flag & TOOLREF_FLAG_USE_BRUSHES) {
-    activate_compatible_brush_from_toolref(C, workspace, tref);
+    toolsystem_brush_activate_from_toolref(C, workspace, tref);
   }
 }
 

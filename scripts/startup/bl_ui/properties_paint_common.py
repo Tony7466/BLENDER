@@ -10,6 +10,9 @@ class BrushAssetShelf:
     bl_options = {'DEFAULT_VISIBLE', 'NO_ASSET_DRAG', 'STORE_ENABLED_CATALOGS_IN_PREFERENCES'}
     bl_activate_operator = "BRUSH_OT_asset_activate"
     bl_default_preview_size = 48
+    brush_type_prop = None
+    tool_prop = None
+    mode_prop = None
 
     @classmethod
     def poll(cls, context):
@@ -22,7 +25,7 @@ class BrushAssetShelf:
 
         if not tool or tool.brush_type == "":
             return True
-        if not hasattr(cls, "brush_type_prop") or not hasattr(cls, "tool_prop"):
+        if not cls.brush_type_prop or not cls.tool_prop:
             return True
 
         asset_brush_type = asset.metadata.get(cls.brush_type_prop)
@@ -38,7 +41,7 @@ class BrushAssetShelf:
     def asset_poll(cls, asset):
         if asset.id_type != 'BRUSH':
             return False
-        if hasattr(cls, "mode_prop") and not asset.metadata.get(cls.mode_prop, False):
+        if cls.mode_prop and not asset.metadata.get(cls.mode_prop, False):
             return False
 
         context = bpy.context
