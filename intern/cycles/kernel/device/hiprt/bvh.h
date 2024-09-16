@@ -74,7 +74,8 @@ ccl_device_forceinline bool scene_intersect_shadow(KernelGlobals kg,
 #ifdef __BVH_LOCAL__
 ccl_device_noinline bool scene_intersect_local_impl(KernelGlobals kg,
                                                     ccl_private const Ray *ccl_restrict ray,
-                                                    ccl_private LocalIntersection *ccl_restrict local_isect,
+                                                    ccl_private LocalIntersection *ccl_restrict
+                                                        local_isect,
                                                     const int local_object,
                                                     ccl_private uint *ccl_restrict lcg_state,
                                                     const int max_hits)
@@ -142,7 +143,8 @@ ccl_device_noinline bool scene_intersect_local_impl(KernelGlobals kg,
 template<bool single_hit = false>
 ccl_device_forceinline bool scene_intersect_local(KernelGlobals kg,
                                                   ccl_private const Ray *ccl_restrict ray,
-                                                  ccl_private LocalIntersection *ccl_restrict local_isect,
+                                                  ccl_private LocalIntersection *ccl_restrict
+                                                      local_isect,
                                                   const int local_object,
                                                   ccl_private uint *ccl_restrict lcg_state,
                                                   const int max_hits)
@@ -157,7 +159,8 @@ ccl_device_intersect bool scene_intersect_shadow_all(KernelGlobals kg,
                                                      ccl_private const Ray *ccl_restrict ray,
                                                      const uint visibility,
                                                      const uint max_hits,
-                                                     ccl_private uint *ccl_restrict num_recorded_hits,
+                                                     ccl_private uint *ccl_restrict
+                                                         num_recorded_hits,
                                                      ccl_private float *ccl_restrict throughput)
 {
   *throughput = 1.0f;
@@ -223,7 +226,7 @@ ccl_device_intersect bool scene_intersect_volume(KernelGlobals kg,
 
   if (hit.hasHit()) {
     set_intersect_point(hit, isect);
-    if (isect->type > 1) {  /* Should be applied only for curves. */
+    if (isect->type > 1) { /* Should be applied only for curves. */
       isect->type = payload.prim_type;
       isect->prim = hit.primID;
     }

@@ -90,8 +90,7 @@ struct LocalPayload {
                                            &payload);
 #  endif
 
-ccl_device_forceinline void set_intersect_point(hiprtHit &hit,
-                                                ccl_private Intersection *isect)
+ccl_device_forceinline void set_intersect_point(hiprtHit &hit, ccl_private Intersection *isect)
 {
   const int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
 
@@ -155,12 +154,13 @@ ccl_device_inline bool curve_custom_intersect(const hiprtRay &ccl_restrict ray,
                       object_id,
                       prim_info.x + data_offset.y,
                       payload->ray_time,
-                      prim_info.y)) {
+                      prim_info.y))
+  {
     hit.primID = isect.prim;
     hit.uv.x = isect.u;
     hit.uv.y = isect.v;
     hit.t = isect.t;
-    payload->prim_type = isect.type;  /* packed_curve_type */
+    payload->prim_type = isect.type; /* packed_curve_type */
     return true;
   }
 
@@ -191,7 +191,8 @@ ccl_device_inline bool motion_triangle_custom_intersect(const hiprtRay &ccl_rest
                                 payload->visibility,
                                 object_id,
                                 prim_id_local + prim_offset,
-                                hit.instanceID)) {
+                                hit.instanceID))
+  {
     hit.primID = isect.prim;
     hit.uv.x = isect.u;
     hit.uv.y = isect.v;
@@ -227,7 +228,8 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &cc
                                       ray.minT,
                                       ray.maxT,
                                       payload->lcg_state,
-                                      payload->max_hits)) {
+                                      payload->max_hits))
+  {
     payload->prim_type = PRIMITIVE_MOTION_TRIANGLE;
     return true;
   }
@@ -266,7 +268,8 @@ ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &c
                                 payload->visibility,
                                 object_id,
                                 prim_id_local + prim_offset,
-                                prim_id_local)) {
+                                prim_id_local))
+  {
     hit.primID = isect.prim;
     hit.uv.x = isect.u;
     hit.uv.y = isect.v;
@@ -370,19 +373,20 @@ ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ccl_restrict r
 
 #  ifdef __VISIBILITY_FLAG__
   if ((kernel_data_fetch(objects, object_id).visibility & payload->visibility) == 0) {
-    return true;  /* No hit - continue traversal. */
+    return true; /* No hit - continue traversal. */
   }
 #  endif
 
   const int prim_offset = kernel_data_fetch(object_prim_offset, object_id);
   if (intersection_skip_self_shadow(payload->self, object_id, hit.primID + prim_offset)) {
-    return true;  /* No hit -continue traversal. */
+    return true; /* No hit -continue traversal. */
   }
 
 #  ifdef __TRANSPARENT_SHADOWS__
   const int type = kernel_data_fetch(objects, object_id).primitive_type;
   if (payload->num_hits >= payload->max_hits ||
-      !(intersection_get_shader_flags(nullptr, hit.primID + prim_offset, type) & SD_HAS_TRANSPARENT_SHADOW))
+      !(intersection_get_shader_flags(nullptr, hit.primID + prim_offset, type) &
+        SD_HAS_TRANSPARENT_SHADOW))
   {
     return false;
   }
@@ -415,11 +419,12 @@ ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ccl_restrict r
   INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, u) = hit.uv.x;
   INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, v) = hit.uv.y;
   INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, t) = hit.t;
-  INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, prim) = hit.primID + prim_offset;
+  INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, prim) = hit.primID +
+                                                                                      prim_offset;
   INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, object) = object_id;
   INTEGRATOR_STATE_ARRAY_WRITE(payload->in_state, shadow_isect, record_index, type) = type;
   return true;
-#else
+#  else
   return false;
 #  endif /* __TRANSPARENT_SHADOWS__ */
 }
@@ -441,12 +446,12 @@ ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ccl_res
 
 #  ifdef __VISIBILITY_FLAG__
   if ((kernel_data_fetch(objects, object_id).visibility & payload->visibility) == 0) {
-    return true;  /* no hit - continue traversal. */
+    return true; /* no hit - continue traversal. */
   }
 #  endif
 
   if (intersection_skip_self_shadow(payload->self, object_id, hit.primID)) {
-    return true;  /* No hit -continue traversal. */
+    return true; /* No hit -continue traversal. */
   }
 
   if (hit.uv.x == 0.0f || hit.uv.x == 1.0f) {
@@ -456,12 +461,14 @@ ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ccl_res
 
 #  ifdef __TRANSPARENT_SHADOWS__
   if (payload->num_hits >= payload->max_hits ||
-      !(intersection_get_shader_flags(nullptr, hit.primID, payload->prim_type) & SD_HAS_TRANSPARENT_SHADOW))
+      !(intersection_get_shader_flags(nullptr, hit.primID, payload->prim_type) &
+        SD_HAS_TRANSPARENT_SHADOW))
   {
     return false;
   }
 
-  *payload->r_throughput *= intersection_curve_shadow_transparency(nullptr, object_id, hit.primID, payload->prim_type, hit.uv.x);
+  *payload->r_throughput *= intersection_curve_shadow_transparency(
+      nullptr, object_id, hit.primID, payload->prim_type, hit.uv.x);
   ++payload->num_hits;
 
   if (*payload->r_throughput < CURVE_SHADOW_TRANSPARENCY_CUTOFF) {
@@ -480,27 +487,27 @@ ccl_device_inline bool local_intersection_filter(const hiprtRay &ccl_restrict ra
 {
 #  ifdef __BVH_LOCAL__
   if (payload->max_hits == 0) {
-    return false;  /* Stop search. */
+    return false; /* Stop search. */
   }
 
   const int prim_offset = kernel_data_fetch(object_prim_offset, payload->local_object);
 
   if (intersection_skip_self_local(payload->self, hit.primID + prim_offset)) {
-    return true;  /* Continue search. */
+    return true; /* Continue search. */
   }
 
   int hit_index = 0;
   if (payload->lcg_state) {
     for (int i = min(payload->max_hits, payload->local_isect->num_hits) - 1; i >= 0; --i) {
       if (hit.t == payload->local_isect->hits[i].t) {
-        return true;  /* Continue search. */
+        return true; /* Continue search. */
       }
     }
     hit_index = payload->local_isect->num_hits++;
     if (payload->local_isect->num_hits > payload->max_hits) {
       hit_index = lcg_step_uint(payload->lcg_state) % payload->local_isect->num_hits;
       if (hit_index >= payload->max_hits) {
-        return true;  /* Continue search. */
+        return true; /* Continue search. */
       }
     }
   }
@@ -515,7 +522,7 @@ ccl_device_inline bool local_intersection_filter(const hiprtRay &ccl_restrict ra
   isect->t = hit.t;
   isect->prim = hit.primID + prim_offset;
   isect->object = payload->local_object;
-  isect->type = PRIMITIVE_TRIANGLE;  /* kernel_data_fetch(__objects, object_id).primitive_type; */
+  isect->type = PRIMITIVE_TRIANGLE; /* kernel_data_fetch(__objects, object_id).primitive_type; */
 
   isect->u = hit.uv.x;
   isect->v = hit.uv.y;
