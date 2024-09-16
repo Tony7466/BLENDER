@@ -511,10 +511,4 @@ extern void (*BKE_mesh_batch_cache_free_cb)(void *batch_cache);
 #ifndef NDEBUG
 char *BKE_mesh_debug_info(const Mesh *mesh) ATTR_NONNULL(1) ATTR_MALLOC ATTR_WARN_UNUSED_RESULT;
 void BKE_mesh_debug_print(const Mesh *mesh) ATTR_NONNULL(1);
-#else
-char *BKE_mesh_debug_info(const Mesh * /*mesh*/) ATTR_NONNULL(1)
-{
-  return nullptr;
-}
-void BKE_mesh_debug_print(const Mesh * /*mesh*/) ATTR_NONNULL(1) {}
 #endif
