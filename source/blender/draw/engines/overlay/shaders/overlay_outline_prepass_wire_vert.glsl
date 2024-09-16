@@ -74,7 +74,7 @@ VertOut vertex_main(VertIn v_in)
   return vert_out;
 }
 
-void geometry_main(VertOut geom_in[3],
+void geometry_main(VertOut geom_in[4],
                    uint out_vertex_id,
                    uint out_primitive_id,
                    uint out_invocation_id)
