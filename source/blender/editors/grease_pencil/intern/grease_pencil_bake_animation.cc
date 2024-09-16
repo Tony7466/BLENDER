@@ -161,7 +161,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
 
   Vector<Object *> bake_targets = get_bake_targets(*C, depsgraph, scene);
 
-  ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
+  uint8_t local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   Object *target_object = object::add_type(
       C, OB_GREASE_PENCIL, nullptr, scene.cursor.location, float3(0), false, local_view_bits);
 
