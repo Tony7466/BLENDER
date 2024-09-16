@@ -720,6 +720,86 @@ static PyObject *bpy_bmelemseq_layers_get(BPy_BMElemSeq *self, void *htype)
   return BPy_BMLayerAccess_CreatePyObject(self->bm, POINTER_AS_INT(htype));
 }
 
+/* VertSeq
+ * ^^^^^^^ */
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmvertseq_totselvert_doc,
+  "total selected vertices.\n"
+  "\n"
+  ":type: int");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmvertseq_is_full_sel_doc,
+  "is full vertices selected.\n"
+  "\n"
+  ":type: boolean");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmvertseq_is_full_desel_doc,
+  "is full vertices deselected.\n"
+  "\n"
+  ":type: boolean");
+static PyObject* bpy_bmvertseq_totselvert_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BPY_BM_CHECK_OBJ(self);
+  return PyLong_FromLong(self->bm->totvertsel);
+}
+
+static PyObject* bpy_bmvertseq_is_full_sel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong((bm->totvert != 0) && (bm->totvertsel == bm->totvert));
+}
+
+static PyObject* bpy_bmvertseq_is_full_desel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong(bm->totvertsel == 0);
+}
+
+/* EdgeSeq
+ * ^^^^^^^ */
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmedgeseq_totseledge_doc,
+  "total selected edges.\n"
+  "\n"
+  ":type: int");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmedgeseq_is_full_sel_doc,
+  "is full edges selected.\n"
+  "\n"
+  ":type: boolean");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmedgeseq_is_full_desel_doc,
+  "is full edges deselected.\n"
+  "\n"
+  ":type: boolean");
+static PyObject* bpy_bmedgeseq_totseledge_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BPY_BM_CHECK_OBJ(self);
+  return PyLong_FromLong(self->bm->totedgesel);
+}
+
+static PyObject* bpy_bmedgeseq_is_full_sel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong((bm->totedge != 0) && (bm->totedgesel == bm->totedge));
+}
+
+static PyObject* bpy_bmedgeseq_is_full_desel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong(bm->totedgesel == 0);
+}
+
 /* FaceSeq
  * ^^^^^^^ */
 
@@ -729,6 +809,24 @@ PyDoc_STRVAR(
     "active face.\n"
     "\n"
     ":type: :class:`BMFace` or None");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmfaceseq_totselface_doc,
+  "total selected faces.\n"
+  "\n"
+  ":type: int");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmfaceseq_is_full_sel_doc,
+  "is full faces selected.\n"
+  "\n"
+  ":type: boolean");
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmfaceseq_is_full_desel_doc,
+  "is full faces deselected.\n"
+  "\n"
+  ":type: boolean");
 static PyObject *bpy_bmfaceseq_active_get(BPy_BMElemSeq *self, void * /*closure*/)
 {
   BMesh *bm = self->bm;
@@ -759,6 +857,26 @@ static int bpy_bmfaceseq_active_set(BPy_BMElem *self, PyObject *value, void * /*
                "faces.active = f: expected BMFace or None, not %.200s",
                Py_TYPE(value)->tp_name);
   return -1;
+}
+
+static PyObject* bpy_bmfaceseq_totselface_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BPY_BM_CHECK_OBJ(self);
+  return PyLong_FromLong(self->bm->totfacesel);
+}
+
+static PyObject* bpy_bmfaceseq_is_full_sel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong((bm->totface != 0) && (bm->totfacesel == bm->totface));
+}
+
+static PyObject* bpy_bmfaceseq_is_full_desel_get(BPy_BMElem* self, void* /*closure*/)
+{
+  BMesh* bm = self->bm;
+  BPY_BM_CHECK_OBJ(self);
+  return PyBool_FromLong(bm->totfacesel == 0);
 }
 
 static PyGetSetDef bpy_bmesh_getseters[] = {
@@ -1070,6 +1188,21 @@ static PyGetSetDef bpy_bmvertseq_getseters[] = {
      (setter) nullptr,
      bpy_bmelemseq_layers_vert_doc,
      (void *)BM_VERT},
+    {"total_selected_verts",
+     (getter)bpy_bmvertseq_totselvert_get,
+     (setter) nullptr,
+     bpy_bmvertseq_totselvert_doc,
+     nullptr},
+    {"is_full_verts_selected",
+     (getter)bpy_bmvertseq_is_full_sel_get,
+     (setter) nullptr,
+     bpy_bmvertseq_is_full_sel_doc,
+     nullptr},
+    {"is_full_verts_deselected",
+     (getter)bpy_bmvertseq_is_full_desel_get,
+     (setter) nullptr,
+     bpy_bmvertseq_is_full_desel_doc,
+     nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 static PyGetSetDef bpy_bmedgeseq_getseters[] = {
@@ -1078,6 +1211,21 @@ static PyGetSetDef bpy_bmedgeseq_getseters[] = {
      (setter) nullptr,
      bpy_bmelemseq_layers_edge_doc,
      (void *)BM_EDGE},
+    {"total_selected_edges",
+     (getter)bpy_bmedgeseq_totseledge_get,
+     (setter) nullptr,
+     bpy_bmedgeseq_totseledge_doc,
+     nullptr},
+    {"is_full_edges_selected",
+     (getter)bpy_bmedgeseq_is_full_sel_get,
+     (setter) nullptr,
+     bpy_bmedgeseq_is_full_sel_doc,
+     nullptr},
+    {"is_full_edges_deselected",
+     (getter)bpy_bmedgeseq_is_full_desel_get,
+     (setter) nullptr,
+     bpy_bmedgeseq_is_full_desel_doc,
+     nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
 static PyGetSetDef bpy_bmfaceseq_getseters[] = {
@@ -1091,6 +1239,21 @@ static PyGetSetDef bpy_bmfaceseq_getseters[] = {
      (getter)bpy_bmfaceseq_active_get,
      (setter)bpy_bmfaceseq_active_set,
      bpy_bmfaceseq_active_doc,
+     nullptr},
+    {"total_selected_faces",
+     (getter)bpy_bmfaceseq_totselface_get,
+     (setter) nullptr,
+     bpy_bmfaceseq_totselface_doc,
+     nullptr},
+    {"is_full_faces_selected",
+     (getter)bpy_bmfaceseq_is_full_sel_get,
+     (setter) nullptr,
+     bpy_bmfaceseq_is_full_sel_doc,
+     nullptr},
+    {"is_full_faces_deselected",
+     (getter)bpy_bmfaceseq_is_full_desel_get,
+     (setter) nullptr,
+     bpy_bmfaceseq_is_full_desel_doc,
      nullptr},
     {nullptr, nullptr, nullptr, nullptr, nullptr} /* Sentinel */
 };
@@ -2681,6 +2844,134 @@ static PyObject *bpy_bmvertseq_remove(BPy_BMElemSeq *self, BPy_BMVert *value)
   Py_RETURN_NONE;
 }
 
+static PyObject* bpy_bmvertseq_calc_selected_verts_ex(BMesh* bm, const bool with_loose) {
+  PyObject* list;
+  const bool is_full_select = (bm->totvert != 0) && (bm->totvertsel == bm->totvert);
+
+  BMIter iter;
+  BMVert* v;
+
+  int i = 0;
+  if (is_full_select && with_loose) {
+    list = PyList_New(bm->totvertsel);
+    BM_ITER_MESH(v, &iter, bm, BM_VERTS_OF_MESH) {
+      PyList_SetItem(list, i++, BPy_BMVert_CreatePyObject(bm, v));
+    }
+  }
+  else {
+    int verts_len = 0;
+    BMVert** verts = static_cast<BMVert**>(MEM_mallocN(sizeof(*verts) * bm->totvertsel, __func__));
+
+    BM_ITER_MESH(v, &iter, bm, BM_VERTS_OF_MESH) {
+      if (is_full_select || BM_elem_flag_test(v, BM_ELEM_SELECT)) {
+        const BMEdge* e = v->e;
+        if (with_loose || LIKELY((e && e->l != nullptr))) {
+          verts[verts_len++] = v;
+        }
+      }
+    }
+    list = PyList_New(verts_len);
+
+    while (i < verts_len) {
+      PyList_SetItem(list, i++, BPy_BMVert_CreatePyObject(bm, verts[i]));
+    }
+    MEM_freeN(verts);
+  }
+  return list;
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmvertseq_calc_selected_verts_doc,
+  ".. method:: calc_selected_verts(with_loose=True)\n"
+  "\n"
+  "   Calculate selected verts.\n"
+  "\n"
+  "   :arg with_loose: Vertices that is not connected to any faces.\n"
+  "   :type with_loose: boolean\n"
+  "   :return: List of visible vertices.\n"
+  "   :rtype: list of :class:`BMVert`\n");
+static PyObject* bpy_bmvertseq_calc_selected_verts(BPy_BMElemSeq* self, PyObject* args, PyObject* kw)
+{
+  static const char* kwlist[] = { "with_loose", nullptr };
+  BPY_BM_CHECK_OBJ(self);
+
+  bool with_loose = true;
+
+  if (!PyArg_ParseTupleAndKeywords(
+    args, kw, "|$O&:calc_selected_verts", (char**)kwlist,
+    &PyC_ParseBool, &with_loose)) {
+    return nullptr;
+  }
+  return bpy_bmvertseq_calc_selected_verts_ex(self->bm, with_loose);
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmvertseq_calc_visible_verts_doc,
+  ".. method:: calc_visible_verts(with_loose=True, only_non_selected-False)\n"
+  "\n"
+  "   Calculate visible vertices.\n"
+  "\n"
+  "   :arg with_loose: Vertices that is not connected to any faces.\n"
+  "   :type with_loose: boolean\n"
+  "   :arg only_non_selected: Vertices that is not selected.\n"
+  "   :type only_non_selected: boolean\n"
+  "   :return: List of visible vertices.\n"
+  "   :rtype: list of :class:`BMVert`\n");
+static PyObject* bpy_bmvertseq_calc_visible_verts(BPy_BMElemSeq* self, PyObject* args, PyObject* kw)
+{
+  static const char* kwlist[] = { "with_loose", "only_non_selected", nullptr };
+  BPY_BM_CHECK_OBJ(self);
+
+  bool with_loose = true;
+  bool only_non_selected = false;
+
+  if (!PyArg_ParseTupleAndKeywords(
+    args, kw, "|$O&O&:calc_visible_verts", (char**)kwlist,
+    &PyC_ParseBool, &with_loose,
+    &PyC_ParseBool, &only_non_selected))
+  {
+    return nullptr;
+  }
+
+  BMesh* bm = self->bm;
+  const bool is_full_select = (bm->totvert != 0) && (bm->totvertsel == bm->totvert);
+
+  if (is_full_select) {
+    if (only_non_selected) {
+      return PyList_New(0);
+    }
+    return bpy_bmvertseq_calc_selected_verts_ex(self->bm, with_loose);
+  }
+
+  int verts_len = 0;
+  BMVert** verts = static_cast<BMVert**>(MEM_mallocN(sizeof(*verts) * bm->totvert, __func__));
+
+  const char filter_flags = char(only_non_selected ? (BM_ELEM_HIDDEN | BM_ELEM_SELECT) : BM_ELEM_HIDDEN);
+
+  BMIter iter;
+  BMVert* v;
+
+  BM_ITER_MESH(v, &iter, bm, BM_VERTS_OF_MESH) {
+    if (!BM_elem_flag_test(v, filter_flags)) {
+      const BMEdge* e = v->e;
+      if (with_loose || LIKELY((e && e->l != nullptr))) {
+        verts[verts_len++] = v;
+      }
+    }
+  }
+
+  PyObject* list = PyList_New(verts_len);
+
+  for (int i = 0; i < verts_len; i++) {
+    PyList_SetItem(list, i, BPy_BMVert_CreatePyObject(bm, verts[i]));
+  }
+
+  MEM_freeN(verts);
+  return list;
+}
+
 PyDoc_STRVAR(
     /* Wrap. */
     bpy_bmedgeseq_remove_doc,
@@ -2781,6 +3072,131 @@ static PyObject *bpy_bmedgeseq_get__method(BPy_BMElemSeq *self, PyObject *args)
   return ret;
 }
 
+static PyObject* bpy_bmedgeseq_calc_selected_edges_ex(BMesh* bm, const bool with_loose) {
+  int i;
+  PyObject* list;
+  const bool is_full_select = (bm->totedge != 0) && (bm->totedgesel == bm->totedge);
+
+  BMIter iter;
+  BMEdge* e;
+
+  if (is_full_select && with_loose) {
+    list = PyList_New(bm->totedgesel);
+    BM_ITER_MESH_INDEX(e, &iter, bm, BM_EDGES_OF_MESH, i) {
+      PyList_SetItem(list, i, BPy_BMEdge_CreatePyObject(bm, e));
+    }
+  }
+  else {
+    int edges_len = 0;
+    BMEdge** edges = static_cast<BMEdge**>(MEM_mallocN(sizeof(*edges) * bm->totedgesel, __func__));
+
+    BM_ITER_MESH(e, &iter, bm, BM_EDGES_OF_MESH) {
+      if (is_full_select || BM_elem_flag_test(e, BM_ELEM_SELECT)) {
+        if (with_loose || UNLIKELY(e->l != nullptr)) {
+          edges[edges_len++] = e;
+        }
+      }
+    }
+    list = PyList_New(edges_len);
+
+    for (int i = 0; i < edges_len; i++) {
+      PyList_SetItem(list, i, BPy_BMEdge_CreatePyObject(bm, edges[i]));
+    }
+    MEM_freeN(edges);
+  }
+  return list;
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmedgeseq_calc_selected_edges_doc,
+  ".. method:: calc_selected_edges(with_loose=True)\n"
+  "\n"
+  "   Calculate selected edges.\n"
+  "\n"
+  "   :arg with_loose: Edges that is not connected to any faces.\n"
+  "   :type with_loose: boolean\n"
+  "   :rtype: list of :class:`BMEdge`\n");
+static PyObject* bpy_bmedgeseq_calc_selected_edges(BPy_BMElemSeq* self, PyObject* args, PyObject* kw)
+{
+  static const char* kwlist[] = { "with_loose", nullptr };
+  BPY_BM_CHECK_OBJ(self);
+
+  bool with_loose = true;
+
+  if (!PyArg_ParseTupleAndKeywords(
+    args, kw, "|$O&:calc_selected_edges", (char**)kwlist,
+    &PyC_ParseBool, &with_loose)) {
+    return nullptr;
+  }
+  return bpy_bmedgeseq_calc_selected_edges_ex(self->bm, with_loose);
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmedgeseq_calc_visible_edges_doc,
+  ".. method:: calc_visible_edges(with_loose=True, only_non_selected-False)\n"
+  "\n"
+  "   Calculate visible edges.\n"
+  "\n"
+  "   :arg with_loose: Edges that is not connected to any faces.\n"
+  "   :type with_loose: boolean\n"
+  "   :arg only_non_selected: Edges that is not selected.\n"
+  "   :type only_non_selected: boolean\n"
+  "   :return: List of visible vertices.\n"
+  "   :rtype: list of :class:`BMEdge`\n");
+static PyObject* bpy_bmedgeseq_calc_visible_edges(BPy_BMElemSeq* self, PyObject* args, PyObject* kw)
+{
+  static const char* kwlist[] = { "with_loose", "only_non_selected", nullptr };
+  BPY_BM_CHECK_OBJ(self);
+
+  bool with_loose = true;
+  bool only_non_selected = false;
+
+  if (!PyArg_ParseTupleAndKeywords(
+    args, kw, "|$O&O&:calc_visible_edges", (char**)kwlist,
+    &PyC_ParseBool, &with_loose,
+    &PyC_ParseBool, &only_non_selected))
+  {
+    return nullptr;
+  }
+
+  BMesh* bm = self->bm;
+  const bool is_full_select = (bm->totedge != 0) && (bm->totedgesel == bm->totedge);
+
+  if (is_full_select) {
+    if (only_non_selected) {
+      return PyList_New(0);
+    }
+    return bpy_bmedgeseq_calc_selected_edges_ex(self->bm, with_loose);
+  }
+
+  int edges_len = 0;
+  BMEdge** edges = static_cast<BMEdge**>(MEM_mallocN(sizeof(*edges) * bm->totedge, __func__));
+
+  const char filter_flags = char(only_non_selected ? (BM_ELEM_HIDDEN | BM_ELEM_SELECT) : BM_ELEM_HIDDEN);
+
+  BMIter iter;
+  BMEdge* e;
+
+  BM_ITER_MESH(e, &iter, bm, BM_EDGES_OF_MESH) {
+    if (!BM_elem_flag_test(e, filter_flags)) {
+      if (with_loose || UNLIKELY(e->l != nullptr)) {
+        edges[edges_len++] = e;
+      }
+    }
+  }
+
+  PyObject* list = PyList_New(edges_len);
+
+  for (int i = 0; i < edges_len; i++) {
+    PyList_SetItem(list, i, BPy_BMEdge_CreatePyObject(bm, edges[i]));
+  }
+
+  MEM_freeN(edges);
+  return list;
+}
+
 PyDoc_STRVAR(
     /* Wrap. */
     bpy_bmfaceseq_get__method_doc,
@@ -2828,6 +3244,94 @@ static PyObject *bpy_bmfaceseq_get__method(BPy_BMElemSeq *self, PyObject *args)
 
   PyMem_FREE(vert_array);
   return ret;
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmfaceseq_calc_selected_faces_doc,
+  ".. method:: calc_selected_faces()\n"
+  "\n"
+  "   Calculate selected faces.\n"
+  "\n"
+  "   :rtype: list of :class:`BMFace`\n");
+static PyObject* bpy_bmfaceseq_calc_selected_faces(BPy_BMElemSeq* self)
+{
+  BPY_BM_CHECK_OBJ(self);
+  BMesh* bm = self->bm;
+  const int tot_sel = bm->totfacesel;
+  PyObject* list = PyList_New(tot_sel);
+  const bool is_full_select = (tot_sel != 0) && (tot_sel == bm->totface);
+
+  BMIter iter;
+  BMFace* f;
+  int i = 0;
+
+  BM_ITER_MESH(f, &iter, bm, BM_FACES_OF_MESH) {
+    if (i == tot_sel) {
+      break;
+    }
+    if (is_full_select || BM_elem_flag_test(f, BM_ELEM_SELECT)) {
+      PyList_SetItem(list, i++, BPy_BMFace_CreatePyObject(bm, f));
+    }
+  }
+  return list;
+}
+
+PyDoc_STRVAR(
+  /* Wrap. */
+  bpy_bmfaceseq_calc_visible_faces_doc,
+  ".. method:: calc_visible_faces(only_non_selected=False)\n"
+  "\n"
+  "   Calculate visible faces.\n"
+  "\n"
+  "   :arg only_non_selected: Faces that is not selected.\n"
+  "   :type only_non_selected: boolean\n"
+  "   :return: List of visible faces.\n"
+  "   :rtype: list of :class:`BMFace`\n");
+static PyObject* bpy_bmfaceseq_calc_visible_faces(BPy_BMElemSeq* self, PyObject* args, PyObject* kw)
+{
+  static const char* kwlist[] = { "only_non_selected", nullptr };
+  BPY_BM_CHECK_OBJ(self);
+  bool only_non_selected = false;
+
+  if (!PyArg_ParseTupleAndKeywords(
+    args, kw, "|$O&:calc_visible_faces", (char**)kwlist, &PyC_ParseBool, &only_non_selected))
+  {
+    return nullptr;
+  }
+
+  BMesh* bm = self->bm;
+  const bool is_full_select = (bm->totface != 0) && (bm->totfacesel == bm->totface);
+
+  if (is_full_select) {
+    if (only_non_selected) {
+      return PyList_New(0);
+    }
+    return bpy_bmfaceseq_calc_selected_faces(self);
+  }
+
+  int faces_len = 0;
+  BMFace** faces = static_cast<BMFace**>(MEM_mallocN(sizeof(*faces) * bm->totface, __func__));
+
+  const char filter_flags = char(only_non_selected ? (BM_ELEM_HIDDEN | BM_ELEM_SELECT) : BM_ELEM_HIDDEN);
+
+  BMIter fiter;
+  BMFace* f;
+
+  BM_ITER_MESH(f, &fiter, bm, BM_FACES_OF_MESH) {
+    if (!BM_elem_flag_test(f, filter_flags)) {
+      faces[faces_len++] = f;
+    }
+  }
+
+  PyObject* list = PyList_New(faces_len);
+
+  for (int i = 0; i < faces_len; i++) {
+    PyList_SetItem(list, i, BPy_BMFace_CreatePyObject(bm, faces[i]));
+  }
+
+  MEM_freeN(faces);
+  return list;
 }
 
 PyDoc_STRVAR(
@@ -3329,6 +3833,14 @@ static PyMethodDef bpy_bmvertseq_methods[] = {
      (PyCFunction)bpy_bmelemseq_sort,
      METH_VARARGS | METH_KEYWORDS,
      bpy_bmelemseq_sort_doc},
+    {"calc_selected_verts",
+     (PyCFunction)bpy_bmvertseq_calc_selected_verts,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_bmvertseq_calc_selected_verts_doc},
+    {"calc_visible_verts",
+     (PyCFunction)bpy_bmvertseq_calc_visible_verts,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_bmvertseq_calc_visible_verts_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
@@ -3351,6 +3863,14 @@ static PyMethodDef bpy_bmedgeseq_methods[] = {
      (PyCFunction)bpy_bmelemseq_sort,
      METH_VARARGS | METH_KEYWORDS,
      bpy_bmelemseq_sort_doc},
+    {"calc_selected_edges",
+     (PyCFunction)bpy_bmedgeseq_calc_selected_edges,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_bmedgeseq_calc_selected_edges_doc},
+    {"calc_visible_edges",
+     (PyCFunction)bpy_bmedgeseq_calc_visible_edges,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_bmedgeseq_calc_visible_edges_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
@@ -3373,6 +3893,14 @@ static PyMethodDef bpy_bmfaceseq_methods[] = {
      (PyCFunction)bpy_bmelemseq_sort,
      METH_VARARGS | METH_KEYWORDS,
      bpy_bmelemseq_sort_doc},
+    {"calc_selected_faces",
+     (PyCFunction)bpy_bmfaceseq_calc_selected_faces,
+     METH_NOARGS,
+     bpy_bmfaceseq_calc_selected_faces_doc},
+    {"calc_visible_faces",
+     (PyCFunction)bpy_bmfaceseq_calc_visible_faces,
+     METH_VARARGS | METH_KEYWORDS,
+     bpy_bmfaceseq_calc_visible_faces_doc},
     {nullptr, nullptr, 0, nullptr},
 };
 
