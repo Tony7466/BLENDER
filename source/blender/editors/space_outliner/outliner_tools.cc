@@ -262,6 +262,12 @@ static void unlink_material_fn(bContext * /*C*/,
     return;
   }
 
+  if (ID_IS_LINKED(tselem->id) || ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
+    BKE_reportf(
+        reports, RPT_WARNING, "Cannot unlink the linked material %s", tselem->id->name + 2);
+    return;
+  }
+
   Material **matar = nullptr;
   int a, totcol = 0;
 
