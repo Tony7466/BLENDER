@@ -2760,23 +2760,30 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
     }
     const eCustomDataType cd_type = bke::cpp_type_to_custom_data_type(*base_cpp_type);
 
+    /* Compute output attribute name for this item. */
     const std::string attribute_name = bke::hash_to_anonymous_attribute_name(
         user_data.call_data->self_object()->id.name,
         user_data.compute_context->hash(),
         parent_.output_bnode_.identifier,
         item.identifier);
 
+    /* Create a new output attribute for the current item on each iteration component. */
     for (const ForeachElementComponent &component_info : eval_storage_.components) {
       MutableAttributeAccessor attributes = component_info.attributes_for_write(output_geometry);
       const int domain_size = attributes.domain_size(component_info.id.domain);
-      GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
-          attribute_name, component_info.id.domain, cd_type);
       const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
 
+      /* Actually create the attribute. */
+      GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_only_span(
+          attribute_name, component_info.id.domain, cd_type);
+
+      /* Fill the elements of the attribute that we didn't iterate over because they were not
+       * selected. */
       IndexMaskMemory memory;
       const IndexMask inverted_mask = mask.complement(IndexRange(domain_size), memory);
       base_cpp_type->value_initialize_indices(attribute.span.data(), inverted_mask);
 
+      /* Copy the values from each iteration into the attribute. */
       mask.foreach_index([&](const int i, const int pos) {
         const int lf_param_index = pos * body_main_outputs_num + item_i;
         SocketValueVariant &value_variant = params.get_input<SocketValueVariant>(lf_param_index);
@@ -2788,6 +2795,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
       attribute.finish();
     }
 
+    /* Output the field for the anonymous attribute. */
     auto attribute_field = std::make_shared<AttributeFieldInput>(
         attribute_name,
         *base_cpp_type,
@@ -2797,6 +2805,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
     params.set_output(1 + item_i, std::move(attribute_value_variant));
   }
 
+  /* Output the original geometry with potentially additional attributes. */
   params.set_output(main_geometry_output, std::move(output_geometry));
 }
 
@@ -2844,6 +2853,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_item_groups(
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent_.output_bnode_.storage);
   int previous_geometry_item_i = first_valid_item_i;
+  /* Iterate over all groups. A group starts with a geometry socket followed by an arbitrary number
+   * of non-geometry sockets. */
   for (const int item_i :
        IndexRange::from_begin_end(first_valid_item_i + 1, node_storage.generation_items.items_num))
   {
@@ -2879,6 +2890,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
+  /* Handle the case when the output is not needed or the inputs have not been computed yet. */
   if (!this->handle_generation_items_group_lazyness(
           params, context, geometry_item_i, generation_items_range))
   {
@@ -2891,6 +2903,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   const int bodies_num = eval_storage_.lf_body_nodes.size();
   Array<GeometrySet> geometries(bodies_num);
 
+  /* Create attribute names for the outputs. */
   Array<std::string> attribute_names(generation_items_range.size());
   for (const int i : generation_items_range.index_range()) {
     const int item_i = generation_items_range[i];
@@ -2906,6 +2919,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
   for (const ForeachElementComponent &component_info : eval_storage_.components) {
     const AttributeAccessor src_attributes = component_info.input_attributes();
 
+    /* These are the attributes we need to propagate from the original input geometry. */
     Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
     src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
       if (meta_data.data_type == CD_PROP_STRING) {
@@ -2921,6 +2935,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
 
     const IndexMask mask = component_info.field_evaluator->get_evaluated_selection_as_mask();
 
+    /* Add attributes for each field on the geometry created by each iteration. */
     mask.foreach_index([&](const int element_i, const int local_body_i) {
       const int body_i = component_info.body_nodes_range[local_body_i];
       const int geometry_param_i = body_i * body_main_outputs_num +
@@ -2941,19 +2956,24 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
         GeometryComponent &dst_component = geometry.get_component_for_write(dst_component_type);
         MutableAttributeAccessor dst_attributes = *dst_component.attributes_for_write();
 
+        /* Determine the domain that we propagate the input attribute to. Technically, this is only
+         * a single value for the entire geometry, but we can't optimize for that yet. */
         const std::optional<AttrDomain> propagation_domain =
             get_foreach_attribute_propagation_target_domain(dst_component_type);
         if (!propagation_domain) {
           continue;
         }
 
+        /* Propagate attributes from the input geometry. */
         for (auto &&[name, cd_type] : attributes_to_propagate) {
           if (src_attributes.is_builtin(name) && !dst_attributes.is_builtin(name)) {
             continue;
           }
           if (dst_attributes.contains(name)) {
+            /* Attributes created in the zone shouldn't be overridden. */
             continue;
           }
+          /* Get the source attribute adapted to the iteration domain. */
           const GVArray &src_attribute = cached_adapted_src_attributes.lookup_or_add_cb(
               name, [&]() {
                 GAttributeReader attribute = src_attributes.lookup(name);
@@ -2967,6 +2987,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
           BUFFER_FOR_CPP_TYPE_VALUE(type, element_value);
           src_attribute.get_to_uninitialized(element_i, element_value);
 
+          /* Actually create the attribute. */
           GSpanAttributeWriter dst_attribute = dst_attributes.lookup_or_add_for_write_only_span(
               name, *propagation_domain, cd_type);
           type.fill_assign_n(element_value, dst_attribute.span.data(), dst_attribute.span.size());
@@ -2976,6 +2997,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
         }
       }
 
+      /* Create an attribute for each field that corresponds to the current geometry. */
       for (const int local_item_i : generation_items_range.index_range()) {
         const int item_i = generation_items_range[local_item_i];
         const NodeForeachGeometryElementGenerationItem &item =
@@ -3016,10 +3038,14 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     });
   }
 
-  GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
+  /* Join the geometries from all iterations into a single one. */
+  GeometrySet joined_geometry = geometry::join_geometries(geometries, attribute_filter);
+
+  /* Output the joined geometry. */
   params.set_output(parent_.indices_.generation.lf_outer[geometry_item_i],
                     std::move(joined_geometry));
 
+  /* Output the anonymous attribute fields. */
   for (const int local_item_i : generation_items_range.index_range()) {
     const int item_i = generation_items_range[local_item_i];
     const NodeForeachGeometryElementGenerationItem &item =

@@ -445,7 +445,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       auto &output_decl = b.add_output(socket_type, name, identifier).align_with_previous();
       if (socket_type == SOCK_GEOMETRY) {
         previous_geometry_index = output_decl.index();
-        output_decl.propagate_all();
         aal::PropagateRelation relation;
         relation.from_geometry_input = input_decl.index();
         relation.to_geometry_output = output_decl.index();
