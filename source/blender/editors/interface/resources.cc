@@ -246,17 +246,6 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           cp = ts->header;
           break;
 
-        case TH_HEADER_ACTIVE: {
-          cp = ts->header;
-          const int factor = 5;
-          /* Lighten the header color when editor is active. */
-          header_active[0] = cp[0] > 245 ? cp[0] - factor : cp[0] + factor;
-          header_active[1] = cp[1] > 245 ? cp[1] - factor : cp[1] + factor;
-          header_active[2] = cp[2] > 245 ? cp[2] - factor : cp[2] + factor;
-          header_active[3] = cp[3];
-          cp = header_active;
-          break;
-        }
         case TH_HEADER_TEXT:
           cp = ts->header_text;
           break;
@@ -940,8 +929,14 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           cp = btheme->tui.widget_emboss;
           break;
 
+        case TH_EDITOR_BORDER:
+          cp = btheme->tui.editor_border;
+          break;
         case TH_EDITOR_OUTLINE:
           cp = btheme->tui.editor_outline;
+          break;
+        case TH_EDITOR_OUTLINE_ACTIVE:
+          cp = btheme->tui.editor_outline_active;
           break;
         case TH_WIDGET_TEXT_CURSOR:
           cp = btheme->tui.widget_text_cursor;
