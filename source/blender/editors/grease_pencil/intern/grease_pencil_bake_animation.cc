@@ -178,11 +178,9 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   }
 
   const int prior_frame = int(DEG_get_ctime(&depsgraph));
-  int key = -1;
 
   for (int frame = frame_start; frame <= frame_end; frame++) {
-    key++;
-    if (key % step != 0 && frame != frame_end) {
+    if ((frame - frame_start) % step != 0 && frame != frame_end) {
       continue;
     }
 
