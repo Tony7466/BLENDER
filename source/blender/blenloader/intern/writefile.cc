@@ -85,6 +85,7 @@
 #include "DNA_fileglobal_types.h"
 #include "DNA_genfile.h"
 #include "DNA_key_types.h"
+#include "DNA_sdna_pointers.hh"
 #include "DNA_sdna_types.h"
 
 #include "BLI_bitmap.h"
@@ -401,6 +402,8 @@ bool ZstdWriteWrap::write(const void *buf, size_t buf_len)
 
 struct WriteData {
   const SDNA *sdna;
+  std::unique_ptr<blender::dna::pointers::PointersInDNA> pointers;
+  blender::Map<const void *, void *> pointer_map;
 
   struct {
     /** Use for file and memory writing (size stored in max_size). */
@@ -464,6 +467,7 @@ static WriteData *writedata_new(WriteWrap *ww)
   WriteData *wd = MEM_new<WriteData>(__func__);
 
   wd->sdna = DNA_sdna_current_get();
+  wd->pointers = std::make_unique<blender::dna::pointers::PointersInDNA>(*wd->sdna);
 
   wd->ww = ww;
 
@@ -510,6 +514,7 @@ static void writedata_do_write(WriteData *wd, const void *mem, size_t memlen)
 
 static void writedata_free(WriteData *wd)
 {
+  printf("Total pointers: %d\n", wd->pointer_map.size());
   if (wd->buffer.buf) {
     MEM_freeN(wd->buffer.buf);
   }
@@ -719,6 +724,15 @@ static bool write_at_address_validate(WriteData *wd, int filecode, const void *a
   return true;
 }
 
+static const void *get_address_id(WriteData &wd, const void *address)
+{
+  if (address == nullptr) {
+    return nullptr;
+  }
+  /* +1 to avoid nullptr as valid id. */
+  return wd.pointer_map.lookup_or_add(address, POINTER_FROM_INT(wd.pointer_map.size() + 1));
+}
+
 static void writestruct_at_address_nr(
     WriteData *wd, int filecode, const int struct_nr, int nr, const void *adr, const void *data)
 {
@@ -734,20 +748,37 @@ static void writestruct_at_address_nr(
     return;
   }
 
+  const int size_in_bytes = nr * DNA_struct_size(wd->sdna, struct_nr);
+
+  blender::DynamicStackBuffer<16 * 1024> buffer_owner(size_in_bytes, 64);
+  void *buffer = buffer_owner.buffer();
+  memcpy(buffer, data, size_in_bytes);
+
+  const void *address_id = get_address_id(*wd, adr);
+
+  const blender::dna::pointers::StructInfo &struct_info = wd->pointers->get_for_struct(struct_nr);
+  for (const int i : blender::IndexRange(nr)) {
+    for (const blender::dna::pointers::PointerInfo &pointer_info : struct_info.pointers) {
+      const int offset = i * struct_info.size + pointer_info.offset;
+      const void *&pointer_in_buffer = *(const void **)POINTER_OFFSET(buffer, offset);
+      pointer_in_buffer = get_address_id(*wd, pointer_in_buffer);
+    }
+  }
+
   /* Initialize #BHead. */
   bh.code = filecode;
-  bh.old = adr;
+  bh.old = address_id;
   bh.nr = nr;
 
   bh.SDNAnr = struct_nr;
-  bh.len = nr * DNA_struct_size(wd->sdna, bh.SDNAnr);
+  bh.len = size_in_bytes;
 
   if (bh.len == 0) {
     return;
   }
 
   mywrite(wd, &bh, sizeof(BHead));
-  mywrite(wd, data, size_t(bh.len));
+  mywrite(wd, buffer, size_t(bh.len));
 }
 
 static void writestruct_nr(
@@ -781,7 +812,7 @@ static void writedata(WriteData *wd, int filecode, size_t len, const void *adr)
 
   /* Initialize #BHead. */
   bh.code = filecode;
-  bh.old = adr;
+  bh.old = get_address_id(*wd, adr);
   bh.nr = 1;
   BLI_STATIC_ASSERT(SDNA_RAW_DATA_STRUCT_INDEX == 0, "'raw data' SDNA struct index should be 0")
   bh.SDNAnr = SDNA_RAW_DATA_STRUCT_INDEX;
@@ -1245,6 +1276,10 @@ static void id_buffer_init_from_id(BLO_Write_IDBuffer *id_buffer, ID *id, const 
    * when we need to re-read the ID into its original address, this is currently cleared in
    * #direct_link_id_common in `readfile.cc` anyway. */
   temp_id->py_instance = nullptr;
+
+  temp_id->session_uid = 0;
+  temp_id->recalc_up_to_undo_push = 0;
+  temp_id->recalc_after_undo_push = 0;
 
   DrawDataList *drawdata = DRW_drawdatalist_from_id(temp_id);
   if (drawdata) {
