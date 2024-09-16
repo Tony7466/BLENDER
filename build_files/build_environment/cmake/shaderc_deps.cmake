@@ -33,7 +33,7 @@ ExternalProject_Add(external_shaderc_spirv_tools
   
   PATCH_COMMAND COMMAND ${PATCH_CMD} -p 1 -d
     ${BUILD_DIR}/shaderc_spirv_tools/src/external_shaderc_spirv_tools <
-    ${PATCH_DIR}/shaderc_spirv_tools.diff
+    ${PATCH_DIR}/shaderc_spirv_tools_5805.diff
 
   CONFIGURE_COMMAND echo .
   BUILD_COMMAND echo .
