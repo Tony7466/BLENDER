@@ -283,7 +283,7 @@ ccl_device_inline bool point_custom_intersect(const hiprtRay &ccl_restrict ray,
                                               RayPayload *ccl_restrict payload,
                                               hiprtHit &ccl_restrict hit)
 {
-#  ifdef __POINTCLOUD__
+#  if defined(__POINTCLOUD__) && 0
   const int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
   const int2 data_offset = kernel_data_fetch(custom_prim_info_offset, object_id);
   const int prim_offset = kernel_data_fetch(object_prim_offset, object_id);
