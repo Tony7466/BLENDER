@@ -3570,7 +3570,7 @@ struct GeometryNodesLazyFunctionBuilder {
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
     /* Build a function for the loop body. */
-    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
+    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone, "Repeat Body");
     /* Wrap the loop body by another function that implements the repeat behavior. */
     auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(btree_, zone, zone_info, body_fn);
     zone_info.lazy_function = &zone_fn;
@@ -3580,7 +3580,7 @@ struct GeometryNodesLazyFunctionBuilder {
   {
     ZoneBuildInfo &zone_info = zone_build_infos_[zone.index];
     /* Build a function for the loop body. */
-    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
+    ZoneBodyFunction &body_fn = this->build_zone_body_function(zone, "Foreach Body");
     /* Wrap the loop body in another function that implements the foreach behavior. */
     auto &zone_fn = scope_.construct<LazyFunctionForForeachGeometryElementZone>(
         btree_, zone, zone_info, body_fn);
@@ -3590,9 +3590,9 @@ struct GeometryNodesLazyFunctionBuilder {
   /**
    * Build a lazy-function for the "body" of a zone, i.e. for all the nodes within the zone.
    */
-  ZoneBodyFunction &build_zone_body_function(const bNodeTreeZone &zone)
+  ZoneBodyFunction &build_zone_body_function(const bNodeTreeZone &zone, const StringRef name)
   {
-    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>("Repeat Body");
+    lf::Graph &lf_body_graph = scope_.construct<lf::Graph>(name);
 
     BuildGraphParams graph_params{lf_body_graph};
 
