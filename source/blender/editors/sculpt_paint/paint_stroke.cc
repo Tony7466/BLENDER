@@ -1533,8 +1533,11 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
       br = BKE_paint_brush(paint);
 
       if (paint_supports_smooth_stroke(stroke, *br, mode)) {
-        stroke->stroke_cursor = WM_paint_cursor_activate(
-            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_cursor_poll, paint_draw_smooth_cursor, stroke);
+        stroke->stroke_cursor = WM_paint_cursor_activate(SPACE_TYPE_ANY,
+                                                         RGN_TYPE_ANY,
+                                                         paint_brush_cursor_poll,
+                                                         paint_draw_smooth_cursor,
+                                                         stroke);
       }
 
       if (br->flag & BRUSH_AIRBRUSH) {
