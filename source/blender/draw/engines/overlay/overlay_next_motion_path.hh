@@ -113,8 +113,8 @@ class MotionPath {
     const bool selected = (pchan) ? (pchan->bone->flag & BONE_SELECTED) :
                                     (ob->base_flag & BASE_SELECTED);
 
-    const float3 color_pre = custom_color ? mpath->color : float3(-1.0f);
-    const float3 color_post = custom_color ? mpath->color_post : float3(-1.0f);
+    const float3 color_pre = custom_color ? float3(mpath->color) : float3(-1.0f);
+    const float3 color_post = custom_color ? float3(mpath->color_post) : float3(-1.0f);
 
     int stride = max_ii(avs.path_step, 1);
     int current_frame = state.cfra;
