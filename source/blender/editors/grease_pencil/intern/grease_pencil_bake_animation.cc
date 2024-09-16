@@ -261,10 +261,21 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
         }
 
         target_material_indices.finish();
-        for (float3 &pos : target_strokes.positions_for_write()) {
-          pos = math::transform_point(source_object_eval->object_to_world(), pos);
-          pos = math::transform_point(invmat, pos);
-          if (drawing_placement) {
+        MutableSpan<float3> positions = target_strokes.positions_for_write();
+        threading::parallel_for(positions.index_range(), 4096, [&](IndexRange range) {
+          for (const int i : range) {
+            positions[i] = math::transform_point(source_object_eval->object_to_world(),
+                                                 positions[i]);
+            positions[i] = math::transform_point(invmat, positions[i]);
+          }
+        });
+        if (drawing_placement) {
+          threading::parallel_for(positions.index_range(), 4096, [&](IndexRange range) {
+            for (const int i : range) {
+              positions[i] = drawing_placement->reproject(positions[i]);
+            }
+          });
+          for (float3 &pos : target_strokes.positions_for_write()) {
             pos = drawing_placement->reproject(pos);
           }
         }
