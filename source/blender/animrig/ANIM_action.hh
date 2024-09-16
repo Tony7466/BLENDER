@@ -442,18 +442,6 @@ class Strip : public ::ActionStrip {
   static Strip &create(Action &owning_action, const Strip::Type type);
 
   /**
-   * Make a full, deep copy of the strip, including its data.
-   *
-   * The strip *must* belong to `owning_action`, as that is where the strip data
-   * is stored. And for the same reason, the new duplicate strip must *only*
-   * be placed onto a layer that also belongs to `owning_action`.
-   *
-   * This method does *not* place the new duplicate strip on a layer. That is up
-   * to the caller.
-   */
-  Strip &duplicate(Action &owning_action, StringRefNull allocation_name) const;
-
-  /**
    * Strip type.
    *
    * Convenience wrapper to avoid having to do the cast from `int` to
@@ -512,18 +500,6 @@ class Layer : public ::ActionLayer {
   Layer() = default;
   Layer(const Layer &other) = delete;
   ~Layer();
-
-  /**
-   * Make a full, deep copy of the layer, including the data of its strips.
-   *
-   * The layer *must* belong to `owning_action`, as that is where the strip data
-   * is stored. And for the same reason, the new duplicate layer must *only* be
-   * placed into `owning_action`.
-   *
-   * This method does *not* place the new duplicate layer into the action. That
-   * is up to the caller.
-   */
-  Layer &duplicate(Action &owning_action, StringRefNull allocation_name) const;
 
   /**
    * Duplicate the `Layer` and its `Strip`s, but only make shallow copies of the

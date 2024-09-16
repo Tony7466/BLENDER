@@ -899,21 +899,6 @@ static float2 get_frame_range_of_fcurves(Span<const FCurve *> fcurves,
 
 /* ----- ActionLayer implementation ----------- */
 
-Layer &Layer::duplicate(Action &owning_action, const StringRefNull allocation_name) const
-{
-  Layer *copy = MEM_new<Layer>(allocation_name.c_str());
-  memcpy(copy, this, sizeof(*this));
-
-  /* Strips. */
-  copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num,
-                                                    allocation_name.c_str());
-  for (int i : this->strips().index_range()) {
-    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action, allocation_name.c_str());
-  }
-
-  return *copy;
-}
-
 Layer &Layer::duplicate_with_shallow_strip_copies(const StringRefNull allocation_name) const
 {
   Layer *copy = MEM_new<Layer>(allocation_name.c_str());
@@ -1332,26 +1317,6 @@ Strip &Strip::create(Action &owning_action, const Strip::Type type)
   BLI_assert_msg(strip->data_index != -1, "Newly created strip has no data.");
 
   return strip->wrap();
-}
-
-Strip &Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
-{
-  /* First make a shallow copy of the strip. */
-  Strip *copy = MEM_new<Strip>(allocation_name.c_str(), *this);
-
-  /* Then duplicate and assign the strip's data. */
-  switch (copy->type()) {
-    case Type::Keyframe: {
-      const StripKeyframeData &strip_data_source =
-          *owning_action.strip_keyframe_data()[copy->data_index];
-      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(allocation_name.c_str(),
-                                                                      strip_data_source);
-      copy->data_index = owning_action.strip_keyframe_data_append(strip_data_copy);
-      break;
-    }
-  }
-
-  return *copy;
 }
 
 bool Strip::is_infinite() const
