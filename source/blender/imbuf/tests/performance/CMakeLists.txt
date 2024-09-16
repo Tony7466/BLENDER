@@ -12,6 +12,7 @@ set(INC_SYS
 set(LIB
   PRIVATE bf_blenlib
   PRIVATE bf_imbuf
+  PRIVATE bf_editor_util
 )
 
 set(SRC
