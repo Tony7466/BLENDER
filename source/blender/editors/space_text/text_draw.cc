@@ -25,8 +25,8 @@
 
 #include "ED_text.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -848,12 +848,12 @@ int space_text_get_visible_lines(const SpaceText *st, const ARegion *region, con
 
 int space_text_get_span_wrap(const SpaceText *st,
                              const ARegion *region,
-                             TextLine *from,
-                             TextLine *to)
+                             const TextLine *from,
+                             const TextLine *to)
 {
   if (st->wordwrap) {
     int ret = 0;
-    TextLine *tmp = from;
+    const TextLine *tmp = from;
 
     /* Look forwards */
     while (tmp) {
@@ -960,7 +960,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
       else if (lhlstart > st->top + st->runtime->viewlines && hlstart < barstart + barheight &&
                hlstart > barstart)
       {
-        /* push hl start down */
+        /* Push `hlstart` down. */
         hlstart = barstart + barheight;
       }
       else if (lhlend > st->top && lhlstart < st->top && hlstart > barstart) {
@@ -981,13 +981,13 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
                 (pix_bardiff * (lhlend - st->top) / st->runtime->viewlines);
       }
       else if (lhlend < st->top && hlend >= barstart - 2 && hlend < barstart + barheight) {
-        /* push hl end up */
+        /* Push `hlend` up. */
         hlend = barstart;
       }
       else if (lhlend > st->top + st->runtime->viewlines &&
                lhlstart < st->top + st->runtime->viewlines && hlend < barstart + barheight)
       {
-        /* fill out end */
+        /* Fill out end. */
         hlend = barstart + barheight;
       }
 
@@ -1013,7 +1013,7 @@ static void calc_text_rcts(SpaceText *st, ARegion *region, rcti *scroll, rcti *b
   CLAMP(st->runtime->scroll_region_select.ymax, pix_bottom_margin, region->winy - pix_top_margin);
 }
 
-static void draw_textscroll(const SpaceText *st, rcti *scroll, rcti *back)
+static void draw_textscroll(const SpaceText *st, const rcti *scroll, const rcti *back)
 {
   bTheme *btheme = UI_GetTheme();
   uiWidgetColors wcol = btheme->tui.wcol_scroll;
@@ -1790,33 +1790,34 @@ bool ED_space_text_region_location_from_cursor(const SpaceText *st,
                                                const int cursor_co[2],
                                                int r_pixel_co[2])
 {
-  TextLine *line = nullptr;
+  Text *text = st->text;
 
-  if (!st->text) {
-    goto error;
+  if (!text) {
+    return false;
+  }
+  TextLine *line = static_cast<TextLine *>(BLI_findlink(&text->lines, cursor_co[0]));
+  if (!line) {
+    return false;
   }
 
-  line = static_cast<TextLine *>(BLI_findlink(&st->text->lines, cursor_co[0]));
-  if (!line || (cursor_co[1] < 0) || (cursor_co[1] > line->len)) {
-    goto error;
+  /* Convert character index to char byte offset. */
+  const int char_ofs = BLI_str_utf8_offset_from_index(line->line, line->len, cursor_co[1]);
+  if (char_ofs < 0 || char_ofs > line->len) {
+    return false;
   }
-  else {
-    int offl, offc;
-    int linenr_offset = TXT_BODY_LEFT(st);
-    /* handle tabs as well! */
-    int char_pos = space_text_get_char_pos(st, line->line, cursor_co[1]);
 
-    space_text_wrap_offset(st, region, line, cursor_co[1], &offl, &offc);
-    r_pixel_co[0] = (char_pos + offc - st->left) * st->runtime->cwidth_px + linenr_offset;
-    r_pixel_co[1] = (cursor_co[0] + offl - st->top) * TXT_LINE_HEIGHT(st);
-    r_pixel_co[1] = (region->winy - (r_pixel_co[1] + (TXT_BODY_LPAD * st->runtime->cwidth_px))) -
-                    st->runtime->lheight_px;
-  }
+  /* All values are in-range, calculate the pixel offset.
+   * Note that !126720 provides a useful interactive test-case for this logic. */
+  const int lheight = TXT_LINE_HEIGHT(st);
+  const int linenr_offset = TXT_BODY_LEFT(st);
+  /* Handle tabs as well! */
+  const int char_pos = space_text_get_char_pos(st, line->line, char_ofs);
+
+  int offl, offc;
+  space_text_wrap_offset(st, region, line, char_ofs, &offl, &offc);
+  r_pixel_co[0] = (char_pos + offc - st->left) * st->runtime->cwidth_px + linenr_offset;
+  r_pixel_co[1] = (region->winy - ((cursor_co[0] + offl - st->top) * lheight)) - lheight;
   return true;
-
-error:
-  r_pixel_co[0] = r_pixel_co[1] = -1;
-  return false;
 }
 
 /** \} */

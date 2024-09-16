@@ -21,13 +21,13 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_types.hh"
 
 #include "ED_screen.hh"
 
-/* own includes */
+/* Own includes. */
 #include "wm_gizmo_intern.hh"
 #include "wm_gizmo_wmapi.hh"
 
@@ -181,7 +181,7 @@ void wm_gizmotype_free()
 
 void wm_gizmotype_init()
 {
-  /* reserve size is set based on blender default setup */
+  /* Reserve size is set based on blender default setup. */
   global_gizmotype_hash = BLI_ghash_str_new_ex("wm_gizmotype_init gh", 128);
 }
 

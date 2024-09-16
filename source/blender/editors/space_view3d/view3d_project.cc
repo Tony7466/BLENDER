@@ -22,7 +22,7 @@
 #include "BKE_camera.h"
 #include "BKE_screen.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "ED_view3d.hh" /* own include */
 
@@ -349,7 +349,7 @@ static void view3d_win_to_ray_segment(const Depsgraph *depsgraph,
     start_offset = -end_offset;
   }
   else {
-    ED_view3d_clip_range_get(depsgraph, v3d, rv3d, &start_offset, &end_offset, false);
+    ED_view3d_clip_range_get(depsgraph, v3d, rv3d, false, &start_offset, &end_offset);
   }
 
   if (r_ray_start) {
@@ -421,7 +421,7 @@ void ED_view3d_win_to_ray(const ARegion *region,
   ED_view3d_win_to_vector(region, mval, r_ray_normal);
 }
 
-void ED_view3d_global_to_vector(const RegionView3D *rv3d, const float coord[3], float vec[3])
+void ED_view3d_global_to_vector(const RegionView3D *rv3d, const float coord[3], float r_out[3])
 {
   if (rv3d->is_persp) {
     float p1[4], p2[4];
@@ -436,12 +436,12 @@ void ED_view3d_global_to_vector(const RegionView3D *rv3d, const float coord[3], 
 
     mul_m4_v4(rv3d->viewinv, p2);
 
-    sub_v3_v3v3(vec, p1, p2);
+    sub_v3_v3v3(r_out, p1, p2);
   }
   else {
-    copy_v3_v3(vec, rv3d->viewinv[2]);
+    copy_v3_v3(r_out, rv3d->viewinv[2]);
   }
-  normalize_v3(vec);
+  normalize_v3(r_out);
 }
 
 /* very similar to ED_view3d_win_to_3d() but has no advantage, de-duplicating */

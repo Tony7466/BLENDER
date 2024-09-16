@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_defaults.h"
@@ -42,7 +44,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_volume.hh"
@@ -148,7 +150,11 @@ static void volume_init_data(ID *id)
   STRNCPY(volume->velocity_grid, "velocity");
 }
 
-static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
+static void volume_copy_data(Main * /*bmain*/,
+                             std::optional<Library *> /*owner_library*/,
+                             ID *id_dst,
+                             const ID *id_src,
+                             const int /*flag*/)
 {
   Volume *volume_dst = (Volume *)id_dst;
   const Volume *volume_src = (const Volume *)id_src;
@@ -185,6 +191,10 @@ static void volume_free_data(ID *id)
   BKE_animdata_free(&volume->id, false);
   BKE_volume_batch_cache_free(volume);
   MEM_SAFE_FREE(volume->mat);
+  if (volume->packedfile) {
+    BKE_packedfile_free(volume->packedfile);
+    volume->packedfile = nullptr;
+  }
 #ifdef WITH_OPENVDB
   MEM_delete(volume->runtime->grids);
   volume->runtime->grids = nullptr;
@@ -253,11 +263,11 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
   Volume *volume = (Volume *)id;
   volume->runtime = MEM_new<blender::bke::VolumeRuntime>(__func__);
 
-  BKE_packedfile_blend_read(reader, &volume->packedfile);
+  BKE_packedfile_blend_read(reader, &volume->packedfile, volume->filepath);
   volume->runtime->frame = 0;
 
   /* materials */
-  BLO_read_pointer_array(reader, (void **)&volume->mat);
+  BLO_read_pointer_array(reader, volume->totcol, (void **)&volume->mat);
 }
 
 static void volume_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
@@ -493,9 +503,7 @@ bool BKE_volume_load(const Volume *volume, const Main *bmain)
 
   /* Test if file exists. */
   if (!BLI_exists(filepath)) {
-    char filename[FILE_MAX];
-    BLI_path_split_file_part(filepath, filename, sizeof(filename));
-    grids.error_msg = filename + std::string(" not found");
+    grids.error_msg = BLI_path_basename(filepath) + std::string(" not found");
     CLOG_INFO(&LOG, 1, "Volume %s: %s", volume_name, grids.error_msg.c_str());
     return false;
   }
@@ -587,6 +595,19 @@ bool BKE_volume_save(const Volume *volume,
 #else
   UNUSED_VARS(volume, bmain, reports, filepath);
   return false;
+#endif
+}
+
+void BKE_volume_count_memory(const Volume &volume, blender::MemoryCounter &memory)
+{
+#ifdef WITH_OPENVDB
+  if (const VolumeGridVector *grids = volume.runtime->grids) {
+    for (const GVolumeGrid &grid : *grids) {
+      grid->count_memory(memory);
+    }
+  }
+#else
+  UNUSED_VARS(volume, memory);
 #endif
 }
 
@@ -711,7 +732,6 @@ static void volume_evaluate_modifiers(Depsgraph *depsgraph,
 void BKE_volume_eval_geometry(Depsgraph *depsgraph, Volume *volume)
 {
   Main *bmain = DEG_get_bmain(depsgraph);
-  volume_update_simplify_level(bmain, volume, depsgraph);
 
   /* TODO: can we avoid modifier re-evaluation when frame did not change? */
   int frame = volume_sequence_frame(depsgraph, volume);
@@ -719,6 +739,8 @@ void BKE_volume_eval_geometry(Depsgraph *depsgraph, Volume *volume)
     BKE_volume_unload(volume);
     volume->runtime->frame = frame;
   }
+
+  volume_update_simplify_level(bmain, volume, depsgraph);
 
   /* Flush back to original. */
   if (DEG_is_active(depsgraph)) {
@@ -777,7 +799,7 @@ void BKE_volume_grids_backup_restore(Volume *volume, VolumeGridVector *grids, co
 #ifdef WITH_OPENVDB
   /* Restore grids after datablock was re-copied from original by depsgraph,
    * we don't want to load them again if possible. */
-  BLI_assert(volume->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(volume->id.tag & ID_TAG_COPIED_ON_EVAL);
   BLI_assert(volume->runtime->grids != nullptr && grids != nullptr);
 
   if (!grids->is_loaded()) {

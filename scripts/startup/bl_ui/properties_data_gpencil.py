@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilLayerMasksPanel,
@@ -127,8 +128,10 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
         layer_rows = 7
 
         col = row.column()
-        col.template_list("GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
-                          rows=layer_rows, sort_reverse=True, sort_lock=True)
+        col.template_list(
+            "GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
+            rows=layer_rows, sort_reverse=True, sort_lock=True,
+        )
 
         col = row.column()
         sub = col.column(align=True)
@@ -410,6 +413,10 @@ class DATA_PT_gpencil_canvas(DataButtonsPanel, Panel):
         col.prop(grid, "lines", text="Subdivisions")
 
 
+class DATA_PT_gpencil_animation(DataButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'gpencil'
+
+
 class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
     _property_type = bpy.types.GreasePencil
@@ -433,6 +440,7 @@ classes = (
     DATA_PT_gpencil_strokes,
     DATA_PT_gpencil_display,
     DATA_PT_gpencil_canvas,
+    DATA_PT_gpencil_animation,
     DATA_PT_custom_props_gpencil,
 
     GPENCIL_UL_vgroups,

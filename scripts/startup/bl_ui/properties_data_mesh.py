@@ -5,6 +5,7 @@
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bpy.app.translations import (
     pgettext_iface as iface_,
@@ -374,7 +375,8 @@ class DATA_PT_shape_keys(MeshButtonsPanel, Panel):
                 row.active = enable_edit_value
                 row.prop(key, "eval_time")
 
-        layout.prop(ob, "add_rest_position_attribute")
+        if ob.type == 'MESH':
+            layout.prop(ob, "add_rest_position_attribute")
 
 
 class DATA_PT_uv_texture(MeshButtonsPanel, Panel):
@@ -464,6 +466,31 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
             col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
 
 
+class DATA_PT_mesh_animation(MeshButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        # MeshButtonsPanel.poll ensures this is not None.
+        mesh = context.mesh
+
+        col = layout.column(align=True)
+        col.label(text="Mesh")
+        self.draw_action_and_slot_selector(context, col, mesh)
+
+        if shape_keys := mesh.shape_keys:
+            col = layout.column(align=True)
+            col.label(text="Shape Keys")
+            self.draw_action_and_slot_selector(context, col, shape_keys)
+
+
 class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -516,8 +543,10 @@ class MESH_UL_attributes(UIList):
         sub = split.row()
         sub.alignment = 'RIGHT'
         sub.active = False
-        sub.label(text="%s ▶ %s" % (iface_(domain_name), iface_(data_type.name)),
-                  translate=False)
+        sub.label(
+            text="{:s} - {:s}".format(iface_(domain_name), iface_(data_type.name)),
+            translate=False,
+        )
 
 
 class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
@@ -637,8 +666,7 @@ class MESH_UL_color_attributes(UIList, ColorAttributesListBase):
         sub = split.row()
         sub.alignment = 'RIGHT'
         sub.active = False
-        sub.label(text="%s ▶ %s" % (iface_(domain_name), iface_(data_type.name)),
-                  translate=False)
+        sub.label(text="{:s} - {:s}".format(iface_(domain_name), iface_(data_type.name)), translate=False)
 
         active_render = _index == data.color_attributes.render_color_index
 
@@ -714,6 +742,7 @@ classes = (
     DATA_PT_texture_space,
     DATA_PT_remesh,
     DATA_PT_customdata,
+    DATA_PT_mesh_animation,
     DATA_PT_custom_props_mesh,
     MESH_UL_color_attributes,
     MESH_UL_color_attributes_selector,

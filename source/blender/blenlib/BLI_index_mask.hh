@@ -12,6 +12,7 @@
 #include "BLI_bit_span.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_index_mask_fwd.hh"
+#include "BLI_index_ranges_builder_fwd.hh"
 #include "BLI_linear_allocator.hh"
 #include "BLI_offset_span.hh"
 #include "BLI_task.hh"
@@ -128,6 +129,12 @@ class IndexMaskSegment : public OffsetSpan<int64_t, int16_t> {
 
   IndexMaskSegment slice(const IndexRange &range) const;
   IndexMaskSegment slice(const int64_t start, const int64_t size) const;
+
+  /**
+   * Get a new segment where each index is modified by the given amount. This works in constant
+   * time, because only the offset value is changed.
+   */
+  IndexMaskSegment shift(const int64_t shift) const;
 };
 
 /**
@@ -196,6 +203,9 @@ class IndexMask : private IndexMaskData {
   static IndexMask from_bools(const IndexMask &universe,
                               Span<bool> bools,
                               IndexMaskMemory &memory);
+  static IndexMask from_bools_inverse(const IndexMask &universe,
+                                      Span<bool> bools,
+                                      IndexMaskMemory &memory);
   static IndexMask from_bools(const IndexMask &universe,
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
@@ -228,16 +238,38 @@ class IndexMask : private IndexMaskData {
   using Initializer = std::variant<IndexRange, Span<int64_t>, Span<int>, int64_t>;
   static IndexMask from_initializers(const Span<Initializer> initializers,
                                      IndexMaskMemory &memory);
-  /** Construct a mask from the union of two other masks. */
+  /** Construct a mask from the union of #mask_a and #mask_b. */
   static IndexMask from_union(const IndexMask &mask_a,
                               const IndexMask &mask_b,
                               IndexMaskMemory &memory);
+  /** Construct a mask from the difference of #mask_a and #mask_b. */
+  static IndexMask from_difference(const IndexMask &mask_a,
+                                   const IndexMask &mask_b,
+                                   IndexMaskMemory &memory);
+  /** Construct a mask from the intersection of #mask_a and #mask_b. */
+  static IndexMask from_intersection(const IndexMask &mask_a,
+                                     const IndexMask &mask_b,
+                                     IndexMaskMemory &memory);
   /** Construct a mask from all the indices for which the predicate is true. */
   template<typename Fn>
   static IndexMask from_predicate(const IndexMask &universe,
                                   GrainSize grain_size,
                                   IndexMaskMemory &memory,
                                   Fn &&predicate);
+  /**
+   * This is a variant of #from_predicate that is more efficient if the predicate for many indices
+   * can be evaluated at once.
+   *
+   * \param batch_predicate: A function that finds indices in a certain segment that should become
+   * part of the mask. To efficiently handle ranges, this function uses #IndexRangesBuilder. It
+   * returns an index offset that should be applied to each index in the builder.
+   */
+  static IndexMask from_batch_predicate(
+      const IndexMask &universe,
+      GrainSize grain_size,
+      IndexMaskMemory &memory,
+      FunctionRef<int64_t(const IndexMaskSegment &universe_segment,
+                          IndexRangesBuilder<int16_t> &builder)> batch_predicate);
   /** Sorts all indices from #universe into the different output masks. */
   template<typename T, typename Fn>
   static void from_groups(const IndexMask &universe,
@@ -330,7 +362,7 @@ class IndexMask : private IndexMaskData {
    * \return A new index mask that contains all the indices from the universe that are not in the
    * current mask.
    */
-  IndexMask complement(IndexRange universe, IndexMaskMemory &memory) const;
+  IndexMask complement(const IndexMask &universe, IndexMaskMemory &memory) const;
 
   /**
    * \return Number of segments in the mask.
@@ -421,9 +453,13 @@ class IndexMask : private IndexMaskData {
    */
   template<typename T> void to_indices(MutableSpan<T> r_indices) const;
   /**
+   * Set the bits at indices in the mask to 1.
+   */
+  void set_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
+  /**
    * Set the bits at indices in the mask to 1 and all other bits to 0.
    */
-  void to_bits(MutableBitSpan r_bits) const;
+  void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
   /**
    * Set the bools at indices in the mask to true and all others to false.
    */
@@ -534,6 +570,16 @@ inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &ma
  */
 template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map);
 
+/**
+ * Joins segments together based on heuristics. Generally, one wants as few segments as possible,
+ * but one also wants full-range-segments if possible and we don't want to copy too many indices
+ * around to reduce the number of segments.
+ *
+ * \return Number of consolidated segments. Those are ordered to the beginning of the span.
+ */
+int64_t consolidate_index_mask_segments(MutableSpan<IndexMaskSegment> segments,
+                                        IndexMaskMemory &memory);
+
 /* -------------------------------------------------------------------- */
 /** \name #RawMaskIterator Inline Methods
  * \{ */
@@ -566,6 +612,12 @@ inline IndexMaskSegment IndexMaskSegment::slice(const int64_t start, const int64
 {
   return IndexMaskSegment(
       static_cast<const OffsetSpan<int64_t, int16_t> *>(this)->slice(start, size));
+}
+
+inline IndexMaskSegment IndexMaskSegment::shift(const int64_t shift) const
+{
+  BLI_assert(this->is_empty() || (*this)[0] + shift >= 0);
+  return IndexMaskSegment(this->offset() + shift, this->base_span());
 }
 
 /* -------------------------------------------------------------------- */

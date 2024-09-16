@@ -139,7 +139,7 @@ void WM_event_print(const wmEvent *event)
                ndof->progress);
       }
       else {
-        /* ndof buttons printed already */
+        /* NDOF buttons printed already. */
       }
     }
 #endif /* WITH_INPUT_NDOF */
@@ -196,7 +196,7 @@ bool WM_event_type_mask_test(const int event_type, const enum eEventType_Mask ma
     }
   }
 
-  /* NDOF */
+  /* NDOF. */
   if (mask & EVT_TYPE_MASK_NDOF) {
     if (ISNDOF(event_type)) {
       return true;
@@ -226,7 +226,7 @@ bool WM_event_is_modal_drag_exit(const wmEvent *event,
   /* If the release-confirm preference setting is enabled,
    * drag events can be canceled when mouse is released. */
   if (U.flag & USER_RELEASECONFIRM) {
-    /* option on, so can exit with km-release */
+    /* Option on, so can exit with km-release. */
     if (event->val == KM_RELEASE) {
       if ((init_event_val == KM_CLICK_DRAG) && (event->type == init_event_type)) {
         return true;
@@ -295,7 +295,7 @@ int WM_event_drag_direction(const wmEvent *event)
   }
 
 #if 0
-  /* debug */
+  /* Debug. */
   if (val == 1) {
     printf("tweak north\n");
   }
@@ -540,19 +540,19 @@ bool WM_event_is_xr(const wmEvent *event)
 /** \name Event Tablet Input Access
  * \{ */
 
-float wm_pressure_curve(float pressure)
+float wm_pressure_curve(float raw_pressure)
 {
   if (U.pressure_threshold_max != 0.0f) {
-    pressure /= U.pressure_threshold_max;
+    raw_pressure /= U.pressure_threshold_max;
   }
 
-  CLAMP(pressure, 0.0f, 1.0f);
+  CLAMP(raw_pressure, 0.0f, 1.0f);
 
   if (U.pressure_softness != 0.0f) {
-    pressure = powf(pressure, powf(4.0f, -U.pressure_softness));
+    raw_pressure = powf(raw_pressure, powf(4.0f, -U.pressure_softness));
   }
 
-  return pressure;
+  return raw_pressure;
 }
 
 float WM_event_tablet_data(const wmEvent *event, bool *r_pen_flip, float r_tilt[2])

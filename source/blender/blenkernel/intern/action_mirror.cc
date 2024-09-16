@@ -23,9 +23,9 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_armature.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 
 #include "DEG_depsgraph.hh"
 

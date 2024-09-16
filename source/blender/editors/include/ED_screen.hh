@@ -210,6 +210,8 @@ int ED_area_header_switchbutton(const bContext *C, uiBlock *block, int yco);
  */
 void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area);
 void ED_area_exit(bContext *C, ScrArea *area);
+blender::StringRefNull ED_area_name(const ScrArea *area);
+int ED_area_icon(const ScrArea *area);
 int ED_screen_area_active(const bContext *C);
 void ED_screen_global_areas_refresh(wmWindow *win);
 void ED_screen_global_areas_sync(wmWindow *win);
@@ -217,7 +219,7 @@ void ED_screen_global_areas_sync(wmWindow *win);
 void ED_area_do_listen(wmSpaceTypeListenerParams *params);
 void ED_area_tag_redraw(ScrArea *area);
 void ED_area_tag_redraw_no_rebuild(ScrArea *area);
-void ED_area_tag_redraw_regiontype(ScrArea *area, int type);
+void ED_area_tag_redraw_regiontype(ScrArea *area, int regiontype);
 void ED_area_tag_refresh(ScrArea *area);
 /**
  * For regions that change the region size in their #ARegionType.layout() callback: Mark the area
@@ -265,7 +267,7 @@ void ED_area_offscreen_free(wmWindowManager *wm, wmWindow *win, ScrArea *area);
  * Search all screens, even non-active or overlapping (multiple windows), return the most-likely
  * area of interest. xy is relative to active window, like all similar functions.
  */
-ScrArea *ED_area_find_under_cursor(const bContext *C, int spacetype, const int xy[2]);
+ScrArea *ED_area_find_under_cursor(const bContext *C, int spacetype, const int event_xy[2]);
 
 ScrArea *ED_screen_areas_iter_first(const wmWindow *win, const bScreen *screen);
 ScrArea *ED_screen_areas_iter_next(const bScreen *screen, const ScrArea *area);
@@ -291,7 +293,7 @@ ScrArea *ED_screen_areas_iter_next(const bScreen *screen, const ScrArea *area);
 /**
  * File read, set all screens, ....
  */
-void ED_screens_init(Main *bmain, wmWindowManager *wm);
+void ED_screens_init(bContext *C, Main *bmain, wmWindowManager *wm);
 /**
  * Only for edge lines between areas.
  */
@@ -301,8 +303,8 @@ void ED_screen_draw_edges(wmWindow *win);
  * Make this screen usable.
  * for file read and first use, for scaling window, area moves.
  */
-void ED_screen_refresh(wmWindowManager *wm, wmWindow *win);
-void ED_screen_ensure_updated(bContext *C, wmWindowManager *wm, wmWindow *win, bScreen *screen);
+void ED_screen_refresh(bContext *C, wmWindowManager *wm, wmWindow *win);
+void ED_screen_ensure_updated(bContext *C, wmWindowManager *wm, wmWindow *win);
 void ED_screen_do_listen(bContext *C, const wmNotifier *note);
 /**
  * \brief Change the active screen.
@@ -450,6 +452,43 @@ bool ED_workspace_layout_cycle(WorkSpace *workspace, short direction, bContext *
 
 void ED_workspace_status_text(bContext *C, const char *str);
 
+class WorkspaceStatus {
+  WorkSpace *workspace_;
+  wmWindowManager *wm_;
+
+ public:
+  WorkspaceStatus(bContext *C);
+
+  /**
+   * Add a static status entry and up to two icons.
+   *
+   * Example:
+   *   [LMB][Enter] Confirm
+   */
+  void item(std::string text, int icon1, int icon2 = 0);
+
+  /**
+   * Add a dynamic status entry with up to two icons that change appearance.
+   * Example:
+   *   [CTRL] Tweak
+   */
+  void item_bool(std::string text, bool inverted, int icon1, int icon2 = 0);
+
+  /**
+   * Add a static status entry showing two icons separated by a dash.
+   * Example:
+   *   [A]-[Z] Search
+   */
+  void range(std::string text, int icon1, int icon2);
+
+  /**
+   * Add a dynamic status entry for a given property in an operator's keymap.
+   * Example:
+   *   [V] X-Ray
+   */
+  void opmodal(std::string text, const wmOperatorType *ot, int propvalue, bool inverted = false);
+};
+
 void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
 
 /* anim */
@@ -469,9 +508,9 @@ bScreen *ED_screen_animation_playing(const wmWindowManager *wm);
 bScreen *ED_screen_animation_no_scrub(const wmWindowManager *wm);
 
 /* screen keymaps */
-/* called in spacetypes.cc */
+/* called in `spacetypes.cc`. */
 void ED_operatortypes_screen();
-/* called in spacetypes.cc */
+/* called in `spacetypes.cc`. */
 void ED_keymap_screen(wmKeyConfig *keyconf);
 /**
  * Workspace key-maps.
@@ -508,6 +547,7 @@ bool ED_operator_region_gizmo_active(bContext *C);
  */
 bool ED_operator_animview_active(bContext *C);
 bool ED_operator_outliner_active(bContext *C);
+bool ED_operator_region_outliner_active(bContext *C);
 bool ED_operator_outliner_active_no_editobject(bContext *C);
 /**
  * \note Will return true for file spaces in either file or asset browsing mode! See

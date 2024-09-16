@@ -19,7 +19,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_action.h" /* BKE_pose_channel_find_name */
+#include "BKE_action.hh" /* BKE_pose_channel_find_name */
 #include "BKE_attribute.hh"
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
@@ -284,6 +284,11 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(GreasePencilLineart);
   INIT_TYPE(GreasePencilArmature);
   INIT_TYPE(GreasePencilTime);
+  INIT_TYPE(GreasePencilSimplify);
   INIT_TYPE(GreasePencilEnvelope);
+  INIT_TYPE(GreasePencilOutline);
+  INIT_TYPE(GreasePencilShrinkwrap);
+  INIT_TYPE(GreasePencilBuild);
+  INIT_TYPE(GreasePencilTexture);
 #undef INIT_TYPE
 }

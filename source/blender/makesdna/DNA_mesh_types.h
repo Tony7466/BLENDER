@@ -19,6 +19,7 @@
 #  include <optional>
 
 #  include "BLI_math_vector_types.hh"
+#  include "BLI_memory_counter_fwd.hh"
 
 namespace blender {
 template<typename T> struct Bounds;
@@ -105,13 +106,6 @@ typedef struct Mesh {
    * generic type attributes from vertex, edge, face, and corner custom data.
    */
   int attributes_active_index;
-
-  /**
-   * Runtime storage of the edit mode mesh. If it exists, it generally has the most up-to-date
-   * information about the mesh.
-   * \note When the object is available, the preferred access method is #BKE_editmesh_from_object.
-   */
-  struct BMEditMesh *edit_mesh;
 
   /**
    * This array represents the selection order when the user manually picks elements in edit-mode,
@@ -401,6 +395,8 @@ typedef struct Mesh {
    * using #face_normals() or #vert_normals() when possible (see #normals_domain()).
    */
   blender::Span<blender::float3> corner_normals() const;
+
+  void count_memory(blender::MemoryCounter &memory) const;
 
   /** Call after changing vertex positions to tag lazily calculated caches for recomputation. */
   void tag_positions_changed();

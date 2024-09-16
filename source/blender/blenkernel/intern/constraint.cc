@@ -44,7 +44,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_tracking_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_path.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -58,7 +58,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
@@ -76,6 +76,8 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
+
+#include "ANIM_action.hh"
 
 #include "CLG_log.h"
 
@@ -210,9 +212,9 @@ void BKE_constraints_clear_evalob(bConstraintOb *cob)
 
   /* calculate delta of constraints evaluation */
   invert_m4_m4(imat, cob->startmat);
-  /* XXX This would seem to be in wrong order. However, it does not work in 'right' order -
-   *     would be nice to understand why premul is needed here instead of usual postmul?
-   *     In any case, we **do not get a delta** here (e.g. startmat & matrix having same location,
+  /* XXX This would seem to be in wrong order. However, it does not work in 'right' order - would
+   *     be nice to understand why pre-multiply is needed here instead of usual post-multiply?
+   *     In any case, we *do not get a delta* here (e.g. startmat & matrix having same location,
    *     still gives a 'delta' with non-null translation component :/ ). */
   mul_m4_m4m4(delta, cob->matrix, imat);
 
@@ -518,7 +520,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
   /* when not in EditMode, use the 'final' evaluated mesh, depsgraph
    * ensures we build with CD_MDEFORMVERT layer
    */
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   BMEditMesh *em = BKE_editmesh_from_object(ob);
   float plane[3];
   float imat[3][3], tmat[3][3];
@@ -553,11 +555,11 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
       }
     }
   }
-  else if (me_eval) {
-    const blender::Span<blender::float3> positions = me_eval->vert_positions();
-    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
+  else if (mesh_eval) {
+    const blender::Span<blender::float3> positions = mesh_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = mesh_eval->vert_normals();
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
-        CustomData_get_layer(&me_eval->vert_data, CD_MDEFORMVERT));
+        CustomData_get_layer(&mesh_eval->vert_data, CD_MDEFORMVERT));
 
     /* check that dvert is a valid pointers (just in case) */
     if (dvert) {
@@ -1015,10 +1017,21 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
   bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
   bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
-  /* only evaluate if there is a target */
+  /* Only evaluate if there is a target.
+   *
+   * NOTE: we're setting/unsetting the CONSTRAINT_SPACEONCE flag here because:
+   *
+   * 1. It's only used by the Child Of constraint anyway.
+   * 2. It's only used to affect the steps taken immediately after this function
+   *    returns, and this way we ensure it's always set correctly for that.
+   *
+   * It was previously set in other places which resulted in bugs like #116567.
+   * In the future we should ideally move to a different approach entirely. */
   if (!VALID_CONS_TARGET(ct)) {
+    con->flag &= ~CONSTRAINT_SPACEONCE;
     return;
   }
+  con->flag |= CONSTRAINT_SPACEONCE;
 
   float parmat[4][4];
   float inverse_matrix[4][4];
@@ -1659,6 +1672,64 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
 
 /* -------- Limit Rotation --------- */
 
+/**
+ * Wraps a number to be in [-PI, +PI].
+ */
+static inline float wrap_rad_angle(const float angle)
+{
+  const float b = angle * (0.5 / M_PI) + 0.5;
+  return ((b - std::floor(b)) - 0.5) * (2.0 * M_PI);
+}
+
+/**
+ * Clamps an angle between min and max.
+ *
+ * All angles are in radians.
+ *
+ * This function treats angles as existing in a looping (cyclic) space, and is therefore
+ * specifically not equivalent to a simple `clamp(angle, min, max)`. `min` and `max` are treated as
+ * a directed range on the unit circle and `angle` is treated as a point on the unit circle.
+ * `angle` is then clamped to be within the directed range defined by `min` and `max`.
+ */
+static float clamp_angle(const float angle, const float min, const float max)
+{
+  /* If the allowed range exceeds 360 degrees no clamping can occur. */
+  if ((max - min) >= (2 * M_PI)) {
+    return angle;
+  }
+
+  /* Invalid case, just return min. */
+  if (max <= min) {
+    return min;
+  }
+
+  /* Move min and max into a space where `angle == 0.0`, and wrap them to
+   * [-PI, +PI] in that space.  This simplifies the cases below, as we can
+   * just use 0.0 in place of `angle` and know that everything is in
+   * [-PI, +PI]. */
+  const float min_wrapped = wrap_rad_angle(min - angle);
+  const float max_wrapped = wrap_rad_angle(max - angle);
+
+  /* If the range defined by `min`/`max` doesn't contain the boundary at
+   * PI/-PI.  This is the simple case, because it means we can do a simple
+   * clamp. */
+  if (min_wrapped < max_wrapped) {
+    return angle + std::clamp(0.0f, min_wrapped, max_wrapped);
+  }
+
+  /* At this point we know that `min_wrapped` >= `max_wrapped`, meaning the boundary is crossed.
+   * With that we know that no clamping is needed in the following case. */
+  if (max_wrapped >= 0.0 || min_wrapped <= 0.0) {
+    return angle;
+  }
+
+  /* If zero is outside of the range, we clamp to the closest of `min_wrapped` or `max_wrapped`. */
+  if (std::fabs(max_wrapped) < std::fabs(min_wrapped)) {
+    return angle + max_wrapped;
+  }
+  return angle + min_wrapped;
+}
+
 static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
   bRotLimitConstraint *data = static_cast<bRotLimitConstraint *>(con->data);
@@ -1689,34 +1760,42 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
 
   mat4_to_eulO(eul, rot_order, cob->matrix);
 
-  /* constraint data uses radians internally */
-
-  /* limiting of euler values... */
-  if (data->flag & LIMIT_XROT) {
-    if (eul[0] < data->xmin) {
-      eul[0] = data->xmin;
+  /* Limit the euler values. */
+  if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
+    /* The legacy behavior, which just does a naive clamping of the angles as
+     * simple numbers. Since the input angles are always in the range [-180,
+     * 180] degrees due to being derived from matrix decomposition, this naive
+     * approach causes problems when rotations cross 180 degrees. Specifically,
+     * it results in unpredictable and unwanted rotation flips of the
+     * constrained objects/bones, especially when the constraint isn't in local
+     * space.
+     *
+     * The correct thing to do is a more sophisticated form of clamping that
+     * treats the angles as existing on a continuous loop, which is what the
+     * non-legacy behavior further below does. However, for backwards
+     * compatibility we are preserving this old behavior behind an option.
+     *
+     * See issues #117927 and #123105 for additional background. */
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_f(eul[0], data->xmin, data->xmax);
     }
-
-    if (eul[0] > data->xmax) {
-      eul[0] = data->xmax;
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_f(eul[1], data->ymin, data->ymax);
+    }
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_f(eul[2], data->zmin, data->zmax);
     }
   }
-  if (data->flag & LIMIT_YROT) {
-    if (eul[1] < data->ymin) {
-      eul[1] = data->ymin;
+  else {
+    /* The correct, non-legacy behavior. */
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
     }
-
-    if (eul[1] > data->ymax) {
-      eul[1] = data->ymax;
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
     }
-  }
-  if (data->flag & LIMIT_ZROT) {
-    if (eul[2] < data->zmin) {
-      eul[2] = data->zmin;
-    }
-
-    if (eul[2] > data->zmax) {
-      eul[2] = data->zmax;
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
     }
   }
 
@@ -2873,8 +2952,24 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       BLI_assert(uint(axis) < 3);
 
-      /* Target defines the animation */
-      s = (vec[axis] - data->min) / (data->max - data->min);
+      /* Convert the target's value into a [0, 1] value that's later used to find the Action frame
+       * to apply. This compares to the min/max boundary values first, before doing the
+       * normalization by the (max-min) range, to get predictable, valid values when that range is
+       * zero. */
+      const float value_of_target = vec[axis];
+      const float range = data->max - data->min;
+      if (value_of_target <= data->min) {
+        s = 0.0f;
+      }
+      else if (value_of_target >= data->max) {
+        s = 1.0f;
+      }
+      else if (range == 0.0f) {
+        s = 0.0f;
+      }
+      else {
+        s = (value_of_target - data->min) / range;
+      }
     }
 
     CLAMP(s, 0, 1);
@@ -2889,13 +2984,19 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
              (cob->pchan) ? cob->pchan->name : nullptr);
     }
 
+    /* TODO: add an action slot selector to the constraint settings. */
+    BLI_assert(data->act);
+    const blender::animrig::slot_handle_t slot_handle = blender::animrig::first_slot_handle(
+        *data->act);
+
     /* Get the appropriate information from the action */
     if (cob->type == CONSTRAINT_OBTYPE_OBJECT || (data->flag & ACTCON_BONE_USE_OBJECT_ACTION)) {
       Object workob;
 
       /* evaluate using workob */
       /* FIXME: we don't have any consistent standards on limiting effects on object... */
-      what_does_obaction(cob->ob, &workob, nullptr, data->act, nullptr, &anim_eval_context);
+      what_does_obaction(
+          cob->ob, &workob, nullptr, data->act, slot_handle, nullptr, &anim_eval_context);
       BKE_object_to_mat4(&workob, ct->matrix);
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
@@ -2912,7 +3013,8 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
       tchan->rotmode = pchan->rotmode;
 
       /* evaluate action using workob (it will only set the PoseChannel in question) */
-      what_does_obaction(cob->ob, &workob, &pose, data->act, pchan->name, &anim_eval_context);
+      what_does_obaction(
+          cob->ob, &workob, &pose, data->act, slot_handle, pchan->name, &anim_eval_context);
 
       /* convert animation to matrices for use here */
       BKE_pchan_calc_mat(tchan);
@@ -5651,7 +5753,7 @@ bool BKE_constraint_apply_for_object(Depsgraph *depsgraph,
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   bConstraint *con_eval = BKE_constraints_find_name(&ob_eval->constraints, con->name);
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, ID_IS_EDITABLE(ob));
   ListBase single_con = {new_con, new_con};
 
   bConstraintOb *cob = BKE_constraints_make_evalob(
@@ -5704,7 +5806,7 @@ bool BKE_constraint_apply_for_pose(
   bPoseChannel *pchan_eval = BKE_pose_channel_find_name(ob_eval->pose, pchan->name);
   bConstraint *con_eval = BKE_constraints_find_name(&pchan_eval->constraints, con->name);
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, ID_IS_EDITABLE(ob));
   ListBase single_con;
   single_con.first = new_con;
   single_con.last = new_con;
@@ -5844,7 +5946,6 @@ static bConstraint *add_new_constraint(Object *ob,
        * the constraint gets evaluated in pose-space */
       if (pchan) {
         con->ownspace = CONSTRAINT_SPACE_POSE;
-        con->flag |= CONSTRAINT_SPACEONCE;
       }
       break;
     }
@@ -5981,14 +6082,14 @@ bConstraint *BKE_constraint_copy_for_pose(Object *ob, bPoseChannel *pchan, bCons
     return nullptr;
   }
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, ID_IS_EDITABLE(ob));
   add_new_constraint_to_list(ob, pchan, new_con);
   return new_con;
 }
 
 bConstraint *BKE_constraint_copy_for_object(Object *ob, bConstraint *src)
 {
-  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, ID_IS_EDITABLE(ob));
   add_new_constraint_to_list(ob, nullptr, new_con);
   return new_con;
 }
@@ -6508,9 +6609,18 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
 
 void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *lb)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, bConstraint, lb);
   LISTBASE_FOREACH (bConstraint *, con, lb) {
-    BLO_read_data_address(reader, &con->data);
+    const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+    if (cti) {
+      con->data = BLO_read_struct_by_name_array(reader, cti->struct_name, 1, con->data);
+    }
+    else {
+      /* No `BLI_assert_unreachable()` here, this code can be reached in some cases, like the
+       * deprecated RigidBody constraint. */
+      con->data = nullptr;
+    }
+
     /* Patch for error introduced by changing constraints (don't know how). */
     /* NOTE(@ton): If `con->data` type changes, DNA cannot resolve the pointer!. */
     /* FIXME This is likely dead code actually, since it used to be in
@@ -6529,23 +6639,23 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
       case CONSTRAINT_TYPE_PYTHON: {
         bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
-        BLO_read_list(reader, &data->targets);
+        BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
 
-        BLO_read_data_address(reader, &data->prop);
+        BLO_read_struct(reader, IDProperty, &data->prop);
         IDP_BlendDataRead(reader, &data->prop);
         break;
       }
       case CONSTRAINT_TYPE_ARMATURE: {
         bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
-        BLO_read_list(reader, &data->targets);
+        BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
 
         break;
       }
       case CONSTRAINT_TYPE_SPLINEIK: {
         bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
-        BLO_read_data_address(reader, &data->points);
+        BLO_read_float_array(reader, data->numpoints, &data->points);
         break;
       }
       case CONSTRAINT_TYPE_KINEMATIC: {
@@ -6556,13 +6666,6 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
 
         /* version patch for runtime flag, was not cleared in some case */
         data->flag &= ~CONSTRAINT_IK_AUTO;
-        break;
-      }
-      case CONSTRAINT_TYPE_CHILDOF: {
-        /* XXX version patch, in older code this flag wasn't always set, and is inherent to type */
-        if (con->ownspace == CONSTRAINT_SPACE_POSE) {
-          con->flag |= CONSTRAINT_SPACEONCE;
-        }
         break;
       }
       case CONSTRAINT_TYPE_TRANSFORM_CACHE: {

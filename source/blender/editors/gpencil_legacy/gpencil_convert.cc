@@ -36,7 +36,7 @@
 #include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -65,7 +65,7 @@
 #include "ED_object.hh"
 #include "ED_view3d.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ************************************************ */
 /* Grease Pencil to Data Operator */
@@ -373,7 +373,7 @@ static void gpencil_stroke_path_animation_preprocess_gaps(tGpTimingData *gtd,
 }
 
 static void gpencil_stroke_path_animation_add_keyframes(ReportList *reports,
-                                                        PointerRNA ptr,
+                                                        const PointerRNA &ptr,
                                                         PropertyRNA *prop,
                                                         Depsgraph *depsgraph,
                                                         FCurve *fcu,
@@ -515,7 +515,7 @@ static void gpencil_stroke_path_animation(bContext *C,
 
   /* Ensure we have an F-Curve to add keyframes to */
   act = blender::animrig::id_action_ensure(bmain, (ID *)cu);
-  fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, "eval_time", 0);
+  fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, {"eval_time", 0});
 
   if (gtd->mode == GP_STROKECONVERT_TIMING_LINEAR) {
     float cfra;
@@ -1238,7 +1238,7 @@ static int gpencil_camera_view_subrect(bContext *C, rctf *subrect)
 
     /* for camera view set the subrect */
     if (rv3d->persp == RV3D_CAMOB) {
-      Scene *scene = CTX_data_scene(C);
+      const Scene *scene = CTX_data_scene(C);
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       ED_view3d_calc_camera_border(scene, depsgraph, region, v3d, rv3d, subrect, true);
       return 1;
@@ -1388,7 +1388,7 @@ static void gpencil_layer_to_curve(bContext *C,
     }
   }
 
-  ED_object_base_select(base_new, BA_SELECT);
+  blender::ed::object::base_select(base_new, blender::ed::object::BA_SELECT);
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 }
