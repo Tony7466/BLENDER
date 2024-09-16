@@ -25,6 +25,8 @@
 
 #include "BKE_global.hh"
 
+#include <fmt/format.h>
+
 using namespace blender::gpu::shader;
 
 namespace blender::gpu {
@@ -501,15 +503,12 @@ static const std::string to_stage_name(shaderc_shader_kind stage)
   return std::string("unknown stage");
 }
 
-static std::string combine_sources(Span<const char *> sources)
+static std::string combine_sources(Span<StringRefNull> sources)
 {
-  char *sources_combined = BLI_string_join_arrayN((const char **)sources.data(), sources.size());
-  std::string result(sources_combined);
-  MEM_freeN(sources_combined);
-  return result;
+  return fmt::to_string(fmt::join(sources, ""));
 }
 
-Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
+Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<StringRefNull> sources,
                                                  shaderc_shader_kind stage)
 {
   std::string combined_sources = combine_sources(sources);
