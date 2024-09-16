@@ -154,8 +154,10 @@ class Outline {
                                          manager.unique_handle(ob_ref));
         break;
       case OB_MESH:
-        geom = DRW_cache_mesh_surface_get(ob_ref.object);
-        prepass_mesh_ps_->draw(geom, manager.unique_handle(ob_ref));
+        if (!state.xray_enabled_and_not_wire) {
+          geom = DRW_cache_mesh_surface_get(ob_ref.object);
+          prepass_mesh_ps_->draw(geom, manager.unique_handle(ob_ref));
+        }
         {
           /* TODO(fclem): This is against design. We should not sync depending on view position.
            * Eventually, add a bounding box display pass with some special culling phase. */
@@ -169,7 +171,8 @@ class Outline {
                                                                                      flat_axis));
           if (state.xray_enabled_and_not_wire || is_flat_object_viewed_from_side) {
             geom = DRW_cache_mesh_edge_detection_get(ob_ref.object, nullptr);
-            prepass_wire_ps_->draw(geom, manager.unique_handle(ob_ref));
+            prepass_wire_ps_->draw_expand(
+                geom, GPU_PRIM_LINES, 1, 1, manager.unique_handle(ob_ref));
           }
         }
         break;
