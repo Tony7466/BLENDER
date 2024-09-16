@@ -82,7 +82,10 @@ struct PositionDeformData {
    */
   std::optional<MutableSpan<float3>> eval_mut;
 
-  /** Transforms from deforming modifiers, used to  */
+  /**
+   * Transforms from deforming modifiers, used to convert translations of evaluated positions to
+   * "original" translations.
+   */
   std::optional<Span<float3x3>> deform_imats;
 
   /**
