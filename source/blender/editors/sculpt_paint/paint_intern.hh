@@ -25,13 +25,8 @@ enum class PaintMode : int8_t;
 
 struct ARegion;
 struct bContext;
-struct BMesh;
-struct BMVert;
 struct Brush;
-struct CCGElem;
-struct CCGKey;
 struct ColorManagedDisplay;
-struct ColorSpace;
 struct Depsgraph;
 struct Image;
 struct ImagePool;
@@ -47,7 +42,6 @@ struct ReportList;
 struct Scene;
 struct SculptSession;
 struct SpaceImage;
-struct SubdivCCG;
 struct ToolSettings;
 struct VertProjHandle;
 struct ViewContext;
@@ -281,7 +275,7 @@ void paint_2d_stroke(void *ps,
                      bool eraser,
                      float pressure,
                      float distance,
-                     float size);
+                     float base_size);
 /**
  * This function expects linear space color values.
  */
