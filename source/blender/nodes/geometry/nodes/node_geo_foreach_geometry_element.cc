@@ -12,6 +12,7 @@
 #include "RNA_prototypes.hh"
 
 #include "NOD_geo_foreach_geometry_element.hh"
+#include "NOD_node_extra_info.hh"
 #include "NOD_socket_items_ops.hh"
 
 #include "UI_interface.hh"
@@ -579,6 +580,20 @@ static void node_operators()
   WM_operatortype_append(NODE_OT_foreach_geometry_element_zone_main_item_move);
 }
 
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  const NodeGeometryForeachGeometryElementOutput &storage = node_storage(params.node);
+  if (storage.generation_items.items_num > 0) {
+    if (storage.generation_items.items[0].socket_type != SOCK_GEOMETRY) {
+      NodeExtraInfoRow row;
+      row.text = RPT_("Missing Geometry");
+      row.tooltip = TIP_("Each output field has to correspond to a geometry that is above it");
+      row.icon = ICON_ERROR;
+      params.rows.append(std::move(row));
+    }
+  }
+}
+
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
@@ -592,6 +607,7 @@ static void node_register()
   ntype.insert_link = node_insert_link;
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.register_operators = node_operators;
+  ntype.get_extra_info = node_extra_info;
   ntype.no_muting = true;
   blender::bke::node_type_storage(
       &ntype, "NodeGeometryForeachGeometryElementOutput", node_free_storage, node_copy_storage);
