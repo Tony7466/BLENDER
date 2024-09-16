@@ -7,6 +7,8 @@
 #include "BLI_math_half.hh"
 #include "BLI_time.h"
 
+#include <cmath>
+
 // #define DO_PERF_TESTS 1
 
 namespace blender::tests {
@@ -26,16 +28,16 @@ TEST(math_half, half_to_float_scalar)
   EXPECT_EQ(blender::math::half_to_float(16384), 2.0f);
   EXPECT_EQ(blender::math::half_to_float(31743), 65504.0f);
   EXPECT_EQ(blender::math::half_to_float(31744), std::numeric_limits<float>::infinity());
-  EXPECT_TRUE(isnan(blender::math::half_to_float(31746)));
-  EXPECT_TRUE(isnan(blender::math::half_to_float(32767)));
+  EXPECT_TRUE(std::isnan(blender::math::half_to_float(31746)));
+  EXPECT_TRUE(std::isnan(blender::math::half_to_float(32767)));
   EXPECT_EQ(blender::math::half_to_float(32768), -0.0f);
   EXPECT_EQ(blender::math::half_to_float(32769), -5.960464478e-08f);
   EXPECT_EQ(blender::math::half_to_float(46765), -0.4172363281f);
   EXPECT_EQ(blender::math::half_to_float(54501), -78.3125f);
   EXPECT_EQ(blender::math::half_to_float(64511), -65504.0f);
   EXPECT_EQ(blender::math::half_to_float(64512), -std::numeric_limits<float>::infinity());
-  EXPECT_TRUE(isnan(blender::math::half_to_float(64513)));
-  EXPECT_TRUE(isnan(blender::math::half_to_float(65535)));
+  EXPECT_TRUE(std::isnan(blender::math::half_to_float(64513)));
+  EXPECT_TRUE(std::isnan(blender::math::half_to_float(65535)));
 }
 
 TEST(math_half, float_to_half_scalar)
