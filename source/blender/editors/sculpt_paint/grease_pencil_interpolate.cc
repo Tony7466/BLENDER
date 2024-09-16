@@ -76,7 +76,7 @@ enum GreasePencilInterpolationType {
 };
 
 /**
- * \note this is a near exact duplicate of #rna_enum_beztriple_interpolation_mode_items,
+ * \note This is a near exact duplicate of #rna_enum_beztriple_interpolation_mode_items,
  * Changes here will likely apply there too.
  */
 static const EnumPropertyItem grease_pencil_interpolation_type_items[] = {
@@ -286,7 +286,9 @@ InterpolateOpData *InterpolateOpData::from_operator(const bContext &C, const wmO
 
   InterpolateOpData *data = MEM_new<InterpolateOpData>(__func__);
 
-  if (RNA_struct_find_property(op.ptr, "shift") != nullptr) {data->shift = RNA_float_get(op.ptr, "shift");}
+  if (RNA_struct_find_property(op.ptr, "shift") != nullptr) {
+    data->shift = RNA_float_get(op.ptr, "shift");
+  }
   data->exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
   data->flipmode = InterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
   data->smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
@@ -918,7 +920,7 @@ static void GREASE_PENCIL_OT_interpolate(wmOperatorType *ot)
 /** \name Interpolate Sequence Operator
  * \{ */
 
-/* Helper: Perform easing equation calculations for GP interpolation operator */
+/* Helper: Perform easing equation calculations for GP interpolation operator. */
 static float grease_pencil_interpolate_sequence_easing_calc(
     const eBezTriple_Easing easing,
     const GreasePencilInterpolationType type,
@@ -948,7 +950,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_back_ease_in_out(time, begin, change, duration, back_easing);
 
-        default: /* default/auto: same as ease out */
+        default:
           return BLI_easing_back_ease_out(time, begin, change, duration, back_easing);
       }
       break;
@@ -962,7 +964,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_bounce_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease out */
+        default:
           return BLI_easing_bounce_ease_out(time, begin, change, duration);
       }
       break;
@@ -976,7 +978,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_circ_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_circ_ease_in(time, begin, change, duration);
       }
       break;
@@ -990,7 +992,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_cubic_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_cubic_ease_in(time, begin, change, duration);
       }
       break;
@@ -1004,7 +1006,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_elastic_ease_in_out(time, begin, change, duration, amplitude, period);
 
-        default: /* default/auto: same as ease out */
+        default:
           return BLI_easing_elastic_ease_out(time, begin, change, duration, amplitude, period);
       }
       break;
@@ -1018,7 +1020,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_expo_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_expo_ease_in(time, begin, change, duration);
       }
       break;
@@ -1032,7 +1034,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_quad_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_quad_ease_in(time, begin, change, duration);
       }
       break;
@@ -1046,7 +1048,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_quart_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_quart_ease_in(time, begin, change, duration);
       }
       break;
@@ -1060,7 +1062,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_quint_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_quint_ease_in(time, begin, change, duration);
       }
       break;
@@ -1074,7 +1076,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
         case BEZT_IPO_EASE_IN_OUT:
           return BLI_easing_sine_ease_in_out(time, begin, change, duration);
 
-        default: /* default/auto: same as ease in */
+        default:
           return BLI_easing_sine_ease_in(time, begin, change, duration);
       }
       break;
@@ -1161,7 +1163,7 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
     }
   });
 
-  /* notifiers */
+  /* Notifiers */
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
@@ -1230,13 +1232,11 @@ static void GREASE_PENCIL_OT_interpolate_sequence(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  /* identifiers */
   ot->name = "Interpolate Sequence";
   ot->idname = "GREASE_PENCIL_OT_interpolate_sequence";
   ot->translation_context = BLT_I18NCONTEXT_ID_GPENCIL;
   ot->description = "Generate 'in-betweens' to smoothly interpolate between Grease Pencil frames";
 
-  /* api callbacks */
   ot->exec = grease_pencil_interpolate_sequence_exec;
   ot->poll = grease_pencil_interpolate_poll;
   ot->ui = grease_pencil_interpolate_sequence_ui;
@@ -1345,7 +1345,6 @@ static void GREASE_PENCIL_OT_interpolate_sequence(wmOperatorType *ot)
                 -FLT_MAX,
                 FLT_MAX);
 
-  /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
