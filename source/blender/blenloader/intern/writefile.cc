@@ -92,6 +92,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_fileops.hh"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
@@ -403,7 +404,9 @@ bool ZstdWriteWrap::write(const void *buf, size_t buf_len)
 struct WriteData {
   const SDNA *sdna;
   std::unique_ptr<blender::dna::pointers::PointersInDNA> pointers;
-  blender::Map<const void *, void *> pointer_map;
+  blender::Map<const void *, const void *> pointer_map;
+  blender::Map<int, int> pointer_num_by_group;
+  std::ostream *debug_dst = nullptr;
 
   struct {
     /** Use for file and memory writing (size stored in max_size). */
@@ -514,7 +517,6 @@ static void writedata_do_write(WriteData *wd, const void *mem, size_t memlen)
 
 static void writedata_free(WriteData *wd)
 {
-  printf("Total pointers: %d\n", wd->pointer_map.size());
   if (wd->buffer.buf) {
     MEM_freeN(wd->buffer.buf);
   }
@@ -688,6 +690,8 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
 
   wd->validation_data.per_id_addresses_set.clear();
   wd->per_id_written_shared_addresses.clear();
+  wd->pointer_map.clear();
+  wd->pointer_num_by_group.clear();
 
   BLI_assert(wd->is_writing_id == true);
   wd->is_writing_id = false;
@@ -724,13 +728,18 @@ static bool write_at_address_validate(WriteData *wd, int filecode, const void *a
   return true;
 }
 
-static const void *get_address_id(WriteData &wd, const void *address)
+static const void *get_address_id(WriteData &wd, const void *address, const int group)
 {
   if (address == nullptr) {
     return nullptr;
   }
-  /* +1 to avoid nullptr as valid id. */
-  return wd.pointer_map.lookup_or_add(address, POINTER_FROM_INT(wd.pointer_map.size() + 1));
+  return wd.pointer_map.lookup_or_add_cb(address, [&]() {
+    int &id_in_group = wd.pointer_num_by_group.lookup_or_add_default(group);
+    /* Increment first to avoid nullptr as valid id. */
+    id_in_group++;
+    uintptr_t address_id = (uintptr_t(group) << 32) | uintptr_t(id_in_group);
+    return (const void *)address_id;
+  });
 }
 
 static void writestruct_at_address_nr(
@@ -754,15 +763,21 @@ static void writestruct_at_address_nr(
   void *buffer = buffer_owner.buffer();
   memcpy(buffer, data, size_in_bytes);
 
-  const void *address_id = get_address_id(*wd, adr);
+  const void *address_id = get_address_id(*wd, adr, struct_nr);
 
   const blender::dna::pointers::StructInfo &struct_info = wd->pointers->get_for_struct(struct_nr);
   for (const int i : blender::IndexRange(nr)) {
     for (const blender::dna::pointers::PointerInfo &pointer_info : struct_info.pointers) {
       const int offset = i * struct_info.size + pointer_info.offset;
-      const void *&pointer_in_buffer = *(const void **)POINTER_OFFSET(buffer, offset);
-      pointer_in_buffer = get_address_id(*wd, pointer_in_buffer);
+      const void **p_ptr = (const void **)POINTER_OFFSET(buffer, offset);
+      const void *address_id = get_address_id(*wd, *p_ptr, struct_nr);
+      *p_ptr = address_id;
     }
+  }
+
+  if (wd->debug_dst) {
+    blender::dna::pointers::debug_print_struct(
+        *wd->sdna, *wd->sdna->structs[struct_nr], buffer, 0, *wd->debug_dst);
   }
 
   /* Initialize #BHead. */
@@ -812,7 +827,7 @@ static void writedata(WriteData *wd, int filecode, size_t len, const void *adr)
 
   /* Initialize #BHead. */
   bh.code = filecode;
-  bh.old = get_address_id(*wd, adr);
+  bh.old = get_address_id(*wd, adr, 0);
   bh.nr = 1;
   BLI_STATIC_ASSERT(SDNA_RAW_DATA_STRUCT_INDEX == 0, "'raw data' SDNA struct index should be 0")
   bh.SDNAnr = SDNA_RAW_DATA_STRUCT_INDEX;
@@ -1280,6 +1295,8 @@ static void id_buffer_init_from_id(BLO_Write_IDBuffer *id_buffer, ID *id, const 
   temp_id->session_uid = 0;
   temp_id->recalc_up_to_undo_push = 0;
   temp_id->recalc_after_undo_push = 0;
+  temp_id->runtime.remap = {};
+  temp_id->recalc = 0;
 
   DrawDataList *drawdata = DRW_drawdatalist_from_id(temp_id);
   if (drawdata) {
@@ -1335,7 +1352,8 @@ static bool write_file_handle(Main *mainvar,
                               MemFile *current,
                               int write_flags,
                               bool use_userdef,
-                              const BlendThumbnail *thumb)
+                              const BlendThumbnail *thumb,
+                              std::ostream *debug_dst)
 {
   BHead bhead;
   ListBase mainlist;
@@ -1343,6 +1361,7 @@ static bool write_file_handle(Main *mainvar,
   WriteData *wd;
 
   wd = mywrite_begin(ww, compare, current);
+  wd->debug_dst = debug_dst;
   BlendWriter writer = {wd};
 
   /* Clear 'directly linked' flag for all linked data, these are not necessarily valid/up-to-date
@@ -1541,6 +1560,8 @@ static bool write_file_handle(Main *mainvar,
   mywrite(wd, &bhead, sizeof(BHead));
 
   blo_join_main(&mainlist);
+
+  mywrite_flush(wd);
 
   return mywrite_end(wd);
 }
@@ -1753,9 +1774,12 @@ static bool BLO_write_file_impl(Main *mainvar,
     }
   }
 
+  std::string debug_dst_path = blender::StringRef(filepath) + ".debug.txt";
+  blender::fstream debug_dst{debug_dst_path, std::ios::out};
+
   /* Actual file writing. */
   const bool err = write_file_handle(
-      mainvar, &ww, nullptr, nullptr, write_flags, use_userdef, thumb);
+      mainvar, &ww, nullptr, nullptr, write_flags, use_userdef, thumb, &debug_dst);
 
   ww.close();
 
@@ -1817,7 +1841,7 @@ bool BLO_write_file_mem(Main *mainvar, MemFile *compare, MemFile *current, int w
   bool use_userdef = false;
 
   const bool err = write_file_handle(
-      mainvar, nullptr, compare, current, write_flags, use_userdef, nullptr);
+      mainvar, nullptr, compare, current, write_flags, use_userdef, nullptr, nullptr);
 
   return (err == 0);
 }

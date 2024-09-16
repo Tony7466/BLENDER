@@ -41,4 +41,10 @@ class PointersInDNA {
                                         StructInfo &r_struct_info) const;
 };
 
+void debug_print_struct(const SDNA &sdna,
+                        const SDNA_Struct &sdna_struct,
+                        const void *data,
+                        int indent,
+                        std::ostream &stream);
+
 }  // namespace blender::dna::pointers
