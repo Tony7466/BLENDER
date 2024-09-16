@@ -19,8 +19,8 @@
 #include "spreadsheet_layout.hh"
 
 #include "DNA_collection_types.h"
-#include "DNA_object_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
 #include "UI_interface.hh"
@@ -113,11 +113,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     nullptr);
       UI_but_func_tooltip_set(
-        but,
-        [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return fmt::format(TIP_("({})"),std::to_string( *((int*)argN)));
-        },
-        MEM_cnew<int>(__func__, value),
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("({})"), std::to_string(*((int *)argN)));
+          },
+          MEM_cnew<int>(__func__, value),
           MEM_freeN);
       /* Right-align Integers. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
@@ -166,11 +166,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     nullptr);
       UI_but_func_tooltip_set(
-        but,
-        [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return fmt::format(TIP_("({})"),std::to_string( *((float*)argN)));
-        },
-        MEM_cnew<float>(__func__, value),
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("({})"), std::to_string(*((float *)argN)));
+          },
+          MEM_cnew<float>(__func__, value),
           MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
@@ -236,26 +236,28 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        nullptr);
     }
     else if (data.type().is<MStringProperty>()) {
-      uiBut* but = uiDefIconTextBut(params.block,
-                       UI_BTYPE_LABEL,
-                       0,
-                       ICON_NONE,
-                       std::string(data.get<MStringProperty>(real_index).s,255),
-                       params.xmin,
-                       params.ymin,
-                       params.width,
-                       params.height,
-                       nullptr,
-                       0,
-                       0,
-                       nullptr);
-      auto buf=MEM_mallocN(255,__func__);
-      memcpy_s(buf,255,data.get<MStringProperty>(real_index).s,255);
+      uiBut *but = uiDefIconTextBut(params.block,
+                                    UI_BTYPE_LABEL,
+                                    0,
+                                    ICON_NONE,
+                                    std::string(data.get<MStringProperty>(real_index).s, 255),
+                                    params.xmin,
+                                    params.ymin,
+                                    params.width,
+                                    params.height,
+                                    nullptr,
+                                    0,
+                                    0,
+                                    nullptr);
+      auto buf = MEM_mallocN(255, __func__);
+      memcpy(buf, data.get<MStringProperty>(real_index).s, 255);
       UI_but_func_tooltip_set(
-        but,
-        [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return fmt::format(TIP_("({})"),(char*)argN);
-        },buf,MEM_freeN);
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("({})"), (char *)argN);
+          },
+          buf,
+          MEM_freeN);
     }
   }
 
@@ -281,13 +283,13 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
-     
+
       UI_but_func_tooltip_set(
-        but,
-        [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return fmt::format(TIP_("({})"),std::to_string( *((float*)argN)));
-        },
-        MEM_cnew<float>(__func__, value),
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("({})"), std::to_string(*((float *)argN)));
+          },
+          MEM_cnew<float>(__func__, value),
           MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
@@ -318,11 +320,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     nullptr);
       UI_but_func_tooltip_set(
-        but,
-        [](bContext* /*C*/, void* argN, const char* /*tip*/) {
-          return fmt::format(TIP_("({})"),std::to_string( *((int*)argN)));
-        },
-        MEM_cnew<int>(__func__, value),
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("({})"), std::to_string(*((int *)argN)));
+          },
+          MEM_cnew<int>(__func__, value),
           MEM_freeN);
       /* Right-align Floats. */
       UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
