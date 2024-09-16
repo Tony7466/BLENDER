@@ -1,1 +1,1 @@
-Referenced by pull request #127672, Back-port fix for uninitialized SeqRetimingKey
+Referenced by pull request #127672, 4.2 backport: Fix fake_retiming_key_init returning uninitialized stack memory
