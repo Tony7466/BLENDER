@@ -1,1 +1,2 @@
 Referenced by commit 65fdb3fa307abbec417abcf85d6624cdc402d235, Grease Pencil: Properly support brushes with draw mode primitive tools
+Referenced by commit 7180df49dd6eee25fe4f9ba78ec57cd02536c667, Fix: Incorrect tool brush check for grease pencil vertex paint mode
