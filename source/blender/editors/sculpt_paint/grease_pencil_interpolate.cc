@@ -286,9 +286,7 @@ InterpolateOpData *InterpolateOpData::from_operator(const bContext &C, const wmO
 
   InterpolateOpData *data = MEM_new<InterpolateOpData>(__func__);
 
-  if (RNA_struct_find_property(op.ptr, "shift") != nullptr) {
-    data->shift = RNA_float_get(op.ptr, "shift");
-  }
+  if (RNA_struct_find_property(op.ptr, "shift") != nullptr) {data->shift = RNA_float_get(op.ptr, "shift");}
   data->exclude_breakdowns = RNA_boolean_get(op.ptr, "exclude_breakdowns");
   data->flipmode = InterpolateFlipMode(RNA_enum_get(op.ptr, "flip"));
   data->smooth_factor = RNA_float_get(op.ptr, "smooth_factor");
@@ -1108,46 +1106,13 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
   const float back_easing = RNA_float_get(op->ptr, "back");
   const float amplitude = RNA_float_get(op->ptr, "amplitude");
   const float period = RNA_float_get(op->ptr, "period");
-
-  // /* Create target frames. */
-  // data.layer_mask.foreach_index([&](const int layer_index) {
-  //   Layer &layer = *grease_pencil.layer(layer_index);
-  //   InterpolateOpData::LayerData &layer_data = data.layer_data[layer_index];
-
-  //   ensure_drawing_at_exact_frame(grease_pencil, layer, layer_data, current_frame);
-  // });
-
   const int step = RNA_int_get(op->ptr, "step");
-  // const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
-  // const bool all_layers = bool(RNA_enum_get(op->ptr, "layers") == 1);
-  // const bool only_selected = (GPENCIL_EDIT_MODE(gpd) &&
-  //                             (RNA_boolean_get(op->ptr, "interpolate_selected_only") != 0));
-  // const bool exclude_breakdowns = RNA_boolean_get(op->ptr, "exclude_breakdowns");
-  // const float smooth_factor = RNA_float_get(op->ptr, "smooth_factor");
-  // const int smooth_steps = RNA_int_get(op->ptr, "smooth_steps");
 
   GP_Interpolate_Settings &ipo_settings = ts.gp_interpolate;
   if (ipo_settings.custom_ipo == nullptr) {
     ipo_settings.custom_ipo = BKE_curvemapping_add(1, 0.0f, 0.0f, 1.0f, 1.0f);
   }
   BKE_curvemapping_init(ipo_settings.custom_ipo);
-
-  /* Cannot interpolate if not between 2 frames. */
-  // XXX Pointless since we're checking each layer below anyway.
-  // bGPDframe *gpf_prv = gpencil_get_previous_keyframe(active_gpl, cfra, exclude_breakdowns);
-  // bGPDframe *gpf_next = gpencil_get_next_keyframe(active_gpl, cfra, exclude_breakdowns);
-  // if (ELEM(nullptr, gpf_prv, gpf_next)) {
-  //   BKE_report(
-  //       op->reports,
-  //       RPT_ERROR,
-  //       "Cannot find valid keyframes to interpolate (Breakdowns keyframes are not allowed)");
-  //   return OPERATOR_CANCELLED;
-  // }
-
-  // if (GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd)) {
-  //   BKE_report(op->reports, RPT_ERROR, "Cannot interpolate in curve edit mode");
-  //   return OPERATOR_CANCELLED;
-  // }
 
   opdata.layer_mask.foreach_index([&](const int layer_index) {
     Layer &layer = *grease_pencil.layer(layer_index);
@@ -1195,155 +1160,6 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
       dst_drawing->tag_topology_changed();
     }
   });
-
-  // /* loop all layer to check if need interpolation */
-  // LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-  //   /* all layers or only active */
-  //   if ((!all_layers) && (gpl != active_gpl)) {
-  //     continue;
-  //   }
-  //   /* only editable and visible layers are considered */
-  //   if (!BKE_gpencil_layer_is_editable(gpl)) {
-  //     continue;
-  //   }
-  //   gpf_prv = gpencil_get_previous_keyframe(gpl, cfra, exclude_breakdowns);
-  //   gpf_next = gpencil_get_next_keyframe(gpl, cfra, exclude_breakdowns);
-
-  //   /* Need a set of frames to interpolate. */
-  //   if ((gpf_prv == nullptr) || (gpf_next == nullptr)) {
-  //     continue;
-  //   }
-
-  //   /* Store extremes. */
-  //   bGPDframe *prevFrame = BKE_gpencil_frame_duplicate(gpf_prv, true);
-  //   bGPDframe *nextFrame = BKE_gpencil_frame_duplicate(gpf_next, true);
-
-  //   /* Create a table with source and target pair of strokes. */
-  //   ListBase selected_strokes = {nullptr};
-  //   GHash *used_strokes = BLI_ghash_ptr_new(__func__);
-  //   GHash *pair_strokes = BLI_ghash_ptr_new(__func__);
-  //   LISTBASE_FOREACH (bGPDstroke *, gps_from, &prevFrame->strokes) {
-  //     bGPDstroke *gps_to = nullptr;
-  //     /* Only selected. */
-  //     if (GPENCIL_EDIT_MODE(gpd) && (only_selected) && ((gps_from->flag & GP_STROKE_SELECT) ==
-  //     0))
-  //     {
-  //       continue;
-  //     }
-  //     /* Skip strokes that are invalid for current view. */
-  //     if (ED_gpencil_stroke_can_use(C, gps_from) == false) {
-  //       continue;
-  //     }
-  //     /* Check if the material is editable. */
-  //     if (ED_gpencil_stroke_material_editable(ob, gpl, gps_from) == false) {
-  //       continue;
-  //     }
-  //     /* Try to get the related stroke. */
-  //     if ((is_multiedit) && (gps_from->select_index > 0)) {
-  //       gps_to = gpencil_stroke_get_related(used_strokes, nextFrame, gps_from->select_index);
-  //     }
-  //     /* If not found, get final stroke to interpolate using position in the array. */
-  //     if (gps_to == nullptr) {
-  //       int fFrame = BLI_findindex(&prevFrame->strokes, gps_from);
-  //       gps_to = static_cast<bGPDstroke *>(BLI_findlink(&nextFrame->strokes, fFrame));
-  //     }
-
-  //     if (ELEM(nullptr, gps_from, gps_to)) {
-  //       continue;
-  //     }
-  //     if ((gps_from->totpoints == 0) || (gps_to->totpoints == 0)) {
-  //       continue;
-  //     }
-
-  //     /* if destination stroke is smaller, resize new_stroke to size of gps_to stroke */
-  //     if (gps_from->totpoints > gps_to->totpoints) {
-  //       BKE_gpencil_stroke_uniform_subdivide(gpd, gps_to, gps_from->totpoints, true);
-  //     }
-  //     if (gps_to->totpoints > gps_from->totpoints) {
-  //       BKE_gpencil_stroke_uniform_subdivide(gpd, gps_from, gps_to->totpoints, true);
-  //     }
-
-  //     /* Flip stroke. */
-  //     if (flipmode == GP_INTERPOLATE_FLIP) {
-  //       BKE_gpencil_stroke_flip(gps_to);
-  //     }
-  //     else if (flipmode == GP_INTERPOLATE_FLIPAUTO) {
-  //       if (gpencil_stroke_need_flip(depsgraph, ob, gpl, &gsc, gps_from, gps_to)) {
-  //         BKE_gpencil_stroke_flip(gps_to);
-  //       }
-  //     }
-
-  //     /* Insert the pair entry in the hash table and in the list of strokes to keep same order.
-  //      */
-  //     BLI_addtail(&selected_strokes, BLI_genericNodeN(gps_from));
-  //     BLI_ghash_insert(pair_strokes, gps_from, gps_to);
-  //   }
-
-  // /* Loop over intermediary frames and create the interpolation. */
-  // for (int cframe = prevFrame->framenum + step; cframe < nextFrame->framenum; cframe += step) {
-  //   /* Get interpolation factor. */
-  //   float framerange = nextFrame->framenum - prevFrame->framenum;
-  //   CLAMP_MIN(framerange, 1.0f);
-  //   float factor = float(cframe - prevFrame->framenum) / framerange;
-
-  //   if (type == GP_IPO_CURVEMAP) {
-  //     /* Custom curve-map. */
-  //     if (ipo_settings->custom_ipo) {
-  //       factor = BKE_curvemapping_evaluateF(ipo_settings->custom_ipo, 0, factor);
-  //     }
-  //     else {
-  //       BKE_report(op->reports, RPT_ERROR, "Custom interpolation curve does not exist");
-  //       continue;
-  //     }
-  //   }
-  //   else if (type >= GP_IPO_BACK) {
-  //     /* easing equation... */
-  //     factor = gpencil_interpolate_seq_easing_calc(op, factor);
-  //   }
-
-  //   /* Apply the factor to all pair of strokes. */
-  //   LISTBASE_FOREACH (LinkData *, link, &selected_strokes) {
-  //     bGPDstroke *gps_from = static_cast<bGPDstroke *>(link->data);
-  //     if (!BLI_ghash_haskey(pair_strokes, gps_from)) {
-  //       continue;
-  //     }
-  //     bGPDstroke *gps_to = (bGPDstroke *)BLI_ghash_lookup(pair_strokes, gps_from);
-  //     /* Create new stroke. */
-  //     bGPDstroke *new_stroke = BKE_gpencil_stroke_duplicate(gps_from, true, true);
-  //     new_stroke->flag |= GP_STROKE_TAG;
-  //     new_stroke->select_index = 0;
-
-  //     /* Update points position. */
-  //     gpencil_interpolate_update_points(gps_from, gps_to, new_stroke, factor);
-  //     BKE_gpencil_stroke_smooth(
-  //         new_stroke, smooth_factor, smooth_steps, true, true, false, false, true, nullptr);
-
-  //     /* Calc geometry data. */
-  //     BKE_gpencil_stroke_geometry_update(gpd, new_stroke);
-
-  //     /* Add strokes to frame. */
-  //     bGPDframe *interFrame = BKE_gpencil_layer_frame_get(gpl, cframe, GP_GETFRAME_ADD_NEW);
-  //     interFrame->key_type = BEZT_KEYTYPE_BREAKDOWN;
-
-  //     BLI_addtail(&interFrame->strokes, new_stroke);
-  //   }
-  // }
-
-  // BLI_freelistN(&selected_strokes);
-
-  // /* Free Hash tablets. */
-  // if (used_strokes != nullptr) {
-  //   BLI_ghash_free(used_strokes, nullptr, nullptr);
-  // }
-  // if (pair_strokes != nullptr) {
-  //   BLI_ghash_free(pair_strokes, nullptr, nullptr);
-  // }
-
-  // BKE_gpencil_free_strokes(prevFrame);
-  // BKE_gpencil_free_strokes(nextFrame);
-  // MEM_SAFE_FREE(prevFrame);
-  // MEM_SAFE_FREE(nextFrame);
-  // }
 
   /* notifiers */
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
