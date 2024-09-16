@@ -779,10 +779,10 @@ static void rna_Object_me_eval_info(
 }
 #  else
 static void rna_Object_me_eval_info(Object * /*ob*/,
-                             bContext * /*C*/,
-                             int /*type*/,
-                             PointerRNA * /*rnaptr_depsgraph*/,
-                             char *result)
+                                    bContext * /*C*/,
+                                    int /*type*/,
+                                    PointerRNA * /*rnaptr_depsgraph*/,
+                                    char *result)
 {
   result[0] = '\0';
 }
