@@ -4,4 +4,4 @@ Referenced by issue #97251, Generated UDIM tiles do not store any info about the
 Referenced by pull request #117472, Fix #117411: In memory UDIMs fail to pack correctly
 Referenced by commit 0c0885d32390d95102f08720d95d409059a06c5e, Fix #117411: In memory UDIMs fail to pack correctly
 Referenced by issue #117907, EEVEE: UDIM Bump/Height Texture makes UV seams visible
-Referenced by pull request #127673, Fix #127651: Properly detect generated UDIM image tiles in Cycles
+Referenced by pull request #127673, Fix #127651: Properly load generated UDIM image tiles in Cycles
