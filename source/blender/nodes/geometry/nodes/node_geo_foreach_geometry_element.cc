@@ -265,7 +265,9 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
         uiLayoutSetPropSep(panel, true);
         uiLayoutSetPropDecorate(panel, false);
         uiItemR(panel, &item_ptr, "socket_type", UI_ITEM_NONE, nullptr, ICON_NONE);
-        uiItemR(panel, &item_ptr, "domain", UI_ITEM_NONE, nullptr, ICON_NONE);
+        if (active_item.socket_type != SOCK_GEOMETRY) {
+          uiItemR(panel, &item_ptr, "domain", UI_ITEM_NONE, nullptr, ICON_NONE);
+        }
       }
     }
   }
