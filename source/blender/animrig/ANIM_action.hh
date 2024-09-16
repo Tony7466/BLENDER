@@ -232,7 +232,7 @@ class Action : public ::bAction {
    * Strip data array access.
    */
   Span<const StripKeyframeData *> strip_keyframe_data() const;
-  Span<StripKeyframeData *> strip_keyframe_data();
+  MutableSpan<StripKeyframeData *> strip_keyframe_data();
 
   /**
    * Creates a new `StripKeyframeData` and appends it to the array.
@@ -422,7 +422,7 @@ class Strip : public ::ActionStrip {
    * This method does *not* place the new duplicate strip on a layer. That is up
    * to the caller.
    */
-  Strip &duplicate(Action &owning_action) const;
+  Strip &duplicate(Action &owning_action, StringRefNull allocation_name) const;
 
   /**
    * Strip type.

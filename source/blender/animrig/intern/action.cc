@@ -614,13 +614,19 @@ int Action::strip_keyframe_data_append(StripKeyframeData *strip_data)
 
 Span<const StripKeyframeData *> Action::strip_keyframe_data() const
 {
-  return blender::Span<StripKeyframeData *>{
+  /* The reinterpret cast is needed because `strip_keyframe_data_array` is for
+   * pointers to the C type `ActionStripKeyframeData`, but we want the C++
+   * wrapper type `StripKeyframeData`. */
+  return Span<StripKeyframeData *>{
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
       this->strip_keyframe_data_num};
 }
-Span<StripKeyframeData *> Action::strip_keyframe_data()
+MutableSpan<StripKeyframeData *> Action::strip_keyframe_data()
 {
-  return blender::MutableSpan<StripKeyframeData *>{
+  /* The reinterpret cast is needed because `strip_keyframe_data_array` is for
+   * pointers to the C type `ActionStripKeyframeData`, but we want the C++
+   * wrapper type `StripKeyframeData`. */
+  return MutableSpan<StripKeyframeData *>{
       reinterpret_cast<StripKeyframeData **>(this->strip_keyframe_data_array),
       this->strip_keyframe_data_num};
 }
@@ -924,7 +930,7 @@ Layer &Layer::duplicate(Action &owning_action) const
   /* Strips. */
   copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num, __func__);
   for (int i : this->strips().index_range()) {
-    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action);
+    copy->strip_array[i] = &this->strip(i)->duplicate(owning_action, __func__);
   }
 
   return *copy;
@@ -1326,10 +1332,10 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 
 /* ----- ActionStrip implementation ----------- */
 
-Strip &Strip::duplicate(Action &owning_action) const
+Strip &Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
 {
   /* First make a shallow copy of the strip. */
-  Strip *copy = &MEM_new<ActionStrip>(__func__)->wrap();
+  Strip *copy = &MEM_cnew<ActionStrip>(allocation_name.c_str())->wrap();
   memcpy(copy, this, sizeof(*this));
 
   /* Then duplicate and assign the strip's data. */
@@ -1337,7 +1343,8 @@ Strip &Strip::duplicate(Action &owning_action) const
     case Type::Keyframe: {
       const StripKeyframeData &strip_data_source =
           *owning_action.strip_keyframe_data()[copy->data_index];
-      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(__func__, strip_data_source);
+      StripKeyframeData *strip_data_copy = MEM_new<StripKeyframeData>(allocation_name.c_str(),
+                                                                      strip_data_source);
       copy->data_index = owning_action.strip_keyframe_data_append(strip_data_copy);
       break;
     }

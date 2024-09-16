@@ -672,6 +672,8 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   action.layer_array_num = 0;
   action.slot_array = nullptr;
   action.slot_array_num = 0;
+  action.strip_keyframe_data_array = nullptr;
+  action.strip_keyframe_data_num = nullptr;
 #endif /* WITH_ANIM_BAKLAVA */
 
   if (action.is_action_layered()) {

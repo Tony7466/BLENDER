@@ -14,8 +14,6 @@
 
 namespace blender::animrig {
 class Action;
-class Strip;
-class StripKeyframeData;
 }  // namespace blender::animrig
 
 namespace blender::animrig::legacy {
