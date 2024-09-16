@@ -794,7 +794,7 @@ static void paint_brush_default_essentials_name_get(
           name = "Fill Area";
         }
         if (brush_type_name == "DRAW") {
-          name = "Draw";
+          name = "Pencil";
         }
       }
       else {
