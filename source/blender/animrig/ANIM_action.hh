@@ -410,7 +410,16 @@ class Strip : public ::ActionStrip {
    * data is actually stored in arrays on the action, and that data also needs
    * to be created and managed along with the strips. */
   Strip() = delete;
-  Strip(const Strip &other) = delete;
+
+  /**
+   * Make a shallow copy, effectively creating an *instance* of a strip.
+   *
+   * Does *not* make a copy of the strip's data, which is stored in an array on
+   * the owning action. */
+  explicit Strip(const Strip &other)
+  {
+    memcpy(this, &other, sizeof(*this));
+  }
 
   /**
    * Creates a new strip of type `type` for `owning_action`, with the strip's

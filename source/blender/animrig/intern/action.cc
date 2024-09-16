@@ -923,8 +923,7 @@ Layer &Layer::duplicate_with_shallow_strip_copies(const StringRefNull allocation
   copy->strip_array = MEM_cnew_array<ActionStrip *>(this->strip_array_num,
                                                     allocation_name.c_str());
   for (int i : this->strips().index_range()) {
-    Strip *strip_copy = &MEM_cnew<ActionStrip>(allocation_name.c_str())->wrap();
-    memcpy(strip_copy, this->strip(i), sizeof(*strip_copy));
+    Strip *strip_copy = MEM_new<Strip>(allocation_name.c_str(), *this->strip(i));
     copy->strip_array[i] = strip_copy;
   }
 
@@ -1338,8 +1337,7 @@ Strip &Strip::create(Action &owning_action, const Strip::Type type)
 Strip &Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
 {
   /* First make a shallow copy of the strip. */
-  Strip *copy = &MEM_cnew<ActionStrip>(allocation_name.c_str())->wrap();
-  memcpy(copy, this, sizeof(*this));
+  Strip *copy = MEM_new<Strip>(allocation_name.c_str(), *this);
 
   /* Then duplicate and assign the strip's data. */
   switch (copy->type()) {
