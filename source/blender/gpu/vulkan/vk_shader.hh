@@ -52,10 +52,10 @@ class VKShader : public Shader {
 
   void init(const shader::ShaderCreateInfo &info, bool is_batch_compilation) override;
 
-  void vertex_shader_from_glsl(MutableSpan<const char *> sources) override;
-  void geometry_shader_from_glsl(MutableSpan<const char *> sources) override;
-  void fragment_shader_from_glsl(MutableSpan<const char *> sources) override;
-  void compute_shader_from_glsl(MutableSpan<const char *> sources) override;
+  void vertex_shader_from_glsl(MutableSpan<StringRefNull> sources) override;
+  void geometry_shader_from_glsl(MutableSpan<StringRefNull> sources) override;
+  void fragment_shader_from_glsl(MutableSpan<StringRefNull> sources) override;
+  void compute_shader_from_glsl(MutableSpan<StringRefNull> sources) override;
   bool finalize(const shader::ShaderCreateInfo *info = nullptr) override;
   void warm_cache(int limit) override;
 
@@ -126,7 +126,7 @@ class VKShader : public Shader {
  private:
   Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
   void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);
-  void build_shader_module(MutableSpan<const char *> sources,
+  void build_shader_module(MutableSpan<StringRefNull> sources,
                            shaderc_shader_kind stage,
                            VkShaderModule *r_shader_module);
   bool finalize_descriptor_set_layouts(VKDevice &vk_device,

@@ -244,7 +244,7 @@ struct GPUSource {
     processed_source = source;
     std::replace(processed_source.begin(), processed_source.end(), '"', ' ');
 
-    source = processed_source.c_str();
+    source = processed_source;
   }
 
   /**
@@ -403,7 +403,7 @@ struct GPUSource {
     }
 
     processed_source = output;
-    source = processed_source.c_str();
+    source = processed_source;
   };
 
   void material_functions_parse(GPUFunctionDictionnary *g_functions)
@@ -660,7 +660,7 @@ struct GPUSource {
       output << input.substr(last_pos);
     }
     processed_source = output.str();
-    source = processed_source.c_str();
+    source = processed_source;
   }
 
   /* Replace print(string) by equivalent drw_print_char4() sequence. */
@@ -812,7 +812,7 @@ struct GPUSource {
       output << input.substr(last_pos);
     }
     processed_source = output.str();
-    source = processed_source.c_str();
+    source = processed_source;
   }
 
   /**
@@ -997,7 +997,7 @@ struct GPUSource {
       output << input.substr(last_pos);
     }
     processed_source = output.str();
-    source = processed_source.c_str();
+    source = processed_source;
   }
 
 #undef find_keyword
@@ -1066,12 +1066,12 @@ struct GPUSource {
   }
 
   /* Returns the final string with all includes done. */
-  void build(Vector<const char *> &result) const
+  void build(Vector<StringRefNull> &result) const
   {
     for (auto *dep : dependencies) {
-      result.append(dep->source.c_str());
+      result.append(dep->source);
     }
-    result.append(source.c_str());
+    result.append(source);
   }
 
   shader::BuiltinBits builtins_get() const
@@ -1199,10 +1199,10 @@ BuiltinBits gpu_shader_dependency_get_builtins(const StringRefNull shader_source
   return source->builtins_get();
 }
 
-Vector<const char *> gpu_shader_dependency_get_resolved_source(
+Vector<StringRefNull> gpu_shader_dependency_get_resolved_source(
     const StringRefNull shader_source_name)
 {
-  Vector<const char *> result;
+  Vector<StringRefNull> result;
   GPUSource *src = g_sources->lookup_default(shader_source_name, nullptr);
   if (src == nullptr) {
     std::cerr << "Error source not found : " << shader_source_name << std::endl;
@@ -1220,11 +1220,10 @@ StringRefNull gpu_shader_dependency_get_source(const StringRefNull shader_source
   return src->source;
 }
 
-StringRefNull gpu_shader_dependency_get_filename_from_source_string(
-    const StringRefNull source_string)
+StringRefNull gpu_shader_dependency_get_filename_from_source_string(const StringRef source_string)
 {
   for (auto &source : g_sources->values()) {
-    if (source->source.c_str() == source_string.c_str()) {
+    if (source->source == source_string) {
       return source->filename;
     }
   }

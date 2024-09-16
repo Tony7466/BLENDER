@@ -174,7 +174,7 @@ MTLShader::~MTLShader()
 /** \name Shader stage creation.
  * \{ */
 
-void MTLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
+void MTLShader::vertex_shader_from_glsl(MutableSpan<StringRefNull> sources)
 {
   /* Flag source as not being compiled from native MSL. */
   BLI_assert(shd_builder_ != nullptr);
@@ -191,12 +191,12 @@ void MTLShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->glsl_vertex_source_ = ss.str();
 }
 
-void MTLShader::geometry_shader_from_glsl(MutableSpan<const char *> /*sources*/)
+void MTLShader::geometry_shader_from_glsl(MutableSpan<StringRefNull> /*sources*/)
 {
   MTL_LOG_ERROR("MTLShader::geometry_shader_from_glsl - Geometry shaders unsupported!");
 }
 
-void MTLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
+void MTLShader::fragment_shader_from_glsl(MutableSpan<StringRefNull> sources)
 {
   /* Flag source as not being compiled from native MSL. */
   BLI_assert(shd_builder_ != nullptr);
@@ -224,7 +224,7 @@ void MTLShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
   shd_builder_->glsl_fragment_source_ = ss.str();
 }
 
-void MTLShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
+void MTLShader::compute_shader_from_glsl(MutableSpan<StringRefNull> sources)
 {
   /* Flag source as not being compiled from native MSL. */
   BLI_assert(shd_builder_ != nullptr);
