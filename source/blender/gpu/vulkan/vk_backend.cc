@@ -430,10 +430,6 @@ void VKBackend::render_end()
 
 void VKBackend::render_step() {}
 
-shaderc::Compiler &VKBackend::get_shaderc_compiler()
-{
-  return shaderc_compiler_;
-}
 
 void VKBackend::capabilities_init(VKDevice &device)
 {
