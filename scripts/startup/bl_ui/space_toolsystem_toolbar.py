@@ -2019,6 +2019,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2035,6 +2038,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2051,6 +2057,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2067,6 +2076,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2083,6 +2095,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2099,6 +2114,9 @@ class _defs_grease_pencil_paint:
             widget=None,
             keymap=(),
             draw_settings=draw_settings,
+            # Only allow draw brushes, no eraser, fill or tint.
+            data_block='DRAW',
+            options={'USE_BRUSHES'},
         )
 
     @ToolDef.from_fn
@@ -2451,7 +2469,7 @@ class _defs_gpencil_paint:
         tool_settings = context.scene.tool_settings
         settings = tool_settings.gpencil_paint
 
-        BrushAssetShelf.draw_popup_selector(layout, context, brush)
+        BrushAssetShelf.draw_popup_selector(row, context, brush)
 
         from bl_ui.properties_paint_common import (
             brush_basic_gpencil_paint_settings,
