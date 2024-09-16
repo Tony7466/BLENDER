@@ -13,18 +13,24 @@
 namespace blender::math {
 
 /**
+ * Float (FP32) <-> Half (FP16) conversion functions.
+ *
+ * Behavior matches hardware (x64 F16C, ARMv8.2-A fcvt),
+ * including handling of denormals, infinities, NaNs, rounding
+ * is to nearest even, etc. When NaNs are produced, the exact
+ * bit pattern might not match hardware, but it will still be a NaN.
+ *
+ * When compiling on known ARMv8.2-A or better platform
+ * (e.g. Apple Silicon), hardware VCVT instructions are used.
+ */
+
+/**
  * Converts float (FP32) number to half-precision (FP16).
- * Behavior matches x64 hardware F16C, including handling
- * of denormals, infinities, NaNs etc.
  */
 uint16_t float_to_half(float v);
 
 /**
  * Converts half-precision (FP16) number to float (FP32).
- * Behavior matches x64 hardware F16C in default
- * round-to-nearest-even rounding mode, including handling
- * of denormals, infinities, NaNs etc. For NaNs, the exact
- * bit pattern might be differnet but it will still be a NaN.
  */
 float half_to_float(uint16_t v);
 
