@@ -46,7 +46,7 @@ VertOut vertex_main(VertIn vert_in)
   vert_out.hs_P = drw_point_world_to_homogenous(vert_out.ws_P);
   vert_out.ss_P = drw_ndc_to_screen(drw_perspective_divide(vert_out.hs_P)).xy * sizeViewport.xy;
 
-  int frame = vert_in.vert_id + cacheStart;
+  int frame = int(vert_in.vert_id) + cacheStart;
 
   vec3 blend_base = (abs(frame - frameCurrent) == 0) ?
                         colorCurrentFrame.rgb :
