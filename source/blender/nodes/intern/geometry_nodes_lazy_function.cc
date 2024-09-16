@@ -2162,6 +2162,10 @@ struct LazyFunctionForReduceForeachGeometryElement : public LazyFunction {
                                      const lf::Context &context,
                                      int geometry_item_i,
                                      IndexRange generation_items_range) const;
+  bool handle_generation_items_group_lazyness(lf::Params &params,
+                                              const lf::Context &context,
+                                              int geometry_item_i,
+                                              IndexRange generation_items_range) const;
 };
 
 /**
@@ -2634,7 +2638,7 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
       const bNodeSocket &socket = parent.output_bnode_.input_socket(
           item_i + 1 + node_storage.main_items.items_num);
       inputs_.append_as(
-          item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
+          item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
     }
   }
 
@@ -2694,6 +2698,12 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
+  const int main_geometry_output = 0;
+  if (params.output_was_set(main_geometry_output)) {
+    /* Done already. */
+    return;
+  }
+
   GeometrySet output_geometry = eval_storage_.main_geometry;
 
   for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
@@ -2742,7 +2752,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
     params.set_output(1 + item_i, std::move(attribute_value_variant));
   }
 
-  params.set_output(0, std::move(output_geometry));
+  params.set_output(main_geometry_output, std::move(output_geometry));
 }
 
 void LazyFunctionForReduceForeachGeometryElement::handle_generation_items(
@@ -2823,6 +2833,12 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
       parent_.output_bnode_.storage);
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
+
+  if (!this->handle_generation_items_group_lazyness(
+          params, context, geometry_item_i, generation_items_range))
+  {
+    return;
+  }
 
   /* TODO: Get from input. */
   AttributeFilter attribute_filter;
@@ -2955,9 +2971,12 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     });
   }
 
+  const int geometry_output_param = 1 + node_storage.main_items.items_num + geometry_item_i;
+  const IndexRange field_output_params = IndexRange::from_begin_size(
+      geometry_output_param + 1, node_storage.generation_items.items_num);
+
   GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
-  params.set_output(1 + node_storage.main_items.items_num + geometry_item_i,
-                    std::move(joined_geometry));
+  params.set_output(geometry_output_param, std::move(joined_geometry));
 
   for (const int local_item_i : generation_items_range.index_range()) {
     const int item_i = generation_items_range[local_item_i];
@@ -2972,9 +2991,71 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
         make_anonymous_attribute_socket_inspection_string(
             parent_.output_bnode_.output_socket(2 + node_storage.main_items.items_num + item_i)));
     SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
-    params.set_output(1 + node_storage.main_items.items_num + item_i,
-                      std::move(attribute_value_variant));
+    params.set_output(field_output_params[local_item_i], std::move(attribute_value_variant));
   }
+}
+
+bool LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group_lazyness(
+    lf::Params &params,
+    const lf::Context &context,
+    int geometry_item_i,
+    IndexRange generation_items_range) const
+{
+  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+  const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
+      parent_.output_bnode_.storage);
+  const int body_main_outputs_num = node_storage.main_items.items_num +
+                                    node_storage.generation_items.items_num;
+
+  const int geometry_output_param = 1 + node_storage.main_items.items_num + geometry_item_i;
+  const IndexRange field_output_params = IndexRange::from_begin_size(
+      geometry_output_param + 1, node_storage.generation_items.items_num);
+
+  if (params.output_was_set(geometry_output_param)) {
+    /* Done already. */
+    return false;
+  }
+  const lf::ValueUsage geometry_output_usage = params.get_output_usage(geometry_output_param);
+  if (geometry_output_usage == lf::ValueUsage::Unused) {
+    /* Output dummy values. */
+    const int start_bsocket_i = 2 + node_storage.main_items.items_num + geometry_item_i;
+    for (const int i : IndexRange(1 + generation_items_range.size())) {
+      const bNodeSocket &bsocket = parent_.output_bnode_.output_socket(start_bsocket_i + i);
+      set_default_value_for_output_socket(params, geometry_output_param + i, bsocket);
+    }
+    return false;
+  }
+  bool any_output_used = false;
+  for (const int i : IndexRange(1 + generation_items_range.size())) {
+    const lf::ValueUsage usage = params.get_output_usage(geometry_output_param + i);
+    if (usage == lf::ValueUsage::Used) {
+      any_output_used = true;
+      break;
+    }
+  }
+  if (!any_output_used) {
+    /* Only execute below if we are sure that the output is actually needed. */
+    return false;
+  }
+  const int bodies_num = eval_storage_.lf_body_nodes.size();
+
+  /* Check if all inputs are available, and request them if not. */
+  bool has_missing_input = false;
+  for (const int body_i : IndexRange(bodies_num)) {
+    const int offset = body_i * body_main_outputs_num + node_storage.main_items.items_num +
+                       geometry_item_i;
+    for (const int i : IndexRange(1 + generation_items_range.size())) {
+      const bool is_available = params.try_get_input_data_ptr_or_request(offset + i) != nullptr;
+      if (!is_available) {
+        has_missing_input = true;
+      }
+    }
+  }
+  if (has_missing_input) {
+    /* Come back when all inputs are available. */
+    return false;
+  }
+  return true;
 }
 
 /**
