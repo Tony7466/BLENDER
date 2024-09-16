@@ -1631,6 +1631,7 @@ static void std_node_socket_interface_draw(ID *id,
     uiLayout *sub = uiLayoutColumn(col, false);
     uiLayoutSetActive(sub, interface_socket->default_input == NODE_INPUT_DEFAULT_VALUE);
     uiItemR(sub, &ptr, "hide_value", DEFAULT_FLAGS, nullptr, ICON_NONE);
+    uiItemR(sub, &ptr, "default_linked", DEFAULT_FLAGS, nullptr, ICON_NONE);
   }
 
   if (interface_socket->flag & NODE_INTERFACE_SOCKET_INPUT && node_tree->type == NTREE_GEOMETRY) {

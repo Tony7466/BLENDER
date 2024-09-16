@@ -381,6 +381,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
   dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & NODE_INTERFACE_SOCKET_HIDE_VALUE;
   dst->compact = io_socket.flag & NODE_INTERFACE_SOCKET_COMPACT;
+  dst->is_default_link_socket = io_socket.flag & NODE_INTERFACE_SOCKET_DEFAULT_LINKED;
   return dst;
 }
 
