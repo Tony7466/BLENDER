@@ -352,6 +352,11 @@ void GPU_shader_compile_static()
   gpu_shader_create_info_compile("");
 }
 
+void GPU_shader_cache_dir_clear_old()
+{
+  GPUBackend::get()->shader_cache_dir_clear_old();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -383,6 +388,11 @@ void GPU_shader_bind(GPUShader *gpu_shader)
       GPU_matrix_bind(gpu_shader);
     }
   }
+#if GPU_SHADER_PRINTF_ENABLE
+  if (ctx->printf_buf) {
+    GPU_storagebuf_bind(ctx->printf_buf, GPU_SHADER_PRINTF_SLOT);
+  }
+#endif
 }
 
 void GPU_shader_unbind()

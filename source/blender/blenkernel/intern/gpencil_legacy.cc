@@ -34,7 +34,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
 #include "BKE_colortools.hh"
@@ -214,7 +214,7 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   BLO_read_struct_list(reader, bDeformGroup, &gpd->vertex_group_names);
 
   /* Materials. */
-  BLO_read_pointer_array(reader, (void **)&gpd->mat);
+  BLO_read_pointer_array(reader, gpd->totcol, (void **)&gpd->mat);
 
   /* Relink layers. */
   BLO_read_struct_list(reader, bGPDlayer, &gpd->layers);

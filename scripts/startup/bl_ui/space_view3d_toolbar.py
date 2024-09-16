@@ -29,7 +29,6 @@ from bl_ui.properties_paint_common import (
     brush_settings,
     brush_settings_advanced,
     draw_color_settings,
-    BrushAssetShelf,
 )
 from bl_ui.utils import PresetPanel
 
@@ -320,8 +319,7 @@ class VIEW3D_PT_tools_particlemode(Panel, View3DPaintPanel):
             # If there is no active tool, then there can't be an active brush.
             tool = None
 
-        if not tool_context.has_datablock:
-            # tool.has_datablock is always true for tools that use brushes.
+        if not tool_context.use_brushes:
             tool = None
 
         if tool is not None:
@@ -1578,7 +1576,7 @@ class VIEW3D_PT_tools_particlemode_options_display(View3DPanel, Panel):
 def tool_use_brush(context):
     from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
     tool = ToolSelectPanelHelper.tool_active_from_context(context)
-    if tool and tool.has_datablock is False:
+    if tool and tool.use_brushes is False:
         return False
 
     return True
@@ -2927,6 +2925,39 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_eraser(View3DPanel, Panel):
         col.prop_search(settings, "eraser_brush", bpy.data, "brushes")
 
 
+class VIEW3D_PT_tools_grease_pencil_v3_brush_gap_closure(View3DPanel, Panel):
+    bl_context = ".grease_pencil_paint"
+    bl_parent_id = "VIEW3D_PT_tools_grease_pencil_v3_brush_advanced"
+    bl_label = "Gap Closure"
+    bl_category = "Tool"
+
+    @classmethod
+    def poll(cls, context):
+        brush = context.tool_settings.gpencil_paint.brush
+        return brush is not None and brush.gpencil_tool == 'FILL'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        tool_settings = context.tool_settings
+        brush = tool_settings.gpencil_paint.brush
+        gp_settings = brush.gpencil_settings
+
+        col = layout.column()
+
+        col.prop(gp_settings, "extend_stroke_factor", text="Size")
+        row = col.row(align=True)
+        row.prop(gp_settings, "fill_extend_mode", text="Mode")
+        row = col.row(align=True)
+        row.prop(gp_settings, "show_fill_extend", text="Visual Aids")
+
+        if gp_settings.fill_extend_mode == 'EXTEND':
+            row = col.row(align=True)
+            row.prop(gp_settings, "use_collide_strokes")
+
+
 classes = (
     VIEW3D_MT_brush_context_menu,
     VIEW3D_MT_brush_gpencil_context_menu,
@@ -3029,6 +3060,7 @@ classes = (
     VIEW3D_PT_tools_grease_pencil_v3_brush_stabilizer,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mixcolor,
     VIEW3D_PT_tools_grease_pencil_v3_brush_mix_palette,
+    VIEW3D_PT_tools_grease_pencil_v3_brush_gap_closure,
 
     VIEW3D_PT_tools_grease_pencil_brush_paint_falloff,
     VIEW3D_PT_tools_grease_pencil_brush_sculpt_falloff,

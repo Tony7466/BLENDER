@@ -110,7 +110,7 @@ class DopesheetFilterPopoverBase:
             flow.prop(dopesheet, "show_armatures", text="Armatures")
         if bpy.data.cameras:
             flow.prop(dopesheet, "show_cameras", text="Cameras")
-        if bpy.data.grease_pencils:
+        if bpy.data.grease_pencils_v3:
             flow.prop(dopesheet, "show_gpencil", text="Grease Pencil Objects")
         if bpy.data.lights:
             flow.prop(dopesheet, "show_lights", text="Lights")
@@ -225,8 +225,8 @@ class DOPESHEET_HT_header(Header):
 # Header for "normal" dopesheet editor modes (e.g. Dope Sheet, Action, Shape Keys, etc.)
 class DOPESHEET_HT_editor_buttons:
 
-    @staticmethod
-    def draw_header(context, layout):
+    @classmethod
+    def draw_header(cls, context, layout):
         st = context.space_data
         tool_settings = context.tool_settings
 
@@ -241,9 +241,9 @@ class DOPESHEET_HT_editor_buttons:
             row.operator("action.push_down", text="Push Down", icon='NLA_PUSHDOWN')
             row.operator("action.stash", text="Stash", icon='FREEZE')
 
-            layout.separator_spacer()
-
-            layout.template_ID(st, "action", new="action.new", unlink="action.unlink")
+            if context.object:
+                layout.separator_spacer()
+                cls._draw_action_selector(context, layout)
 
         # Layer management
         if st.mode == 'GPENCIL':
@@ -305,6 +305,47 @@ class DOPESHEET_HT_editor_buttons:
             icon_only=True,
             panel="DOPESHEET_PT_proportional_edit",
         )
+
+    @classmethod
+    def _draw_action_selector(cls, context, layout):
+        animated_id = cls._get_animated_id(context)
+        if not animated_id:
+            return
+
+        row = layout.row()
+        if animated_id.animation_data and animated_id.animation_data.use_tweak_mode:
+            row.enabled = False
+
+        row.template_action(animated_id, new="action.new", unlink="action.unlink")
+
+        if not context.preferences.experimental.use_animation_baklava:
+            return
+
+        adt = animated_id and animated_id.animation_data
+        if not adt or not adt.action or not adt.action.is_action_layered:
+            return
+
+        # Store the animated ID in the context, so that the new/unlink operators
+        # have access to it.
+        row.context_pointer_set("animated_id", animated_id)
+        row.template_search(
+            adt, "action_slot",
+            adt, "action_slots",
+            new="anim.slot_new_for_id",
+            unlink="anim.slot_unassign_from_id",
+        )
+
+    @staticmethod
+    def _get_animated_id(context):
+        st = context.space_data
+        match st.mode:
+            case 'ACTION':
+                return context.object
+            case 'SHAPEKEY':
+                return context.object.data and getattr(context.object.data, 'shape_keys', None)
+            case _:
+                print("Dope Sheet mode '{}' not expected to have an Action selector".format(st.mode))
+                return context.object
 
 
 class DOPESHEET_PT_snapping(Panel):
@@ -636,6 +677,30 @@ class DOPESHEET_PT_action(DopesheetActionPanelBase, Panel):
         self.draw_generic_panel(context, self.layout, action)
 
 
+class DOPESHEET_PT_action_slot(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Action"
+    bl_label = "Slot"
+
+    @classmethod
+    def poll(cls, context):
+        if not context.preferences.experimental.use_animation_baklava:
+            return False
+        action = context.active_action
+        return bool(action and action.slots.active)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        action = context.active_action
+        slot = action.slots.active
+
+        layout.prop(slot, "name_display", text="Name", icon_value=slot.idtype_icon)
+
+
 #######################################
 # Grease Pencil Editing
 
@@ -848,7 +913,7 @@ class GreasePencilLayersDopeSheetPanel:
             return False
 
         grease_pencil = ob.data
-        active_layer = grease_pencil.layers.active_layer
+        active_layer = grease_pencil.layers.active
         if active_layer:
             return True
 
@@ -920,7 +985,7 @@ class DOPESHEET_PT_grease_pencil_mode(GreasePencilLayersDopeSheetPanel, Panel):
 
         ob = context.object
         grease_pencil = ob.data
-        active_layer = grease_pencil.layers.active_layer
+        active_layer = grease_pencil.layers.active
 
         if active_layer:
             row = layout.row(align=True)
@@ -976,6 +1041,7 @@ classes = (
     DOPESHEET_MT_view_pie,
     DOPESHEET_PT_filters,
     DOPESHEET_PT_action,
+    DOPESHEET_PT_action_slot,
     DOPESHEET_PT_gpencil_mode,
     DOPESHEET_PT_gpencil_layer_masks,
     DOPESHEET_PT_gpencil_layer_transform,

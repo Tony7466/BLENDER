@@ -30,6 +30,7 @@ enum {
    * Typically gizmos handle this but some tools (such as the knife tool) don't use a gizmo.
    */
   TOOLREF_FLAG_FALLBACK_KEYMAP = (1 << 0),
+  TOOLREF_FLAG_USE_BRUSHES = (1 << 1),
 };
 
 #
@@ -110,8 +111,8 @@ typedef struct WorkSpaceLayout {
 /** Optional tags, which features to use, aligned with #bAddon names by convention. */
 typedef struct wmOwnerID {
   struct wmOwnerID *next, *prev;
-  /** MAX_NAME. */
-  char name[64];
+  /** Optional, see: #wmOwnerID. */
+  char name[128];
 } wmOwnerID;
 
 typedef struct WorkSpace {

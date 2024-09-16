@@ -520,7 +520,11 @@ typedef struct BevelModifierData {
   /** Curve info for the custom profile */
   struct CurveProfile *custom_profile;
 
-  void *_pad2;
+  /** Custom bevel edge weight name. */
+  char edge_weight_name[64];
+
+  /** Custom bevel vertex weight name. */
+  char vertex_weight_name[64];
 } BevelModifierData;
 
 /** #BevelModifierData.flags and BevelModifierData.lim_flags */
@@ -1898,11 +1902,12 @@ typedef struct TriangulateModifierData {
 } TriangulateModifierData;
 
 /** #TriangulateModifierData.flag */
-#ifdef DNA_DEPRECATED_ALLOW
 enum {
+#ifdef DNA_DEPRECATED_ALLOW
   MOD_TRIANGULATE_BEAUTY = (1 << 0), /* deprecated */
-};
 #endif
+  MOD_TRIANGULATE_KEEP_CUSTOMLOOP_NORMALS = 1 << 1,
+};
 
 /** #TriangulateModifierData.ngon_method triangulate method (N-gons). */
 enum {

@@ -46,6 +46,15 @@ class VKBackend : public GPUBackend {
     VKBackend::platform_exit();
   }
 
+  /**
+   * Does the running platform contain any device that meets the minimum requirements to start the
+   * Vulkan backend.
+   *
+   * Function is used to validate that a Blender UI can be started. It calls vulkan API commands
+   * directly to ensure no parts of Blender needs to be initialized.
+   */
+  static bool is_supported();
+
   void delete_resources() override;
 
   void samplers_update() override;
@@ -66,6 +75,8 @@ class VKBackend : public GPUBackend {
   UniformBuf *uniformbuf_alloc(size_t size, const char *name) override;
   StorageBuf *storagebuf_alloc(size_t size, GPUUsageType usage, const char *name) override;
   VertBuf *vertbuf_alloc() override;
+
+  void shader_cache_dir_clear_old() override {}
 
   /* Render Frame Coordination --
    * Used for performing per-frame actions globally */
