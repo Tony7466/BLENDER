@@ -294,6 +294,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   WM_cursor_wait(false);
   return OPERATOR_FINISHED;
 }
+
 static bool bake_grease_pencil_animation_poll(bContext *C)
 {
   const Object *obact = CTX_data_active_object(C);
