@@ -16,7 +16,6 @@
 #endif
 
 struct AnimData;
-struct CurveMapping;
 struct Ipo;
 struct bNodeTree;
 
@@ -80,9 +79,9 @@ typedef struct Light {
 
   float att_dist;
   float shadow_filter_radius;
-  float shadow_resolution_scale;
   float shadow_maximum_resolution;
   float shadow_jitter_overblur;
+  char _pad3[4];
 
   /* Preview */
   struct PreviewImage *preview;

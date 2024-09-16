@@ -22,17 +22,19 @@
 #include "BKE_lib_query.hh"
 #include "BKE_material.h"
 
+#include "BLT_translation.hh"
+
 #include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 
 namespace blender::modifier::greasepencil {
 
 using bke::greasepencil::Drawing;
-using bke::greasepencil::FramesMapKey;
+using bke::greasepencil::FramesMapKeyT;
 using bke::greasepencil::Layer;
 
 void init_influence_data(GreasePencilModifierInfluenceData *influence_data,
@@ -166,7 +168,7 @@ void draw_custom_curve_settings(const bContext * /*C*/, uiLayout *layout, Pointe
   uiLayoutSetPropSep(layout, true);
   row = uiLayoutRow(layout, true);
   uiLayoutSetPropDecorate(row, false);
-  uiItemR(row, ptr, "use_custom_curve", UI_ITEM_NONE, "Custom Curve", ICON_NONE);
+  uiItemR(row, ptr, "use_custom_curve", UI_ITEM_NONE, IFACE_("Custom Curve"), ICON_NONE);
   if (use_custom_curve) {
     uiTemplateCurveMapping(layout, ptr, "custom_curve", 0, false, false, false, false);
   }
@@ -363,7 +365,7 @@ Vector<FrameDrawingInfo> get_drawing_infos_by_frame(GreasePencil &grease_pencil,
   Vector<FrameDrawingInfo> drawing_infos;
   layer_mask.foreach_index([&](const int64_t layer_i) {
     const Layer &layer = *grease_pencil.layer(layer_i);
-    const std::optional<FramesMapKey> start_frame = layer.frame_key_at(frame);
+    const std::optional<int> start_frame = layer.start_frame_at(frame);
     if (!start_frame) {
       return;
     }

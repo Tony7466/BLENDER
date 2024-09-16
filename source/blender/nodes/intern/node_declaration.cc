@@ -14,6 +14,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_socket_value.hh"
 
+#include "RNA_access.hh"
+
 namespace blender::nodes {
 
 static void reset_declaration(NodeDeclaration &declaration)
@@ -231,6 +233,9 @@ bool NodeDeclaration::is_valid() const
         panel_states.push({panel_decl->num_child_decls});
       }
     }
+    else if (dynamic_cast<const SeparatorDeclaration *>(item_decl.get())) {
+      /* Nothing to check. */
+    }
     else {
       BLI_assert_unreachable();
       return false;
@@ -278,14 +283,17 @@ bool NodeDeclaration::matches(const bNode &node) const
       }
       ++current_panel;
     }
+    else if (dynamic_cast<const SeparatorDeclaration *>(item_decl.get())) {
+      /* Separators are ignored here because they don't have corresponding data in DNA. */
+    }
     else {
       /* Unknown item type. */
       BLI_assert_unreachable();
     }
   }
   /* If items are left over, some were removed from the declaration. */
-  if (current_input == nullptr || current_output == nullptr ||
-      !node.panel_states().contains_ptr(current_panel))
+  if (current_input != nullptr || current_output != nullptr ||
+      node.panel_states().contains_ptr(current_panel))
   {
     return false;
   }
@@ -513,6 +521,11 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDa
   return this->add_output(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
 }
 
+void NodeDeclarationBuilder::add_separator()
+{
+  declaration_.items.append(std::make_unique<SeparatorDeclaration>());
+}
+
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()
 {
   BLI_assert(this->is_input());
@@ -732,6 +745,26 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(
 {
   decl_base_->align_with_previous_socket = value;
   return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder ::socket_name_ptr(
+    const PointerRNA ptr, const StringRef property_name)
+{
+  decl_base_->socket_name_rna = std::make_unique<SocketNameRNA>();
+  decl_base_->socket_name_rna->owner = ptr;
+  decl_base_->socket_name_rna->property_name = property_name;
+  return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::socket_name_ptr(
+    const ID *id, const StructRNA *srna, const void *data, StringRef property_name)
+{
+  /* Doing const-casts here because this data is generally only available as const when creating
+   * the declaration, but it's still valid to modify later. */
+  return this->socket_name_ptr(RNA_pointer_create(const_cast<ID *>(id),
+                                                  const_cast<StructRNA *>(srna),
+                                                  const_cast<void *>(data)),
+                               property_name);
 }
 
 OutputFieldDependency OutputFieldDependency::ForFieldSource()

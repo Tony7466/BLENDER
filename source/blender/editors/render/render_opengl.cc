@@ -1111,7 +1111,7 @@ static bool schedule_write_result(OGLRender *oglrender, RenderResult *rr)
     return false;
   }
   Scene *scene = oglrender->scene;
-  WriteTaskData *task_data = MEM_new<WriteTaskData>("write task data");
+  WriteTaskData *task_data = MEM_cnew<WriteTaskData>("write task data");
   task_data->rr = rr;
   memcpy(&task_data->tmp_scene, scene, sizeof(task_data->tmp_scene));
   BLI_mutex_lock(&oglrender->task_mutex);
@@ -1317,9 +1317,9 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static std::string screen_opengl_render_description(bContext * /*C*/,
-                                                    wmOperatorType * /*ot*/,
-                                                    PointerRNA *ptr)
+static std::string screen_opengl_render_get_description(bContext * /*C*/,
+                                                        wmOperatorType * /*ot*/,
+                                                        PointerRNA *ptr)
 {
   if (!RNA_boolean_get(ptr, "animation")) {
     return "";
@@ -1344,7 +1344,7 @@ void RENDER_OT_opengl(wmOperatorType *ot)
   ot->idname = "RENDER_OT_opengl";
 
   /* api callbacks */
-  ot->get_description = screen_opengl_render_description;
+  ot->get_description = screen_opengl_render_get_description;
   ot->invoke = screen_opengl_render_invoke;
   ot->exec = screen_opengl_render_exec; /* blocking */
   ot->modal = screen_opengl_render_modal;

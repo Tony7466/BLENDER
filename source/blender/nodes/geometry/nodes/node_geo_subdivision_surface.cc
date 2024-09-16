@@ -120,7 +120,7 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
     /* Due to the "BKE_subdiv" API, the crease layers must be on the input mesh. But in this node
      * they are provided as separate inputs, not as custom data layers. When needed, retrieve the
      * mesh with write access and store the new crease values there. */
-    mesh_copy = BKE_mesh_copy_for_eval(mesh);
+    mesh_copy = BKE_mesh_copy_for_eval(*mesh);
     write_vert_creases(*mesh_copy, vert_creases);
     write_edge_creases(*mesh_copy, edge_creases);
     mesh = mesh_copy;
@@ -235,7 +235,7 @@ static void node_register()
                                   "NodeGeometrySubdivisionSurface",
                                   node_free_standard_storage,
                                   node_copy_standard_storage);
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

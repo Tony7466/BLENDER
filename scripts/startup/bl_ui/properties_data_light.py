@@ -6,6 +6,7 @@ import bpy
 from bpy.app.translations import contexts as i18n_contexts
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 
 class DataButtonsPanel:
@@ -160,8 +161,6 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         sub.active = light.use_shadow_jitter
         sub.prop(light, "shadow_jitter_overblur", text="Overblur")
 
-        col.separator()
-
         col = layout.column()
         col.prop(light, "shadow_filter_radius", text="Filter")
 
@@ -170,7 +169,6 @@ class DATA_PT_EEVEE_light_shadow(DataButtonsPanel, Panel):
         row.prop(light, "shadow_maximum_resolution", text="Resolution Limit")
         if light.type != 'SUN':
             row.prop(light, "use_absolute_resolution", text="", icon='DRIVER_DISTANCE')
-        sub.prop(light, "shadow_resolution_scale", text="Scale")
 
 
 class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
@@ -188,19 +186,19 @@ class DATA_PT_EEVEE_light_influence(DataButtonsPanel, Panel):
         col = layout.column(align=True)
 
         sub = col.column(align=True)
-        sub.active = ob.visible_diffuse
+        sub.active = ob is None or ob.visible_diffuse
         sub.prop(light, "diffuse_factor", text="Diffuse")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_glossy
+        sub.active = ob is None or ob.visible_glossy
         sub.prop(light, "specular_factor", text="Glossy")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_transmission
+        sub.active = ob is None or ob.visible_transmission
         sub.prop(light, "transmission_factor", text="Transmission")
 
         sub = col.column(align=True)
-        sub.active = ob.visible_volume_scatter
+        sub.active = ob is None or ob.visible_volume_scatter
         sub.prop(light, "volume_factor", text="Volume Scatter", text_ctxt=i18n_contexts.id_id)
 
 
@@ -329,6 +327,31 @@ class DATA_PT_spot(DataButtonsPanel, Panel):
         col.prop(light, "show_cone")
 
 
+class DATA_PT_light_animation(DataButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_EEVEE',
+        'BLENDER_WORKBENCH',
+    }
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        # DataButtonsPanel.poll ensures this is not None.
+        light = context.light
+
+        col = layout.column(align=True)
+        col.label(text="Light")
+        self.draw_action_and_slot_selector(context, col, light)
+
+        if node_tree := light.node_tree:
+            col = layout.column(align=True)
+            col.label(text="Shader Node Tree")
+            self.draw_action_and_slot_selector(context, col, node_tree)
+
+
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -352,6 +375,7 @@ classes = (
     DATA_PT_EEVEE_shadow,
     DATA_PT_EEVEE_shadow_cascaded_shadow_map,
     DATA_PT_EEVEE_shadow_contact,
+    DATA_PT_light_animation,
     DATA_PT_custom_props_light,
 )
 

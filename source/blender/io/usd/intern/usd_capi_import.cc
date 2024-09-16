@@ -5,6 +5,7 @@
 #include "IO_types.hh"
 #include "usd.hh"
 #include "usd_hook.hh"
+#include "usd_light_convert.hh"
 #include "usd_reader_geom.hh"
 #include "usd_reader_prim.hh"
 #include "usd_reader_stage.hh"
@@ -38,6 +39,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
+
+#include "ED_undo.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -155,6 +158,7 @@ enum {
 };
 
 struct ImportJobData {
+  bContext *C;
   Main *bmain;
   Scene *scene;
   ViewLayer *view_layer;
@@ -173,6 +177,7 @@ struct ImportJobData {
   char error_code;
   bool was_canceled;
   bool import_ok;
+  bool is_background_job;
   timeit::TimePoint start_time;
 
   CacheFile *cache_file;
@@ -296,6 +301,13 @@ static void import_startjob(void *customdata, wmJobWorkerStatus *worker_status)
   data->archive = archive;
 
   archive->collect_readers();
+
+  if (data->params.import_lights && data->params.create_world_material &&
+      !archive->dome_lights().is_empty())
+  {
+    dome_light_to_world_material(
+        data->params, data->settings, data->scene, data->bmain, archive->dome_lights().first());
+  }
 
   if (data->params.import_materials && data->params.import_all_materials) {
     archive->import_all_materials(data->bmain);
@@ -447,6 +459,12 @@ static void import_endjob(void *customdata)
     register_hook_converters();
 
     call_import_hooks(data->archive->stage(), data->params.worker_status->reports);
+
+    if (data->is_background_job) {
+      /* Blender already returned from the import operator, so we need to store our own extra undo
+       * step. */
+      ED_undo_push(data->C, "USD Import Finished");
+    }
   }
 
   WM_set_locked_interface(data->wm, false);
@@ -477,7 +495,7 @@ static void import_freejob(void *user_data)
   delete data;
 }
 
-bool USD_import(bContext *C,
+bool USD_import(const bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
                 bool as_background_job,
@@ -485,11 +503,13 @@ bool USD_import(bContext *C,
 {
   /* Using new here since `MEM_*` functions do not call constructor to properly initialize data. */
   ImportJobData *job = new ImportJobData();
+  job->C = const_cast<bContext *>(C);
   job->bmain = CTX_data_main(C);
   job->scene = CTX_data_scene(C);
   job->view_layer = CTX_data_view_layer(C);
   job->wm = CTX_wm_manager(C);
   job->import_ok = false;
+  job->is_background_job = as_background_job;
   STRNCPY(job->filepath, filepath);
 
   job->settings.scale = params->scale;
@@ -513,7 +533,7 @@ bool USD_import(bContext *C,
                                 job->scene,
                                 "USD Import",
                                 WM_JOB_PROGRESS,
-                                WM_JOB_TYPE_ALEMBIC);
+                                WM_JOB_TYPE_USD_IMPORT);
 
     /* setup job */
     WM_jobs_customdata_set(wm_job, job, import_freejob);
@@ -543,13 +563,13 @@ bool USD_import(bContext *C,
  * Alembic importer code. */
 static USDPrimReader *get_usd_reader(CacheReader *reader,
                                      const Object * /*ob*/,
-                                     const char **err_str)
+                                     const char **r_err_str)
 {
   USDPrimReader *usd_reader = reinterpret_cast<USDPrimReader *>(reader);
   pxr::UsdPrim iobject = usd_reader->prim();
 
   if (!iobject.IsValid()) {
-    *err_str = RPT_("Invalid object: verify object path");
+    *r_err_str = RPT_("Invalid object: verify object path");
     return nullptr;
   }
 
@@ -565,27 +585,27 @@ USDMeshReadParams create_mesh_read_params(const double motion_sample_time, const
 }
 
 void USD_read_geometry(CacheReader *reader,
-                       Object *ob,
+                       const Object *ob,
                        blender::bke::GeometrySet &geometry_set,
                        const USDMeshReadParams params,
-                       const char **err_str)
+                       const char **r_err_str)
 {
-  USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));
+  USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, r_err_str));
 
   if (usd_reader == nullptr) {
     return;
   }
 
-  return usd_reader->read_geometry(geometry_set, params, err_str);
+  return usd_reader->read_geometry(geometry_set, params, r_err_str);
 }
 
 bool USD_mesh_topology_changed(CacheReader *reader,
                                const Object *ob,
                                const Mesh *existing_mesh,
                                const double time,
-                               const char **err_str)
+                               const char **r_err_str)
 {
-  USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, err_str));
+  USDGeomReader *usd_reader = dynamic_cast<USDGeomReader *>(get_usd_reader(reader, ob, r_err_str));
 
   if (usd_reader == nullptr) {
     return false;

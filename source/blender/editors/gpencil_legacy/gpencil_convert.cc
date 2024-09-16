@@ -515,7 +515,7 @@ static void gpencil_stroke_path_animation(bContext *C,
 
   /* Ensure we have an F-Curve to add keyframes to */
   act = blender::animrig::id_action_ensure(bmain, (ID *)cu);
-  fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, "eval_time", 0);
+  fcu = blender::animrig::action_fcurve_ensure(bmain, act, nullptr, &ptr, {"eval_time", 0});
 
   if (gtd->mode == GP_STROKECONVERT_TIMING_LINEAR) {
     float cfra;
@@ -1238,7 +1238,7 @@ static int gpencil_camera_view_subrect(bContext *C, rctf *subrect)
 
     /* for camera view set the subrect */
     if (rv3d->persp == RV3D_CAMOB) {
-      Scene *scene = CTX_data_scene(C);
+      const Scene *scene = CTX_data_scene(C);
       Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
       ED_view3d_calc_camera_border(scene, depsgraph, region, v3d, rv3d, subrect, true);
       return 1;

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
+    AssetShelf,
     Header,
     Menu,
     Panel,
@@ -23,6 +24,7 @@ from bl_ui.properties_paint_common import (
     SmoothStrokePanel,
     FalloffPanel,
     DisplayPanel,
+    BrushAssetShelf,
 )
 from bl_ui.properties_grease_pencil_common import (
     AnnotationDataPanel,
@@ -71,6 +73,7 @@ class IMAGE_MT_view(Menu):
 
         show_uvedit = sima.show_uvedit
         show_render = sima.show_render
+        show_maskedit = sima.show_maskedit
 
         layout.prop(sima, "show_region_toolbar")
         layout.prop(sima, "show_region_ui")
@@ -85,7 +88,7 @@ class IMAGE_MT_view(Menu):
 
         layout.separator()
 
-        if show_uvedit:
+        if show_uvedit or show_maskedit:
             layout.operator("image.view_selected", text="Frame Selected")
 
         layout.operator("image.view_all")
@@ -195,7 +198,7 @@ class IMAGE_MT_image(Menu):
         ima = sima.image
         show_render = sima.show_render
 
-        layout.operator("image.new", text="New", text_ctxt=i18n_contexts.id_image)
+        layout.operator("image.new", text="New...", text_ctxt=i18n_contexts.id_image, icon='FILE_NEW')
         layout.operator("image.open", text="Open...", icon='FILE_FOLDER')
 
         layout.operator("image.read_viewlayers")
@@ -764,9 +767,10 @@ class _draw_tool_settings_context_mode:
             return
 
         paint = context.tool_settings.image_paint
-        layout.template_ID_preview(paint, "brush", rows=3, cols=8, hide_buttons=True)
-
         brush = paint.brush
+
+        BrushAssetShelf.draw_popup_selector(layout, context, brush)
+
         if brush is None:
             return
 
@@ -780,19 +784,21 @@ class IMAGE_HT_header(Header):
     def draw_xform_template(layout, context):
         sima = context.space_data
         show_uvedit = sima.show_uvedit
-        show_maskedit = sima.show_maskedit
 
-        if show_uvedit or show_maskedit:
+        if show_uvedit:
             layout.prop(sima, "pivot_point", icon_only=True)
 
         if show_uvedit:
             tool_settings = context.tool_settings
 
             # Snap.
-            snap_uv_element = tool_settings.snap_uv_element
-            try:
-                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element].icon
-            except KeyError:
+            snap_uv_elements = tool_settings.snap_uv_element
+            if len(snap_uv_elements) == 1:
+                text = ""
+                elem = next(iter(snap_uv_elements))
+                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[elem].icon
+            else:
+                text = iface_("Mix", i18n_contexts.id_image)
                 act_snap_icon = 'NONE'
 
             row = layout.row(align=True)
@@ -802,7 +808,7 @@ class IMAGE_HT_header(Header):
             sub.popover(
                 panel="IMAGE_PT_snapping",
                 icon=act_snap_icon,
-                text="",
+                text=text,
             )
 
             # Proportional Editing
@@ -870,8 +876,20 @@ class IMAGE_HT_header(Header):
         layout.template_ID(sima, "image", new="image.new", open="image.open")
 
         if show_maskedit:
-            row = layout.row()
-            row.template_ID(sima, "mask", new="mask.new")
+            layout.template_ID(sima, "mask", new="mask.new")
+            layout.prop(sima, "pivot_point", icon_only=True)
+
+            row = layout.row(align=True)
+            row.prop(tool_settings, "use_proportional_edit_mask", text="", icon_only=True)
+            sub = row.row(align=True)
+            sub.active = tool_settings.use_proportional_edit_mask
+            sub.prop_with_popover(
+                tool_settings,
+                "proportional_edit_falloff",
+                text="",
+                icon_only=True,
+                panel="IMAGE_PT_proportional_edit",
+            )
 
         if not show_render:
             layout.prop(sima, "use_image_pin", text="", emboss=False)
@@ -1014,18 +1032,23 @@ class IMAGE_PT_snapping(Panel):
         col.label(text="Snap Target")
         col.prop(tool_settings, "snap_uv_element", expand=True)
 
-        if tool_settings.snap_uv_element != 'INCREMENT':
-            col.label(text="Snap Base")
-            row = col.row(align=True)
-            row.prop(tool_settings, "snap_target", expand=True)
+        col.label(text="Snap Base")
+        row = col.row(align=True)
+        row.active = bool(tool_settings.snap_uv_element.difference({'INCREMENT', 'GRID'}))
+        row.prop(tool_settings, "snap_target", expand=True)
 
         col.separator()
 
         col.label(text="Affect")
         row = col.row(align=True)
-        row.prop(tool_settings, "use_snap_translate", text="Move", toggle=True)
-        row.prop(tool_settings, "use_snap_rotate", text="Rotate", toggle=True)
-        row.prop(tool_settings, "use_snap_scale", text="Scale", toggle=True)
+        row.prop(
+            tool_settings,
+            "use_snap_translate",
+            text="Move",
+            text_ctxt=i18n_contexts.operator_default,
+            toggle=True)
+        row.prop(tool_settings, "use_snap_rotate", text="Rotate", text_ctxt=i18n_contexts.operator_default, toggle=True)
+        row.prop(tool_settings, "use_snap_scale", text="Scale", text_ctxt=i18n_contexts.operator_default, toggle=True)
         col.label(text="Rotation Increment")
         row = col.row(align=True)
         row.prop(tool_settings, "snap_angle_increment_2d", text="")
@@ -1182,7 +1205,7 @@ class IMAGE_PT_udim_tiles(Panel):
 
 
 class IMAGE_PT_paint_select(Panel, ImagePaintPanel, BrushSelectPanel):
-    bl_label = "Brushes"
+    bl_label = "Brush Asset"
     bl_context = ".paint_common_2d"
     bl_category = "Tool"
 
@@ -1220,8 +1243,8 @@ class IMAGE_PT_paint_settings_advanced(Panel, ImagePaintPanel):
 
         settings = context.tool_settings.image_paint
         brush = settings.brush
-
-        brush_settings_advanced(layout.column(), context, brush, self.is_popover)
+        if brush:
+            brush_settings_advanced(layout.column(), context, brush, self.is_popover)
 
 
 class IMAGE_PT_paint_color(Panel, ImagePaintPanel):
@@ -1234,16 +1257,17 @@ class IMAGE_PT_paint_color(Panel, ImagePaintPanel):
     def poll(cls, context):
         settings = context.tool_settings.image_paint
         brush = settings.brush
+        if not brush:
+            return False
         capabilities = brush.image_paint_capabilities
-
         return capabilities.has_color
 
     def draw(self, context):
         layout = self.layout
         settings = context.tool_settings.image_paint
         brush = settings.brush
-
-        draw_color_settings(context, layout, brush, color_type=True)
+        if brush:
+            draw_color_settings(context, layout, brush, color_type=True)
 
 
 class IMAGE_PT_paint_swatches(Panel, ImagePaintPanel, ColorPalettePanel):
@@ -1688,6 +1712,18 @@ class IMAGE_PT_annotation(AnnotationDataPanel, Panel):
 # Grease Pencil drawing tools.
 
 
+class ImageAssetShelf(BrushAssetShelf):
+    bl_space_type = "IMAGE_EDITOR"
+
+
+class IMAGE_AST_brush_paint(ImageAssetShelf, AssetShelf):
+    mode_prop = "use_paint_image"
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data and context.space_data.mode == 'PAINT'
+
+
 classes = (
     IMAGE_MT_view,
     IMAGE_MT_view_zoom,
@@ -1757,6 +1793,7 @@ classes = (
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
+    IMAGE_AST_brush_paint,
 )
 
 

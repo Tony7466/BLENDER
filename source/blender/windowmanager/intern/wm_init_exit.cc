@@ -67,7 +67,6 @@
 #endif
 
 #include "GHOST_C-api.h"
-#include "GHOST_Path-api.hh"
 
 #include "RNA_define.hh"
 
@@ -103,6 +102,7 @@
 #include "UI_resources.hh"
 #include "UI_string_search.hh"
 
+#include "GPU_compilation_subprocess.hh"
 #include "GPU_context.hh"
 #include "GPU_init_exit.hh"
 #include "GPU_material.hh"
@@ -203,8 +203,6 @@ void WM_init(bContext *C, int argc, const char **argv)
     BKE_sound_jack_sync_callback_set(sound_jack_sync_callback);
   }
 
-  GHOST_CreateSystemPaths();
-
   BKE_addon_pref_type_init();
   BKE_keyconfig_pref_type_init();
 
@@ -276,6 +274,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   read_homefile_params.use_empty_data = false;
   read_homefile_params.filepath_startup_override = nullptr;
   read_homefile_params.app_template_override = WM_init_state_app_template_get();
+  read_homefile_params.is_first_time = true;
 
   wm_homefile_read_ex(C, &read_homefile_params, nullptr, &params_file_read_post);
 
@@ -475,7 +474,8 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
       /* Save quit.blend. */
       Main *bmain = CTX_data_main(C);
       char filepath[FILE_MAX];
-      const int fileflags = G.fileflags & ~G_FILE_COMPRESS;
+      int fileflags = G.fileflags & ~G_FILE_COMPRESS;
+      fileflags |= G_FILE_RECOVER_WRITE;
 
       BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
@@ -674,8 +674,6 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
     CTX_free(C);
   }
 
-  GHOST_DisposeSystemPaths();
-
   DNA_sdna_current_free();
 
   BLI_threadapi_exit();
@@ -692,6 +690,10 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
   wm_autosave_delete();
 
   BKE_tempdir_session_purge();
+
+#if defined(WITH_OPENGL_BACKEND) && BLI_SUBPROCESS_SUPPORT
+  GPU_shader_cache_dir_clear_old();
+#endif
 
   /* Logging cannot be called after exiting (#CLOG_INFO, #CLOG_WARN etc will crash).
    * So postpone exiting until other sub-systems that may use logging have shut down. */
@@ -713,4 +715,11 @@ void WM_exit(bContext *C, const int exit_code)
 void WM_script_tag_reload()
 {
   UI_interface_tag_script_reload();
+
+  /* Any operators referenced by gizmos may now be a dangling pointer.
+   *
+   * While it is possible to inspect the gizmos it's simpler to re-create them,
+   * especially for script reloading - where we can accept slower logic
+   * for the sake of simplicity, see #126852. */
+  WM_gizmoconfig_update_tag_reinit_all();
 }

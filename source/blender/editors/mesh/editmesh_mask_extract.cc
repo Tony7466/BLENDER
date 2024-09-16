@@ -85,7 +85,7 @@ static int geometry_extract_apply(bContext *C,
   Scene *scene = CTX_data_scene(C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_on_load(C);
 
-  ED_object_sculptmode_exit(C, depsgraph);
+  blender::ed::sculpt_paint::object_sculpt_mode_exit(C, depsgraph);
 
   BKE_sculpt_mask_layers_ensure(&depsgraph, bmain, ob, nullptr);
 
@@ -246,6 +246,10 @@ static void geometry_extract_tag_masked_faces(BMesh *bm, GeometryExtractParams *
     bool keep_face = true;
     BMVert *v;
     BMIter face_iter;
+    if (BM_elem_flag_test_bool(f, BM_ELEM_HIDDEN)) {
+      BM_elem_flag_set(f, BM_ELEM_TAG, true);
+      continue;
+    };
     BM_ITER_ELEM (v, &face_iter, f, BM_VERTS_OF_FACE) {
       const float mask = BM_ELEM_CD_GET_FLOAT(v, cd_vert_mask_offset);
       if (mask < threshold) {
@@ -417,6 +421,10 @@ static void slice_paint_mask(BMesh *bm, bool invert, bool fill_holes, float mask
         break;
       }
     }
+    if (BM_elem_flag_test_bool(f, BM_ELEM_HIDDEN)) {
+      keep_face = false;
+    };
+    /* This invert behavior is fragile, as it potentially marks faces which are hidden */
     if (invert) {
       keep_face = !keep_face;
     }

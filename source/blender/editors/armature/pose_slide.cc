@@ -43,7 +43,7 @@
 #include "DNA_vec_types.h"
 
 #include "BKE_fcurve.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -53,7 +53,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -577,7 +577,7 @@ static void pose_slide_apply_props(tPoseSlideOp *pso,
  */
 static void pose_slide_apply_quat(tPoseSlideOp *pso, tPChanFCurveLink *pfl)
 {
-  FCurve *fcu_w = nullptr, *fcu_x = nullptr, *fcu_y = nullptr, *fcu_z = nullptr;
+  const FCurve *fcu_w = nullptr, *fcu_x = nullptr, *fcu_y = nullptr, *fcu_z = nullptr;
   bPoseChannel *pchan = pfl->pchan;
   LinkData *ld = nullptr;
   char *path = nullptr;
@@ -1751,7 +1751,7 @@ static float find_last_key(ListBase *pflinks)
   float target_frame = FLT_MIN;
   LISTBASE_FOREACH (tPChanFCurveLink *, pfl, pflinks) {
     LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
-      FCurve *fcu = (FCurve *)ld->data;
+      const FCurve *fcu = (const FCurve *)ld->data;
       if (!fcu->bezt) {
         continue;
       }
@@ -1765,7 +1765,7 @@ static float find_last_key(ListBase *pflinks)
 static void get_selected_marker_positions(Scene *scene, ListBase /*FrameLink*/ *target_frames)
 {
   ListBase selected_markers = {nullptr, nullptr};
-  ED_markers_make_cfra_list(&scene->markers, &selected_markers, SELECT);
+  ED_markers_make_cfra_list(&scene->markers, &selected_markers, true);
   LISTBASE_FOREACH (CfraElem *, marker, &selected_markers) {
     FrameLink *link = static_cast<FrameLink *>(MEM_callocN(sizeof(FrameLink), "Marker Key Link"));
     link->frame = marker->cfra;

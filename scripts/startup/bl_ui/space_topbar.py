@@ -222,8 +222,8 @@ class TOPBAR_MT_file_cleanup(Menu):
         layout = self.layout
         layout.separator()
 
-        layout.operator("outliner.orphans_purge", text="Purge Unused Data")
-        layout.operator("outliner.orphans_manage", text="Manage Unused Data")
+        layout.operator("outliner.orphans_purge", text="Purge Unused Data...")
+        layout.operator("outliner.orphans_manage", text="Manage Unused Data...")
 
 
 class TOPBAR_MT_file(Menu):
@@ -244,14 +244,15 @@ class TOPBAR_MT_file(Menu):
         layout.operator_context = 'EXEC_AREA' if context.blend_data.is_saved else 'INVOKE_AREA'
         layout.operator("wm.save_mainfile", text="Save", icon='FILE_TICK')
 
-        sub = layout.row()
-        sub.enabled = context.blend_data.is_saved
-        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
-
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save As...")
         layout.operator_context = 'INVOKE_AREA'
         layout.operator("wm.save_as_mainfile", text="Save Copy...").copy = True
+
+        sub = layout.row()
+        sub.enabled = context.blend_data.is_saved
+        sub.operator_context = 'EXEC_AREA'
+        sub.operator("wm.save_mainfile", text="Save Incremental").incremental = True
 
         layout.separator()
 
@@ -426,7 +427,7 @@ class TOPBAR_MT_file_import(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_import", text="Collada (.dae)")
+            self.layout.operator("wm.collada_import", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_import", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
@@ -434,7 +435,7 @@ class TOPBAR_MT_file_import(Menu):
                 "wm.usd_import", text="Universal Scene Description (.usd*)")
 
         if bpy.app.build_options.io_gpencil:
-            self.layout.operator("wm.gpencil_import_svg", text="SVG as Grease Pencil")
+            self.layout.operator("wm.grease_pencil_import_svg", text="SVG as Grease Pencil")
 
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_import", text="Wavefront (.obj)")
@@ -451,7 +452,7 @@ class TOPBAR_MT_file_export(Menu):
 
     def draw(self, _context):
         if bpy.app.build_options.collada:
-            self.layout.operator("wm.collada_export", text="Collada (.dae)")
+            self.layout.operator("wm.collada_export", text="Collada (.dae) (Legacy)")
         if bpy.app.build_options.alembic:
             self.layout.operator("wm.alembic_export", text="Alembic (.abc)")
         if bpy.app.build_options.usd:
@@ -461,10 +462,10 @@ class TOPBAR_MT_file_export(Menu):
         if bpy.app.build_options.io_gpencil:
             # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
-                self.layout.operator("wm.gpencil_export_svg", text="Grease Pencil as SVG")
+                self.layout.operator("wm.grease_pencil_export_svg", text="Grease Pencil as SVG")
             # HARU library dependency.
             if bpy.app.build_options.haru:
-                self.layout.operator("wm.gpencil_export_pdf", text="Grease Pencil as PDF")
+                self.layout.operator("wm.grease_pencil_export_pdf", text="Grease Pencil as PDF")
 
         if bpy.app.build_options.io_wavefront_obj:
             self.layout.operator("wm.obj_export", text="Wavefront (.obj)")
@@ -504,7 +505,7 @@ class TOPBAR_MT_file_external_data(Menu):
         layout.separator()
 
         layout.operator("file.report_missing_files")
-        layout.operator("file.find_missing_files")
+        layout.operator("file.find_missing_files", text="Find Missing Files...")
 
 
 class TOPBAR_MT_file_previews(Menu):
@@ -514,12 +515,12 @@ class TOPBAR_MT_file_previews(Menu):
         layout = self.layout
 
         layout.operator("wm.previews_ensure")
-        layout.operator("wm.previews_batch_generate")
+        layout.operator("wm.previews_batch_generate", text="Batch-Generate Previews...")
 
         layout.separator()
 
-        layout.operator("wm.previews_clear")
-        layout.operator("wm.previews_batch_clear")
+        layout.operator("wm.previews_clear", text="Clear Data-Block Previews...")
+        layout.operator("wm.previews_batch_clear", text="Batch-Clear Previews...")
 
 
 class TOPBAR_MT_render(Menu):
@@ -571,7 +572,7 @@ class TOPBAR_MT_edit(Menu):
 
         layout.operator("wm.search_menu", text="Menu Search...", icon='VIEWZOOM')
         if show_developer:
-            layout.operator("wm.search_operator", text="Operator Search...", icon='VIEWZOOM')
+            layout.operator("wm.search_operator", text="Operator Search...")
 
         layout.separator()
 

@@ -85,8 +85,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     return;
   }
   if (fixed_data_type == CD_PROP_QUATERNION) {
-    /* Don't implement quaternion blurring for now. */
-    return;
+    fixed_data_type = CD_PROP_FLOAT3;
   }
   if (fixed_data_type == CD_PROP_FLOAT4X4) {
     /* Don't implement matrix blurring for now. */
@@ -503,7 +502,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

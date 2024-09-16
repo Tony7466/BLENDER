@@ -206,6 +206,10 @@ enum eDebugMode : uint32_t {
    * Show evaluation cost of each pixel.
    */
   DEBUG_GBUFFER_EVALUATION = 15u,
+  /**
+   * Color different buffers of the depth of field.
+   */
+  DEBUG_DOF_PLANES = 16u,
 };
 
 /** \} */
@@ -250,20 +254,21 @@ enum eSamplingDimension : uint32_t {
   SAMPLING_RAYTRACE_X = 18u,
   SAMPLING_AO_U = 19u,
   SAMPLING_AO_V = 20u,
-  SAMPLING_CURVES_U = 21u,
-  SAMPLING_VOLUME_U = 22u,
-  SAMPLING_VOLUME_V = 23u,
-  SAMPLING_VOLUME_W = 24u,
-  SAMPLING_SHADOW_I = 25u,
-  SAMPLING_SHADOW_J = 26u,
-  SAMPLING_SHADOW_K = 27u,
+  SAMPLING_AO_W = 21u,
+  SAMPLING_CURVES_U = 22u,
+  SAMPLING_VOLUME_U = 23u,
+  SAMPLING_VOLUME_V = 24u,
+  SAMPLING_VOLUME_W = 25u,
+  SAMPLING_SHADOW_I = 26u,
+  SAMPLING_SHADOW_J = 27u,
+  SAMPLING_SHADOW_K = 28u,
 };
 
 /**
  * IMPORTANT: Make sure the array can contain all sampling dimensions.
  * Also note that it needs to be multiple of 4.
  */
-#define SAMPLING_DIMENSION_COUNT 28
+#define SAMPLING_DIMENSION_COUNT 32
 
 /* NOTE(@fclem): Needs to be used in #StorageBuffer because of arrays of scalar. */
 struct SamplingData {
@@ -390,7 +395,7 @@ struct FilmData {
   int2 render_extent;
   /**
    * Sub-pixel offset applied to the window matrix.
-   * NOTE: In final film pixel unit.
+   * NOTE: In render target pixel unit.
    * NOTE: Positive values makes the view translate in the negative axes direction.
    * NOTE: The origin is the center of the lower left film pixel of the area covered by a render
    * pixel if using scaled resolution rendering.
@@ -448,13 +453,14 @@ struct FilmData {
   float exposure_scale;
   /** Scaling factor for scaled resolution rendering. */
   int scaling_factor;
+  /** Software LOD bias to apply to when sampling texture inside the node-tree evaluation. */
+  float texture_lod_bias;
   /** Film pixel filter radius. */
   float filter_radius;
   /** Precomputed samples. First in the table is the closest one. The rest is unordered. */
   int samples_len;
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
-  int _pad1;
   int _pad2;
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
@@ -794,6 +800,11 @@ struct LightCullingData {
   uint tile_y_len;
   /** Number of word per tile. Depends on the maximum number of lights. */
   uint tile_word_len;
+  /** Is the view being processed by light culling flipped (true for light probe planes). */
+  bool32_t view_is_flipped;
+  uint _pad0;
+  uint _pad1;
+  uint _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(LightCullingData, 16)
 
@@ -824,6 +835,9 @@ enum LightingType : uint32_t {
   LIGHT_SPECULAR = 1u,
   LIGHT_TRANSMISSION = 2u,
   LIGHT_VOLUME = 3u,
+  /* WORKAROUND: Special value used to tag translucent BSDF with thickness.
+   * Fallback to LIGHT_DIFFUSE. */
+  LIGHT_TRANSLUCENT_WITH_THICKNESS = 4u,
 };
 
 static inline bool is_area_light(eLightType type)
@@ -918,7 +932,8 @@ struct LightAreaData {
 
   /** Shape size. */
   float2 size;
-  float _pad5;
+  /** Scale to apply on top of `size` to get shadow tracing shape size. */
+  float shadow_scale;
   float _pad6;
 };
 BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size must match")
@@ -984,7 +999,7 @@ struct LightData {
   /** Index of the first tile-map. Set to LIGHT_NO_SHADOW if light is not casting shadow. */
   int tilemap_index;
   /* Radius in pixels for shadow filtering. */
-  float pcf_radius;
+  float filter_radius;
 
   /* Shadow Map resolution bias. */
   float lod_bias;
@@ -1174,6 +1189,7 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN_FLOAT(shadow_radius, shadow_radius)
   SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
   SAFE_ASSIGN_FLOAT2(size, _pad3)
+  SAFE_ASSIGN_FLOAT(shadow_scale, _pad4)
   return SAFE_READ_END();
 }
 
@@ -1309,12 +1325,11 @@ struct ShadowTileMapData {
   int clip_data_index;
   /** Light type this tilemap is from. */
   eLightType light_type;
-  /** True if the tilemap is part of area light shadow and is one of the side projections. */
-  bool32_t is_area_side;
   /** Entire tilemap (all tiles) needs to be tagged as dirty. */
   bool32_t is_dirty;
-
-  float _pad1;
+  /** Effective minimum resolution after update throttle. */
+  int effective_lod_min;
+  float _pad2;
   /** Near and far clip distances for punctual. */
   float clip_near;
   float clip_far;
@@ -1332,9 +1347,7 @@ struct ShadowRenderView {
   /**
    * Is either:
    * - positive radial distance for point lights.
-   * - negative distance to light plane (divided by sqrt3) for area lights side projections.
    * - zero if disabled.
-   * Use sign to determine with case we are in.
    */
   float clip_distance_inv;
   /** Viewport to submit the geometry of this tile-map view to. */
@@ -1343,6 +1356,12 @@ struct ShadowRenderView {
   bool32_t is_directional;
   /** If directional, distance along the negative Z axis of the near clip in view space. */
   float clip_near;
+  /** Copy of `ShadowTileMapData.tiles_index`. */
+  int tilemap_tiles_index;
+  /** The level of detail of the tilemap this view is rendering. */
+  int tilemap_lod;
+  /** Updated region of the tilemap. */
+  int2 rect_min;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowRenderView, 16)
 
@@ -1387,6 +1406,12 @@ BLI_STATIC_ASSERT_ALIGN(ShadowPagesInfoData, 16)
 
 struct ShadowStatistics {
   /** Statistics that are read back to CPU after a few frame (to avoid stall). */
+  /**
+   * WARNING: Excepting `view_needed_count` it is uncertain if these are accurate.
+   * This is because `eevee_shadow_page_allocate_comp` runs on all pages even for
+   * directional. There might be some lingering states somewhere as relying on
+   * `page_update_count` was causing non-deterministic infinite loop. Needs further investigation.
+   */
   int page_used_count;
   int page_update_count;
   int page_allocated_count;
@@ -1486,7 +1511,7 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 struct ShadowSamplingTile {
   /** Page inside the virtual shadow map atlas. */
   uint3 page;
-  /** LOD pointed to LOD 0 tile page. */
+  /** LOD pointed by LOD 0 tile page. */
   uint lod;
   /** Offset to the texel position to align with the LOD page start. (directional only). */
   uint2 lod_offset;
@@ -1933,10 +1958,15 @@ BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 struct AOData {
   float2 pixel_size;
   float distance;
-  float quality;
+  float lod_factor;
 
-  float thickness;
+  float thickness_near;
+  float thickness_far;
   float angle_bias;
+  float gi_distance;
+
+  float lod_factor_ao;
+  float _pad0;
   float _pad1;
   float _pad2;
 };
@@ -1961,12 +1991,14 @@ struct SubsurfaceData {
   /** xy: 2D sample position [-1..1], zw: sample_bounds. */
   /* NOTE(fclem) Using float4 for alignment. */
   float4 samples[SSS_SAMPLE_MAX];
-  /** Sample index after which samples are not randomly rotated anymore. */
-  int jitter_threshold;
   /** Number of samples precomputed in the set. */
   int sample_len;
-  int _pad0;
+  /** WORKAROUND: To avoid invalid integral for components that have very small radius, we clamp
+   * the minimal radius. This add bias to the SSS effect but this is the simplest workaround I
+   * could find to ship this without visible artifact. */
+  float min_radius;
   int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
 
@@ -2044,7 +2076,7 @@ BLI_STATIC_ASSERT_ALIGN(PlanarProbeDisplayData, 16)
 
 struct PipelineInfoData {
   float alpha_hash_scale;
-  bool32_t is_probe_reflection;
+  bool32_t is_sphere_probe;
   float _pad1;
   float _pad2;
 };

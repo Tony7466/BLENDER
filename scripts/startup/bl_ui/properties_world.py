@@ -7,6 +7,7 @@ from bpy.types import Panel
 from bpy.app.translations import contexts as i18n_contexts
 from rna_prop_ui import PropertyPanel
 from bpy_extras.node_utils import find_node_input
+from .space_properties import PropertiesAnimationMixin
 
 
 class WorldButtonsPanel:
@@ -69,6 +70,31 @@ class EEVEE_WORLD_PT_mist(WorldButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(world.mist_settings, "falloff")
+
+
+class WORLD_PT_animation(WorldButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        # WorldButtonsPanel.poll ensures this is not None.
+        world = context.world
+
+        col = layout.column(align=True)
+        col.label(text="World")
+        self.draw_action_and_slot_selector(context, col, world)
+
+        if node_tree := world.node_tree:
+            col = layout.column(align=True)
+            col.label(text="Shader Node Tree")
+            self.draw_action_and_slot_selector(context, col, node_tree)
 
 
 class WORLD_PT_custom_props(WorldButtonsPanel, PropertyPanel, Panel):
@@ -207,11 +233,23 @@ class EEVEE_WORLD_PT_sun_shadow(WorldButtonsPanel, Panel):
 
     def draw(self, context):
         layout = self.layout
+        layout.use_property_split = True
 
         world = context.world
 
-        layout.use_property_split = True
-        layout.prop(world, "sun_shadow_maximum_resolution", text="Resolution Limit")
+        col = layout.column(align=False, heading="Jitter")
+        row = col.row(align=True)
+        sub = row.row(align=True)
+        sub.prop(world, "use_sun_shadow_jitter", text="")
+        sub = sub.row(align=True)
+        sub.active = world.use_sun_shadow_jitter
+        sub.prop(world, "sun_shadow_jitter_overblur", text="Overblur")
+
+        col.separator()
+
+        col = layout.column()
+        col.prop(world, "sun_shadow_filter_radius", text="Filter")
+        col.prop(world, "sun_shadow_maximum_resolution", text="Resolution Limit")
 
 
 class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
@@ -240,6 +278,7 @@ classes = (
     EEVEE_WORLD_PT_sun,
     EEVEE_WORLD_PT_sun_shadow,
     WORLD_PT_viewport_display,
+    WORLD_PT_animation,
     WORLD_PT_custom_props,
 )
 
