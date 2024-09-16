@@ -1125,6 +1125,8 @@ bool BKE_pose_channels_is_valid(const bPose *pose)
       }
     }
   }
+#else
+  UNUSED_VARS(pose);
 #endif
 
   return true;
