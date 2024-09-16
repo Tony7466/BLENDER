@@ -1132,31 +1132,48 @@ static PyObject *M_Geometry_barycentric_transform(PyObject * /*self*/, PyObject 
 struct PointsInPlanes_UserData {
   PyObject *py_verts;
   char *planes_used;
+  PyObject *user_cb;
 };
 
 static void points_in_planes_fn(const float co[3], int i, int j, int k, void *user_data_p)
 {
   PointsInPlanes_UserData *user_data = static_cast<PointsInPlanes_UserData *>(user_data_p);
-  PyList_APPEND(user_data->py_verts, Vector_CreatePyObject(co, 3, nullptr));
+  PyObject *py_co = Vector_CreatePyObject(co, 3, nullptr);
+  PyList_APPEND(user_data->py_verts, py_co);
   user_data->planes_used[i] = true;
   user_data->planes_used[j] = true;
   user_data->planes_used[k] = true;
+
+  if (user_data->user_cb != Py_None) {
+    PyObject *arglist = Py_BuildValue("(Oiii)", py_co, i, j, k);
+    PyObject_CallObject(user_data->user_cb, arglist);
+    Py_DECREF(arglist);
+  }
 }
 
 PyDoc_STRVAR(
     /* Wrap. */
     M_Geometry_points_in_planes_doc,
-    ".. function:: points_in_planes(planes, epsilon_coplanar=1e-4, epsilon_isect=1e-6)\n"
+    ".. function:: points_in_planes(planes, epsilon_coplanar=1e-4, epsilon_isect=1e-6, "
+    "on_point_in_planes=None)\n"
     "\n"
     "   Returns a list of points inside all planes given and a list of index values for "
     "the planes used.\n"
     "\n"
-    "   :arg planes: List of planes (4D vectors).\n"
+    "   :arg planes: List of planes (4D vectors, in normal+distance form, hint: w is likely "
+    "negative).\n"
     "   :type planes: list of :class:`mathutils.Vector`\n"
     "   :arg epsilon_coplanar: Epsilon value for interpreting plane pairs as co-plannar.\n"
     "   :type epsilon_coplanar: float\n"
     "   :arg epsilon_isect: Epsilon value for intersection.\n"
     "   :type epsilon_isect: float\n"
+    "   :arg on_point_in_planes: Callable object invoked every time the points_in_planes function "
+    "scan hits a valid tripple, typically this function is used to build the output array which "
+    "can be used for synchronous results, for some algorithms that build a result other than a "
+    "complete list of intersection points, or which need the results as a generator, this "
+    "callback can be provided and used instead of the function return object. ijk are the indexes "
+    "of which planes who compose the point.\n"
+    "   :type on_point_in_planes: callable(list[float, float, float] co, int i, int, j, int k)\n"
     "   :return: two lists, once containing the vertices inside the planes, another "
     "containing the plane indices used\n"
     "   :rtype: pair of lists\n");
@@ -1166,9 +1183,12 @@ static PyObject *M_Geometry_points_in_planes(PyObject * /*self*/, PyObject *args
   float(*planes)[4];
   float eps_coplanar = 1e-4f;
   float eps_isect = 1e-6f;
+  PyObject *on_point_cb = Py_None;
   uint planes_len;
 
-  if (!PyArg_ParseTuple(args, "O|ff:points_in_planes", &py_planes, &eps_coplanar, &eps_isect)) {
+  if (!PyArg_ParseTuple(
+          args, "O|ffO:points_in_planes", &py_planes, &eps_coplanar, &eps_isect, &on_point_cb))
+  {
     return nullptr;
   }
 
@@ -1178,11 +1198,17 @@ static PyObject *M_Geometry_points_in_planes(PyObject * /*self*/, PyObject *args
     return nullptr;
   }
 
+  if (on_point_cb != Py_None && !PyCallable_Check(on_point_cb)) {
+    PyErr_SetString(PyExc_TypeError, "argument on_point_in_planes must be callable or None");
+    return nullptr;
+  }
+
   /* NOTE: this could be refactored into plain C easy - py bits are noted. */
 
   PointsInPlanes_UserData user_data{};
   user_data.py_verts = PyList_New(0);
   user_data.planes_used = static_cast<char *>(PyMem_Malloc(sizeof(char) * planes_len));
+  user_data.user_cb = on_point_cb;
 
   /* python */
   PyObject *py_plane_index = PyList_New(0);
