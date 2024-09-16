@@ -690,8 +690,6 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
 
   wd->validation_data.per_id_addresses_set.clear();
   wd->per_id_written_shared_addresses.clear();
-  wd->pointer_map.clear();
-  wd->pointer_num_by_group.clear();
 
   BLI_assert(wd->is_writing_id == true);
   wd->is_writing_id = false;
