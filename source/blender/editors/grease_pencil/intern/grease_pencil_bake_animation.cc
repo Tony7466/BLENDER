@@ -69,12 +69,9 @@ static int bake_grease_pencil_animation_invoke(bContext *C,
       C, op, 250, IFACE_("Bake Object Transform to Grease Pencil"), IFACE_("Bake"));
 }
 
-static Span<Object *> get_bake_targets(bContext &C,
-                                       Depsgraph &depsgraph,
-                                       Scene &scene,
-                                       Vector<Object *> &bake_targets)
+static Vector<Object *> get_bake_targets(bContext &C, Depsgraph &depsgraph, Scene &scene)
 {
-  bake_targets.clear();
+  Vector<Object *> bake_targets;
   Object *active_object = CTX_data_active_object(&C);
 
   if (active_object->type == OB_GREASE_PENCIL) {
@@ -116,8 +113,9 @@ static Span<Object *> get_bake_targets(bContext &C,
   return bake_targets.as_span();
 }
 
-static void get_selected_object_keyframes(Span<Object *> bake_targets, Set<int> &r_keyframes)
+static Set<int> get_selected_object_keyframes(Span<Object *> bake_targets)
 {
+  Set<int> keyframes;
   for (Object *bake_target : bake_targets) {
     AnimData *adt = BKE_animdata_from_id(&bake_target->id);
     if (adt == nullptr || adt->action == nullptr) {
@@ -128,11 +126,13 @@ static void get_selected_object_keyframes(Span<Object *> bake_targets, Set<int> 
       BezTriple *bezt;
       for (i = 0, bezt = fcurve->bezt; i < fcurve->totvert; i++, bezt++) {
         if (bezt->f2 & SELECT) {
-          r_keyframes.add(int(bezt->vec[1][0]));
+          keyframes.add(int(bezt->vec[1][0]));
         }
       }
     }
   }
+
+  return keyframes;
 }
 
 static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
@@ -160,8 +160,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   View3D *v3d = CTX_wm_view3d(C);
   ARegion *region = CTX_wm_region(C);
 
-  Vector<Object *> bake_targets;
-  get_bake_targets(*C, depsgraph, scene, bake_targets);
+  Vector<Object *> bake_targets = get_bake_targets(*C, depsgraph, scene);
 
   ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   Object *target_object = object::add_type(
@@ -174,9 +173,9 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   GreasePencil &target = *static_cast<GreasePencil *>(target_object->data);
   Object *target_object_eval = DEG_get_evaluated_object(&depsgraph, target_object);
 
-  Set<int> keyframes;
+  std::optional<Set<int>> keyframes;
   if (only_selected) {
-    get_selected_object_keyframes(bake_targets, keyframes);
+    keyframes = get_selected_object_keyframes(bake_targets);
   }
 
   const int prior_frame = int(DEG_get_ctime(&depsgraph));
@@ -188,7 +187,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
       continue;
     }
 
-    if (only_selected && !keyframes.contains(frame)) {
+    if (keyframes && keyframes->contains(frame)) {
       continue;
     }
 
