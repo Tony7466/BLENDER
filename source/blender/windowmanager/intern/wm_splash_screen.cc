@@ -311,7 +311,7 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
     PointerRNA op_ptr;
     uiItemFullO(row2,
                 "WM_OT_url_open",
-                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
+                RPT_("Learn More"),
                 ICON_URL,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
