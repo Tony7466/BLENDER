@@ -235,13 +235,6 @@ class Action : public ::bAction {
   MutableSpan<StripKeyframeData *> strip_keyframe_data();
 
   /**
-   * Creates a new `StripKeyframeData` and appends it to the array.
-   *
-   * \return The index of the new item in the array.
-   */
-  int strip_keyframe_data_append(StripKeyframeData *strip_data);
-
-  /**
    * Assign this Action + Slot to the ID.
    *
    * If another Action is already assigned to this ID, the caller should unassign the ID from its
@@ -350,11 +343,20 @@ class Action : public ::bAction {
   float2 get_frame_range_of_keys(bool include_modifiers) const ATTR_WARN_UNUSED_RESULT;
 
  protected:
+  friend Strip;
+
   /** Return the layer's index, or -1 if not found in this Action. */
   int64_t find_layer_index(const Layer &layer) const;
 
   /** Return the slot's index, or -1 if not found in this Action. */
   int64_t find_slot_index(const Slot &slot) const;
+
+  /**
+   * Creates a new `StripKeyframeData` and appends it to the array.
+   *
+   * \return The index of the new item in the array.
+   */
+  int strip_keyframe_data_append(StripKeyframeData *strip_data);
 
  private:
   Slot &slot_allocate();
@@ -404,13 +406,31 @@ class Strip : public ::ActionStrip {
    */
   enum class Type : int8_t { Keyframe = 0 };
 
-  /* Strips should never be directly constructed or copied. They should be
-   * created via the APIs on `Layer`, and copied via `Strip::duplicate()`. This
-   * is because strips' data is actually stored in the owning action, and the
-   * creation and duplication of that data must be managed along with the
-   * creation and duplication of the strip. */
+  /* Strips typically shouldn't be directly constructed or copied, because their
+   * data is actually stored in arrays on the action, and that data also needs
+   * to be created and managed along with the strips. */
   Strip() = delete;
   Strip(const Strip &other) = delete;
+
+  /**
+   * Creates a new strip of type `type` for `owning_action`, with the strip's
+   * data created on the relevant data array on `owning_action`.
+   *
+   * NOTE: strongly prefer using `Layer::strip_add()`, which creates a strip
+   * directly on a layer and sidesteps any ambiguities about ownership.
+   *
+   * This method does *not* add the strip to a layer. That is the responsibility
+   * of the caller.
+   *
+   * The strip is heap-allocated, and the caller is responsible for ensuring
+   * that it gets freed or is given an owner (such as a layer) that will later
+   * free it.
+   *
+   * The new strip is initialized to have infinite extent and zero time offset.
+   *
+   * \see `Layer::strip_add()`
+   */
+  static Strip &create(Action &owning_action, const Strip::Type type);
 
   /**
    * Make a full, deep copy of the strip, including its data.

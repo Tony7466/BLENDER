@@ -75,29 +75,6 @@ static animrig::Layer &ActionLayer_alloc()
   ActionLayer *layer = DNA_struct_default_alloc(ActionLayer);
   return layer->wrap();
 }
-static animrig::Strip &ActionStrip_alloc_infinite(Action &owning_action, const Strip::Type type)
-{
-  /* Create the strip. */
-  ActionStrip *strip = MEM_cnew<ActionStrip>(__func__);
-  memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
-  strip->strip_type = int8_t(type);
-
-  /* Create the strip's data on the owning Action. */
-  switch (type) {
-    case Strip::Type::Keyframe: {
-      StripKeyframeData *strip_data = MEM_new<StripKeyframeData>(__func__);
-      strip->data_index = owning_action.strip_keyframe_data_append(strip_data);
-      break;
-    }
-  }
-
-  /* This can happen if someone forgets to add a strip type in the `switch`
-   * above, or if someone is evil and passes an invalid strip type to this
-   * function. */
-  BLI_assert_msg(strip->data_index != -1, "Newly created strip has no data.");
-
-  return strip->wrap();
-}
 
 /* Copied from source/blender/blenkernel/intern/grease_pencil.cc.
  * Keep an eye on DNA_array_utils.hh; we may want to move these functions in there. */
@@ -984,7 +961,7 @@ Strip *Layer::strip(const int64_t index)
 
 Strip &Layer::strip_add(Action &owning_action, const Strip::Type strip_type)
 {
-  Strip &strip = ActionStrip_alloc_infinite(owning_action, strip_type);
+  Strip &strip = Strip::create(owning_action, strip_type);
 
   /* Add the new strip to the strip array. */
   grow_array_and_append<::ActionStrip *>(&this->strip_array, &this->strip_array_num, &strip);
@@ -1333,6 +1310,30 @@ std::optional<std::pair<Action *, Slot *>> get_action_slot_pair(ID &animated_id)
 }
 
 /* ----- ActionStrip implementation ----------- */
+
+Strip &Strip::create(Action &owning_action, const Strip::Type type)
+{
+  /* Create the strip. */
+  ActionStrip *strip = MEM_cnew<ActionStrip>(__func__);
+  memcpy(strip, DNA_struct_default_get(ActionStrip), sizeof(*strip));
+  strip->strip_type = int8_t(type);
+
+  /* Create the strip's data on the owning Action. */
+  switch (type) {
+    case Strip::Type::Keyframe: {
+      StripKeyframeData *strip_data = MEM_new<StripKeyframeData>(__func__);
+      strip->data_index = owning_action.strip_keyframe_data_append(strip_data);
+      break;
+    }
+  }
+
+  /* This can happen if someone forgets to add a strip type in the `switch`
+   * above, or if someone is evil and passes an invalid strip type to this
+   * function. */
+  BLI_assert_msg(strip->data_index != -1, "Newly created strip has no data.");
+
+  return strip->wrap();
+}
 
 Strip &Strip::duplicate(Action &owning_action, const StringRefNull allocation_name) const
 {
