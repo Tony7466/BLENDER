@@ -318,7 +318,7 @@ int vert_face_set_get(const GroupedSpan<int> vert_to_face_map,
   return face_set;
 }
 
-int vert_face_set_get(const int /*face_set_offset*/, const BMVert& /*vert*/)
+int vert_face_set_get(const int /*face_set_offset*/, const BMVert & /*vert*/)
 {
   return SCULPT_FACE_SET_NONE;
 }

@@ -1427,14 +1427,14 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
 {
   SCULPT_vertex_random_access_ensure(object);
 
-  BMesh& bm = *ss.bm;
+  BMesh &bm = *ss.bm;
   const int face_set_offset = CustomData_get_offset_named(
       &bm.pdata, CD_PROP_INT32, ".sculpt_face_set");
   const int verts_num = BM_mesh_elem_count(&bm, BM_VERT);
 
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(1, verts_num);
 
-  BMVert* active_vert = std::get<BMVert*>(ss.active_vert());
+  BMVert *active_vert = std::get<BMVert *>(ss.active_vert());
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int active_vert_index = BM_elem_index_get(active_vert);
 
@@ -1449,35 +1449,34 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
   int masked_face_set_it = 0;
   flood_fill::FillDataBMesh step_floodfill(verts_num);
   step_floodfill.add_initial(active_vert);
-  step_floodfill.execute(
-      object, [&](BMVert* from_v, BMVert* to_v) {
-        const int from_v_i = BM_elem_index_get(from_v);
-        const int to_v_i = BM_elem_index_get(to_v);
+  step_floodfill.execute(object, [&](BMVert *from_v, BMVert *to_v) {
+    const int from_v_i = BM_elem_index_get(from_v);
+    const int to_v_i = BM_elem_index_get(to_v);
 
-        floodfill_step[to_v_i] = floodfill_step[from_v_i] + 1;
+    floodfill_step[to_v_i] = floodfill_step[from_v_i] + 1;
 
-        const int to_face_set = face_set::vert_face_set_get(face_set_offset, *to_v);
-        if (!visited_face_sets.contains(to_face_set)) {
-          if (face_set::vert_has_unique_face_set(face_set_offset, *to_v) &&
-              !face_set::vert_has_unique_face_set(face_set_offset, *from_v) &&
-              face_set::vert_has_face_set(face_set_offset, *from_v, to_face_set))
-          {
+    const int to_face_set = face_set::vert_face_set_get(face_set_offset, *to_v);
+    if (!visited_face_sets.contains(to_face_set)) {
+      if (face_set::vert_has_unique_face_set(face_set_offset, *to_v) &&
+          !face_set::vert_has_unique_face_set(face_set_offset, *from_v) &&
+          face_set::vert_has_face_set(face_set_offset, *from_v, to_face_set))
+      {
 
-            visited_face_sets.add(to_face_set);
+        visited_face_sets.add(to_face_set);
 
-            if (floodfill_step[to_v_i] >= masked_face_set_it) {
-              masked_face_set = to_face_set;
-              masked_face_set_it = floodfill_step[to_v_i];
-            }
-
-            if (target_face_set == SCULPT_FACE_SET_NONE) {
-              target_face_set = to_face_set;
-            }
-          }
+        if (floodfill_step[to_v_i] >= masked_face_set_it) {
+          masked_face_set = to_face_set;
+          masked_face_set_it = floodfill_step[to_v_i];
         }
 
-        return face_set::vert_has_face_set(face_set_offset, *to_v, active_face_set);
-      });
+        if (target_face_set == SCULPT_FACE_SET_NONE) {
+          target_face_set = to_face_set;
+        }
+      }
+    }
+
+    return face_set::vert_has_face_set(face_set_offset, *to_v, active_face_set);
+  });
 
   const std::optional<float3> origin = calc_average_face_set_center(
       depsgraph, object, floodfill_step, active_face_set, masked_face_set);
@@ -1493,16 +1492,14 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
   ik_chain->grab_delta_offset = ik_chain->segments[0].head - initial_location;
 
   flood_fill::FillDataBMesh weight_floodfill(verts_num);
-  weight_floodfill.add_initial_with_symmetry(
-      object, pbvh, active_vert, radius);
+  weight_floodfill.add_initial_with_symmetry(object, pbvh, active_vert, radius);
   MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
-  weight_floodfill.execute(object,
-                      [&](BMVert* /*from_v*/, BMVert* to_v) {
-                        int to_v_i = BM_elem_index_get(to_v);
+  weight_floodfill.execute(object, [&](BMVert * /*from_v*/, BMVert *to_v) {
+    int to_v_i = BM_elem_index_get(to_v);
 
-                        fk_weights[to_v_i] = 1.0f;
-                        return !face_set::vert_has_face_set(face_set_offset, *to_v, masked_face_set);
-                      });
+    fk_weights[to_v_i] = 1.0f;
+    return !face_set::vert_has_face_set(face_set_offset, *to_v, masked_face_set);
+  });
 
   ik_chain_origin_heads_init(*ik_chain, ik_chain->segments[0].head);
   return ik_chain;
@@ -1514,7 +1511,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk(const Depsgraph &deps
                                                            const float radius,
                                                            const float3 &initial_location)
 {
-  switch(bke::object::pbvh_get(object)->type()) {
+  switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh:
       return ik_chain_init_face_sets_fk_mesh(depsgraph, object, ss, radius, initial_location);
     case bke::pbvh::Type::Grids:
