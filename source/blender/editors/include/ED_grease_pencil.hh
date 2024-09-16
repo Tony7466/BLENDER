@@ -55,7 +55,6 @@ enum {
  * \{ */
 
 void ED_operatortypes_grease_pencil();
-void ED_operatortypes_grease_pencil_bake_animation();
 void ED_operatortypes_grease_pencil_draw();
 void ED_operatortypes_grease_pencil_frames();
 void ED_operatortypes_grease_pencil_layers();
@@ -68,6 +67,7 @@ void ED_operatortypes_grease_pencil_vertex_paint();
 void ED_operatortypes_grease_pencil_interpolate();
 void ED_operatortypes_grease_pencil_lineart();
 void ED_operatortypes_grease_pencil_trace();
+void ED_operatortypes_grease_pencil_bake_animation();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
