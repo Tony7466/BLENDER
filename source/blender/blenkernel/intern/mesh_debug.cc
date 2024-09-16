@@ -83,6 +83,8 @@ void BKE_mesh_debug_print(const Mesh *mesh)
 
 #else
 
+struct Mesh;
+
 char *BKE_mesh_debug_info(const Mesh * /*mesh*/)
 {
   return nullptr;
