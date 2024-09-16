@@ -171,19 +171,20 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
                                          const IndexMask &node_mask)
 {
   const SculptSession &ss = *object.sculpt;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
 
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
 
   threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
-  MutableSpan<bke::pbvh::MeshNode> nodes = ss.pbvh->nodes<bke::pbvh::MeshNode>();
+  MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
   threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     MeshLocalData &tls = all_tls.local();
     node_mask.slice(range).foreach_index([&](const int i) {
-      const Span<int> face_indices = bke::pbvh::node_faces(nodes[i]);
-
+      const Span<int> face_indices = nodes[i].faces();
       calc_faces(depsgraph,
                  object,
                  brush,
@@ -196,7 +197,7 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
                  face_sets.span);
     });
   });
-
+  pbvh.tag_face_sets_changed(node_mask);
   face_sets.finish();
 }
 
@@ -235,7 +236,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
-  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
   tls.factors.resize(positions.size());
@@ -271,13 +272,15 @@ static void do_draw_face_sets_brush_grids(const Depsgraph &depsgraph,
                                           const IndexMask &node_mask)
 {
   SculptSession &ss = *object.sculpt;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
 
   threading::EnumerableThreadSpecific<GridLocalData> all_tls;
-  MutableSpan<bke::pbvh::GridsNode> nodes = ss.pbvh->nodes<bke::pbvh::GridsNode>();
+  MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
   threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     GridLocalData &tls = all_tls.local();
     node_mask.slice(range).foreach_index([&](const int i) {
@@ -402,13 +405,14 @@ static void do_draw_face_sets_brush_bmesh(const Depsgraph &depsgraph,
                                           const IndexMask &node_mask)
 {
   SculptSession &ss = *object.sculpt;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
   const int cd_offset = face_set::ensure_face_sets_bmesh(object);
 
   threading::EnumerableThreadSpecific<BMeshLocalData> all_tls;
-  MutableSpan<bke::pbvh::BMeshNode> nodes = ss.pbvh->nodes<bke::pbvh::BMeshNode>();
+  MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
   threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
     BMeshLocalData &tls = all_tls.local();
     node_mask.slice(range).foreach_index([&](const int i) {
@@ -425,10 +429,9 @@ void do_draw_face_sets_brush(const Depsgraph &depsgraph,
                              Object &object,
                              const IndexMask &node_mask)
 {
-  SculptSession &ss = *object.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
 
-  switch (ss.pbvh->type()) {
+  switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh:
       do_draw_face_sets_brush_mesh(depsgraph, object, brush, node_mask);
       break;
