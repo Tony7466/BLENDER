@@ -1,1 +1,2 @@
 Referenced by commit b5ea3beaf93b50af136716041f7f0430f0f56bf7, Fix i18n message extraction tool after recent BPY/RNA fix.
+Referenced by commit d52d70324d18bb7e5b90aeb33d793d6b45ba5ee2, Fix (chat-reported) Py-defined operators id being added to translation files.
