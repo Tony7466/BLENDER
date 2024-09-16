@@ -4946,13 +4946,13 @@ static void ANIM_OT_channels_view_selected(wmOperatorType *ot)
                              true,
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
-  
-  ot->prop = RNA_def_enum(ot->srna,
-                          "dimensions",
-                          prop_animchannel_frame_types,
-                          FRAME_ANIMCHAN_BOTH,
-                          "Dimensions",
-                          "Dimensions to modify");
+
+  RNA_def_enum(ot->srna,
+               "dimensions",
+               prop_animchannel_frame_types,
+               FRAME_ANIMCHAN_BOTH,
+               "Affected Dimensions",
+               "Which axes of the viewable area are resized to fit the keyframes");
 }
 
 static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -5043,12 +5043,12 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
 
-    ot->prop = RNA_def_enum(ot->srna,
-                          "dimensions",
-                          prop_animchannel_frame_types,
-                          FRAME_ANIMCHAN_BOTH,
-                          "Dimensions",
-                          "Dimensions to modify");
+  RNA_def_enum(ot->srna,
+               "dimensions",
+               prop_animchannel_frame_types,
+               FRAME_ANIMCHAN_BOTH,
+               "Affected Dimensions",
+               "Which axes of the viewable area are resized to fit the keyframes");
 }
 
 static const EnumPropertyItem channel_bake_key_options[] = {
