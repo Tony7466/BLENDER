@@ -2274,6 +2274,20 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   const ZoneBuildInfo &zone_info_;
   const ZoneBodyFunction &body_fn_;
 
+  struct ItemIndices {
+    IndexRange lf_outer;
+    IndexRange lf_inner;
+    IndexRange bsocket_outer;
+    IndexRange bsocket_inner;
+  };
+
+  /** Reduces the hardcoding of index offsets in the code below which is quite brittle. */
+  struct {
+    ItemIndices inputs;
+    ItemIndices main;
+    ItemIndices generation;
+  } indices_;
+
   friend LazyFunctionForReduceForeachGeometryElement;
 
  public:
@@ -2294,6 +2308,32 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     for (const int i : zone_info.indices.inputs.main) {
       inputs_[i].usage = lf::ValueUsage::Used;
     }
+
+    const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+        output_bnode_.storage);
+
+    const int input_items_num = node_storage.input_items.items_num;
+    const int main_items_num = node_storage.main_items.items_num;
+    const int generation_items_num = node_storage.generation_items.items_num;
+
+    indices_.inputs.lf_outer = IndexRange::from_begin_size(2, input_items_num);
+    indices_.inputs.lf_inner = IndexRange::from_begin_size(1, input_items_num);
+    indices_.inputs.bsocket_outer = indices_.inputs.lf_outer;
+    indices_.inputs.bsocket_inner = indices_.inputs.lf_inner;
+
+    indices_.main.lf_outer = IndexRange::from_begin_size(1, main_items_num);
+    indices_.main.lf_inner = IndexRange::from_begin_size(0, main_items_num);
+    indices_.main.bsocket_outer = indices_.main.lf_outer;
+    indices_.main.bsocket_inner = indices_.main.lf_inner;
+
+    indices_.generation.lf_outer = IndexRange::from_begin_size(1 + main_items_num,
+                                                               generation_items_num);
+    indices_.generation.lf_inner = IndexRange::from_begin_size(main_items_num,
+                                                               generation_items_num);
+    indices_.generation.bsocket_outer = IndexRange::from_begin_size(2 + main_items_num,
+                                                                    generation_items_num);
+    indices_.generation.bsocket_inner = IndexRange::from_begin_size(1 + main_items_num,
+                                                                    generation_items_num);
   }
 
   void *init_storage(LinearAllocator<> &allocator) const override
@@ -2436,10 +2476,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       component_info.field_evaluator.emplace(*component_info.field_context, domain_size);
       component_info.field_evaluator->set_selection(selection_field);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-        const GField item_field = params
-                                      .get_input<SocketValueVariant>(
-                                          zone_info_.indices.inputs.main[2 + item_i])
-                                      .get<GField>();
+        const GField item_field =
+            params
+                .get_input<SocketValueVariant>(
+                    zone_info_.indices.inputs.main[indices_.inputs.lf_outer[item_i]])
+                .get<GField>();
         component_info.field_evaluator->add(item_field);
       }
 
@@ -2517,7 +2558,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
             .set_default_value(&component_info.index_values[i]);
         /* Set main input values for loop body. */
         for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
-          lf_body_node.input(body_fn_.indices.inputs.main[1 + item_i])
+          lf_body_node.input(body_fn_.indices.inputs.main[indices_.inputs.lf_inner[item_i]])
               .set_default_value(&component_info.item_input_values[item_i][i]);
         }
         /* Link up border-link inputs to the loop body. */
@@ -2568,11 +2609,12 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     /* Link up reduce function outputs to final zone outputs. */
     lf_graph.add_link(lf_reduce.output(0), *graph_outputs[zone_info_.indices.outputs.main[0]]);
     for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
-      lf_graph.add_link(lf_reduce.output(1 + item_i),
-                        *graph_outputs[zone_info_.indices.outputs.main[1 + item_i]]);
+      const int output_i = indices_.main.lf_outer[item_i];
+      lf_graph.add_link(lf_reduce.output(output_i),
+                        *graph_outputs[zone_info_.indices.outputs.main[output_i]]);
     }
     for (const int item_i : IndexRange(node_storage.generation_items.items_num)) {
-      const int output_i = 1 + item_i + node_storage.main_items.items_num;
+      const int output_i = indices_.generation.lf_outer[item_i];
       lf_graph.add_link(lf_reduce.output(output_i),
                         *graph_outputs[zone_info_.indices.outputs.main[output_i]]);
     }
@@ -2627,7 +2669,8 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
     /* Add parameters for main items. */
     for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
       const NodeForeachGeometryElementMainItem &item = node_storage.main_items.items[item_i];
-      const bNodeSocket &socket = parent.output_bnode_.input_socket(item_i);
+      const bNodeSocket &socket = parent.output_bnode_.input_socket(
+          parent_.indices_.main.bsocket_inner[item_i]);
       inputs_.append_as(
           item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Used);
     }
@@ -2636,7 +2679,7 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
       const NodeForeachGeometryElementGenerationItem &item =
           node_storage.generation_items.items[item_i];
       const bNodeSocket &socket = parent.output_bnode_.input_socket(
-          item_i + 1 + node_storage.main_items.items_num);
+          parent_.indices_.generation.bsocket_inner[item_i]);
       inputs_.append_as(
           item.name, *socket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
     }
@@ -2644,14 +2687,15 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
 
   for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
     const NodeForeachGeometryElementMainItem &item = node_storage.main_items.items[item_i];
-    const bNodeSocket &socket = parent.output_bnode_.input_socket(item_i);
+    const bNodeSocket &socket = parent.output_bnode_.output_socket(
+        parent_.indices_.main.bsocket_outer[item_i]);
     outputs_.append_as(item.name, *socket.typeinfo->geometry_nodes_cpp_type);
   }
   for (const int item_i : IndexRange(node_storage.generation_items.items_num)) {
     const NodeForeachGeometryElementGenerationItem &item =
         node_storage.generation_items.items[item_i];
-    const bNodeSocket &socket = parent.output_bnode_.input_socket(
-        item_i + 1 + node_storage.main_items.items_num);
+    const bNodeSocket &socket = parent.output_bnode_.output_socket(
+        parent_.indices_.generation.bsocket_outer[item_i]);
     outputs_.append_as(item.name, *socket.typeinfo->geometry_nodes_cpp_type);
   }
 }
@@ -2747,7 +2791,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_main_items_and_geometry
         attribute_name,
         *base_cpp_type,
         make_anonymous_attribute_socket_inspection_string(
-            parent_.output_bnode_.output_socket(1 + item_i)));
+            parent_.output_bnode_.output_socket(parent_.indices_.main.bsocket_outer[item_i])));
     SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
     params.set_output(1 + item_i, std::move(attribute_value_variant));
   }
@@ -2783,9 +2827,9 @@ int LazyFunctionForReduceForeachGeometryElement::handle_invalid_generation_items
     if (socket_type == SOCK_GEOMETRY) {
       break;
     }
-    const int lf_socket_i = 1 + node_storage.main_items.items_num + item_i;
+    const int lf_socket_i = parent_.indices_.generation.lf_outer[item_i];
     if (!params.output_was_set(lf_socket_i)) {
-      const int bsocket_i = 2 + node_storage.main_items.items_num + item_i;
+      const int bsocket_i = parent_.indices_.generation.bsocket_outer[item_i];
       set_default_value_for_output_socket(
           params, lf_socket_i, parent_.zone_.output_node->output_socket(bsocket_i));
     }
@@ -2825,8 +2869,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_item_groups(
 void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     lf::Params &params,
     const lf::Context &context,
-    int geometry_item_i,
-    IndexRange generation_items_range) const
+    const int geometry_item_i,
+    const IndexRange generation_items_range) const
 {
   auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
@@ -2879,7 +2923,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     mask.foreach_index([&](const int element_i, const int local_body_i) {
       const int body_i = component_info.body_nodes_range[local_body_i];
       const int geometry_param_i = body_i * body_main_outputs_num +
-                                   node_storage.main_items.items_num + geometry_item_i;
+                                   parent_.indices_.generation.lf_inner[geometry_item_i];
       GeometrySet &geometry = geometries[body_i];
       geometry = params.extract_input<GeometrySet>(geometry_param_i);
 
@@ -2937,7 +2981,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
             node_storage.generation_items.items[item_i];
         const AttrDomain capture_domain = AttrDomain(item.domain);
         const int field_param_i = body_i * body_main_outputs_num +
-                                  node_storage.main_items.items_num + item_i;
+                                  parent_.indices_.generation.lf_inner[item_i];
         GField field = params.get_input<SocketValueVariant>(field_param_i).get<GField>();
 
         if (capture_domain == AttrDomain::Instance) {
@@ -2971,12 +3015,9 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     });
   }
 
-  const int geometry_output_param = 1 + node_storage.main_items.items_num + geometry_item_i;
-  const IndexRange field_output_params = IndexRange::from_begin_size(
-      geometry_output_param + 1, node_storage.generation_items.items_num);
-
   GeometrySet joined_geometry = geometry::join_geometries(geometries, {});
-  params.set_output(geometry_output_param, std::move(joined_geometry));
+  params.set_output(parent_.indices_.generation.lf_outer[geometry_item_i],
+                    std::move(joined_geometry));
 
   for (const int local_item_i : generation_items_range.index_range()) {
     const int item_i = generation_items_range[local_item_i];
@@ -2991,25 +3032,23 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
         make_anonymous_attribute_socket_inspection_string(
             parent_.output_bnode_.output_socket(2 + node_storage.main_items.items_num + item_i)));
     SocketValueVariant attribute_value_variant{GField(std::move(attribute_field))};
-    params.set_output(field_output_params[local_item_i], std::move(attribute_value_variant));
+    params.set_output(parent_.indices_.generation.lf_outer[item_i],
+                      std::move(attribute_value_variant));
   }
 }
 
 bool LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group_lazyness(
     lf::Params &params,
-    const lf::Context &context,
-    int geometry_item_i,
-    IndexRange generation_items_range) const
+    const lf::Context & /*context*/,
+    const int geometry_item_i,
+    const IndexRange generation_items_range) const
 {
-  auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent_.output_bnode_.storage);
   const int body_main_outputs_num = node_storage.main_items.items_num +
                                     node_storage.generation_items.items_num;
 
-  const int geometry_output_param = 1 + node_storage.main_items.items_num + geometry_item_i;
-  const IndexRange field_output_params = IndexRange::from_begin_size(
-      geometry_output_param + 1, node_storage.generation_items.items_num);
+  const int geometry_output_param = parent_.indices_.generation.lf_outer[geometry_item_i];
 
   if (params.output_was_set(geometry_output_param)) {
     /* Done already. */
@@ -3018,7 +3057,7 @@ bool LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group_
   const lf::ValueUsage geometry_output_usage = params.get_output_usage(geometry_output_param);
   if (geometry_output_usage == lf::ValueUsage::Unused) {
     /* Output dummy values. */
-    const int start_bsocket_i = 2 + node_storage.main_items.items_num + geometry_item_i;
+    const int start_bsocket_i = parent_.indices_.generation.bsocket_outer[geometry_item_i];
     for (const int i : IndexRange(1 + generation_items_range.size())) {
       const bNodeSocket &bsocket = parent_.output_bnode_.output_socket(start_bsocket_i + i);
       set_default_value_for_output_socket(params, geometry_output_param + i, bsocket);
@@ -3042,8 +3081,8 @@ bool LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group_
   /* Check if all inputs are available, and request them if not. */
   bool has_missing_input = false;
   for (const int body_i : IndexRange(bodies_num)) {
-    const int offset = body_i * body_main_outputs_num + node_storage.main_items.items_num +
-                       geometry_item_i;
+    const int offset = body_i * body_main_outputs_num +
+                       parent_.indices_.generation.lf_inner[geometry_item_i];
     for (const int i : IndexRange(1 + generation_items_range.size())) {
       const bool is_available = params.try_get_input_data_ptr_or_request(offset + i) != nullptr;
       if (!is_available) {
