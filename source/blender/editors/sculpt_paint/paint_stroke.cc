@@ -1736,8 +1736,7 @@ static const bToolRef *brush_tool_get(const bContext *C)
       (region && region->regiontype == RGN_TYPE_WINDOW))
   {
     if (area->runtime.tool && area->runtime.tool->runtime &&
-        /* TODO use #TOOLREF_FLAG_USES_BRUSHES. */
-        area->runtime.tool->runtime->data_block[0])
+        (area->runtime.tool->runtime->flag & TOOLREF_FLAG_USE_BRUSHES))
     {
       return area->runtime.tool;
     }
