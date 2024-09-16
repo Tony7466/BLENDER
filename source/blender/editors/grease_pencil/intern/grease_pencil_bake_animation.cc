@@ -47,22 +47,21 @@ static int bake_grease_pencil_animation_invoke(bContext *C,
                                                wmOperator *op,
                                                const wmEvent * /*event*/)
 {
-  PropertyRNA *prop;
   const Scene *scene = CTX_data_scene(C);
 
-  prop = RNA_struct_find_property(op->ptr, "frame_start");
-  if (!RNA_property_is_set(op->ptr, prop)) {
-    const int frame_start = RNA_property_int_get(op->ptr, prop);
+  PropertyRNA *prop_frame_start = RNA_struct_find_property(op->ptr, "frame_start");
+  if (!RNA_property_is_set(op->ptr, prop_frame_start)) {
+    const int frame_start = RNA_property_int_get(op->ptr, prop_frame_start);
     if (frame_start < scene->r.sfra) {
-      RNA_property_int_set(op->ptr, prop, scene->r.sfra);
+      RNA_property_int_set(op->ptr, prop_frame_start, scene->r.sfra);
     }
   }
 
-  prop = RNA_struct_find_property(op->ptr, "frame_end");
-  if (!RNA_property_is_set(op->ptr, prop)) {
-    const int frame_end = RNA_property_int_get(op->ptr, prop);
+  PropertyRNA *prop_frame_end = RNA_struct_find_property(op->ptr, "frame_end");
+  if (!RNA_property_is_set(op->ptr, prop_frame_end)) {
+    const int frame_end = RNA_property_int_get(op->ptr, prop_frame_end);
     if (frame_end > scene->r.efra) {
-      RNA_property_int_set(op->ptr, prop, scene->r.efra);
+      RNA_property_int_set(op->ptr, prop_frame_end, scene->r.efra);
     }
   }
 
