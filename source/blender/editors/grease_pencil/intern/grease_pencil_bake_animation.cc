@@ -122,11 +122,10 @@ static Set<int> get_selected_object_keyframes(Span<Object *> bake_targets)
       continue;
     }
     LISTBASE_FOREACH (FCurve *, fcurve, &adt->action->curves) {
-      int i;
-      BezTriple *bezt;
-      for (i = 0, bezt = fcurve->bezt; i < fcurve->totvert; i++, bezt++) {
-        if (bezt->f2 & SELECT) {
-          keyframes.add(int(bezt->vec[1][0]));
+      for (const int i : IndexRange(fcurve->totvert)) {
+        BezTriple bezt = fcurve->bezt[i];
+        if (bezt.f2 & SELECT) {
+          keyframes.add(int(bezt.vec[1][0]));
         }
       }
     }
