@@ -880,7 +880,6 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
     sculpt_mask_by_color_full_mesh(*depsgraph, ob, active_vert, threshold, invert, preserve_mask);
   }
 
-  bke::pbvh::update_mask(ob, *bke::object::pbvh_get(ob));
   undo::push_end(ob);
 
   flush_update_done(C, ob, UpdateType::Mask);
@@ -1180,40 +1179,43 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
           bake_mask_mesh(*depsgraph, ob, *automasking, mode, factor, nodes[i], tls, mask.span);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
           bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
+      SubdivCCG &subdiv_ccg = *ob.sculpt->subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      MutableSpan<float> masks = subdiv_ccg.masks;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
           bake_mask_grids(*depsgraph, ob, *automasking, mode, factor, nodes[i], tls);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
         });
       });
-      bke::pbvh::update_mask(ob, pbvh);
       break;
     }
     case bke::pbvh::Type::BMesh: {
+      const int mask_offset = CustomData_get_offset_named(
+          &ob.sculpt->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
       MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
           bake_mask_bmesh(*depsgraph, ob, *automasking, mode, factor, nodes[i], tls);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          bke::pbvh::node_update_mask_bmesh(mask_offset, nodes[i]);
         });
       });
-      bke::pbvh::update_mask(ob, pbvh);
       break;
     }
   }
 
   undo::push_end(ob);
 
+  pbvh.tag_masks_changed(node_mask);
   flush_update_done(C, ob, UpdateType::Mask);
   SCULPT_tag_update_overlays(C);
 

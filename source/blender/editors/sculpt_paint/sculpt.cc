@@ -311,7 +311,7 @@ int vert_face_set_get(const GroupedSpan<int> vert_to_face_map,
                       const Span<int> face_sets,
                       const int vert)
 {
-  int face_set = std::numeric_limits<int>::lowest();
+  int face_set = SCULPT_FACE_SET_NONE;
   for (const int face : vert_to_face_map[vert]) {
     face_set = std::max(face_sets[face], face_set);
   }
@@ -408,8 +408,10 @@ bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex)
       return vert_has_unique_face_set(vert_to_face_map, face_sets, vertex.i);
     }
     case bke::pbvh::Type::BMesh: {
-      BMVert *v = (BMVert *)vertex.i;
-      return vert_has_unique_face_set(v);
+      const int face_set_offset = CustomData_get_offset_named(
+          &object.sculpt->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
+      BMVert *v = reinterpret_cast<BMVert *>(vertex.i);
+      return vert_has_unique_face_set(face_set_offset, *v);
     }
     case bke::pbvh::Type::Grids: {
       const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
@@ -514,7 +516,7 @@ bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
   return true;
 }
 
-bool vert_has_unique_face_set(const BMVert * /*vert*/)
+bool vert_has_unique_face_set(const int /*face_set_offset*/, const BMVert & /*vert*/)
 {
   /* TODO: Obviously not fully implemented yet. Needs to be implemented for Relax Face Sets brush
    * to work. */
@@ -1212,6 +1214,8 @@ static void restore_mask_from_undo_step(Object &object)
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
+  Array<bool> node_changed(node_mask.min_array_size(), false);
+
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1225,7 +1229,8 @@ static void restore_mask_from_undo_step(Object &object)
         {
           const Span<int> verts = nodes[i].verts();
           array_utils::scatter(*orig_data, verts, mask.span);
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
+          node_changed[i] = true;
         }
       });
       mask.finish();
@@ -1239,7 +1244,8 @@ static void restore_mask_from_undo_step(Object &object)
           for (BMVert *vert : BKE_pbvh_bmesh_node_unique_verts(&nodes[i])) {
             if (const float *orig_mask = BM_log_find_original_vert_mask(ss.bm_log, vert)) {
               BM_ELEM_CD_SET_FLOAT(vert, offset, *orig_mask);
-              BKE_pbvh_node_mark_update_mask(nodes[i]);
+              bke::pbvh::node_update_mask_bmesh(offset, nodes[i]);
+              node_changed[i] = true;
             }
           }
         });
@@ -1266,12 +1272,14 @@ static void restore_mask_from_undo_step(Object &object)
               index++;
             }
           }
-          BKE_pbvh_node_mark_update_mask(nodes[i]);
+          bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
+          node_changed[i] = true;
         }
       });
       break;
     }
   }
+  pbvh.tag_masks_changed(IndexMask::from_bools(node_changed, memory));
 }
 
 static void restore_color_from_undo_step(Object &object)
@@ -1300,6 +1308,7 @@ static void restore_color_from_undo_step(Object &object)
                               verts[i],
                               (*orig_data)[i],
                               color_attribute.span);
+        // TODO
       }
     }
   });
@@ -1313,6 +1322,8 @@ static void restore_face_set_from_undo_step(Object &object)
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 
+  Array<bool> node_changed(node_mask.min_array_size(), false);
+
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1323,7 +1334,7 @@ static void restore_face_set_from_undo_step(Object &object)
                                                                                       nodes[i]))
         {
           scatter_data_mesh(*orig_data, nodes[i].faces(), attribute.span);
-          BKE_pbvh_node_mark_update_face_sets(nodes[i]);
+          node_changed[i] = true;
         }
       });
       attribute.finish();
@@ -1343,7 +1354,7 @@ static void restore_face_set_from_undo_step(Object &object)
           const Span<int> faces = bke::pbvh::node_face_indices_calc_grids(
               subdiv_ccg, nodes[i], tls);
           scatter_data_mesh(*orig_data, faces, attribute.span);
-          BKE_pbvh_node_mark_update_face_sets(nodes[i]);
+          node_changed[i] = true;
         }
       });
       attribute.finish();
@@ -1352,6 +1363,8 @@ static void restore_face_set_from_undo_step(Object &object)
     case bke::pbvh::Type::BMesh:
       break;
   }
+
+  pbvh.tag_face_sets_changed(IndexMask::from_bools(node_changed, memory));
 }
 
 void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
@@ -1459,6 +1472,7 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
       break;
     }
   }
+  // TODO
   pbvh.tag_positions_changed(node_mask);
 
   /* Update normals for potentially-changed positions. Theoretically this may be unnecessary if
@@ -3320,7 +3334,7 @@ static void dynamic_topology_update(const Depsgraph &depsgraph,
     undo::push_nodes(depsgraph, ob, node_mask, undo::Type::Position);
   }
   pbvh.tag_positions_changed(node_mask);
-  node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_update(nodes[i]); });
+  pbvh.tag_topology_changed(node_mask);
   node_mask.foreach_index([&](const int i) { BKE_pbvh_node_mark_topology_update(nodes[i]); });
   node_mask.foreach_index(GrainSize(1), [&](const int i) {
     BKE_pbvh_bmesh_node_save_orig(ss.bm, ss.bm_log, &nodes[i], false);
@@ -3982,7 +3996,7 @@ static bool is_brush_related_tool(bContext *C)
 bool SCULPT_brush_cursor_poll(bContext *C)
 {
   using namespace blender::ed::sculpt_paint;
-  return SCULPT_mode_poll(C) && (paint_brush_tool_poll(C) || is_brush_related_tool(C));
+  return SCULPT_mode_poll(C) && (paint_brush_cursor_poll(C) || is_brush_related_tool(C));
 }
 
 static const char *sculpt_brush_type_name(const Sculpt &sd)
@@ -5444,10 +5458,6 @@ void flush_update_done(const bContext *C, Object &ob, UpdateType update_type)
 
     /* Coordinates were modified, so fake neighbors are not longer valid. */
     SCULPT_fake_neighbors_free(ob);
-  }
-
-  if (update_type == UpdateType::Mask) {
-    bke::pbvh::update_mask(ob, pbvh);
   }
 
   if (update_type == UpdateType::Position) {
