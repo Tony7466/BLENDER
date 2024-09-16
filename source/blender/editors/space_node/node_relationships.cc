@@ -2236,6 +2236,37 @@ void NODE_OT_detach(wmOperatorType *ot)
 /** \name Automatic Node Insert on Dragging
  * \{ */
 
+static int get_socket_priority_from_type(const eNodeSocketDatatype type)
+{
+  switch (type) {
+    case SOCK_CUSTOM:
+      return 0;
+    case SOCK_BOOLEAN:
+      return 1;
+    case SOCK_INT:
+      return 2;
+    case SOCK_FLOAT:
+      return 3;
+    case SOCK_VECTOR:
+      return 4;
+    case SOCK_RGBA:
+      return 5;
+    case SOCK_STRING:
+    case SOCK_SHADER:
+    case SOCK_OBJECT:
+    case SOCK_IMAGE:
+    case SOCK_ROTATION:
+    case SOCK_MATRIX:
+    case SOCK_GEOMETRY:
+    case SOCK_COLLECTION:
+    case SOCK_TEXTURE:
+    case SOCK_MATERIAL:
+    case SOCK_MENU:
+      return 6;
+  }
+  return -1;
+}
+
 static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
 {
   bNode *selected_node = nullptr;
@@ -2270,27 +2301,149 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   return selected_node;
 }
 
+static bNodeSocket *get_socket_by_max_priority(bNode &node, const eNodeSocketInOut in_out)
+{
+  ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
+
+  /* Find priority range. */
+  int maxpriority = -1;
+  LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+    if (sock->flag & SOCK_UNAVAIL) {
+      continue;
+    }
+    const int sock_priority = get_socket_priority_from_type(eNodeSocketDatatype(sock->type));
+    maxpriority = max_ii(sock_priority, maxpriority);
+  }
+
+  /* Try all priorities, starting from 'highest'. */
+  for (int priority = maxpriority; priority >= 0; priority--) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+      const int sock_priority = get_socket_priority_from_type(eNodeSocketDatatype(sock->type));
+      if (sock->is_visible() && priority == sock_priority) {
+        return sock;
+      }
+    }
+  }
+
+  /* No visible sockets, unhide first of highest priority. */
+  for (int priority = maxpriority; priority >= 0; priority--) {
+    LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+      if (sock->flag & SOCK_UNAVAIL) {
+        continue;
+      }
+      const int sock_priority = get_socket_priority_from_type(eNodeSocketDatatype(sock->type));
+      if (priority == sock_priority) {
+        sock->flag &= ~SOCK_HIDDEN;
+        return sock;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+/** Get the "main" socket based on the node declaration, type or priority. */
+static bNodeSocket *get_main_socket_by_type(bNodeTree &ntree,
+                                            bNode &node,
+                                            const eNodeSocketInOut in_out,
+                                            const eNodeSocketDatatype link_sock_type,
+                                            const bool use_low_priority_match)
+{
+  ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
+
+  /* Try to get the main socket based on the socket declaration. */
+  bke::node_declaration_ensure(&ntree, &node);
+  const nodes::NodeDeclaration *node_decl = node.declaration();
+  if (node_decl != nullptr) {
+    Span<nodes::SocketDeclaration *> socket_decls = (in_out == SOCK_IN) ? node_decl->inputs :
+                                                                          node_decl->outputs;
+    int index;
+    LISTBASE_FOREACH_INDEX (bNodeSocket *, sock, sockets, index) {
+      const nodes::SocketDeclaration &socket_decl = *socket_decls[index];
+      if (!sock->is_visible()) {
+        continue;
+      }
+      if (socket_decl.is_default_link_socket) {
+        return sock;
+      }
+    }
+  }
+
+  /* Find first socket matching by type. */
+  LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+    if (!sock->is_visible()) {
+      continue;
+    }
+    if (sock->type == link_sock_type) {
+      return sock;
+    }
+  }
+
+  /* Find first hidden socket matching by type. */
+  LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+    if (!sock->is_hidden() || !sock->is_available()) {
+      continue;
+    }
+    if (sock->type == link_sock_type) {
+      sock->flag &= ~SOCK_HIDDEN;
+      return sock;
+    }
+  }
+
+  /* Find first lower priority socket. */
+  if (use_low_priority_match) {
+    const int link_priority = get_socket_priority_from_type(link_sock_type);
+    const int max_priority = get_socket_priority_from_type(SOCK_RGBA);
+    if (max_priority >= link_priority) {
+      LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+        if (!sock->is_visible()) {
+          continue;
+        }
+        const int sock_priority = get_socket_priority_from_type(eNodeSocketDatatype(sock->type));
+        if (sock_priority <= max_priority) {
+          return sock;
+        }
+      }
+
+      /*  Find first hidden lower priority socket. */
+      LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
+        if (!sock->is_hidden() || !sock->is_available()) {
+          continue;
+        }
+        const int sock_priority = get_socket_priority_from_type(eNodeSocketDatatype(sock->type));
+        if (sock_priority <= max_priority) {
+          sock->flag &= ~SOCK_HIDDEN;
+          return sock;
+        }
+      }
+    }
+  }
+
+  /* Fallback to max priority socket. */
+  return get_socket_by_max_priority(node, in_out);
+}
+
 static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNodeLink &link)
 {
-  const bNodeSocket *main_input = get_main_socket(tree, node, SOCK_IN);
-  const bNodeSocket *main_output = get_main_socket(tree, node, SOCK_IN);
+  const eNodeSocketDatatype fromsock_type = eNodeSocketDatatype(link.fromsock->type);
+  const eNodeSocketDatatype tosock_type = eNodeSocketDatatype(link.tosock->type);
+  bNodeSocket *main_input = get_main_socket_by_type(tree, node, SOCK_IN, fromsock_type, true);
+  bNodeSocket *main_output = get_main_socket_by_type(tree, node, SOCK_OUT, tosock_type, true);
+
   if (ELEM(nullptr, main_input, main_output)) {
     return false;
   }
+
   if (node.is_reroute()) {
     return true;
   }
   if (!tree.typeinfo->validate_link) {
     return true;
   }
-  if (!tree.typeinfo->validate_link(eNodeSocketDatatype(link.fromsock->type),
-                                    eNodeSocketDatatype(main_input->type)))
-  {
+  if (!tree.typeinfo->validate_link(fromsock_type, eNodeSocketDatatype(main_input->type))) {
     return false;
   }
-  if (!tree.typeinfo->validate_link(eNodeSocketDatatype(main_output->type),
-                                    eNodeSocketDatatype(link.tosock->type)))
-  {
+  if (!tree.typeinfo->validate_link(eNodeSocketDatatype(main_output->type), tosock_type)) {
     return false;
   }
   return true;
@@ -2384,20 +2537,22 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
     return;
   }
 
-  bNodeSocket *best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN);
-  bNodeSocket *best_output = get_main_socket(ntree, *node_to_insert, SOCK_OUT);
+  const eNodeSocketDatatype fromsock_type = eNodeSocketDatatype(old_link->fromsock->type);
+  const eNodeSocketDatatype tosock_type = eNodeSocketDatatype(old_link->tosock->type);
+  bNodeSocket *best_input = get_main_socket_by_type(
+      ntree, *node_to_insert, SOCK_IN, fromsock_type, true);
+  bNodeSocket *best_output = get_main_socket_by_type(
+      ntree, *node_to_insert, SOCK_OUT, tosock_type, true);
 
   if (node_to_insert->type != NODE_REROUTE) {
     /* Ignore main sockets when the types don't match. */
     if (best_input != nullptr && ntree.typeinfo->validate_link != nullptr &&
-        !ntree.typeinfo->validate_link(static_cast<eNodeSocketDatatype>(old_link->fromsock->type),
-                                       static_cast<eNodeSocketDatatype>(best_input->type)))
+        !ntree.typeinfo->validate_link(fromsock_type, eNodeSocketDatatype(best_input->type)))
     {
       best_input = nullptr;
     }
     if (best_output != nullptr && ntree.typeinfo->validate_link != nullptr &&
-        !ntree.typeinfo->validate_link(static_cast<eNodeSocketDatatype>(best_output->type),
-                                       static_cast<eNodeSocketDatatype>(old_link->tosock->type)))
+        !ntree.typeinfo->validate_link(eNodeSocketDatatype(best_output->type), tosock_type))
     {
       best_output = nullptr;
     }
@@ -2443,37 +2598,6 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 /** \name Node Insert Offset Operator
  * \{ */
 
-static int get_main_socket_priority(const bNodeSocket *socket)
-{
-  switch ((eNodeSocketDatatype)socket->type) {
-    case SOCK_CUSTOM:
-      return 0;
-    case SOCK_BOOLEAN:
-      return 1;
-    case SOCK_INT:
-      return 2;
-    case SOCK_FLOAT:
-      return 3;
-    case SOCK_VECTOR:
-      return 4;
-    case SOCK_RGBA:
-      return 5;
-    case SOCK_STRING:
-    case SOCK_SHADER:
-    case SOCK_OBJECT:
-    case SOCK_IMAGE:
-    case SOCK_ROTATION:
-    case SOCK_MATRIX:
-    case SOCK_GEOMETRY:
-    case SOCK_COLLECTION:
-    case SOCK_TEXTURE:
-    case SOCK_MATERIAL:
-    case SOCK_MENU:
-      return 6;
-  }
-  return -1;
-}
-
 /** Get the "main" socket based on the node declaration or an heuristic. */
 bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out)
 {
@@ -2497,38 +2621,8 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
     }
   }
 
-  /* Find priority range. */
-  int maxpriority = -1;
-  LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-    if (sock->flag & SOCK_UNAVAIL) {
-      continue;
-    }
-    maxpriority = max_ii(get_main_socket_priority(sock), maxpriority);
-  }
-
-  /* Try all priorities, starting from 'highest'. */
-  for (int priority = maxpriority; priority >= 0; priority--) {
-    LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-      if (!!sock->is_visible() && priority == get_main_socket_priority(sock)) {
-        return sock;
-      }
-    }
-  }
-
-  /* No visible sockets, unhide first of highest priority. */
-  for (int priority = maxpriority; priority >= 0; priority--) {
-    LISTBASE_FOREACH (bNodeSocket *, sock, sockets) {
-      if (sock->flag & SOCK_UNAVAIL) {
-        continue;
-      }
-      if (priority == get_main_socket_priority(sock)) {
-        sock->flag &= ~SOCK_HIDDEN;
-        return sock;
-      }
-    }
-  }
-
-  return nullptr;
+  /* Fallback to max priority socket. */
+  return get_socket_by_max_priority(node, in_out);
 }
 
 static bool node_parents_offset_flag_enable_cb(bNode *parent, void * /*userdata*/)
