@@ -462,13 +462,11 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
 	set(JOLT_PHYSICS_SRC_FILES ${JOLT_PHYSICS_SRC_FILES} ${JOLT_PHYSICS_ROOT}/Jolt.natvis)
 endif()
 
-blender_add_lib(Jolt "${JOLT_PHYSICS_SRC_FILES}" "${PHYSICS_REPO_ROOT}" "" "")
-
 # Group source files
-# source_group(TREE ${JOLT_PHYSICS_ROOT} FILES ${JOLT_PHYSICS_SRC_FILES})
+source_group(TREE ${JOLT_PHYSICS_ROOT} FILES ${JOLT_PHYSICS_SRC_FILES})
 
-# # Create Jolt lib
-# add_library(Jolt ${JOLT_PHYSICS_SRC_FILES})
+# Create Jolt lib
+add_library(Jolt ${JOLT_PHYSICS_SRC_FILES})
 
 if (BUILD_SHARED_LIBS)
 	# Set default visibility to hidden
