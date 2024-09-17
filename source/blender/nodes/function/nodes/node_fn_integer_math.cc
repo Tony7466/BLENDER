@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,11 +8,12 @@
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
+#include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "node_function_util.hh"
@@ -54,10 +55,10 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sockA = (bNodeSocket *)BLI_findlink(&node->inputs, 0);
 
   bNodeSocket *sockB = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
-  bke::nodeSetSocketAvailability(ntree, sockB, !one_input_ops);
+  bke::node_set_socket_availability(ntree, sockB, !one_input_ops);
 
   bNodeSocket *sockC = (bNodeSocket *)BLI_findlink(&node->inputs, 2);
-  bke::nodeSetSocketAvailability(ntree, sockC, three_input_ops);
+  bke::node_set_socket_availability(ntree, sockC, three_input_ops);
 
   node_sock_label_clear(sockA);
   node_sock_label_clear(sockB);
@@ -274,23 +275,149 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(fn);
 }
 
-}  // namespace blender::nodes::node_fn_integer_math_cc
-
-void register_node_type_fn_integer_math()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_fn_integer_math_cc;
+  static const EnumPropertyItem mode_items[] = {
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Basic Operations"), nullptr),
+      {NODE_INTEGER_MATH_ADD, "ADD", 0, "Add", "A + B"},
+      {NODE_INTEGER_MATH_SUBTRACT, "SUBTRACT", 0, "Subtract", "A - B"},
+      {NODE_INTEGER_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A * B"},
+      {NODE_INTEGER_MATH_DIVIDE, "DIVIDE", 0, "Divide", "A / B"},
+      {NODE_INTEGER_MATH_MULTIPLY_ADD, "MULTIPLY_ADD", 0, "Multiply Add", "A * B + C"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "1-Ops"), nullptr),
+      {NODE_INTEGER_MATH_ABSOLUTE, "ABSOLUTE", 0, "Absolute", "Non-negative value of A, abs(A)"},
+      {NODE_INTEGER_MATH_CUBE, "CUBE", 0, "Cube", "A * A * A"},
+      {NODE_INTEGER_MATH_NEGATE, "NEGATE", 0, "Negate", "-A"},
+      {NODE_INTEGER_MATH_SIGN, "SIGN", 0, "Sign", "Return the sign of A, sign(A)"},
+      {NODE_INTEGER_MATH_SQUARE, "SQUARE", 0, "Square", "A * A"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "2-Ops"), nullptr),
+      {NODE_INTEGER_MATH_DISTANCE,
+       "DISTANCE",
+       0,
+       "Distance",
+       "Distance between A and B, abs(A-B)"},
+      {NODE_INTEGER_MATH_DIVIDE_CEIL,
+       "DIVIDE_CEIL",
+       0,
+       "Divide Ceiling",
+       "Divide and ceil result, the smallest integer greater than or equal A"},
+      {NODE_INTEGER_MATH_DIVIDE_FLOOR,
+       "DIVIDE_FLOOR",
+       0,
+       "Divide Floor",
+       "Divide and floor result, the largest integer smaller than or equal A"},
+      {NODE_INTEGER_MATH_DIVIDE_ROUND,
+       "DIVIDE_ROUND",
+       0,
+       "Divide Round",
+       "Divide and round result toward zero"},
+      {NODE_INTEGER_MATH_MODULO, "MODULO", 0, "Modulo", "Remainder of A / B"},
+      {NODE_INTEGER_MATH_POWER, "POWER", 0, "Power", "A power B, pow(A,B)"},
+      {NODE_INTEGER_MATH_REMAINDER, "REMAINDER", 0, "Remainder", "Signed remainder of A / B"},
+      {NODE_INTEGER_MATH_MINIMUM,
+       "MINIMUM",
+       0,
+       "Minimum",
+       "The minimum value from A and B, min(A,B)"},
+      {NODE_INTEGER_MATH_MAXIMUM,
+       "MAXIMUM",
+       0,
+       "Maximum",
+       "The maximum value from A and B, max(A,B)"},
+      RNA_ENUM_ITEM_SEPR,
+      {NODE_INTEGER_MATH_GCD,
+       "GCD",
+       0,
+       "Greatest Divisor",
+       "The largest positive integer that divides into each of the values A and B, "
+       "e.g. GCD(8,12) = 4"},
+      {NODE_INTEGER_MATH_LCM,
+       "LCM",
+       0,
+       "Lowest Multiple",
+       "The smallest positive integer that is divisible by both A and B, e.g. LCM(6,10) = 30"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "3-Ops"), nullptr),
+      {NODE_INTEGER_MATH_CLAMP,
+       "CLAMP",
+       0,
+       "Clamp",
+       "Limit the minimum and maximum value of A between Min and Max, clamp(A,Min,Max)"},
+      {NODE_INTEGER_MATH_CLAMP_RANGE,
+       "CLAMP_RANGE",
+       0,
+       "Clamp Range",
+       "Limit the value of A between Min and Max, clamp_range(A,Min,Max)"},
+      RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Bitwise Ops"), nullptr),
+      {NODE_INTEGER_MATH_AND,
+       "AND",
+       0,
+       "And",
+       "Compares bit values of A and B then returns a value where the bits are both set. "
+       "e.g. 0110 (6) AND 1011 (11) = 0010 (2), A & B"},
+      {NODE_INTEGER_MATH_OR,
+       "OR",
+       0,
+       "Or",
+       "Compares bit values of A and B then returns a value where either bit is set, e.g. "
+       "0101 (5) OR 0011 (3) = 0111 (7), A | B"},
+      {NODE_INTEGER_MATH_XOR,
+       "XOR",
+       0,
+       "Exclusive Or",
+       "Compares bit values of A and B then returns a value where only one bit from A or B "
+       "is set, 0101 (5) XOR 0011 (3) = 0110 (6), A ^ B"},
+      {NODE_INTEGER_MATH_NOT,
+       "NOT",
+       0,
+       "Not",
+       "Returns the opposite bit value of A, in decimal it is equivalent of A = -A − 1, ~ A"},
+      {NODE_INTEGER_MATH_AND_NOT,
+       "AND_NOT",
+       0,
+       "And Not",
+       "Returns the cleared bit value of A by B, A &= ~B"},
+      {NODE_INTEGER_MATH_LEFT_SHIFT,
+       "LEFT_SHIFT",
+       0,
+       "Left Shift",
+       "Shifts the bit values of A to the left by B, A << B"},
+      {NODE_INTEGER_MATH_RIGHT_SHIFT,
+       "RIGHT_SHIFT",
+       0,
+       "Right Shift",
+       "Shifts the bit values of A to the right by B, A >> B"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
-  static bNodeType ntype;
+  PropertyRNA *prop;
+
+  prop = RNA_def_node_enum(srna,
+                           "operation",
+                           "Operation",
+                           "",
+                           mode_items,
+                           NOD_storage_enum_accessors(operation),
+                           NODE_INTEGER_MATH_ADD);
+  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
+}
+
+static void node_register()
+{
+  static blender::bke::bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_INTEGER_MATH, "Integer Math", NODE_CLASS_CONVERTER);
-  ntype.declare = file_ns::node_declare;
-  ntype.labelfunc = file_ns::node_label;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.build_multi_function = file_ns::node_build_multi_function;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
-  ntype.initfunc = file_ns::node_init;
+  ntype.declare = node_declare;
+  ntype.labelfunc = node_label;
+  ntype.updatefunc = node_update;
+  ntype.build_multi_function = node_build_multi_function;
+  ntype.draw_buttons = node_layout;
+  ntype.gather_link_search_ops = node_gather_link_searches;
+  ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeFunctionIntegerMath", node_free_standard_storage, node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_fn_integer_math_cc
