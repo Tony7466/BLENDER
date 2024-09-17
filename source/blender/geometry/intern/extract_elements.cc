@@ -27,6 +27,8 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
 
   mask.foreach_index(GrainSize(32), [&](const int vert_i, const int mesh_i) {
     Mesh *vert_mesh = BKE_mesh_new_nomain(1, 0, 0, 0);
+    BKE_mesh_copy_parameters_for_eval(vert_mesh, &mesh);
+
     /* TODO: Propagate attributes from other domains. Same for other functions. */
     bke::gather_attributes(src_attributes,
                            bke::AttrDomain::Point,
@@ -52,6 +54,7 @@ Array<Mesh *> extract_mesh_edges(const Mesh &mesh,
 
   mask.foreach_index(GrainSize(32), [&](const int edge_i, const int mesh_i) {
     Mesh *edge_mesh = BKE_mesh_new_nomain(2, 1, 0, 0);
+    BKE_mesh_copy_parameters_for_eval(edge_mesh, &mesh);
 
     MutableSpan<int2> new_edges = edge_mesh->edges_for_write();
     new_edges[0] = {0, 1};
@@ -94,6 +97,7 @@ Array<Mesh *> extract_mesh_faces(const Mesh &mesh,
     const int verts_num = src_face.size();
 
     Mesh *face_mesh = BKE_mesh_new_nomain(verts_num, verts_num, 1, verts_num);
+    BKE_mesh_copy_parameters_for_eval(face_mesh, &mesh);
 
     MutableSpan<int2> new_edges = face_mesh->edges_for_write();
     MutableSpan<int> new_corner_verts = face_mesh->corner_verts_for_write();
@@ -164,6 +168,9 @@ Array<PointCloud *> extract_pointcloud_points(const PointCloud &pointcloud,
 
   mask.foreach_index(GrainSize(32), [&](const int point_i, const int pointcloud_i) {
     PointCloud *new_pointcloud = BKE_pointcloud_new_nomain(1);
+    new_pointcloud->totcol = pointcloud.totcol;
+    new_pointcloud->mat = static_cast<Material **>(MEM_dupallocN(pointcloud.mat));
+
     bke::gather_attributes(src_attributes,
                            bke::AttrDomain::Point,
                            bke::AttrDomain::Point,
@@ -189,6 +196,7 @@ Array<Curves *> extract_curves_points(const Curves &curves,
   mask.foreach_index(GrainSize(32), [&](const int point_i, const int single_curve_i) {
     /* TODO: Use src curve type. */
     Curves *single_curve = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
+    bke::curves_copy_parameters(curves, *single_curve);
     bke::gather_attributes(src_attributes,
                            bke::AttrDomain::Point,
                            bke::AttrDomain::Point,
@@ -216,6 +224,7 @@ Array<Curves *> extract_curves(const Curves &curves,
     const IndexRange src_points = src_points_by_curve[curve_i];
     const int points_num = src_points.size();
     Curves *single_curve = bke::curves_new_nomain_single(points_num, CURVE_TYPE_POLY);
+    bke::curves_copy_parameters(curves, *single_curve);
     bke::gather_attributes(src_attributes,
                            bke::AttrDomain::Point,
                            bke::AttrDomain::Point,
@@ -284,6 +293,10 @@ Array<GreasePencil *> extract_greasepencil_layers(const GreasePencil &grease_pen
 
   mask.foreach_index(GrainSize(32), [&](const int layer_i, const int new_i) {
     GreasePencil *layer_grease_pencil = BKE_grease_pencil_new_nomain();
+    layer_grease_pencil->material_array = static_cast<Material **>(
+        MEM_dupallocN(grease_pencil.material_array));
+    layer_grease_pencil->material_array_num = grease_pencil.material_array_num;
+
     const Layer &src_layer = *src_layers[layer_i];
     const Drawing *src_drawing = grease_pencil.get_eval_drawing(src_layer);
 
