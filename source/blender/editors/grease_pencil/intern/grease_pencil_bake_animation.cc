@@ -167,7 +167,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
   Object *target_object = object::add_type(
       C, OB_GREASE_PENCIL, nullptr, scene.cursor.location, float3(0), false, local_view_bits);
 
-  const float4x4 invmat = math::invert(target_object->object_to_world());
+  const float4x4 target_imat = math::invert(target_object->object_to_world());
 
   WM_cursor_wait(true);
 
@@ -197,6 +197,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
       Object *source_object_eval = DEG_get_evaluated_object(&depsgraph, source_object);
       GreasePencil &source_eval_grease_pencil = *static_cast<GreasePencil *>(
           source_object_eval->data);
+      const float4x4 to_target = source_object_eval->object_to_world() * target_imat;
 
       for (const Layer *source_layer : source_eval_grease_pencil.layers()) {
         std::string layer_name = fmt::format(
@@ -263,9 +264,7 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
         MutableSpan<float3> positions = target_strokes.positions_for_write();
         threading::parallel_for(positions.index_range(), 4096, [&](IndexRange range) {
           for (const int i : range) {
-            positions[i] = math::transform_point(source_object_eval->object_to_world(),
-                                                 positions[i]);
-            positions[i] = math::transform_point(invmat, positions[i]);
+            positions[i] = math::transform_point(to_target, positions[i]);
           }
         });
         if (drawing_placement) {
