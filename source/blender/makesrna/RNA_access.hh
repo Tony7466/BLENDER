@@ -208,6 +208,7 @@ const char *RNA_property_ui_description(const PropertyRNA *prop);
 const char *RNA_property_ui_description_raw(const PropertyRNA *prop);
 const char *RNA_property_translation_context(const PropertyRNA *prop);
 int RNA_property_ui_icon(const PropertyRNA *prop);
+int RNA_property_ui_alt_icon(const PropertyRNA *prop);
 
 /* Dynamic Property Information */
 

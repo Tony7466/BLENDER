@@ -3385,7 +3385,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "proportional_edit", PROP_EDIT_USE);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Proportional Editing", "Proportional edit mode");
-  RNA_def_property_ui_icon(prop, ICON_PROP_ON, 0);
+  RNA_def_property_ui_icon(prop, ICON_PROP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_proportional_edit_objects", PROP_BOOLEAN, PROP_NONE);
@@ -3393,7 +3393,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Proportional Editing Objects", "Proportional editing object mode");
-  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, ICON_PROP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_proportional_projected", PROP_BOOLEAN, PROP_NONE);
@@ -3414,7 +3414,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "proportional_mask", 0);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Proportional Editing Objects", "Proportional editing mask mode");
-  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, ICON_PROP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_proportional_action", PROP_BOOLEAN, PROP_NONE);
@@ -3422,7 +3422,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Proportional Editing Actions", "Proportional editing in action editor");
-  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, ICON_PROP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_proportional_fcurve", PROP_BOOLEAN, PROP_NONE);
@@ -3430,7 +3430,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Proportional Editing F-Curves", "Proportional editing in F-Curve editor");
-  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_PROP_OFF, ICON_PROP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "lock_markers", PROP_BOOLEAN, PROP_NONE);
@@ -3523,35 +3523,35 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Auto Merge Vertices", "Automatically merge vertices moved to the same location");
-  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, ICON_AUTOMERGE_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_mesh_automerge_and_split", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "automerge", AUTO_MERGE_AND_SPLIT);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Split Edges & Faces", "Automatically split edges and faces");
-  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, ICON_AUTOMERGE_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag", SCE_SNAP);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Snap", "Snap during transform");
-  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, ICON_SNAP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_node", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag_node", SCE_SNAP);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Snap", "Snap Node during transform");
-  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, ICON_SNAP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_sequencer", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag_seq", SCE_SNAP);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Use Snapping", "Snap strips during transform");
-  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, ICON_SNAP_ON);
   RNA_def_property_boolean_default(prop, true);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* Publish message-bus. */
 
@@ -3559,7 +3559,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_uv_flag", SCE_SNAP);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Snap", "Snap UV during transform");
-  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, ICON_SNAP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_align_rotation", PROP_BOOLEAN, PROP_NONE);
@@ -3664,7 +3664,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "snap_flag_anim", SCE_SNAP);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(prop, "Snap", "Enable snapping when transforming keyframes");
-  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_SNAP_OFF, ICON_SNAP_ON);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "use_snap_time_absolute", PROP_BOOLEAN, PROP_NONE);
@@ -3844,7 +3844,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "gpencil_flags", GP_TOOL_FLAG_AUTOMERGE_STROKE);
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_boolean_default(prop, false);
-  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_AUTOMERGE_OFF, ICON_AUTOMERGE_ON);
   RNA_def_property_ui_text(
       prop,
       "Automerge",
@@ -4034,7 +4034,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
   RNA_def_property_ui_text(
       prop, "Auto Keying", "Automatic keyframe insertion for objects, bones and masks");
-  RNA_def_property_ui_icon(prop, ICON_RECORD_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_RECORD_OFF, ICON_RECORD_ON);
 
   prop = RNA_def_property(srna, "auto_keying_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "autokey_mode");
@@ -7106,7 +7106,7 @@ static void rna_def_scene_render_data(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_lock_interface", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_lock_interface", 1);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, true);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_ui_text(
       prop,
       "Lock Interface",
@@ -8010,7 +8010,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   {
     prop = RNA_def_property(srna, "gi_show_irradiance", PROP_BOOLEAN, PROP_NONE);
     RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_SHOW_IRRADIANCE);
-    RNA_def_property_ui_icon(prop, ICON_HIDE_ON, 1);
+    RNA_def_property_ui_icon(prop, ICON_HIDE_ON, ICON_HIDE_OFF);
     RNA_def_property_ui_text(
         prop, "Show Irradiance Cache", "Display irradiance samples in the viewport");
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
@@ -8018,7 +8018,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
 
     prop = RNA_def_property(srna, "gi_show_cubemaps", PROP_BOOLEAN, PROP_NONE);
     RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_SHOW_CUBEMAPS);
-    RNA_def_property_ui_icon(prop, ICON_HIDE_ON, 1);
+    RNA_def_property_ui_icon(prop, ICON_HIDE_ON, ICON_HIDE_OFF);
     RNA_def_property_ui_text(
         prop, "Show Cubemap Cache", "Display captured cubemaps in the viewport");
     RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);

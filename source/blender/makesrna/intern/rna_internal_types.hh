@@ -339,6 +339,7 @@ struct PropertyRNA {
   const char *description;
   /* icon ID */
   int icon;
+  int alt_icon;
   /* context for translation */
   const char *translation_context;
 

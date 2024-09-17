@@ -728,7 +728,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_SELECT);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_select_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, ICON_RESTRICT_SELECT_ON);
   RNA_def_property_ui_text(prop, "Disable Selection", "Disable selection in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
@@ -736,7 +736,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_VIEWPORT);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_viewport_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, ICON_RESTRICT_VIEW_ON);
   RNA_def_property_ui_text(prop, "Disable in Viewports", "Globally disable in viewports");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 
@@ -744,7 +744,7 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLLECTION_HIDE_RENDER);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_Collection_hide_render_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, ICON_RESTRICT_RENDER_ON);
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_Collection_flag_update");
 

@@ -1161,7 +1161,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 TIP_("Use view layer for rendering"));
           UI_but_func_set(bt, restrictbutton_r_lay_fn, tselem->id, nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
       }
       else if (((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) &&
@@ -1371,7 +1370,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                        " \u2022 Shift to set children"));
           UI_but_func_set(bt, restrictbutton_bone_visibility_fn, bone, nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
 
         if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {
@@ -1391,7 +1389,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                      " \u2022 Shift to set children"));
           UI_but_func_set(bt, restrictbutton_bone_select_fn, ob->data, bone);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
       }
       else if (tselem->type == TSE_EBONE) {
@@ -1415,7 +1412,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                      " \u2022 Shift to set children"));
           UI_but_func_set(bt, restrictbutton_ebone_visibility_fn, arm, ebone);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
 
         if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {
@@ -1435,7 +1431,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                      " \u2022 Shift to set children"));
           UI_but_func_set(bt, restrictbutton_ebone_select_fn, arm, ebone);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
       }
       else if (tselem->type == TSE_GP_LAYER) {
@@ -1458,7 +1453,6 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                 TIP_("Restrict visibility in the 3D View"));
           UI_but_func_set(bt, restrictbutton_gp_layer_flag_fn, id, gpl);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
         }
 
         if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {

@@ -362,9 +362,6 @@ enum {
   /** Mouse is hovering right part of number button */
   UI_BUT_HOVER_RIGHT = 1 << 22,
 
-  /** Reverse order of consecutive off/on icons */
-  UI_BUT_ICON_REVERSE = 1 << 23,
-
   /** Value is animated, but the current value differs from the animated one. */
   UI_BUT_ANIMATED_CHANGED = 1 << 24,
 

@@ -1649,15 +1649,10 @@ void RNA_def_property_ui_text(PropertyRNA *prop, const char *name, const char *d
   prop->description = description;
 }
 
-void RNA_def_property_ui_icon(PropertyRNA *prop, int icon, int consecutive)
+void RNA_def_property_ui_icon(PropertyRNA *prop, int icon, int alt_icon)
 {
   prop->icon = icon;
-  if (consecutive != 0) {
-    RNA_def_property_flag(prop, PROP_ICONS_CONSECUTIVE);
-  }
-  if (consecutive < 0) {
-    RNA_def_property_flag(prop, PROP_ICONS_REVERSE);
-  }
+  prop->alt_icon = alt_icon;
 }
 
 void RNA_def_property_ui_range(

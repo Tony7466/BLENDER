@@ -4334,6 +4334,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
   rna_print_c_string(f, prop->description);
   fprintf(f, ",\n\t");
   fprintf(f, "%d, ", prop->icon);
+  fprintf(f, "%d, ", prop->alt_icon);
   rna_print_c_string(f, prop->translation_context);
   fprintf(f, ",\n");
   fprintf(f,

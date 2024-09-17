@@ -159,7 +159,7 @@ static void rna_def_lightprobe(BlenderRNA *brna)
   /* Data preview */
   prop = RNA_def_property(srna, "show_data", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LIGHTPROBE_FLAG_SHOW_DATA);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_ON, 1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_ON, ICON_HIDE_OFF);
   RNA_def_property_ui_text(
       prop, "Display Data (Deprecated)", "Deprecated, use use_data_display instead");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);

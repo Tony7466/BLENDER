@@ -467,14 +467,14 @@ static void rna_def_layer_collection(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_LayerCollection_exclude_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Exclude from View Layer", "Exclude from view layer");
-  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_HLT, -1);
+  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_HLT, ICON_CHECKBOX_DEHLT);
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER, "rna_LayerCollection_exclude_update");
 
   prop = RNA_def_property(srna, "holdout", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LAYER_COLLECTION_HOLDOUT);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_LayerCollection_holdout_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_HOLDOUT_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_HOLDOUT_OFF, ICON_HOLDOUT_ON);
   RNA_def_property_ui_text(prop, "Holdout", "Mask out objects in collection from view layer");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER, "rna_LayerCollection_update");
 
@@ -482,7 +482,7 @@ static void rna_def_layer_collection(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LAYER_COLLECTION_INDIRECT_ONLY);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_LayerCollection_indirect_only_set");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_icon(prop, ICON_INDIRECT_ONLY_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_INDIRECT_ONLY_OFF, ICON_INDIRECT_ONLY_ON);
   RNA_def_property_ui_text(
       prop,
       "Indirect Only",
@@ -494,7 +494,7 @@ static void rna_def_layer_collection(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", LAYER_COLLECTION_HIDE);
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_LayerCollection_hide_viewport_set");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_update(prop, NC_SCENE | ND_LAYER_CONTENT, "rna_LayerCollection_update");
 
@@ -594,7 +594,7 @@ static void rna_def_object_base(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_LIB_EXCEPTION);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE); /* The update callback does tagging. */
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_ui_text(prop, "Hide in Viewport", "Temporarily hide in viewport");
   RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_ObjectBase_hide_viewport_update");

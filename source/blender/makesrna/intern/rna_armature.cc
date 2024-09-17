@@ -1701,7 +1701,7 @@ static void rna_def_bone(BlenderRNA *brna)
       prop,
       "Hide",
       "Bone is not visible when it is not in Edit Mode (i.e. in Object or Pose Modes)");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, ICON_RESTRICT_VIEW_ON);
   RNA_def_property_update(prop, 0, "rna_Bone_hide_update");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);

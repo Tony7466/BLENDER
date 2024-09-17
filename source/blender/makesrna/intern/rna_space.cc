@@ -5717,7 +5717,7 @@ static void rna_def_space_image(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "pin", 0);
   RNA_def_property_ui_text(
       prop, "Image Pin", "Display current image regardless of object selection");
-  RNA_def_property_ui_icon(prop, ICON_UNPINNED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNPINNED, ICON_PINNED);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
   prop = RNA_def_property(srna, "sample_histogram", PROP_POINTER, PROP_NONE);
@@ -7823,7 +7823,7 @@ static void rna_def_space_node(BlenderRNA *brna)
   prop = RNA_def_property(srna, "pin", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SNODE_PIN);
   RNA_def_property_ui_text(prop, "Pinned", "Use the pinned node tree");
-  RNA_def_property_ui_icon(prop, ICON_UNPINNED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNPINNED, ICON_PINNED);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 
   prop = RNA_def_property(srna, "show_backdrop", PROP_BOOLEAN, PROP_NONE);
@@ -8291,13 +8291,13 @@ static void rna_def_spreadsheet_row_filter(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SPREADSHEET_ROW_FILTER_ENABLED);
   RNA_def_property_ui_text(prop, "Enabled", "");
-  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_DEHLT, 1);
+  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_DEHLT, ICON_CHECKBOX_HLT);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SPREADSHEET, nullptr);
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SPREADSHEET_ROW_FILTER_UI_EXPAND);
   RNA_def_property_ui_text(prop, "Show Expanded", "");
-  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, ICON_DOWNARROW_HLT);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_SPREADSHEET, nullptr);
 
   prop = RNA_def_property(srna, "column_name", PROP_STRING, PROP_NONE);

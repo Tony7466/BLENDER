@@ -3542,19 +3542,19 @@ void RNA_def_constraint(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CONSTRAINT_OFF);
   RNA_def_property_ui_text(prop, "Disable", "Enable/Disable Constraint");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
 
   prop = RNA_def_property(srna, "enabled", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", CONSTRAINT_OFF);
   RNA_def_property_ui_text(prop, "Enabled", "Use the results of this constraint");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
-  RNA_def_property_ui_icon(prop, ICON_HIDE_ON, 1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_ON, ICON_HIDE_OFF);
 
   prop = RNA_def_property(srna, "show_expanded", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NO_DEG_UPDATE);
   RNA_def_property_boolean_sdna(prop, nullptr, "ui_expand_flag", 0);
   RNA_def_property_ui_text(prop, "Expanded", "Constraint's panel is expanded in UI");
-  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, ICON_DOWNARROW_HLT);
 
   /* XXX this is really an internal flag,
    * but it may be useful for some tools to be able to access this... */

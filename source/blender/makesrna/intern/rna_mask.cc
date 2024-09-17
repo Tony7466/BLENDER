@@ -991,19 +991,19 @@ static void rna_def_mask_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", MASK_HIDE_VIEW);
   RNA_def_property_ui_text(prop, "Restrict View", "Restrict visibility in the viewport");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, ICON_RESTRICT_VIEW_ON);
   RNA_def_property_update(prop, NC_MASK | ND_DRAW, nullptr);
 
   prop = RNA_def_property(srna, "hide_select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", MASK_HIDE_SELECT);
   RNA_def_property_ui_text(prop, "Restrict Select", "Restrict selection in the viewport");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, ICON_RESTRICT_SELECT_ON);
   RNA_def_property_update(prop, NC_MASK | ND_DRAW, nullptr);
 
   prop = RNA_def_property(srna, "hide_render", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", MASK_HIDE_RENDER);
   RNA_def_property_ui_text(prop, "Restrict Render", "Restrict renderability");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, ICON_RESTRICT_RENDER_ON);
   RNA_def_property_update(prop, NC_MASK | NA_EDITED, nullptr);
 
   /* Select (for dope-sheet). */

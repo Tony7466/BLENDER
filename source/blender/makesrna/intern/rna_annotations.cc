@@ -460,21 +460,21 @@ static void rna_def_annotation_layer(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "annotation_hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_LAYER_HIDE);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Hide", "Set annotation Visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_annotation_update");
 
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_LAYER_LOCKED);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_annotation_update");
 
   prop = RNA_def_property(srna, "lock_frame", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_LAYER_FRAMELOCK);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Frame Locked", "Lock current frame displayed by layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_annotation_update");

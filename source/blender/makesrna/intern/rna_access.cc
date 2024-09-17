@@ -2094,6 +2094,11 @@ int RNA_property_ui_icon(const PropertyRNA *prop)
   return rna_ensure_property((PropertyRNA *)prop)->icon;
 }
 
+int RNA_property_ui_alt_icon(const PropertyRNA *prop)
+{
+  return rna_ensure_property((PropertyRNA *)prop)->alt_icon;
+}
+
 static bool rna_property_editable_do(const PointerRNA *ptr,
                                      PropertyRNA *prop_orig,
                                      const int index,

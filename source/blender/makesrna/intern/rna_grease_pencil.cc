@@ -633,13 +633,13 @@ static void rna_def_grease_pencil_layer_mask(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_LAYER_MASK_HIDE);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_ui_text(prop, "Hide", "Set mask Visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_LAYER_MASK_INVERT);
-  RNA_def_property_ui_icon(prop, ICON_SELECT_INTERSECT, 1);
+  RNA_def_property_ui_icon(prop, ICON_SELECT_INTERSECT, ICON_SELECT_DIFFERENCE);
   RNA_def_property_ui_text(prop, "Invert", "Invert mask");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
@@ -721,7 +721,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_ui_text(prop, "Hide", "Set layer visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
@@ -729,7 +729,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_LOCKED);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect layer from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
@@ -745,7 +745,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "lock_frame", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_MUTE);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Frame Locked", "Lock current frame displayed by layer");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
@@ -758,7 +758,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Onion Skinning. */
   prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, ICON_ONIONSKIN_ON);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
   RNA_def_property_ui_text(
@@ -767,7 +767,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
 
   /* Use Masks. */
   prop = RNA_def_property(srna, "use_masks", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, -1);
+  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, ICON_CLIPUV_DEHLT);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_MASKS);
   RNA_def_property_ui_text(
@@ -932,7 +932,7 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE);
-  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_HIDE_OFF, ICON_HIDE_ON);
   RNA_def_property_ui_text(prop, "Hide", "Set layer group visibility");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
@@ -940,7 +940,7 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
   prop = RNA_def_property(srna, "lock", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_LOCKED);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_ui_text(
       prop, "Locked", "Protect group from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
@@ -956,7 +956,7 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, 1);
+  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_OFF, ICON_ONIONSKIN_ON);
   RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
   RNA_def_property_ui_text(

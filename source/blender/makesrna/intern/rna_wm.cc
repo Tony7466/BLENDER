@@ -2856,12 +2856,12 @@ static void rna_def_keyconfig(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_expanded_items", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", KEYMAP_EXPANDED);
   RNA_def_property_ui_text(prop, "Items Expanded", "Expanded in the user interface");
-  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, ICON_DOWNARROW_HLT);
 
   prop = RNA_def_property(srna, "show_expanded_children", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", KEYMAP_CHILDREN_EXPANDED);
   RNA_def_property_ui_text(prop, "Children Expanded", "Children expanded in the user interface");
-  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, ICON_DOWNARROW_HLT);
 
   prop = RNA_def_property(srna, "modal_event_values", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
@@ -3029,7 +3029,7 @@ static void rna_def_keyconfig(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", KMI_EXPANDED);
   RNA_def_property_ui_text(
       prop, "Expanded", "Show key map event and property details in the user interface");
-  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, 1);
+  RNA_def_property_ui_icon(prop, ICON_RIGHTARROW, ICON_DOWNARROW_HLT);
   /* Display only, no need to call `rna_KeyMapItem_update`. */
 
   prop = RNA_def_property(srna, "propvalue", PROP_ENUM, PROP_NONE);
@@ -3044,7 +3044,7 @@ static void rna_def_keyconfig(BlenderRNA *brna)
   prop = RNA_def_property(srna, "active", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", KMI_INACTIVE);
   RNA_def_property_ui_text(prop, "Active", "Activate or deactivate item");
-  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_DEHLT, 1);
+  RNA_def_property_ui_icon(prop, ICON_CHECKBOX_DEHLT, ICON_CHECKBOX_HLT);
   RNA_def_property_update(prop, 0, "rna_KeyMapItem_update");
 
   prop = RNA_def_property(srna, "is_user_modified", PROP_BOOLEAN, PROP_NONE);

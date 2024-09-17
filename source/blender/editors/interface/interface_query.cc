@@ -158,10 +158,6 @@ int ui_but_icon(const uiBut *but)
     return ICON_NONE;
   }
 
-  /* Consecutive icons can be toggle between. */
-  if (but->drawflag & UI_BUT_ICON_REVERSE) {
-    return but->icon - but->iconadd;
-  }
   return but->icon + but->iconadd;
 }
 

@@ -2784,20 +2784,20 @@ static void rna_def_object_visibility(StructRNA *srna)
   prop = RNA_def_property(srna, "hide_viewport", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_VIEWPORT);
   RNA_def_property_ui_text(prop, "Disable in Viewports", "Globally disable in viewports");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_VIEW_OFF, ICON_RESTRICT_VIEW_ON);
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_hide_update");
 
   prop = RNA_def_property(srna, "hide_select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_SELECT);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Disable Selection", "Disable selection in viewport");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_SELECT_OFF, ICON_RESTRICT_SELECT_ON);
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_hide_update");
 
   prop = RNA_def_property(srna, "hide_render", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "visibility_flag", OB_HIDE_RENDER);
   RNA_def_property_ui_text(prop, "Disable in Renders", "Globally disable in renders");
-  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, -1);
+  RNA_def_property_ui_icon(prop, ICON_RESTRICT_RENDER_OFF, ICON_RESTRICT_RENDER_ON);
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_hide_update");
 
   prop = RNA_def_property(srna, "hide_probe_volume", PROP_BOOLEAN, PROP_NONE);
@@ -3185,21 +3185,21 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "protectflag", OB_LOCK_LOCX);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Lock Location", "Lock editing of location when transforming");
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
   prop = RNA_def_property(srna, "lock_rotation", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "protectflag", OB_LOCK_ROTX);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Lock Rotation", "Lock editing of rotation when transforming");
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
   /* XXX this is sub-optimal - it really should be included above,
    *     but due to technical reasons we can't do this! */
   prop = RNA_def_property(srna, "lock_rotation_w", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "protectflag", OB_LOCK_ROTW);
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_ui_text(
       prop,
       "Lock Rotation (4D Angle)",
@@ -3216,7 +3216,7 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "protectflag", OB_LOCK_SCALEX);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Lock Scale", "Lock editing of scale when transforming");
-  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNLOCKED, ICON_LOCKED);
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
 
   /* matrix */
@@ -3578,14 +3578,14 @@ static void rna_def_object(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_only_shape_key", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "shapeflag", OB_SHAPE_LOCK);
   RNA_def_property_ui_text(prop, "Shape Key Lock", "Only show the active shape key at full value");
-  RNA_def_property_ui_icon(prop, ICON_UNPINNED, 1);
+  RNA_def_property_ui_icon(prop, ICON_UNPINNED, ICON_PINNED);
   RNA_def_property_update(prop, 0, "rna_Object_internal_update_data");
 
   prop = RNA_def_property(srna, "use_shape_key_edit_mode", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "shapeflag", OB_SHAPE_EDIT_MODE);
   RNA_def_property_ui_text(
       prop, "Shape Key Edit Mode", "Display shape keys in edit mode (for meshes only)");
-  RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT, 0);
+  RNA_def_property_ui_icon(prop, ICON_EDITMODE_HLT);
   RNA_def_property_update(prop, 0, "rna_Object_internal_update_data");
 
   prop = RNA_def_property(srna, "active_shape_key", PROP_POINTER, PROP_NONE);

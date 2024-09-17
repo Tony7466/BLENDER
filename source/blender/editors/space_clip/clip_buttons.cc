@@ -430,7 +430,6 @@ void uiTemplateMarker(uiLayout *layout,
                                  0,
                                  tip);
     UI_but_funcN_set(bt, marker_update_cb, cb, nullptr);
-    UI_but_drawflag_enable(bt, UI_BUT_ICON_REVERSE);
   }
   else {
     int width, height;

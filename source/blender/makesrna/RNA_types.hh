@@ -226,10 +226,6 @@ enum PropertyFlag {
    */
   PROP_TEXTEDIT_UPDATE = (1u << 31),
 
-  /* icon */
-  PROP_ICONS_CONSECUTIVE = (1 << 12),
-  PROP_ICONS_REVERSE = (1 << 8),
-
   /**
    * Hide in the user interface. That is, from auto-generated operator property UIs (like the
    * redo panel) and the outliner "Data API" display mode. Does not hide it in the keymap UI.

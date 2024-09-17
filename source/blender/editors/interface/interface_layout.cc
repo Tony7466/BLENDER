@@ -2170,8 +2170,8 @@ void uiItemFullR(uiLayout *layout,
       const int prop_flag = RNA_property_flag(prop);
       if (type == PROP_BOOLEAN) {
         if ((is_array == false) || (index != RNA_NO_INDEX)) {
-          if (prop_flag & PROP_ICONS_CONSECUTIVE) {
-            icon = ICON_CHECKBOX_DEHLT; /* but->iconadd will set to correct icon */
+          if (RNA_property_ui_alt_icon(prop) != ICON_NONE) {
+            icon = RNA_property_ui_icon(prop);
           }
           else if (is_array) {
             icon = RNA_property_boolean_get_index(ptr, prop, index) ? ICON_CHECKBOX_HLT :
@@ -2185,8 +2185,8 @@ void uiItemFullR(uiLayout *layout,
       else if (type == PROP_ENUM) {
         if (index == RNA_ENUM_VALUE) {
           const int enum_value = RNA_property_enum_get(ptr, prop);
-          if (prop_flag & PROP_ICONS_CONSECUTIVE) {
-            icon = ICON_CHECKBOX_DEHLT; /* but->iconadd will set to correct icon */
+          if (RNA_property_ui_alt_icon(prop) != ICON_NONE) {
+            icon = RNA_property_ui_icon(prop);
           }
           else if (prop_flag & PROP_ENUM_FLAG) {
             icon = (enum_value & value) ? ICON_CHECKBOX_HLT : ICON_CHECKBOX_DEHLT;

@@ -3847,13 +3847,12 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
 
     case UI_BTYPE_ICON_TOGGLE:
     case UI_BTYPE_ICON_TOGGLE_N:
-      if ((but->rnaprop == nullptr) || (RNA_property_flag(but->rnaprop) & PROP_ICONS_CONSECUTIVE))
+      if ((but->rnaprop == nullptr) ||
+          (RNA_property_ui_alt_icon(but->rnaprop) != ICON_NONE))
       {
-        if (but->rnaprop && RNA_property_flag(but->rnaprop) & PROP_ICONS_REVERSE) {
-          but->drawflag |= UI_BUT_ICON_REVERSE;
-        }
-
-        but->iconadd = (but->flag & UI_SELECT) ? 1 : 0;
+        but->iconadd = (but->flag & UI_SELECT) ? RNA_property_ui_alt_icon(but->rnaprop) -
+                                                     RNA_property_ui_icon(but->rnaprop) :
+                                                 0;
       }
       break;
 
