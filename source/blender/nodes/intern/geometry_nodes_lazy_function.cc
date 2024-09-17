@@ -1596,6 +1596,18 @@ struct ZoneBodyFunction {
   ZoneFunctionIndices indices;
 };
 
+static bool ignore_zone_bsocket(const bNodeSocket &bsocket)
+{
+  if (!bsocket.is_available()) {
+    return true;
+  }
+  if (!bsocket.typeinfo->geometry_nodes_cpp_type) {
+    /* These are typically extend sockets. */
+    return true;
+  }
+  return false;
+}
+
 static void initialize_zone_wrapper(const bNodeTreeZone &zone,
                                     ZoneBuildInfo &zone_info,
                                     const ZoneBodyFunction &body_fn,
@@ -1603,12 +1615,11 @@ static void initialize_zone_wrapper(const bNodeTreeZone &zone,
                                     Vector<lf::Output> &r_outputs)
 {
   for (const bNodeSocket *socket : zone.input_node->input_sockets()) {
-    const CPPType *cpp_type = socket->typeinfo->geometry_nodes_cpp_type;
-    if (!cpp_type) {
+    if (ignore_zone_bsocket(*socket)) {
       continue;
     }
-    zone_info.indices.inputs.main.append(
-        r_inputs.append_and_get_index_as(socket->name, *cpp_type, lf::ValueUsage::Maybe));
+    zone_info.indices.inputs.main.append(r_inputs.append_and_get_index_as(
+        socket->name, *socket->typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe));
   }
 
   for (const bNodeLink *link : zone.border_links) {
@@ -1619,10 +1630,10 @@ static void initialize_zone_wrapper(const bNodeTreeZone &zone,
   }
 
   for (const bNodeSocket *socket : zone.output_node->output_sockets()) {
-    const CPPType *cpp_type = socket->typeinfo->geometry_nodes_cpp_type;
-    if (!cpp_type) {
+    if (ignore_zone_bsocket(*socket)) {
       continue;
     }
+    const CPPType *cpp_type = socket->typeinfo->geometry_nodes_cpp_type;
     zone_info.indices.inputs.output_usages.append(
         r_inputs.append_and_get_index_as("Usage", CPPType::get<bool>(), lf::ValueUsage::Maybe));
     zone_info.indices.outputs.main.append(
@@ -1630,7 +1641,7 @@ static void initialize_zone_wrapper(const bNodeTreeZone &zone,
   }
 
   for ([[maybe_unused]] const bNodeSocket *socket : zone.input_node->input_sockets()) {
-    if (!socket->typeinfo->geometry_nodes_cpp_type) {
+    if (ignore_zone_bsocket(*socket)) {
       continue;
     }
     zone_info.indices.outputs.input_usages.append(
@@ -1665,7 +1676,7 @@ static std::string zone_wrapper_input_name(const ZoneBuildInfo &zone_info,
     const int output_usage_i = lf_socket_i - zone_info.indices.inputs.output_usages.first();
     int current_valid_i = 0;
     for (const bNodeSocket *bsocket : zone.output_node->output_sockets()) {
-      if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+      if (ignore_zone_bsocket(*bsocket)) {
         continue;
       }
       if (current_valid_i == output_usage_i) {
@@ -1686,7 +1697,7 @@ static std::string zone_wrapper_output_name(const ZoneBuildInfo &zone_info,
     const int input_usage_i = lf_socket_i - zone_info.indices.outputs.input_usages.first();
     int current_valid_i = 0;
     for (const bNodeSocket *bsocket : zone.input_node->input_sockets()) {
-      if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+      if (ignore_zone_bsocket(*bsocket)) {
         continue;
       }
       if (current_valid_i == input_usage_i) {
@@ -2314,13 +2325,15 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
+    const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
 
     const int input_items_num = node_storage.input_items.items_num;
     const int main_items_num = node_storage.main_items.items_num;
     const int generation_items_num = node_storage.generation_items.items_num;
 
     indices_.inputs.lf_outer = IndexRange::from_begin_size(2, input_items_num);
-    indices_.inputs.lf_inner = IndexRange::from_begin_size(2, input_items_num);
+    indices_.inputs.lf_inner = IndexRange::from_begin_size(
+        iteration_domain == AttrDomain::Corner ? 1 : 2, input_items_num);
     indices_.inputs.bsocket_outer = indices_.inputs.lf_outer;
     indices_.inputs.bsocket_inner = indices_.inputs.lf_inner;
 
@@ -3744,12 +3757,11 @@ struct GeometryNodesLazyFunctionBuilder {
     ZoneBodyFunction &body_fn = scope_.construct<ZoneBodyFunction>();
 
     for (const bNodeSocket *bsocket : zone.input_node->output_sockets()) {
-      const CPPType *cpp_type = bsocket->typeinfo->geometry_nodes_cpp_type;
-      if (!cpp_type) {
-        /* Skip extend sockets. */
+      if (ignore_zone_bsocket(*bsocket)) {
         continue;
       }
-      lf::GraphInputSocket &lf_input = lf_body_graph.add_input(*cpp_type, bsocket->name);
+      lf::GraphInputSocket &lf_input = lf_body_graph.add_input(
+          *bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name);
       lf::GraphOutputSocket &lf_input_usage = lf_body_graph.add_output(
           CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name));
       body_fn.indices.inputs.main.append(lf_body_inputs.append_and_get_index(&lf_input));
@@ -3764,12 +3776,11 @@ struct GeometryNodesLazyFunctionBuilder {
         zone, lf_body_graph, lf_body_outputs, body_fn.indices.outputs.border_link_usages);
 
     for (const bNodeSocket *bsocket : zone.output_node->input_sockets()) {
-      const CPPType *cpp_type = bsocket->typeinfo->geometry_nodes_cpp_type;
-      if (!cpp_type) {
-        /* Skip extend sockets. */
+      if (ignore_zone_bsocket(*bsocket)) {
         continue;
       }
-      lf::GraphOutputSocket &lf_output = lf_body_graph.add_output(*cpp_type, bsocket->name);
+      lf::GraphOutputSocket &lf_output = lf_body_graph.add_output(
+          *bsocket->typeinfo->geometry_nodes_cpp_type, bsocket->name);
       lf::GraphInputSocket &lf_output_usage = lf_body_graph.add_input(
           CPPType::get<bool>(), "Usage: " + StringRef(bsocket->name));
       graph_params.lf_inputs_by_bsocket.add(bsocket, &lf_output);
@@ -3786,7 +3797,7 @@ struct GeometryNodesLazyFunctionBuilder {
     {
       int valid_socket_i = 0;
       for (const bNodeSocket *bsocket : zone.input_node->output_sockets()) {
-        if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+        if (ignore_zone_bsocket(*bsocket)) {
           continue;
         }
         lf::OutputSocket *lf_usage = graph_params.usage_by_bsocket.lookup_default(bsocket,
@@ -4388,7 +4399,7 @@ struct GeometryNodesLazyFunctionBuilder {
     {
       int valid_socket_i = 0;
       for (const bNodeSocket *bsocket : child_zone.input_node->input_sockets()) {
-        if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+        if (ignore_zone_bsocket(*bsocket)) {
           continue;
         }
         lf::InputSocket &lf_input_socket = child_zone_node.input(
@@ -4404,7 +4415,7 @@ struct GeometryNodesLazyFunctionBuilder {
     {
       int valid_socket_i = 0;
       for (const bNodeSocket *bsocket : child_zone.output_node->output_sockets()) {
-        if (!bsocket->typeinfo->geometry_nodes_cpp_type) {
+        if (ignore_zone_bsocket(*bsocket)) {
           continue;
         }
         lf::OutputSocket &lf_output_socket = child_zone_node.output(

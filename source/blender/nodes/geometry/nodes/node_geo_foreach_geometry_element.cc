@@ -341,6 +341,19 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, &output_node_ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
+static void node_update(bNodeTree *tree, bNode *node)
+{
+  const NodeGeometryForeachGeometryElementInput &storage = node_storage(*node);
+  const bNode *output_node = tree->node_by_id(storage.output_node_id);
+  if (output_node) {
+    const auto &output_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+        output_node->storage);
+    bNodeSocket *element_socket = static_cast<bNodeSocket *>(node->outputs.first)->next;
+    bke::node_set_socket_availability(
+        tree, element_socket, AttrDomain(output_storage.domain) != AttrDomain::Corner);
+  }
+}
+
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryForeachGeometryElementInput *data =
@@ -382,6 +395,7 @@ static void node_register()
   ntype.labelfunc = node_label;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
+  ntype.updatefunc = node_update;
   ntype.no_muting = true;
   blender::bke::node_type_storage(&ntype,
                                   "NodeGeometryForeachGeometryElementInput",
