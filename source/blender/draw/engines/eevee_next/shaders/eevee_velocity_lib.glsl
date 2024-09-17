@@ -44,15 +44,17 @@ vec4 velocity_surface(vec3 P_prv, vec3 P, vec3 P_nxt)
 }
 
 /**
- * Given a background world point \a P, compute the previous and next motion vectors for
+ * Given a background view space point \a vP, compute the previous and next motion vectors for
  * background pixels.
  * Returns uv space motion vectors in pairs (motion_prev.xy, motion_next.xy).
  */
-vec4 velocity_background(vec3 P)
+vec4 velocity_background(vec3 vP)
 {
-  vec2 prev_uv = project_point(camera_prev.persmat, P).xy;
-  vec2 curr_uv = project_point(camera_curr.persmat, P).xy;
-  vec2 next_uv = project_point(camera_next.persmat, P).xy;
+  /** NOTE: Transform as a direction to avoid imprecision if camera is far from origin. */
+  vec3 V = transform_direction(camera_curr.viewinv, vP);
+  vec2 prev_uv = project_point(camera_prev.winmat, transform_direction(camera_prev.viewmat, V)).xy;
+  vec2 curr_uv = project_point(camera_curr.winmat, transform_direction(camera_curr.viewmat, V)).xy;
+  vec2 next_uv = project_point(camera_next.winmat, transform_direction(camera_next.viewmat, V)).xy;
   /* NOTE: We output both vectors in the same direction so we can reuse the same vector
    * with RGRG swizzle in viewport. */
   vec4 motion = vec4(prev_uv - curr_uv, curr_uv - next_uv);
@@ -67,8 +69,8 @@ vec4 velocity_resolve(vec4 vector, vec2 uv, float depth)
   if (vector.x == VELOCITY_INVALID) {
     bool is_background = (depth == 1.0);
     if (is_background) {
-      vec3 P = drw_point_screen_to_world(vec3(uv, 1.0));
-      return velocity_background(P);
+      vec3 vP = drw_point_screen_to_view(vec3(uv, 1.0));
+      return velocity_background(vP);
     }
     else {
       /* Static geometry. No translation in world space. */
