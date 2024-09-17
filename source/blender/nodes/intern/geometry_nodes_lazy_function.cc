@@ -2558,6 +2558,40 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         }
         return element_geometries;
       }
+      case GeometryComponent::Type::PointCloud: {
+        if (id.domain != AttrDomain::Point) {
+          return std::nullopt;
+        }
+        const PointCloud &main_pointcloud = *main_geometry.get_pointcloud();
+        Array<PointCloud *> pointclouds = geometry::extract_pointcloud_points(
+            main_pointcloud, mask, attribute_filter);
+        Array<GeometrySet> element_geometries(pointclouds.size());
+        for (const int i : pointclouds.index_range()) {
+          element_geometries[i].replace_pointcloud(pointclouds[i]);
+        }
+        return element_geometries;
+      }
+      case GeometryComponent::Type::Curve: {
+        const Curves &main_curves = *main_geometry.get_curves();
+        Array<Curves *> element_curves;
+        switch (id.domain) {
+          case AttrDomain::Point: {
+            element_curves = geometry::extract_curves_points(main_curves, mask, attribute_filter);
+            break;
+          }
+          case AttrDomain::Curve: {
+            element_curves = geometry::extract_curves_curves(main_curves, mask, attribute_filter);
+            break;
+          }
+          default:
+            return std::nullopt;
+        }
+        Array<GeometrySet> element_geometries(element_curves.size());
+        for (const int i : element_curves.index_range()) {
+          element_geometries[i].replace_curves(element_curves[i]);
+        }
+        return element_geometries;
+      }
       default:
         break;
     }

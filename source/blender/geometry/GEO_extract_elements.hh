@@ -35,7 +35,7 @@ Array<Curves *> extract_curves_points(const Curves &curves,
                                       const IndexMask &mask,
                                       const bke::AttributeFilter &attribute_filter);
 
-Array<Curves *> extract_single_curves(const Curves &curves,
+Array<Curves *> extract_curves_curves(const Curves &curves,
                                       const IndexMask &mask,
                                       const bke::AttributeFilter &attribute_filter);
 
