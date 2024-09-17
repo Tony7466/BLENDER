@@ -316,8 +316,6 @@ static void toolsystem_brush_activate_from_toolref_for_object_paint(const bConte
 
   const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
   BLI_assert(paint_mode != PaintMode::Invalid);
-  const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
-  BLI_assert(items != nullptr);
 
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
