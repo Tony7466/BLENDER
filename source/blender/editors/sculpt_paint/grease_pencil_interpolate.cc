@@ -1178,7 +1178,7 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayout *col, *row;
 
-  const eGP_Interpolate_Type type = eGP_Interpolate_Type(RNA_enum_get(op->ptr, "type"));
+  const GreasePencilInterpolationType type = GreasePencilInterpolationType(RNA_enum_get(op->ptr, "type"));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -1206,7 +1206,7 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
   row = uiLayoutRow(layout, true);
   uiItemR(row, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (type == GP_IPO_CURVEMAP) {
+  if (type == GREASE_PENCIL_IPO_CURVEMAP) {
     /* Get an RNA pointer to ToolSettings to give to the custom curve. */
     Scene *scene = CTX_data_scene(C);
     ToolSettings *ts = scene->toolsettings;
@@ -1215,14 +1215,14 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
     uiTemplateCurveMapping(
         layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }
-  else if (type != GP_IPO_LINEAR) {
+  else if (type != GREASE_PENCIL_IPO_LINEAR) {
     row = uiLayoutRow(layout, false);
     uiItemR(row, op->ptr, "easing", UI_ITEM_NONE, nullptr, ICON_NONE);
-    if (type == GP_IPO_BACK) {
+    if (type == GREASE_PENCIL_IPO_BACK) {
       row = uiLayoutRow(layout, false);
       uiItemR(row, op->ptr, "back", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
-    else if (type == GP_IPO_ELASTIC) {
+    else if (type == GREASE_PENCIL_IPO_ELASTIC) {
       row = uiLayoutRow(layout, false);
       uiItemR(row, op->ptr, "amplitude", UI_ITEM_NONE, nullptr, ICON_NONE);
       row = uiLayoutRow(layout, false);
