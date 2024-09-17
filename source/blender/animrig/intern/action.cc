@@ -2468,8 +2468,8 @@ bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
       &from_strip.channelbag_array, &from_strip.channelbag_array_num, index);
 
   for (ID *user : source_slot.runtime_users()) {
-    from_action.unassign_id(*user);
-    to_action.assign_id(&target_slot, *user);
+    unassign_action(*user);
+    assign_action_and_slot(&to_action, &target_slot, *user);
   }
 
   from_action.slot_remove(source_slot);

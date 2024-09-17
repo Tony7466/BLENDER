@@ -910,8 +910,9 @@ TEST_F(ActionLayersTest, action_move_slot)
 
   Slot &slot_cube = action->slot_add();
   Slot &slot_suzanne = action_2->slot_add();
-  EXPECT_TRUE(action->assign_id(&slot_cube, cube->id));
-  EXPECT_TRUE(action_2->assign_id(&slot_suzanne, suzanne->id));
+  EXPECT_EQ(assign_action_and_slot(action, &slot_cube, cube->id), ActionSlotAssignmentResult::OK);
+  EXPECT_EQ(assign_action_and_slot(action_2, &slot_suzanne, suzanne->id),
+            ActionSlotAssignmentResult::OK);
 
   PointerRNA cube_rna_pointer = RNA_id_pointer_create(&cube->id);
   PointerRNA suzanne_rna_pointer = RNA_id_pointer_create(&suzanne->id);
