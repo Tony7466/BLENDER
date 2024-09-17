@@ -2399,7 +2399,86 @@ GHOST_TSuccess GHOST_SystemWin32::hasClipboardImage(void) const
     return GHOST_kSuccess;
   }
 
+  /* Image File path? */
+  if (IsClipboardFormatAvailable(CF_HDROP)) {
+    if (!OpenClipboard(nullptr)) {
+      return GHOST_kFailure;
+    }
+    HANDLE hGlobal = GetClipboardData(CF_HDROP);
+    if (hGlobal == nullptr) {
+      CloseClipboard();
+      return GHOST_kFailure;
+    }
+    HDROP hDrop = (HDROP)GlobalLock(hGlobal);
+    if (hDrop == nullptr) {
+      CloseClipboard();
+      return GHOST_kFailure;
+    }
+    UINT fileCount = DragQueryFile(hDrop, 0xffffffff, NULL, 0);
+    if (fileCount != 1) {
+      GlobalUnlock(hGlobal);
+      CloseClipboard();
+      return GHOST_kFailure;
+    }
+
+    WCHAR lpszFile[MAX_PATH] = {0};
+    DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
+    char *filepath = alloc_utf_8_from_16(lpszFile, 0);
+    ImBuf *ibuf = IMB_testiffname(filepath, IB_rect | IB_multilayer);
+    const bool is_image = ibuf != nullptr;
+    IMB_freeImBuf(ibuf);
+    free(filepath);
+    GlobalUnlock(hGlobal);
+    CloseClipboard();
+    return is_image ? GHOST_kSuccess : GHOST_kFailure;
+  }
+
   return GHOST_kFailure;
+}
+
+static uint *getClipboardImageFilepath(int *r_width, int *r_height)
+{
+  if (!OpenClipboard(nullptr)) {
+    return nullptr;
+  }
+  HANDLE hGlobal = GetClipboardData(CF_HDROP);
+  if (hGlobal == nullptr) {
+    CloseClipboard();
+    return nullptr;
+  }
+  HDROP hDrop = (HDROP)GlobalLock(hGlobal);
+  if (hDrop == nullptr) {
+    CloseClipboard();
+    return nullptr;
+  }
+  UINT fileCount = DragQueryFile(hDrop, 0xffffffff, NULL, 0);
+  if (fileCount != 1) {
+    GlobalUnlock(hGlobal);
+    CloseClipboard();
+    return nullptr;
+  }
+
+  WCHAR lpszFile[MAX_PATH] = {0};
+  DragQueryFileW(hDrop, 0, lpszFile, MAX_PATH);
+  char *filepath = alloc_utf_8_from_16(lpszFile, 0);
+
+  ImBuf *ibuf = IMB_loadiffname(filepath, IB_rect | IB_multilayer | IB_metadata, nullptr);
+  free(filepath);
+  GlobalUnlock(hGlobal);
+  CloseClipboard();
+
+  uint *rgba = nullptr;
+
+  if (ibuf) {
+    *r_width = ibuf->x;
+    *r_height = ibuf->y;
+    const uint64_t byte_count = uint64_t(ibuf->x) * ibuf->y * 4;
+    rgba = (uint *)malloc(byte_count);
+    memcpy(rgba, ibuf->byte_buffer.data, byte_count);
+    IMB_freeImBuf(ibuf);
+  }
+
+  return rgba;
 }
 
 static uint *getClipboardImageDibV5(int *r_width, int *r_height)
@@ -2520,6 +2599,10 @@ static uint *getClipboardImageImBuf(int *r_width, int *r_height, UINT format)
 
 uint *GHOST_SystemWin32::getClipboardImage(int *r_width, int *r_height) const
 {
+  if (IsClipboardFormatAvailable(CF_HDROP)) {
+    return getClipboardImageFilepath(r_width, r_height);
+  }
+
   if (!OpenClipboard(nullptr)) {
     return nullptr;
   }
