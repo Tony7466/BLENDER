@@ -568,6 +568,7 @@ void DeferredLayer::begin_sync()
     npr_ps_.bind_texture(GBUF_HEADER_NPR_TX_SLOT, &inst_.gbuffer.header_tx);
     npr_ps_.bind_texture(GBUF_CLOSURE_NPR_TX_SLOT, &inst_.gbuffer.closure_tx);
 #endif
+    npr_ps_.bind_texture(RADIANCE_TX_SLOT, &npr_radiance_input_tx_);
     for (int i : IndexRange(3)) {
       npr_ps_.bind_texture(DIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &direct_radiance_txs_[i]);
       npr_ps_.bind_texture(INDIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &indirect_result_.closures[i]);
@@ -920,7 +921,17 @@ GPUTexture *DeferredLayer::render(View &main_view,
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(combine_ps_);
 
+  TextureFromPool npr_radiance_input = "NPR Radiance Input";
+  {
+    /* TODO(NPR): This is pretty bad. */
+    npr_radiance_input.acquire(rb.combined_tx.size().xy(), GPU_texture_format(rb.combined_tx));
+    npr_radiance_input_tx_ = npr_radiance_input;
+    GPU_texture_copy(npr_radiance_input_tx_, rb.combined_tx);
+  }
+
   inst_.manager->submit(npr_ps_, render_view);
+
+  npr_radiance_input.release();
 
   if (use_feedback_output_ && !use_clamp_direct_) {
     /* We skip writing the radiance during the combine pass. Do a simple fast copy. */

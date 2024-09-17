@@ -279,6 +279,7 @@ class DeferredLayer : DeferredLayerBase {
   /* Reference to ray-tracing results. */
   GPUTexture *radiance_feedback_tx_ = nullptr;
   GPUTexture *radiance_back_tx_ = nullptr;
+  GPUTexture *npr_radiance_input_tx_ = nullptr;
 
   /**
    * Tile texture containing several bool per tile indicating presence of feature.

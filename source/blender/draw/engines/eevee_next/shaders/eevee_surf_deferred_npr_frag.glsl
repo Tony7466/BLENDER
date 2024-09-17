@@ -73,19 +73,11 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
 
-  if (depth == 1.0) {
-    switch (tex.type) {
-      case TEX_HANDLE_NORMAL: {
-        vec3 position = drw_point_screen_to_world(vec3(screen_uv, depth));
-        vec3 normal = drw_world_incident_vector(position);
-        return vec4(normal, 0.0);
-      }
-      default:
-        return vec4(0.0);
-    }
-  }
-
   switch (tex.type) {
+    case TEX_HANDLE_COMBINED_COLOR:
+      return texelFetch(radiance_tx, texel, 0);
+    case TEX_HANDLE_BACK_COMBINED_COLOR:
+      return texelFetch(radiance_back_tx, texel, 0);
     case TEX_HANDLE_POSITION: {
       vec3 position = drw_point_screen_to_world(vec3(screen_uv, depth));
       return vec4(position, 0.0);
@@ -95,15 +87,22 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
       vec3 back_position = drw_point_screen_to_world(vec3(screen_uv, back_depth));
       return vec4(back_position, 0.0);
     }
-    case TEX_HANDLE_BACK_COMBINED_COLOR:
-      return texelFetch(radiance_back_tx, texel, 0);
     default: {
+      if (depth == 1.0) {
+        switch (tex.type) {
+          case TEX_HANDLE_NORMAL: {
+            vec3 position = drw_point_screen_to_world(vec3(screen_uv, depth));
+            vec3 normal = drw_world_incident_vector(position);
+            return vec4(normal, 0.0);
+          }
+          default:
+            return vec4(0.0);
+        }
+      }
       /* TODO(NPR): This could be further optimized for each case. */
       DeferredCombine dc = deferred_combine(texel);
       deferred_combine_clamp(dc);
       switch (tex.type) {
-        case TEX_HANDLE_COMBINED_COLOR:
-          return deferred_combine_final_output(dc);
         case TEX_HANDLE_DIFFUSE_COLOR:
           return vec4(dc.diffuse_color, 0.0);
         case TEX_HANDLE_DIFFUSE_DIRECT:
