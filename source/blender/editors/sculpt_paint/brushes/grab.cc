@@ -315,7 +315,7 @@ void geometry_preview_lines_update(Depsgraph &depsgraph,
 
     neighbors.clear();
     for (const int neighbor : vert_neighbors_get_mesh(
-             from_vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+             faces, corner_verts, vert_to_face_map, hide_poly, from_vert, neighbors))
     {
       preview_verts.append(from_vert);
       preview_verts.append(neighbor);
