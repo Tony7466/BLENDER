@@ -323,12 +323,11 @@ static void ui_update_window_matrix(const wmWindow *window, const ARegion *regio
   else {
     /* No sub-window created yet, for menus for example, so we use the main
      * window instead, since buttons are created there anyway. */
-    const int width = WM_window_native_pixel_x(window);
-    const int height = WM_window_native_pixel_y(window);
-    const rcti winrct = {0, width - 1, 0, height - 1};
+    const blender::int2 win_size = WM_window_native_pixel_size(window);
+    const rcti winrct = {0, win_size[0] - 1, 0, win_size[1] - 1};
 
     wmGetProjectionMatrix(block->winmat, &winrct);
-    block->aspect = 2.0f / fabsf(width * block->winmat[0][0]);
+    block->aspect = 2.0f / fabsf(win_size[0] * block->winmat[0][0]);
   }
 }
 
@@ -346,7 +345,7 @@ void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 
 /* ******************* block calc ************************* */
 
-void UI_block_translate(uiBlock *block, int x, int y)
+void UI_block_translate(uiBlock *block, float x, float y)
 {
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     BLI_rctf_translate(&but->rect, x, y);
@@ -475,16 +474,16 @@ static void ui_block_bounds_calc_centered(wmWindow *window, uiBlock *block)
   /* NOTE: this is used for the splash where window bounds event has not been
    * updated by ghost, get the window bounds from ghost directly */
 
-  const int xmax = WM_window_native_pixel_x(window);
-  const int ymax = WM_window_native_pixel_y(window);
+  /* Clamp to the window size. */
+  const blender::int2 win_size = WM_window_native_pixel_size(window);
 
   ui_block_bounds_calc(block);
 
   const int width = BLI_rctf_size_x(&block->rect);
   const int height = BLI_rctf_size_y(&block->rect);
 
-  const int startx = (xmax * 0.5f) - (width * 0.5f);
-  const int starty = (ymax * 0.5f) - (height * 0.5f);
+  const int startx = (win_size[0] * 0.5f) - (width * 0.5f);
+  const int starty = (win_size[1] * 0.5f) - (height * 0.5f);
 
   UI_block_translate(block, startx - block->rect.xmin, starty - block->rect.ymin);
 
@@ -513,8 +512,8 @@ static void ui_block_bounds_calc_popup(
   /* compute mouse position with user defined offset */
   ui_block_bounds_calc(block);
 
-  const int xmax = WM_window_native_pixel_x(window);
-  const int ymax = WM_window_native_pixel_y(window);
+  /* Clamp to the window size. */
+  const blender::int2 win_size = WM_window_native_pixel_size(window);
 
   int oldwidth = BLI_rctf_size_x(&block->rect);
   int oldheight = BLI_rctf_size_y(&block->rect);
@@ -553,8 +552,8 @@ static void ui_block_bounds_calc_popup(
   const int margin = UI_SCREEN_MARGIN;
   rect_bounds.xmin = margin;
   rect_bounds.ymin = margin;
-  rect_bounds.xmax = xmax - margin;
-  rect_bounds.ymax = ymax - UI_POPUP_MENU_TOP;
+  rect_bounds.xmax = win_size[0] - margin;
+  rect_bounds.ymax = win_size[1] - UI_POPUP_MENU_TOP;
 
   int ofs_dummy[2];
   BLI_rcti_clamp(&rect, &rect_bounds, ofs_dummy);
@@ -1632,7 +1631,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
   extra_op_icon->icon = icon;
   extra_op_icon->optype_params = MEM_cnew<wmOperatorCallParams>(__func__);
   extra_op_icon->optype_params->optype = optype;
-  extra_op_icon->optype_params->opptr = MEM_cnew<PointerRNA>(__func__);
+  extra_op_icon->optype_params->opptr = MEM_new<PointerRNA>(__func__);
   WM_operator_properties_create_ptr(extra_op_icon->optype_params->opptr,
                                     extra_op_icon->optype_params->optype);
   extra_op_icon->optype_params->opcontext = opcontext;
@@ -1647,7 +1646,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
 static void ui_but_extra_operator_icon_free(uiButExtraOpIcon *extra_icon)
 {
   WM_operator_properties_free(extra_icon->optype_params->opptr);
-  MEM_freeN(extra_icon->optype_params->opptr);
+  MEM_delete(extra_icon->optype_params->opptr);
   MEM_freeN(extra_icon->optype_params);
   MEM_freeN(extra_icon);
 }
@@ -3453,7 +3452,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
 {
   if (but->opptr) {
     WM_operator_properties_free(but->opptr);
-    MEM_freeN(but->opptr);
+    MEM_delete(but->opptr);
   }
 
   if (but->func_argN) {
@@ -3513,7 +3512,7 @@ static void ui_block_free_active_operator(uiBlock *block)
   if (block->ui_operator_free) {
     /* This assumes the operator instance owns the pointer. This is not
      * true for all operators by default, but it can be copied when needed. */
-    MEM_freeN(block->ui_operator->ptr);
+    MEM_delete(block->ui_operator->ptr);
     MEM_freeN(block->ui_operator);
   }
 
@@ -5709,9 +5708,12 @@ void UI_but_operator_set(uiBut *but,
   but->opcontext = opcontext;
   but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
 
-  MEM_SAFE_FREE(but->opptr);
+  if (but->opptr) {
+    MEM_delete(but->opptr);
+    but->opptr = nullptr;
+  }
   if (opptr) {
-    but->opptr = MEM_cnew<PointerRNA>(__func__, *opptr);
+    but->opptr = MEM_new<PointerRNA>(__func__, *opptr);
   }
 }
 
@@ -5804,6 +5806,11 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
   but->disabled_info = disabled_hint;
 }
 
+void UI_but_color_set(uiBut *but, const uchar color[4])
+{
+  copy_v4_v4_uchar(but->col, color);
+}
+
 void UI_but_placeholder_set(uiBut *but, const char *placeholder_text)
 {
   MEM_SAFE_FREE(but->placeholder);
@@ -5850,7 +5857,7 @@ int UI_but_return_value_get(uiBut *but)
 PointerRNA *UI_but_operator_ptr_ensure(uiBut *but)
 {
   if (but->optype && !but->opptr) {
-    but->opptr = MEM_cnew<PointerRNA>(__func__);
+    but->opptr = MEM_new<PointerRNA>(__func__);
     WM_operator_properties_create_ptr(but->opptr, but->optype);
   }
 
