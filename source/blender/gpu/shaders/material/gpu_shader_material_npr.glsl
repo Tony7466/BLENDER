@@ -2,6 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+void npr_image_sample(TextureHandle image, vec3 offset, out vec4 color)
+{
+#if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
+  color = TextureHandle_eval(image, offset.xy);
+#else
+  color = vec4(0.0);
+#endif
+}
+
 void npr_input(out TextureHandle combined_color,
                out TextureHandle diffuse_color,
                out TextureHandle diffuse_direct,

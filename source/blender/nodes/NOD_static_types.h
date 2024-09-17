@@ -92,6 +92,7 @@ DefNode(ShaderNode,     SH_NODE_WAVELENGTH,         0,                      "WAV
 DefNode(ShaderNode,     SH_NODE_BLACKBODY,          0,                      "BLACKBODY",          Blackbody,        "Blackbody",         "Convert a blackbody temperature to an RGB value")
 DefNode(ShaderNode,     SH_NODE_BUMP,               def_sh_bump,            "BUMP",               Bump,             "Bump",              "Generate a perturbed normal from a height texture for bump mapping. Typically used for faking highly detailed surfaces")
 DefNode(ShaderNode,     SH_NODE_NORMAL_MAP,         def_sh_normal_map,      "NORMAL_MAP",         NormalMap,        "Normal Map",        "Generate a perturbed normal from an RGB normal map image. Typically used for faking highly detailed surfaces")
+DefNode(ShaderNode,     SH_NODE_NPR_IMAGE_SAMPLE,   0,                      "NPR_IMAGE_SAMPLE",   NPR_ImageSample,  "Image Sample",      "Image Sample")
 DefNode(ShaderNode,     SH_NODE_NPR_INPUT,          0,                      "NPR_INPUT",          NPR_Input,        "NPR Input",         "NPR Input")
 DefNode(ShaderNode,     SH_NODE_NPR_OUTPUT,         0,                      "NPR_OUTPUT",         NPR_Output,       "NPR Output",        "NPR Output")
 DefNode(ShaderNode,     SH_NODE_NPR_REFRACTION,     0,                      "NPR_REFRACTION",     NPR_Refraction,   "NPR Refraction",    "NPR Refraction")

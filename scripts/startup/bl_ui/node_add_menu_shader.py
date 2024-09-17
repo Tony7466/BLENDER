@@ -309,6 +309,7 @@ class NODE_MT_category_shader_converter(Menu):
         node_add_menu.add_node_type(layout, "ShaderNodeShaderToRGB", poll=object_eevee_shader_nodes_poll(context))
         node_add_menu.add_node_type(layout, "ShaderNodeVectorMath")
         node_add_menu.add_node_type(layout, "ShaderNodeWavelength")
+        node_add_menu.add_node_type(layout, "ShaderNodeNPR_ImageSample", poll=npr_shader_nodes_poll(context))
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 

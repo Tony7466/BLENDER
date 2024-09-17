@@ -125,9 +125,9 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
   }
 }
 
-vec4 TextureHandle_eval(TextureHandle tex, ivec2 texel_offset)
+vec4 TextureHandle_eval(TextureHandle tex, vec2 texel_offset)
 {
-  vec4 result = TextureHandle_eval_impl(tex, texel_offset);
+  vec4 result = TextureHandle_eval_impl(tex, ivec2(texel_offset));
   result.a = 1.0 - saturate(result.a);
   return result;
 }
