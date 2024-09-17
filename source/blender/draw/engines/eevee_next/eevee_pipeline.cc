@@ -574,7 +574,7 @@ void DeferredLayer::begin_sync()
       npr_ps_.bind_texture(INDIRECT_RADIANCE_NPR_TX_SLOT_1 + i, &indirect_result_.closures[i]);
     };
 
-    /*TODO(NPR)*/
+    /* TODO(NPR): Use separate opaque/refraction passes. */
     if (bool is_refraction = true) {
       npr_ps_.bind_texture(BACK_RADIANCE_TX_SLOT, &radiance_back_tx_);
       npr_ps_.bind_texture(BACK_HIZ_TX_SLOT, &inst_.hiz_buffer.back.ref_tx_);
@@ -923,7 +923,7 @@ GPUTexture *DeferredLayer::render(View &main_view,
 
   TextureFromPool npr_radiance_input = "NPR Radiance Input";
   {
-    /* TODO(NPR): This is pretty bad. */
+    /* TODO(NPR): There should be separate PBR/NPR combined_tx. Then this copy can be skipped.  */
     npr_radiance_input.acquire(rb.combined_tx.size().xy(), GPU_texture_format(rb.combined_tx));
     npr_radiance_input_tx_ = npr_radiance_input;
     GPU_texture_copy(npr_radiance_input_tx_, rb.combined_tx);

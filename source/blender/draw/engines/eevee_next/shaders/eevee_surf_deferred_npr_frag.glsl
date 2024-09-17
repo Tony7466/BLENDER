@@ -66,7 +66,7 @@ vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
     return vec4(0.0);
   }
 
-  /*TODO(NPR): Texel-based offset is pretty bad.*/
+  /* TODO(NPR): Texel-based offset is pretty bad UX design. */
   ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
   texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
