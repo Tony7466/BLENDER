@@ -30,6 +30,7 @@
 
 struct BMFace;
 struct BMLog;
+struct BMVert;
 struct BMesh;
 struct BlendDataReader;
 struct BlendWriter;
@@ -64,8 +65,6 @@ struct KeyBlock;
 struct Main;
 struct Mesh;
 struct MDeformVert;
-struct MLoopCol;
-struct MPropCol;
 struct MultiresModifierData;
 struct Object;
 struct Paint;
@@ -196,8 +195,8 @@ eObjectMode BKE_paint_object_mode_from_paintmode(PaintMode mode);
 bool BKE_paint_ensure_from_paintmode(Main *bmain, Scene *sce, PaintMode mode);
 Paint *BKE_paint_get_active_from_paintmode(Scene *sce, PaintMode mode);
 const EnumPropertyItem *BKE_paint_get_tool_enum_from_paintmode(PaintMode mode);
-uint BKE_paint_get_brush_tool_offset_from_paintmode(PaintMode mode);
-std::optional<int> BKE_paint_get_brush_tool_from_obmode(const Brush *brush,
+uint BKE_paint_get_brush_type_offset_from_paintmode(PaintMode mode);
+std::optional<int> BKE_paint_get_brush_type_from_obmode(const Brush *brush,
                                                         const eObjectMode ob_mode);
 Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer);
 Paint *BKE_paint_get_active_from_context(const bContext *C);
@@ -389,7 +388,6 @@ struct SculptAttribute {
 struct SculptAttributePointers {
   /* Precomputed auto-mask factor indexed by vertex, owned by the auto-masking system and
    * initialized in #auto_mask::cache_init when needed. */
-  SculptAttribute *automasking_factor = nullptr;
   SculptAttribute *automasking_occlusion = nullptr; /* CD_PROP_INT8. */
   SculptAttribute *automasking_stroke_id = nullptr;
   SculptAttribute *automasking_cavity = nullptr;
@@ -591,12 +589,20 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    */
   ActiveVert active_vert_ = {};
 
+  /* This value should always exist except when the cursor has never been over the mesh, or when
+   * the underlying mesh type has changed and the last `active_vert_` value no longer corresponds
+   * to a value that can be correctly interpreted */
+  ActiveVert last_active_vert_ = {};
+
  public:
   SculptSession();
   ~SculptSession();
 
   PBVHVertRef active_vert_ref() const;
   ActiveVert active_vert() const;
+
+  PBVHVertRef last_active_vert_ref() const;
+  ActiveVert last_active_vert() const;
 
   /**
    * Retrieves the corresponding index of the ActiveVert inside a mesh-sized array.
@@ -621,13 +627,13 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::float3 active_vert_position(const Depsgraph &depsgraph, const Object &object) const;
 
   void set_active_vert(ActiveVert vert);
-  void clear_active_vert();
+  void clear_active_vert(bool persist_last_active);
 };
 
 void BKE_sculptsession_free(Object *ob);
 void BKE_sculptsession_free_deformMats(SculptSession *ss);
 void BKE_sculptsession_free_vwpaint_data(SculptSession *ss);
-void BKE_sculptsession_free_pbvh(SculptSession *ss);
+void BKE_sculptsession_free_pbvh(Object &object);
 void BKE_sculptsession_bm_to_me(Object *ob, bool reorder);
 void BKE_sculptsession_bm_to_me_for_render(Object *object);
 int BKE_sculptsession_vertex_count(const SculptSession *ss);
@@ -691,8 +697,6 @@ void BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
                                    MultiresModifierData *mmd);
 void BKE_sculpt_toolsettings_data_ensure(Main *bmain, Scene *scene);
 
-blender::bke::pbvh::Tree *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob);
-
 void BKE_sculpt_sync_face_visibility_to_grids(const Mesh &mesh, SubdivCCG &subdiv_ccg);
 
 /**
@@ -701,8 +705,19 @@ void BKE_sculpt_sync_face_visibility_to_grids(const Mesh &mesh, SubdivCCG &subdi
  */
 bool BKE_sculptsession_use_pbvh_draw(const Object *ob, const RegionView3D *rv3d);
 
-/** C accessor for #Object::sculpt::pbvh. */
-blender::bke::pbvh::Tree *BKE_object_sculpt_pbvh_get(Object *object);
+namespace blender::bke::object {
+
+pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object);
+
+/**
+ * Access the acceleration structure for raycasting, nearest queries, and spatially contiguous mesh
+ * updates and drawing. The BVH tree is used by sculpt, vertex paint, and weight paint object
+ * modes. This just accesses the BVH, to ensure it's built, use #pbvh_ensure.
+ */
+pbvh::Tree *pbvh_get(Object &object);
+const pbvh::Tree *pbvh_get(const Object &object);
+
+}  // namespace blender::bke::object
 bool BKE_object_sculpt_use_dyntopo(const Object *object);
 
 /* paint_canvas.cc */
