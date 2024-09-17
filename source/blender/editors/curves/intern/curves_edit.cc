@@ -293,7 +293,6 @@ void resize_curves(bke::CurvesGeometry &curves,
       return true;
     }
 
-    array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
     curves_to_resize.foreach_index(GrainSize(512), [&](const int curve_i) {
       const IndexRange src_points = src_offsets[curve_i];
       const IndexRange dst_points = dst_offsets[curve_i];
@@ -308,6 +307,7 @@ void resize_curves(bke::CurvesGeometry &curves,
         type.value_initialize_n(dst_end_slice.data(), dst_end_slice.size());
       }
     });
+    array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
     dst.finish();
     return true;
   });
