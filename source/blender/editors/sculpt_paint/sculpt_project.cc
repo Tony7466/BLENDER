@@ -32,7 +32,7 @@ static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &ges
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_begin(*gesture_data.vc.obact, &op);
+  undo::push_begin(*depsgraph, *gesture_data.vc.obact, &op);
 }
 
 struct LocalData {
@@ -73,15 +73,14 @@ static void apply_projection_mesh(const Depsgraph &depsgraph,
   write_translations(depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 }
 
-static void apply_projection_grids(const Sculpt &sd,
+static void apply_projection_grids(SubdivCCG &subdiv_ccg,
+                                   const Sculpt &sd,
                                    const gesture::GestureData &gesture_data,
                                    const bke::pbvh::GridsNode &node,
                                    Object &object,
                                    LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -172,14 +171,14 @@ static void gesture_apply_for_symmetry_pass(bContext &C, gesture::GestureData &g
           break;
         }
         case bke::pbvh::Type::Grids: {
-          SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+          SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
           MutableSpan<float3> positions = subdiv_ccg.positions;
           MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
           undo::push_nodes(depsgraph, object, node_mask, undo::Type::Position);
           threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
             LocalData &tls = all_tls.local();
             node_mask.slice(range).foreach_index([&](const int i) {
-              apply_projection_grids(sd, gesture_data, nodes[i], object, tls);
+              apply_projection_grids(subdiv_ccg, sd, gesture_data, nodes[i], object, tls);
               bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
             });
           });

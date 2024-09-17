@@ -203,8 +203,12 @@ static bke::GeometrySet get_original_geometry_eval_copy(Object &object,
   }
 }
 
-static void store_result_geometry(
-    const wmOperator &op, Main &bmain, Scene &scene, Object &object, bke::GeometrySet geometry)
+static void store_result_geometry(const wmOperator &op,
+                                  Main &bmain,
+                                  const Depsgraph &depsgraph,
+                                  Scene &scene,
+                                  Object &object,
+                                  bke::GeometrySet geometry)
 {
   geometry.ensure_owns_direct_data();
   switch (object.type) {
@@ -246,7 +250,7 @@ static void store_result_geometry(
       const bool has_shape_keys = mesh.key != nullptr;
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_begin(object, &op);
+        sculpt_paint::undo::geometry_begin(depsgraph, object, &op);
       }
 
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
@@ -564,7 +568,8 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     bke::GeometrySet new_geometry = nodes::execute_geometry_nodes_on_geometry(
         *node_tree, properties, compute_context, call_data, std::move(geometry_orig));
 
-    store_result_geometry(*op, *bmain, *scene, *object, std::move(new_geometry));
+    store_result_geometry(
+        *op, *bmain, *depsgraph_active, *scene, *object, std::move(new_geometry));
 
     DEG_id_tag_update(static_cast<ID *>(object->data), ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, object->data);

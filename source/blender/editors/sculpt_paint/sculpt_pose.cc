@@ -216,7 +216,7 @@ static void calc_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const Span<int> grids = node.grids();
   const Span<float3> positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -492,7 +492,7 @@ static void grow_pose_factor(const Depsgraph &depsgraph,
 
   bool grow_next_iteration = true;
   float prev_len = FLT_MAX;
-  Array<float> prev_mask(SCULPT_vertex_count_get(ob));
+  Array<float> prev_mask(SCULPT_vertex_count_get(depsgraph, ob));
   while (grow_next_iteration) {
     prev_mask.as_mutable_span().copy_from(pose_factor);
 
@@ -540,7 +540,7 @@ static void grow_pose_factor(const Depsgraph &depsgraph,
       }
       case bke::pbvh::Type::Grids: {
         MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-        const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+        const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
         gftd = threading::parallel_reduce(
             node_mask.index_range(),
             1,
@@ -696,7 +696,8 @@ static void calc_pose_origin_and_factor_mesh(const Depsgraph &depsgraph,
   }
 }
 
-static void calc_pose_origin_and_factor_grids(Object &object,
+static void calc_pose_origin_and_factor_grids(const Depsgraph &depsgraph,
+                                              Object &object,
                                               SculptSession &ss,
                                               const float3 &initial_location,
                                               float radius,
@@ -705,7 +706,7 @@ static void calc_pose_origin_and_factor_grids(Object &object,
 {
   BLI_assert(!r_pose_factor.is_empty());
 
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   const Span<float3> positions = subdiv_ccg.positions;
@@ -826,7 +827,7 @@ static void calc_pose_data(const Depsgraph &depsgraph,
       break;
     case bke::pbvh::Type::Grids:
       calc_pose_origin_and_factor_grids(
-          object, ss, initial_location, radius, pose_origin, r_pose_factor);
+          depsgraph, object, ss, initial_location, radius, pose_origin, r_pose_factor);
       break;
     case bke::pbvh::Type::BMesh:
       calc_pose_origin_and_factor_bmesh(
@@ -904,7 +905,7 @@ static std::unique_ptr<IKChain> ik_chain_init_topology(const Depsgraph &depsgrap
 
   const float chain_segment_len = radius * (1.0f + brush.pose_offset);
 
-  const int totvert = SCULPT_vertex_count_get(object);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, object);
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   int nearest_vertex_index = -1;
@@ -925,7 +926,7 @@ static std::unique_ptr<IKChain> ik_chain_init_topology(const Depsgraph &depsgrap
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const std::optional<SubdivCCGCoord> nearest = nearest_vert_calc_grids(
           pbvh, subdiv_ccg, initial_location, std::numeric_limits<float>::max(), true);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -1012,20 +1013,20 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
     int face_set;
   };
 
-  const int totvert = SCULPT_vertex_count_get(object);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, object);
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(brush_num_effective_segments(brush), totvert);
 
   /* Each vertex can only be assigned to one face set. */
   BitVector<> is_weighted(totvert);
   Set<int> visited_face_sets;
 
-  SegmentData current_data = {ss.active_vert_ref(), SCULPT_FACE_SET_NONE};
+  SegmentData current_data = {ss.active_vert_ref(depsgraph, object), SCULPT_FACE_SET_NONE};
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
   for (const int i : ik_chain->segments.index_range()) {
     const bool is_first_iteration = i == 0;
 
-    flood_fill::FillData flood = flood_fill::init_fill(object);
+    flood_fill::FillData flood = flood_fill::init_fill(depsgraph, object);
     flood_fill::add_initial_with_symmetry(
         depsgraph, object, flood, current_data.vert, std::numeric_limits<float>::max());
 
@@ -1042,7 +1043,10 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
 
     const float3 pose_initial_co = SCULPT_vertex_co_get(depsgraph, object, current_data.vert);
     flood_fill::execute(
-        object, flood, [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
+        depsgraph,
+        object,
+        flood,
+        [&](PBVHVertRef /*from_v*/, PBVHVertRef to_v, bool is_duplicate) {
           const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
           const int index = BKE_pbvh_vertex_to_index(pbvh, to_v);
           const PBVHVertRef vertex = to_v;
@@ -1060,11 +1064,11 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
             is_weighted[index].set();
 
             if (vert_inside_brush_radius(co, pose_initial_co, radius, symm)) {
-              const int visited_face_set = face_set::vert_face_set_get(object, vertex);
+              const int visited_face_set = face_set::vert_face_set_get(depsgraph, object, vertex);
               visited_face_sets.add(visited_face_set);
             }
             else if (symmetry_check) {
-              current_data.face_set = face_set::vert_face_set_get(object, vertex);
+              current_data.face_set = face_set::vert_face_set_get(depsgraph, object, vertex);
               visited_face_sets.add(current_data.face_set);
             }
             return true;
@@ -1077,11 +1081,13 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
           bool is_vertex_valid = false;
           if (is_first_iteration) {
             for (const int visited_face_set : visited_face_sets) {
-              is_vertex_valid |= face_set::vert_has_face_set(object, vertex, visited_face_set);
+              is_vertex_valid |= face_set::vert_has_face_set(
+                  depsgraph, object, vertex, visited_face_set);
             }
           }
           else {
-            is_vertex_valid = face_set::vert_has_face_set(object, vertex, current_data.face_set);
+            is_vertex_valid = face_set::vert_has_face_set(
+                depsgraph, object, vertex, current_data.face_set);
           }
 
           if (!is_vertex_valid) {
@@ -1101,7 +1107,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
             fallback_count++;
           }
 
-          if (!symmetry_check || face_set::vert_has_unique_face_set(object, vertex)) {
+          if (!symmetry_check || face_set::vert_has_unique_face_set(depsgraph, object, vertex)) {
             return visit_next;
           }
 
@@ -1110,11 +1116,12 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
           bool count_as_boundary = false;
 
           SculptVertexNeighborIter ni;
-          SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (object, vertex, ni) {
-            const int next_face_set_candidate = face_set::vert_face_set_get(object, ni.vertex);
+          SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (depsgraph, object, vertex, ni) {
+            const int next_face_set_candidate = face_set::vert_face_set_get(
+                depsgraph, object, ni.vertex);
 
             /* Check if we can get a valid face set for the next iteration from this neighbor. */
-            if (face_set::vert_has_unique_face_set(object, ni.vertex) &&
+            if (face_set::vert_has_unique_face_set(depsgraph, object, ni.vertex) &&
                 !visited_face_sets.contains(next_face_set_candidate))
             {
               if (!next_segment_data) {
@@ -1146,8 +1153,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets(const Depsgraph &depsgra
     current_data = *next_segment_data;
   }
 
-  ik_chain_origin_heads_init(*ik_chain,
-                             SCULPT_vertex_co_get(depsgraph, object, ss.active_vert_ref()));
+  ik_chain_origin_heads_init(*ik_chain, ss.active_vert_position(depsgraph, object));
 
   return ik_chain;
 }
@@ -1182,7 +1188,7 @@ static std::optional<float3> calc_average_face_set_center(const Depsgraph &depsg
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Span<float3> positions = subdiv_ccg.positions;
 
       const Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -1248,7 +1254,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_mesh(const Depsgraph 
   const int active_vert = std::get<int>(ss.active_vert());
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
-  const int active_face_set = face_set::active_face_set_get(object);
+  const int active_face_set = face_set::active_face_set_get(depsgraph, object);
 
   Set<int> visited_face_sets;
   Array<int> floodfill_step(mesh.verts_num);
@@ -1324,18 +1330,18 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_grids(const Depsgraph
   const VArraySpan face_sets = *attributes.lookup_or_default<int>(
       ".sculpt_face_set", bke::AttrDomain::Face, 0);
 
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
-  const int grids_num = ss.subdiv_ccg->grids_num * key.grid_area;
+  const int grids_num = subdiv_ccg.grids_num * key.grid_area;
 
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(1, grids_num);
 
   const SubdivCCGCoord active_vert = std::get<SubdivCCGCoord>(ss.active_vert());
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-  const int active_vert_index = ss.active_vert_index();
+  const int active_vert_index = ss.active_vert_index(depsgraph, object);
 
-  const int active_face_set = face_set::active_face_set_get(object);
+  const int active_face_set = face_set::active_face_set_get(depsgraph, object);
 
   Set<int> visited_face_sets;
   Array<int> floodfill_step(grids_num);
@@ -1434,7 +1440,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int active_vert_index = BM_elem_index_get(active_vert);
 
-  const int active_face_set = face_set::active_face_set_get(object);
+  const int active_face_set = face_set::active_face_set_get(depsgraph, object);
 
   Set<int> visited_face_sets;
   Array<int> floodfill_step(verts_num);
@@ -1562,7 +1568,7 @@ void pose_brush_init(const Depsgraph &depsgraph, Object &ob, SculptSession &ss, 
 
   /* Smooth the weights of each segment for cleaner deformation. */
   for (IKChainSegment &segment : ss.cache->pose_ik_chain->segments) {
-    smooth::blur_geometry_data_array(ob, brush.pose_smooth_iterations, segment.weights);
+    smooth::blur_geometry_data_array(depsgraph, ob, brush.pose_smooth_iterations, segment.weights);
   }
 }
 
@@ -1796,7 +1802,7 @@ void do_pose_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ob.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {

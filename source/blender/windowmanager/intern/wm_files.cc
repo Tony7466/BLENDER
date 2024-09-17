@@ -2208,7 +2208,7 @@ static bool wm_file_write(bContext *C,
     BKE_packedfile_pack_all(bmain, reports, false);
   }
 
-  ED_editors_flush_edits(bmain);
+  ED_editors_flush_edits(bmain, *CTX_data_depsgraph_pointer(C));
 
   /* XXX(ton): temp solution to solve bug, real fix coming. */
   bmain->recovered = false;
@@ -2290,7 +2290,7 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   BLI_path_join(filepath, FILE_MAX, tempdir_base, filename);
 }
 
-static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
+static bool wm_autosave_write_try(Main *bmain, const Depsgraph &depsgraph, wmWindowManager *wm)
 {
   char filepath[FILE_MAX];
 
@@ -2301,11 +2301,11 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
    * auto-save when we are in a mode where auto-save wouldn't have worked previously anyway. This
    * check can be removed once the performance regressions have been solved. */
   if (ED_undosys_stack_memfile_get_if_active(wm->undo_stack) != nullptr) {
-    WM_autosave_write(wm, bmain);
+    WM_autosave_write(wm, bmain, depsgraph);
     return true;
   }
   if ((U.uiflag & USER_GLOBALUNDO) == 0) {
-    WM_autosave_write(wm, bmain);
+    WM_autosave_write(wm, bmain, depsgraph);
     return true;
   }
   /* Can't auto-save with MemFile right now, try again later. */
@@ -2317,9 +2317,9 @@ bool WM_autosave_is_scheduled(wmWindowManager *wm)
   return wm->autosave_scheduled;
 }
 
-void WM_autosave_write(wmWindowManager *wm, Main *bmain)
+void WM_autosave_write(wmWindowManager *wm, Main *bmain, const Depsgraph &depsgraph)
 {
-  ED_editors_flush_edits(bmain);
+  ED_editors_flush_edits(bmain, depsgraph);
 
   char filepath[FILE_MAX];
   wm_autosave_location(filepath);
@@ -2364,7 +2364,10 @@ void WM_file_autosave_init(wmWindowManager *wm)
   wm_autosave_timer_begin(wm);
 }
 
-void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
+void wm_autosave_timer(Main *bmain,
+                       const Depsgraph &depsgraph,
+                       wmWindowManager *wm,
+                       wmTimer * /*wt*/)
 {
   wm_autosave_timer_end(wm);
 
@@ -2383,7 +2386,7 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
   }
 
   wm->autosave_scheduled = false;
-  if (!wm_autosave_write_try(bmain, wm)) {
+  if (!wm_autosave_write_try(bmain, depsgraph, wm)) {
     wm->autosave_scheduled = true;
   }
   /* Restart the timer after file write, just in case file write takes a long time. */
@@ -2509,7 +2512,7 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
     printf("Writing homefile: \"%s\" ", filepath);
   }
 
-  ED_editors_flush_edits(bmain);
+  ED_editors_flush_edits(bmain, *CTX_data_depsgraph_pointer(C));
 
   /* Force save as regular blend file. */
   fileflags = G.fileflags & ~G_FILE_COMPRESS;

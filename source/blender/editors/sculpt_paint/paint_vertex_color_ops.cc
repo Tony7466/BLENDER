@@ -314,7 +314,7 @@ static void transform_active_color(bContext *C,
   /* Ensure valid sculpt state. */
   BKE_sculpt_update_object_for_edit(CTX_data_ensure_evaluated_depsgraph(C), &obact, true);
 
-  undo::push_begin(obact, op);
+  undo::push_begin(depsgraph, obact, op);
 
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(obact);
 

@@ -64,7 +64,7 @@ void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char 
   ss.prev_pivot_rot = ss.pivot_rot;
   ss.prev_pivot_scale = ss.pivot_scale;
 
-  undo::push_begin_ex(ob, undo_name);
+  undo::push_begin_ex(*depsgraph, ob, undo_name);
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
 
   ss.pivot_rot[3] = 1.0f;
@@ -217,18 +217,17 @@ static void transform_node_mesh(const Depsgraph &depsgraph,
   write_translations(depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 }
 
-static void transform_node_grids(const Sculpt &sd,
+static void transform_node_grids(SubdivCCG &subdiv_ccg,
+                                 const Sculpt &sd,
                                  const std::array<float4x4, 8> &transform_mats,
                                  const bke::pbvh::GridsNode &node,
                                  Object &object,
                                  TransformLocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
-  const int grid_verts_num = grids.size() * key.grid_area;
+  const int grid_verts_num = grids.size() * subdiv_ccg.grid_area;
 
   const OrigPositionData orig_data = orig_position_data_get_grids(object, node);
 
@@ -313,13 +312,13 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ob.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         TransformLocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
-          transform_node_grids(sd, transform_mats, nodes[i], ob, tls);
+          transform_node_grids(subdiv_ccg, sd, transform_mats, nodes[i], ob, tls);
           bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
@@ -394,7 +393,8 @@ static void elastic_transform_node_mesh(const Depsgraph &depsgraph,
   write_translations(depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 }
 
-static void elastic_transform_node_grids(const Sculpt &sd,
+static void elastic_transform_node_grids(SubdivCCG &subdiv_ccg,
+                                         const Sculpt &sd,
                                          const KelvinletParams &params,
                                          const float4x4 &elastic_transform_mat,
                                          const float3 &elastic_transform_pivot,
@@ -403,7 +403,6 @@ static void elastic_transform_node_grids(const Sculpt &sd,
                                          TransformLocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -515,14 +514,20 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
         break;
       }
       case bke::pbvh::Type::Grids: {
-        SubdivCCG &subdiv_ccg = *ob.sculpt->subdiv_ccg;
+        SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
         MutableSpan<float3> positions = subdiv_ccg.positions;
         MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
         threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
           TransformLocalData &tls = all_tls.local();
           node_mask.slice(range).foreach_index([&](const int i) {
-            elastic_transform_node_grids(
-                sd, params, elastic_transform_mat, elastic_transform_pivot, nodes[i], ob, tls);
+            elastic_transform_node_grids(subdiv_ccg,
+                                         sd,
+                                         params,
+                                         elastic_transform_mat,
+                                         elastic_transform_pivot,
+                                         nodes[i],
+                                         ob,
+                                         tls);
             bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
           });
         });
@@ -719,7 +724,7 @@ static float3 average_unmasked_position(const Depsgraph &depsgraph,
     }
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const AveragePositionAccumulation total = threading::parallel_reduce(
           node_mask.index_range(),
           1,
@@ -841,7 +846,7 @@ static float3 average_mask_border_position(const Depsgraph &depsgraph,
     }
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const AveragePositionAccumulation total = threading::parallel_reduce(
           node_mask.index_range(),
           1,

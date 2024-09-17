@@ -476,7 +476,8 @@ static void add_constraints_for_verts(const Object &object,
   }
 }
 
-void ensure_nodes_constraints(const Sculpt &sd,
+void ensure_nodes_constraints(const Depsgraph &depsgraph,
+                              const Sculpt &sd,
                               Object &object,
                               const IndexMask &node_mask,
                               SimulationData &cloth_sim,
@@ -551,7 +552,7 @@ void ensure_nodes_constraints(const Sculpt &sd,
             const int node_index = cloth_sim.node_state_index.lookup(&nodes[i]);
             return cloth_sim.node_state[node_index] == SCULPT_CLOTH_NODE_UNINITIALIZED;
           });
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
       uninitialized_nodes.foreach_index([&](const int i) {
@@ -846,7 +847,7 @@ static void calc_forces_grids(const Depsgraph &depsgraph,
   SculptSession &ss = *ob.sculpt;
   SimulationData &cloth_sim = *ss.cache->cloth_sim;
   const StrokeCache &cache = *ss.cache;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -1261,7 +1262,7 @@ static void calc_constraint_factors(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1319,7 +1320,7 @@ static void cloth_brush_satisfy_constraints(const Depsgraph &depsgraph,
   const float3 sim_location = cloth_brush_simulation_location_get(ss, brush);
 
   /* Precalculate factors into an array since we need random access to specific vertex values. */
-  Array<float> factors(SCULPT_vertex_count_get(object));
+  Array<float> factors(SCULPT_vertex_count_get(depsgraph, object));
   calc_constraint_factors(depsgraph, object, brush, sim_location, cloth_sim.init_pos, factors);
 
   for (int constraint_it = 0; constraint_it < CLOTH_SIMULATION_ITERATIONS; constraint_it++) {
@@ -1443,7 +1444,7 @@ void do_simulation_step(const Depsgraph &depsgraph,
             const int node_index = cloth_sim.node_state_index.lookup(&nodes[i]);
             return cloth_sim.node_state[node_index] == SCULPT_CLOTH_NODE_ACTIVE;
           });
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const Span<float3> cloth_positions = cloth_sim.pos;
       MutableSpan<float3> positions = subdiv_ccg.positions;
@@ -1684,18 +1685,8 @@ static void copy_positions_to_array(const Depsgraph &depsgraph,
       positions.copy_from(bke::pbvh::vert_positions_eval(depsgraph, object));
       break;
     case bke::pbvh::Type::Grids: {
-      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      IndexMaskMemory memory;
-      const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
-      threading::parallel_for(node_mask.index_range(), 8, [&](const IndexRange range) {
-        Vector<float3> node_positions;
-        node_mask.slice(range).foreach_index([&](const int i) {
-          const Span<int> grids = nodes[i].grids();
-          gather_grids_positions(subdiv_ccg, grids, node_positions);
-          scatter_data_grids(subdiv_ccg, node_positions.as_span(), grids, positions);
-        });
-      });
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+      positions.copy_from(subdiv_ccg.positions);
       break;
     }
     case bke::pbvh::Type::BMesh:
@@ -1715,22 +1706,8 @@ static void copy_normals_to_array(const Depsgraph &depsgraph,
       normals.copy_from(bke::pbvh::vert_normals_eval(depsgraph, object));
       break;
     case bke::pbvh::Type::Grids: {
-      const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      IndexMaskMemory memory;
-      const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
-      threading::parallel_for(node_mask.index_range(), 8, [&](const IndexRange range) {
-        Vector<float3> node_normals;
-        node_mask.slice(range).foreach_index([&](const int i) {
-          const Span<int> grids = nodes[i].grids();
-
-          const int grid_verts_num = grids.size() * key.grid_area;
-          node_normals.resize(grid_verts_num);
-          gather_grids_normals(subdiv_ccg, grids, node_normals);
-          scatter_data_grids(subdiv_ccg, node_normals.as_span(), grids, normals);
-        });
-      });
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+      normals.copy_from(subdiv_ccg.normals);
       break;
     }
     case bke::pbvh::Type::BMesh:
@@ -1747,7 +1724,7 @@ std::unique_ptr<SimulationData> brush_simulation_create(const Depsgraph &depsgra
                                                         const bool use_collisions,
                                                         const bool needs_deform_coords)
 {
-  const int totverts = SCULPT_vertex_count_get(ob);
+  const int totverts = SCULPT_vertex_count_get(depsgraph, ob);
   std::unique_ptr<SimulationData> cloth_sim = std::make_unique<SimulationData>();
 
   cloth_sim->length_constraints.reserve(CLOTH_LENGTH_CONSTRAINTS_BLOCK);
@@ -1827,7 +1804,8 @@ void sim_activate_nodes(Object &object, SimulationData &cloth_sim, const IndexMa
   }
 }
 
-static void sculpt_cloth_ensure_constraints_in_simulation_area(const Sculpt &sd,
+static void sculpt_cloth_ensure_constraints_in_simulation_area(const Depsgraph &depsgraph,
+                                                               const Sculpt &sd,
                                                                Object &ob,
                                                                const IndexMask &node_mask)
 {
@@ -1836,7 +1814,8 @@ static void sculpt_cloth_ensure_constraints_in_simulation_area(const Sculpt &sd,
   const float radius = ss.cache->initial_radius;
   const float limit = radius + (radius * brush->cloth_sim_limit);
   const float3 sim_location = cloth_brush_simulation_location_get(ss, brush);
-  ensure_nodes_constraints(sd, ob, node_mask, *ss.cache->cloth_sim, sim_location, limit);
+  ensure_nodes_constraints(
+      depsgraph, sd, ob, node_mask, *ss.cache->cloth_sim, sim_location, limit);
 }
 
 void do_cloth_brush(const Depsgraph &depsgraph,
@@ -1873,7 +1852,7 @@ void do_cloth_brush(const Depsgraph &depsgraph,
        * as this will cause the ensure constraints function to skip the node in the next symmetry
        * passes. It needs to build the constraints here and skip simulating the first step, so all
        * passes can add their constraints to all affected nodes. */
-      sculpt_cloth_ensure_constraints_in_simulation_area(sd, ob, node_mask);
+      sculpt_cloth_ensure_constraints_in_simulation_area(depsgraph, sd, ob, node_mask);
     }
     /* The first step of a symmetry pass is never simulated as deformation modes need valid delta
      * for brush tip alignment. */
@@ -1881,7 +1860,7 @@ void do_cloth_brush(const Depsgraph &depsgraph,
   }
 
   /* Ensure the constraints for the nodes. */
-  sculpt_cloth_ensure_constraints_in_simulation_area(sd, ob, node_mask);
+  sculpt_cloth_ensure_constraints_in_simulation_area(depsgraph, sd, ob, node_mask);
 
   /* Store the initial state in the simulation. */
   brush_store_simulation_state(depsgraph, ob, *ss.cache->cloth_sim);
@@ -2152,7 +2131,7 @@ static void apply_filter_forces_grids(const Depsgraph &depsgraph,
 {
   const SculptSession &ss = *object.sculpt;
   SimulationData &cloth_sim = *ss.filter_cache->cloth_sim;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -2362,7 +2341,7 @@ static int sculpt_cloth_filter_modal(bContext *C, wmOperator *op, const wmEvent 
       const bke::AttributeAccessor attributes = base_mesh.attributes();
       const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                            bke::AttrDomain::Face);
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(*depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2428,7 +2407,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  undo::push_begin(ob, op);
+  undo::push_begin(*depsgraph, ob, op);
   filter::cache_init(C,
                      ob,
                      sd,
@@ -2454,12 +2433,17 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   ss.filter_cache->cloth_sim_pinch_point = ss.active_vert_position(*depsgraph, ob);
 
   float3 origin(0);
-  ensure_nodes_constraints(
-      sd, ob, ss.filter_cache->node_mask, *ss.filter_cache->cloth_sim, origin, FLT_MAX);
+  ensure_nodes_constraints(*depsgraph,
+                           sd,
+                           ob,
+                           ss.filter_cache->node_mask,
+                           *ss.filter_cache->cloth_sim,
+                           origin,
+                           FLT_MAX);
 
   const bool use_face_sets = RNA_boolean_get(op->ptr, "use_face_sets");
   if (use_face_sets) {
-    ss.filter_cache->active_face_set = face_set::active_face_set_get(ob);
+    ss.filter_cache->active_face_set = face_set::active_face_set_get(*depsgraph, ob);
   }
   else {
     ss.filter_cache->active_face_set = SCULPT_FACE_SET_NONE;

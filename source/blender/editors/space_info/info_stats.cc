@@ -360,7 +360,7 @@ static bool stats_is_object_dynamic_topology_sculpt(const Object *ob)
   return (ob->sculpt && ob->sculpt->bm);
 }
 
-static void stats_object_sculpt(const Object *ob, SceneStats *stats)
+static void stats_object_sculpt(const Depsgraph &depsgraph, const Object *ob, SceneStats *stats)
 {
   const SculptSession *ss = ob->sculpt;
   const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob);
@@ -380,8 +380,8 @@ static void stats_object_sculpt(const Object *ob, SceneStats *stats)
       stats->tottri = ob->sculpt->bm->totface;
       break;
     case blender::bke::pbvh::Type::Grids:
-      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(*ob);
-      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(*ob);
+      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(depsgraph, *ob);
+      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(depsgraph, *ob);
       break;
   }
 }
@@ -440,7 +440,7 @@ static void stats_update(Depsgraph *depsgraph,
   }
   else if (ob && (ob->mode & OB_MODE_SCULPT)) {
     /* Sculpt Mode. */
-    stats_object_sculpt(ob, stats);
+    stats_object_sculpt(*depsgraph, ob, stats);
   }
   else {
     /* Objects. */

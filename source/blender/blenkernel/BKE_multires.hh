@@ -34,8 +34,8 @@ void multires_set_tot_level(Object *ob, MultiresModifierData *mmd, int lvl);
 
 void multires_mark_as_modified(Depsgraph *depsgraph, Object *object, MultiresModifiedFlags flags);
 
-void multires_flush_sculpt_updates(Object *object);
-void multires_force_sculpt_rebuild(Object *object);
+void multires_flush_sculpt_updates(const Depsgraph &depsgraph, Object *object);
+void multires_force_sculpt_rebuild(const Depsgraph &depsgraph, Object *object);
 void multires_force_external_reload(Object *object);
 
 /* internal, only called in subsurf_ccg.cc */
@@ -103,7 +103,7 @@ void multiresModifier_sync_levels_ex(Object *ob_dst,
                                      const MultiresModifierData *mmd_src,
                                      MultiresModifierData *mmd_dst);
 
-void multires_stitch_grids(Object *);
+void multires_stitch_grids(const Depsgraph &depsgraph, Object *ob);
 
 void multiresModifier_scale_disp(Depsgraph *depsgraph, Scene *scene, Object *ob);
 void multiresModifier_prepare_join(Depsgraph *depsgraph, Scene *scene, Object *ob, Object *to_ob);
@@ -168,7 +168,8 @@ enum eMultiresSubdivideModeType {
 void multiresModifier_subdivide(Object *object,
                                 MultiresModifierData *mmd,
                                 eMultiresSubdivideModeType mode);
-void multires_subdivide_create_tangent_displacement_linear_grids(Object *object,
+void multires_subdivide_create_tangent_displacement_linear_grids(const Depsgraph &depsgraph,
+                                                                 Object *object,
                                                                  MultiresModifierData *mmd);
 
 /**

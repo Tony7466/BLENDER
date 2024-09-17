@@ -54,7 +54,7 @@ namespace blender::ed::sculpt_paint::mask {
 /** \name Public API
  * \{ */
 
-Array<float> duplicate_mask(const Object &object)
+Array<float> duplicate_mask(const Depsgraph &depsgraph, const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
@@ -68,7 +68,7 @@ Array<float> duplicate_mask(const Object &object)
       return result;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       if (subdiv_ccg.masks.is_empty()) {
         return Array<float>(subdiv_ccg.positions.size(), 0.0f);
       }
@@ -427,11 +427,10 @@ static void fill_mask_grids(Main &bmain,
                             const float value,
                             const IndexMask &node_mask)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   if (value == 0.0f && subdiv_ccg.masks.is_empty()) {
@@ -562,11 +561,10 @@ static void invert_mask_grids(Main &bmain,
                               Object &object,
                               const IndexMask &node_mask)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   MultiresModifierData &mmd = *BKE_sculpt_multires_active(&scene, &object);
   BKE_sculpt_mask_layers_ensure(&depsgraph, &bmain, &object, &mmd);
@@ -659,7 +657,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
 
-  undo::push_begin(object, op);
+  undo::push_begin(depsgraph, object, op);
   switch (mode) {
     case FloodFillMode::Value:
       fill_mask(bmain, scene, depsgraph, object, value);
@@ -724,7 +722,7 @@ static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &ges
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_begin(*gesture_data.vc.obact, &op);
+  undo::push_begin(*depsgraph, *gesture_data.vc.obact, &op);
 }
 
 static float mask_gesture_get_new_value(const float elem, FloodFillMode mode, float value)
@@ -765,7 +763,7 @@ static void gesture_apply_for_symmetry_pass(bContext & /*C*/, gesture::GestureDa
     case bke::pbvh::Type::Grids: {
       bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *gesture_data.ss->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Span<float3> positions = subdiv_ccg.positions;
       const Span<float3> normals = subdiv_ccg.normals;
       MutableSpan<float> masks = subdiv_ccg.masks;

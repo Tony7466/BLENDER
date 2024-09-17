@@ -42,7 +42,7 @@ static void calc_node(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   MutableSpan<float3> ccg_positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -105,7 +105,7 @@ static void calc_node(const Depsgraph &depsgraph,
         coord.y = y;
 
         SubdivCCGNeighbors neighbors;
-        BKE_subdiv_ccg_neighbor_coords_get(*ss.subdiv_ccg, coord, false, neighbors);
+        BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, false, neighbors);
 
         for (const SubdivCCGCoord neighbor : neighbors.coords) {
           const int neighbor_index = neighbor.to_index(key);
@@ -173,7 +173,7 @@ void do_displacement_smear_brush(const Depsgraph &depsgraph,
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
   MutableSpan<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 

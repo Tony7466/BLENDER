@@ -391,9 +391,9 @@ void multires_mark_as_modified(Depsgraph *depsgraph, Object *object, MultiresMod
   multires_ccg_mark_as_modified(subdiv_ccg, flags);
 }
 
-void multires_flush_sculpt_updates(Object *object)
+void multires_flush_sculpt_updates(const Depsgraph &depsgraph, Object *object)
 {
-  if (object == nullptr || object->sculpt == nullptr) {
+  if (object == nullptr) {
     return;
   }
   const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*object);
@@ -408,7 +408,7 @@ void multires_flush_sculpt_updates(Object *object)
     return;
   }
 
-  SubdivCCG *subdiv_ccg = sculpt_session->subdiv_ccg;
+  SubdivCCG *subdiv_ccg = blender::bke::object::subdiv_ccg_get(depsgraph, *object);
   if (subdiv_ccg == nullptr) {
     return;
   }
@@ -441,17 +441,16 @@ void multires_flush_sculpt_updates(Object *object)
     return;
   }
 
-  multiresModifier_reshapeFromCCG(
-      sculpt_session->multires.modifier->totlvl, mesh, sculpt_session->subdiv_ccg);
+  multiresModifier_reshapeFromCCG(sculpt_session->multires.modifier->totlvl, mesh, subdiv_ccg);
 
   subdiv_ccg->dirty.coords = false;
   subdiv_ccg->dirty.hidden = false;
 }
 
-void multires_force_sculpt_rebuild(Object *object)
+void multires_force_sculpt_rebuild(const Depsgraph &depsgraph, Object *object)
 {
   using namespace blender;
-  multires_flush_sculpt_updates(object);
+  multires_flush_sculpt_updates(depsgraph, object);
 
   if (object == nullptr || object->sculpt == nullptr) {
     return;
@@ -460,12 +459,12 @@ void multires_force_sculpt_rebuild(Object *object)
   BKE_sculptsession_free_pbvh(*object);
 }
 
-void multires_force_external_reload(Object *object)
+void multires_force_external_reload(const Depsgraph &depsgraph, Object *object)
 {
   Mesh *mesh = BKE_mesh_from_object(object);
 
   CustomData_external_reload(&mesh->corner_data, &mesh->id, CD_MASK_MDISPS, mesh->corners_num);
-  multires_force_sculpt_rebuild(object);
+  multires_force_sculpt_rebuild(depsgraph, object);
 }
 
 /* reset the multires levels to match the number of mdisps */
@@ -638,7 +637,10 @@ static void multires_grid_paint_mask_downsample(GridPaintMask *gpm, int level)
   }
 }
 
-static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
+static void multires_del_higher(MultiresModifierData *mmd,
+                                const Depsgraph &depsgraph,
+                                Object *ob,
+                                int lvl)
 {
   Mesh *mesh = (Mesh *)ob->data;
   const blender::OffsetIndices faces = mesh->faces();
@@ -653,7 +655,7 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
   gpm = static_cast<GridPaintMask *>(
       CustomData_get_layer_for_write(&mesh->corner_data, CD_GRID_PAINT_MASK, mesh->corners_num));
 
-  multires_force_sculpt_rebuild(ob);
+  multires_force_sculpt_rebuild(depsgraph, ob);
 
   if (mdisps && levels > 0) {
     if (lvl > 0) {
@@ -701,10 +703,8 @@ static void multires_del_higher(MultiresModifierData *mmd, Object *ob, int lvl)
   multires_set_tot_level(ob, mmd, lvl);
 }
 
-void multiresModifier_del_levels(MultiresModifierData *mmd,
-                                 Scene *scene,
-                                 Object *ob,
-                                 int direction)
+void multiresModifier_del_levels(
+    MultiresModifierData *mmd, Scene *scene, const Depsgraph &depsgraph, Object *ob, int direction)
 {
   Mesh *mesh = BKE_mesh_from_object(ob);
   int lvl = multires_get_level(scene, ob, mmd, false, true);
@@ -715,10 +715,10 @@ void multiresModifier_del_levels(MultiresModifierData *mmd,
   MDisps *mdisps = static_cast<MDisps *>(
       CustomData_get_layer_for_write(&mesh->corner_data, CD_MDISPS, mesh->corners_num));
 
-  multires_force_sculpt_rebuild(ob);
+  multires_force_sculpt_rebuild(depsgraph, ob);
 
   if (mdisps && levels > 0 && direction == 1) {
-    multires_del_higher(mmd, ob, lvl);
+    multires_del_higher(mmd, depsgraph, ob, lvl);
   }
 
   multires_set_tot_level(ob, mmd, lvl);
@@ -1193,7 +1193,7 @@ void multires_modifier_update_hidden(DerivedMesh *dm)
   }
 }
 
-void multires_stitch_grids(Object *ob)
+void multires_stitch_grids(const Depsgraph &depsgraph, Object *ob)
 {
   using namespace blender;
   if (ob == nullptr) {
@@ -1203,7 +1203,7 @@ void multires_stitch_grids(Object *ob)
   if (sculpt_session == nullptr) {
     return;
   }
-  SubdivCCG *subdiv_ccg = sculpt_session->subdiv_ccg;
+  SubdivCCG *subdiv_ccg = blender::bke::object::subdiv_ccg_get(depsgraph, *ob);
   if (subdiv_ccg == nullptr) {
     return;
   }
@@ -1340,7 +1340,8 @@ void old_mdisps_bilinear(float out[3], float (*disps)[3], const int st, float u,
   add_v3_v3v3(out, d2[0], d2[1]);
 }
 
-void multiresModifier_sync_levels_ex(Object *ob_dst,
+void multiresModifier_sync_levels_ex(const Depsgraph &depsgraph,
+                                     Object *ob_dst,
                                      const MultiresModifierData *mmd_src,
                                      MultiresModifierData *mmd_dst)
 {
@@ -1353,7 +1354,7 @@ void multiresModifier_sync_levels_ex(Object *ob_dst,
         ob_dst, mmd_dst, mmd_src->totlvl, MULTIRES_SUBDIVIDE_CATMULL_CLARK);
   }
   else {
-    multires_del_higher(mmd_dst, ob_dst, mmd_src->totlvl);
+    multires_del_higher(mmd_dst, depsgraph, ob_dst, mmd_src->totlvl);
   }
 }
 

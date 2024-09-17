@@ -126,7 +126,8 @@ void do_simulation_step(const Depsgraph &depsgraph,
                         SimulationData &cloth_sim,
                         const IndexMask &node_mask);
 
-void ensure_nodes_constraints(const Sculpt &sd,
+void ensure_nodes_constraints(const Depsgraph &depsgraph,
+                              const Sculpt &sd,
                               Object &ob,
                               const IndexMask &node_mask,
                               SimulationData &cloth_sim,

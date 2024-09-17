@@ -224,7 +224,7 @@ static void calc_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -386,8 +386,8 @@ void do_layer_brush(const Depsgraph &depsgraph,
 
       if (displacement.is_empty()) {
         if (ss.cache->layer_displacement_factor.is_empty()) {
-          ss.cache->layer_displacement_factor = Array<float>(SCULPT_vertex_count_get(object),
-                                                             0.0f);
+          ss.cache->layer_displacement_factor = Array<float>(
+              SCULPT_vertex_count_get(depsgraph, object), 0.0f);
         }
         displacement = ss.cache->layer_displacement_factor;
       }
@@ -417,7 +417,7 @@ void do_layer_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       if (ss.cache->layer_displacement_factor.is_empty()) {
         ss.cache->layer_displacement_factor = Array<float>(positions.size(), 0.0f);
@@ -435,7 +435,8 @@ void do_layer_brush(const Depsgraph &depsgraph,
     }
     case bke::pbvh::Type::BMesh: {
       if (ss.cache->layer_displacement_factor.is_empty()) {
-        ss.cache->layer_displacement_factor = Array<float>(SCULPT_vertex_count_get(object), 0.0f);
+        ss.cache->layer_displacement_factor = Array<float>(
+            SCULPT_vertex_count_get(depsgraph, object), 0.0f);
       }
       const MutableSpan<float> displacement = ss.cache->layer_displacement_factor;
       MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();

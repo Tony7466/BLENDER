@@ -19,11 +19,11 @@
 
 namespace blender::ed::sculpt_paint::flood_fill {
 
-FillData init_fill(Object &object)
+FillData init_fill(const Depsgraph &depsgraph, Object &object)
 {
   SCULPT_vertex_random_access_ensure(object);
   FillData data;
-  data.visited_verts.resize(SCULPT_vertex_count_get(object));
+  data.visited_verts.resize(SCULPT_vertex_count_get(depsgraph, object));
   return data;
 }
 
@@ -219,7 +219,8 @@ void FillDataBMesh::add_initial_with_symmetry(const Object &object,
   }
 }
 
-void execute(Object &object,
+void execute(const Depsgraph &depsgraph,
+             Object &object,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func)
 {
@@ -229,7 +230,7 @@ void execute(Object &object,
     flood.queue.pop();
 
     SculptVertexNeighborIter ni;
-    SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (object, from_v, ni) {
+    SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN (depsgraph, object, from_v, ni) {
       const PBVHVertRef to_v = ni.vertex;
       int to_v_i = BKE_pbvh_vertex_to_index(pbvh, to_v);
 
@@ -237,7 +238,7 @@ void execute(Object &object,
         continue;
       }
 
-      if (!hide::vert_visible_get(object, to_v)) {
+      if (!hide::vert_visible_get(depsgraph, object, to_v)) {
         continue;
       }
 

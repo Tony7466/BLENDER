@@ -177,7 +177,7 @@ BLI_NOINLINE static void do_surface_smooth_brush_grids(
   const float beta = brush.surface_smooth_current_vertex;
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
 
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   Array<int> node_offset_data;
   const OffsetIndices node_offsets = create_node_vert_offsets(

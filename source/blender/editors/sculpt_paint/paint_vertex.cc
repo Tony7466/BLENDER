@@ -2075,7 +2075,7 @@ static int vpaint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   Object &ob = *CTX_data_active_object(C);
 
-  undo::push_begin_ex(ob, "Vertex Paint");
+  undo::push_begin_ex(*CTX_data_depsgraph_pointer(C), ob, "Vertex Paint");
 
   if ((retval = op->type->modal(C, op, event)) == OPERATOR_FINISHED) {
     paint_stroke_free(C, op, (PaintStroke *)op->customdata);
@@ -2310,7 +2310,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
 
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(obact);
 
-  undo::push_begin(obact, op);
+  undo::push_begin(depsgraph, obact, op);
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
 

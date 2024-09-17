@@ -85,7 +85,7 @@ void wm_jobs_timer_end(wmWindowManager *wm, wmTimer *wt);
 /**
  * Run the auto-save timer action.
  */
-void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer *wt);
+void wm_autosave_timer(Main *bmain, const Depsgraph &depsgraph, wmWindowManager *wm, wmTimer *wt);
 void wm_autosave_timer_begin(wmWindowManager *wm);
 void wm_autosave_timer_end(wmWindowManager *wm);
 void wm_autosave_delete();

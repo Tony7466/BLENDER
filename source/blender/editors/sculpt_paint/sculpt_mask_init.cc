@@ -89,10 +89,9 @@ static void init_mask_grids(
   MultiresModifierData *mmd = BKE_sculpt_multires_active(&scene, &object);
   BKE_sculpt_mask_layers_ensure(&depsgraph, &bmain, &object, mmd);
 
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   MutableSpan<float> masks = subdiv_ccg.masks;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
@@ -129,7 +128,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  undo::push_begin(ob, op);
+  undo::push_begin(depsgraph, ob, op);
 
   const InitMode mode = InitMode(RNA_enum_get(op->ptr, "mode"));
   const int seed = BLI_time_now_seconds();
@@ -147,13 +146,13 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
         case InitMode::FaceSet:
           write_mask_mesh(depsgraph, ob, node_mask, [&](MutableSpan<float> mask, Span<int> verts) {
             for (const int vert : verts) {
-              const int face_set = face_set::vert_face_set_get(ob, PBVHVertRef{vert});
+              const int face_set = face_set::vert_face_set_get(depsgraph, ob, PBVHVertRef{vert});
               mask[vert] = BLI_hash_int_01(face_set + seed);
             }
           });
           break;
         case InitMode::Island:
-          islands::ensure_cache(ob);
+          islands::ensure_cache(depsgraph, ob);
           write_mask_mesh(depsgraph, ob, node_mask, [&](MutableSpan<float> mask, Span<int> verts) {
             for (const int vert : verts) {
               const int island = islands::vert_id_get(ss, vert);
@@ -167,7 +166,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
     case bke::pbvh::Type::Grids: {
       Main &bmain = *CTX_data_main(C);
       Scene &scene = *CTX_data_scene(C);
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       switch (mode) {
         case InitMode::Random: {
@@ -210,7 +209,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
           break;
         }
         case InitMode::Island: {
-          islands::ensure_cache(ob);
+          islands::ensure_cache(depsgraph, ob);
           init_mask_grids(bmain,
                           scene,
                           depsgraph,

@@ -405,12 +405,15 @@ static void libblock_remap_data_postprocess_collection_update(Main *bmain,
   BKE_main_collection_sync_remap(bmain);
 }
 
-static void libblock_remap_data_postprocess_obdata_relink(Main *bmain, Object *ob, ID *new_id)
+static void libblock_remap_data_postprocess_obdata_relink(Main *bmain,
+                                                          const Depsgraph &depsgraph,
+                                                          Object *ob,
+                                                          ID *new_id)
 {
   if (ob->data == new_id) {
     switch (GS(new_id->name)) {
       case ID_ME:
-        multires_force_sculpt_rebuild(ob);
+        multires_force_sculpt_rebuild(depsgraph, ob);
         break;
       case ID_CU_LEGACY:
         BKE_curve_type_test(ob);
@@ -552,7 +555,8 @@ static void libblock_remap_data(
   });
 }
 
-static void libblock_remap_foreach_idpair(ID *old_id, ID *new_id, Main *bmain, int remap_flags)
+static void libblock_remap_foreach_idpair(
+    ID *old_id, ID *new_id, Main *bmain, const Depsgraph &depsgraph, int remap_flags)
 {
   if (old_id == new_id) {
     return;
@@ -620,7 +624,7 @@ static void libblock_remap_foreach_idpair(ID *old_id, ID *new_id, Main *bmain, i
         for (Object *ob = static_cast<Object *>(bmain->objects.first); ob;
              ob = static_cast<Object *>(ob->id.next))
         {
-          libblock_remap_data_postprocess_obdata_relink(bmain, ob, new_id);
+          libblock_remap_data_postprocess_obdata_relink(bmain, depsgraph, ob, new_id);
         }
       }
       break;
@@ -642,7 +646,10 @@ static void libblock_remap_foreach_idpair(ID *old_id, ID *new_id, Main *bmain, i
   BKE_libblock_runtime_reset_remapping_status(old_id);
 }
 
-void BKE_libblock_remap_multiple_locked(Main *bmain, IDRemapper &mappings, const int remap_flags)
+void BKE_libblock_remap_multiple_locked(Main *bmain,
+                                        const Depsgraph &depsgraph,
+                                        IDRemapper &mappings,
+                                        const int remap_flags)
 {
   if (mappings.is_empty()) {
     /* Early exit nothing to do. */
@@ -652,7 +659,7 @@ void BKE_libblock_remap_multiple_locked(Main *bmain, IDRemapper &mappings, const
   libblock_remap_data(bmain, nullptr, ID_REMAP_TYPE_REMAP, mappings, remap_flags);
 
   mappings.iter([&](ID *old_id, ID *new_id) {
-    libblock_remap_foreach_idpair(old_id, new_id, bmain, remap_flags);
+    libblock_remap_foreach_idpair(old_id, new_id, bmain, depsgraph, remap_flags);
   });
 
   /* We assume editors do not hold references to their IDs... This is false in some cases
@@ -726,10 +733,8 @@ void BKE_libblock_unlink(Main *bmain, void *idv, const bool do_skip_indirect)
  *     ... sigh
  */
 
-static void libblock_relink_foreach_idpair(ID *old_id,
-                                           ID *new_id,
-                                           Main *bmain,
-                                           const blender::Span<ID *> ids)
+static void libblock_relink_foreach_idpair(
+    ID *old_id, ID *new_id, Main *bmain, const Depsgraph &depsgraph, const blender::Span<ID *> ids)
 {
   BLI_assert(old_id != nullptr);
   BLI_assert((new_id == nullptr) || GS(old_id->name) == GS(new_id->name));
@@ -770,7 +775,8 @@ static void libblock_relink_foreach_idpair(ID *old_id,
       }
       case ID_OB:
         if (new_id != nullptr) { /* Only affects us in case obdata was relinked (changed). */
-          libblock_remap_data_postprocess_obdata_relink(bmain, (Object *)id_iter, new_id);
+          libblock_remap_data_postprocess_obdata_relink(
+              bmain, depsgraph, (Object *)id_iter, new_id);
         }
         break;
       default:
@@ -780,6 +786,7 @@ static void libblock_relink_foreach_idpair(ID *old_id,
 }
 
 void BKE_libblock_relink_multiple(Main *bmain,
+                                  const Depsgraph &depsgraph,
                                   const blender::Span<ID *> ids,
                                   const eIDRemapType remap_type,
                                   IDRemapper &id_remapper,
@@ -798,7 +805,7 @@ void BKE_libblock_relink_multiple(Main *bmain,
   switch (remap_type) {
     case ID_REMAP_TYPE_REMAP: {
       id_remapper.iter([&](ID *old_id, ID *new_id) {
-        libblock_relink_foreach_idpair(old_id, new_id, bmain, ids);
+        libblock_relink_foreach_idpair(old_id, new_id, bmain, depsgraph, ids);
       });
       break;
     }

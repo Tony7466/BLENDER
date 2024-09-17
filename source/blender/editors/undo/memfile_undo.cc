@@ -70,15 +70,16 @@ static bool memfile_undosys_poll(bContext *C)
   return true;
 }
 
-static bool memfile_undosys_step_encode(bContext * /*C*/, Main *bmain, UndoStep *us_p)
+static bool memfile_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
 {
   MemFileUndoStep *us = (MemFileUndoStep *)us_p;
 
   /* Important we only use 'main' from the context (see: BKE_undosys_stack_init_from_main). */
   UndoStack *ustack = ED_undo_stack_get();
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
 
   if (bmain->is_memfile_undo_flush_needed) {
-    ED_editors_flush_edits_ex(bmain, false, true);
+    ED_editors_flush_edits_ex(bmain, depsgraph, false, true);
   }
 
   /* can be null, use when set. */

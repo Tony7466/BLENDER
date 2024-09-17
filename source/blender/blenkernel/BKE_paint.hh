@@ -359,9 +359,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   /* Undo/redo log for dynamic topology sculpting */
   BMLog *bm_log = nullptr;
 
-  /* Limit surface/grids. */
-  SubdivCCG *subdiv_ccg = nullptr;
-
   /* BVH tree acceleration structure */
   std::unique_ptr<blender::bke::pbvh::Tree> pbvh;
 
@@ -486,10 +483,10 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptSession();
   ~SculptSession();
 
-  PBVHVertRef active_vert_ref() const;
+  PBVHVertRef active_vert_ref(const Depsgraph &depsgraph, const Object &object) const;
   ActiveVert active_vert() const;
 
-  PBVHVertRef last_active_vert_ref() const;
+  PBVHVertRef last_active_vert_ref(const Depsgraph &depsgraph, const Object &object) const;
   ActiveVert last_active_vert() const;
 
   /**
@@ -501,7 +498,7 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
    * \note For BMesh, a call to SCULPT_vertex_random_access_ensure is needed to get valid results.
    * \returns -1 if there is no currently active vertex.
    */
-  int active_vert_index() const;
+  int active_vert_index(const Depsgraph &depsgraph, const Object &object) const;
 
   /**
    * Retrieves the active vertex position.
@@ -578,6 +575,11 @@ pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object);
  */
 pbvh::Tree *pbvh_get(Object &object);
 const pbvh::Tree *pbvh_get(const Object &object);
+
+SubdivCCG *subdiv_ccg_get(const Depsgraph &depsgraph, Object &object);
+const SubdivCCG *subdiv_ccg_get(const Depsgraph &depsgraph, const Object &object);
+SubdivCCG *subdiv_ccg_get_from_eval(Object &object_eval);
+const SubdivCCG *subdiv_ccg_get_from_eval(const Object &object_eval);
 
 }  // namespace blender::bke::object
 bool BKE_object_sculpt_use_dyntopo(const Object *object);

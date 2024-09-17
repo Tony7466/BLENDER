@@ -479,7 +479,7 @@ void WM_exit_ex(bContext *C, const bool do_python_exit, const bool do_user_exit_
 
       BLI_path_join(filepath, sizeof(filepath), BKE_tempdir_base(), BLENDER_QUIT_FILE);
 
-      ED_editors_flush_edits(bmain);
+      ED_editors_flush_edits(bmain, *CTX_data_depsgraph_pointer(C));
 
       BlendFileWriteParams blend_file_write_params{};
       if (BLO_write_file(bmain, filepath, fileflags, &blend_file_write_params, nullptr)) {

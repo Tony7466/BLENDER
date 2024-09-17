@@ -106,7 +106,7 @@ static bool object_remesh_poll(bContext *C)
 static int voxel_remesh_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
-
+  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   if (mesh->remesh_voxel_size <= 0.0f) {
@@ -132,7 +132,7 @@ static int voxel_remesh_exec(bContext *C, wmOperator *op)
   }
 
   if (ob->mode == OB_MODE_SCULPT) {
-    sculpt_paint::undo::geometry_begin(*ob, op);
+    sculpt_paint::undo::geometry_begin(depsgraph, *ob, op);
   }
 
   if (mesh->flag & ME_REMESH_FIX_POLES && mesh->remesh_voxel_adaptivity <= 0.0f) {
@@ -648,6 +648,7 @@ struct QuadriFlowJob {
   float *progress;
 
   const wmOperator *op;
+  const Depsgraph *depsgraph;
   Scene *scene;
   int target_faces;
   int seed;
@@ -887,7 +888,7 @@ static void quadriflow_start_job(void *customdata, wmJobWorkerStatus *worker_sta
   new_mesh = remesh_symmetry_mirror(qj->owner, new_mesh, qj->symmetry_axes);
 
   if (ob->mode == OB_MODE_SCULPT) {
-    sculpt_paint::undo::geometry_begin(*ob, qj->op);
+    sculpt_paint::undo::geometry_begin(*qj->depsgraph, *ob, qj->op);
   }
 
   if (qj->preserve_attributes) {
@@ -944,6 +945,7 @@ static int quadriflow_remesh_exec(bContext *C, wmOperator *op)
   job->op = op;
   job->owner = CTX_data_active_object(C);
   job->scene = CTX_data_scene(C);
+  job->depsgraph = CTX_data_depsgraph_pointer(C);
 
   job->target_faces = RNA_int_get(op->ptr, "target_faces");
   job->seed = RNA_int_get(op->ptr, "seed");

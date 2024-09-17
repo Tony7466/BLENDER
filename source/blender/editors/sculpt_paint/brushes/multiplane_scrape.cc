@@ -180,7 +180,7 @@ static void sample_node_surface_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -407,7 +407,7 @@ static void calc_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -668,7 +668,7 @@ void do_multiplane_scrape_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {

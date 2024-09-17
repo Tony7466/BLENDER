@@ -389,7 +389,7 @@ Bounds<float3> bounds_get(const Tree &pbvh);
 
 }  // namespace blender::bke::pbvh
 
-void BKE_pbvh_sync_visibility_from_verts(Object &object);
+void BKE_pbvh_sync_visibility_from_verts(const Depsgraph &depsgraph, Object &object);
 
 namespace blender::bke::pbvh {
 
@@ -403,8 +403,8 @@ int count_grid_quads(const BitGroupVector<> &grid_visibility,
 
 }  // namespace blender::bke::pbvh
 
-int BKE_pbvh_get_grid_num_verts(const Object &object);
-int BKE_pbvh_get_grid_num_faces(const Object &object);
+int BKE_pbvh_get_grid_num_verts(const Depsgraph &depsgraph, const Object &object);
+int BKE_pbvh_get_grid_num_faces(const Depsgraph &depsgraph, const Object &object);
 
 enum PBVHTopologyUpdateMode {
   PBVH_Subdivide = 1,
@@ -516,7 +516,7 @@ void update_mask_mesh(const Mesh &mesh, const IndexMask &node_mask, Tree &pbvh);
 void update_mask_grids(const SubdivCCG &subdiv_ccg, const IndexMask &node_mask, Tree &pbvh);
 void update_mask_bmesh(const BMesh &bm, const IndexMask &node_mask, Tree &pbvh);
 
-void update_visibility(const Object &object, Tree &pbvh);
+void update_visibility(const Depsgraph &depsgraph, const Object &object, Tree &pbvh);
 void update_normals(const Depsgraph &depsgraph, Object &object_orig, Tree &pbvh);
 /** Update geometry normals (potentially on the original object geometry). */
 void update_normals_from_eval(Object &object_eval, Tree &pbvh);

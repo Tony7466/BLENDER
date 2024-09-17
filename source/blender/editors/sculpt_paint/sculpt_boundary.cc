@@ -1316,7 +1316,7 @@ static void do_bend_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -1611,7 +1611,7 @@ static void do_slide_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -1889,7 +1889,7 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -2169,7 +2169,7 @@ static void do_grab_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -2457,7 +2457,7 @@ static void do_twist_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -2866,7 +2866,7 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -3175,14 +3175,15 @@ static void init_boundary_mesh(const Depsgraph &depsgraph,
   }
 }
 
-static void init_boundary_grids(Object &object,
+static void init_boundary_grids(const Depsgraph &depsgraph,
+                                Object &object,
                                 const Brush &brush,
                                 const ePaintSymmetryFlags symm_area)
 {
   const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<float3> positions = subdiv_ccg.positions;
 
@@ -3207,7 +3208,7 @@ static void init_boundary_grids(Object &object,
   }
 
   ss.cache->boundaries[symm_area] = boundary::data_init_grids(
-      object, &brush, *initial_vert, ss.cache->initial_radius);
+      subdiv_ccg, object, &brush, *initial_vert, ss.cache->initial_radius);
 
   if (ss.cache->boundaries[symm_area]) {
     switch (brush.boundary_deform_type) {
@@ -3343,7 +3344,7 @@ void do_boundary_brush(const Depsgraph &depsgraph,
         init_boundary_mesh(depsgraph, ob, brush, symm_area);
         break;
       case bke::pbvh::Type::Grids:
-        init_boundary_grids(ob, brush, symm_area);
+        init_boundary_grids(depsgraph, ob, brush, symm_area);
         break;
       case bke::pbvh::Type::BMesh:
         init_boundary_bmesh(ob, brush, symm_area);
@@ -3438,9 +3439,10 @@ std::unique_ptr<SculptBoundary> data_init(const Depsgraph &depsgraph,
       return data_init_mesh(depsgraph, object, brush, initial_vert, radius);
     }
     case (bke::pbvh::Type::Grids): {
-      const CCGKey &key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+      const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, initial_vert);
-      return data_init_grids(object, brush, vert, radius);
+      return data_init_grids(subdiv_ccg, object, brush, vert, radius);
     }
     case (bke::pbvh::Type::BMesh): {
       BMVert *vert = BM_vert_at_index(ss.bm, initial_vert);
@@ -3534,7 +3536,8 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   return boundary;
 }
 
-std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
+std::unique_ptr<SculptBoundary> data_init_grids(const SubdivCCG &subdiv_ccg,
+                                                Object &object,
                                                 const Brush *brush,
                                                 const SubdivCCGCoord initial_vert,
                                                 const float radius)
@@ -3546,7 +3549,6 @@ std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -3648,7 +3650,11 @@ std::unique_ptr<SculptBoundaryPreview> preview_data_init(const Depsgraph &depsgr
       boundary = data_init_mesh(depsgraph, object, brush, std::get<int>(initial_vert), radius);
       break;
     case bke::pbvh::Type::Grids:
-      boundary = data_init_grids(object, brush, std::get<SubdivCCGCoord>(initial_vert), radius);
+      boundary = data_init_grids(*bke::object::subdiv_ccg_get(depsgraph, object),
+                                 object,
+                                 brush,
+                                 std::get<SubdivCCGCoord>(initial_vert),
+                                 radius);
       break;
     case bke::pbvh::Type::BMesh:
       boundary = data_init_bmesh(object, brush, std::get<BMVert *>(initial_vert), radius);

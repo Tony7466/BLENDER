@@ -37,9 +37,8 @@ Span<int> node_visible_verts(const bke::pbvh::MeshNode &node,
   return indices;
 }
 
-bool vert_visible_get(const Object &object, PBVHVertRef vertex)
+bool vert_visible_get(const Depsgraph &depsgraph, const Object &object, PBVHVertRef vertex)
 {
-  const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -51,11 +50,12 @@ bool vert_visible_get(const Object &object, PBVHVertRef vertex)
     case bke::pbvh::Type::BMesh:
       return !BM_elem_flag_test((BMVert *)vertex.i, BM_ELEM_HIDDEN);
     case bke::pbvh::Type::Grids: {
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const int grid_index = vertex.i / key.grid_area;
       const int index_in_grid = vertex.i - grid_index * key.grid_area;
-      if (!ss.subdiv_ccg->grid_hidden.is_empty()) {
-        return !ss.subdiv_ccg->grid_hidden[grid_index][index_in_grid];
+      if (!subdiv_ccg.grid_hidden.is_empty()) {
+        return !subdiv_ccg.grid_hidden[grid_index][index_in_grid];
       }
     }
   }

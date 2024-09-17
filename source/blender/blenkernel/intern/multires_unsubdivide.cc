@@ -1216,7 +1216,7 @@ int multiresModifier_rebuild_subdiv(Depsgraph *depsgraph,
 {
   Mesh *mesh = static_cast<Mesh *>(object->data);
 
-  multires_force_sculpt_rebuild(object);
+  multires_force_sculpt_rebuild(*depsgraph, object);
 
   MultiresUnsubdivideContext unsubdiv_context{};
   MultiresReshapeContext reshape_context{};

@@ -83,7 +83,7 @@ struct FillDataBMesh {
 /**
  * \deprecated See the individual FillData constructors instead of this method.
  */
-FillData init_fill(Object &object);
+FillData init_fill(const Depsgraph &depsgraph, Object &object);
 
 void add_initial(FillData &flood, PBVHVertRef vertex);
 void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
@@ -92,7 +92,8 @@ void add_initial_with_symmetry(const Depsgraph &depsgraph,
                                FillData &flood,
                                PBVHVertRef vertex,
                                float radius);
-void execute(Object &object,
+void execute(const Depsgraph &depsgraph,
+             Object &object,
              FillData &flood,
              FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
 

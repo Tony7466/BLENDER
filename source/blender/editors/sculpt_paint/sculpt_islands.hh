@@ -14,7 +14,7 @@ struct SculptSession;
 namespace blender::ed::sculpt_paint::islands {
 
 /* Ensure vertex island keys exist and are valid. */
-void ensure_cache(Object &object);
+void ensure_cache(const Depsgraph &depsgraph, Object &object);
 
 /** Mark vertex island keys as invalid. Call when adding or hiding geometry. */
 void invalidate(SculptSession &ss);

@@ -382,7 +382,7 @@ static void ED_OT_lib_id_override_editable_toggle(wmOperatorType *ot)
 static int ed_flush_edits_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
-  ED_editors_flush_edits(bmain);
+  ED_editors_flush_edits(bmain, *CTX_data_depsgraph_pointer(C));
   return OPERATOR_FINISHED;
 }
 

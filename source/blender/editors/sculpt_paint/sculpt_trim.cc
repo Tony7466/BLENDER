@@ -524,7 +524,7 @@ static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &ges
   generate_geometry(gesture_data);
   islands::invalidate(ss);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::geometry_begin(*gesture_data.vc.obact, &op);
+  undo::geometry_begin(*depsgraph, *gesture_data.vc.obact, &op);
 }
 
 static int bm_face_isect_pair(BMFace *f, void * /*user_data*/)

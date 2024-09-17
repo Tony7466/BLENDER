@@ -149,7 +149,7 @@ void SCULPT_vertex_random_access_ensure(Object &object)
   }
 }
 
-int SCULPT_vertex_count_get(const Object &object)
+int SCULPT_vertex_count_get(const Depsgraph &depsgraph, const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   switch (blender::bke::object::pbvh_get(object)->type()) {
@@ -159,7 +159,7 @@ int SCULPT_vertex_count_get(const Object &object)
     case blender::bke::pbvh::Type::BMesh:
       return BM_mesh_elem_count(ss.bm, BM_VERT);
     case blender::bke::pbvh::Type::Grids:
-      return BKE_pbvh_get_grid_num_verts(object);
+      return BKE_pbvh_get_grid_num_verts(depsgraph, object);
   }
 
   return 0;
@@ -169,14 +169,13 @@ const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
                                   const Object &object,
                                   PBVHVertRef vertex)
 {
-  const SculptSession &ss = *object.sculpt;
   switch (blender::bke::object::pbvh_get(object)->type()) {
     case blender::bke::pbvh::Type::Mesh:
       return blender::bke::pbvh::vert_positions_eval(depsgraph, object)[vertex.i];
     case blender::bke::pbvh::Type::BMesh:
       return ((BMVert *)vertex.i)->co;
     case blender::bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
       return subdiv_ccg.positions[vertex.i];
     }
   }
@@ -212,7 +211,7 @@ namespace blender::ed::sculpt_paint {
 
 namespace face_set {
 
-int active_face_set_get(const Object &object)
+int active_face_set_get(const Depsgraph &depsgraph, const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
@@ -226,14 +225,14 @@ int active_face_set_get(const Object &object)
       return face_sets[ss.active_face_index];
     }
     case bke::pbvh::Type::Grids: {
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
       if (!face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg,
-                                                               ss.active_grid_index);
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, ss.active_grid_index);
       return face_sets[face_index];
     }
     case bke::pbvh::Type::BMesh:
@@ -246,9 +245,8 @@ int active_face_set_get(const Object &object)
 
 namespace face_set {
 
-int vert_face_set_get(const Object &object, PBVHVertRef vertex)
+int vert_face_set_get(const Depsgraph &depsgraph, const Object &object, PBVHVertRef vertex)
 {
-  const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -269,15 +267,16 @@ int vert_face_set_get(const Object &object, PBVHVertRef vertex)
     case bke::pbvh::Type::BMesh:
       return 0;
     case bke::pbvh::Type::Grids: {
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
       if (!face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const int grid_index = vertex.i / key.grid_area;
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, grid_index);
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grid_index);
       return face_sets[face_index];
     }
   }
@@ -340,9 +339,11 @@ bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int 
   return false;
 }
 
-bool vert_has_face_set(const Object &object, PBVHVertRef vertex, int face_set)
+bool vert_has_face_set(const Depsgraph &depsgraph,
+                       const Object &object,
+                       PBVHVertRef vertex,
+                       int face_set)
 {
-  const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -362,24 +363,24 @@ bool vert_has_face_set(const Object &object, PBVHVertRef vertex, int face_set)
     case bke::pbvh::Type::BMesh:
       return true;
     case bke::pbvh::Type::Grids: {
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
       const bke::AttributeAccessor attributes = mesh.attributes();
       const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
       if (!face_sets) {
         return face_set == SCULPT_FACE_SET_NONE;
       }
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const int grid_index = vertex.i / key.grid_area;
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, grid_index);
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grid_index);
       return face_sets[face_index] == face_set;
     }
   }
   return true;
 }
 
-bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex)
+bool vert_has_unique_face_set(const Depsgraph &depsgraph, const Object &object, PBVHVertRef vertex)
 {
-  const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -396,6 +397,7 @@ bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex)
       return vert_has_unique_face_set(face_set_offset, *v);
     }
     case bke::pbvh::Type::Grids: {
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
       const OffsetIndices<int> faces = base_mesh.faces();
       const Span<int> corner_verts = base_mesh.corner_verts();
@@ -403,10 +405,10 @@ bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex)
       const bke::AttributeAccessor attributes = base_mesh.attributes();
       const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                            bke::AttrDomain::Face);
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
       return vert_has_unique_face_set(
-          faces, corner_verts, vert_to_face_map, face_sets, *ss.subdiv_ccg, coord);
+          faces, corner_verts, vert_to_face_map, face_sets, subdiv_ccg, coord);
     }
   }
   return false;
@@ -645,7 +647,8 @@ Span<int> vert_neighbors_get_mesh(const OffsetIndices<int> faces,
   return r_neighbors.as_span();
 }
 
-static void vertex_neighbors_get_grids(const SculptSession &ss,
+static void vertex_neighbors_get_grids(const Depsgraph &depsgraph,
+                                       const Object &object,
                                        const PBVHVertRef vertex,
                                        const bool include_duplicates,
                                        SculptVertexNeighborIter *iter)
@@ -653,11 +656,13 @@ static void vertex_neighbors_get_grids(const SculptSession &ss,
   /* TODO: optimize this. We could fill #SculptVertexNeighborIter directly,
    * maybe provide coordinate and mask pointers directly rather than converting
    * back and forth between #CCGElem and global index. */
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+  const SculptSession &ss = *object.sculpt;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
 
   SubdivCCGNeighbors neighbors;
-  BKE_subdiv_ccg_neighbor_coords_get(*ss.subdiv_ccg, coord, include_duplicates, neighbors);
+  BKE_subdiv_ccg_neighbor_coords_get(subdiv_ccg, coord, include_duplicates, neighbors);
 
   iter->num_duplicates = neighbors.num_duplicates;
   iter->neighbors.clear();
@@ -681,13 +686,13 @@ static void vertex_neighbors_get_grids(const SculptSession &ss,
 
 }  // namespace blender::ed::sculpt_paint
 
-void SCULPT_vertex_neighbors_get(const Object &object,
+void SCULPT_vertex_neighbors_get(const Depsgraph &depsgraph,
+                                 const Object &object,
                                  const PBVHVertRef vertex,
                                  const bool include_duplicates,
                                  SculptVertexNeighborIter *iter)
 {
   using namespace blender::ed::sculpt_paint;
-  const SculptSession &ss = *object.sculpt;
   switch (blender::bke::object::pbvh_get(object)->type()) {
     case blender::bke::pbvh::Type::Mesh:
       vertex_neighbors_get_faces(object, vertex, iter);
@@ -696,7 +701,7 @@ void SCULPT_vertex_neighbors_get(const Object &object,
       vert_neighbors_get_bmesh(vertex, iter);
       return;
     case blender::bke::pbvh::Type::Grids:
-      vertex_neighbors_get_grids(ss, vertex, include_duplicates, iter);
+      vertex_neighbors_get_grids(depsgraph, object, vertex, include_duplicates, iter);
       return;
   }
 }
@@ -710,7 +715,7 @@ namespace blender::ed::sculpt_paint {
 
 namespace boundary {
 
-bool vert_is_boundary(const Object &object, const PBVHVertRef vertex)
+bool vert_is_boundary(const Depsgraph &depsgraph, const Object &object, const PBVHVertRef vertex)
 {
   const SculptSession &ss = *object.sculpt;
   switch (bke::object::pbvh_get(object)->type()) {
@@ -729,14 +734,15 @@ bool vert_is_boundary(const Object &object, const PBVHVertRef vertex)
       return BM_vert_is_boundary(v);
     }
     case bke::pbvh::Type::Grids: {
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
       const OffsetIndices<int> faces = base_mesh.faces();
       const Span<int> corner_verts = base_mesh.corner_verts();
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
       int v1, v2;
       const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          *ss.subdiv_ccg, coord, corner_verts, faces, v1, v2);
+          subdiv_ccg, coord, corner_verts, faces, v1, v2);
       switch (adjacency) {
         case SUBDIV_CCG_ADJACENT_VERTEX:
           return check_boundary_vert_in_base_mesh(ss, v1);
@@ -1015,7 +1021,6 @@ PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
                               const float max_distance,
                               const bool use_original)
 {
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1028,7 +1033,7 @@ PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
       return nearest ? PBVHVertRef{*nearest} : PBVHVertRef{PBVH_REF_NONE};
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const std::optional<SubdivCCGCoord> nearest = nearest_vert_calc_grids(
           pbvh, subdiv_ccg, location, max_distance, use_original);
@@ -1189,7 +1194,7 @@ bool stroke_is_dyntopo(const Object &object, const Brush &brush)
 
 namespace undo {
 
-static void restore_mask_from_undo_step(Object &object)
+static void restore_mask_from_undo_step(const Depsgraph &depsgraph, Object &object)
 {
   SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
@@ -1236,7 +1241,7 @@ static void restore_mask_from_undo_step(Object &object)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       MutableSpan<float> masks = subdiv_ccg.masks;
@@ -1297,9 +1302,8 @@ static void restore_color_from_undo_step(Object &object)
   color_attribute.finish();
 }
 
-static void restore_face_set_from_undo_step(Object &object)
+static void restore_face_set_from_undo_step(const Depsgraph &depsgraph, Object &object)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
@@ -1323,7 +1327,7 @@ static void restore_face_set_from_undo_step(Object &object)
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       bke::SpanAttributeWriter<int> attribute = face_set::ensure_face_sets_mesh(
           *static_cast<Mesh *>(object.data));
@@ -1431,7 +1435,7 @@ void restore_position_from_undo_step(const Depsgraph &depsgraph, Object &object)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       MutableSpan<float3> positions = subdiv_ccg.positions;
@@ -1470,7 +1474,7 @@ static void restore_from_undo_step(const Depsgraph &depsgraph, const Sculpt &sd,
 
   switch (brush->sculpt_brush_type) {
     case SCULPT_BRUSH_TYPE_MASK:
-      restore_mask_from_undo_step(object);
+      restore_mask_from_undo_step(depsgraph, object);
       break;
     case SCULPT_BRUSH_TYPE_PAINT:
     case SCULPT_BRUSH_TYPE_SMEAR:
@@ -1481,7 +1485,7 @@ static void restore_from_undo_step(const Depsgraph &depsgraph, const Sculpt &sd,
         restore_position_from_undo_step(depsgraph, object);
       }
       else {
-        restore_face_set_from_undo_step(object);
+        restore_face_set_from_undo_step(depsgraph, object);
       }
       break;
     default:
@@ -1808,7 +1812,8 @@ static void calc_area_normal_and_center_node_mesh(const Object &object,
   }
 }
 
-static void calc_area_normal_and_center_node_grids(const Object &object,
+static void calc_area_normal_and_center_node_grids(const Depsgraph &depsgraph,
+                                                   const Object &object,
                                                    const Brush &brush,
                                                    const bool use_area_nos,
                                                    const bool use_area_cos,
@@ -1826,8 +1831,8 @@ static void calc_area_normal_and_center_node_grids(const Object &object,
   const float normal_radius_sq = normal_radius * normal_radius;
   const float normal_radius_inv = math::rcp(normal_radius);
 
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<float3> normals = subdiv_ccg.normals;
   const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
   const Span<int> grids = node.grids();
@@ -2147,7 +2152,8 @@ void calc_area_center(const Depsgraph &depsgraph,
           [&](const IndexRange range, AreaNormalCenterData anctd) {
             SampleLocalData &tls = all_tls.local();
             node_mask.slice(range).foreach_index([&](const int i) {
-              calc_area_normal_and_center_node_grids(ob, brush, false, true, nodes[i], tls, anctd);
+              calc_area_normal_and_center_node_grids(
+                  depsgraph, ob, brush, false, true, nodes[i], tls, anctd);
             });
             return anctd;
           },
@@ -2254,7 +2260,8 @@ std::optional<float3> calc_area_normal(const Depsgraph &depsgraph,
           [&](const IndexRange range, AreaNormalCenterData anctd) {
             SampleLocalData &tls = all_tls.local();
             node_mask.slice(range).foreach_index([&](const int i) {
-              calc_area_normal_and_center_node_grids(ob, brush, true, false, nodes[i], tls, anctd);
+              calc_area_normal_and_center_node_grids(
+                  depsgraph, ob, brush, true, false, nodes[i], tls, anctd);
             });
             return anctd;
           },
@@ -2346,7 +2353,8 @@ void calc_area_normal_and_center(const Depsgraph &depsgraph,
           [&](const IndexRange range, AreaNormalCenterData anctd) {
             SampleLocalData &tls = all_tls.local();
             node_mask.slice(range).foreach_index([&](const int i) {
-              calc_area_normal_and_center_node_grids(ob, brush, true, true, nodes[i], tls, anctd);
+              calc_area_normal_and_center_node_grids(
+                  depsgraph, ob, brush, true, true, nodes[i], tls, anctd);
             });
             return anctd;
           },
@@ -3446,7 +3454,7 @@ static void do_brush_action(const Depsgraph &depsgraph,
   {
     if (ss.cache->invert) {
       /* When inverting the brush, pick the paint face mask ID from the mesh. */
-      ss.cache->paint_face_set = face_set::active_face_set_get(ob);
+      ss.cache->paint_face_set = face_set::active_face_set_get(depsgraph, ob);
     }
     else {
       /* By default create a new Face Sets. */
@@ -3469,8 +3477,8 @@ static void do_brush_action(const Depsgraph &depsgraph,
           (brush.smooth_deform_type == BRUSH_SMOOTH_DEFORM_SURFACE))
       {
         BLI_assert(ss.cache->surface_smooth_laplacian_disp.is_empty());
-        ss.cache->surface_smooth_laplacian_disp = Array<float3>(SCULPT_vertex_count_get(ob),
-                                                                float3(0));
+        ss.cache->surface_smooth_laplacian_disp = Array<float3>(
+            SCULPT_vertex_count_get(depsgraph, ob), float3(0));
       }
     }
   }
@@ -3504,7 +3512,7 @@ static void do_brush_action(const Depsgraph &depsgraph,
     }
     cloth::brush_store_simulation_state(depsgraph, ob, *ss.cache->cloth_sim);
     cloth::ensure_nodes_constraints(
-        sd, ob, node_mask, *ss.cache->cloth_sim, ss.cache->location_symm, FLT_MAX);
+        depsgraph, sd, ob, node_mask, *ss.cache->cloth_sim, ss.cache->location_symm, FLT_MAX);
   }
 
   bool invert = ss.cache->pen_flip || ss.cache->invert;
@@ -3866,14 +3874,14 @@ static void do_radial_symmetry(const Depsgraph &depsgraph,
  * Noise texture gives different values for the same input coord; this
  * can tear a multi-resolution mesh during sculpting so do a stitch in this case.
  */
-static void sculpt_fix_noise_tear(const Sculpt &sd, Object &ob)
+static void sculpt_fix_noise_tear(const Depsgraph &depsgraph, const Sculpt &sd, Object &ob)
 {
   SculptSession &ss = *ob.sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const MTex *mtex = BKE_brush_mask_texture_get(&brush, OB_MODE_SCULPT);
 
   if (ss.multires.active && mtex->tex && mtex->tex->type == TEX_NOISE) {
-    multires_stitch_grids(&ob);
+    multires_stitch_grids(depsgraph, &ob);
   }
 }
 
@@ -4946,7 +4954,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
     srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   }
   else if (pbvh->type() == bke::pbvh::Type::Grids) {
-    srd.subdiv_ccg = ss.subdiv_ccg;
+    srd.subdiv_ccg = bke::object::subdiv_ccg_get(*depsgraph, ob);
   }
   SCULPT_vertex_random_access_ensure(ob);
   srd.ray_start = ray_start;
@@ -4979,7 +4987,7 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
       active_vert = int(active_vertex.i);
       break;
     case bke::pbvh::Type::Grids: {
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(*srd.subdiv_ccg);
       active_vert = SubdivCCGCoord::from_index(key, active_vertex.i);
       break;
     }
@@ -5125,7 +5133,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
       srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
     }
     else if (pbvh.type() == bke::pbvh::Type::Grids) {
-      srd.subdiv_ccg = ss.subdiv_ccg;
+      srd.subdiv_ccg = bke::object::subdiv_ccg_get(*depsgraph, ob);
     }
     SCULPT_vertex_random_access_ensure(ob);
     srd.depth = depth;
@@ -5166,7 +5174,7 @@ bool SCULPT_stroke_get_location_ex(bContext *C,
     srd.hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   }
   else if (pbvh.type() == bke::pbvh::Type::Grids) {
-    srd.subdiv_ccg = ss.subdiv_ccg;
+    srd.subdiv_ccg = bke::object::subdiv_ccg_get(*depsgraph, ob);
   }
   srd.ray_start = ray_start;
   srd.ray_normal = ray_normal;
@@ -5473,6 +5481,7 @@ static void stroke_undo_begin(const bContext *C, wmOperator *op)
 {
   using namespace blender::ed::sculpt_paint;
   Object &ob = *CTX_data_active_object(C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
   ToolSettings *tool_settings = CTX_data_tool_settings(C);
@@ -5485,7 +5494,7 @@ static void stroke_undo_begin(const bContext *C, wmOperator *op)
     ED_image_undo_push_begin(op->type->name, PaintMode::Sculpt);
   }
   else {
-    undo::push_begin_ex(ob, sculpt_brush_type_name(sd));
+    undo::push_begin_ex(depsgraph, ob, sculpt_brush_type_name(sd));
   }
 }
 
@@ -5590,7 +5599,7 @@ static void stroke_update_step(bContext *C,
       depsgraph, scene, sd, ob, do_brush_action, ups, tool_settings.paint_mode);
 
   /* Hack to fix noise texture tearing mesh. */
-  sculpt_fix_noise_tear(sd, ob);
+  sculpt_fix_noise_tear(depsgraph, sd, ob);
 
   ss.cache->first_time = false;
   copy_v3_v3(ss.cache->last_location, ss.cache->location);
@@ -5852,10 +5861,10 @@ void SCULPT_OT_brush_stroke(wmOperatorType *ot)
  * (without having lag prior to every stroke), but also makes it so the affect
  * is localized to a specific brushes and brush types only. */
 
-static void fake_neighbor_init(Object &object, const float max_dist)
+static void fake_neighbor_init(const Depsgraph &depsgraph, Object &object, const float max_dist)
 {
   SculptSession &ss = *object.sculpt;
-  const int totvert = SCULPT_vertex_count_get(object);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, object);
   ss.fake_neighbors.fake_neighbor_index = Array<int>(totvert, FAKE_NEIGHBOR_NONE);
   ss.fake_neighbors.current_max_distance = max_dist;
 }
@@ -6028,7 +6037,7 @@ static void fake_neighbor_search(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const Span<float3> positions = subdiv_ccg.positions;
       const BitGroupVector<> grid_hidden = subdiv_ccg.grid_hidden;
@@ -6156,8 +6165,8 @@ void SCULPT_fake_neighbors_ensure(const Depsgraph &depsgraph, Object &ob, const 
     return;
   }
 
-  islands::ensure_cache(ob);
-  fake_neighbor_init(ob, max_dist);
+  islands::ensure_cache(depsgraph, ob);
+  fake_neighbor_init(depsgraph, ob, max_dist);
   fake_neighbor_search(depsgraph, ob, max_dist * max_dist, ss.fake_neighbors.fake_neighbor_index);
 }
 
@@ -6222,7 +6231,7 @@ bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
     srd.corner_tris = mesh.corner_tris();
   }
   else if (pbvh.type() == bke::pbvh::Type::Grids) {
-    srd.subdiv_ccg = ss.subdiv_ccg;
+    srd.subdiv_ccg = bke::object::subdiv_ccg_get(depsgraph, object);
   }
   SCULPT_vertex_random_access_ensure(const_cast<Object &>(object));
 
@@ -6305,10 +6314,10 @@ static SculptTopologyIslandCache calc_topology_islands_mesh(const Mesh &mesh)
 /**
  * \todo Take grid face visibility into account.
  */
-static SculptTopologyIslandCache calc_topology_islands_grids(const Object &object)
+static SculptTopologyIslandCache calc_topology_islands_grids(const Depsgraph &depsgraph,
+                                                             const Object &object)
 {
-  const SculptSession &ss = *object.sculpt;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   AtomicDisjointSet disjoint_set(subdiv_ccg.positions.size());
   threading::parallel_for(IndexRange(subdiv_ccg.grids_num), 512, [&](const IndexRange range) {
@@ -6358,13 +6367,13 @@ static SculptTopologyIslandCache calc_topology_islands_bmesh(const Object &objec
   return vert_disjoint_set_to_islands(disjoint_set, bm.totvert);
 }
 
-static SculptTopologyIslandCache calculate_cache(const Object &object)
+static SculptTopologyIslandCache calculate_cache(const Depsgraph &depsgraph, const Object &object)
 {
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh:
       return calc_topology_islands_mesh(*static_cast<const Mesh *>(object.data));
     case bke::pbvh::Type::Grids:
-      return calc_topology_islands_grids(object);
+      return calc_topology_islands_grids(depsgraph, object);
     case bke::pbvh::Type::BMesh:
       return calc_topology_islands_bmesh(object);
   }
@@ -6372,13 +6381,14 @@ static SculptTopologyIslandCache calculate_cache(const Object &object)
   return {};
 }
 
-void ensure_cache(Object &object)
+void ensure_cache(const Depsgraph &depsgraph, Object &object)
 {
   SculptSession &ss = *object.sculpt;
   if (ss.topology_island_cache) {
     return;
   }
-  ss.topology_island_cache = std::make_unique<SculptTopologyIslandCache>(calculate_cache(object));
+  ss.topology_island_cache = std::make_unique<SculptTopologyIslandCache>(
+      calculate_cache(depsgraph, object));
 }
 
 }  // namespace blender::ed::sculpt_paint::islands

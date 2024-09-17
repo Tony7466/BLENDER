@@ -183,7 +183,8 @@ class Sculpts {
         break;
       }
       case blender::bke::pbvh::Type::Grids: {
-        const SubdivCCG &subdiv_ccg = *sculpt_session->subdiv_ccg;
+
+        const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(*ob_ref.object);
         const Mesh &base_mesh = *static_cast<const Mesh *>(object_orig->data);
         if (!BKE_subdiv_ccg_key_top_level(subdiv_ccg).has_mask &&
             !base_mesh.attributes().contains(".sculpt_face_set"))

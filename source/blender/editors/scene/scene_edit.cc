@@ -47,7 +47,10 @@
 /** \name Scene Utilities
  * \{ */
 
-static Scene *scene_add(Main *bmain, Scene *scene_old, eSceneCopyMethod method)
+static Scene *scene_add(Main *bmain,
+                        const Depsgraph &depsgraph,
+                        Scene *scene_old,
+                        eSceneCopyMethod method)
 {
   Scene *scene_new = nullptr;
   if (method == SCE_COPY_NEW) {
@@ -57,7 +60,7 @@ static Scene *scene_add(Main *bmain, Scene *scene_old, eSceneCopyMethod method)
     /* We are going to deep-copy collections, objects and various object data, we need to have
      * up-to-date obdata for that. */
     if (method == SCE_COPY_FULL) {
-      ED_editors_flush_edits(bmain);
+      ED_editors_flush_edits(bmain, depsgraph);
     }
 
     scene_new = BKE_scene_duplicate(bmain, scene_old, method);
@@ -88,7 +91,7 @@ Scene *ED_scene_sequencer_add(Main *bmain,
     method = SCE_COPY_NEW;
   }
 
-  Scene *scene_new = scene_add(bmain, scene_strip, method);
+  Scene *scene_new = scene_add(bmain, *CTX_data_depsgraph_pointer(C), scene_strip, method);
 
   /* If don't need assign the scene to the strip, nothing else to do. */
   if (!assign_strip) {
@@ -115,7 +118,7 @@ Scene *ED_scene_sequencer_add(Main *bmain,
 Scene *ED_scene_add(Main *bmain, bContext *C, wmWindow *win, eSceneCopyMethod method)
 {
   Scene *scene_old = WM_window_get_active_scene(win);
-  Scene *scene_new = scene_add(bmain, scene_old, method);
+  Scene *scene_new = scene_add(bmain, *CTX_data_depsgraph_pointer(C), scene_old, method);
 
   WM_window_set_active_scene(bmain, C, win, scene_new);
 

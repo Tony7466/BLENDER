@@ -16,6 +16,7 @@
 #include "BKE_attribute.hh"
 
 struct BMVert;
+struct Depsgraph;
 struct Mesh;
 struct Object;
 struct PBVHVertRef;
@@ -24,19 +25,24 @@ struct SubdivCCGCoord;
 
 namespace blender::ed::sculpt_paint::face_set {
 
-int active_face_set_get(const Object &object);
-int vert_face_set_get(const Object &object, PBVHVertRef vertex);
+int active_face_set_get(const Depsgraph &depsgraph, const Object &object);
+int vert_face_set_get(const Depsgraph &depsgraph, const Object &object, PBVHVertRef vertex);
 int vert_face_set_get(GroupedSpan<int> vert_to_face_map, Span<int> face_sets, int vert);
 int vert_face_set_get(int face_set_offset, const BMVert &vert);
 
-bool vert_has_face_set(const Object &object, PBVHVertRef vertex, int face_set);
+bool vert_has_face_set(const Depsgraph &depsgraph,
+                       const Object &object,
+                       PBVHVertRef vertex,
+                       int face_set);
 bool vert_has_face_set(GroupedSpan<int> vert_to_face_map,
                        Span<int> face_sets,
                        int vert,
                        int face_set);
 bool vert_has_face_set(const SubdivCCG &subdiv_ccg, Span<int> face_sets, int grid, int face_set);
 bool vert_has_face_set(int face_set_offset, const BMVert &vert, int face_set);
-bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex);
+bool vert_has_unique_face_set(const Depsgraph &depsgraph,
+                              const Object &object,
+                              PBVHVertRef vertex);
 bool vert_has_unique_face_set(GroupedSpan<int> vert_to_face_map, Span<int> face_sets, int vert);
 bool vert_has_unique_face_set(OffsetIndices<int> faces,
                               Span<int> corner_verts,

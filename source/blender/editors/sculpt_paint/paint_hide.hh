@@ -20,7 +20,7 @@ class Node;
 }
 
 namespace blender::ed::sculpt_paint::hide {
-void sync_all_from_faces(Object &object);
+void sync_all_from_faces(const Depsgraph &depsgraph, Object &object);
 void mesh_show_all(const Depsgraph &depsgraph, Object &object, const IndexMask &node_mask);
 void grids_show_all(Depsgraph &depsgraph, Object &object, const IndexMask &node_mask);
 void tag_update_visibility(const bContext &C);

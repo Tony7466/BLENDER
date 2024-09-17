@@ -56,14 +56,15 @@ static void apply_positions_faces(const Depsgraph &depsgraph,
   write_translations(depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
 }
 
-static void apply_positions_grids(const Sculpt &sd,
+static void apply_positions_grids(const Depsgraph &depsgraph,
+                                  const Sculpt &sd,
                                   const Span<int> grids,
                                   Object &object,
                                   const Span<float3> positions,
                                   const MutableSpan<float3> translations)
 {
   SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   clip_and_lock_translations(sd, ss, positions, translations);
   apply_translations(translations, grids, subdiv_ccg);
@@ -234,7 +235,7 @@ BLI_NOINLINE static void calc_factors_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -282,7 +283,7 @@ static void do_relax_face_sets_brush_grids(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   Mesh &mesh = *static_cast<Mesh *>(object.data);
@@ -336,7 +337,8 @@ static void do_relax_face_sets_brush_grids(const Depsgraph &depsgraph,
   });
 
   node_mask.foreach_index(GrainSize(1), [&](const int i, const int pos) {
-    apply_positions_grids(sd,
+    apply_positions_grids(depsgraph,
+                          sd,
                           nodes[i].grids(),
                           object,
                           current_positions.as_mutable_span().slice(node_vert_offsets[pos]),
@@ -566,7 +568,7 @@ BLI_NOINLINE static void calc_topology_relax_factors_grids(const Depsgraph &deps
 {
   const SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -606,7 +608,7 @@ static void do_topology_relax_brush_grids(const Depsgraph &depsgraph,
   const SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   MutableSpan<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
@@ -657,7 +659,8 @@ static void do_topology_relax_brush_grids(const Depsgraph &depsgraph,
   });
 
   node_mask.foreach_index(GrainSize(1), [&](const int i, const int pos) {
-    apply_positions_grids(sd,
+    apply_positions_grids(depsgraph,
+                          sd,
                           nodes[i].grids(),
                           object,
                           current_positions.as_mutable_span().slice(node_vert_offsets[pos]),

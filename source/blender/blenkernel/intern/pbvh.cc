@@ -1034,8 +1034,7 @@ static void update_normals(Object &object_orig, Object &object_eval, Tree &pbvh)
       break;
     }
     case Type::Grids: {
-      SculptSession &ss = *object_orig.sculpt;
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object_eval);
       MutableSpan<GridsNode> nodes = pbvh.nodes<GridsNode>();
       IndexMaskMemory memory;
       const IndexMask faces_to_update = nodes_to_face_selection_grids(
@@ -1185,8 +1184,7 @@ void update_bounds(const Depsgraph &depsgraph, const Object &object, Tree &pbvh)
       break;
     }
     case Type::Grids: {
-      const SculptSession &ss = *object.sculpt;
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       update_bounds_grids(key, subdiv_ccg.positions, pbvh);
       break;
@@ -1370,7 +1368,7 @@ static void update_visibility_bmesh(const MutableSpan<BMeshNode> nodes, const In
                           [&](const int i) { node_update_visibility_bmesh(nodes[i]); });
 }
 
-void update_visibility(const Object &object, Tree &pbvh)
+void update_visibility(const Depsgraph &depsgraph, const Object &object, Tree &pbvh)
 {
   IndexMaskMemory memory;
   const IndexMask node_mask = IndexMask::from_bits(pbvh.visibility_dirty_, memory);
@@ -1385,8 +1383,8 @@ void update_visibility(const Object &object, Tree &pbvh)
       break;
     }
     case Type::Grids: {
-      const SculptSession &ss = *object.sculpt;
-      update_visibility_grids(*ss.subdiv_ccg, pbvh.nodes<GridsNode>(), node_mask);
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
+      update_visibility_grids(subdiv_ccg, pbvh.nodes<GridsNode>(), node_mask);
       break;
     }
     case Type::BMesh: {
@@ -1487,20 +1485,20 @@ Bounds<float3> bounds_get(const Tree &pbvh)
 
 }  // namespace blender::bke::pbvh
 
-int BKE_pbvh_get_grid_num_verts(const Object &object)
+int BKE_pbvh_get_grid_num_verts(const Depsgraph &depsgraph, const Object &object)
 {
-  const SculptSession &ss = *object.sculpt;
   BLI_assert(blender::bke::object::pbvh_get(object)->type() == blender::bke::pbvh::Type::Grids);
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-  return ss.subdiv_ccg->grids_num * key.grid_area;
+  const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  return subdiv_ccg.grids_num * key.grid_area;
 }
 
-int BKE_pbvh_get_grid_num_faces(const Object &object)
+int BKE_pbvh_get_grid_num_faces(const Depsgraph &depsgraph, const Object &object)
 {
-  const SculptSession &ss = *object.sculpt;
   BLI_assert(blender::bke::object::pbvh_get(object)->type() == blender::bke::pbvh::Type::Grids);
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-  return ss.subdiv_ccg->grids_num * square_i(key.grid_size - 1);
+  const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
+  const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+  return subdiv_ccg.grids_num * square_i(key.grid_size - 1);
 }
 
 /***************************** Node Access ***********************************/
@@ -2592,7 +2590,7 @@ int BKE_pbvh_debug_draw_gen_get(blender::bke::pbvh::Node &node)
   return node.debug_draw_gen_;
 }
 
-void BKE_pbvh_sync_visibility_from_verts(Object &object)
+void BKE_pbvh_sync_visibility_from_verts(const Depsgraph &depsgraph, Object &object)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -2634,7 +2632,7 @@ void BKE_pbvh_sync_visibility_from_verts(Object &object)
     }
     case blender::bke::pbvh::Type::Grids: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const OffsetIndices faces = mesh.faces();

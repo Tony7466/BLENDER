@@ -234,7 +234,7 @@ static void calc_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);

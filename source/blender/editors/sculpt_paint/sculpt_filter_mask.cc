@@ -299,10 +299,9 @@ static void apply_new_mask_grids(const Depsgraph &depsgraph,
                                  const OffsetIndices<int> node_verts,
                                  const Span<float> new_mask)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   MutableSpan<float> masks = subdiv_ccg.masks;
 
@@ -424,12 +423,11 @@ static void shrink_mask_grids(const SubdivCCG &subdiv_ccg,
 }
 
 static bool increase_contrast_mask_grids(const Depsgraph &depsgraph,
-                                         const Object &object,
+                                         Object &object,
                                          bke::pbvh::GridsNode &node,
                                          FilterLocalData &tls)
 {
-  SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -456,12 +454,11 @@ static bool increase_contrast_mask_grids(const Depsgraph &depsgraph,
 }
 
 static bool decrease_contrast_mask_grids(const Depsgraph &depsgraph,
-                                         const Object &object,
+                                         Object &object,
                                          bke::pbvh::GridsNode &node,
                                          FilterLocalData &tls)
 {
-  SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -681,7 +678,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
-  undo::push_begin(ob, op);
+  undo::push_begin(*depsgraph, ob, op);
 
   int iterations = RNA_int_get(op->ptr, "iterations");
 
@@ -690,7 +687,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
    * One iteration per 50000 vertices in the mesh should be fine in most cases.
    * Maybe we want this to be configurable. */
   if (RNA_boolean_get(op->ptr, "auto_iteration_count")) {
-    iterations = int(SCULPT_vertex_count_get(ob) / 50000.0f) + 1;
+    iterations = int(SCULPT_vertex_count_get(*depsgraph, ob) / 50000.0f) + 1;
   }
 
   threading::EnumerableThreadSpecific<FilterLocalData> all_tls;
@@ -810,7 +807,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     }
     case bke::pbvh::Type::Grids: {
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(*depsgraph, ob);
 
       Array<int> node_vert_offset_data;
       OffsetIndices node_offsets = create_node_vert_offsets(

@@ -30,6 +30,7 @@
 #include "WM_types.hh"
 
 struct ARegion;
+struct Depsgraph;
 struct GHashIterator;
 struct GPUViewport;
 struct ID;
@@ -1791,7 +1792,7 @@ bool write_crash_blend();
 
 bool WM_autosave_is_scheduled(wmWindowManager *wm);
 /** Flushes all changes from edit modes and stores the auto-save file. */
-void WM_autosave_write(wmWindowManager *wm, Main *bmain);
+void WM_autosave_write(wmWindowManager *wm, Main *bmain, const Depsgraph &depsgraph);
 
 /**
  * Lock the interface for any communication.

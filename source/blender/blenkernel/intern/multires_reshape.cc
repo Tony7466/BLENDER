@@ -150,7 +150,8 @@ bool multiresModifier_reshapeFromCCG(const int tot_level, Mesh *coarse_mesh, Sub
 /** \name Subdivision
  * \{ */
 
-void multiresModifier_subdivide(Object *object,
+void multiresModifier_subdivide(const Depsgraph &depsgraph,
+                                Object *object,
                                 MultiresModifierData *mmd,
                                 const eMultiresSubdivideModeType mode)
 {
@@ -158,7 +159,8 @@ void multiresModifier_subdivide(Object *object,
   multiresModifier_subdivide_to_level(object, mmd, top_level, mode);
 }
 
-void multiresModifier_subdivide_to_level(Object *object,
+void multiresModifier_subdivide_to_level(const Depsgraph &depsgraph,
+                                         Object *object,
                                          MultiresModifierData *mmd,
                                          const int top_level,
                                          const eMultiresSubdivideModeType mode)
@@ -195,7 +197,7 @@ void multiresModifier_subdivide_to_level(Object *object,
   if (!has_mdisps || top_level == 1 || mmd->totlvl == 0) {
     multires_reshape_ensure_grids(coarse_mesh, top_level);
     if (ELEM(mode, MULTIRES_SUBDIVIDE_LINEAR, MULTIRES_SUBDIVIDE_SIMPLE)) {
-      multires_subdivide_create_tangent_displacement_linear_grids(object, mmd);
+      multires_subdivide_create_tangent_displacement_linear_grids(depsgraph, object, mmd);
     }
     else {
       multires_set_tot_level(object, mmd, top_level);
@@ -203,7 +205,7 @@ void multiresModifier_subdivide_to_level(Object *object,
     return;
   }
 
-  multires_flush_sculpt_updates(object);
+  multires_flush_sculpt_updates(depsgraph, object);
 
   if (!multires_reshape_context_create_from_modifier(&reshape_context, object, mmd, top_level)) {
     return;
@@ -239,7 +241,7 @@ void multiresModifier_subdivide_to_level(Object *object,
 
 void multiresModifier_base_apply(Depsgraph *depsgraph, Object *object, MultiresModifierData *mmd)
 {
-  multires_force_sculpt_rebuild(object);
+  multires_force_sculpt_rebuild(*depsgraph, object);
 
   MultiresReshapeContext reshape_context;
   if (!multires_reshape_context_create_from_object(&reshape_context, depsgraph, object, mmd)) {

@@ -385,7 +385,7 @@ static void calc_blurred_cavity_mesh(const Depsgraph &depsgraph,
   cavity_factors[vert] = calc_cavity_factor(automasking, factor_sum);
 }
 
-static void calc_blurred_cavity_grids(const Object &object,
+static void calc_blurred_cavity_grids(const SubdivCCG &subdiv_ccg,
                                       const Cache &automasking,
                                       const int steps,
                                       const SubdivCCGCoord vert,
@@ -396,8 +396,6 @@ static void calc_blurred_cavity_grids(const Object &object,
     int depth;
   };
 
-  const SculptSession &ss = *object.sculpt;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const Span<float3> positions = subdiv_ccg.positions;
   const Span<float3> normals = subdiv_ccg.normals;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -610,13 +608,13 @@ static float calc_cavity_factor_mesh(const Depsgraph &depsgraph,
   return process_cavity_factor(automasking, automasking.cavity_factor[vert]);
 }
 
-static float calc_cavity_factor_grids(const CCGKey &key,
+static float calc_cavity_factor_grids(const SubdivCCG &subdiv_ccg,
+                                      const CCGKey &key,
                                       const Cache &automasking,
-                                      const Object &object,
                                       const int vert)
 {
   if (automasking.cavity_factor[vert] == -1.0f) {
-    calc_blurred_cavity_grids(object,
+    calc_blurred_cavity_grids(subdiv_ccg,
                               automasking,
                               automasking.settings.cavity_blur_steps,
                               SubdivCCGCoord::from_index(key, vert),
@@ -871,7 +869,7 @@ void calc_grids_factors(const Depsgraph &depsgraph,
   const BitSpan boundary = ss.vertex_info.boundary;
   const bke::AttributeAccessor attributes = base_mesh.attributes();
   const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   Span<float3> orig_normals;
@@ -910,7 +908,7 @@ void calc_grids_factors(const Depsgraph &depsgraph,
         float cached_factor = automasking.factor[vert];
 
         if (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
-          cached_factor *= calc_cavity_factor_grids(key, automasking, object, vert);
+          cached_factor *= calc_cavity_factor_grids(subdiv_ccg, key, automasking, vert);
         }
 
         factors[node_vert] *= cached_factor;
@@ -977,7 +975,7 @@ void calc_grids_factors(const Depsgraph &depsgraph,
       }
 
       if (automasking.settings.flags & BRUSH_AUTOMASKING_CAVITY_ALL) {
-        factors[node_vert] *= calc_cavity_factor_grids(key, automasking, object, vert);
+        factors[node_vert] *= calc_cavity_factor_grids(subdiv_ccg, key, automasking, vert);
       }
     }
   }
@@ -1196,7 +1194,8 @@ static void fill_topology_automasking_factors(const Depsgraph &depsgraph,
           depsgraph, sd, ob, bke::pbvh::vert_positions_eval(depsgraph, ob), factors);
       break;
     case bke::pbvh::Type::Grids:
-      fill_topology_automasking_factors_grids(sd, ob, *ss.subdiv_ccg, factors);
+      fill_topology_automasking_factors_grids(
+          sd, ob, *bke::object::subdiv_ccg_get(depsgraph, ob), factors);
       break;
     case bke::pbvh::Type::BMesh:
       fill_topology_automasking_factors_bmesh(sd, ob, *ss.bm, factors);
@@ -1204,7 +1203,10 @@ static void fill_topology_automasking_factors(const Depsgraph &depsgraph,
   }
 }
 
-static void init_face_sets_masking(const Sculpt &sd, Object &ob, MutableSpan<float> factors)
+static void init_face_sets_masking(const Depsgraph &depsgraph,
+                                   const Sculpt &sd,
+                                   Object &ob,
+                                   MutableSpan<float> factors)
 {
   const Brush *brush = BKE_paint_brush_for_read(&sd.paint);
 
@@ -1212,7 +1214,7 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob, MutableSpan<flo
     return;
   }
 
-  const int active_face_set = face_set::active_face_set_get(ob);
+  const int active_face_set = face_set::active_face_set_get(depsgraph, ob);
   switch (bke::object::pbvh_get(ob)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(ob.data);
@@ -1241,8 +1243,7 @@ static void init_face_sets_masking(const Sculpt &sd, Object &ob, MutableSpan<flo
       if (face_sets.is_empty()) {
         return;
       }
-      const SculptSession &ss = *ob.sculpt;
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       const int grid_area = subdiv_ccg.grid_area;
       threading::parallel_for(faces.index_range(), 128, [&](const IndexRange range) {
         for (const int face : range) {
@@ -1345,13 +1346,14 @@ static void init_boundary_masking_mesh(Object &object,
   }
 }
 
-static void init_boundary_masking_grids(Object &object,
+static void init_boundary_masking_grids(const Depsgraph &depsgraph,
+                                        Object &object,
                                         const BoundaryAutomaskMode mode,
                                         const int propagation_steps,
                                         MutableSpan<float> factors)
 {
   SculptSession &ss = *object.sculpt;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   Mesh &mesh = *static_cast<Mesh *>(object.data);
 
   const Span<float3> positions = subdiv_ccg.positions;
@@ -1484,7 +1486,7 @@ static void init_boundary_masking(Object &object,
       init_boundary_masking_mesh(object, depsgraph, mode, propagation_steps, factors);
       break;
     case bke::pbvh::Type::Grids:
-      init_boundary_masking_grids(object, mode, propagation_steps, factors);
+      init_boundary_masking_grids(depsgraph, object, mode, propagation_steps, factors);
       break;
     case bke::pbvh::Type::BMesh:
       init_boundary_masking_bmesh(object, mode, propagation_steps, factors);
@@ -1493,13 +1495,14 @@ static void init_boundary_masking(Object &object,
 }
 
 /* Updates the cached values, preferring brush settings over tool-level settings. */
-static void cache_settings_update(Cache &automasking,
+static void cache_settings_update(const Depsgraph &depsgraph,
+                                  Cache &automasking,
                                   Object &object,
                                   const Sculpt &sd,
                                   const Brush *brush)
 {
   automasking.settings.flags = calc_effective_bits(sd, brush);
-  automasking.settings.initial_face_set = face_set::active_face_set_get(object);
+  automasking.settings.initial_face_set = face_set::active_face_set_get(depsgraph, object);
 
   if (brush && (brush->automasking_flags & BRUSH_AUTOMASKING_VIEW_NORMAL)) {
     automasking.settings.view_normal_limit = brush->automasking_view_normal_limit;
@@ -1537,7 +1540,7 @@ static void normal_occlusion_automasking_fill(const Depsgraph &depsgraph,
                                               eAutomasking_flag mode,
                                               MutableSpan<float> factors)
 {
-  const int totvert = SCULPT_vertex_count_get(ob);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, ob);
   /* No need to build original data since this is only called at the beginning of strokes. */
   switch (bke::object::pbvh_get(ob)->type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1562,8 +1565,7 @@ static void normal_occlusion_automasking_fill(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      const SculptSession &ss = *ob.sculpt;
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, ob);
       threading::parallel_for(IndexRange(totvert), 1024, [&](const IndexRange range) {
         for (const int vert : range) {
           float f = factors[vert];
@@ -1632,18 +1634,19 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
   }
 
   std::unique_ptr<Cache> automasking = std::make_unique<Cache>();
-  cache_settings_update(*automasking, ob, sd, brush);
+  cache_settings_update(depsgraph, *automasking, ob, sd, brush);
   boundary::ensure_boundary_info(ob);
 
   int mode = calc_effective_bits(sd, brush);
 
   SCULPT_vertex_random_access_ensure(ob);
-  if (mode & BRUSH_AUTOMASKING_TOPOLOGY && ss.active_vert_index() != -1) {
-    islands::ensure_cache(ob);
-    automasking->settings.initial_island_nr = islands::vert_id_get(ss, ss.active_vert_index());
+  if (mode & BRUSH_AUTOMASKING_TOPOLOGY && ss.active_vert_index(depsgraph, ob) != -1) {
+    islands::ensure_cache(depsgraph, ob);
+    automasking->settings.initial_island_nr = islands::vert_id_get(
+        ss, ss.active_vert_index(depsgraph, ob));
   }
 
-  const int verts_num = SCULPT_vertex_count_get(ob);
+  const int verts_num = SCULPT_vertex_count_get(depsgraph, ob);
 
   if ((mode & BRUSH_AUTOMASKING_VIEW_OCCLUSION) && (mode & BRUSH_AUTOMASKING_VIEW_NORMAL)) {
     automasking->occlusion = Array<Cache::OcclusionValue>(verts_num,
@@ -1683,7 +1686,7 @@ std::unique_ptr<Cache> cache_init(const Depsgraph &depsgraph,
 
   if (mode_enabled(sd, brush, BRUSH_AUTOMASKING_FACE_SETS)) {
     SCULPT_vertex_random_access_ensure(ob);
-    init_face_sets_masking(sd, ob, factors);
+    init_face_sets_masking(depsgraph, sd, ob, factors);
   }
 
   const int steps = boundary_propagation_steps(sd, brush);

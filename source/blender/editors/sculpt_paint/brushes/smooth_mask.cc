@@ -188,7 +188,7 @@ static void calc_grids(const Depsgraph &depsgraph,
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
 
   const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
@@ -301,6 +301,7 @@ void do_smooth_mask_brush(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       for (const float strength : iteration_strengths(brush_strength)) {
         MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
@@ -310,7 +311,7 @@ void do_smooth_mask_brush(const Depsgraph &depsgraph,
               [&](const int i) { calc_grids(depsgraph, object, brush, strength, nodes[i], tls); });
         });
       }
-      bke::pbvh::update_mask_grids(*ss.subdiv_ccg, node_mask, pbvh);
+      bke::pbvh::update_mask_grids(subdiv_ccg, node_mask, pbvh);
       pbvh.tag_masks_changed(node_mask);
       break;
     }

@@ -853,10 +853,9 @@ static void fill_vbos_grids(const Object &object,
                             const AttributeRequest &request,
                             const MutableSpan<gpu::VertBuf *> vbos)
 {
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   if (const CustomRequest *request_type = std::get_if<CustomRequest>(&request)) {
@@ -1467,7 +1466,6 @@ static void create_lines_index_grids_flat_layout(const Span<int> grid_indices,
 
 static Array<int> calc_material_indices(const Object &object, const OrigMeshData &orig_mesh_data)
 {
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
@@ -1501,7 +1499,7 @@ static Array<int> calc_material_indices(const Object &object, const OrigMeshData
         return {};
       }
       Array<int> node_materials(nodes.size());
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
       const Span<int> grid_faces = subdiv_ccg.grid_to_face_map;
       threading::parallel_for(nodes.index_range(), 64, [&](const IndexRange range) {
         for (const int i : range) {
@@ -1537,7 +1535,7 @@ static BitVector<> calc_use_flat_layout(const Object &object, const OrigMeshData
         return BitVector<>(nodes.size(), false);
       }
 
-      const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
       const Span<int> grid_to_face_map = subdiv_ccg.grid_to_face_map;
 
       /* Use boolean array instead of #BitVector for parallelized writing. */
@@ -1699,8 +1697,8 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_lines_indices(const Object &object,
     }
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {
-        const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
         const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
         ibos[i] = create_lines_index_grids(
             key, subdiv_ccg.grid_hidden, coarse, nodes[i].grids(), use_flat_layout_[i]);
@@ -1756,10 +1754,9 @@ BLI_NOINLINE static void ensure_vbos_allocated_grids(const Object &object,
                                                      const IndexMask &node_mask,
                                                      const MutableSpan<gpu::VertBuf *> vbos)
 {
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   node_mask.foreach_index(GrainSize(64), [&](const int i) {
     if (!vbos[i]) {
@@ -1901,7 +1898,7 @@ Span<gpu::IndexBuf *> DrawCacheImpl::ensure_tri_indices(const Object &object,
       const IndexMask nodes_to_calculate = IndexMask::from_predicate(
           node_mask, GrainSize(8196), memory, [&](const int i) { return !ibos[i]; });
 
-      const SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get_from_eval(object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
       nodes_to_calculate.foreach_index(GrainSize(1), [&](const int i) {

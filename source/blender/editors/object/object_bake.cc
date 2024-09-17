@@ -329,6 +329,7 @@ static int multiresbake_image_exec_locked(bContext *C, wmOperator *op)
 {
   Object *ob;
   Scene *scene = CTX_data_scene(C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   int objects_baked = 0;
 
   if (!multiresbake_check(C, op)) {
@@ -363,7 +364,7 @@ static int multiresbake_image_exec_locked(bContext *C, wmOperator *op)
 
     ob = base->object;
 
-    multires_flush_sculpt_updates(ob);
+    multires_flush_sculpt_updates(depsgraph, ob);
 
     /* copy data stored in job descriptor */
     bkr.scene = scene;
@@ -415,6 +416,7 @@ static int multiresbake_image_exec_locked(bContext *C, wmOperator *op)
 static void init_multiresbake_job(bContext *C, MultiresBakeJob *bkj)
 {
   Scene *scene = CTX_data_scene(C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
   Object *ob;
 
   /* backup scene settings, so their changing in UI would take no effect on baker */
@@ -440,7 +442,7 @@ static void init_multiresbake_job(bContext *C, MultiresBakeJob *bkj)
 
     ob = base->object;
 
-    multires_flush_sculpt_updates(ob);
+    multires_flush_sculpt_updates(depsgraph, ob);
 
     MultiresBakerJobData *data = MEM_cnew<MultiresBakerJobData>(__func__);
 

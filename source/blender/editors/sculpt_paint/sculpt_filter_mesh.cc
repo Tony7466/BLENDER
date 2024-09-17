@@ -405,7 +405,7 @@ static void calc_smooth_filter(const Depsgraph &depsgraph,
       const OffsetIndices faces = base_mesh.faces();
       const Span<int> corner_verts = base_mesh.corner_verts();
 
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -529,7 +529,7 @@ static void calc_inflate_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -643,7 +643,7 @@ static void calc_scale_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -772,7 +772,7 @@ static void calc_sphere_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -896,7 +896,7 @@ static void calc_random_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1043,7 +1043,7 @@ static void calc_relax_filter(const Depsgraph &depsgraph,
       const bke::AttributeAccessor attributes = base_mesh.attributes();
       const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                            bke::AttrDomain::Face);
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1213,7 +1213,7 @@ static void calc_relax_face_sets_filter(const Depsgraph &depsgraph,
       const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
                                                            bke::AttrDomain::Face);
 
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1420,7 +1420,7 @@ static void calc_surface_smooth_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1692,7 +1692,7 @@ static void calc_sharpen_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       MutableSpan<float3> vert_positions = subdiv_ccg.positions;
 
@@ -1901,7 +1901,7 @@ static void calc_enhance_details_filter(const Depsgraph &depsgraph,
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       threading::EnumerableThreadSpecific<LocalData> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1978,7 +1978,7 @@ static void calc_erase_displacement_filter(const Depsgraph &depsgraph,
   };
   SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   threading::EnumerableThreadSpecific<LocalData> all_tls;
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
   threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2011,12 +2011,13 @@ static void calc_erase_displacement_filter(const Depsgraph &depsgraph,
   });
 }
 
-static void mesh_filter_surface_smooth_init(Object &object,
+static void mesh_filter_surface_smooth_init(const Depsgraph &depsgraph,
+                                            Object &object,
                                             const float shape_preservation,
                                             const float current_vertex_displacement)
 {
   SculptSession &ss = *object.sculpt;
-  const int totvert = SCULPT_vertex_count_get(object);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, object);
   filter::Cache *filter_cache = ss.filter_cache;
 
   filter_cache->surface_smooth_laplacian_disp.reinitialize(totvert);
@@ -2024,10 +2025,9 @@ static void mesh_filter_surface_smooth_init(Object &object,
   filter_cache->surface_smooth_current_vertex = current_vertex_displacement;
 }
 
-static void calc_limit_surface_positions(const Object &object, MutableSpan<float3> limit_positions)
+static void calc_limit_surface_positions(const SubdivCCG &subdiv_ccg,
+                                         MutableSpan<float3> limit_positions)
 {
-  const SculptSession &ss = *object.sculpt;
-  const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   threading::parallel_for(IndexRange(subdiv_ccg.grids_num), 512, [&](const IndexRange range) {
@@ -2045,10 +2045,9 @@ static void mesh_filter_sharpen_init(const Depsgraph &depsgraph,
                                      const int curvature_smooth_iterations,
                                      filter::Cache &filter_cache)
 {
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const IndexMask &node_mask = filter_cache.node_mask;
-  const int totvert = SCULPT_vertex_count_get(object);
+  const int totvert = SCULPT_vertex_count_get(depsgraph, object);
 
   filter_cache.sharpen_smooth_ratio = smooth_ratio;
   filter_cache.sharpen_intensify_detail_strength = intensify_detail_strength;
@@ -2116,7 +2115,7 @@ static void mesh_filter_sharpen_init(const Depsgraph &depsgraph,
         break;
       }
       case bke::pbvh::Type::Grids: {
-        SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+        const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
         const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
         const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
         threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2418,7 +2417,8 @@ static void sculpt_filter_specific_init(const Depsgraph &depsgraph,
   SculptSession &ss = *object.sculpt;
   switch (filter_type) {
     case MeshFilterType::SurfaceSmooth: {
-      mesh_filter_surface_smooth_init(object,
+      mesh_filter_surface_smooth_init(depsgraph,
+                                      object,
                                       RNA_float_get(op->ptr, "surface_smooth_shape_preservation"),
                                       RNA_float_get(op->ptr, "surface_smooth_current_vertex"));
       break;
@@ -2433,14 +2433,15 @@ static void sculpt_filter_specific_init(const Depsgraph &depsgraph,
       break;
     }
     case MeshFilterType::EnhanceDetails: {
-      ss.filter_cache->detail_directions.reinitialize(SCULPT_vertex_count_get(object));
+      ss.filter_cache->detail_directions.reinitialize(SCULPT_vertex_count_get(depsgraph, object));
       calc_smooth_translations(
           depsgraph, object, ss.filter_cache->node_mask, ss.filter_cache->detail_directions);
       break;
     }
     case MeshFilterType::EraseDispacement: {
-      ss.filter_cache->limit_surface_co.reinitialize(SCULPT_vertex_count_get(object));
-      calc_limit_surface_positions(object, ss.filter_cache->limit_surface_co);
+      ss.filter_cache->limit_surface_co.reinitialize(SCULPT_vertex_count_get(depsgraph, object));
+      calc_limit_surface_positions(*bke::object::subdiv_ccg_get(depsgraph, object),
+                                   ss.filter_cache->limit_surface_co);
       break;
     }
     default:
@@ -2497,7 +2498,7 @@ static int sculpt_mesh_filter_start(bContext *C, wmOperator *op)
     boundary::ensure_boundary_info(ob);
   }
 
-  undo::push_begin(ob, op);
+  undo::push_begin(*depsgraph, ob, op);
 
   cache_init(C,
              ob,

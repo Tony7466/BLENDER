@@ -1747,13 +1747,14 @@ SculptSession::~SculptSession()
   MEM_SAFE_FREE(this->last_paint_canvas_key);
 }
 
-PBVHVertRef SculptSession::active_vert_ref() const
+PBVHVertRef SculptSession::active_vert_ref(const Depsgraph &depsgraph, const Object &object) const
 {
   if (std::holds_alternative<int>(active_vert_)) {
     return {std::get<int>(active_vert_)};
   }
   if (std::holds_alternative<SubdivCCGCoord>(active_vert_)) {
-    const CCGKey key = BKE_subdiv_ccg_key_top_level(*this->subdiv_ccg);
+    const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
+    const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
     const int index = std::get<SubdivCCGCoord>(active_vert_).to_index(key);
     return {index};
   }
@@ -1768,13 +1769,15 @@ ActiveVert SculptSession::active_vert() const
   return active_vert_;
 }
 
-PBVHVertRef SculptSession::last_active_vert_ref() const
+PBVHVertRef SculptSession::last_active_vert_ref(const Depsgraph &depsgraph,
+                                                const Object &object) const
 {
   if (std::holds_alternative<int>(last_active_vert_)) {
     return {std::get<int>(last_active_vert_)};
   }
   if (std::holds_alternative<SubdivCCGCoord>(last_active_vert_)) {
-    const CCGKey key = BKE_subdiv_ccg_key_top_level(*this->subdiv_ccg);
+    const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
+    const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
     const int index = std::get<SubdivCCGCoord>(last_active_vert_).to_index(key);
     return {index};
   }
@@ -1789,14 +1792,15 @@ ActiveVert SculptSession::last_active_vert() const
   return active_vert_;
 }
 
-int SculptSession::active_vert_index() const
+int SculptSession::active_vert_index(const Depsgraph &depsgraph, const Object &object) const
 {
   if (std::holds_alternative<int>(active_vert_)) {
     return std::get<int>(active_vert_);
   }
   if (std::holds_alternative<SubdivCCGCoord>(active_vert_)) {
+    const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
     const SubdivCCGCoord coord = std::get<SubdivCCGCoord>(active_vert_);
-    return coord.to_index(BKE_subdiv_ccg_key_top_level(*this->subdiv_ccg));
+    return coord.to_index(BKE_subdiv_ccg_key_top_level(subdiv_ccg));
   }
   if (std::holds_alternative<BMVert *>(active_vert_)) {
     BMVert *bm_vert = std::get<BMVert *>(active_vert_);
@@ -1814,9 +1818,10 @@ blender::float3 SculptSession::active_vert_position(const Depsgraph &depsgraph,
     return positions[std::get<int>(active_vert_)];
   }
   if (std::holds_alternative<SubdivCCGCoord>(active_vert_)) {
-    const CCGKey key = BKE_subdiv_ccg_key_top_level(*this->subdiv_ccg);
+    const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get(depsgraph, object);
+    const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
     const SubdivCCGCoord coord = std::get<SubdivCCGCoord>(active_vert_);
-    return this->subdiv_ccg->positions[coord.to_index(key)];
+    return subdiv_ccg.positions[coord.to_index(key)];
   }
   if (std::holds_alternative<BMVert *>(active_vert_)) {
     BMVert *bm_vert = std::get<BMVert *>(active_vert_);
@@ -1991,8 +1996,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.multires.modifier = nullptr;
     ss.multires.level = 0;
   }
-
-  ss.subdiv_ccg = mesh_eval->runtime->subdiv_ccg.get();
 
   pbvh::Tree &pbvh = object::pbvh_ensure(*depsgraph, *ob);
 
@@ -2434,6 +2437,34 @@ pbvh::Tree *pbvh_get(Object &object)
     return nullptr;
   }
   return object.sculpt->pbvh.get();
+}
+
+SubdivCCG *subdiv_ccg_get(const Depsgraph &depsgraph, Object &object)
+{
+  const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
+  Mesh &mesh = *static_cast<Mesh *>(object_eval.data);
+  return mesh.runtime->subdiv_ccg.get();
+}
+
+const SubdivCCG *subdiv_ccg_get(const Depsgraph &depsgraph, const Object &object)
+{
+  const Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &const_cast<Object &>(object));
+  const Mesh &mesh = *static_cast<const Mesh *>(object_eval.data);
+  return mesh.runtime->subdiv_ccg.get();
+}
+
+SubdivCCG *subdiv_ccg_get_from_eval(Object &object_eval)
+{
+  BLI_assert(DEG_is_evaluated_object(&object_eval));
+  Mesh &mesh = *static_cast<Mesh *>(object_eval.data);
+  return mesh.runtime->subdiv_ccg.get();
+}
+
+const SubdivCCG *subdiv_ccg_get_from_eval(const Object &object_eval)
+{
+  BLI_assert(DEG_is_evaluated_object(&object_eval));
+  const Mesh &mesh = *static_cast<const Mesh *>(object_eval.data);
+  return mesh.runtime->subdiv_ccg.get();
 }
 
 }  // namespace blender::bke::object

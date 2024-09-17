@@ -103,7 +103,7 @@ void ensure_boundary_info(Object &object);
  *
  * Requires #ensure_boundary_info to have been called.
  */
-bool vert_is_boundary(const Object &object, PBVHVertRef vertex);
+bool vert_is_boundary(const Depsgraph &depsgraph, const Object &object, PBVHVertRef vertex);
 bool vert_is_boundary(GroupedSpan<int> vert_to_face_map,
                       Span<bool> hide_poly,
                       BitSpan boundary,
@@ -129,7 +129,8 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
                                                const Brush *brush,
                                                int initial_vert,
                                                float radius);
-std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
+std::unique_ptr<SculptBoundary> data_init_grids(const SubdivCCG &subdiv_ccg,
+                                                Object &object,
                                                 const Brush *brush,
                                                 SubdivCCGCoord initial_vert,
                                                 float radius);

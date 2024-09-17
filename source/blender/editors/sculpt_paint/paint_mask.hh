@@ -26,7 +26,7 @@ class Node;
 
 namespace blender::ed::sculpt_paint::mask {
 
-Array<float> duplicate_mask(const Object &object);
+Array<float> duplicate_mask(const Depsgraph &depsgraph, const Object &object);
 void mix_new_masks(Span<float> new_masks, Span<float> factors, MutableSpan<float> masks);
 void clamp_mask(MutableSpan<float> masks);
 

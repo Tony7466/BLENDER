@@ -16,6 +16,7 @@
 #include "BKE_subdiv_ccg.hh"
 
 struct BMVert;
+struct Depsgraph;
 struct Object;
 struct SubdivCCG;
 struct SubdivCCGCoord;
@@ -69,7 +70,10 @@ template<typename T>
 void average_data_bmesh(Span<T> src, const Set<BMVert *, 0> &verts, MutableSpan<T> dst);
 
 /* Average the data in the argument span across vertex neighbors. */
-void blur_geometry_data_array(const Object &object, int iterations, MutableSpan<float> data);
+void blur_geometry_data_array(const Depsgraph &depsgraph,
+                              const Object &object,
+                              int iterations,
+                              MutableSpan<float> data);
 
 /* Surface Smooth Brush. */
 

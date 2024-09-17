@@ -274,10 +274,8 @@ void ED_editors_exit(Main *bmain, bool do_undo_system)
   ED_mesh_mirror_topo_table_end(nullptr);
 }
 
-bool ED_editors_flush_edits_for_object_ex(Main *bmain,
-                                          Object *ob,
-                                          bool for_render,
-                                          bool check_needs_flush)
+bool ED_editors_flush_edits_for_object_ex(
+    Main *bmain, const Depsgraph &depsgraph, Object *ob, bool for_render, bool check_needs_flush)
 {
   using namespace blender::ed;
   bool has_edited = false;
@@ -293,7 +291,7 @@ bool ED_editors_flush_edits_for_object_ex(Main *bmain,
       *needs_flush_ptr = 0;
 
       /* flush multires changes (for sculpt) */
-      multires_flush_sculpt_updates(ob);
+      multires_flush_sculpt_updates(depsgraph, ob);
       has_edited = true;
 
       if (for_render) {
@@ -324,12 +322,15 @@ bool ED_editors_flush_edits_for_object_ex(Main *bmain,
   return has_edited;
 }
 
-bool ED_editors_flush_edits_for_object(Main *bmain, Object *ob)
+bool ED_editors_flush_edits_for_object(const Depsgraph &depsgraph, Main *bmain, Object *ob)
 {
-  return ED_editors_flush_edits_for_object_ex(bmain, ob, false, false);
+  return ED_editors_flush_edits_for_object_ex(bmain, depsgraph, ob, false, false);
 }
 
-bool ED_editors_flush_edits_ex(Main *bmain, bool for_render, bool check_needs_flush)
+bool ED_editors_flush_edits_ex(Main *bmain,
+                               const Depsgraph &depsgraph,
+                               bool for_render,
+                               bool check_needs_flush)
 {
   bool has_edited = false;
 
@@ -337,7 +338,8 @@ bool ED_editors_flush_edits_ex(Main *bmain, bool for_render, bool check_needs_fl
    * exiting we might not have a context for edit object and multiple sculpt
    * objects can exist at the same time */
   LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    has_edited |= ED_editors_flush_edits_for_object_ex(bmain, ob, for_render, check_needs_flush);
+    has_edited |= ED_editors_flush_edits_for_object_ex(
+        bmain, depsgraph, ob, for_render, check_needs_flush);
   }
 
   bmain->is_memfile_undo_flush_needed = false;
@@ -345,9 +347,9 @@ bool ED_editors_flush_edits_ex(Main *bmain, bool for_render, bool check_needs_fl
   return has_edited;
 }
 
-bool ED_editors_flush_edits(Main *bmain)
+bool ED_editors_flush_edits(Main *bmain, const Depsgraph &depsgraph)
 {
-  return ED_editors_flush_edits_ex(bmain, false, false);
+  return ED_editors_flush_edits_ex(bmain, depsgraph, false, false);
 }
 
 /* ***** XXX: functions are using old blender names, cleanup later ***** */

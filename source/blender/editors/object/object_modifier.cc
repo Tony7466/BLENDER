@@ -1192,7 +1192,7 @@ static bool modifier_apply_obdata(
 
     /* Multires: ensure that recent sculpting is applied */
     if (md_eval->type == eModifierType_Multires) {
-      multires_force_sculpt_rebuild(ob);
+      multires_force_sculpt_rebuild(*depsgraph, ob);
     }
 
     if (mmd && mmd->totlvl && mti->type == ModifierTypeType::OnlyDeform) {

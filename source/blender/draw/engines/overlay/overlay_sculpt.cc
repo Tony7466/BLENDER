@@ -72,7 +72,7 @@ void OVERLAY_sculpt_cache_populate(OVERLAY_Data *vedata, Object *ob)
       break;
     }
     case blender::bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *blender::bke::object::subdiv_ccg_get_from_eval(*ob);
       const Mesh &base_mesh = *static_cast<const Mesh *>(object_orig->data);
       if (subdiv_ccg.masks.is_empty() && !base_mesh.attributes().contains(".sculpt_face_set")) {
         return;

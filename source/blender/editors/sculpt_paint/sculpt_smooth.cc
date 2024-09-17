@@ -671,7 +671,8 @@ void calc_relaxed_translations_bmesh(const Set<BMVert *, 0> &verts,
   }
 }
 
-void blur_geometry_data_array(const Object &object,
+void blur_geometry_data_array(const Depsgraph &depsgraph,
+                              const Object &object,
                               const int iterations,
                               const MutableSpan<float> data)
 {
@@ -680,7 +681,6 @@ void blur_geometry_data_array(const Object &object,
     Vector<Vector<int>> vert_neighbors;
     Vector<float> new_factors;
   };
-  const SculptSession &ss = *object.sculpt;
   const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   IndexMaskMemory memory;
   const IndexMask node_mask = bke::pbvh::all_leaf_nodes(pbvh, memory);
@@ -723,7 +723,7 @@ void blur_geometry_data_array(const Object &object,
     }
     case bke::pbvh::Type::Grids: {
       const Span<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       const BitGroupVector<> &grid_hidden = subdiv_ccg.grid_hidden;
       for ([[maybe_unused]] const int _ : IndexRange(iterations)) {

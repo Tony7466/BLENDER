@@ -231,7 +231,7 @@ static int symmetrize_exec(bContext *C, wmOperator *op)
        * as deleted, then after symmetrize operation all BMesh elements
        * are logged as added (as opposed to attempting to store just the
        * parts that symmetrize modifies). */
-      undo::push_begin(ob, op);
+      undo::push_begin(depsgraph, ob, op);
       undo::push_node(depsgraph, ob, nullptr, undo::Type::DyntopoSymmetrize);
       BM_log_before_all_removed(ss.bm, ss.bm_log);
 
@@ -259,7 +259,7 @@ static int symmetrize_exec(bContext *C, wmOperator *op)
     }
     case bke::pbvh::Type::Mesh: {
       /* Mesh Symmetrize. */
-      undo::geometry_begin(ob, op);
+      undo::geometry_begin(depsgraph, ob, op);
       Mesh *mesh = static_cast<Mesh *>(ob.data);
 
       BKE_mesh_mirror_apply_mirror_on_axis(bmain, mesh, sd.symmetrize_direction, dist);
@@ -446,7 +446,7 @@ void object_sculpt_mode_enter(Main &bmain,
       const bool has_undo = wm->undo_stack != nullptr;
       /* Undo push is needed to prevent memory leak. */
       if (has_undo) {
-        undo::push_begin_ex(ob, "Dynamic topology enable");
+        undo::push_begin_ex(depsgraph, ob, "Dynamic topology enable");
       }
       dyntopo::enable_ex(bmain, depsgraph, ob);
       if (has_undo) {
@@ -484,7 +484,7 @@ void object_sculpt_mode_exit(Main &bmain, Depsgraph &depsgraph, Scene &scene, Ob
 
   mesh->runtime->corner_tris_cache.unfreeze();
 
-  multires_flush_sculpt_updates(&ob);
+  multires_flush_sculpt_updates(depsgraph, &ob);
 
   /* Not needed for now. */
 #if 0
@@ -569,7 +569,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
          * while it works it causes lag when undoing the first undo step, see #71564. */
         wmWindowManager *wm = CTX_wm_manager(C);
         if (wm->op_undo_depth <= 1) {
-          undo::push_begin(ob, op);
+          undo::push_begin(*depsgraph, ob, op);
           undo::push_end(ob);
         }
       }
@@ -825,7 +825,7 @@ static int mask_by_color_invoke(bContext *C, wmOperator *op, const wmEvent *even
   const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
   SCULPT_cursor_geometry_info_update(C, &sgi, mval_fl, false);
 
-  undo::push_begin(ob, op);
+  undo::push_begin(*depsgraph, ob, op);
   BKE_sculpt_color_layer_create_if_needed(&ob);
 
   const float threshold = RNA_float_get(op->ptr, "threshold");
@@ -974,8 +974,7 @@ static void apply_mask_grids(const Depsgraph &depsgraph,
                              const bke::pbvh::GridsNode &node,
                              LocalData &tls)
 {
-  SculptSession &ss = *object.sculpt;
-  SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+  SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(depsgraph, object);
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const Span<int> grids = node.grids();
@@ -1051,7 +1050,7 @@ static int mask_from_cavity_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
   SCULPT_vertex_random_access_ensure(ob);
 
-  undo::push_begin(ob, op);
+  undo::push_begin(*depsgraph, ob, op);
 
   const ApplyMaskMode mode = ApplyMaskMode(RNA_enum_get(op->ptr, "mix_mode"));
   const float factor = RNA_float_get(op->ptr, "mix_factor");
@@ -1145,7 +1144,7 @@ static int mask_from_cavity_exec(bContext *C, wmOperator *op)
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ob.sculpt->subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *bke::object::subdiv_ccg_get(*depsgraph, ob);
       const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
       MutableSpan<float> masks = subdiv_ccg.masks;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();

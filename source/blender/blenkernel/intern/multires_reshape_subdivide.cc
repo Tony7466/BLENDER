@@ -56,11 +56,12 @@ static void multires_subdivide_create_object_space_linear_grids(Mesh *mesh)
   }
 }
 
-void multires_subdivide_create_tangent_displacement_linear_grids(Object *object,
+void multires_subdivide_create_tangent_displacement_linear_grids(const Depsgraph &depsgraph,
+                                                                 Object *object,
                                                                  MultiresModifierData *mmd)
 {
   Mesh *coarse_mesh = static_cast<Mesh *>(object->data);
-  multires_force_sculpt_rebuild(object);
+  multires_force_sculpt_rebuild(depsgraph, object);
 
   MultiresReshapeContext reshape_context;
 

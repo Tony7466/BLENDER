@@ -1070,7 +1070,7 @@ Mesh *BKE_mesh_from_object(Object *ob)
   return nullptr;
 }
 
-void BKE_mesh_assign_object(Main *bmain, Object *ob, Mesh *mesh)
+void BKE_mesh_assign_object(Main *bmain, const Depsgraph &depsgraph, Object *ob, Mesh *mesh)
 {
   Mesh *old = nullptr;
 
@@ -1078,7 +1078,7 @@ void BKE_mesh_assign_object(Main *bmain, Object *ob, Mesh *mesh)
     return;
   }
 
-  multires_force_sculpt_rebuild(ob);
+  multires_force_sculpt_rebuild(depsgraph, ob);
 
   if (ob->type == OB_MESH) {
     old = static_cast<Mesh *>(ob->data);

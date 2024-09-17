@@ -60,13 +60,13 @@ void push_nodes(const Depsgraph &depsgraph,
  * redo panels to work; operators that do not support that may use
  * #push_begin_ex instead if so desired.
  */
-void push_begin(Object &ob, const wmOperator *op);
+void push_begin(const Depsgraph &depsgraph, Object &ob, const wmOperator *op);
 
 /**
  * NOTE: #push_begin is preferred since `name`
  * must match operator name for redo panels to work.
  */
-void push_begin_ex(Object &ob, const char *name);
+void push_begin_ex(const Depsgraph &depsgraph, Object &ob, const char *name);
 void push_end(Object &ob);
 void push_end_ex(Object &ob, bool use_nested_undo);
 

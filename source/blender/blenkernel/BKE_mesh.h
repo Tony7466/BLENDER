@@ -150,7 +150,7 @@ void BKE_mesh_orco_verts_transform(Mesh *mesh, float (*orco)[3], int totvert, bo
 void BKE_mesh_orco_ensure(Object *ob, Mesh *mesh);
 
 Mesh *BKE_mesh_from_object(Object *ob);
-void BKE_mesh_assign_object(Main *bmain, Object *ob, Mesh *mesh);
+void BKE_mesh_assign_object(Main *bmain, const Depsgraph &depsgraph, Object *ob, Mesh *mesh);
 void BKE_mesh_to_curve_nurblist(const Mesh *mesh, ListBase *nurblist, int edge_users_test);
 void BKE_mesh_to_curve(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob);
 void BKE_mesh_to_pointcloud(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob);
