@@ -316,35 +316,6 @@ void drawSnapping(TransInfo *t)
 
     GPU_matrix_pop_projection();
   }
-  else if (t->spacetype == SPACE_NODE) {
-    ARegion *region = t->region;
-    float size;
-
-    size = 2.5f * UI_GetThemeValuef(TH_VERTEX_SIZE);
-
-    GPU_blend(GPU_BLEND_ALPHA);
-
-    uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    LISTBASE_FOREACH (TransSnapPoint *, p, &t->tsnap.points) {
-      if (p == t->tsnap.selectedPoint) {
-        immUniformColor4ubv(selectedCol);
-      }
-      else {
-        immUniformColor4ubv(col);
-      }
-    }
-
-    if (t->tsnap.status & SNAP_TARGET_FOUND) {
-      immUniformColor4ubv(activeCol);
-    }
-
-    immUnbindProgram();
-
-    GPU_blend(GPU_BLEND_NONE);
-  }
   else if (t->spacetype == SPACE_SEQ) {
     const ARegion *region = t->region;
     GPU_blend(GPU_BLEND_ALPHA);

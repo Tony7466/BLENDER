@@ -3663,15 +3663,15 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
             break;
         }
         switch (scene->toolsettings->snap_node_mode) {
-          case 5:
-            scene->toolsettings->snap_node_mode = (1 << 5); /* SCE_SNAP_TO_NODE_X */
+          case 1:
+            scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_TO_GRID */
             break;
           case 6:
-            scene->toolsettings->snap_node_mode = (1 << 6); /* SCE_SNAP_TO_NODE_Y */
+            scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_TO_GRID */
             break;
           case 7:
             scene->toolsettings->snap_node_mode =
-                (1 << 5) | (1 << 6); /* SCE_SNAP_TO_NODE_X | SCE_SNAP_TO_NODE_Y */
+                (1 << 7); /* SCE_SNAP_TO_GRID */
             break;
           case 8:
             scene->toolsettings->snap_node_mode = (1 << 7); /* SCE_SNAP_TO_GRID */
@@ -5595,9 +5595,9 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 281, 15)) {
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-//      if (scene->toolsettings->snap_node_mode == SCE_SNAP_TO_NODE_X) {
-//        scene->toolsettings->snap_node_mode = SCE_SNAP_TO_GRID;
-//      }
+      if (scene->toolsettings->snap_node_mode == (1 << 1)) {
+        scene->toolsettings->snap_node_mode = SCE_SNAP_TO_GRID;
+      }
     }
 
     if (!DNA_struct_member_exists(
