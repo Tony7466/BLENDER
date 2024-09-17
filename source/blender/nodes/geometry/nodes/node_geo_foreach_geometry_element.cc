@@ -67,7 +67,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
   auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(output_node.storage);
 
   if (is_zone_input_node) {
-    if (uiLayout *panel = uiLayoutPanel(C, layout, "input", false, TIP_("Input Items"))) {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "input", false, TIP_("Input Fields"))) {
       static const uiListType *input_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
         STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_input_items");
@@ -134,7 +134,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
     }
   }
   else {
-    if (uiLayout *panel = uiLayoutPanel(C, layout, "main_items", false, TIP_("Main Items"))) {
+    if (uiLayout *panel = uiLayoutPanel(C, layout, "main_items", false, TIP_("Main Geometry"))) {
       static const uiListType *main_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
         STRNCPY(list->idname, "DATA_UL_foreach_geometry_element_main_items");
@@ -200,7 +200,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
       }
     }
     if (uiLayout *panel = uiLayoutPanel(
-            C, layout, "generation_items", false, TIP_("Generation Items")))
+            C, layout, "generation_items", false, TIP_("Generated Geometry")))
     {
       static const uiListType *generation_items_list = []() {
         uiListType *list = MEM_cnew<uiListType>(__func__);
