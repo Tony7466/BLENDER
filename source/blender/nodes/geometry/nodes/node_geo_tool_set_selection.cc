@@ -15,6 +15,7 @@
 
 namespace blender::nodes::node_geo_tool_set_selection_cc {
 
+/** \warning Values are stored in files. */
 enum class SelectionType {
   Boolean = 0,
   Float = 1,
