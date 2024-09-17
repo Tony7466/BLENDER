@@ -626,7 +626,7 @@ static void grease_pencil_interpolate_update(bContext &C, const wmOperator &op)
           opdata.smooth_steps,
           opdata.smooth_factor,
           false,
-          false,
+          true,
           positions);
       interpolated_curves.tag_positions_changed();
     }
@@ -1153,7 +1153,7 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
             opdata.smooth_steps,
             opdata.smooth_factor,
             false,
-            false,
+            true,
             positions);
         interpolated_curves.tag_positions_changed();
       }
