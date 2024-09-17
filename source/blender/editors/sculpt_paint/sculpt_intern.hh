@@ -52,6 +52,7 @@ struct Dial;
 struct DistRayAABB_Precalc;
 struct Image;
 struct ImageUser;
+struct Key;
 struct KeyBlock;
 struct Object;
 struct bContext;
@@ -65,6 +66,48 @@ struct wmOperatorType;
  * \{ */
 
 namespace blender::ed::sculpt_paint {
+
+/**
+ * This class represents an API to deform original positions based on translations created from
+ * evaluated positions. It should be constructed once outside of a parallel context.
+ */
+class PositionDeformData {
+ public:
+  /**
+   * Positions from after procedural deformation from modifiers, used to build the
+   * pbvh::Tree. Translations are built for these values, then applied to the original positions.
+   * When there are no deforming modifiers, this will reference the same array as #orig.
+   */
+  Span<float3> eval;
+
+ private:
+  /**
+   * In some cases deformations must also apply to the evaluated positions (#eval) in case the
+   * changed values are needed elsewhere before the object is reevaluated (which would update the
+   * evaluated positions).
+   */
+  std::optional<MutableSpan<float3>> eval_mut_;
+
+  /**
+   * Transforms from deforming modifiers, used to convert translations of evaluated positions to
+   * "original" translations.
+   */
+  std::optional<Span<float3x3>> deform_imats_;
+
+  /**
+   * Positions from the original mesh. Not the same as #eval if there are deform modifiers.
+   */
+  MutableSpan<float3> orig_;
+
+  Key *keys_;
+  KeyBlock *active_key_;
+  bool basis_active_;
+  std::optional<Array<bool>> dependent_keys_;
+
+ public:
+  PositionDeformData(const Depsgraph &depsgraph, Object &object_orig);
+  void deform(MutableSpan<float3> translations, Span<int> verts) const;
+};
 
 enum class UpdateType {
   Position,
@@ -424,7 +467,10 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
 
 namespace blender::ed::sculpt_paint {
 
-void geometry_preview_lines_update(bContext *C, SculptSession &ss, float radius);
+void geometry_preview_lines_update(Depsgraph &depsgraph,
+                                   Object &object,
+                                   SculptSession &ss,
+                                   float radius);
 
 }
 
@@ -481,11 +527,6 @@ const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
                                   const Object &object,
                                   PBVHVertRef vertex);
 
-/** Get the normal for a given sculpt vertex; do not modify the result */
-const blender::float3 SCULPT_vertex_normal_get(const Depsgraph &depsgraph,
-                                               const Object &object,
-                                               PBVHVertRef vertex);
-
 bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
                                const Object &object,
                                const blender::float3 &position,
@@ -538,11 +579,11 @@ namespace blender::ed::sculpt_paint {
 Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 
-Span<int> vert_neighbors_get_mesh(int vert,
-                                  OffsetIndices<int> faces,
+Span<int> vert_neighbors_get_mesh(OffsetIndices<int> faces,
                                   Span<int> corner_verts,
                                   GroupedSpan<int> vert_to_face,
                                   Span<bool> hide_poly,
+                                  int vert,
                                   Vector<int> &r_neighbors);
 }
 
@@ -911,7 +952,8 @@ bool SCULPT_paint_image_canvas_get(PaintModeSettings &paint_mode_settings,
                                    Object &ob,
                                    Image **r_image,
                                    ImageUser **r_image_user) ATTR_NONNULL();
-void SCULPT_do_paint_brush_image(const Depsgraph &depsgraph,
+void SCULPT_do_paint_brush_image(const Scene &scene,
+                                 const Depsgraph &depsgraph,
                                  PaintModeSettings &paint_mode_settings,
                                  const Sculpt &sd,
                                  Object &ob,
@@ -942,9 +984,6 @@ BLI_INLINE bool SCULPT_brush_type_is_attribute_only(int tool)
          ELEM(tool, SCULPT_BRUSH_TYPE_DRAW_FACE_SETS);
 }
 
-void SCULPT_stroke_id_ensure(Object &ob);
-void SCULPT_stroke_id_next(Object &ob);
-
 namespace blender::ed::sculpt_paint {
 void ensure_valid_pivot(const Object &ob, Scene &scene);
 }
@@ -954,64 +993,4 @@ float sculpt_calc_radius(const ViewContext &vc,
                          const Brush &brush,
                          const Scene &scene,
                          float3 location);
-}
-
-inline void *SCULPT_vertex_attr_get(const PBVHVertRef vert, const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-    int idx = (int)vert.i;
-
-    if (attr->data_for_bmesh) {
-      BMElem *v = (BMElem *)vert.i;
-      idx = v->head.index;
-    }
-
-    return p + attr->elem_size * idx;
-  }
-
-  BMElem *v = (BMElem *)vert.i;
-  return BM_ELEM_CD_GET_VOID_P(v, attr->bmesh_cd_offset);
-}
-inline void *SCULPT_vertex_attr_get(const int vert, const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-
-    return p + attr->elem_size * vert;
-  }
-
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-inline void *SCULPT_vertex_attr_get(const CCGKey &key,
-                                    const SubdivCCGCoord vert,
-                                    const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-    int idx = vert.to_index(key);
-
-    return p + attr->elem_size * idx;
-  }
-
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-inline void *SCULPT_vertex_attr_get(const BMVert *vert, const SculptAttribute *attr)
-{
-  if (attr->data) {
-    char *p = (char *)attr->data;
-    int idx = BM_elem_index_get(vert);
-
-    if (attr->data_for_bmesh) {
-      idx = vert->head.index;
-    }
-
-    return p + attr->elem_size * idx;
-  }
-
-  return BM_ELEM_CD_GET_VOID_P(vert, attr->bmesh_cd_offset);
 }

@@ -86,15 +86,6 @@ using blender::Span;
 using blender::Vector;
 using blender::bke::AttrDomain;
 
-static void sculpt_attribute_update_refs(Object *ob, blender::bke::pbvh::Type pbvhtype);
-static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
-                                                   AttrDomain domain,
-                                                   eCustomDataType proptype,
-                                                   const char *name,
-                                                   const SculptAttributeParams *params,
-                                                   blender::bke::pbvh::Type pbvhtype,
-                                                   bool flat_array_for_bmesh);
-
 static void palette_init_data(ID *id)
 {
   Palette *palette = (Palette *)id;
@@ -1638,10 +1629,10 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
 {
   if (ss->mode_type == OB_MODE_WEIGHT_PAINT) {
     MEM_SAFE_FREE(ss->mode.wpaint.alpha_weight);
-    if (ss->mode.wpaint.dvert_prev) {
-      BKE_defvert_array_free_elems(ss->mode.wpaint.dvert_prev, ss->totvert);
-      MEM_freeN(ss->mode.wpaint.dvert_prev);
-      ss->mode.wpaint.dvert_prev = nullptr;
+    if (!ss->mode.wpaint.dvert_prev.is_empty()) {
+      BKE_defvert_array_free_elems(ss->mode.wpaint.dvert_prev.data(),
+                                   ss->mode.wpaint.dvert_prev.size());
+      ss->mode.wpaint.dvert_prev = {};
     }
   }
 }
@@ -1684,7 +1675,6 @@ void BKE_sculptsession_free_pbvh(Object &object)
   }
 
   ss->pbvh.reset();
-  ss->vert_to_face_map = {};
   ss->edge_to_face_offsets = {};
   ss->edge_to_face_indices = {};
   ss->edge_to_face_map = {};
@@ -1727,8 +1717,6 @@ void BKE_sculptsession_free(Object *ob)
   if (ob && ob->sculpt) {
     SculptSession *ss = ob->sculpt;
 
-    BKE_sculpt_attribute_destroy_temporary_all(ob);
-
     if (ss->bm) {
       BKE_sculptsession_bm_to_me(ob, true);
       BM_mesh_free(ss->bm);
@@ -1742,14 +1730,7 @@ void BKE_sculptsession_free(Object *ob)
   }
 }
 
-SculptSession::SculptSession()
-{
-  /* Code expects attribute domains to be zero initialized. Avoid exposing #AttrDomain definition
-   * in header. */
-  for (const int i : blender::IndexRange(ARRAY_SIZE(this->temp_attributes))) {
-    this->temp_attributes[i].domain = blender::bke::AttrDomain::Point;
-  }
-}
+SculptSession::SculptSession() {}
 
 SculptSession::~SculptSession()
 {
@@ -1983,7 +1964,6 @@ static void sculpt_update_object(Depsgraph *depsgraph,
    * evaluated yet. */
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh_unchecked(ob_eval);
   MultiresModifierData *mmd = sculpt_multires_modifier_get(scene, ob, true);
-  const bool use_face_sets = (ob->mode & OB_MODE_SCULPT) != 0;
 
   BLI_assert(mesh_eval != nullptr);
 
@@ -1993,13 +1973,9 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     return;
   }
 
-  ss.depsgraph = depsgraph;
-
   ss.deform_modifiers_active = sculpt_modifiers_active(scene, sd, ob);
 
   ss.building_vp_handle = false;
-
-  ss.scene = scene;
 
   ss.shapekey_active = (mmd == nullptr) ? BKE_keyblock_from_object(ob) : nullptr;
 
@@ -2009,47 +1985,16 @@ static void sculpt_update_object(Depsgraph *depsgraph,
     ss.multires.active = true;
     ss.multires.modifier = mmd;
     ss.multires.level = mmd->sculptlvl;
-    ss.totvert = mesh_eval->verts_num;
-    ss.faces_num = mesh_eval->faces_num;
-    ss.totfaces = mesh_orig->faces_num;
-
-    /* These are assigned to the base mesh in Multires. This is needed because Face Sets operators
-     * and tools use the Face Sets data from the base mesh when Multires is active. */
-    ss.faces = mesh_orig->faces();
-    ss.corner_verts = mesh_orig->corner_verts();
   }
   else {
-    ss.totvert = mesh_orig->verts_num;
-    ss.faces_num = mesh_orig->faces_num;
-    ss.totfaces = mesh_orig->faces_num;
-    ss.faces = mesh_orig->faces();
-    ss.corner_verts = mesh_orig->corner_verts();
     ss.multires.active = false;
     ss.multires.modifier = nullptr;
     ss.multires.level = 0;
   }
 
-  /* Sculpt Face Sets. */
-  if (use_face_sets) {
-    ss.face_sets = static_cast<const int *>(
-        CustomData_get_layer_named(&mesh_orig->face_data, CD_PROP_INT32, ".sculpt_face_set"));
-  }
-  else {
-    ss.face_sets = nullptr;
-  }
-
-  ss.hide_poly = (bool *)CustomData_get_layer_named(
-      &mesh_orig->face_data, CD_PROP_BOOL, ".hide_poly");
-
   ss.subdiv_ccg = mesh_eval->runtime->subdiv_ccg.get();
 
   pbvh::Tree &pbvh = object::pbvh_ensure(*depsgraph, *ob);
-
-  sculpt_attribute_update_refs(ob, pbvh.type());
-
-  if (ob->type == OB_MESH) {
-    ss.vert_to_face_map = mesh_orig->vert_to_face_map();
-  }
 
   if (ss.deform_modifiers_active) {
     /* Painting doesn't need crazyspace, use already evaluated mesh coordinates if possible. */
@@ -2139,6 +2084,11 @@ static void sculpt_update_object(Depsgraph *depsgraph,
       BKE_texpaint_slots_refresh_object(scene, ob);
     }
   }
+
+  /* This solves a crash when running a sculpt brush in background mode, because there is no redraw
+   * after entering sculpt mode to make sure normals are allocated. Recalculating normals with
+   * every brush step is too expensive currently. */
+  bke::pbvh::update_normals(*depsgraph, *ob, pbvh);
 }
 
 void BKE_sculpt_update_object_before_eval(Object *ob_eval)
@@ -2179,6 +2129,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
   else if (pbvh) {
     IndexMaskMemory memory;
     const IndexMask node_mask = bke::pbvh::all_leaf_nodes(*pbvh, memory);
+    pbvh->tag_positions_changed(node_mask);
     switch (pbvh->type()) {
       case bke::pbvh::Type::Mesh: {
         MutableSpan<bke::pbvh::MeshNode> nodes = pbvh->nodes<bke::pbvh::MeshNode>();
@@ -2239,13 +2190,6 @@ void BKE_sculpt_update_object_for_edit(Depsgraph *depsgraph, Object *ob_orig, bo
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob_orig);
 
   sculpt_update_object(depsgraph, ob_orig, ob_eval, is_paint_tool);
-}
-
-void BKE_sculpt_hide_poly_pointer_update(Object &object)
-{
-  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-  object.sculpt->hide_poly = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh.face_data, CD_PROP_BOOL, ".hide_poly"));
 }
 
 void BKE_sculpt_mask_layers_ensure(Depsgraph *depsgraph,
@@ -2472,9 +2416,7 @@ pbvh::Tree &pbvh_ensure(Depsgraph &depsgraph, Object &object)
     }
   }
 
-  pbvh::Tree &pbvh = *object::pbvh_get(object);
-  sculpt_attribute_update_refs(&object, pbvh.type());
-  return pbvh;
+  return *object::pbvh_get(object);
 }
 
 const pbvh::Tree *pbvh_get(const Object &object)
@@ -2539,521 +2481,4 @@ void BKE_paint_face_set_overlay_color_get(const int face_set, const int seed, uc
              &rgba[1],
              &rgba[2]);
   rgba_float_to_uchar(r_color, rgba);
-}
-
-int BKE_sculptsession_vertex_count(const SculptSession *ss)
-{
-  if (ss->bm) {
-    return ss->bm->totvert;
-  }
-  if (ss->subdiv_ccg) {
-    return ss->subdiv_ccg->positions.size();
-  }
-  return ss->totvert;
-}
-
-/**
- * Returns pointer to a CustomData associated with a given domain, if
- * one exists.  If not nullptr is returned (this may happen with e.g.
- * multires and #AttrDomain::Point).
- */
-static CustomData *sculpt_get_cdata(Object *ob, AttrDomain domain)
-{
-  SculptSession &ss = *ob->sculpt;
-
-  if (ss.bm) {
-    switch (domain) {
-      case AttrDomain::Point:
-        return &ss.bm->vdata;
-      case AttrDomain::Face:
-        return &ss.bm->pdata;
-      default:
-        BLI_assert_unreachable();
-        return nullptr;
-    }
-  }
-  else {
-    Mesh *mesh = BKE_object_get_original_mesh(ob);
-
-    switch (domain) {
-      case AttrDomain::Point: {
-        /* Cannot get vertex domain for multires grids. */
-        const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob);
-        if (pbvh && pbvh->type() == blender::bke::pbvh::Type::Grids) {
-          return nullptr;
-        }
-
-        return &mesh->vert_data;
-      }
-      case AttrDomain::Face:
-        return &mesh->face_data;
-      default:
-        BLI_assert_unreachable();
-        return nullptr;
-    }
-  }
-}
-
-static int sculpt_attr_elem_count_get(Object *ob, AttrDomain domain)
-{
-  const SculptSession &ss = *ob->sculpt;
-
-  switch (domain) {
-    case AttrDomain::Point:
-      return BKE_sculptsession_vertex_count(&ss);
-      break;
-    case AttrDomain::Face:
-      return ss.totfaces;
-      break;
-    default:
-      BLI_assert_unreachable();
-      return 0;
-  }
-}
-
-static bool sculpt_attribute_create(SculptSession *ss,
-                                    Object *ob,
-                                    AttrDomain domain,
-                                    eCustomDataType proptype,
-                                    const char *name,
-                                    SculptAttribute *out,
-                                    const SculptAttributeParams *params,
-                                    blender::bke::pbvh::Type pbvhtype,
-                                    bool flat_array_for_bmesh)
-{
-  Mesh *mesh = BKE_object_get_original_mesh(ob);
-
-  bool simple_array = params->simple_array;
-  bool permanent = params->permanent;
-
-  out->params = *params;
-  out->proptype = proptype;
-  out->domain = domain;
-  STRNCPY_UTF8(out->name, name);
-
-  /* Force non-CustomData simple_array mode if not pbvh::Type::Mesh. */
-  if (pbvhtype == blender::bke::pbvh::Type::Grids ||
-      (pbvhtype == blender::bke::pbvh::Type::BMesh && flat_array_for_bmesh))
-  {
-    if (permanent) {
-      printf(
-          "%s: error: tried to make permanent customdata in multires or bmesh mode; will make "
-          "local "
-          "array "
-          "instead.\n",
-          __func__);
-      permanent = (out->params.permanent = false);
-    }
-
-    simple_array = true;
-  }
-
-  BLI_assert(!(simple_array && permanent));
-
-  int totelem = sculpt_attr_elem_count_get(ob, domain);
-
-  if (simple_array) {
-    int elemsize = CustomData_sizeof(proptype);
-
-    out->data = MEM_calloc_arrayN(totelem, elemsize, __func__);
-
-    out->data_for_bmesh = ss->bm != nullptr;
-    out->simple_array = true;
-    out->bmesh_cd_offset = -1;
-    out->layer = nullptr;
-    out->elem_size = elemsize;
-    out->used = true;
-    out->elem_num = totelem;
-
-    return true;
-  }
-
-  out->simple_array = false;
-
-  if (BMesh *bm = ss->bm) {
-    CustomData *cdata = nullptr;
-    out->data_for_bmesh = true;
-
-    switch (domain) {
-      case AttrDomain::Point:
-        cdata = &bm->vdata;
-        break;
-      case AttrDomain::Face:
-        cdata = &bm->pdata;
-        break;
-      default:
-        out->used = false;
-        return false;
-    }
-
-    BLI_assert(CustomData_get_named_layer_index(cdata, proptype, name) == -1);
-
-    BM_data_layer_add_named(bm, cdata, proptype, name);
-    int index = CustomData_get_named_layer_index(cdata, proptype, name);
-
-    if (!permanent) {
-      cdata->layers[index].flag |= CD_FLAG_TEMPORARY | CD_FLAG_NOCOPY;
-    }
-
-    out->data = nullptr;
-    out->layer = cdata->layers + index;
-    out->bmesh_cd_offset = out->layer->offset;
-    out->elem_size = CustomData_sizeof(proptype);
-  }
-  else {
-    CustomData *cdata = nullptr;
-
-    switch (domain) {
-      case AttrDomain::Point:
-        cdata = &mesh->vert_data;
-        break;
-      case AttrDomain::Face:
-        cdata = &mesh->face_data;
-        break;
-      default:
-        out->used = false;
-        return false;
-    }
-
-    BLI_assert(CustomData_get_named_layer_index(cdata, proptype, name) == -1);
-
-    CustomData_add_layer_named(cdata, proptype, CD_SET_DEFAULT, totelem, name);
-    int index = CustomData_get_named_layer_index(cdata, proptype, name);
-
-    if (!permanent) {
-      cdata->layers[index].flag |= CD_FLAG_TEMPORARY | CD_FLAG_NOCOPY;
-    }
-
-    out->layer = cdata->layers + index;
-    out->data = out->layer->data;
-    out->data_for_bmesh = false;
-    out->bmesh_cd_offset = -1;
-    out->elem_size = CustomData_get_elem_size(out->layer);
-  }
-  /* GRIDS should have been handled as simple arrays. */
-
-  out->used = true;
-  out->elem_num = totelem;
-
-  return true;
-}
-
-static bool sculpt_attr_update(Object *ob,
-                               SculptAttribute *attr,
-                               blender::bke::pbvh::Type pbvh_type)
-{
-  SculptSession *ss = ob->sculpt;
-  int elem_num = sculpt_attr_elem_count_get(ob, attr->domain);
-
-  bool bad = false;
-
-  if (attr->data) {
-    bad = attr->elem_num != elem_num;
-  }
-
-  /* Check if we are a coerced simple array and shouldn't be. */
-  bad |= attr->simple_array && !attr->params.simple_array &&
-         !ELEM(pbvh_type, blender::bke::pbvh::Type::Grids, blender::bke::pbvh::Type::BMesh);
-
-  CustomData *cdata = sculpt_get_cdata(ob, attr->domain);
-  if (cdata && !attr->simple_array) {
-    int layer_index = CustomData_get_named_layer_index(cdata, attr->proptype, attr->name);
-
-    bad |= layer_index == -1;
-    bad |= (ss->bm != nullptr) != attr->data_for_bmesh;
-
-    if (!bad) {
-      if (attr->data_for_bmesh) {
-        attr->bmesh_cd_offset = cdata->layers[layer_index].offset;
-      }
-      else {
-        attr->data = cdata->layers[layer_index].data;
-      }
-    }
-  }
-
-  if (bad) {
-    if (attr->simple_array) {
-      MEM_SAFE_FREE(attr->data);
-    }
-
-    sculpt_attribute_create(ss,
-                            ob,
-                            attr->domain,
-                            attr->proptype,
-                            attr->name,
-                            attr,
-                            &attr->params,
-                            pbvh_type,
-                            attr->data_for_bmesh);
-  }
-
-  return bad;
-}
-
-static SculptAttribute *sculpt_get_cached_layer(SculptSession *ss,
-                                                AttrDomain domain,
-                                                eCustomDataType proptype,
-                                                const char *name)
-{
-  for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
-    SculptAttribute *attr = ss->temp_attributes + i;
-
-    if (attr->used && STREQ(attr->name, name) && attr->proptype == proptype &&
-        attr->domain == domain)
-    {
-
-      return attr;
-    }
-  }
-
-  return nullptr;
-}
-
-static SculptAttribute *sculpt_alloc_attr(SculptSession *ss)
-{
-  for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
-    if (!ss->temp_attributes[i].used) {
-      memset((void *)(ss->temp_attributes + i), 0, sizeof(SculptAttribute));
-      ss->temp_attributes[i].used = true;
-
-      return ss->temp_attributes + i;
-    }
-  }
-
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-/* The pbvh::Tree is NOT guaranteed to exist at the point of this method being called. */
-static SculptAttribute *sculpt_attribute_get_ex(Object *ob,
-                                                blender::bke::pbvh::Type pbvhtype,
-                                                AttrDomain domain,
-                                                eCustomDataType proptype,
-                                                const char *name)
-{
-  SculptSession *ss = ob->sculpt;
-  /* See if attribute is cached in ss->temp_attributes. */
-  SculptAttribute *attr = sculpt_get_cached_layer(ss, domain, proptype, name);
-
-  if (attr) {
-    if (sculpt_attr_update(ob, attr, pbvhtype)) {
-      sculpt_attribute_update_refs(ob, pbvhtype);
-    }
-
-    return attr;
-  }
-
-  /* Does attribute exist in CustomData layout? */
-  CustomData *cdata = sculpt_get_cdata(ob, domain);
-  if (cdata) {
-    int index = CustomData_get_named_layer_index(cdata, proptype, name);
-
-    if (index != -1) {
-      int totelem = 0;
-
-      switch (domain) {
-        case AttrDomain::Point:
-          totelem = BKE_sculptsession_vertex_count(ss);
-          break;
-        case AttrDomain::Face:
-          totelem = ss->totfaces;
-          break;
-        default:
-          BLI_assert_unreachable();
-          break;
-      }
-
-      attr = sculpt_alloc_attr(ss);
-
-      attr->used = true;
-      attr->domain = domain;
-      attr->proptype = proptype;
-      attr->data = cdata->layers[index].data;
-      attr->bmesh_cd_offset = cdata->layers[index].offset;
-      attr->elem_num = totelem;
-      attr->layer = cdata->layers + index;
-      attr->elem_size = CustomData_get_elem_size(attr->layer);
-
-      STRNCPY_UTF8(attr->name, name);
-      return attr;
-    }
-  }
-
-  return nullptr;
-}
-
-SculptAttribute *BKE_sculpt_attribute_get(Object *ob,
-                                          AttrDomain domain,
-                                          eCustomDataType proptype,
-                                          const char *name)
-{
-  const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob);
-  BLI_assert(pbvh != nullptr);
-
-  return sculpt_attribute_get_ex(ob, pbvh->type(), domain, proptype, name);
-}
-
-static SculptAttribute *sculpt_attribute_ensure_ex(Object *ob,
-                                                   AttrDomain domain,
-                                                   eCustomDataType proptype,
-                                                   const char *name,
-                                                   const SculptAttributeParams *params,
-                                                   blender::bke::pbvh::Type pbvhtype,
-                                                   bool flat_array_for_bmesh)
-{
-  SculptSession *ss = ob->sculpt;
-  SculptAttribute *attr = sculpt_attribute_get_ex(ob, pbvhtype, domain, proptype, name);
-
-  if (attr) {
-    sculpt_attr_update(ob, attr, pbvhtype);
-
-    /* Since "stroke_only" is not a CustomData flag we have
-     * to sync its parameter setting manually. Fixes #104618.
-     */
-    attr->params.stroke_only = params->stroke_only;
-
-    return attr;
-  }
-
-  attr = sculpt_alloc_attr(ss);
-
-  /* Create attribute. */
-  sculpt_attribute_create(
-      ss, ob, domain, proptype, name, attr, params, pbvhtype, flat_array_for_bmesh);
-  sculpt_attribute_update_refs(ob, pbvhtype);
-
-  return attr;
-}
-
-SculptAttribute *BKE_sculpt_attribute_ensure(Object *ob,
-                                             AttrDomain domain,
-                                             eCustomDataType proptype,
-                                             const char *name,
-                                             const SculptAttributeParams *params)
-{
-  SculptAttributeParams temp_params = *params;
-  const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob);
-
-  return sculpt_attribute_ensure_ex(ob, domain, proptype, name, &temp_params, pbvh->type(), true);
-}
-
-void BKE_sculpt_attributes_destroy_temporary_stroke(Object *ob)
-{
-  SculptSession *ss = ob->sculpt;
-
-  for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
-    SculptAttribute *attr = ss->temp_attributes + i;
-
-    if (attr->params.stroke_only) {
-      BKE_sculpt_attribute_destroy(ob, attr);
-    }
-  }
-}
-
-static void sculpt_attribute_update_refs(Object *ob, blender::bke::pbvh::Type pbvhtype)
-{
-  SculptSession *ss = ob->sculpt;
-
-  /* Run twice, in case sculpt_attr_update had to recreate a layer and messed up #BMesh offsets. */
-  for (int i = 0; i < 2; i++) {
-    for (int j = 0; j < SCULPT_MAX_ATTRIBUTES; j++) {
-      SculptAttribute *attr = ss->temp_attributes + j;
-
-      if (attr->used) {
-        sculpt_attr_update(ob, attr, pbvhtype);
-      }
-    }
-  }
-}
-
-void BKE_sculpt_attribute_destroy_temporary_all(Object *ob)
-{
-  SculptSession *ss = ob->sculpt;
-
-  for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
-    SculptAttribute *attr = ss->temp_attributes + i;
-
-    if (attr->used && !attr->params.permanent) {
-      BKE_sculpt_attribute_destroy(ob, attr);
-    }
-  }
-}
-
-bool BKE_sculpt_attribute_destroy(Object *ob, SculptAttribute *attr)
-{
-  SculptSession *ss = ob->sculpt;
-  AttrDomain domain = attr->domain;
-
-  BLI_assert(attr->used);
-
-  /* Remove from convenience pointer struct. */
-  SculptAttribute **ptrs = (SculptAttribute **)&ss->attrs;
-  int ptrs_num = sizeof(ss->attrs) / sizeof(void *);
-
-  for (int i = 0; i < ptrs_num; i++) {
-    if (ptrs[i] == attr) {
-      ptrs[i] = nullptr;
-    }
-  }
-
-  /* Remove from internal temp_attributes array. */
-  for (int i = 0; i < SCULPT_MAX_ATTRIBUTES; i++) {
-    SculptAttribute *attr2 = ss->temp_attributes + i;
-
-    if (STREQ(attr2->name, attr->name) && attr2->domain == attr->domain &&
-        attr2->proptype == attr->proptype)
-    {
-
-      attr2->used = false;
-    }
-  }
-
-  Mesh *mesh = BKE_object_get_original_mesh(ob);
-
-  if (attr->simple_array) {
-    MEM_SAFE_FREE(attr->data);
-  }
-  else if (ss->bm) {
-    CustomData *cdata = attr->domain == AttrDomain::Point ? &ss->bm->vdata : &ss->bm->pdata;
-
-    BM_data_layer_free_named(ss->bm, cdata, attr->name);
-  }
-  else {
-    CustomData *cdata = nullptr;
-    int totelem = 0;
-
-    switch (domain) {
-      case AttrDomain::Point:
-        cdata = ss->bm ? &ss->bm->vdata : &mesh->vert_data;
-        totelem = ss->totvert;
-        break;
-      case AttrDomain::Face:
-        cdata = ss->bm ? &ss->bm->pdata : &mesh->face_data;
-        totelem = ss->totfaces;
-        break;
-      default:
-        BLI_assert_unreachable();
-        return false;
-    }
-
-    /* We may have been called after destroying ss->bm in which case attr->layer
-     * might be invalid.
-     */
-    int layer_i = CustomData_get_named_layer_index(cdata, attr->proptype, attr->name);
-    if (layer_i != 0) {
-      CustomData_free_layer(cdata, attr->proptype, totelem, layer_i);
-    }
-
-    if (const blender::bke::pbvh::Tree *pbvh = blender::bke::object::pbvh_get(*ob)) {
-      /* If the pbvh::Tree doesn't exist, we cannot update references
-       * This can occur when all the attributes are being deleted. */
-      sculpt_attribute_update_refs(ob, pbvh->type());
-    }
-  }
-
-  attr->data = nullptr;
-  attr->used = false;
-
-  return true;
 }
