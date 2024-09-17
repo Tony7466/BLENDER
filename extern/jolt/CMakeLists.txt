@@ -6,5 +6,8 @@
 add_subdirectory(src)
 
 # Create a wrapper to avoid leaking build settings from Jolt to Blender.
-add_library(extern_jolt INTERFACE)
-target_link_libraries(extern_jolt INTERFACE Jolt)
+set(SRC
+    stub.cc
+)
+add_library(extern_jolt ${SRC})
+target_link_libraries(extern_jolt PRIVATE Jolt)
