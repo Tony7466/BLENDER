@@ -32,6 +32,7 @@
 static void rna_WorkSpaceTool_setup(ID *id,
                                     bToolRef *tref,
                                     bContext *C,
+                                    ReportList *reports,
                                     const char *idname,
                                     /* Args for: 'bToolRef_Runtime'. */
                                     int cursor,
@@ -55,6 +56,19 @@ static void rna_WorkSpaceTool_setup(ID *id,
   STRNCPY(tref_rt.op, op_idname);
   tref_rt.index = index;
   tref_rt.flag = options;
+
+  /* Validate the given brush type. */
+  if (brush_type && brush_type[0]) {
+    const EnumPropertyItem *valid_brush_types = BKE_paint_get_tool_enum_from_paintmode(
+        BKE_paintmode_get_from_tool(tref));
+    BLI_assert(valid_brush_types != nullptr);
+
+    if (RNA_enum_from_identifier(valid_brush_types, brush_type) == -1) {
+      BKE_reportf(
+          reports, RPT_ERROR, "Brush type '%s' not valid for the current mode!", brush_type);
+      tref_rt.brush_type[0] = '\0';
+    }
+  }
 
   /* While it's logical to assign both these values from setup,
    * it's useful to stored this in DNA for re-use, exceptional case: write to the 'tref'. */
@@ -135,7 +149,7 @@ void RNA_api_workspace_tool(StructRNA *srna)
   };
 
   func = RNA_def_function(srna, "setup", "rna_WorkSpaceTool_setup");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT);
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_function_ui_description(func, "Set the tool settings");
 
   parm = RNA_def_string(func, "idname", nullptr, MAX_NAME, "Identifier", "");
