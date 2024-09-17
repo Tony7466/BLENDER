@@ -1338,7 +1338,11 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action);
 /**
  * Move the given slot from `from_action` to `to_action`.
  * The slot name might not be exactly the same if the name already exists in the slots of
- * `to_action`.
+ * `to_action`. Also the slot handle is likely going to be different on `to_action`.
+ * All users of the slot will be reassigned to the moved slot on `to_action`.
+ *
+ * \note The `from_action` will not be deleted by this function. But it might leave it without
+ * users which means it will not be saved (unless it has a fake user).
  *
  * \returns true if the move was successful.
  */

@@ -5,6 +5,7 @@
 /** \file
  * \ingroup animrig
  */
+
 #include "DNA_action_defaults.h"
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -2435,11 +2436,22 @@ Action *convert_to_layered_action(Main &bmain, const Action &legacy_action)
   return &converted_action;
 }
 
+/**
+ * Clone information from the given slot into this slot while retaining important info like the
+ * slot handle and runtime data. This copies the name which might clash with other names on the
+ * action. Call `slot_name_ensure_unique` after.
+ */
+static void clone_slot(Slot &from, Slot &to)
+{
+  ActionSlotRuntimeHandle *runtime = to.runtime;
+  slot_handle_t handle = to.handle;
+  memcpy(&to, &from, sizeof(Slot));
+  to.runtime = runtime;
+  to.handle = handle;
+}
+
 bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
 {
-  if (from_action.slot_array_num == 0) {
-    return false;
-  }
   if (!from_action.slots().as_span().contains(&source_slot)) {
     return false;
   }
@@ -2455,7 +2467,7 @@ bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
   KeyframeStrip &to_strip = to_action.layer(0)->strip(0)->as<KeyframeStrip>();
 
   Slot &target_slot = to_action.slot_add();
-  STRNCPY(target_slot.name, source_slot.name);
+  clone_slot(source_slot, target_slot);
   slot_name_ensure_unique(to_action, target_slot);
 
   ChannelBag *channel_bag = from_strip.channelbag_for_slot(source_slot.handle);
@@ -2467,7 +2479,8 @@ bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
   shrink_array_and_remove<ActionChannelBag *>(
       &from_strip.channelbag_array, &from_strip.channelbag_array_num, index);
 
-  for (ID *user : source_slot.runtime_users()) {
+  /* Reassign all users of `source_slot` to the action `to_action` and the slot `target_slot`. */
+  for (ID *user : source_slot.users()) {
     unassign_action(*user);
     assign_action_and_slot(&to_action, &target_slot, *user);
   }

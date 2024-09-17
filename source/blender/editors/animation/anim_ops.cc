@@ -868,21 +868,25 @@ static int merge_actions_selection_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  Main *bmain = CTX_data_main(C);
   for (const PointerRNA &ptr : selection) {
-    Object *selected = (Object *)ptr.owner_id;
-    if (!selected->adt || !selected->adt->action) {
-      /* No action to merge. */
-      continue;
-    }
+    Object *selected = reinterpret_cast<Object *>(ptr.owner_id);
 
-    Action &action = selected->adt->action->wrap();
-    if (action.is_action_legacy() || selected->adt->slot_handle == Slot::unassigned) {
+    Action *action = get_action(selected->id);
+    if (!action) {
       continue;
     }
-    Slot *slot = action.slot_for_handle(selected->adt->slot_handle);
+    if (action->is_action_legacy() || selected->adt->slot_handle == Slot::unassigned) {
+      continue;
+    }
+    Slot *slot = action->slot_for_handle(selected->adt->slot_handle);
     BLI_assert(slot != nullptr);
-    blender::animrig::move_slot(*slot, action, active_action);
+    blender::animrig::move_slot(*slot, *action, active_action);
+    ANIM_id_update(bmain, &selected->id);
   }
+
+  DEG_relations_tag_update(bmain);
+  WM_main_add_notifier(NC_ANIMATION | ND_NLA_ACTCHANGE, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -892,7 +896,8 @@ static void ANIM_OT_merge_animation(wmOperatorType *ot)
   ot->name = "Merge Animation";
   ot->idname = "ANIM_OT_merge_animation";
   ot->description =
-      "Merge the animation of the selected objects into the action of the active object";
+      "Merge the animation of the selected objects into the action of the active object. Actions "
+      "are not deleted by this, but might end up with zero users";
 
   ot->exec = merge_actions_selection_exec;
   ot->poll = merge_actions_selection_poll;
