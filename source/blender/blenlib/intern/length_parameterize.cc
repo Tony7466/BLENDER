@@ -27,12 +27,11 @@ void sample_uniform(const Span<float> accumulated_segment_lengths,
   const float total_length = accumulated_segment_lengths.last();
   const float step_length = total_length / (count - include_last_point);
   threading::parallel_for(IndexRange(count), 512, [&](const IndexRange range) {
-    SampleSegmentHint hint;
     for (const int i : range) {
       /* Use minimum to avoid issues with floating point accuracy. */
       const float sample_length = std::min(total_length, i * step_length);
       sample_at_length(
-          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], &hint);
+          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], nullptr);
     }
   });
 }
@@ -56,12 +55,11 @@ void sample_uniform_reverse(const Span<float> accumulated_segment_lengths,
   const float total_length = accumulated_segment_lengths.last();
   const float step_length = total_length / (count - include_first_point);
   threading::parallel_for(IndexRange(count), 512, [&](const IndexRange range) {
-    SampleSegmentHint hint;
     for (const int i : range) {
       /* Use maximum to avoid issues with floating point accuracy. */
       const float sample_length = std::max(0.0f, total_length - i * step_length);
       sample_at_length(
-          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], &hint);
+          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], nullptr);
     }
   });
 }
@@ -80,11 +78,10 @@ void sample_at_lengths(const Span<float> accumulated_segment_lengths,
   BLI_assert(count == r_factors.size());
 
   threading::parallel_for(IndexRange(count), 512, [&](const IndexRange range) {
-    SampleSegmentHint hint;
     for (const int i : range) {
       const float sample_length = sample_lengths[i];
       sample_at_length(
-          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], &hint);
+          accumulated_segment_lengths, sample_length, r_segment_indices[i], r_factors[i], nullptr);
     }
   });
 }
