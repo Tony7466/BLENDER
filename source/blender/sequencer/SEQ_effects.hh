@@ -100,12 +100,12 @@ void SEQ_effect_text_font_load(TextVars *data, bool do_id_user);
 namespace blender::seq {
 
 struct CharInfo {
-  const char *str_ptr;
-  int byte_length;
-  int flags;
-  float2 position;
-  int advance_x;
-  bool do_wrap;
+  const char *str_ptr = nullptr;
+  int byte_length = 0;
+  int flags = 0;
+  float2 position{0.0f, 0.0f};
+  int advance_x = 0;
+  bool do_wrap = false;
 };
 
 struct LineInfo {

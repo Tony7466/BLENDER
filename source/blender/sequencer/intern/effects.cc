@@ -2670,10 +2670,6 @@ static void free_text_effect(Sequence *seq, const bool do_id_user)
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   SEQ_effect_text_font_unload(data, do_id_user);
 
-  if (data->runtime) {
-    MEM_delete(data->runtime);
-  }
-
   if (data) {
     MEM_freeN(data);
     seq->effectdata = nullptr;
@@ -2691,7 +2687,6 @@ static void copy_text_effect(Sequence *dst, const Sequence *src, const int flag)
   dst->effectdata = MEM_dupallocN(src->effectdata);
   TextVars *data = static_cast<TextVars *>(dst->effectdata);
 
-  data->runtime = nullptr;
   data->text_blf_id = -1;
   SEQ_effect_text_font_load(data, (flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0);
 }
@@ -2967,30 +2962,31 @@ static void jump_flooding_pass(Span<JFACoord> input,
     }
   });
 }
+namespace blender::seq {
 
-static void text_draw(const TextVarsRuntime *runtime, float color[4])
+static void text_draw(const TextVarsRuntime &runtime, float color[4])
 {
-  for (const blender::seq::LineInfo &line : runtime->lines) {
-    for (const blender::seq::CharInfo &character : line.characters) {
-      BLF_position(runtime->font, character.position.x, character.position.y, 0.0f);
-      BLF_buffer_col(runtime->font, color);
-      BLF_draw_buffer(runtime->font, character.str_ptr, character.byte_length);
+  for (const LineInfo &line : runtime.lines) {
+    for (const CharInfo &character : line.characters) {
+      BLF_position(runtime.font, character.position.x, character.position.y, 0.0f);
+      BLF_buffer_col(runtime.font, color);
+      BLF_draw_buffer(runtime.font, character.str_ptr, character.byte_length);
     }
   }
 }
 
 static rcti draw_text_outline(const SeqRenderData *context,
                               const TextVars *data,
-                              const TextVarsRuntime *runtime,
+                              const TextVarsRuntime &runtime,
                               ColorManagedDisplay *display,
                               ImBuf *out)
 {
   /* Outline width of 1.0 maps to half of text line height. */
-  const int outline_width = int(runtime->line_height * 0.5f * data->outline_width);
+  const int outline_width = int(runtime.line_height * 0.5f * data->outline_width);
   if (outline_width < 1 || data->outline_color[3] <= 0.0f ||
       ((data->flag & SEQ_TEXT_OUTLINE) == 0))
   {
-    return runtime->text_boundbox;
+    return runtime.text_boundbox;
   }
 
   const int2 size = int2(context->rectx, context->recty);
@@ -2998,11 +2994,11 @@ static rcti draw_text_outline(const SeqRenderData *context,
   /* Draw white text into temporary buffer. */
   const size_t pixel_count = size_t(size.x) * size.y;
   Array<uchar4> tmp_buf(pixel_count, uchar4(0));
-  BLF_buffer(runtime->font, nullptr, (uchar *)tmp_buf.data(), size.x, size.y, display);
+  BLF_buffer(runtime.font, nullptr, (uchar *)tmp_buf.data(), size.x, size.y, display);
 
   text_draw(runtime, float4(1.0f));
 
-  rcti outline_rect = runtime->text_boundbox;
+  rcti outline_rect = runtime.text_boundbox;
   BLI_rcti_pad(&outline_rect, outline_width + 1, outline_width + 1);
   outline_rect.xmin = clamp_i(outline_rect.xmin, 0, size.x - 1);
   outline_rect.xmax = clamp_i(outline_rect.xmax, 0, size.x - 1);
@@ -3098,7 +3094,7 @@ static rcti draw_text_outline(const SeqRenderData *context,
       }
     }
   });
-  BLF_buffer(runtime->font, nullptr, out->byte_buffer.data, size.x, size.y, display);
+  BLF_buffer(runtime.font, nullptr, out->byte_buffer.data, size.x, size.y, display);
 
   return outline_rect;
 }
@@ -3171,15 +3167,15 @@ static int text_effect_font_init(const SeqRenderData *context, const Sequence *s
   return font;
 }
 
-static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVars *data, int font)
+static blender::Vector<CharInfo> build_character_info(const TextVars *data, int font)
 {
-  blender::Vector<blender::seq::CharInfo> characters;
+  blender::Vector<CharInfo> characters;
   int byte_offset = 0;
   while (byte_offset <= BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
     const int char_length = BLI_str_utf8_size_or_error(str);
 
-    blender::seq::CharInfo char_info;
+    CharInfo char_info;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
     char_info.advance_x = BLF_glyph_advance(font, str, char_length);
@@ -3200,17 +3196,17 @@ static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
 
 /* Lines must contain CharInfo for newlines and \0, as UI must know where they begin. */
 static void apply_word_wrapping(const TextVars *data,
-                                TextVarsRuntime *runtime,
+                                TextVarsRuntime &runtime,
                                 const ImBuf *ibuf,
-                                blender::Vector<blender::seq::CharInfo> &characters)
+                                blender::Vector<CharInfo> &characters)
 {
   const int wrap_width = wrap_width_get(data, ibuf);
 
   float2 char_position{0.0f, 0.0f};
-  blender::seq::CharInfo *last_space = nullptr;
+  CharInfo *last_space = nullptr;
 
   /* First pass: Find characters where line has to be broken. */
-  for (blender::seq::CharInfo &character : characters) {
+  for (CharInfo &character : characters) {
     if (character.str_ptr[0] == ' ') {
       character.position = char_position;
       last_space = &character;
@@ -3228,27 +3224,27 @@ static void apply_word_wrapping(const TextVars *data,
 
   /* Second pass: Fill lines with characters. */
   char_position = {0.0f, 0.0f};
-  runtime->lines.append(blender::seq::LineInfo());
-  for (blender::seq::CharInfo &character : characters) {
+  runtime.lines.append(LineInfo());
+  for (CharInfo &character : characters) {
     character.position = char_position;
-    runtime->lines.last().characters.append(character);
-    runtime->lines.last().width = char_position.x;
-    
+    runtime.lines.last().characters.append(character);
+    runtime.lines.last().width = char_position.x;
+
     char_position.x += character.advance_x;
 
     if (character.do_wrap || character.str_ptr[0] == '\n') {
-      runtime->lines.append(blender::seq::LineInfo());
+      runtime.lines.append(LineInfo());
       char_position.x = 0;
-      char_position.y -= runtime->line_height;
+      char_position.y -= runtime.line_height;
     }
   }
 }
 
-static int text_box_width_get(blender::Vector<blender::seq::LineInfo> lines)
+static int text_box_width_get(blender::Vector<LineInfo> lines)
 {
   int width_max = 0;
 
-  for (const blender::seq::LineInfo &line : lines) {
+  for (const LineInfo &line : lines) {
     width_max = std::max(width_max, line.width);
   }
   return width_max;
@@ -3271,52 +3267,43 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
   return {center_offset - line_offset, 0.0f};
 }
 
-static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime, const ImBuf *ibuf)
+static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime, const ImBuf *ibuf)
 {
   const int image_width = ibuf->x;
   const int image_height = ibuf->y;
-  const int width_max = text_box_width_get(runtime->lines);
-  const int text_height = runtime->lines.size() * runtime->line_height;
+  const int width_max = text_box_width_get(runtime.lines);
+  const int text_height = runtime.lines.size() * runtime.line_height;
 
   float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
-  float2 line_height_offset{0.0f, float(-runtime->line_height - BLF_descender(runtime->font))};
+  float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
   float2 alignment_y(0.0f, text_height / 2.0f);
 
-  for (blender::seq::LineInfo &line : runtime->lines) {
+  for (LineInfo &line : runtime.lines) {
     float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
     float2 alignment = image_center + line_height_offset + alignment_x + alignment_y;
 
-    for (blender::seq::CharInfo &character : line.characters) {
+    for (CharInfo &character : line.characters) {
       character.position += alignment;
     }
   }
-  runtime->text_boundbox.xmin = image_center.x - width_max / 2;
-  runtime->text_boundbox.xmax = image_center.x + width_max / 2;
-  runtime->text_boundbox.ymax = image_center.y + text_height / 2;
-  runtime->text_boundbox.ymin = image_center.y - text_height / 2;
+  runtime.text_boundbox.xmin = image_center.x - width_max / 2;
+  runtime.text_boundbox.xmax = image_center.x + width_max / 2;
+  runtime.text_boundbox.ymax = image_center.y + text_height / 2;
+  runtime.text_boundbox.ymin = image_center.y - text_height / 2;
 }
 
-static TextVarsRuntime *calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf)
+static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf, TextVarsRuntime &r_runtime)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
-  if (data->runtime != nullptr) {
-    return data->runtime;
-  }
+  r_runtime.font = font;
+  r_runtime.line_height = BLF_height_max(font);
+  r_runtime.font_descender = BLF_descender(font);
+  r_runtime.character_count = BLI_strlen_utf8(data->text);
 
-  TextVarsRuntime *runtime = MEM_new<TextVarsRuntime>(__func__);
-
-  runtime->font = font;
-  runtime->line_height = BLF_height_max(font);
-  runtime->font_descender = BLF_descender(font);
-  runtime->character_count = BLI_strlen_utf8(data->text);
-
-  blender::Vector<blender::seq::CharInfo> characters_temp = build_character_info(data, font);
-  apply_word_wrapping(data, runtime, ibuf, characters_temp);
-  apply_text_alignment(data, runtime, ibuf);
-
-  data->runtime = runtime;
-  return runtime;
+  blender::Vector<CharInfo> characters_temp = build_character_info(data, font);
+  apply_word_wrapping(data, r_runtime, ibuf, characters_temp);
+  apply_text_alignment(data, r_runtime, ibuf);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3338,7 +3325,10 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                          ((data->flag & SEQ_TEXT_ITALIC) ? BLF_ITALIC : 0);
 
   const int font = text_effect_font_init(context, seq, font_flags);
-  TextVarsRuntime *runtime = calc_text_runtime(seq, font, out);
+
+  TextVarsRuntime runtime;
+  calc_text_runtime(seq, font, out, runtime);
+
   rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
   text_draw(runtime, data->color);
@@ -3347,23 +3337,24 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
 
   /* Draw shadow. */
   if (data->flag & SEQ_TEXT_SHADOW) {
-    draw_text_shadow(context, data, runtime->line_height, outline_rect, out);
+    draw_text_shadow(context, data, runtime.line_height, outline_rect, out);
   }
 
   /* Draw box under text. */
   if (data->flag & SEQ_TEXT_BOX) {
     if (out->byte_buffer.data) {
       const int margin = data->box_margin * out->x;
-      const int minx = runtime->text_boundbox.xmin - margin;
-      const int maxx = runtime->text_boundbox.xmax + margin;
-      const int miny = runtime->text_boundbox.ymin - margin;
-      const int maxy = runtime->text_boundbox.ymax + margin;
+      const int minx = runtime.text_boundbox.xmin - margin;
+      const int maxx = runtime.text_boundbox.xmax + margin;
+      const int miny = runtime.text_boundbox.ymin - margin;
+      const int maxy = runtime.text_boundbox.ymax + margin;
       fill_rect_alpha_under(out, data->box_color, minx, miny, maxx, maxy);
     }
   }
 
   return out;
 }
+}  // namespace blender::seq
 
 /** \} */
 
@@ -3611,7 +3602,7 @@ static SeqEffectHandle get_sequence_effect_impl(int seq_type)
       rval.load = load_text_effect;
       rval.copy = copy_text_effect;
       rval.early_out = early_out_text;
-      rval.execute = do_text_effect;
+      rval.execute = blender::seq::do_text_effect;
       break;
   }
 

@@ -32,14 +32,11 @@ struct bSound;
 namespace blender::seq {
 struct MediaPresence;
 struct ThumbnailCache;
-struct TextVarsRuntime;
 }  // namespace blender::seq
 using MediaPresence = blender::seq::MediaPresence;
-using TextVarsRuntime = blender::seq::TextVarsRuntime;
 using ThumbnailCache = blender::seq::ThumbnailCache;
 #else
 typedef struct MediaPresence MediaPresence;
-typedef struct TextVarsRuntime TextVarsRuntime;
 typedef struct ThumbnailCache ThumbnailCache;
 #endif
 
@@ -454,8 +451,6 @@ typedef struct TextVars {
   char flag;
   char align;
   char _pad[6];
-
-  TextVarsRuntime *runtime;
 } TextVars;
 
 /** #TextVars.flag */
