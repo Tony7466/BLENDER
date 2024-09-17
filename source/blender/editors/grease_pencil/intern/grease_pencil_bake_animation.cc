@@ -112,7 +112,7 @@ static Vector<Object *> get_bake_targets(bContext &C, Depsgraph &depsgraph, Scen
     }
   }
   CTX_DATA_END;
-  return bake_targets.as_span();
+  return bake_targets;
 }
 
 static Set<int> get_selected_object_keyframes(Span<Object *> bake_targets)
