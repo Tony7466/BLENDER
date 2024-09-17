@@ -225,7 +225,7 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ra
                                                               void *payload,
                                                               hiprtHit &hit)
 {
-#  ifdef __OBJECT_MOTION__
+#  if defined(__OBJECT_MOTION__) && 0
   LocalPayload *local_payload = (LocalPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = local_payload->local_object;
@@ -268,7 +268,7 @@ ccl_device_inline bool motion_triangle_custom_volume_intersect(const hiprtRay &r
                                                                void *payload,
                                                                hiprtHit &hit)
 {
-#  ifdef __OBJECT_MOTION__
+#  if defined(__OBJECT_MOTION__) && 0
   RayPayload *local_payload = (RayPayload *)payload;
   KernelGlobals kg = local_payload->kg;
   int object_id = kernel_data_fetch(user_instance_id, hit.instanceID);
