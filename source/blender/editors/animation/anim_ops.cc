@@ -853,7 +853,7 @@ static bool merge_actions_selection_poll(bContext *C)
   return true;
 }
 
-static int merge_actions_selection_exec(bContext *C, wmOperator *op)
+static int merge_actions_selection_exec(bContext *C, wmOperator * /* op */)
 {
   using namespace blender::animrig;
   Object *active_object = CTX_data_active_object(C);
