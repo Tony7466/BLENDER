@@ -39,11 +39,11 @@ uint16_t blender::math::float_to_half(float v)
   f.u ^= sign;
 
   /*
-  NOTE all the integer compares in this function can be safely
-  compiled into signed compares since all operands are below
-  0x80000000. Important if you want fast straight SSE2 code
-  (since there's no unsigned PCMPGTD).
-  */
+   * NOTE all the integer compares in this function can be safely
+   * compiled into signed compares since all operands are below
+   * 0x80000000. Important if you want fast straight SSE2 code
+   * (since there's no unsigned PCMPGTD).
+   */
   if (f.u >= f16max.u) {
     /* result is Inf or NaN (all exponent bits set) */
     o = (f.u > f32infty.u) ? 0x7e00 : 0x7c00; /* NaN->qNaN and Inf->Inf */
@@ -52,9 +52,9 @@ uint16_t blender::math::float_to_half(float v)
     /* (De)normalized number or zero */
     if (f.u < (113 << 23)) {
       /* Resulting FP16 is subnormal or zero.
-      Use a magic value to align our 10 mantissa bits at the bottom of
-      the float. as long as FP addition is round-to-nearest-even this
-      just works. */
+       * Use a magic value to align our 10 mantissa bits at the bottom of
+       * the float. as long as FP addition is round-to-nearest-even this
+       * just works. */
       f.f += denorm_magic.f;
 
       /* and one integer subtract of the bias later, we have our final float! */
