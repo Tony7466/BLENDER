@@ -3342,6 +3342,7 @@ static void GREASE_PENCIL_OT_set_curve_resolution(wmOperatorType *ot)
               1,
               64);
 }
+
 /** \} */
 
 }  // namespace blender::ed::greasepencil
