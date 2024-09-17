@@ -2920,7 +2920,11 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     const AttributeAccessor src_attributes = component_info.input_attributes();
 
     /* These are the attributes we need to propagate from the original input geometry. */
-    Vector<std::pair<StringRef, eCustomDataType>> attributes_to_propagate;
+    struct NameWithType {
+      StringRef name;
+      eCustomDataType type;
+    };
+    Vector<NameWithType> attributes_to_propagate;
     src_attributes.for_all([&](const StringRef name, const AttributeMetaData &meta_data) {
       if (meta_data.data_type == CD_PROP_STRING) {
         return true;
@@ -2965,7 +2969,9 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
         }
 
         /* Propagate attributes from the input geometry. */
-        for (auto &&[name, cd_type] : attributes_to_propagate) {
+        for (const NameWithType &name_with_type : attributes_to_propagate) {
+          const StringRef name = name_with_type.name;
+          const eCustomDataType cd_type = name_with_type.type;
           if (src_attributes.is_builtin(name) && !dst_attributes.is_builtin(name)) {
             continue;
           }
