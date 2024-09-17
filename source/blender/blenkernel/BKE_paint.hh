@@ -237,7 +237,7 @@ bool BKE_paint_brush_set_default(Main *bmain, Paint *paint);
 bool BKE_paint_brush_set_essentials(Main *bmain, Paint *paint, const char *name);
 
 std::optional<AssetWeakReference> BKE_paint_brush_type_default_reference(
-    eObjectMode ob_mode, std::optional<blender::StringRef> brush_type_name);
+    eObjectMode ob_mode, std::optional<int> brush_type);
 void BKE_paint_brushes_set_default_references(ToolSettings *ts);
 void BKE_paint_brushes_validate(Main *bmain, Paint *paint);
 

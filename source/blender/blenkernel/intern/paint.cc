@@ -762,7 +762,7 @@ static void paint_eraser_brush_set_essentials_reference(Paint *paint, const char
 
 static void paint_brush_default_essentials_name_get(
     eObjectMode ob_mode,
-    std::optional<blender::StringRef> brush_type_name,
+    std::optional<int> brush_type,
     blender::StringRefNull *r_name,
     blender::StringRefNull *r_eraser_name = nullptr)
 {
@@ -786,19 +786,17 @@ static void paint_brush_default_essentials_name_get(
       name = "Comb Curves";
       break;
     case OB_MODE_PAINT_GPENCIL_LEGACY:
-      if (brush_type_name) {
-        if (brush_type_name == "ERASE") {
-          name = "Eraser Hard";
+      name = "Pencil";
+      /* Different default brush for some brush types. */
+      if (brush_type) {
+        switch (*brush_type) {
+          case GPAINT_BRUSH_TYPE_ERASE:
+            name = "Eraser Hard";
+            break;
+          case GPAINT_BRUSH_TYPE_FILL:
+            name = "Fill Area";
+            break;
         }
-        if (brush_type_name == "FILL") {
-          name = "Fill Area";
-        }
-        if (brush_type_name == "DRAW") {
-          name = "Pencil";
-        }
-      }
-      else {
-        name = "Pencil";
       }
       eraser_name = "Eraser Soft";
       break;
@@ -823,11 +821,11 @@ static void paint_brush_default_essentials_name_get(
 }
 
 std::optional<AssetWeakReference> BKE_paint_brush_type_default_reference(
-    eObjectMode ob_mode, std::optional<blender::StringRef> brush_type_name)
+    eObjectMode ob_mode, std::optional<int> brush_type)
 {
   blender::StringRefNull name;
 
-  paint_brush_default_essentials_name_get(ob_mode, brush_type_name, &name, nullptr);
+  paint_brush_default_essentials_name_get(ob_mode, brush_type, &name, nullptr);
   if (name.is_empty()) {
     return {};
   }

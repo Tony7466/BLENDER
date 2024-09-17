@@ -41,14 +41,8 @@ typedef struct bToolRef_Runtime {
   /** One of these 4 must be defined. */
   char keymap[64];
   char gizmo_group[64];
-  /**
-   * The type of brush to use for this tool, used when `TOOLREF_FLAG_USE_BRUSHES` is set.
-   *
-   * Has to match one of the enum identifiers in the brush type enum for this mode (as returned by
-   * #BKE_paint_get_tool_enum_from_paintmode()).
-   */
-  char brush_type[64];
   char data_block[64];
+  int brush_type;
 
   /** Keymap for #bToolRef.idname_fallback, if set. */
   char keymap_fallback[64];

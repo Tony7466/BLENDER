@@ -23,7 +23,7 @@ class BrushAssetShelf:
         from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.tool_active_from_context(context)
 
-        if not tool or tool.brush_type == "":
+        if not tool or tool.brush_type == 'NONE':
             return True
         if not cls.brush_type_prop or not cls.tool_prop:
             return True

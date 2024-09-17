@@ -141,13 +141,13 @@ void WM_toolsystem_unlink(bContext *C, WorkSpace *workspace, const bToolKey *tke
 /** \name Brush Tools
  * \{ */
 
-static std::optional<blender::StringRefNull> find_tool_id_from_brush_type_id(
-    const bContext *C, blender::StringRef brush_type_id)
+static std::optional<blender::StringRefNull> find_tool_id_from_brush_type_id(const bContext *C,
+                                                                             const int brush_type)
 {
   const WorkSpace *workspace = CTX_wm_workspace(C);
   LISTBASE_FOREACH (const bToolRef *, tref, &workspace->tools) {
-    if (tref->runtime && tref->runtime->brush_type[0] &&
-        tref->runtime->brush_type == brush_type_id)
+    if (tref->runtime && (tref->runtime->brush_type != -1) &&
+        tref->runtime->brush_type == brush_type)
     {
       return tref->idname;
     }
@@ -155,8 +155,7 @@ static std::optional<blender::StringRefNull> find_tool_id_from_brush_type_id(
   return {};
 }
 
-static blender::StringRef brush_type_identifier_get(const int brush_type,
-                                                    const PaintMode paint_mode)
+static const char *brush_type_identifier_get(const int brush_type, const PaintMode paint_mode)
 {
   const EnumPropertyItem *type_enum = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
   const int item_idx = RNA_enum_from_value(type_enum, brush_type);
@@ -166,9 +165,7 @@ static blender::StringRef brush_type_identifier_get(const int brush_type,
   return type_enum[item_idx].identifier;
 }
 
-static bool brush_type_is_compatible_with_active_tool(bContext *C,
-                                                      int brush_type,
-                                                      const PaintMode paint_mode)
+static bool brush_type_is_compatible_with_active_tool(bContext *C, const int brush_type)
 {
   if (!WM_toolsystem_active_tool_is_brush(C)) {
     return false;
@@ -179,17 +176,13 @@ static bool brush_type_is_compatible_with_active_tool(bContext *C,
   BLI_assert(BKE_paintmode_get_active_from_context(C) == BKE_paintmode_get_from_tool(active_tool));
 
   /* Tool supports any brush type, no need to check further. */
-  if (!active_tool->runtime->brush_type[0]) {
+  if (active_tool->runtime->brush_type == -1) {
     return true;
   }
-
-  const blender::StringRef type_name_from_tool = active_tool->runtime->brush_type;
-  const blender::StringRef type_name_from_brush = brush_type_identifier_get(brush_type,
-                                                                            paint_mode);
-  return type_name_from_tool == type_name_from_brush;
+  return active_tool->runtime->brush_type == brush_type;
 }
 
-static NamedBrushAssetReference *toolsystem_brush_type_binding_lookup(Paint *paint,
+static NamedBrushAssetReference *toolsystem_brush_type_binding_lookup(const Paint *paint,
                                                                       const char *brush_type_name)
 {
   return static_cast<NamedBrushAssetReference *>(
@@ -216,18 +209,21 @@ static void toolsystem_main_brush_binding_update_from_active(Paint *paint)
   }
 }
 
-static void toolsystem_brush_type_binding_update(Paint *paint, const char *brush_type)
+static void toolsystem_brush_type_binding_update(Paint *paint,
+                                                 const PaintMode paint_mode,
+                                                 const int brush_type)
 {
   if (paint->brush == nullptr) {
     return;
   }
-  if (!brush_type[0]) {
+  const char *brush_type_name = brush_type_identifier_get(brush_type, paint_mode);
+  if (!brush_type_name || !brush_type_name[0]) {
     return;
   }
 
   /* Update existing reference. */
   if (NamedBrushAssetReference *existing_brush_ref = toolsystem_brush_type_binding_lookup(
-          paint, brush_type))
+          paint, brush_type_name))
   {
     MEM_delete(existing_brush_ref->brush_asset_reference);
     existing_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
@@ -237,7 +233,7 @@ static void toolsystem_brush_type_binding_update(Paint *paint, const char *brush
   else {
     NamedBrushAssetReference *new_brush_ref = MEM_cnew<NamedBrushAssetReference>(__func__);
 
-    new_brush_ref->name = BLI_strdup(brush_type);
+    new_brush_ref->name = BLI_strdup(brush_type_name);
     new_brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
         __func__, *paint->brush_asset_reference);
     BLI_addhead(&paint->tool_brush_bindings.active_brush_per_brush_type, new_brush_ref);
@@ -247,22 +243,22 @@ static void toolsystem_brush_type_binding_update(Paint *paint, const char *brush
 bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *brush)
 {
   const bToolRef *active_tool = WM_toolsystem_ref_from_context(C);
+  const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
 
   if (!BKE_paint_brush_set(paint, brush)) {
     return false;
   }
 
-  if (!active_tool->runtime->brush_type[0]) {
+  if (active_tool->runtime->brush_type == -1) {
     /* Only update the main brush binding to reference the newly active brush. */
     toolsystem_main_brush_binding_update_from_active(paint);
     return true;
   }
 
-  toolsystem_brush_type_binding_update(paint, active_tool->runtime->brush_type);
+  toolsystem_brush_type_binding_update(paint, paint_mode, active_tool->runtime->brush_type);
 
   /* If necessary, find a compatible tool to switch to. */
   {
-    const PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
     std::optional<int> brush_type = BKE_paint_get_brush_type_from_paintmode(brush, paint_mode);
     if (!brush_type) {
       BLI_assert_unreachable();
@@ -270,10 +266,9 @@ bool WM_toolsystem_activate_brush_and_tool(bContext *C, Paint *paint, Brush *bru
       return true;
     }
 
-    if (!brush_type_is_compatible_with_active_tool(C, *brush_type, paint_mode)) {
-      blender::StringRef brush_type_id = brush_type_identifier_get(*brush_type, paint_mode);
+    if (!brush_type_is_compatible_with_active_tool(C, *brush_type)) {
       std::optional<blender::StringRefNull> compatible_tool = find_tool_id_from_brush_type_id(
-          C, brush_type_id);
+          C, *brush_type);
       WM_toolsystem_ref_set_by_id(C, compatible_tool.value_or("builtin.brush").c_str());
     }
     return true;
@@ -328,11 +323,13 @@ static void toolsystem_brush_activate_from_toolref_for_object_paint(const bConte
 
     /* Attempt to re-activate a brush remembered for this brush type, as stored in a brush
      * binding. */
-    if (tref_rt->brush_type[0]) {
+    if (tref_rt->brush_type != -1) {
       std::optional<AssetWeakReference> brush_asset_reference =
           [&]() -> std::optional<AssetWeakReference> {
+        const char *brush_type_name = brush_type_identifier_get(tref_rt->brush_type, paint_mode);
         const NamedBrushAssetReference *brush_ref = toolsystem_brush_type_binding_lookup(
-            paint, tref_rt->brush_type);
+            paint, brush_type_name);
+
         if (brush_ref && brush_ref->brush_asset_reference) {
           return *brush_ref->brush_asset_reference;
         }
