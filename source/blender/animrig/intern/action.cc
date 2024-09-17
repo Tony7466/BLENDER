@@ -2453,7 +2453,7 @@ static void clone_slot(Slot &from, Slot &to)
 void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_action)
 {
   BLI_assert(from_action.slots().as_span().contains(&source_slot));
-  BLI_assert(&from_action != to_action);
+  BLI_assert(&from_action != &to_action);
 
   /* No merging of strips or layers is handled. All data is put into the assumed single strip. */
   assert_baklava_phase_1_invariants(from_action);
