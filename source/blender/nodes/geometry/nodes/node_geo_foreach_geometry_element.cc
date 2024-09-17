@@ -289,7 +289,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       "Index of the element in the source geometry. Note that the same index can occure more than "
       "once when iterating over multiple components at once");
   b.add_output<decl::Geometry>("Element")
-      .description("Single element geometry for the current iteration")
+      .description(
+          "Single element geometry for the current iteration. Note that it can be quite "
+          "inefficient to splitup large geometries into many small geometries")
       .propagate_all();
 
   b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
@@ -494,6 +496,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryForeachGeometryElementOutput *data =
       MEM_cnew<NodeGeometryForeachGeometryElementOutput>(__func__);
+
+  data->generation_items.items = MEM_cnew_array<NodeForeachGeometryElementGenerationItem>(
+      1, __func__);
+  NodeForeachGeometryElementGenerationItem &item = data->generation_items.items[0];
+  item.name = BLI_strdup(DATA_("Geometry"));
+  item.socket_type = SOCK_GEOMETRY;
+  item.identifier = data->generation_items.next_identifier++;
+  data->generation_items.items_num = 1;
 
   node->storage = data;
 }
