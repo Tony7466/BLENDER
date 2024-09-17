@@ -249,6 +249,49 @@ void add_curves(bke::CurvesGeometry &curves, const Span<int> new_sizes)
   curves.update_curve_types();
 }
 
+static void copy_group_to_group_unsized(const bke::AttributeAccessor src_attributes,
+                                        const bke::AttrDomain src_domain,
+                                        const bke::AttrDomain dst_domain,
+                                        OffsetIndices<int> src_offsets,
+                                        OffsetIndices<int> dst_offsets,
+                                        const IndexMask &selection,
+                                        bke::MutableAttributeAccessor dst_attributes)
+{
+  src_attributes.for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
+    if (meta_data.domain != src_domain) {
+      return true;
+    }
+    if (bke::attribute_name_is_anonymous(id)) {
+      return true;
+    }
+
+    const GVArraySpan src = *src_attributes.lookup(id, src_domain);
+    const CPPType &type = src.type();
+    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+        id, dst_domain, meta_data.data_type);
+    if (!dst) {
+      return true;
+    }
+
+    selection.foreach_index(GrainSize(512), [&](const int curve_i) {
+      const IndexRange src_points = src_offsets[curve_i];
+      const IndexRange dst_points = dst_offsets[curve_i];
+      if (dst_points.size() < src_points.size()) {
+        const int src_excees = src_points.size() - dst_points.size();
+        dst.span.slice(dst_points).copy_from(src.slice(src_points.drop_back(src_excees)));
+      }
+      else {
+        const int dst_excees = dst_points.size() - src_points.size();
+        dst.span.slice(dst_points.drop_back(dst_excees)).copy_from(src.slice(src_points));
+        GMutableSpan dst_end_slice = dst.span.slice(dst_points.take_back(dst_excees));
+        type.value_initialize_n(dst_end_slice.data(), dst_end_slice.size());
+      }
+    });
+    dst.finish();
+    return true;
+  });
+}
+
 void resize_curves(bke::CurvesGeometry &curves,
                    const IndexMask &curves_to_resize,
                    const Span<int> new_sizes)
@@ -277,40 +320,21 @@ void resize_curves(bke::CurvesGeometry &curves,
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  src_attributes.for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
-    if (meta_data.domain != bke::AttrDomain::Point) {
-      return true;
-    }
-    if (bke::attribute_name_is_anonymous(id)) {
-      return true;
-    }
-
-    const GVArraySpan src = *src_attributes.lookup(id, bke::AttrDomain::Point);
-    const CPPType &type = src.type();
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, bke::AttrDomain::Point, meta_data.data_type);
-    if (!dst) {
-      return true;
-    }
-
-    curves_to_resize.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange src_points = src_offsets[curve_i];
-      const IndexRange dst_points = dst_offsets[curve_i];
-      if (dst_points.size() < src_points.size()) {
-        const int src_excees = src_points.size() - dst_points.size();
-        dst.span.slice(dst_points).copy_from(src.slice(src_points.drop_back(src_excees)));
-      }
-      else {
-        const int dst_excees = dst_points.size() - src_points.size();
-        dst.span.slice(dst_points.drop_back(dst_excees)).copy_from(src.slice(src_points));
-        GMutableSpan dst_end_slice = dst.span.slice(dst_points.take_back(dst_excees));
-        type.value_initialize_n(dst_end_slice.data(), dst_end_slice.size());
-      }
-    });
-    array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
-    dst.finish();
-    return true;
-  });
+  bke::copy_attributes_group_to_group(src_attributes,
+                                      bke::AttrDomain::Point,
+                                      bke::AttrDomain::Point,
+                                      bke::AttributeFilter::default_filter(),
+                                      src_offsets,
+                                      dst_offsets,
+                                      curves_to_copy,
+                                      dst_attributes);
+  copy_group_to_group_unsized(src_attributes,
+                              bke::AttrDomain::Point,
+                              bke::AttrDomain::Point,
+                              src_offsets,
+                              dst_offsets,
+                              curves_to_resize,
+                              dst_attributes);
 
   dst_curves.update_curve_types();
 
