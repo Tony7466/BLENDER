@@ -8,6 +8,8 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
+#include "BKE_geometry_set.hh"
+#include "BKE_instances.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
 
@@ -198,9 +200,9 @@ Array<Curves *> extract_curves_points(const Curves &curves,
   return new_curves;
 }
 
-Array<Curves *> extract_curves_curves(const Curves &curves,
-                                      const IndexMask &mask,
-                                      const bke::AttributeFilter &attribute_filter)
+Array<Curves *> extract_curves(const Curves &curves,
+                               const IndexMask &mask,
+                               const bke::AttributeFilter &attribute_filter)
 {
   BLI_assert(mask.min_array_size() <= curves.geometry.curve_num);
   Array<Curves *> new_curves(mask.size(), nullptr);
@@ -230,6 +232,42 @@ Array<Curves *> extract_curves_curves(const Curves &curves,
   });
 
   return new_curves;
+}
+
+Array<bke::Instances *> extract_instances(const bke::Instances &instances,
+                                          const IndexMask &mask,
+                                          const bke::AttributeFilter &attribute_filter)
+{
+  using bke::Instances;
+  BLI_assert(mask.min_array_size() <= instances.instances_num());
+  Array<Instances *> new_instances(mask.size(), nullptr);
+
+  const bke::AttributeAccessor src_attributes = instances.attributes();
+  const Span<bke::InstanceReference> src_references = instances.references();
+  const Span<int> src_reference_handles = instances.reference_handles();
+  const Span<float4x4> src_transforms = instances.transforms();
+
+  mask.foreach_index(GrainSize(32), [&](const int old_instance_i, const int new_instance_i) {
+    const int old_handle = src_reference_handles[old_instance_i];
+    const bke::InstanceReference &old_reference = src_references[old_handle];
+    const float4x4 &old_transform = src_transforms[old_instance_i];
+
+    Instances *single_instance = new Instances();
+    const int new_handle = single_instance->add_new_reference(old_reference);
+    single_instance->add_instance(new_handle, old_transform);
+
+    bke::gather_attributes(src_attributes,
+                           bke::AttrDomain::Instance,
+                           bke::AttrDomain::Instance,
+                           bke::attribute_filter_with_skip_ref(
+                               attribute_filter, {".reference_index", "instance_transform"}),
+                           Span<int>{old_instance_i},
+                           single_instance->attributes_for_write());
+
+    new_instances[new_instance_i] = single_instance;
+  });
+
+  return new_instances;
 }
 
 }  // namespace blender::geometry

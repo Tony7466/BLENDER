@@ -13,6 +13,10 @@ struct Mesh;
 struct PointCloud;
 struct Curves;
 
+namespace blender::bke {
+class Instances;
+}
+
 namespace blender::geometry {
 
 Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
@@ -35,8 +39,12 @@ Array<Curves *> extract_curves_points(const Curves &curves,
                                       const IndexMask &mask,
                                       const bke::AttributeFilter &attribute_filter);
 
-Array<Curves *> extract_curves_curves(const Curves &curves,
-                                      const IndexMask &mask,
-                                      const bke::AttributeFilter &attribute_filter);
+Array<Curves *> extract_curves(const Curves &curves,
+                               const IndexMask &mask,
+                               const bke::AttributeFilter &attribute_filter);
+
+Array<bke::Instances *> extract_instances(const bke::Instances &instances,
+                                          const IndexMask &mask,
+                                          const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

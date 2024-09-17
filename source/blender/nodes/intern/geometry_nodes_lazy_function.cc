@@ -2580,7 +2580,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
             break;
           }
           case AttrDomain::Curve: {
-            element_curves = geometry::extract_curves_curves(main_curves, mask, attribute_filter);
+            element_curves = geometry::extract_curves(main_curves, mask, attribute_filter);
             break;
           }
           default:
@@ -2589,6 +2589,19 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         Array<GeometrySet> element_geometries(element_curves.size());
         for (const int i : element_curves.index_range()) {
           element_geometries[i].replace_curves(element_curves[i]);
+        }
+        return element_geometries;
+      }
+      case GeometryComponent::Type::Instance: {
+        if (id.domain != AttrDomain::Instance) {
+          return std::nullopt;
+        }
+        const bke::Instances &main_instances = *main_geometry.get_instances();
+        Array<bke::Instances *> element_instances = geometry::extract_instances(
+            main_instances, mask, attribute_filter);
+        Array<GeometrySet> element_geometries(element_instances.size());
+        for (const int i : element_instances.index_range()) {
+          element_geometries[i].replace_instances(element_instances[i]);
         }
         return element_geometries;
       }
