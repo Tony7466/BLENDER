@@ -260,7 +260,7 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
   const float scale = mat4_to_scale(armature_to_world.ptr());
 
   Vector<const Bone *> skinnable_bones;
-  Vector<bDeformGroup *> deform_groups;
+  Vector<std::string> deform_group_names;
   const int added_vertex_groups = foreach_bone_in_armature(
       object, armature, [&](Object &object, const Bone *bone) {
         if ((bone->flag & BONE_NO_DEFORM) == 0) {
@@ -270,7 +270,7 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
             /* Add a new vertex group with the name of the bone. */
             dg = BKE_object_defgroup_add_name(&object, bone->name);
           }
-          deform_groups.append(dg);
+          deform_group_names.append(dg->name);
           skinnable_bones.append(bone);
           return true;
         }
@@ -310,13 +310,12 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
 
     for (const int bone_i : skinnable_bones.index_range()) {
       const Bone *bone = skinnable_bones[bone_i];
-      bDeformGroup *deform_group = deform_groups[bone_i];
-      char *deform_group_name = deform_group->name;
+      const char *deform_group_name = deform_group_names[bone_i].c_str();
       const float3 bone_root = roots[bone_i];
       const float3 bone_tip = tips[bone_i];
 
       int def_nr = BLI_findstringindex(
-          &curves.vertex_group_names, deform_group->name, offsetof(bDeformGroup, name));
+          &curves.vertex_group_names, deform_group_name, offsetof(bDeformGroup, name));
 
       /* Lazily add the vertex group. */
       if (def_nr == -1) {
