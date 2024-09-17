@@ -480,11 +480,6 @@ ccl_device_inline float4 fceilf(const float4 a)
   return make_float4(fceilf(a.x), fceilf(a.y), fceilf(a.z), fceilf(a.w));
 }
 
-ccl_device_inline float4 froundf(const float4 a)
-{
-  return make_float4(froundf(a.x), froundf(a.y), froundf(a.z), froundf(a.w));
-}
-
 ccl_device_inline float4 floor(const float4 a)
 {
 #  ifdef __KERNEL_SSE__

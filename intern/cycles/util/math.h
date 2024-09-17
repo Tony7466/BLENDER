@@ -99,11 +99,6 @@ ccl_device_inline float fceilf(float a)
   return ceilf(a);
 }
 
-ccl_device_inline float froundf(float a)
-{
-  return roundf(a);
-}
-
 ccl_device_inline float float_max(float a, float b)
 {
   return (a > b) ? a : b;
