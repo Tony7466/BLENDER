@@ -92,11 +92,13 @@ enum ThemeColorID {
   TH_OUTLINE_WIDTH,
   TH_OBCENTER_DIA,
   TH_EDGE,
-  TH_EDGE_SELECT,
+  TH_EDGE_SELECT, /* Stands for edge selection, not edge select mode. */
+  TH_EDGE_MODE_SELECT,
   TH_EDGE_SEAM,
   TH_EDGE_FACESEL,
   TH_FACE,
-  TH_FACE_SELECT,
+  TH_FACE_SELECT, /* Stands for face selection, not face select mode. */
+  TH_FACE_MODE_SELECT,
   TH_FACE_RETOPOLOGY,
   TH_FACE_BACK,
   TH_FACE_FRONT,
@@ -106,6 +108,8 @@ enum ThemeColorID {
   TH_FACE_DOT,
   TH_FACEDOT_SIZE,
   TH_CFRAME,
+  TH_FRAME_BEFORE,
+  TH_FRAME_AFTER,
   TH_TIME_SCRUB_BACKGROUND,
   TH_TIME_MARKER_LINE,
   TH_TIME_MARKER_LINE_SELECTED,
@@ -159,6 +163,8 @@ enum ThemeColorID {
   TH_KEYTYPE_JITTER_SELECT,
   TH_KEYTYPE_MOVEHOLD,
   TH_KEYTYPE_MOVEHOLD_SELECT,
+  TH_KEYTYPE_GENERATED,
+  TH_KEYTYPE_GENERATED_SELECT,
 
   TH_KEYBORDER,
   TH_KEYBORDER_SELECT,
@@ -291,6 +297,7 @@ enum ThemeColorID {
   TH_ICON_MODIFIER,
   TH_ICON_SHADING,
   TH_ICON_FOLDER,
+  TH_ICON_AUTOKEY,
   TH_ICON_FUND,
 
   TH_SCROLL_TEXT,
@@ -455,7 +462,7 @@ bool UI_GetIconThemeColor4ubv(int colorid, unsigned char col[4]);
 /**
  * Shade a 3 byte color (same as UI_GetColorPtrBlendShade3ubv with 0.0 factor).
  */
-void UI_GetColorPtrShade3ubv(const unsigned char cp1[3], unsigned char col[3], int offset);
+void UI_GetColorPtrShade3ubv(const unsigned char cp[3], unsigned char col[3], int offset);
 
 /**
  * Get a 3 byte color, blended and shaded between two other char color pointers.
@@ -491,7 +498,7 @@ bTheme *UI_GetTheme();
  * For the rare case we need to temp swap in a different theme (off-screen render).
  */
 void UI_Theme_Store(bThemeState *theme_state);
-void UI_Theme_Restore(bThemeState *theme_state);
+void UI_Theme_Restore(const bThemeState *theme_state);
 
 /**
  * Return shadow width outside menus and popups.

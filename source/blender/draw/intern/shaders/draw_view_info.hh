@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "draw_defines.h"
+#include "draw_defines.hh"
 #include "gpu_shader_create_info.hh"
 
 /* -------------------------------------------------------------------- */
@@ -48,13 +48,15 @@ GPU_SHADER_CREATE_INFO(draw_resource_handle)
 
 GPU_SHADER_CREATE_INFO(draw_view)
     .uniform_buf(DRW_VIEW_UBO_SLOT, "ViewMatrices", "drw_view_[DRW_VIEW_LEN]", Frequency::PASS)
+    .define("DRAW_VIEW_CREATE_INFO")
     .define("drw_view", "drw_view_[drw_view_id]")
-    .typedef_source("draw_shader_shared.h");
+    .typedef_source("draw_shader_shared.hh");
 
 GPU_SHADER_CREATE_INFO(draw_view_culling)
     .uniform_buf(DRW_VIEW_CULLING_UBO_SLOT, "ViewCullingData", "drw_view_culling_[DRW_VIEW_LEN]")
+    .define("DRW_VIEW_CULLING_INFO")
     .define("drw_view_culling", "drw_view_culling_[drw_view_id]")
-    .typedef_source("draw_shader_shared.h");
+    .typedef_source("draw_shader_shared.hh");
 
 GPU_SHADER_CREATE_INFO(draw_modelmat)
     .uniform_buf(DRW_OBJ_MAT_UBO_SLOT,
@@ -94,7 +96,7 @@ GPU_SHADER_CREATE_INFO(drw_clipped)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(draw_globals)
-    .typedef_source("draw_common_shader_shared.h")
+    .typedef_source("draw_common_shader_shared.hh")
     .uniform_buf(7, "GlobalsUboStorage", "globalsBlock", Frequency::PASS);
 
 /** \} */
@@ -104,6 +106,8 @@ GPU_SHADER_CREATE_INFO(draw_globals)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(draw_mesh).additional_info("draw_modelmat", "draw_resource_id");
+
+GPU_SHADER_CREATE_INFO(draw_mesh_new).additional_info("draw_modelmat_new", "draw_resource_id");
 
 GPU_SHADER_CREATE_INFO(draw_hair)
     .define("HAIR_SHADER")
@@ -169,15 +173,12 @@ GPU_SHADER_CREATE_INFO(draw_gpencil_new)
     .sampler(0, ImageType::FLOAT_BUFFER, "gp_pos_tx")
     .sampler(1, ImageType::FLOAT_BUFFER, "gp_col_tx")
     /* Per Object */
-    .define("gpThicknessScale", "1.0")               /* TODO(fclem): Replace with object info. */
-    .define("gpThicknessWorldScale", "1.0 / 2000.0") /* TODO(fclem): Same as above. */
+    .push_constant(Type::FLOAT, "gpThicknessScale") /* TODO(fclem): Replace with object info. */
+    .push_constant(Type::FLOAT, "gpThicknessWorldScale") /* TODO(fclem): Same as above. */
     .define("gpThicknessIsScreenSpace", "(gpThicknessWorldScale < 0.0)")
     /* Per Layer */
-    .define("gpThicknessOffset", "0.0") /* TODO(fclem): Remove. */
-    .additional_info("draw_modelmat_new",
-                     "draw_resource_id_varying",
-                     "draw_view",
-                     "draw_object_infos_new");
+    .push_constant(Type::FLOAT, "gpThicknessOffset")
+    .additional_info("draw_resource_id_varying", "draw_view", "draw_object_infos_new");
 
 /** \} */
 
@@ -187,7 +188,7 @@ GPU_SHADER_CREATE_INFO(draw_gpencil_new)
 
 GPU_SHADER_CREATE_INFO(draw_resource_finalize)
     .do_static_compilation(true)
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .define("DRAW_FINALIZE_SHADER")
     .local_group_size(DRW_FINALIZE_GROUP_SIZE)
     .storage_buf(0, Qualifier::READ, "ObjectMatrices", "matrix_buf[]")
@@ -218,7 +219,7 @@ GPU_SHADER_CREATE_INFO(draw_visibility_compute)
 
 GPU_SHADER_CREATE_INFO(draw_command_generate)
     .do_static_compilation(true)
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .typedef_source("draw_command_shared.hh")
     .local_group_size(DRW_COMMAND_GROUP_SIZE)
     .storage_buf(0, Qualifier::READ_WRITE, "DrawGroup", "group_buf[]")
@@ -277,8 +278,9 @@ GPU_SHADER_CREATE_INFO(draw_resource_handle_new).define("resource_handle", "drw_
  * \{ */
 
 GPU_SHADER_CREATE_INFO(draw_modelmat_new_common)
-    .typedef_source("draw_shader_shared.h")
+    .typedef_source("draw_shader_shared.hh")
     .storage_buf(DRW_OBJ_MAT_SLOT, Qualifier::READ, "ObjectMatrices", "drw_matrix_buf[]")
+    .define("DRAW_MODELMAT_CREATE_INFO")
     .define("drw_ModelMatrixInverse", "drw_matrix_buf[resource_id].model_inverse")
     .define("drw_ModelMatrix", "drw_matrix_buf[resource_id].model")
     /* TODO For compatibility with old shaders. To be removed. */

@@ -45,19 +45,19 @@ struct wmOperator;
 
 #define GPENCIL_MINIMUM_JOIN_DIST 20.0f
 
-/* Reproject stroke modes. */
+/** Reproject stroke modes. */
 enum eGP_ReprojectModes {
   /* Axis */
   GP_REPROJECT_FRONT = 0,
   GP_REPROJECT_SIDE,
   GP_REPROJECT_TOP,
-  /* On same plane, parallel to view-plane. */
+  /** On same plane, parallel to view-plane. */
   GP_REPROJECT_VIEW,
-  /* Reprojected on to the scene geometry */
+  /** Re-projected on to the scene geometry. */
   GP_REPROJECT_SURFACE,
-  /* Reprojected on 3D cursor orientation */
+  /** Re-projected on 3D cursor orientation. */
   GP_REPROJECT_CURSOR,
-  /* Keep equals (used in some operators) */
+  /** Keep equals (used in some operators). */
   GP_REPROJECT_KEEP,
 };
 
@@ -69,7 +69,8 @@ enum eGP_TargetObjectMode {
 
 /* ------------- Grease-Pencil Runtime Data ---------------- */
 
-/* Temporary 'Stroke Point' data (2D / screen-space)
+/**
+ * Temporary 'Stroke Point' data (2D / screen-space)
  *
  * Used as part of the 'stroke cache' used during drawing of new strokes
  */
@@ -176,11 +177,11 @@ bool ED_gpencil_layer_has_selected_stroke(const bGPDlayer *gpl, bool is_multiedi
  * TODO: do we need additional flags for screen-space vs data-space?.
  */
 bool ED_gpencil_stroke_can_use_direct(const ScrArea *area, const bGPDstroke *gps);
-/* Check whether given stroke can be edited in the current context */
+/** Check whether given stroke can be edited in the current context */
 bool ED_gpencil_stroke_can_use(const bContext *C, const bGPDstroke *gps);
-/* Check whether given stroke can be edited for the current color */
+/** Check whether given stroke can be edited for the current color */
 bool ED_gpencil_stroke_material_editable(Object *ob, const bGPDlayer *gpl, const bGPDstroke *gps);
-/* Check whether given stroke is visible for the current material. */
+/** Check whether given stroke is visible for the current material. */
 bool ED_gpencil_stroke_material_visible(Object *ob, const bGPDstroke *gps);
 
 /* ----------- Grease Pencil Operators ----------------- */
@@ -314,7 +315,7 @@ bool ED_gpencil_anim_copybuf_copy(bAnimContext *ac);
 /**
  * Pastes keyframes from buffer, and reports success.
  */
-bool ED_gpencil_anim_copybuf_paste(bAnimContext *ac, short copy_mode);
+bool ED_gpencil_anim_copybuf_paste(bAnimContext *ac, short offset_mode);
 
 /* ------------ Grease-Pencil Undo System ------------------ */
 int ED_gpencil_session_active();
@@ -327,15 +328,6 @@ int ED_undo_gpencil_step(bContext *C, int step); /* eUndoStepDir. */
 bool ED_gpencil_add_armature(const bContext *C, ReportList *reports, Object *ob, Object *ob_arm);
 bool ED_gpencil_add_armature_weights(
     const bContext *C, ReportList *reports, Object *ob, Object *ob_arm, int mode);
-
-/**
- * Add Lattice modifier using Parent operator.
- * Parent GPencil object to Lattice.
- */
-bool ED_gpencil_add_lattice_modifier(const bContext *C,
-                                     ReportList *reports,
-                                     Object *ob,
-                                     Object *ob_latt);
 
 /* keep this aligned with gpencil_armature enum */
 #define GP_PAR_ARMATURE_NAME 0
@@ -494,7 +486,7 @@ void ED_gpencil_update_color_uv(Main *bmain, Material *mat);
 
 /**
  * Extend selection to stroke intersections:
- * \returns:
+ * \return The result of selecting:
  * 0 - No hit
  * 1 - Hit in point A
  * 2 - Hit in point B
@@ -609,6 +601,7 @@ void ED_gpencil_stroke_close_by_distance(bGPDstroke *gps, float threshold);
  * Calculate the brush cursor size in world space.
  */
 float ED_gpencil_cursor_radius(bContext *C, int x, int y);
+bool ED_gpencil_brush_cursor_poll(bContext *C);
 float ED_gpencil_radial_control_scale(bContext *C,
                                       Brush *brush,
                                       float initial_value,

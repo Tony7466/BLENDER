@@ -11,16 +11,14 @@
 #include "DNA_node_types.h"
 #include "DNA_pointcloud_types.h"
 
-#include "BKE_pointcloud.h"
-#include "BKE_volume.h"
-#include "BKE_volume_openvdb.hh"
+#include "BKE_pointcloud.hh"
+#include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "GEO_randomize.hh"
 
@@ -80,13 +78,13 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sock_spacing = sock_seed->next;
   bNodeSocket *sock_threshold = sock_spacing->next;
 
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, sock_density, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, sock_seed, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, sock_spacing, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID);
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, sock_threshold, mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID);
 }
 
@@ -215,34 +213,30 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     const VolumeComponent *component = geometry_set.get_component<VolumeComponent>();
     const Volume *volume = component->get();
-    BKE_volume_load(volume, DEG_get_bmain(params.depsgraph()));
+    BKE_volume_load(volume, params.bmain());
 
     Vector<float3> positions;
 
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
-      const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
+      const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, i);
       if (volume_grid == nullptr) {
         continue;
       }
 
-      openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume,
-                                                                               volume_grid);
-      if (!base_grid) {
+      bke::VolumeTreeAccessToken tree_token;
+      const openvdb::GridBase &base_grid = volume_grid->grid(tree_token);
+
+      if (!base_grid.isType<openvdb::FloatGrid>()) {
         continue;
       }
 
-      if (!base_grid->isType<openvdb::FloatGrid>()) {
-        continue;
-      }
-
-      const openvdb::FloatGrid::ConstPtr grid = openvdb::gridConstPtrCast<openvdb::FloatGrid>(
-          base_grid);
+      const openvdb::FloatGrid &grid = static_cast<const openvdb::FloatGrid &>(base_grid);
 
       if (mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM) {
-        point_scatter_density_random(*grid, density, seed, positions);
+        point_scatter_density_random(grid, density, seed, positions);
       }
       else if (mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID) {
-        point_scatter_density_grid(*grid, spacing, threshold, positions);
+        point_scatter_density_grid(grid, spacing, threshold, positions);
       }
     }
 
@@ -250,7 +244,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     bke::MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
     pointcloud->positions_for_write().copy_from(positions);
     bke::SpanAttributeWriter<float> point_radii =
-        point_attributes.lookup_or_add_for_write_only_span<float>("radius", ATTR_DOMAIN_POINT);
+        point_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
 
     point_radii.span.fill(0.05f);
     point_radii.finish();
@@ -264,9 +258,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Points", std::move(geometry_set));
 
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 
@@ -297,22 +289,22 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype,
                      GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME,
                      "Distribute Points in Volume",
                      NODE_CLASS_GEOMETRY);
-  node_type_storage(&ntype,
-                    "NodeGeometryDistributePointsInVolume",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryDistributePointsInVolume",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   blender::bke::node_type_size(&ntype, 170, 100, 320);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

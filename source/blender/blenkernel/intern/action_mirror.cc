@@ -20,12 +20,12 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_fcurve.h"
+#include "BKE_action.hh"
+#include "BKE_armature.hh"
+#include "BKE_fcurve.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -458,7 +458,7 @@ void BKE_action_flip_with_pose(bAction *act, Object *ob_arm)
 
   action_flip_pchan_rna_paths(act);
 
-  DEG_id_tag_update(&act->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&act->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 /** \} */

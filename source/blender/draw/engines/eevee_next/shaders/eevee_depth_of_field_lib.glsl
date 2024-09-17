@@ -6,8 +6,9 @@
  * Depth of Field utils.
  */
 
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
 /* -------------------------------------------------------------------- */
 /** \name Constants.
@@ -54,6 +55,7 @@ const float dof_layer_offset = 0.5 + 0.5;
 
 const int dof_max_slight_focus_radius = DOF_MAX_SLIGHT_FOCUS_RADIUS;
 
+const uvec2 quad_offsets_u[4] = uvec2[4](uvec2(0, 1), uvec2(1, 1), uvec2(1, 0), uvec2(0, 0));
 const vec2 quad_offsets[4] = vec2[4](
     vec2(-0.5, 0.5), vec2(0.5, 0.5), vec2(0.5, -0.5), vec2(-0.5, -0.5));
 
@@ -114,10 +116,10 @@ float dof_coc_from_depth(DepthOfFieldData dof_data, vec2 uv, float depth)
 {
   if (is_panoramic(dof_data.camera_type)) {
     /* Use radial depth. */
-    depth = -length(get_view_space_from_depth(uv, depth));
+    depth = -length(drw_point_screen_to_view(vec3(uv, depth)));
   }
   else {
-    depth = get_view_z_from_depth(depth);
+    depth = drw_depth_screen_to_view(depth);
   }
   return coc_radius_from_camera_depth(dof_data, depth);
 }
@@ -153,7 +155,7 @@ vec4 dof_layer_weight(vec4 coc)
 float dof_sample_weight(float coc)
 {
 #if 1 /* Optimized */
-  return min(1.0, 1.0 / sqr(coc));
+  return min(1.0, 1.0 / square(coc));
 #else
   /* Full intensity if CoC radius is below the pixel footprint. */
   const float min_coc = 1.0;
@@ -164,7 +166,7 @@ float dof_sample_weight(float coc)
 vec4 dof_sample_weight(vec4 coc)
 {
 #if 1 /* Optimized */
-  return min(vec4(1.0), 1.0 / sqr(coc));
+  return min(vec4(1.0), 1.0 / square(coc));
 #else
   /* Full intensity if CoC radius is below the pixel footprint. */
   const float min_coc = 1.0;
@@ -216,7 +218,7 @@ CocTile dof_coc_tile_unpack(vec3 fg, vec3 bg)
   return tile;
 }
 
-/* WORKAROUND(fclem): GLSL compilers differs in what qualifiers are requires to pass images as
+/* WORKAROUND(@fclem): GLSL compilers differs in what qualifiers are requires to pass images as
  * parameters. Workaround by using defines. */
 #define dof_coc_tile_load(tiles_fg_img_, tiles_bg_img_, texel_) \
   dof_coc_tile_unpack( \

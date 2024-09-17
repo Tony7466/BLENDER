@@ -4,8 +4,8 @@
 
 #include "BLI_assert.h"
 
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,7 +22,7 @@ ReduceToSingleValueOperation::ReduceToSingleValueOperation(Context &context, Res
   InputDescriptor input_descriptor;
   input_descriptor.type = type;
   declare_input_descriptor(input_descriptor);
-  populate_result(Result(type, texture_pool()));
+  populate_result(context.create_result(type));
 }
 
 void ReduceToSingleValueOperation::execute()
@@ -31,7 +31,7 @@ void ReduceToSingleValueOperation::execute()
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
 
   const Result &input = get_input();
-  float *pixel = static_cast<float *>(GPU_texture_read(input.texture(), GPU_DATA_FLOAT, 0));
+  float *pixel = static_cast<float *>(GPU_texture_read(input, GPU_DATA_FLOAT, 0));
 
   Result &result = get_result();
   result.allocate_single_value();

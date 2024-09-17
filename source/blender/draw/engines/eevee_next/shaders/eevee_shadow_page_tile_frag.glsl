@@ -35,6 +35,7 @@
  * belong to shadow pages not being updated in this pass are discarded.
  **/
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 #if defined(PASS_CLEAR)
@@ -42,7 +43,7 @@
 void main()
 {
   /* The tile clear pass writes out to tile attachment to ensure raster order groups are satisfied,
-   * allowing the clear to be guaranteed to happen first, as it is first in submission order.   */
+   * allowing the clear to be guaranteed to happen first, as it is first in submission order. */
   out_tile_depth = FLT_MAX;
 }
 
@@ -52,15 +53,16 @@ void main()
 {
   /* For storing pass, we store the result from depth in tile memory. */
   uint u_depth = floatBitsToUint(in_tile_depth);
-  /* Quantization bias. Equivalent to `nextafter` in C without all the safety. 1 is not enough. */
-  u_depth += 2;
 
   /* Write result to atlas. */
 #  ifdef GPU_METAL
-  /* NOTE: Use the fastest possible write function without any parameter wrapping or conversion.*/
-  shadow_atlas_img.texture->write(u_depth, ushort2(out_texel_xy), out_page_z);
+  /* NOTE: Use the fastest possible write function without any parameter wrapping or conversion. */
+  shadow_atlas_img.texture->write(
+      u_depth, ushort2(interp_noperspective.out_texel_xy), interp_flat.out_page_z);
 #  else
-  imageStore(shadow_atlas_img, ivec3(out_texel_xy, out_page_z), uvec4(u_depth));
+  imageStore(shadow_atlas_img,
+             ivec3(interp_noperspective.out_texel_xy, interp_flat.out_page_z),
+             uvec4(u_depth));
 #  endif
 }
 

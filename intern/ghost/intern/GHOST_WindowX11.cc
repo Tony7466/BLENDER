@@ -348,6 +348,16 @@ GHOST_WindowX11::GHOST_WindowX11(GHOST_SystemX11 *system,
     m_valid_setup = true;
     GHOST_PRINT("Created window\n");
   }
+  else {
+    const char *text =
+        "A graphics card and driver with support for OpenGL 4.3 or higher is "
+        "required.\n\nInstalling the latest driver for your graphics card might resolve the "
+        "issue.";
+    const char *help = "https://www.blender.org/download/requirements/";
+    system->showMessageBox(
+        "Unsupported hardware", text, "Learn More", "Close", help, GHOST_DialogError);
+    exit(0);
+  }
 
   setTitle(title);
 
@@ -638,7 +648,7 @@ int GHOST_WindowX11::icccmGetState() const
   struct {
     CARD32 state;
     XID icon;
-  } * prop_ret;
+  } *prop_ret;
   ulong bytes_after, num_ret;
   Atom type_ret;
   int ret, format_ret;
@@ -1542,17 +1552,22 @@ uint16_t GHOST_WindowX11::getDPIHint()
   if (resMan) {
     XrmDatabase xrdb = XrmGetStringDatabase(resMan);
     if (xrdb) {
+      int dpi = -1;
       char *type = nullptr;
       XrmValue val;
 
       int success = XrmGetResource(xrdb, "Xft.dpi", "Xft.Dpi", &type, &val);
       if (success && type) {
         if (STREQ(type, "String")) {
-          return atoi((char *)val.addr);
+          dpi = atoi((const char *)val.addr);
         }
       }
+      XrmDestroyDatabase(xrdb);
+
+      if (dpi != -1) {
+        return dpi;
+      }
     }
-    XrmDestroyDatabase(xrdb);
   }
 
   /* Fallback to calculating DPI using X reported DPI, set using `xrandr --dpi`. */

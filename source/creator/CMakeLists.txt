@@ -3,9 +3,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  ../../intern/clog
   ../blender/blenkernel
-  ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
@@ -18,7 +16,9 @@ set(INC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_windowmanager
 )
@@ -113,10 +113,6 @@ if(WITH_HEADLESS)
 endif()
 
 if(WITH_SDL)
-  if(WITH_SDL_DYNLOAD)
-    list(APPEND INC ../../extern/sdlew/include)
-    add_definitions(-DWITH_SDL_DYNLOAD)
-  endif()
   add_definitions(-DWITH_SDL)
 endif()
 
@@ -152,6 +148,11 @@ set(SRC
   creator_intern.h
 )
 
+if(CMAKE_GENERATOR MATCHES "^Visual Studio.+")
+  # This helps visual studio find the debugger visualizers
+  list(APPEND SRC ${CMAKE_SOURCE_DIR}/tools/utils_ide/natvis/Blender.natvis)
+endif()
+
 # MSVC 2010 gives linking errors with the manifest.
 if(WIN32 AND NOT UNIX)
   add_definitions(
@@ -162,11 +163,15 @@ if(WIN32 AND NOT UNIX)
     -DBLEN_VER_RC_4=0
   )
 
-
   list(APPEND SRC
     ${CMAKE_SOURCE_DIR}/release/windows/icons/winblender.rc
-    ${CMAKE_BINARY_DIR}/blender.exe.manifest
   )
+
+  if(NOT WITH_WINDOWS_EXTERNAL_MANIFEST)
+    list(APPEND SRC
+      ${CMAKE_BINARY_DIR}/blender.exe.manifest
+    )
+  endif()
 endif()
 
 if(WITH_BUILDINFO)
@@ -327,13 +332,23 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
+  if(WITH_CPU_CHECK)
+    # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
+    # to this, this is to ensure this will be the first code to run once the
+    # blender binary has been loaded by the OS.
+    target_link_libraries(blender PRIVATE blender_cpu_check)
+  endif()
   if(WIN32)
     add_executable(blender-launcher WIN32
       blender_launcher_win32.c
       ${CMAKE_SOURCE_DIR}/release/windows/icons/winblender.rc
-      ${CMAKE_BINARY_DIR}/blender.exe.manifest
     )
-    target_compile_definitions (blender-launcher PRIVATE -D_UNICODE -DUNICODE)
+    if(NOT WITH_WINDOWS_EXTERNAL_MANIFEST)
+      target_sources(blender-launcher PRIVATE
+        ${CMAKE_BINARY_DIR}/blender.exe.manifest
+      )
+    endif()
+    target_compile_definitions(blender-launcher PRIVATE -D_UNICODE -DUNICODE)
     target_link_libraries(blender-launcher Pathcch.lib)
   endif()
 endif()
@@ -424,15 +439,6 @@ endif()
 if(WITH_PYTHON)
   # install(CODE "message(\"copying blender scripts...\")")
 
-  # exclude addons_contrib if release branch
-  if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "rc" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "beta")
-    set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
-  else()
-    set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # Dummy, won't do anything.
-  endif()
-
   # do not install freestyle dir if disabled
   if(NOT WITH_FREESTYLE)
     set(FREESTYLE_EXCLUDE_CONDITIONAL "freestyle/*")
@@ -450,7 +456,6 @@ if(WITH_PYTHON)
     PATTERN ".arcconfig" EXCLUDE
     PATTERN "__pycache__" EXCLUDE
     PATTERN "site" EXCLUDE
-    PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
     PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
   )
 
@@ -467,7 +472,6 @@ if(WITH_PYTHON)
       )
     endif()
   endif()
-  unset(ADDON_EXCLUDE_CONDITIONAL)
   unset(FREESTYLE_EXCLUDE_CONDITIONAL)
 endif()
 
@@ -527,6 +531,22 @@ if(WITH_OPENCOLORIO)
   )
 endif()
 if(WIN32)
+  if(EXISTS ${LIBDIR}/osl/bin/oslquery.dll) # 4.1+
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/osl/bin/oslquery.dll
+            ${LIBDIR}/osl/bin/oslcomp.dll
+            ${LIBDIR}/osl/bin/oslexec.dll
+            ${LIBDIR}/osl/bin/oslnoise.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/osl/bin/oslquery_d.dll
+            ${LIBDIR}/osl/bin/oslcomp_d.dll
+            ${LIBDIR}/osl/bin/oslexec_d.dll
+            ${LIBDIR}/osl/bin/oslnoise_d.dll
+      DEBUG
+    )
+  endif()
   if(EXISTS ${LIBDIR}/opencolorio/bin/opencolorio_2_2.dll) # 3.5
     windows_install_shared_manifest(
       FILES ${LIBDIR}/opencolorio/bin/opencolorio_2_2.dll
@@ -547,6 +567,53 @@ if(WIN32)
       CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
     )
   endif()
+  if(EXISTS ${LIBDIR}/opencolorio/bin/opencolorio_2_3.dll) # 4.1
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/opencolorio/bin/opencolorio_2_3.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES ${LIBDIR}/opencolorio/bin/opencolorio_d_2_3.dll
+      DEBUG
+    )
+    install(
+      DIRECTORY ${LIBDIR}/opencolorio/lib/site-packages-debug/PyOpenColorIO
+      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+      CONFIGURATIONS Debug
+    )
+    install(
+      DIRECTORY ${LIBDIR}/opencolorio/lib/site-packages/PyOpenColorIO
+      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+      CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/openimagedenoise.dll) # 4.0
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_core.dll
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cpu.dll
+    )
+  endif()
+  # Platforms that have SyCL support.
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_sycl.dll)
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_sycl.dll
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_hip.dll) # 4.1
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_hip.dll
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cuda.dll) # 4.1
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/OpenImageDenoise/bin/OpenImageDenoise_device_cuda.dll
+    )
+  endif()
 endif()
 
 # Show helpful tip.
@@ -561,8 +628,9 @@ if(NOT ("${_install_cmd}" STREQUAL ""))
   get_filename_component(_install_dst ${TARGETDIR_VER} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
   add_custom_command(
     TARGET blender POST_BUILD MAIN_DEPENDENCY blender
-    COMMAND ${CMAKE_COMMAND} -E echo
-    "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
+    COMMAND
+      ${CMAKE_COMMAND} -E echo
+      "Run: \\\"${_install_cmd}\\\" to copy runtime files and scripts to: ${_install_dst}"
   )
   unset(_install_dst)
 endif()
@@ -578,7 +646,6 @@ macro(install_dir from to)
     PATTERN ".gitignore" EXCLUDE
     PATTERN ".gitea" EXCLUDE
     PATTERN ".github" EXCLUDE
-    PATTERN ".svn" EXCLUDE
     PATTERN "*.pyc" EXCLUDE
     PATTERN "*.pyo" EXCLUDE
     PATTERN "*.orig" EXCLUDE
@@ -633,6 +700,13 @@ if(UNIX AND NOT APPLE)
       DESTINATION "."
     )
 
+    if(WITH_CPU_CHECK)
+      install(
+        TARGETS blender_cpu_check
+        DESTINATION "./lib"
+      )
+    endif()
+
     install(
       FILES
         ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
@@ -653,7 +727,8 @@ if(UNIX AND NOT APPLE)
       # Pass.
     elseif(EXISTS ${LIBDIR}/mesa)
       install(
-        DIRECTORY ${LIBDIR}/mesa/lib
+        # Trailing slash is needed to install contents instead of directory itself.
+        DIRECTORY ${LIBDIR}/mesa/lib/
         DESTINATION "./lib/mesa"
       )
 
@@ -665,19 +740,19 @@ if(UNIX AND NOT APPLE)
       )
 
       # Remove from old location, so existing builds don't start with software
-      # OpenGL now that the lib/ folder is used for other libraries.
+      # OpenGL now that the `./lib/` directory is used for other libraries.
       install(
         CODE "\
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1.5.0)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1.3.1)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0)\n
-        file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
-        "
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGL.so.1.5.0)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libGLU.so.1.3.1)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0)\n
+file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
+"
       )
     endif()
   else()
@@ -687,11 +762,14 @@ if(UNIX AND NOT APPLE)
       TARGETS blender
       DESTINATION "./bin"
     )
-
     # Misc files.
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
       DESTINATION "./share/applications"
+    )
+    install(
+      FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/org.blender.Blender.metainfo.xml
+      DESTINATION "./share/metainfo"
     )
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
@@ -777,7 +855,6 @@ if(UNIX AND NOT APPLE)
         install(
           DIRECTORY ${PYTHON_NUMPY_PATH}/numpy
           DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -792,7 +869,6 @@ if(UNIX AND NOT APPLE)
         install(
           DIRECTORY ${PYTHON_NUMPY_PATH}/Cython
           DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -808,13 +884,14 @@ if(UNIX AND NOT APPLE)
         # Install to the same directory as the source, so debian-like
         # distros are happy with their policy.
         set(_suffix "site-packages")
-        if(${PYTHON_USD_PATH} MATCHES "dist-packages")
-          set(_suffix "dist-packages")
+        if(0) # TODO: `PYTHON_USD_PATH` isn't defined anywhere.
+          if(${PYTHON_USD_PATH} MATCHES "dist-packages")
+            set(_suffix "dist-packages")
+          endif()
         endif()
         install(
           DIRECTORY ${USD_LIBRARY_DIR}/python/
           DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -832,7 +909,6 @@ if(UNIX AND NOT APPLE)
         install(
           DIRECTORY ${PYTHON_ZSTANDARD_PATH}/zstandard
           DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -849,7 +925,6 @@ if(UNIX AND NOT APPLE)
         install(
           DIRECTORY ${PYTHON_REQUESTS_PATH}/requests
           DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -864,7 +939,6 @@ if(UNIX AND NOT APPLE)
             install(
               DIRECTORY ${PYTHON_REQUESTS_PATH}/${_requests_dep}
               DESTINATION ${TARGETDIR_VER}/python/${_target_LIB}/python${PYTHON_VERSION}/${_suffix}
-              PATTERN ".svn" EXCLUDE
               PATTERN "__pycache__" EXCLUDE           # * any cache *
               PATTERN "*.pyc" EXCLUDE                 # * any cache *
               PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -883,21 +957,56 @@ if(UNIX AND NOT APPLE)
       endif()
       unset(_target_LIB)
     endif()
+
+    if(WITH_INSTALL_PORTABLE)
+      # The script uses the version of Python installed with Blender,
+      # so it must only be inside installed if `WITH_PYTHON AND WITH_PYTHON_INSTALL`
+      # are active.
+      get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+      configure_file(
+        ${CMAKE_SOURCE_DIR}/release/freedesktop/scripts/blender-system-info.sh.in
+        ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+        @ONLY
+      )
+      unset(PYTHON_EXECUTABLE_NAME_ONLY)
+      install(
+        PROGRAMS ${CMAKE_BINARY_DIR}/release/freedesktop/scripts/blender-system-info.sh
+        DESTINATION "."
+      )
+    endif()
   endif()
 
   if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
-    )
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 elseif(WIN32)
+  if(WITH_WINDOWS_EXTERNAL_MANIFEST)
+    install(
+      FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
+      DESTINATION "."
+    )
+    install(
+      FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
+      DESTINATION "."
+      RENAME blender-launcher.exe.manifest
+    )
+  endif()
   windows_install_shared_manifest(
     FILES ${LIBDIR}/epoxy/bin/epoxy-0.dll
     ALL
   )
 
- if(WITH_VULKAN_BACKEND)
+  if(WITH_VULKAN_BACKEND)
     windows_install_shared_manifest(
       FILES ${LIBDIR}/vulkan/bin/vulkan-1.dll
       ALL
@@ -910,30 +1019,18 @@ elseif(WIN32)
       ALL
     )
   endif()
-
+  # 4.1 FFTW libs need to be installed, in 4.2 FFTW got turned into a static lib
+  # and the files below no longer exist.
   if(EXISTS ${LIBDIR}/fftw3/lib/fftw3.dll)
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/fftw3.dll)
-  else()
-    set(FFTW_DLL ${LIBDIR}/fftw3/lib/libfftw3-3.dll)
-  endif()
-
-  windows_install_shared_manifest(
-    FILES ${FFTW_DLL}
-    ALL
-  )
-  if(EXISTS ${LIBDIR}/fftw3/lib/fftw3f-3.dll)
     windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f-3.dll
-      ALL
-    )
-  elseif(EXISTS ${LIBDIR}/fftw3/lib/fftw3f.dll)
-    windows_install_shared_manifest(
-      FILES ${LIBDIR}/fftw3/lib/fftw3f.dll
+      FILES
+        ${LIBDIR}/fftw3/lib/fftw3.dll
+        ${LIBDIR}/fftw3/lib/fftw3f.dll
       ALL
     )
   endif()
   if(MSVC_ASAN)
-    # The ASAN DLL's can be found in the same folder as the compiler,
+    # The ASAN DLL's can be found in the same directory as the compiler,
     # this is the easiest way to find these.
     string(
       REPLACE "cl.exe" "clang_rt.asan_dynamic-x86_64.dll"
@@ -1019,7 +1116,9 @@ elseif(WIN32)
   )
 
   if(WITH_WINDOWS_RELEASE_PDB)
-    if(WITH_WINDOWS_RELEASE_STRIPPED_PDB)
+    # Skip install of stripped pdb if compiling with clang since there doesn't seem
+    # to be a pdbstripped version for clang-cl
+    if(WITH_WINDOWS_RELEASE_STRIPPED_PDB AND NOT MSVC_CLANG)
       # Icky hack for older CMAKE from https://stackoverflow.com/a/21198501
       # `$<CONFIG>` will work in newer CMAKE but the version currently (3.12)
       # on the build-bot does not support this endeavor.
@@ -1048,22 +1147,6 @@ elseif(WIN32)
     DEBUG
   )
 
-  # This will not exist for 3.4 and earlier lib folders
-  # to ease the transition, support both 3.4 and 3.5 lib
-  # folders.
-  if(EXISTS ${LIBDIR}/openvdb/python/pyopenvdb_d.pyd)
-    install(
-      FILES ${LIBDIR}/openvdb/python/pyopenvdb_d.pyd
-      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
-      CONFIGURATIONS Debug
-    )
-    install(
-      FILES ${LIBDIR}/openvdb/python/pyopenvdb.pyd
-      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
-      CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-    )
-  endif()
-
   windows_install_shared_manifest(
     FILES
       ${LIBDIR}/materialx/bin/MaterialXCore.dll
@@ -1089,6 +1172,18 @@ elseif(WIN32)
         ${LIBDIR}/materialx/bin/MaterialXRenderGlsl_d.dll
         ${LIBDIR}/materialx/bin/MaterialXRenderHw_d.dll
         ${LIBDIR}/materialx/bin/MaterialXRenderOsl_d.dll
+      DEBUG
+    )
+  endif()
+  if(EXISTS ${LIBDIR}/materialx/bin/MaterialXGenMsl.dll) # 4.1+
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXGenMsl.dll
+      RELEASE
+    )
+    windows_install_shared_manifest(
+      FILES
+        ${LIBDIR}/materialx/bin/MaterialXGenMsl_d.dll
       DEBUG
     )
   endif()
@@ -1137,7 +1232,6 @@ elseif(WIN32)
         DIRECTORY ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/lib
         DESTINATION ${BLENDER_VERSION}/python/
         CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-        PATTERN ".svn" EXCLUDE
         PATTERN "*_d.*" EXCLUDE                 # * debug libraries *
         PATTERN "__pycache__" EXCLUDE           # * any cache *
         PATTERN "*.pyc" EXCLUDE                 # * any cache *
@@ -1148,7 +1242,6 @@ elseif(WIN32)
         DIRECTORY ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/lib
         DESTINATION ${BLENDER_VERSION}/python/
         CONFIGURATIONS Debug
-        PATTERN ".svn" EXCLUDE
         PATTERN "__pycache__" EXCLUDE           # * any cache *
         PATTERN "*.pyc" EXCLUDE                 # * any cache *
         PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -1183,12 +1276,12 @@ elseif(WIN32)
         CONFIGURATIONS Debug
       )
 
-      if(EXISTS ${LIBDIR}/openimageio/lib/python${PYTHON_VERSION}/site-packages) #this will only exist for 3.5+
+      # This will only exist for 3.5+.
+      if(EXISTS ${LIBDIR}/openimageio/lib/python${PYTHON_VERSION}/site-packages)
         install(
           DIRECTORY ${LIBDIR}/openimageio/lib/python${PYTHON_VERSION}/site-packages/
           DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
           CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -1199,22 +1292,19 @@ elseif(WIN32)
           DIRECTORY ${LIBDIR}/openimageio/lib/python${PYTHON_VERSION}_debug/site-packages/
           DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
           CONFIGURATIONS Debug
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
         )
       endif()
 
-      # This will not exist for 3.4 and earlier lib folders
-      # to ease the transition, support both 3.4 and 3.5 lib
-      # folders.
+      # This will not exist for 3.4 and earlier `./lib` directory
+      # to ease the transition, support both 3.4 and 3.5 `./lib` directories.
       if(EXISTS ${USD_LIBRARY_DIR}/python/)
         install(
           DIRECTORY ${USD_LIBRARY_DIR}/python/
           DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
           CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -1225,10 +1315,44 @@ elseif(WIN32)
           DIRECTORY ${USD_LIBRARY_DIR}/debug/python/
           DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
           CONFIGURATIONS Debug
-          PATTERN ".svn" EXCLUDE
           PATTERN "__pycache__" EXCLUDE           # * any cache *
           PATTERN "*.pyc" EXCLUDE                 # * any cache *
           PATTERN "*.pyo" EXCLUDE                 # * any cache *
+        )
+      endif()
+
+      # This will not exist for 3.4 and earlier `./lib` directories
+      # to ease the transition, support both 3.4 and 3.5 `./lib` directories.
+      if(EXISTS ${LIBDIR}/openvdb/python/pyopenvdb_d.pyd)
+        install(
+          FILES ${LIBDIR}/openvdb/python/pyopenvdb_d.pyd
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+          CONFIGURATIONS Debug
+        )
+        install(
+          FILES ${LIBDIR}/openvdb/python/pyopenvdb.pyd
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+        )
+      endif()
+
+      # This will exist for 4.1 `./lib` directories.
+      if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+        set(_openvdb_arch arm64)
+      else()
+        set(_openvdb_arch amd64)
+      endif()
+
+      if(EXISTS ${LIBDIR}/openvdb/python/pyopenvdb_d.cp${_PYTHON_VERSION_NO_DOTS}-win_${_openvdb_arch}.pyd)
+        install(
+          FILES ${LIBDIR}/openvdb/python/pyopenvdb_d.cp${_PYTHON_VERSION_NO_DOTS}-win_${_openvdb_arch}.pyd
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+          CONFIGURATIONS Debug
+        )
+        install(
+          FILES ${LIBDIR}/openvdb/python/pyopenvdb.cp${_PYTHON_VERSION_NO_DOTS}-win_${_openvdb_arch}.pyd
+          DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
         )
       endif()
 
@@ -1237,7 +1361,6 @@ elseif(WIN32)
         DIRECTORY ${LIBDIR}/materialx/python/Release/MaterialX
         DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
         CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-        PATTERN ".svn" EXCLUDE
         PATTERN "__pycache__" EXCLUDE           # * any cache *
         PATTERN "*.pyc" EXCLUDE                 # * any cache *
         PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -1246,7 +1369,6 @@ elseif(WIN32)
         DIRECTORY ${LIBDIR}/materialx/python/Debug/MaterialX
         DESTINATION ${TARGETDIR_VER}/python/lib/site-packages/
         CONFIGURATIONS Debug
-        PATTERN ".svn" EXCLUDE
         PATTERN "__pycache__" EXCLUDE           # * any cache *
         PATTERN "*.pyc" EXCLUDE                 # * any cache *
         PATTERN "*.pyo" EXCLUDE                 # * any cache *
@@ -1367,6 +1489,27 @@ elseif(WIN32)
 
 
   if(NOT WITH_PYTHON_MODULE)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+    # Configure then generate file. Note that this copies the literal generator
+    # for the Python executable name. So the file needs to be generated afterwards
+    # to get the correct name.
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_system_info.cmd.in
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
+      @ONLY
+    )
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
+    # Replace Python executable generator with actual executable name.
+    file(GENERATE
+      OUTPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      INPUT ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info.with_vars.cmd.in
+    )
+    install(
+      FILES
+      ${CMAKE_BINARY_DIR}/release/windows/batch/blender_system_info_$<CONFIG>.cmd
+      DESTINATION ${TARGETDIR_EXE}
+      RENAME blender_system_info.cmd
+    )
     install(
       FILES
         ${CMAKE_SOURCE_DIR}/release/windows/batch/blender_debug_gpu.cmd
@@ -1387,10 +1530,17 @@ elseif(WIN32)
   endif()
 
   if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
-    )
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 
   if(WITH_PYTHON_MODULE AND TARGETDIR_BPY)
@@ -1509,11 +1659,32 @@ elseif(APPLE)
     )
   endif()
 
-  if(WITH_DRACO)
-    install(
-      PROGRAMS $<TARGET_FILE:extern_draco>
-      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+  if(NOT WITH_PYTHON_MODULE AND WITH_PYTHON AND WITH_PYTHON_INSTALL)
+    get_filename_component(PYTHON_EXECUTABLE_NAME_ONLY ${PYTHON_EXECUTABLE} NAME)
+    configure_file(
+      ${CMAKE_SOURCE_DIR}/release/darwin/scripts/blender-system-info.sh.in
+      ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
+      @ONLY
     )
+    unset(PYTHON_EXECUTABLE_NAME_ONLY)
+    install(
+      PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
+      DESTINATION "./Blender.app/Contents/Resources"
+    )
+  endif()
+
+  if(WITH_DRACO)
+    if(WITH_PYTHON_MODULE)
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${CMAKE_BINARY_DIR}/bin/bpy/lib
+      )
+    else()
+      install(
+        PROGRAMS $<TARGET_FILE:extern_draco>
+        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+      )
+    endif()
   endif()
 endif()
 
@@ -1541,6 +1712,13 @@ if(DEFINED TARGETDIR_TEXT)
     DESTINATION "${TARGETDIR_TEXT}"
 )
 endif()
+
+# Create a system extensions directory (users or administrators may populate this).
+# This only contains a `readme.txt` explaining it's purpose.
+install(
+  DIRECTORY ${CMAKE_SOURCE_DIR}/release/extensions
+  DESTINATION ${TARGETDIR_VER}
+)
 
 # Install more files specified elsewhere.
 delayed_do_install(${TARGETDIR_VER})
@@ -1584,15 +1762,10 @@ install(
 
 set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/release/datafiles/assets/publish/)
 
-if(NOT EXISTS "${ASSET_BUNDLE_DIR}")
-  set(ASSET_BUNDLE_DIR ${CMAKE_SOURCE_DIR}/../lib/assets/publish/)
-endif()
-
 if(EXISTS "${ASSET_BUNDLE_DIR}")
   install(
     DIRECTORY ${ASSET_BUNDLE_DIR}
     DESTINATION ${TARGETDIR_VER}/datafiles/assets
-    PATTERN ".svn" EXCLUDE
   )
 endif()
 
@@ -1669,8 +1842,8 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
     endif()
   endif()
   if(WIN32)
-    # If this file exists we are building against a 3.5 22.03 library folder
-    # that needs these dll's installed.
+    # If this file exists we are building against a 3.5 22.03 library directory
+    # that needs these DLL's installed.
     if(EXISTS ${LIBDIR}/usd/lib/usd_usd_ms.dll)
       windows_install_shared_manifest(FILES
         ${LIBDIR}/usd/lib/usd_usd_ms.dll
@@ -1681,8 +1854,8 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         DEBUG
       )
     endif()
-    # If this file exists we are building against a 3.5 22.11 library folder
-    # that needs these dll's installed.
+    # If this file exists we are building against a 3.5 22.11 library directory
+    # that needs these DLL's installed.
     if(EXISTS ${LIBDIR}/usd/lib/usd_ms.dll)
       windows_install_shared_manifest(FILES
         ${LIBDIR}/usd/lib/usd_ms.dll
@@ -1733,7 +1906,9 @@ if(WIN32)
     PDB_NAME "blender_private"
     PDB_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>"
   )
-  if(WITH_WINDOWS_RELEASE_PDB AND WITH_WINDOWS_RELEASE_STRIPPED_PDB)
+  # If compiling with clang-cl we skip PDBSTRIPPED.
+  # There's doesn't seem to be a switch for it currently
+  if(WITH_WINDOWS_RELEASE_PDB AND WITH_WINDOWS_RELEASE_STRIPPED_PDB AND NOT MSVC_CLANG)
     # This is slightly messy, but single target generators like ninja will not have the
     # `CMAKE_CFG_INTDIR` variable and multi-target generators like `msbuild` will not have
     # `CMAKE_BUILD_TYPE`. This can be simplified by `target_link_options` and the `$<CONFIG>`
@@ -1762,6 +1937,13 @@ if(WIN32 AND NOT WITH_PYTHON_MODULE)
     COMPONENT Blender
     DESTINATION "."
   )
+  if(WITH_CPU_CHECK)
+    install(
+      TARGETS blender_cpu_check
+      COMPONENT Blender
+      DESTINATION "."
+    )
+  endif()
   set_target_properties(
     blender
     PROPERTIES
@@ -1792,6 +1974,10 @@ if(UNIX AND NOT APPLE)
       install(
         CODE "\
 set(BLENDER_BIN \"${CMAKE_INSTALL_PREFIX}/${BLENDER_BIN}\")\n\
+if(DEFINED ENV\{DESTDIR\})\n\
+  set(BLENDER_BIN \"$ENV\{DESTDIR\}/$\{BLENDER_BIN\}\")\n\
+endif()\n\
+set(PYTHON_EXECUTABLE \"${PYTHON_EXECUTABLE}\")\n\
 set(MANPAGE_GEN \"${CMAKE_SOURCE_DIR}/doc/manpage/blender.1.py\")\n\
 set(MANPAGE_OUT \"${CMAKE_CURRENT_BINARY_DIR}/blender.1\")\n\
 if(\n\
@@ -1805,12 +1991,9 @@ strict_init_order=0:\
 detect_leaks=0\"\n\
   )\n\
   execute_process(\n\
-    OUTPUT_QUIET\n\
-    COMMAND $\{BLENDER_BIN\}\n\
-    --background\n\
-    --factory-startup\n\
-    --python $\{MANPAGE_GEN\}\n\
-    --\n\
+    COMMAND\n\
+    $\{PYTHON_EXECUTABLE\} $\{MANPAGE_GEN\}\n\
+    --blender $\{BLENDER_BIN\}\n\
     --output $\{MANPAGE_OUT\}\n\
   )\n\
 endif()\n\
