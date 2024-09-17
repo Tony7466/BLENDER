@@ -19,6 +19,7 @@
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
@@ -846,14 +847,18 @@ static bool merge_actions_selection_poll(bContext *C)
     CTX_wm_operator_poll_msg_set(C, "No active object");
     return false;
   }
-  if (!object->adt || !object->adt->action) {
+  blender::animrig::Action *action = blender::animrig::get_action(object->id);
+  if (!action) {
     CTX_wm_operator_poll_msg_set(C, "Active object has no action");
+    return false;
+  }
+  if (!BKE_id_is_editable(CTX_data_main(C), &action->id)) {
     return false;
   }
   return true;
 }
 
-static int merge_actions_selection_exec(bContext *C, wmOperator * /* op */)
+static int merge_actions_selection_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::animrig;
   Object *active_object = CTX_data_active_object(C);
@@ -876,11 +881,17 @@ static int merge_actions_selection_exec(bContext *C, wmOperator * /* op */)
     if (!action) {
       continue;
     }
-    if (action->is_action_legacy() || selected->adt->slot_handle == Slot::unassigned) {
+    if (action->is_action_legacy()) {
+      continue;
+    }
+    if (!BKE_id_is_editable(bmain, &action->id)) {
+      BKE_reportf(op->reports, RPT_WARNING, "The action %s is not editable", action->id.name);
       continue;
     }
     Slot *slot = action->slot_for_handle(selected->adt->slot_handle);
-    BLI_assert(slot != nullptr);
+    if (!slot) {
+      continue;
+    }
     blender::animrig::move_slot(*bmain, *slot, *action, active_action);
     ANIM_id_update(bmain, &selected->id);
   }
