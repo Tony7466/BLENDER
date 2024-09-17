@@ -240,7 +240,9 @@ bPoseChannel *BKE_pose_channel_get_mirrored(const bPose *pose,
 
 void BKE_pose_check_uids_unique_and_report(const bPose *pose);
 
+#ifndef NDEBUG
 bool BKE_pose_channels_is_valid(const bPose *pose) ATTR_WARN_UNUSED_RESULT;
+#endif
 
 /**
  * Checks for IK constraint, Spline IK, and also for Follow-Path constraint.

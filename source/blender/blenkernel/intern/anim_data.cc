@@ -7,10 +7,6 @@
  */
 #include "MEM_guardedalloc.h"
 
-#ifdef _MSC_VER
-#  include <malloc.h>
-#endif
-
 #include <cstring>
 #include <optional>
 

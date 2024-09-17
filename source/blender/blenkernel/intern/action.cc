@@ -1114,9 +1114,9 @@ bPoseChannel *BKE_pose_channel_ensure(bPose *pose, const char *name)
   return chan;
 }
 
+#ifndef NDEBUG
 bool BKE_pose_channels_is_valid(const bPose *pose)
 {
-#ifndef NDEBUG
   if (pose->chanhash) {
     bPoseChannel *pchan;
     for (pchan = static_cast<bPoseChannel *>(pose->chanbase.first); pchan; pchan = pchan->next) {
@@ -1125,12 +1125,11 @@ bool BKE_pose_channels_is_valid(const bPose *pose)
       }
     }
   }
-#else
-  UNUSED_VARS(pose);
-#endif
 
   return true;
 }
+
+#endif
 
 bool BKE_pose_is_bonecoll_visible(const bArmature *arm, const bPoseChannel *pchan)
 {
