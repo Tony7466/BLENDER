@@ -2445,6 +2445,9 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     /* TODO: Get from inputs. */
     AttributeFilter attribute_filter;
 
+    const bNodeSocket &element_geometry_bsocket = zone_.input_node->output_socket(1);
+    const bool create_element_geometries = element_geometry_bsocket.is_directly_linked();
+
     /* Gather components to process. */
     Vector<ForeachElementComponentID> component_ids;
     for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
@@ -2517,8 +2520,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       mask.foreach_index(
           [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
 
-      component_info.element_geometries = this->try_extract_element_geometries(
-          eval_storage.main_geometry, id, mask, attribute_filter);
+      if (create_element_geometries) {
+        component_info.element_geometries = this->try_extract_element_geometries(
+            eval_storage.main_geometry, id, mask, attribute_filter);
+      }
 
       /* Prepare remaining inputs that come from the field evaluation.*/
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
