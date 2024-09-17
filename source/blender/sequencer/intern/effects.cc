@@ -3115,21 +3115,21 @@ static blender::Vector<CharInfo> build_character_info(const TextVars *data, int 
   return characters;
 }
 
-static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
+static int wrap_width_get(const TextVars *data, const int2 image_size)
 {
   if (data->wrap_width == 0.0f) {
     return std::numeric_limits<int>::max();
   }
-  return data->wrap_width * ibuf->x;
+  return data->wrap_width * image_size.x;
 }
 
 /* Lines must contain CharInfo for newlines and \0, as UI must know where they begin. */
 static void apply_word_wrapping(const TextVars *data,
                                 TextVarsRuntime &runtime,
-                                const ImBuf *ibuf,
+                                const int2 image_size,
                                 blender::Vector<CharInfo> &characters)
 {
-  const int wrap_width = wrap_width_get(data, ibuf);
+  const int wrap_width = wrap_width_get(data, image_size);
 
   float2 char_position{0.0f, 0.0f};
   CharInfo *last_space = nullptr;
@@ -3196,14 +3196,14 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
   return {center_offset - line_offset, 0.0f};
 }
 
-static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime, const ImBuf *ibuf)
+static void apply_text_alignment(const TextVars *data,
+                                 TextVarsRuntime &runtime,
+                                 const int2 image_size)
 {
-  const int image_width = ibuf->x;
-  const int image_height = ibuf->y;
   const int width_max = text_box_width_get(runtime.lines);
   const int text_height = runtime.lines.size() * runtime.line_height;
 
-  float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
+  float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
   float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
   float2 alignment_y(0.0f, text_height / 2.0f);
 
@@ -3221,7 +3221,10 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime,
   runtime.text_boundbox.ymin = image_center.y - text_height / 2;
 }
 
-static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf, TextVarsRuntime &r_runtime)
+static void calc_text_runtime(const Sequence *seq,
+                              int font,
+                              const int2 image_size,
+                              TextVarsRuntime &r_runtime)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
@@ -3231,8 +3234,8 @@ static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf, TextVa
   r_runtime.character_count = BLI_strlen_utf8(data->text);
 
   blender::Vector<CharInfo> characters_temp = build_character_info(data, font);
-  apply_word_wrapping(data, r_runtime, ibuf, characters_temp);
-  apply_text_alignment(data, r_runtime, ibuf);
+  apply_word_wrapping(data, r_runtime, image_size, characters_temp);
+  apply_text_alignment(data, r_runtime, image_size);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3255,7 +3258,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   const int font = text_effect_font_init(context, seq, font_flags);
 
   TextVarsRuntime runtime;
-  calc_text_runtime(seq, font, out, runtime);
+  calc_text_runtime(seq, font, {out->x, out->y}, runtime);
 
   rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
