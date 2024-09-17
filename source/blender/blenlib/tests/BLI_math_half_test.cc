@@ -87,7 +87,6 @@ TEST(math_half, float_to_half_scalar)
  * - CPU: F16C instructions 44ms
  * - OpenEXR/Imath: 21ms
  * - blender::math::half_to_float: 164ms
- * - half_to_float from BLI_math_bits.h: 63ms [converts 4096 values wrong]
  * - convert_float_formats from VK_data_conversion.hh: 244ms [converts 2046 values wrong]
  *
  * On Mac M1 Max (Clang 15):
