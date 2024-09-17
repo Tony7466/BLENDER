@@ -1607,7 +1607,7 @@ void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
   {
     brush_ref->name = BLI_strdup(brush_ref->name);
     brush_ref->brush_asset_reference = MEM_new<AssetWeakReference>(
-        "active_brush_per_brush_type copy", *brush_ref->brush_asset_reference);
+        __func__, *brush_ref->brush_asset_reference);
   }
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
