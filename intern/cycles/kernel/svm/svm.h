@@ -190,8 +190,8 @@ CCL_NAMESPACE_END
 #include "kernel/svm/mix.h"
 #include "kernel/svm/noisetex.h"
 #include "kernel/svm/normal.h"
-#include "kernel/svm/raiko_base.h"
 #include "kernel/svm/ramp.h"
+#include "kernel/svm/rounded_polygon.h"
 #include "kernel/svm/sepcomb_color.h"
 #include "kernel/svm/sepcomb_hsv.h"
 #include "kernel/svm/sepcomb_vector.h"
@@ -487,8 +487,8 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       SVM_CASE(NODE_TEX_GRADIENT)
       svm_node_tex_gradient(sd, stack, node);
       break;
-      SVM_CASE(NODE_TEX_RAIKO_BASE)
-      offset = svm_node_tex_raiko_base<node_feature_mask>(kg, sd, stack, node, offset);
+      SVM_CASE(NODE_TEX_ROUNDED_POLYGON)
+      offset = svm_node_tex_rounded_polygon<node_feature_mask>(kg, sd, stack, node, offset);
       break;
       SVM_CASE(NODE_TEX_VORONOI)
       offset = svm_node_tex_voronoi<node_feature_mask>(

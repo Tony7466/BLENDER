@@ -241,20 +241,17 @@ class NoiseTextureNode : public TextureNode {
   NODE_SOCKET_API(float3, vector)
 };
 
-class RaikoBaseTextureNode : public TextureNode {
+class RoundedPolygonTextureNode : public TextureNode {
  public:
-  SHADER_NODE_CLASS(RaikoBaseTextureNode)
+  SHADER_NODE_CLASS(RoundedPolygonTextureNode)
 
   NODE_SOCKET_API(bool, normalize_r_gon_parameter)
   NODE_SOCKET_API(float3, vector)
-  NODE_SOCKET_API(float, w)
   NODE_SOCKET_API(float, scale)
 
   NODE_SOCKET_API(bool, elliptical_corners)
   NODE_SOCKET_API(float, r_gon_sides)
   NODE_SOCKET_API(float, r_gon_roundness)
-  NODE_SOCKET_API(float, r_gon_exponent)
-  NODE_SOCKET_API(float, sphere_exponent)
 };
 
 class GaborTextureNode : public TextureNode {

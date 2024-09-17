@@ -6,58 +6,15 @@
 
 CCL_NAMESPACE_BEGIN
 
-struct RaikoBaseStackOffsets {
+struct RoundedPolygonStackOffsets {
   uint vector;
-  uint w;
   uint scale;
   uint r_gon_sides;
   uint r_gon_roundness;
-  uint r_gon_exponent;
-  uint sphere_exponent;
-  uint r_sphere_field;
+  uint r_gon_field;
   uint r_gon_parameter_field;
   uint max_unit_parameter;
 };
-
-ccl_device float chebychev_norm(float coord)
-{
-  return fabsf(coord);
-}
-
-ccl_device float chebychev_norm(float2 coord)
-{
-  return float_max(fabsf(coord.x), fabsf(coord.y));
-}
-
-ccl_device float chebychev_norm(float3 coord)
-{
-  return float_max(fabsf(coord.x), float_max(fabsf(coord.y), fabsf(coord.z)));
-}
-
-ccl_device float p_norm(float coord)
-{
-  return fabsf(coord);
-}
-
-ccl_device float p_norm(float2 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0f) ? chebychev_norm(coord) :
-                              powf(powf(fabsf(coord.x), exponent) + powf(fabsf(coord.y), exponent),
-                                   1.0f / exponent);
-}
-
-ccl_device float p_norm(float3 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0f) ?
-             chebychev_norm(coord) :
-             powf(powf(fabsf(coord.x), exponent) + powf(fabsf(coord.y), exponent) +
-                      powf(fabsf(coord.z), exponent),
-                  1.0f / exponent);
-}
 
 ccl_device float3
 calculate_out_fields_2d_full_roundness_irregular_elliptical(bool calculate_r_gon_parameter_field,
@@ -749,10 +706,9 @@ ccl_device float3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
                                           bool elliptical_corners,
                                           float r_gon_sides,
                                           float r_gon_roundness,
-                                          float r_gon_exponent,
                                           float2 coord)
 {
-  float l_projection_2d = p_norm(coord, r_gon_exponent);
+  float l_projection_2d = sqrtf(square(coord.x) + square(coord.y));
 
   if (fractf(r_gon_sides) == 0.0f) {
     float x_axis_A_coord = atan2(coord.y, coord.x) + float(coord.y < 0.0f) * M_TAU_F;
@@ -963,73 +919,42 @@ ccl_device float3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
   }
 }
 
-ccl_device float3 calculate_out_fields_4d(bool calculate_r_gon_parameter_field,
-                                          bool calculate_max_unit_parameter,
-                                          bool normalize_r_gon_parameter,
-                                          bool elliptical_corners,
-                                          float r_gon_sides,
-                                          float r_gon_roundness,
-                                          float r_gon_exponent,
-                                          float sphere_exponent,
-                                          float4 coord)
-{
-  float3 out_fields = calculate_out_fields_2d(calculate_r_gon_parameter_field,
-                                              calculate_max_unit_parameter,
-                                              normalize_r_gon_parameter,
-                                              elliptical_corners,
-                                              r_gon_sides,
-                                              r_gon_roundness,
-                                              r_gon_exponent,
-                                              make_float2(coord.x, coord.y));
-  out_fields.x = p_norm(make_float3(out_fields.x, coord.z, coord.w), sphere_exponent);
-  return out_fields;
-}
-
 template<uint node_feature_mask>
-ccl_device_noinline int svm_node_tex_raiko_base(
+ccl_device_noinline int svm_node_tex_rounded_polygon(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
 {
-  RaikoBaseStackOffsets so;
+  RoundedPolygonStackOffsets so;
 
   uint normalize_r_gon_parameter, elliptical_corners;
 
   svm_unpack_node_uchar4(
-      node.y, &(normalize_r_gon_parameter), &(elliptical_corners), &(so.vector), &(so.w));
-  svm_unpack_node_uchar4(
-      node.z, &(so.scale), &(so.r_gon_sides), &(so.r_gon_roundness), &(so.r_gon_exponent));
-  svm_unpack_node_uchar4(node.w,
-                         &(so.sphere_exponent),
-                         &(so.r_sphere_field),
-                         &(so.r_gon_parameter_field),
-                         &(so.max_unit_parameter));
+      node.y, &(normalize_r_gon_parameter), &(elliptical_corners), &(so.vector), &(so.scale));
+  svm_unpack_node_uchar4(node.z,
+                         &(so.r_gon_sides),
+                         &(so.r_gon_roundness),
+                         &(so.r_gon_field),
+                         &(so.r_gon_parameter_field));
+  so.max_unit_parameter = node.w;
 
   bool calculate_r_gon_parameter_field = stack_valid(so.r_gon_parameter_field);
   bool calculate_max_unit_parameter = stack_valid(so.max_unit_parameter);
 
-  uint4 defaults_1 = read_node(kg, &offset);
   float3 coord = stack_load_float3(stack, so.vector);
-  float in_w = stack_load_float_default(stack, so.w, defaults_1.x);
-  float scale = stack_load_float_default(stack, so.scale, defaults_1.y);
-  float r_gon_sides = stack_load_float_default(stack, so.r_gon_sides, defaults_1.z);
-  float r_gon_roundness = stack_load_float_default(stack, so.r_gon_roundness, defaults_1.w);
+  uint4 defaults = read_node(kg, &offset);
+  float scale = stack_load_float_default(stack, so.scale, defaults.x);
+  float r_gon_sides = stack_load_float_default(stack, so.r_gon_sides, defaults.y);
+  float r_gon_roundness = stack_load_float_default(stack, so.r_gon_roundness, defaults.z);
 
-  uint4 defaults_2 = read_node(kg, &offset);
-  float r_gon_exponent = stack_load_float_default(stack, so.r_gon_exponent, defaults_2.x);
-  float sphere_exponent = stack_load_float_default(stack, so.sphere_exponent, defaults_2.y);
-
-  float3 out_variables = calculate_out_fields_4d(calculate_r_gon_parameter_field,
+  float3 out_variables = calculate_out_fields_2d(calculate_r_gon_parameter_field,
                                                  calculate_max_unit_parameter,
                                                  normalize_r_gon_parameter,
                                                  elliptical_corners,
                                                  float_max(r_gon_sides, 2.0f),
                                                  clamp(r_gon_roundness, 0.0f, 1.0f),
-                                                 float_max(r_gon_exponent, 0.0),
-                                                 float_max(sphere_exponent, 0.0),
-                                                 scale *
-                                                     make_float4(coord.x, coord.y, coord.z, in_w));
+                                                 scale * make_float2(coord.x, coord.y));
 
-  if (stack_valid(so.r_sphere_field)) {
-    stack_store_float(stack, so.r_sphere_field, out_variables.x);
+  if (stack_valid(so.r_gon_field)) {
+    stack_store_float(stack, so.r_gon_field, out_variables.x);
   }
   if (stack_valid(so.r_gon_parameter_field)) {
     stack_store_float(stack, so.r_gon_parameter_field, out_variables.y);

@@ -1220,82 +1220,67 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_noise_texture");
 }
 
-/* Raiko Base Texture */
+/* Rounded Polygon Texture */
 
-NODE_DEFINE(RaikoBaseTextureNode)
+NODE_DEFINE(RoundedPolygonTextureNode)
 {
-  NodeType *type = NodeType::add("raiko_base_texture", create, NodeType::SHADER);
+  NodeType *type = NodeType::add("rounded_polygon_texture", create, NodeType::SHADER);
 
-  TEXTURE_MAPPING_DEFINE(RaikoBaseTextureNode);
+  TEXTURE_MAPPING_DEFINE(RoundedPolygonTextureNode);
 
-  SOCKET_BOOLEAN(normalize_r_gon_parameter, "Normalize R-gon Parameter", false);
+  SOCKET_BOOLEAN(normalize_r_gon_parameter, "Normalize Edge Parameter", false);
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
-  SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
 
   SOCKET_BOOLEAN(elliptical_corners, "Elliptical Corners", false);
   SOCKET_IN_FLOAT(r_gon_sides, "R_gon Sides", 5.0f);
   SOCKET_IN_FLOAT(r_gon_roundness, "R_gon Roundness", 0.0f);
-  SOCKET_IN_FLOAT(r_gon_exponent, "R_gon Exponent", 2.0f);
-  SOCKET_IN_FLOAT(sphere_exponent, "Sphere Exponent", 2.0f);
 
-  SOCKET_OUT_FLOAT(r_sphere_field, "R_sphere Field");
+  SOCKET_OUT_FLOAT(r_gon_field, "R_gon Field");
   SOCKET_OUT_FLOAT(r_gon_parameter_field, "R_gon Parameter Field");
   SOCKET_OUT_FLOAT(max_unit_parameter, "Max Unit Parameter");
 
   return type;
 }
 
-RaikoBaseTextureNode::RaikoBaseTextureNode() : TextureNode(get_node_type()) {}
+RoundedPolygonTextureNode::RoundedPolygonTextureNode() : TextureNode(get_node_type()) {}
 
-void RaikoBaseTextureNode::compile(SVMCompiler &compiler)
+void RoundedPolygonTextureNode::compile(SVMCompiler &compiler)
 {
   int vector_stack_offset = tex_mapping.compile_begin(compiler, input("Vector"));
-  int w_stack_offset = compiler.stack_assign_if_linked(input("W"));
   int scale_stack_offset = compiler.stack_assign_if_linked(input("Scale"));
 
   int r_gon_sides_stack_offset = compiler.stack_assign_if_linked(input("R_gon Sides"));
   int r_gon_roundness_stack_offset = compiler.stack_assign_if_linked(input("R_gon Roundness"));
-  int r_gon_exponent_stack_offset = compiler.stack_assign_if_linked(input("R_gon Exponent"));
-  int sphere_exponent_stack_offset = compiler.stack_assign_if_linked(input("Sphere Exponent"));
 
-  int r_sphere_field_stack_offset = compiler.stack_assign_if_linked(output("R_sphere Field"));
+  int r_gon_field_stack_offset = compiler.stack_assign_if_linked(output("R_gon Field"));
   int r_gon_parameter_field_stack_offset = compiler.stack_assign_if_linked(
       output("R_gon Parameter Field"));
   int max_unit_parameter_stack_offset = compiler.stack_assign_if_linked(
       output("Max Unit Parameter"));
 
   compiler.add_node(
-      NODE_TEX_RAIKO_BASE,
+      NODE_TEX_ROUNDED_POLYGON,
       compiler.encode_uchar4(
-          normalize_r_gon_parameter, elliptical_corners, vector_stack_offset, w_stack_offset),
-      compiler.encode_uchar4(scale_stack_offset,
-                             r_gon_sides_stack_offset,
+          normalize_r_gon_parameter, elliptical_corners, vector_stack_offset, scale_stack_offset),
+      compiler.encode_uchar4(r_gon_sides_stack_offset,
                              r_gon_roundness_stack_offset,
-                             r_gon_exponent_stack_offset),
-      compiler.encode_uchar4(sphere_exponent_stack_offset,
-                             r_sphere_field_stack_offset,
-                             r_gon_parameter_field_stack_offset,
-                             max_unit_parameter_stack_offset));
-  compiler.add_node(__float_as_int(w),
-                    __float_as_int(scale),
-                    __float_as_int(r_gon_sides),
-                    __float_as_int(r_gon_roundness));
-  compiler.add_node(__float_as_int(r_gon_exponent),
-                    __float_as_int(sphere_exponent),
-                    SVM_STACK_INVALID,
-                    SVM_STACK_INVALID);
+                             r_gon_field_stack_offset,
+                             r_gon_parameter_field_stack_offset),
+      max_unit_parameter_stack_offset);
+  compiler.add_node(
+      __float_as_int(scale), __float_as_int(r_gon_sides), __float_as_int(r_gon_roundness));
 
   tex_mapping.compile_end(compiler, input("Vector"), vector_stack_offset);
 }
 
-void RaikoBaseTextureNode::compile(OSLCompiler &compiler)
+void RoundedPolygonTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
 
   compiler.parameter(this, "normalize_r_gon_parameter");
   compiler.parameter(this, "elliptical_corners");
-  compiler.add(this, "node_raiko_base_texture");
+  compiler.add(this, "node_rounded_polygon_texture");
 }
 
 /* Gabor Texture */

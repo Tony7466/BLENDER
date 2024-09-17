@@ -4,45 +4,6 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_common_math_utils.glsl)
 
-float chebychev_norm(float coord)
-{
-  return abs(coord);
-}
-
-float chebychev_norm(vec2 coord)
-{
-  return max(abs(coord.x), abs(coord.y));
-}
-
-float chebychev_norm(vec3 coord)
-{
-  return max(abs(coord.x), max(abs(coord.y), abs(coord.z)));
-}
-
-float p_norm(float coord)
-{
-  return abs(coord);
-}
-
-float p_norm(vec2 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0) ?
-             chebychev_norm(coord) :
-             pow(pow(abs(coord.x), exponent) + pow(abs(coord.y), exponent), 1.0 / exponent);
-}
-
-float p_norm(vec3 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0) ? chebychev_norm(coord) :
-                             pow(pow(abs(coord.x), exponent) + pow(abs(coord.y), exponent) +
-                                     pow(abs(coord.z), exponent),
-                                 1.0 / exponent);
-}
-
 vec3 calculate_out_fields_2d_full_roundness_irregular_elliptical(
 
     bool calculate_r_gon_parameter_field,
@@ -728,10 +689,9 @@ vec3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
                              bool elliptical_corners,
                              float r_gon_sides,
                              float r_gon_roundness,
-                             float r_gon_exponent,
                              vec2 coord)
 {
-  float l_projection_2d = p_norm(coord, r_gon_exponent);
+  float l_projection_2d = sqrt(square(coord.x) + square(coord.y));
 
   if (fract(r_gon_sides) == 0.0) {
     float x_axis_A_coord = atan2(coord.y, coord.x) + float(coord.y < 0.0) * M_TAU;
@@ -939,54 +899,27 @@ vec3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
   }
 }
 
-vec3 calculate_out_fields_4d(bool calculate_r_gon_parameter_field,
-                             bool calculate_max_unit_parameter,
-                             bool normalize_r_gon_parameter,
-                             bool elliptical_corners,
-                             float r_gon_sides,
-                             float r_gon_roundness,
-                             float r_gon_exponent,
-                             float sphere_exponent,
-                             vec4 coord)
+void node_tex_rounded_polygon(vec3 coord,
+                              float scale,
+                              float r_gon_sides,
+                              float r_gon_roundness,
+                              float normalize_r_gon_parameter,
+                              float elliptical_corners,
+                              float calculate_r_gon_parameter_field,
+                              float calculate_max_unit_parameter,
+                              out float out_r_gon_field,
+                              out float out_r_gon_parameter_field,
+                              out float out_max_unit_parameter)
 {
-  vec3 out_fields = calculate_out_fields_2d(calculate_r_gon_parameter_field,
-                                            calculate_max_unit_parameter,
-                                            normalize_r_gon_parameter,
-                                            elliptical_corners,
-                                            r_gon_sides,
-                                            r_gon_roundness,
-                                            r_gon_exponent,
-                                            vec2(coord.x, coord.y));
-  out_fields.x = p_norm(vec3(out_fields.x, coord.z, coord.w), sphere_exponent);
-  return out_fields;
-}
-
-void node_tex_raiko_base(vec3 coord,
-                         float in_w,
-                         float scale,
-                         float r_gon_sides,
-                         float r_gon_roundness,
-                         float r_gon_exponent,
-                         float sphere_exponent,
-                         float normalize_r_gon_parameter,
-                         float elliptical_corners,
-                         float calculate_r_gon_parameter_field,
-                         float calculate_max_unit_parameter,
-                         out float out_r_sphere_field,
-                         out float out_r_gon_parameter_field,
-                         out float out_max_unit_parameter)
-{
-  vec3 out_variables = calculate_out_fields_4d(bool(calculate_r_gon_parameter_field),
+  vec3 out_variables = calculate_out_fields_2d(bool(calculate_r_gon_parameter_field),
                                                bool(calculate_max_unit_parameter),
                                                bool(normalize_r_gon_parameter),
                                                bool(elliptical_corners),
                                                max(r_gon_sides, 2.0),
                                                clamp(r_gon_roundness, 0.0, 1.0),
-                                               max(r_gon_exponent, 0.0),
-                                               max(sphere_exponent, 0.0),
-                                               scale * vec4(coord.x, coord.y, coord.z, in_w));
+                                               scale * vec2(coord.x, coord.y));
 
-  out_r_sphere_field = out_variables.x;
+  out_r_gon_field = out_variables.x;
   out_r_gon_parameter_field = out_variables.y;
   out_max_unit_parameter = out_variables.z;
 }

@@ -919,14 +919,15 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(gradient, b_texture_mapping);
     node = gradient;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeTexRaikoBase)) {
-    BL::ShaderNodeTexRaikoBase b_raiko_base_node(b_node);
-    RaikoBaseTextureNode *raiko_base = graph->create_node<RaikoBaseTextureNode>();
-    raiko_base->set_normalize_r_gon_parameter(b_raiko_base_node.normalize_r_gon_parameter());
-    raiko_base->set_elliptical_corners(b_raiko_base_node.elliptical_corners());
-    BL::TexMapping b_texture_mapping(b_raiko_base_node.texture_mapping());
-    get_tex_mapping(raiko_base, b_texture_mapping);
-    node = raiko_base;
+  else if (b_node.is_a(&RNA_ShaderNodeTexRoundedPolygon)) {
+    BL::ShaderNodeTexRoundedPolygon b_rounded_polygon_node(b_node);
+    RoundedPolygonTextureNode *rounded_polygon = graph->create_node<RoundedPolygonTextureNode>();
+    rounded_polygon->set_normalize_r_gon_parameter(
+        b_rounded_polygon_node.normalize_r_gon_parameter());
+    rounded_polygon->set_elliptical_corners(b_rounded_polygon_node.elliptical_corners());
+    BL::TexMapping b_texture_mapping(b_rounded_polygon_node.texture_mapping());
+    get_tex_mapping(rounded_polygon, b_texture_mapping);
+    node = rounded_polygon;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexVoronoi)) {
     BL::ShaderNodeTexVoronoi b_voronoi_node(b_node);

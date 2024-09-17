@@ -1346,12 +1346,12 @@ typedef struct NodeTexNoise {
   char _pad[2];
 } NodeTexNoise;
 
-typedef struct NodeTexRaikoBase {
+typedef struct NodeTexRoundedPolygon {
   NodeTexBase base;
   uint8_t normalize_r_gon_parameter;
   uint8_t elliptical_corners;
   char _pad[6];
-} NodeTexRaikoBase;
+} NodeTexRoundedPolygon;
 
 typedef struct NodeTexVoronoi {
   NodeTexBase base;

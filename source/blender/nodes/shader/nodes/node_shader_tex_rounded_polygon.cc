@@ -16,68 +16,58 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-namespace blender::nodes::node_shader_tex_raiko_base_cc {
+namespace blender::nodes::node_shader_tex_rounded_polygon_cc {
 
-NODE_STORAGE_FUNCS(NodeTexRaikoBase)
+NODE_STORAGE_FUNCS(NodeTexRoundedPolygon)
 
-static void sh_node_tex_raiko_base_declare(NodeDeclarationBuilder &b)
+static void sh_node_tex_rounded_polygon_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.use_custom_socket_order();
 
-  b.add_output<decl::Float>("R_sphere Field").no_muted_links();
+  b.add_output<decl::Float>("R_gon Field").no_muted_links();
   b.add_output<decl::Float>("R_gon Parameter Field").no_muted_links();
   b.add_output<decl::Float>("Max Unit Parameter").no_muted_links();
 
   b.add_input<decl::Vector>("Vector")
       .hide_value()
       .implicit_field(implicit_field_inputs::position)
-      .description("XYZ components of the input vector");
-  b.add_input<decl::Float>("W").min(-1000.0f).max(1000.0f).default_value(0.0f).description(
-      "W component of the input vector");
+      .description("XY components of the input vector");
   b.add_input<decl::Float>("Scale").min(-1000.0f).max(1000.0f).default_value(1.0f).description(
       "Factor by which the input vector is scaled");
 
-  /* Panel for r-sphere inputs. */
-  PanelDeclarationBuilder &r_sphere =
-      b.add_panel("R-sphere")
+  /* Panel for r-gon inputs. */
+  PanelDeclarationBuilder &r_gon =
+      b.add_panel("Rounded Polygon")
           .default_closed(false)
           .draw_buttons([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
             uiItemR(
                 layout, ptr, "elliptical_corners", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
           });
-  r_sphere.add_input<decl::Float>("R_gon Sides")
+  r_gon.add_input<decl::Float>("R_gon Sides")
       .min(2.0f)
       .max(1000.0f)
       .default_value(5.0f)
       .description("Number of R-gon base sides");
-  r_sphere.add_input<decl::Float>("R_gon Roundness")
+  r_gon.add_input<decl::Float>("R_gon Roundness")
       .min(0.0f)
       .max(1.0f)
       .default_value(0.0f)
       .subtype(PROP_FACTOR)
       .description("R-gon base corner roundness");
-  r_sphere.add_input<decl::Float>("R_gon Exponent")
-      .min(0.0f)
-      .max(1000.0f)
-      .default_value(2.0f)
-      .description("P-norm exponent of the R-gon base");
-  r_sphere.add_input<decl::Float>("Sphere Exponent")
-      .min(0.0f)
-      .max(1000.0f)
-      .default_value(2.0f)
-      .description("P-norm exponent of the sphere");
 }
 
-static void node_shader_buts_tex_raiko_base(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_shader_buts_tex_rounded_polygon(uiLayout *layout,
+                                                 bContext * /*C*/,
+                                                 PointerRNA *ptr)
 {
   uiItemR(
       layout, ptr, "normalize_r_gon_parameter", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
-static void node_shader_init_tex_raiko_base(bNodeTree * /*ntree*/, bNode *node)
+static void node_shader_init_tex_rounded_polygon(bNodeTree * /*ntree*/, bNode *node)
 {
-  NodeTexRaikoBase *tex = MEM_cnew<NodeTexRaikoBase>(__func__);
+  NodeTexRoundedPolygon *tex = MEM_cnew<NodeTexRoundedPolygon>(__func__);
   BKE_texture_mapping_default(&tex->base.tex_mapping, TEXMAP_TYPE_POINT);
   BKE_texture_colormapping_default(&tex->base.color_mapping);
   tex->normalize_r_gon_parameter = false;
@@ -88,19 +78,19 @@ static void node_shader_init_tex_raiko_base(bNodeTree * /*ntree*/, bNode *node)
 
 static const char *gpu_shader_get_name()
 {
-  return "node_tex_raiko_base";
+  return "node_tex_rounded_polygon";
 }
 
-static int node_shader_gpu_tex_raiko_base(GPUMaterial *mat,
-                                          bNode *node,
-                                          bNodeExecData * /*execdata*/,
-                                          GPUNodeStack *in,
-                                          GPUNodeStack *out)
+static int node_shader_gpu_tex_rounded_polygon(GPUMaterial *mat,
+                                               bNode *node,
+                                               bNodeExecData * /*execdata*/,
+                                               GPUNodeStack *in,
+                                               GPUNodeStack *out)
 {
   node_shader_gpu_default_tex_coord(mat, node, &in[0].link);
   node_shader_gpu_tex_mapping(mat, node, in, out);
 
-  const NodeTexRaikoBase &storage = node_storage(*node);
+  const NodeTexRoundedPolygon &storage = node_storage(*node);
   float normalize_r_gon_parameter = storage.normalize_r_gon_parameter;
   float elliptical_corners = storage.elliptical_corners;
   float calculate_r_gon_parameter_field = out[1].hasoutput;
@@ -119,66 +109,22 @@ static int node_shader_gpu_tex_raiko_base(GPUMaterial *mat,
                         GPU_constant(&calculate_max_unit_parameter));
 }
 
-static void node_shader_update_tex_raiko_base(bNodeTree *ntree, bNode *node)
+static void node_shader_update_tex_rounded_polygon(bNodeTree *ntree, bNode *node)
 {
   (void)ntree;
 
   bNodeSocket *inR_gonSidesSock = bke::node_find_socket(node, SOCK_IN, "R_gon Sides");
   bNodeSocket *inR_gonRoundnessSock = bke::node_find_socket(node, SOCK_IN, "R_gon Roundness");
-  bNodeSocket *inR_gonExponentSock = bke::node_find_socket(node, SOCK_IN, "R_gon Exponent");
-  bNodeSocket *inSphereExponentSock = bke::node_find_socket(node, SOCK_IN, "Sphere Exponent");
 
-  bNodeSocket *outR_sphereFieldSock = bke::node_find_socket(node, SOCK_OUT, "R_sphere Field");
+  bNodeSocket *outR_gonFieldSock = bke::node_find_socket(node, SOCK_OUT, "R_gon Field");
   bNodeSocket *outR_gonParameterFieldSock = bke::node_find_socket(
       node, SOCK_OUT, "R_gon Parameter Field");
 
   node_sock_label(inR_gonSidesSock, "Sides");
   node_sock_label(inR_gonRoundnessSock, "Roundness");
-  node_sock_label(inR_gonExponentSock, "Base Convexity");
-  node_sock_label(inSphereExponentSock, "Sphere Convexity");
 
-  node_sock_label(outR_sphereFieldSock, "R-sphere Field");
-  node_sock_label(outR_gonParameterFieldSock, "R-gon Parameter Field");
-}
-
-float chebychev_norm(float coord)
-{
-  return fabsf(coord);
-}
-
-float chebychev_norm(float2 coord)
-{
-  return math::max(fabsf(coord.x), fabsf(coord.y));
-}
-
-float chebychev_norm(float3 coord)
-{
-  return math::max(fabsf(coord.x), math::max(fabsf(coord.y), fabsf(coord.z)));
-}
-
-float p_norm(float coord)
-{
-  return fabsf(coord);
-}
-
-float p_norm(float2 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0f) ? chebychev_norm(coord) :
-                              powf(powf(fabsf(coord.x), exponent) + powf(fabsf(coord.y), exponent),
-                                   1.0f / exponent);
-}
-
-float p_norm(float3 coord, float exponent)
-{
-  /* Use Chebychev norm instead of p-norm for high exponent values to avoid going out of the
-   * floating point representable range. */
-  return (exponent > 32.0f) ?
-             chebychev_norm(coord) :
-             powf(powf(fabsf(coord.x), exponent) + powf(fabsf(coord.y), exponent) +
-                      powf(fabsf(coord.z), exponent),
-                  1.0f / exponent);
+  node_sock_label(outR_gonFieldSock, "Distance");
+  node_sock_label(outR_gonParameterFieldSock, "Edge Parameter");
 }
 
 float3 calculate_out_fields_2d_full_roundness_irregular_elliptical(
@@ -876,10 +822,9 @@ float3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
                                bool elliptical_corners,
                                float r_gon_sides,
                                float r_gon_roundness,
-                               float r_gon_exponent,
                                float2 coord)
 {
-  float l_projection_2d = p_norm(coord, r_gon_exponent);
+  float l_projection_2d = math::sqrt(math::square(coord.x) + math::square(coord.y));
 
   if (fractf(r_gon_sides) == 0.0f) {
     float x_axis_A_coord = atan2(coord.y, coord.x) + float(coord.y < 0.0f) * M_TAU_F;
@@ -1090,29 +1035,7 @@ float3 calculate_out_fields_2d(bool calculate_r_gon_parameter_field,
   }
 }
 
-float3 calculate_out_fields_4d(bool calculate_r_gon_parameter_field,
-                               bool calculate_max_unit_parameter,
-                               bool normalize_r_gon_parameter,
-                               bool elliptical_corners,
-                               float r_gon_sides,
-                               float r_gon_roundness,
-                               float r_gon_exponent,
-                               float sphere_exponent,
-                               float4 coord)
-{
-  float3 out_fields = calculate_out_fields_2d(calculate_r_gon_parameter_field,
-                                              calculate_max_unit_parameter,
-                                              normalize_r_gon_parameter,
-                                              elliptical_corners,
-                                              r_gon_sides,
-                                              r_gon_roundness,
-                                              r_gon_exponent,
-                                              float2(coord.x, coord.y));
-  out_fields.x = p_norm(float3(out_fields.x, coord.z, coord.w), sphere_exponent);
-  return out_fields;
-}
-
-class RaikoBaseFunction : public mf::MultiFunction {
+class RoundedPolygonFunction : public mf::MultiFunction {
  private:
   bool normalize_r_gon_parameter_;
   bool elliptical_corners_;
@@ -1120,7 +1043,7 @@ class RaikoBaseFunction : public mf::MultiFunction {
   mf::Signature signature_;
 
  public:
-  RaikoBaseFunction(bool normalize_r_gon_parameter, bool elliptical_corners)
+  RoundedPolygonFunction(bool normalize_r_gon_parameter, bool elliptical_corners)
       : normalize_r_gon_parameter_(normalize_r_gon_parameter),
         elliptical_corners_(elliptical_corners)
   {
@@ -1131,18 +1054,15 @@ class RaikoBaseFunction : public mf::MultiFunction {
   static mf::Signature create_signature()
   {
     mf::Signature signature;
-    mf::SignatureBuilder builder{"raiko_base", signature};
+    mf::SignatureBuilder builder{"rounded_polygon", signature};
 
     builder.single_input<float3>("Vector");
-    builder.single_input<float>("W");
     builder.single_input<float>("Scale");
 
     builder.single_input<float>("R_gon Sides");
     builder.single_input<float>("R_gon Roundness");
-    builder.single_input<float>("R_gon Exponent");
-    builder.single_input<float>("Sphere Exponent");
 
-    builder.single_output<float>("R_sphere Field", mf::ParamFlag::SupportsUnusedOutput);
+    builder.single_output<float>("R_gon Field", mf::ParamFlag::SupportsUnusedOutput);
     builder.single_output<float>("R_gon Parameter Field", mf::ParamFlag::SupportsUnusedOutput);
     builder.single_output<float>("Max Unit Parameter", mf::ParamFlag::SupportsUnusedOutput);
 
@@ -1154,42 +1074,34 @@ class RaikoBaseFunction : public mf::MultiFunction {
     int param = 0;
 
     const VArray<float3> &coord = params.readonly_single_input<float3>(param++, "Vector");
-    const VArray<float> &in_w = params.readonly_single_input<float>(param++, "W");
     const VArray<float> &scale = params.readonly_single_input<float>(param++, "Scale");
 
     const VArray<float> &r_gon_sides = params.readonly_single_input<float>(param++, "R_gon Sides");
     const VArray<float> &r_gon_roundness = params.readonly_single_input<float>(param++,
                                                                                "R_gon Roundness");
-    const VArray<float> &r_gon_exponent = params.readonly_single_input<float>(param++,
-                                                                              "R_gon Exponent");
-    const VArray<float> &sphere_exponent = params.readonly_single_input<float>(param++,
-                                                                               "Sphere Exponent");
 
-    MutableSpan<float> r_r_sphere_field = params.uninitialized_single_output_if_required<float>(
-        param++, "R_sphere Field");
+    MutableSpan<float> r_r_gon_field = params.uninitialized_single_output_if_required<float>(
+        param++, "R_gon Field");
     MutableSpan<float> r_r_gon_parameter_field =
         params.uninitialized_single_output_if_required<float>(param++, "R_gon Parameter Field");
     MutableSpan<float> r_max_unit_parameter =
         params.uninitialized_single_output_if_required<float>(param++, "Max Unit Parameter");
 
-    const bool calc_r_sphere_field = !r_r_sphere_field.is_empty();
+    const bool calc_r_gon_field = !r_r_gon_field.is_empty();
     const bool calc_r_gon_parameter_field = !r_r_gon_parameter_field.is_empty();
     const bool calc_max_unit_parameter = !r_max_unit_parameter.is_empty();
 
     mask.foreach_index([&](const int64_t i) {
-      float3 out_variables = calculate_out_fields_4d(
-          calc_r_gon_parameter_field,
-          calc_max_unit_parameter,
-          normalize_r_gon_parameter_,
-          elliptical_corners_,
-          math::max(r_gon_sides[i], 2.0f),
-          math::clamp(r_gon_roundness[i], 0.0f, 1.0f),
-          math::max(r_gon_exponent[i], 0.0f),
-          math::max(sphere_exponent[i], 0.0f),
-          scale[i] * float4(coord[i].x, coord[i].y, coord[i].z, in_w[i]));
+      float3 out_variables = calculate_out_fields_2d(calc_r_gon_parameter_field,
+                                                     calc_max_unit_parameter,
+                                                     normalize_r_gon_parameter_,
+                                                     elliptical_corners_,
+                                                     math::max(r_gon_sides[i], 2.0f),
+                                                     math::clamp(r_gon_roundness[i], 0.0f, 1.0f),
+                                                     scale[i] * float2(coord[i].x, coord[i].y));
 
-      if (calc_r_sphere_field) {
-        r_r_sphere_field[i] = out_variables.x;
+      if (calc_r_gon_field) {
+        r_r_gon_field[i] = out_variables.x;
       }
       if (calc_r_gon_parameter_field) {
         r_r_gon_parameter_field[i] = out_variables.y;
@@ -1209,30 +1121,31 @@ class RaikoBaseFunction : public mf::MultiFunction {
   }
 };
 
-static void sh_node_raiko_base_build_multi_function(NodeMultiFunctionBuilder &builder)
+static void sh_node_rounded_polygon_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
-  const NodeTexRaikoBase &storage = node_storage(builder.node());
-  builder.construct_and_set_matching_fn<RaikoBaseFunction>(storage.normalize_r_gon_parameter,
-                                                           storage.elliptical_corners);
+  const NodeTexRoundedPolygon &storage = node_storage(builder.node());
+  builder.construct_and_set_matching_fn<RoundedPolygonFunction>(storage.normalize_r_gon_parameter,
+                                                                storage.elliptical_corners);
 }
 
-}  // namespace blender::nodes::node_shader_tex_raiko_base_cc
+}  // namespace blender::nodes::node_shader_tex_rounded_polygon_cc
 
-void register_node_type_sh_tex_raiko_base()
+void register_node_type_sh_tex_rounded_polygon()
 {
-  namespace file_ns = blender::nodes::node_shader_tex_raiko_base_cc;
+  namespace file_ns = blender::nodes::node_shader_tex_rounded_polygon_cc;
 
   static blender::bke::bNodeType ntype;
 
-  sh_fn_node_type_base(&ntype, SH_NODE_TEX_RAIKO_BASE, "Raiko Base Texture", NODE_CLASS_TEXTURE);
-  ntype.declare = file_ns::sh_node_tex_raiko_base_declare;
-  ntype.draw_buttons = file_ns::node_shader_buts_tex_raiko_base;
-  ntype.initfunc = file_ns::node_shader_init_tex_raiko_base;
+  sh_fn_node_type_base(
+      &ntype, SH_NODE_TEX_ROUNDED_POLYGON, "Rounded Polygon Texture", NODE_CLASS_TEXTURE);
+  ntype.declare = file_ns::sh_node_tex_rounded_polygon_declare;
+  ntype.draw_buttons = file_ns::node_shader_buts_tex_rounded_polygon;
+  ntype.initfunc = file_ns::node_shader_init_tex_rounded_polygon;
   blender::bke::node_type_storage(
-      &ntype, "NodeTexRaikoBase", node_free_standard_storage, node_copy_standard_storage);
-  ntype.gpu_fn = file_ns::node_shader_gpu_tex_raiko_base;
-  ntype.updatefunc = file_ns::node_shader_update_tex_raiko_base;
-  ntype.build_multi_function = file_ns::sh_node_raiko_base_build_multi_function;
+      &ntype, "NodeTexRoundedPolygon", node_free_standard_storage, node_copy_standard_storage);
+  ntype.gpu_fn = file_ns::node_shader_gpu_tex_rounded_polygon;
+  ntype.updatefunc = file_ns::node_shader_update_tex_rounded_polygon;
+  ntype.build_multi_function = file_ns::sh_node_rounded_polygon_build_multi_function;
 
   blender::bke::node_register_type(&ntype);
 }

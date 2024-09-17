@@ -5410,18 +5410,18 @@ static void def_sh_tex_magic(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_Node_update");
 }
 
-static void def_sh_tex_raiko_base(StructRNA *srna)
+static void def_sh_tex_rounded_polygon(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  RNA_def_struct_sdna_from(srna, "NodeTexRaikoBase", "storage");
+  RNA_def_struct_sdna_from(srna, "NodeTexRoundedPolygon", "storage");
   def_sh_tex(srna);
 
   prop = RNA_def_property(srna, "normalize_r_gon_parameter", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "normalize_r_gon_parameter", 0);
   RNA_def_property_ui_text(prop,
-                           "Normalize R-gon Parameter",
-                           "Normalize the R-gon Parameter Field output to a [-1, 1] interval");
+                           "Normalize Edge Parameter",
+                           "Normalize the Edge Parameter output to a [-1, 1] interval");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "elliptical_corners", PROP_BOOLEAN, PROP_NONE);

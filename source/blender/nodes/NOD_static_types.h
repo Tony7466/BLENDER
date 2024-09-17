@@ -127,7 +127,7 @@ DefNode(ShaderNode,     SH_NODE_CURVE_FLOAT,        def_float_curve,        "CUR
 DefNode(ShaderNode,     SH_NODE_COMBINE_COLOR,      def_sh_combsep_color,   "COMBINE_COLOR",      CombineColor,     "Combine Color",     "Create a color from individual components using multiple models")
 DefNode(ShaderNode,     SH_NODE_SEPARATE_COLOR,     def_sh_combsep_color,   "SEPARATE_COLOR",     SeparateColor,    "Separate Color",    "Split a color into its individual components using multiple models")
 DefNode(ShaderNode,     SH_NODE_MIX,                def_sh_mix,             "MIX",                Mix,              "Mix",               "Mix values by a factor")
-DefNode(ShaderNode,     SH_NODE_TEX_RAIKO_BASE,          def_sh_tex_raiko_base,       "TEX_RAIKO_BASE",          TexRaikoBase,         "Raiko Base Texture",     "Generate Raiko base texture")
+DefNode(ShaderNode,     SH_NODE_TEX_ROUNDED_POLYGON,          def_sh_tex_rounded_polygon,       "TEX_ROUNDED_POLYGON",          TexRoundedPolygon,         "Rounded Polygon Texture",     "Generate Rounded Polygon Texture")
 
 DefNode(CompositorNode, CMP_NODE_VIEWER,            def_cmp_viewer,         "VIEWER",          Viewer,           "Viewer",              "Visualize data from inside a node graph, in the image editor or as a backdrop")
 DefNode(CompositorNode, CMP_NODE_RGB,               0,                      "RGB",             RGB,              "RGB",                 "A color picker")
