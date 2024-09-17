@@ -253,50 +253,47 @@ void resize_curves(bke::CurvesGeometry &curves,
                    const IndexMask &curves_to_resize,
                    const Span<int> new_sizes)
 {
+  BLI_assert(
+      std::all_of(new_sizes.begin(), new_sizes.end(), [&](const int size) { return size > 0; }));
+  BLI_assert(curves_to_resize.size() == new_sizes.size());
+
   if (curves_to_resize.is_empty()) {
     return;
   }
-  BLI_assert(curves_to_resize.size() == new_sizes.size());
+
   bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(curves);
 
   IndexMaskMemory memory;
-  IndexMask curves_to_copy;
-  std::optional<IndexRange> range = curves_to_resize.to_range();
-  /* Check if we need to copy some curves over. Write the new sizes into the offsets. */
-  if (range && curves.curves_range() == *range) {
-    curves_to_copy = {};
-    dst_curves.offsets_for_write().drop_back(1).copy_from(new_sizes);
-  }
-  else {
-    curves_to_copy = curves_to_resize.complement(curves.curves_range(), memory);
-    offset_indices::copy_group_sizes(
-        curves.offsets(), curves_to_copy, dst_curves.offsets_for_write());
-    array_utils::scatter(new_sizes, curves_to_resize, dst_curves.offsets_for_write());
-  }
-  /* Accumulate the sizes written from `new_sizes` into offsets. */
-  offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
+  const IndexMask curves_to_copy = curves_to_resize.complement(curves.curves_range(), memory);
+  offset_indices::copy_group_sizes(
+      curves.offsets(), curves_to_copy, dst_curves.offsets_for_write());
+  array_utils::scatter(new_sizes, curves_to_resize, dst_curves.offsets_for_write());
 
-  /* Resize the points domain.*/
-  dst_curves.resize(dst_curves.offsets().last(), dst_curves.curves_num());
+  const OffsetIndices<int> dst_offsets = offset_indices::accumulate_counts_to_offsets(
+      dst_curves.offsets_for_write());
+  dst_curves.resize(dst_offsets.total_size(), dst_curves.curves_num());
 
-  /* Copy point attributes and default initialize newly added point ranges. */
-  const bke::AttrDomain domain(bke::AttrDomain::Point);
   const OffsetIndices<int> src_offsets = curves.points_by_curve();
-  const OffsetIndices<int> dst_offsets = dst_curves.points_by_curve();
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+
   src_attributes.for_all([&](const StringRef id, const bke::AttributeMetaData meta_data) {
-    if (meta_data.domain != domain || bke::attribute_name_is_anonymous(id)) {
+    if (meta_data.domain != bke::AttrDomain::Point) {
       return true;
     }
-    const GVArraySpan src = *src_attributes.lookup(id, domain);
+    if (bke::attribute_name_is_anonymous(id)) {
+      return true;
+    }
+
+    const GVArraySpan src = *src_attributes.lookup(id, bke::AttrDomain::Point);
     const CPPType &type = src.type();
     bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, domain, meta_data.data_type);
+        id, bke::AttrDomain::Point, meta_data.data_type);
     if (!dst) {
       return true;
     }
 
+    array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
     curves_to_resize.foreach_index(GrainSize(512), [&](const int curve_i) {
       const IndexRange src_points = src_offsets[curve_i];
       const IndexRange dst_points = dst_offsets[curve_i];
@@ -311,7 +308,6 @@ void resize_curves(bke::CurvesGeometry &curves,
         type.value_initialize_n(dst_end_slice.data(), dst_end_slice.size());
       }
     });
-    array_utils::copy_group_to_group(src_offsets, dst_offsets, curves_to_copy, src, dst.span);
     dst.finish();
     return true;
   });
