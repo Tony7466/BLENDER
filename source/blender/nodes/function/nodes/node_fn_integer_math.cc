@@ -153,7 +153,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
                                          divide_floor_i(a + b - 1, b); },
       exec_preset);
   static auto divide_round_fn = mf::build::SI2_SO<int, int, int>(
-      "Divide Round", [](int a, int b) { return b == 0 ? 0 : divide_round_i(a, b); }, exec_preset);
+      "Divide Round", [](int a, int b) { return b * 2 == 0 ? 0 : divide_round_i(a, b); }, exec_preset);
   static auto square_fn = mf::build::SI1_SO<int, int>(
       "Square", [](int a) { return a * a; }, exec_preset);
   static auto cube_fn = mf::build::SI1_SO<int, int>(
@@ -303,6 +303,7 @@ static void node_register()
   ntype.initfunc = node_init;
   node_type_storage(
       &ntype, "NodeFunctionIntegerMath", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }
