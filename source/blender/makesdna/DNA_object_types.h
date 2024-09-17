@@ -382,7 +382,9 @@ typedef struct Object {
 
   /** ObjectModifierFlag */
   uint8_t modifier_flag;
-  char _pad8[4];
+
+  /* Persistent seed value for use in rng. */
+  unsigned int seed;
 
   struct PreviewImage *preview;
 

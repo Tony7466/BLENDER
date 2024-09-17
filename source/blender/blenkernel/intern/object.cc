@@ -54,6 +54,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_bounds.hh"
+#include "BLI_hash.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
@@ -62,6 +63,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "BLI_uuid.h"
 
 #include "BLT_translation.hh"
 
@@ -172,6 +174,14 @@ static ThreadMutex vparent_lock = BLI_MUTEX_INITIALIZER;
 
 static void copy_object_pose(Object *obn, const Object *ob, const int flag);
 
+static unsigned int generate_object_seed()
+{
+  const bUUID uuid = BLI_uuid_generate_random();
+  std::string buffer(36, '\0');
+  BLI_uuid_format(buffer.data(), uuid);
+  return BLI_hash_string(buffer.c_str());
+}
+
 static void object_init_data(ID *id)
 {
   Object *ob = (Object *)id;
@@ -187,6 +197,8 @@ static void object_init_data(ID *id)
 
   /* Animation Visualization defaults */
   animviz_settings_init(&ob->avs);
+
+  ob->seed = generate_object_seed();
 }
 
 static void object_copy_data(Main *bmain,
@@ -2663,6 +2675,8 @@ Object *BKE_object_duplicate(Main *bmain,
       }
     }
   }
+
+  obn->seed = generate_object_seed();
 
   if (!is_subprocess) {
     /* This code will follow into all ID links using an ID tagged with ID_TAG_NEW. */

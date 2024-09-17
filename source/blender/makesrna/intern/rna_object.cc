@@ -3422,6 +3422,12 @@ static void rna_def_object(BlenderRNA *brna)
       prop, "Color", "Object color and alpha, used when the Object Color mode is enabled");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
+  /* seed */
+  prop = RNA_def_property(srna, "seed", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, NULL, "seed");
+  RNA_def_property_ui_text(prop, "Seed", "Seed for persistent random number generation");
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update");
+
   /* physics */
   prop = RNA_def_property(srna, "field", PROP_POINTER, PROP_NONE);
   RNA_def_property_pointer_sdna(prop, nullptr, "pd");
