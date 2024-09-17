@@ -284,7 +284,7 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
   /* Get the roots and tips of the bones in world space. */
   Array<float3> roots(skinnable_bones.size());
   Array<float3> tips(skinnable_bones.size());
-  threading::parallel_for(skinnable_bones.index_range(), 1024, [&](const IndexRange range) {
+  threading::parallel_for(skinnable_bones.index_range(), 4096, [&](const IndexRange range) {
     for (const int i : range) {
       const Bone *bone = skinnable_bones[i];
       roots[i] = math::transform_point(armature_to_world, float3(bone->arm_head));
