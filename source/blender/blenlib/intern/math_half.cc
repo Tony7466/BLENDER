@@ -16,7 +16,8 @@
 uint16_t blender::math::float_to_half(float v)
 {
 #if defined(USE_HARDWARE_FP16_NEON)
-  float16_t h = vcvt_f16_f32(vdupq_n_f32(v))[0];
+  float16x4_t h4 = vcvt_f16_f32(vdupq_n_f32(v));
+  float16_t h = vget_lane_f16(h4, 0);
   return *(uint16_t *)&h;
 #else
   /* Based on float_to_half_fast3_rtne from public domain https://gist.github.com/rygorous/2156668
@@ -81,7 +82,8 @@ float blender::math::half_to_float(uint16_t v)
 #if defined(USE_HARDWARE_FP16_NEON)
   uint16x4_t v4 = vdup_n_u16(v);
   float16x4_t h4 = vreinterpret_f16_u16(v4);
-  return vcvt_f32_f16(h4)[0];
+  float32x4_t f4 = vcvt_f32_f16(h4);
+  return vgetq_lane_f32(f4, 0);
 #else
   /* Based on half_to_float_fast4 from public domain https://gist.github.com/rygorous/2144712
    * see corresponding blog post https://fgiesen.wordpress.com/2012/03/28/half-to-float-done-quic/
