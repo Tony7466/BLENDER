@@ -55,24 +55,22 @@ using ed::greasepencil::InterpolateLayerMode;
  * \{ */
 
 /* Modes for the interpolation tool. */
-enum GreasePencilInterpolationType {
+enum class GreasePencilInterpolationType {
   /** Traditional Linear Interpolation. */
-  GREASE_PENCIL_IPO_LINEAR = 0,
-
+  Linear,
   /** CurveMap Defined Interpolation. */
-  GREASE_PENCIL_IPO_CURVEMAP = 1,
-
+  CurveMap,
   /* Easing Equations. */
-  GREASE_PENCIL_IPO_BACK = 3,
-  GREASE_PENCIL_IPO_BOUNCE = 4,
-  GREASE_PENCIL_IPO_CIRC = 5,
-  GREASE_PENCIL_IPO_CUBIC = 6,
-  GREASE_PENCIL_IPO_ELASTIC = 7,
-  GREASE_PENCIL_IPO_EXPO = 8,
-  GREASE_PENCIL_IPO_QUAD = 9,
-  GREASE_PENCIL_IPO_QUART = 10,
-  GREASE_PENCIL_IPO_QUINT = 11,
-  GREASE_PENCIL_IPO_SINE = 12,
+  Back,
+  Bounce,
+  Circular,
+  Cubic,
+  Elastic,
+  Exponential,
+  Quadratic,
+  Quartic,
+  Quintic,
+  Sine,
 };
 
 /**
@@ -83,12 +81,12 @@ static const EnumPropertyItem grease_pencil_interpolation_type_items[] = {
     /* Interpolation. */
     RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_GPENCIL, "Interpolation"),
                           N_("Standard transitions between keyframes")),
-    {GREASE_PENCIL_IPO_LINEAR,
+    {int(GreasePencilInterpolationType::Linear),
      "LINEAR",
      ICON_IPO_LINEAR,
      "Linear",
      "Straight-line interpolation between A and B (i.e. no ease in/out)"},
-    {GREASE_PENCIL_IPO_CURVEMAP,
+    {int(GreasePencilInterpolationType::CurveMap),
      "CUSTOM",
      ICON_IPO_BEZIER,
      "Custom",
@@ -98,21 +96,33 @@ static const EnumPropertyItem grease_pencil_interpolation_type_items[] = {
     RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_GPENCIL, "Easing (by strength)"),
                           N_("Predefined inertial transitions, useful for motion graphics "
                              "(from least to most \"dramatic\")")),
-    {GREASE_PENCIL_IPO_SINE,
+    {int(GreasePencilInterpolationType::Sine),
      "SINE",
      ICON_IPO_SINE,
      "Sinusoidal",
      "Sinusoidal easing (weakest, almost linear but with a slight curvature)"},
-    {GREASE_PENCIL_IPO_QUAD, "QUAD", ICON_IPO_QUAD, "Quadratic", "Quadratic easing"},
-    {GREASE_PENCIL_IPO_CUBIC, "CUBIC", ICON_IPO_CUBIC, "Cubic", "Cubic easing"},
-    {GREASE_PENCIL_IPO_QUART, "QUART", ICON_IPO_QUART, "Quartic", "Quartic easing"},
-    {GREASE_PENCIL_IPO_QUINT, "QUINT", ICON_IPO_QUINT, "Quintic", "Quintic easing"},
-    {GREASE_PENCIL_IPO_EXPO,
+    {int(GreasePencilInterpolationType::Quadratic),
+     "QUAD",
+     ICON_IPO_QUAD,
+     "Quadratic",
+     "Quadratic easing"},
+    {int(GreasePencilInterpolationType::Cubic), "CUBIC", ICON_IPO_CUBIC, "Cubic", "Cubic easing"},
+    {int(GreasePencilInterpolationType::Quartic),
+     "QUART",
+     ICON_IPO_QUART,
+     "Quartic",
+     "Quartic easing"},
+    {int(GreasePencilInterpolationType::Quintic),
+     "QUINT",
+     ICON_IPO_QUINT,
+     "Quintic",
+     "Quintic easing"},
+    {int(GreasePencilInterpolationType::Exponential),
      "EXPO",
      ICON_IPO_EXPO,
      "Exponential",
      "Exponential easing (dramatic)"},
-    {GREASE_PENCIL_IPO_CIRC,
+    {int(GreasePencilInterpolationType::Circular),
      "CIRC",
      ICON_IPO_CIRC,
      "Circular",
@@ -120,17 +130,17 @@ static const EnumPropertyItem grease_pencil_interpolation_type_items[] = {
 
     RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_GPENCIL, "Dynamic Effects"),
                           N_("Simple physics-inspired easing effects")),
-    {GREASE_PENCIL_IPO_BACK,
+    {int(GreasePencilInterpolationType::Back),
      "BACK",
      ICON_IPO_BACK,
      "Back",
      "Cubic easing with overshoot and settle"},
-    {GREASE_PENCIL_IPO_BOUNCE,
+    {int(GreasePencilInterpolationType::Bounce),
      "BOUNCE",
      ICON_IPO_BOUNCE,
      "Bounce",
      "Exponentially decaying parabolic bounce, like when objects collide"},
-    {GREASE_PENCIL_IPO_ELASTIC,
+    {int(GreasePencilInterpolationType::Elastic),
      "ELASTIC",
      ICON_IPO_ELASTIC,
      "Elastic",
@@ -935,13 +945,13 @@ static float grease_pencil_interpolate_sequence_easing_calc(
   constexpr float duration = 1.0f;
 
   switch (type) {
-    case GREASE_PENCIL_IPO_LINEAR:
+    case GreasePencilInterpolationType::Linear:
       return time;
 
-    case GREASE_PENCIL_IPO_CURVEMAP:
+    case GreasePencilInterpolationType::CurveMap:
       return BKE_curvemapping_evaluateF(&custom_ipo, 0, time);
 
-    case GREASE_PENCIL_IPO_BACK:
+    case GreasePencilInterpolationType::Back:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_back_ease_in(time, begin, change, duration, back_easing);
@@ -955,7 +965,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_BOUNCE:
+    case GreasePencilInterpolationType::Bounce:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_bounce_ease_in(time, begin, change, duration);
@@ -969,7 +979,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_CIRC:
+    case GreasePencilInterpolationType::Circular:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_circ_ease_in(time, begin, change, duration);
@@ -983,7 +993,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_CUBIC:
+    case GreasePencilInterpolationType::Cubic:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_cubic_ease_in(time, begin, change, duration);
@@ -997,7 +1007,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_ELASTIC:
+    case GreasePencilInterpolationType::Elastic:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_elastic_ease_in(time, begin, change, duration, amplitude, period);
@@ -1011,7 +1021,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_EXPO:
+    case GreasePencilInterpolationType::Exponential:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_expo_ease_in(time, begin, change, duration);
@@ -1025,7 +1035,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_QUAD:
+    case GreasePencilInterpolationType::Quadratic:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_quad_ease_in(time, begin, change, duration);
@@ -1039,7 +1049,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_QUART:
+    case GreasePencilInterpolationType::Quartic:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_quart_ease_in(time, begin, change, duration);
@@ -1053,7 +1063,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_QUINT:
+    case GreasePencilInterpolationType::Quintic:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_quint_ease_in(time, begin, change, duration);
@@ -1067,7 +1077,7 @@ static float grease_pencil_interpolate_sequence_easing_calc(
       }
       break;
 
-    case GREASE_PENCIL_IPO_SINE:
+    case GreasePencilInterpolationType::Sine:
       switch (easing) {
         case BEZT_IPO_EASE_IN:
           return BLI_easing_sine_ease_in(time, begin, change, duration);
@@ -1136,7 +1146,8 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
         return;
       }
 
-      const float base_factor = float(cframe - interval->first) / std::max(frame_range_size - 1, 1);
+      const float base_factor = float(cframe - interval->first) /
+                                std::max(frame_range_size - 1, 1);
       const float mix_factor = grease_pencil_interpolate_sequence_easing_calc(
           easing, type, back_easing, amplitude, period, *ipo_settings.custom_ipo, base_factor);
 
@@ -1178,7 +1189,8 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
   uiLayout *layout = op->layout;
   uiLayout *col, *row;
 
-  const GreasePencilInterpolationType type = GreasePencilInterpolationType(RNA_enum_get(op->ptr, "type"));
+  const GreasePencilInterpolationType type = GreasePencilInterpolationType(
+      RNA_enum_get(op->ptr, "type"));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
@@ -1206,7 +1218,7 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
   row = uiLayoutRow(layout, true);
   uiItemR(row, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (type == GREASE_PENCIL_IPO_CURVEMAP) {
+  if (type == GreasePencilInterpolationType::CurveMap) {
     /* Get an RNA pointer to ToolSettings to give to the custom curve. */
     Scene *scene = CTX_data_scene(C);
     ToolSettings *ts = scene->toolsettings;
@@ -1215,14 +1227,14 @@ static void grease_pencil_interpolate_sequence_ui(bContext *C, wmOperator *op)
     uiTemplateCurveMapping(
         layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }
-  else if (type != GREASE_PENCIL_IPO_LINEAR) {
+  else if (type != GreasePencilInterpolationType::Linear) {
     row = uiLayoutRow(layout, false);
     uiItemR(row, op->ptr, "easing", UI_ITEM_NONE, nullptr, ICON_NONE);
-    if (type == GREASE_PENCIL_IPO_BACK) {
+    if (type == GreasePencilInterpolationType::Back) {
       row = uiLayoutRow(layout, false);
       uiItemR(row, op->ptr, "back", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
-    else if (type == GREASE_PENCIL_IPO_ELASTIC) {
+    else if (type == GreasePencilInterpolationType::Elastic) {
       row = uiLayoutRow(layout, false);
       uiItemR(row, op->ptr, "amplitude", UI_ITEM_NONE, nullptr, ICON_NONE);
       row = uiLayoutRow(layout, false);
