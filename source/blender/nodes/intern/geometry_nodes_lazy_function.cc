@@ -2355,9 +2355,23 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    auto &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
+
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
     auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
+
+    const geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
+    BLI_SCOPED_DEFER([&]() {
+      const geo_eval_log::TimePoint end_time = geo_eval_log::Clock::now();
+      if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
+              user_data))
+      {
+        tree_logger->node_execution_times.append(*tree_logger->allocator,
+                                                 {output_bnode_.identifier, start_time, end_time});
+      }
+    });
 
     if (!eval_storage.graph_executor) {
       /* Create the execution graph in the first evaluation. */
