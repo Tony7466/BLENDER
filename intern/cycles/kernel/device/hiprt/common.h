@@ -225,6 +225,10 @@ ccl_device_inline bool motion_triangle_custom_local_intersect(const hiprtRay &ra
                                                               void *payload,
                                                               hiprtHit &hit)
 {
+  /* Local motion triangle intersection is currently disabled to decrease register pressure in the
+   * ray tracing kernels. This increases the number of inflight ray traversal waves, and fixes the
+   * performance regression reported in #127464. Local motion triangles were picked to be disabled
+   * because it doesn't render properly. This still needs to be fixed. */
 #  if defined(__OBJECT_MOTION__) && 0
   LocalPayload *local_payload = (LocalPayload *)payload;
   KernelGlobals kg = local_payload->kg;
