@@ -4566,19 +4566,6 @@ static void def_sh_mix(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void def_fn_integer_math(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeFunctionIntegerMath", "storage");
-
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_node_integer_math_items);
-  RNA_def_property_enum_default(prop, NODE_INTEGER_MATH_ADD);
-  RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_float_to_int(StructRNA *srna)
 {
   PropertyRNA *prop;
