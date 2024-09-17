@@ -13,16 +13,15 @@ namespace blender::nodes::node_shader_npr_input_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>("Offset").default_value(float3(0.0)).hide_value();
-  b.add_output<decl::Color>("Combined Color");
-  b.add_output<decl::Color>("Diffuse Color");
-  b.add_output<decl::Color>("Diffuse Direct");
-  b.add_output<decl::Color>("Diffuse Indirect");
-  b.add_output<decl::Color>("Specular Color");
-  b.add_output<decl::Color>("Specular Direct");
-  b.add_output<decl::Color>("Specular Indirect");
-  b.add_output<decl::Vector>("Position");
-  b.add_output<decl::Vector>("Normal");
+  b.add_output<decl::Image>("Combined Color");
+  b.add_output<decl::Image>("Diffuse Color");
+  b.add_output<decl::Image>("Diffuse Direct");
+  b.add_output<decl::Image>("Diffuse Indirect");
+  b.add_output<decl::Image>("Specular Color");
+  b.add_output<decl::Image>("Specular Direct");
+  b.add_output<decl::Image>("Specular Indirect");
+  b.add_output<decl::Image>("Position");
+  b.add_output<decl::Image>("Normal");
 }
 
 static int node_shader_fn(GPUMaterial *mat,

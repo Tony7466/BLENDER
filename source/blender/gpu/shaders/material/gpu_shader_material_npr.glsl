@@ -2,20 +2,18 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-void npr_input(vec3 offset,
-               out vec4 combined_color,
-               out vec4 diffuse_color,
-               out vec4 diffuse_direct,
-               out vec4 diffuse_indirect,
-               out vec4 specular_color,
-               out vec4 specular_direct,
-               out vec4 specular_indirect,
-               out vec3 position,
-               out vec3 normal)
+void npr_input(out TextureHandle combined_color,
+               out TextureHandle diffuse_color,
+               out TextureHandle diffuse_direct,
+               out TextureHandle diffuse_indirect,
+               out TextureHandle specular_color,
+               out TextureHandle specular_direct,
+               out TextureHandle specular_indirect,
+               out TextureHandle position,
+               out TextureHandle normal)
 {
 #if defined(NPR_SHADER) && defined(GPU_FRAGMENT_SHADER)
-  npr_input_impl(offset.xy,
-                 combined_color,
+  npr_input_impl(combined_color,
                  diffuse_color,
                  diffuse_direct,
                  diffuse_indirect,
@@ -25,15 +23,15 @@ void npr_input(vec3 offset,
                  position,
                  normal);
 #else
-  combined_color = vec4(0.0);
-  diffuse_color = vec4(0.0);
-  diffuse_direct = vec4(0.0);
-  diffuse_indirect = vec4(0.0);
-  specular_color = vec4(0.0);
-  specular_direct = vec4(0.0);
-  specular_indirect = vec4(0.0);
-  position = g_data.P;
-  normal = g_data.N;
+  combined_color = TEXTURE_HANDLE_DEFAULT;
+  diffuse_color = TEXTURE_HANDLE_DEFAULT;
+  diffuse_direct = TEXTURE_HANDLE_DEFAULT;
+  diffuse_indirect = TEXTURE_HANDLE_DEFAULT;
+  specular_color = TEXTURE_HANDLE_DEFAULT;
+  specular_direct = TEXTURE_HANDLE_DEFAULT;
+  specular_indirect = TEXTURE_HANDLE_DEFAULT;
+  position = TEXTURE_HANDLE_DEFAULT;
+  normal = TEXTURE_HANDLE_DEFAULT;
 #endif
 }
 

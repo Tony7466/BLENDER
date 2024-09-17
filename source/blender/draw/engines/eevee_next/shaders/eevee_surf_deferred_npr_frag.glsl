@@ -33,49 +33,25 @@ vec4 closure_to_rgba(Closure cl)
   return vec4(0.0);
 }
 
-void npr_input_impl(vec2 texel_offset,
-                    inout vec4 combined_color,
-                    inout vec4 diffuse_color,
-                    inout vec4 diffuse_direct,
-                    inout vec4 diffuse_indirect,
-                    inout vec4 specular_color,
-                    inout vec4 specular_direct,
-                    inout vec4 specular_indirect,
-                    inout vec3 position,
-                    inout vec3 normal)
+void npr_input_impl(out TextureHandle combined_color,
+                    out TextureHandle diffuse_color,
+                    out TextureHandle diffuse_direct,
+                    out TextureHandle diffuse_indirect,
+                    out TextureHandle specular_color,
+                    out TextureHandle specular_direct,
+                    out TextureHandle specular_indirect,
+                    out TextureHandle position,
+                    out TextureHandle normal)
 {
-  /*TODO(NPR): Texel-based offset is pretty bad.*/
-  ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
-  texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
-
-  float depth = texelFetch(hiz_tx, texel, 0).r;
-  vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
-  position = drw_point_screen_to_world(vec3(screen_uv, depth));
-
-  if (depth == 1.0) {
-    combined_color = vec4(0.0);
-    diffuse_color = vec4(0.0);
-    diffuse_direct = vec4(0.0);
-    diffuse_indirect = vec4(0.0);
-    specular_color = vec4(0.0);
-    specular_direct = vec4(0.0);
-    specular_indirect = vec4(0.0);
-    normal = drw_world_incident_vector(position);
-  }
-  else {
-    DeferredCombine dc = deferred_combine(texel);
-    deferred_combine_clamp(dc);
-
-    combined_color = deferred_combine_final_output(dc);
-    combined_color.a = saturate(1.0 - combined_color.a);
-    diffuse_color = vec4(dc.diffuse_color, 1.0);
-    diffuse_direct = vec4(dc.diffuse_direct, 1.0);
-    diffuse_indirect = vec4(dc.diffuse_indirect, 1.0);
-    specular_color = vec4(dc.specular_color, 1.0);
-    specular_direct = vec4(dc.specular_direct, 1.0);
-    specular_indirect = vec4(dc.specular_indirect, 1.0);
-    normal = dc.average_normal;
-  }
+  combined_color = TextureHandle(TEX_HANDLE_COMBINED_COLOR, 0);
+  diffuse_color = TextureHandle(TEX_HANDLE_DIFFUSE_COLOR, 0);
+  diffuse_direct = TextureHandle(TEX_HANDLE_DIFFUSE_DIRECT, 0);
+  diffuse_indirect = TextureHandle(TEX_HANDLE_DIFFUSE_INDIRECT, 0);
+  specular_color = TextureHandle(TEX_HANDLE_SPECULAR_COLOR, 0);
+  specular_direct = TextureHandle(TEX_HANDLE_SPECULAR_DIRECT, 0);
+  specular_indirect = TextureHandle(TEX_HANDLE_SPECULAR_INDIRECT, 0);
+  position = TextureHandle(TEX_HANDLE_POSITION, 0);
+  normal = TextureHandle(TEX_HANDLE_NORMAL, 0);
 }
 
 void npr_refraction_impl(out TextureHandle combined_color, out TextureHandle position)
@@ -84,38 +60,81 @@ void npr_refraction_impl(out TextureHandle combined_color, out TextureHandle pos
   position = TextureHandle(TEX_HANDLE_BACK_POSITION, 0);
 }
 
-vec4 TextureHandle_eval(TextureHandle tex, ivec2 texel_offset, int channel_count)
+vec4 TextureHandle_eval_impl(TextureHandle tex, ivec2 texel_offset)
 {
-  vec4 result = vec4(0.0);
+  if (tex.type == TEX_HANDLE_NULL) {
+    return vec4(0.0);
+  }
 
   /*TODO(NPR): Texel-based offset is pretty bad.*/
   ivec2 texel = ivec2(gl_FragCoord.xy + texel_offset);
   texel = clamp(texel, ivec2(0), uniform_buf.film.render_extent);
 
-  switch (tex.type) {
-    case TEX_HANDLE_BACK_COMBINED_COLOR: {
-      float depth = texelFetch(hiz_back_tx, texel, 0).r;
-      if (depth != 1.0) {
-        result = texelFetch(radiance_back_tx, texel, 0);
-        result.a = saturate(1.0 - result.a);
+  float depth = texelFetch(hiz_tx, texel, 0).r;
+  vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
+
+  if (depth == 1.0) {
+    switch (tex.type) {
+      case TEX_HANDLE_NORMAL: {
+        vec3 position = drw_point_screen_to_world(vec3(screen_uv, depth));
+        vec3 normal = drw_world_incident_vector(position);
+        return vec4(normal, 0.0);
       }
-    } break;
-    case TEX_HANDLE_BACK_POSITION: {
-      float depth = texelFetch(hiz_back_tx, texel, 0).r;
-      vec2 screen_uv = vec2(texel) / uniform_buf.film.render_extent;
-      result.rgb = drw_point_screen_to_world(vec3(screen_uv, depth));
-      result.a = 1.0;
-    } break;
-    default:
-      break;
+      default:
+        return vec4(0.0);
+    }
   }
 
+  switch (tex.type) {
+    case TEX_HANDLE_POSITION: {
+      vec3 position = drw_point_screen_to_world(vec3(screen_uv, depth));
+      return vec4(position, 0.0);
+    }
+    case TEX_HANDLE_BACK_POSITION: {
+      float back_depth = texelFetch(hiz_back_tx, texel, 0).r;
+      vec3 back_position = drw_point_screen_to_world(vec3(screen_uv, back_depth));
+      return vec4(back_position, 0.0);
+    }
+    case TEX_HANDLE_BACK_COMBINED_COLOR:
+      return texelFetch(radiance_back_tx, texel, 0);
+    default: {
+      /* TODO(NPR): This could be further optimized for each case. */
+      DeferredCombine dc = deferred_combine(texel);
+      deferred_combine_clamp(dc);
+      switch (tex.type) {
+        case TEX_HANDLE_COMBINED_COLOR:
+          return deferred_combine_final_output(dc);
+        case TEX_HANDLE_DIFFUSE_COLOR:
+          return vec4(dc.diffuse_color, 0.0);
+        case TEX_HANDLE_DIFFUSE_DIRECT:
+          return vec4(dc.diffuse_direct, 0.0);
+        case TEX_HANDLE_DIFFUSE_INDIRECT:
+          return vec4(dc.diffuse_indirect, 0.0);
+        case TEX_HANDLE_SPECULAR_COLOR:
+          return vec4(dc.specular_color, 0.0);
+        case TEX_HANDLE_SPECULAR_DIRECT:
+          return vec4(dc.specular_direct, 0.0);
+        case TEX_HANDLE_SPECULAR_INDIRECT:
+          return vec4(dc.specular_indirect, 0.0);
+        case TEX_HANDLE_NORMAL:
+          return vec4(dc.average_normal, 0.0);
+        default:
+          return vec4(0.0);
+      }
+    }
+  }
+}
+
+vec4 TextureHandle_eval(TextureHandle tex, ivec2 texel_offset)
+{
+  vec4 result = TextureHandle_eval_impl(tex, texel_offset);
+  result.a = 1.0 - saturate(result.a);
   return result;
 }
 
-vec4 TextureHandle_eval(TextureHandle tex, int channel_count)
+vec4 TextureHandle_eval(TextureHandle tex)
 {
-  return TextureHandle_eval(tex, ivec2(0), channel_count);
+  return TextureHandle_eval(tex, ivec2(0));
 }
 
 void main()
