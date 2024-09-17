@@ -1149,6 +1149,8 @@ class LazyFunctionForGroupNode : public LazyFunction {
 
     GeoNodesLFLocalUserData group_local_user_data{group_user_data};
     lf::Context group_context{storage->group_storage, &group_user_data, &group_local_user_data};
+
+    ScopedComputeContextTimer timer(group_context);
     group_lazy_function_.execute(params, group_context);
   }
 
@@ -1479,6 +1481,8 @@ class LazyFunctionForSimulationZone : public LazyFunction {
 
     GeoNodesLFLocalUserData zone_local_user_data{zone_user_data};
     lf::Context zone_context{context.storage, &zone_user_data, &zone_local_user_data};
+
+    ScopedComputeContextTimer timer(zone_context);
     fn_.execute(params, zone_context);
   }
 
@@ -1697,6 +1701,8 @@ class RepeatBodyNodeExecuteWrapper : public lf::GraphExecutorNodeExecuteWrapper 
 
     GeoNodesLFLocalUserData body_local_user_data{body_user_data};
     lf::Context body_context{context.storage, &body_user_data, &body_local_user_data};
+
+    ScopedComputeContextTimer timer(body_context);
     fn.execute(params, body_context);
   }
 };
@@ -1748,16 +1754,19 @@ struct RepeatEvalStorage {
 
 class LazyFunctionForRepeatZone : public LazyFunction {
  private:
+  const bNodeTree &btree_;
   const bNodeTreeZone &zone_;
   const bNode &repeat_output_bnode_;
   const ZoneBuildInfo &zone_info_;
   const ZoneBodyFunction &body_fn_;
 
  public:
-  LazyFunctionForRepeatZone(const bNodeTreeZone &zone,
+  LazyFunctionForRepeatZone(const bNodeTree &btree,
+                            const bNodeTreeZone &zone,
                             ZoneBuildInfo &zone_info,
                             const ZoneBodyFunction &body_fn)
-      : zone_(zone),
+      : btree_(btree),
+        zone_(zone),
         repeat_output_bnode_(*zone.output_node),
         zone_info_(zone_info),
         body_fn_(body_fn)
@@ -2011,6 +2020,15 @@ class LazyFunctionForRepeatZone : public LazyFunction {
                                         &*eval_storage.body_execute_wrapper);
     eval_storage.graph_executor_storage = eval_storage.graph_executor->init_storage(
         eval_storage.allocator);
+
+    /* Log graph for debugging purposes. */
+    bNodeTree &btree_orig = *reinterpret_cast<bNodeTree *>(
+        DEG_get_original_id(const_cast<ID *>(&btree_.id)));
+    if (btree_orig.runtime->logged_zone_graphs) {
+      std::lock_guard lock{btree_orig.runtime->logged_zone_graphs->mutex};
+      btree_orig.runtime->logged_zone_graphs->graph_by_zone_id.lookup_or_add_cb(
+          repeat_output_bnode_.identifier, [&]() { return lf_graph.to_dot(); });
+    }
   }
 
   std::string input_name(const int i) const override
@@ -2469,7 +2487,7 @@ struct GeometryNodesLazyFunctionBuilder {
     /* Build a function for the loop body. */
     ZoneBodyFunction &body_fn = this->build_zone_body_function(zone);
     /* Wrap the loop body by another function that implements the repeat behavior. */
-    auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(zone, zone_info, body_fn);
+    auto &zone_fn = scope_.construct<LazyFunctionForRepeatZone>(btree_, zone, zone_info, body_fn);
     zone_info.lazy_function = &zone_fn;
   }
 
