@@ -336,6 +336,9 @@ class Action : public ::bAction {
   void slot_setup_for_id(Slot &slot, const ID &animated_id);
 
  protected:
+  /* To give access to `strip_keyframe_data_append()` (and in the future,
+   * corresponding functions for other strip data types), needed for creating
+   * new strips. */
   friend Strip;
 
   /** Return the layer's index, or -1 if not found in this Action. */
