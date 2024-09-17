@@ -6,7 +6,10 @@
 
 #include "kernel/closure/volume_util.h"
 
+#include "kernel/closure/volume_draine.h"
+#include "kernel/closure/volume_fournier_forand.h"
 #include "kernel/closure/volume_henyey_greenstein.h"
+#include "kernel/closure/volume_rayleigh.h"
 
 CCL_NAMESPACE_BEGIN
 
@@ -31,6 +34,12 @@ ccl_device Spectrum volume_phase_eval(ccl_private const ShaderData *sd,
                                       ccl_private float *pdf)
 {
   switch (svc->type) {
+    case CLOSURE_VOLUME_FOURNIER_FORAND_ID:
+      return volume_fournier_forand_eval(sd, svc, wo, pdf);
+    case CLOSURE_VOLUME_RAYLEIGH_ID:
+      return volume_rayleigh_eval(sd, wo, pdf);
+    case CLOSURE_VOLUME_DRAINE_ID:
+      return volume_draine_eval(sd, svc, wo, pdf);
     case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID:
       return volume_henyey_greenstein_eval(sd, svc, wo, pdf);
     default:
@@ -48,6 +57,12 @@ ccl_device int volume_phase_sample(ccl_private const ShaderData *sd,
                                    ccl_private float *pdf)
 {
   switch (svc->type) {
+    case CLOSURE_VOLUME_FOURNIER_FORAND_ID:
+      return volume_fournier_forand_sample(sd, svc, rand, eval, wo, pdf);
+    case CLOSURE_VOLUME_RAYLEIGH_ID:
+      return volume_rayleigh_sample(sd, rand, eval, wo, pdf);
+    case CLOSURE_VOLUME_DRAINE_ID:
+      return volume_draine_sample(sd, svc, rand, eval, wo, pdf);
     case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID:
       return volume_henyey_greenstein_sample(sd, svc, rand, eval, wo, pdf);
     default:
@@ -64,6 +79,18 @@ ccl_device bool volume_phase_equal(ccl_private const ShaderClosure *c1,
     return false;
   }
   switch (c1->type) {
+    case CLOSURE_VOLUME_FOURNIER_FORAND_ID: {
+      ccl_private FournierForandVolume *v1 = (ccl_private FournierForandVolume *)c1;
+      ccl_private FournierForandVolume *v2 = (ccl_private FournierForandVolume *)c2;
+      return v1->B == v2->B && v1->IOR == v2->IOR;
+    }
+    case CLOSURE_VOLUME_RAYLEIGH_ID:
+      return true;
+    case CLOSURE_VOLUME_DRAINE_ID: {
+      ccl_private DraineVolume *v1 = (ccl_private DraineVolume *)c1;
+      ccl_private DraineVolume *v2 = (ccl_private DraineVolume *)c2;
+      return v1->g == v2->g && v1->alpha == v2->alpha;
+    }
     case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID: {
       ccl_private HenyeyGreensteinVolume *v1 = (ccl_private HenyeyGreensteinVolume *)c1;
       ccl_private HenyeyGreensteinVolume *v2 = (ccl_private HenyeyGreensteinVolume *)c2;
@@ -78,6 +105,15 @@ ccl_device bool volume_phase_equal(ccl_private const ShaderClosure *c1,
 ccl_device float volume_phase_get_g(ccl_private const ShaderVolumeClosure *svc)
 {
   switch (svc->type) {
+    case CLOSURE_VOLUME_FOURNIER_FORAND_ID:
+      /* TODO */
+      return 1.0f;
+    case CLOSURE_VOLUME_RAYLEIGH_ID:
+      /* Approximate as isotropic */
+      return 0.0f;
+    case CLOSURE_VOLUME_DRAINE_ID:
+      /* Approximate as HG, TODO */
+      return ((ccl_private DraineVolume *)svc)->g;
     case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID:
       return ((ccl_private HenyeyGreensteinVolume *)svc)->g;
     default:
