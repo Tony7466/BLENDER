@@ -9,6 +9,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.hh"
@@ -268,6 +269,42 @@ Array<bke::Instances *> extract_instances(const bke::Instances &instances,
   });
 
   return new_instances;
+}
+
+Array<GreasePencil *> extract_greasepencil_layers(const GreasePencil &grease_pencil,
+                                                  const IndexMask &mask,
+                                                  const bke::AttributeFilter &attribute_filter)
+{
+  using namespace bke::greasepencil;
+  BLI_assert(mask.min_array_size() <= grease_pencil.layers().size());
+
+  Array<GreasePencil *> grease_pencils(mask.size(), nullptr);
+  const bke::AttributeAccessor src_attributes = grease_pencil.attributes();
+  const Span<const Layer *> src_layers = grease_pencil.layers();
+
+  mask.foreach_index(GrainSize(32), [&](const int layer_i, const int new_i) {
+    GreasePencil *layer_grease_pencil = BKE_grease_pencil_new_nomain();
+    const Layer &src_layer = *src_layers[layer_i];
+    const Drawing *src_drawing = grease_pencil.get_eval_drawing(src_layer);
+
+    if (src_drawing) {
+      Layer &new_layer = layer_grease_pencil->add_layer(src_layer.name());
+      Drawing &drawing = *layer_grease_pencil->insert_frame(
+          new_layer, layer_grease_pencil->runtime->eval_frame);
+      drawing.strokes_for_write() = src_drawing->strokes();
+
+      bke::gather_attributes(src_attributes,
+                             bke::AttrDomain::Layer,
+                             bke::AttrDomain::Layer,
+                             attribute_filter,
+                             Span<int>{layer_i},
+                             layer_grease_pencil->attributes_for_write());
+    }
+
+    grease_pencils[new_i] = layer_grease_pencil;
+  });
+
+  return grease_pencils;
 }
 
 }  // namespace blender::geometry

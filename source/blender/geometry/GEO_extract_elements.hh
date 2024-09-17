@@ -12,6 +12,7 @@
 struct Mesh;
 struct PointCloud;
 struct Curves;
+struct GreasePencil;
 
 namespace blender::bke {
 class Instances;
@@ -46,5 +47,9 @@ Array<Curves *> extract_curves(const Curves &curves,
 Array<bke::Instances *> extract_instances(const bke::Instances &instances,
                                           const IndexMask &mask,
                                           const bke::AttributeFilter &attribute_filter);
+
+Array<GreasePencil *> extract_greasepencil_layers(const GreasePencil &grease_pencil,
+                                                  const IndexMask &mask,
+                                                  const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

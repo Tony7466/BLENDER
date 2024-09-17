@@ -2605,6 +2605,24 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         }
         return element_geometries;
       }
+      case GeometryComponent::Type::GreasePencil: {
+        const GreasePencil &main_grease_pencil = *main_geometry.get_grease_pencil();
+        Array<GreasePencil *> element_grease_pencils;
+        switch (id.domain) {
+          case AttrDomain::Layer: {
+            element_grease_pencils = geometry::extract_greasepencil_layers(
+                main_grease_pencil, mask, attribute_filter);
+            break;
+          }
+          default:
+            return std::nullopt;
+        }
+        Array<GeometrySet> element_geometries(element_grease_pencils.size());
+        for (const int i : element_geometries.index_range()) {
+          element_geometries[i].replace_grease_pencil(element_grease_pencils[i]);
+        }
+        return element_geometries;
+      }
       default:
         break;
     }
