@@ -4,3 +4,4 @@ Referenced by issue #101883, Regression: Visual Geometry to Mesh create bonkers 
 Referenced by issue #101583, Regression: apply data transfer crash
 Referenced by issue #101583, Regression: apply data transfer crash
 Referenced by issue #109523, Regression: Vertex Weight Mix crash on apply/undo when mesh has shape keys
+Referenced by commit 0791f53029033b6c2a12f71ed6e86df09ab836f4, Fix shape-keys always being freed in BKE_mesh_nomain_to_mesh
