@@ -1167,6 +1167,9 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
+  MEM_delete(static_cast<InterpolateOpData *>(op->customdata));
+  op->customdata = nullptr;
+
   return OPERATOR_FINISHED;
 }
 
