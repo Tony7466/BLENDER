@@ -175,8 +175,7 @@ void FillDataGrids::add_initial_with_symmetry(const Object &object,
     else {
       BLI_assert(radius > 0.0f);
       const float radius_squared = (radius == FLT_MAX) ? FLT_MAX : radius * radius;
-      CCGElem *elem = subdiv_ccg.grids[vertex.grid_index];
-      float3 location = symmetry_flip(CCG_grid_elem_co(key, elem, vertex.x, vertex.y),
+      float3 location = symmetry_flip(subdiv_ccg.positions[vertex.to_index(key)],
                                       ePaintSymmetryFlags(i));
       vert_to_add = nearest_vert_calc_grids(pbvh, subdiv_ccg, location, radius_squared, false);
     }
@@ -270,7 +269,7 @@ void FillDataMesh::execute(Object &object,
     this->queue.pop();
 
     for (const int neighbor : vert_neighbors_get_mesh(
-             from_v, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+             faces, corner_verts, vert_to_face_map, hide_poly, from_v, neighbors))
     {
       if (this->visited_verts[neighbor]) {
         continue;

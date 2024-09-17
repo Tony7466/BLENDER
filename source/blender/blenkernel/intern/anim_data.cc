@@ -209,7 +209,7 @@ bool BKE_animdata_set_action(ReportList *reports, ID *id, bAction *act)
     return true;
   }
   animrig::Action &action = act->wrap();
-  return animrig::assign_action(action, *id);
+  return animrig::assign_action(&action, *id);
 #else
   return animdata_set_action(reports, id, &adt->action, act);
 #endif  // WITH_ANIM_BAKLAVA
@@ -520,6 +520,10 @@ void BKE_animdata_merge_copy(
     dst->tmpact = src->tmpact;
     id_us_plus((ID *)dst->tmpact);
   }
+  dst->slot_handle = src->slot_handle;
+  dst->tmp_slot_handle = src->tmp_slot_handle;
+  STRNCPY(dst->slot_name, src->slot_name);
+  STRNCPY(dst->tmp_slot_name, src->tmp_slot_name);
 
   /* duplicate NLA data */
   if (src->nla_tracks.first) {
