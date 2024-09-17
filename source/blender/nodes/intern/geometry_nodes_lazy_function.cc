@@ -2096,6 +2096,8 @@ struct ForeachElementComponent {
   Array<SocketValueVariant> index_values;
   /** Evaluated input values passed into each body node. */
   Array<Array<SocketValueVariant>> item_input_values;
+  /** Geometry for each iteration. */
+  std::optional<Array<GeometrySet>> element_geometries;
   /** The set of body evaluation nodes that correspond to this component. This indexes into
    * `lf_body_nodes`. */
   IndexRange body_nodes_range;
@@ -2317,7 +2319,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const int generation_items_num = node_storage.generation_items.items_num;
 
     indices_.inputs.lf_outer = IndexRange::from_begin_size(2, input_items_num);
-    indices_.inputs.lf_inner = IndexRange::from_begin_size(1, input_items_num);
+    indices_.inputs.lf_inner = IndexRange::from_begin_size(2, input_items_num);
     indices_.inputs.bsocket_outer = indices_.inputs.lf_outer;
     indices_.inputs.bsocket_inner = indices_.inputs.lf_inner;
 
@@ -2548,6 +2550,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       }
     }
 
+    static const GeometrySet empty_geometry;
     for (const ForeachElementComponent &component_info : eval_storage.components) {
       for (const int i : component_info.body_nodes_range.index_range()) {
         const int body_i = component_info.body_nodes_range[i];
@@ -2555,6 +2558,10 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         /* Set index input for loop body. */
         lf_body_node.input(body_fn_.indices.inputs.main[0])
             .set_default_value(&component_info.index_values[i]);
+        const GeometrySet *element_geometry = component_info.element_geometries.has_value() ?
+                                                  &(*component_info.element_geometries)[i] :
+                                                  &empty_geometry;
+        lf_body_node.input(body_fn_.indices.inputs.main[1]).set_default_value(element_geometry);
         /* Set main input values for loop body. */
         for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
           lf_body_node.input(body_fn_.indices.inputs.main[indices_.inputs.lf_inner[item_i]])

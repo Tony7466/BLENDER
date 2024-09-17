@@ -288,6 +288,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Int>("Index").description(
       "Index of the element in the source geometry. Note that the same index can occure more than "
       "once when iterating over multiple components at once");
+  b.add_output<decl::Geometry>("Element")
+      .description("Single element geometry for the current iteration")
+      .propagate_all();
 
   b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
 
