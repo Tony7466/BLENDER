@@ -230,7 +230,9 @@ void ED_armature_bone_rename(Main *bmain,
             }
           }
 
+#ifndef NDEBUG
           BLI_assert(BKE_pose_channels_is_valid(ob->pose) == true);
+#endif
         }
 
         /* Update any object constraints to use the new bone name */
