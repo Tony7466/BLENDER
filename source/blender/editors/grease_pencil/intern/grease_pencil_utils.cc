@@ -178,7 +178,7 @@ DrawingPlacement::DrawingPlacement(const Scene &scene,
     default:
       depth_ = DrawingPlacementDepth::ObjectOrigin;
       surface_offset_ = 0.0f;
-      placement_loc_ = float3(0.0f);
+      placement_loc_ = layer_space_to_world_space_.location();
       break;
   }
 
