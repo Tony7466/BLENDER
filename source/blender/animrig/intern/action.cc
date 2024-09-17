@@ -2445,12 +2445,12 @@ static void clone_slot(Slot &from, Slot &to)
 {
   ActionSlotRuntimeHandle *runtime = to.runtime;
   slot_handle_t handle = to.handle;
-  memcpy(&to, &from, sizeof(Slot));
+  to = Slot(from);
   to.runtime = runtime;
   to.handle = handle;
 }
 
-bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
+void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_action)
 {
   BLI_assert(from_action.slots().as_span().contains(&source_slot));
   BLI_assert(&from_action != to_action);
@@ -2476,14 +2476,12 @@ bool move_slot(Slot &source_slot, Action &from_action, Action &to_action)
       &from_strip.channelbag_array, &from_strip.channelbag_array_num, index);
 
   /* Reassign all users of `source_slot` to the action `to_action` and the slot `target_slot`. */
-  for (ID *user : source_slot.users()) {
+  for (ID *user : source_slot.users(bmain)) {
     unassign_action(*user);
     assign_action_and_slot(&to_action, &target_slot, *user);
   }
 
   from_action.slot_remove(source_slot);
-
-  return true;
 }
 
 }  // namespace blender::animrig

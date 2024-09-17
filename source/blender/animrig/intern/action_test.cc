@@ -944,9 +944,7 @@ TEST_F(ActionLayersTest, action_move_slot)
   ASSERT_EQ(bag_1->fcurve_array_num, 2);
   ASSERT_EQ(bag_2->fcurve_array_num, 2);
 
-  /* Moving a slot from an action which doesn't own that slot should fail. */
-  ASSERT_FALSE(move_slot(slot_suzanne, *action, *action));
-  ASSERT_TRUE(move_slot(slot_suzanne, *action_2, *action));
+  move_slot(*bmain, slot_suzanne, *action_2, *action);
 
   ASSERT_EQ(strip_1.channelbag_array_num, 2);
   ASSERT_EQ(strip_2.channelbag_array_num, 0);
@@ -957,9 +955,6 @@ TEST_F(ActionLayersTest, action_move_slot)
   /* Action should have been reassigned. */
   ASSERT_EQ(action, cube->adt->action);
   ASSERT_EQ(action, suzanne->adt->action);
-
-  /* Moving to the same action should do nothing. */
-  ASSERT_FALSE(move_slot(slot_suzanne, *action, *action));
 }
 
 /*-----------------------------------------------------------*/

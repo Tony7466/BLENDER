@@ -881,7 +881,7 @@ static int merge_actions_selection_exec(bContext *C, wmOperator * /* op */)
     }
     Slot *slot = action->slot_for_handle(selected->adt->slot_handle);
     BLI_assert(slot != nullptr);
-    blender::animrig::move_slot(*slot, *action, active_action);
+    blender::animrig::move_slot(*bmain, *slot, *action, active_action);
     ANIM_id_update(bmain, &selected->id);
   }
 
