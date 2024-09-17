@@ -270,26 +270,21 @@ if(WITH_OPENAL)
 endif()
 
 if(WITH_SDL)
-  if(WITH_SDL_DYNLOAD)
-    set(SDL_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extern/sdlew/include/SDL2")
-    set(SDL_LIBRARY)
+  find_package_wrapper(SDL2)
+  if(SDL2_FOUND)
+    # Use same names for both versions of SDL until we move to 2.x.
+    set(SDL_INCLUDE_DIR "${SDL2_INCLUDE_DIR}")
+    set(SDL_LIBRARY "${SDL2_LIBRARY}")
+    set(SDL_FOUND "${SDL2_FOUND}")
   else()
-    find_package_wrapper(SDL2)
-    if(SDL2_FOUND)
-      # Use same names for both versions of SDL until we move to 2.x.
-      set(SDL_INCLUDE_DIR "${SDL2_INCLUDE_DIR}")
-      set(SDL_LIBRARY "${SDL2_LIBRARY}")
-      set(SDL_FOUND "${SDL2_FOUND}")
-    else()
-      find_package_wrapper(SDL)
-    endif()
-    mark_as_advanced(
-      SDL_INCLUDE_DIR
-      SDL_LIBRARY
-    )
-    # unset(SDLMAIN_LIBRARY CACHE)
-    set_and_warn_library_found("SDL" SDL_FOUND WITH_SDL)
+    find_package_wrapper(SDL)
   endif()
+  mark_as_advanced(
+    SDL_INCLUDE_DIR
+    SDL_LIBRARY
+  )
+  # unset(SDLMAIN_LIBRARY CACHE)
+  set_and_warn_library_found("SDL" SDL_FOUND WITH_SDL)
 endif()
 
 # Codecs
@@ -1083,6 +1078,13 @@ unset(_IS_LINKER_DEFAULT)
 # Avoid conflicts with Mesa llvmpipe, Luxrender, and other plug-ins that may
 # use the same libraries as Blender with a different version or build options.
 set(PLATFORM_SYMBOLS_MAP ${CMAKE_SOURCE_DIR}/source/creator/symbols_unix.map)
+
+# Prevent noisy warnings for symbols that MOLD doesn't define.
+if(WITH_LINKER_MOLD)
+  set(PLATFORM_SYMBOLS_MAP_SOURCE "${PLATFORM_SYMBOLS_MAP}")
+  set(PLATFORM_SYMBOLS_MAP ${CMAKE_BINARY_DIR}/source/creator/symbols_unix.map.gen)
+endif()
+
 set(PLATFORM_LINKFLAGS
   "${PLATFORM_LINKFLAGS} -Wl,--version-script='${PLATFORM_SYMBOLS_MAP}'"
 )
