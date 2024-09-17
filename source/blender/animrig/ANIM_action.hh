@@ -24,7 +24,6 @@
 
 #include <utility>
 
-struct AnimationEvalContext;
 struct FCurve;
 struct FCurve;
 struct ID;
@@ -200,6 +199,19 @@ class Action : public ::bAction {
   Slot &slot_add_for_id(const ID &animated_id);
 
   /**
+   * Remove a slot, and ALL animation data that belongs to it.
+   *
+   * After this call, the reference is no longer valid as the slot will have been freed.
+   *
+   * Note that this does NOT unassign this slot from all its users. When the Action is linked into
+   * another file, that other file cannot be updated, and so missing slots are something that has
+   * to be handled anyway. Also any new slot on this Action will NOT reuse this slot's handle.
+   *
+   * \return true when the layer was found & removed, false if it wasn't found.
+   */
+  bool slot_remove(Slot &slot_to_remove);
+
+  /**
    * Set the active Slot, ensuring only one Slot is flagged as the Active one.
    *
    * \param slot_handle if Slot::unassigned, there will not be any active slot.
@@ -221,30 +233,6 @@ class Action : public ::bAction {
   Slot *slot_active_get();
 
   /**
-   * Assign this Action + Slot to the ID.
-   *
-   * If another Action is already assigned to this ID, the caller should unassign the ID from its
-   * existing Action first, or use the top-level function `assign_action(action, ID)` to do things
-   * all in one go.
-   *
-   * \param slot: The slot this ID should be animated by, may be nullptr if it is to be
-   * assigned later. In that case, the ID will not actually receive any animation.
-   * \param animated_id: The ID that should be animated by this Action.
-   *
-   * \return whether the assignment was successful.
-   */
-  bool assign_id(Slot *slot, ID &animated_id);
-
-  /**
-   * Unassign this Action from the animated ID.
-   *
-   * \param animated_id: ID that is animated by this Action. Calling this
-   * function when this ID is _not_ animated by this Action is not allowed,
-   * and considered a bug.
-   */
-  void unassign_id(ID &animated_id);
-
-  /**
    * Find the slot that best matches the animated ID.
    *
    * If the ID is already animated by this Action, by matching this
@@ -260,8 +248,33 @@ class Action : public ::bAction {
 
   /**
    * Return whether this Action actually has any animation data for the given slot.
+   *
+   * \see has_keyframes()
    */
   bool is_slot_animated(slot_handle_t slot_handle) const;
+
+  /**
+   * Check if the slot with this handle has any keyframes.
+   *
+   * \see is_slot_animated()
+   */
+  bool has_keyframes(slot_handle_t action_slot_handle) const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Return whether the action has one unique point in time keyed.
+   *
+   * This is mostly for the pose library, which will have different behavior depending on whether
+   * an Action corresponds to a "pose" (one keyframe) or "animation snippet" (multiple keyframes).
+   *
+   * \return `false` when there is no keyframe at all or keys on different points in time, `true`
+   * when exactly one point in time is keyed.
+   */
+  bool has_single_frame() const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Returns whether this Action is configured as cyclic.
+   */
+  bool is_cyclic() const ATTR_WARN_UNUSED_RESULT;
 
   /**
    * Get the layer that should be used for user-level keyframe insertion.
@@ -272,9 +285,56 @@ class Action : public ::bAction {
    */
   Layer *get_layer_for_keyframing();
 
+  /**
+   * Retrieve the intended playback frame range of the entire Action.
+   *
+   * \return a tuple (start frame, end frame). This is either the manually set range (if enabled),
+   * or the result of a scan of all F-Curves for their first & last frames.
+   *
+   * \see get_frame_range_of_keys()
+   * \see get_frame_range_of_slot()
+   */
+  float2 get_frame_range() const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Retrieve the intended playback frame range of a slot.
+   *
+   * \return a tuple (start frame, end frame). This is either the manually set range (if enabled)
+   * of the Action, or the result of a scan of all F-Curves of the slot for their first & last
+   * frames.
+   *
+   * \see get_frame_range()
+   */
+  float2 get_frame_range_of_slot(slot_handle_t slot_handle) const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Calculate the extents of this Action.
+   *
+   * Performs a scan of all F-Curves for their first & last key frames.
+   *
+   * \return tuple (first key frame, last key frame).
+   */
+  float2 get_frame_range_of_keys(bool include_modifiers) const ATTR_WARN_UNUSED_RESULT;
+
+  /**
+   * Set the slot's ID type to that of the animated ID, ensure the name
+   * prefix is set accordingly, and that the name is unique within the
+   * Action.
+   *
+   * This is a low-level function, and shouldn't be called directly outside of
+   * the generic slot-assignment functions.
+   *
+   * \note This assumes that the slot has no ID type set yet. If it does, it
+   * is considered a bug to call this function.
+   */
+  void slot_setup_for_id(Slot &slot, const ID &animated_id);
+
  protected:
   /** Return the layer's index, or -1 if not found in this Action. */
   int64_t find_layer_index(const Layer &layer) const;
+
+  /** Return the slot's index, or -1 if not found in this Action. */
+  int64_t find_slot_index(const Slot &slot) const;
 
  private:
   Slot &slot_allocate();
@@ -288,16 +348,6 @@ class Action : public ::bAction {
    * \see Action::slot_name_propagate
    */
   void slot_name_ensure_prefix(Slot &slot);
-
-  /**
-   * Set the slot's ID type to that of the animated ID, ensure the name
-   * prefix is set accordingly, and that the name is unique within the
-   * Action.
-   *
-   * \note This assumes that the slot has no ID type set yet. If it does, it
-   * is considered a bug to call this function.
-   */
-  void slot_setup_for_id(Slot &slot, const ID &animated_id);
 };
 static_assert(sizeof(Action) == sizeof(::bAction),
               "DNA struct and its C++ wrapper must have the same size");
@@ -368,6 +418,13 @@ class Strip : public ::ActionStrip {
    * (negative for frame_start, positive for frame_end) are supported.
    */
   void resize(float frame_start, float frame_end);
+
+  /**
+   * Remove all data belonging to the given slot.
+   *
+   * This is typically only called from Layer::slot_data_remove().
+   */
+  void slot_data_remove(slot_handle_t slot_handle);
 };
 static_assert(sizeof(Strip) == sizeof(::ActionStrip),
               "DNA struct and its C++ wrapper must have the same size");
@@ -455,6 +512,13 @@ class Layer : public ::ActionLayer {
    */
   bool strip_remove(Strip &strip);
 
+  /**
+   * Remove all data belonging to the given slot.
+   *
+   * This is typically only called from Action::slot_remove().
+   */
+  void slot_data_remove(slot_handle_t slot_handle);
+
  protected:
   /** Return the strip's index, or -1 if not found in this layer. */
   int64_t find_strip_index(const Strip &strip) const;
@@ -500,6 +564,10 @@ class Slot : public ::ActionSlot {
    * This means that the minimum length of a valid name is 3 characters.
    */
   constexpr static int name_length_min = 3;
+
+  constexpr static int name_length_max = MAX_ID_NAME;
+  static_assert(sizeof(AnimData::slot_name) == name_length_max);
+  static_assert(sizeof(NlaStrip::action_slot_name) == name_length_max);
 
   /**
    * Return the name prefix for the Slot's type.
@@ -659,6 +727,13 @@ class KeyframeStrip : public ::KeyframeActionStrip {
    */
   bool channelbag_remove(ChannelBag &channelbag_to_remove);
 
+  /**
+   * Remove all strip data for the given slot.
+   *
+   * Typically only called from Strip::slot_data_remove().
+   */
+  void slot_data_remove(slot_handle_t slot_handle);
+
   /** Return the channelbag's index, or -1 if there is none for this slot handle. */
   int64_t find_channelbag_index(const ChannelBag &channelbag) const;
 
@@ -724,7 +799,21 @@ class ChannelBag : public ::ActionChannelBag {
   FCurve *fcurve_create_unique(Main *bmain, FCurveDescriptor fcurve_descriptor);
 
   /**
+   * Append an F-Curve to this ChannelBag.
+   *
+   * Ownership of the F-Curve is also transferred to the ChannelBag. The F-Curve
+   * will not belong to any channel group after appending.
+   *
+   * This is considered a low-level function. Things like depsgraph relations
+   * tagging is left to the caller.
+   */
+  void fcurve_append(FCurve &fcurve);
+
+  /**
    * Remove an F-Curve from the ChannelBag.
+   *
+   * Additionally, if the fcurve was the last fcurve in a channel group, that
+   * channel group is also deleted.
    *
    * After this call, if the F-Curve was found, the reference will no longer be
    * valid, as the curve will have been freed.
@@ -732,6 +821,17 @@ class ChannelBag : public ::ActionChannelBag {
    * \return true when the F-Curve was found & removed, false if it wasn't found.
    */
   bool fcurve_remove(FCurve &fcurve_to_remove);
+
+  /**
+   * Move the given fcurve to position `to_fcurve_index` in the fcurve array.
+   *
+   * Note: this can indirectly alter channel group memberships, because the
+   * channel groups don't change what ranges in the fcurve array they cover.
+   *
+   * `fcurve` must belong to this channel bag, and `to_fcurve_index` must be a
+   * valid index in the fcurve array.
+   */
+  void fcurve_move(FCurve &fcurve, int to_fcurve_index);
 
   /**
    * Remove all F-Curves from this ChannelBag.
@@ -770,6 +870,9 @@ class ChannelBag : public ::ActionChannelBag {
    * The new group is added to the end of the channel group array of the
    * ChannelBag.
    *
+   * This function ensures the group has a unique name, and thus the name of the
+   * created group may differ from the `name` parameter.
+   *
    * \return A reference to the new channel group.
    */
   bActionGroup &channel_group_create(StringRefNull name);
@@ -796,6 +899,18 @@ class ChannelBag : public ::ActionChannelBag {
   bool channel_group_remove(bActionGroup &group);
 
   /**
+   * Move the given channel group's to position `to_group_index` among the
+   * channel groups.
+   *
+   * The fcurves in the channel group are moved with it, so that membership
+   * doesn't change.
+   *
+   * `group` must belong to this channel bag, and `to_group_index` must be a
+   * valid index in the channel group array.
+   */
+  void channel_group_move(bActionGroup &group, int to_group_index);
+
+  /**
    * Assigns the given FCurve to the given channel group.
    *
    * Fails if either doesn't belong to this channel bag, but otherwise always
@@ -803,7 +918,21 @@ class ChannelBag : public ::ActionChannelBag {
    *
    * \return True on success, false on failure.
    */
-  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &group);
+  bool fcurve_assign_to_channel_group(FCurve &fcurve, bActionGroup &to_group);
+
+  /**
+   * Removes the the given FCurve from the channel group it's in, if any.
+   *
+   * As part of removing `fcurve` from its group, `fcurve` is moved to the end
+   * of the fcurve array. However, if `fcurve` is already ungrouped then this
+   * method is a no-op.
+   *
+   * Fails if the fcurve doesn't belong to this channel bag, but otherwise
+   * always succeeds.
+   *
+   * \return True on success, false on failure.
+   */
+  bool fcurve_ungroup(FCurve &fcurve);
 
  protected:
   /**
@@ -837,7 +966,7 @@ class ChannelBag : public ::ActionChannelBag {
    *
    * \see `restore_channel_group_invariants()`
    */
-  void channel_group_remove_raw(int channel_group_index);
+  void channel_group_remove_raw(int group_index);
 
   /**
    * Restore invariants related to channel groups.
@@ -933,7 +1062,16 @@ static_assert(sizeof(ChannelGroup) == sizeof(::bActionGroup),
  * be animated). If the above fall-through case of "no slot found" is reached, this function
  * will still return `true` as the Action was successfully assigned.
  */
-bool assign_action(Action &action, ID &animated_id);
+bool assign_action(Action *action, ID &animated_id);
+
+/**
+ * Un-assign the Action assigned to this ID.
+ *
+ * Same as calling `assign_action(nullptr, animated_id)`.
+ *
+ * \see assign_action
+ */
+void unassign_action(ID &animated_id);
 
 /**
  * Assign the Action, ensuring that a Slot is also assigned.
@@ -954,30 +1092,72 @@ bool assign_action(Action &action, ID &animated_id);
 Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id);
 
 /**
+ * Generic function to build Action-assignment logic.
+ *
+ * This is a low-level function, intended as a building block for higher-level Action assignment
+ * functions.
+ *
+ * This function always succeeds, and thus it doesn't have any return value.
+ */
+void generic_assign_action(ID &animated_id,
+                           Action *action_to_assign,
+                           bAction *&action_ptr_ref,
+                           slot_handle_t &slot_handle_ref,
+                           char *slot_name);
+
+enum class ActionSlotAssignmentResult : int8_t {
+  OK = 0,
+  SlotNotFromAction = 1, /* Slot does not belong to the assigned Action. */
+  SlotNotSuitable = 2,   /* Slot is not suitable for the given ID type.*/
+  MissingAction = 3,     /* No Action assigned yet, so cannot assign slot. */
+};
+
+/**
+ * Generic function to build Slot-assignment logic.
+ *
+ * This is a low-level function, intended as a building block for higher-level slot assignment
+ * functions.
+ */
+ActionSlotAssignmentResult generic_assign_action_slot(Slot *slot_to_assign,
+                                                      ID &animated_id,
+                                                      bAction *&action_ptr_ref,
+                                                      slot_handle_t &slot_handle_ref,
+                                                      char *slot_name) ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * Generic function to build Slot Handle-assignment logic.
+ *
+ * This is a low-level function, intended as a building block for higher-level slot handle
+ * assignment functions.
+ */
+ActionSlotAssignmentResult generic_assign_action_slot_handle(slot_handle_t slot_handle_to_assign,
+                                                             ID &animated_id,
+                                                             bAction *&action_ptr_ref,
+                                                             slot_handle_t &slot_handle_ref,
+                                                             char *slot_name)
+    ATTR_WARN_UNUSED_RESULT;
+
+/**
  * Return whether the given Action can be assigned to the ID.
  *
  * This always returns `true` for layered Actions. For legacy Actions it
  * returns `true` if the Action's `idroot` matches the ID.
  */
-bool is_action_assignable_to(const bAction *dna_action, ID_Type id_code);
+bool is_action_assignable_to(const bAction *dna_action, ID_Type id_code) ATTR_WARN_UNUSED_RESULT;
+
+ActionSlotAssignmentResult assign_action_slot(Slot *slot_to_assign, ID &animated_id);
 
 /**
- * Ensure that this ID is no longer animated.
+ * Utility function that assigns both an Action and a slot of that Action.
+ *
+ * Returns the result of the underlying assign_action_slot() call.
+ *
+ * \see assign_action
+ * \see assign_action_slot
  */
-void unassign_action(ID &animated_id);
-
-/**
- * Clear the Action slot of this ID.
- *
- * `adt.slot_handle_name` is updated to reflect the current name of the
- * slot, before un-assigning. This is to ensure that the stored name reflects
- * the actual slot that was used, making re-slot trivial.
- *
- * \param animated_id: the animated ID.
- *
- * \note this does not clear the Action pointer, just the slot handle.
- */
-void unassign_slot(ID &animated_id);
+ActionSlotAssignmentResult assign_action_and_slot(Action *action,
+                                                  Slot *slot_to_assign,
+                                                  ID &animated_id);
 
 /**
  * Return the Action of this ID, or nullptr if it has none.
@@ -1116,6 +1296,20 @@ ID *action_slot_get_id_for_keying(Main &bmain,
  * necessary any more.
  */
 ID *action_slot_get_id_best_guess(Main &bmain, Slot &slot, ID *primary_id);
+
+/**
+ * Return the handle of the first slot of this Action.
+ *
+ * This is for code that needs to treat Actions as somewhat-legacy Actions, i.e. as holders of
+ * F-Curves for which the specific slot is not interesting.
+ *
+ * TODO: Maybe at some point this function should get extended with an ID type parameter, to return
+ * the first slot that is suitable for that ID type.
+ *
+ * \return The handle of the first slot, or Slot::unassigned if there is no slot (which includes
+ * legacy Actions).
+ */
+slot_handle_t first_slot_handle(const ::bAction &dna_action);
 
 /**
  * Assert the invariants of Project Baklava phase 1.
