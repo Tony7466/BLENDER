@@ -273,9 +273,6 @@ static int bake_grease_pencil_animation_exec(bContext *C, wmOperator *op)
               positions[i] = drawing_placement->reproject(positions[i]);
             }
           });
-          for (float3 &pos : target_strokes.positions_for_write()) {
-            pos = drawing_placement->reproject(pos);
-          }
         }
       }
     }
