@@ -657,6 +657,9 @@ static void rna_AttributeGroupID_active_set(PointerRNA *ptr,
 {
   AttributeOwner owner = AttributeOwner::from_id(ptr->owner_id);
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
+  if (layer == nullptr) {
+    return;
+  }
   BKE_attributes_active_set(owner, layer->name);
 }
 
@@ -720,6 +723,9 @@ static void rna_AttributeGroupMesh_active_color_set(PointerRNA *ptr,
 {
   ID *id = ptr->owner_id;
   CustomDataLayer *layer = static_cast<CustomDataLayer *>(attribute_ptr.data);
+  if (layer == nullptr) {
+    return;
+  }
   BKE_id_attributes_active_color_set(id, layer->name);
 }
 
