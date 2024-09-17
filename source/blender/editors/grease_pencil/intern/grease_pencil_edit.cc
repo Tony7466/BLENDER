@@ -2772,7 +2772,7 @@ static int grease_pencil_reproject_exec(bContext *C, wmOperator *op)
         const IndexRange curve_points = points_by_curve[curve_index];
         const IndexMask curve_points_to_reproject = points_to_reproject.slice_content(
             curve_points);
-        curve_points_to_reproject.foreach_index([&](const int point_i) {
+        curve_points_to_reproject.foreach_index(GrainSize(4096), [&](const int point_i) {
           positions[point_i] = drawing_placement.reproject(positions[point_i]);
         });
       }
