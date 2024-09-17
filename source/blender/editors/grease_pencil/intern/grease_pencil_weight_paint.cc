@@ -327,32 +327,17 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
         BLI_assert(def_nr >= 0);
       }
 
-      Vector<int> indices_to_remove;
-      VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(
-          curves.deform_verts_for_write(), def_nr);
+      MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+      VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(dverts, def_nr);
       for (const int point_i : curves.points_range()) {
-        const float distance = distfactor_to_bone(positions[point_i],
-                                                  bone_root,
-                                                  bone_tip,
-                                                  bone->rad_head * scale,
-                                                  bone->rad_tail * scale,
-                                                  bone->dist * scale);
-        /* Add the vert to the deform group if (weight != 0.0). */
-        if (distance != 0.0f) {
-          weights.set(point_i, distance);
-        }
-        else {
-          indices_to_remove.append(point_i);
-        }
-      }
-
-      /* Remove all the points from the vertex groups that are not inside any envelope. */
-      if (curves.deform_verts().size() != 0) {
-        MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
-        for (const int i : indices_to_remove) {
-          MDeformVert *dv = &dverts[i];
-          MDeformWeight *dw = BKE_defvert_find_index(dv, def_nr);
-          BKE_defvert_remove_group(dv, dw);
+        const float weight = distfactor_to_bone(positions[point_i],
+                                                bone_root,
+                                                bone_tip,
+                                                bone->rad_head * scale,
+                                                bone->rad_tail * scale,
+                                                bone->dist * scale);
+        if (weight != 0.0f) {
+          weights.set(point_i, weight);
         }
       }
     }
