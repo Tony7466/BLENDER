@@ -53,6 +53,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_extract_elements.hh"
 #include "GEO_join_geometries.hh"
 
 #include <fmt/format.h>
@@ -2427,6 +2428,9 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   {
     const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
 
+    /* TODO: Get from inputs. */
+    AttributeFilter attribute_filter;
+
     /* Gather components to process. */
     Vector<ForeachElementComponentID> component_ids;
     for (const GeometryComponent *src_component : eval_storage.main_geometry.get_components()) {
@@ -2499,6 +2503,9 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       mask.foreach_index(
           [&](const int i, const int pos) { component_info.index_values[pos].set(i); });
 
+      component_info.element_geometries = this->try_extract_element_geometries(
+          eval_storage.main_geometry, id, mask, attribute_filter);
+
       /* Prepare remaining inputs that come from the field evaluation.*/
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
@@ -2516,6 +2523,45 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         });
       }
     }
+  }
+
+  std::optional<Array<GeometrySet>> try_extract_element_geometries(
+      const GeometrySet &main_geometry,
+      const ForeachElementComponentID &id,
+      const IndexMask &mask,
+      const AttributeFilter &attribute_filter) const
+  {
+    switch (id.component_type) {
+      case GeometryComponent::Type::Mesh: {
+        const Mesh &main_mesh = *main_geometry.get_mesh();
+        Array<Mesh *> meshes;
+        switch (id.domain) {
+          case AttrDomain::Point: {
+            meshes = geometry::extract_mesh_vertices(main_mesh, mask, attribute_filter);
+            break;
+          }
+          case AttrDomain::Edge: {
+            meshes = geometry::extract_mesh_edges(main_mesh, mask, attribute_filter);
+            break;
+          }
+          case AttrDomain::Face: {
+            meshes = geometry::extract_mesh_faces(main_mesh, mask, attribute_filter);
+            break;
+          }
+          default: {
+            return std::nullopt;
+          }
+        }
+        Array<GeometrySet> element_geometries(meshes.size());
+        for (const int i : meshes.index_range()) {
+          element_geometries[i].replace_mesh(meshes[i]);
+        }
+        return element_geometries;
+      }
+      default:
+        break;
+    }
+    return std::nullopt;
   }
 
   void build_graph_contents(ForeachGeometryElementEvalStorage &eval_storage,
