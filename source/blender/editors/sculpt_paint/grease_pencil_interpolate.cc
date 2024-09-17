@@ -1126,7 +1126,7 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
       return;
     }
 
-    const int frame_range = interval->second - interval->first + 1;
+    const int frame_range_size = interval->second - interval->first + 1;
 
     /* First and last frame are ignored. */
     for (int cframe = interval->first + step; cframe < interval->second; cframe += step) {
@@ -1136,7 +1136,7 @@ static int grease_pencil_interpolate_sequence_exec(bContext *C, wmOperator *op)
         return;
       }
 
-      const float base_factor = float(cframe - interval->first) / std::max(frame_range - 1, 1);
+      const float base_factor = float(cframe - interval->first) / std::max(frame_range_size - 1, 1);
       const float mix_factor = grease_pencil_interpolate_sequence_easing_calc(
           easing, type, back_easing, amplitude, period, *ipo_settings.custom_ipo, base_factor);
 
