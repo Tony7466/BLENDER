@@ -2781,8 +2781,10 @@ static int grease_pencil_reproject_exec(bContext *C, wmOperator *op)
     });
   }
 
-  scene.r.cfra = oldframe;
-  BKE_scene_graph_update_for_newframe(depsgraph);
+  if (mode == ReprojectMode::Surface) {
+    scene.r.cfra = oldframe;
+    BKE_scene_graph_update_for_newframe(depsgraph);
+  }
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
