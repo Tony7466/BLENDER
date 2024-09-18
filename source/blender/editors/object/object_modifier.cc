@@ -2442,7 +2442,7 @@ static int modifier_copy_to_selected_exec(bContext *C, wmOperator *op)
     if (ob == obact) {
       continue;
     }
-    if (!ID_IS_EDITABLE(ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
+    if (!ID_IS_EDITABLE(ob)) {
       continue;
     }
     if (modifier_copy_to_object(bmain, scene, obact, md, ob, op->reports)) {
