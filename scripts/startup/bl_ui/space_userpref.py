@@ -73,7 +73,8 @@ class USERPREF_PT_navigation_bar(Panel):
 
         col.scale_x = 1.3
         col.scale_y = 1.3
-        col.prop(prefs, "active_section", expand=True)
+        # TODO: This isn't really working
+        col.prop_tabs_enum(prefs, "active_section", data_highlight=view, property_highlight="tab_search_results")
 
 
 class USERPREF_MT_editor_menus(Menu):
