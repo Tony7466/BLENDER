@@ -772,7 +772,8 @@ void draw_bake_button_row(const BakeDrawContext &ctx,
     PointerRNA ptr;
     uiItemFullO(row,
                 "OBJECT_OT_geometry_node_bake_single",
-                IFACE_("Bake"),
+                ctx.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK ? IFACE_("Bake to Disk") :
+                                                                     IFACE_("Bake Packed"),
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
