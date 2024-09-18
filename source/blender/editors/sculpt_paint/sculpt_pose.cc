@@ -657,8 +657,7 @@ static void calc_pose_origin_and_factor_mesh(const Depsgraph &depsgraph,
 
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillDataMesh flood(positions_eval.size());
-  flood.add_initial_with_symmetry(
-      depsgraph, object, pbvh, std::get<int>(ss.active_vert()), radius);
+  flood.add_initial(find_symm_verts_mesh(depsgraph, object, ss.active_vert_index(), radius));
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
 
@@ -705,14 +704,12 @@ static void calc_pose_origin_and_factor_grids(Object &object,
   BLI_assert(!r_pose_factor.is_empty());
 
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillDataGrids flood(positions.size());
-  flood.add_initial_with_symmetry(
-      object, pbvh, subdiv_ccg, std::get<SubdivCCGCoord>(ss.active_vert()), radius);
+  flood.add_initial(key, find_symm_verts_grids(object, ss.active_vert_index(), radius));
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
 
@@ -764,11 +761,9 @@ static void calc_pose_origin_and_factor_bmesh(Object &object,
   BLI_assert(!r_pose_factor.is_empty());
   SCULPT_vertex_random_access_ensure(object);
 
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillDataBMesh flood(BM_mesh_elem_count(ss.bm, BM_VERT));
-  flood.add_initial_with_symmetry(object, pbvh, std::get<BMVert *>(ss.active_vert()), radius);
+  flood.add_initial(*ss.bm, find_symm_verts_bmesh(object, ss.active_vert_index(), radius));
 
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
 
@@ -1039,8 +1034,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_mesh(const Depsgraph &de
     const bool is_first_iteration = i == 0;
 
     flood_fill::FillDataMesh flood_fill(vert_positions.size());
-    flood_fill.add_initial_with_symmetry(
-        depsgraph, object, pbvh, current_data.vert, std::numeric_limits<float>::max());
+    flood_fill.add_initial(depsgraph, ob, find_symm_verts(depsgraph, ob, current_data.vert));
 
     visited_face_sets.add(current_data.face_set);
 
