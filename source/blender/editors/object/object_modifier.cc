@@ -1147,7 +1147,7 @@ static bool apply_grease_pencil_for_modifier(Depsgraph *depsgraph,
   /* Propagate layer attributes. */
   AttributeAccessor src_attributes = grease_pencil_result.attributes();
   MutableAttributeAccessor dst_attributes = grease_pencil_orig.attributes_for_write();
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
+  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
     if (meta_data.data_type == CD_PROP_STRING) {
       return true;
     }
@@ -2440,6 +2440,9 @@ static int modifier_copy_to_selected_exec(bContext *C, wmOperator *op)
   CTX_data_selected_objects(C, &selected_objects);
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
     if (ob == obact) {
+      continue;
+    }
+    if (!ID_IS_EDITABLE(ob)) {
       continue;
     }
     if (modifier_copy_to_object(bmain, scene, obact, md, ob, op->reports)) {

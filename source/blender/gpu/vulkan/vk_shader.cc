@@ -513,8 +513,7 @@ Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
                                                  shaderc_shader_kind stage)
 {
   std::string combined_sources = combine_sources(sources);
-  VKBackend &backend = VKBackend::get();
-  shaderc::Compiler &compiler = backend.get_shaderc_compiler();
+  shaderc::Compiler compiler;
   shaderc::CompileOptions options;
   options.SetOptimizationLevel(shaderc_optimization_level_performance);
   options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
@@ -576,33 +575,35 @@ void VKShader::init(const shader::ShaderCreateInfo &info, bool /*is_batch_compil
   VKShaderInterface *vk_interface = new VKShaderInterface();
   vk_interface->init(info);
   interface = vk_interface;
+  is_static_shader_ = info.do_static_compilation_;
 }
 
 VKShader::~VKShader()
 {
-  VK_ALLOCATION_CALLBACKS
-  const VKDevice &device = VKBackend::get().device;
+  VKDevice &device = VKBackend::get().device;
+  VKDiscardPool &discard_pool = device.discard_pool_for_current_thread();
+
   if (vertex_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), vertex_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(vertex_module_);
     vertex_module_ = VK_NULL_HANDLE;
   }
   if (geometry_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), geometry_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(geometry_module_);
     geometry_module_ = VK_NULL_HANDLE;
   }
   if (fragment_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), fragment_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(fragment_module_);
     fragment_module_ = VK_NULL_HANDLE;
   }
   if (compute_module_ != VK_NULL_HANDLE) {
-    vkDestroyShaderModule(device.vk_handle(), compute_module_, vk_allocation_callbacks);
+    discard_pool.discard_shader_module(compute_module_);
     compute_module_ = VK_NULL_HANDLE;
   }
   if (vk_pipeline_layout != VK_NULL_HANDLE) {
-    vkDestroyPipelineLayout(device.vk_handle(), vk_pipeline_layout, vk_allocation_callbacks);
+    discard_pool.discard_pipeline_layout(vk_pipeline_layout);
     vk_pipeline_layout = VK_NULL_HANDLE;
   }
-  /* Reset not owning handles. */
+  /* Unset not owning handles. */
   vk_descriptor_set_layout_ = VK_NULL_HANDLE;
 }
 
@@ -882,7 +883,11 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
 
   /* Retarget depth from -1..1 to 0..1. This will be done by geometry stage, when geometry shaders
    * are used. */
-  const bool has_geometry_stage = bool(info.builtins_ & BuiltinBits::BARYCENTRIC_COORD) ||
+  const bool has_geometry_stage = bool(info.builtins_ & (BuiltinBits::BARYCENTRIC_COORD)) ||
+                                  (bool(info.builtins_ & (BuiltinBits::LAYER)) &&
+                                   workarounds.shader_output_layer) ||
+                                  (bool(info.builtins_ & (BuiltinBits::VIEWPORT_INDEX)) &&
+                                   workarounds.shader_output_viewport_index) ||
                                   !info.geometry_source_.is_empty();
   const bool retarget_depth = !has_geometry_stage;
   if (retarget_depth) {
@@ -974,7 +979,6 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     location += 3;
     ss << "layout(location=" << (location++) << ") smooth in vec3 gpu_BaryCoord;\n";
     ss << "layout(location=" << (location++) << ") noperspective in vec3 gpu_BaryCoordNoPersp;\n";
-    ss << "#define gpu_position_at_vertex(v) gpu_pos[v]\n";
 
 #if 0
     std::cout << "native" << std::endl;
@@ -994,11 +998,6 @@ std::string VKShader::fragment_interface_declare(const shader::ShaderCreateInfo 
     ss << "  return bary.xyz;\n";
     ss << "}\n";
     ss << "\n";
-    ss << "vec4 gpu_position_at_vertex(int v) {\n";
-    ss << "  if (interpolateAtVertexAMD(gpu_pos, 0) == gpu_pos_flat) { v = (v + 2) % 3; }\n";
-    ss << "  if (interpolateAtVertexAMD(gpu_pos, 2) == gpu_pos_flat) { v = (v + 1) % 3; }\n";
-    ss << "  return interpolateAtVertexAMD(gpu_pos, v);\n";
-    ss << "}\n";
 
     pre_main += "  gpu_BaryCoord = stable_bary_(gl_BaryCoordSmoothAMD);\n";
     pre_main += "  gpu_BaryCoordNoPersp = stable_bary_(gl_BaryCoordNoPerspAMD);\n";
@@ -1269,10 +1268,10 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
   BLI_assert(compute_module_ != VK_NULL_HANDLE);
   BLI_assert(vk_pipeline_layout != VK_NULL_HANDLE);
 
-  /* Early exit when no specialization constants are used and the vk_pipeline_ is already
+  /* Early exit when no specialization constants are used and the vk_pipeline_base_ is already
    * valid. This would handle most cases. */
-  if (constants.values.is_empty() && vk_pipeline_ != VK_NULL_HANDLE) {
-    return vk_pipeline_;
+  if (constants.values.is_empty() && vk_pipeline_base_ != VK_NULL_HANDLE) {
+    return vk_pipeline_base_;
   }
 
   VKComputeInfo compute_info = {};
@@ -1282,9 +1281,11 @@ VkPipeline VKShader::ensure_and_get_compute_pipeline()
 
   VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
-  VkPipeline vk_pipeline = device.pipelines.get_or_create_compute_pipeline(compute_info,
-                                                                           vk_pipeline_);
-  vk_pipeline_ = vk_pipeline;
+  VkPipeline vk_pipeline = device.pipelines.get_or_create_compute_pipeline(
+      compute_info, is_static_shader_, vk_pipeline_base_);
+  if (vk_pipeline_base_ == VK_NULL_HANDLE) {
+    vk_pipeline_base_ = vk_pipeline;
+  }
   return vk_pipeline;
 }
 
@@ -1328,9 +1329,11 @@ VkPipeline VKShader::ensure_and_get_graphics_pipeline(GPUPrimType primitive,
 
   VKDevice &device = VKBackend::get().device;
   /* Store result in local variable to ensure thread safety. */
-  VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(graphics_info,
-                                                                            vk_pipeline_);
-  vk_pipeline_ = vk_pipeline;
+  VkPipeline vk_pipeline = device.pipelines.get_or_create_graphics_pipeline(
+      graphics_info, is_static_shader_, vk_pipeline_base_);
+  if (vk_pipeline_base_ == VK_NULL_HANDLE) {
+    vk_pipeline_base_ = vk_pipeline;
+  }
   return vk_pipeline;
 }
 

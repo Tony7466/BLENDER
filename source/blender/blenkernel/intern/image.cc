@@ -799,7 +799,7 @@ bool BKE_image_scale(Image *image, int width, int height, ImageUser *iuser)
   ibuf = BKE_image_acquire_ibuf(image, iuser, &lock);
 
   if (ibuf) {
-    IMB_scaleImBuf(ibuf, width, height);
+    IMB_scale(ibuf, width, height, IMBScaleFilter::Box, false);
     BKE_image_mark_dirty(image, ibuf);
   }
 
@@ -2689,12 +2689,15 @@ ImBufAnim *openanim(const char *filepath,
 
   ibuf = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
   if (ibuf == nullptr) {
-    if (BLI_exists(filepath)) {
-      printf("not an anim: %s\n", filepath);
+    const char *reason;
+    if (!BLI_exists(filepath)) {
+      reason = "file doesn't exist";
     }
     else {
-      printf("anim file doesn't exist: %s\n", filepath);
+      reason = "not an anim";
     }
+    CLOG_INFO(&LOG, 1, "unable to load anim, %s: %s", reason, filepath);
+
     IMB_free_anim(anim);
     return nullptr;
   }
@@ -3214,7 +3217,7 @@ void BKE_image_signal(Main *bmain, Image *ima, ImageUser *iuser, int signal)
         const int tot_viewfiles = image_num_viewfiles(ima);
         const int tot_files = tot_viewfiles * BLI_listbase_count(&ima->tiles);
 
-        if (tot_files != BLI_listbase_count_at_most(&ima->packedfiles, tot_files + 1)) {
+        if (!BLI_listbase_count_is_equal_to(&ima->packedfiles, tot_files)) {
           /* in case there are new available files to be loaded */
           image_free_packedfiles(ima);
           BKE_image_packfiles(nullptr, ima, ID_BLEND_PATH(bmain, &ima->id));
@@ -4138,7 +4141,7 @@ static ImBuf *image_load_movie_file(Image *ima, ImageUser *iuser, int frame)
   const bool is_multiview = BKE_image_is_multiview(ima);
   const int tot_viewfiles = image_num_viewfiles(ima);
 
-  if (tot_viewfiles != BLI_listbase_count_at_most(&ima->anims, tot_viewfiles + 1)) {
+  if (!BLI_listbase_count_is_equal_to(&ima->anims, tot_viewfiles)) {
     image_free_anims(ima);
 
     for (int i = 0; i < tot_viewfiles; i++) {
@@ -4192,15 +4195,13 @@ static ImBuf *load_image_single(Image *ima,
 {
   char filepath[FILE_MAX];
   ImBuf *ibuf = nullptr;
-  int flag = IB_rect | IB_multilayer;
+  int flag = IB_rect | IB_multilayer | IB_metadata | imbuf_alpha_flags_for_image(ima);
 
   *r_cache_ibuf = true;
   const int tile_number = image_get_tile_number_from_iuser(ima, iuser);
 
   /* is there a PackedFile with this image ? */
   if (has_packed && !is_sequence) {
-    flag |= imbuf_alpha_flags_for_image(ima);
-
     LISTBASE_FOREACH (ImagePackedFile *, imapf, &ima->packedfiles) {
       if (imapf->view == view_id && imapf->tile_number == tile_number) {
         if (imapf->packedfile) {
@@ -4238,8 +4239,6 @@ static ImBuf *load_image_single(Image *ima,
     BKE_image_user_file_path(&iuser_t, ima, filepath);
 
     /* read ibuf */
-    flag |= IB_metadata;
-    flag |= imbuf_alpha_flags_for_image(ima);
     ibuf = IMB_loadiffname(filepath, flag, ima->colorspace_settings.name);
   }
 
@@ -4301,7 +4300,7 @@ static ImBuf *image_load_image_file(
   /* this should never happen, but just playing safe */
   if (!is_sequence && has_packed) {
     const int totfiles = tot_viewfiles * BLI_listbase_count(&ima->tiles);
-    if (totfiles != BLI_listbase_count_at_most(&ima->packedfiles, totfiles + 1)) {
+    if (!BLI_listbase_count_is_equal_to(&ima->packedfiles, totfiles)) {
       image_free_packedfiles(ima);
       has_packed = false;
     }
@@ -4923,7 +4922,7 @@ ImBuf *BKE_image_preview(Image *ima, const short max_size, short *r_width, short
   BKE_image_release_ibuf(ima, image_ibuf, lock);
 
   /* Resize. */
-  IMB_scaleImBuf(preview, scale * image_ibuf->x, scale * image_ibuf->y);
+  IMB_scale(preview, scale * image_ibuf->x, scale * image_ibuf->y, IMBScaleFilter::Box, false);
   IMB_rect_from_float(preview);
 
   return preview;

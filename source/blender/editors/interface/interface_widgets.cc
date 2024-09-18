@@ -1988,7 +1988,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                                        drawstr + but->ofs,
                                        UI_MAX_DRAW_STR,
                                        but_pos_ofs - but->ofs,
-                                       U.pixelsize + U.pixelsize);
+                                       max_ii(1, int(U.pixelsize * 2)));
 
       /* We are drawing on top of widget bases. Flush cache. */
       GPU_blend(GPU_BLEND_ALPHA);
@@ -5140,6 +5140,12 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
   if (wt->text) {
     if (use_alpha_blend) {
       GPU_blend(GPU_BLEND_ALPHA);
+    }
+
+    if (but->type == UI_BTYPE_LABEL && !(but->flag & UI_HAS_ICON) && but->col[3] != 0) {
+      /* Optionally use button color for text color if label without icon.
+       * For example, ensuring that the Splash version text is always white. */
+      copy_v4_v4_uchar(wt->wcol.text, but->col);
     }
 
     wt->text(fstyle, &wt->wcol, but, rect);

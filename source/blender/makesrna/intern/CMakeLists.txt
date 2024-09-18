@@ -217,6 +217,8 @@ set(SRC_RNA_INC
   ../RNA_enum_types.hh
   ../RNA_path.hh
   ../RNA_types.hh
+
+  rna_action_tools.hh
 )
 
 set(SRC
@@ -244,6 +246,7 @@ set(INC
   ../../depsgraph
   ../../draw
   ../../gpu
+  ../../functions
   ../../ikplugin
   ../../imbuf
   ../../io/usd
@@ -337,12 +340,6 @@ if(WITH_MOD_OCEANSIM)
 endif()
 
 if(WITH_SDL)
-  if(WITH_SDL_DYNLOAD)
-    add_definitions(-DWITH_SDL_DYNLOAD)
-    list(APPEND INC
-      ../../../../extern/sdlew/include
-    )
-  endif()
   add_definitions(-DWITH_SDL)
 endif()
 
@@ -484,10 +481,10 @@ set(SRC
 
   ${SRC_RNA_INC}
   rna_access_internal.hh
+  rna_curves_utils.hh
   rna_internal.hh
   rna_internal_types.hh
   rna_mesh_utils.hh
-  rna_curves_utils.hh
 )
 
 set(LIB
