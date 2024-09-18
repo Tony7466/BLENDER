@@ -1034,7 +1034,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_mesh(const Depsgraph &de
     const bool is_first_iteration = i == 0;
 
     flood_fill::FillDataMesh flood_fill(vert_positions.size());
-    flood_fill.add_initial(depsgraph, ob, find_symm_verts(depsgraph, ob, current_data.vert));
+    flood_fill.add_initial(find_symm_verts_mesh(depsgraph, object, current_data.vert, radius));
 
     visited_face_sets.add(current_data.face_set);
 
@@ -1195,8 +1195,8 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_grids(Object &object,
     const bool is_first_iteration = i == 0;
 
     flood_fill::FillDataGrids flood_fill(grids_num);
-    flood_fill.add_initial_with_symmetry(
-        object, pbvh, subdiv_ccg, current_data.vert, std::numeric_limits<float>::max());
+    flood_fill.add_initial(key,
+                           find_symm_verts_grids(object, current_data.vert.to_index(key), radius));
 
     visited_face_sets.add(current_data.face_set);
 
@@ -1357,8 +1357,8 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_bmesh(Object &object,
     const bool is_first_iteration = i == 0;
 
     flood_fill::FillDataBMesh flood_fill(verts_num);
-    flood_fill.add_initial_with_symmetry(
-        object, pbvh, current_data.vert, std::numeric_limits<float>::max());
+    flood_fill.add_initial(
+        *ss.bm, find_symm_verts_bmesh(object, BM_elem_index_get(current_data.vert), radius));
 
     visited_face_sets.add(current_data.face_set);
 
@@ -1644,7 +1644,7 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_mesh(const Depsgraph 
   ik_chain->grab_delta_offset = ik_chain->segments[0].head - initial_location;
 
   flood_fill::FillDataMesh weight_floodfill(mesh.verts_num);
-  weight_floodfill.add_initial_with_symmetry(depsgraph, object, pbvh, active_vert, radius);
+  weight_floodfill.add_initial(find_symm_verts_mesh(depsgraph, object, active_vert, radius));
   MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
   weight_floodfill.execute(object, vert_to_face_map, [&](int /*from_v*/, int to_v) {
     fk_weights[to_v] = 1.0f;
@@ -1743,7 +1743,8 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_grids(const Depsgraph
   ik_chain->grab_delta_offset = ik_chain->segments[0].head - initial_location;
 
   flood_fill::FillDataGrids weight_floodfill(grids_num);
-  weight_floodfill.add_initial_with_symmetry(object, pbvh, subdiv_ccg, active_vert, radius);
+  weight_floodfill.add_initial(key,
+                               find_symm_verts_grids(object, active_vert.to_index(key), radius));
   MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
   weight_floodfill.execute(
       object,
@@ -1833,7 +1834,8 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
   ik_chain->grab_delta_offset = ik_chain->segments[0].head - initial_location;
 
   flood_fill::FillDataBMesh weight_floodfill(verts_num);
-  weight_floodfill.add_initial_with_symmetry(object, pbvh, active_vert, radius);
+  weight_floodfill.add_initial(
+      *ss.bm, find_symm_verts_bmesh(object, BM_elem_index_get(active_vert), radius));
   MutableSpan<float> fk_weights = ik_chain->segments[0].weights;
   weight_floodfill.execute(object, [&](BMVert * /*from_v*/, BMVert *to_v) {
     int to_v_i = BM_elem_index_get(to_v);
