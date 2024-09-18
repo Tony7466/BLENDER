@@ -159,14 +159,17 @@ bool ED_userpref_tab_has_search_result(SpaceUserPref *spref, const int index)
 
 /** \} */
 
-blender::Vector<eUserPref_Section> ED_userpref_tabs_list(SpaceUserPref * /*prefs*/)
+blender::Vector<int> ED_userpref_tabs_list(SpaceUserPref * /*prefs*/)
 {
-  blender::Vector<eUserPref_Section> result;
+  blender::Vector<int> result;
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != nullptr;
        it++)
   {
     if (it->name) {
       result.append(eUserPref_Section(it->value));
+    }
+    else {
+      result.append(-1);
     }
   }
   return result;
@@ -189,7 +192,7 @@ static bool property_search_for_context(const bContext *C, ARegion *region, shor
 }
 
 static void userpref_search_move_to_next_tab_with_results(
-    SpaceUserPref *sbuts, const blender::Span<eUserPref_Section> context_tabs_array)
+    SpaceUserPref *sbuts, const blender::Span<int> context_tabs_array)
 {
   int current_tab_index = 0;
   for (const int i : context_tabs_array.index_range()) {
@@ -219,7 +222,7 @@ static void userpref_search_move_to_next_tab_with_results(
 static void userpref_search_all_tabs(const bContext *C,
                                      SpaceUserPref *sprefs,
                                      ARegion *region_original,
-                                     const blender::Span<eUserPref_Section> context_tabs_array)
+                                     const blender::Span<int> context_tabs_array)
 {
   /* Use local copies of the area and duplicate the region as a mainly-paranoid protection
    * against changing any of the space / region data while running the search. */
@@ -273,7 +276,7 @@ static void userpref_main_region_property_search(const bContext *C,
                                                  SpaceUserPref *sprefs,
                                                  ARegion *region)
 {
-  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
+  blender::Vector<int> tabs = ED_userpref_tabs_list(sprefs);
   BLI_bitmap_set_all(sprefs->runtime->tab_search_results, false, tabs.size());
 
   userpref_search_all_tabs(C, sprefs, region, tabs);

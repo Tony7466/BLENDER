@@ -2176,7 +2176,7 @@ static int rna_SpaceUserPref_tab_search_results_getlength(const PointerRNA *ptr,
 {
   SpaceUserPref *sprefs = static_cast<SpaceUserPref *>(ptr->data);
 
-  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
+  blender::Vector<int> tabs = ED_userpref_tabs_list(sprefs);
   length[0] = tabs.size();
   return tabs.size();
 }
@@ -2185,7 +2185,7 @@ static void rna_SpaceUserPref_tab_search_results_get(PointerRNA *ptr, bool *valu
 {
   SpaceUserPref *sprefs = static_cast<SpaceUserPref *>(ptr->data);
 
-  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
+  blender::Vector<int> tabs = ED_userpref_tabs_list(sprefs);
 
   for (const int i : tabs.index_range()) {
     values[i] = ED_userpref_tab_has_search_result(sprefs, i);

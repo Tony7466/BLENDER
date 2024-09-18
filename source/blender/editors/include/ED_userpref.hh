@@ -12,7 +12,7 @@
 
 void ED_operatortypes_userpref();
 
-blender::Vector<eUserPref_Section> ED_userpref_tabs_list(SpaceUserPref *prefs);
+blender::Vector<int> ED_userpref_tabs_list(SpaceUserPref *prefs);
 bool ED_userpref_tab_has_search_result(SpaceUserPref *sprefs, int index);
 void ED_userpref_search_string_set(SpaceUserPref *sprefs, const char *value);
 int ED_userpref_search_string_length(SpaceUserPref *sprefs);
