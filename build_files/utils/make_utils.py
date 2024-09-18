@@ -285,4 +285,4 @@ def remove_directory(directory: Path) -> None:
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
-    shutil.rmtree(directory, onexc=remove_readonly)
+    shutil.rmtree(directory, onerror=remove_readonly)
