@@ -254,7 +254,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         dst_instances->add_instance(handle, float4x4::identity());
       }
       if (geometry_set.has_instances()) {
-        bke::copy_attributes(geometry_set.get_grease_pencil()->attributes(),
+        bke::copy_attributes(grease_pencil.attributes(),
                              bke::AttrDomain::Layer,
                              bke::AttrDomain::Instance,
                              attribute_filter,

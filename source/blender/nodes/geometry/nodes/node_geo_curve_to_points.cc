@@ -295,7 +295,7 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
           const int handle = instances->add_reference(bke::InstanceReference{temp_set});
           instances->add_instance(handle, float4x4::identity());
         }
-        bke::copy_attributes(geometry.get_grease_pencil()->attributes(),
+        bke::copy_attributes(grease_pencil.attributes(),
                              bke::AttrDomain::Layer,
                              bke::AttrDomain::Instance,
                              attribute_filter,
