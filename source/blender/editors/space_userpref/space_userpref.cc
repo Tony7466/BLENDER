@@ -20,6 +20,7 @@
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
+#include "ED_userpref.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
