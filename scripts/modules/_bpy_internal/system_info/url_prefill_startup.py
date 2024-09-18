@@ -89,7 +89,7 @@ def url_from_blender() -> str:
         return ""
 
     query_params["broken_version"] = (
-        "{version:s}, branch: {branch:s}, commit date: {commit_date:s} {commit_time:s}, hash `{build_hash:s}`".format(
+        "{version:s}, branch: {branch:s}, commit date: {commit_date:s} {commit_time:s}, hash {build_hash:s}".format(
             **values,
         )
     )

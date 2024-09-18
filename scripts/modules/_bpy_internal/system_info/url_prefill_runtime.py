@@ -39,7 +39,7 @@ def url_from_blender(*, addon_info=None):
         gpu.platform.version_get(),
     )
 
-    query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash: `{:s}`".format(
+    query_params["broken_version"] = "{:s}, branch: {:s}, commit date: {:s} {:s}, hash: {:s}".format(
         bpy.app.version_string,
         bpy.app.build_branch.decode('utf-8', 'replace'),
         bpy.app.build_commit_date.decode('utf-8', 'replace'),
