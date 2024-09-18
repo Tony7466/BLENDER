@@ -162,7 +162,6 @@ bool ED_userpref_tab_has_search_result(SpaceUserPref *spref, const int index)
 blender::Vector<eUserPref_Section> ED_userpref_tabs_list(SpaceUserPref * /*prefs*/)
 {
   blender::Vector<eUserPref_Section> result;
-  const EnumPropertyItem *items = rna_enum_preference_section_items;
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != nullptr;
        it++)
   {
@@ -177,10 +176,7 @@ blender::Vector<eUserPref_Section> ED_userpref_tabs_list(SpaceUserPref * /*prefs
 /** \name "Off Screen" Layout Generation for Userpref Search
  * \{ */
 
-static bool property_search_for_context(const bContext *C,
-                                        ARegion *region,
-                                        SpaceUserPref *sprefs,
-                                        short section)
+static bool property_search_for_context(const bContext *C, ARegion *region, short section)
 {
   char lower[64];
   const char *name = nullptr;
@@ -255,8 +251,7 @@ static void userpref_search_all_tabs(const bContext *C,
     }
 
     /* Actually do the search and store the result in the bitmap. */
-    const bool found = property_search_for_context(
-        C, region_copy, &sprefs_copy, context_tabs_array[i]);
+    const bool found = property_search_for_context(C, region_copy, context_tabs_array[i]);
     BLI_BITMAP_SET(sprefs->runtime->tab_search_results, i, found);
 
     UI_blocklist_free(C, region_copy);
