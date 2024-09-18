@@ -349,9 +349,9 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
     /* Create the window. */
     NSRect rect;
     rect.origin.x = left;
-  rect.origin.y = bottom;
-  rect.size.width = width;
-  rect.size.height = height;
+    rect.origin.y = bottom;
+    rect.size.width = width;
+    rect.size.height = height;
 
     NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
                                   NSWindowStyleMaskResizable;
