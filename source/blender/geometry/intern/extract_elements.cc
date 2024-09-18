@@ -376,4 +376,60 @@ Array<GreasePencil *> extract_greasepencil_layer_points(
   return grease_pencils;
 }
 
+Array<GreasePencil *> extract_greasepencil_layer_curves(
+    const GreasePencil &grease_pencil,
+    const int layer_i,
+    const IndexMask &mask,
+    const bke::AttributeFilter &attribute_filter)
+{
+  using namespace bke::greasepencil;
+  const Layer &src_layer = *grease_pencil.layer(layer_i);
+  const Drawing &src_drawing = *grease_pencil.get_eval_drawing(src_layer);
+  const bke::CurvesGeometry &src_curves = src_drawing.strokes();
+  const bke::AttributeAccessor src_layer_attributes = grease_pencil.attributes();
+  const bke::AttributeAccessor src_curves_attributes = src_curves.attributes();
+  const OffsetIndices<int> src_points_by_curve = src_curves.points_by_curve();
+
+  Array<GreasePencil *> grease_pencils(mask.size(), nullptr);
+  mask.foreach_index(GrainSize(32), [&](const int curve_i, const int new_i) {
+    const IndexRange src_points = src_points_by_curve[curve_i];
+    const int points_num = src_points.size();
+
+    GreasePencil *curve_grease_pencil = BKE_grease_pencil_new_nomain();
+    curve_grease_pencil->material_array = static_cast<Material **>(
+        MEM_dupallocN(grease_pencil.material_array));
+    curve_grease_pencil->material_array_num = grease_pencil.material_array_num;
+
+    Layer &new_layer = curve_grease_pencil->add_layer(src_layer.name());
+    Drawing &drawing = *curve_grease_pencil->insert_frame(
+        new_layer, curve_grease_pencil->runtime->eval_frame);
+    bke::CurvesGeometry &new_curves = drawing.strokes_for_write();
+
+    new_curves.resize(points_num, 1);
+    bke::gather_attributes(src_curves_attributes,
+                           bke::AttrDomain::Point,
+                           bke::AttrDomain::Point,
+                           attribute_filter,
+                           src_points,
+                           new_curves.attributes_for_write());
+    bke::gather_attributes(src_curves_attributes,
+                           bke::AttrDomain::Curve,
+                           bke::AttrDomain::Curve,
+                           attribute_filter,
+                           Span<int>{curve_i},
+                           new_curves.attributes_for_write());
+    bke::gather_attributes(src_layer_attributes,
+                           bke::AttrDomain::Layer,
+                           bke::AttrDomain::Layer,
+                           attribute_filter,
+                           Span<int>{layer_i},
+                           curve_grease_pencil->attributes_for_write());
+
+    new_curves.update_curve_types();
+    grease_pencils[new_i] = curve_grease_pencil;
+  });
+
+  return grease_pencils;
+}
+
 }  // namespace blender::geometry
