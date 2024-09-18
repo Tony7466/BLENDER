@@ -304,14 +304,13 @@ static uiBlock *wm_block_splash_create(bContext *C, ARegion *region, void * /*ar
     uiLayout *row2 = uiLayoutRow(split, true);
 
     uiItemL(row1,
-            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT,
-                       "Intel binary detected. Expect reduced performance."),
+            RPT_("Intel binary detected. Expect reduced performance."),
             ICON_ERROR);
 
     PointerRNA op_ptr;
     uiItemFullO(row2,
                 "WM_OT_url_open",
-                RPT_("Learn More"),
+                CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Learn More"),
                 ICON_URL,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
