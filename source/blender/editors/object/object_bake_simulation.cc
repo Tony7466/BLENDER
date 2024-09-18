@@ -1141,6 +1141,7 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
   blender::nodes_modifier_packed_bake_free(bake->packed);
   bake->packed = nullptr;
   nmd.runtime->cache->reset_cache(bake_id);
+  bake->bake_target = NODES_MODIFIER_BAKE_TARGET_DISK;
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
