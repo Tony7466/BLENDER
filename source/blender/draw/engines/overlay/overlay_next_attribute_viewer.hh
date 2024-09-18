@@ -70,12 +70,12 @@ class AttributeViewer {
               instances.attributes()->lookup_meta_data(".viewer"))
       {
         if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-          populate_cache_for_instance(ob_ref, *dupli_object, opacity, manager);
+          populate_for_instance(ob_ref, *dupli_object, opacity, manager);
           return;
         }
       }
     }
-    populate_cache_for_geometry(ob_ref, opacity, state, manager);
+    populate_for_geometry(ob_ref, opacity, state, manager);
   }
 
   void draw(Framebuffer &framebuffer, Manager &manager, View &view)
@@ -89,7 +89,7 @@ class AttributeViewer {
   }
 
  private:
-  void populate_cache_for_instance(const ObjectRef &ob_ref,
+  void populate_for_instance(const ObjectRef &ob_ref,
                                    const DupliObject &dupli_object,
                                    const float opacity,
                                    Manager &manager)
@@ -155,7 +155,7 @@ class AttributeViewer {
            (CD_MASK_PROP_ALL & ~(CD_MASK_PROP_QUATERNION | CD_MASK_PROP_FLOAT4X4));
   }
 
-  void populate_cache_for_geometry(const ObjectRef &ob_ref,
+  void populate_for_geometry(const ObjectRef &ob_ref,
                                    const float opacity,
                                    const State &state,
                                    Manager &manager)
