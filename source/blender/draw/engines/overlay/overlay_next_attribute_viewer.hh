@@ -21,11 +21,11 @@ class AttributeViewer {
  private:
   PassMain ps_ = {"attribute_viewer_ps_"};
 
-  PassMain::Sub *mesh_sub_;
-  PassMain::Sub *pointcloud_sub_;
-  PassMain::Sub *curve_sub_;
-  PassMain::Sub *curves_sub_;
-  PassMain::Sub *instance_sub_;
+  PassMain::Sub *mesh_sub_ = nullptr;
+  PassMain::Sub *pointcloud_sub_ = nullptr;
+  PassMain::Sub *curve_sub_ = nullptr;
+  PassMain::Sub *curves_sub_ = nullptr;
+  PassMain::Sub *instance_sub_ = nullptr;
 
   bool enabled_ = false;
 
