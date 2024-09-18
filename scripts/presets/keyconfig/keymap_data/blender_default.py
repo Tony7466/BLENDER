@@ -3113,6 +3113,7 @@ def km_sequencerpreview(params):
         ("sequencer.text_line_break", {"type": 'RET', "value": 'PRESS', "repeat": True}, None),
         ("sequencer.text_line_break", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "repeat": True}, None),
         ("sequencer.text_select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.text_deselect_all", {"type": 'ESC', "value": 'PRESS'}, None),
 
         # Selection.
         *_template_sequencer_preview_select(

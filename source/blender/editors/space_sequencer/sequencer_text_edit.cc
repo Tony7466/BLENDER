@@ -566,3 +566,27 @@ void SEQUENCER_OT_text_select_all(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_UNDO;
 }
+
+static int sequencer_text_deselect_all(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  text_selection_cancel(data);
+  text_editing_update(C);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_deselect_all(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Deselect All";
+  ot->description = "Deselect all characters";
+  ot->idname = "SEQUENCER_OT_text_deselect_all";
+
+  /* api callbacks */
+  ot->exec = sequencer_text_deselect_all;
+  ot->poll = sequencer_text_editing_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+}
