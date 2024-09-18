@@ -51,6 +51,13 @@ static bool sequencer_text_editing_poll(bContext *C)
   return sequencer_editing_initialized_and_active(C);
 }
 
+// xxx not nice
+static void text_selection_cancel(TextVars *data)
+{
+  data->selection_start_offset = -1;
+  data->selection_end_offset = -1;
+}
+
 static void text_editing_update(bContext *C)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
@@ -226,13 +233,6 @@ static int2 cursor_move_next_word(int2 cursor_position, TextVarsRuntime *text)
   return cursor_position;
 }
 
-// xxx not nice
-static void text_selection_cancel(TextVars *data)
-{
-  data->selection_start_offset = -1;
-  data->selection_end_offset = -1;
-}
-
 static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
@@ -324,7 +324,7 @@ void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot)
 
 static int sequencer_text_insert_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
-  /*
+  /* xxx
    */
   return OPERATOR_FINISHED;
 }
@@ -348,6 +348,7 @@ static void text_insert(TextVars *data, const char *buf)
   // this is not always true at the start of line when wrapping. Also wrapped string is stored
   // raw in buffer, will have to check if multiple spaces would cause issues. Likely they do!
   data->cursor_offset += 1;
+  text_selection_cancel(data);
 }
 
 static int sequencer_text_insert_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
@@ -444,6 +445,7 @@ static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
     data->cursor_offset -= 1;
   }
 
+  text_selection_cancel(data);
   text_editing_update(C);
   return OPERATOR_FINISHED;
 }
