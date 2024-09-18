@@ -1003,10 +1003,14 @@ static void convert_buffer(void *dst_memory,
       break;
 
     case ConversionType::FLOAT_TO_HALF:
-      convert_per_component<F16, F32>(dst_memory, src_memory, buffer_size, device_format);
+      blender::math::float_to_half_array(static_cast<const float *>(src_memory),
+                                         static_cast<uint16_t *>(dst_memory),
+                                         to_component_len(device_format) * buffer_size);
       break;
     case ConversionType::HALF_TO_FLOAT:
-      convert_per_component<F32, F16>(dst_memory, src_memory, buffer_size, device_format);
+      blender::math::half_to_float_array(static_cast<const uint16_t *>(src_memory),
+                                         static_cast<float *>(dst_memory),
+                                         to_component_len(device_format) * buffer_size);
       break;
 
     case ConversionType::FLOAT_TO_SRGBA8:

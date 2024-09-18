@@ -114,6 +114,20 @@ float blender::math::half_to_float(uint16_t v)
 #endif
 }
 
+void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t length)
+{
+  for (size_t i = 0; i < length; i++) {
+    *dst++ = float_to_half(*src++);
+  }
+}
+
+void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t length)
+{
+  for (size_t i = 0; i < length; i++) {
+    *dst++ = half_to_float(*src++);
+  }
+}
+
 #ifdef USE_HARDWARE_FP16_NEON
 #  undef USE_HARDWARE_FP16_NEON
 #endif
