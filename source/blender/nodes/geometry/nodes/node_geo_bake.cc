@@ -762,18 +762,21 @@ std::optional<std::string> get_bake_state_string(const BakeDrawContext &ctx)
   return std::nullopt;
 }
 
-void draw_bake_button_row(const BakeDrawContext &ctx,
-                          uiLayout *layout,
-                          const bool show_pack_operator)
+void draw_bake_button_row(const BakeDrawContext &ctx, uiLayout *layout, const bool is_in_sidebar)
 {
   uiLayout *col = uiLayoutColumn(layout, true);
   uiLayout *row = uiLayoutRow(col, true);
   {
+    const char *bake_label = IFACE_("Bake");
+    if (is_in_sidebar) {
+      bake_label = ctx.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK ? IFACE_("Bake to Disk") :
+                                                                        IFACE_("Bake Packed");
+    }
+
     PointerRNA ptr;
     uiItemFullO(row,
                 "OBJECT_OT_geometry_node_bake_single",
-                ctx.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK ? IFACE_("Bake to Disk") :
-                                                                     IFACE_("Bake Packed"),
+                bake_label,
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
@@ -786,7 +789,7 @@ void draw_bake_button_row(const BakeDrawContext &ctx,
   {
     uiLayout *subrow = uiLayoutRow(row, true);
     uiLayoutSetActive(subrow, ctx.is_baked);
-    if (show_pack_operator) {
+    if (is_in_sidebar) {
       if (ctx.is_baked && !G.is_rendering) {
         if (ctx.bake->packed) {
           PointerRNA ptr;

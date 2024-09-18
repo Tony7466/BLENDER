@@ -104,6 +104,6 @@ std::optional<std::string> get_bake_state_string(const BakeDrawContext &ctx);
 void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layout);
 void draw_bake_button_row(const BakeDrawContext &ctx,
                           uiLayout *layout,
-                          bool show_pack_operator = false);
+                          bool is_in_sidebar = false);
 
 }  // namespace blender::nodes
