@@ -1075,6 +1075,7 @@ static int pack_single_bake_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   bake->packed = bake::pack_bake_from_disk(*bake_path, op->reports);
+  bake->bake_target = NODES_MODIFIER_BAKE_TARGET_PACKED;
   nmd.runtime->cache->reset_cache(bake_id);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
