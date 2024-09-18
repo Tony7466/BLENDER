@@ -5,6 +5,11 @@
 /** \file
  * \ingroup bke
  */
+
+#ifdef _MSC_VER
+#  include <malloc.h>
+#endif
+
 #include "MEM_guardedalloc.h"
 
 #include <cstring>

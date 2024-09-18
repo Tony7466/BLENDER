@@ -9,6 +9,10 @@
  * both extruding
  */
 
+#ifdef _MSC_VER
+#  include <malloc.h>
+#endif
+
 #include <cstring>
 
 #include "BLI_listbase.h"
