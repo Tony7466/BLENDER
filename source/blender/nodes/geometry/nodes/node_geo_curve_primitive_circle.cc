@@ -26,18 +26,46 @@ static void node_declare(NodeDeclarationBuilder &b)
     node_storage(node).mode = GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_RADIUS;
   };
 
-  b.add_input<decl::Int>("Resolution").default_value(32).min(3).max(512).description("Number of points on the circle");
-  auto &start = b.add_input<decl::Vector>("Point 1").default_value({-1.0f, 0.0f, 0.0f}).subtype(PROP_TRANSLATION).description("One of the three points on the circle. The point order determines the circle's direction").make_available(endable_points);
-  auto &middle = b.add_input<decl::Vector>("Point 2").default_value({0.0f, 1.0f, 0.0f}).subtype(PROP_TRANSLATION).description("One of the three points on the circle. The point order determines the circle's direction").make_available(endable_points);
-  auto &end = b.add_input<decl::Vector>("Point 3").default_value({1.0f, 0.0f, 0.0f}).subtype(PROP_TRANSLATION).description("One of the three points on the circle. The point order determines the circle's direction").make_available(endable_points);
-  auto &radius = b.add_input<decl::Float>("Radius").default_value(1.0f).min(0.0f).subtype(PROP_DISTANCE).description("Distance of the points from the origin").make_available(enable_radius);
+  b.add_input<decl::Int>("Resolution")
+      .default_value(32)
+      .min(3)
+      .max(512)
+      .description("Number of points on the circle");
+  auto &start = b.add_input<decl::Vector>("Point 1")
+                    .default_value({-1.0f, 0.0f, 0.0f})
+                    .subtype(PROP_TRANSLATION)
+                    .description(
+                        "One of the three points on the circle. The point order determines the "
+                        "circle's direction")
+                    .make_available(endable_points);
+  auto &middle = b.add_input<decl::Vector>("Point 2")
+                     .default_value({0.0f, 1.0f, 0.0f})
+                     .subtype(PROP_TRANSLATION)
+                     .description(
+                         "One of the three points on the circle. The point order determines the "
+                         "circle's direction")
+                     .make_available(endable_points);
+  auto &end = b.add_input<decl::Vector>("Point 3")
+                  .default_value({1.0f, 0.0f, 0.0f})
+                  .subtype(PROP_TRANSLATION)
+                  .description(
+                      "One of the three points on the circle. The point order determines the "
+                      "circle's direction")
+                  .make_available(endable_points);
+  auto &radius = b.add_input<decl::Float>("Radius")
+                     .default_value(1.0f)
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .description("Distance of the points from the origin")
+                     .make_available(enable_radius);
   b.add_output<decl::Geometry>("Curve");
   auto &center = b.add_output<decl::Vector>("Center").make_available(endable_points);
 
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurvePrimitiveCircle &storage = node_storage(*node);
-    const GeometryNodeCurvePrimitiveCircleMode mode = GeometryNodeCurvePrimitiveCircleMode(storage.mode);
+    const GeometryNodeCurvePrimitiveCircleMode mode = GeometryNodeCurvePrimitiveCircleMode(
+        storage.mode);
 
     start.available(mode == GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS);
     middle.available(mode == GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS);

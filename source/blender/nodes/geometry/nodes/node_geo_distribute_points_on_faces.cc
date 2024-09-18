@@ -36,10 +36,26 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  auto &distance_min = b.add_input<decl::Float>("Distance Min").min(0.0f).subtype(PROP_DISTANCE).make_available(enable_poisson);
-  auto &density_max = b.add_input<decl::Float>("Density Max").default_value(10.0f).min(0.0f).make_available(enable_poisson);
-  auto &density = b.add_input<decl::Float>("Density").default_value(10.0f).min(0.0f).field_on_all().make_available(enable_random);
-  auto &density_factor = b.add_input<decl::Float>("Density Factor").default_value(1.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR).field_on_all().make_available(enable_poisson);
+  auto &distance_min = b.add_input<decl::Float>("Distance Min")
+                           .min(0.0f)
+                           .subtype(PROP_DISTANCE)
+                           .make_available(enable_poisson);
+  auto &density_max = b.add_input<decl::Float>("Density Max")
+                          .default_value(10.0f)
+                          .min(0.0f)
+                          .make_available(enable_poisson);
+  auto &density = b.add_input<decl::Float>("Density")
+                      .default_value(10.0f)
+                      .min(0.0f)
+                      .field_on_all()
+                      .make_available(enable_random);
+  auto &density_factor = b.add_input<decl::Float>("Density Factor")
+                             .default_value(1.0f)
+                             .min(0.0f)
+                             .max(1.0f)
+                             .subtype(PROP_FACTOR)
+                             .field_on_all()
+                             .make_available(enable_poisson);
   b.add_input<decl::Int>("Seed");
 
   b.add_output<decl::Geometry>("Points").propagate_all();

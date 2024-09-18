@@ -25,16 +25,21 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   const bNode *node = b.node_or_null();
 
-  auto &first_geometry = b.add_input<decl::Geometry>("Mesh 1").only_realized_data().supported_type(GeometryComponent::Type::Mesh);
+  auto &first_geometry = b.add_input<decl::Geometry>("Mesh 1").only_realized_data().supported_type(
+      GeometryComponent::Type::Mesh);
 
   if (node != nullptr) {
     switch (geometry::boolean::Operation(node->custom1)) {
       case geometry::boolean::Operation::Intersect:
       case geometry::boolean::Operation::Union:
-        b.add_input<decl::Geometry>("Mesh", "Mesh 2").supported_type(GeometryComponent::Type::Mesh).multi_input();
+        b.add_input<decl::Geometry>("Mesh", "Mesh 2")
+            .supported_type(GeometryComponent::Type::Mesh)
+            .multi_input();
         break;
       case geometry::boolean::Operation::Difference:
-        b.add_input<decl::Geometry>("Mesh 2").supported_type(GeometryComponent::Type::Mesh).multi_input();
+        b.add_input<decl::Geometry>("Mesh 2")
+            .supported_type(GeometryComponent::Type::Mesh)
+            .multi_input();
         break;
     }
   }
@@ -42,12 +47,15 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Self Intersection");
   b.add_input<decl::Bool>("Hole Tolerant");
   b.add_output<decl::Geometry>("Mesh").propagate_all();
-  auto &output_edges = b.add_output<decl::Bool>("Intersecting Edges").field_on_all().make_available([](bNode &node) {
-    node.custom2 = int16_t(geometry::boolean::Solver::MeshArr);
-  });
+  auto &output_edges = b.add_output<decl::Bool>("Intersecting Edges")
+                           .field_on_all()
+                           .make_available([](bNode &node) {
+                             node.custom2 = int16_t(geometry::boolean::Solver::MeshArr);
+                           });
 
   if (node != nullptr) {
-    output_edges.available(geometry::boolean::Solver(node->custom2) == geometry::boolean::Solver::MeshArr);
+    output_edges.available(geometry::boolean::Solver(node->custom2) ==
+                           geometry::boolean::Solver::MeshArr);
 
     switch (geometry::boolean::Operation(node->custom1)) {
       case geometry::boolean::Operation::Intersect:

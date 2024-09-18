@@ -33,10 +33,10 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(512)
       .description("The number of edges running vertically along the side of the cone");
   auto &fill = b.add_input<decl::Int>("Fill Segments")
-      .default_value(1)
-      .min(1)
-      .max(512)
-      .description("Number of concentric rings used to fill the round face");
+                   .default_value(1)
+                   .min(1)
+                   .max(512)
+                   .description("Number of concentric rings used to fill the round face");
   b.add_input<decl::Float>("Radius Top")
       .min(0.0f)
       .subtype(PROP_DISTANCE)
@@ -61,7 +61,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryMeshCone &storage = node_storage(*node);
-    const GeometryNodeMeshCircleFillType fill_type = GeometryNodeMeshCircleFillType(storage.fill_type);
+    const GeometryNodeMeshCircleFillType fill_type = GeometryNodeMeshCircleFillType(
+        storage.fill_type);
     fill.available(fill_type != GEO_NODE_MESH_CIRCLE_FILL_NONE);
   }
 }

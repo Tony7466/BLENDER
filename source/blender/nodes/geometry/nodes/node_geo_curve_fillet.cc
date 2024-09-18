@@ -21,8 +21,16 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveFillet)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curve").supported_type({GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
-  auto &count_input = b.add_input<decl::Int>("Count").default_value(1).min(1).max(1000).field_on_all().make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_FILLET_POLY; });
+  b.add_input<decl::Geometry>("Curve").supported_type(
+      {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
+  auto &count_input = b.add_input<decl::Int>("Count")
+                          .default_value(1)
+                          .min(1)
+                          .max(1000)
+                          .field_on_all()
+                          .make_available([](bNode &node) {
+                            node_storage(node).mode = GEO_NODE_CURVE_FILLET_POLY;
+                          });
   b.add_input<decl::Float>("Radius")
       .min(0.0f)
       .max(FLT_MAX)
@@ -32,7 +40,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Limit Radius")
       .description("Limit the maximum value of the radius in order to avoid overlapping fillets");
   b.add_output<decl::Geometry>("Curve").propagate_all();
-  
+
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurveFillet &storage = node_storage(*node);

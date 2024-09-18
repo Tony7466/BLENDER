@@ -34,16 +34,25 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("Word Spacing").default_value(1.0f).min(0.0f);
   b.add_input<decl::Float>("Line Spacing").default_value(1.0f).min(0.0f);
   b.add_input<decl::Float>("Text Box Width").default_value(0.0f).min(0.0f).subtype(PROP_DISTANCE);
-  auto &height = b.add_input<decl::Float>("Text Box Height").default_value(0.0f).min(0.0f).subtype(PROP_DISTANCE).make_available([](bNode &node) { node_storage(node).overflow = GEO_NODE_STRING_TO_CURVES_MODE_SCALE_TO_FIT; });
+  auto &height = b.add_input<decl::Float>("Text Box Height")
+                     .default_value(0.0f)
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .make_available([](bNode &node) {
+                       node_storage(node).overflow = GEO_NODE_STRING_TO_CURVES_MODE_SCALE_TO_FIT;
+                     });
   b.add_output<decl::Geometry>("Curve Instances");
-  auto &remainder = b.add_output<decl::String>("Remainder").make_available([](bNode &node) {node_storage(node).overflow = GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE;});
+  auto &remainder = b.add_output<decl::String>("Remainder").make_available([](bNode &node) {
+    node_storage(node).overflow = GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE;
+  });
   b.add_output<decl::Int>("Line").field_on_all();
   b.add_output<decl::Vector>("Pivot Point").field_on_all();
 
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryStringToCurves &storage = node_storage(*node);
-    const GeometryNodeStringToCurvesOverflowMode overflow = GeometryNodeStringToCurvesOverflowMode(storage.overflow);
+    const GeometryNodeStringToCurvesOverflowMode overflow = GeometryNodeStringToCurvesOverflowMode(
+        storage.overflow);
 
     remainder.available(overflow == GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE);
     height.available(overflow != GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW);

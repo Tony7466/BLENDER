@@ -24,7 +24,8 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveSample)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Curves").only_realized_data().supported_type(
+      GeometryComponent::Type::Curve);
 
   if (const bNode *node = b.node_or_null()) {
     const NodeGeometryCurveSample &storage = node_storage(*node);
@@ -32,25 +33,30 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
 
   auto &factor = b.add_input<decl::Float>("Factor")
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR)
-      .field_on_all()
-      .make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; });
+                     .min(0.0f)
+                     .max(1.0f)
+                     .subtype(PROP_FACTOR)
+                     .field_on_all()
+                     .make_available([](bNode &node) {
+                       node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR;
+                     });
   auto &length = b.add_input<decl::Float>("Length")
-      .min(0.0f)
-      .subtype(PROP_DISTANCE)
-      .field_on_all()
-      .make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; });
-  auto &index = b.add_input<decl::Int>("Curve Index").field_on_all().make_available([](bNode &node) {
-    node_storage(node).use_all_curves = false;
-  });
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .field_on_all()
+                     .make_available([](bNode &node) {
+                       node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH;
+                     });
+  auto &index =
+      b.add_input<decl::Int>("Curve Index").field_on_all().make_available([](bNode &node) {
+        node_storage(node).use_all_curves = false;
+      });
 
   if (const bNode *node = b.node_or_null()) {
     const NodeGeometryCurveSample &storage = node_storage(*node);
     const GeometryNodeCurveSampleMode mode = GeometryNodeCurveSampleMode(storage.mode);
     b.add_output(eCustomDataType(storage.data_type), "Value").dependent_field({2, 3, 4});
-    
+
     factor.available(mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
     factor.available(mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
     index.available(!storage.use_all_curves);

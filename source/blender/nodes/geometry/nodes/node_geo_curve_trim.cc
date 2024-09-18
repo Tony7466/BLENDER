@@ -23,14 +23,43 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveTrim)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curve").supported_type({GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
+  b.add_input<decl::Geometry>("Curve").supported_type(
+      {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().supports_field();
-  auto &start_fac = b.add_input<decl::Float>("Start").min(0.0f).max(1.0f).subtype(PROP_FACTOR).make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; }).field_on_all();
-  auto &end_fac = b.add_input<decl::Float>("End").min(0.0f).max(1.0f).default_value(1.0f).subtype(PROP_FACTOR).make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR; }).field_on_all();
-  auto &start_len = b.add_input<decl::Float>("Start", "Start_001").min(0.0f).subtype(PROP_DISTANCE).make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; }).field_on_all();
-  auto &end_len = b.add_input<decl::Float>("End", "End_001").min(0.0f).default_value(1.0f).subtype(PROP_DISTANCE).make_available([](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH; }).field_on_all();
+  auto &start_fac = b.add_input<decl::Float>("Start")
+                        .min(0.0f)
+                        .max(1.0f)
+                        .subtype(PROP_FACTOR)
+                        .make_available([](bNode &node) {
+                          node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR;
+                        })
+                        .field_on_all();
+  auto &end_fac = b.add_input<decl::Float>("End")
+                      .min(0.0f)
+                      .max(1.0f)
+                      .default_value(1.0f)
+                      .subtype(PROP_FACTOR)
+                      .make_available([](bNode &node) {
+                        node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_FACTOR;
+                      })
+                      .field_on_all();
+  auto &start_len = b.add_input<decl::Float>("Start", "Start_001")
+                        .min(0.0f)
+                        .subtype(PROP_DISTANCE)
+                        .make_available([](bNode &node) {
+                          node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH;
+                        })
+                        .field_on_all();
+  auto &end_len = b.add_input<decl::Float>("End", "End_001")
+                      .min(0.0f)
+                      .default_value(1.0f)
+                      .subtype(PROP_DISTANCE)
+                      .make_available([](bNode &node) {
+                        node_storage(node).mode = GEO_NODE_CURVE_SAMPLE_LENGTH;
+                      })
+                      .field_on_all();
   b.add_output<decl::Geometry>("Curve").propagate_all();
-  
+
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurveTrim &storage = node_storage(*node);

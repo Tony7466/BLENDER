@@ -18,19 +18,70 @@ NODE_STORAGE_FUNCS(NodeGeometryCurvePrimitiveQuad)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  auto &width = b.add_input<decl::Float>("Width").default_value(2.0f).min(0.0f).subtype(PROP_DISTANCE).description("The X axis size of the shape");
-  auto &height = b.add_input<decl::Float>("Height").default_value(2.0f).min(0.0f).subtype(PROP_DISTANCE).description("The Y axis size of the shape").available(false);
-  auto &bottom = b.add_input<decl::Float>("Bottom Width").default_value(4.0f).min(0.0f).subtype(PROP_DISTANCE).description("The X axis size of the shape").available(false);
-  auto &top = b.add_input<decl::Float>("Top Width").default_value(2.0f).min(0.0f).subtype(PROP_DISTANCE).description("The X axis size of the shape").available(false);
-  auto &offset = b.add_input<decl::Float>("Offset").default_value(1.0f).subtype(PROP_DISTANCE).description("For Parallelogram, the relative X difference between the top and bottom edges. For Trapezoid, the amount to move the top edge in the positive X axis").available(false);
-  auto &bottom_height = b.add_input<decl::Float>("Bottom Height").default_value(3.0f).min(0.0f).subtype(PROP_DISTANCE).description("The distance between the bottom point and the X axis").available(false);
-  auto &top_height = b.add_input<decl::Float>("Top Height").default_value(1.0f).subtype(PROP_DISTANCE).description("The distance between the top point and the X axis").available(false);
-  auto &p1 = b.add_input<decl::Vector>("Point 1").default_value({-1.0f, -1.0f, 0.0f}).subtype(PROP_TRANSLATION).description("The exact location of the point to use").available(false);
-  auto &p2 = b.add_input<decl::Vector>("Point 2").default_value({1.0f, -1.0f, 0.0f}).subtype(PROP_TRANSLATION).description("The exact location of the point to use").available(false);
-  auto &p3 = b.add_input<decl::Vector>("Point 3").default_value({1.0f, 1.0f, 0.0f}).subtype(PROP_TRANSLATION).description("The exact location of the point to use").available(false);
-  auto &p4 = b.add_input<decl::Vector>("Point 4").default_value({-1.0f, 1.0f, 0.0f}).subtype(PROP_TRANSLATION).description("The exact location of the point to use").available(false);
+  auto &width = b.add_input<decl::Float>("Width")
+                    .default_value(2.0f)
+                    .min(0.0f)
+                    .subtype(PROP_DISTANCE)
+                    .description("The X axis size of the shape");
+  auto &height = b.add_input<decl::Float>("Height")
+                     .default_value(2.0f)
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .description("The Y axis size of the shape")
+                     .available(false);
+  auto &bottom = b.add_input<decl::Float>("Bottom Width")
+                     .default_value(4.0f)
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .description("The X axis size of the shape")
+                     .available(false);
+  auto &top = b.add_input<decl::Float>("Top Width")
+                  .default_value(2.0f)
+                  .min(0.0f)
+                  .subtype(PROP_DISTANCE)
+                  .description("The X axis size of the shape")
+                  .available(false);
+  auto &offset =
+      b.add_input<decl::Float>("Offset")
+          .default_value(1.0f)
+          .subtype(PROP_DISTANCE)
+          .description(
+              "For Parallelogram, the relative X difference between the top and bottom edges. For "
+              "Trapezoid, the amount to move the top edge in the positive X axis")
+          .available(false);
+  auto &bottom_height = b.add_input<decl::Float>("Bottom Height")
+                            .default_value(3.0f)
+                            .min(0.0f)
+                            .subtype(PROP_DISTANCE)
+                            .description("The distance between the bottom point and the X axis")
+                            .available(false);
+  auto &top_height = b.add_input<decl::Float>("Top Height")
+                         .default_value(1.0f)
+                         .subtype(PROP_DISTANCE)
+                         .description("The distance between the top point and the X axis")
+                         .available(false);
+  auto &p1 = b.add_input<decl::Vector>("Point 1")
+                 .default_value({-1.0f, -1.0f, 0.0f})
+                 .subtype(PROP_TRANSLATION)
+                 .description("The exact location of the point to use")
+                 .available(false);
+  auto &p2 = b.add_input<decl::Vector>("Point 2")
+                 .default_value({1.0f, -1.0f, 0.0f})
+                 .subtype(PROP_TRANSLATION)
+                 .description("The exact location of the point to use")
+                 .available(false);
+  auto &p3 = b.add_input<decl::Vector>("Point 3")
+                 .default_value({1.0f, 1.0f, 0.0f})
+                 .subtype(PROP_TRANSLATION)
+                 .description("The exact location of the point to use")
+                 .available(false);
+  auto &p4 = b.add_input<decl::Vector>("Point 4")
+                 .default_value({-1.0f, 1.0f, 0.0f})
+                 .subtype(PROP_TRANSLATION)
+                 .description("The exact location of the point to use")
+                 .available(false);
   b.add_output<decl::Geometry>("Curve");
-  
+
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurvePrimitiveQuad &storage = node_storage(*node);

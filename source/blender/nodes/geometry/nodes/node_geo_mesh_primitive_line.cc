@@ -26,10 +26,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   auto &count = b.add_input<decl::Int>("Count").default_value(10).min(1).max(10000).description(
       "Number of vertices on the line");
   auto &resolution = b.add_input<decl::Float>("Resolution")
-      .default_value(1.0f)
-      .min(0.1f)
-      .subtype(PROP_DISTANCE)
-      .description("Length of each individual edge");
+                         .default_value(1.0f)
+                         .min(0.1f)
+                         .subtype(PROP_DISTANCE)
+                         .description("Length of each individual edge");
   b.add_input<decl::Vector>("Start Location")
       .subtype(PROP_TRANSLATION)
       .description("Position of the first vertex");
@@ -45,9 +45,12 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (node != nullptr) {
     const NodeGeometryMeshLine &storage = node_storage(*node);
     const GeometryNodeMeshLineMode mode = GeometryNodeMeshLineMode(storage.mode);
-    const GeometryNodeMeshLineCountMode count_mode = GeometryNodeMeshLineCountMode(storage.count_mode);
-    count.available(mode == GEO_NODE_MESH_LINE_MODE_OFFSET || count_mode == GEO_NODE_MESH_LINE_COUNT_TOTAL);
-    resolution.available(mode == GEO_NODE_MESH_LINE_MODE_END_POINTS && count_mode == GEO_NODE_MESH_LINE_COUNT_RESOLUTION);
+    const GeometryNodeMeshLineCountMode count_mode = GeometryNodeMeshLineCountMode(
+        storage.count_mode);
+    count.available(mode == GEO_NODE_MESH_LINE_MODE_OFFSET ||
+                    count_mode == GEO_NODE_MESH_LINE_COUNT_TOTAL);
+    resolution.available(mode == GEO_NODE_MESH_LINE_MODE_END_POINTS &&
+                         count_mode == GEO_NODE_MESH_LINE_COUNT_RESOLUTION);
   }
 }
 

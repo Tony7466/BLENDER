@@ -33,14 +33,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   auto &first_grid = b.add_input<decl::Float>("Grid 1").hide_value();
 
   if (node) {
-    static const auto make_available = [](bNode &node) { node.custom1 = int16_t(Operation::Difference); };
+    static const auto make_available = [](bNode &node) {
+      node.custom1 = int16_t(Operation::Difference);
+    };
     switch (Operation(node->custom1)) {
       case Operation::Intersect:
       case Operation::Union:
-        b.add_input<decl::Float>("Grid", "Grid 2").hide_value().multi_input().make_available(make_available);
+        b.add_input<decl::Float>("Grid", "Grid 2")
+            .hide_value()
+            .multi_input()
+            .make_available(make_available);
         break;
       case Operation::Difference:
-        b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(make_available);
+        b.add_input<decl::Float>("Grid 2").hide_value().multi_input().make_available(
+            make_available);
         break;
     }
   }

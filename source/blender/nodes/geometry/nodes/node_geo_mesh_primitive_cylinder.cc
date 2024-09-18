@@ -32,10 +32,10 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(512)
       .description("The number of rectangular segments along each side");
   auto &fill = b.add_input<decl::Int>("Fill Segments")
-      .default_value(1)
-      .min(1)
-      .max(512)
-      .description("The number of concentric rings used to fill the round faces");
+                   .default_value(1)
+                   .min(1)
+                   .max(512)
+                   .description("The number of concentric rings used to fill the round faces");
   b.add_input<decl::Float>("Radius")
       .default_value(1.0f)
       .min(0.0f)
@@ -56,7 +56,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryMeshCylinder &storage = node_storage(*node);
-    const GeometryNodeMeshCircleFillType fill_type = GeometryNodeMeshCircleFillType(storage.fill_type);
+    const GeometryNodeMeshCircleFillType fill_type = GeometryNodeMeshCircleFillType(
+        storage.fill_type);
     fill.available(fill_type != GEO_NODE_MESH_CIRCLE_FILL_NONE);
   }
 }

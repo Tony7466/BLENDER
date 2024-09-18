@@ -23,25 +23,77 @@ NODE_STORAGE_FUNCS(NodeGeometryCurvePrimitiveArc)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  auto enable_points = [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_POINTS; };
-  auto enable_radius = [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_RADIUS; };
+  auto enable_points = [](bNode &node) {
+    node_storage(node).mode = GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_POINTS;
+  };
+  auto enable_radius = [](bNode &node) {
+    node_storage(node).mode = GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_RADIUS;
+  };
 
-  b.add_input<decl::Int>("Resolution").default_value(16).min(2).max(256).subtype(PROP_UNSIGNED).description("The number of points on the arc");
-  auto &start = b.add_input<decl::Vector>("Start").default_value({-1.0f, 0.0f, 0.0f}).subtype(PROP_TRANSLATION).description("Position of the first control point").make_available(enable_points);
-  auto &middle = b.add_input<decl::Vector>("Middle").default_value({0.0f, 2.0f, 0.0f}).subtype(PROP_TRANSLATION).description("Position of the middle control point").make_available(enable_points);
-  auto &end = b.add_input<decl::Vector>("End").default_value({1.0f, 0.0f, 0.0f}).subtype(PROP_TRANSLATION).description("Position of the last control point").make_available(enable_points);
-  auto &radius = b.add_input<decl::Float>("Radius").default_value(1.0f).min(0.0f).subtype(PROP_DISTANCE).description("Distance of the points from the origin").make_available(enable_radius);
-  auto &start_angle = b.add_input<decl::Float>("Start Angle").default_value(0.0f).subtype(PROP_ANGLE).description("Starting angle of the arc").make_available(enable_radius);
-  auto &sweep_angle = b.add_input<decl::Float>("Sweep Angle").default_value(1.75f * M_PI).min(-2 * M_PI).max(2 * M_PI).subtype(PROP_ANGLE).description("Length of the arc").make_available(enable_radius);
-  auto &offset_angle = b.add_input<decl::Float>("Offset Angle").default_value(0.0f).subtype(PROP_ANGLE).description("Offset angle of the arc").make_available(enable_points);
-  b.add_input<decl::Bool>("Connect Center").default_value(false).description("Connect the arc at the center");
-  b.add_input<decl::Bool>("Invert Arc").default_value(false).description("Invert and draw opposite arc");
+  b.add_input<decl::Int>("Resolution")
+      .default_value(16)
+      .min(2)
+      .max(256)
+      .subtype(PROP_UNSIGNED)
+      .description("The number of points on the arc");
+  auto &start = b.add_input<decl::Vector>("Start")
+                    .default_value({-1.0f, 0.0f, 0.0f})
+                    .subtype(PROP_TRANSLATION)
+                    .description("Position of the first control point")
+                    .make_available(enable_points);
+  auto &middle = b.add_input<decl::Vector>("Middle")
+                     .default_value({0.0f, 2.0f, 0.0f})
+                     .subtype(PROP_TRANSLATION)
+                     .description("Position of the middle control point")
+                     .make_available(enable_points);
+  auto &end = b.add_input<decl::Vector>("End")
+                  .default_value({1.0f, 0.0f, 0.0f})
+                  .subtype(PROP_TRANSLATION)
+                  .description("Position of the last control point")
+                  .make_available(enable_points);
+  auto &radius = b.add_input<decl::Float>("Radius")
+                     .default_value(1.0f)
+                     .min(0.0f)
+                     .subtype(PROP_DISTANCE)
+                     .description("Distance of the points from the origin")
+                     .make_available(enable_radius);
+  auto &start_angle = b.add_input<decl::Float>("Start Angle")
+                          .default_value(0.0f)
+                          .subtype(PROP_ANGLE)
+                          .description("Starting angle of the arc")
+                          .make_available(enable_radius);
+  auto &sweep_angle = b.add_input<decl::Float>("Sweep Angle")
+                          .default_value(1.75f * M_PI)
+                          .min(-2 * M_PI)
+                          .max(2 * M_PI)
+                          .subtype(PROP_ANGLE)
+                          .description("Length of the arc")
+                          .make_available(enable_radius);
+  auto &offset_angle = b.add_input<decl::Float>("Offset Angle")
+                           .default_value(0.0f)
+                           .subtype(PROP_ANGLE)
+                           .description("Offset angle of the arc")
+                           .make_available(enable_points);
+  b.add_input<decl::Bool>("Connect Center")
+      .default_value(false)
+      .description("Connect the arc at the center");
+  b.add_input<decl::Bool>("Invert Arc")
+      .default_value(false)
+      .description("Invert and draw opposite arc");
 
   b.add_output<decl::Geometry>("Curve");
-  auto &center_out = b.add_output<decl::Vector>("Center").description("The center of the circle described by the three points").make_available(enable_points);
-  auto &normal_out = b.add_output<decl::Vector>("Normal").description("The normal direction of the plane described by the three points, pointing towards the positive Z axis").make_available(enable_points);
-  auto &radius_out = b.add_output<decl::Float>("Radius").description("The radius of the circle described by the three points").make_available(enable_points);
-  
+  auto &center_out = b.add_output<decl::Vector>("Center")
+                         .description("The center of the circle described by the three points")
+                         .make_available(enable_points);
+  auto &normal_out = b.add_output<decl::Vector>("Normal")
+                         .description(
+                             "The normal direction of the plane described by the three points, "
+                             "pointing towards the positive Z axis")
+                         .make_available(enable_points);
+  auto &radius_out = b.add_output<decl::Float>("Radius")
+                         .description("The radius of the circle described by the three points")
+                         .make_available(enable_points);
+
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurvePrimitiveArc &storage = node_storage(*node);

@@ -32,8 +32,18 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Geometry").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
   b.add_input<decl::Float>("Scale", "Scale").default_value(1.0f).min(0.0f).field_on_all();
-  b.add_input<decl::Vector>("Center").subtype(PROP_TRANSLATION).implicit_field_on_all(implicit_field_inputs::position).description("Origin of the scaling for each element. If multiple elements are connected, their center is averaged");
-  auto &axis = b.add_input<decl::Vector>("Axis").default_value({1.0f, 0.0f, 0.0f}).field_on_all().description("Direction in which to scale the element").make_available([](bNode &node) { node.custom2 = GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS; });
+  b.add_input<decl::Vector>("Center")
+      .subtype(PROP_TRANSLATION)
+      .implicit_field_on_all(implicit_field_inputs::position)
+      .description(
+          "Origin of the scaling for each element. If multiple elements are connected, their "
+          "center is averaged");
+  auto &axis = b.add_input<decl::Vector>("Axis")
+                   .default_value({1.0f, 0.0f, 0.0f})
+                   .field_on_all()
+                   .description("Direction in which to scale the element")
+                   .make_available(
+                       [](bNode &node) { node.custom2 = GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS; });
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 
   const bNode *node = b.node_or_null();

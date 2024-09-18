@@ -31,23 +31,25 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Curve").supported_type(
       {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   auto &count = b.add_input<decl::Int>("Count")
-      .default_value(10)
-      .min(2)
-      .max(100000)
-      .field_on_all()
-      .make_available(
-          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_COUNT; });
+                    .default_value(10)
+                    .min(2)
+                    .max(100000)
+                    .field_on_all()
+                    .make_available([](bNode &node) {
+                      node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_COUNT;
+                    });
   auto &length = b.add_input<decl::Float>("Length")
-      .default_value(0.1f)
-      .min(0.001f)
-      .subtype(PROP_DISTANCE)
-      .make_available(
-          [](bNode &node) { node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_LENGTH; });
+                     .default_value(0.1f)
+                     .min(0.001f)
+                     .subtype(PROP_DISTANCE)
+                     .make_available([](bNode &node) {
+                       node_storage(node).mode = GEO_NODE_CURVE_RESAMPLE_LENGTH;
+                     });
   b.add_output<decl::Geometry>("Points").propagate_all();
   b.add_output<decl::Vector>("Tangent").field_on_all();
   b.add_output<decl::Vector>("Normal").field_on_all();
   b.add_output<decl::Rotation>("Rotation").field_on_all();
-  
+
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryCurveToPoints &storage = node_storage(*node);

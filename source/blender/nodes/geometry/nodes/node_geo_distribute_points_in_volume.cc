@@ -30,17 +30,34 @@ NODE_STORAGE_FUNCS(NodeGeometryDistributePointsInVolume)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Volume").supported_type(GeometryComponent::Type::Volume).translation_context(BLT_I18NCONTEXT_ID_ID);
-  auto &density = b.add_input<decl::Float>("Density").default_value(1.0f).min(0.0f).max(100000.0f).subtype(PROP_NONE).description("Number of points to sample per unit volume");
-  auto &seed = b.add_input<decl::Int>("Seed").min(-10000).max(10000).description("Seed used by the random number generator to generate random points");
-  auto &spacing = b.add_input<decl::Vector>("Spacing").default_value({0.3, 0.3, 0.3}).min(0.0001f).subtype(PROP_XYZ).description("Spacing between grid points");
-  auto &threshold = b.add_input<decl::Float>("Threshold").default_value(0.1f).min(0.0f).max(FLT_MAX).description("Minimum density of a volume cell to contain a grid point");
+  b.add_input<decl::Geometry>("Volume")
+      .supported_type(GeometryComponent::Type::Volume)
+      .translation_context(BLT_I18NCONTEXT_ID_ID);
+  auto &density = b.add_input<decl::Float>("Density")
+                      .default_value(1.0f)
+                      .min(0.0f)
+                      .max(100000.0f)
+                      .subtype(PROP_NONE)
+                      .description("Number of points to sample per unit volume");
+  auto &seed = b.add_input<decl::Int>("Seed").min(-10000).max(10000).description(
+      "Seed used by the random number generator to generate random points");
+  auto &spacing = b.add_input<decl::Vector>("Spacing")
+                      .default_value({0.3, 0.3, 0.3})
+                      .min(0.0001f)
+                      .subtype(PROP_XYZ)
+                      .description("Spacing between grid points");
+  auto &threshold = b.add_input<decl::Float>("Threshold")
+                        .default_value(0.1f)
+                        .min(0.0f)
+                        .max(FLT_MAX)
+                        .description("Minimum density of a volume cell to contain a grid point");
   b.add_output<decl::Geometry>("Points").propagate_all();
 
   const bNode *node = b.node_or_null();
   if (node != nullptr) {
     const NodeGeometryDistributePointsInVolume &storage = node_storage(*node);
-    GeometryNodeDistributePointsInVolumeMode mode = GeometryNodeDistributePointsInVolumeMode(storage.mode);
+    GeometryNodeDistributePointsInVolumeMode mode = GeometryNodeDistributePointsInVolumeMode(
+        storage.mode);
 
     density.available(mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM);
     spacing.available(mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_GRID);

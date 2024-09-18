@@ -131,13 +131,21 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Points");
   b.add_input<decl::Float>("Density").default_value(1.0f).min(0.0f);
-  auto &voxel_size = b.add_input<decl::Float>("Voxel Size").default_value(0.3f).min(0.01f).subtype(PROP_DISTANCE).make_available([](bNode &node) {node_storage(node).resolution_mode = GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE; });
+  auto &voxel_size = b.add_input<decl::Float>("Voxel Size")
+                         .default_value(0.3f)
+                         .min(0.01f)
+                         .subtype(PROP_DISTANCE)
+                         .make_available([](bNode &node) {
+                           node_storage(node).resolution_mode =
+                               GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE;
+                         });
   auto &voxel_amount = b.add_input<decl::Float>("Voxel Amount")
-      .default_value(64.0f)
-      .min(0.0f)
-      .make_available([](bNode &node) {
-        node_storage(node).resolution_mode = GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT;
-      });
+                           .default_value(64.0f)
+                           .min(0.0f)
+                           .make_available([](bNode &node) {
+                             node_storage(node).resolution_mode =
+                                 GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT;
+                           });
   b.add_input<decl::Float>("Radius")
       .default_value(0.5f)
       .min(0.0f)
@@ -149,7 +157,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (node != nullptr) {
     const NodeGeometryPointsToVolume &data = node_storage(*node);
     voxel_size.available(data.resolution_mode == GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_SIZE);
-    voxel_amount.available(data.resolution_mode == GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
+    voxel_amount.available(data.resolution_mode ==
+                           GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
   }
 }
 

@@ -22,8 +22,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Float>("Density").default_value(1.0f).min(0.01f).max(FLT_MAX);
-  auto &voxel_size = b.add_input<decl::Float>("Voxel Size").default_value(0.3f).min(0.01f).max(FLT_MAX).subtype(PROP_DISTANCE);
-  auto &voxel_amount = b.add_input<decl::Float>("Voxel Amount").default_value(64.0f).min(0.0f).max(FLT_MAX);
+  auto &voxel_size = b.add_input<decl::Float>("Voxel Size")
+                         .default_value(0.3f)
+                         .min(0.01f)
+                         .max(FLT_MAX)
+                         .subtype(PROP_DISTANCE);
+  auto &voxel_amount =
+      b.add_input<decl::Float>("Voxel Amount").default_value(64.0f).min(0.0f).max(FLT_MAX);
   b.add_input<decl::Float>("Interior Band Width")
       .default_value(0.2f)
       .min(0.0001f)
