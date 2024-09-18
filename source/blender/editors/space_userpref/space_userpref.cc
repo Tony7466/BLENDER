@@ -159,28 +159,25 @@ bool ED_userpref_tab_has_search_result(SpaceUserPref *spref, const int index)
 
 /** \} */
 
-int ED_userpref_tabs_list(SpaceUserPref *prefs, short *context_tabs_array)
+blender::Vector<eUserPref_Section> ED_userpref_tabs_list(SpaceUserPref * /*prefs*/)
 {
-  int length = 0;
+  blender::Vector<eUserPref_Section> result;
   const EnumPropertyItem *items = rna_enum_preference_section_items;
   for (const EnumPropertyItem *it = rna_enum_preference_section_items; it->identifier != nullptr;
        it++)
   {
     if (it->name) {
-      context_tabs_array[length] = it->value;
-      length++;
+      result.append(eUserPref_Section(it->value));
     }
   }
-  return length;
+  return result;
 }
 
 /* -------------------------------------------------------------------- */
 /** \name "Off Screen" Layout Generation for Userpref Search
  * \{ */
 
-static const char *userpref_main_region_context_string(const short section) {}
-
-static bool userpref_search_for_context(const bContext *C,
+static bool property_search_for_context(const bContext *C,
                                         ARegion *region,
                                         SpaceUserPref *sprefs,
                                         short section)
@@ -195,12 +192,11 @@ static bool userpref_search_for_context(const bContext *C,
   return ED_region_property_search(C, region, &region->type->paneltypes, contexts, nullptr);
 }
 
-static void userpref_search_move_to_next_tab_with_results(SpaceUserPref *sbuts,
-                                                          const short *context_tabs_array,
-                                                          const int tabs_len)
+static void userpref_search_move_to_next_tab_with_results(
+    SpaceUserPref *sbuts, const blender::Span<eUserPref_Section> context_tabs_array)
 {
   int current_tab_index = 0;
-  for (int i = 0; i < tabs_len; i++) {
+  for (const int i : context_tabs_array.index_range()) {
     if (U.space_data.section_active == context_tabs_array[i]) {
       current_tab_index = i;
       break;
@@ -208,7 +204,7 @@ static void userpref_search_move_to_next_tab_with_results(SpaceUserPref *sbuts,
   }
 
   /* Try the tabs after the current tab. */
-  for (int i = current_tab_index + 1; i < tabs_len; i++) {
+  for (int i = current_tab_index + 1; i < context_tabs_array.size(); i++) {
     if (BLI_BITMAP_TEST(sbuts->runtime->tab_search_results, i)) {
       U.space_data.section_active = context_tabs_array[i];
       return;
@@ -250,8 +246,7 @@ static bool userpref_search_move_to_first_tab_with_results(SpaceUserPref *sbuts,
 static void userpref_search_all_tabs(const bContext *C,
                                      SpaceUserPref *sprefs,
                                      ARegion *region_original,
-                                     const short *context_tabs_array,
-                                     const int tabs_len)
+                                     const blender::Span<eUserPref_Section> context_tabs_array)
 {
   /* Use local copies of the area and duplicate the region as a mainly-paranoid protection
    * against changing any of the space / region data while running the search. */
@@ -271,7 +266,7 @@ static void userpref_search_all_tabs(const bContext *C,
   BLI_addtail(&area_copy.spacedata, &sprefs_copy);
 
   /* Loop through the tabs. */
-  for (int i = 0; i < tabs_len; i++) {
+  for (const int i : context_tabs_array.index_range()) {
     /* -1 corresponds to a spacer. */
     if (context_tabs_array[i] == -1) {
       continue;
@@ -283,7 +278,7 @@ static void userpref_search_all_tabs(const bContext *C,
     }
 
     /* Actually do the search and store the result in the bitmap. */
-    const bool found = userpref_search_for_context(
+    const bool found = property_search_for_context(
         C, region_copy, &sprefs_copy, context_tabs_array[i]);
     BLI_BITMAP_SET(sprefs->runtime->tab_search_results, i, found);
 
@@ -306,12 +301,10 @@ static void userpref_main_region_property_search(const bContext *C,
                                                  SpaceUserPref *sprefs,
                                                  ARegion *region)
 {
-  short context_tabs_array[50];
-  int tabs_len = 0;
-  tabs_len = ED_userpref_tabs_list(sprefs, context_tabs_array);
-  BLI_bitmap_set_all(sprefs->runtime->tab_search_results, false, tabs_len);
+  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
+  BLI_bitmap_set_all(sprefs->runtime->tab_search_results, false, tabs.size());
 
-  userpref_search_all_tabs(C, sprefs, region, context_tabs_array, tabs_len);
+  userpref_search_all_tabs(C, sprefs, region, tabs);
 
   /* Check whether the current tab has a search match. */
   bool current_tab_has_search_match = false;
@@ -323,8 +316,8 @@ static void userpref_main_region_property_search(const bContext *C,
 
   /* Find which index in the list the current tab corresponds to. */
   int current_tab_index = -1;
-  for (int i = 0; i < tabs_len; i++) {
-    if (context_tabs_array[i] == U.space_data.section_active) {
+  for (const int i : tabs.index_range()) {
+    if (tabs[i] == U.space_data.section_active) {
       current_tab_index = i;
     }
   }
@@ -337,7 +330,7 @@ static void userpref_main_region_property_search(const bContext *C,
   /* Move to the next tab with a result */
   if (!current_tab_has_search_match) {
     if (region->flag & RGN_FLAG_SEARCH_FILTER_UPDATE) {
-      userpref_search_move_to_next_tab_with_results(sprefs, context_tabs_array, tabs_len);
+      userpref_search_move_to_next_tab_with_results(sprefs, tabs);
     }
     else {
       U.space_data.section_active = 0;

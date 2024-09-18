@@ -2176,22 +2176,18 @@ static int rna_SpaceUserPref_tab_search_results_getlength(const PointerRNA *ptr,
 {
   SpaceUserPref *sprefs = static_cast<SpaceUserPref *>(ptr->data);
 
-  short context_tabs_array[BCONTEXT_TOT * 2]; /* Dummy variable. */
-  const int tabs_len = ED_userpref_tabs_list(sprefs, context_tabs_array);
-
-  length[0] = tabs_len;
-
-  return length[0];
+  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
+  length[0] = tabs.size();
+  return tabs.size();
 }
 
 static void rna_SpaceUserPref_tab_search_results_get(PointerRNA *ptr, bool *values)
 {
   SpaceUserPref *sprefs = static_cast<SpaceUserPref *>(ptr->data);
 
-  short context_tabs_array[BCONTEXT_TOT * 2]; /* Dummy variable. */
-  const int tabs_len = ED_userpref_tabs_list(sprefs, context_tabs_array);
+  blender::Vector<eUserPref_Section> tabs = ED_userpref_tabs_list(sprefs);
 
-  for (int i = 0; i < tabs_len; i++) {
+  for (const int i : tabs.index_range()) {
     values[i] = ED_userpref_tab_has_search_result(sprefs, i);
   }
 }
