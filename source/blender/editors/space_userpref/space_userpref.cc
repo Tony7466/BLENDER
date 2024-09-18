@@ -220,29 +220,6 @@ static void userpref_search_move_to_next_tab_with_results(
   }
 }
 
-static bool userpref_search_move_to_first_tab_with_results(SpaceUserPref *sbuts,
-                                                           const short *context_tabs_array,
-                                                           const int tabs_len)
-{
-  int current_tab_index = 0;
-  for (int i = 0; i < tabs_len; i++) {
-    if (U.space_data.section_active == context_tabs_array[i]) {
-      current_tab_index = i;
-      break;
-    }
-  }
-
-  /* Try the tabs before the current tab. */
-  for (int i = 0; i < current_tab_index; i++) {
-    if (BLI_BITMAP_TEST(sbuts->runtime->tab_search_results, i)) {
-      U.space_data.section_active = context_tabs_array[i];
-      return true;
-    }
-  }
-
-  return false;
-}
-
 static void userpref_search_all_tabs(const bContext *C,
                                      SpaceUserPref *sprefs,
                                      ARegion *region_original,
