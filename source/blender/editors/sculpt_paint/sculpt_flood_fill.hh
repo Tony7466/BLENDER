@@ -23,11 +23,6 @@ struct Object;
 
 namespace blender::ed::sculpt_paint::flood_fill {
 
-struct FillData {
-  std::queue<PBVHVertRef> queue;
-  BitVector<> visited_verts;
-};
-
 struct FillDataMesh {
   std::queue<int> queue;
   BitVector<> visited_verts;
@@ -79,22 +74,5 @@ struct FillDataBMesh {
                                  float radius);
   void execute(Object &object, FunctionRef<bool(BMVert *from_v, BMVert *to_v)> func);
 };
-
-/**
- * \deprecated See the individual FillData constructors instead of this method.
- */
-FillData init_fill(const Depsgraph &depsgraph, Object &object);
-
-void add_initial(FillData &flood, PBVHVertRef vertex);
-void add_and_skip_initial(FillData &flood, PBVHVertRef vertex);
-void add_initial_with_symmetry(const Depsgraph &depsgraph,
-                               const Object &ob,
-                               FillData &flood,
-                               PBVHVertRef vertex,
-                               float radius);
-void execute(const Depsgraph &depsgraph,
-             Object &object,
-             FillData &flood,
-             FunctionRef<bool(PBVHVertRef from_v, PBVHVertRef to_v, bool is_duplicate)> func);
 
 }  // namespace blender::ed::sculpt_paint::flood_fill
