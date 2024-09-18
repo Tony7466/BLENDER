@@ -2646,6 +2646,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                 main_grease_pencil, mask, attribute_filter);
             break;
           }
+          case AttrDomain::Point: {
+            element_grease_pencils = geometry::extract_greasepencil_layer_points(
+                main_grease_pencil, *id.layer_index, mask, attribute_filter);
+            break;
+          }
           default:
             return std::nullopt;
         }

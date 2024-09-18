@@ -52,4 +52,10 @@ Array<GreasePencil *> extract_greasepencil_layers(const GreasePencil &grease_pen
                                                   const IndexMask &mask,
                                                   const bke::AttributeFilter &attribute_filter);
 
+Array<GreasePencil *> extract_greasepencil_layer_points(
+    const GreasePencil &grease_pencil,
+    int layer_i,
+    const IndexMask &mask,
+    const bke::AttributeFilter &attribute_filter);
+
 }  // namespace blender::geometry
