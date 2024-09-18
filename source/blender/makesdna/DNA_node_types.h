@@ -2003,11 +2003,6 @@ typedef struct NodeFunctionCompare {
   char _pad[1];
 } NodeFunctionCompare;
 
-typedef struct NodeFunctionIntegerMath {
-  /** #NodeIntegerMathOperation */
-  int8_t operation;
-} NodeFunctionIntegerMath;
-
 typedef struct NodeCombSepColor {
   /** #NodeCombSepColorMode */
   int8_t mode;

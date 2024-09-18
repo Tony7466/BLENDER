@@ -20,8 +20,6 @@
 
 namespace blender::nodes::node_fn_integer_math_cc {
 
-NODE_STORAGE_FUNCS(NodeFunctionIntegerMath)
-
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
@@ -38,32 +36,29 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
-  const NodeFunctionIntegerMath &storage = node_storage(*node);
-
-  const bool one_input_ops = ELEM(storage.operation,
+  const bool one_input_ops = ELEM(node->custom1,
                                   NODE_INTEGER_MATH_ABSOLUTE,
                                   NODE_INTEGER_MATH_SIGN,
                                   NODE_INTEGER_MATH_NOT,
                                   NODE_INTEGER_MATH_SQUARE,
                                   NODE_INTEGER_MATH_CUBE,
                                   NODE_INTEGER_MATH_NEGATE);
-  const bool three_input_ops = ELEM(storage.operation,
+  const bool three_input_ops = ELEM(node->custom1,
                                     NODE_INTEGER_MATH_MULTIPLY_ADD,
                                     NODE_INTEGER_MATH_CLAMP,
                                     NODE_INTEGER_MATH_CLAMP_RANGE);
 
-  bNodeSocket *sockA = (bNodeSocket *)BLI_findlink(&node->inputs, 0);
+  bNodeSocket *sockA = static_cast<bNodeSocket *>(node->inputs.first);
+  bNodeSocket *sockB = sockA->next;
+  bNodeSocket *sockC = sockB->next;
 
-  bNodeSocket *sockB = (bNodeSocket *)BLI_findlink(&node->inputs, 1);
   bke::node_set_socket_availability(ntree, sockB, !one_input_ops);
-
-  bNodeSocket *sockC = (bNodeSocket *)BLI_findlink(&node->inputs, 2);
   bke::node_set_socket_availability(ntree, sockC, three_input_ops);
 
   node_sock_label_clear(sockA);
   node_sock_label_clear(sockB);
   node_sock_label_clear(sockC);
-  switch (storage.operation) {
+  switch (node->custom1) {
     case NODE_INTEGER_MATH_CLAMP:
     case NODE_INTEGER_MATH_CLAMP_RANGE:
       node_sock_label(sockA, N_("Value"));
@@ -78,13 +73,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
   }
 }
 
-static void node_init(bNodeTree * /*tree*/, bNode *node)
-{
-  NodeFunctionIntegerMath *data = MEM_cnew<NodeFunctionIntegerMath>(__func__);
-  data->operation = NODE_INTEGER_MATH_ADD;
-  node->storage = data;
-}
-
 class SocketSearchOp {
  public:
   std::string socket_name;
@@ -92,20 +80,21 @@ class SocketSearchOp {
   void operator()(LinkSearchOpParams &params)
   {
     bNode &node = params.add_node("FunctionNodeIntegerMath");
-    node_storage(node).operation = (NodeIntegerMathOperation)operation;
+    node.custom1 = NodeIntegerMathOperation(operation);
     params.update_and_connect_available_socket(node, socket_name);
   }
 };
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  if (!params.node_tree().typeinfo->validate_link(
-          static_cast<eNodeSocketDatatype>(params.other_socket().type), SOCK_INT))
+  if (!params.node_tree().typeinfo->validate_link(eNodeSocketDatatype(params.other_socket().type),
+                                                  SOCK_INT))
   {
     return;
   }
 
-  const int weight = ELEM(params.other_socket().type, SOCK_INT, SOCK_BOOLEAN) ? 0 : -1;
+  const bool is_integer = params.other_socket().type == SOCK_INT;
+  const int weight = is_integer ? 0 : -1;
 
   /* Add socket A operations. */
   for (const EnumPropertyItem *item = rna_enum_node_integer_math_items;
@@ -114,7 +103,7 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   {
     if (item->name != nullptr && item->identifier[0] != '\0') {
       params.add_item(IFACE_(item->name),
-                      SocketSearchOp{"Value", (NodeIntegerMathOperation)item->value},
+                      SocketSearchOp{"Value", NodeIntegerMathOperation(item->value)},
                       weight);
     }
   }
@@ -122,9 +111,8 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 
 static void node_label(const bNodeTree * /*ntree*/, const bNode *node, char *label, int maxlen)
 {
-  const NodeFunctionIntegerMath &storage = node_storage(*node);
   const char *name;
-  bool enum_label = RNA_enum_name(rna_enum_node_integer_math_items, storage.operation, &name);
+  bool enum_label = RNA_enum_name(rna_enum_node_integer_math_items, node->custom1, &name);
   if (!enum_label) {
     name = "Unknown";
   }
@@ -133,8 +121,7 @@ static void node_label(const bNodeTree * /*ntree*/, const bNode *node, char *lab
 
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
-  const NodeFunctionIntegerMath &storage = node_storage(bnode);
-  NodeIntegerMathOperation operation = (NodeIntegerMathOperation)storage.operation;
+  NodeIntegerMathOperation operation = NodeIntegerMathOperation(bnode.custom1);
   static auto exec_preset = mf::build::exec_presets::AllSpanOrSingle();
   static auto add_fn = mf::build::SI2_SO<int, int, int>(
       "Add", [](int a, int b) { return a + b; }, exec_preset);
@@ -145,19 +132,19 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto divide_fn = mf::build::SI2_SO<int, int, int>(
       "Divide", [](int a, int b) { return math::safe_divide(a, b); }, exec_preset);
   static auto divide_floor_fn = mf::build::SI2_SO<int, int, int>(
-      "Divide Floor", [](int a, int b) { return b == 0 ? 0 : divide_floor_i(a, b); }, exec_preset);
+      "Divide Floor",
+      [](int a, int b) { return int(math::floor(math::safe_divide(float(a), float(b)))); },
+      exec_preset);
   static auto divide_ceil_fn = mf::build::SI2_SO<int, int, int>(
       "Divide Ceil",
-      [](int a, int b) { return b == 0 ? 0 :
-                                a == 0 ? 0 :
-                                         divide_floor_i(a + b - 1, b); },
+      [](int a, int b) { return int(math::ceil(math::safe_divide(float(a), float(b)))); },
       exec_preset);
   static auto divide_round_fn = mf::build::SI2_SO<int, int, int>(
       "Divide Round",
-      [](int a, int b) { return b * 2 == 0 ? 0 : divide_round_i(a, b); },
+      [](int a, int b) { return int(math::round(math::safe_divide(float(a), float(b)))); },
       exec_preset);
   static auto square_fn = mf::build::SI1_SO<int, int>(
-      "Square", [](int a) { return a * a; }, exec_preset);
+      "Square", [](int a) { return math::square(a); }, exec_preset);
   static auto cube_fn = mf::build::SI1_SO<int, int>(
       "Cube", [](int a) { return a * a * a; }, exec_preset);
   static auto distance_fn = mf::build::SI2_SO<int, int, int>(
@@ -167,7 +154,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto madd_fn = mf::build::SI3_SO<int, int, int, int>(
       "Multiply Add", [](int a, int b, int c) { return a * b + c; }, exec_preset);
   static auto mod_fn = mf::build::SI2_SO<int, int, int>(
-      "Modulo", [](int a, int b) { return b != 0 ? mod_i(a, b) : 0; }, exec_preset);
+      "Modulo", [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; }, exec_preset);
   static auto remainder_fn = mf::build::SI2_SO<int, int, int>(
       "Remainder", [](int a, int b) { return b != 0 ? a % b : 0; }, exec_preset);
   static auto abs_fn = mf::build::SI1_SO<int, int>(
@@ -286,7 +273,7 @@ static void node_rna(StructRNA *srna)
                            "Operation",
                            "",
                            rna_enum_node_integer_math_items,
-                           NOD_storage_enum_accessors(operation),
+                           NOD_inline_enum_accessors(custom1),
                            NODE_INTEGER_MATH_ADD);
   RNA_def_property_update_runtime(prop, rna_Node_socket_update);
 }
@@ -302,9 +289,7 @@ static void node_register()
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;
   ntype.gather_link_search_ops = node_gather_link_searches;
-  ntype.initfunc = node_init;
-  node_type_storage(
-      &ntype, "NodeFunctionIntegerMath", node_free_standard_storage, node_copy_standard_storage);
+
   blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
