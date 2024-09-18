@@ -299,7 +299,7 @@ static void grease_pencil_to_points(GeometrySet &geometry_set,
                              bke::AttrDomain::Layer,
                              bke::AttrDomain::Instance,
                              attribute_filter,
-                             geometry.get_instances_for_write()->attributes_for_write());
+                             instances->attributes_for_write());
       }
     }
   });

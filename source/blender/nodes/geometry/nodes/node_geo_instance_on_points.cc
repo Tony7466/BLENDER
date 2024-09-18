@@ -258,7 +258,7 @@ static void node_geo_exec(GeoNodeExecParams params)
                              bke::AttrDomain::Layer,
                              bke::AttrDomain::Instance,
                              attribute_filter,
-                             geometry_set.get_instances_for_write()->attributes_for_write());
+                             dst_instances->attributes_for_write());
       }
       geometry_set.replace_grease_pencil(nullptr);
     }
