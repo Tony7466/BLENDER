@@ -15,13 +15,13 @@ namespace blender::math {
 /**
  * Float (FP32) <-> Half (FP16) conversion functions.
  *
- * Behavior matches hardware (x64 F16C, ARMv8.2-A fcvt),
+ * Behavior matches hardware (x64 F16C, ARM NEON fcvt),
  * including handling of denormals, infinities, NaNs, rounding
  * is to nearest even, etc. When NaNs are produced, the exact
  * bit pattern might not match hardware, but it will still be a NaN.
  *
- * When compiling on known ARMv8.2-A or better platform
- * (e.g. Apple Silicon), hardware VCVT instructions are used.
+ * When compiling for ARM NEON (e.g. Apple Silicon),
+ * hardware VCVT instructions are used.
  */
 
 /**

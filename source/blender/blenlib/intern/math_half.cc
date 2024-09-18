@@ -8,8 +8,8 @@
 
 #include "BLI_math_half.hh"
 
-#if defined(__ARM_NEON) && defined(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC)
-#  define USE_HARDWARE_FP16_NEON /* Use ARMv8.2-A FP16 conversion instructions */
+#if defined(__ARM_NEON)
+#  define USE_HARDWARE_FP16_NEON /* Use ARM FP16 conversion instructions */
 #  include <arm_neon.h>
 #endif
 
