@@ -11,7 +11,6 @@ struct Main;
 struct PointCloud;
 
 namespace blender::bke {
-class AttributeIDRef;
 struct AttributeMetaData;
 }  // namespace blender::bke
 
@@ -28,7 +27,7 @@ class USDPointsWriter final : public USDAbstractWriter {
 
  private:
   void write_generic_data(const PointCloud *points,
-                          const bke::AttributeIDRef &attribute_id,
+                          const StringRef attribute_id,
                           const bke::AttributeMetaData &meta_data,
                           const pxr::UsdGeomPoints &usd_points,
                           pxr::UsdTimeCode timecode);

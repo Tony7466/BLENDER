@@ -72,7 +72,7 @@ static std::optional<pxr::TfToken> convert_blender_domain_to_usd(
 }
 
 void USDPointsWriter::write_generic_data(const PointCloud *points,
-                                         const bke::AttributeIDRef &attribute_id,
+                                         const StringRef attribute_id,
                                          const bke::AttributeMetaData &meta_data,
                                          const pxr::UsdGeomPoints &usd_points,
                                          const pxr::UsdTimeCode timecode)
@@ -85,7 +85,7 @@ void USDPointsWriter::write_generic_data(const PointCloud *points,
     BKE_reportf(this->reports(),
                 RPT_WARNING,
                 "Attribute '%s' (Blender domain %d, type %d) cannot be converted to USD",
-                std::string(attribute_id.name()).c_str(),
+                std::string(attribute_id).c_str(),
                 int(meta_data.domain),
                 meta_data.data_type);
     return;
@@ -98,7 +98,7 @@ void USDPointsWriter::write_generic_data(const PointCloud *points,
   }
 
   const pxr::TfToken pv_name(
-      make_safe_name(attribute_id.name(), usd_export_context_.export_params.allow_unicode));
+      make_safe_name(attribute_id, usd_export_context_.export_params.allow_unicode));
   const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_points);
 
   pxr::UsdGeomPrimvar pv_attr = pv_api.CreatePrimvar(pv_name, *pv_type, *pv_interp);
@@ -113,20 +113,18 @@ void USDPointsWriter::write_custom_data(const PointCloud *points,
 {
   const bke::AttributeAccessor attributes = points->attributes();
 
-  attributes.for_all(
-      [&](const bke::AttributeIDRef &attribute_id, const bke::AttributeMetaData &meta_data) {
-        /* Skip "internal" Blender properties and attributes dealt with elsewhere. */
-        const StringRef attr_name = attribute_id.name();
-        if (attr_name[0] == '.' || attribute_id.is_anonymous() ||
-            ELEM(attr_name, "position", "radius", "id", "velocity"))
-        {
-          return true;
-        }
+  attributes.for_all([&](const StringRef attribute_id, const bke::AttributeMetaData &meta_data) {
+    /* Skip "internal" Blender properties and attributes dealt with elsewhere. */
+    if (attribute_id[0] == '.' || bke::attribute_name_is_anonymous(attribute_id) ||
+        ELEM(attribute_id, "position", "radius", "id", "velocity"))
+    {
+      return true;
+    }
 
-        this->write_generic_data(points, attribute_id, meta_data, usd_points, timecode);
+    this->write_generic_data(points, attribute_id, meta_data, usd_points, timecode);
 
-        return true;
-      });
+    return true;
+  });
 }
 
 void USDPointsWriter::write_velocities(const PointCloud *points,
