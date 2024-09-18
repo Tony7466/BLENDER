@@ -2326,6 +2326,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
     const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
+    const bNodeSocket &element_geometry_socket = zone_.input_node->output_socket(1);
+    BLI_assert(element_geometry_socket.is_available() == (iteration_domain != AttrDomain::Corner));
 
     const int input_items_num = node_storage.input_items.items_num;
     const int main_items_num = node_storage.main_items.items_num;
@@ -2459,7 +2461,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     AttributeFilter attribute_filter;
 
     const bNodeSocket &element_geometry_bsocket = zone_.input_node->output_socket(1);
-    const bool create_element_geometries = element_geometry_bsocket.is_directly_linked();
+    const bool create_element_geometries = element_geometry_bsocket.is_available() &&
+                                           element_geometry_bsocket.is_directly_linked();
 
     /* Gather components to process. */
     Vector<ForeachElementComponentID> component_ids;
@@ -2703,6 +2706,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       }
     }
 
+    const bNodeSocket &element_geometry_bsocket = zone_.input_node->output_socket(1);
+
     static const GeometrySet empty_geometry;
     for (const ForeachElementComponent &component_info : eval_storage.components) {
       for (const int i : component_info.body_nodes_range.index_range()) {
@@ -2711,10 +2716,13 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         /* Set index input for loop body. */
         lf_body_node.input(body_fn_.indices.inputs.main[0])
             .set_default_value(&component_info.index_values[i]);
-        const GeometrySet *element_geometry = component_info.element_geometries.has_value() ?
-                                                  &(*component_info.element_geometries)[i] :
-                                                  &empty_geometry;
-        lf_body_node.input(body_fn_.indices.inputs.main[1]).set_default_value(element_geometry);
+        /* Set geometry element input for loop body. */
+        if (element_geometry_bsocket.is_available()) {
+          const GeometrySet *element_geometry = component_info.element_geometries.has_value() ?
+                                                    &(*component_info.element_geometries)[i] :
+                                                    &empty_geometry;
+          lf_body_node.input(body_fn_.indices.inputs.main[1]).set_default_value(element_geometry);
+        }
         /* Set main input values for loop body. */
         for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
           lf_body_node.input(body_fn_.indices.inputs.main[indices_.inputs.lf_inner[item_i]])

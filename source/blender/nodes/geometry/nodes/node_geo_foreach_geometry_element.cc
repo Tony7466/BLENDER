@@ -284,15 +284,32 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.use_custom_socket_order();
   b.allow_any_socket_order();
+  const bNode *node = b.node_or_null();
+  const bNodeTree *tree = b.tree_or_null();
+
+  if (!node || !tree) {
+    return;
+  }
+
+  const NodeGeometryForeachGeometryElementInput &storage = node_storage(*node);
+  const bNode *output_node = tree->node_by_id(storage.output_node_id);
+  const auto &output_storage = output_node ?
+                                   static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+                                       output_node->storage) :
+                                   nullptr;
 
   b.add_output<decl::Int>("Index").description(
       "Index of the element in the source geometry. Note that the same index can occure more than "
       "once when iterating over multiple components at once");
+
+  const bool show_element_socket = output_storage &&
+                                   AttrDomain(output_storage->domain) != AttrDomain::Corner;
   b.add_output<decl::Geometry>("Element")
       .description(
           "Single element geometry for the current iteration. Note that it can be quite "
           "inefficient to splitup large geometries into many small geometries")
-      .propagate_all();
+      .propagate_all()
+      .unavailable(!show_element_socket);
 
   b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
 
@@ -302,32 +319,26 @@ static void node_declare(NodeDeclarationBuilder &b)
       .field_on_all()
       .description("Selection on the iteration domain");
 
-  const bNode *node = b.node_or_null();
-  const bNodeTree *tree = b.tree_or_null();
-  if (node && tree) {
-    const NodeGeometryForeachGeometryElementInput &storage = node_storage(*node);
-    const bNode *output_node = tree->node_by_id(storage.output_node_id);
-    if (output_node) {
-      const auto &output_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
-          output_node->storage);
-      for (const int i : IndexRange(output_storage.input_items.items_num)) {
-        const NodeForeachGeometryElementInputItem &item = output_storage.input_items.items[i];
-        const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
-        const StringRef name = item.name ? item.name : "";
-        const std::string identifier =
-            ForeachGeometryElementInputItemsAccessor::socket_identifier_for_item(item);
-        auto &input_decl =
-            b.add_input(socket_type, name, identifier)
-                .socket_name_ptr(
-                    &tree->id, ForeachGeometryElementInputItemsAccessor::item_srna, &item, "name")
-                .description("Field that is evaluated on the iteration domain");
-        b.add_output(socket_type, name, identifier)
-            .align_with_previous()
-            .description("Evaluated field value for the current element");
-        input_decl.supports_field();
-      }
+  if (output_storage) {
+    for (const int i : IndexRange(output_storage->input_items.items_num)) {
+      const NodeForeachGeometryElementInputItem &item = output_storage->input_items.items[i];
+      const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+      const StringRef name = item.name ? item.name : "";
+      const std::string identifier =
+          ForeachGeometryElementInputItemsAccessor::socket_identifier_for_item(item);
+      auto &input_decl = b.add_input(socket_type, name, identifier)
+                             .socket_name_ptr(&tree->id,
+                                              ForeachGeometryElementInputItemsAccessor::item_srna,
+                                              &item,
+                                              "name")
+                             .description("Field that is evaluated on the iteration domain");
+      b.add_output(socket_type, name, identifier)
+          .align_with_previous()
+          .description("Evaluated field value for the current element");
+      input_decl.supports_field();
     }
   }
+
   b.add_input<decl::Extend>("", "__extend__");
   b.add_output<decl::Extend>("", "__extend__").align_with_previous();
 }
@@ -341,19 +352,6 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
   PointerRNA output_node_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Node, output_node);
   uiItemR(layout, &output_node_ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_update(bNodeTree *tree, bNode *node)
-{
-  const NodeGeometryForeachGeometryElementInput &storage = node_storage(*node);
-  const bNode *output_node = tree->node_by_id(storage.output_node_id);
-  if (output_node) {
-    const auto &output_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
-        output_node->storage);
-    bNodeSocket *element_socket = static_cast<bNodeSocket *>(node->outputs.first)->next;
-    bke::node_set_socket_availability(
-        tree, element_socket, AttrDomain(output_storage.domain) != AttrDomain::Corner);
-  }
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -397,7 +395,6 @@ static void node_register()
   ntype.labelfunc = node_label;
   ntype.insert_link = node_insert_link;
   ntype.gather_link_search_ops = nullptr;
-  ntype.updatefunc = node_update;
   ntype.no_muting = true;
   blender::bke::node_type_storage(&ntype,
                                   "NodeGeometryForeachGeometryElementInput",
