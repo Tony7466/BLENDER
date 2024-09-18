@@ -483,8 +483,8 @@ static void node_declare(NodeDeclarationBuilder &b)
     }
   }
 
-  b.add_input<decl::Extend>("", "__extend__generated");
-  b.add_output<decl::Extend>("", "__extend__generated").align_with_previous();
+  b.add_input<decl::Extend>("", "__extend__generation");
+  b.add_output<decl::Extend>("", "__extend__generation").align_with_previous();
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -643,42 +643,6 @@ NOD_REGISTER_NODE(node_register)
 
 namespace blender::nodes {
 
-StructRNA *ForeachGeometryElementGenerationItemsAccessor::item_srna =
-    &RNA_ForeachGeometryElementGenerationItem;
-int ForeachGeometryElementGenerationItemsAccessor::node_type =
-    GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
-
-void ForeachGeometryElementGenerationItemsAccessor::blend_write(BlendWriter *writer,
-                                                                const bNode &node)
-{
-  const auto &storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
-      node.storage);
-  BLO_write_struct_array(writer,
-                         NodeForeachGeometryElementGenerationItem,
-                         storage.generation_items.items_num,
-                         storage.generation_items.items);
-  for (const NodeForeachGeometryElementGenerationItem &item :
-       Span(storage.generation_items.items, storage.generation_items.items_num))
-  {
-    BLO_write_string(writer, item.name);
-  }
-}
-
-void ForeachGeometryElementGenerationItemsAccessor::blend_read_data(BlendDataReader *reader,
-                                                                    bNode &node)
-{
-  auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
-  BLO_read_struct_array(reader,
-                        NodeForeachGeometryElementGenerationItem,
-                        storage.generation_items.items_num,
-                        &storage.generation_items.items);
-  for (const NodeForeachGeometryElementGenerationItem &item :
-       Span(storage.generation_items.items, storage.generation_items.items_num))
-  {
-    BLO_read_string(reader, &item.name);
-  }
-}
-
 StructRNA *ForeachGeometryElementInputItemsAccessor::item_srna =
     &RNA_ForeachGeometryElementInputItem;
 int ForeachGeometryElementInputItemsAccessor::node_type = GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
@@ -741,6 +705,42 @@ void ForeachGeometryElementMainItemsAccessor::blend_read_data(BlendDataReader *r
                         &storage.main_items.items);
   for (const NodeForeachGeometryElementMainItem &item :
        Span(storage.main_items.items, storage.main_items.items_num))
+  {
+    BLO_read_string(reader, &item.name);
+  }
+}
+
+StructRNA *ForeachGeometryElementGenerationItemsAccessor::item_srna =
+    &RNA_ForeachGeometryElementGenerationItem;
+int ForeachGeometryElementGenerationItemsAccessor::node_type =
+    GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT;
+
+void ForeachGeometryElementGenerationItemsAccessor::blend_write(BlendWriter *writer,
+                                                                const bNode &node)
+{
+  const auto &storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
+      node.storage);
+  BLO_write_struct_array(writer,
+                         NodeForeachGeometryElementGenerationItem,
+                         storage.generation_items.items_num,
+                         storage.generation_items.items);
+  for (const NodeForeachGeometryElementGenerationItem &item :
+       Span(storage.generation_items.items, storage.generation_items.items_num))
+  {
+    BLO_write_string(writer, item.name);
+  }
+}
+
+void ForeachGeometryElementGenerationItemsAccessor::blend_read_data(BlendDataReader *reader,
+                                                                    bNode &node)
+{
+  auto &storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(node.storage);
+  BLO_read_struct_array(reader,
+                        NodeForeachGeometryElementGenerationItem,
+                        storage.generation_items.items_num,
+                        &storage.generation_items.items);
+  for (const NodeForeachGeometryElementGenerationItem &item :
+       Span(storage.generation_items.items, storage.generation_items.items_num))
   {
     BLO_read_string(reader, &item.name);
   }

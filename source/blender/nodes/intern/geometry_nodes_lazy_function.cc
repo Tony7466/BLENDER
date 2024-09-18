@@ -2289,13 +2289,16 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   const ZoneBodyFunction &body_fn_;
 
   struct ItemIndices {
+    /* `outer` refers to sockets on the outside of the zone, and `inner` to the sockets on the
+     * inside. The `lf` and `bsocket` indices are similar, but the `lf` indices skip unavailable
+     * and extend sockets. */
     IndexRange lf_outer;
     IndexRange lf_inner;
     IndexRange bsocket_outer;
     IndexRange bsocket_inner;
   };
 
-  /** Reduces the hardcoding of index offsets in the code below which is quite brittle. */
+  /** Reduces the hardcoding of index offsets in lots of places below which is quite brittle. */
   struct {
     ItemIndices inputs;
     ItemIndices main;
@@ -2377,6 +2380,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         output_bnode_.storage);
     auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
 
+    /* Measure execution time of the entire zone. */
     const geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
     BLI_SCOPED_DEFER([&]() {
       const geo_eval_log::TimePoint end_time = geo_eval_log::Clock::now();
@@ -2407,8 +2411,12 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     eval_storage.main_geometry = params.extract_input<GeometrySet>(
         zone_info_.indices.inputs.main[0]);
 
+    /* Find all the things we need to iterate over in the input geometry. */
     this->prepare_components(params, eval_storage, node_storage);
 
+    /* Add interface sockets for the zone graph. Those are the same as for the entire zone, even
+     * though some of the inputs are not strictly needed anymore. It's easier to avoid another
+     * level of index remapping though. */
     lf::Graph &lf_graph = eval_storage.graph;
     Vector<lf::GraphInputSocket *> graph_inputs;
     Vector<lf::GraphOutputSocket *> graph_outputs;
@@ -2421,6 +2429,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       graph_outputs.append(&lf_graph.add_output(*output.type, this->output_name(i)));
     }
 
+    /* Add all the nodes and links to the graph. */
     this->build_graph_contents(eval_storage, node_storage, graph_inputs, graph_outputs);
 
     eval_storage.side_effect_provider.emplace();
@@ -2457,7 +2466,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
   {
     const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
 
-    /* TODO: Get from inputs. */
+    /* TODO: Get propagation info from input, but that's not necessary for correctness for now. */
     AttributeFilter attribute_filter;
 
     const bNodeSocket &element_geometry_bsocket = zone_.input_node->output_socket(1);
@@ -3065,7 +3074,7 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
     return;
   }
 
-  /* TODO: Get from input. */
+  /* TODO: Get propagation info from input, but that's not necessary for correctness for now. */
   AttributeFilter attribute_filter;
 
   const int bodies_num = eval_storage_.lf_body_nodes.size();

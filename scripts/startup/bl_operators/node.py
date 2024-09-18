@@ -222,7 +222,7 @@ class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
 
 
 class NODE_OT_add_foreach_geometry_element_zone(NodeAddZoneOperator, Operator):
-    """Add a for-each geometry element zone that allows executing nodes e.g. for each vertex separately"""
+    """Add a For Each Geometry Element zone that allows executing nodes e.g. for each vertex separately"""
     bl_idname = "node.add_foreach_geometry_element_zone"
     bl_label = "Add For Each Geometry Element Zone"
     bl_options = {'REGISTER', 'UNDO'}
