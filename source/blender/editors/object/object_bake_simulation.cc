@@ -1078,6 +1078,27 @@ static int pack_single_bake_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int unpack_single_bake_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  uiPopupMenu *pup;
+  uiLayout *layout;
+
+  pup = UI_popup_menu_begin(C, IFACE_("Unpack"), ICON_NONE);
+  layout = UI_popup_menu_layout(pup);
+
+  uiLayoutSetOperatorContext(layout, WM_OP_EXEC_DEFAULT);
+  uiItemsFullEnumO(layout,
+                   op->type->idname,
+                   "method",
+                   static_cast<IDProperty *>(op->ptr->data),
+                   WM_OP_EXEC_REGION_WIN,
+                   UI_ITEM_NONE);
+
+  UI_popup_menu_end(C, pup);
+
+  return OPERATOR_INTERFACE;
+}
+
 static int unpack_single_bake_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -1103,8 +1124,10 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
+  const ePF_FileStatus method = ePF_FileStatus(RNA_enum_get(op->ptr, "method"));
+
   bake::UnpackGeometryNodesBakeResult result = bake::unpack_geometry_nodes_bake(
-      *bmain, op->reports, *object, nmd, *bake, PF_WRITE_ORIGINAL);
+      *bmain, op->reports, *object, nmd, *bake, method);
   if (result != bake::UnpackGeometryNodesBakeResult::Success) {
     return OPERATOR_CANCELLED;
   }
@@ -1214,8 +1237,35 @@ void OBJECT_OT_geometry_node_bake_unpack_single(wmOperatorType *ot)
   ot->idname = "OBJECT_OT_geometry_node_bake_unpack_single";
 
   ot->exec = unpack_single_bake_exec;
+  ot->invoke = unpack_single_bake_invoke;
 
   single_bake_operator_props(ot);
+
+  static const EnumPropertyItem method_items[] = {
+      {PF_USE_LOCAL,
+       "USE_LOCAL",
+       0,
+       "Use bake from current directory (create when necessary)",
+       ""},
+      {PF_WRITE_LOCAL,
+       "WRITE_LOCAL",
+       0,
+       "Write bake to current directory (overwrite existing bake)",
+       ""},
+      {PF_USE_ORIGINAL,
+       "USE_ORIGINAL",
+       0,
+       "Use bake in original location (create when necessary)",
+       ""},
+      {PF_WRITE_ORIGINAL,
+       "WRITE_ORIGINAL",
+       0,
+       "Write bake to original location (overwrite existing file)",
+       ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_enum(ot->srna, "method", method_items, PF_USE_LOCAL, "Method", "How to unpack");
 }
 
 }  // namespace blender::ed::object::bake_simulation
