@@ -36,6 +36,8 @@
 /* Own include. */
 #include "sequencer_intern.hh"
 
+using namespace blender;
+
 static bool sequencer_text_editing_poll(bContext *C)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
@@ -51,11 +53,83 @@ static bool sequencer_text_editing_poll(bContext *C)
   return sequencer_editing_initialized_and_active(C);
 }
 
+int2 seq_text_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset)
+{
+  cursor_offset = std::clamp(cursor_offset, 0, text->character_count);
+
+  int2 cursor_position{0, 0};
+  for (seq::LineInfo line : text->lines) {
+    if (cursor_offset < line.characters.size()) {
+      cursor_position.x = cursor_offset;
+      break;
+    }
+    cursor_offset -= line.characters.size();
+    cursor_position.y += 1;
+  }
+
+  // xxx bad!
+  cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size() - 1));
+  cursor_position.x = std::clamp(
+      cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size() - 1));
+
+  return cursor_position;
+}
+
+static int cursor_position_to_offset(TextVarsRuntime *text, int2 cursor_position)
+{
+  int cursor_offset = cursor_position.x;
+
+  for (int line : IndexRange(0, cursor_position.y)) {
+    cursor_offset += text->lines[line].characters.size();
+  }
+  return cursor_offset;
+}
+
 // xxx not nice
 static void text_selection_cancel(TextVars *data)
 {
   data->selection_start_offset = -1;
   data->selection_end_offset = -1;
+}
+
+static bool text_has_selection(TextVars *data)
+{
+  return data->selection_start_offset != -1;
+}
+
+IndexRange seq_text_selection_range_get(TextVars *data)
+{
+  /* Ensure, that selection start < selection end. */
+  int sel_start_offset = data->selection_start_offset;
+  int sel_end_offset = data->selection_end_offset;
+  if (sel_start_offset > sel_end_offset) {
+    std::swap(sel_start_offset, sel_end_offset);
+  }
+
+  return IndexRange(sel_start_offset, sel_end_offset - sel_start_offset);
+}
+
+static void delete_selected_text(TextVars *data)
+{
+  if (!text_has_selection(data)) {
+    return;
+  }
+
+  TextVarsRuntime *text = data->runtime;
+  IndexRange sel_range = seq_text_selection_range_get(data);
+  int2 sel_start = seq_text_cursor_offset_to_position(text, sel_range.first());
+  int2 sel_end = seq_text_cursor_offset_to_position(text, sel_range.last());
+
+  seq::CharInfo char_start = text->lines[sel_start.y].characters[sel_start.x];
+  seq::CharInfo char_end = text->lines[sel_end.y].characters[sel_end.x];
+
+  char *addr_start = const_cast<char *>(char_start.str_ptr);
+  char *addr_end = const_cast<char *>(char_end.str_ptr) + char_end.byte_length;
+
+  const int move_len = BLI_strnlen(addr_end, 512) + 1; /* +1 to include '\0' XXX hardcoded size.*/
+  std::memmove(addr_start, addr_end, move_len);
+  data->cursor_offset = cursor_position_to_offset(text, sel_start);
+  text_selection_cancel(data);
 }
 
 static void text_editing_update(bContext *C)
@@ -95,40 +169,6 @@ static const EnumPropertyItem move_type_items[] = {
     {NEXT_LINE, "NEXT_LINE", 0, "Next Line", ""},          // ok
     {0, nullptr, 0, nullptr, nullptr},
 };
-
-using namespace blender;
-
-int2 seq_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset)
-{
-  cursor_offset = std::clamp(cursor_offset, 0, text->character_count);
-
-  int2 cursor_position{0, 0};
-  for (seq::LineInfo line : text->lines) {
-    if (cursor_offset < line.characters.size()) {
-      cursor_position.x = cursor_offset;
-      break;
-    }
-    cursor_offset -= line.characters.size();
-    cursor_position.y += 1;
-  }
-
-  // xxx bad!
-  cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size() - 1));
-  cursor_position.x = std::clamp(
-      cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size() - 1));
-
-  return cursor_position;
-}
-
-static int cursor_position_to_offset(TextVarsRuntime *text, int2 cursor_position)
-{
-  int cursor_offset = cursor_position.x;
-
-  for (int line : IndexRange(0, cursor_position.y)) {
-    cursor_offset += text->lines[line].characters.size();
-  }
-  return cursor_offset;
-}
 
 static int2 cursor_move_by_character(int2 cursor_position, TextVarsRuntime *text, int offset)
 {
@@ -239,14 +279,11 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
 
-  if (RNA_boolean_get(op->ptr, "select_text") && data->selection_start_offset == -1) {
+  if (RNA_boolean_get(op->ptr, "select_text") && !text_has_selection(data)) {
     data->selection_start_offset = data->cursor_offset;
   }
-  if (!RNA_boolean_get(op->ptr, "select_text")) {
-    text_selection_cancel(data);
-  }
 
-  int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+  int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
 
   switch (RNA_enum_get(op->ptr, "type")) {
     case PREV_CHAR:
@@ -287,7 +324,9 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
     data->selection_end_offset = data->cursor_offset;
   }
 
-  if (data->cursor_offset == data->selection_start_offset) {
+  if (!RNA_boolean_get(op->ptr, "select_text") ||
+      data->cursor_offset == data->selection_start_offset)
+  {
     text_selection_cancel(data);
   }
 
@@ -331,24 +370,25 @@ static int sequencer_text_insert_exec(bContext * /*C*/, wmOperator * /*op*/)
 
 static void text_insert(TextVars *data, const char *buf)
 {
+  TextVarsRuntime *text = data->runtime;
+  delete_selected_text(data);
+
   int in_buf_len = BLI_str_utf8_size_safe(buf);
 
   /* XXX Bail, if array is full. */
-  TextVarsRuntime *text = data->runtime;
-  int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+  int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
   seq::CharInfo cur_char = text->lines[cursor_position.y].characters[cursor_position.x];
   char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
   int move_len = BLI_strnlen(cur_char.str_ptr, 512) +
                  1; /* +1 to include '\0' XXX hardcoded size.*/
 
-  std::memmove(cursor_addr + in_buf_len, cur_char.str_ptr, move_len);
+  std::memmove(cursor_addr + in_buf_len, cursor_addr, move_len);
   std::memcpy(cursor_addr, buf, in_buf_len);
 
   // The issue seems to be, that adding multiple spaces causes cursor offset to advance, but
   // this is not always true at the start of line when wrapping. Also wrapped string is stored
   // raw in buffer, will have to check if multiple spaces would cause issues. Likely they do!
   data->cursor_offset += 1;
-  text_selection_cancel(data);
 }
 
 static int sequencer_text_insert_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
@@ -405,10 +445,20 @@ enum {
 static const EnumPropertyItem delete_type_items[] = {
     {DEL_NEXT_WORD, "NEXT_WORD", 0, "Next Word", ""},
     {DEL_PREV_WORD, "PREVIOUS_WORD", 0, "Previous Word", ""},
+    // xxx I guess these are not needed? at least selection is implied to be always deleted
     {DEL_NEXT_SEL, "NEXT_OR_SELECTION", 0, "Next or Selection", ""},
     {DEL_PREV_SEL, "PREVIOUS_OR_SELECTION", 0, "Previous or Selection", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
+
+static void delete_character(TextVarsRuntime *text, int2 cursor_position)
+{
+  seq::CharInfo cur_char = text->lines[cursor_position.y].characters[cursor_position.x];
+  char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
+  char *next_char_addr = cursor_addr + cur_char.byte_length;
+  const int len = BLI_strnlen(next_char_addr, 512) + 1; /* +1 to include '\0' XXX hardcoded size.*/
+  std::memmove(cursor_addr, next_char_addr, len);
+}
 
 static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
 {
@@ -417,35 +467,30 @@ static int sequencer_text_delete_exec(bContext *C, wmOperator *op)
   TextVarsRuntime *text = data->runtime;
   const int type = RNA_enum_get(op->ptr, "type");
 
+  if (text_has_selection(data)) {
+    delete_selected_text(data);
+    text_editing_update(C);
+    return OPERATOR_FINISHED;
+  }
+
   if (type == DEL_NEXT_SEL) {
     if (data->cursor_offset >= text->character_count) {
       return OPERATOR_CANCELLED;
     }
 
-    int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
-    seq::CharInfo cur_char = text->lines[cursor_position.y].characters[cursor_position.x];
-    char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
-    int len = BLI_strnlen(cur_char.str_ptr, 512) - cur_char.byte_length +
-              1; /* +1 to include '\0' XXX hardcoded size.*/
-
-    std::memmove(cursor_addr, cur_char.str_ptr + cur_char.byte_length, len);
+    int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
+    delete_character(text, cursor_position);
   }
   if (type == DEL_PREV_SEL) {
     if (data->cursor_offset == 0) {
       return OPERATOR_CANCELLED;
     }
 
-    int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset - 1);
-    seq::CharInfo prev_char = text->lines[cursor_position.y].characters[cursor_position.x];
-    char *cursor_addr = const_cast<char *>(prev_char.str_ptr);
-    int len = BLI_strnlen(prev_char.str_ptr, 512) - prev_char.byte_length +
-              1; /* +1 to include '\0' XXX hardcoded size.*/
-
-    std::memmove(cursor_addr, prev_char.str_ptr + prev_char.byte_length, len);
+    int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset - 1);
+    delete_character(text, cursor_position);
     data->cursor_offset -= 1;
   }
 
-  text_selection_cancel(data);
   text_editing_update(C);
   return OPERATOR_FINISHED;
 }

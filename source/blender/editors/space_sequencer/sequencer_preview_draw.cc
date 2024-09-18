@@ -1086,17 +1086,14 @@ static void text_selection_draw(View2D *v2d, TextVarsRuntime *text, TextVars *da
 
   immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.3f));
 
-  /* Ensure, that selection start < selection end. */
-  int sel_start_offset = data->selection_start_offset;
-  int sel_end_offset = data->selection_end_offset;
-  if (sel_start_offset > sel_end_offset) {
-    std::swap(sel_start_offset, sel_end_offset);
-  }
-  /* Cursor position is at the next character, only highlight up to cursor. */
-  sel_end_offset -= 1;
+  blender::IndexRange sel_range = seq_text_selection_range_get(data);
 
-  blender::int2 selection_start = seq_cursor_offset_to_position(text, sel_start_offset);
-  blender::int2 selection_end = seq_cursor_offset_to_position(text, sel_end_offset);
+  if (sel_range.is_empty()) {
+    return;
+  }
+
+  blender::int2 selection_start = seq_text_cursor_offset_to_position(text, sel_range.first());
+  blender::int2 selection_end = seq_text_cursor_offset_to_position(text, sel_range.last());
   const int line_start = selection_start.y;
   const int line_end = selection_end.y;
 
@@ -1141,7 +1138,7 @@ static void text_edit_draw(const bContext *C)
   }
 
   TextVarsRuntime *text = data->runtime;
-  blender::int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
+  blender::int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
   blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
 
   View2D *v2d = UI_view2d_fromcontext(C);
