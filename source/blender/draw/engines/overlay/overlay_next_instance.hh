@@ -74,7 +74,7 @@ class Instance {
     const SelectionType selection_type_;
 
     Armatures armatures = {selection_type_};
-    AttributeViewer attribute_viewer = {selection_type_};
+    AttributeViewer attribute_viewer;
     Bounds bounds = {selection_type_};
     Cameras cameras = {selection_type_};
     Curves curves;

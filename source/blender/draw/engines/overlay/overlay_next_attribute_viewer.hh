@@ -19,8 +19,6 @@
 namespace blender::draw::overlay {
 class AttributeViewer {
  private:
-  const SelectionType selection_type_;
-
   PassMain ps_ = {"attribute_viewer_ps_"};
 
   PassMain::Sub *mesh_sub_;
@@ -32,12 +30,10 @@ class AttributeViewer {
   bool enabled_ = false;
 
  public:
-  AttributeViewer(SelectionType selection_type) : selection_type_(selection_type) {}
-
   void begin_sync(Resources &res, const State &state)
   {
     ps_.init();
-    enabled_ = state.space_type == SPACE_VIEW3D && selection_type_ == SelectionType::DISABLED &&
+    enabled_ = state.space_type == SPACE_VIEW3D && res.selection_type == SelectionType::DISABLED &&
                (state.overlay.flag & V3D_OVERLAY_VIEWER_ATTRIBUTE);
     if (!enabled_) {
       return;
@@ -115,15 +111,19 @@ class AttributeViewer {
     switch (object.type) {
       case OB_MESH: {
         ResourceHandle res_handle = manager.unique_handle(ob_ref);
-        std::array<blender::gpu::Batch *, 2> batches = {DRW_cache_mesh_surface_get(&object),
-                                                        DRW_cache_mesh_loose_edges_get(&object)};
-        for (blender::gpu::Batch *batch : batches) {
-          if (batch) {
-            auto &sub = *instance_sub_;
-            sub.push_constant("ucolor", color);
-            sub.draw(batch, res_handle);
-          }
+
+        {
+          blender::gpu::Batch *batch = DRW_cache_mesh_surface_get(&object);
+          auto &sub = *instance_sub_;
+          sub.push_constant("ucolor", color);
+          sub.draw(batch, res_handle);
         }
+        if (blender::gpu::Batch *batch = DRW_cache_mesh_loose_edges_get(&object)) {
+          auto &sub = *instance_sub_;
+          sub.push_constant("ucolor", color);
+          sub.draw(batch, res_handle);
+        }
+
         break;
       }
       case OB_POINTCLOUD: {
@@ -134,12 +134,11 @@ class AttributeViewer {
         break;
       }
       case OB_CURVES_LEGACY: {
-        if (blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_get(&object)) {
-          auto &sub = *instance_sub_;
-          sub.push_constant("ucolor", color);
-          ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
-          sub.draw(batch, res_handle);
-        }
+        blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_get(&object);
+        auto &sub = *instance_sub_;
+        sub.push_constant("ucolor", color);
+        ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
+        sub.draw(batch, res_handle);
         break;
       }
       case OB_CURVES: {
@@ -173,12 +172,10 @@ class AttributeViewer {
                 mesh->attributes().lookup_meta_data(".viewer"))
         {
           if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-            if (blender::gpu::Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object))
-            {
-              auto &sub = *mesh_sub_;
-              sub.push_constant("opacity", opacity);
-              sub.draw(batch, manager.unique_handle(ob_ref));
-            }
+            blender::gpu::Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
+            auto &sub = *mesh_sub_;
+            sub.push_constant("opacity", opacity);
+            sub.draw(batch, manager.unique_handle(ob_ref));
           }
         }
         break;
@@ -207,14 +204,11 @@ class AttributeViewer {
                   curves.attributes().lookup_meta_data(".viewer"))
           {
             if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-              if (blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(
-                      &object))
-              {
-                auto &sub = *curve_sub_;
-                sub.push_constant("opacity", opacity);
-                ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
-                sub.draw(batch, res_handle);
-              }
+              blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
+              auto &sub = *curve_sub_;
+              sub.push_constant("opacity", opacity);
+              ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
+              sub.draw(batch, res_handle);
             }
           }
         }
