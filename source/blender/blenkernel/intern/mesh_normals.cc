@@ -1562,13 +1562,31 @@ static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const
 
 }  // namespace blender::bke::mesh
 
+static void normalize_vecs(float (*vecs)[3], int vecs_num)
+{
+  using namespace blender;
+
+  MutableSpan<float[3]> vecs_span(vecs, vecs_num);
+  threading::parallel_for(vecs_span.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      if (abs(len_squared_v3(vecs_span[i]) - 1.0f) > 0.0001f) {
+        normalize_v3(vecs_span[i]);
+      }
+    }
+  });
+}
+
 void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_corner_normals)[3])
 {
+  normalize_vecs(r_custom_corner_normals, mesh->corners_num);
+
   blender::bke::mesh::mesh_set_custom_normals(mesh, r_custom_corner_normals, false);
 }
 
 void BKE_mesh_set_custom_normals_from_verts(Mesh *mesh, float (*r_custom_vert_normals)[3])
 {
+  normalize_vecs(r_custom_vert_normals, mesh->verts_num);
+
   blender::bke::mesh::mesh_set_custom_normals(mesh, r_custom_vert_normals, true);
 }
 
