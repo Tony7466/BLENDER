@@ -32,29 +32,20 @@ static void sh_node_tex_rounded_polygon_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Vector>("Vector")
       .hide_value()
       .implicit_field(implicit_field_inputs::position)
-      .description("XY components of the input vector");
+      .description("(X, Y) components of the input vector. The Z component is ignored");
   b.add_input<decl::Float>("Scale").min(-1000.0f).max(1000.0f).default_value(1.0f).description(
       "Factor by which the input vector is scaled");
-
-  /* Panel for r-gon inputs. */
-  PanelDeclarationBuilder &r_gon =
-      b.add_panel("Rounded Polygon")
-          .default_closed(false)
-          .draw_buttons([](uiLayout *layout, bContext * /*C*/, PointerRNA *ptr) {
-            uiItemR(
-                layout, ptr, "elliptical_corners", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
-          });
-  r_gon.add_input<decl::Float>("R_gon Sides")
+  b.add_input<decl::Float>("R_gon Sides")
       .min(2.0f)
       .max(1000.0f)
       .default_value(5.0f)
-      .description("Number of R-gon base sides");
-  r_gon.add_input<decl::Float>("R_gon Roundness")
+      .description("Number of rounded polygon sides");
+  b.add_input<decl::Float>("R_gon Roundness")
       .min(0.0f)
       .max(1.0f)
       .default_value(0.0f)
       .subtype(PROP_FACTOR)
-      .description("R-gon base corner roundness");
+      .description("Corner roundness of the rounded polygon");
 }
 
 static void node_shader_buts_tex_rounded_polygon(uiLayout *layout,
@@ -63,6 +54,7 @@ static void node_shader_buts_tex_rounded_polygon(uiLayout *layout,
 {
   uiItemR(
       layout, ptr, "normalize_r_gon_parameter", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "elliptical_corners", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 static void node_shader_init_tex_rounded_polygon(bNodeTree * /*ntree*/, bNode *node)

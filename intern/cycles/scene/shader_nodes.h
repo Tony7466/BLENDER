@@ -246,10 +246,9 @@ class RoundedPolygonTextureNode : public TextureNode {
   SHADER_NODE_CLASS(RoundedPolygonTextureNode)
 
   NODE_SOCKET_API(bool, normalize_r_gon_parameter)
+  NODE_SOCKET_API(bool, elliptical_corners)
   NODE_SOCKET_API(float3, vector)
   NODE_SOCKET_API(float, scale)
-
-  NODE_SOCKET_API(bool, elliptical_corners)
   NODE_SOCKET_API(float, r_gon_sides)
   NODE_SOCKET_API(float, r_gon_roundness)
 };

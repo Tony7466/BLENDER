@@ -1229,10 +1229,9 @@ NODE_DEFINE(RoundedPolygonTextureNode)
   TEXTURE_MAPPING_DEFINE(RoundedPolygonTextureNode);
 
   SOCKET_BOOLEAN(normalize_r_gon_parameter, "Normalize Edge Parameter", false);
+  SOCKET_BOOLEAN(elliptical_corners, "Elliptical Corners", false);
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
-
-  SOCKET_BOOLEAN(elliptical_corners, "Elliptical Corners", false);
   SOCKET_IN_FLOAT(r_gon_sides, "R_gon Sides", 5.0f);
   SOCKET_IN_FLOAT(r_gon_roundness, "R_gon Roundness", 0.0f);
 
