@@ -157,7 +157,7 @@ def prune_stale_files() -> None:
             print(f"'{relative_dir_to_remove}' exists but is not a directory")
             continue
         print(f"Removing '{relative_dir_to_remove}'")
-        shutil.rmtree(dir_to_remove)
+        make_utils.remove_directory(dir_to_remove)
         found_stale_files = True
 
     if not found_stale_files:
