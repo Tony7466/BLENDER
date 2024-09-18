@@ -16,6 +16,15 @@
 
 namespace blender::geometry {
 
+using bke::AttrDomain;
+
+struct PropagationAttribute {
+  StringRef name;
+  eCustomDataType cd_type;
+  bke::AttrDomain domain;
+  GVArray data;
+};
+
 Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
                                     const IndexMask &mask,
                                     const bke::AttributeFilter &attribute_filter)
@@ -24,12 +33,6 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
   Array<Mesh *> elements(mask.size(), nullptr);
 
   const bke::AttributeAccessor src_attributes = mesh.attributes();
-
-  struct PropagationAttribute {
-    StringRef name;
-    eCustomDataType cd_type;
-    GVArray data;
-  };
 
   Vector<PropagationAttribute> propagation_attributes;
   src_attributes.for_all(
@@ -41,11 +44,12 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
           return true;
         }
         const bke::GAttributeReader src_attribute = src_attributes.lookup(attribute_name,
-                                                                          bke::AttrDomain::Point);
+                                                                          AttrDomain::Point);
         if (!src_attribute) {
           return true;
         }
-        propagation_attributes.append({attribute_name, meta_data.data_type, *src_attribute});
+        propagation_attributes.append(
+            {attribute_name, meta_data.data_type, AttrDomain::Point, *src_attribute});
         return true;
       });
 
@@ -57,7 +61,7 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
 
     for (const PropagationAttribute &src_attribute : propagation_attributes) {
       bke::GSpanAttributeWriter dst = element_attributes.lookup_or_add_for_write_only_span(
-          src_attribute.name, bke::AttrDomain::Point, src_attribute.cd_type);
+          src_attribute.name, AttrDomain::Point, src_attribute.cd_type);
       if (!dst) {
         continue;
       }
@@ -81,27 +85,69 @@ Array<Mesh *> extract_mesh_edges(const Mesh &mesh,
   const Span<int2> src_edges = mesh.edges();
   const bke::AttributeAccessor src_attributes = mesh.attributes();
 
+  Vector<PropagationAttribute> propagation_attributes;
+  src_attributes.for_all(
+      [&](const StringRef attribute_name, const bke::AttributeMetaData meta_data) {
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
+        if (attribute_name == ".edge_verts") {
+          return true;
+        }
+        if (attribute_filter.allow_skip(attribute_name)) {
+          return true;
+        }
+        const bke::GAttributeReader src_attribute = src_attributes.lookup(attribute_name);
+        if (!src_attribute) {
+          return true;
+        }
+        if (ELEM(src_attribute.domain, AttrDomain::Point, AttrDomain::Edge)) {
+          propagation_attributes.append(
+              {attribute_name, meta_data.data_type, src_attribute.domain, *src_attribute});
+        }
+        else if (src_attribute.domain == AttrDomain::Corner) {
+          if (GVArray adapted_attribute = src_attributes.adapt_domain(
+                  *src_attribute, src_attribute.domain, AttrDomain::Point))
+          {
+            propagation_attributes.append(
+                {attribute_name, meta_data.data_type, AttrDomain::Point, adapted_attribute});
+          }
+        }
+        else if (src_attribute.domain == AttrDomain::Face) {
+          if (GVArray adapted_attribute = src_attributes.adapt_domain(
+                  *src_attribute, src_attribute.domain, AttrDomain::Edge))
+          {
+            propagation_attributes.append(
+                {attribute_name, meta_data.data_type, AttrDomain::Edge, adapted_attribute});
+          }
+        }
+        return true;
+      });
+
   mask.foreach_index(GrainSize(32), [&](const int edge_i, const int element_i) {
     Mesh *element = BKE_mesh_new_nomain(2, 1, 0, 0);
     BKE_mesh_copy_parameters_for_eval(element, &mesh);
 
     MutableSpan<int2> element_edges = element->edges_for_write();
     element_edges[0] = {0, 1};
-
     const int2 &src_edge = src_edges[edge_i];
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
-                           attribute_filter,
-                           Span<int>({src_edge[0], src_edge[1]}),
-                           element->attributes_for_write());
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Edge,
-                           bke::AttrDomain::Edge,
-                           bke::attribute_filter_with_skip_ref(attribute_filter, {".edge_verts"}),
-                           Span<int>{edge_i},
-                           element->attributes_for_write());
 
+    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
+    for (const PropagationAttribute &src_attribute : propagation_attributes) {
+      bke::GSpanAttributeWriter dst = element_attributes.lookup_or_add_for_write_only_span(
+          src_attribute.name, src_attribute.domain, src_attribute.cd_type);
+      if (!dst) {
+        continue;
+      }
+      if (src_attribute.domain == AttrDomain::Point) {
+        src_attribute.data.get(src_edge[0], dst.span[0]);
+        src_attribute.data.get(src_edge[1], dst.span[1]);
+      }
+      else {
+        src_attribute.data.get(edge_i, dst.span[0]);
+      }
+      dst.finish();
+    }
     elements[element_i] = element;
   });
 
@@ -120,6 +166,27 @@ Array<Mesh *> extract_mesh_faces(const Mesh &mesh,
   const OffsetIndices<int> src_faces = mesh.faces();
 
   const bke::AttributeAccessor src_attributes = mesh.attributes();
+
+  Vector<PropagationAttribute> propagation_attributes;
+  src_attributes.for_all(
+      [&](const StringRef attribute_name, const bke::AttributeMetaData meta_data) {
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
+        if (ELEM(attribute_name, ".edge_verts", ".corner_edge", ".corner_vert")) {
+          return true;
+        }
+        if (attribute_filter.allow_skip(attribute_name)) {
+          return true;
+        }
+        const bke::GAttributeReader src_attribute = src_attributes.lookup(attribute_name);
+        if (!src_attribute) {
+          return true;
+        }
+        propagation_attributes.append(
+            {attribute_name, meta_data.data_type, src_attribute.domain, *src_attribute});
+        return true;
+      });
 
   mask.foreach_index(GrainSize(32), [&](const int face_i, const int element_i) {
     const IndexRange src_face = src_faces[face_i];
@@ -142,45 +209,44 @@ Array<Mesh *> extract_mesh_faces(const Mesh &mesh,
     element_face_offsets[0] = 0;
     element_face_offsets[1] = verts_num;
 
-    Array<int> old_corner_indices(verts_num);
-    Array<int> old_edge_indices(verts_num);
-    Array<int> old_vert_indices(verts_num);
-    for (const int i : IndexRange(verts_num)) {
-      const int src_corner_i = src_face[i];
-      const int src_edge_i = src_corner_edges[src_corner_i];
-      const int src_vert_i = src_corner_verts[src_corner_i];
-      old_corner_indices[i] = src_corner_i;
-      old_edge_indices[i] = src_edge_i;
-      old_vert_indices[i] = src_vert_i;
-    }
-
     bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
-                           attribute_filter,
-                           old_vert_indices,
-                           element_attributes);
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Edge,
-                           bke::AttrDomain::Edge,
-                           bke::attribute_filter_with_skip_ref(attribute_filter, {".edge_verts"}),
-                           old_edge_indices,
-                           element_attributes);
-    bke::gather_attributes(
-        src_attributes,
-        bke::AttrDomain::Corner,
-        bke::AttrDomain::Corner,
-        bke::attribute_filter_with_skip_ref(attribute_filter, {".corner_edge", ".corner_vert"}),
-        old_corner_indices,
-        element_attributes);
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Face,
-                           bke::AttrDomain::Face,
-                           attribute_filter,
-                           Span<int>{face_i},
-                           element_attributes);
-
+    for (const PropagationAttribute &src_attribute : propagation_attributes) {
+      bke::GSpanAttributeWriter dst = element_attributes.lookup_or_add_for_write_only_span(
+          src_attribute.name, src_attribute.domain, src_attribute.cd_type);
+      if (!dst) {
+        continue;
+      }
+      switch (src_attribute.domain) {
+        case AttrDomain::Point: {
+          for (const int i : IndexRange(verts_num)) {
+            const int src_corner_i = src_face[i];
+            const int src_vert_i = src_corner_verts[src_corner_i];
+            src_attribute.data.get(src_vert_i, dst.span[i]);
+          }
+          break;
+        }
+        case AttrDomain::Edge: {
+          for (const int i : IndexRange(verts_num)) {
+            const int src_corner_i = src_face[i];
+            const int src_edge_i = src_corner_edges[src_corner_i];
+            src_attribute.data.get(src_edge_i, dst.span[i]);
+          }
+          break;
+        }
+        case AttrDomain::Corner: {
+          src_attribute.data.materialize(src_face, dst.span.data());
+          break;
+        }
+        case AttrDomain::Face: {
+          src_attribute.data.get(face_i, dst.span[0]);
+          break;
+        }
+        default:
+          BLI_assert_unreachable();
+          break;
+      }
+      dst.finish();
+    }
     elements[element_i] = element;
   });
 
@@ -202,8 +268,8 @@ Array<PointCloud *> extract_pointcloud_points(const PointCloud &pointcloud,
     element->mat = static_cast<Material **>(MEM_dupallocN(pointcloud.mat));
 
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
                            element->attributes_for_write());
@@ -228,14 +294,14 @@ Array<Curves *> extract_curves_points(const Curves &curves,
     Curves *element = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
     bke::curves_copy_parameters(curves, *element);
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
                            element->geometry.wrap().attributes_for_write());
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Curve,
-                           bke::AttrDomain::Curve,
+                           AttrDomain::Curve,
+                           AttrDomain::Curve,
                            attribute_filter,
                            Span<int>{point_i},
                            element->geometry.wrap().attributes_for_write());
@@ -264,14 +330,14 @@ Array<Curves *> extract_curves(const Curves &curves,
         element->geometry.wrap().attributes_for_write();
     bke::curves_copy_parameters(curves, *element);
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
                            attribute_filter,
                            src_points,
                            element_attributes);
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Curve,
-                           bke::AttrDomain::Curve,
+                           AttrDomain::Curve,
+                           AttrDomain::Curve,
                            attribute_filter,
                            Span<int>{curve_i},
                            element_attributes);
@@ -305,8 +371,8 @@ Array<bke::Instances *> extract_instances(const bke::Instances &instances,
     element->add_instance(new_handle, old_transform);
 
     bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Instance,
-                           bke::AttrDomain::Instance,
+                           AttrDomain::Instance,
+                           AttrDomain::Instance,
                            bke::attribute_filter_with_skip_ref(
                                attribute_filter, {".reference_index", "instance_transform"}),
                            Span<int>{instance_i},
@@ -344,8 +410,8 @@ Array<GreasePencil *> extract_greasepencil_layers(const GreasePencil &grease_pen
       drawing.strokes_for_write() = src_drawing->strokes();
 
       bke::gather_attributes(src_attributes,
-                             bke::AttrDomain::Layer,
-                             bke::AttrDomain::Layer,
+                             AttrDomain::Layer,
+                             AttrDomain::Layer,
                              attribute_filter,
                              Span<int>{layer_i},
                              element->attributes_for_write());
@@ -384,14 +450,14 @@ Array<GreasePencil *> extract_greasepencil_layer_points(
     new_curves.offsets_for_write().last() = 1;
 
     bke::gather_attributes(src_layer_attributes,
-                           bke::AttrDomain::Layer,
-                           bke::AttrDomain::Layer,
+                           AttrDomain::Layer,
+                           AttrDomain::Layer,
                            attribute_filter,
                            Span<int>{layer_i},
                            element->attributes_for_write());
     bke::gather_attributes(src_curves_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
                            new_curves.attributes_for_write());
@@ -434,20 +500,20 @@ Array<GreasePencil *> extract_greasepencil_layer_curves(
 
     new_curves.resize(points_num, 1);
     bke::gather_attributes(src_curves_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
                            attribute_filter,
                            src_points,
                            new_curves.attributes_for_write());
     bke::gather_attributes(src_curves_attributes,
-                           bke::AttrDomain::Curve,
-                           bke::AttrDomain::Curve,
+                           AttrDomain::Curve,
+                           AttrDomain::Curve,
                            attribute_filter,
                            Span<int>{curve_i},
                            new_curves.attributes_for_write());
     bke::gather_attributes(src_layer_attributes,
-                           bke::AttrDomain::Layer,
-                           bke::AttrDomain::Layer,
+                           AttrDomain::Layer,
+                           AttrDomain::Layer,
                            attribute_filter,
                            Span<int>{layer_i},
                            element->attributes_for_write());
