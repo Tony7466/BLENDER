@@ -407,25 +407,25 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
             available_fields_by_geometry_socket[dst_index] |=
                 available_fields_by_geometry_socket[src_index];
           }
-          break;
-        }
-        /* This zone needs special handling because attributes from the input geometry can be
-         * propagated to the output node. */
-        case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT: {
-          if (zones == nullptr) {
-            break;
+          /* This zone needs additional special handling because attributes from the input geometry
+           * can be propagated to the output node. */
+          if (node->type == GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT) {
+            if (zones == nullptr) {
+              break;
+            }
+            const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier);
+            if (!zone->input_node) {
+              break;
+            }
+            const bNode *input_node = zone->input_node;
+            const bNode *output_node = node;
+            const int src_index = input_node->input_socket(0).index_in_tree();
+            const int dst_index = output_node->output_socket(0).index_in_tree();
+            propagated_geometries_by_socket[dst_index] |=
+                propagated_geometries_by_socket[src_index];
+            available_fields_by_geometry_socket[dst_index] |=
+                available_fields_by_geometry_socket[src_index];
           }
-          const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier);
-          if (!zone->input_node) {
-            break;
-          }
-          const bNode *input_node = zone->input_node;
-          const bNode *output_node = node;
-          const int src_index = input_node->input_socket(0).index_in_tree();
-          const int dst_index = output_node->output_socket(0).index_in_tree();
-          propagated_geometries_by_socket[dst_index] |= propagated_geometries_by_socket[src_index];
-          available_fields_by_geometry_socket[dst_index] |=
-              available_fields_by_geometry_socket[src_index];
           break;
         }
         /* The repeat output node needs special handling for two reasons:
