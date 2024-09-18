@@ -46,8 +46,8 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
   if (selection.is_empty()) {
     return;
   }
-  const GVArray positions = evaluator.get_evaluated(0);
-  const GVArray radii = evaluator.get_evaluated(1);
+  const VArray<float3> positions = evaluator.get_evaluated<float3>(0);
+  const VArray<float> radii = evaluator.get_evaluated<float>(1);
 
   PointCloud *pointcloud = bke::pointcloud_new_no_attributes(selection.size());
   geometry_set.replace_pointcloud(pointcloud);
@@ -61,13 +61,13 @@ static void convert_instances_to_points(GeometrySet &geometry_set,
       selection,
       dst_attributes);
 
-  bke::GSpanAttributeWriter point_positions = dst_attributes.lookup_or_add_for_write_only_span(
-      "position", AttrDomain::Point, CD_PROP_FLOAT3);
+  bke::SpanAttributeWriter<float3> point_positions =
+      dst_attributes.lookup_or_add_for_write_only_span<float3>("position", AttrDomain::Point);
   array_utils::gather(positions, selection, point_positions.span);
   point_positions.finish();
 
-  bke::GSpanAttributeWriter point_radii = dst_attributes.lookup_or_add_for_write_only_span(
-      "radius", AttrDomain::Point, CD_PROP_FLOAT);
+  bke::SpanAttributeWriter<float> point_radii =
+      dst_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
   array_utils::gather(radii, selection, point_radii.span);
   point_radii.finish();
 }

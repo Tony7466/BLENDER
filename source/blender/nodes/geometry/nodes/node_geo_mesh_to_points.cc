@@ -75,8 +75,8 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
   evaluator.evaluate();
 
   const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
-  const GVArray positions_eval = evaluator.get_evaluated(0);
-  const GVArray radii_eval = evaluator.get_evaluated(1);
+  const VArray<float3> positions_eval = evaluator.get_evaluated<float3>(0);
+  const VArray<float> radii_eval = evaluator.get_evaluated<float>(1);
 
   PointCloud *pointcloud = bke::pointcloud_new_no_attributes(selection.size());
   MutableAttributeAccessor dst_attributes = pointcloud->attributes_for_write();
@@ -89,15 +89,15 @@ static void geometry_set_mesh_to_points(GeometrySet &geometry_set,
       selection,
       dst_attributes);
 
-  GSpanAttributeWriter radius = dst_attributes.lookup_or_add_for_write_only_span(
-      "radius", AttrDomain::Point, CD_PROP_FLOAT);
-  array_utils::gather(radii_eval, selection, radius.span);
-  radius.finish();
-
-  GSpanAttributeWriter positions = dst_attributes.lookup_or_add_for_write_only_span(
-      "position", AttrDomain::Point, CD_PROP_FLOAT3);
+  SpanAttributeWriter<float3> positions = dst_attributes.lookup_or_add_for_write_only_span<float3>(
+      "position", AttrDomain::Point);
   array_utils::gather(positions_eval, selection, positions.span);
   positions.finish();
+
+  SpanAttributeWriter<float> radius = dst_attributes.lookup_or_add_for_write_only_span<float>(
+      "radius", AttrDomain::Point);
+  array_utils::gather(radii_eval, selection, radius.span);
+  radius.finish();
 
   geometry_set.replace_pointcloud(pointcloud);
   geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
