@@ -385,7 +385,8 @@ void GHOST_ContextCGL::metalUpdateFramebuffer()
     }
     [cmdBuffer commit];
 
-  m_metalLayer.drawableSize = CGSizeMake(CGFloat(width), CGFloat(height));
+    m_metalLayer.drawableSize = CGSizeMake(CGFloat(width), CGFloat(height));
+  }
 }
 
 void GHOST_ContextCGL::metalSwapBuffers()
