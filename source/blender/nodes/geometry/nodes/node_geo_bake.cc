@@ -859,10 +859,13 @@ void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layo
   {
     uiLayout *col = uiLayoutColumn(settings_col, true);
     uiItemR(col, &ctx.bake_rna, "bake_target", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
     uiLayout *subcol = uiLayoutColumn(col, true);
+    uiLayoutSetActive(subcol, ctx.bake_target == NODES_MODIFIER_BAKE_TARGET_DISK);
+    uiItemR(
+        subcol, &ctx.bake_rna, "use_custom_path", UI_ITEM_NONE, IFACE_("Custom Path"), ICON_NONE);
+    uiLayout *subsubcol = uiLayoutColumn(subcol, true);
     const bool use_custom_path = ctx.bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH;
-    uiLayoutSetActive(subcol, use_custom_path);
+    uiLayoutSetActive(subsubcol, use_custom_path);
     Main *bmain = CTX_data_main(C);
     auto bake_path = bke::bake::get_node_bake_path(*bmain, *ctx.object, *ctx.nmd, ctx.bake->id);
 
@@ -877,7 +880,7 @@ void draw_common_bake_settings(bContext *C, BakeDrawContext &ctx, uiLayout *layo
       }
     }
 
-    uiItemFullR(subcol,
+    uiItemFullR(subsubcol,
                 &ctx.bake_rna,
                 RNA_struct_find_property(&ctx.bake_rna, "directory"),
                 -1,
