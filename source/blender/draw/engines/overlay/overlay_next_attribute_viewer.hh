@@ -59,7 +59,7 @@ class AttributeViewer {
     const DupliObject *dupli_object = DRW_object_get_dupli(ob_ref.object);
     const bool is_preview = dupli_object != nullptr &&
                             dupli_object->preview_base_geometry != nullptr;
-    if (!(enabled_ && is_preview)) {
+    if (!enabled_ || !is_preview) {
       return;
     }
     const float opacity = state.overlay.viewer_attribute_opacity;
@@ -90,18 +90,15 @@ class AttributeViewer {
 
  private:
   void populate_for_instance(const ObjectRef &ob_ref,
-                                   const DupliObject &dupli_object,
-                                   const float opacity,
-                                   Manager &manager)
+                             const DupliObject &dupli_object,
+                             const float opacity,
+                             Manager &manager)
   {
-    using namespace blender;
-    using namespace blender::bke;
-    using namespace blender::draw;
-
     Object &object = *ob_ref.object;
-    const GeometrySet &base_geometry = *dupli_object.preview_base_geometry;
-    const InstancesComponent &instances = *base_geometry.get_component<InstancesComponent>();
-    const AttributeAccessor instance_attributes = *instances.attributes();
+    const bke::GeometrySet &base_geometry = *dupli_object.preview_base_geometry;
+    const bke::InstancesComponent &instances =
+        *base_geometry.get_component<bke::InstancesComponent>();
+    const bke::AttributeAccessor instance_attributes = *instances.attributes();
     const VArray attribute = *instance_attributes.lookup<ColorGeometry4f>(".viewer");
     if (!attribute) {
       return;
@@ -113,12 +110,12 @@ class AttributeViewer {
         ResourceHandle res_handle = manager.unique_handle(ob_ref);
 
         {
-          blender::gpu::Batch *batch = DRW_cache_mesh_surface_get(&object);
+          gpu::Batch *batch = DRW_cache_mesh_surface_get(&object);
           auto &sub = *instance_sub_;
           sub.push_constant("ucolor", color);
           sub.draw(batch, res_handle);
         }
-        if (blender::gpu::Batch *batch = DRW_cache_mesh_loose_edges_get(&object)) {
+        if (gpu::Batch *batch = DRW_cache_mesh_loose_edges_get(&object)) {
           auto &sub = *instance_sub_;
           sub.push_constant("ucolor", color);
           sub.draw(batch, res_handle);
@@ -128,13 +125,13 @@ class AttributeViewer {
       }
       case OB_POINTCLOUD: {
         auto &sub = *pointcloud_sub_;
-        blender::gpu::Batch *batch = point_cloud_sub_pass_setup(sub, &object, nullptr);
+        gpu::Batch *batch = point_cloud_sub_pass_setup(sub, &object, nullptr);
         sub.push_constant("ucolor", color);
         sub.draw(batch, manager.unique_handle(ob_ref));
         break;
       }
       case OB_CURVES_LEGACY: {
-        blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_get(&object);
+        gpu::Batch *batch = DRW_cache_curve_edge_wire_get(&object);
         auto &sub = *instance_sub_;
         sub.push_constant("ucolor", color);
         ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
@@ -156,14 +153,10 @@ class AttributeViewer {
   }
 
   void populate_for_geometry(const ObjectRef &ob_ref,
-                                   const float opacity,
-                                   const State &state,
-                                   Manager &manager)
+                             const float opacity,
+                             const State &state,
+                             Manager &manager)
   {
-    using namespace blender;
-    using namespace blender::bke;
-    using namespace blender::draw;
-
     Object &object = *ob_ref.object;
     switch (object.type) {
       case OB_MESH: {
@@ -172,7 +165,7 @@ class AttributeViewer {
                 mesh->attributes().lookup_meta_data(".viewer"))
         {
           if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-            blender::gpu::Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
+            gpu::Batch *batch = DRW_cache_mesh_surface_viewer_attribute_get(&object);
             auto &sub = *mesh_sub_;
             sub.push_constant("opacity", opacity);
             sub.draw(batch, manager.unique_handle(ob_ref));
@@ -188,7 +181,7 @@ class AttributeViewer {
           if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
             gpu::VertBuf **vertbuf = DRW_pointcloud_evaluated_attribute(pointcloud, ".viewer");
             auto &sub = *pointcloud_sub_;
-            blender::gpu::Batch *batch = point_cloud_sub_pass_setup(sub, &object, nullptr);
+            gpu::Batch *batch = point_cloud_sub_pass_setup(sub, &object, nullptr);
             sub.push_constant("opacity", opacity);
             sub.bind_texture("attribute_tx", vertbuf);
             sub.draw(batch, manager.unique_handle(ob_ref));
@@ -204,7 +197,7 @@ class AttributeViewer {
                   curves.attributes().lookup_meta_data(".viewer"))
           {
             if (attribute_type_supports_viewer_overlay(meta_data->data_type)) {
-              blender::gpu::Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
+              gpu::Batch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
               auto &sub = *curve_sub_;
               sub.push_constant("opacity", opacity);
               ResourceHandle res_handle = manager.resource_handle(object.object_to_world());
@@ -225,7 +218,7 @@ class AttributeViewer {
             gpu::VertBuf **texture = DRW_curves_texture_for_evaluated_attribute(
                 curves_id, ".viewer", &is_point_domain);
             auto &sub = *curves_sub_;
-            blender::gpu::Batch *batch = curves_sub_pass_setup(sub, state.scene, ob_ref.object);
+            gpu::Batch *batch = curves_sub_pass_setup(sub, state.scene, ob_ref.object);
             sub.push_constant("opacity", opacity);
             sub.push_constant("is_point_domain", is_point_domain);
             sub.bind_texture("color_tx", *texture);
