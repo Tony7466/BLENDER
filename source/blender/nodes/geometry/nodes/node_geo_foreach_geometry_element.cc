@@ -302,14 +302,12 @@ static void node_declare(NodeDeclarationBuilder &b)
       "Index of the element in the source geometry. Note that the same index can occure more than "
       "once when iterating over multiple components at once");
 
-  const bool show_element_socket = output_storage &&
-                                   AttrDomain(output_storage->domain) != AttrDomain::Corner;
   b.add_output<decl::Geometry>("Element")
       .description(
           "Single element geometry for the current iteration. Note that it can be quite "
           "inefficient to splitup large geometries into many small geometries")
       .propagate_all()
-      .unavailable(!show_element_socket);
+      .available(output_storage && AttrDomain(output_storage->domain) != AttrDomain::Corner);
 
   b.add_input<decl::Geometry>("Geometry").description("Geometry whose elements are iterated over");
 
