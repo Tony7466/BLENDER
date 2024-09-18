@@ -288,23 +288,29 @@ Array<Curves *> extract_curves_points(const Curves &curves,
 
   const bke::CurvesGeometry &src_curves = curves.geometry.wrap();
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
+  const Array<int> point_to_curve_map = src_curves.point_to_curve_map();
 
   mask.foreach_index(GrainSize(32), [&](const int point_i, const int element_i) {
-    /* TODO: Use src curve type. */
+    const int curve_i = point_to_curve_map[point_i];
+
+    /* Actual curve type is propagated below. */
     Curves *element = bke::curves_new_nomain_single(1, CURVE_TYPE_POLY);
     bke::curves_copy_parameters(curves, *element);
+
+    bke::MutableAttributeAccessor element_attributes =
+        element->geometry.wrap().attributes_for_write();
     bke::gather_attributes(src_attributes,
                            AttrDomain::Point,
                            AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
-                           element->geometry.wrap().attributes_for_write());
+                           element_attributes);
     bke::gather_attributes(src_attributes,
                            AttrDomain::Curve,
                            AttrDomain::Curve,
                            attribute_filter,
-                           Span<int>{point_i},
-                           element->geometry.wrap().attributes_for_write());
+                           Span<int>{curve_i},
+                           element_attributes);
     elements[element_i] = element;
   });
 
@@ -435,9 +441,12 @@ Array<GreasePencil *> extract_greasepencil_layer_points(
   const bke::CurvesGeometry &src_curves = src_drawing.strokes();
   const bke::AttributeAccessor src_layer_attributes = grease_pencil.attributes();
   const bke::AttributeAccessor src_curves_attributes = src_curves.attributes();
+  const Array<int> point_to_curve_map = src_curves.point_to_curve_map();
 
   Array<GreasePencil *> elements(mask.size(), nullptr);
   mask.foreach_index(GrainSize(32), [&](const int point_i, const int element_i) {
+    const int curve_i = point_to_curve_map[point_i];
+
     GreasePencil *element = BKE_grease_pencil_new_nomain();
     element->material_array = static_cast<Material **>(
         MEM_dupallocN(grease_pencil.material_array));
@@ -449,18 +458,24 @@ Array<GreasePencil *> extract_greasepencil_layer_points(
     new_curves.resize(1, 1);
     new_curves.offsets_for_write().last() = 1;
 
-    bke::gather_attributes(src_layer_attributes,
-                           AttrDomain::Layer,
-                           AttrDomain::Layer,
-                           attribute_filter,
-                           Span<int>{layer_i},
-                           element->attributes_for_write());
     bke::gather_attributes(src_curves_attributes,
                            AttrDomain::Point,
                            AttrDomain::Point,
                            attribute_filter,
                            Span<int>{point_i},
                            new_curves.attributes_for_write());
+    bke::gather_attributes(src_curves_attributes,
+                           AttrDomain::Curve,
+                           AttrDomain::Curve,
+                           attribute_filter,
+                           Span<int>{curve_i},
+                           new_curves.attributes_for_write());
+    bke::gather_attributes(src_layer_attributes,
+                           AttrDomain::Layer,
+                           AttrDomain::Layer,
+                           attribute_filter,
+                           Span<int>{layer_i},
+                           element->attributes_for_write());
 
     new_curves.update_curve_types();
 
