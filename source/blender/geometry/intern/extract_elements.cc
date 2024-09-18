@@ -234,7 +234,7 @@ Array<Mesh *> extract_mesh_faces(const Mesh &mesh,
           break;
         }
         case AttrDomain::Corner: {
-          src_attribute.data.materialize(src_face, dst.span.data());
+          src_attribute.data.materialize_compressed(src_face, dst.span.data());
           break;
         }
         case AttrDomain::Face: {
