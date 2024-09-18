@@ -4,6 +4,7 @@
 
 #include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_geometry_nodes_modifier_pack.hh"
+#include "BKE_main.hh"
 #include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 
@@ -131,6 +132,125 @@ PackGeometryNodesBakeResult pack_geometry_nodes_bake(Main &bmain,
   bake.bake_target = NODES_MODIFIER_BAKE_TARGET_PACKED;
   DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
   return PackGeometryNodesBakeResult::Success;
+}
+
+static bool directory_is_empty(const blender::StringRefNull path)
+{
+  direntry *entries = nullptr;
+  const int entries_num = BLI_filelist_dir_contents(path.c_str(), &entries);
+  BLI_filelist_free(entries, entries_num);
+  return entries_num == 0;
+}
+
+static bool disk_bake_exists(const blender::bke::bake::BakePath &path)
+{
+  return !directory_is_empty(path.meta_dir);
+}
+
+UnpackGeometryNodesBakeResult unpack_geometry_nodes_bake(Main &bmain,
+                                                         ReportList *reports,
+                                                         Object &object,
+                                                         NodesModifierData &nmd,
+                                                         NodesModifierBake &bake,
+                                                         ePF_FileStatus how)
+{
+  if (!bake.packed) {
+    return UnpackGeometryNodesBakeResult::NoPackedData;
+  }
+  if (StringRef(BKE_main_blendfile_path(&bmain)).is_empty()) {
+    BKE_report(reports, RPT_ERROR, "Can only unpack bake if the current .blend file is saved");
+    return UnpackGeometryNodesBakeResult::BlendFileNotSaved;
+  }
+
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+
+  auto prepare_local_path = [&]() {
+    const std::string directory = bake::get_default_node_bake_directory(
+        bmain, object, nmd, bake.id);
+    bake.flag |= NODES_MODIFIER_BAKE_CUSTOM_PATH;
+    MEM_SAFE_FREE(bake.directory);
+    bake.directory = BLI_strdup(directory.c_str());
+    const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
+    char absolute_dir[FILE_MAX];
+    STRNCPY(absolute_dir, directory.c_str());
+    BLI_path_abs(absolute_dir, base_path);
+    return bake::BakePath::from_single_root(absolute_dir);
+  };
+  auto prepare_original_path = [&]() {
+    if (const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+            bmain, object, nmd, bake.id))
+    {
+      return *bake_path;
+    }
+    return prepare_local_path();
+  };
+  auto delete_bake_on_disk = [&](const bake::BakePath &bake_path) {
+    BLI_delete(bake_path.meta_dir.c_str(), true, true);
+    BLI_delete(bake_path.blobs_dir.c_str(), true, true);
+  };
+  auto free_packed_bake = [&]() {
+    blender::nodes_modifier_packed_bake_free(bake.packed);
+    bake.packed = nullptr;
+    nmd.runtime->cache->reset_cache(bake.id);
+  };
+  auto finalize_on_success = [&]() {
+    bake.bake_target = NODES_MODIFIER_BAKE_TARGET_DISK;
+    return UnpackGeometryNodesBakeResult::Success;
+  };
+
+  switch (how) {
+    case PF_USE_ORIGINAL: {
+      const bake::BakePath bake_path = prepare_original_path();
+      if (!disk_bake_exists(bake_path)) {
+        delete_bake_on_disk(bake_path);
+        if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+          return UnpackGeometryNodesBakeResult::Error;
+        }
+      }
+      free_packed_bake();
+      return finalize_on_success();
+    }
+    case PF_WRITE_ORIGINAL: {
+      const bake::BakePath bake_path = prepare_original_path();
+      delete_bake_on_disk(bake_path);
+      if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+        return UnpackGeometryNodesBakeResult::Error;
+      }
+      free_packed_bake();
+      return finalize_on_success();
+    }
+    case PF_USE_LOCAL: {
+      const bake::BakePath bake_path = prepare_local_path();
+      if (!disk_bake_exists(bake_path)) {
+        delete_bake_on_disk(bake_path);
+        if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+          return UnpackGeometryNodesBakeResult::Error;
+        }
+      }
+      free_packed_bake();
+      return finalize_on_success();
+    }
+    case PF_WRITE_LOCAL: {
+      const bake::BakePath bake_path = prepare_local_path();
+      delete_bake_on_disk(bake_path);
+      if (!bake::unpack_bake_to_disk(*bake.packed, bake_path, reports)) {
+        return UnpackGeometryNodesBakeResult::Error;
+      }
+      free_packed_bake();
+      return finalize_on_success();
+    }
+    case PF_KEEP: {
+      return finalize_on_success();
+    }
+    case PF_REMOVE: {
+      free_packed_bake();
+      return finalize_on_success();
+    }
+    default: {
+      break;
+    }
+  }
+  return UnpackGeometryNodesBakeResult::Error;
 }
 
 }  // namespace blender::bke::bake

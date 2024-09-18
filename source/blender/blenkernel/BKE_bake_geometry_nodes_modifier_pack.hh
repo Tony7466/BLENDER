@@ -7,6 +7,7 @@
 #include "DNA_modifier_types.h"
 
 #include "BKE_bake_items_paths.hh"
+#include "BKE_packedFile.hh"
 
 struct ReportList;
 struct Main;
@@ -30,5 +31,19 @@ PackGeometryNodesBakeResult pack_geometry_nodes_bake(Main &bmain,
                                                      Object &object,
                                                      NodesModifierData &nmd,
                                                      NodesModifierBake &bake);
+
+enum class UnpackGeometryNodesBakeResult {
+  BlendFileNotSaved,
+  NoPackedData,
+  Error,
+  Success,
+};
+
+UnpackGeometryNodesBakeResult unpack_geometry_nodes_bake(Main &bmain,
+                                                         ReportList *reports,
+                                                         Object &object,
+                                                         NodesModifierData &nmd,
+                                                         NodesModifierBake &bake,
+                                                         ePF_FileStatus how);
 
 }  // namespace blender::bke::bake

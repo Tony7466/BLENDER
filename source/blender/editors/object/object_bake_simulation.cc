@@ -1102,43 +1102,13 @@ static int unpack_single_bake_exec(bContext *C, wmOperator *op)
   if (!bake) {
     return OPERATOR_CANCELLED;
   }
-  if (!bake->packed) {
-    /* No packed already to unpack. */
+
+  bake::UnpackGeometryNodesBakeResult result = bake::unpack_geometry_nodes_bake(
+      *bmain, op->reports, *object, nmd, *bake, PF_WRITE_ORIGINAL);
+  if (result != bake::UnpackGeometryNodesBakeResult::Success) {
     return OPERATOR_CANCELLED;
   }
 
-  std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
-      *bmain, *object, nmd, bake_id);
-  if (!bake_path) {
-    const char *base_path = ID_BLEND_PATH(bmain, &object->id);
-    if (StringRef(base_path).is_empty()) {
-      WM_report(RPT_ERROR, "Can't unpack without a file path");
-      return OPERATOR_CANCELLED;
-    }
-    const std::string directory = bake::get_default_node_bake_directory(
-        *bmain, *object, nmd, bake_id);
-    bake->flag |= NODES_MODIFIER_BAKE_CUSTOM_PATH;
-    MEM_SAFE_FREE(bake->directory);
-    bake->directory = BLI_strdup(directory.c_str());
-    char absolute_dir[FILE_MAX];
-    STRNCPY(absolute_dir, directory.c_str());
-    BLI_path_abs(absolute_dir, base_path);
-    bake_path = bake::BakePath::from_single_root(absolute_dir);
-  }
-
-  BLI_delete(bake_path->meta_dir.c_str(), true, true);
-  BLI_delete(bake_path->blobs_dir.c_str(), true, true);
-
-  if (!bake::unpack_bake_to_disk(*bake->packed, *bake_path, op->reports)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  blender::nodes_modifier_packed_bake_free(bake->packed);
-  bake->packed = nullptr;
-  nmd.runtime->cache->reset_cache(bake_id);
-  bake->bake_target = NODES_MODIFIER_BAKE_TARGET_DISK;
-
-  DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
   WM_main_add_notifier(NC_NODE, nullptr);
   return OPERATOR_FINISHED;
