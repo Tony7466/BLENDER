@@ -25,17 +25,46 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
 
   const bke::AttributeAccessor src_attributes = mesh.attributes();
 
+  struct PropagationAttribute {
+    StringRef name;
+    eCustomDataType cd_type;
+    GVArray data;
+  };
+
+  Vector<PropagationAttribute> propagation_attributes;
+  src_attributes.for_all(
+      [&](const StringRef attribute_name, const bke::AttributeMetaData meta_data) {
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
+        if (attribute_filter.allow_skip(attribute_name)) {
+          return true;
+        }
+        const bke::GAttributeReader src_attribute = src_attributes.lookup(attribute_name,
+                                                                          bke::AttrDomain::Point);
+        if (!src_attribute) {
+          return true;
+        }
+        propagation_attributes.append({attribute_name, meta_data.data_type, *src_attribute});
+        return true;
+      });
+
   mask.foreach_index(GrainSize(32), [&](const int vert_i, const int element_i) {
     Mesh *element = BKE_mesh_new_nomain(1, 0, 0, 0);
     BKE_mesh_copy_parameters_for_eval(element, &mesh);
 
-    /* TODO: Propagate attributes from other domains. Same for other functions. */
-    bke::gather_attributes(src_attributes,
-                           bke::AttrDomain::Point,
-                           bke::AttrDomain::Point,
-                           attribute_filter,
-                           Span<int>{vert_i},
-                           element->attributes_for_write());
+    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
+
+    for (const PropagationAttribute &src_attribute : propagation_attributes) {
+      bke::GSpanAttributeWriter dst = element_attributes.lookup_or_add_for_write_only_span(
+          src_attribute.name, bke::AttrDomain::Point, src_attribute.cd_type);
+      if (!dst) {
+        continue;
+      }
+      src_attribute.data.get(vert_i, dst.span[0]);
+      dst.finish();
+    }
+
     elements[element_i] = element;
   });
 
