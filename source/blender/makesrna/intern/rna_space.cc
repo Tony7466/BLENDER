@@ -7602,6 +7602,15 @@ static void rna_def_space_userpref(BlenderRNA *brna)
   RNA_def_property_flag(prop, PROP_TEXTEDIT_UPDATE);
   RNA_def_property_ui_text(prop, "Filter", "Search term for filtering in the UI");
 
+  prop = RNA_def_property(srna, "tab_search_results", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_array(prop, 0); /* Dynamic length, see next line. */
+  RNA_def_property_flag(prop, PROP_DYNAMIC);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_boolean_funcs(prop, "rna_SpaceUserPref_tab_search_results_get", nullptr);
+  RNA_def_property_dynamic_array_funcs(prop, "rna_SpaceUserPref_tab_search_results_getlength");
+  RNA_def_property_ui_text(
+      prop, "Tab Search Results", "Whether or not each visible tab has a search result");
+
   prop = RNA_def_property(srna, "search_filter", PROP_STRING, PROP_NONE);
   /* The search filter is stored in the property editor's runtime which
    * is only defined in an internal header, so use the getter / setter here. */
