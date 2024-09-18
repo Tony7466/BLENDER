@@ -226,16 +226,29 @@ static int2 cursor_move_next_word(int2 cursor_position, TextVarsRuntime *text)
   return cursor_position;
 }
 
+// xxx not nice
+static void text_selection_cancel(TextVars *data)
+{
+  data->selection_start_offset = -1;
+  data->selection_end_offset = -1;
+}
+
 static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
 
-  const int type = RNA_enum_get(op->ptr, "type");
+  if (RNA_boolean_get(op->ptr, "select_text") && data->selection_start_offset == -1) {
+    data->selection_start_offset = data->cursor_offset;
+  }
+  if (!RNA_boolean_get(op->ptr, "select_text")) {
+    text_selection_cancel(data);
+  }
+
   int2 cursor_position = seq_cursor_offset_to_position(text, data->cursor_offset);
 
-  switch (type) {
+  switch (RNA_enum_get(op->ptr, "type")) {
     case PREV_CHAR:
       cursor_position = cursor_move_by_character(cursor_position, text, -1);
       break;
@@ -270,6 +283,13 @@ static int sequencer_text_cursor_move_exec(bContext *C, wmOperator *op)
   }
 
   data->cursor_offset = cursor_position_to_offset(text, cursor_position);
+  if (RNA_boolean_get(op->ptr, "select_text")) {
+    data->selection_end_offset = data->cursor_offset;
+  }
+
+  if (data->cursor_offset == data->selection_start_offset) {
+    text_selection_cancel(data);
+  }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
   return OPERATOR_FINISHED;
@@ -296,6 +316,10 @@ void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot)
                LINE_BEGIN,
                "Type",
                "Where to move cursor to, to make a selection");
+
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "select_text", false, "Select Text", "Select text while moving cursor");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
 static int sequencer_text_insert_exec(bContext * /*C*/, wmOperator * /*op*/)
@@ -321,8 +345,8 @@ static void text_insert(TextVars *data, const char *buf)
   std::memcpy(cursor_addr, buf, in_buf_len);
 
   // The issue seems to be, that adding multiple spaces causes cursor offset to advance, but
-  // this is not always true at the start of line when wrapping. Also wrapped string is stored raw
-  // in buffer, will have to check if multiple spaces would cause issues. Likely they do!
+  // this is not always true at the start of line when wrapping. Also wrapped string is stored
+  // raw in buffer, will have to check if multiple spaces would cause issues. Likely they do!
   data->cursor_offset += 1;
 }
 

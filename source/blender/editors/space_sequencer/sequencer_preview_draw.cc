@@ -1078,6 +1078,54 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   GPU_line_smooth(false);
 }
 
+static void text_selection_draw(View2D *v2d, TextVarsRuntime *text, TextVars *data, uint pos)
+{
+  if (data->selection_start_offset == -1) {
+    return;
+  }
+
+  immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.3f));
+
+  /* Ensure, that selection start < selection end. */
+  int sel_start_offset = data->selection_start_offset;
+  int sel_end_offset = data->selection_end_offset;
+  if (sel_start_offset > sel_end_offset) {
+    std::swap(sel_start_offset, sel_end_offset);
+  }
+  /* Cursor position is at the next character, only highlight up to cursor. */
+  sel_end_offset -= 1;
+
+  blender::int2 selection_start = seq_cursor_offset_to_position(text, sel_start_offset);
+  blender::int2 selection_end = seq_cursor_offset_to_position(text, sel_end_offset);
+  const int line_start = selection_start.y;
+  const int line_end = selection_end.y;
+
+  for (int line_index = line_start; line_index <= line_end; line_index++) {
+    blender::seq::LineInfo line = text->lines[line_index];
+    blender::seq::CharInfo character_start = line.characters.first();
+    blender::seq::CharInfo character_end = line.characters.last();
+
+    if (line_index == selection_start.y) {
+      character_start = line.characters[selection_start.x];
+    }
+    if (line_index == selection_end.y) {
+      character_end = line.characters[selection_end.x];
+    }
+
+    const float line_y = character_start.position.y + text->font_descender;
+    rctf rect{character_start.position.x,
+              character_end.position.x + character_end.advance_x,
+              line_y,
+              line_y + text->line_height};
+
+    immRectf(pos,
+             rect.xmin - v2d->tot.xmax,
+             rect.ymin - v2d->tot.ymax,
+             rect.xmax - v2d->tot.xmax,
+             rect.ymax - v2d->tot.ymax);
+  }
+}
+
 static void text_edit_draw(const bContext *C)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
@@ -1098,17 +1146,21 @@ static void text_edit_draw(const bContext *C)
 
   View2D *v2d = UI_view2d_fromcontext(C);
 
-  blender::float4 col{1.0f, 1.0f, 1.0f, 0.3f};
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_blend(GPU_BLEND_ALPHA);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4fv(col);
+  immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.5f));
   immRectf(pos,
            character.position.x - v2d->tot.xmax,
            character.position.y + text->font_descender - v2d->tot.ymax,
            character.position.x + 10 - v2d->tot.xmax,  // xxx pixelspace!
-           character.position.y + text->line_height + text->font_descender - v2d->tot.ymax);
+           character.position.y + text->font_descender + text->line_height - v2d->tot.ymax);
+
+  text_selection_draw(v2d, text, data, pos);
+
   immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 void sequencer_draw_preview(const bContext *C,

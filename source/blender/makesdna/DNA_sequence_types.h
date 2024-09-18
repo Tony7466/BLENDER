@@ -455,6 +455,8 @@ typedef struct TextVars {
   char align;
   char _pad[2];
   int cursor_offset;
+  int selection_start_offset;
+  int selection_end_offset;
 
   TextVarsRuntime *runtime;
 } TextVars;
