@@ -653,7 +653,6 @@ static void calc_pose_origin_and_factor_mesh(const Depsgraph &depsgraph,
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
   const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   /* Calculate the pose rotation point based on the boundaries of the brush factor. */
   flood_fill::FillDataMesh flood(positions_eval.size());
@@ -1027,7 +1026,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_mesh(const Depsgraph &de
 
   SegmentData current_data = {std::get<int>(ss.active_vert()), SCULPT_FACE_SET_NONE};
 
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
   Vector<int> neighbors;
   for (const int i : ik_chain->segments.index_range()) {
@@ -1166,7 +1164,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_grids(Object &object,
     SubdivCCGCoord vert;
     int face_set;
   };
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   const Mesh &mesh = *static_cast<const Mesh *>(object.data);
   const OffsetIndices<int> faces = mesh.faces();
@@ -1350,7 +1347,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_bmesh(Object &object,
 
   SegmentData current_data = {std::get<BMVert *>(ss.active_vert()), SCULPT_FACE_SET_NONE};
 
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int symm = SCULPT_mesh_symmetry_xyz_get(object);
   Vector<BMVert *, 64> neighbors;
   for (const int i : ik_chain->segments.index_range()) {
@@ -1591,7 +1587,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_mesh(const Depsgraph 
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(1, mesh.verts_num);
 
   const int active_vert = std::get<int>(ss.active_vert());
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   const int active_face_set = face_set::active_face_set_get(object);
 
@@ -1677,7 +1672,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_grids(const Depsgraph
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(1, grids_num);
 
   const SubdivCCGCoord active_vert = std::get<SubdivCCGCoord>(ss.active_vert());
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int active_vert_index = ss.active_vert_index();
 
   const int active_face_set = face_set::active_face_set_get(object);
@@ -1777,7 +1771,6 @@ static std::unique_ptr<IKChain> ik_chain_init_face_sets_fk_bmesh(const Depsgraph
   std::unique_ptr<IKChain> ik_chain = ik_chain_new(1, verts_num);
 
   BMVert *active_vert = std::get<BMVert *>(ss.active_vert());
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const int active_vert_index = BM_elem_index_get(active_vert);
 
   const int active_face_set = face_set::active_face_set_get(object);
