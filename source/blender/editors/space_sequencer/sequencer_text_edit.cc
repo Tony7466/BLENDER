@@ -541,3 +541,28 @@ void SEQUENCER_OT_text_line_break(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_UNDO;
 }
+
+static int sequencer_text_select_all(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  data->selection_start_offset = 0;
+  data->selection_end_offset = data->runtime->character_count;
+  text_editing_update(C);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_select_all(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select All";
+  ot->description = "Select all characters";
+  ot->idname = "SEQUENCER_OT_text_select_all";
+
+  /* api callbacks */
+  ot->exec = sequencer_text_select_all;
+  ot->poll = sequencer_text_editing_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+}

@@ -3097,29 +3097,8 @@ def km_sequencerpreview(params):
     )
 
     items.extend([
-        *_seq_preview_text_edit_cursor_move(),
         # Text editing.
-        ("sequencer.text_cursor_move", {"type": 'LEFT_ARROW', "value": 'PRESS', "repeat": True},
-         {"properties": [("type", 'PREVIOUS_CHARACTER')]}),
-        ("sequencer.text_cursor_move", {"type": 'RIGHT_ARROW', "value": 'PRESS', "repeat": True},
-         {"properties": [("type", 'NEXT_CHARACTER')]}),
-        ("sequencer.text_cursor_move", {"type": 'UP_ARROW', "value": 'PRESS', "repeat": True},
-         {"properties": [("type", 'PREVIOUS_LINE')]}),
-        ("sequencer.text_cursor_move", {"type": 'DOWN_ARROW', "value": 'PRESS', "repeat": True},
-         {"properties": [("type", 'NEXT_LINE')]}),
-        ("sequencer.text_cursor_move", {"type": 'HOME', "value": 'PRESS'},
-         {"properties": [("type", 'LINE_BEGIN')]}),
-        ("sequencer.text_cursor_move", {"type": 'END', "value": 'PRESS'},
-         {"properties": [("type", 'LINE_END')]}),
-        ("sequencer.text_cursor_move", {"type": 'LEFT_ARROW', "value": 'PRESS', "ctrl": True, "repeat": True},
-         {"properties": [("type", 'PREVIOUS_WORD')]}),
-        ("sequencer.text_cursor_move", {"type": 'RIGHT_ARROW', "value": 'PRESS', "ctrl": True, "repeat": True},
-         {"properties": [("type", 'NEXT_WORD')]}),
-        ("sequencer.text_cursor_move", {"type": 'PAGE_UP', "value": 'PRESS'},
-         {"properties": [("type", 'TEXT_BEGIN')]}),
-        ("sequencer.text_cursor_move", {"type": 'PAGE_DOWN', "value": 'PRESS'},
-         {"properties": [("type", 'TEXT_END')]}),
-
+        *_seq_preview_text_edit_cursor_move(),
         ("sequencer.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
         ("sequencer.text_delete", {"type": 'DEL', "value": 'PRESS', "repeat": True},
          {"properties": [("type", 'NEXT_OR_SELECTION')]}),
@@ -3133,6 +3112,7 @@ def km_sequencerpreview(params):
          {"properties": [("type", 'PREVIOUS_WORD')]}),
         ("sequencer.text_line_break", {"type": 'RET', "value": 'PRESS', "repeat": True}, None),
         ("sequencer.text_line_break", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "repeat": True}, None),
+        ("sequencer.text_select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
 
         # Selection.
         *_template_sequencer_preview_select(
