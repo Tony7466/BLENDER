@@ -377,6 +377,9 @@ struct FontBLF {
   /** Point to face->size or to cache's size. */
   FT_Size ft_size;
 
+  /* Can be non-zero for font collections (TTC, OTC). */
+  int face_index;
+
   /** Copy of the font->face->face_flags, in case we don't have a face loaded. */
   FT_Long face_flags;
 

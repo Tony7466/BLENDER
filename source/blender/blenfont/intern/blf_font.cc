@@ -104,11 +104,14 @@ static FT_Error blf_cache_face_requester(FTC_FaceID faceID,
 
   BLI_mutex_lock(&ft_lib_mutex);
   if (font->filepath) {
-    err = FT_New_Face(lib, font->filepath, 0, face);
+    err = FT_New_Face(lib, font->filepath, font->face_index, face);
   }
   else if (font->mem) {
-    err = FT_New_Memory_Face(
-        lib, static_cast<const FT_Byte *>(font->mem), (FT_Long)font->mem_size, 0, face);
+    err = FT_New_Memory_Face(lib,
+                             static_cast<const FT_Byte *>(font->mem),
+                             (FT_Long)font->mem_size,
+                             font->face_index,
+                             face);
   }
   BLI_mutex_unlock(&ft_lib_mutex);
 
@@ -1473,12 +1476,38 @@ int blf_font_ascender(FontBLF *font)
   return ft_pix_to_int((ft_pix)font->ft_size->metrics.ascender);
 }
 
-char *blf_display_name(FontBLF *font)
+char *blf_display_name(FontBLF *font, int face_index)
 {
   if (!blf_ensure_face(font) || !font->face->family_name) {
     return nullptr;
   }
-  return BLI_sprintfN("%s %s", font->face->family_name, font->face->style_name);
+  if (face_index == font->face_index) {
+    return BLI_sprintfN((font->face->num_faces > 1) ? "%s" : "%s %s",
+                        font->face->family_name,
+                        font->face->style_name);
+  }
+  /* Get the name for a face that is not current. */
+
+  if (face_index < 0 || face_index > font->face->num_faces - 1) {
+    return nullptr;
+  }
+
+  FT_Face face = nullptr;
+  BLI_mutex_lock(&ft_lib_mutex);
+  if (font->filepath) {
+    FT_New_Face(font->ft_lib, font->filepath, face_index, &face);
+  }
+  else if (font->mem) {
+    FT_New_Memory_Face(font->ft_lib,
+                       static_cast<const FT_Byte *>(font->mem),
+                       (FT_Long)font->mem_size,
+                       face_index,
+                       &face);
+  }
+  BLI_mutex_unlock(&ft_lib_mutex);
+  char *name = BLI_sprintfN("%s", face->family_name);
+  FT_Done_Face(face);
+  return name;
 }
 
 /** \} */
@@ -1797,13 +1826,13 @@ bool blf_ensure_face(FontBLF *font)
   else {
     BLI_mutex_lock(&ft_lib_mutex);
     if (font->filepath) {
-      err = FT_New_Face(font->ft_lib, font->filepath, 0, &font->face);
+      err = FT_New_Face(font->ft_lib, font->filepath, font->face_index, &font->face);
     }
     if (font->mem) {
       err = FT_New_Memory_Face(font->ft_lib,
                                static_cast<const FT_Byte *>(font->mem),
                                (FT_Long)font->mem_size,
-                               0,
+                               font->face_index,
                                &font->face);
     }
     if (!err) {
@@ -2003,6 +2032,36 @@ void blf_font_attach_from_mem(FontBLF *font, const uchar *mem, const size_t mem_
   if (blf_ensure_face(font)) {
     FT_Attach_Stream(font->face, &open);
   }
+}
+
+bool blf_set_face_index(FontBLF *font, int face_index)
+{
+  if (blf_ensure_face(font)) {
+    if (font->face->face_index == face_index) {
+      font->face_index = face_index;
+      return true;  // nothing to do
+    }
+
+    BLI_mutex_lock(&ft_lib_mutex);
+    if (font->flags & BLF_CACHED) {
+      FTC_Manager_RemoveFaceID(ftc_manager, font);
+    }
+    else {
+      FT_Done_Face(font->face);
+    }
+    BLI_mutex_unlock(&ft_lib_mutex);
+
+    font->face = nullptr;
+    font->face_index = face_index;
+    blf_ensure_face(font);
+    blf_font_metrics(font->face, &font->metrics);
+    font->char_weight = font->metrics.weight;
+    font->char_slant = font->metrics.slant;
+    font->char_width = font->metrics.width;
+    font->char_spacing = font->metrics.spacing;
+    return true;
+  }
+  return false;
 }
 
 void blf_font_free(FontBLF *font)

@@ -245,7 +245,9 @@ class USERPREF_PT_interface_text(InterfacePanel, CenterAlignMixIn, Panel):
         sub.prop(view, "text_hinting", text="Hinting")
 
         flow.prop(view, "font_path_ui")
+        flow.prop(view, "font_path_ui_face", text="Face")
         flow.prop(view, "font_path_ui_mono")
+        flow.prop(view, "font_path_ui_mono_face", text="Face")
 
 
 class USERPREF_PT_interface_translation(InterfacePanel, CenterAlignMixIn, Panel):

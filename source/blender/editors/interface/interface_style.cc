@@ -438,6 +438,14 @@ void uiStyleInit()
     blf_mono_font = BLF_load_mono_default(unique);
   }
 
+  int test = BLF_face_count(BLF_default());
+  if (BLF_face_count(BLF_default()) > 1 && U.font_path_ui_face > 0) {
+    BLF_face_set(BLF_default(), U.font_path_ui_face);
+  }
+  if (BLF_face_count(blf_mono_font) > 1 && U.font_path_ui_mono_face > 0) {
+    BLF_face_set(blf_mono_font, U.font_path_ui_mono_face);
+  }
+
   /* Set default flags based on UI preferences (not render fonts) */
   {
     const int flag_disable = (BLF_MONOCHROME | BLF_HINTING_NONE | BLF_HINTING_SLIGHT |

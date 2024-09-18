@@ -997,7 +997,8 @@ char *BLF_display_name_from_file(const char *filepath)
     FT_Face face;
     if (FT_New_Face(ft_library, filepath, 0, &face) == FT_Err_Ok) {
       if (face->family_name) {
-        name = BLI_sprintfN("%s %s", face->family_name, face->style_name);
+        name = BLI_sprintfN(
+            (face->num_faces > 1) ? "%s" : "%s %s", face->family_name, face->style_name);
       }
       FT_Done_Face(face);
     }
@@ -1006,14 +1007,41 @@ char *BLF_display_name_from_file(const char *filepath)
   return name;
 }
 
-char *BLF_display_name_from_id(int fontid)
+char *BLF_display_name_from_id(int fontid, int face_index)
 {
   FontBLF *font = blf_get(fontid);
   if (!font) {
     return nullptr;
   }
 
-  return blf_display_name(font);
+  return blf_display_name(font, face_index);
+}
+
+int BLF_face_count(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font && blf_ensure_face(font)) {
+    return font->face->num_faces;
+  }
+  return 0;
+}
+
+bool BLF_face_set(int fontid, int face_index)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return blf_set_face_index(font, face_index);
+  }
+  return false;
+}
+
+int BLF_face_index(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    return font->face_index;
+  }
+  return 0;
 }
 
 bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale)

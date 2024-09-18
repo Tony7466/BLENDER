@@ -781,6 +781,27 @@ static void rna_userdef_timecode_style_set(PointerRNA *ptr, int value)
   }
 }
 
+static const EnumPropertyItem *rna_userdef_font_face_itemf(bContext * /* C */,
+                                                           PointerRNA * /* ptr */,
+                                                           PropertyRNA * /* prop */,
+                                                           bool *r_free)
+{
+  int totitem = 0;
+  EnumPropertyItem *items = nullptr;
+
+  for (int i = 0; i < BLF_face_count(BLF_default()); i++) {
+    EnumPropertyItem item = {0};
+    item.value = i;
+    item.name = BLF_display_name_from_id(BLF_default(), i);
+    item.identifier = BLF_display_name_from_id(BLF_default(), i);
+    RNA_enum_item_add(&items, &totitem, &item);
+  }
+
+  RNA_enum_item_end(&items, &totitem);
+  *r_free = true;
+  return items;
+}
+
 static int rna_UserDef_mouse_emulate_3_button_modifier_get(PointerRNA *ptr)
 {
 #  if !defined(WIN32)
@@ -5393,9 +5414,21 @@ static void rna_def_userdef_view(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Interface Font", "Path to interface font");
   RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_font_update");
 
+  prop = RNA_def_property(srna, "font_path_ui_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_DEFAULT_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_userdef_font_face_itemf");
+  RNA_def_property_ui_text(prop, "Interface Font Face", "Face of the interface font");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_font_update");
+
   prop = RNA_def_property(srna, "font_path_ui_mono", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_sdna(prop, nullptr, "font_path_ui_mono");
   RNA_def_property_ui_text(prop, "Monospaced Font", "Path to interface monospaced Font");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_font_update");
+
+  prop = RNA_def_property(srna, "font_path_ui_mono_face", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_DEFAULT_items);
+  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_userdef_font_face_itemf");
+  RNA_def_property_ui_text(prop, "Monospaced Font Face", "Face of the interface monospaced font");
   RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_font_update");
 
   /* Language. */

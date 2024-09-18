@@ -98,6 +98,8 @@ void blf_font_attach_from_mem(FontBLF *font, const unsigned char *mem, size_t me
  */
 bool blf_font_size(FontBLF *font, float size);
 
+bool blf_set_face_index(FontBLF *font, int face_index);
+
 void blf_font_draw(FontBLF *font, const char *str, size_t str_len, ResultBLF *r_info);
 void blf_font_draw__wrap(FontBLF *font, const char *str, size_t str_len, ResultBLF *r_info);
 
@@ -153,7 +155,7 @@ int blf_font_width_max(FontBLF *font);
 int blf_font_descender(FontBLF *font);
 int blf_font_ascender(FontBLF *font);
 
-char *blf_display_name(FontBLF *font);
+char *blf_display_name(FontBLF *font, int face_index = 0);
 
 void blf_font_boundbox_foreach_glyph(
     FontBLF *font,

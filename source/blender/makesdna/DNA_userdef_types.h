@@ -1074,6 +1074,8 @@ typedef struct UserDef {
 
   char font_path_ui[1024];
   char font_path_ui_mono[1024];
+  int font_path_ui_face;
+  int font_path_ui_mono_face;
 
   /** Legacy, for backwards compatibility only. */
   int compute_device_type;

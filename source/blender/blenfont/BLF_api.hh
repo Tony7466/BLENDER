@@ -77,7 +77,14 @@ void BLF_unload_all();
 
 char *BLF_display_name_from_file(const char *filepath) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL(1);
 
-char *BLF_display_name_from_id(int fontid);
+char *BLF_display_name_from_id(int fontid, int face_index = 0);
+
+/**
+ * Support for fonts that contain multiple faces
+ */
+int BLF_face_count(int fontid);
+int BLF_face_index(int fontid);
+bool BLF_face_set(int fontid, int face_index);
 
 /**
  * Get the metrics needed for the initial sizing of text objects.
