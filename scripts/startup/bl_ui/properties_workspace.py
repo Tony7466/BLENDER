@@ -62,6 +62,12 @@ class WORKSPACE_PT_addons(WorkSpaceButtonsPanel, Panel):
             if addon.module in WORKSPACE_PT_addons.owner_ids:
                 known_addons.add(addon.module)
         unknown_addons = WORKSPACE_PT_addons.owner_ids.difference(known_addons)
+        
+        row = layout.row()
+        row.active = context.workspace.use_filter_by_owner
+        row.label(text="Select")
+        row.operator("wm.owner_set_all", text="All").mode = 'all'
+        row.operator("wm.owner_set_all", text="None").mode = 'none'
         layout.template_list(
             "WORKSPACE_UL_addons_items",
             "",
