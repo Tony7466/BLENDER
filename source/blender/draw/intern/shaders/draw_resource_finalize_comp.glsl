@@ -55,9 +55,9 @@ void main()
     /* Bypass culling test for objects that are flattenned on one or more axes (see #127774).
      * Fixing them is too much computation but might be worth doing if a use case for it.
      * Do not compute the real length to save some instructions. */
-    vec3 object_scale = to_scale(reduce_add(abs(model_mat[0].xyz)),
-                                 reduce_add(abs(model_mat[1].xyz)),
-                                 reduce_add(abs(model_mat[2].xyz)));
+    vec3 object_scale = vec3(reduce_add(abs(model_mat[0].xyz)),
+                             reduce_add(abs(model_mat[1].xyz)),
+                             reduce_add(abs(model_mat[2].xyz)));
     if (any(lessThan(abs(object_scale), vec3(1e-10)))) {
       bounds.bounding_sphere.w = -2.0;
     }
