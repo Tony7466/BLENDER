@@ -100,6 +100,7 @@
 
 #include "editors/sculpt_paint/brushes/types.hh"
 #include "mesh_brush_common.hh"
+#include "sculpt_automask.hh"
 
 using blender::float3;
 using blender::MutableSpan;
@@ -165,47 +166,6 @@ int SCULPT_vertex_count_get(const Object &object)
   return 0;
 }
 
-const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
-                                  const Object &object,
-                                  PBVHVertRef vertex)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (blender::bke::object::pbvh_get(object)->type()) {
-    case blender::bke::pbvh::Type::Mesh:
-      return blender::bke::pbvh::vert_positions_eval(depsgraph, object)[vertex.i];
-    case blender::bke::pbvh::Type::BMesh:
-      return ((BMVert *)vertex.i)->co;
-    case blender::bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      return subdiv_ccg.positions[vertex.i];
-    }
-  }
-  return nullptr;
-}
-
-const blender::float3 SCULPT_vertex_normal_get(const Depsgraph &depsgraph,
-                                               const Object &object,
-                                               PBVHVertRef vertex)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (blender::bke::object::pbvh_get(object)->type()) {
-    case blender::bke::pbvh::Type::Mesh: {
-      const Span<float3> vert_normals = blender::bke::pbvh::vert_normals_eval(depsgraph, object);
-      return vert_normals[vertex.i];
-    }
-    case blender::bke::pbvh::Type::BMesh: {
-      BMVert *v = (BMVert *)vertex.i;
-      return v->no;
-    }
-    case blender::bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      return subdiv_ccg.normals[vertex.i];
-    }
-  }
-  BLI_assert_unreachable();
-  return {};
-}
-
 namespace blender::ed::sculpt_paint {
 
 Span<float3> vert_positions_for_grab_active_get(const Depsgraph &depsgraph, const Object &object)
@@ -269,44 +229,6 @@ int active_face_set_get(const Object &object)
 
 namespace face_set {
 
-int vert_face_set_get(const Object &object, PBVHVertRef vertex)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (bke::object::pbvh_get(object)->type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
-      if (!face_sets) {
-        return SCULPT_FACE_SET_NONE;
-      }
-      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-      int face_set = 0;
-      for (const int face_index : vert_to_face_map[vertex.i]) {
-        if (face_sets[face_index] > face_set) {
-          face_set = face_sets[face_index];
-        }
-      }
-      return face_set;
-    }
-    case bke::pbvh::Type::BMesh:
-      return 0;
-    case bke::pbvh::Type::Grids: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
-      if (!face_sets) {
-        return SCULPT_FACE_SET_NONE;
-      }
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      const int grid_index = vertex.i / key.grid_area;
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, grid_index);
-      return face_sets[face_index];
-    }
-  }
-  return 0;
-}
-
 int vert_face_set_get(const GroupedSpan<int> vert_to_face_map,
                       const Span<int> face_sets,
                       const int vert)
@@ -316,6 +238,17 @@ int vert_face_set_get(const GroupedSpan<int> vert_to_face_map,
     face_set = std::max(face_sets[face], face_set);
   }
   return face_set;
+}
+
+int vert_face_set_get(const SubdivCCG &subdiv_ccg, const Span<int> face_sets, const int grid)
+{
+  const int face = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, grid);
+  return face_sets[face];
+}
+
+int vert_face_set_get(const int /*face_set_offset*/, const BMVert & /*vert*/)
+{
+  return SCULPT_FACE_SET_NONE;
 }
 
 bool vert_has_face_set(const GroupedSpan<int> vert_to_face_map,
@@ -353,78 +286,6 @@ bool vert_has_face_set(const int face_set_offset, const BMVert &vert, const int 
   BM_ITER_ELEM (face, &iter, &const_cast<BMVert &>(vert), BM_FACES_OF_VERT) {
     if (BM_ELEM_CD_GET_INT(face, face_set_offset) == face_set) {
       return true;
-    }
-  }
-  return false;
-}
-
-bool vert_has_face_set(const Object &object, PBVHVertRef vertex, int face_set)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (bke::object::pbvh_get(object)->type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
-      if (!face_sets) {
-        return face_set == SCULPT_FACE_SET_NONE;
-      }
-      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-      for (const int face_index : vert_to_face_map[vertex.i]) {
-        if (face_sets[face_index] == face_set) {
-          return true;
-        }
-      }
-      return false;
-    }
-    case bke::pbvh::Type::BMesh:
-      return true;
-    case bke::pbvh::Type::Grids: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArray face_sets = *attributes.lookup<int>(".sculpt_face_set", bke::AttrDomain::Face);
-      if (!face_sets) {
-        return face_set == SCULPT_FACE_SET_NONE;
-      }
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      const int grid_index = vertex.i / key.grid_area;
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, grid_index);
-      return face_sets[face_index] == face_set;
-    }
-  }
-  return true;
-}
-
-bool vert_has_unique_face_set(const Object &object, PBVHVertRef vertex)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (bke::object::pbvh_get(object)->type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
-                                                           bke::AttrDomain::Face);
-      return vert_has_unique_face_set(vert_to_face_map, face_sets, vertex.i);
-    }
-    case bke::pbvh::Type::BMesh: {
-      const int face_set_offset = CustomData_get_offset_named(
-          &object.sculpt->bm->pdata, CD_PROP_INT32, ".sculpt_face_set");
-      BMVert *v = reinterpret_cast<BMVert *>(vertex.i);
-      return vert_has_unique_face_set(face_set_offset, *v);
-    }
-    case bke::pbvh::Type::Grids: {
-      const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
-      const OffsetIndices<int> faces = base_mesh.faces();
-      const Span<int> corner_verts = base_mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = base_mesh.vert_to_face_map();
-      const bke::AttributeAccessor attributes = base_mesh.attributes();
-      const VArraySpan face_sets = *attributes.lookup<int>(".sculpt_face_set",
-                                                           bke::AttrDomain::Face);
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
-      return vert_has_unique_face_set(
-          vert_to_face_map, corner_verts, faces, face_sets, *ss.subdiv_ccg, coord);
     }
   }
   return false;
@@ -489,9 +350,9 @@ static bool sculpt_check_unique_face_set_for_edge_in_base_mesh(
   return true;
 }
 
-bool vert_has_unique_face_set(const GroupedSpan<int> vert_to_face_map,
+bool vert_has_unique_face_set(const OffsetIndices<int> faces,
                               const Span<int> corner_verts,
-                              const OffsetIndices<int> faces,
+                              const GroupedSpan<int> vert_to_face_map,
                               const Span<int> face_sets,
                               const SubdivCCG &subdiv_ccg,
                               SubdivCCGCoord coord)
@@ -524,42 +385,6 @@ bool vert_has_unique_face_set(const int /*face_set_offset*/, const BMVert & /*ve
 }
 
 }  // namespace face_set
-
-/* Sculpt Neighbor Iterators */
-
-#define SCULPT_VERTEX_NEIGHBOR_FIXED_CAPACITY 256
-
-static void vert_neighbor_add(SculptVertexNeighborIter *iter,
-                              PBVHVertRef neighbor,
-                              int neighbor_index)
-{
-  if (iter->neighbors.contains(neighbor)) {
-    return;
-  }
-
-  iter->neighbors.append(neighbor);
-  iter->neighbor_indices.append(neighbor_index);
-}
-
-static void vert_neighbors_get_bmesh(PBVHVertRef vertex, SculptVertexNeighborIter *iter)
-{
-  BMVert *v = (BMVert *)vertex.i;
-  BMIter liter;
-  BMLoop *l;
-  iter->num_duplicates = 0;
-  iter->neighbors.clear();
-  iter->neighbor_indices.clear();
-
-  BM_ITER_ELEM (l, &liter, v, BM_LOOPS_OF_VERT) {
-    const BMVert *adj_v[2] = {l->prev->v, l->next->v};
-    for (int i = 0; i < ARRAY_SIZE(adj_v); i++) {
-      const BMVert *v_other = adj_v[i];
-      if (v_other != v) {
-        vert_neighbor_add(iter, BKE_pbvh_make_vref(intptr_t(v_other)), BM_elem_index_get(v_other));
-      }
-    }
-  }
-}
 
 Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors)
 {
@@ -603,50 +428,11 @@ Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 
   return r_neighbors;
 }
 
-static void vertex_neighbors_get_faces(const Object &object,
-                                       PBVHVertRef vertex,
-                                       SculptVertexNeighborIter *iter)
-{
-  const SculptSession &ss = *object.sculpt;
-  const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-  const OffsetIndices<int> faces = mesh.faces();
-  const Span<int> corner_verts = mesh.corner_verts();
-  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-  const bke::AttributeAccessor attributes = mesh.attributes();
-  const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-  iter->num_duplicates = 0;
-  iter->neighbors.clear();
-  iter->neighbor_indices.clear();
-
-  for (const int face_i : vert_to_face_map[vertex.i]) {
-    if (!hide_poly.is_empty() && hide_poly[face_i]) {
-      /* Skip connectivity from hidden faces. */
-      continue;
-    }
-    const IndexRange face = faces[face_i];
-    const int2 f_adj_v = bke::mesh::face_find_adjacent_verts(face, corner_verts, vertex.i);
-    for (int j = 0; j < 2; j++) {
-      if (f_adj_v[j] != vertex.i) {
-        vert_neighbor_add(iter, BKE_pbvh_make_vref(f_adj_v[j]), f_adj_v[j]);
-      }
-    }
-  }
-
-  if (ss.fake_neighbors.use_fake_neighbors) {
-    BLI_assert(!ss.fake_neighbors.fake_neighbor_index.is_empty());
-    if (ss.fake_neighbors.fake_neighbor_index[vertex.i] != FAKE_NEIGHBOR_NONE) {
-      vert_neighbor_add(iter,
-                        BKE_pbvh_make_vref(ss.fake_neighbors.fake_neighbor_index[vertex.i]),
-                        ss.fake_neighbors.fake_neighbor_index[vertex.i]);
-    }
-  }
-}
-
-Span<int> vert_neighbors_get_mesh(const int vert,
-                                  const OffsetIndices<int> faces,
+Span<int> vert_neighbors_get_mesh(const OffsetIndices<int> faces,
                                   const Span<int> corner_verts,
                                   const GroupedSpan<int> vert_to_face,
                                   const Span<bool> hide_poly,
+                                  const int vert,
                                   Vector<int> &r_neighbors)
 {
   r_neighbors.clear();
@@ -663,115 +449,10 @@ Span<int> vert_neighbors_get_mesh(const int vert,
   return r_neighbors.as_span();
 }
 
-static void vertex_neighbors_get_grids(const SculptSession &ss,
-                                       const PBVHVertRef vertex,
-                                       const bool include_duplicates,
-                                       SculptVertexNeighborIter *iter)
-{
-  /* TODO: optimize this. We could fill #SculptVertexNeighborIter directly,
-   * maybe provide coordinate and mask pointers directly rather than converting
-   * back and forth between #CCGElem and global index. */
-  const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-  SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
-
-  SubdivCCGNeighbors neighbors;
-  BKE_subdiv_ccg_neighbor_coords_get(*ss.subdiv_ccg, coord, include_duplicates, neighbors);
-
-  iter->num_duplicates = neighbors.num_duplicates;
-  iter->neighbors.clear();
-  iter->neighbor_indices.clear();
-
-  for (const int i : neighbors.coords.index_range()) {
-    int v = neighbors.coords[i].grid_index * key.grid_area +
-            neighbors.coords[i].y * key.grid_size + neighbors.coords[i].x;
-
-    vert_neighbor_add(iter, BKE_pbvh_make_vref(v), v);
-  }
-
-  if (ss.fake_neighbors.use_fake_neighbors) {
-    BLI_assert(!ss.fake_neighbors.fake_neighbor_index.is_empty());
-    if (ss.fake_neighbors.fake_neighbor_index[vertex.i] != FAKE_NEIGHBOR_NONE) {
-      int v = ss.fake_neighbors.fake_neighbor_index[vertex.i];
-      vert_neighbor_add(iter, BKE_pbvh_make_vref(v), v);
-    }
-  }
-}
-
-}  // namespace blender::ed::sculpt_paint
-
-void SCULPT_vertex_neighbors_get(const Object &object,
-                                 const PBVHVertRef vertex,
-                                 const bool include_duplicates,
-                                 SculptVertexNeighborIter *iter)
-{
-  using namespace blender::ed::sculpt_paint;
-  const SculptSession &ss = *object.sculpt;
-  switch (blender::bke::object::pbvh_get(object)->type()) {
-    case blender::bke::pbvh::Type::Mesh:
-      vertex_neighbors_get_faces(object, vertex, iter);
-      return;
-    case blender::bke::pbvh::Type::BMesh:
-      vert_neighbors_get_bmesh(vertex, iter);
-      return;
-    case blender::bke::pbvh::Type::Grids:
-      vertex_neighbors_get_grids(ss, vertex, include_duplicates, iter);
-      return;
-  }
-}
-
-static bool check_boundary_vert_in_base_mesh(const SculptSession &ss, const int index)
-{
-  return ss.vertex_info.boundary[index];
-}
-
-namespace blender::ed::sculpt_paint {
-
 namespace boundary {
 
-bool vert_is_boundary(const Object &object, const PBVHVertRef vertex)
-{
-  const SculptSession &ss = *object.sculpt;
-  switch (bke::object::pbvh_get(object)->type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
-      if (!hide::vert_all_faces_visible_get(hide_poly, vert_to_face_map, vertex.i)) {
-        return true;
-      }
-      return check_boundary_vert_in_base_mesh(ss, vertex.i);
-    }
-    case bke::pbvh::Type::BMesh: {
-      BMVert *v = (BMVert *)vertex.i;
-      return BM_vert_is_boundary(v);
-    }
-    case bke::pbvh::Type::Grids: {
-      const Mesh &base_mesh = *static_cast<const Mesh *>(object.data);
-      const OffsetIndices<int> faces = base_mesh.faces();
-      const Span<int> corner_verts = base_mesh.corner_verts();
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(*ss.subdiv_ccg);
-      SubdivCCGCoord coord = SubdivCCGCoord::from_index(key, vertex.i);
-      int v1, v2;
-      const SubdivCCGAdjacencyType adjacency = BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
-          *ss.subdiv_ccg, coord, corner_verts, faces, v1, v2);
-      switch (adjacency) {
-        case SUBDIV_CCG_ADJACENT_VERTEX:
-          return check_boundary_vert_in_base_mesh(ss, v1);
-        case SUBDIV_CCG_ADJACENT_EDGE:
-          return check_boundary_vert_in_base_mesh(ss, v1) &&
-                 check_boundary_vert_in_base_mesh(ss, v2);
-        case SUBDIV_CCG_ADJACENT_NONE:
-          return false;
-      }
-    }
-  }
-
-  return false;
-}
-
-bool vert_is_boundary(const Span<bool> hide_poly,
-                      const GroupedSpan<int> vert_to_face_map,
+bool vert_is_boundary(const GroupedSpan<int> vert_to_face_map,
+                      const Span<bool> hide_poly,
                       const BitSpan boundary,
                       const int vert)
 {
@@ -781,10 +462,10 @@ bool vert_is_boundary(const Span<bool> hide_poly,
   return boundary[vert].test();
 }
 
-bool vert_is_boundary(const SubdivCCG &subdiv_ccg,
+bool vert_is_boundary(const OffsetIndices<int> faces,
                       const Span<int> corner_verts,
-                      const OffsetIndices<int> faces,
                       const BitSpan boundary,
+                      const SubdivCCG &subdiv_ccg,
                       const SubdivCCGCoord vert)
 {
   /* TODO: Unlike the base mesh implementation this method does NOT take into account face
@@ -1025,43 +706,6 @@ std::optional<BMVert *> nearest_vert_calc_bmesh(const bke::pbvh::Tree &pbvh,
         return a.distance_sq < b.distance_sq ? a : b;
       });
   return nearest.vert;
-}
-
-PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
-                              const Object &object,
-                              const float3 &location,
-                              const float max_distance,
-                              const bool use_original)
-{
-  const SculptSession &ss = *object.sculpt;
-  const bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-  switch (pbvh.type()) {
-    case bke::pbvh::Type::Mesh: {
-      const Mesh &mesh = *static_cast<const Mesh *>(object.data);
-      const Span<float3> vert_positions = bke::pbvh::vert_positions_eval(depsgraph, object);
-      const bke::AttributeAccessor attributes = mesh.attributes();
-      VArraySpan<bool> hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
-      const std::optional<int> nearest = nearest_vert_calc_mesh(
-          pbvh, vert_positions, hide_vert, location, max_distance, use_original);
-      return nearest ? PBVHVertRef{*nearest} : PBVHVertRef{PBVH_REF_NONE};
-    }
-    case bke::pbvh::Type::Grids: {
-      const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-      const std::optional<SubdivCCGCoord> nearest = nearest_vert_calc_grids(
-          pbvh, subdiv_ccg, location, max_distance, use_original);
-      return nearest ? PBVHVertRef{key.grid_area * nearest->grid_index +
-                                   CCG_grid_xy_to_index(key.grid_size, nearest->x, nearest->y)} :
-                       PBVHVertRef{PBVH_REF_NONE};
-    }
-    case bke::pbvh::Type::BMesh: {
-      const std::optional<BMVert *> nearest = nearest_vert_calc_bmesh(
-          pbvh, location, max_distance, use_original);
-      return nearest ? PBVHVertRef{intptr_t(*nearest)} : PBVHVertRef{PBVH_REF_NONE};
-    }
-  }
-  BLI_assert_unreachable();
-  return BKE_pbvh_make_vref(PBVH_REF_NONE);
 }
 
 }  // namespace blender::ed::sculpt_paint
@@ -7244,6 +6888,83 @@ void clip_and_lock_translations(const Sculpt &sd,
   }
 }
 
+PositionDeformData::PositionDeformData(const Depsgraph &depsgraph, Object &object_orig)
+{
+  Mesh &mesh = *static_cast<Mesh *>(object_orig.data);
+  this->eval = bke::pbvh::vert_positions_eval(depsgraph, object_orig);
+
+  if (!object_orig.sculpt->deform_imats.is_empty()) {
+    deform_imats_ = object_orig.sculpt->deform_imats;
+  }
+  orig_ = mesh.vert_positions_for_write();
+
+  MutableSpan eval_mut = bke::pbvh::vert_positions_eval_for_write(depsgraph, object_orig);
+  if (eval_mut.data() != orig_.data()) {
+    eval_mut_ = eval_mut;
+  }
+
+  if (Key *keys = mesh.key) {
+    keys_ = keys;
+    const int active_index = object_orig.shapenr - 1;
+    active_key_ = BKE_keyblock_find_by_index(keys, active_index);
+    basis_active_ = active_key_ == keys->refkey;
+    dependent_keys_ = BKE_keyblock_get_dependent_keys(keys_, active_index);
+  }
+  else {
+    keys_ = nullptr;
+    active_key_ = nullptr;
+    basis_active_ = false;
+  }
+}
+
+static void copy_indices(const Span<float3> src, const Span<int> indices, MutableSpan<float3> dst)
+{
+  for (const int i : indices) {
+    dst[i] = src[i];
+  }
+}
+
+void PositionDeformData::deform(MutableSpan<float3> translations, const Span<int> verts) const
+{
+  if (eval_mut_) {
+    /* Apply translations to the evaluated mesh. This is necessary because multiple brush
+     * evaluations can happen in between object reevaluations (otherwise just deforming the
+     * original positions would be enough). */
+    apply_translations(translations, verts, *eval_mut_);
+  }
+
+  if (deform_imats_) {
+    /* Apply the reverse procedural deformation, since subsequent translation happens to the state
+     * from "before" deforming modifiers. */
+    apply_crazyspace_to_translations(*deform_imats_, verts, translations);
+  }
+
+  if (KeyBlock *key = active_key_) {
+    const MutableSpan active_key_data(static_cast<float3 *>(key->data), key->totelem);
+    if (basis_active_) {
+      /* The active shape key positions and the mesh positions are always kept in sync. */
+      apply_translations(translations, verts, orig_);
+      copy_indices(orig_, verts, active_key_data);
+    }
+    else {
+      apply_translations(translations, verts, active_key_data);
+    }
+
+    if (dependent_keys_) {
+      int i;
+      LISTBASE_FOREACH_INDEX (KeyBlock *, other_key, &keys_->block, i) {
+        if ((other_key != key) && (*dependent_keys_)[i]) {
+          MutableSpan data(static_cast<float3 *>(other_key->data), other_key->totelem);
+          apply_translations(translations, verts, data);
+        }
+      }
+    }
+  }
+  else {
+    apply_translations(translations, verts, orig_);
+  }
+}
+
 void update_shape_keys(Object &object,
                        const Mesh &mesh,
                        const KeyBlock &active_key,
@@ -7272,43 +6993,6 @@ void update_shape_keys(Object &object,
       }
     }
   }
-}
-
-void write_translations(const Depsgraph &depsgraph,
-                        const Sculpt &sd,
-                        Object &object,
-                        const Span<float3> positions_eval,
-                        const Span<int> verts,
-                        const MutableSpan<float3> translations,
-                        const MutableSpan<float3> positions_orig)
-{
-  SculptSession &ss = *object.sculpt;
-
-  clip_and_lock_translations(sd, ss, positions_eval, verts, translations);
-
-  MutableSpan<float3> positions_eval_mut = bke::pbvh::vert_positions_eval_for_write(depsgraph,
-                                                                                    object);
-  if (positions_eval_mut.data() != positions_orig.data()) {
-    apply_translations(translations, verts, positions_eval_mut);
-  }
-
-  if (!ss.deform_imats.is_empty()) {
-    apply_crazyspace_to_translations(ss.deform_imats, verts, translations);
-  }
-
-  const Mesh &mesh = *static_cast<Mesh *>(object.data);
-  const KeyBlock *active_key = BKE_keyblock_from_object(&object);
-  if (!active_key) {
-    apply_translations(translations, verts, positions_orig);
-    return;
-  }
-
-  const bool basis_shapekey_active = active_key == mesh.key->refkey;
-  if (basis_shapekey_active) {
-    apply_translations(translations, verts, positions_orig);
-  }
-
-  update_shape_keys(object, mesh, *active_key, verts, translations, positions_orig);
 }
 
 void scale_translations(const MutableSpan<float3> translations, const Span<float> factors)
@@ -7441,7 +7125,7 @@ void calc_vert_neighbors(const OffsetIndices<int> faces,
   BLI_assert(result.size() == verts.size());
   BLI_assert(corner_verts.size() == faces.total_size());
   for (const int i : verts.index_range()) {
-    vert_neighbors_get_mesh(verts[i], faces, corner_verts, vert_to_face, hide_poly, result[i]);
+    vert_neighbors_get_mesh(faces, corner_verts, vert_to_face, hide_poly, verts[i], result[i]);
   }
 }
 
@@ -7500,7 +7184,7 @@ void calc_vert_neighbors_interior(const OffsetIndices<int> faces,
   for (const int i : verts.index_range()) {
     const int vert = verts[i];
     Vector<int> &neighbors = result[i];
-    vert_neighbors_get_mesh(verts[i], faces, corner_verts, vert_to_face, hide_poly, neighbors);
+    vert_neighbors_get_mesh(faces, corner_verts, vert_to_face, hide_poly, verts[i], neighbors);
 
     if (boundary_verts[vert]) {
       if (neighbors.size() == 2) {
