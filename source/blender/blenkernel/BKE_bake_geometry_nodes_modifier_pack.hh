@@ -9,6 +9,7 @@
 #include "BKE_bake_items_paths.hh"
 
 struct ReportList;
+struct Main;
 
 namespace blender::bke::bake {
 
@@ -17,5 +18,17 @@ NodesModifierPackedBake *pack_bake_from_disk(const BakePath &bake_path, ReportLi
 [[nodiscard]] bool unpack_bake_to_disk(const NodesModifierPackedBake &packed_bake,
                                        const BakePath &bake_path,
                                        ReportList *reports);
+
+enum class PackGeometryNodesBakeResult {
+  NoDataFound,
+  PackedAlready,
+  Success,
+};
+
+PackGeometryNodesBakeResult pack_geometry_nodes_bake(Main &bmain,
+                                                     ReportList *reports,
+                                                     Object &object,
+                                                     NodesModifierData &nmd,
+                                                     NodesModifierBake &bake);
 
 }  // namespace blender::bke::bake

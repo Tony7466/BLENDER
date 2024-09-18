@@ -2,13 +2,20 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_geometry_nodes_modifier_pack.hh"
 #include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 
+#include "DNA_modifier_types.h"
+
+#include "MOD_nodes.hh"
+
 #include "BLI_fileops.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+
+#include "DEG_depsgraph.hh"
 
 namespace blender::bke::bake {
 
@@ -101,6 +108,29 @@ bool unpack_bake_to_disk(const NodesModifierPackedBake &packed_bake,
     }
   }
   return true;
+}
+
+PackGeometryNodesBakeResult pack_geometry_nodes_bake(Main &bmain,
+                                                     ReportList *reports,
+                                                     Object &object,
+                                                     NodesModifierData &nmd,
+                                                     NodesModifierBake &bake)
+{
+  if (bake.packed) {
+    return PackGeometryNodesBakeResult::PackedAlready;
+  }
+  const std::optional<bake::BakePath> bake_path = get_node_bake_path(bmain, object, nmd, bake.id);
+  if (!bake_path) {
+    return PackGeometryNodesBakeResult::NoDataFound;
+  }
+  bake.packed = bake::pack_bake_from_disk(*bake_path, reports);
+  if (!bake.packed) {
+    return PackGeometryNodesBakeResult::NoDataFound;
+  }
+  nmd.runtime->cache->reset_cache(bake.id);
+  bake.bake_target = NODES_MODIFIER_BAKE_TARGET_PACKED;
+  DEG_id_tag_update(&object.id, ID_RECALC_GEOMETRY);
+  return PackGeometryNodesBakeResult::Success;
 }
 
 }  // namespace blender::bke::bake
