@@ -77,6 +77,8 @@
 
 #include "BLO_read_write.hh"
 
+#include "ANIM_action.hh"
+
 #include "CLG_log.h"
 
 #ifdef WITH_PYTHON
@@ -2902,6 +2904,11 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 {
   bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
 
+  if (!data->act) {
+    /* Without an Action, this constraint cannot do anything. */
+    return;
+  }
+
   if (VALID_CONS_TARGET(ct) || data->flag & ACTCON_USE_EVAL_TIME) {
     float tempmat[4][4], vec[3];
     float s, t;
@@ -2950,8 +2957,17 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       BLI_assert(uint(axis) < 3);
 
-      /* Target defines the animation */
-      s = (vec[axis] - data->min) / (data->max - data->min);
+      /* Convert the target's value into a [0, 1] value that's later used to find the Action frame
+       * to apply. This compares to the min/max boundary values first, before doing the
+       * normalization by the (max-min) range, to get predictable, valid values when that range is
+       * zero. */
+      const float range = data->max - data->min;
+      if (range == 0.0f) {
+        s = 0.0f;
+      }
+      else {
+        s = (vec[axis] - data->min) / range;
+      }
     }
 
     CLAMP(s, 0, 1);
@@ -2966,13 +2982,18 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
              (cob->pchan) ? cob->pchan->name : nullptr);
     }
 
+    /* TODO: add an action slot selector to the constraint settings. */
+    const blender::animrig::slot_handle_t slot_handle = blender::animrig::first_slot_handle(
+        *data->act);
+
     /* Get the appropriate information from the action */
     if (cob->type == CONSTRAINT_OBTYPE_OBJECT || (data->flag & ACTCON_BONE_USE_OBJECT_ACTION)) {
       Object workob;
 
       /* evaluate using workob */
       /* FIXME: we don't have any consistent standards on limiting effects on object... */
-      what_does_obaction(cob->ob, &workob, nullptr, data->act, nullptr, &anim_eval_context);
+      what_does_obaction(
+          cob->ob, &workob, nullptr, data->act, slot_handle, nullptr, &anim_eval_context);
       BKE_object_to_mat4(&workob, ct->matrix);
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
@@ -2989,7 +3010,8 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
       tchan->rotmode = pchan->rotmode;
 
       /* evaluate action using workob (it will only set the PoseChannel in question) */
-      what_does_obaction(cob->ob, &workob, &pose, data->act, pchan->name, &anim_eval_context);
+      what_does_obaction(
+          cob->ob, &workob, &pose, data->act, slot_handle, pchan->name, &anim_eval_context);
 
       /* convert animation to matrices for use here */
       BKE_pchan_calc_mat(tchan);
