@@ -36,11 +36,8 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_update(bNodeTree *ntree, bNode *node)
 {
-  const bool one_input_ops = ELEM(node->custom1,
-                                  NODE_INTEGER_MATH_ABSOLUTE,
-                                  NODE_INTEGER_MATH_SIGN,
-                                  NODE_INTEGER_MATH_NOT,
-                                  NODE_INTEGER_MATH_NEGATE);
+  const bool one_input_ops = ELEM(
+      node->custom1, NODE_INTEGER_MATH_ABSOLUTE, NODE_INTEGER_MATH_SIGN, NODE_INTEGER_MATH_NEGATE);
   const bool three_input_ops = ELEM(node->custom1, NODE_INTEGER_MATH_MULTIPLY_ADD);
 
   bNodeSocket *sockA = static_cast<bNodeSocket *>(node->inputs.first);
