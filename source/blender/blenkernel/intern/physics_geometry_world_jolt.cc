@@ -183,8 +183,8 @@ static JPH::TwoBodyConstraint *make_constraint_type(const PhysicsConstraintType 
       [&](const int axis, float &r_min, float &r_max, JPH::SpringSettings &r_spring_settings) {
         const bool is_angle = (axis >= 3);
         if (is_angle) {
-          r_min = std::clamp(r_min, -JPH::JPH_PI, 0.0f);
-          r_max = std::clamp(r_max, 0.0f, JPH::JPH_PI);
+          r_min = std::clamp(limit_min[axis], -JPH::JPH_PI, 0.0f);
+          r_max = std::clamp(limit_max[axis], 0.0f, JPH::JPH_PI);
         }
         else {
           r_min = limit_min[axis];
