@@ -120,10 +120,7 @@ static Set<int> get_selected_object_keyframes(Span<Object *> bake_targets)
   Set<int> keyframes;
   for (Object *bake_target : bake_targets) {
     AnimData *adt = BKE_animdata_from_id(&bake_target->id);
-    if (adt == nullptr || adt->action == nullptr) {
-      continue;
-    }
-    LISTBASE_FOREACH (FCurve *, fcurve, &adt->action->curves) {
+    for (FCurve *fcurve : blender::animrig::legacy::fcurves_for_assigned_action(adt)) {
       for (const int i : IndexRange(fcurve->totvert)) {
         BezTriple bezt = fcurve->bezt[i];
         if (bezt.f2 & SELECT) {
