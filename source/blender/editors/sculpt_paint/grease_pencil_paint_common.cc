@@ -194,10 +194,64 @@ bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
   return bool(brush.flag & BRUSH_DIR_IN) ^ (stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT);
 }
 
+DeltaProjectionFunc get_view_projection_fn(const GreasePencilStrokeParams &params,
+                                           const Object &object,
+                                           const bke::greasepencil::Layer &layer)
+{
+  const float4x4 world_to_view = float4x4(params.rv3d.viewinv);
+  const float4x4 layer_to_world = layer.to_world_space(object);
+  const float4x4 world_to_layer = math::invert(layer_to_world);
+  const float4x4 view_to_layer = math::invert(world_to_view * layer_to_world);
+
+  switch (params.toolsettings.gp_sculpt.lock_axis) {
+    case GP_LOCKAXIS_VIEW: {
+      return [=](const float3 &view_delta) {
+        return math::transform_direction(view_to_layer, float3(view_delta.x, view_delta.y, 0.0f));
+      };
+    }
+    case GP_LOCKAXIS_X: {
+      const float3 world_normal = world_to_layer.x_axis();
+      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
+      return [=](const float3 &view_delta) {
+        return math::transform_direction(
+            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      };
+    }
+    case GP_LOCKAXIS_Y: {
+      const float3 world_normal = world_to_layer.y_axis();
+      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
+      return [=](const float3 &view_delta) {
+        return math::transform_direction(
+            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      };
+    }
+    case GP_LOCKAXIS_Z: {
+      const float3 world_normal = world_to_layer.z_axis();
+      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
+      return [=](const float3 &view_delta) {
+        return math::transform_direction(
+            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      };
+    }
+    case GP_LOCKAXIS_CURSOR: {
+      const float3 world_normal = params.scene.cursor.matrix<float3x3>().z_axis();
+      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
+      return [=](const float3 &view_delta) {
+        return math::transform_direction(
+            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      };
+    }
+  }
+
+  BLI_assert_unreachable();
+  return [](const float3 &) { return float3(); };
+}
+
 GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
     const Scene &scene,
     Depsgraph &depsgraph,
     ARegion &region,
+    RegionView3D &rv3d,
     Object &object,
     const int layer_index,
     const int frame_number,
@@ -210,6 +264,8 @@ GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
   const bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_index);
   return {*scene.toolsettings,
           region,
+          rv3d,
+          scene,
           object,
           ob_eval,
           layer,
@@ -327,6 +383,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   const Scene &scene = *CTX_data_scene(&C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   ARegion &region = *CTX_wm_region(&C);
+  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
@@ -338,6 +395,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
         scene,
         depsgraph,
         region,
+        rv3d,
         object,
         info.layer_index,
         info.frame_number,
@@ -364,6 +422,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   const Scene &scene = *CTX_data_scene(&C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   ARegion &region = *CTX_wm_region(&C);
+  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   Object &object = *CTX_data_active_object(&C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
@@ -376,6 +435,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
           scene,
           depsgraph,
           region,
+          rv3d,
           object,
           info.layer_index,
           info.frame_number,
@@ -404,6 +464,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   View3D &view3d = *CTX_wm_view3d(&C);
   ARegion &region = *CTX_wm_region(&C);
+  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   Object &object = *CTX_data_active_object(&C);
   Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
@@ -426,12 +487,55 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
         scene,
         depsgraph,
         region,
+        rv3d,
         object,
         info.layer_index,
         info.frame_number,
         info.multi_frame_falloff,
         info.drawing);
     if (fn(params, placement)) {
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+}
+
+void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
+    const bContext &C,
+    FunctionRef<bool(const GreasePencilStrokeParams &params,
+                     const DeltaProjectionFunc &projection_fn)> fn) const
+{
+  using namespace blender::bke::greasepencil;
+
+  const Scene &scene = *CTX_data_scene(&C);
+  Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  ARegion &region = *CTX_wm_region(&C);
+  RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+  Object &object = *CTX_data_active_object(&C);
+  Object &object_eval = *DEG_get_evaluated_object(&depsgraph, &object);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  std::atomic<bool> changed = false;
+  const Vector<MutableDrawingInfo> drawings = get_drawings_for_painting(C);
+  threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    const Layer &layer = *grease_pencil.layer(info.layer_index);
+
+    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+        scene,
+        depsgraph,
+        region,
+        rv3d,
+        object,
+        info.layer_index,
+        info.frame_number,
+        info.multi_frame_falloff,
+        info.drawing);
+    DeltaProjectionFunc projection_fn = get_view_projection_fn(params, object_eval, layer);
+    if (fn(params, projection_fn)) {
       changed = true;
     }
   });

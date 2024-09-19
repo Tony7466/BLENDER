@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "BLI_color.hh"
 #include "BLI_task.hh"
 
@@ -28,6 +30,8 @@ struct GeometryDeformation;
 }
 
 namespace blender::ed::sculpt_paint {
+
+using DeltaProjectionFunc = std::function<float3(const float3 &)>;
 
 struct InputSample {
   float2 mouse_position;
@@ -85,6 +89,8 @@ bool is_brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
 struct GreasePencilStrokeParams {
   const ToolSettings &toolsettings;
   const ARegion &region;
+  const RegionView3D &rv3d;
+  const Scene &scene;
   Object &ob_orig;
   Object &ob_eval;
   const bke::greasepencil::Layer &layer;
@@ -98,6 +104,7 @@ struct GreasePencilStrokeParams {
   static GreasePencilStrokeParams from_context(const Scene &scene,
                                                Depsgraph &depsgraph,
                                                ARegion &region,
+                                               RegionView3D &rv3d,
                                                Object &object,
                                                int layer_index,
                                                int frame_number,
@@ -124,6 +131,12 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
                                        const IndexMask &selection);
 Array<float> calculate_view_radii(const GreasePencilStrokeParams &params,
                                   const IndexMask &selection);
+
+/* Get an appropriate projection function from view space to layer space.
+ * This is an alternative to using the DrawingPlacement. */
+DeltaProjectionFunc get_view_projection_fn(const GreasePencilStrokeParams &params,
+                                           const Object &object,
+                                           const bke::greasepencil::Layer &layer);
 
 bool do_vertex_color_points(const Brush &brush);
 bool do_vertex_color_fill(const Brush &brush);
@@ -161,6 +174,10 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void foreach_editable_drawing(const bContext &C,
                                 FunctionRef<bool(const GreasePencilStrokeParams &params,
                                                  const DrawingPlacement &placement)> fn) const;
+  void foreach_editable_drawing(
+      const bContext &C,
+      FunctionRef<bool(const GreasePencilStrokeParams &params,
+                       const DeltaProjectionFunc &projection_fn)> fn) const;
 };
 
 /* Operations */

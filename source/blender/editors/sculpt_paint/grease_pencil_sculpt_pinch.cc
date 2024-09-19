@@ -16,6 +16,8 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
+#include <iostream>
+
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class PinchOperation : public GreasePencilStrokeOperationCommon {
@@ -42,9 +44,7 @@ void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &ex
       eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
 
   this->foreach_editable_drawing(
-      C,
-      [&](const GreasePencilStrokeParams &params,
-          const ed::greasepencil::DrawingPlacement &placement) {
+      C, [&](const GreasePencilStrokeParams &params, const DeltaProjectionFunc &projection_fn) {
         IndexMaskMemory selection_memory;
         const IndexMask selection = point_selection_mask(params, is_masking, selection_memory);
         if (selection.is_empty()) {
@@ -67,7 +67,12 @@ void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &ex
 
           const float scale_offset = influence * influence / 25.0f;
           const float scale = invert ? 1.0 + scale_offset : 1.0f - scale_offset;
-          positions[point_i] = placement.project(target + (co - target) * scale);
+          // const float2 delta_view = (target - co) * (1.0f - scale);
+          const float2 delta_view = float2(0.2f, 0.0f) * influence;
+          std::cout << "delta_view=" << delta_view << std::endl;
+          std::cout << "  projection=" << projection_fn(float3(delta_view)) << std::endl;
+          std::cout << "  new=" << (positions[point_i] + projection_fn(float3(delta_view))) << std::endl;
+          positions[point_i] += projection_fn(float3(delta_view));
         });
 
         params.drawing.tag_positions_changed();
