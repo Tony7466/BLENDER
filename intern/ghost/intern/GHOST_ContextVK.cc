@@ -266,8 +266,8 @@ class GHOST_DeviceVK {
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_FEATURES_EXT;
     dynamic_rendering_unused_attachments.dynamicRenderingUnusedAttachments = VK_TRUE;
     if (has_extensions({VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME})) {
-    dynamic_rendering_unused_attachments.pNext = device_create_info_p_next;
-    device_create_info_p_next = &dynamic_rendering_unused_attachments;
+      dynamic_rendering_unused_attachments.pNext = device_create_info_p_next;
+      device_create_info_p_next = &dynamic_rendering_unused_attachments;
     }
 
     /* Query for Mainenance4 (core in Vulkan 1.3). */
