@@ -393,6 +393,7 @@ void SEQUENCER_OT_text_delete(wmOperatorType *ot);
 void SEQUENCER_OT_text_line_break(wmOperatorType *ot);
 void SEQUENCER_OT_text_select_all(wmOperatorType *ot);
 void SEQUENCER_OT_text_deselect_all(wmOperatorType *ot);
+void SEQUENCER_OT_text_edit_mode_toggle(wmOperatorType *ot);
 void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot);
 blender::int2 seq_text_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset);
 blender::IndexRange seq_text_selection_range_get(TextVars *data);

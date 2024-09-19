@@ -613,6 +613,35 @@ void SEQUENCER_OT_text_deselect_all(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 }
 
+static int sequencer_text_edit_mode_toggle(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  if (sequencer_text_editing_active_poll(C)) {
+    seq->flag &= ~SEQ_FLAG_TEXT_EDITING_ACTIVE;
+  }
+  else {
+    seq->flag |= SEQ_FLAG_TEXT_EDITING_ACTIVE;
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_edit_mode_toggle(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Edit Text";
+  ot->description = "Toggle text editing";
+  ot->idname = "SEQUENCER_OT_text_edit_mode_toggle";
+
+  /* api callbacks */
+  ot->exec = sequencer_text_edit_mode_toggle;
+  ot->poll = sequencer_text_editing_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+}
+
 static int sequencer_text_cursor_move_mouse_invoke(bContext *C,
                                                    wmOperator * /*op*/,
                                                    const wmEvent * /*event*/)

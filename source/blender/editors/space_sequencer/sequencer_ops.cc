@@ -87,6 +87,7 @@ void sequencer_operatortypes()
   WM_operatortype_append(SEQUENCER_OT_text_line_break);
   WM_operatortype_append(SEQUENCER_OT_text_select_all);
   WM_operatortype_append(SEQUENCER_OT_text_deselect_all);
+  WM_operatortype_append(SEQUENCER_OT_text_edit_mode_toggle);
   WM_operatortype_append(SEQUENCER_OT_text_cursor_set);
 
   /* `sequencer_select.cc` */
