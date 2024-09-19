@@ -23,6 +23,7 @@ set(INTERPROCEDURAL_OPTIMIZATION OFF)
 # and will enable floating point exceptions during simulation to detect divisions by zero. 
 # Note that this currently only works using MSVC. Clang turns Float2 into a SIMD vector sometimes causing floating point exceptions (the option is ignored).
 set(FLOATING_POINT_EXCEPTIONS_ENABLED OFF)
+set(CPP_EXCEPTIONS_ENABLED ON)
 
 # Number of bits to use in ObjectLayer. Can be 16 or 32.
 set(OBJECT_LAYER_BITS 16)
@@ -50,8 +51,8 @@ if (MSVC)
 	endif()
 
 	# Set general compiler flags
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT /Zc:__cplusplus /Gm- /Wall /WX /MP /nologo /diagnostics:classic /FC /fp:except- /Zc:inline")
-	
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MD /Zc:__cplusplus /Gm- /Wall /WX /MP /nologo /diagnostics:classic /FC /fp:except- /Zc:inline")
+
 	# Optionally generate debug symbols
 	if (GENERATE_DEBUG_SYMBOLS)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
