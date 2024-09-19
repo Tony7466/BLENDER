@@ -8,6 +8,8 @@
 
 #include <fmt/format.h>
 
+#include "ANIM_action_legacy.hh"
+
 #include "BKE_anim_data.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
