@@ -114,28 +114,29 @@ static void convert_action_in_place(blender::animrig::Action &action)
   }
   Slot &slot = action.slot_add();
   Layer &layer = action.layer_add(action.id.name + 2);
-  KeyframeStrip &strip = layer.strip_add<KeyframeStrip>();
-  ChannelBag *bag = &strip.channelbag_for_slot_add(slot);
+  blender::animrig::Strip &strip = layer.strip_add(action,
+                                                   blender::animrig::Strip::Type::Keyframe);
+  ChannelBag &bag = strip.data<StripKeyframeData>(action).channelbag_for_slot_ensure(slot);
   const int fcu_count = BLI_listbase_count(&action.curves);
   const int group_count = BLI_listbase_count(&action.groups);
-  bag->fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Action versioning - fcurves");
-  bag->fcurve_array_num = fcu_count;
-  bag->group_array = MEM_cnew_array<bActionGroup *>(group_count, "Action versioning - groups");
-  bag->group_array_num = group_count;
+  bag.fcurve_array = MEM_cnew_array<FCurve *>(fcu_count, "Action versioning - fcurves");
+  bag.fcurve_array_num = fcu_count;
+  bag.group_array = MEM_cnew_array<bActionGroup *>(group_count, "Action versioning - groups");
+  bag.group_array_num = group_count;
 
   int i = 0;
   LISTBASE_FOREACH_INDEX (bActionGroup *, group, &action.groups, i) {
-    bag->group_array[i] = group;
-    group->channel_bag = bag;
+    bag.group_array[i] = group;
+    group->channel_bag = &bag;
   }
 
   LISTBASE_FOREACH_INDEX (FCurve *, fcu, &action.curves, i) {
-    bag->fcurve_array[i] = fcu;
+    bag.fcurve_array[i] = fcu;
   }
   LISTBASE_FOREACH_INDEX (FCurve *, fcu, &action.curves, i) {
     bActionGroup *grp = fcu->grp;
     fcu->grp = nullptr;
-    bag->fcurve_assign_to_channel_group(*fcu, *grp);
+    bag.fcurve_assign_to_channel_group(*fcu, *grp);
   }
 }
 
