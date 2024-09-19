@@ -221,7 +221,7 @@ static inline __m128 F16_to_F32_4x(const __m128i &h)
 void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t length)
 {
   size_t i = 0;
-#if defined(USE_HARDWARE_FP16_F16C)
+#if defined(USE_HARDWARE_FP16_F16C) /* 8-wide loop using AVX2 F16C */
   for (; i + 7 < length; i += 8) {
     __m256 src8 = _mm256_loadu_ps(src);
     __m128i h8 = _mm256_cvtps_ph(src8, _MM_FROUND_TO_NEAREST_INT);
@@ -229,7 +229,7 @@ void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t 
     src += 8;
     dst += 8;
   }
-#elif defined(USE_SSE2_FP16)
+#elif defined(USE_SSE2_FP16)          /* 4-wide loop using SSE2 */
   for (; i + 3 < length; i += 4) {
     __m128 src4 = _mm_loadu_ps(src);
     __m128i h4 = F32_to_F16_4x(src4);
@@ -238,7 +238,7 @@ void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t 
     src += 4;
     dst += 4;
   }
-#elif defined(USE_HARDWARE_FP16_NEON)
+#elif defined(USE_HARDWARE_FP16_NEON) /* 4-wide loop using NEON */
   for (; i + 3 < length; i += 4) {
     float32x4_t src4 = vld1q_f32(src);
     float16x4_t h4 = vcvt_f16_f32(src4);
@@ -247,6 +247,8 @@ void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t 
     dst += 4;
   }
 #endif
+  /* Use scalar path to convert the tail of array (or whole array if none of
+   * wider paths above were used). */
   for (; i < length; i++) {
     *dst++ = float_to_half(*src++);
   }
@@ -255,7 +257,7 @@ void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t 
 void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t length)
 {
   size_t i = 0;
-#if defined(USE_HARDWARE_FP16_F16C)
+#if defined(USE_HARDWARE_FP16_F16C) /* 8-wide loop using AVX2 F16C */
   for (; i + 7 < length; i += 8) {
     __m128i src8 = _mm_loadu_epi32(src);
     __m256 f8 = _mm256_cvtph_ps(src8);
@@ -263,7 +265,7 @@ void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t 
     src += 8;
     dst += 8;
   }
-#elif defined(USE_SSE2_FP16)
+#elif defined(USE_SSE2_FP16)          /* 4-wide loop using SSE2 */
   for (; i + 3 < length; i += 4) {
     __m128i src4 = _mm_loadu_si64(src);
     src4 = _mm_unpacklo_epi16(src4, src4);
@@ -272,7 +274,7 @@ void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t 
     src += 4;
     dst += 4;
   }
-#elif defined(USE_HARDWARE_FP16_NEON)
+#elif defined(USE_HARDWARE_FP16_NEON) /* 4-wide loop using NEON */
   for (; i + 3 < length; i += 4) {
     float16x4_t src4 = vld1_f16((const float16_t *)src);
     float32x4_t f4 = vcvt_f32_f16(src4);
@@ -281,6 +283,8 @@ void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t 
     dst += 4;
   }
 #endif
+  /* Use scalar path to convert the tail of array (or whole array if none of
+   * wider paths above were used). */
   for (; i < length; i++) {
     *dst++ = half_to_float(*src++);
   }

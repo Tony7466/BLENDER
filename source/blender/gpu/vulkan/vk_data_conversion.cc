@@ -624,7 +624,6 @@ using I8 = ComponentValue<int8_t>;
 using I16 = ComponentValue<int16_t>;
 using I32 = ComponentValue<int32_t>;
 using F32 = ComponentValue<float>;
-using F16 = ComponentValue<uint16_t>;
 using SRGBA8 = PixelValue<ColorSceneLinearByteEncoded4b<eAlpha::Premultiplied>>;
 using FLOAT3 = PixelValue<float3>;
 using FLOAT4 = PixelValue<ColorSceneLinear4f<eAlpha::Premultiplied>>;
@@ -799,16 +798,6 @@ void convert(DestinationType &dst, const SourceType &src)
                 std::is_same<SourceType, I16>() || std::is_same<SourceType, I32>());
   static_assert(!std::is_same<DestinationType, SourceType>());
   dst.value = src.value;
-}
-
-static void convert(F16 &dst, const F32 &src)
-{
-  dst.value = math::float_to_half(src.value);
-}
-
-static void convert(F32 &dst, const F16 &src)
-{
-  dst.value = math::half_to_float(src.value);
 }
 
 static void convert(SRGBA8 &dst, const FLOAT4 &src)
