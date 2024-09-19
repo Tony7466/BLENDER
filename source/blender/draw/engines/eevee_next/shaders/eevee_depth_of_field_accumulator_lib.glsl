@@ -629,7 +629,7 @@ void dof_slight_focus_gather(depth2D depth_tx,
 
     DofGatherData pair_data[2];
     for (int i = 0; i < 2; i++) {
-      vec2 sample_offset = ((i == 0) ? offset : -offset);
+      vec2 sample_offset = ((i == 0) ? offset : -offset) * radius;
       /* OPTI: could precompute the factor. */
       vec2 sample_uv = (frag_coord + sample_offset) / vec2(textureSize(depth_tx, 0));
       float depth = textureLod(depth_tx, sample_uv, 0.0).r;
