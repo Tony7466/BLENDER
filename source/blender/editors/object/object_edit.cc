@@ -936,16 +936,14 @@ static int editmode_toggle_exec(bContext *C, wmOperator *op)
 
   if (!is_mode_set) {
     editmode_enter_ex(bmain, scene, obact, 0);
-    /* Grease Pencil v3 does support multi-object editing. */
-    if (obact->type != OB_GREASE_PENCIL) {
-      if (obact->mode & mode_flag) {
-        FOREACH_SELECTED_OBJECT_BEGIN (view_layer, v3d, ob) {
-          if ((ob != obact) && (ob->type == obact->type)) {
-            editmode_enter_ex(bmain, scene, ob, EM_NO_CONTEXT);
-          }
+    /* Grease Pencil does not support multi-object editing. */
+    if ((obact->type != OB_GREASE_PENCIL) && ((obact->mode & mode_flag) != 0)) {
+      FOREACH_SELECTED_OBJECT_BEGIN (view_layer, v3d, ob) {
+        if ((ob != obact) && (ob->type == obact->type)) {
+          editmode_enter_ex(bmain, scene, ob, EM_NO_CONTEXT);
         }
-        FOREACH_SELECTED_OBJECT_END;
       }
+      FOREACH_SELECTED_OBJECT_END;
     }
   }
   else {
