@@ -714,8 +714,14 @@ typedef struct {
 } GHOST_DisplaySetting;
 
 typedef struct {
+  uint vendor_id;
+  uint device_id;
+} GHOST_GPUDevice;
+
+typedef struct {
   int flags;
   GHOST_TDrawingContextType context_type;
+  GHOST_GPUDevice preferred_device;
 } GHOST_GPUSettings;
 
 #ifdef WITH_VULKAN_BACKEND

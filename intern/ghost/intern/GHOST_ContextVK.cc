@@ -320,6 +320,7 @@ static std::optional<GHOST_DeviceVK> vulkan_device;
 
 static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
                                            VkSurfaceKHR vk_surface,
+                                           const GHOST_GPUDevice &preferred_device,
                                            const vector<const char *> &required_extensions)
 {
   if (vulkan_device.has_value()) {
@@ -386,6 +387,13 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
       default:
         break;
     }
+    /* User has configured a preferred device. Add bonus score when vendor and device match. Driver
+     * id isn't considered as that can update more frequently. */
+    if (device_vk.properties.deviceID == preferred_device.device_id &&
+        device_vk.properties.vendorID == preferred_device.vendor_id)
+    {
+      device_score += 500;
+    }
     if (device_score > best_device_score) {
       best_physical_device = physical_device;
       best_device_score = device_score;
@@ -421,7 +429,8 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
 #endif
                                  int contextMajorVersion,
                                  int contextMinorVersion,
-                                 int debug)
+                                 int debug,
+                                 GHOST_GPUDevice preferred_device)
     : GHOST_Context(stereoVisual),
 #ifdef _WIN32
       m_hwnd(hwnd),
@@ -440,6 +449,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
       m_context_major_version(contextMajorVersion),
       m_context_minor_version(contextMinorVersion),
       m_debug(debug),
+      m_preferred_device(preferred_device),
       m_command_pool(VK_NULL_HANDLE),
       m_command_buffer(VK_NULL_HANDLE),
       m_surface(VK_NULL_HANDLE),
@@ -1052,7 +1062,7 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
 #endif
   }
 
-  if (!ensure_vulkan_device(instance, m_surface, required_device_extensions)) {
+  if (!ensure_vulkan_device(instance, m_surface, m_preferred_device, required_device_extensions)) {
     return GHOST_kFailure;
   }
 
