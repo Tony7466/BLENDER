@@ -122,9 +122,11 @@ bool VKBackend::is_supported()
     if (dynamic_rendering.dynamicRendering == VK_FALSE) {
       missing_capabilities.append("dynamic rendering");
     }
+    #if 0
     if (dynamic_rendering_unused_attachments.dynamicRenderingUnusedAttachments == VK_FALSE) {
       missing_capabilities.append("dynamic rendering unused attachments");
     }
+    #endif
 
     /* Check device extensions. */
     uint32_t vk_extension_count;
@@ -151,12 +153,14 @@ bool VKBackend::is_supported()
     if (!extensions.contains(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
       missing_capabilities.append(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME);
     }
+    #if 0
     /* `VK_EXT_dynamic_rendering_unused_attachments` is not supported by RenderDoc. */
     if (!bool(G.debug & G_DEBUG_GPU) &&
         !extensions.contains(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME))
     {
       missing_capabilities.append(VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME);
     }
+    #endif
 
     /* Report result. */
     if (missing_capabilities.is_empty()) {
