@@ -99,7 +99,8 @@ class _template_widget:
         def draw_settings_with_index(context, layout, index):
             scene = context.scene
             orient_slot = scene.transform_orientation_slots[index]
-            layout.prop(orient_slot, "type")
+            if context.mode != 'SCULPT':
+                layout.prop(orient_slot, "type")
 
 
 class _defs_view3d_generic:
