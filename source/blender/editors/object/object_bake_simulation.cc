@@ -957,6 +957,11 @@ static Vector<NodeBakeRequest> bake_single_node_gather_bake_request(bContext *C,
   }
   if (bake::get_node_bake_target(*object, nmd, bake_id) == NODES_MODIFIER_BAKE_TARGET_DISK) {
     request.path = bake::get_node_bake_path(*bmain, *object, nmd, bake_id);
+    if (!request.path) {
+      BKE_report(op->reports,
+                 RPT_INFO,
+                 "Can't determine bake location on disk. Falling back to packed bake.");
+    }
   }
 
   if (node->type == GEO_NODE_BAKE && bake->bake_mode == NODES_MODIFIER_BAKE_MODE_STILL) {
