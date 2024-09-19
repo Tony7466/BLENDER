@@ -30,6 +30,7 @@
 #include "IMB_colormanagement.hh"
 
 #include "mesh_brush_common.hh"
+#include "sculpt_automask.hh"
 #include "sculpt_color.hh"
 #include "sculpt_intern.hh"
 #include "sculpt_smooth.hh"
@@ -592,9 +593,9 @@ void do_paint_brush(const Scene &scene,
                              nodes[i],
                              tls,
                              color_attribute);
-        BKE_pbvh_node_mark_update_color(nodes[i]);
       });
     });
+    pbvh.tag_attribute_changed(node_mask, mesh.active_color_attribute);
     color_attribute.finish();
     return;
   }
@@ -670,9 +671,9 @@ void do_paint_brush(const Scene &scene,
                           tls,
                           ss.cache->paint_brush.mix_colors,
                           color_attribute);
-      BKE_pbvh_node_mark_update_color(nodes[i]);
     });
   });
+  pbvh.tag_attribute_changed(node_mask, mesh.active_color_attribute);
   color_attribute.finish();
 }
 
@@ -766,11 +767,11 @@ static void do_smear_brush_task(const Depsgraph &depsgraph,
      */
 
     for (const int neigbor : vert_neighbors_get_mesh(
-             vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbors))
+             faces, corner_verts, vert_to_face_map, hide_poly, vert, neighbors))
     {
       const float3 &nco = vert_positions[neigbor];
       for (const int neighbor_neighbor : vert_neighbors_get_mesh(
-               vert, faces, corner_verts, vert_to_face_map, hide_poly, neighbor_neighbors))
+               faces, corner_verts, vert_to_face_map, hide_poly, vert, neighbor_neighbors))
       {
         if (neighbor_neighbor == vert) {
           continue;
@@ -894,7 +895,6 @@ void do_smear_brush(const Depsgraph &depsgraph,
                              nodes[i],
                              tls,
                              color_attribute);
-        BKE_pbvh_node_mark_update_color(nodes[i]);
       });
     });
   }
@@ -926,10 +926,10 @@ void do_smear_brush(const Depsgraph &depsgraph,
                             nodes[i],
                             tls,
                             color_attribute);
-        BKE_pbvh_node_mark_update_color(nodes[i]);
       });
     });
   }
+  pbvh.tag_attribute_changed(node_mask, mesh.active_color_attribute);
   color_attribute.finish();
 }
 

@@ -4,6 +4,7 @@
 
 #include "editors/sculpt_paint/brushes/types.hh"
 #include "editors/sculpt_paint/mesh_brush_common.hh"
+#include "editors/sculpt_paint/sculpt_automask.hh"
 
 #include "DNA_brush_types.h"
 
@@ -195,10 +196,9 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
                  face_indices,
                  tls,
                  face_sets.span);
-      BKE_pbvh_node_mark_update_face_sets(nodes[i]);
     });
   });
-
+  pbvh.tag_face_sets_changed(node_mask);
   face_sets.finish();
 }
 

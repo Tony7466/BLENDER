@@ -21,6 +21,7 @@
 #include "BLI_task.hh"
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
+#include "editors/sculpt_paint/sculpt_automask.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
@@ -201,10 +202,10 @@ void do_displacement_smear_brush(const Depsgraph &depsgraph,
     LocalData &tls = all_tls.local();
     node_mask.slice(range).foreach_index([&](const int i) {
       calc_node(depsgraph, ob, brush, strength, nodes[i], tls);
-      BKE_pbvh_node_mark_positions_update(nodes[i]);
       bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
     });
   });
+  pbvh.tag_positions_changed(node_mask);
   bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 

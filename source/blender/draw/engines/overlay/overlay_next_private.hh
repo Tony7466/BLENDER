@@ -123,6 +123,8 @@ class ShapeCache {
   BatchPtr bone_degrees_of_freedom;
   BatchPtr bone_degrees_of_freedom_wire;
 
+  BatchPtr grid;
+
   BatchPtr quad_wire;
   BatchPtr quad_solid;
   BatchPtr plain_axes;
@@ -216,6 +218,8 @@ class ShaderModule {
   ShaderPtr legacy_curve_edit_normals = shader("overlay_edit_curve_normals");
   ShaderPtr legacy_curve_edit_handles = shader("overlay_edit_curve_handle_next");
   ShaderPtr legacy_curve_edit_points;
+  ShaderPtr motion_path_line = shader("overlay_motion_path_line_next");
+  ShaderPtr motion_path_vert = shader("overlay_motion_path_point");
   ShaderPtr mesh_analysis;
   ShaderPtr mesh_edit_depth;
   ShaderPtr mesh_edit_edge = shader("overlay_edit_mesh_edge_next");
@@ -227,7 +231,7 @@ class ShaderModule {
   ShaderPtr mesh_loop_normal, mesh_loop_normal_subdiv;
   ShaderPtr mesh_vert_normal;
   ShaderPtr outline_prepass_mesh;
-  ShaderPtr outline_prepass_wire;
+  ShaderPtr outline_prepass_wire = shader("overlay_outline_prepass_wire_next");
   ShaderPtr outline_prepass_curves;
   ShaderPtr outline_prepass_pointcloud;
   ShaderPtr outline_prepass_gpencil;

@@ -2904,6 +2904,11 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 {
   bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
 
+  if (!data->act) {
+    /* Without an Action, this constraint cannot do anything. */
+    return;
+  }
+
   if (VALID_CONS_TARGET(ct) || data->flag & ACTCON_USE_EVAL_TIME) {
     float tempmat[4][4], vec[3];
     float s, t;
@@ -2952,8 +2957,17 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       BLI_assert(uint(axis) < 3);
 
-      /* Target defines the animation */
-      s = (vec[axis] - data->min) / (data->max - data->min);
+      /* Convert the target's value into a [0, 1] value that's later used to find the Action frame
+       * to apply. This compares to the min/max boundary values first, before doing the
+       * normalization by the (max-min) range, to get predictable, valid values when that range is
+       * zero. */
+      const float range = data->max - data->min;
+      if (range == 0.0f) {
+        s = 0.0f;
+      }
+      else {
+        s = (vec[axis] - data->min) / range;
+      }
     }
 
     CLAMP(s, 0, 1);
@@ -2969,7 +2983,6 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
     }
 
     /* TODO: add an action slot selector to the constraint settings. */
-    BLI_assert(data->act);
     const blender::animrig::slot_handle_t slot_handle = blender::animrig::first_slot_handle(
         *data->act);
 
