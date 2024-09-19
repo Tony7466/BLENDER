@@ -239,6 +239,25 @@ class Action : public ::bAction {
   MutableSpan<StripKeyframeData *> strip_keyframe_data();
 
   /**
+   * Attempt to remove the keyframe strip data at `index`.
+   *
+   * If successful, the strip data is both removed from the array and freed.
+   *
+   * Fails if the data at `index` is still used somewhere in the action, in
+   * which case no changes are made and the action remains as-is.
+   *
+   * Note: this may alter the indices of some strip data items, due to the
+   * removal causing items to shift around to fill in the gap left by the
+   * removed item. This method ensures that all indices stored within the action
+   * (e.g. in the strips themselves) are properly updated to the new values.
+   * However, if any indices are stored *outside* the action, they will no
+   * longer be valid.
+   *
+   * \return True on success, false on failure.
+   */
+  bool strip_keyframe_data_remove(int index);
+
+  /**
    * Find the slot that best matches the animated ID.
    *
    * If the ID is already animated by this Action, by matching this
@@ -550,7 +569,7 @@ class Layer : public ::ActionLayer {
    *
    * \return true when the strip was found & removed, false if it wasn't found.
    */
-  bool strip_remove(Strip &strip);
+  bool strip_remove(Action &owning_action, Strip &strip);
 
   /**
    * Remove all data belonging to the given slot.

@@ -156,34 +156,47 @@ TEST_F(ActionLayersTest, remove_strip)
   Strip &strip0 = layer.strip_add(*action, Strip::Type::Keyframe);
   Strip &strip1 = layer.strip_add(*action, Strip::Type::Keyframe);
   Strip &strip2 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip3 = layer.strip_add(*action, Strip::Type::Keyframe);
 
-  /* Add some keys to check that also the strip data is freed correctly. */
+  /* Add some keys to check that also the strip data is shuffled around and
+   * freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Slot &slot = action->slot_add();
   strip0.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+      bmain, slot, {"rotation_quaternion", 0}, {1.0f, 47.0f}, settings);
   strip1.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+      bmain, slot, {"rotation_quaternion", 1}, {1.0f, 47.0f}, settings);
   strip2.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+      bmain, slot, {"rotation_quaternion", 2}, {1.0f, 47.0f}, settings);
+  strip3.data<StripKeyframeData>(*action).keyframe_insert(
+      bmain, slot, {"rotation_quaternion", 3}, {1.0f, 47.0f}, settings);
 
-  EXPECT_TRUE(layer.strip_remove(strip1));
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(1, strip1.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+  EXPECT_EQ(3, strip3.data_index);
+
+  EXPECT_TRUE(layer.strip_remove(*action, strip1));
   EXPECT_EQ(2, layer.strips().size());
   EXPECT_EQ(&strip0, layer.strip(0));
   EXPECT_EQ(&strip2, layer.strip(1));
+  EXPECT_EQ(&strip3, layer.strip(2));
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+  EXPECT_EQ(1, strip3.data_index);
 
-  EXPECT_TRUE(layer.strip_remove(strip2));
+  EXPECT_TRUE(layer.strip_remove(*action, strip2));
   EXPECT_EQ(1, layer.strips().size());
   EXPECT_EQ(&strip0, layer.strip(0));
 
-  EXPECT_TRUE(layer.strip_remove(strip0));
+  EXPECT_TRUE(layer.strip_remove(*action, strip0));
   EXPECT_EQ(0, layer.strips().size());
 
   { /* Test removing a strip that is not owned. */
     Layer &other_layer = action->layer_add("Another Layer");
     Strip &other_strip = other_layer.strip_add(*action, Strip::Type::Keyframe);
 
-    EXPECT_FALSE(layer.strip_remove(other_strip))
+    EXPECT_FALSE(layer.strip_remove(*action, other_strip))
         << "Removing a strip not owned by the layer should be gracefully rejected";
   }
 }
