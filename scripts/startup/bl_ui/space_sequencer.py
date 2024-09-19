@@ -1651,7 +1651,9 @@ class SEQUENCER_PT_effect_text_layout(SequencerButtonsPanel, Panel):
         layout = self.layout
         layout.use_property_split = True
         col = layout.column()
-        col.prop(strip, "location", text="Location")
+        # XXX Disabled, because it does not work well with `SEQ_image_transform_final_quad_get`
+        #  and transform functions in general. Need to decide on destiny of this property.
+        #col.prop(strip, "location", text="Location")
         col.prop(strip, "align_x", text="Alignment")
 
 

@@ -45,7 +45,7 @@ static bool sequencer_text_editing_poll(bContext *C)
   }
 
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
-  if (seq == nullptr) {
+  if (seq == nullptr || seq->type != SEQ_TYPE_TEXT) {
     return false;
   }
 
@@ -99,16 +99,10 @@ static int cursor_position_to_offset(TextVarsRuntime *text, int2 cursor_position
   return cursor_offset;
 }
 
-// xxx not nice
 static void text_selection_cancel(TextVars *data)
 {
-  data->selection_start_offset = -1;
-  data->selection_end_offset = -1;
-}
-
-static bool text_has_selection(TextVars *data)
-{
-  return data->selection_start_offset != -1;
+  data->selection_start_offset = 0;
+  data->selection_end_offset = 0;
 }
 
 IndexRange seq_text_selection_range_get(TextVars *data)
@@ -121,6 +115,11 @@ IndexRange seq_text_selection_range_get(TextVars *data)
   }
 
   return IndexRange(sel_start_offset, sel_end_offset - sel_start_offset);
+}
+
+static bool text_has_selection(TextVars *data)
+{
+  return !seq_text_selection_range_get(data).is_empty();
 }
 
 static void delete_selected_text(TextVars *data)
@@ -399,9 +398,6 @@ static void text_insert(TextVars *data, const char *buf)
   std::memmove(cursor_addr + in_buf_len, cursor_addr, move_len);
   std::memcpy(cursor_addr, buf, in_buf_len);
 
-  // The issue seems to be, that adding multiple spaces causes cursor offset to advance, but
-  // this is not always true at the start of line when wrapping. Also wrapped string is stored
-  // raw in buffer, will have to check if multiple spaces would cause issues. Likely they do!
   data->cursor_offset += 1;
 }
 

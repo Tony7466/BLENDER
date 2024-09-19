@@ -1078,7 +1078,8 @@ static void seq_draw_image_origin_and_outline(const bContext *C, Sequence *seq, 
   GPU_line_smooth(false);
 }
 
-static void text_selection_draw(View2D *v2d, TextVarsRuntime *text, TextVars *data, uint pos)
+static void text_selection_draw(
+    View2D *v2d, TextVarsRuntime *text, TextVars *data, uint pos, blender::float2 image_offset)
 {
   if (data->selection_start_offset == -1) {
     return;
@@ -1114,12 +1115,9 @@ static void text_selection_draw(View2D *v2d, TextVarsRuntime *text, TextVars *da
               character_end.position.x + character_end.advance_x,
               line_y,
               line_y + text->line_height};
-
-    immRectf(pos,
-             rect.xmin - v2d->tot.xmax,
-             rect.ymin - v2d->tot.ymax,
-             rect.xmax - v2d->tot.xmax,
-             rect.ymax - v2d->tot.ymax);
+    BLI_rctf_translate(&rect, image_offset.x, image_offset.y);
+    BLI_rctf_translate(&rect, -v2d->tot.xmax, -v2d->tot.ymax);
+    immRectf(pos, rect.xmin, rect.ymin, rect.xmax, rect.ymax);
   }
 }
 
@@ -1140,16 +1138,24 @@ static void text_edit_draw(const bContext *C)
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.5f));
 
+  const Scene *scene = CTX_data_scene(C);
+  blender::float2 image_offset;
+  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, image_offset);
   blender::int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
   blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
 
-  immRectf(pos,
-           character.position.x - v2d->tot.xmax,
-           character.position.y + text->font_descender - v2d->tot.ymax,
-           character.position.x + 10 - v2d->tot.xmax,  // xxx pixelspace!
-           character.position.y + text->font_descender + text->line_height - v2d->tot.ymax);
+  // xxx cursor width depends on zoom, hardcoded
+  rctf text_box{character.position.x,
+                character.position.x + 10,
+                character.position.y,
+                character.position.y + text->line_height};
+  BLI_rctf_translate(&text_box, 0, text->font_descender);
+  BLI_rctf_translate(&text_box, image_offset.x, image_offset.y);
+  BLI_rctf_translate(&text_box, -v2d->tot.xmax, -v2d->tot.ymax);
 
-  text_selection_draw(v2d, text, data, pos);
+  immRectf(pos, text_box.xmax, text_box.ymax, text_box.xmin, text_box.ymin);
+
+  text_selection_draw(v2d, text, data, pos, image_offset);
 
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
