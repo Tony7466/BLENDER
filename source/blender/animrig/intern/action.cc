@@ -2494,8 +2494,9 @@ void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_a
   assert_baklava_phase_1_invariants(from_action);
   assert_baklava_phase_1_invariants(to_action);
 
-  KeyframeStrip &from_strip = from_action.layer(0)->strip(0)->as<KeyframeStrip>();
-  KeyframeStrip &to_strip = to_action.layer(0)->strip(0)->as<KeyframeStrip>();
+  StripKeyframeData &from_strip = from_action.layer(0)->strip(0)->data<StripKeyframeData>(
+      from_action);
+  StripKeyframeData &to_strip = to_action.layer(0)->strip(0)->data<StripKeyframeData>(to_action);
 
   Slot &target_slot = to_action.slot_add();
   clone_slot(source_slot, target_slot);

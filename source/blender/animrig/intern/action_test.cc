@@ -923,8 +923,8 @@ TEST_F(ActionLayersTest, action_move_slot)
   ASSERT_EQ(layer_1->strip_array_num, 1);
   ASSERT_EQ(layer_2->strip_array_num, 1);
 
-  KeyframeStrip &strip_1 = layer_1->strip(0)->as<KeyframeStrip>();
-  KeyframeStrip &strip_2 = layer_2->strip(0)->as<KeyframeStrip>();
+  StripKeyframeData &strip_1 = layer_1->strip(0)->data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_2 = layer_2->strip(0)->data<StripKeyframeData>(*action_2);
 
   ASSERT_EQ(strip_1.channelbag_array_num, 1);
   ASSERT_EQ(strip_2.channelbag_array_num, 1);
