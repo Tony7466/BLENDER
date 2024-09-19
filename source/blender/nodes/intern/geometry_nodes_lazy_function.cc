@@ -2278,6 +2278,8 @@ struct ForeachGeometryElementEvalStorage {
   GeometrySet main_geometry;
   /** Data for each geometry component that is iterated over. */
   Array<ForeachElementComponent> components;
+  /** Amount of iterations across all components. */
+  int total_iterations_num = 0;
 };
 
 class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
@@ -2379,14 +2381,13 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
     auto &eval_storage = *static_cast<ForeachGeometryElementEvalStorage *>(context.storage);
+    geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(user_data);
 
     /* Measure execution time of the entire zone. */
     const geo_eval_log::TimePoint start_time = geo_eval_log::Clock::now();
     BLI_SCOPED_DEFER([&]() {
-      const geo_eval_log::TimePoint end_time = geo_eval_log::Clock::now();
-      if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(
-              user_data))
-      {
+      if (tree_logger) {
+        const geo_eval_log::TimePoint end_time = geo_eval_log::Clock::now();
         tree_logger->node_execution_times.append(*tree_logger->allocator,
                                                  {output_bnode_.identifier, start_time, end_time});
       }
@@ -2395,6 +2396,18 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     if (!eval_storage.graph_executor) {
       /* Create the execution graph in the first evaluation. */
       this->initialize_execution_graph(params, eval_storage, node_storage);
+
+      if (tree_logger) {
+        if (eval_storage.total_iterations_num == 0) {
+          if (!eval_storage.main_geometry.is_empty()) {
+            tree_logger->node_warnings.append(
+                *tree_logger->allocator,
+                {zone_.input_node->identifier,
+                 {NodeWarningType::Info,
+                  N_("Input geometry has no elements in the iteration domain.")}});
+          }
+        }
+      }
     }
 
     lf::Context eval_graph_context{
@@ -2567,6 +2580,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         });
       }
     }
+
+    eval_storage.total_iterations_num = body_nodes_offset;
   }
 
   std::optional<Array<GeometrySet>> try_extract_element_geometries(
@@ -2688,17 +2703,11 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
                             Span<lf::GraphInputSocket *> graph_inputs,
                             Span<lf::GraphOutputSocket *> graph_outputs) const
   {
-    /* The total number of iterations across all components. */
-    const int body_nodes_num =
-        eval_storage.components.is_empty() ?
-            0 :
-            eval_storage.components.last().body_nodes_range.one_after_last();
-
     lf::Graph &lf_graph = eval_storage.graph;
 
     /* Create body nodes. */
     VectorSet<lf::FunctionNode *> &lf_body_nodes = eval_storage.lf_body_nodes;
-    for ([[maybe_unused]] const int i : IndexRange(body_nodes_num)) {
+    for ([[maybe_unused]] const int i : IndexRange(eval_storage.total_iterations_num)) {
       lf::FunctionNode &lf_node = lf_graph.add_function(*body_fn_.function);
       lf_body_nodes.add_new(&lf_node);
     }
@@ -2769,7 +2778,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const int body_main_outputs_num = node_storage.main_items.items_num +
                                       node_storage.generation_items.items_num;
     BLI_assert(body_main_outputs_num == body_fn_.indices.outputs.main.size());
-    for (const int i : IndexRange(body_nodes_num)) {
+    for (const int i : IndexRange(eval_storage.total_iterations_num)) {
       lf::FunctionNode &lf_body_node = *lf_body_nodes[i];
       for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
         lf_graph.add_link(lf_body_node.output(body_fn_.indices.outputs.main[item_i]),
@@ -2803,7 +2812,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
 
     /* Handle usage outputs for border-links. A border-link is used if it's used by any of the
      * iterations. */
-    eval_storage.or_function.emplace(body_nodes_num);
+    eval_storage.or_function.emplace(eval_storage.total_iterations_num);
     for (const int border_link_i : zone_.border_links.index_range()) {
       lf::FunctionNode &lf_or = lf_graph.add_function(*eval_storage.or_function);
       for (const int i : lf_body_nodes.index_range()) {
