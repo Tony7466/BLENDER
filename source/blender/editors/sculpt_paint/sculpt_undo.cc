@@ -219,9 +219,6 @@ struct StepData {
   /** A copy of #SubdivCCG::grid_size. */
   int grid_size;
 
-  float3 pivot_pos;
-  float4 pivot_rot;
-
   /* Geometry modification operations.
    *
    * Original geometry is stored before some modification is run and is used to restore state of
@@ -955,10 +952,6 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
   }
   SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
-
-  /* Restore pivot. */
-  ss.pivot_pos = step_data.pivot_pos;
-  ss.pivot_rot = step_data.pivot_rot;
 
   if (bmesh_restore(C, *depsgraph, step_data, object, ss)) {
     return;
@@ -1847,10 +1840,6 @@ void push_begin_ex(Object &ob, const char *name)
       break;
     }
   }
-
-  /* Store sculpt pivot. */
-  us->data.pivot_pos = ss.pivot_pos;
-  us->data.pivot_rot = ss.pivot_rot;
 
   if (const KeyBlock *key = BKE_keyblock_from_object(&ob)) {
     us->data.active_shape_key_name = key->name;

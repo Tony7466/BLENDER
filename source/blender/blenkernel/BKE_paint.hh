@@ -417,8 +417,6 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   SculptFakeNeighbors fake_neighbors = {};
 
   /* Transform operator */
-  blender::float3 pivot_pos = {};
-  blender::float4 pivot_rot = {};
   blender::float3 pivot_scale = {};
 
   blender::float3 init_pivot_pos = {};

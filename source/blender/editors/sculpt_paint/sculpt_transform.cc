@@ -49,26 +49,29 @@
 #include <cmath>
 #include <cstdlib>
 
+#include "DEG_depsgraph.hh"
+
 namespace blender::ed::sculpt_paint {
 
 void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char *undo_name)
 {
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
+  const Scene &scene = *CTX_data_scene(C);
   SculptSession &ss = *ob.sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
-  ss.init_pivot_pos = ss.pivot_pos;
-  ss.init_pivot_rot = ss.pivot_rot;
+  ss.init_pivot_pos = float3(scene.cursor.location);
+  ss.init_pivot_rot = float4(scene.cursor.rotation());
   ss.init_pivot_scale = ss.pivot_scale;
 
-  ss.prev_pivot_pos = ss.pivot_pos;
-  ss.prev_pivot_rot = ss.pivot_rot;
+  ss.prev_pivot_pos = float3(scene.cursor.location);
+  ss.prev_pivot_rot = float4(scene.cursor.rotation());
   ss.prev_pivot_scale = ss.pivot_scale;
 
   undo::push_begin_ex(ob, undo_name);
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
 
-  ss.pivot_rot[3] = 1.0f;
+  // ss.pivot_rot[3] = 1.0f; // ?????
 
   SCULPT_vertex_random_access_ensure(ob);
 
@@ -82,7 +85,8 @@ void init_transform(bContext *C, Object &ob, const float mval_fl[2], const char 
   }
 }
 
-static std::array<float4x4, 8> transform_matrices_init(const SculptSession &ss,
+static std::array<float4x4, 8> transform_matrices_init(const Scene &scene,
+                                                       const SculptSession &ss,
                                                        const ePaintSymmetryFlags symm,
                                                        const TransformDisplacementMode t_mode)
 {
@@ -110,7 +114,7 @@ static std::array<float4x4, 8> transform_matrices_init(const SculptSession &ss,
   for (int i = 0; i < PAINT_SYMM_AREAS; i++) {
     ePaintSymmetryAreas v_symm = ePaintSymmetryAreas(i);
 
-    copy_v3_v3(final_pivot_pos, ss.pivot_pos);
+    copy_v3_v3(final_pivot_pos, float3(scene.cursor.location));
 
     unit_m4(pivot_mat);
 
@@ -119,12 +123,12 @@ static std::array<float4x4, 8> transform_matrices_init(const SculptSession &ss,
     unit_m4(s_mat);
 
     /* Translation matrix. */
-    sub_v3_v3v3(d_t, ss.pivot_pos, start_pivot_pos);
+    sub_v3_v3v3(d_t, float3(scene.cursor.location), start_pivot_pos);
     d_t = SCULPT_flip_v3_by_symm_area(d_t, symm, v_symm, ss.init_pivot_pos);
     translate_m4(t_mat, d_t[0], d_t[1], d_t[2]);
 
     /* Rotation matrix. */
-    sub_qt_qtqt(d_r, ss.pivot_rot, start_pivot_rot);
+    sub_qt_qtqt(d_r, float4(scene.cursor.rotation()), start_pivot_rot);
     normalize_qt(d_r);
     SCULPT_flip_quat_by_symm_area(d_r, symm, v_symm, ss.init_pivot_pos);
     quat_to_mat4(r_mat, d_r);
@@ -281,7 +285,10 @@ static void transform_node_bmesh(const Sculpt &sd,
   apply_translations(translations, verts);
 }
 
-static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Sculpt &sd, Object &ob)
+static void sculpt_transform_all_vertices(const Scene &scene,
+                                          const Depsgraph &depsgraph,
+                                          const Sculpt &sd,
+                                          Object &ob)
 {
   undo::restore_position_from_undo_step(depsgraph, ob);
 
@@ -289,7 +296,7 @@ static void sculpt_transform_all_vertices(const Depsgraph &depsgraph, const Scul
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   std::array<float4x4, 8> transform_mats = transform_matrices_init(
-      ss, symm, ss.filter_cache->transform_displacement_mode);
+      scene, ss, symm, ss.filter_cache->transform_displacement_mode);
 
   /* Regular transform applies all symmetry passes at once as it is split by symmetry areas
    * (each vertex can only be transformed once by the transform matrix of its area). */
@@ -453,6 +460,7 @@ static void elastic_transform_node_bmesh(const Sculpt &sd,
 }
 
 static void transform_radius_elastic(const Depsgraph &depsgraph,
+                                     const Scene &scene,
                                      const Sculpt &sd,
                                      Object &ob,
                                      const float transform_radius)
@@ -464,7 +472,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
   const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   std::array<float4x4, 8> transform_mats = transform_matrices_init(
-      ss, symm, ss.filter_cache->transform_displacement_mode);
+      scene, ss, symm, ss.filter_cache->transform_displacement_mode);
 
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(ob);
   const IndexMask &node_mask = ss.filter_cache->node_mask;
@@ -484,7 +492,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
       continue;
     }
 
-    const float3 elastic_transform_pivot = symmetry_flip(ss.pivot_pos, symmpass);
+    const float3 elastic_transform_pivot = symmetry_flip(float3(scene.cursor.location), symmpass);
 
     const int symm_area = SCULPT_get_vertex_symm_area(elastic_transform_pivot);
     float4x4 elastic_transform_mat = transform_mats[symm_area];
@@ -542,6 +550,7 @@ static void transform_radius_elastic(const Depsgraph &depsgraph,
 
 void update_modal_transform(bContext *C, Object &ob)
 {
+  const Scene &scene = *CTX_data_scene(C);
   const Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;
   SculptSession &ss = *ob.sculpt;
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
@@ -551,31 +560,30 @@ void update_modal_transform(bContext *C, Object &ob)
 
   switch (sd.transform_mode) {
     case SCULPT_TRANSFORM_MODE_ALL_VERTICES: {
-      sculpt_transform_all_vertices(*depsgraph, sd, ob);
+      sculpt_transform_all_vertices(scene, *depsgraph, sd, ob);
       break;
     }
     case SCULPT_TRANSFORM_MODE_RADIUS_ELASTIC: {
       const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
-      Scene *scene = CTX_data_scene(C);
       float transform_radius;
 
-      if (BKE_brush_use_locked_size(scene, &brush)) {
-        transform_radius = BKE_brush_unprojected_radius_get(scene, &brush);
+      if (BKE_brush_use_locked_size(&scene, &brush)) {
+        transform_radius = BKE_brush_unprojected_radius_get(&scene, &brush);
       }
       else {
         ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
         transform_radius = paint_calc_object_space_radius(
-            vc, ss.init_pivot_pos, BKE_brush_size_get(scene, &brush));
+            vc, ss.init_pivot_pos, BKE_brush_size_get(&scene, &brush));
       }
 
-      transform_radius_elastic(*depsgraph, sd, ob, transform_radius);
+      transform_radius_elastic(*depsgraph, scene, sd, ob, transform_radius);
       break;
     }
   }
 
-  copy_v3_v3(ss.prev_pivot_pos, ss.pivot_pos);
-  copy_v4_v4(ss.prev_pivot_rot, ss.pivot_rot);
+  copy_v3_v3(ss.prev_pivot_pos, float3(scene.cursor.location));
+  copy_v4_v4(ss.prev_pivot_rot, float4(scene.cursor.rotation()));
   copy_v3_v3(ss.prev_pivot_scale, ss.pivot_scale);
 
   flush_update_step(C, UpdateType::Position);
@@ -901,6 +909,7 @@ static float3 average_mask_border_position(const Depsgraph &depsgraph,
 
 static int set_pivot_position_exec(bContext *C, wmOperator *op)
 {
+  Scene &scene = *CTX_data_scene(C);
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.sculpt;
   ARegion *region = CTX_wm_region(C);
@@ -919,11 +928,11 @@ static int set_pivot_position_exec(bContext *C, wmOperator *op)
 
   /* Pivot to center. */
   if (mode == PivotPositionMode::Origin) {
-    zero_v3(ss.pivot_pos);
+    zero_v3(scene.cursor.location);
   }
   /* Pivot to active vertex. */
   else if (mode == PivotPositionMode::ActiveVert) {
-    copy_v3_v3(ss.pivot_pos, ss.active_vert_position(*depsgraph, ob));
+    copy_v3_v3(scene.cursor.location, ss.active_vert_position(*depsgraph, ob));
   }
   /* Pivot to ray-cast surface. */
   else if (mode == PivotPositionMode::CursorSurface) {
@@ -933,22 +942,25 @@ static int set_pivot_position_exec(bContext *C, wmOperator *op)
         RNA_float_get(op->ptr, "mouse_y"),
     };
     if (SCULPT_stroke_get_location(C, stroke_location, mval, false)) {
-      copy_v3_v3(ss.pivot_pos, stroke_location);
+      copy_v3_v3(scene.cursor.location, stroke_location);
     }
   }
   else if (mode == PivotPositionMode::Unmasked) {
-    ss.pivot_pos = average_unmasked_position(*depsgraph, ob, ss.pivot_pos, symm);
+    copy_v3_v3(scene.cursor.location,
+               average_unmasked_position(*depsgraph, ob, scene.cursor.location, symm));
   }
   else {
-    ss.pivot_pos = average_mask_border_position(*depsgraph, ob, ss.pivot_pos, symm);
+    copy_v3_v3(scene.cursor.location,
+               average_mask_border_position(*depsgraph, ob, scene.cursor.location, symm));
   }
 
   /* Update the viewport navigation rotation origin. */
   UnifiedPaintSettings *ups = &CTX_data_tool_settings(C)->unified_paint_settings;
-  copy_v3_v3(ups->average_stroke_accum, ss.pivot_pos);
+  copy_v3_v3(ups->average_stroke_accum, scene.cursor.location);
   ups->average_stroke_counter = 1;
   ups->last_stroke_valid = true;
 
+  DEG_id_tag_update(&scene.id, ID_RECALC_SYNC_TO_EVAL);
   ED_region_tag_redraw(region);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob.data);
 

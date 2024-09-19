@@ -887,7 +887,7 @@ static int gizmo_3d_foreach_selected(const bContext *C,
   else if (ob && (ob->mode & OB_MODE_ALL_PAINT)) {
     if (ob->mode & OB_MODE_SCULPT) {
       totsel = 1;
-      run_coord_with_matrix(ob->sculpt->pivot_pos, false, ob->object_to_world().ptr());
+      run_coord_with_matrix(float3(scene->cursor.location), false, float4x4::identity().ptr());
     }
   }
   else if (ob && ob->mode & OB_MODE_PARTICLE_EDIT) {
@@ -1092,8 +1092,8 @@ static bool gizmo_3d_calc_pos(const bContext *C,
       Object *ob = BKE_view_layer_active_object_get(view_layer);
       if (ob != nullptr) {
         if ((ob->mode & OB_MODE_ALL_SCULPT) && ob->sculpt) {
-          SculptSession *ss = ob->sculpt;
-          copy_v3_v3(r_pivot_pos, ss->pivot_pos);
+          copy_v3_v3(r_pivot_pos,
+                     math::transform_point(ob->world_to_object(), float3(scene->cursor.location)));
           return true;
         }
         else if (blender::ed::object::calc_active_center(ob, false, r_pivot_pos)) {

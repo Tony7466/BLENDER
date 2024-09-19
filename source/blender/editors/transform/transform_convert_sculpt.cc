@@ -56,33 +56,50 @@ static void createTransSculpt(bContext *C, TransInfo *t)
     td->ext = tc->data_ext = MEM_cnew<TransDataExtension>(__func__);
   }
 
+  View3DCursor *cursor = &scene->cursor;
+
   td->flag = TD_SELECTED;
-  copy_v3_v3(td->center, ss.pivot_pos);
-  mul_m4_v3(ob.object_to_world().ptr(), td->center);
+  copy_v3_v3(td->center, cursor->location);
   td->ob = &ob;
-
-  td->loc = ss.pivot_pos;
-  copy_v3_v3(td->iloc, ss.pivot_pos);
-
-  if (is_zero_v4(ss.pivot_rot)) {
-    ss.pivot_rot[3] = 1.0f;
-  }
 
   float obmat_inv[3][3];
   copy_m3_m4(obmat_inv, ob.object_to_world().ptr());
   invert_m3(obmat_inv);
 
-  td->ext->rot = nullptr;
-  td->ext->rotAxis = nullptr;
-  td->ext->rotAngle = nullptr;
-  td->ext->quat = ss.pivot_rot;
+  td->loc = cursor->location;
+  copy_v3_v3(td->iloc, cursor->location);
+
+  if (cursor->rotation_mode > 0) {
+    td->ext->rot = cursor->rotation_euler;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
+    td->ext->quat = nullptr;
+
+    copy_v3_v3(td->ext->irot, cursor->rotation_euler);
+  }
+  else if (cursor->rotation_mode == ROT_MODE_AXISANGLE) {
+    td->ext->rot = nullptr;
+    td->ext->rotAxis = cursor->rotation_axis;
+    td->ext->rotAngle = &cursor->rotation_angle;
+    td->ext->quat = nullptr;
+
+    td->ext->irotAngle = cursor->rotation_angle;
+    copy_v3_v3(td->ext->irotAxis, cursor->rotation_axis);
+  }
+  else {
+    td->ext->rot = nullptr;
+    td->ext->rotAxis = nullptr;
+    td->ext->rotAngle = nullptr;
+    td->ext->quat = cursor->rotation_quaternion;
+
+    copy_qt_qt(td->ext->iquat, cursor->rotation_quaternion);
+  }
+  td->ext->rotOrder = cursor->rotation_mode;
+
   copy_m4_m4(td->ext->obmat, ob.object_to_world().ptr());
   copy_m3_m3(td->ext->l_smtx, obmat_inv);
   copy_m3_m4(td->ext->r_mtx, ob.object_to_world().ptr());
   copy_m3_m3(td->ext->r_smtx, obmat_inv);
-
-  copy_qt_qt(td->ext->iquat, ss.pivot_rot);
-  td->ext->rotOrder = ROT_MODE_QUAT;
 
   ss.pivot_scale[0] = 1.0f;
   ss.pivot_scale[1] = 1.0f;
@@ -111,6 +128,7 @@ static void recalcData_sculpt(TransInfo *t)
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
   Object *ob = BKE_view_layer_active_object_get(t->view_layer);
   sculpt_paint::update_modal_transform(t->context, *ob);
+  DEG_id_tag_update(&t->scene->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static void special_aftertrans_update__sculpt(bContext *C, TransInfo *t)

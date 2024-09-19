@@ -59,6 +59,8 @@
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"
 
+#include "DEG_depsgraph.hh"
+
 #include "bmesh.hh"
 
 namespace blender::ed::sculpt_paint::expand {
@@ -2002,6 +2004,7 @@ static std::optional<int> target_vert_update_and_get(bContext *C, Object &ob, co
  */
 static void reposition_pivot(bContext *C, Object &ob, Cache &expand_cache)
 {
+  Scene &scene = *CTX_data_scene(C);
   SculptSession &ss = *ob.sculpt;
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
   const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(C);
@@ -2078,8 +2081,10 @@ static void reposition_pivot(bContext *C, Object &ob, Cache &expand_cache)
   }
 
   if (total > 0) {
-    ss.pivot_pos = float3(average / total);
+    copy_v3_v3(scene.cursor.location, float3(average / total));
   }
+
+  DEG_id_tag_update(&scene.id, ID_RECALC_SYNC_TO_EVAL);
 
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob.data);
 }
