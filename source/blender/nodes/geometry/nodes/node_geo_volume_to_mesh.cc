@@ -75,13 +75,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-
-  bNodeSocket *voxel_size_socket = bke::node_find_socket(node, SOCK_IN, "Voxel Size");
-  bNodeSocket *voxel_amount_socket = bke::node_find_socket(node, SOCK_IN, "Voxel Amount");
-}
-
 #ifdef WITH_OPENVDB
 
 static bke::VolumeToMeshResolution get_resolution_param(const GeoNodeExecParams &params)
@@ -251,7 +244,6 @@ static void node_register()
       &ntype, "NodeGeometryVolumeToMesh", node_free_standard_storage, node_copy_standard_storage);
   blender::bke::node_type_size(&ntype, 170, 120, 700);
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   blender::bke::node_register_type(&ntype);
