@@ -328,6 +328,10 @@ static bool grease_pencil_sculpt_paint_poll(bContext *C)
 static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const Object *object = CTX_data_active_object(C);
+  const Scene *scene = CTX_data_scene(C);
+  const int current_frame = scene->r.cfra;
+  using namespace bke::greasepencil;
+
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
   }
@@ -355,12 +359,25 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
   /* For the sculpt tools, we don't want the auto-key to create an empty keyframe, so we duplicate
    * the previous key. */
   const bool use_duplicate_previous_key = true;
-  if (!ed::greasepencil::ensure_active_keyframe(
-          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
-  {
-    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-    return OPERATOR_CANCELLED;
+
+  if (blender::animrig::is_autokey_on(scene)) {
+    for (Layer *layer : grease_pencil.layers_for_write()) {
+      if (layer->frames().lookup_ptr(current_frame) != nullptr) {
+        inserted_keyframe = true;
+        continue;
+      }
+      const std::optional<int> previous_frame_number = layer->start_frame_at(current_frame);
+      if (previous_frame_number.has_value()) {
+        grease_pencil.insert_duplicate_frame(
+            *layer, previous_frame_number.value(), current_frame, false);
+      }
+      else {
+        grease_pencil.insert_frame(*layer, current_frame);
+      }
+      inserted_keyframe = true;
+    }
   }
+
   if (inserted_keyframe) {
     WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
   }
