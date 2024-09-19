@@ -144,7 +144,7 @@ void geometry_main(VertOut geom_in[2],
   }
   bool is_odd_vertex = (out_vertex_id & 1u) != 0u;
   bool is_odd_primitive = (out_primitive_id & 1u) != 0u;
-  uint line_end_point = is_odd_primitive && !is_odd_vertex || !is_odd_primitive && is_odd_vertex ? 0 : 1;
+  uint line_end_point = is_odd_primitive && !is_odd_vertex || !is_odd_primitive && is_odd_vertex ? 1 : 0;
   vec4 inner_color;
   if ((geom_in[line_end_point].flag & EDIT_CURVES_BEZIER_HANDLE) != 0u) {
     inner_color = get_bezier_handle_color(color_id, geom_in[line_end_point].selection);
