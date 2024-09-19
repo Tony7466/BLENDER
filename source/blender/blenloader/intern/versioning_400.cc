@@ -134,10 +134,16 @@ static void convert_action_in_place(blender::animrig::Action &action)
     bag.fcurve_array[i] = fcu;
   }
   LISTBASE_FOREACH_INDEX (FCurve *, fcu, &action.curves, i) {
+    if (!fcu->grp) {
+      continue;
+    }
     bActionGroup *grp = fcu->grp;
     fcu->grp = nullptr;
     bag.fcurve_assign_to_channel_group(*fcu, *grp);
   }
+
+  action.curves = {nullptr, nullptr};
+  action.groups = {nullptr, nullptr};
 }
 
 /* Move bone-group color to the individual bones. */
@@ -1091,6 +1097,46 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
+
+  /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
+   * removed. */
+  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
+    using namespace blender::animrig;
+    blender::Map<Action *, blender::Vector<ID *>> action_users;
+    LISTBASE_FOREACH (bAction *, dna_action, &bmain->actions) {
+      Action &action = dna_action->wrap();
+      if (action.is_action_layered()) {
+        continue;
+      }
+      action_users.add(&action, {});
+    }
+
+    ListBase *ids_of_idtype;
+    ID *id;
+    FOREACH_MAIN_LISTBASE_BEGIN (bmain, ids_of_idtype) {
+      FOREACH_MAIN_LISTBASE_ID_BEGIN (ids_of_idtype, id) {
+        Action *action = get_action(*id);
+        if (!action) {
+          continue;
+        }
+        if (!action_users.contains(action)) {
+          /* This is the case for actions that are already layered. */
+          continue;
+        }
+        action_users.lookup(action).append(id);
+      }
+      FOREACH_MAIN_LISTBASE_ID_END;
+    }
+    FOREACH_MAIN_LISTBASE_END;
+
+    for (const auto &item : action_users.items()) {
+      Action &action = *item.key;
+      convert_action_in_place(action);
+      for (ID *action_user : item.value) {
+        assign_action_slot(action.slot(0), *action_user);
+      }
+    }
+  }
 }
 
 static void version_mesh_legacy_to_struct_of_array_format(Mesh &mesh)
@@ -4666,48 +4712,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Keep this message at the bottom of the function.
    */
-
-  /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
-   * removed. */
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
-    using namespace blender::animrig;
-    blender::Map<Action *, blender::Vector<ID *>> action_users;
-    ID *action_id;
-    FOREACH_MAIN_LISTBASE_ID_BEGIN (&bmain->actions, action_id) {
-      Action &action = reinterpret_cast<bAction *>(action_id)->wrap();
-      if (action.is_action_layered()) {
-        continue;
-      }
-      action_users.add(&action, {});
-    }
-    FOREACH_MAIN_LISTBASE_ID_END;
-
-    ListBase *ids_of_idtype;
-    ID *id;
-    FOREACH_MAIN_LISTBASE_BEGIN (bmain, ids_of_idtype) {
-      FOREACH_MAIN_LISTBASE_ID_BEGIN (ids_of_idtype, id) {
-        Action *action = get_action(*id);
-        if (!action) {
-          continue;
-        }
-        if (!action_users.contains(action)) {
-          /* This is the case for actions that are already layered. */
-          continue;
-        }
-        action_users.lookup(action).append(id);
-      }
-      FOREACH_MAIN_LISTBASE_ID_END;
-    }
-    FOREACH_MAIN_LISTBASE_END;
-
-    for (const auto &item : action_users.items()) {
-      Action &action = *item.key;
-      convert_action_in_place(action);
-      for (ID *action_user : item.value) {
-        assign_action_slot(action.slot(0), *action_user);
-      }
-    }
-  }
 
   /* Always run this versioning; meshes are written with the legacy format which always needs to
    * be converted to the new format on file load. Can be moved to a subversion check in a larger
