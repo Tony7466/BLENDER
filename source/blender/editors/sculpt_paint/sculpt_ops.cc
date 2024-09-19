@@ -1330,8 +1330,6 @@ static int mask_from_boundary_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(depsgraph, &ob, false);
   SCULPT_vertex_random_access_ensure(ob);
 
-  undo::push_begin(ob, op);
-
   const ApplyMaskMode mode = ApplyMaskMode(RNA_enum_get(op->ptr, "mix_mode"));
   const float factor = RNA_float_get(op->ptr, "mix_factor");
 
@@ -1393,6 +1391,12 @@ static int mask_from_boundary_exec(bContext *C, wmOperator *op)
 
   std::unique_ptr<auto_mask::Cache> automasking = auto_mask::cache_init(
       *depsgraph, scene_copy, &brush_copy, ob);
+
+  if (!automasking) {
+    return OPERATOR_CANCELLED;
+  }
+
+  undo::push_begin(ob, op);
 
   undo::push_nodes(*depsgraph, ob, node_mask, undo::Type::Mask);
 
