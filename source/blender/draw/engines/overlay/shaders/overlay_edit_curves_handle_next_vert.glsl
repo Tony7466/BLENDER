@@ -7,12 +7,18 @@
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_attribute_load_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_index_load_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+
+#define M_TAN_PI_BY_8 tan(M_PI / 8)
+#define M_TAN_3_PI_BY_8 tan(3 * M_PI / 8)
+#define M_SQRT2_BY_2 (M_SQRT2 / 2)
 
 struct VertIn {
   /* Local Position. */
   vec3 ls_P;
   /* Edit Flags and Data. */
   uint e_data;
+  float selection;
 };
 
 VertIn input_assembly(uint in_vertex_id)
@@ -22,6 +28,7 @@ VertIn input_assembly(uint in_vertex_id)
   VertIn vert_in;
   vert_in.ls_P = gpu_attr_load_float3(pos, gpu_attr_0, v_i);
   vert_in.e_data = data[gpu_attr_load_index(v_i, gpu_attr_1)];
+  vert_in.selection = selection[gpu_attr_load_index(v_i, gpu_attr_2)];
   return vert_in;
 }
 
@@ -29,6 +36,7 @@ struct VertOut {
   vec3 ws_P;
   vec4 gpu_position;
   uint flag;
+  float selection;
 };
 
 VertOut vertex_main(VertIn vert_in)
@@ -37,6 +45,7 @@ VertOut vertex_main(VertIn vert_in)
   vert.flag = vert_in.e_data;
   vert.ws_P = point_object_to_world(vert_in.ls_P);
   vert.gpu_position = point_world_to_ndc(vert.ws_P);
+  vert.selection = vert_in.selection;
   return vert;
 }
 
@@ -90,6 +99,21 @@ void output_vertex_pair(const uint line_id,
   strip_EmitVertex(line_id * 2 + 1, out_vertex_id, out_primitive_id, geom_out);
 }
 
+float4 get_bezier_handle_color(uint color_id, float sel)
+{
+  switch (color_id) {
+    case 0u: /* BEZIER_HANDLE_FREE */
+      return mix(globalsBlock.color_handle_free, globalsBlock.color_handle_sel_free, sel);
+    case 1u: /* BEZIER_HANDLE_AUTO */
+      return mix(globalsBlock.color_handle_auto, globalsBlock.color_handle_sel_auto, sel);
+    case 2u: /* BEZIER_HANDLE_VECTOR */
+      return mix(globalsBlock.color_handle_vect, globalsBlock.color_handle_sel_vect, sel);
+    case 3u: /* BEZIER_HANDLE_ALIGN */
+      return mix(globalsBlock.color_handle_align, globalsBlock.color_handle_sel_align, sel);
+  }
+  return mix(globalsBlock.color_handle_autoclamp, globalsBlock.color_handle_sel_autoclamp, sel);
+}
+
 void geometry_main(VertOut geom_in[2],
                    uint out_vertex_id,
                    uint out_primitive_id,
@@ -98,8 +122,8 @@ void geometry_main(VertOut geom_in[2],
   vec4 v1 = geom_in[0].gpu_position;
   vec4 v2 = geom_in[1].gpu_position;
 
-  uint is_active_nurb = (geom_in[1].flag & ACTIVE_NURB);
-  uint color_id = (geom_in[1].flag >> COLOR_SHIFT);
+  uint is_active_nurb = (geom_in[0].flag & EDIT_CURVES_ACTIVE_HANDLE);
+  uint color_id = (geom_in[0].flag >> EDIT_CURVES_HANDLE_TYPES_SHIFT) & 3u;
 
   /* Don't output any edges if we don't show handles */
   if (!showCurveHandles && (color_id < 5u)) {
@@ -107,48 +131,32 @@ void geometry_main(VertOut geom_in[2],
   }
 
   bool edge_selected = (((geom_in[1].flag | geom_in[0].flag) & VERT_SELECTED) != 0u);
-  bool handle_selected = (showCurveHandles && (((geom_in[1].flag | geom_in[0].flag) &
-                                                VERT_SELECTED_BEZT_HANDLE) != 0u));
-
-  bool is_gpencil = ((geom_in[1].flag & VERT_GPENCIL_BEZT_HANDLE) != 0u);
+  bool handle_selected = (showCurveHandles && (((geom_in[0].flag) &
+                                                (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
 
   /* If handle type is only selected and the edge is not selected, don't show. */
   if ((uint(curveHandleDisplay) != CURVE_HANDLE_ALL) && (!handle_selected)) {
     /* Nurbs must show the handles always. */
-    bool is_u_segment = (((geom_in[1].flag ^ geom_in[0].flag) & EVEN_U_BIT) != 0u);
-    if ((!is_u_segment) && (color_id <= 4u)) {
-      return;
-    }
-    if (is_gpencil) {
+    bool is_nurbs = (geom_in[0].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u;
+    if ((!is_nurbs) && (color_id <= 4u)) {
       return;
     }
   }
-
+  bool is_odd_vertex = (out_vertex_id & 1u) != 0u;
+  bool is_odd_primitive = (out_primitive_id & 1u) != 0u;
+  uint line_end_point = is_odd_primitive && !is_odd_vertex || !is_odd_primitive && is_odd_vertex ? 0 : 1;
   vec4 inner_color;
-  if (color_id == 0u) {
-    inner_color = (edge_selected) ? colorHandleSelFree : colorHandleFree;
+  if ((geom_in[line_end_point].flag & EDIT_CURVES_BEZIER_HANDLE) != 0u) {
+    inner_color = get_bezier_handle_color(color_id, geom_in[line_end_point].selection);
   }
-  else if (color_id == 1u) {
-    inner_color = (edge_selected) ? colorHandleSelAuto : colorHandleAuto;
-  }
-  else if (color_id == 2u) {
-    inner_color = (edge_selected) ? colorHandleSelVect : colorHandleVect;
-  }
-  else if (color_id == 3u) {
-    inner_color = (edge_selected) ? colorHandleSelAlign : colorHandleAlign;
-  }
-  else if (color_id == 4u) {
-    inner_color = (edge_selected) ? colorHandleSelAutoclamp : colorHandleAutoclamp;
+  else if ((geom_in[line_end_point].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u) {
+    inner_color = mix(globalsBlock.color_nurb_uline,
+                      globalsBlock.color_nurb_sel_uline,
+                      geom_in[line_end_point].selection);
   }
   else {
-    bool is_selected = (((geom_in[1].flag & geom_in[0].flag) & VERT_SELECTED) != 0u);
-    bool is_u_segment = (((geom_in[1].flag ^ geom_in[0].flag) & EVEN_U_BIT) != 0u);
-    if (is_u_segment) {
-      inner_color = (is_selected) ? colorNurbSelUline : colorNurbUline;
-    }
-    else {
-      inner_color = (is_selected) ? colorNurbSelVline : colorNurbVline;
-    }
+    inner_color = mix(
+        globalsBlock.color_wire, globalsBlock.color_vertex_select, geom_in[line_end_point].selection);
   }
 
   /* Minimize active color bleeding on inner_color. */
@@ -158,8 +166,11 @@ void geometry_main(VertOut geom_in[2],
   vec2 v1_2 = (v2.xy / v2.w - v1.xy / v1.w);
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
 
-  if (abs(v1_2.x * sizeViewport.x) < abs(v1_2.y * sizeViewport.y)) {
+  if (abs(v1_2.x) <= M_TAN_PI_BY_8 * abs(v1_2.y)) {
     offset.y = 0.0;
+  }
+  else if (abs(v1_2.x) <= M_TAN_3_PI_BY_8 * abs(v1_2.y)) {
+    offset = offset * vec2(-M_SQRT2_BY_2 * sign(v1_2.x), M_SQRT2_BY_2 * sign(v1_2.y));
   }
   else {
     offset.x = 0.0;
