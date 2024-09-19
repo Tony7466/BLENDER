@@ -201,14 +201,20 @@ PackedFile *BKE_packedfile_duplicate(const PackedFile *pf_src)
   return pf_dst;
 }
 
-PackedFile *BKE_packedfile_new_from_memory(void *mem, int memlen)
+PackedFile *BKE_packedfile_new_from_memory(const void *mem,
+                                           int memlen,
+                                           const blender::ImplicitSharingInfo *sharing_info)
 {
   BLI_assert(mem != nullptr);
+  if (!sharing_info) {
+    /* Assume we are the only owner of that memory currently. */
+    sharing_info = blender::implicit_sharing::info_for_mem_free(const_cast<void *>(mem));
+  }
 
   PackedFile *pf = static_cast<PackedFile *>(MEM_callocN(sizeof(*pf), "PackedFile"));
   pf->data = mem;
   pf->size = memlen;
-  pf->sharing_info = blender::implicit_sharing::info_for_mem_free(mem);
+  pf->sharing_info = sharing_info;
 
   return pf;
 }

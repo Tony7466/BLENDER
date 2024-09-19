@@ -393,11 +393,10 @@ static void bake_geometry_nodes_startjob(void *customdata, wmJobWorkerStatus *wo
             if (data_size == 0) {
               continue;
             }
-            void *data = MEM_mallocN(data_size, __func__);
-            memcpy(data, memory.data.data(), data_size);
-            memory.data.clear();
-            memory.data.shrink_to_fit();
-            bake_file.packed_file = BKE_packedfile_new_from_memory(data, data_size);
+            const auto *sharing_info = new blender::ImplicitSharedValue<std::string>(
+                std::move(memory.data));
+            const void *data = sharing_info->data.data();
+            bake_file.packed_file = BKE_packedfile_new_from_memory(data, data_size, sharing_info);
           }
         };
 

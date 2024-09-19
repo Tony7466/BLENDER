@@ -7,6 +7,7 @@
  * \ingroup bke
  */
 
+#include "BLI_implicit_sharing.hh"
 #include "BLI_string_ref.hh"
 
 #define RET_OK 0
@@ -46,7 +47,8 @@ PackedFile *BKE_packedfile_duplicate(const PackedFile *pf_src);
 PackedFile *BKE_packedfile_new(ReportList *reports,
                                const char *filepath_rel,
                                const char *basepath);
-PackedFile *BKE_packedfile_new_from_memory(void *mem, int memlen);
+PackedFile *BKE_packedfile_new_from_memory(
+    const void *mem, int memlen, const blender::ImplicitSharingInfo *sharing_info = nullptr);
 
 /**
  * No libraries for now.
