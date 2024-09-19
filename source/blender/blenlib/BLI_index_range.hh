@@ -249,6 +249,9 @@ class IndexRange {
     return value >= start_ && value < start_ + size_;
   }
 
+  /**
+   * Returns true when all indices in the given range are also in the current range.
+   */
   constexpr bool contains(const IndexRange range) const
   {
     if (range.is_empty()) {
