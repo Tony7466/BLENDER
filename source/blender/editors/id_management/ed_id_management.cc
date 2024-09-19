@@ -17,6 +17,8 @@
 
 #include "WM_api.hh"
 
+#include "ED_id_management.hh"
+
 /** We only need this locally. */
 static CLG_LogRef LOG = {"ed.id_management"};
 

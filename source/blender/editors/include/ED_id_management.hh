@@ -14,4 +14,5 @@
 struct ID;
 struct Main;
 
+/** Handle complex user-facing ID renaming behavior, including user feedback (reporting). */
 bool ED_id_rename(Main &bmain, ID &id, blender::StringRefNull name);
