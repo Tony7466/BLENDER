@@ -620,7 +620,11 @@ bool Action::strip_keyframe_data_remove(const int index)
   shrink_array_and_swap_remove<ActionStripKeyframeData *>(
       &this->strip_keyframe_data_array, &this->strip_keyframe_data_array_num, index);
 
-  /* Update strips that pointed at the swapped-in item. */
+  /* Update strips that pointed at the swapped-in item.
+   *
+   * Note that we don't special-case the corner-case where the removed data was
+   * at the end of the array, but it ends up not mattering because then
+   * `old_index == index`. */
   const int old_index = this->strip_keyframe_data_array_num;
   for (Layer *layer : this->layers()) {
     for (Strip *strip : layer->strips()) {
