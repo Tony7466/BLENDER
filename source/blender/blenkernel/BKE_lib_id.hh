@@ -37,6 +37,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
+#include "DNA_ID.h"
 #include "DNA_userdef_enums.h"
 
 struct BlendWriter;
@@ -154,7 +155,7 @@ enum {
   /** Create data-block outside of any main database -
    * similar to 'localize' functions of materials etc. */
   LIB_ID_CREATE_NO_MAIN = 1 << 0,
-  /** Do not affect user refcount of data-blocks used by new one
+  /** Do not affect user reference-count of data-blocks used by new one
    * (which also gets zero user-count then).
    * Implies LIB_ID_CREATE_NO_MAIN. */
   LIB_ID_CREATE_NO_USER_REFCOUNT = 1 << 1,
@@ -220,13 +221,13 @@ enum {
                          LIB_ID_COPY_NO_LIB_OVERRIDE,
 };
 
-void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **r_newid, int orig_flag);
+void BKE_libblock_copy_ex(Main *bmain, const ID *id, ID **new_id_p, int orig_flag);
 /**
  * Same as #BKE_libblock_copy_ex, but allows copying data into a library, and not as local data
  * only.
  *
  * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
- * not use any library (i.e. become a local ID). Use std::nullopt for default behavior (i.e.
+ * not use any library (i.e. become a local ID). Use #std::nullopt for default behavior (i.e.
  * behavior of the #BKE_libblock_copy_ex function).
  * \param new_owner_id: When copying an embedded ID, the owner ID of the new copy. Should be
  * `nullptr` for regular ID copying, or in case the owner ID is not (yet) known.
@@ -235,7 +236,7 @@ void BKE_libblock_copy_in_lib(Main *bmain,
                               std::optional<Library *> owner_library,
                               const ID *id,
                               const ID *new_owner_id,
-                              ID **r_newid,
+                              ID **new_id_p,
                               int orig_flag);
 
 /**
@@ -299,7 +300,7 @@ enum {
   /** Do not try to remove freed ID from given Main (passed Main may be NULL). */
   LIB_ID_FREE_NO_MAIN = 1 << 0,
   /**
-   * Do not affect user refcount of data-blocks used by freed one.
+   * Do not affect user reference-count of data-blocks used by freed one.
    * Implies LIB_ID_FREE_NO_MAIN.
    */
   LIB_ID_FREE_NO_USER_REFCOUNT = 1 << 1,
@@ -512,20 +513,20 @@ bool BKE_id_copy_is_allowed(const ID *id);
  *
  * \param bmain: Main database, may be NULL only if LIB_ID_CREATE_NO_MAIN is specified.
  * \param id: Source data-block.
- * \param r_newid: Pointer to new (copied) ID pointer, may be NULL.
+ * \param new_id_p: Pointer to new (copied) ID pointer, may be NULL.
  * Used to allow copying into already allocated memory.
  * \param flag: Set of copy options, see `DNA_ID.h` enum for details
  * (leave to zero for default, full copy).
  * \return NULL when copying that ID type is not supported, the new copy otherwise.
  */
-ID *BKE_id_copy_ex(Main *bmain, const ID *id, ID **r_newid, int flag);
+ID *BKE_id_copy_ex(Main *bmain, const ID *id, ID **new_id_p, int flag);
 /**
- * Enable coying non-local data into libraries.
+ * Enable copying non-local data into libraries.
  *
  * See #BKE_id_copy_ex for details.
  *
  * \param owner_library: the Library to 'assign' the newly created ID to. Use `nullptr` to make ID
- * not use any library (i.e. become a local ID). Use std::nullopt for default behavior (i.e.
+ * not use any library (i.e. become a local ID). Use #std::nullopt for default behavior (i.e.
  * behavior of the #BKE_id_copy_ex function).
  * \param new_owner_id: When copying an embedded ID, the owner ID of the new copy. Should be
  * `nullptr` for regular ID copying, or in case the owner ID is not (yet) known.
@@ -534,7 +535,7 @@ struct ID *BKE_id_copy_in_lib(Main *bmain,
                               std::optional<Library *> owner_library,
                               const ID *id,
                               const ID *new_owner_id,
-                              ID **r_newid,
+                              ID **new_id_p,
                               int flag);
 /**
  * Invoke the appropriate copy method for the block and return the new id as result.
@@ -704,6 +705,18 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     bool add_lib_hint,
                                     char separator_char,
                                     int *r_prefix_len);
+
+/**
+ * Get the name (without type prefix) of the ID.
+ */
+inline const char *BKE_id_name(const ID &id)
+{
+  return id.name + 2;
+}
+inline char *BKE_id_name(ID &id)
+{
+  return id.name + 2;
+}
 
 /**
  * Generate a concatenation of ID name (including two-chars type code) and its lib name, if any.

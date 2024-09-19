@@ -217,6 +217,8 @@ set(SRC_RNA_INC
   ../RNA_enum_types.hh
   ../RNA_path.hh
   ../RNA_types.hh
+
+  rna_action_tools.hh
 )
 
 set(SRC
@@ -338,12 +340,6 @@ if(WITH_MOD_OCEANSIM)
 endif()
 
 if(WITH_SDL)
-  if(WITH_SDL_DYNLOAD)
-    add_definitions(-DWITH_SDL_DYNLOAD)
-    list(APPEND INC
-      ../../../../extern/sdlew/include
-    )
-  endif()
   add_definitions(-DWITH_SDL)
 endif()
 
