@@ -194,7 +194,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(tui.icon_autokey);
   }
 
-  if (!USER_VERSION_ATLEAST(403, 23)) {
+  if (!USER_VERSION_ATLEAST(403, 24)) {
     FROM_DEFAULT_V4_UCHAR(space_node.node_zone_foreach_geometry_element);
   }
 
