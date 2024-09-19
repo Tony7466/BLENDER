@@ -1039,6 +1039,72 @@ static void file_read_reports_finalize(BlendFileReadReport *bf_reports)
   bf_reports->resynced_lib_overrides_libraries = nullptr;
 }
 
+static void block_file_read_okay_cb(bContext *C, void *arg1, void * /*arg2*/)
+{
+  uiBlock *block = static_cast<uiBlock *>(arg1);
+  UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
+  wmWindow *win = CTX_wm_window(C);
+  UI_popup_block_close(C, win, block);
+}
+
+static uiBlock *block_file_read_error(bContext *C, ARegion *region, void *arg1)
+{
+  int retval = (int)arg1;
+
+  const char *title = IFACE_("Unable To Load File");
+  const char *message;
+  switch (retval) {
+    case BKE_READ_EXOTIC_FAIL_OPEN:
+      message = RPT_("Unable to open the specified file.");
+      break;
+    case BKE_READ_EXOTIC_FAIL_FORMAT:
+      message = RPT_("The format of the specified file is not supported.");
+      break;
+    case BKE_READ_EXOTIC_FAIL_PATH:
+      message = RPT_("File path of the specified file is invalid.");
+      break;
+    default:
+      message = RPT_("An error occurred while loading the specified file.");
+  }
+
+  const short icon_size = 32 * UI_SCALE_FAC;
+  const uiStyle *style = UI_style_get_dpi();
+  UI_fontstyle_set(&style->widget);
+  float width = BLF_width(style->widget.uifont_id, title, BLF_DRAW_STR_DUMMY_MAX);
+  width = std::max(width, BLF_width(style->widget.uifont_id, message, BLF_DRAW_STR_DUMMY_MAX));
+
+  uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
+  UI_block_flag_disable(block, UI_BLOCK_LOOP);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
+
+  uiLayout *layout = uiItemsAlertBox(block,
+                                     style,
+                                     int(width) + int(style->columnspace * 2.5) + icon_size,
+                                     ALERT_ICON_ERROR,
+                                     icon_size);
+
+  uiItemL_ex(layout, title, ICON_NONE, true, false);
+  uiItemS_ex(layout, 0.2f, LayoutSeparatorType::Line);
+  uiItemS_ex(layout, 0.5f);
+  uiItemL(layout, message, ICON_NONE);
+  uiItemS_ex(layout, 1.0f);
+
+  uiLayout *col = uiLayoutSplit(layout, 0.0f, true);
+  uiBlock *col_block = uiLayoutGetBlock(col);
+  uiLayoutSetScaleY(col, 1.2f);
+  uiBut *okay_but = uiDefBut(
+      col_block, UI_BTYPE_BUT, 0, IFACE_("OK"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
+  UI_but_flag_enable(okay_but, UI_BUT_ACTIVE_DEFAULT);
+  UI_but_func_set(okay_but, block_file_read_okay_cb, col_block, nullptr);
+
+  const int padding = 7 * UI_SCALE_FAC;
+  const int bounds_offset[2] = {int(-0.6f * uiLayoutGetWidth(layout)), int(3.5f * UI_UNIT_X)};
+  UI_block_bounds_set_popup(block, 7 * UI_SCALE_FAC, bounds_offset);
+
+  return block;
+}
+
 bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 {
   /* Assume automated tasks with background, don't write recent file list. */
@@ -1133,6 +1199,9 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
     BKE_undo_write(C, "Import file");
   }
 #endif
+  else if (G.background == false) {
+    UI_popup_block_invoke(C, block_file_read_error, (void *)retval, nullptr);
+  }
   else if (retval == BKE_READ_EXOTIC_FAIL_OPEN) {
     BKE_reportf(reports,
                 RPT_ERROR,
@@ -1149,17 +1218,6 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   else {
     BKE_reportf(reports, RPT_ERROR, "Unknown error loading \"%s\"", filepath);
     BLI_assert_msg(0, "invalid 'retval'");
-  }
-
-  if (success == false) {
-    /* Remove from recent files list. */
-    if (do_history_file_update) {
-      RecentFile *recent = wm_file_history_find(filepath);
-      if (recent) {
-        wm_history_file_free(recent);
-        wm_history_file_write();
-      }
-    }
   }
 
   WM_cursor_wait(false);
