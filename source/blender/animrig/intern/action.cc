@@ -2480,7 +2480,9 @@ static void clone_slot(Slot &from, Slot &to)
 {
   ActionSlotRuntimeHandle *runtime = to.runtime;
   slot_handle_t handle = to.handle;
-  to = Slot(from);
+  memcpy(reinterpret_cast<ActionSlot *>(&to),
+         reinterpret_cast<ActionSlot *>(&from),
+         sizeof(ActionSlot));
   to.runtime = runtime;
   to.handle = handle;
 }
