@@ -386,12 +386,14 @@ bool retiming_keys_can_be_displayed(const SpaceSeq *sseq);
 rctf seq_retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq);
 
 /* `sequencer_text_edit.cc` */
+bool sequencer_text_editing_active_poll(bContext *C);
 void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot);
 void SEQUENCER_OT_text_insert(wmOperatorType *ot);
 void SEQUENCER_OT_text_delete(wmOperatorType *ot);
 void SEQUENCER_OT_text_line_break(wmOperatorType *ot);
 void SEQUENCER_OT_text_select_all(wmOperatorType *ot);
 void SEQUENCER_OT_text_deselect_all(wmOperatorType *ot);
+void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot);
 blender::int2 seq_text_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset);
 blender::IndexRange seq_text_selection_range_get(TextVars *data);
 

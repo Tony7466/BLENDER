@@ -1125,29 +1125,24 @@ static void text_selection_draw(View2D *v2d, TextVarsRuntime *text, TextVars *da
 
 static void text_edit_draw(const bContext *C)
 {
-  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
-
-  if (seq == nullptr || seq->type != SEQ_TYPE_TEXT) {
+  if (!sequencer_text_editing_active_poll(const_cast<bContext *>(C))) {
     return;
   }
-
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
-
-  if (data == nullptr || data->runtime == nullptr) {
-    return;
-  }
-
-  TextVarsRuntime *text = data->runtime;
-  blender::int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
-  blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
 
   View2D *v2d = UI_view2d_fromcontext(C);
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  TextVarsRuntime *text = data->runtime;
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   GPU_blend(GPU_BLEND_ALPHA);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.5f));
+
+  blender::int2 cursor_position = seq_text_cursor_offset_to_position(text, data->cursor_offset);
+  blender::seq::CharInfo character = text->lines[cursor_position.y].characters[cursor_position.x];
+
   immRectf(pos,
            character.position.x - v2d->tot.xmax,
            character.position.y + text->font_descender - v2d->tot.ymax,

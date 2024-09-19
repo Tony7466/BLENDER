@@ -40,6 +40,10 @@ using namespace blender;
 
 static bool sequencer_text_editing_poll(bContext *C)
 {
+  if (!sequencer_editing_initialized_and_active(C)) {
+    return false;
+  }
+
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
   if (seq == nullptr) {
     return false;
@@ -50,7 +54,17 @@ static bool sequencer_text_editing_poll(bContext *C)
     return false;
   }
 
-  return sequencer_editing_initialized_and_active(C);
+  return true;
+}
+
+bool sequencer_text_editing_active_poll(bContext *C)
+{
+  if (!sequencer_text_editing_poll(C)) {
+    return false;
+  }
+
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  return (seq->flag & SEQ_FLAG_TEXT_EDITING_ACTIVE) != 0;
 }
 
 int2 seq_text_cursor_offset_to_position(TextVarsRuntime *text, int cursor_offset)
@@ -343,7 +357,7 @@ void SEQUENCER_OT_text_cursor_move(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_cursor_move_exec;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -417,7 +431,7 @@ void SEQUENCER_OT_text_insert(wmOperatorType *ot)
   /* api callbacks */
   ot->exec = sequencer_text_insert_exec;
   ot->invoke = sequencer_text_insert_invoke;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -504,7 +518,7 @@ void SEQUENCER_OT_text_delete(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_delete_exec;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -536,7 +550,7 @@ void SEQUENCER_OT_text_line_break(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_line_break_exec;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -561,7 +575,7 @@ void SEQUENCER_OT_text_select_all(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_select_all;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
@@ -571,7 +585,15 @@ static int sequencer_text_deselect_all(bContext *C, wmOperator * /*op*/)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
-  text_selection_cancel(data);
+
+  if (!text_has_selection(data)) {
+    /* Exit edit mode, so text can be translated by mouse. */
+    seq->flag &= ~SEQ_FLAG_TEXT_EDITING_ACTIVE;
+  }
+  else {
+    text_selection_cancel(data);
+  }
+
   text_editing_update(C);
   return OPERATOR_FINISHED;
 }
@@ -585,8 +607,46 @@ void SEQUENCER_OT_text_deselect_all(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_deselect_all;
-  ot->poll = sequencer_text_editing_poll;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;
+}
+
+static int sequencer_text_cursor_move_mouse_invoke(bContext *C,
+                                                   wmOperator * /*op*/,
+                                                   const wmEvent * /*event*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+
+  if (!sequencer_text_editing_active_poll(C)) {
+    seq->flag |= SEQ_FLAG_TEXT_EDITING_ACTIVE;
+  }
+
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  text_selection_cancel(data);
+  text_editing_update(C);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Set Cursor";
+  ot->description = "Set cursor position in text";
+  ot->idname = "SEQUENCER_OT_text_cursor_set";
+
+  /* api callbacks */
+  // ot->exec = sequencer_text_cursor_move_mouse_exec; //TODO I guess
+  ot->invoke = sequencer_text_cursor_move_mouse_invoke;
+  ot->poll = sequencer_text_editing_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "select_text", false, "Select Text", "Select text while moving cursor");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
