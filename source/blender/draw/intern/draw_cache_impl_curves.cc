@@ -54,10 +54,6 @@ namespace blender::draw {
 #define EDIT_CURVES_HANDLE_TYPES_SHIFT (4u)
 
 /* ---------------------------------------------------------------------- */
-struct CurvesUboStorage {
-  int32_t bezier_point_count;
-  float _pad1, _pad2, _pad3;
-};
 
 struct CurvesBatchCache {
   CurvesEvalCache eval_cache;
@@ -83,10 +79,6 @@ struct CurvesBatchCache {
    * If it is left or right handle point, then same handle type is repeated in both slots.
    */
   gpu::VertBuf *edit_points_data;
-
-  /* Buffer used to store CurvesUboStorage value. push_constant() could not be used for this
-   * value, as it is not know in overlay_edit_curves.cc as other constants. */
-  GPUUniformBuf *curves_ubo_storage;
 
   /* Selection of original points. */
   gpu::VertBuf *edit_points_selection;
@@ -133,8 +125,6 @@ static void init_batch_cache(Curves &curves)
 
   if (!cache) {
     cache = MEM_new<CurvesBatchCache>(__func__);
-    cache->curves_ubo_storage = GPU_uniformbuf_create_ex(
-        sizeof(CurvesUboStorage), nullptr, "CurvesUboStorage");
     curves.batch_cache = cache;
   }
   else {
@@ -492,9 +482,6 @@ static void calc_edit_handles_ibo(const bke::CurvesGeometry &curves,
   });
   GPU_indexbuf_join(&elb, &right_elb);
   GPU_indexbuf_build_in_place(&elb, cache.edit_handles_ibo);
-
-  CurvesUboStorage ubo_storage{bezier_point_count};
-  GPU_uniformbuf_update(cache.curves_ubo_storage, &ubo_storage);
 }
 
 static void alloc_final_attribute_vbo(CurvesEvalCache &cache,
@@ -925,7 +912,6 @@ void DRW_curves_batch_cache_free(Curves *curves)
 {
   clear_batch_cache(*curves);
   CurvesBatchCache *batch_cache = static_cast<CurvesBatchCache *>(curves->batch_cache);
-  DRW_UBO_FREE_SAFE(batch_cache->curves_ubo_storage);
   MEM_delete(batch_cache);
   curves->batch_cache = nullptr;
 }
@@ -959,12 +945,6 @@ void DRW_curves_batch_cache_free_old(Curves *curves, int ctime)
 int DRW_curves_material_count_get(const Curves *curves)
 {
   return max_ii(1, curves->totcol);
-}
-
-GPUUniformBuf *DRW_curves_batch_cache_ubo_storage(Curves *curves)
-{
-  CurvesBatchCache &cache = get_batch_cache(*curves);
-  return cache.curves_ubo_storage;
 }
 
 gpu::Batch *DRW_curves_batch_cache_get_edit_points(Curves *curves)
