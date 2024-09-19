@@ -358,17 +358,17 @@ class Action : public ::bAction {
   /**
    * Attempt to remove the keyframe strip data at `index`.
    *
-   * If successful, the strip data is both removed from the array and freed.
+   * If successful, the strip data is both removed from the array *and* freed.
    *
    * Fails if the data at `index` is still used somewhere in the action, in
    * which case no changes are made and the action remains as-is.
    *
-   * Note: this may alter the indices of some strip data items, due to the
-   * removal causing items to shift around to fill in the gap left by the
-   * removed item. This method ensures that all indices stored within the action
-   * (e.g. in the strips themselves) are properly updated to the new values.
-   * However, if any indices are stored *outside* the action, they will no
-   * longer be valid.
+   * Note: this may alter the indices of some strip data items, due to items
+   * shifting around to fill the gap left by the removed item. This method
+   * ensures that all indices stored within the action (e.g. in the strips
+   * themselves) are properly updated to the new values so that everything is
+   * still referencing the same data. However, if any indices are stored
+   * *outside* the action, they will no longer be valid.
    *
    * \return True on success, false on failure.
    */
