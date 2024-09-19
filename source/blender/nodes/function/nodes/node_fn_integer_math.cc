@@ -23,9 +23,9 @@ namespace blender::nodes::node_fn_integer_math_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Int>("A");
-  b.add_input<decl::Int>("B");
-  b.add_input<decl::Int>("C");
+  b.add_input<decl::Int>("Value");
+  b.add_input<decl::Int>("Value", "Value_001");
+  b.add_input<decl::Int>("Value", "Value_002");
   b.add_output<decl::Int>("Value");
 };
 
@@ -40,13 +40,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
                                   NODE_INTEGER_MATH_ABSOLUTE,
                                   NODE_INTEGER_MATH_SIGN,
                                   NODE_INTEGER_MATH_NOT,
-                                  NODE_INTEGER_MATH_SQUARE,
-                                  NODE_INTEGER_MATH_CUBE,
                                   NODE_INTEGER_MATH_NEGATE);
-  const bool three_input_ops = ELEM(node->custom1,
-                                    NODE_INTEGER_MATH_MULTIPLY_ADD,
-                                    NODE_INTEGER_MATH_CLAMP,
-                                    NODE_INTEGER_MATH_CLAMP_RANGE);
+  const bool three_input_ops = ELEM(node->custom1, NODE_INTEGER_MATH_MULTIPLY_ADD);
 
   bNodeSocket *sockA = static_cast<bNodeSocket *>(node->inputs.first);
   bNodeSocket *sockB = sockA->next;
@@ -59,12 +54,6 @@ static void node_update(bNodeTree *ntree, bNode *node)
   node_sock_label_clear(sockB);
   node_sock_label_clear(sockC);
   switch (node->custom1) {
-    case NODE_INTEGER_MATH_CLAMP:
-    case NODE_INTEGER_MATH_CLAMP_RANGE:
-      node_sock_label(sockA, N_("Value"));
-      node_sock_label(sockB, N_("Min"));
-      node_sock_label(sockC, N_("Max"));
-      break;
     case NODE_INTEGER_MATH_MULTIPLY_ADD:
       node_sock_label(sockA, N_("Value"));
       node_sock_label(sockB, N_("Multiplier"));
@@ -143,20 +132,14 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       "Divide Round",
       [](int a, int b) { return int(math::round(math::safe_divide(float(a), float(b)))); },
       exec_preset);
-  static auto square_fn = mf::build::SI1_SO<int, int>(
-      "Square", [](int a) { return math::square(a); }, exec_preset);
-  static auto cube_fn = mf::build::SI1_SO<int, int>(
-      "Cube", [](int a) { return a * a * a; }, exec_preset);
-  static auto distance_fn = mf::build::SI2_SO<int, int, int>(
-      "Distance", [](int a, int b) { return math::distance(a, b); }, exec_preset);
   static auto pow_fn = mf::build::SI2_SO<int, int, int>(
       "Power", [](int a, int b) { return math::pow(a, b); }, exec_preset);
   static auto madd_fn = mf::build::SI3_SO<int, int, int, int>(
       "Multiply Add", [](int a, int b, int c) { return a * b + c; }, exec_preset);
+  static auto mod_periodic_fn = mf::build::SI2_SO<int, int, int>(
+      "Modulo Periodic", [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; }, exec_preset);
   static auto mod_fn = mf::build::SI2_SO<int, int, int>(
-      "Modulo", [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; }, exec_preset);
-  static auto remainder_fn = mf::build::SI2_SO<int, int, int>(
-      "Remainder", [](int a, int b) { return b != 0 ? a % b : 0; }, exec_preset);
+      "Modulo", [](int a, int b) { return b != 0 ? a % b : 0; }, exec_preset);
   static auto abs_fn = mf::build::SI1_SO<int, int>(
       "Absolute", [](int a) { return math::abs(a); }, exec_preset);
   static auto sign_fn = mf::build::SI1_SO<int, int>(
@@ -171,26 +154,6 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       "LCM", [](int a, int b) { return std::lcm(a, b); }, exec_preset);
   static auto negate_fn = mf::build::SI1_SO<int, int>(
       "Negate", [](int a) { return -a; }, exec_preset);
-  static auto clamp_fn = mf::build::SI3_SO<int, int, int, int>(
-      "Clamp", [](int a, int b, int c) { return math::clamp(a, b, c); }, exec_preset);
-  static auto clamp_range_fn = mf::build::SI3_SO<int, int, int, int>(
-      "Clamp Range",
-      [](int a, int b, int c) { return (b > c) ? math::clamp(a, c, b) : math::clamp(a, b, c); },
-      exec_preset);
-  static auto and_fn = mf::build::SI2_SO<int, int, int>(
-      "And", [](int a, int b) { return a & b; }, exec_preset);
-  static auto or_fn = mf::build::SI2_SO<int, int, int>(
-      "Or", [](int a, int b) { return a | b; }, exec_preset);
-  static auto xor_fn = mf::build::SI2_SO<int, int, int>(
-      "Xor", [](int a, int b) { return a ^ b; }, exec_preset);
-  static auto not_fn = mf::build::SI1_SO<int, int>(
-      "Not", [](int a) { return ~a; }, exec_preset);
-  static auto and_not_fn = mf::build::SI2_SO<int, int, int>(
-      "And Not", [](int a, int b) { return a & ~b; }, exec_preset);
-  static auto left_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Left Shift", [](int a, int b) { return a << b; }, exec_preset);
-  static auto right_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Right Shift", [](int a, int b) { return a >> b; }, exec_preset);
 
   switch (operation) {
     case NODE_INTEGER_MATH_ADD:
@@ -217,10 +180,10 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &pow_fn;
     case NODE_INTEGER_MATH_MULTIPLY_ADD:
       return &madd_fn;
+    case NODE_INTEGER_MATH_MODULO_PERIODIC:
+      return &mod_periodic_fn;
     case NODE_INTEGER_MATH_MODULO:
       return &mod_fn;
-    case NODE_INTEGER_MATH_REMAINDER:
-      return &remainder_fn;
     case NODE_INTEGER_MATH_ABSOLUTE:
       return &abs_fn;
     case NODE_INTEGER_MATH_SIGN:
