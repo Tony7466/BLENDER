@@ -8,6 +8,7 @@
  * \ingroup bli
  */
 
+#include <cstddef>
 #include <cstdint>
 
 namespace blender::math {
@@ -22,6 +23,10 @@ namespace blender::math {
  *
  * When compiling for ARM NEON (e.g. Apple Silicon),
  * hardware VCVT instructions are used.
+ *
+ * For anything involving more than a handful of numbers,
+ * prefer #float_to_half_array and #half_to_float_array for
+ * performance.
  */
 
 /**

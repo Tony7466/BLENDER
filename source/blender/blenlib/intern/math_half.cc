@@ -238,6 +238,14 @@ void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t 
     src += 4;
     dst += 4;
   }
+#elif defined(USE_HARDWARE_FP16_NEON)
+  for (; i + 3 < length; i += 4) {
+    float32x4_t src4 = vld1q_f32(src);
+    float16x4_t h4 = vcvt_f16_f32(src4);
+    vst1_f16((float16_t *)dst, h4);
+    src += 4;
+    dst += 4;
+  }
 #endif
   for (; i < length; i++) {
     *dst++ = float_to_half(*src++);
@@ -261,6 +269,14 @@ void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t 
     src4 = _mm_unpacklo_epi16(src4, src4);
     __m128 f4 = F16_to_F32_4x(src4);
     _mm_storeu_ps(dst, f4);
+    src += 4;
+    dst += 4;
+  }
+#elif defined(USE_HARDWARE_FP16_NEON)
+  for (; i + 3 < length; i += 4) {
+    float16x4_t src4 = vld1_f16((const float16_t *)src);
+    float32x4_t f4 = vcvt_f32_f16(src4);
+    vst1q_f32(dst, f4);
     src += 4;
     dst += 4;
   }
