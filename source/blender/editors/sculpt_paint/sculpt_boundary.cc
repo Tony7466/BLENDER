@@ -26,6 +26,7 @@
 #include "brushes/types.hh"
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_automask.hh"
 #include "sculpt_cloth.hh"
 #include "sculpt_flood_fill.hh"
 #include "sculpt_intern.hh"
@@ -75,11 +76,11 @@ static bool is_vert_in_editable_boundary_mesh(const OffsetIndices<int> faces,
 
   Vector<int> neighbors;
   for (const int neighbor : vert_neighbors_get_mesh(
-           initial_vert, faces, corner_verts, vert_to_face, hide_poly, neighbors))
+           faces, corner_verts, vert_to_face, hide_poly, initial_vert, neighbors))
   {
     if (hide_vert.is_empty() || !hide_vert[neighbor]) {
       neighbor_count++;
-      if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, neighbor)) {
+      if (boundary::vert_is_boundary(vert_to_face, hide_poly, boundary, neighbor)) {
         boundary_vertex_count++;
       }
     }
@@ -109,7 +110,7 @@ static bool is_vert_in_editable_boundary_grids(const OffsetIndices<int> faces,
   for (const SubdivCCGCoord neighbor : neighbors.coords) {
     if (grid_hidden.is_empty() || !grid_hidden[neighbor.grid_index][neighbor.to_index(key)]) {
       neighbor_count++;
-      if (boundary::vert_is_boundary(subdiv_ccg, corner_verts, faces, boundary, neighbor)) {
+      if (boundary::vert_is_boundary(faces, corner_verts, boundary, subdiv_ccg, neighbor)) {
         boundary_vertex_count++;
       }
     }
@@ -156,7 +157,7 @@ static std::optional<int> get_closest_boundary_vert_mesh(Object &object,
                                                          const int initial_vert,
                                                          const float radius)
 {
-  if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, initial_vert)) {
+  if (boundary::vert_is_boundary(vert_to_face, hide_poly, boundary, initial_vert)) {
     return initial_vert;
   }
 
@@ -177,7 +178,7 @@ static std::optional<int> get_closest_boundary_vert_mesh(Object &object,
 
     floodfill_steps[to_v] = floodfill_steps[from_v] + 1;
 
-    if (boundary::vert_is_boundary(hide_poly, vert_to_face, boundary, to_v)) {
+    if (boundary::vert_is_boundary(vert_to_face, hide_poly, boundary, to_v)) {
       if (floodfill_steps[to_v] < boundary_initial_vert_steps) {
         boundary_initial_vert_steps = floodfill_steps[to_v];
         boundary_initial_vert = to_v;
@@ -200,23 +201,21 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert_grids(
     const SubdivCCGCoord initial_vert,
     const float radius)
 {
-  if (boundary::vert_is_boundary(subdiv_ccg, corner_verts, faces, boundary, initial_vert)) {
+  if (boundary::vert_is_boundary(faces, corner_verts, boundary, subdiv_ccg, initial_vert)) {
     return initial_vert;
   }
 
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int num_grids = key.grid_area * grids.size();
 
-  flood_fill::FillDataGrids flood_fill(num_grids);
+  flood_fill::FillDataGrids flood_fill(positions.size());
   flood_fill.add_initial(initial_vert);
 
-  const float3 initial_vert_position = CCG_grid_elem_co(
-      key, grids[initial_vert.grid_index], initial_vert.x, initial_vert.y);
+  const float3 initial_vert_position = positions[initial_vert.to_index(key)];
   const float radius_sq = radius * radius;
 
   int boundary_initial_vert_steps = std::numeric_limits<int>::max();
-  Array<int> floodfill_steps(num_grids, 0);
+  Array<int> floodfill_steps(positions.size(), 0);
   std::optional<SubdivCCGCoord> boundary_initial_vert;
 
   flood_fill.execute(
@@ -235,15 +234,15 @@ static std::optional<SubdivCCGCoord> get_closest_boundary_vert_grids(
           floodfill_steps[to_v_index] = floodfill_steps[from_v_index] + 1;
         }
 
-        if (boundary::vert_is_boundary(subdiv_ccg, corner_verts, faces, boundary, to_v)) {
+        if (boundary::vert_is_boundary(faces, corner_verts, boundary, subdiv_ccg, to_v)) {
           if (floodfill_steps[to_v_index] < boundary_initial_vert_steps) {
             boundary_initial_vert_steps = floodfill_steps[to_v_index];
             boundary_initial_vert = to_v;
           }
         }
 
-        const float len_sq = math::distance_squared(
-            initial_vert_position, CCG_grid_elem_co(key, grids[to_v.grid_index], to_v.x, to_v.y));
+        const float len_sq = math::distance_squared(initial_vert_position,
+                                                    positions[to_v.to_index(key)]);
         return len_sq < radius_sq;
       });
 
@@ -340,7 +339,7 @@ static void indices_init_mesh(Object &object,
     const float3 from_v_co = vert_positions[from_v];
     const float3 to_v_co = vert_positions[to_v];
 
-    if (!boundary::vert_is_boundary(hide_poly, vert_to_face, boundary_verts, to_v)) {
+    if (!boundary::vert_is_boundary(vert_to_face, hide_poly, boundary_verts, to_v)) {
       return false;
     }
     const float edge_len = len_v3v3(from_v_co, to_v_co);
@@ -361,10 +360,9 @@ static void indices_init_grids(Object &object,
                                const SubdivCCGCoord initial_vert,
                                SculptBoundary &boundary)
 {
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int num_grids = key.grid_area * grids.size();
-  flood_fill::FillDataGrids flood_fill(num_grids);
+  flood_fill::FillDataGrids flood_fill(positions.size());
 
   const int initial_boundary_index = initial_vert.to_index(key);
   Set<int, BOUNDARY_INDICES_BLOCK_SIZE> included_verts;
@@ -378,14 +376,10 @@ static void indices_init_grids(Object &object,
         const int from_v_i = from_v.to_index(key);
         const int to_v_i = to_v.to_index(key);
 
-        const float3 from_v_co = CCG_elem_offset_co(
-            key,
-            grids[from_v.grid_index],
-            CCG_grid_xy_to_index(key.grid_size, from_v.x, from_v.y));
-        const float3 to_v_co = CCG_elem_offset_co(
-            key, grids[to_v.grid_index], CCG_grid_xy_to_index(key.grid_size, to_v.x, to_v.y));
+        const float3 &from_v_co = positions[from_v_i];
+        const float3 &to_v_co = positions[to_v_i];
 
-        if (!boundary::vert_is_boundary(subdiv_ccg, corner_verts, faces, boundary_verts, to_v)) {
+        if (!boundary::vert_is_boundary(faces, corner_verts, boundary_verts, subdiv_ccg, to_v)) {
           return false;
         }
         const float edge_len = len_v3v3(from_v_co, to_v_co);
@@ -493,7 +487,7 @@ static void edit_data_init_mesh(OffsetIndices<int> faces,
 
       Vector<int> neighbors;
       for (const int neighbor : vert_neighbors_get_mesh(
-               from_v, faces, corner_verts, vert_to_face, hide_poly, neighbors))
+               faces, corner_verts, vert_to_face, hide_poly, from_v, neighbors))
       {
         if ((!hide_vert.is_empty() && hide_vert[from_v]) ||
             boundary.edit_info.propagation_steps_num[neighbor] != BOUNDARY_STEPS_NONE)
@@ -534,13 +528,12 @@ static void edit_data_init_grids(const SubdivCCG &subdiv_ccg,
                                  const float radius,
                                  SculptBoundary &boundary)
 {
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const int num_grids = key.grid_area * grids.size();
 
-  boundary.edit_info.original_vertex_i = Array<int>(num_grids, BOUNDARY_VERTEX_NONE);
-  boundary.edit_info.propagation_steps_num = Array<int>(num_grids, BOUNDARY_STEPS_NONE);
-  boundary.edit_info.strength_factor = Array<float>(num_grids, 0.0f);
+  boundary.edit_info.original_vertex_i = Array<int>(positions.size(), BOUNDARY_VERTEX_NONE);
+  boundary.edit_info.propagation_steps_num = Array<int>(positions.size(), BOUNDARY_STEPS_NONE);
+  boundary.edit_info.strength_factor = Array<float>(positions.size(), 0.0f);
 
   std::queue<SubdivCCGCoord> current_iteration;
 
@@ -639,11 +632,8 @@ static void edit_data_init_grids(const SubdivCCG &subdiv_ccg,
         /* Check the distance using the vertex that was propagated from the initial vertex that
          * was used to initialize the boundary. */
         if (boundary.edit_info.original_vertex_i[from_v_i] == initial_vert_i) {
-          boundary.pivot_position = CCG_elem_offset_co(
-              key, grids[neighbor.grid_index], index_in_grid);
-          accum_distance += math::distance(
-              CCG_grid_elem_co(key, grids[from_v.grid_index], from_v.x, from_v.y),
-              boundary.pivot_position);
+          boundary.pivot_position = positions[neighbor_idx];
+          accum_distance += math::distance(positions[from_v_i], boundary.pivot_position);
         }
       }
     }
@@ -798,8 +788,8 @@ static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &bo
 
   const int num_elements = boundary.edit_info.strength_factor.size();
 
-  const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
+  const Span<float3> normals = subdiv_ccg.normals;
 
   boundary.bend.pivot_rotation_axis = Array<float3>(num_elements, float3(0));
   boundary.bend.pivot_positions = Array<float3>(num_elements, float3(0));
@@ -809,17 +799,12 @@ static void bend_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &bo
       continue;
     }
 
-    const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, i);
     const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
-    const SubdivCCGCoord orig_vert = SubdivCCGCoord::from_index(key, orig_vert_i);
 
-    const float3 normal = CCG_grid_elem_no(key, grids[vert.grid_index], vert.x, vert.y);
-    const float3 dir = CCG_grid_elem_co(
-                           key, grids[orig_vert.grid_index], orig_vert.x, orig_vert.y) -
-                       CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
+    const float3 normal = normals[i];
+    const float3 dir = positions[orig_vert_i] - positions[i];
     boundary.bend.pivot_rotation_axis[orig_vert_i] = math::normalize(math::cross(dir, normal));
-    boundary.bend.pivot_positions[orig_vert_i] = CCG_grid_elem_co(
-        key, grids[vert.grid_index], vert.x, vert.y);
+    boundary.bend.pivot_positions[orig_vert_i] = positions[i];
   }
 
   for (const int i : IndexRange(num_elements)) {
@@ -906,8 +891,7 @@ static void slide_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &b
              boundary.edit_info.strength_factor.size());
 
   const int num_elements = boundary.edit_info.strength_factor.size();
-  const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
 
   boundary.slide.directions = Array<float3>(num_elements, float3(0));
 
@@ -915,13 +899,10 @@ static void slide_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &b
     if (boundary.edit_info.propagation_steps_num[i] != boundary.max_propagation_steps) {
       continue;
     }
-    const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, i);
     const int orig_vert_i = boundary.edit_info.original_vertex_i[i];
-    const SubdivCCGCoord orig_vert = SubdivCCGCoord::from_index(key, orig_vert_i);
 
-    boundary.slide.directions[orig_vert_i] = math::normalize(
-        CCG_grid_elem_co(key, grids[orig_vert.grid_index], orig_vert.x, orig_vert.y) -
-        CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y));
+    boundary.slide.directions[orig_vert_i] = math::normalize(positions[orig_vert_i] -
+                                                             positions[i]);
   }
 
   for (const int i : IndexRange(num_elements)) {
@@ -983,14 +964,9 @@ static void twist_data_init_mesh(const Span<float3> vert_positions, SculptBounda
 
 static void twist_data_init_grids(const SubdivCCG &subdiv_ccg, SculptBoundary &boundary)
 {
-  const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
-
+  const Span<float3> vert_positions = subdiv_ccg.positions;
   Array<float3> positions(boundary.verts.size());
-  for (const int i : positions.index_range()) {
-    const SubdivCCGCoord vert = SubdivCCGCoord::from_index(key, boundary.verts[i]);
-    positions[i] = CCG_grid_elem_co(key, grids[vert.grid_index], vert.x, vert.y);
-  }
+  array_utils::gather(vert_positions, boundary.verts.as_span(), positions.as_mutable_span());
   populate_twist_data(positions, boundary);
 }
 
@@ -1116,7 +1092,6 @@ BLI_NOINLINE static void calc_bend_position(const Span<float3> positions,
 static void calc_bend_mesh(const Depsgraph &depsgraph,
                            const Sculpt &sd,
                            Object &object,
-                           const Span<float3> positions_eval,
                            const Span<int> vert_propagation_steps,
                            const Span<float> vert_factors,
                            const Span<float3> vert_pivot_positions,
@@ -1126,7 +1101,7 @@ static void calc_bend_mesh(const Depsgraph &depsgraph,
                            const float3 symmetry_pivot,
                            const float strength,
                            const eBrushDeformTarget deform_target,
-                           const MutableSpan<float3> positions_orig)
+                           const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -1160,10 +1135,9 @@ static void calc_bend_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -1309,13 +1283,10 @@ static void do_bend_brush(const Depsgraph &depsgraph,
                           const float strength,
                           const eBrushDeformTarget deform_target)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
 
       threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1325,7 +1296,6 @@ static void do_bend_brush(const Depsgraph &depsgraph,
           calc_bend_mesh(depsgraph,
                          sd,
                          object,
-                         positions_eval,
                          boundary.edit_info.propagation_steps_num,
                          boundary.edit_info.strength_factor,
                          boundary.bend.pivot_positions,
@@ -1335,14 +1305,15 @@ static void do_bend_brush(const Depsgraph &depsgraph,
                          boundary.initial_vert_position,
                          strength,
                          deform_target,
-                         positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                         position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1361,6 +1332,7 @@ static void do_bend_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -1383,11 +1355,14 @@ static void do_bend_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /** \} */
@@ -1413,7 +1388,6 @@ BLI_NOINLINE static void calc_slide_position(const Span<float3> positions,
 static void calc_slide_mesh(const Depsgraph &depsgraph,
                             const Sculpt &sd,
                             Object &object,
-                            const Span<float3> positions_eval,
                             const Span<int> vert_propagation_steps,
                             const Span<float> vert_factors,
                             const Span<float3> vert_slide_directions,
@@ -1422,7 +1396,7 @@ static void calc_slide_mesh(const Depsgraph &depsgraph,
                             const float3 symmetry_pivot,
                             const float strength,
                             const eBrushDeformTarget deform_target,
-                            const MutableSpan<float3> positions_orig)
+                            const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -1456,10 +1430,9 @@ static void calc_slide_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -1601,13 +1574,10 @@ static void do_slide_brush(const Depsgraph &depsgraph,
                            const float strength,
                            const eBrushDeformTarget deform_target)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
 
       threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1617,7 +1587,6 @@ static void do_slide_brush(const Depsgraph &depsgraph,
           calc_slide_mesh(depsgraph,
                           sd,
                           object,
-                          positions_eval,
                           boundary.edit_info.propagation_steps_num,
                           boundary.edit_info.strength_factor,
                           boundary.slide.directions,
@@ -1626,14 +1595,15 @@ static void do_slide_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target,
-                          positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                          position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1651,6 +1621,7 @@ static void do_slide_brush(const Depsgraph &depsgraph,
                            boundary.initial_vert_position,
                            strength,
                            deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -1672,11 +1643,14 @@ static void do_slide_brush(const Depsgraph &depsgraph,
                            boundary.initial_vert_position,
                            strength,
                            deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /** \} */
@@ -1702,7 +1676,6 @@ BLI_NOINLINE static void calc_inflate_position(const Span<float3> positions,
 static void calc_inflate_mesh(const Depsgraph &depsgraph,
                               const Sculpt &sd,
                               Object &object,
-                              const Span<float3> positions_eval,
                               const Span<int> vert_propagation_steps,
                               const Span<float> vert_factors,
                               const bke::pbvh::MeshNode &node,
@@ -1710,7 +1683,7 @@ static void calc_inflate_mesh(const Depsgraph &depsgraph,
                               const float3 symmetry_pivot,
                               const float strength,
                               const eBrushDeformTarget deform_target,
-                              const MutableSpan<float3> positions_orig)
+                              const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -1740,10 +1713,9 @@ static void calc_inflate_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -1876,13 +1848,10 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
                              const float strength,
                              const eBrushDeformTarget deform_target)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
 
       threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -1892,7 +1861,6 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
           calc_inflate_mesh(depsgraph,
                             sd,
                             object,
-                            positions_eval,
                             boundary.edit_info.propagation_steps_num,
                             boundary.edit_info.strength_factor,
                             nodes[i],
@@ -1900,14 +1868,15 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
                             boundary.initial_vert_position,
                             strength,
                             deform_target,
-                            positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                            position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -1924,6 +1893,7 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
                              boundary.initial_vert_position,
                              strength,
                              deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -1944,11 +1914,14 @@ static void do_inflate_brush(const Depsgraph &depsgraph,
                              boundary.initial_vert_position,
                              strength,
                              deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /** \} */
@@ -1973,7 +1946,6 @@ BLI_NOINLINE static void calc_grab_position(const Span<float3> positions,
 static void calc_grab_mesh(const Depsgraph &depsgraph,
                            const Sculpt &sd,
                            Object &object,
-                           const Span<float3> positions_eval,
                            const Span<int> vert_propagation_steps,
                            const Span<float> vert_factors,
                            const bke::pbvh::MeshNode &node,
@@ -1982,7 +1954,7 @@ static void calc_grab_mesh(const Depsgraph &depsgraph,
                            const float3 symmetry_pivot,
                            const float strength,
                            const eBrushDeformTarget deform_target,
-                           const MutableSpan<float3> positions_orig)
+                           const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -2012,10 +1984,9 @@ static void calc_grab_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -2154,9 +2125,7 @@ static void do_grab_brush(const Depsgraph &depsgraph,
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
 
       threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -2166,7 +2135,6 @@ static void do_grab_brush(const Depsgraph &depsgraph,
           calc_grab_mesh(depsgraph,
                          sd,
                          object,
-                         positions_eval,
                          boundary.edit_info.propagation_steps_num,
                          boundary.edit_info.strength_factor,
                          nodes[i],
@@ -2175,14 +2143,15 @@ static void do_grab_brush(const Depsgraph &depsgraph,
                          boundary.initial_vert_position,
                          strength,
                          deform_target,
-                         positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                         position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2200,6 +2169,7 @@ static void do_grab_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -2221,11 +2191,14 @@ static void do_grab_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /** \} */
@@ -2251,7 +2224,6 @@ BLI_NOINLINE static void calc_twist_position(const Span<float3> positions,
 static void calc_twist_mesh(const Depsgraph &depsgraph,
                             const Sculpt &sd,
                             Object &object,
-                            const Span<float3> positions_eval,
                             const Span<int> vert_propagation_steps,
                             const Span<float> vert_factors,
                             const bke::pbvh::MeshNode &node,
@@ -2261,7 +2233,7 @@ static void calc_twist_mesh(const Depsgraph &depsgraph,
                             const float3 symmetry_pivot,
                             const float strength,
                             const eBrushDeformTarget deform_target,
-                            const MutableSpan<float3> positions_orig)
+                            const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -2292,10 +2264,9 @@ static void calc_twist_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -2433,13 +2404,10 @@ static void do_twist_brush(const Depsgraph &depsgraph,
                            const float strength,
                            const eBrushDeformTarget deform_target)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
-      Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
 
       threading::EnumerableThreadSpecific<LocalDataMesh> all_tls;
       MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -2449,7 +2417,6 @@ static void do_twist_brush(const Depsgraph &depsgraph,
           calc_twist_mesh(depsgraph,
                           sd,
                           object,
-                          positions_eval,
                           boundary.edit_info.propagation_steps_num,
                           boundary.edit_info.strength_factor,
                           nodes[i],
@@ -2459,14 +2426,15 @@ static void do_twist_brush(const Depsgraph &depsgraph,
                           boundary.initial_vert_position,
                           strength,
                           deform_target,
-                          positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                          position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2485,6 +2453,7 @@ static void do_twist_brush(const Depsgraph &depsgraph,
                            boundary.initial_vert_position,
                            strength,
                            deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -2507,11 +2476,14 @@ static void do_twist_brush(const Depsgraph &depsgraph,
                            boundary.initial_vert_position,
                            strength,
                            deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /** \} */
@@ -2571,7 +2543,7 @@ BLI_NOINLINE static void calc_average_position(const SubdivCCG &subdiv_ccg,
                                                const MutableSpan<float3> average_positions)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
 
   BLI_assert(neighbors.size() == propagation_steps.size());
   BLI_assert(neighbors.size() == factors.size());
@@ -2582,8 +2554,7 @@ BLI_NOINLINE static void calc_average_position(const SubdivCCG &subdiv_ccg,
     int valid_neighbors = 0;
     for (const SubdivCCGCoord neighbor : neighbors[i]) {
       if (propagation_steps[i] == vert_propagation_steps[neighbor.to_index(key)]) {
-        average_positions[i] += CCG_grid_elem_co(
-            key, grids[neighbor.grid_index], neighbor.x, neighbor.y);
+        average_positions[i] += positions[neighbor.to_index(key)];
         valid_neighbors++;
       }
     }
@@ -2621,10 +2592,8 @@ BLI_NOINLINE static void calc_average_position(const Span<int> vert_propagation_
   }
 }
 
-static void calc_smooth_mesh(const Depsgraph &depsgraph,
-                             const Sculpt &sd,
+static void calc_smooth_mesh(const Sculpt &sd,
                              Object &object,
-                             const Span<float3> positions_eval,
                              const OffsetIndices<int> faces,
                              const Span<int> corner_verts,
                              const GroupedSpan<int> vert_to_face,
@@ -2636,7 +2605,7 @@ static void calc_smooth_mesh(const Depsgraph &depsgraph,
                              const float3 symmetry_pivot,
                              const float strength,
                              const eBrushDeformTarget deform_target,
-                             const MutableSpan<float3> positions_orig)
+                             const PositionDeformData &position_data)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
@@ -2662,9 +2631,9 @@ static void calc_smooth_mesh(const Depsgraph &depsgraph,
   calc_vert_neighbors(faces, corner_verts, vert_to_face, hide_poly, verts, neighbors);
   tls.average_positions.resize(verts.size());
 
-  const Span<float3> positions = gather_data_mesh(positions_eval, verts, tls.positions);
+  const Span<float3> positions = gather_data_mesh(position_data.eval, verts, tls.positions);
   const MutableSpan<float3> average_positions = tls.average_positions;
-  calc_average_position(positions_eval,
+  calc_average_position(position_data.eval,
                         vert_propagation_steps,
                         neighbors,
                         propagation_steps,
@@ -2679,10 +2648,9 @@ static void calc_smooth_mesh(const Depsgraph &depsgraph,
     case BRUSH_DEFORM_TARGET_GEOMETRY: {
       tls.translations.resize(verts.size());
       const MutableSpan<float3> translations = tls.translations;
-      translations_from_new_positions(new_positions, verts, positions_eval, translations);
-
-      write_translations(
-          depsgraph, sd, object, positions_eval, verts, translations, positions_orig);
+      translations_from_new_positions(new_positions, verts, position_data.eval, translations);
+      clip_and_lock_translations(sd, ss, position_data.eval, verts, translations);
+      position_data.deform(translations, verts);
       break;
     }
     case BRUSH_DEFORM_TARGET_CLOTH_SIM:
@@ -2832,16 +2800,14 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
                             const float strength,
                             const eBrushDeformTarget deform_target)
 {
-  SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-      Span<float3> positions_eval = bke::pbvh::vert_positions_eval(depsgraph, object);
-      MutableSpan<float3> positions_orig = mesh.vert_positions_for_write();
+      const PositionDeformData position_data(depsgraph, object);
       const OffsetIndices<int> faces = mesh.faces();
       const Span<int> corner_verts = mesh.corner_verts();
-      const GroupedSpan<int> vert_to_face_map = ss.vert_to_face_map;
+      const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
       bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
       const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
 
@@ -2850,10 +2816,8 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalDataMesh &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
-          calc_smooth_mesh(depsgraph,
-                           sd,
+          calc_smooth_mesh(sd,
                            object,
-                           positions_eval,
                            faces,
                            corner_verts,
                            vert_to_face_map,
@@ -2865,14 +2829,15 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
                            boundary.initial_vert_position,
                            strength,
                            deform_target,
-                           positions_orig);
-          BKE_pbvh_node_mark_positions_update(nodes[i]);
+                           position_data);
+          bke::pbvh::update_node_bounds_mesh(position_data.eval, nodes[i]);
         });
       });
       break;
     }
     case bke::pbvh::Type::Grids: {
-      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      SubdivCCG &subdiv_ccg = *object.sculpt->subdiv_ccg;
+      MutableSpan<float3> positions = subdiv_ccg.positions;
       threading::EnumerableThreadSpecific<LocalDataGrids> all_tls;
       MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
@@ -2888,6 +2853,7 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
                             boundary.initial_vert_position,
                             strength,
                             deform_target);
+          bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
         });
       });
       break;
@@ -2907,11 +2873,14 @@ static void do_smooth_brush(const Depsgraph &depsgraph,
                             boundary.initial_vert_position,
                             strength,
                             deform_target);
+          bke::pbvh::update_node_bounds_bmesh(nodes[i]);
         });
       });
       break;
     }
   }
+  pbvh.tag_positions_changed(node_mask);
+  bke::pbvh::flush_bounds_to_parents(pbvh);
 }
 
 /* -------------------------------------------------------------------- */
@@ -3027,18 +2996,14 @@ static void init_falloff_grids(const SubdivCCG &subdiv_ccg,
              boundary.edit_info.strength_factor.size());
 
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  Span<CCGElem *> grids = subdiv_ccg.grids;
 
   BKE_curvemapping_init(brush.curve);
 
-  for (const int i : grids.index_range()) {
-    const int start = i * key.grid_area;
-    for (const int offset : IndexRange(key.grid_area)) {
-      const int index = start + offset;
+  for (const int grid : IndexRange(subdiv_ccg.grids_num)) {
+    for (const int index : bke::ccg::grid_range(key, grid)) {
       if (boundary.edit_info.propagation_steps_num[index] != BOUNDARY_STEPS_NONE) {
-        const float mask_factor = key.has_mask ?
-                                      1.0f - CCG_elem_offset_mask(key, grids[i], offset) :
-                                      1.0f;
+        const float mask_factor = subdiv_ccg.masks.is_empty() ? 1.0f - subdiv_ccg.masks[index] :
+                                                                1.0f;
         boundary.edit_info.strength_factor[index] =
             mask_factor * BKE_brush_curve_strength(&brush,
                                                    boundary.edit_info.propagation_steps_num[index],
@@ -3189,7 +3154,7 @@ static void init_boundary_grids(Object &object,
 
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
-  Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
 
   ActiveVert initial_vert_ref = ss.active_vert();
   if (std::holds_alternative<std::monostate>(initial_vert_ref)) {
@@ -3202,9 +3167,7 @@ static void init_boundary_grids(Object &object,
   }
   else {
     const SubdivCCGCoord active_vert = std::get<SubdivCCGCoord>(initial_vert_ref);
-    float3 location = symmetry_flip(
-        CCG_grid_elem_co(key, grids[active_vert.grid_index], active_vert.x, active_vert.y),
-        symm_area);
+    float3 location = symmetry_flip(positions[active_vert.to_index(key)], symm_area);
     initial_vert = nearest_vert_calc_grids(
         pbvh, subdiv_ccg, location, ss.cache->radius_squared, false);
   }
@@ -3473,6 +3436,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const bke::AttributeAccessor attributes = mesh.attributes();
+  const GroupedSpan<int> vert_to_face_map = mesh.vert_to_face_map();
   const VArraySpan hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
   const VArraySpan hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
@@ -3480,7 +3444,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
 
   const std::optional<int> boundary_initial_vert = get_closest_boundary_vert_mesh(
       object,
-      ss.vert_to_face_map,
+      vert_to_face_map,
       positions_eval,
       hide_vert,
       hide_poly,
@@ -3499,7 +3463,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
    * be fixed. */
   if (!is_vert_in_editable_boundary_mesh(faces,
                                          corner_verts,
-                                         ss.vert_to_face_map,
+                                         vert_to_face_map,
                                          hide_vert,
                                          hide_poly,
                                          ss.vertex_info.boundary,
@@ -3518,7 +3482,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   indices_init_mesh(object,
                     faces,
                     corner_verts,
-                    ss.vert_to_face_map,
+                    vert_to_face_map,
                     hide_vert,
                     hide_poly,
                     ss.vertex_info.boundary,
@@ -3529,7 +3493,7 @@ std::unique_ptr<SculptBoundary> data_init_mesh(const Depsgraph &depsgraph,
   const float boundary_radius = brush ? radius * (1.0f + brush->boundary_offset) : radius;
   edit_data_init_mesh(faces,
                       corner_verts,
-                      ss.vert_to_face_map,
+                      vert_to_face_map,
                       positions_eval,
                       hide_vert,
                       hide_poly,
@@ -3553,7 +3517,7 @@ std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
-  const Span<CCGElem *> grids = subdiv_ccg.grids;
+  const Span<float3> positions = subdiv_ccg.positions;
   const CCGKey &key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
 
   const std::optional<SubdivCCGCoord> boundary_initial_vert = get_closest_boundary_vert_grids(
@@ -3577,8 +3541,7 @@ std::unique_ptr<SculptBoundary> data_init_grids(Object &object,
   SubdivCCGCoord boundary_vert = *boundary_initial_vert;
   const int boundary_initial_vert_index = boundary_vert.to_index(key);
   boundary->initial_vert_i = boundary_initial_vert_index;
-  boundary->initial_vert_position = CCG_grid_elem_co(
-      key, grids[boundary_vert.grid_index], boundary_vert.x, boundary_vert.y);
+  boundary->initial_vert_position = positions[boundary_initial_vert_index];
 
   indices_init_grids(
       object, faces, corner_verts, subdiv_ccg, ss.vertex_info.boundary, boundary_vert, *boundary);
