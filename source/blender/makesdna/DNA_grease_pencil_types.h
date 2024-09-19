@@ -555,6 +555,9 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::LayerGroup &add_layer_group(
       blender::bke::greasepencil::LayerGroup &parent_group, blender::StringRefNull name);
 
+  /** Adds multiple layers. The `names` can contain the same name multiple times. */
+  void add_layers_for_eval(const blender::Span<blender::StringRefNull> names);
+
   /* Moving nodes. */
   void move_node_up(blender::bke::greasepencil::TreeNode &node, int step = 1);
   void move_node_down(blender::bke::greasepencil::TreeNode &node, int step = 1);

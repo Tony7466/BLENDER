@@ -2090,13 +2090,17 @@ static void execute_realize_grease_pencil_tasks(
   GreasePencil *dst_grease_pencil = BKE_grease_pencil_new_nomain();
   r_realized_geometry.replace_grease_pencil(dst_grease_pencil);
 
-  /* Prepare layer names. This is currently quadratic in the number of layers because layer names
-   * are made unique. */
+  /* Prepare layer names. */
   for (const RealizeGreasePencilTask &task : tasks) {
     const GreasePencil &src_grease_pencil = *task.grease_pencil_info->grease_pencil;
+    Vector<StringRefNull> src_layer_names;
+    src_layer_names.reserve(src_grease_pencil.layers().size());
     for (const bke::greasepencil::Layer *src_layer : src_grease_pencil.layers()) {
-      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->add_layer(src_layer->name());
-      dst_grease_pencil->insert_frame(dst_layer, dst_grease_pencil->runtime->eval_frame);
+      src_layer_names.append(src_layer->name());
+    }
+    dst_grease_pencil->add_layers_for_eval(src_layer_names.as_span());
+    for (bke::greasepencil::Layer *dst_layer : dst_grease_pencil->layers_for_write()) {
+      dst_grease_pencil->insert_frame(*dst_layer, dst_grease_pencil->runtime->eval_frame);
     }
   }
 

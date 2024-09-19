@@ -3080,10 +3080,21 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
 {
   using namespace blender;
   blender::bke::greasepencil::Layer &new_layer = this->add_layer(name);
-  /* Hide masks by default. */
-  new_layer.base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
   move_node_into(new_layer.as_node(), parent_group);
   return new_layer;
+}
+
+void GreasePencil::add_layers_for_eval(const Span<blender::StringRefNull> names)
+{
+  using namespace blender;
+  const int num_layers = layers().size();
+  CustomData_realloc(&layers_data, num_layers, num_layers + names.size());
+  for (StringRefNull name : names) {
+    bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__, name);
+    /* Hide masks by default. */
+    new_layer->base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
+    root_group().add_node(new_layer->as_node());
+  }
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::duplicate_layer(
