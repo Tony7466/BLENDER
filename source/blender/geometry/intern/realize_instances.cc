@@ -1172,6 +1172,26 @@ static void execute_realize_pointcloud_task(
       dst_attribute_writers);
 }
 
+static void add_instance_attributes_to_single_geometry(
+    const OrderedAttributes &ordered_attributes,
+    const AttributeFallbacksArray &attribute_fallbacks,
+    bke::MutableAttributeAccessor attributes)
+{
+  for (const int attribute_index : ordered_attributes.index_range()) {
+    const void *value = attribute_fallbacks.array[attribute_index];
+    if (!value) {
+      continue;
+    }
+    const bke::AttrDomain domain = ordered_attributes.kinds[attribute_index].domain;
+    const eCustomDataType data_type = ordered_attributes.kinds[attribute_index].data_type;
+    const CPPType &cpp_type = *bke::custom_data_type_to_cpp_type(data_type);
+    GVArray gvaray(GVArray::ForSingle(cpp_type, attributes.domain_size(domain), value));
+    attributes.add(ordered_attributes.ids[attribute_index],
+                   domain,
+                   data_type,
+                   bke::AttributeInitVArray(std::move(gvaray)));
+  }
+}
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
                                              const AllPointCloudsInfo &all_pointclouds_info,
                                              const Span<RealizePointCloudTask> tasks,
@@ -1189,6 +1209,8 @@ static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &opti
       transform_positions(task.transform, new_points->positions_for_write());
       new_points->tag_positions_changed();
     }
+    add_instance_attributes_to_single_geometry(
+        ordered_attributes, task.attribute_fallbacks, new_points->attributes_for_write());
     r_realized_geometry.replace_pointcloud(new_points);
     return;
   }
@@ -1528,6 +1550,8 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
       transform_positions(task.transform, new_mesh->vert_positions_for_write());
       new_mesh->tag_positions_changed();
     }
+    add_instance_attributes_to_single_geometry(
+        ordered_attributes, task.attribute_fallbacks, new_mesh->attributes_for_write());
     r_realized_geometry.replace_mesh(new_mesh);
     return;
   }
@@ -1878,6 +1902,9 @@ static void execute_realize_curve_tasks(const RealizeInstancesOptions &options,
     if (!skip_transform(task.transform)) {
       new_curves->geometry.wrap().transform(task.transform);
     }
+    add_instance_attributes_to_single_geometry(ordered_attributes,
+                                               task.attribute_fallbacks,
+                                               new_curves->geometry.wrap().attributes_for_write());
     r_realized_geometry.replace_curves(new_curves);
     return;
   }
@@ -2152,6 +2179,8 @@ static void execute_realize_grease_pencil_tasks(
     if (!skip_transform(task.transform)) {
       transform_grease_pencil_layers(new_gp->layers_for_write(), task.transform);
     }
+    add_instance_attributes_to_single_geometry(
+        ordered_attributes, task.attribute_fallbacks, new_gp->attributes_for_write());
     r_realized_geometry.replace_grease_pencil(new_gp);
     return;
   }
