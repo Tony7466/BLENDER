@@ -7397,16 +7397,7 @@ void uiTemplateCacheFile(uiLayout *layout,
 
   uiLayoutSetContextPointer(layout, "edit_cachefile", &fileptr);
 
-  uiTemplateID(layout,
-               C,
-               ptr,
-               propname,
-               nullptr,
-               "CACHEFILE_OT_open",
-               nullptr,
-               UI_TEMPLATE_ID_FILTER_ALL,
-               false,
-               nullptr);
+  uiTemplateID(layout, C, ptr, propname, nullptr, "CACHEFILE_OT_open", nullptr);
 
   if (!file) {
     return;

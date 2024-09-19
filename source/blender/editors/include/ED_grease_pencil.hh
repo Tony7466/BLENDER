@@ -129,7 +129,8 @@ class DrawingPlacement {
                    const View3D &view3d,
                    const Object &eval_object,
                    const bke::greasepencil::Layer *layer,
-                   ReprojectMode reproject_mode);
+                   ReprojectMode reproject_mode,
+                   float surface_offset = 0.0f);
   DrawingPlacement(const DrawingPlacement &other);
   DrawingPlacement(DrawingPlacement &&other);
   DrawingPlacement &operator=(const DrawingPlacement &other);
@@ -500,6 +501,9 @@ void normalize_vertex_weights(MDeformVert &dvert,
 
 /** Adds vertex groups for the bones in the armature (with matching names). */
 bool add_armature_vertex_groups(Object &object, const Object &armature);
+/** Create vertex groups for the bones in the armature and use the bone envelopes to assign
+ * weights. */
+void add_armature_envelope_weights(Scene &scene, Object &object, const Object &ob_armature);
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
