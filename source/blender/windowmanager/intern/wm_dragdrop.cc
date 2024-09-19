@@ -688,17 +688,12 @@ AssetMetaData *WM_drag_get_asset_meta_data(const wmDrag *drag, int idcode)
   return nullptr;
 }
 
-ID *WM_drag_asset_id_import(const bContext *C,
-                            wmDragAsset *asset_drag,
-                            const wmDragAssetImportOptions &options)
+ID *WM_drag_asset_id_import(const bContext *C, wmDragAsset *asset_drag, const int flag_extra)
 {
   /* Only support passing in limited flags. */
-  BLI_assert(options.flag_extra == (options.flag_extra & FILE_AUTOSELECT));
-  eFileSel_Params_Flag flag = static_cast<eFileSel_Params_Flag>(options.flag_extra) |
+  BLI_assert(flag_extra == (flag_extra & FILE_AUTOSELECT));
+  eFileSel_Params_Flag flag = static_cast<eFileSel_Params_Flag>(flag_extra) |
                               FILE_ACTIVE_COLLECTION;
-  if (options.instantiate_loose_data) {
-    flag |= eFileSel_Params_Flag(BLO_LIBLINK_INSTANTIATE_LOOSE_DATA);
-  }
 
   const char *name = asset_drag->asset->get_name().c_str();
   const std::string blend_path = asset_drag->asset->full_library_path();
@@ -776,8 +771,7 @@ ID *WM_drag_get_local_ID_or_import_from_asset(const bContext *C, const wmDrag *d
   }
 
   /* Link/append the asset. */
-  wmDragAssetImportOptions import_options;
-  return WM_drag_asset_id_import(C, asset_drag, import_options);
+  return WM_drag_asset_id_import(C, asset_drag, 0);
 }
 
 void WM_drag_free_imported_drag_ID(Main *bmain, wmDrag *drag, wmDropBox *drop)

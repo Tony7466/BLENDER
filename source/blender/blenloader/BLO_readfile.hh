@@ -382,8 +382,6 @@ enum eBLOLibLinkFlags {
   BLO_LIBLINK_OBDATA_INSTANCE = 1 << 24,
   /** Instantiate collections as empties, instead of linking them into current view layer. */
   BLO_LIBLINK_COLLECTION_INSTANCE = 1 << 25,
-  /** Automatically link e.g. loose objects to the current scene. */
-  BLO_LIBLINK_INSTANTIATE_LOOSE_DATA = 1 << 26,
 };
 
 /**

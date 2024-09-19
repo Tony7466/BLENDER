@@ -790,10 +790,7 @@ static void view3d_ob_drop_copy_external_asset(bContext *C, wmDrag *drag, wmDrop
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
-  wmDragAssetImportOptions import_options;
-  import_options.flag_extra |= FILE_AUTOSELECT;
-  import_options.instantiate_loose_data = true;
-  ID *id = WM_drag_asset_id_import(C, asset_drag, import_options);
+  ID *id = WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT);
 
   /* TODO(sergey): Only update relations for the current scene. */
   DEG_relations_tag_update(CTX_data_main(C));
@@ -843,10 +840,7 @@ static void view3d_collection_drop_copy_external_asset(bContext *C, wmDrag *drag
 
   BKE_view_layer_base_deselect_all(scene, view_layer);
 
-  wmDragAssetImportOptions import_options;
-  import_options.flag_extra |= FILE_AUTOSELECT;
-  import_options.instantiate_loose_data = true;
-  ID *id = WM_drag_asset_id_import(C, asset_drag, import_options);
+  ID *id = WM_drag_asset_id_import(C, asset_drag, FILE_AUTOSELECT);
   Collection *collection = (Collection *)id;
 
   /* TODO(sergey): Only update relations for the current scene. */
