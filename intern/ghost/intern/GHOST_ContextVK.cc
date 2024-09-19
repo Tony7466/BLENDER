@@ -388,7 +388,7 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
         break;
     }
     /* User has configured a preferred device. Add bonus score when vendor and device match. Driver
-     * id isn't considered as that can update more frequently. */
+     * id isn't considered as drivers update more frequently and can break the device selection. */
     if (device_vk.properties.deviceID == preferred_device.device_id &&
         device_vk.properties.vendorID == preferred_device.vendor_id)
     {

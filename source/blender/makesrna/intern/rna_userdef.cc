@@ -6327,10 +6327,6 @@ static void rna_def_userdef_system(BlenderRNA *brna)
       "GPU Backend",
       "GPU backend to use (requires restarting Blender for changes to take effect)");
 
-  prop = RNA_def_property(srna, "gpu_preferred_vendor_id", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "gpu_preferred_vendor_id");
-  prop = RNA_def_property(srna, "gpu_preferred_device_id", PROP_INT, PROP_UNSIGNED);
-  RNA_def_property_int_sdna(prop, nullptr, "gpu_preferred_device_id");
   prop = RNA_def_property(srna, "gpu_preferred_device", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_preference_gpu_preferred_device_items);
   RNA_def_property_enum_funcs(prop,
