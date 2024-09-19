@@ -9,8 +9,19 @@
 #include "BLI_math_half.hh"
 
 #if defined(__ARM_NEON)
-#  define USE_HARDWARE_FP16_NEON /* Use ARM FP16 conversion instructions */
+/* Use ARM FP16 conversion instructions */
+#  define USE_HARDWARE_FP16_NEON
 #  include <arm_neon.h>
+#endif
+#if (defined(__x86_64__) || defined(_M_X64))
+/* All AVX2 CPUs have F16C instructions, so use those if we're compiling for AVX2.
+ * Otherwise use "manual" SSE2 4x-wide conversion. */
+#  if defined(__AVX2__)
+#    define USE_HARDWARE_FP16_F16C
+#  else
+#    define USE_SSE2_FP16
+#  endif
+#  include <immintrin.h>
 #endif
 
 uint16_t blender::math::float_to_half(float v)
@@ -114,16 +125,147 @@ float blender::math::half_to_float(uint16_t v)
 #endif
 }
 
+#ifdef USE_SSE2_FP16
+/* 4x wide float<->half conversion using SSE2 code, based on
+ * https://gist.github.com/rygorous/4d9e9e88cab13c703773dc767a23575f */
+
+/* Float->half conversion with round-to-nearest-even, SSE2+.
+ * leaves half-floats in 32-bit lanes (sign extended). */
+static inline __m128i F32_to_F16_4x(const __m128 &f)
+{
+  const __m128 mask_sign = _mm_set1_ps(-0.0f);
+  /* all FP32 values >=this round to +inf */
+  const __m128i c_f16max = _mm_set1_epi32((127 + 16) << 23);
+  const __m128i c_nanbit = _mm_set1_epi32(0x200);
+  const __m128i c_nanlobits = _mm_set1_epi32(0x1ff);
+  const __m128i c_infty_as_fp16 = _mm_set1_epi32(0x7c00);
+  /* smallest FP32 that yields a normalized FP16 */
+  const __m128i c_min_normal = _mm_set1_epi32((127 - 14) << 23);
+  const __m128i c_subnorm_magic = _mm_set1_epi32(((127 - 15) + (23 - 10) + 1) << 23);
+  /* adjust exponent and add mantissa rounding */
+  const __m128i c_normal_bias = _mm_set1_epi32(0xfff - ((127 - 15) << 23));
+
+  __m128 justsign = _mm_and_ps(f, mask_sign);
+  __m128 absf = _mm_andnot_ps(mask_sign, f); /* f & ~mask_sign */
+  /* the cast is "free" (extra bypass latency, but no throughput hit) */
+  __m128i absf_int = _mm_castps_si128(absf);
+  __m128 b_isnan = _mm_cmpunord_ps(absf, absf);              /* is this a NaN? */
+  __m128i b_isregular = _mm_cmpgt_epi32(c_f16max, absf_int); /* (sub)normalized or special? */
+  __m128i nan_payload = _mm_and_si128(_mm_srli_epi32(absf_int, 13),
+                                      c_nanlobits);        /* payload bits for NaNs */
+  __m128i nan_quiet = _mm_or_si128(nan_payload, c_nanbit); /* and set quiet bit */
+  __m128i nanfinal = _mm_and_si128(_mm_castps_si128(b_isnan), nan_quiet);
+  __m128i inf_or_nan = _mm_or_si128(nanfinal, c_infty_as_fp16); /* output for specials */
+
+  /* subnormal? */
+  __m128i b_issub = _mm_cmpgt_epi32(c_min_normal, absf_int);
+
+  /* "result is subnormal" path */
+  __m128 subnorm1 = _mm_add_ps(
+      absf, _mm_castsi128_ps(c_subnorm_magic)); /* magic value to round output mantissa */
+  __m128i subnorm2 = _mm_sub_epi32(_mm_castps_si128(subnorm1),
+                                   c_subnorm_magic); /* subtract out bias */
+
+  /* "result is normal" path */
+  __m128i mantoddbit = _mm_slli_epi32(absf_int, 31 - 13); /* shift bit 13 (mantissa LSB) to sign */
+  __m128i mantodd = _mm_srai_epi32(mantoddbit, 31);       /* -1 if FP16 mantissa odd, else 0 */
+
+  __m128i round1 = _mm_add_epi32(absf_int, c_normal_bias);
+  /* if mantissa LSB odd, bias towards rounding up (RTNE) */
+  __m128i round2 = _mm_sub_epi32(round1, mantodd);
+  __m128i normal = _mm_srli_epi32(round2, 13); /* rounded result */
+
+  /* combine the two non-specials */
+  __m128i nonspecial = _mm_or_si128(_mm_and_si128(subnorm2, b_issub),
+                                    _mm_andnot_si128(b_issub, normal));
+
+  /* merge in specials as well */
+  __m128i joined = _mm_or_si128(_mm_and_si128(nonspecial, b_isregular),
+                                _mm_andnot_si128(b_isregular, inf_or_nan));
+
+  __m128i sign_shift = _mm_srai_epi32(_mm_castps_si128(justsign), 16);
+  __m128i result = _mm_or_si128(joined, sign_shift);
+
+  return result;
+}
+
+/* Half->float conversion, SSE2+. Input in 32-bit lanes. */
+static inline __m128 F16_to_F32_4x(const __m128i &h)
+{
+  const __m128i mask_nosign = _mm_set1_epi32(0x7fff);
+  const __m128 magic_mult = _mm_castsi128_ps(_mm_set1_epi32((254 - 15) << 23));
+  const __m128i was_infnan = _mm_set1_epi32(0x7bff);
+  const __m128 exp_infnan = _mm_castsi128_ps(_mm_set1_epi32(255 << 23));
+  const __m128i was_nan = _mm_set1_epi32(0x7c00);
+  const __m128i nan_quiet = _mm_set1_epi32(1 << 22);
+
+  __m128i expmant = _mm_and_si128(mask_nosign, h);
+  __m128i justsign = _mm_xor_si128(h, expmant);
+  __m128i shifted = _mm_slli_epi32(expmant, 13);
+  __m128 scaled = _mm_mul_ps(_mm_castsi128_ps(shifted), magic_mult);
+  __m128i b_wasinfnan = _mm_cmpgt_epi32(expmant, was_infnan);
+  __m128i sign = _mm_slli_epi32(justsign, 16);
+  __m128 infnanexp = _mm_and_ps(_mm_castsi128_ps(b_wasinfnan), exp_infnan);
+  __m128i b_wasnan = _mm_cmpgt_epi32(expmant, was_nan);
+  __m128i nanquiet = _mm_and_si128(b_wasnan, nan_quiet);
+  __m128 infnandone = _mm_or_ps(infnanexp, _mm_castsi128_ps(nanquiet));
+
+  __m128 sign_inf = _mm_or_ps(_mm_castsi128_ps(sign), infnandone);
+  __m128 result = _mm_or_ps(scaled, sign_inf);
+
+  return result;
+}
+
+#endif  // USE_SSE2_FP16
+
 void blender::math::float_to_half_array(const float *src, uint16_t *dst, size_t length)
 {
-  for (size_t i = 0; i < length; i++) {
+  size_t i = 0;
+#if defined(USE_HARDWARE_FP16_F16C)
+  for (; i + 7 < length; i += 8) {
+    __m256 src8 = _mm256_loadu_ps(src);
+    __m128i h8 = _mm256_cvtps_ph(src8, _MM_FROUND_TO_NEAREST_INT);
+    _mm_storeu_epi32(dst, h8);
+    src += 8;
+    dst += 8;
+  }
+#elif defined(USE_SSE2_FP16)
+  for (; i + 3 < length; i += 4) {
+    __m128 src4 = _mm_loadu_ps(src);
+    __m128i h4 = F32_to_F16_4x(src4);
+    __m128i h4_packed = _mm_packs_epi32(h4, h4);
+    _mm_storeu_si64(dst, h4_packed);
+    src += 4;
+    dst += 4;
+  }
+#endif
+  for (; i < length; i++) {
     *dst++ = float_to_half(*src++);
   }
 }
 
 void blender::math::half_to_float_array(const uint16_t *src, float *dst, size_t length)
 {
-  for (size_t i = 0; i < length; i++) {
+  size_t i = 0;
+#if defined(USE_HARDWARE_FP16_F16C)
+  for (; i + 7 < length; i += 8) {
+    __m128i src8 = _mm_loadu_epi32(src);
+    __m256 f8 = _mm256_cvtph_ps(src8);
+    _mm256_storeu_ps(dst, f8);
+    src += 8;
+    dst += 8;
+  }
+#elif defined(USE_SSE2_FP16)
+  for (; i + 3 < length; i += 4) {
+    __m128i src4 = _mm_loadu_si64(src);
+    src4 = _mm_unpacklo_epi16(src4, src4);
+    __m128 f4 = F16_to_F32_4x(src4);
+    _mm_storeu_ps(dst, f4);
+    src += 4;
+    dst += 4;
+  }
+#endif
+  for (; i < length; i++) {
     *dst++ = half_to_float(*src++);
   }
 }

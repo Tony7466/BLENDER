@@ -140,7 +140,9 @@ TEST(math_half, float_to_half_array)
  * - CPU: F16C instructions 44ms
  * - OpenEXR/Imath: 21ms
  * - math::half_to_float: 164ms
- * - math::half_to_float_array: 132ms
+ * - math::half_to_float_array: 132ms (scalar)
+ * - math::half_to_float_array:  84ms (SSE2 4x wide path)
+ * - math::half_to_float_array:  86ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
  * - convert_float_formats from VK_data_conversion.hh: 244ms [converts 2046 values wrong]
  *
  * On Mac M1 Max (Clang 15):
@@ -189,7 +191,9 @@ TEST(math_half_perf, half_to_float_array)
  * - CPU: F16C instructions 61ms
  * - OpenEXR/Imath: 240ms
  * - math::float_to_half: 242ms
- * - math::float_to_half_array: 184ms
+ * - math::float_to_half_array: 184ms (scalar)
+ * - math::float_to_half_array:  68ms (SSE2 4x wide path)
+ * - math::float_to_half_array:  50ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
  * - convert_float_formats from VK_data_conversion.hh: 247ms [converts many values wrong]
  *
  * On Mac M1 Max (Clang 15):
