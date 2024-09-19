@@ -1102,10 +1102,7 @@ ccl_device void osl_closure_fournier_forand_setup(
     return;
   }
 
-  volume->B = closure->B;
-  volume->IOR = closure->IOR;
-
-  sd->flag |= volume_fournier_forand_setup(volume);
+  sd->flag |= volume_fournier_forand_setup(volume, closure->B, closure->IOR);
 }
 
 ccl_device void osl_closure_draine_setup(KernelGlobals kg,

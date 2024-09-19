@@ -82,7 +82,7 @@ ccl_device bool volume_phase_equal(ccl_private const ShaderClosure *c1,
     case CLOSURE_VOLUME_FOURNIER_FORAND_ID: {
       ccl_private FournierForandVolume *v1 = (ccl_private FournierForandVolume *)c1;
       ccl_private FournierForandVolume *v2 = (ccl_private FournierForandVolume *)c2;
-      return v1->B == v2->B && v1->IOR == v2->IOR;
+      return v1->c1 == v2->c1 && v1->c2 == v2->c2 && v1->c3 == v2->c3;
     }
     case CLOSURE_VOLUME_RAYLEIGH_ID:
       return true;
