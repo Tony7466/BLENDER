@@ -923,22 +923,22 @@ TEST_F(ActionLayersTest, action_move_slot)
   ASSERT_EQ(layer_1->strip_array_num, 1);
   ASSERT_EQ(layer_2->strip_array_num, 1);
 
-  StripKeyframeData &strip_1 = layer_1->strip(0)->data<StripKeyframeData>(*action);
-  StripKeyframeData &strip_2 = layer_2->strip(0)->data<StripKeyframeData>(*action_2);
+  StripKeyframeData &strip_data_1 = layer_1->strip(0)->data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data_2 = layer_2->strip(0)->data<StripKeyframeData>(*action_2);
 
-  ASSERT_EQ(strip_1.channelbag_array_num, 1);
-  ASSERT_EQ(strip_2.channelbag_array_num, 1);
+  ASSERT_EQ(strip_data_1.channelbag_array_num, 1);
+  ASSERT_EQ(strip_data_2.channelbag_array_num, 1);
 
-  ChannelBag *bag_1 = strip_1.channelbag(0);
-  ChannelBag *bag_2 = strip_2.channelbag(0);
+  ChannelBag *bag_1 = strip_data_1.channelbag(0);
+  ChannelBag *bag_2 = strip_data_2.channelbag(0);
 
   ASSERT_EQ(bag_1->fcurve_array_num, 2);
   ASSERT_EQ(bag_2->fcurve_array_num, 2);
 
   move_slot(*bmain, slot_suzanne, *action_2, *action);
 
-  ASSERT_EQ(strip_1.channelbag_array_num, 2);
-  ASSERT_EQ(strip_2.channelbag_array_num, 0);
+  ASSERT_EQ(strip_data_1.channelbag_array_num, 2);
+  ASSERT_EQ(strip_data_2.channelbag_array_num, 0);
 
   ASSERT_EQ(action->slot_array_num, 2);
   ASSERT_EQ(action_2->slot_array_num, 0);

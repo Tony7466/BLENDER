@@ -2494,22 +2494,23 @@ void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_a
   assert_baklava_phase_1_invariants(from_action);
   assert_baklava_phase_1_invariants(to_action);
 
-  StripKeyframeData &from_strip = from_action.layer(0)->strip(0)->data<StripKeyframeData>(
+  StripKeyframeData &from_strip_data = from_action.layer(0)->strip(0)->data<StripKeyframeData>(
       from_action);
-  StripKeyframeData &to_strip = to_action.layer(0)->strip(0)->data<StripKeyframeData>(to_action);
+  StripKeyframeData &to_strip_data = to_action.layer(0)->strip(0)->data<StripKeyframeData>(
+      to_action);
 
   Slot &target_slot = to_action.slot_add();
   clone_slot(source_slot, target_slot);
   slot_name_ensure_unique(to_action, target_slot);
 
-  ChannelBag *channel_bag = from_strip.channelbag_for_slot(source_slot.handle);
+  ChannelBag *channel_bag = from_strip_data.channelbag_for_slot(source_slot.handle);
   BLI_assert(channel_bag != nullptr);
   channel_bag->slot_handle = target_slot.handle;
   grow_array_and_append<ActionChannelBag *>(
-      &to_strip.channelbag_array, &to_strip.channelbag_array_num, channel_bag);
-  int index = from_strip.find_channelbag_index(*channel_bag);
+      &to_strip_data.channelbag_array, &to_strip_data.channelbag_array_num, channel_bag);
+  int index = from_strip_data.find_channelbag_index(*channel_bag);
   shrink_array_and_remove<ActionChannelBag *>(
-      &from_strip.channelbag_array, &from_strip.channelbag_array_num, index);
+      &from_strip_data.channelbag_array, &from_strip_data.channelbag_array_num, index);
 
   /* Reassign all users of `source_slot` to the action `to_action` and the slot `target_slot`. */
   for (ID *user : source_slot.users(bmain)) {
