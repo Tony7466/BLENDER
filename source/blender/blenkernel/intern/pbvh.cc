@@ -1651,21 +1651,21 @@ void raycast(Tree &pbvh,
 }
 
 bool ray_face_intersection_quad(const float3 &ray_start,
-                                IsectRayPrecalc *isect_precalc,
+                                const IsectRayPrecalc *isect_precalc,
                                 const float3 &t0,
                                 const float3 &t1,
                                 const float3 &t2,
                                 const float3 &t3,
-                                float *depth)
+                                float *r_depth)
 {
   float depth_test;
 
   if ((isect_ray_tri_watertight_v3(ray_start, isect_precalc, t0, t1, t2, &depth_test, nullptr) &&
-       (depth_test < *depth)) ||
+       (depth_test < *r_depth)) ||
       (isect_ray_tri_watertight_v3(ray_start, isect_precalc, t0, t2, t3, &depth_test, nullptr) &&
-       (depth_test < *depth)))
+       (depth_test < *r_depth)))
   {
-    *depth = depth_test;
+    *r_depth = depth_test;
     return true;
   }
 
@@ -1673,17 +1673,17 @@ bool ray_face_intersection_quad(const float3 &ray_start,
 }
 
 bool ray_face_intersection_tri(const float3 &ray_start,
-                               IsectRayPrecalc *isect_precalc,
+                               const IsectRayPrecalc *isect_precalc,
                                const float3 &t0,
                                const float3 &t1,
                                const float3 &t2,
-                               float *depth)
+                               float *r_depth)
 {
   float depth_test;
   if (isect_ray_tri_watertight_v3(ray_start, isect_precalc, t0, t1, t2, &depth_test, nullptr) &&
-      (depth_test < *depth))
+      (depth_test < *r_depth))
   {
-    *depth = depth_test;
+    *r_depth = depth_test;
     return true;
   }
 
@@ -1776,30 +1776,27 @@ static void calc_mesh_intersect_data(const Span<int> corner_verts,
                                      const int face_index,
                                      const int tri_index,
                                      const std::array<const float *, 3> co,
-                                     float *depth,
+                                     const float *depth,
                                      PBVHVertRef *r_active_vertex,
-                                     int *r_active_face_index,
-                                     float *r_face_normal)
+                                     int &r_active_face_index,
+                                     float3 &r_face_normal)
 
 {
-  float nearest_vertex_co[3] = {0.0f};
-
-  if (r_face_normal) {
-    normal_tri_v3(r_face_normal, co[0], co[1], co[2]);
-  }
+  float3 nearest_vertex_co(0.0f);
+  normal_tri_v3(r_face_normal, co[0], co[1], co[2]);
 
   if (r_active_vertex) {
     const float3 location = ray_start + ray_normal * *depth;
-    for (int j = 0; j < 3; j++) {
+    for (int i = 0; i < co.size(); i++) {
       /* Always assign nearest_vertex_co in the first iteration to avoid comparison against
        * uninitialized values. This stores the closest vertex in the current intersecting
        * triangle. */
-      if (j == 0 ||
-          len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+      if (i == 0 ||
+          len_squared_v3v3(location, co[i]) < len_squared_v3v3(location, nearest_vertex_co))
       {
-        copy_v3_v3(nearest_vertex_co, co[j]);
-        r_active_vertex->i = corner_verts[corner_tris[tri_index][j]];
-        *r_active_face_index = face_index;
+        nearest_vertex_co = co[i];
+        r_active_vertex->i = corner_verts[corner_tris[tri_index][i]];
+        r_active_face_index = face_index;
       }
     }
   }
@@ -1815,10 +1812,10 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
                                     const float3 &ray_start,
                                     const float3 &ray_normal,
                                     IsectRayPrecalc *isect_precalc,
-                                    float *depth,
+                                    float *r_depth,
                                     PBVHVertRef *r_active_vertex,
-                                    int *r_active_face_index,
-                                    float *r_face_normal)
+                                    int &r_active_face_index,
+                                    float3 &r_face_normal)
 {
   const Span<int> face_indices = node.faces();
 
@@ -1835,7 +1832,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
         const std::array<const float *, 3> co{{vert_positions[corner_verts[tri[0]]],
                                                vert_positions[corner_verts[tri[1]]],
                                                vert_positions[corner_verts[tri[2]]]}};
-        if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
+        if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], r_depth)) {
           hit = true;
           calc_mesh_intersect_data(corner_verts,
                                    corner_tris,
@@ -1844,7 +1841,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
                                    face_i,
                                    tri_i,
                                    co,
-                                   depth,
+                                   r_depth,
                                    r_active_vertex,
                                    r_active_face_index,
                                    r_face_normal);
@@ -1866,7 +1863,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
             {node_positions[vert_map.index_of(corner_verts[tri[0]])],
              node_positions[vert_map.index_of(corner_verts[tri[1]])],
              node_positions[vert_map.index_of(corner_verts[tri[2]])]}};
-        if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], depth)) {
+        if (ray_face_intersection_tri(ray_start, isect_precalc, co[0], co[1], co[2], r_depth)) {
           hit = true;
           calc_mesh_intersect_data(corner_verts,
                                    corner_tris,
@@ -1875,7 +1872,7 @@ static bool pbvh_faces_node_raycast(const MeshNode &node,
                                    face_i,
                                    tri_i,
                                    co,
-                                   depth,
+                                   r_depth,
                                    r_active_vertex,
                                    r_active_face_index,
                                    r_face_normal);
@@ -1894,38 +1891,36 @@ static void calc_grids_intersect_data(const CCGKey &key,
                                       const short x,
                                       const short y,
                                       const std::array<const float *, 4> co,
-                                      float *depth,
+                                      float *r_depth,
                                       PBVHVertRef *r_active_vertex,
-                                      int *r_active_grid_index,
-                                      float *r_face_normal)
+                                      int &r_active_grid_index,
+                                      float3 &r_face_normal)
 
 {
   float3 nearest_vertex_co;
-  if (r_face_normal) {
-    normal_quad_v3(r_face_normal, co[0], co[1], co[2], co[3]);
-  }
+  normal_quad_v3(r_face_normal, co[0], co[1], co[2], co[3]);
 
   if (r_active_vertex) {
-    const float3 location = ray_start + ray_normal * *depth;
+    const float3 location = ray_start + ray_normal * *r_depth;
 
     const int x_it[4] = {0, 1, 1, 0};
     const int y_it[4] = {1, 1, 0, 0};
 
-    for (int j = 0; j < 4; j++) {
+    for (int i = 0; i < co.size(); i++) {
       /* Always assign nearest_vertex_co in the first iteration to avoid comparison against
        * uninitialized values. This stores the closest vertex in the current intersecting
        * quad. */
-      if (j == 0 ||
-          len_squared_v3v3(location, co[j]) < len_squared_v3v3(location, nearest_vertex_co))
+      if (i == 0 ||
+          len_squared_v3v3(location, co[i]) < len_squared_v3v3(location, nearest_vertex_co))
       {
-        copy_v3_v3(nearest_vertex_co, co[j]);
+        copy_v3_v3(nearest_vertex_co, co[i]);
 
-        r_active_vertex->i = key.grid_area * grid + (y + y_it[j]) * key.grid_size + (x + x_it[j]);
+        r_active_vertex->i = key.grid_area * grid + (y + y_it[i]) * key.grid_size + (x + x_it[i]);
       }
     }
   }
   if (r_active_grid_index) {
-    *r_active_grid_index = grid;
+    r_active_grid_index = grid;
   }
 }
 
@@ -1934,11 +1929,11 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                     const Span<float3> node_positions,
                                     const float3 &ray_start,
                                     const float3 &ray_normal,
-                                    IsectRayPrecalc *isect_precalc,
-                                    float *depth,
+                                    const IsectRayPrecalc *isect_precalc,
+                                    float *r_depth,
                                     PBVHVertRef *r_active_vertex,
-                                    int *r_active_grid_index,
-                                    float *r_face_normal)
+                                    int &r_active_grid_index,
+                                    float3 &r_face_normal)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
   const Span<int> grids = node.grids();
@@ -1963,7 +1958,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y)],
                grid_positions[CCG_grid_xy_to_index(grid_size, x, y)]}};
           if (ray_face_intersection_quad(
-                  ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+                  ray_start, isect_precalc, co[0], co[1], co[2], co[3], r_depth))
           {
             hit = true;
             calc_grids_intersect_data(key,
@@ -1973,7 +1968,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                       x,
                                       y,
                                       co,
-                                      depth,
+                                      r_depth,
                                       r_active_vertex,
                                       r_active_grid_index,
                                       r_face_normal);
@@ -1998,7 +1993,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                                 grid_positions[y * grid_size + x + 1],
                                                 grid_positions[y * grid_size + x]};
           if (ray_face_intersection_quad(
-                  ray_start, isect_precalc, co[0], co[1], co[2], co[3], depth))
+                  ray_start, isect_precalc, co[0], co[1], co[2], co[3], r_depth))
           {
             hit = true;
             calc_grids_intersect_data(key,
@@ -2008,7 +2003,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
                                       x,
                                       y,
                                       co,
-                                      depth,
+                                      r_depth,
                                       r_active_vertex,
                                       r_active_grid_index,
                                       r_face_normal);
@@ -2034,10 +2029,10 @@ bool raycast_node(Tree &pbvh,
                   const float3 &ray_start,
                   const float3 &ray_normal,
                   IsectRayPrecalc *isect_precalc,
-                  float *depth,
-                  PBVHVertRef *active_vertex,
-                  int *active_face_grid_index,
-                  float *face_normal)
+                  float *r_depth,
+                  PBVHVertRef *r_active_vertex,
+                  int &r_active_face_grid_index,
+                  float3 &r_face_normal)
 {
   if (node.flag_ & PBVH_FullyHidden) {
     return false;
@@ -2054,10 +2049,10 @@ bool raycast_node(Tree &pbvh,
                                      ray_start,
                                      ray_normal,
                                      isect_precalc,
-                                     depth,
-                                     active_vertex,
-                                     active_face_grid_index,
-                                     face_normal);
+                                     r_depth,
+                                     r_active_vertex,
+                                     r_active_face_grid_index,
+                                     r_face_normal);
     case Type::Grids:
       return pbvh_grids_node_raycast(*subdiv_ccg,
                                      static_cast<GridsNode &>(node),
@@ -2065,19 +2060,19 @@ bool raycast_node(Tree &pbvh,
                                      ray_start,
                                      ray_normal,
                                      isect_precalc,
-                                     depth,
-                                     active_vertex,
-                                     active_face_grid_index,
-                                     face_normal);
+                                     r_depth,
+                                     r_active_vertex,
+                                     r_active_face_grid_index,
+                                     r_face_normal);
     case Type::BMesh:
       return bmesh_node_raycast(static_cast<BMeshNode &>(node),
                                 ray_start,
                                 ray_normal,
                                 isect_precalc,
-                                depth,
+                                r_depth,
                                 use_origco,
-                                active_vertex,
-                                face_normal);
+                                r_active_vertex,
+                                r_face_normal);
   }
   BLI_assert_unreachable();
   return false;
