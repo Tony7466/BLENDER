@@ -8,6 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_vector.hh"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -26,6 +27,7 @@
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_select.hh"
+#include "SEQ_transform.hh"
 
 #include "WM_api.hh"
 
@@ -145,7 +147,7 @@ static void delete_selected_text(TextVars *data)
   text_selection_cancel(data);
 }
 
-static void text_editing_update(bContext *C)
+static void text_editing_update(const bContext *C)
 {
   Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
@@ -638,20 +640,108 @@ void SEQUENCER_OT_text_edit_mode_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 }
 
-static int sequencer_text_cursor_move_mouse_invoke(bContext *C,
-                                                   wmOperator * /*op*/,
-                                                   const wmEvent * /*event*/)
+static int find_closest_cursor_offset(TextVars *data, float2 mouse_loc)
 {
-  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVarsRuntime *text = data->runtime;
+  int best_cursor_offset = 0;
+  float best_distance = std::numeric_limits<float>::max();
 
-  if (!sequencer_text_editing_active_poll(C)) {
-    seq->flag |= SEQ_FLAG_TEXT_EDITING_ACTIVE;
+  for (seq::LineInfo line : text->lines) {
+    for (seq::CharInfo character : line.characters) {
+      const float distance = math::distance(mouse_loc, character.position);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best_cursor_offset = character.index;
+      }
+    }
   }
 
+  return best_cursor_offset;
+}
+
+static void cursor_set_by_mouse_position(const bContext *C, const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Sequence *seq = SEQ_select_active_get(scene);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  int2 mval_region;
+  WM_event_drag_start_mval(event, CTX_wm_region(C), mval_region);
+  float2 mouse_loc;
+  UI_view2d_region_to_view(v2d, mval_region.x, mval_region.y, &mouse_loc.x, &mouse_loc.y);
+
+  /* Convert cursor coordinates to domain of CharInfo::position. */
+  blender::float2 image_offset;
+  SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, image_offset);
+  mouse_loc += {v2d->tot.xmax, v2d->tot.ymax};
+  mouse_loc -= image_offset;
+
+  data->cursor_offset = find_closest_cursor_offset(data, mouse_loc);
+}
+
+static int sequencer_text_cursor_set_modal(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Sequence *seq = SEQ_select_active_get(scene);
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  /* XXX This happened sometimes, maybe not needed now, since I no longer invalidate runtime. */
+  if (data->runtime == nullptr) {
+    return OPERATOR_RUNNING_MODAL;
+  }
+
+  bool make_selection = false;
+
+  switch (event->type) {
+    case LEFTMOUSE:
+      if (event->val == KM_RELEASE) {
+        cursor_set_by_mouse_position(C, event);
+        if (make_selection) {
+          data->selection_end_offset = data->cursor_offset;
+        }
+        return OPERATOR_FINISHED;
+      }
+      break;
+    case MIDDLEMOUSE:
+    case RIGHTMOUSE:
+      return OPERATOR_FINISHED;
+    case MOUSEMOVE:
+      make_selection = true;
+      if (!text_has_selection(data)) {
+        data->selection_start_offset = data->cursor_offset;
+      }
+      cursor_set_by_mouse_position(C, event);
+      data->selection_end_offset = data->cursor_offset;
+      break;
+  }
+
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int sequencer_text_cursor_set_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  Sequence *seq = SEQ_select_active_get(scene);
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  View2D *v2d = UI_view2d_fromcontext(C);
+
+  int2 mval_region;
+  WM_event_drag_start_mval(event, CTX_wm_region(C), mval_region);
+  float2 mouse_loc;
+  UI_view2d_region_to_view(v2d, mval_region.x, mval_region.y, &mouse_loc.x, &mouse_loc.y);
+
+  if (!seq_point_image_isect(scene, seq, mouse_loc)) {
+    seq->flag &= ~SEQ_FLAG_TEXT_EDITING_ACTIVE;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  }
+
   text_selection_cancel(data);
-  text_editing_update(C);
-  return OPERATOR_FINISHED;
+  cursor_set_by_mouse_position(C, event);
+
+  WM_event_add_modal_handler(C, op);
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, CTX_data_scene(C));
+  return OPERATOR_RUNNING_MODAL;
 }
 
 void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot)
@@ -663,8 +753,9 @@ void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot)
 
   /* api callbacks */
   // ot->exec = sequencer_text_cursor_move_mouse_exec; //TODO I guess
-  ot->invoke = sequencer_text_cursor_move_mouse_invoke;
-  ot->poll = sequencer_text_editing_poll;
+  ot->invoke = sequencer_text_cursor_set_invoke;
+  ot->modal = sequencer_text_cursor_set_modal;
+  ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

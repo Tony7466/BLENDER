@@ -286,6 +286,7 @@ Sequence *find_nearest_seq(const Scene *scene,
                            const View2D *v2d,
                            const int mval[2],
                            eSeqHandle *r_hand);
+bool seq_point_image_isect(const Scene *scene, const Sequence *seq, float point_view[2]);
 
 /* `sequencer_add.cc` */
 

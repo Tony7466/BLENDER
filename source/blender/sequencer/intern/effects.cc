@@ -3179,17 +3179,20 @@ static blender::Vector<blender::seq::CharInfo> build_character_info(const TextVa
 {
   blender::Vector<blender::seq::CharInfo> characters;
   int byte_offset = 0;
+  int char_index = 0;
   while (byte_offset <= BLI_strnlen(data->text, sizeof(data->text))) {
     const char *str = data->text + byte_offset;
     const int char_length = BLI_str_utf8_size_or_error(str);
 
     blender::seq::CharInfo char_info;
+    char_info.index = char_index;
     char_info.str_ptr = str;
     char_info.byte_length = char_length;
     char_info.advance_x = BLF_glyph_advance(font, str, char_length);
     characters.append(char_info);
 
     byte_offset += char_length;
+    char_index++;
   }
   return characters;
 }
