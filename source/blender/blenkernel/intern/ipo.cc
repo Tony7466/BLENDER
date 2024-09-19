@@ -43,7 +43,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
@@ -1621,7 +1621,7 @@ static void icu_to_fcurves(ID *id,
          * - their values were 0-1
          * - we now need as 'frames'
          */
-        if ((id) && (icu->blocktype == GS(id->name)) &&
+        if ((id) && (icu->blocktype == GS(id->name)) && (GS(id->name) == ID_CU_LEGACY) &&
             (fcu->rna_path && STREQ(fcu->rna_path, "eval_time")))
         {
           Curve *cu = (Curve *)id;

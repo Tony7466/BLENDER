@@ -10,7 +10,7 @@
 
 #include <fmt/format.h>
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_attribute.hh"
 #include "BKE_blendfile_link_append.hh"
@@ -2590,6 +2590,7 @@ static void legacy_object_modifier_build(ConversionData &conversion_data,
   md_build.percentage_fac = legacy_md_build.percentage_fac;
   md_build.speed_fac = legacy_md_build.speed_fac;
   md_build.speed_maxgap = legacy_md_build.speed_maxgap;
+  md_build.object = legacy_md_build.object;
   STRNCPY(md_build.target_vgname, legacy_md_build.target_vgname);
 
   legacy_object_modifier_influence(md_build.influence,
