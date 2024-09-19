@@ -219,7 +219,8 @@ struct StepData {
   /** A copy of #SubdivCCG::grid_size. */
   int grid_size;
 
-  float4x4 cursor_transform;
+  float3 cursor_location;
+  float4 cursor_rotation;
 
   /* Geometry modification operations.
    *
@@ -956,13 +957,15 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
 
   {
-    const float4x4 temp = scene->cursor.matrix<float4x4>();
-    scene->cursor.set_matrix(step_data.cursor_transform, false);
-    step_data.cursor_transform = temp;
+    /* Swap undo step cursor transform and scene cursor transform. */
+    const float3 loc_temp = scene->cursor.location;
+    const float4 rot_temp = float4(scene->cursor.rotation());
+    copy_v3_v3(scene->cursor.location, step_data.cursor_location);
+    scene->cursor.set_rotation(math::Quaternion(step_data.cursor_rotation), false);
+    step_data.cursor_location = loc_temp;
+    step_data.cursor_rotation = rot_temp;
     DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
-  // copy_v3_v3(scene->cursor.location, step_data.pivot_pos);
-  // scene->cursor.set_rotation(math::Quaternion(step_data.pivot_rot), false);
 
   if (bmesh_restore(C, *depsgraph, step_data, object, ss)) {
     return;
@@ -1852,9 +1855,8 @@ void push_begin_ex(const Scene &scene, Object &ob, const char *name)
     }
   }
 
-  us->data.cursor_transform = scene.cursor.matrix<float4x4>();
-  // us->data.pivot_pos = scene.cursor.location;
-  // us->data.pivot_rot = float4(scene.cursor.rotation());
+  us->data.cursor_location = scene.cursor.location;
+  us->data.cursor_rotation = float4(scene.cursor.rotation());
 
   if (const KeyBlock *key = BKE_keyblock_from_object(&ob)) {
     us->data.active_shape_key_name = key->name;
