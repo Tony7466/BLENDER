@@ -1012,7 +1012,7 @@ static int gizmo_cage2d_invoke(bContext *C, wmGizmo *gz, const wmEvent *event)
   WM_gizmo_calc_matrix_final_no_offset(gz, data->orig_matrix_final_no_offset);
 
   if (gizmo_window_project_2d(
-          C, gz, blender::float2(blender::int2(event->mval)), 2, false, data->orig_mouse) == 0)
+          C, gz, blender::float2(blender::int2(event->mval)), 2, true, data->orig_mouse) == 0)
   {
     zero_v2(data->orig_mouse);
   }
@@ -1117,7 +1117,7 @@ static int gizmo_cage2d_modal(bContext *C,
      * alignment. */
     // todo: when gizmo is rotated, mouse coordinates are still not rotated. Setting use_offset in gizmo_window_project_2d below fixes the rotation problem but breaks the offset. 
     bool ok = gizmo_window_project_2d(
-        C, gz, blender::float2(blender::int2(event->mval)), 2, false, point_local);
+        C, gz, blender::float2(blender::int2(event->mval)), 2, true, point_local);
     copy_m4_m4(gz->matrix_offset, matrix_back);
     if (!ok) {
       return OPERATOR_RUNNING_MODAL;
