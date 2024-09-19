@@ -37,6 +37,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
+#include "DNA_ID.h"
 #include "DNA_userdef_enums.h"
 
 struct BlendWriter;
@@ -706,22 +707,16 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
                                     int *r_prefix_len);
 
 /**
- * Get the name (without type prefix) of the ID. This should be used when the the returned name is
- * used as identifier. If it's just used to display the name to the user, it's better to use
- * #BKE_id_ui_name.
- *
- * This is a macro currently, because it can't be implemented as inline function without adding an
- * include.
+ * Get the name (without type prefix) of the ID.
  */
-#define BKE_id_name(id) ((id).name + 2)
-
-/**
- * Get name of the data-block that should be shown in the UI.
- *
- * Currently, this is the same as #BKE_id_name, but maybe that will change in the future. Even if
- * not, it's good to encode usage intentions in the function name.
- */
-const char *BKE_id_ui_name(const ID &id);
+inline const char *BKE_id_name(const ID &id)
+{
+  return id.name + 2;
+}
+inline char *BKE_id_name(ID &id)
+{
+  return id.name + 2;
+}
 
 /**
  * Generate a concatenation of ID name (including two-chars type code) and its lib name, if any.

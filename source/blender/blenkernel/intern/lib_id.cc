@@ -2281,11 +2281,6 @@ void BKE_id_full_name_ui_prefix_get(char name[MAX_ID_FULL_NAME_UI],
   }
 }
 
-const char *BKE_id_ui_name(const ID &id)
-{
-  return id.name + 2;
-}
-
 char *BKE_id_to_unique_string_key(const ID *id)
 {
   if (!ID_IS_LINKED(id)) {
