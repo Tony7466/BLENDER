@@ -157,7 +157,7 @@ class Curves {
     }
     {
       gpu::Batch *geom = DRW_curves_batch_cache_get_edit_curves_handles(&curves);
-      edit_curves_handles_->draw(geom, manager.unique_handle(ob_ref));
+      edit_curves_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, manager.unique_handle(ob_ref));
     }
     {
       gpu::Batch *geom = DRW_curves_batch_cache_get_edit_curves_lines(&curves);
