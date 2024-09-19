@@ -6447,6 +6447,10 @@ class VIEW3D_MT_shading_ex_pie(Menu):
 class VIEW3D_MT_pivot_pie(Menu):
     bl_label = "Pivot Point"
 
+    @classmethod
+    def poll(cls, context):
+        return context.mode != 'SCULPT'
+
     def draw(self, context):
         layout = self.layout
         pie = layout.menu_pie()
