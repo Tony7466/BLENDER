@@ -2567,16 +2567,13 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
       component_info.item_input_values.reinitialize(node_storage.input_items.items_num);
       for (const int item_i : IndexRange(node_storage.input_items.items_num)) {
         const NodeForeachGeometryElementInputItem &item = node_storage.input_items.items[item_i];
+        const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
         component_info.item_input_values[item_i].reinitialize(mask.size());
         const GVArray &values = component_info.field_evaluator->get_evaluated(item_i);
-        const CPPType &type = values.type();
         mask.foreach_index(GrainSize(1024), [&](const int i, const int pos) {
-          /* Get value out of GVArray and then store it as socket value. */
-          BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+          SocketValueVariant &value_variant = component_info.item_input_values[item_i][pos];
+          void *buffer = value_variant.allocate_single(socket_type);
           values.get_to_uninitialized(i, buffer);
-          component_info.item_input_values[item_i][pos].store_single(
-              eNodeSocketDatatype(item.socket_type), buffer);
-          type.destruct(buffer);
         });
       }
     }
