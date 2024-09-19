@@ -219,6 +219,8 @@ struct StepData {
   /** A copy of #SubdivCCG::grid_size. */
   int grid_size;
 
+  float4x4 cursor_transform;
+
   /* Geometry modification operations.
    *
    * Original geometry is stored before some modification is run and is used to restore state of
@@ -952,6 +954,15 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, StepData &step_data)
   }
   SculptSession &ss = *object.sculpt;
   bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
+
+  {
+    const float4x4 temp = scene->cursor.matrix<float4x4>();
+    scene->cursor.set_matrix(step_data.cursor_transform, false);
+    step_data.cursor_transform = temp;
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
+  }
+  // copy_v3_v3(scene->cursor.location, step_data.pivot_pos);
+  // scene->cursor.set_rotation(math::Quaternion(step_data.pivot_rot), false);
 
   if (bmesh_restore(C, *depsgraph, step_data, object, ss)) {
     return;
@@ -1793,7 +1804,7 @@ void push_begin(const Scene &scene, Object &ob, const wmOperator *op)
   push_begin_ex(scene, ob, op->type->name);
 }
 
-void push_begin_ex(const Scene & /*scene*/, Object &ob, const char *name)
+void push_begin_ex(const Scene &scene, Object &ob, const char *name)
 {
   UndoStack *ustack = ED_undo_stack_get();
 
@@ -1840,6 +1851,10 @@ void push_begin_ex(const Scene & /*scene*/, Object &ob, const char *name)
       break;
     }
   }
+
+  us->data.cursor_transform = scene.cursor.matrix<float4x4>();
+  // us->data.pivot_pos = scene.cursor.location;
+  // us->data.pivot_rot = float4(scene.cursor.rotation());
 
   if (const KeyBlock *key = BKE_keyblock_from_object(&ob)) {
     us->data.active_shape_key_name = key->name;
