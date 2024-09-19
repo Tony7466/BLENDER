@@ -91,9 +91,9 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
        item++)
   {
     if (item->name != nullptr && item->identifier[0] != '\0') {
-      const StringRef name = params.in_out() == SOCK_IN ? "A" : "Value";
-      params.add_item(
-          IFACE_(item->name), SocketSearchOp{name, NodeIntegerMathOperation(item->value)}, weight);
+      params.add_item(IFACE_(item->name),
+                      SocketSearchOp{"Value", NodeIntegerMathOperation(item->value)},
+                      weight);
     }
   }
 }
@@ -137,7 +137,9 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto madd_fn = mf::build::SI3_SO<int, int, int, int>(
       "Multiply Add", [](int a, int b, int c) { return a * b + c; }, exec_preset);
   static auto mod_periodic_fn = mf::build::SI2_SO<int, int, int>(
-      "Modulo Periodic", [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; }, exec_preset);
+      "Modulo Periodic",
+      [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; },
+      exec_preset);
   static auto mod_fn = mf::build::SI2_SO<int, int, int>(
       "Modulo", [](int a, int b) { return b != 0 ? a % b : 0; }, exec_preset);
   static auto abs_fn = mf::build::SI1_SO<int, int>(
@@ -170,12 +172,6 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &divide_ceil_fn;
     case NODE_INTEGER_MATH_DIVIDE_ROUND:
       return &divide_round_fn;
-    case NODE_INTEGER_MATH_DISTANCE:
-      return &distance_fn;
-    case NODE_INTEGER_MATH_SQUARE:
-      return &square_fn;
-    case NODE_INTEGER_MATH_CUBE:
-      return &cube_fn;
     case NODE_INTEGER_MATH_POWER:
       return &pow_fn;
     case NODE_INTEGER_MATH_MULTIPLY_ADD:
@@ -198,24 +194,6 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &lcm_fn;
     case NODE_INTEGER_MATH_NEGATE:
       return &negate_fn;
-    case NODE_INTEGER_MATH_CLAMP:
-      return &clamp_fn;
-    case NODE_INTEGER_MATH_CLAMP_RANGE:
-      return &clamp_range_fn;
-    case NODE_INTEGER_MATH_AND:
-      return &and_fn;
-    case NODE_INTEGER_MATH_OR:
-      return &or_fn;
-    case NODE_INTEGER_MATH_XOR:
-      return &xor_fn;
-    case NODE_INTEGER_MATH_NOT:
-      return &not_fn;
-    case NODE_INTEGER_MATH_AND_NOT:
-      return &and_not_fn;
-    case NODE_INTEGER_MATH_LEFT_SHIFT:
-      return &left_shift_fn;
-    case NODE_INTEGER_MATH_RIGHT_SHIFT:
-      return &right_shift_fn;
   }
   BLI_assert_unreachable();
   return nullptr;
