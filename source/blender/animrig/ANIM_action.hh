@@ -239,25 +239,6 @@ class Action : public ::bAction {
   MutableSpan<StripKeyframeData *> strip_keyframe_data();
 
   /**
-   * Attempt to remove the keyframe strip data at `index`.
-   *
-   * If successful, the strip data is both removed from the array and freed.
-   *
-   * Fails if the data at `index` is still used somewhere in the action, in
-   * which case no changes are made and the action remains as-is.
-   *
-   * Note: this may alter the indices of some strip data items, due to the
-   * removal causing items to shift around to fill in the gap left by the
-   * removed item. This method ensures that all indices stored within the action
-   * (e.g. in the strips themselves) are properly updated to the new values.
-   * However, if any indices are stored *outside* the action, they will no
-   * longer be valid.
-   *
-   * \return True on success, false on failure.
-   */
-  bool strip_keyframe_data_remove(int index);
-
-  /**
    * Find the slot that best matches the animated ID.
    *
    * If the ID is already animated by this Action, by matching this
@@ -355,10 +336,11 @@ class Action : public ::bAction {
   void slot_setup_for_id(Slot &slot, const ID &animated_id);
 
  protected:
-  /* To give access to `strip_keyframe_data_append()` (and in the future,
-   * corresponding functions for other strip data types), needed for creating
-   * new strips. */
+  /* Friends for the purpose of adding/removing strip data on the action's strip
+   * data arrays. This is needed for the strip creation and removal code in
+   * `Strip` and `Layer`'s methods. */
   friend Strip;
+  friend Layer;
 
   /** Return the layer's index, or -1 if not found in this Action. */
   int64_t find_layer_index(const Layer &layer) const;
@@ -372,6 +354,25 @@ class Action : public ::bAction {
    * \return The index of the new item in the array.
    */
   int strip_keyframe_data_append(StripKeyframeData *strip_data);
+
+  /**
+   * Attempt to remove the keyframe strip data at `index`.
+   *
+   * If successful, the strip data is both removed from the array and freed.
+   *
+   * Fails if the data at `index` is still used somewhere in the action, in
+   * which case no changes are made and the action remains as-is.
+   *
+   * Note: this may alter the indices of some strip data items, due to the
+   * removal causing items to shift around to fill in the gap left by the
+   * removed item. This method ensures that all indices stored within the action
+   * (e.g. in the strips themselves) are properly updated to the new values.
+   * However, if any indices are stored *outside* the action, they will no
+   * longer be valid.
+   *
+   * \return True on success, false on failure.
+   */
+  bool strip_keyframe_data_remove(int index);
 
  private:
   Slot &slot_allocate();
