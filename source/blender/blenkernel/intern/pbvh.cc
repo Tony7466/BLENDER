@@ -1985,7 +1985,7 @@ static bool pbvh_grids_node_raycast(const SubdivCCG &subdiv_ccg,
   else {
     for (const int i : grids.index_range()) {
       const int grid = grids[i];
-      const Span<float3> grid_positions = node_positions.slice(key.grid_area * i, key.grid_area);
+      const Span<float3> grid_positions = node_positions.slice(bke::ccg::grid_range(key, i));
       for (const short y : IndexRange(grid_size - 1)) {
         for (const short x : IndexRange(grid_size - 1)) {
           if (!grid_hidden.is_empty()) {
@@ -2729,18 +2729,3 @@ IndexMask search_nodes(const Tree &pbvh,
 }
 
 }  // namespace blender::bke::pbvh
-
-PBVHVertRef BKE_pbvh_index_to_vertex(const Object &object, int index)
-{
-  const SculptSession &ss = *object.sculpt;
-  const blender::bke::pbvh::Tree &pbvh = *blender::bke::object::pbvh_get(object);
-  switch (pbvh.type()) {
-    case blender::bke::pbvh::Type::Mesh:
-    case blender::bke::pbvh::Type::Grids:
-      return BKE_pbvh_make_vref(index);
-    case blender::bke::pbvh::Type::BMesh:
-      return BKE_pbvh_make_vref(intptr_t(BM_vert_at_index(ss.bm, index)));
-  }
-
-  return BKE_pbvh_make_vref(PBVH_REF_NONE);
-}
