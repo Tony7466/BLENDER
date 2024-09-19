@@ -1364,7 +1364,8 @@ static void tonemapmodifier_apply(const StripScreenQuad &quad,
           if (tmmd->type == SEQ_TONEMAP_RD_PHOTORECEPTOR) {
             tonemap_rd_photoreceptor(pixels, mask, range, data);
           }
-          else /* if (tmmd->type == SEQ_TONEMAP_RD_SIMPLE) */ {
+          else {
+            BLI_assert(tmmd->type == SEQ_TONEMAP_RH_SIMPLE);
             tonemap_simple(pixels, mask, range, data);
           }
           scene_linear_to_image_chunk_float(ibuf, range);
@@ -1379,7 +1380,8 @@ static void tonemapmodifier_apply(const StripScreenQuad &quad,
           if (tmmd->type == SEQ_TONEMAP_RD_PHOTORECEPTOR) {
             tonemap_rd_photoreceptor(scene_linear.data(), mask, range, data);
           }
-          else /* if (tmmd->type == SEQ_TONEMAP_RD_SIMPLE) */ {
+          else {
+            BLI_assert(tmmd->type == SEQ_TONEMAP_RH_SIMPLE);
             tonemap_simple(scene_linear.data(), mask, range, data);
           }
           scene_linear_to_image_chunk_byte(scene_linear.data(), ibuf, range);
