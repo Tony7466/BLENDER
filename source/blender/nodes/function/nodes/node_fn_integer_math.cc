@@ -102,9 +102,9 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
        item++)
   {
     if (item->name != nullptr && item->identifier[0] != '\0') {
-      params.add_item(IFACE_(item->name),
-                      SocketSearchOp{"Value", NodeIntegerMathOperation(item->value)},
-                      weight);
+      const StringRef name = params.in_out() == SOCK_IN ? "A" : "Value";
+      params.add_item(
+          IFACE_(item->name), SocketSearchOp{name, NodeIntegerMathOperation(item->value)}, weight);
     }
   }
 }
