@@ -107,6 +107,9 @@ std::optional<std::string> get_modifier_bake_path(const Main &bmain,
   if (StringRef(nmd.bake_directory).is_empty()) {
     return std::nullopt;
   }
+  if (!BLI_path_is_rel(nmd.bake_directory)) {
+    return nmd.bake_directory;
+  }
   const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
   if (StringRef(base_path).is_empty()) {
     return std::nullopt;
@@ -146,6 +149,9 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
   if (bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH) {
     if (StringRef(bake->directory).is_empty()) {
       return std::nullopt;
+    }
+    if (!BLI_path_is_rel(bake->directory)) {
+      return BakePath::from_single_root(bake->directory);
     }
     const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
     if (StringRef(base_path).is_empty()) {
