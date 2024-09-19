@@ -2331,8 +2331,8 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     const auto &node_storage = *static_cast<const NodeGeometryForeachGeometryElementOutput *>(
         output_bnode_.storage);
     const AttrDomain iteration_domain = AttrDomain(node_storage.domain);
-    const bNodeSocket &element_geometry_socket = zone_.input_node->output_socket(1);
-    BLI_assert(element_geometry_socket.is_available() == (iteration_domain != AttrDomain::Corner));
+    BLI_assert(zone_.input_node->output_socket(1).is_available() ==
+               (iteration_domain != AttrDomain::Corner));
 
     const int input_items_num = node_storage.input_items.items_num;
     const int main_items_num = node_storage.main_items.items_num;
