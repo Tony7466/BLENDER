@@ -1136,7 +1136,7 @@ static void text_edit_draw(const bContext *C)
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   GPU_blend(GPU_BLEND_ALPHA);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformColor4fv(blender::float4(1.0f, 1.0f, 1.0f, 0.5f));
+  immUniformColor4fv(blender::float4(0.43f, 0.65f, 1.0f, 0.8f));
 
   const Scene *scene = CTX_data_scene(C);
   blender::float2 image_offset;
