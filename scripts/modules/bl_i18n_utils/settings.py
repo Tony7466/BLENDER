@@ -14,10 +14,10 @@ import os
 import sys
 import types
 
+# Only do soft-dependency on `bpy` module, not real strong need for it currently.
 try:
     import bpy
 except ModuleNotFoundError:
-    print("Could not import bpy, some features are not available when not run from Blender.")
     bpy = None
 
 ###############################################################################
@@ -90,9 +90,12 @@ LANGUAGES = (
     (51, "Swahili (Kiswahili)", "sw"),
     (52, "Belarusian (беларуску)", "be"),
     (53, "Danish (Dansk)", "da"),
+    (54, "Slovenian (Slovenščina)", "sl"),
+    # Using the utf8 flipped form of Urdu (اُردُو).
+    (55, "Urdu (وُدرُا)", "ur"),
 )
 
-# Default context, in py (keep in sync with `BLT_translation.h`)!
+# Default context, in py (keep in sync with `BLT_translation.hh`)!
 if bpy is not None:
     assert bpy.app.translations.contexts.default == "*"
 DEFAULT_CONTEXT = "*"
@@ -111,7 +114,7 @@ IMPORT_LANGUAGES_SKIP = {
 
 # Languages that need RTL pre-processing.
 IMPORT_LANGUAGES_RTL = {
-    'ar_EG', 'fa_IR', 'he_IL',
+    'ar_EG', 'fa_IR', 'he_IL', 'ur',
 }
 
 # The comment prefix used in generated `messages.txt` file.
@@ -265,9 +268,10 @@ PYGETTEXT_KEYWORDS = (() +
     tuple(("{}\\((?:[^\"',]+,){{2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("BKE_modifier_set_error",)) +
 
-    # Compositor error messages
-    tuple((r"\.{}\(\s*" + _msg_re + r"\s*\)").format(it)
-          for it in ("set_info_message",)) +
+    # Compositor and EEVEE messages.
+    # Ends either with `)` (function call close), or `,` when there are extra formatting parameters.
+    tuple((r"{}\(\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
+          for it in ("set_info_message", "info_append_i18n")) +
 
     # This one is a tad more risky, but in practice would not expect a name/uid string parameter
     # (the second one in those functions) to ever have a comma in it, so think this is fine.
@@ -312,7 +316,7 @@ PYGETTEXT_KEYWORDS = (() +
     ((r"/\*name_display\*/\s*" + _msg_re + r"\s*,"),) +
 
     tuple((r"{}\(\s*" + _msg_re + r"\s*,\s*(?:" +
-           r"\s*,\s*)?(?:".join(_ctxt_re_gen(i) for i in range(PYGETTEXT_MAX_MULTI_CTXT)) + r")?\s*\)").format(it)
+           r"\s*,\s*)?(?:".join(_ctxt_re_gen(i) for i in range(PYGETTEXT_MAX_MULTI_CTXT)) + r")?\s*,?\s*\)").format(it)
           for it in ("BLT_I18N_MSGID_MULTI_CTXT",))
 )
 

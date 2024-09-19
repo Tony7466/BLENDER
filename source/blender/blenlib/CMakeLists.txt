@@ -31,7 +31,6 @@ set(SRC
   intern/BLI_ghash_utils.cc
   intern/BLI_heap.c
   intern/BLI_heap_simple.c
-  intern/BLI_index_range.cc
   intern/BLI_kdopbvh.c
   intern/BLI_linklist.c
   intern/BLI_linklist_lockfree.c
@@ -40,6 +39,7 @@ set(SRC
   intern/BLI_memiter.c
   intern/BLI_mempool.c
   intern/BLI_mmap.c
+  intern/BLI_subprocess.cc
   intern/BLI_timer.c
   intern/DLRB_tree.c
   intern/array_store.cc
@@ -48,6 +48,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_bool_conversion.cc
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
@@ -105,6 +106,7 @@ set(SRC
   intern/math_color_inline.c
   intern/math_geom.cc
   intern/math_geom_inline.c
+  intern/math_half.cc
   intern/math_interp.cc
   intern/math_matrix.cc
   intern/math_matrix_c.cc
@@ -116,6 +118,8 @@ set(SRC
   intern/math_vec.cc
   intern/math_vector.c
   intern/math_vector_inline.c
+  intern/memory_cache.cc
+  intern/memory_counter.cc
   intern/memory_utils.c
   intern/mesh_boolean.cc
   intern/mesh_intersect.cc
@@ -186,10 +190,12 @@ set(SRC
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
   BLI_binary_search.hh
+  BLI_bit_bool_conversion.hh
   BLI_bit_group_vector.hh
   BLI_bit_ref.hh
   BLI_bit_span.hh
   BLI_bit_span_ops.hh
+  BLI_bit_span_to_index_ranges.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -198,6 +204,7 @@ set(SRC
   BLI_bounds_types.hh
   BLI_boxpack_2d.h
   BLI_buffer.h
+  BLI_build_config.h
   BLI_cache_mutex.hh
   BLI_color.hh
   BLI_color_mix.hh
@@ -205,6 +212,7 @@ set(SRC
   BLI_compiler_compat.h
   BLI_compiler_typecheck.h
   BLI_compute_context.hh
+  BLI_concurrent_map.hh
   BLI_console.h
   BLI_convexhull_2d.h
   BLI_cpp_type.hh
@@ -236,6 +244,7 @@ set(SRC
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
+  BLI_generic_key.hh
   BLI_generic_pointer.hh
   BLI_generic_span.hh
   BLI_generic_value_map.hh
@@ -259,6 +268,8 @@ set(SRC
   BLI_index_mask_expression.hh
   BLI_index_mask_fwd.hh
   BLI_index_range.hh
+  BLI_index_ranges_builder.hh
+  BLI_index_ranges_builder_fwd.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
   BLI_jitter_2d.h
@@ -293,6 +304,7 @@ set(SRC
   BLI_math_euler.hh
   BLI_math_euler_types.hh
   BLI_math_geom.h
+  BLI_math_half.hh
   BLI_math_inline.h
   BLI_math_interp.hh
   BLI_math_matrix.h
@@ -313,9 +325,13 @@ set(SRC
   BLI_math_vector.hh
   BLI_math_vector_mpq_types.hh
   BLI_math_vector_types.hh
+  BLI_math_vector_unroll.hh
   BLI_memarena.h
   BLI_memblock.h
   BLI_memiter.h
+  BLI_memory_cache.hh
+  BLI_memory_counter.hh
+  BLI_memory_counter_fwd.hh
   BLI_memory_utils.h
   BLI_memory_utils.hh
   BLI_mempool.h
@@ -365,6 +381,7 @@ set(SRC
   BLI_string_utils.hh
   BLI_struct_equality_utils.hh
   BLI_sub_frame.hh
+  BLI_subprocess.hh
   BLI_sys_types.h
   BLI_system.h
   BLI_task.h
@@ -410,6 +427,7 @@ set(LIB
   extern_wcwidth
   PRIVATE bf::intern::atomic
   PRIVATE extern_fmtlib
+  PUBLIC bf::dependencies::optional::tbb
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -424,18 +442,6 @@ endif()
 
 if(WITH_MEM_VALGRIND)
   add_definitions(-DWITH_MEM_VALGRIND)
-endif()
-
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
 endif()
 
 if(WITH_GMP)
@@ -458,7 +464,7 @@ if(WITH_FFTW3)
     ${FFTW3_LIBRARIES}
   )
   add_definitions(-DWITH_FFTW3)
-  if (WITH_FFTW3_THREADS_F_SUPPORT)
+  if(WITH_FFTW3_THREADS_F_SUPPORT)
     add_definitions(-DWITH_FFTW3_THREADS_F_SUPPORT)
   endif()
 endif()
@@ -484,6 +490,7 @@ endif()
 if(APPLE)
   list(APPEND SRC
     intern/storage_apple.mm
+    intern/fileops_apple.mm
   )
 endif()
 
@@ -521,6 +528,7 @@ if(WITH_GTESTS)
     tests/BLI_bit_vector_test.cc
     tests/BLI_bitmap_test.cc
     tests/BLI_bounds_test.cc
+    tests/BLI_build_config_test.cc
     tests/BLI_color_test.cc
     tests/BLI_convexhull_2d_test.cc
     tests/BLI_cpp_type_test.cc
@@ -541,6 +549,7 @@ if(WITH_GTESTS)
     tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
+    tests/BLI_index_ranges_builder_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
@@ -555,6 +564,7 @@ if(WITH_GTESTS)
     tests/BLI_math_bits_test.cc
     tests/BLI_math_color_test.cc
     tests/BLI_math_geom_test.cc
+    tests/BLI_math_half_test.cc
     tests/BLI_math_interp_test.cc
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
@@ -565,10 +575,13 @@ if(WITH_GTESTS)
     tests/BLI_math_vector_test.cc
     tests/BLI_math_vector_types_test.cc
     tests/BLI_memiter_test.cc
+    tests/BLI_memory_cache_test.cc
+    tests/BLI_memory_counter_test.cc
     tests/BLI_memory_utils_test.cc
     tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
     tests/BLI_multi_value_map_test.cc
+    tests/BLI_offset_indices_test.cc
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
     tests/BLI_pool_test.cc

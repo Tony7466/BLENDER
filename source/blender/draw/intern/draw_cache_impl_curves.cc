@@ -261,26 +261,21 @@ static void create_points_position_time_vbo(const bke::CurvesGeometry &curves,
   GPU_vertformat_attr_add(&format, "posTime", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   cache.proc_point_buf = GPU_vertbuf_create_with_format_ex(
-      &format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  GPU_vertbuf_data_alloc(cache.proc_point_buf, cache.points_num);
-
-  MutableSpan posTime_data{
-      static_cast<PositionAndParameter *>(GPU_vertbuf_get_data(cache.proc_point_buf)),
-      cache.points_num};
+      format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(*cache.proc_point_buf, cache.points_num);
 
   GPUVertFormat length_format = {0};
   GPU_vertformat_attr_add(&length_format, "hairLength", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
 
   cache.proc_length_buf = GPU_vertbuf_create_with_format_ex(
-      &length_format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  GPU_vertbuf_data_alloc(cache.proc_length_buf, cache.curves_num);
+      length_format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(*cache.proc_length_buf, cache.curves_num);
 
   /* TODO: Only create hairLength VBO when necessary. */
-  MutableSpan hairLength_data{static_cast<float *>(GPU_vertbuf_get_data(cache.proc_length_buf)),
-                              cache.curves_num};
-
-  fill_points_position_time_vbo(
-      curves.points_by_curve(), curves.positions(), posTime_data, hairLength_data);
+  fill_points_position_time_vbo(curves.points_by_curve(),
+                                curves.positions(),
+                                cache.proc_point_buf->data<PositionAndParameter>(),
+                                cache.proc_length_buf->data<float>());
 }
 
 static uint32_t bezier_data_value(int8_t handle_type, bool is_active)
@@ -306,25 +301,21 @@ static void create_edit_points_position_and_data(
   Span<float3> deformed_positions = deformation.positions;
   const int bezier_point_count = bezier_dst_offsets.total_size();
   const int size = deformed_positions.size() + bezier_point_count * 2;
-  GPU_vertbuf_init_with_format(cache.edit_points_pos, &format_pos);
-  GPU_vertbuf_data_alloc(cache.edit_points_pos, size);
+  GPU_vertbuf_init_with_format(*cache.edit_points_pos, format_pos);
+  GPU_vertbuf_data_alloc(*cache.edit_points_pos, size);
 
-  GPU_vertbuf_init_with_format(cache.edit_points_data, &format_data);
-  GPU_vertbuf_data_alloc(cache.edit_points_data, size);
+  GPU_vertbuf_init_with_format(*cache.edit_points_data, format_data);
+  GPU_vertbuf_data_alloc(*cache.edit_points_data, size);
 
-  float3 *pos_buffer_data = static_cast<float3 *>(GPU_vertbuf_get_data(cache.edit_points_pos));
-  uint32_t *data_buffer_data = static_cast<uint32_t *>(
-      GPU_vertbuf_get_data(cache.edit_points_data));
+  MutableSpan<float3> pos_dst = cache.edit_points_pos->data<float3>();
+  pos_dst.take_front(deformed_positions.size()).copy_from(deformed_positions);
 
-  MutableSpan<float3> pos_dst(pos_buffer_data, deformed_positions.size());
-  pos_dst.copy_from(deformed_positions);
+  MutableSpan<uint32_t> data_dst = cache.edit_points_data->data<uint32_t>();
 
-  MutableSpan<uint32_t> data_dst(data_buffer_data, size);
-
-  MutableSpan<uint32_t> handle_data_left(data_buffer_data + deformed_positions.size(),
+  MutableSpan<uint32_t> handle_data_left(data_dst.data() + deformed_positions.size(),
                                          bezier_point_count);
   MutableSpan<uint32_t> handle_data_right(
-      data_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
+      data_dst.data() + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
   const Span<float3> left_handle_positions = curves.handle_positions_left();
   const Span<float3> right_handle_positions = curves.handle_positions_right();
@@ -380,10 +371,9 @@ static void create_edit_points_position_and_data(
     return;
   }
 
-  MutableSpan<float3> left_handles(pos_buffer_data + deformed_positions.size(),
-                                   bezier_point_count);
+  MutableSpan<float3> left_handles(pos_dst.data() + deformed_positions.size(), bezier_point_count);
   MutableSpan<float3> right_handles(
-      pos_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
+      pos_dst.data() + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
   /* TODO: Use deformed left_handle_positions and left_handle_positions. */
   array_utils::gather_group_to_group(
@@ -402,10 +392,9 @@ static void create_edit_points_selection(const bke::CurvesGeometry &curves,
 
   const int bezier_point_count = bezier_dst_offsets.total_size();
   const int vert_count = curves.points_num() + bezier_point_count * 2;
-  GPU_vertbuf_init_with_format(cache.edit_points_selection, &format_data);
-  GPU_vertbuf_data_alloc(cache.edit_points_selection, vert_count);
-  MutableSpan<float> data(static_cast<float *>(GPU_vertbuf_get_data(cache.edit_points_selection)),
-                          vert_count);
+  GPU_vertbuf_init_with_format(*cache.edit_points_selection, format_data);
+  GPU_vertbuf_data_alloc(*cache.edit_points_selection, vert_count);
+  MutableSpan<float> data = cache.edit_points_selection->data<float>();
 
   const VArray<float> attribute = *curves.attributes().lookup_or_default<float>(
       ".selection", bke::AttrDomain::Point, 1.0f);
@@ -509,7 +498,7 @@ static void calc_edit_handles_vbo(const bke::CurvesGeometry &curves,
 }
 
 static void alloc_final_attribute_vbo(CurvesEvalCache &cache,
-                                      const GPUVertFormat *format,
+                                      const GPUVertFormat &format,
                                       const int index,
                                       const char * /*name*/)
 {
@@ -518,7 +507,7 @@ static void alloc_final_attribute_vbo(CurvesEvalCache &cache,
 
   /* Create a destination buffer for the transform feedback. Sized appropriately */
   /* Those are points! not line segments. */
-  GPU_vertbuf_data_alloc(cache.final.attributes_buf[index],
+  GPU_vertbuf_data_alloc(*cache.final.attributes_buf[index],
                          cache.final.resolution * cache.curves_num);
 }
 
@@ -526,7 +515,7 @@ static void ensure_control_point_attribute(const Curves &curves,
                                            CurvesEvalCache &cache,
                                            const DRW_AttributeRequest &request,
                                            const int index,
-                                           const GPUVertFormat *format)
+                                           const GPUVertFormat &format)
 {
   if (cache.proc_attributes_buf[index] != nullptr) {
     return;
@@ -536,7 +525,7 @@ static void ensure_control_point_attribute(const Curves &curves,
 
   cache.proc_attributes_buf[index] = GPU_vertbuf_create_with_format_ex(
       format, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  gpu::VertBuf *attr_vbo = cache.proc_attributes_buf[index];
+  gpu::VertBuf &attr_vbo = *cache.proc_attributes_buf[index];
 
   GPU_vertbuf_data_alloc(attr_vbo,
                          request.domain == bke::AttrDomain::Point ? curves.geometry.point_num :
@@ -552,9 +541,7 @@ static void ensure_control_point_attribute(const Curves &curves,
   bke::AttributeReader<ColorGeometry4f> attribute = attributes.lookup_or_default<ColorGeometry4f>(
       request.attribute_name, request.domain, {0.0f, 0.0f, 0.0f, 1.0f});
 
-  MutableSpan<ColorGeometry4f> vbo_span{
-      static_cast<ColorGeometry4f *>(GPU_vertbuf_get_data(attr_vbo)),
-      attributes.domain_size(request.domain)};
+  MutableSpan<ColorGeometry4f> vbo_span = attr_vbo.data<ColorGeometry4f>();
 
   attribute.varray.materialize(vbo_span);
 }
@@ -568,11 +555,10 @@ static void ensure_final_attribute(const Curves &curves,
   drw_curves_get_attribute_sampler_name(request.attribute_name, sampler_name);
 
   GPUVertFormat format = {0};
-  GPU_vertformat_deinterleave(&format);
   /* All attributes use vec4, see comment below. */
   GPU_vertformat_attr_add(&format, sampler_name, GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
-  ensure_control_point_attribute(curves, cache, request, index, &format);
+  ensure_control_point_attribute(curves, cache, request, index, format);
 
   /* Existing final data may have been for a different attribute (with a different name or domain),
    * free the data. */
@@ -580,7 +566,7 @@ static void ensure_final_attribute(const Curves &curves,
 
   /* Ensure final data for points. */
   if (request.domain == bke::AttrDomain::Point) {
-    alloc_final_attribute_vbo(cache, &format, index, sampler_name);
+    alloc_final_attribute_vbo(cache, format, index, sampler_name);
   }
 }
 
@@ -609,13 +595,13 @@ static void create_curve_offsets_vbos(const OffsetIndices<int> points_by_curve,
 
   /* Curve Data. */
   cache.proc_strand_buf = GPU_vertbuf_create_with_format_ex(
-      &format_data, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  GPU_vertbuf_data_alloc(cache.proc_strand_buf, cache.curves_num);
+      format_data, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(*cache.proc_strand_buf, cache.curves_num);
   GPU_vertbuf_attr_get_raw_data(cache.proc_strand_buf, data_id, &data_step);
 
   cache.proc_strand_seg_buf = GPU_vertbuf_create_with_format_ex(
-      &format_seg, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
-  GPU_vertbuf_data_alloc(cache.proc_strand_seg_buf, cache.curves_num);
+      format_seg, GPU_USAGE_STATIC | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+  GPU_vertbuf_data_alloc(*cache.proc_strand_seg_buf, cache.curves_num);
   GPU_vertbuf_attr_get_raw_data(cache.proc_strand_seg_buf, seg_id, &seg_step);
 
   fill_curve_offsets_vbos(points_by_curve, data_step, seg_step);
@@ -628,11 +614,16 @@ static void alloc_final_points_vbo(CurvesEvalCache &cache)
   GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
 
   cache.final.proc_buf = GPU_vertbuf_create_with_format_ex(
-      &format, GPU_USAGE_DEVICE_ONLY | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
+      format, GPU_USAGE_DEVICE_ONLY | GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
   /* Create a destination buffer for the transform feedback. Sized appropriately */
+
   /* Those are points! not line segments. */
-  GPU_vertbuf_data_alloc(cache.final.proc_buf, cache.final.resolution * cache.curves_num);
+  uint point_len = cache.final.resolution * cache.curves_num;
+  /* Avoid creating null sized VBO which can lead to crashes on certain platforms. */
+  point_len = max_ii(1, point_len);
+
+  GPU_vertbuf_data_alloc(*cache.final.proc_buf, point_len);
 }
 
 static void calc_final_indices(const bke::CurvesGeometry &curves,
@@ -664,8 +655,8 @@ static void calc_final_indices(const bke::CurvesGeometry &curves,
   /* initialize vertex format */
   GPU_vertformat_attr_add(&format, "dummy", GPU_COMP_U8, 1, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
-  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
-  GPU_vertbuf_data_alloc(vbo, 1);
+  gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(format);
+  GPU_vertbuf_data_alloc(*vbo, 1);
 
   gpu::IndexBuf *ibo = nullptr;
   eGPUBatchFlag owns_flag = GPU_BATCH_OWNS_VBO;
@@ -1074,8 +1065,8 @@ static void create_edit_points_position_vbo(
   /* TODO: Deform curves using deformations. */
   const Span<float3> positions = curves.evaluated_positions();
 
-  GPU_vertbuf_init_with_format(cache.edit_curves_lines_pos, &format);
-  GPU_vertbuf_data_alloc(cache.edit_curves_lines_pos, positions.size());
+  GPU_vertbuf_init_with_format(*cache.edit_curves_lines_pos, format);
+  GPU_vertbuf_data_alloc(*cache.edit_curves_lines_pos, positions.size());
   GPU_vertbuf_attr_fill(cache.edit_curves_lines_pos, attr_id, positions.data());
 }
 

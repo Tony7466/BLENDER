@@ -110,7 +110,7 @@ void BKE_view_layer_copy_data(Scene *scene_dst,
                               const ViewLayer *view_layer_src,
                               int flag);
 
-void BKE_view_layer_rename(Main *bmain, Scene *scene, ViewLayer *view_layer, const char *name);
+void BKE_view_layer_rename(Main *bmain, Scene *scene, ViewLayer *view_layer, const char *newname);
 
 /**
  * Get the active collection
@@ -464,6 +464,7 @@ void BKE_view_layer_visible_bases_iterator_end(BLI_Iterator *iter);
       func_end = BKE_scene_objects_iterator_end; \
       data_in = (scene); \
     } \
+    BKE_view_layer_synced_ensure(scene, _view_layer); \
     ITER_BEGIN (func_begin, func_next, func_end, data_in, Object *, _instance)
 
 #define FOREACH_OBJECT_FLAG_END \
@@ -564,13 +565,12 @@ void BKE_view_layer_verify_aov(RenderEngine *engine, Scene *scene, ViewLayer *vi
  * Check if the given view layer has at least one valid AOV.
  */
 bool BKE_view_layer_has_valid_aov(ViewLayer *view_layer);
-ViewLayer *BKE_view_layer_find_with_aov(Scene *scene, ViewLayerAOV *view_layer_aov);
+ViewLayer *BKE_view_layer_find_with_aov(Scene *scene, ViewLayerAOV *aov);
 
 ViewLayerLightgroup *BKE_view_layer_add_lightgroup(ViewLayer *view_layer, const char *name);
 void BKE_view_layer_remove_lightgroup(ViewLayer *view_layer, ViewLayerLightgroup *lightgroup);
 void BKE_view_layer_set_active_lightgroup(ViewLayer *view_layer, ViewLayerLightgroup *lightgroup);
-ViewLayer *BKE_view_layer_find_with_lightgroup(Scene *scene,
-                                               ViewLayerLightgroup *view_layer_lightgroup);
+ViewLayer *BKE_view_layer_find_with_lightgroup(Scene *scene, ViewLayerLightgroup *lightgroup);
 void BKE_view_layer_rename_lightgroup(Scene *scene,
                                       ViewLayer *view_layer,
                                       ViewLayerLightgroup *lightgroup,

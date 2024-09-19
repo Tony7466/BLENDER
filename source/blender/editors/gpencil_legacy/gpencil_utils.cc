@@ -37,7 +37,7 @@
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_brush.hh"
 #include "BKE_collection.hh"
 #include "BKE_colortools.hh"
@@ -60,7 +60,7 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
@@ -1430,13 +1430,6 @@ void ED_gpencil_add_defaults(bContext *C, Object *ob)
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
-  Paint *paint = &ts->gp_paint->paint;
-  Brush *brush = BKE_paint_brush(paint);
-  /* if not exist, create a new one */
-  if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-    /* create new brushes */
-    BKE_brush_gpencil_paint_presets(bmain, ts, true);
-  }
 
   /* ensure a color exists and is assigned to object */
   BKE_gpencil_object_material_ensure_from_active_input_toolsettings(bmain, ob, ts);
@@ -1729,7 +1722,7 @@ void ED_gpencil_brush_draw_eraser(Brush *brush, int x, int y)
 
 bool ED_gpencil_brush_cursor_poll(bContext *C)
 {
-  if (WM_toolsystem_active_tool_is_brush(C)) {
+  if (WM_toolsystem_active_tool_is_brush(C) && !WM_toolsystem_active_tool_has_custom_cursor(C)) {
     return true;
   }
   return false;
@@ -1792,7 +1785,7 @@ float ED_gpencil_radial_control_scale(bContext *C,
 {
   float scale_fac = 1.0f;
   if ((brush && brush->gpencil_settings) && (brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
-      (brush->gpencil_tool == GPAINT_TOOL_DRAW))
+      (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_DRAW))
   {
     float cursor_radius = ED_gpencil_cursor_radius(C, mval[0], mval[1]);
     scale_fac = max_ff(cursor_radius, 1.0f) / max_ff(initial_value, 1.0f);
@@ -1849,7 +1842,7 @@ static void gpencil_brush_cursor_draw(bContext *C, int x, int y, void *customdat
     }
 
     /* eraser has special shape and use a different shader program */
-    if (brush->gpencil_tool == GPAINT_TOOL_ERASE) {
+    if (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_ERASE) {
       ED_gpencil_brush_draw_eraser(brush, x, y);
       return;
     }
@@ -1867,7 +1860,7 @@ static void gpencil_brush_cursor_draw(bContext *C, int x, int y, void *customdat
       if ((gp_style) && GPENCIL_PAINT_MODE(gpd) &&
           ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE) == 0) &&
           ((brush->gpencil_settings->flag & GP_BRUSH_STABILIZE_MOUSE_TEMP) == 0) &&
-          (brush->gpencil_tool == GPAINT_TOOL_DRAW))
+          (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_DRAW))
       {
 
         const bool is_vertex_stroke =
@@ -1889,7 +1882,7 @@ static void gpencil_brush_cursor_draw(bContext *C, int x, int y, void *customdat
       }
       else {
         /* Only Tint tool must show big cursor. */
-        if (brush->gpencil_tool == GPAINT_TOOL_TINT) {
+        if (brush->gpencil_brush_type == GPAINT_BRUSH_TYPE_TINT) {
           radius = brush->size;
           copy_v3_v3(color, brush->rgb);
         }
@@ -3430,7 +3423,11 @@ int ED_gpencil_new_layer_dialog(bContext *C, wmOperator *op)
       bGPdata *gpd = static_cast<bGPdata *>(ob->data);
       gpencil_layer_new_name_get(gpd, name, sizeof(name));
       RNA_property_string_set(op->ptr, prop, name);
-      return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Add New Layer"), IFACE_("Add"));
+      return WM_operator_props_dialog_popup(C,
+                                            op,
+                                            200,
+                                            IFACE_("Add New Layer"),
+                                            CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, "Add"));
     }
   }
   return 0;

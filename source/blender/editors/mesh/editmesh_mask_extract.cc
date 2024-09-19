@@ -85,7 +85,7 @@ static int geometry_extract_apply(bContext *C,
   Scene *scene = CTX_data_scene(C);
   Depsgraph &depsgraph = *CTX_data_depsgraph_on_load(C);
 
-  ED_object_sculptmode_exit(C, depsgraph);
+  blender::ed::sculpt_paint::object_sculpt_mode_exit(C, depsgraph);
 
   BKE_sculpt_mask_layers_ensure(&depsgraph, bmain, ob, nullptr);
 
@@ -194,7 +194,7 @@ static int geometry_extract_apply(bContext *C,
   new_mesh->attributes_for_write().remove(".sculpt_mask");
 
   BKE_editmesh_free_data(em);
-  MEM_freeN(em);
+  MEM_delete(em);
 
   if (new_mesh->verts_num == 0) {
     BKE_id_free(bmain, new_mesh);

@@ -115,7 +115,7 @@ class ANIM_OT_keying_set_export(Operator):
                 if not found:
                     self.report(
                         {'WARN'},
-                        rpt_("Could not find material or light using Shader Node Tree - {:s}").format(str(ksp.id))
+                        rpt_("Could not find material or light using Shader Node Tree - {:s}").format(str(ksp.id)),
                     )
             elif ksp.id.bl_rna.identifier.startswith("CompositorNodeTree"):
                 # Find compositor node-tree using this node tree.
@@ -126,7 +126,7 @@ class ANIM_OT_keying_set_export(Operator):
                 else:
                     self.report(
                         {'WARN'},
-                        rpt_("Could not find scene using Compositor Node Tree - {:s}").format(str(ksp.id))
+                        rpt_("Could not find scene using Compositor Node Tree - {:s}").format(str(ksp.id)),
                     )
             elif ksp.id.bl_rna.name == "Key":
                 # "keys" conflicts with a Python keyword, hence the simple solution won't work
@@ -262,7 +262,7 @@ class NLA_OT_bake(Operator):
             ('ROTATION', "Rotation", "Bake rotation channels"),
             ('SCALE', "Scale", "Bake scale channels"),
             ('BBONE', "B-Bone", "Bake B-Bone channels"),
-            ('PROPS', "Custom Properties", "Bake custom properties")
+            ('PROPS', "Custom Properties", "Bake custom properties"),
         ),
         default={'LOCATION', 'ROTATION', 'SCALE', 'BBONE', 'PROPS'},
     )
@@ -282,7 +282,7 @@ class NLA_OT_bake(Operator):
             do_rotation='ROTATION' in self.channel_types,
             do_scale='SCALE' in self.channel_types,
             do_bbone='BBONE' in self.channel_types,
-            do_custom_props='PROPS' in self.channel_types
+            do_custom_props='PROPS' in self.channel_types,
         )
 
         if bake_options.do_pose and self.only_selected:
@@ -308,7 +308,7 @@ class NLA_OT_bake(Operator):
         actions = anim_utils.bake_action_objects(
             object_action_pairs,
             frames=range(self.frame_start, self.frame_end + 1, self.step),
-            bake_options=bake_options
+            bake_options=bake_options,
         )
 
         if not any(actions):
@@ -668,6 +668,99 @@ class ARMATURE_OT_collection_remove_unused(Operator):
         )
 
 
+class ANIM_OT_slot_new_for_id(Operator):
+    """Create a new Action Slot for an ID.
+
+    Note that _which_ ID should get this slot must be set in the 'animated_id' context pointer, using:
+
+    >>> layout.context_pointer_set("animated_id", animated_id)
+    """
+    bl_idname = "anim.slot_new_for_id"
+    bl_label = "New Slot"
+    bl_description = "Create a new action slot for this data-block, to hold its animation"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        animated_id = getattr(context, "animated_id", None)
+        if not animated_id:
+            return False
+        if not animated_id.animation_data or not animated_id.animation_data.action:
+            cls.poll_message_set("An action slot can only be created when an action was assigned")
+            return False
+        if not animated_id.animation_data.action.is_action_layered:
+            cls.poll_message_set("Action slots are only supported by layered Actions. Upgrade this Action first")
+            return False
+        return True
+
+    def execute(self, context):
+        animated_id = getattr(context, "animated_id", None)
+
+        action = animated_id.animation_data.action
+        slot = action.slots.new(for_id=animated_id)
+        animated_id.animation_data.action_slot = slot
+        return {'FINISHED'}
+
+
+class ANIM_OT_slot_unassign_from_id(Operator):
+    """Un-assign the assigned Action Slot from an ID.
+
+    Note that _which_ ID should get this slot unassigned must be set in the
+    "animated_id" context pointer, using:
+
+    >>> layout.context_pointer_set("animated_id", animated_id)
+    """
+    bl_idname = "anim.slot_unassign_from_id"
+    bl_label = "Unassign Slot"
+    bl_description = "Un-assign the action slot, effectively making this data-block non-animated"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        animated_id = getattr(context, "animated_id", None)
+        if not animated_id:
+            return False
+        if not animated_id.animation_data or not animated_id.animation_data.action_slot:
+            cls.poll_message_set("This data-block has no Action slot assigned")
+            return False
+        return True
+
+    def execute(self, context):
+        animated_id = getattr(context, "animated_id", None)
+        animated_id.animation_data.action_slot = None
+        return {'FINISHED'}
+
+
+class ANIM_OT_slot_unassign_from_nla_strip(Operator):
+    """Un-assign the assigned Action Slot from an NLA strip.
+
+    Note that _which_ NLA strip should get this slot unassigned must be set in
+    the "nla_strip" context pointer, using:
+
+    >>> layout.context_pointer_set("nla_strip", nla_strip)
+    """
+    bl_idname = "anim.slot_unassign_from_nla_strip"
+    bl_label = "Unassign Slot"
+    bl_description = "Un-assign the action slot from this NLA strip, effectively making it non-animated"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        nla_strip = getattr(context, "nla_strip", None)
+        if not nla_strip:
+            return False
+
+        if not nla_strip.action or not nla_strip.action_slot:
+            cls.poll_message_set("This NLA strip has no Action slot assigned")
+            return False
+        return True
+
+    def execute(self, context):
+        nla_strip = getattr(context, "nla_strip", None)
+        nla_strip.action_slot = None
+        return {'FINISHED'}
+
+
 classes = (
     ANIM_OT_keying_set_export,
     NLA_OT_bake,
@@ -677,4 +770,7 @@ classes = (
     ARMATURE_OT_collection_show_all,
     ARMATURE_OT_collection_unsolo_all,
     ARMATURE_OT_collection_remove_unused,
+    ANIM_OT_slot_new_for_id,
+    ANIM_OT_slot_unassign_from_id,
+    ANIM_OT_slot_unassign_from_nla_strip,
 )

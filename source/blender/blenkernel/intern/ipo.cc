@@ -43,7 +43,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
@@ -54,7 +54,7 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 
 #include "CLG_log.h"
 
@@ -1621,7 +1621,7 @@ static void icu_to_fcurves(ID *id,
          * - their values were 0-1
          * - we now need as 'frames'
          */
-        if ((id) && (icu->blocktype == GS(id->name)) &&
+        if ((id) && (icu->blocktype == GS(id->name)) && (GS(id->name) == ID_CU_LEGACY) &&
             (fcu->rna_path && STREQ(fcu->rna_path, "eval_time")))
         {
           Curve *cu = (Curve *)id;
@@ -2460,7 +2460,7 @@ void do_versions_ipos_to_animato(Main *bmain)
 
     /* clear fake-users, and set user-count to zero to make sure it is cleared on file-save */
     ipo->id.us = 0;
-    ipo->id.flag &= ~LIB_FAKEUSER;
+    ipo->id.flag &= ~ID_FLAG_FAKEUSER;
   }
 
   /* free unused drivers from actions + ipos */

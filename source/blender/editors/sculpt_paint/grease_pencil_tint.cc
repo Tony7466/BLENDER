@@ -65,8 +65,8 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
 
   BKE_curvemapping_init(brush->curve);
 
-  radius_ = BKE_brush_size_get(scene, brush);
-  strength_ = BKE_brush_alpha_get(scene, brush);
+  radius_ = brush->size;
+  strength_ = brush->alpha;
   active_layer_only_ = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
 
   float4 color_linear;
@@ -137,7 +137,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   Paint *paint = &scene->toolsettings->gp_paint->paint;
   Brush *brush = BKE_paint_brush(paint);
 
-  /* Get the tool's data. */
+  /* Get the brush's data. */
   const float2 mouse_position = extension_sample.mouse_position;
   float radius = radius_;
   float strength = strength_;
