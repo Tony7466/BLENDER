@@ -4612,6 +4612,7 @@ def km_grease_pencil_paint_mode(params):
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
             (op_tool_cycle, "builtin.interpolate"), params),
+        ("grease_pencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
 
         op_asset_shelf_popup(
             "VIEW3D_AST_brush_gpencil_paint",
@@ -4751,6 +4752,7 @@ def km_grease_pencil_edit_mode(params):
         op_tool_optional(
             ("grease_pencil.interpolate", {"type": 'E', "value": 'PRESS', "ctrl": True}, None),
             (op_tool_cycle, "builtin.interpolate"), params),
+        ("grease_pencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
     ])
 
     return keymap
@@ -4863,6 +4865,8 @@ def km_grease_pencil_vertex_paint(params):
          {"properties": [("scalar", 1.0 / 0.9)]}),
         # Radial controls
         *_template_paint_radial_control("gpencil_vertex_paint"),
+        # Context menu
+        *_template_items_context_panel("VIEW3D_PT_greasepencil_vertex_paint_context_menu", params.context_menu_event),
     ])
 
     return keymap
