@@ -1043,8 +1043,7 @@ static void block_file_read_okay_cb(bContext *C, void *arg1, void * /*arg2*/)
 {
   uiBlock *block = static_cast<uiBlock *>(arg1);
   UI_popup_menu_retval_set(block, UI_RETURN_CANCEL, true);
-  wmWindow *win = CTX_wm_window(C);
-  UI_popup_block_close(C, win, block);
+  UI_popup_block_close(C, CTX_wm_window(C), block);
 }
 
 static uiBlock *block_file_read_error(bContext *C, ARegion *region, void *arg1)
@@ -1072,18 +1071,14 @@ static uiBlock *block_file_read_error(bContext *C, ARegion *region, void *arg1)
   UI_fontstyle_set(&style->widget);
   float width = BLF_width(style->widget.uifont_id, title, BLF_DRAW_STR_DUMMY_MAX);
   width = std::max(width, BLF_width(style->widget.uifont_id, message, BLF_DRAW_STR_DUMMY_MAX));
+  width += int(style->columnspace * 2.5) + icon_size;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
-  UI_block_flag_disable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_block_flag_disable(block, UI_BLOCK_LOOP);
   UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_NUMSELECT);
 
-  uiLayout *layout = uiItemsAlertBox(block,
-                                     style,
-                                     int(width) + int(style->columnspace * 2.5) + icon_size,
-                                     ALERT_ICON_ERROR,
-                                     icon_size);
-
+  uiLayout *layout = uiItemsAlertBox(block, style, width, ALERT_ICON_ERROR, icon_size);
   uiItemL_ex(layout, title, ICON_NONE, true, false);
   uiItemS_ex(layout, 0.2f, LayoutSeparatorType::Line);
   uiItemS_ex(layout, 0.5f);
