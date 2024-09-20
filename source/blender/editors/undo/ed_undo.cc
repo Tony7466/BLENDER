@@ -24,6 +24,7 @@
 #include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
+#include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
@@ -39,6 +40,7 @@
 #include "ED_gpencil_legacy.hh"
 #include "ED_object.hh"
 #include "ED_outliner.hh"
+#include "ED_paint.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
 #include "ED_undo.hh"
@@ -532,6 +534,37 @@ static int ed_undo_push_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int ed_image_undo_push_begin_with_image_exec(bContext *C, wmOperator *op)
+{
+  if (G.background) {
+    /* Exception for background mode, see: #60934.
+     * NOTE: since the undo stack isn't initialized on startup, background mode behavior
+     * won't match regular usage, this is just for scripts to do explicit undo pushes. */
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->undo_stack == nullptr) {
+      wm->undo_stack = BKE_undosys_stack_create();
+    }
+  }
+  char str[BKE_UNDO_STR_MAX];
+  RNA_string_get(op->ptr, "message", str);
+
+  Image *ima = CTX_data_edit_image(C);
+  if (!ima) {
+    return OPERATOR_CANCELLED;
+  }
+  ImageUser iuser;
+  BKE_imageuser_default(&iuser);
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, &iuser, nullptr);
+  ED_image_undo_push_begin_with_image(str, ima, ibuf, &iuser);
+  return OPERATOR_FINISHED;
+}
+
+static int ed_image_undo_push_end_exec(bContext * /*C*/, wmOperator * /*op*/)
+{
+  ED_image_undo_push_end();
+  return OPERATOR_FINISHED;
+}
+
 static int ed_redo_exec(bContext *C, wmOperator *op)
 {
   int ret = ed_undo_step_direction(C, STEP_REDO, op->reports);
@@ -626,6 +659,45 @@ void ED_OT_undo_push(wmOperatorType *ot)
                  BKE_UNDO_STR_MAX,
                  "Undo Message",
                  "");
+}
+
+void ED_OT_image_undo_push_with_image_begin(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Image Undo Push Begin";
+  ot->description =
+      "Begins an undo push, undo_push_end() must be called to ensure "
+      "a valid state in the undo stack";
+  ot->idname = "ED_OT_image_undo_push_with_image_begin";
+
+  /* api callbacks */
+  ot->exec = ed_image_undo_push_begin_with_image_exec;
+  /* Unlike others undo operators this initializes undo stack. */
+  ot->poll = ED_operator_screenactive;
+
+  ot->flag = OPTYPE_INTERNAL;
+
+  RNA_def_string(ot->srna,
+                 "message",
+                 "Add an undo step *function may be moved*",
+                 BKE_UNDO_STR_MAX,
+                 "Undo Message",
+                 "");
+}
+
+void ED_OT_image_undo_push_end(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Image Undo Push End";
+  ot->description = "Ends a image undo push";
+  ot->idname = "ED_OT_image_undo_push_end";
+
+  /* api callbacks */
+  ot->exec = ed_image_undo_push_end_exec;
+  /* Unlike others undo operators this initializes undo stack. */
+  ot->poll = ED_operator_screenactive;
+
+  ot->flag = OPTYPE_INTERNAL;
 }
 
 static bool ed_redo_poll(bContext *C)

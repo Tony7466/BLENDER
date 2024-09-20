@@ -44,6 +44,8 @@ void ED_OT_undo_push(wmOperatorType *ot);
 void ED_OT_redo(wmOperatorType *ot);
 void ED_OT_undo_redo(wmOperatorType *ot);
 void ED_OT_undo_history(wmOperatorType *ot);
+void ED_OT_image_undo_push_with_image_begin(wmOperatorType *ot);
+void ED_OT_image_undo_push_end(wmOperatorType *ot);
 
 /**
  * UI callbacks should call this rather than calling WM_operator_repeat() themselves.

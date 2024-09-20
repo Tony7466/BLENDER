@@ -44,6 +44,8 @@ op_blacklist = (
     "*.*_import",
     "ed.undo",
     "ed.undo_push",
+    "ed.image_undo_push_with_image_begin",
+    "ed.image_undo_push_end",
     "image.external_edit",  # just annoying - but harmless (opens an app).
     "image.project_edit",  # just annoying - but harmless (opens an app).
     "object.quadriflow_remesh",  # OK but slow.
