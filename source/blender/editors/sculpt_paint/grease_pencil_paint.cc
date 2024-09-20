@@ -1192,7 +1192,7 @@ static void trim_stroke_ends(bke::greasepencil::Drawing &drawing,
       true);
 
   /* No intersection found. */
-  if (!stroke_trimmed.points_num()) {
+  if (stroke_trimmed.points_num() == 0) {
     return;
   }
 
