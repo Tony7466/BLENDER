@@ -47,6 +47,7 @@
 
 #include "ANIM_action.hh"
 #include "ANIM_action_iterators.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_bone_collections.hh"
 #include "ANIM_driver.hh"
@@ -1408,7 +1409,9 @@ bool fcurve_is_changed(PointerRNA ptr,
  * Since we're only concerned whether a keyframe exists,
  * we can simply loop until a match is found.
  */
-static bool action_frame_has_keyframe(bAction *act, float frame)
+static bool action_frame_has_keyframe(bAction *act,
+                                      blender::animrig::slot_handle_t slot_handle,
+                                      float frame)
 {
   /* can only find if there is data */
   if (act == nullptr) {
@@ -1422,7 +1425,7 @@ static bool action_frame_has_keyframe(bAction *act, float frame)
   /* loop over F-Curves, using binary-search to try to find matches
    * - this assumes that keyframes are only beztriples
    */
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_for_action_slot(act, slot_handle)) {
     /* only check if there are keyframes (currently only of type BezTriple) */
     if (fcu->bezt && fcu->totvert) {
       if (fcurve_frame_has_keyframe(fcu, frame)) {
@@ -1451,7 +1454,7 @@ static bool object_frame_has_keyframe(Object *ob, float frame)
      */
     float ob_frame = BKE_nla_tweakedit_remap(ob->adt, frame, NLATIME_CONVERT_UNMAP);
 
-    if (action_frame_has_keyframe(ob->adt->action, ob_frame)) {
+    if (action_frame_has_keyframe(ob->adt->action, ob->adt->slot_handle, ob_frame)) {
       return true;
     }
   }
@@ -1484,7 +1487,7 @@ bool id_frame_has_keyframe(ID *id, float frame)
 
       /* only check keyframes in active action */
       if (adt) {
-        return action_frame_has_keyframe(adt->action, frame);
+        return action_frame_has_keyframe(adt->action, adt->slot_handle, frame);
       }
       break;
     }

@@ -44,6 +44,8 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
+#include "ANIM_action_legacy.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -135,7 +137,9 @@ bool ED_space_sequencer_has_playback_animation(const SpaceSeq *sseq, const Scene
     return false;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcurve, &scene->adt->action->curves) {
+  for (FCurve *fcurve : blender::animrig::legacy::fcurves_for_action_slot(scene->adt->action,
+                                                                          scene->adt->slot_handle))
+  {
     if (sequencer_fcurves_targets_color_strip(fcurve)) {
       return true;
     }

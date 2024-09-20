@@ -50,6 +50,8 @@
 #include "BKE_object.hh"
 #include "BKE_scene.hh"
 
+#include "ANIM_action.hh"
+#include "ANIM_action_legacy.hh"
 #include "ANIM_bone_collections.hh"
 
 #include "ED_node.hh"
@@ -751,7 +753,7 @@ static bool has_custom_props(Bone *bone, bool enabled, std::string key)
           bc_get_IDProperty(bone, key + "_z"));
 }
 
-void bc_enable_fcurves(bAction *act, char *bone_name)
+void bc_enable_fcurves(bAction *act, blender::animrig::slot_handle_t slot_handle, char *bone_name)
 {
   char prefix[200];
 
@@ -761,7 +763,7 @@ void bc_enable_fcurves(bAction *act, char *bone_name)
     SNPRINTF(prefix, "pose.bones[\"%s\"]", bone_name_esc);
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_for_action_slot(act, slot_handle)) {
     if (bone_name) {
       if (STREQLEN(fcu->rna_path, prefix, strlen(prefix))) {
         fcu->flag &= ~FCURVE_DISABLED;
@@ -787,9 +789,10 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
   }
 
   bAction *action = bc_getSceneObjectAction(ob);
+  const blender::animrig::slot_handle_t slot_handle = ob->adt ? ob->adt->slot_handle : 0;
   bPoseChannel *parchan = pchan->parent;
 
-  bc_enable_fcurves(action, bone->name);
+  bc_enable_fcurves(action, slot_handle, bone->name);
   float ipar[4][4];
 
   if (bone->parent) {
@@ -818,7 +821,7 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
       mul_m4_m4m4(mat, temp, mat);
     }
   }
-  bc_enable_fcurves(action, nullptr);
+  bc_enable_fcurves(action, slot_handle, nullptr);
   return true;
 }
 
