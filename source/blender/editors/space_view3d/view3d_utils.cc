@@ -84,17 +84,29 @@ void ED_view3d_text_colors_get(const Scene *scene,
   r_text_color[3] = 1.0f;
   r_shadow_color[3] = 0.8f;
 
-  /* White text, black shadow. Unless view background
-   * is very dark; in that case black text, white shadow. */
-  float bg_color[4];
+  /* Default text color from TH_TEXT_HI. If it is too close
+   * to the background color, darken or lighten it. */
+  UI_GetThemeColor3fv(TH_TEXT_HI, r_text_color);
+  float text_lightness = rgb_to_grayscale(r_text_color);
+  float bg_color[3];
   ED_view3d_background_color_get(scene, v3d, bg_color);
-  float lightness = rgb_to_grayscale(bg_color);
-  if (lightness > 0.04f) {
-    copy_v3_fl(r_text_color, 1.0f);
+  const float distance = len_v3v3(r_text_color, bg_color);
+  if (distance < 0.5f) {
+    if (text_lightness > 0.5f) {
+      mul_v3_fl(r_text_color, 0.33f);
+    }
+    else {
+      mul_v3_fl(r_text_color, 3.0f);
+    }
+    clamp_v3(r_text_color, 0.0f, 1.0f);
+  }
+
+  /* Shadow color is black or white depending on final text lightness. */
+  text_lightness = rgb_to_grayscale(r_text_color);
+  if (text_lightness > 0.4f) {
     copy_v3_fl(r_shadow_color, 0.0f);
   }
   else {
-    copy_v3_fl(r_text_color, 0.2f);
     copy_v3_fl(r_shadow_color, 1.0f);
   }
 }
@@ -163,7 +175,7 @@ bool ED_view3d_clip_range_get(const Depsgraph *depsgraph,
   return params.is_ortho;
 }
 
-bool ED_view3d_viewplane_get(Depsgraph *depsgraph,
+bool ED_view3d_viewplane_get(const Depsgraph *depsgraph,
                              const View3D *v3d,
                              const RegionView3D *rv3d,
                              int winx,

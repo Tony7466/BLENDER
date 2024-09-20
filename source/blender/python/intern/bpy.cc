@@ -26,7 +26,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "GPU_state.hh"
 
@@ -266,7 +266,7 @@ PyDoc_STRVAR(
     "\n"
     "   Return a system resource path.\n"
     "\n"
-    "   :arg type: string in ['DATAFILES', 'SCRIPTS', 'PYTHON'].\n"
+    "   :arg type: string in ['DATAFILES', 'SCRIPTS', 'EXTENSIONS', 'PYTHON'].\n"
     "   :type type: string\n"
     "   :arg path: Optional subdirectory.\n"
     "   :type path: string or bytes\n");
@@ -275,6 +275,7 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
   const PyC_StringEnumItems type_items[] = {
       {BLENDER_SYSTEM_DATAFILES, "DATAFILES"},
       {BLENDER_SYSTEM_SCRIPTS, "SCRIPTS"},
+      {BLENDER_SYSTEM_EXTENSIONS, "EXTENSIONS"},
       {BLENDER_SYSTEM_PYTHON, "PYTHON"},
       {0, nullptr},
   };
@@ -739,7 +740,8 @@ void BPy_init_modules(bContext *C)
   Py_DECREF(mod);
 
   /* needs to be first so bpy_types can run */
-  PyModule_AddObject(mod, "types", BPY_rna_types());
+  PyObject *bpy_types = BPY_rna_types();
+  PyModule_AddObject(mod, "types", bpy_types);
 
   /* needs to be first so bpy_types can run */
   BPY_library_load_type_ready();
@@ -751,6 +753,8 @@ void BPy_init_modules(bContext *C)
   bpy_import_test("bpy_types");
   PyModule_AddObject(mod, "data", BPY_rna_module()); /* imports bpy_types by running this */
   bpy_import_test("bpy_types");
+  BPY_rna_types_finalize_external_types(bpy_types);
+
   PyModule_AddObject(mod, "props", BPY_rna_props());
   /* ops is now a python module that does the conversion from SOME_OT_foo -> some.foo */
   PyModule_AddObject(mod, "ops", BPY_operator_module());

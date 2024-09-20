@@ -9,10 +9,8 @@
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
 
-#include "BLI_color.hh"
 #include "BLI_span.hh"
 
-#include "DNA_cachefile_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
 
@@ -76,7 +74,7 @@ void USDPointsReader::read_object_data(Main *bmain, double motionSampleTime)
 
 void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
                                     USDMeshReadParams params,
-                                    const char ** /*err_str*/)
+                                    const char ** /*r_err_str*/)
 {
   if (!points_prim_) {
     /* Invalid prim, so we pass. */

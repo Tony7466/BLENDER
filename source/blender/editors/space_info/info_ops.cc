@@ -25,7 +25,7 @@
 #include "BKE_image.h"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_packedFile.h"
+#include "BKE_packedFile.hh"
 #include "BKE_report.hh"
 #include "BKE_screen.hh"
 
@@ -422,7 +422,9 @@ static int make_paths_relative_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_bpath_relative_convert(bmain, blendfile_path, op->reports);
+  BPathSummary summary;
+  BKE_bpath_relative_convert(bmain, blendfile_path, op->reports, &summary);
+  BKE_bpath_summary_report(summary, op->reports);
 
   /* redraw everything so any changed paths register */
   WM_main_add_notifier(NC_WINDOW, nullptr);
@@ -460,7 +462,9 @@ static int make_paths_absolute_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_bpath_absolute_convert(bmain, blendfile_path, op->reports);
+  BPathSummary summary;
+  BKE_bpath_absolute_convert(bmain, blendfile_path, op->reports, &summary);
+  BKE_bpath_summary_report(summary, op->reports);
 
   /* redraw everything so any changed paths register */
   WM_main_add_notifier(NC_WINDOW, nullptr);

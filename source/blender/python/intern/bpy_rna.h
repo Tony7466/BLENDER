@@ -18,7 +18,7 @@
 #  define USE_WEAKREFS
 
 /* method to invalidate removed py data, XXX, slow to remove objects, otherwise no overhead */
-/* #define USE_PYRNA_INVALIDATE_GC */
+// #define USE_PYRNA_INVALIDATE_GC
 
 /* different method */
 #  define USE_PYRNA_INVALIDATE_WEAKREF
@@ -189,6 +189,7 @@ PyObject *BPY_rna_module(void);
 void BPY_update_rna_module(void);
 // PyObject *BPY_rna_doc(void);
 PyObject *BPY_rna_types(void);
+void BPY_rna_types_finalize_external_types(PyObject *submodule);
 
 PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr);
 PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr);
@@ -233,8 +234,8 @@ int pyrna_struct_as_ptr_parse(PyObject *o, void *p);
 int pyrna_struct_as_ptr_or_null_parse(PyObject *o, void *p);
 
 void pyrna_struct_type_extend_capi(struct StructRNA *srna,
-                                   struct PyMethodDef *py_method,
-                                   struct PyGetSetDef *py_getset);
+                                   struct PyMethodDef *method,
+                                   struct PyGetSetDef *getset);
 
 /* Called before stopping Python. */
 

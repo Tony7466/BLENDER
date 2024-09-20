@@ -56,26 +56,7 @@ def compute_paths(paths: List[str], use_default_paths: bool) -> List[str]:
     # Optionally pass in files to operate on.
     if use_default_paths:
         paths = [
-            "intern/atomic",
-            "intern/audaspace",
-            "intern/clog",
-            "intern/cycles",
-            "intern/dualcon",
-            "intern/eigen",
-            "intern/ffmpeg",
-            "intern/ghost",
-            "intern/glew-mx",
-            "intern/guardedalloc",
-            "intern/iksolver",
-            "intern/libmv",
-            "intern/locale",
-            "intern/memutil",
-            "intern/mikktspace",
-            "intern/opencolorio",
-            "intern/opensubdiv",
-            "intern/openvdb",
-            "intern/rigidbody",
-            "intern/utfconv",
+            "intern",
             "source",
             "tests/gtests",
         ]
@@ -222,31 +203,24 @@ def argparse_create() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
+def main() -> int:
     version = clang_format_ensure_version()
     if version is None:
         print("Unable to detect 'clang-format -version'")
-        sys.exit(1)
+        return 1
     if version < VERSION_MIN:
         print("Version of clang-format is too old:", version, "<", VERSION_MIN)
-        sys.exit(1)
-    if version > VERSION_MAX_RECOMMENDED:
-        print(
-            "WARNING: Version of clang-format is too recent:",
-            version, ">", VERSION_MAX_RECOMMENDED,
-        )
-        print(
-            "You may want to install clang-format-{:d}.{:d}, "
-            "or use the precompiled libs repository.".format(
-                VERSION_MAX_RECOMMENDED[0], VERSION_MAX_RECOMMENDED[1],
-            ),
-        )
+        return 1
 
     args = argparse_create().parse_args()
 
     use_default_paths = not (bool(args.paths) or bool(args.changed_only))
-
     paths = compute_paths(args.paths, use_default_paths)
+    # Check if user-defined paths exclude all clang-format sources.
+    if args.paths and not paths:
+        print("Skip clang-format: no target to format")
+        return 0
+
     print("Operating on:" + (" ({:d} changed paths)".format(len(paths)) if args.changed_only else ""))
     for p in paths:
         print(" ", p)
@@ -268,6 +242,22 @@ def main() -> None:
         convert_tabs_to_spaces(files + files_retab)
     clang_format(files)
 
+    if version > VERSION_MAX_RECOMMENDED:
+        print()
+        print(
+            "WARNING: Version of clang-format is too recent:",
+            version, ">", VERSION_MAX_RECOMMENDED,
+        )
+        print(
+            "You may want to install clang-format-{:d}.{:d}, "
+            "or use the precompiled libs repository.".format(
+                VERSION_MAX_RECOMMENDED[0], VERSION_MAX_RECOMMENDED[1],
+            ),
+        )
+        print()
+
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

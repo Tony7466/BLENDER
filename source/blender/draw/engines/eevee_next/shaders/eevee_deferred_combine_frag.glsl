@@ -7,23 +7,28 @@
  * This also fills the different render passes.
  */
 
+#pragma BLENDER_REQUIRE(gpu_shader_shared_exponent_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_renderpass_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 
 vec3 load_radiance_direct(ivec2 texel, int i)
 {
+  uint data = 0u;
   switch (i) {
     case 0:
-      return texelFetch(direct_radiance_1_tx, texel, 0).rgb;
+      data = texelFetch(direct_radiance_1_tx, texel, 0).r;
+      break;
     case 1:
-      return texelFetch(direct_radiance_2_tx, texel, 0).rgb;
+      data = texelFetch(direct_radiance_2_tx, texel, 0).r;
+      break;
     case 2:
-      return texelFetch(direct_radiance_3_tx, texel, 0).rgb;
+      data = texelFetch(direct_radiance_3_tx, texel, 0).r;
+      break;
     default:
-      return vec3(0);
+      break;
   }
-  return vec3(0);
+  return rgb9e5_decode(data);
 }
 
 vec3 load_radiance_indirect(ivec2 texel, int i)
@@ -112,7 +117,7 @@ void main()
   float clamp_indirect = uniform_buf.clamp.surface_indirect;
   out_direct = colorspace_brightness_clamp_max(out_direct, clamp_direct);
   out_indirect = colorspace_brightness_clamp_max(out_indirect, clamp_indirect);
-  /* TODO(fcleù): Shouldn't we clamp these relative the main clamp? */
+  /* TODO(@fclem): Shouldn't we clamp these relative the main clamp? */
   diffuse_direct = colorspace_brightness_clamp_max(diffuse_direct, clamp_direct);
   diffuse_indirect = colorspace_brightness_clamp_max(diffuse_indirect, clamp_indirect);
   specular_direct = colorspace_brightness_clamp_max(specular_direct, clamp_direct);

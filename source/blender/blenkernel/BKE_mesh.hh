@@ -10,16 +10,14 @@
 
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_string_ref.hh"
 
 #include "BKE_mesh.h"
 #include "BKE_mesh_types.hh"
 
-struct ModifierData;
-
 namespace blender::bke {
 
 enum class AttrDomain : int8_t;
-class AttributeIDRef;
 
 namespace mesh {
 /* -------------------------------------------------------------------- */
@@ -343,6 +341,12 @@ void mesh_sharp_edges_set_from_angle(Mesh &mesh, float angle, bool keep_sharp_ed
  * vertices are hidden. */
 void mesh_edge_hide_from_vert(Span<int2> edges, Span<bool> hide_vert, MutableSpan<bool> hide_edge);
 
+/* Hide faces when any of their vertices are hidden. */
+void mesh_face_hide_from_vert(OffsetIndices<int> faces,
+                              Span<int> corner_verts,
+                              Span<bool> hide_vert,
+                              MutableSpan<bool> hide_poly);
+
 /** Make edge and face visibility consistent with vertices. */
 void mesh_hide_vert_flush(Mesh &mesh);
 /** Make vertex and edge visibility consistent with faces. */
@@ -357,7 +361,7 @@ void mesh_select_face_flush(Mesh &mesh);
 
 /** Set the default name when adding a color attribute if there is no default yet. */
 void mesh_ensure_default_color_attribute_on_add(Mesh &mesh,
-                                                const AttributeIDRef &id,
+                                                StringRef id,
                                                 AttrDomain domain,
                                                 eCustomDataType data_type);
 
