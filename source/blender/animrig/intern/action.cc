@@ -2458,14 +2458,21 @@ void move_slot(Main &bmain, Slot &source_slot, Action &from_action, Action &to_a
 
   /* Reassign all users of `source_slot` to the action `to_action` and the slot `target_slot`. */
   for (ID *user : source_slot.users(bmain)) {
-    std::optional<std::pair<Action *, Slot *>> action_slot_pair = get_action_slot_pair(*user);
-    /* A slot user is also tracked via an action constraint and NLA strips. In those cases the
-     * AnimData of the ID might not have an action assigned, or it may be a different action. */
-    if (!action_slot_pair.has_value() || action_slot_pair.value().second != &source_slot) {
-      continue;
-    }
-    unassign_action(*user);
-    assign_action_and_slot(&to_action, &target_slot, *user);
+    const auto assign_other_action =
+        [&](bAction *&action_ptr_ref, slot_handle_t &slot_handle_ref, char *slot_name) -> bool {
+      /* Only reassign if the reference is actually from the same action. Could be from a different
+       * action when using the NLA or action constraints. */
+      if (action_ptr_ref != &from_action) {
+        return true;
+      }
+      generic_assign_action(*user, &to_action, action_ptr_ref, slot_handle_ref, slot_name);
+      const ActionSlotAssignmentResult result = generic_assign_action_slot(
+          &target_slot, *user, action_ptr_ref, slot_handle_ref, slot_name);
+      BLI_assert(result == ActionSlotAssignmentResult::OK);
+      UNUSED_VARS_NDEBUG(result);
+      return true;
+    };
+    foreach_action_slot_use_with_references(*user, assign_other_action);
   }
 
   from_action.slot_remove(source_slot);
