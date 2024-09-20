@@ -492,16 +492,19 @@ NlaStrip *BKE_nlastrip_new(bAction *act, ID &animated_id)
   }
 
   /* Enable cyclic time for known cyclic actions. */
-  if (BKE_action_is_cyclic(act)) {
+  Action &action = act->wrap();
+  if (action.is_cyclic()) {
     strip->flag |= NLASTRIP_FLAG_USR_TIME_CYCLIC;
   }
 
   /* Assign the Action, and automatically choose a suitable slot. The caller can change the slot to
    * something more specific later, if necessary. */
-  nla::assign_action(*strip, act->wrap(), animated_id);
+  nla::assign_action(*strip, action, animated_id);
 
   /* determine initial range */
-  BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
+  const float2 frame_range = action.get_frame_range();
+  strip->actstart = frame_range[0];
+  strip->actend = frame_range[1];
   BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
   strip->start = strip->actstart;
   strip->end = strip->actend;
@@ -1639,7 +1642,10 @@ void BKE_nlastrip_recalculate_bounds_sync_action(NlaStrip *strip)
 
   prev_actstart = strip->actstart;
 
-  BKE_action_frame_range_get(strip->act, &strip->actstart, &strip->actend);
+  const float2 frame_range = strip->act->wrap().get_frame_range_of_slot(strip->action_slot_handle);
+  strip->actstart = frame_range[0];
+  strip->actend = frame_range[1];
+
   BKE_nla_clip_length_ensure_nonzero(&strip->actstart, &strip->actend);
 
   /* Set start such that key's do not visually move, to preserve the overall animation result. */
@@ -2164,13 +2170,14 @@ void BKE_nla_action_pushdown(const OwnedAnimData owned_adt, const bool is_libove
    * as that will cause us grief down the track
    */
   /* TODO: what about modifiers? */
-  if (!BKE_action_has_motion(adt->action, adt->slot_handle)) {
+  animrig::Action &action = adt->action->wrap();
+  if (!action.has_keyframes(adt->slot_handle)) {
     CLOG_ERROR(&LOG, "action has no data");
     return;
   }
 
   /* Add a new NLA strip to the track, which references the active action + slot.*/
-  strip = BKE_nlastack_add_strip(owned_adt, adt->action, is_liboverride);
+  strip = BKE_nlastack_add_strip(owned_adt, &action, is_liboverride);
   if (strip == nullptr) {
     return;
   }
@@ -2262,7 +2269,7 @@ static void nla_tweakmode_find_active(const ListBase /*NlaTrack*/ *nla_tracks,
 
 bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
 {
-  NlaTrack *nlt, *activeTrack = nullptr;
+  NlaTrack *activeTrack = nullptr;
   NlaStrip *activeStrip = nullptr;
   AnimData &adt = owned_adt.adt;
 
@@ -2311,7 +2318,7 @@ bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
    */
   activeTrack->flag |= NLATRACK_DISABLED;
   if ((adt.flag & ADT_NLA_EVAL_UPPER_TRACKS) == 0) {
-    for (nlt = activeTrack->next; nlt; nlt = nlt->next) {
+    for (NlaTrack *nlt = activeTrack->next; nlt; nlt = nlt->next) {
       nlt->flag |= NLATRACK_DISABLED;
     }
   }
@@ -2337,7 +2344,12 @@ bool BKE_nla_tweakmode_enter(const OwnedAnimData owned_adt)
     animrig::Action &strip_action = activeStrip->act->wrap();
     if (strip_action.is_action_layered()) {
       animrig::Slot *strip_slot = strip_action.slot_for_handle(activeStrip->action_slot_handle);
-      strip_action.assign_id(strip_slot, owned_adt.owner_id);
+      if (animrig::assign_action_and_slot(&strip_action, strip_slot, owned_adt.owner_id) !=
+          animrig::ActionSlotAssignmentResult::OK)
+      {
+        printf("NLA tweak-mode enter - could not assign slot %s\n",
+               strip_slot ? strip_slot->name : "-unassigned-");
+      }
     }
     else {
       adt.action = activeStrip->act;
@@ -2664,7 +2676,7 @@ namespace blender::bke::nla {
 
 bool foreach_strip(ID *id, blender::FunctionRef<bool(NlaStrip *)> callback)
 {
-  AnimData *adt = BKE_animdata_from_id(id);
+  const AnimData *adt = BKE_animdata_from_id(id);
   if (!adt) {
     /* Having no NLA trivially means that we've looped through all the strips. */
     return true;

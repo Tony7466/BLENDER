@@ -4,6 +4,7 @@
 
 #include "editors/sculpt_paint/brushes/types.hh"
 #include "editors/sculpt_paint/mesh_brush_common.hh"
+#include "editors/sculpt_paint/sculpt_automask.hh"
 
 #include "DNA_brush_types.h"
 
@@ -176,7 +177,8 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
 
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
 
   threading::EnumerableThreadSpecific<MeshLocalData> all_tls;
   MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
@@ -194,10 +196,9 @@ static void do_draw_face_sets_brush_mesh(const Depsgraph &depsgraph,
                  face_indices,
                  tls,
                  face_sets.span);
-      BKE_pbvh_node_mark_update_face_sets(nodes[i]);
     });
   });
-
+  pbvh.tag_face_sets_changed(node_mask);
   face_sets.finish();
 }
 
@@ -276,7 +277,8 @@ static void do_draw_face_sets_brush_grids(const Depsgraph &depsgraph,
 
   undo::push_nodes(depsgraph, object, node_mask, undo::Type::FaceSet);
 
-  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(object);
+  bke::SpanAttributeWriter<int> face_sets = face_set::ensure_face_sets_mesh(
+      *static_cast<Mesh *>(object.data));
 
   threading::EnumerableThreadSpecific<GridLocalData> all_tls;
   MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
