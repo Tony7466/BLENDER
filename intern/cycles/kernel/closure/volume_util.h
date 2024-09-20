@@ -58,9 +58,11 @@ ccl_device float phase_rayleigh(float cos_theta)
 
 ccl_device float3 phase_rayleigh_sample(float3 D, float2 rand, ccl_private float *pdf)
 {
-  float a = 2 - 4 * rand.x;
-  float b = sqrtf(1.0f + sqr(a));
-  float cos_theta = cbrt(a + b) + cbrt(a - b);
+  const float a = 2 - 4 * rand.x;
+  /* Metal doesn't have cbrtf, but since we compute u - 1/u anyways, we can just as well
+   * use the inverse cube root for which there is a simple Quake-style fast implementation.*/
+  const float inv_u = -fast_inv_cbrtf(sqrtf(1 + sqr(a)) - a);
+  const float cos_theta = 1 / inv_u - inv_u;
   *pdf = phase_rayleigh(cos_theta);
 
   return phase_sample_direction(D, cos_theta, rand.y);
@@ -102,9 +104,9 @@ ccl_device float phase_draine_sample_cos(float g, float alpha, float rand)
   const float T10 = alpha * (2 * g4 - g2 - g6);
   const float T4b = 144 * T10, T4b3 = sqr(T4b) * T4b;
   const float T4 = T4a + sqrtf(-4 * T4b3 + sqr(T4a));
-  const float T4p3 = cbrtf(T4);
+  const float inv_T4p3 = fast_inv_cbrtf(T4);
   const float T8 = 48 * M_CBRT2_F * T10;
-  const float T6 = (2 * T1a + T8 / T4p3 + T4p3 * (1 / (3 * M_CBRT2_F))) / (alpha * (1 - g2));
+  const float T6 = (2 * T1a + T8 * inv_T4p3 + 1 / (3 * M_CBRT2_F * inv_T4p3)) / (alpha * (1 - g2));
   const float T5 = 6 * (1 + g2) + T6;
   const float T7 = 6 * (1 + g2) - (8 * T3) / (alpha * (g2 - 1) * sqrtf(T5)) - T6;
   return (1 + g2 - 0.25f * sqr(sqrtf(T7) - sqrtf(T5))) / (2 * g);

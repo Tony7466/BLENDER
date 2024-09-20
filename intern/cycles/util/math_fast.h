@@ -634,6 +634,15 @@ ccl_device_inline float fast_ierff(float x)
   return p * x;
 }
 
+/* Fast inverse cube root for positive x, with two Newton iterations to improve accuracy. */
+ccl_device_inline float fast_inv_cbrtf(float x)
+{
+  float y = __int_as_float(0x54a2fa8c - __float_as_int(x) / 3);
+  y = (2.0f / 3) * y + 1 / (3 * y * y * x);
+  y = (2.0f / 3) * y + 1 / (3 * y * y * x);
+  return y;
+}
+
 CCL_NAMESPACE_END
 
 #endif /* __UTIL_FAST_MATH__ */
