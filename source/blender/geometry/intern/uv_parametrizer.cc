@@ -5078,7 +5078,7 @@ static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *
 static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 {
   static const float SLIM_CORR_MIN_AREA = 1.0e-8;
-  static const float SLIM_CORR_MIN_ANGLE = 1.0f * M_PI / 180.0f;
+  static const float SLIM_CORR_MIN_ANGLE = DEG2RADF(1.0);
 
   mt->charts.resize(phandle->ncharts);
 
