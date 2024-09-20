@@ -87,8 +87,7 @@ struct MatrixTransfer {
 
   void parametrize();
 
-  void parametrize_live(MatrixTransferChart &chart,
-                        const PinnedVertexData &pinned_vertex_data);
+  void parametrize_live(MatrixTransferChart &chart, const PinnedVertexData &pinned_vertex_data);
 
   void setup_slim_data(MatrixTransferChart &chart) const;
 };

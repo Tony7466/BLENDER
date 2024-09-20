@@ -3,9 +3,9 @@
 
 #include <Eigen/Dense>
 
+#include "geometry_data_retrieval.h"
 #include "slim.h"
 #include "slim_matrix_transfer.h"
-#include "geometry_data_retrieval.h"
 
 namespace slim {
 
@@ -31,8 +31,7 @@ void MatrixTransfer::setup_slim_data(MatrixTransferChart &chart) const
     }
 
     GeometryData geometry_data(*this, chart);
-    geometry_data.construct_slim_data(
-        *slim_data, skip_initialization, reflection_mode);
+    geometry_data.construct_slim_data(*slim_data, skip_initialization, reflection_mode);
 
     chart.pinned_vertices_num = geometry_data.number_of_pinned_vertices;
   }
