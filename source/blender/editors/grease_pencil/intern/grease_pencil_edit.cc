@@ -30,6 +30,7 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_instances.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
@@ -53,10 +54,12 @@
 #include "ED_view3d.hh"
 
 #include "GEO_join_geometries.hh"
+#include "GEO_realize_instances.hh"
 #include "GEO_reorder.hh"
 #include "GEO_set_curve_type.hh"
 #include "GEO_smooth_curves.hh"
 #include "GEO_subdivide_curves.hh"
+
 #include "UI_interface_c.hh"
 
 #include "UI_resources.hh"
@@ -2243,7 +2246,8 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
     selection_in_target.finish();
   });
 
-  clipboard_paste_strokes(*bmain, *object, *target_drawing, paste_on_back);
+  const float4x4 clipboard_to_layer = math::invert(active_layer.to_world_space(*object));
+  clipboard_paste_strokes(*bmain, *object, *target_drawing, clipboard_to_layer, paste_on_back);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
@@ -2255,8 +2259,29 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bke::GeometrySet join_geometries_with_transform(Span<bke::GeometrySet> geometries,
+                                                       Span<float4x4> transforms)
+{
+  BLI_assert(geometries.size() == transforms.size());
+
+  std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+  instances->resize(geometries.size());
+  instances->transforms_for_write().copy_from(transforms);
+  MutableSpan<int> handles = instances->reference_handles_for_write();
+  for (const int i : geometries.index_range()) {
+    handles[i] = instances->add_new_reference(bke::InstanceReference{geometries[i]});
+  }
+
+  geometry::RealizeInstancesOptions options;
+  options.keep_original_ids = true;
+  options.realize_instance_attributes = false;
+  return realize_instances(bke::GeometrySet::from_instances(instances.release()), options);
+}
+
 static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
 {
+  using bke::greasepencil::Layer;
+
   const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
@@ -2268,11 +2293,14 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
   bool anything_copied = false;
   int num_copied = 0;
   Vector<bke::GeometrySet> set_of_copied_curves;
+  Vector<float4x4> set_of_transforms;
 
   /* Collect all selected strokes/points on all editable layers. */
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   for (const MutableDrawingInfo &drawing_info : drawings) {
     const bke::CurvesGeometry &curves = drawing_info.drawing.strokes();
+    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const float4x4 layer_to_world = layer.to_world_space(*object);
 
     if (curves.curves_num() == 0) {
       continue;
@@ -2299,6 +2327,7 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
     /* Add the layer selection to the set of copied curves. */
     Curves *layer_curves = curves_new_nomain(std::move(copied_curves));
     set_of_copied_curves.append(bke::GeometrySet::from_curves(layer_curves));
+    set_of_transforms.append(layer_to_world);
     anything_copied = true;
   }
 
@@ -2308,7 +2337,8 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
   }
 
   /* Merge all copied curves into one CurvesGeometry object and assign it to the clipboard. */
-  bke::GeometrySet joined_copied_curves = geometry::join_geometries(set_of_copied_curves, {});
+  bke::GeometrySet joined_copied_curves = join_geometries_with_transform(set_of_copied_curves,
+                                                                         set_of_transforms);
   clipboard.curves = std::move(joined_copied_curves.get_curves_for_write()->geometry.wrap());
 
   /* Store the session uid of the materials used by the curves in the clipboard. We use the uid to
@@ -2430,6 +2460,7 @@ static Array<int> clipboard_materials_remap(Main &bmain, Object &object)
 IndexRange clipboard_paste_strokes(Main &bmain,
                                    Object &object,
                                    bke::greasepencil::Drawing &drawing,
+                                   const float4x4 &transform,
                                    const bool paste_back)
 {
   const bke::CurvesGeometry &clipboard_curves = ed::greasepencil::clipboard_curves();
@@ -2450,10 +2481,14 @@ IndexRange clipboard_paste_strokes(Main &bmain,
   /* Append the geometry from the clipboard to the target layer. */
   Curves *clipboard_id = bke::curves_new_nomain(clipboard_curves);
   Curves *target_id = curves_new_nomain(std::move(drawing.strokes_for_write()));
+
   const Array<bke::GeometrySet> geometry_sets = {
       bke::GeometrySet::from_curves(paste_back ? clipboard_id : target_id),
       bke::GeometrySet::from_curves(paste_back ? target_id : clipboard_id)};
-  bke::GeometrySet joined_curves = geometry::join_geometries(geometry_sets, {});
+  const Array<float4x4> transforms = paste_back ? Span<float4x4>{transform, float4x4::identity()} :
+                                                  Span<float4x4>{float4x4::identity(), transform};
+  bke::GeometrySet joined_curves = join_geometries_with_transform(geometry_sets, transforms);
+
   drawing.strokes_for_write() = std::move(joined_curves.get_curves_for_write()->geometry.wrap());
 
   /* Remap the material indices of the pasted curves to the target object material indices. */

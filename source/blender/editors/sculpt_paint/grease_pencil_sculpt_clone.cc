@@ -37,6 +37,7 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
 {
   Main &bmain = *CTX_data_main(&C);
   Object &object = *CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
 
   this->init_stroke(C, start_sample);
 
@@ -50,8 +51,14 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
       C,
       [&](const GreasePencilStrokeParams &params,
           const ed::greasepencil::DrawingPlacement &placement) {
+        /* Only insert on the active layer. */
+        if (&params.layer != grease_pencil.get_active_layer()) {
+          return false;
+        }
+
+        const float4x4 clipboard_to_layer = math::invert(params.layer.to_world_space(object));
         const IndexRange pasted_curves = ed::greasepencil::clipboard_paste_strokes(
-            bmain, object, params.drawing, false);
+            bmain, object, params.drawing, clipboard_to_layer, false);
         if (pasted_curves.is_empty()) {
           return false;
         }
@@ -60,8 +67,7 @@ void CloneOperation::on_stroke_begin(const bContext &C, const InputSample &start
         const OffsetIndices<int> pasted_points_by_curve = curves.points_by_curve().slice(
             pasted_curves);
         const IndexRange pasted_points = IndexRange::from_begin_size(
-            pasted_points_by_curve[0].start(),
-            pasted_points_by_curve.total_size());
+            pasted_points_by_curve[0].start(), pasted_points_by_curve.total_size());
         if (pasted_points.is_empty()) {
           return false;
         }

@@ -516,6 +516,7 @@ const bke::CurvesGeometry &clipboard_curves();
 IndexRange clipboard_paste_strokes(Main &bmain,
                                    Object &object,
                                    bke::greasepencil::Drawing &drawing,
+                                   const float4x4 &transform,
                                    bool paste_back);
 
 /**
