@@ -35,6 +35,8 @@ class Context {
   StateManager *state_manager = nullptr;
   Immediate *imm = nullptr;
 
+  ShaderCompiler *compiler = nullptr;
+
   /**
    * All 4 window frame-buffers.
    * None of them are valid in an off-screen context.
@@ -57,6 +59,8 @@ class Context {
    * onto compiled sources ensures the source hashes are different. */
   static int context_counter;
   int context_id = 0;
+
+  GPUStorageBuf *printf_buf = nullptr;
 
  protected:
   /** Thread on which this context is active. */
@@ -92,6 +96,11 @@ class Context {
   virtual void *debug_capture_scope_create(const char *name) = 0;
   virtual bool debug_capture_scope_begin(void *scope) = 0;
   virtual void debug_capture_scope_end(void *scope) = 0;
+
+  /* Consider all buffers slot empty after these call for error checking.
+   * But doesn't really free them. */
+  virtual void debug_unbind_all_ubo() = 0;
+  virtual void debug_unbind_all_ssbo() = 0;
 
   bool is_active_on_thread();
 };

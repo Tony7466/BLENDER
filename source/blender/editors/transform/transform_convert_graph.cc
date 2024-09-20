@@ -17,7 +17,7 @@
 #include "BKE_context.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_layer.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_report.hh"
 
 #include "ED_anim_api.hh"
@@ -726,10 +726,8 @@ struct BeztMap {
   BezTriple *bezt;
   /** Index of `bezt` in `fcu->bezt` array before sorting. */
   uint oldIndex;
-  /** Swap order of handles (-1=clear; 0=not checked, 1=swap). */
-  short swap_handles;
-  /** Interpolation of previous and next segments. */
-  char prev_ipo, current_ipo;
+  /** Swap order of handles. Can happen when rotating keys around their common center. */
+  bool swap_handles;
 };
 
 /**
@@ -743,18 +741,12 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int tot
 
   blender::Vector<BeztMap> bezms = blender::Vector<BeztMap>(totvert);
 
-  BezTriple *prevbezt = nullptr;
   for (const int i : bezms.index_range()) {
     BezTriple *bezt = &bezts[i];
     BeztMap &bezm = bezms[i];
     bezm.bezt = bezt;
-
+    bezm.swap_handles = false;
     bezm.oldIndex = i;
-
-    bezm.prev_ipo = (prevbezt) ? prevbezt->ipo : bezt->ipo;
-    bezm.current_ipo = bezt->ipo;
-
-    prevbezt = bezt;
   }
 
   return bezms;
@@ -763,112 +755,107 @@ static blender::Vector<BeztMap> bezt_to_beztmaps(BezTriple *bezts, const int tot
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead. */
 static void sort_time_beztmaps(const blender::MutableSpan<BeztMap> bezms)
 {
-  BeztMap *bezm;
+  /* Check if handles need to be swapped. */
+  for (BeztMap &bezm : bezms) {
+    /* Handles are only swapped if they are both on the wrong side of the key. Otherwise the one
+     * handle out of place is just clamped at the key position later. */
+    bezm.swap_handles = (bezm.bezt->vec[0][0] > bezm.bezt->vec[1][0] &&
+                         bezm.bezt->vec[2][0] < bezm.bezt->vec[1][0]);
+  }
+
   bool ok = true;
+  const int bezms_size = bezms.size();
+  if (bezms_size < 2) {
+    /* No sorting is needed with only 0 or 1 entries. */
+    return;
+  }
+  const blender::IndexRange bezm_range = bezms.index_range().drop_back(1);
 
   /* Keep repeating the process until nothing is out of place anymore. */
   while (ok) {
     ok = false;
-
-    for (const int i : bezms.index_range()) {
-      bezm = &bezms[i];
+    for (const int i : bezm_range) {
+      BeztMap *bezm = &bezms[i];
       /* Is current bezm out of order (i.e. occurs later than next)? */
-      if (i < bezms.size() - 1) {
-        if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
-          std::swap(*bezm, *(bezm + 1));
-          ok = true;
-        }
-      }
-
-      /* Do we need to check if the handles need to be swapped?
-       * Optimization: this only needs to be performed in the first loop. */
-      if (bezm->swap_handles == 0) {
-        if ((bezm->bezt->vec[0][0] > bezm->bezt->vec[1][0]) &&
-            (bezm->bezt->vec[2][0] < bezm->bezt->vec[1][0]))
-        {
-          /* Handles need to be swapped. */
-          bezm->swap_handles = 1;
-        }
-        else {
-          /* Handles need to be cleared. */
-          bezm->swap_handles = -1;
-        }
+      if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
+        std::swap(*bezm, *(bezm + 1));
+        ok = true;
       }
     }
   }
 }
 
-/* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
-static void beztmap_to_data(TransInfo *t, FCurve *fcu, const blender::Span<BeztMap> bezms)
+static inline void update_trans_data(TransData *td,
+                                     const FCurve *fcu,
+                                     const int new_index,
+                                     const bool swap_handles)
 {
-  TransData2D *td2d;
-  TransData *td;
+  if (td->flag & TD_BEZTRIPLE && td->hdata) {
+    if (swap_handles) {
+      td->hdata->h1 = &fcu->bezt[new_index].h2;
+      td->hdata->h2 = &fcu->bezt[new_index].h1;
+    }
+    else {
+      td->hdata->h1 = &fcu->bezt[new_index].h1;
+      td->hdata->h2 = &fcu->bezt[new_index].h2;
+    }
+  }
+}
 
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+/* Adjust the pointers that the transdata has to each BezTriple. */
+static void update_transdata_bezt_pointers(TransDataContainer *tc,
+                                           const blender::Map<float *, int> &trans_data_map,
+                                           const FCurve *fcu,
+                                           const blender::Span<BeztMap> bezms)
+{
+  /* At this point, beztmaps are already sorted, so their current index is assumed to be what the
+   * BezTriple index will be after sorting. */
+  for (const int new_index : bezms.index_range()) {
+    const BeztMap &bezm = bezms[new_index];
+    if (new_index == bezm.oldIndex && !bezm.swap_handles) {
+      /* If the index is the same, any pointers to BezTriple will still point to the correct data.
+       * Handles might need to be swapped though. */
+      continue;
+    }
 
-  /* Used to mark whether an TransData's pointers have been fixed already, so that we don't
-   * override ones that are already done. */
-  blender::Vector<bool> adjusted(tc->data_len, false);
+    TransData2D *td2d;
+    TransData *td;
 
-  /* For each beztmap item, find if it is used anywhere. */
-  const BeztMap *bezm;
-  for (const int i : bezms.index_range()) {
-    bezm = &bezms[i];
-    /* Loop through transdata, testing if we have a hit
-     * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
-    td2d = tc->data_2d;
-    td = tc->data;
-    for (int j = 0; j < tc->data_len; j++, td2d++, td++) {
-      /* Skip item if already marked. */
-      if (adjusted[j]) {
-        continue;
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[0])) {
+      td2d = &tc->data_2d[*trans_data_index];
+      if (bezm.swap_handles) {
+        td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
-
-      /* Update all transdata pointers, no need to check for selections etc,
-       * since only points that are really needed were created as transdata. */
-      if (td2d->loc2d == bezm->bezt->vec[0]) {
-        if (bezm->swap_handles == 1) {
-          td2d->loc2d = fcu->bezt[i].vec[2];
-        }
-        else {
-          td2d->loc2d = fcu->bezt[i].vec[0];
-        }
-        adjusted[j] = true;
+      else {
+        td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
-      else if (td2d->loc2d == bezm->bezt->vec[2]) {
-        if (bezm->swap_handles == 1) {
-          td2d->loc2d = fcu->bezt[i].vec[0];
-        }
-        else {
-          td2d->loc2d = fcu->bezt[i].vec[2];
-        }
-        adjusted[j] = true;
+      td = &tc->data[*trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
+    }
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[2])) {
+      td2d = &tc->data_2d[*trans_data_index];
+      if (bezm.swap_handles) {
+        td2d->loc2d = fcu->bezt[new_index].vec[0];
       }
-      else if (td2d->loc2d == bezm->bezt->vec[1]) {
-        td2d->loc2d = fcu->bezt[i].vec[1];
-
-        /* If only control point is selected, the handle pointers need to be updated as well. */
-        if (td2d->h1) {
-          td2d->h1 = fcu->bezt[i].vec[0];
-        }
-        if (td2d->h2) {
-          td2d->h2 = fcu->bezt[i].vec[2];
-        }
-
-        adjusted[j] = true;
+      else {
+        td2d->loc2d = fcu->bezt[new_index].vec[2];
       }
+      td = &tc->data[*trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
+    }
+    if (const int *trans_data_index = trans_data_map.lookup_ptr(bezm.bezt->vec[1])) {
+      td2d = &tc->data_2d[*trans_data_index];
+      td2d->loc2d = fcu->bezt[new_index].vec[1];
 
-      /* The handle type pointer has to be updated too. */
-      if (adjusted[j] && td->flag & TD_BEZTRIPLE && td->hdata) {
-        if (bezm->swap_handles == 1) {
-          td->hdata->h1 = &fcu->bezt[i].h2;
-          td->hdata->h2 = &fcu->bezt[i].h1;
-        }
-        else {
-          td->hdata->h1 = &fcu->bezt[i].h1;
-          td->hdata->h2 = &fcu->bezt[i].h2;
-        }
+      /* If only control point is selected, the handle pointers need to be updated as well. */
+      if (td2d->h1) {
+        td2d->h1 = fcu->bezt[new_index].vec[0];
       }
+      if (td2d->h2) {
+        td2d->h2 = fcu->bezt[new_index].vec[2];
+      }
+      td = &tc->data[*trans_data_index];
+      update_trans_data(td, fcu, new_index, bezm.swap_handles);
     }
   }
 }
@@ -881,6 +868,15 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
 {
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
+
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+
+  /* Build a map from the data that is being modified to its index. This is used to quickly update
+   * the pointers to where the data ends up after sorting. */
+  blender::Map<float *, int> trans_data_map;
+  for (int i = 0; i < tc->data_len; i++) {
+    trans_data_map.add(tc->data_2d[i].loc2d, i);
+  }
 
   /* The grain size of 8 was chosen based on measured runtimes of this function. While 1 is the
    * fastest, larger grain sizes are generally preferred and the difference between 1 and 8 was
@@ -897,7 +893,7 @@ static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> f
       /* NOTE: none of these functions use 'use_handle', it could be removed. */
       blender::Vector<BeztMap> bezms = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
       sort_time_beztmaps(bezms);
-      beztmap_to_data(t, fcu, bezms);
+      update_transdata_bezt_pointers(tc, trans_data_map, fcu, bezms);
 
       /* Re-sort actual beztriples
        * (perhaps this could be done using the beztmaps to save time?). */
@@ -928,8 +924,8 @@ static void recalcData_graphedit(TransInfo *t)
   ac.area = t->area;
   ac.region = t->region;
   ac.sl = static_cast<SpaceLink *>((t->area) ? t->area->spacedata.first : nullptr);
-  ac.spacetype = (t->area) ? t->area->spacetype : 0;
-  ac.regiontype = (t->region) ? t->region->regiontype : 0;
+  ac.spacetype = eSpace_Type((t->area) ? t->area->spacetype : 0);
+  ac.regiontype = eRegion_Type((t->region) ? t->region->regiontype : 0);
 
   ANIM_animdata_context_getdata(&ac);
 

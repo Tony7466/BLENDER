@@ -107,6 +107,7 @@ static void spreadsheet_free(SpaceLink *sl)
   LISTBASE_FOREACH_MUTABLE (SpreadsheetColumn *, column, &sspreadsheet->columns) {
     spreadsheet_column_free(column);
   }
+  MEM_SAFE_FREE(sspreadsheet->instance_ids);
   BKE_viewer_path_clear(&sspreadsheet->viewer_path);
 }
 
@@ -141,6 +142,8 @@ static SpaceLink *spreadsheet_duplicate(SpaceLink *sl)
     BLI_addtail(&sspreadsheet_new->columns, new_column);
   }
 
+  sspreadsheet_new->instance_ids = static_cast<SpreadsheetInstanceID *>(
+      MEM_dupallocN(sspreadsheet_old->instance_ids));
   BKE_viewer_path_copy(&sspreadsheet_new->viewer_path, &sspreadsheet_old->viewer_path);
 
   return (SpaceLink *)sspreadsheet_new;
@@ -674,19 +677,22 @@ static void spreadsheet_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)sl;
 
   sspreadsheet->runtime = nullptr;
-  BLO_read_list(reader, &sspreadsheet->row_filters);
+  BLO_read_struct_list(reader, SpreadsheetRowFilter, &sspreadsheet->row_filters);
   LISTBASE_FOREACH (SpreadsheetRowFilter *, row_filter, &sspreadsheet->row_filters) {
-    BLO_read_data_address(reader, &row_filter->value_string);
+    BLO_read_string(reader, &row_filter->value_string);
   }
-  BLO_read_list(reader, &sspreadsheet->columns);
+  BLO_read_struct_list(reader, SpreadsheetColumn, &sspreadsheet->columns);
   LISTBASE_FOREACH (SpreadsheetColumn *, column, &sspreadsheet->columns) {
-    BLO_read_data_address(reader, &column->id);
-    BLO_read_data_address(reader, &column->id->name);
+    BLO_read_struct(reader, SpreadsheetColumnID, &column->id);
+    BLO_read_string(reader, &column->id->name);
     /* While the display name is technically runtime data, it is loaded here, otherwise the row
      * filters might not now their type if their region draws before the main region.
      * This would ideally be cleared here. */
-    BLO_read_data_address(reader, &column->display_name);
+    BLO_read_string(reader, &column->display_name);
   }
+
+  BLO_read_struct_array(
+      reader, SpreadsheetInstanceID, sspreadsheet->instance_ids_num, &sspreadsheet->instance_ids);
 
   BKE_viewer_path_blend_read_data(reader, &sspreadsheet->viewer_path);
 }
@@ -711,6 +717,8 @@ static void spreadsheet_blend_write(BlendWriter *writer, SpaceLink *sl)
     BLO_write_string(writer, column->display_name);
   }
 
+  BLO_write_struct_array(
+      writer, SpreadsheetInstanceID, sspreadsheet->instance_ids_num, sspreadsheet->instance_ids);
   BKE_viewer_path_blend_write(writer, &sspreadsheet->viewer_path);
 }
 

@@ -77,10 +77,6 @@
  * - no multiple scene import, all objects are added to active scene
  */
 
-// #define COLLADA_DEBUG
-/* creates empties for each imported bone on layer 2, for debugging */
-// #define ARMATURE_TEST
-
 DocumentImporter::DocumentImporter(bContext *C, const ImportSettings *import_settings)
     : import_settings(import_settings),
       mImportStage(Fetching_Scene_data),
@@ -642,7 +638,7 @@ std::vector<Object *> *DocumentImporter::write_node(COLLADAFW::Node *node,
 
     for (Object *ob : *objects_done) {
       std::string nodename = node->getName().empty() ? node->getOriginalId() : node->getName();
-      BKE_libblock_rename(bmain, &ob->id, (char *)nodename.c_str());
+      BKE_libblock_rename(*bmain, ob->id, (char *)nodename.c_str());
       object_map.insert(std::pair<COLLADAFW::UniqueId, Object *>(node->getUniqueId(), ob));
       node_map[node->getUniqueId()] = node;
 

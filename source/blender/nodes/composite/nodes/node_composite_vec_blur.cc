@@ -97,7 +97,7 @@ class VectorBlurOperation : public NodeOperation {
     Result &input = get_input("Speed");
     input.bind_as_texture(shader, "input_tx");
 
-    Result output = context().create_temporary_result(ResultType::Color);
+    Result output = context().create_result(ResultType::Color);
     const int2 tiles_count = math::divide_ceil(input.domain().size, int2(32));
     output.allocate_texture(Domain(tiles_count));
     output.bind_as_image(shader, "output_img");
@@ -195,15 +195,15 @@ void register_node_type_cmp_vecblur()
 {
   namespace file_ns = blender::nodes::node_composite_vec_blur_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_VECBLUR, "Vector Blur", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_vec_blur_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_vecblur;
   ntype.initfunc = file_ns::node_composit_init_vecblur;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeBlurData", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

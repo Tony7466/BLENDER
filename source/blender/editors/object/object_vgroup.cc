@@ -56,6 +56,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_grease_pencil.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 #include "ED_object_vgroup.hh"
@@ -157,7 +158,7 @@ bool vgroup_parray_alloc(ID *id, MDeformVert ***dvert_arr, int *dvert_tot, const
       case ID_ME: {
         Mesh *mesh = (Mesh *)id;
 
-        if (BMEditMesh *em = mesh->runtime->edit_mesh) {
+        if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
           BMesh *bm = em->bm;
           const int cd_dvert_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
           BMIter iter;
@@ -525,7 +526,7 @@ static void ED_mesh_defvert_mirror_update_em(
     Object *ob, BMVert *eve, int def_nr, int vidx, const int cd_dvert_offset)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh.get();
   BMVert *eve_mirr;
   bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
 
@@ -563,7 +564,7 @@ static void ED_mesh_defvert_mirror_update_ob(Object *ob, int def_nr, int vidx)
 void vgroup_vert_active_mirror(Object *ob, int def_nr)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh.get();
   MDeformVert *dvert_act;
 
   if (mesh->symmetry & ME_SYMMETRY_X) {
@@ -599,7 +600,7 @@ static void vgroup_remove_weight(Object *ob, const int def_nr)
 static bool vgroup_normalize_active_vertex(Object *ob, eVGroupSelect subset_type)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh.get();
   BMVert *eve_act;
   int v_act;
   MDeformVert *dvert_act;
@@ -638,13 +639,12 @@ static bool vgroup_normalize_active_vertex(Object *ob, eVGroupSelect subset_type
 static void vgroup_copy_active_to_sel(Object *ob, eVGroupSelect subset_type)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
   MDeformVert *dvert_act;
   int i, vgroup_tot, subset_count;
   const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
       ob, subset_type, &vgroup_tot, &subset_count);
 
-  if (em) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     BMIter iter;
     BMVert *eve, *eve_act;
     const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
@@ -935,8 +935,7 @@ static float get_vert_def_nr(Object *ob, const int def_nr, const int vertnum)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->runtime->edit_mesh) {
-      BMEditMesh *em = mesh->runtime->edit_mesh;
+    if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
       /* warning, this lookup is _not_ fast */
 
@@ -1007,7 +1006,7 @@ void vgroup_select_by_name(Object *ob, const char *name)
  * \{ */
 
 /* only in editmode */
-static void vgroup_select_verts(Object *ob, int select)
+static void vgroup_select_verts(const ToolSettings &tool_settings, Object *ob, int select)
 {
   const int def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
 
@@ -1020,8 +1019,7 @@ static void vgroup_select_verts(Object *ob, int select)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->runtime->edit_mesh) {
-      BMEditMesh *em = mesh->runtime->edit_mesh;
+    if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
       if (cd_dvert_offset != -1) {
@@ -1097,8 +1095,10 @@ static void vgroup_select_verts(Object *ob, int select)
     }
   }
   else if (ob->type == OB_GREASE_PENCIL) {
+    const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(&tool_settings);
     GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
-    bke::greasepencil::select_from_group(*grease_pencil, def_group->name, bool(select));
+    bke::greasepencil::select_from_group(
+        *grease_pencil, selection_domain, def_group->name, bool(select));
     DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
   }
 }
@@ -2037,9 +2037,8 @@ void vgroup_mirror(Object *ob,
   /* only the active group */
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BMEditMesh *em = mesh->runtime->edit_mesh;
 
-    if (em) {
+    if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
       BMIter iter;
 
@@ -2231,7 +2230,7 @@ static void vgroup_assign_verts(Object *ob, const float weight)
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
     if (mesh->runtime->edit_mesh) {
-      BMEditMesh *em = mesh->runtime->edit_mesh;
+      BMEditMesh *em = mesh->runtime->edit_mesh.get();
       int cd_dvert_offset;
 
       BMIter iter;
@@ -2327,7 +2326,7 @@ static bool vertex_group_supported_poll_ex(bContext *C, const Object *ob)
 
   /* Data checks. */
   const ID *data = static_cast<const ID *>(ob->data);
-  if (data == nullptr || ID_IS_LINKED(data) || ID_IS_OVERRIDE_LIBRARY(data)) {
+  if (data == nullptr || !ID_IS_EDITABLE(data) || ID_IS_OVERRIDE_LIBRARY(data)) {
     CTX_wm_operator_poll_msg_set(C, "Object type \"%s\" does not have editable data");
     return false;
   }
@@ -2695,13 +2694,14 @@ void OBJECT_OT_vertex_group_remove_from(wmOperatorType *ot)
 
 static int vertex_group_select_exec(bContext *C, wmOperator * /*op*/)
 {
+  const ToolSettings &tool_settings = *CTX_data_scene(C)->toolsettings;
   Object *ob = context_object(C);
 
-  if (!ob || ID_IS_LINKED(ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
+  if (!ob || !ID_IS_EDITABLE(ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
     return OPERATOR_CANCELLED;
   }
 
-  vgroup_select_verts(ob, 1);
+  vgroup_select_verts(tool_settings, ob, 1);
   DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
 
@@ -2731,9 +2731,10 @@ void OBJECT_OT_vertex_group_select(wmOperatorType *ot)
 
 static int vertex_group_deselect_exec(bContext *C, wmOperator * /*op*/)
 {
+  const ToolSettings &tool_settings = *CTX_data_scene(C)->toolsettings;
   Object *ob = context_object(C);
 
-  vgroup_select_verts(ob, 0);
+  vgroup_select_verts(tool_settings, ob, 0);
   DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
 
@@ -2988,12 +2989,12 @@ static int vertex_group_lock_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static std::string vertex_group_lock_description(bContext * /*C*/,
-                                                 wmOperatorType * /*ot*/,
-                                                 PointerRNA *params)
+static std::string vertex_group_lock_get_description(bContext * /*C*/,
+                                                     wmOperatorType * /*ot*/,
+                                                     PointerRNA *ptr)
 {
-  int action = RNA_enum_get(params, "action");
-  int mask = RNA_enum_get(params, "mask");
+  int action = RNA_enum_get(ptr, "action");
+  int mask = RNA_enum_get(ptr, "mask");
 
   /* NOTE: constructing the following string literals can be done in a less verbose way,
    * however the resulting strings can't be usefully translated, (via `TIP_`). */
@@ -3062,7 +3063,7 @@ void OBJECT_OT_vertex_group_lock(wmOperatorType *ot)
   /* api callbacks */
   ot->poll = vertex_group_poll;
   ot->exec = vertex_group_lock_exec;
-  ot->get_description = vertex_group_lock_description;
+  ot->get_description = vertex_group_lock_get_description;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -3873,10 +3874,9 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
   MDeformVert *dvert_act;
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->runtime->edit_mesh;
   int i;
 
-  if (em) {
+  if (BMEditMesh *em = mesh->runtime->edit_mesh.get()) {
     const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
     BMIter iter;
     BMVert *eve, *eve_act;

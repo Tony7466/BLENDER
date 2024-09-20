@@ -33,6 +33,10 @@
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 
+#include "ANIM_action.hh"
+
+using namespace blender;
+
 /* *************************** Keyframe Drawing *************************** */
 
 void draw_keyframe_shape(const float x,
@@ -384,7 +388,9 @@ enum class ChannelType {
   SCENE,
   OBJECT,
   FCURVE,
-  ACTION,
+  ACTION_LAYERED,
+  ACTION_SLOT,
+  ACTION_LEGACY,
   ACTION_GROUP,
   GREASE_PENCIL_CELS,
   GREASE_PENCIL_GROUP,
@@ -403,6 +409,7 @@ struct ChannelListElement {
   eSAction_Flag saction_flag;
   bool channel_locked;
 
+  /* TODO: check which of these can be put into a `union`: */
   bAnimContext *ac;
   bDopeSheet *ads;
   Scene *sce;
@@ -410,6 +417,7 @@ struct ChannelListElement {
   AnimData *adt;
   FCurve *fcu;
   bAction *act;
+  animrig::Slot *action_slot;
   bActionGroup *agrp;
   bGPDlayer *gpl;
   const GreasePencilLayer *grease_pencil_layer;
@@ -437,7 +445,22 @@ static void build_channel_keylist(ChannelListElement *elem, blender::float2 rang
       fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag, range);
       break;
     }
-    case ChannelType::ACTION: {
+    case ChannelType::ACTION_LAYERED: {
+      action_to_keylist(elem->adt, elem->act, elem->keylist, elem->saction_flag, range);
+      break;
+    }
+    case ChannelType::ACTION_SLOT: {
+      BLI_assert(elem->act);
+      BLI_assert(elem->action_slot);
+      action_slot_to_keylist(elem->adt,
+                             elem->act->wrap(),
+                             elem->action_slot->handle,
+                             elem->keylist,
+                             elem->saction_flag,
+                             range);
+      break;
+    }
+    case ChannelType::ACTION_LEGACY: {
       action_to_keylist(elem->adt, elem->act, elem->keylist, elem->saction_flag, range);
       break;
     }
@@ -678,7 +701,7 @@ void ED_add_fcurve_channel(ChannelDrawList *channel_list,
   const bool locked = (fcu->flag & FCURVE_PROTECTED) ||
                       ((fcu->grp) && (fcu->grp->flag & AGRP_PROTECTED)) ||
                       ((adt && adt->action) &&
-                       (ID_IS_LINKED(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
+                       (!ID_IS_EDITABLE(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
 
   ChannelListElement *draw_elem = channel_list_add_element(
       channel_list, ChannelType::FCURVE, ypos, yscale_fac, eSAction_Flag(saction_flag));
@@ -696,12 +719,51 @@ void ED_add_action_group_channel(ChannelDrawList *channel_list,
 {
   bool locked = (agrp->flag & AGRP_PROTECTED) ||
                 ((adt && adt->action) &&
-                 (ID_IS_LINKED(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
+                 (!ID_IS_EDITABLE(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
 
   ChannelListElement *draw_elem = channel_list_add_element(
       channel_list, ChannelType::ACTION_GROUP, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->agrp = agrp;
+  draw_elem->channel_locked = locked;
+}
+
+void ED_add_action_layered_channel(ChannelDrawList *channel_list,
+                                   AnimData *adt,
+                                   bAction *action,
+                                   const float ypos,
+                                   const float yscale_fac,
+                                   int saction_flag)
+{
+  BLI_assert(action);
+  BLI_assert(action->wrap().is_action_layered());
+
+  const bool locked = (!ID_IS_EDITABLE(action) || ID_IS_OVERRIDE_LIBRARY(action));
+  saction_flag &= ~SACTION_SHOW_EXTREMES;
+
+  ChannelListElement *draw_elem = channel_list_add_element(
+      channel_list, ChannelType::ACTION_LAYERED, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->adt = adt;
+  draw_elem->act = action;
+  draw_elem->channel_locked = locked;
+}
+
+void ED_add_action_slot_channel(ChannelDrawList *channel_list,
+                                AnimData *adt,
+                                animrig::Action &action,
+                                animrig::Slot &slot,
+                                const float ypos,
+                                const float yscale_fac,
+                                int saction_flag)
+{
+  const bool locked = (ID_IS_LINKED(&action) || ID_IS_OVERRIDE_LIBRARY(&action));
+  saction_flag &= ~SACTION_SHOW_EXTREMES;
+
+  ChannelListElement *draw_elem = channel_list_add_element(
+      channel_list, ChannelType::ACTION_SLOT, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->adt = adt;
+  draw_elem->act = &action;
+  draw_elem->action_slot = &slot;
   draw_elem->channel_locked = locked;
 }
 
@@ -712,11 +774,15 @@ void ED_add_action_channel(ChannelDrawList *channel_list,
                            float yscale_fac,
                            int saction_flag)
 {
-  const bool locked = (act && (ID_IS_LINKED(act) || ID_IS_OVERRIDE_LIBRARY(act)));
+#ifdef WITH_ANIM_BAKLAVA
+  BLI_assert(!act || act->wrap().is_action_legacy());
+#endif
+
+  const bool locked = (act && (!ID_IS_EDITABLE(act) || ID_IS_OVERRIDE_LIBRARY(act)));
   saction_flag &= ~SACTION_SHOW_EXTREMES;
 
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ChannelType::ACTION, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, ChannelType::ACTION_LEGACY, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->act = act;
   draw_elem->channel_locked = locked;

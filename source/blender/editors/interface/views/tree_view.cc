@@ -23,6 +23,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "BLI_multi_value_map.hh"
+
 #include "UI_tree_view.hh"
 
 namespace blender::ui {
@@ -68,7 +70,7 @@ void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptio
 {
   for (const auto &child : children_) {
     bool skip = false;
-    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible_cached()) {
+    if (bool(options & IterOptions::SkipFiltered) && !child->is_filtered_visible()) {
       skip = true;
     }
 
@@ -81,6 +83,13 @@ void TreeViewItemContainer::foreach_item_recursive(ItemIterFn iter_fn, IterOptio
     }
 
     child->foreach_item_recursive(iter_fn, options);
+  }
+}
+
+void TreeViewItemContainer::foreach_parent(ItemIterFn iter_fn) const
+{
+  for (ui::AbstractTreeViewItem *item = parent_; item; item = item->parent_) {
+    iter_fn(*item);
   }
 }
 
@@ -182,7 +191,7 @@ void AbstractTreeView::get_hierarchy_lines(const ARegion &region,
       }
     }
 
-    const int x = ((first_descendant->indent_width() - (0.5f * UI_ICON_SIZE) + U.pixelsize +
+    const int x = ((first_descendant->indent_width() + uiLayoutListItemPaddingWidth() - (0.5f * UI_ICON_SIZE) + U.pixelsize +
                     UI_SCALE_FAC) /
                    aspect);
     const int ymax = std::max(0, first_descendant_index - scroll_ofs) * padded_item_height();
@@ -267,8 +276,18 @@ void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
 void AbstractTreeView::update_children_from_old_recursive(const TreeViewOrItem &new_items,
                                                           const TreeViewOrItem &old_items)
 {
+  /* This map can't find the exact old item for a new item. However, it can drastically reduce the
+   * number of items that need to be checked. */
+  MultiValueMap<StringRef, AbstractTreeViewItem *> old_children_by_label;
+  for (const auto &old_item : old_items.children_) {
+    old_children_by_label.add(old_item->label_, old_item.get());
+  }
+
   for (const auto &new_item : new_items.children_) {
-    AbstractTreeViewItem *matching_old_item = find_matching_child(*new_item, old_items);
+    const Span<AbstractTreeViewItem *> possible_old_children = old_children_by_label.lookup(
+        new_item->label_);
+    AbstractTreeViewItem *matching_old_item = find_matching_child(*new_item,
+                                                                  possible_old_children);
     if (!matching_old_item) {
       continue;
     }
@@ -281,12 +300,12 @@ void AbstractTreeView::update_children_from_old_recursive(const TreeViewOrItem &
 }
 
 AbstractTreeViewItem *AbstractTreeView::find_matching_child(
-    const AbstractTreeViewItem &lookup_item, const TreeViewOrItem &items)
+    const AbstractTreeViewItem &lookup_item, const Span<AbstractTreeViewItem *> possible_items)
 {
-  for (const auto &iter_item : items.children_) {
+  for (auto *iter_item : possible_items) {
     if (lookup_item.matches(*iter_item)) {
       /* We have a matching item! */
-      return iter_item.get();
+      return iter_item;
     }
   }
 
@@ -431,7 +450,7 @@ void AbstractTreeViewItem::collapse_chevron_click_fn(bContext *C,
    * lookup the hovered item via context here. */
 
   const wmWindow *win = CTX_wm_window(C);
-  const ARegion *region = CTX_wm_menu(C) ? CTX_wm_menu(C) : CTX_wm_region(C);
+  const ARegion *region = CTX_wm_region_popup(C) ? CTX_wm_region_popup(C) : CTX_wm_region(C);
   AbstractViewItem *hovered_abstract_item = UI_region_views_find_item_at(*region,
                                                                          win->eventstate->xy);
 
@@ -535,6 +554,11 @@ std::unique_ptr<DropTargetInterface> AbstractTreeViewItem::create_item_drop_targ
 std::unique_ptr<TreeViewItemDropTarget> AbstractTreeViewItem::create_drop_target()
 {
   return nullptr;
+}
+
+std::optional<std::string> AbstractTreeViewItem::debug_name() const
+{
+  return label_;
 }
 
 AbstractTreeView &AbstractTreeViewItem::get_tree_view() const
@@ -696,6 +720,7 @@ bool AbstractTreeViewItem::matches(const AbstractViewItem &other) const
 
 class TreeViewLayoutBuilder {
   uiBlock &block_;
+  bool add_box_ = true;
 
   friend TreeViewBuilder;
 
@@ -729,8 +754,14 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
   uiLayout &parent_layout = this->current_layout();
   uiBlock *block = uiLayoutGetBlock(&parent_layout);
 
-  uiLayout *box = uiLayoutBox(&parent_layout);
-  uiLayout *col = uiLayoutColumn(box, true);
+  uiLayout *col = nullptr;
+  if (add_box_) {
+    uiLayout *box = uiLayoutBox(&parent_layout);
+    col = uiLayoutColumn(box, true);
+  }
+  else {
+    col = uiLayoutColumn(&parent_layout, true);
+  }
   /* Row for the tree-view and the scroll bar. */
   uiLayout *row = uiLayoutRow(col, false);
 
@@ -831,6 +862,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
     uiDefBut(&block_, UI_BTYPE_LABEL, 0, "", 0, 0, UI_UNIT_X, margin_top, nullptr, 0, 0, "");
   }
   row = uiLayoutRow(content_col, true);
+
+  uiLayoutListItemAddPadding(row);
   item.add_indent(*row);
   item.add_collapse_chevron(block_);
 
@@ -840,6 +873,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   else {
     item.build_row(*row);
   }
+
+  uiLayoutListItemAddPadding(row);
 
   UI_block_emboss_set(&block_, previous_emboss);
   UI_block_layout_set_current(&block_, &prev_layout);
@@ -879,13 +914,17 @@ void TreeViewBuilder::ensure_min_rows_items(AbstractTreeView &tree_view)
   }
 }
 
-void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view, uiLayout &layout)
+void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view,
+                                      uiLayout &layout,
+                                      std::optional<StringRef> search_string,
+                                      const bool add_box)
 {
   uiBlock &block = *uiLayoutGetBlock(&layout);
 
   tree_view.build_tree();
   tree_view.update_from_old(block);
   tree_view.change_state_delayed();
+  tree_view.filter(search_string);
 
   ensure_min_rows_items(tree_view);
 
@@ -893,6 +932,7 @@ void TreeViewBuilder::build_tree_view(AbstractTreeView &tree_view, uiLayout &lay
   UI_block_layout_set_current(&block, &layout);
 
   TreeViewLayoutBuilder builder(layout);
+  builder.add_box_ = add_box;
   builder.build_from_tree(tree_view);
 }
 

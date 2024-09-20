@@ -18,7 +18,7 @@
 #include "NOD_node_declaration.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -43,16 +43,27 @@ static void draw_node_input(bContext *C,
 {
   BLI_assert(socket.typeinfo != nullptr);
   /* Ignore disabled sockets and linked sockets and sockets without a `draw` callback. */
-  if (!socket.is_available() || (socket.flag & (SOCK_IS_LINKED | SOCK_HIDE_VALUE)) ||
-      socket.typeinfo->draw == nullptr ||
-      ELEM(socket.type, SOCK_GEOMETRY, SOCK_MATRIX, SOCK_SHADER))
-  {
+  if (!socket.is_available()) {
+    return;
+  }
+  if ((socket.flag & (SOCK_IS_LINKED | SOCK_HIDE_VALUE)) != 0) {
+    return;
+  }
+  if (socket.typeinfo->draw == nullptr) {
+    return;
+  }
+  if (ELEM(socket.type, SOCK_GEOMETRY, SOCK_MATRIX, SOCK_SHADER)) {
+    return;
+  }
+  const bNode &node = *static_cast<bNode *>(node_ptr->data);
+  if (node.is_reroute()) {
     return;
   }
 
   PointerRNA socket_ptr = RNA_pointer_create(node_ptr->owner_id, &RNA_NodeSocket, &socket);
   const char *text = IFACE_(bke::nodeSocketLabel(&socket));
-  socket.typeinfo->draw(C, layout, &socket_ptr, node_ptr, text);
+  uiLayout *row = uiLayoutRow(layout, true);
+  socket.typeinfo->draw(C, row, &socket_ptr, node_ptr, text);
 }
 
 static void draw_node_input(bContext *C,

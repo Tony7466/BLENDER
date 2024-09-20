@@ -62,7 +62,7 @@ void USDCameraWriter::do_write(HierarchyContext &context)
                                                              usd_export_context_.usd_path);
 
   const Camera *camera = static_cast<const Camera *>(context.object->data);
-  Scene *scene = DEG_get_evaluated_scene(usd_export_context_.depsgraph);
+  const Scene *scene = DEG_get_evaluated_scene(usd_export_context_.depsgraph);
 
   usd_camera.CreateProjectionAttr().Set(pxr::UsdGeomTokens->perspective);
 
@@ -97,6 +97,9 @@ void USDCameraWriter::do_write(HierarchyContext &context)
     float focus_distance = BKE_camera_object_dof_distance(context.object);
     usd_camera.CreateFocusDistanceAttr().Set(focus_distance, timecode);
   }
+
+  auto prim = usd_camera.GetPrim();
+  write_id_properties(prim, camera->id, timecode);
 }
 
 }  // namespace blender::io::usd

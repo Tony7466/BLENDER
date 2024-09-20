@@ -209,13 +209,17 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
     return {};
   }
 
-  /* Note: although Alembic can store knots, we do not read them as the functionality is not
+  /* NOTE: although Alembic can store knots, we do not read them as the functionality is not
    * exposed by the Blender's Curves API yet. */
   const Int32ArraySamplePtr per_curve_vertices_count = smp.getCurvesNumVertices();
   const P3fArraySamplePtr positions = smp.getPositions();
   const FloatArraySamplePtr weights = smp.getPositionWeights();
   const CurvePeriodicity periodicity = smp.getWrap();
   const UcharArraySamplePtr orders = smp.getOrders();
+
+  if (positions->size() == 0) {
+    return {};
+  }
 
   const IFloatGeomParam widths_param = schema.getWidthsParam();
   FloatArraySamplePtr radii;
@@ -234,6 +238,15 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
   data.curve_type = get_curve_type(smp.getBasis());
   data.knot_mode = get_knot_mode(smp.getType());
   data.do_cyclic = periodicity == Alembic::AbcGeom::kPeriodic;
+
+  /* If #kVariableOrder is set then we must have order data. If not, this sample is suspect.
+   * Interpret the data as linear as a fallback. See #126324 for one such example.
+   * See also: Alembic source code in `ICurves.h`, #ICurvesSchema::Sample::valid() */
+  if (smp.getType() == Alembic::AbcGeom::kVariableOrder && !orders) {
+    data.curve_type = CURVE_TYPE_POLY;
+    data.knot_mode = NURBS_KNOT_MODE_NORMAL;
+    data.do_cyclic = false;
+  }
 
   if (data.curve_type == CURVE_TYPE_NURBS) {
     data.curves_orders.resize(curve_count);
@@ -307,17 +320,17 @@ bool AbcCurveReader::valid() const
 bool AbcCurveReader::accepts_object_type(
     const Alembic::AbcCoreAbstract::ObjectHeader &alembic_header,
     const Object *const ob,
-    const char **err_str) const
+    const char **r_err_str) const
 {
   if (!Alembic::AbcGeom::ICurves::matches(alembic_header)) {
-    *err_str = RPT_(
+    *r_err_str = RPT_(
         "Object type mismatch, Alembic object path pointed to Curves when importing, but not "
         "anymore.");
     return false;
   }
 
   if (ob->type != OB_CURVES) {
-    *err_str = RPT_("Object type mismatch, Alembic object path points to Curves.");
+    *r_err_str = RPT_("Object type mismatch, Alembic object path points to Curves.");
     return false;
   }
 
@@ -471,7 +484,7 @@ void AbcCurveReader::read_geometry(bke::GeometrySet &geometry_set,
                                    int /*read_flag*/,
                                    const char * /*velocity_name*/,
                                    const float /*velocity_scale*/,
-                                   const char ** /*err_str*/)
+                                   const char ** /*r_err_str*/)
 {
   Curves *curves = geometry_set.get_curves_for_write();
 

@@ -17,7 +17,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(-1.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Weight").unavailable();
+  b.add_input<decl::Float>("Weight").available(false);
   b.add_output<decl::Shader>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
 
@@ -51,11 +51,11 @@ void register_node_type_sh_volume_scatter()
 {
   namespace file_ns = blender::nodes::node_shader_volume_scatter_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_VOLUME_SCATTER, "Volume Scatter", NODE_CLASS_SHADER);
   ntype.declare = file_ns::node_declare;
   ntype.gpu_fn = file_ns::node_shader_gpu_volume_scatter;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

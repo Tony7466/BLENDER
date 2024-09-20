@@ -11,7 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_simd.h"
+#include "BLI_simd.hh"
 #include "BLI_task.h"
 
 #include "BLT_translation.hh"
@@ -32,7 +32,7 @@
 #include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -588,8 +588,9 @@ static void blend_write(BlendWriter *writer, const ID *id_owner, const ModifierD
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   MeshDeformModifierData *mmd = (MeshDeformModifierData *)md;
+  const int size = mmd->dyngridsize;
 
-  BLO_read_data_address(reader, &mmd->bindinfluences);
+  BLO_read_struct_array(reader, MDefInfluence, mmd->influences_num, &mmd->bindinfluences);
 
   /* NOTE: `bindoffset` is abusing `verts_num + 1` as its size, this becomes an incorrect value in
    * case `verts_num == 0`, since `bindoffset` is then nullptr, not a size 1 allocated array. */
@@ -598,8 +599,8 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   }
 
   BLO_read_float3_array(reader, mmd->cage_verts_num, &mmd->bindcagecos);
-  BLO_read_data_address(reader, &mmd->dyngrid);
-  BLO_read_data_address(reader, &mmd->dyninfluences);
+  BLO_read_struct_array(reader, MDefCell, size * size * size, &mmd->dyngrid);
+  BLO_read_struct_array(reader, MDefInfluence, mmd->influences_num, &mmd->dyninfluences);
   BLO_read_int32_array(reader, mmd->verts_num, &mmd->dynverts);
 
   /* Deprecated storage. */

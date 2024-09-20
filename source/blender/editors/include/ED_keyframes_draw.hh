@@ -72,7 +72,22 @@ void ED_add_action_group_channel(ChannelDrawList *draw_list,
                                  float ypos,
                                  float yscale_fac,
                                  int saction_flag);
-/* Action Summary */
+/* Layered Action Summary.*/
+void ED_add_action_layered_channel(ChannelDrawList *channel_list,
+                                   AnimData *adt,
+                                   bAction *action,
+                                   const float ypos,
+                                   const float yscale_fac,
+                                   int saction_flag);
+/* Action Slot summary. */
+void ED_add_action_slot_channel(ChannelDrawList *channel_list,
+                                AnimData *adt,
+                                blender::animrig::Action &action,
+                                blender::animrig::Slot &slot,
+                                float ypos,
+                                float yscale_fac,
+                                int saction_flag);
+/* Legacy Action Summary */
 void ED_add_action_channel(ChannelDrawList *draw_list,
                            AnimData *adt,
                            bAction *act,
@@ -137,5 +152,7 @@ void ED_add_mask_layer_channel(ChannelDrawList *draw_list,
                                int saction_flag);
 
 ChannelDrawList *ED_channel_draw_list_create();
+
 void ED_channel_list_flush(ChannelDrawList *draw_list, View2D *v2d);
+
 void ED_channel_list_free(ChannelDrawList *draw_list);

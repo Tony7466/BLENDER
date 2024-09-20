@@ -17,6 +17,8 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 
+#include "BLT_translation.hh"
+
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
@@ -118,28 +120,28 @@ static std::unique_ptr<CurvesSculptStrokeOperation> start_brush_operation(
   const Scene &scene = *CTX_data_scene(&C);
   const CurvesSculpt &curves_sculpt = *scene.toolsettings->curves_sculpt;
   const Brush &brush = *BKE_paint_brush_for_read(&curves_sculpt.paint);
-  switch (brush.curves_sculpt_tool) {
-    case CURVES_SCULPT_TOOL_COMB:
+  switch (brush.curves_sculpt_brush_type) {
+    case CURVES_SCULPT_BRUSH_TYPE_COMB:
       return new_comb_operation();
-    case CURVES_SCULPT_TOOL_DELETE:
+    case CURVES_SCULPT_BRUSH_TYPE_DELETE:
       return new_delete_operation();
-    case CURVES_SCULPT_TOOL_SNAKE_HOOK:
+    case CURVES_SCULPT_BRUSH_TYPE_SNAKE_HOOK:
       return new_snake_hook_operation();
-    case CURVES_SCULPT_TOOL_ADD:
+    case CURVES_SCULPT_BRUSH_TYPE_ADD:
       return new_add_operation();
-    case CURVES_SCULPT_TOOL_GROW_SHRINK:
+    case CURVES_SCULPT_BRUSH_TYPE_GROW_SHRINK:
       return new_grow_shrink_operation(mode, C);
-    case CURVES_SCULPT_TOOL_SELECTION_PAINT:
+    case CURVES_SCULPT_BRUSH_TYPE_SELECTION_PAINT:
       return new_selection_paint_operation(mode, C);
-    case CURVES_SCULPT_TOOL_PINCH:
+    case CURVES_SCULPT_BRUSH_TYPE_PINCH:
       return new_pinch_operation(mode, C);
-    case CURVES_SCULPT_TOOL_SMOOTH:
+    case CURVES_SCULPT_BRUSH_TYPE_SMOOTH:
       return new_smooth_operation();
-    case CURVES_SCULPT_TOOL_PUFF:
+    case CURVES_SCULPT_BRUSH_TYPE_PUFF:
       return new_puff_operation();
-    case CURVES_SCULPT_TOOL_DENSITY:
+    case CURVES_SCULPT_BRUSH_TYPE_DENSITY:
       return new_density_operation(mode, C, stroke_start);
-    case CURVES_SCULPT_TOOL_SLIDE:
+    case CURVES_SCULPT_BRUSH_TYPE_SLIDE:
       return new_slide_operation();
   }
   BLI_assert_unreachable();
@@ -282,7 +284,8 @@ static void curves_sculptmode_enter(bContext *C)
   wmMsgBus *mbus = CTX_wm_message_bus(C);
 
   Object *ob = CTX_data_active_object(C);
-  BKE_paint_ensure(scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
+  BKE_paint_ensure(
+      CTX_data_main(C), scene->toolsettings, (Paint **)&scene->toolsettings->curves_sculpt);
   CurvesSculpt *curves_sculpt = scene->toolsettings->curves_sculpt;
 
   ob->mode = OB_MODE_SCULPT_CURVES;
@@ -459,10 +462,10 @@ static void select_random_ui(bContext * /*C*/, wmOperator *op)
   uiItemR(layout, op->ptr, "partial", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_boolean_get(op->ptr, "partial")) {
-    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, "Min", ICON_NONE);
+    uiItemR(layout, op->ptr, "min", UI_ITEM_R_SLIDER, IFACE_("Min"), ICON_NONE);
   }
   else {
-    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, "Probability", ICON_NONE);
+    uiItemR(layout, op->ptr, "probability", UI_ITEM_R_SLIDER, IFACE_("Probability"), ICON_NONE);
   }
 }
 
@@ -823,7 +826,7 @@ static bool min_distance_edit_poll(bContext *C)
   if (brush == nullptr) {
     return false;
   }
-  if (brush->curves_sculpt_tool != CURVES_SCULPT_TOOL_DENSITY) {
+  if (brush->curves_sculpt_brush_type != CURVES_SCULPT_BRUSH_TYPE_DENSITY) {
     return false;
   }
   return true;

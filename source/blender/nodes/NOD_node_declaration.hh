@@ -16,9 +16,10 @@
 
 #include "DNA_node_types.h"
 
+#include "RNA_types.hh"
+
 struct bContext;
 struct bNode;
-struct PointerRNA;
 struct uiLayout;
 
 namespace blender::nodes {
@@ -158,6 +159,11 @@ class ItemDeclaration {
 
 using ItemDeclarationPtr = std::unique_ptr<ItemDeclaration>;
 
+struct SocketNameRNA {
+  PointerRNA owner = PointerRNA_NULL;
+  std::string property_name;
+};
+
 /**
  * Describes a single input or output socket. This is subclassed for different socket types.
  */
@@ -178,7 +184,7 @@ class SocketDeclaration : public ItemDeclaration {
   bool compact = false;
   bool is_multi_input = false;
   bool no_mute_links = false;
-  bool is_unavailable = false;
+  bool is_available = true;
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
   /** Puts this socket on the same line as the previous one in the UI. */
@@ -206,6 +212,11 @@ class SocketDeclaration : public ItemDeclaration {
   /** Some input sockets can have non-trivial values in the case when they are unlinked. This
    * callback computes the default input of a values in geometry nodes when nothing is linked. */
   std::unique_ptr<ImplicitInputValueFn> implicit_input_fn;
+  /**
+   * Property that stores the name of the socket so that it can be modified directly from the
+   * node without going to the side-bar.
+   */
+  std::unique_ptr<SocketNameRNA> socket_name_rna;
 
   friend NodeDeclarationBuilder;
   friend class BaseSocketDeclarationBuilder;
@@ -272,10 +283,10 @@ class BaseSocketDeclarationBuilder {
   BaseSocketDeclarationBuilder &no_muted_links(bool value = true);
 
   /**
-   * Used for sockets that are always unavailable and should not be seen by the user.
-   * Ideally, no new calls to this method should be added over time.
+   * Can be used to make a socket unavailable. It's still stored in DNA, but it's not shown in the
+   * UI and also can't be unhidden.
    */
-  BaseSocketDeclarationBuilder &unavailable(bool value = true);
+  BaseSocketDeclarationBuilder &available(bool value = true);
 
   BaseSocketDeclarationBuilder &is_attribute_name(bool value = true);
 
@@ -363,6 +374,16 @@ class BaseSocketDeclarationBuilder {
    */
   BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
 
+  /**
+   * Set a function that retrieves an RNA pointer to the name of the socket. This can be used to be
+   * able to rename the socket within the node.
+   */
+  BaseSocketDeclarationBuilder &socket_name_ptr(PointerRNA ptr, StringRef property_name);
+  BaseSocketDeclarationBuilder &socket_name_ptr(const ID *id,
+                                                const StructRNA *srna,
+                                                const void *data,
+                                                StringRef property_name);
+
   /** Index in the list of inputs or outputs. */
   int index() const;
 
@@ -388,6 +409,8 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
 using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 
 using PanelDrawButtonsFunction = void (*)(uiLayout *, bContext *, PointerRNA *);
+
+class SeparatorDeclaration : public ItemDeclaration {};
 
 /**
  * Describes a panel containing sockets or other panels.
@@ -445,7 +468,7 @@ class NodeDeclaration {
   /* Combined list of socket and panel declarations.
    * This determines order of sockets in the UI and panel content. */
   Vector<ItemDeclarationPtr> items;
-  /* Note: inputs and outputs pointers are owned by the items list. */
+  /* NOTE: inputs and outputs pointers are owned by the items list. */
   Vector<SocketDeclaration *> inputs;
   Vector<SocketDeclaration *> outputs;
   std::unique_ptr<aal::RelationsInNode> anonymous_attribute_relations_;
@@ -548,6 +571,8 @@ class NodeDeclarationBuilder {
                                            StringRef name,
                                            StringRef identifier = "");
 
+  void add_separator();
+
   aal::RelationsInNode &get_anonymous_attribute_relations()
   {
     if (!declaration_.anonymous_attribute_relations_) {
@@ -580,9 +605,10 @@ void position(const bNode &node, void *r_value);
 void normal(const bNode &node, void *r_value);
 void index(const bNode &node, void *r_value);
 void id_or_index(const bNode &node, void *r_value);
+void instance_transform(const bNode &node, void *r_value);
 }  // namespace implicit_field_inputs
 
-void build_node_declaration(const bNodeType &typeinfo,
+void build_node_declaration(const bke::bNodeType &typeinfo,
                             NodeDeclaration &r_declaration,
                             const bNodeTree *ntree,
                             const bNode *node);
