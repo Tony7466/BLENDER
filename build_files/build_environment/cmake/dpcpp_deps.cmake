@@ -70,6 +70,9 @@ ExternalProject_Add(external_unifiedruntime
   CONFIGURE_COMMAND echo .
   BUILD_COMMAND echo .
   INSTALL_COMMAND echo .
+  PATCH_COMMAND ${PATCH_CMD} -p 1 -d
+    ${BUILD_DIR}/unifiedruntime/src/external_unifiedruntime <
+    ${PATCH_DIR}/unifiedruntime.diff
 )
 
 ExternalProject_Add(external_unifiedmemoryframework

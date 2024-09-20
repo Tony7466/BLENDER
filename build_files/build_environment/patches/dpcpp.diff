@@ -34,6 +34,22 @@ diff -Naur llvm-sycl-nightly-20220208.orig/libdevice/cmake/modules/SYCLLibdevice
    libsycldevice-obj
    libsycldevice-spv)
  
+From 9c6ca3de24b4543e640d695ad4b0ee1ac76981d9 Mon Sep 17 00:00:00 2001
+From: Xavier Hallade <xavier.hallade@intel.com>
+Date: Mon, 27 May 2024 11:07:02 +0200
+Subject: [PATCH 1/3] Revert "[SYCL] Use boost's unordered maps for kernel
+ caching (#10480)"
+
+This reverts commit efc1a5a008aa4b2af781a573602126b5c14bc204.
+---
+ sycl/CMakeLists.txt                           |   1 -
+ .../modules/FetchBoostUnorderedHeaders.cmake  | 129 ------------------
+ sycl/source/CMakeLists.txt                    |   2 -
+ sycl/source/detail/kernel_program_cache.hpp   |  22 +--
+ sycl/unittests/CMakeLists.txt                 |   1 -
+ 5 files changed, 6 insertions(+), 149 deletions(-)
+ delete mode 100644 sycl/cmake/modules/FetchBoostUnorderedHeaders.cmake
+
 diff --git a/sycl/CMakeLists.txt b/sycl/CMakeLists.txt
 index 00ce045f43c3..e044262e628e 100644
 --- a/sycl/CMakeLists.txt
@@ -262,6 +278,330 @@ index 71d2413c2974..0c55c870c4b8 100644
  
  foreach(flag_var
      CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+-- 
+2.30.1.windows.1
+
+From c752eeb7c8b71b31d8f3610ee5e8e77d831a73c3 Mon Sep 17 00:00:00 2001
+From: Joshua Cranmer <joshua.cranmer@intel.com>
+Date: Thu, 25 Apr 2024 10:57:32 -0700
+Subject: [PATCH 2/3] Disable FTZ/DAZ when compiling shared libraries by
+ default. (#80475)
+
+This fixes https://github.com/llvm/llvm-project/issues/57589, and aligns
+Clang with the behavior of current versions of gcc. There is a new
+option, -mdaz-ftz, to control the linking of the file that sets FTZ/DAZ
+on startup, and this flag is on by default if -ffast-math is present and
+-shared isn't.
+
+This also partially reverts fa7cd549d60 in that it disables the attempt
+to set the IR denormal-fp-math attribute based on whether or not
+-ffast-math is applied as it is insufficiently reliable.
+---
+ clang/docs/UsersManual.rst                   | 15 +++++++----
+ clang/include/clang/Driver/Options.td        |  5 ++++
+ clang/lib/Driver/ToolChain.cpp               | 15 +++++++++--
+ clang/lib/Driver/ToolChains/Linux.cpp        | 19 --------------
+ clang/lib/Driver/ToolChains/Linux.h          |  4 ---
+ clang/test/Driver/default-denormal-fp-math.c |  9 -------
+ clang/test/Driver/linux-ld.c                 | 26 ++++++++++++++++++++
+ 7 files changed, 54 insertions(+), 39 deletions(-)
+
+diff --git a/clang/docs/UsersManual.rst b/clang/docs/UsersManual.rst
+index 7391e4cf3a9a..257af3c8d4d3 100644
+--- a/clang/docs/UsersManual.rst
++++ b/clang/docs/UsersManual.rst
+@@ -1506,7 +1506,8 @@ floating point semantic models: precise (the default), strict, and fast.
+ 
+    * ``-ffp-contract=fast``
+ 
+-   Note: ``-ffast-math`` causes ``crtfastmath.o`` to be linked with code. See
++   Note: ``-ffast-math`` causes ``crtfastmath.o`` to be linked with code unless
++   ``-shared`` or ``-mno-daz-ftz`` is present. See
+    :ref:`crtfastmath.o` for more details.
+ 
+ .. option:: -fno-fast-math
+@@ -1560,7 +1561,8 @@ floating point semantic models: precise (the default), strict, and fast.
+      ``-ffp-contract``.
+ 
+    Note: ``-fno-fast-math`` implies ``-fdenormal-fp-math=ieee``.
+-   ``-fno-fast-math`` causes ``crtfastmath.o`` to not be linked with code.
++   ``-fno-fast-math`` causes ``crtfastmath.o`` to not be linked with code
++   unless ``-mdaz-ftz`` is present.
+ 
+ .. option:: -fdenormal-fp-math=<value>
+ 
+@@ -1907,10 +1909,13 @@ by using ``#pragma STDC FENV_ROUND`` with a value other than ``FE_DYNAMIC``.
+ 
+ A note about ``crtfastmath.o``
+ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-``-ffast-math`` and ``-funsafe-math-optimizations`` cause ``crtfastmath.o`` to be
+-automatically linked,  which adds a static constructor that sets the FTZ/DAZ
++``-ffast-math`` and ``-funsafe-math-optimizations`` without the ``-shared``
++option cause ``crtfastmath.o`` to be
++automatically linked, which adds a static constructor that sets the FTZ/DAZ
+ bits in MXCSR, affecting not only the current compilation unit but all static
+-and shared libraries included in the program.
++and shared libraries included in the program. This decision can be overridden
++by using either the flag ``-mdaz-ftz`` or ``-mno-daz-ftz`` to respectively
++link or not link ``crtfastmath.o``.
+ 
+ .. _FLT_EVAL_METHOD:
+ 
+diff --git a/clang/include/clang/Driver/Options.td b/clang/include/clang/Driver/Options.td
+index a01aec2a1bca..a2a118560848 100644
+--- a/clang/include/clang/Driver/Options.td
++++ b/clang/include/clang/Driver/Options.td
+@@ -2667,6 +2667,11 @@ defm protect_parens : BoolFOption<"protect-parens",
+           "floating-point expressions are evaluated">,
+   NegFlag<SetFalse>>;
+ 
++defm daz_ftz : SimpleMFlag<"daz-ftz",
++  "Globally set", "Do not globally set",
++  " the denormals-are-zero (DAZ) and flush-to-zero (FTZ) bits in the "
++  "floating-point control register on program startup">;
++
+ def ffor_scope : Flag<["-"], "ffor-scope">, Group<f_Group>;
+ def fno_for_scope : Flag<["-"], "fno-for-scope">, Group<f_Group>;
+ 
+diff --git a/clang/lib/Driver/ToolChain.cpp b/clang/lib/Driver/ToolChain.cpp
+index aceadec7f131..38a89eeba7d7 100644
+--- a/clang/lib/Driver/ToolChain.cpp
++++ b/clang/lib/Driver/ToolChain.cpp
+@@ -1385,9 +1385,14 @@ void ToolChain::AddCCKextLibArgs(const ArgList &Args,
+ 
+ bool ToolChain::isFastMathRuntimeAvailable(const ArgList &Args,
+                                            std::string &Path) const {
++  // Don't implicitly link in mode-changing libraries in a shared library, since
++  // this can have very deleterious effects. See the various links from
++  // https://github.com/llvm/llvm-project/issues/57589 for more information.
++  bool Default = !Args.hasArgNoClaim(options::OPT_shared);
++
+   // Do not check for -fno-fast-math or -fno-unsafe-math when -Ofast passed
+   // (to keep the linker options consistent with gcc and clang itself).
+-  if (!isOptimizationLevelFast(Args)) {
++  if (Default && !isOptimizationLevelFast(Args)) {
+     // Check if -ffast-math or -funsafe-math.
+     Arg *A =
+       Args.getLastArg(options::OPT_ffast_math, options::OPT_fno_fast_math,
+@@ -1396,8 +1401,14 @@ bool ToolChain::isFastMathRuntimeAvailable(const ArgList &Args,
+ 
+     if (!A || A->getOption().getID() == options::OPT_fno_fast_math ||
+         A->getOption().getID() == options::OPT_fno_unsafe_math_optimizations)
+-      return false;
++      Default = false;
+   }
++
++  // Whatever decision came as a result of the above implicit settings, either
++  // -mdaz-ftz or -mno-daz-ftz is capable of overriding it.
++  if (!Args.hasFlag(options::OPT_mdaz_ftz, options::OPT_mno_daz_ftz, Default))
++    return false;
++
+   // If crtfastmath.o exists add it to the arguments.
+   Path = GetFilePath("crtfastmath.o");
+   return (Path != "crtfastmath.o"); // Not found.
+diff --git a/clang/lib/Driver/ToolChains/Linux.cpp b/clang/lib/Driver/ToolChains/Linux.cpp
+index c151debdc5c0..bf67a2b8dc17 100644
+--- a/clang/lib/Driver/ToolChains/Linux.cpp
++++ b/clang/lib/Driver/ToolChains/Linux.cpp
+@@ -854,25 +854,6 @@ void Linux::addProfileRTLibs(const llvm::opt::ArgList &Args,
+   ToolChain::addProfileRTLibs(Args, CmdArgs);
+ }
+ 
+-llvm::DenormalMode
+-Linux::getDefaultDenormalModeForType(const llvm::opt::ArgList &DriverArgs,
+-                                     const JobAction &JA,
+-                                     const llvm::fltSemantics *FPType) const {
+-  switch (getTriple().getArch()) {
+-  case llvm::Triple::x86:
+-  case llvm::Triple::x86_64: {
+-    std::string Unused;
+-    // DAZ and FTZ are turned on in crtfastmath.o
+-    if (!DriverArgs.hasArg(options::OPT_nostdlib, options::OPT_nostartfiles) &&
+-        isFastMathRuntimeAvailable(DriverArgs, Unused))
+-      return llvm::DenormalMode::getPreserveSign();
+-    return llvm::DenormalMode::getIEEE();
+-  }
+-  default:
+-    return llvm::DenormalMode::getIEEE();
+-  }
+-}
+-
+ void Linux::addExtraOpts(llvm::opt::ArgStringList &CmdArgs) const {
+   for (const auto &Opt : ExtraOpts)
+     CmdArgs.push_back(Opt.c_str());
+diff --git a/clang/lib/Driver/ToolChains/Linux.h b/clang/lib/Driver/ToolChains/Linux.h
+index 524391743090..2d9e674e50a6 100644
+--- a/clang/lib/Driver/ToolChains/Linux.h
++++ b/clang/lib/Driver/ToolChains/Linux.h
+@@ -59,10 +59,6 @@ public:
+ 
+   std::vector<std::string> ExtraOpts;
+ 
+-  llvm::DenormalMode getDefaultDenormalModeForType(
+-      const llvm::opt::ArgList &DriverArgs, const JobAction &JA,
+-      const llvm::fltSemantics *FPType = nullptr) const override;
+-
+   const char *getDefaultLinker() const override;
+ 
+ protected:
+diff --git a/clang/test/Driver/default-denormal-fp-math.c b/clang/test/Driver/default-denormal-fp-math.c
+index 5f87e151df49..c04ad5c08b8d 100644
+--- a/clang/test/Driver/default-denormal-fp-math.c
++++ b/clang/test/Driver/default-denormal-fp-math.c
+@@ -3,15 +3,6 @@
+ 
+ // RUN: %clang -### -target x86_64-unknown-linux-gnu --sysroot=%S/Inputs/basic_linux_tree -c %s -v 2>&1 | FileCheck -check-prefix=CHECK-IEEE %s
+ 
+-// crtfastmath enables ftz and daz
+-// RUN: %clang -### -target x86_64-unknown-linux-gnu -ffast-math --sysroot=%S/Inputs/basic_linux_tree -c %s -v 2>&1 | FileCheck -check-prefix=CHECK-PRESERVESIGN %s
+-
+-// crt not linked in with nostartfiles
+-// RUN: %clang -### -target x86_64-unknown-linux-gnu -ffast-math -nostartfiles --sysroot=%S/Inputs/basic_linux_tree -c %s -v 2>&1 | FileCheck -check-prefix=CHECK-IEEE %s
+-
+-// If there's no crtfastmath, don't assume ftz/daz
+-// RUN: %clang -### -target x86_64-unknown-linux-gnu -ffast-math --sysroot=/dev/null -c %s -v 2>&1 | FileCheck -check-prefix=CHECK-IEEE %s
+-
+ // RUN: %clang -### -target x86_64-scei-ps4 -c %s -v 2>&1 | FileCheck -check-prefix=CHECK-PRESERVESIGN %s
+ 
+ // Flag omitted for default
+diff --git a/clang/test/Driver/linux-ld.c b/clang/test/Driver/linux-ld.c
+index d77367b4ece7..030d7ebc5789 100644
+--- a/clang/test/Driver/linux-ld.c
++++ b/clang/test/Driver/linux-ld.c
+@@ -1569,6 +1569,32 @@
+ // RUN:        --gcc-toolchain="" \
+ // RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
+ // RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
++// Don't link crtfastmath.o with -shared
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -ffast-math -shared \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -Ofast -shared \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
++// Check for effects of -mdaz-ftz
++// RUN: %clang --target=x86_64-unknown-linux -### %s -ffast-math -shared -mdaz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-CRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -ffast-math -mdaz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-CRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -mdaz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-CRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -### %s -ffast-math -shared -mno-daz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -ffast-math -mno-daz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
++// RUN: %clang --target=x86_64-unknown-linux -no-pie -### %s -mno-daz-ftz \
++// RUN:        --sysroot=%S/Inputs/basic_linux_tree 2>&1 \
++// RUN:   | FileCheck --check-prefix=CHECK-NOCRTFASTMATH %s
+ // CHECK-CRTFASTMATH: usr/lib/gcc/x86_64-unknown-linux/10.2.0{{/|\\\\}}crtfastmath.o
+ // CHECK-NOCRTFASTMATH-NOT: crtfastmath.o
+ 
+-- 
+2.30.1.windows.1
+
+From 2421dbfc76a526c959f8ae18bb777b7b01b50f01 Mon Sep 17 00:00:00 2001
+From: Udit Agarwal <udit.agarwal@intel.com>
+Date: Fri, 31 May 2024 14:58:14 -0700
+Subject: [PATCH 3/3] [SYCL] Fix ONEAPI_DEVICE_SELECTOR handling of discard
+ filters. (#13927)
+
+Currently, ONEAPI_DEVICE_SELECTOR incorrectly parses '!', used for
+discard filters.
+---
+ sycl/source/detail/device_filter.cpp          | 27 ++++++++++++++-----
+ .../OneapiDeviceSelector/discard_filters.cpp  | 26 ++++++++++++++++++
+ 2 files changed, 46 insertions(+), 7 deletions(-)
+ create mode 100644 sycl/test-e2e/OneapiDeviceSelector/discard_filters.cpp
+
+diff --git a/sycl/source/detail/device_filter.cpp b/sycl/source/detail/device_filter.cpp
+index 11072eae9e61..4ee1c261349c 100644
+--- a/sycl/source/detail/device_filter.cpp
++++ b/sycl/source/detail/device_filter.cpp
+@@ -206,6 +206,8 @@ Parse_ONEAPI_DEVICE_SELECTOR(const std::string &envString) {
+     std::vector<std::string_view> Pair =
+         tokenize(Entry, ":", true /* ProhibitEmptyTokens */);
+ 
++    // Error handling. ONEAPI_DEVICE_SELECTOR terms should be in the
++    // format: <backend>:<devices>.
+     if (Pair.empty()) {
+       std::stringstream ss;
+       ss << "Incomplete selector! Backend and device must be specified.";
+@@ -215,8 +217,24 @@ Parse_ONEAPI_DEVICE_SELECTOR(const std::string &envString) {
+       ss << "Incomplete selector!  Try '" << Pair[0]
+          << ":*' if all devices under the backend was original intention.";
+       throw sycl::exception(sycl::make_error_code(errc::invalid), ss.str());
+-    } else if (Pair.size() == 2) {
+-      backend be = Parse_ODS_Backend(Pair[0], Entry); // Pair[0] is backend.
++    } else if (Pair.size() > 2) {
++      std::stringstream ss;
++      ss << "Error parsing selector string \"" << Entry
++         << "\"  Too many colons (:)";
++      throw sycl::exception(sycl::make_error_code(errc::invalid), ss.str());
++    }
++
++    // Parse ONEAPI_DEVICE_SELECTOR terms for Pair.size() == 2.
++    else {
++
++      // Remove `!` from input backend string if it is present.
++      std::string_view input_be = Pair[0];
++      if (Pair[0][0] == '!')
++        input_be = Pair[0].substr(1);
++
++      backend be = Parse_ODS_Backend(input_be, Entry);
++
++      // For each backend, we can have multiple targets, seperated by ','.
+       std::vector<std::string_view> Targets = tokenize(Pair[1], ",");
+       for (auto TargetStr : Targets) {
+         ods_target DeviceTarget(be);
+@@ -238,11 +256,6 @@ Parse_ONEAPI_DEVICE_SELECTOR(const std::string &envString) {
+         Parse_ODS_Device(DeviceTarget, TargetStr);
+         Result.push_back(DeviceTarget);
+       }
+-    } else if (Pair.size() > 2) {
+-      std::stringstream ss;
+-      ss << "Error parsing selector string \"" << Entry
+-         << "\"  Too many colons (:)";
+-      throw sycl::exception(sycl::make_error_code(errc::invalid), ss.str());
+     }
+   }
+ 
+diff --git a/sycl/test-e2e/OneapiDeviceSelector/discard_filters.cpp b/sycl/test-e2e/OneapiDeviceSelector/discard_filters.cpp
+new file mode 100644
+index 000000000000..42c33fabda02
+--- /dev/null
++++ b/sycl/test-e2e/OneapiDeviceSelector/discard_filters.cpp
+@@ -0,0 +1,26 @@
++// RUN: %{build} -o %t.out
++
++// Test discard filters in ONEAPI_DEVICE_SELECTOR.
++// RUN: env ONEAPI_DEVICE_SELECTOR="!*:gpu" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}{{gpu|GPU|Gpu}}{{.*}}]:[{{.*}}]"
++// RUN: env ONEAPI_DEVICE_SELECTOR="!*:cpu" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}{{cpu|CPU|cpu}}{{.*}}]:[{{.*}}]"
++// RUN: env ONEAPI_DEVICE_SELECTOR="!*:cpu,gpu" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}{{cpu|CPU|cpu|gpu|GPU|Gpu}}{{.*}}]:[{{.*}}]"
++
++// RUN: env ONEAPI_DEVICE_SELECTOR="!opencl:*" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}]:[{{.*}}{{OpenCL|opencl|Opencl}}{{.*}}]"
++// RUN: env ONEAPI_DEVICE_SELECTOR="!level_zero:*" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}]:[{{.*}}{{Level-Zero}}{{.*}}]"
++
++// RUN: env ONEAPI_DEVICE_SELECTOR="!level_zero:cpu" %{run-unfiltered-devices} %t.out | FileCheck %s --allow-empty --implicit-check-not="[{{.*}}{{cpu|CPU|Cpu}}{{.*}}]:[{{.*}}{{Level-Zero}}{{.*}}]"
++
++#include <iostream>
++#include <sycl/detail/core.hpp>
++using namespace sycl;
++
++int main() {
++  for (auto &d : device::get_devices()) {
++    // Get device name and backend name.
++    std::string device_name = d.get_info<info::device::name>();
++    std::string be_name = d.get_platform().get_info<info::platform::name>();
++
++    std::cout << "[" << device_name << "]:[" << be_name << "]" << std::endl;
++  }
++  return 0;
++}
 -- 
 2.30.1.windows.1
 

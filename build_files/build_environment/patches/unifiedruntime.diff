@@ -1,0 +1,238 @@
+From c25fd5a16089aa3789f03f6d617b694a5a260a09 Mon Sep 17 00:00:00 2001
+From: "Neil R. Spruit" <neil.r.spruit@intel.com>
+Date: Wed, 3 Jul 2024 08:45:20 -0700
+Subject: [PATCH 1/2] [L0] Use Intel Level Zero Driver String extension
+
+- Given zeIntelGetDriverVersionString is available, then
+  use the new driver extension to read the driver runtime version
+string.
+
+Signed-off-by: Neil R. Spruit <neil.r.spruit@intel.com>
+---
+ source/adapters/level_zero/common.hpp        | 16 ++++++++
+ source/adapters/level_zero/device.cpp        | 26 +++++++++++++
+ source/adapters/level_zero/platform.cpp      | 39 ++++++++++++++------
+ source/adapters/level_zero/platform.hpp      |  8 ++++
+ source/adapters/level_zero/ur_level_zero.hpp |  1 +
+ 5 files changed, 78 insertions(+), 12 deletions(-)
+
+diff --git a/source/adapters/level_zero/common.hpp b/source/adapters/level_zero/common.hpp
+index 5425d4eb..d58de2ea 100644
+--- a/source/adapters/level_zero/common.hpp
++++ b/source/adapters/level_zero/common.hpp
+@@ -424,6 +424,22 @@ const bool ExposeCSliceInAffinityPartitioning = [] {
+ const std::pair<int, int>
+ getRangeOfAllowedCopyEngines(const ur_device_handle_t &Device);
+ 
++class ZeDriverVersionStringExtension {
++  // Pointer to function for Intel Driver Version String
++  ze_result_t (*zeIntelGetDriverVersionStringPointer)(
++      ze_driver_handle_t hDriver, char *, size_t *) = nullptr;
++
++public:
++  // Whether platform supports Intel Driver Version String.
++  bool Supported;
++
++  ZeDriverVersionStringExtension() : Supported{false} {}
++
++  void setZeDriverVersionString(ur_platform_handle_t_ *Platform);
++  void getDriverVersionString(ze_driver_handle_t DriverHandle,
++                              char *pDriverVersion, size_t *pVersionSize);
++};
++
+ class ZeUSMImportExtension {
+   // Pointers to functions that import/release host memory into USM
+   ze_result_t (*zexDriverImportExternalPointer)(ze_driver_handle_t hDriver,
+diff --git a/source/adapters/level_zero/device.cpp b/source/adapters/level_zero/device.cpp
+index 9fae1ed4..0a7abce0 100644
+--- a/source/adapters/level_zero/device.cpp
++++ b/source/adapters/level_zero/device.cpp
+@@ -1237,6 +1237,32 @@ ur_result_t urDeviceRelease(ur_device_handle_t Device) {
+   return UR_RESULT_SUCCESS;
+ }
+ 
++void ZeDriverVersionStringExtension::setZeDriverVersionString(
++    ur_platform_handle_t_ *Platform) {
++  // Check if Intel Driver Version String is available. If yes, save the API
++  // pointer. The pointer will be used when reading the Driver Version for
++  // users.
++  ze_driver_handle_t DriverHandle = Platform->ZeDriver;
++  if (auto extension = Platform->zeDriverExtensionMap.find(
++          "ZE_intel_get_driver_version_string");
++      extension != Platform->zeDriverExtensionMap.end()) {
++    if (ZE_CALL_NOCHECK(zeDriverGetExtensionFunctionAddress,
++                        (DriverHandle, "zeIntelGetDriverVersionString",
++                         reinterpret_cast<void **>(
++                             &zeIntelGetDriverVersionStringPointer))) == 0) {
++      // Intel Driver Version String is Supported by this Driver.
++      Supported = true;
++    }
++  }
++}
++
++void ZeDriverVersionStringExtension::getDriverVersionString(
++    ze_driver_handle_t DriverHandle, char *pDriverVersion,
++    size_t *pVersionSize) {
++  ZE_CALL_NOCHECK(zeIntelGetDriverVersionStringPointer,
++                  (DriverHandle, pDriverVersion, pVersionSize));
++}
++
+ void ZeUSMImportExtension::setZeUSMImport(ur_platform_handle_t_ *Platform) {
+   // Check if USM hostptr import feature is available. If yes, save the API
+   // pointers. The pointers will be used for both import/release of SYCL buffer
+diff --git a/source/adapters/level_zero/platform.cpp b/source/adapters/level_zero/platform.cpp
+index ab577247..5cc6692e 100644
+--- a/source/adapters/level_zero/platform.cpp
++++ b/source/adapters/level_zero/platform.cpp
+@@ -8,6 +8,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+
++#include <loader/ze_loader.h>
+ #include "platform.hpp"
+ #include "adapter.hpp"
+ #include "ur_level_zero.hpp"
+@@ -158,18 +159,6 @@ UR_APIEXPORT ur_result_t UR_APICALL urPlatformCreateWithNativeHandle(
+ }
+ 
+ ur_result_t ur_platform_handle_t_::initialize() {
+-  // Cache driver properties
+-  ZeStruct<ze_driver_properties_t> ZeDriverProperties;
+-  ZE2UR_CALL(zeDriverGetProperties, (ZeDriver, &ZeDriverProperties));
+-  uint32_t DriverVersion = ZeDriverProperties.driverVersion;
+-  // Intel Level-Zero GPU driver stores version as:
+-  // | 31 - 24 | 23 - 16 | 15 - 0 |
+-  // |  Major  |  Minor  | Build  |
+-  auto VersionMajor = std::to_string((DriverVersion & 0xFF000000) >> 24);
+-  auto VersionMinor = std::to_string((DriverVersion & 0x00FF0000) >> 16);
+-  auto VersionBuild = std::to_string(DriverVersion & 0x0000FFFF);
+-  ZeDriverVersion = VersionMajor + "." + VersionMinor + "." + VersionBuild;
+-
+   ZE2UR_CALL(zeDriverGetApiVersion, (ZeDriver, &ZeApiVersion));
+   ZeDriverApiVersion = std::to_string(ZE_MAJOR_VERSION(ZeApiVersion)) + "." +
+                        std::to_string(ZE_MINOR_VERSION(ZeApiVersion));
+@@ -202,6 +190,33 @@ ur_result_t ur_platform_handle_t_::initialize() {
+     zeDriverExtensionMap[extension.name] = extension.version;
+   }
+ 
++  ZE2UR_CALL(zelLoaderTranslateHandle, (ZEL_HANDLE_DRIVER, ZeDriver,
++                                        (void **)&ZeDriverHandleExpTranslated));
++
++  // Check if intel Driver Version Extension is supported.
++  ZeDriverVersionString.setZeDriverVersionString(this);
++  // Cache driver properties
++  ZeStruct<ze_driver_properties_t> ZeDriverProperties;
++  ZE2UR_CALL(zeDriverGetProperties, (ZeDriver, &ZeDriverProperties));
++  if (!ZeDriverVersionString.Supported) {
++    uint32_t DriverVersion = ZeDriverProperties.driverVersion;
++    // Intel Level-Zero GPU driver stores version as:
++    // | 31 - 24 | 23 - 16 | 15 - 0 |
++    // |  Major  |  Minor  | Build  |
++    auto VersionMajor = std::to_string((DriverVersion & 0xFF000000) >> 24);
++    auto VersionMinor = std::to_string((DriverVersion & 0x00FF0000) >> 16);
++    auto VersionBuild = std::to_string(DriverVersion & 0x0000FFFF);
++    ZeDriverVersion = VersionMajor + "." + VersionMinor + "." + VersionBuild;
++  } else {
++    size_t sizeOfDriverString = 0;
++    ZeDriverVersionString.getDriverVersionString(ZeDriverHandleExpTranslated,
++                                                 nullptr, &sizeOfDriverString);
++    ZeDriverVersion.resize(sizeOfDriverString);
++    ZeDriverVersionString.getDriverVersionString(ZeDriverHandleExpTranslated,
++                                                 ZeDriverVersion.data(),
++                                                 &sizeOfDriverString);
++  }
++
+   // Check if import user ptr into USM feature has been requested.
+   // If yes, then set up L0 API pointers if the platform supports it.
+   ZeUSMImport.setZeUSMImport(this);
+diff --git a/source/adapters/level_zero/platform.hpp b/source/adapters/level_zero/platform.hpp
+index 86aa4ec7..e377332c 100644
+--- a/source/adapters/level_zero/platform.hpp
++++ b/source/adapters/level_zero/platform.hpp
+@@ -24,6 +24,14 @@ struct ur_platform_handle_t_ : public _ur_platform {
+   // a pretty good fit to keep here.
+   ze_driver_handle_t ZeDriver;
+ 
++  // Given a multi driver scenario, the driver handle must be translated to the
++  // internal driver handle to allow calls to driver experimental apis.
++  ze_driver_handle_t ZeDriverHandleExpTranslated;
++
++  // Helper wrapper for working with Driver Version String extension in Level
++  // Zero.
++  ZeDriverVersionStringExtension ZeDriverVersionString;
++
+   // Cache versions info from zeDriverGetProperties.
+   std::string ZeDriverVersion;
+   std::string ZeDriverApiVersion;
+-- 
+2.30.1.windows.1
+
+From bc4cf4d8c30eeb647c9589b7b83acaadf414ee09 Mon Sep 17 00:00:00 2001
+From: Xavier Hallade <xavier.hallade@intel.com>
+Date: Thu, 29 Feb 2024 20:38:50 +0100
+Subject: [PATCH 2/2] {UR][L0] Return device version based on DeviceIpVersion
+
+When being queried a device version:
+- CUDA adapter returns the compute capability version of the device,
+- HIP adapter returns the architecture name.
+
+Both of these are what define a GPU architecture to compile binaries for
+and can be used with GPU compilers, this is useful information for
+applications and developers.
+
+On L0/Intel side, prior to this change, it returns the L0 API version.
+This information is already returned in BACKEND_RUNTIME_VERSION and
+DRIVER_VERSION queries.
+
+With this change, we align the adapters behavior with CUDA and HIP, and
+return the Intel device architecture version that can be used with ocloc
+compiler.
+---
+ source/adapters/level_zero/device.cpp | 25 ++++++++++++++++++++++---
+ 1 file changed, 22 insertions(+), 3 deletions(-)
+
+diff --git a/source/adapters/level_zero/device.cpp b/source/adapters/level_zero/device.cpp
+index 0a7abce0..fc17bc91 100644
+--- a/source/adapters/level_zero/device.cpp
++++ b/source/adapters/level_zero/device.cpp
+@@ -1,6 +1,6 @@
+ //===--------- device.cpp - Level Zero Adapter ----------------------------===//
+ //
+-// Copyright (C) 2023 Intel Corporation
++// Copyright (C) 2023-2024 Intel Corporation
+ //
+ // Part of the Unified-Runtime Project, under the Apache License v2.0 with LLVM
+ // Exceptions. See LICENSE.TXT
+@@ -338,8 +338,27 @@ UR_APIEXPORT ur_result_t UR_APICALL urDeviceGetInfo(
+   case UR_DEVICE_INFO_DRIVER_VERSION:
+   case UR_DEVICE_INFO_BACKEND_RUNTIME_VERSION:
+     return ReturnValue(Device->Platform->ZeDriverVersion.c_str());
+-  case UR_DEVICE_INFO_VERSION:
+-    return ReturnValue(Device->Platform->ZeDriverApiVersion.c_str());
++  case UR_DEVICE_INFO_VERSION: {
++    // from compute-runtime/shared/source/helpers/hw_ip_version.h
++    typedef struct {
++      uint32_t revision : 6;
++      uint32_t reserved : 8;
++      uint32_t release : 8;
++      uint32_t architecture : 10;
++    } version_components_t;
++    typedef struct {
++      union {
++        uint32_t value;
++        version_components_t components;
++      };
++    } ipVersion_t;
++    ipVersion_t IpVersion;
++    IpVersion.value = Device->ZeDeviceIpVersionExt->ipVersion;
++    std::stringstream S;
++    S << IpVersion.components.architecture << "."
++      << IpVersion.components.release << "." << IpVersion.components.revision;
++    return ReturnValue(S.str().c_str());
++  }
+   case UR_DEVICE_INFO_PARTITION_MAX_SUB_DEVICES: {
+     auto Res = Device->Platform->populateDeviceCacheIfNeeded();
+     if (Res != UR_RESULT_SUCCESS) {
+-- 
+2.30.1.windows.1
+
