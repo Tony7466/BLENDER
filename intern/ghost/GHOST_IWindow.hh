@@ -301,7 +301,8 @@ class GHOST_IWindow {
                                               int sizey,
                                               int hotX,
                                               int hotY,
-                                              bool canInvertColor) = 0;
+                                              bool canInvertColor,
+                                              uint8_t bpp) = 0;
 
   virtual GHOST_TSuccess getCursorBitmap(GHOST_CursorBitmapRef *bitmap) = 0;
 

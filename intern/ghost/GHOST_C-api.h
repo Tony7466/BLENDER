@@ -370,7 +370,8 @@ extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle
                                                  int sizey,
                                                  int hotX,
                                                  int hotY,
-                                                 bool canInvertColor);
+                                                 bool canInvertColor,
+                                                 uint8_t bpp = 1);
 
 extern GHOST_TSuccess GHOST_GetCursorBitmap(GHOST_WindowHandle windowhandle,
                                             GHOST_CursorBitmapRef *bitmap);

@@ -121,7 +121,8 @@ class GHOST_Window : public GHOST_IWindow {
                                       int sizey,
                                       int hotX,
                                       int hotY,
-                                      bool canInvertColor) override;
+                                      bool canInvertColor,
+                                      uint8_t bpp = 1) override;
 
   GHOST_TSuccess getCursorBitmap(GHOST_CursorBitmapRef *bitmap) override;
 
@@ -367,7 +368,8 @@ class GHOST_Window : public GHOST_IWindow {
                                                     int szy,
                                                     int hotX,
                                                     int hotY,
-                                                    bool canInvertColor) = 0;
+                                                    bool canInvertColor,
+                                                    uint8_t bpp) = 0;
 
   GHOST_TSuccess releaseNativeHandles();
 

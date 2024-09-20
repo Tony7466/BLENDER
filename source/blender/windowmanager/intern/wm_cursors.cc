@@ -152,6 +152,19 @@ static bool icon_cursor(wmWindow *win, WMCursorType curs)
   }
   IMB_flipy(imb);
 
+  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                             imb->byte_buffer.data,
+                             nullptr,
+                             imb->x,
+                             imb->y,
+                             2,
+                             2,
+                             false,
+                             32);
+  IMB_freeImBuf(imb);
+
+  return true;
+
   char width = std::min(imb->x, 32);
   char height = std::min(imb->y, 32);
   char bitmap[4 * 32] = {0};
@@ -180,7 +193,8 @@ static bool icon_cursor(wmWindow *win, WMCursorType curs)
                              32,
                              2,
                              2,
-                             false);
+                             false,
+                             1);
 }
 
 void WM_cursor_set(wmWindow *win, int curs)

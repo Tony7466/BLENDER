@@ -1155,40 +1155,99 @@ GHOST_TSuccess GHOST_WindowWin32::setWindowCustomCursorShape(uint8_t *bitmap,
                                                              int sizeY,
                                                              int hotX,
                                                              int hotY,
-                                                             bool /*canInvertColor*/)
+                                                             bool /*canInvertColor*/,
+                                                             uint8_t bpp)
 {
-  uint32_t andData[32];
-  uint32_t xorData[32];
-  uint32_t fullBitRow, fullMaskRow;
-  int x, y, cols;
+  if (bpp == 1) {
+    uint32_t andData[32];
+    uint32_t xorData[32];
+    uint32_t fullBitRow, fullMaskRow;
+    int x, y, cols;
 
-  cols = sizeX / 8; /* Number of whole bytes per row (width of bitmap/mask). */
-  if (sizeX % 8) {
-    cols++;
-  }
-
-  if (m_customCursor) {
-    DestroyCursor(m_customCursor);
-    m_customCursor = nullptr;
-  }
-
-  memset(&andData, 0xFF, sizeof(andData));
-  memset(&xorData, 0, sizeof(xorData));
-
-  for (y = 0; y < sizeY; y++) {
-    fullBitRow = 0;
-    fullMaskRow = 0;
-    for (x = cols - 1; x >= 0; x--) {
-      fullBitRow <<= 8;
-      fullMaskRow <<= 8;
-      fullBitRow |= uns8ReverseBits(bitmap[cols * y + x]);
-      fullMaskRow |= uns8ReverseBits(mask[cols * y + x]);
+    cols = sizeX / 8; /* Number of whole bytes per row (width of bitmap/mask). */
+    if (sizeX % 8) {
+      cols++;
     }
-    xorData[y] = fullBitRow & fullMaskRow;
-    andData[y] = ~fullMaskRow;
+
+    if (m_customCursor) {
+      DestroyCursor(m_customCursor);
+      m_customCursor = nullptr;
+    }
+
+    memset(&andData, 0xFF, sizeof(andData));
+    memset(&xorData, 0, sizeof(xorData));
+
+    for (y = 0; y < sizeY; y++) {
+      fullBitRow = 0;
+      fullMaskRow = 0;
+      for (x = cols - 1; x >= 0; x--) {
+        fullBitRow <<= 8;
+        fullMaskRow <<= 8;
+        fullBitRow |= uns8ReverseBits(bitmap[cols * y + x]);
+        fullMaskRow |= uns8ReverseBits(mask[cols * y + x]);
+      }
+      xorData[y] = fullBitRow & fullMaskRow;
+      andData[y] = ~fullMaskRow;
+    }
+
+    m_customCursor = ::CreateCursor(::GetModuleHandle(0), hotX, hotY, 32, 32, andData, xorData);
+  }
+  else if (bpp == 32) {
+    BITMAPV5HEADER header;
+    memset(&header, 0, sizeof(BITMAPV5HEADER));
+    header.bV5Size = sizeof(BITMAPV5HEADER);
+    header.bV5Width = (LONG)sizeX;
+    header.bV5Height = (LONG)sizeY;
+    header.bV5Planes = 1;
+    header.bV5BitCount = 32;
+    header.bV5Compression = BI_BITFIELDS;
+    header.bV5RedMask = 0x00FF0000;
+    header.bV5GreenMask = 0x0000FF00;
+    header.bV5BlueMask = 0x000000FF;
+    header.bV5AlphaMask = 0xFF000000;
+
+    HDC hdc = GetDC(m_hWnd);
+    void *bits = NULL;
+    HBITMAP bmp = CreateDIBSection(
+        hdc, (BITMAPINFO *)&header, DIB_RGB_COLORS, (void **)&bits, NULL, (DWORD)0);
+    ReleaseDC(NULL, hdc);
+
+    uint32_t *ptr = (uint32_t *)bits;
+    char w = sizeX;
+    char h = sizeY;
+    for (int y = h - 1; y >= 0; y--) {
+      for (int x = 0; x < w; x++) {
+        int i = (y * w * 4) + (x * 4);
+        uint32_t r = bitmap[i];
+        uint32_t g = bitmap[i + 1];
+        uint32_t b = bitmap[i + 2];
+        uint32_t a = bitmap[i + 3];
+        *ptr++ = (a << 24) | (r << 16) | (g << 8) | b;
+      }
+    }
+
+    HBITMAP empty_mask = CreateBitmap(sizeX, sizeY, 1, 1, NULL);
+    ICONINFO icon_info;
+    icon_info.fIcon = FALSE;
+    icon_info.xHotspot = (DWORD)hotX;
+    icon_info.yHotspot = (DWORD)hotY;
+    icon_info.hbmMask = empty_mask;
+    icon_info.hbmColor = bmp;
+
+    HICON cursor = m_customCursor = CreateIconIndirect(&icon_info);
+    if (!cursor) {
+      printf("failure");
+    }
+    DeleteObject(bmp);
+    DeleteObject(empty_mask);
+
+    // SetCursor(cursor);
+
+    // m_customCursor = ::CreateCursor(::GetModuleHandle(0), hotX, hotY, 32, 32, bitmap, nullptr);
+
+    // https://hero.handmade.network/forums/code-discussion/t/1741-how_to_implement_mouse_cursor
   }
 
-  m_customCursor = ::CreateCursor(::GetModuleHandle(0), hotX, hotY, 32, 32, andData, xorData);
   if (!m_customCursor) {
     return GHOST_kFailure;
   }

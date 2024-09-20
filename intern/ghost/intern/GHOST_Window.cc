@@ -216,10 +216,16 @@ GHOST_TSuccess GHOST_Window::setCursorShape(GHOST_TStandardCursor cursorShape)
   return GHOST_kFailure;
 }
 
-GHOST_TSuccess GHOST_Window::setCustomCursorShape(
-    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool canInvertColor)
+GHOST_TSuccess GHOST_Window::setCustomCursorShape(uint8_t *bitmap,
+                                                  uint8_t *mask,
+                                                  int sizex,
+                                                  int sizey,
+                                                  int hotX,
+                                                  int hotY,
+                                                  bool canInvertColor,
+                                                  uint8_t bpp)
 {
-  if (setWindowCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor)) {
+  if (setWindowCustomCursorShape(bitmap, mask, sizex, sizey, hotX, hotY, canInvertColor, bpp)) {
     m_cursorShape = GHOST_kStandardCursorCustom;
     return GHOST_kSuccess;
   }
