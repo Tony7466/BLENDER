@@ -1603,7 +1603,7 @@ typedef struct ToolSettings {
   float uvcalc_margin;
   char uvcalc_allow_flips;
   char uvcalc_importance_weights;
-  char _pad0[2];
+  char _pad3[2];
 
   int uvcalc_iterations;
   float uvcalc_weights_factor;
@@ -1637,7 +1637,7 @@ typedef struct ToolSettings {
   char gpencil_selectmode_edit;
   /** Stroke selection mode for Sculpt. */
   char gpencil_selectmode_sculpt;
-  char _pad1[6];
+  char _pad0[6];
 
   /** Grease Pencil Sculpt. */
   struct GP_Sculpt_Settings gp_sculpt;
@@ -1690,7 +1690,7 @@ typedef struct ToolSettings {
   short snap_flag_seq;
   short snap_flag_anim;
   short snap_uv_flag;
-  char _pad2[4];
+  char _pad[4];
   /** Default snap source, #eSnapSourceOP. */
   /**
    * TODO(@gfxcoder): Rename `snap_target` to `snap_source` to avoid previous ambiguity of
@@ -1754,7 +1754,7 @@ typedef struct ToolSettings {
 
   /** Normal Editing. */
   float normal_vector[3];
-  char _pad3[4];
+  char _pad6[4];
 
   /**
    * Custom Curve Profile for bevel tool:

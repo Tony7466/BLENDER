@@ -4604,21 +4604,23 @@ static bool p_chart_correct_degenerate_triangle_point(PFace *f,
                                                       float min_area,
                                                       float min_angle_cos)
 {
-  static const float3 ref_edges[] = {{1.0f, 0.0f, 0.0f},
-                                     {0.0f, 1.0f, 0.0f},
-                                     {0.0f, 0.0f, 1.0f},
-                                     {0.0f, 1.0f, 1.0f},
-                                     {1.0f, 0.0f, 1.0f},
-                                     {1.0f, 1.0f, 0.0f},
+  static const float3 ref_edges[] = {
+      {1.0f, 0.0f, 0.0f},
+      {0.0f, 1.0f, 0.0f},
+      {0.0f, 0.0f, 1.0f},
+      {0.0f, 1.0f, 1.0f},
+      {1.0f, 0.0f, 1.0f},
+      {1.0f, 1.0f, 0.0f},
 
-                                     {0.0f, 0.5f, 1.0f},
-                                     {0.5f, 0.0f, 1.0f},
-                                     {0.5f, 1.0f, 0.0f},
+      {0.0f, 0.5f, 1.0f},
+      {0.5f, 0.0f, 1.0f},
+      {0.5f, 1.0f, 0.0f},
 
-                                     {0.0f, 1.0f, 0.5f},
-                                     {1.0f, 0.0f, 0.5f},
-                                     {1.0f, 0.5f, 0.0f}};
-  static const int ref_edge_count = sizeof(ref_edges) / sizeof(ref_edges[0]);
+      {0.0f, 1.0f, 0.5f},
+      {1.0f, 0.0f, 0.5f},
+      {1.0f, 0.5f, 0.0f},
+  };
+  static const int ref_edge_count = ARRAY_SIZE(ref_edges);
   static const int LEN_MULTIPLIER_COUNT = 3;
   bool corr_co_found = false;
 
@@ -4636,7 +4638,7 @@ static bool p_chart_correct_degenerate_triangle_point(PFace *f,
       PEdge *e = f->edge;
 
       for (int i = 0; i < 3; i++) {
-        float angle = (float)i / 3.0f * 2.0f * M_PI;
+        const float angle = (float(i) / 3.0f) * float(2.0 * M_PI);
         float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
 
         float corr_len_multiplied = corr_len * (m + 1);
@@ -4779,10 +4781,10 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
 
     for (int m = 0; m < LEN_MULTIPLIER_COUNT; m++) {
       for (int d = 0; d < DIR_COUNT; d++) {
-        float angle = (float)d / DIR_COUNT * 2.0 * M_PI;
+        const float angle = (float(d) / DIR_COUNT) * float(2.0 * M_PI);
         float corr_dir[3] = {0.0f, cos(angle), sin(angle)};
 
-        float corr_len_multiplied = corr_len * (m + 1);
+        const float corr_len_multiplied = corr_len * (m + 1);
 
         mul_m3_v3(M, corr_dir);
         mul_v3_fl(corr_dir, corr_len_multiplied);
@@ -4833,7 +4835,9 @@ static bool p_validate_triangle_angles(const PVert *vert1,
 
 #endif
 
-static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, float min_angle)
+static bool p_chart_correct_degenerate_triangles(PChart *chart,
+                                                 const float min_area,
+                                                 const float min_angle)
 {
   /* Look for degenerate triangles: triangles with angles lower than `min_angle` or having area
    * lower than `min_area` and try to correct vertex coordinates so that the resulting triangle is
@@ -4935,7 +4939,7 @@ static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_cha
 
   do {
     E[eid] = be->vert->slim_id;
-    float edge_len = p_edge_length(be);
+    const float edge_len = p_edge_length(be);
     EL[eid] = edge_len;
 
     /* Temporary solution : SLIM doesn't support doubled vertices for now. */
@@ -4953,7 +4957,7 @@ static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_cha
     PEdge *e1 = e->next;
 
     E[eid] = e->vert->slim_id;
-    float edge_len = p_edge_length(e);
+    const float edge_len = p_edge_length(e);
     EL[eid] = edge_len;
 
     /* Temporary solution : SLIM doesn't support doubled vertices for now. */
@@ -5005,8 +5009,8 @@ static void slim_transfer_vertices(const PChart *chart,
       mt_chart->pinned_vertices_num += 1;
 
       p_mat[p_vid] = v->slim_id;
-      pp_mat[2 * p_vid] = (double)v->uv[0];
-      pp_mat[2 * p_vid + 1] = (double)v->uv[1];
+      pp_mat[2 * p_vid] = double(v->uv[0]);
+      pp_mat[2 * p_vid + 1] = double(v->uv[1]);
       p_vid += 1;
     }
   }
@@ -5284,7 +5288,7 @@ void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOption
   }
 }
 
-void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
+void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, const float blend)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
