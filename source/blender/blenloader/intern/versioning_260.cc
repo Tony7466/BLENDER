@@ -2002,12 +2002,10 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 264, 5)) {
     /* set a unwrapping margin and ABF by default */
-    const ToolSettings *tool_settings_default = DNA_struct_default_get(ToolSettings);
-
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->toolsettings->uvcalc_margin == 0.0f) {
-        scene->toolsettings->uvcalc_margin = tool_settings_default->uvcalc_margin;
-        scene->toolsettings->unwrapper = tool_settings_default->unwrapper;
+        scene->toolsettings->uvcalc_margin = 0.001f;
+        scene->toolsettings->unwrapper = 0;
       }
     }
   }
