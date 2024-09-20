@@ -2094,6 +2094,7 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
     SEQ_transform_seqbase_shuffle(active_seqbase, seqm, scene);
   }
 
+  SEQ_sequence_lookup_invalidate(scene);
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 

@@ -29,6 +29,7 @@ struct SequenceLookup {
   blender::Map<std::string, Sequence *> seq_by_name;
   blender::Map<const Sequence *, Sequence *> meta_by_seq;
   blender::Map<const Sequence *, blender::VectorSet<Sequence *>> effects_by_seq;
+  blender::Map<const SeqTimelineChannel *, Sequence *> owner_by_channel;
   bool is_valid = false;
 };
 
@@ -59,6 +60,12 @@ static void seq_sequence_lookup_build_from_seqbase(Sequence *parent_meta,
                                                    const ListBase *seqbase,
                                                    SequenceLookup *lookup)
 {
+  if (parent_meta != nullptr) {
+    LISTBASE_FOREACH (SeqTimelineChannel *, channel, &parent_meta->channels) {
+      lookup->owner_by_channel.add(channel, parent_meta);
+    }
+  }
+
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     lookup->seq_by_name.add(seq->name + 2, seq);
     lookup->meta_by_seq.add(seq, parent_meta);
@@ -143,6 +150,16 @@ blender::Span<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   blender::VectorSet<Sequence *> &effects = lookup->effects_by_seq.lookup_or_add_default(key);
   return effects.as_span();
+}
+
+Sequence *SEQ_sequence_lookup_owner_by_channel(const Scene *scene,
+                                               const SeqTimelineChannel *channel)
+{
+  BLI_assert(scene->ed);
+  std::lock_guard lock(lookup_lock);
+  seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
+  SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
+  return lookup->owner_by_channel.lookup_default(channel, nullptr);
 }
 
 void SEQ_sequence_lookup_invalidate(const Scene *scene)

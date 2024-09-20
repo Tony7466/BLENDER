@@ -17,6 +17,7 @@ struct Editing;
 struct Main;
 struct MetaStack;
 struct Scene;
+struct SeqTimelineChannel;
 struct Sequence;
 struct SequencerToolSettings;
 
@@ -125,6 +126,13 @@ void SEQ_eval_sequences(Depsgraph *depsgraph, Scene *scene, ListBase *seqbase);
  * \return pointer to Sequence
  */
 Sequence *SEQ_sequence_lookup_seq_by_name(const Scene *scene, const char *key);
+
+/**
+ * Find which meta strip the given timeline channel belongs to. Returns nullptr if it is a global
+ * channel.
+ */
+Sequence *SEQ_sequence_lookup_owner_by_channel(const Scene *scene,
+                                               const SeqTimelineChannel *channel);
 
 /**
  * Free lookup hash data.
