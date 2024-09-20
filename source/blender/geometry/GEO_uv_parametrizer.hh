@@ -120,16 +120,16 @@ struct ParamSlimOptions {
   bool skip_initialization = false;
 };
 
-void uv_parametrizer_slim_solve(ParamHandle *handle,
-                                const ParamSlimOptions *mt_options,
+void uv_parametrizer_slim_solve(ParamHandle *phandle,
+                                const ParamSlimOptions *slim_options,
                                 int *count_changed,
                                 int *count_failed);
 
-void uv_parametrizer_slim_live_begin(ParamHandle *handle, const ParamSlimOptions *mt_options);
-void uv_parametrizer_slim_live_solve_iteration(ParamHandle *handle);
-void uv_parametrizer_slim_live_end(ParamHandle *handle);
-void uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
-bool uv_parametrizer_is_slim(ParamHandle *handle);
+void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOptions *slim_options);
+void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle);
+void uv_parametrizer_slim_live_end(ParamHandle *phandle);
+void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend);
+bool uv_parametrizer_is_slim(const ParamHandle *phandle);
 
 /** \} */
 

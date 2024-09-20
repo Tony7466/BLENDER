@@ -67,7 +67,6 @@ static VArray<float3> construct_uv_gvarray(const Mesh &mesh,
       mp_pin[i] = false;
       mp_select[i] = false;
     }
-
     geometry::uv_parametrizer_face_add(handle,
                                        face_index,
                                        face.size(),

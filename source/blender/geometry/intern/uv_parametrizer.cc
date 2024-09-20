@@ -1075,7 +1075,7 @@ static PFace *p_face_add_construct(ParamHandle *handle,
                                    const ParamKey *vkeys,
                                    const float **co,
                                    float **uv,
-                                   float *weight,
+                                   const float *weight,
                                    int i1,
                                    int i2,
                                    int i3,
@@ -3832,7 +3832,7 @@ static void p_add_ngon(ParamHandle *handle,
                        const ParamKey *vkeys,
                        const float **co,
                        float **uv, /* Output will eventually be written to `uv`. */
-                       float *weight,
+                       const float *weight,
                        const bool *pin,
                        const bool *select)
 {
@@ -5247,12 +5247,14 @@ void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOption
     /* give vertices matrix indices and count pins */
     for (PVert *v = chart->verts; v; v = v->nextlink) {
       if (v->flag & PVERT_PIN) {
-        if (v->flag & PVERT_SELECT)
+        if (v->flag & PVERT_SELECT) {
           select = true;
+        }
       }
 
-      if (!(v->flag & PVERT_SELECT))
+      if (!(v->flag & PVERT_SELECT)) {
         deselect = true;
+      }
     }
 
     if (!select || !deselect) {
@@ -5313,7 +5315,7 @@ void uv_parametrizer_slim_live_end(ParamHandle *phandle)
   slim_free_matrix_transfer(phandle);
 }
 
-bool uv_parametrizer_is_slim(ParamHandle *phandle)
+bool uv_parametrizer_is_slim(const ParamHandle *phandle)
 {
   return phandle->slim_mt != nullptr;
 }
