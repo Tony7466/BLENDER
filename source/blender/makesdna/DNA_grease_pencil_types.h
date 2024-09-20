@@ -598,6 +598,15 @@ typedef struct GreasePencil {
       int frame_number,
       int duration = 0,
       eBezTriple_KeyframeType keytype = BEZT_KEYTYPE_KEYFRAME);
+
+  /**
+   * Same as #insert_frame but insert a new keyframe in each layer in \a layers. This will also
+   * create a new drawing for each of the created keyframes.
+   */
+  void insert_frames(blender::Span<blender::bke::greasepencil::Layer *> layers,
+                     const int frame_number,
+                     const int duration = 0,
+                     const eBezTriple_KeyframeType keytype = BEZT_KEYTYPE_KEYFRAME);
   /**
    * Removes all the frames with \a frame_numbers in the \a layer.
    * \returns true if any frame was removed.
