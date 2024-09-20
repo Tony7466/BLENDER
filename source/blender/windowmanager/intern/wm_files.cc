@@ -1048,23 +1048,8 @@ static void block_file_read_okay_cb(bContext *C, void *arg1, void * /*arg2*/)
 
 static uiBlock *block_file_read_error(bContext *C, ARegion *region, void *arg1)
 {
-  int retval = (int)arg1;
-
+  const char *message = static_cast<char *>(arg1);
   const char *title = IFACE_("Unable To Load File");
-  const char *message;
-  switch (retval) {
-    case BKE_READ_EXOTIC_FAIL_OPEN:
-      message = RPT_("Unable to open the specified file.");
-      break;
-    case BKE_READ_EXOTIC_FAIL_FORMAT:
-      message = RPT_("The format of the specified file is not supported.");
-      break;
-    case BKE_READ_EXOTIC_FAIL_PATH:
-      message = RPT_("File path of the specified file is invalid.");
-      break;
-    default:
-      message = RPT_("An error occurred while loading the specified file.");
-  }
 
   const short icon_size = 32 * UI_SCALE_FAC;
   const uiStyle *style = UI_style_get_dpi();
@@ -1093,8 +1078,7 @@ static uiBlock *block_file_read_error(bContext *C, ARegion *region, void *arg1)
   UI_but_flag_enable(okay_but, UI_BUT_ACTIVE_DEFAULT);
   UI_but_func_set(okay_but, block_file_read_okay_cb, col_block, nullptr);
 
-  const int padding = 7 * UI_SCALE_FAC;
-  const int bounds_offset[2] = {int(-0.6f * uiLayoutGetWidth(layout)), int(3.5f * UI_UNIT_X)};
+  const int bounds_offset[2] = {int(-0.65f * uiLayoutGetWidth(layout)), int(3.5f * UI_UNIT_Y)};
   UI_block_bounds_set_popup(block, 7 * UI_SCALE_FAC, bounds_offset);
 
   return block;
@@ -1195,7 +1179,25 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   }
 #endif
   else if (G.background == false) {
-    UI_popup_block_invoke(C, block_file_read_error, (void *)retval, nullptr);
+    std::string message;
+    switch (retval) {
+      case BKE_READ_EXOTIC_FAIL_OPEN:
+        message = RPT_("Cannot read file. ");
+        message += errno ? strerror(errno) : RPT_("Unable to open the file");
+        message += ".";
+        break;
+      case BKE_READ_EXOTIC_FAIL_FORMAT:
+        message = RPT_("The format of the specified file is not supported.");
+        break;
+      case BKE_READ_EXOTIC_FAIL_PATH:
+        message = RPT_("The file path of the specified file is invalid.");
+        break;
+      default:
+        BLI_assert_msg(0, "invalid 'retval'");
+        message = RPT_("An error occurred while loading the specified file.");
+    }
+    UI_popup_block_invoke(
+        C, block_file_read_error, (void *)BLI_strdup(message.c_str()), MEM_freeN);
   }
   else if (retval == BKE_READ_EXOTIC_FAIL_OPEN) {
     BKE_reportf(reports,
