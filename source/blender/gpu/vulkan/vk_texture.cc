@@ -523,7 +523,7 @@ void VKTexture::add_to_descriptor_set(AddToDescriptorSetContext &data,
   if (location) {
     const VKImageViewArrayed arrayed = data.shader_interface.arrayed(bind_type, binding);
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::IMAGE) {
-      data.descriptor_set.image_bind(*this, *location, arrayed);
+      data.descriptor_set.bind_as_image(*this, *location, arrayed);
     }
     else {
       VKDevice &device = VKBackend::get().device;
