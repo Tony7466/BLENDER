@@ -80,6 +80,7 @@
 #include "SEQ_time.hh"
 
 #include "ANIM_action.hh"
+#include "ANIM_action_iterators.hh"
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.hh"
 
@@ -1102,7 +1103,7 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
    * removed. */
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
     using namespace blender::animrig;
-    blender::Map<Action *, blender::Vector<ID *>> action_users;
+    blender::Map<Action *, blender::Vector<std::pair<ID *, slot_handle_t *>>> action_users;
     LISTBASE_FOREACH (bAction *, dna_action, &bmain->actions) {
       Action &action = dna_action->wrap();
       if (action.is_action_layered()) {
@@ -1115,15 +1116,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     ID *id;
     FOREACH_MAIN_LISTBASE_BEGIN (bmain, ids_of_idtype) {
       FOREACH_MAIN_LISTBASE_ID_BEGIN (ids_of_idtype, id) {
-        Action *action = get_action(*id);
-        if (!action) {
-          continue;
-        }
-        if (!action_users.contains(action)) {
-          /* This is the case for actions that are already layered. */
-          continue;
-        }
-        action_users.lookup(action).append(id);
+        auto callback = [&](bAction *&action_ptr_ref,
+                            slot_handle_t &slot_handle_ref,
+                            char * /* slot_name */) -> bool {
+          Action &action = action_ptr_ref->wrap();
+          if (!action_users.contains(&action)) {
+            return true;
+          }
+          action_users.lookup(&action).append({id, &slot_handle_ref});
+          return true;
+        };
+        foreach_action_slot_use_with_references(*id, callback);
       }
       FOREACH_MAIN_LISTBASE_ID_END;
     }
@@ -1132,8 +1135,12 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     for (const auto &item : action_users.items()) {
       Action &action = *item.key;
       convert_action_in_place(action);
-      for (ID *action_user : item.value) {
-        assign_action_slot(action.slot(0), *action_user);
+      for (std::pair<ID *, slot_handle_t *> action_user : item.value) {
+        /* Because the action was just converted from legacy, none of the users of that action
+         * should have a slot set yet. */
+        BLI_assert(*action_user.second == Slot::unassigned);
+        *action_user.second = action.slot(0)->handle;
+        action.slot(0)->users_add(*action_user.first);
       }
     }
   }
