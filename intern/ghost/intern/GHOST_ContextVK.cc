@@ -435,7 +435,7 @@ GHOST_ContextVK::GHOST_ContextVK(bool stereoVisual,
                                  int contextMajorVersion,
                                  int contextMinorVersion,
                                  int debug,
-                                 GHOST_GPUDevice preferred_device)
+                                 const GHOST_GPUDevice &preferred_device)
     : GHOST_Context(stereoVisual),
 #ifdef _WIN32
       m_hwnd(hwnd),

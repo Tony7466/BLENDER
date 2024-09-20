@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <string>
+
 #include "BLI_span.hh"
 #include "BLI_sys_types.h"
 #include "BLI_utildefines.h"
@@ -88,5 +90,4 @@ const char *GPU_platform_version();
 const char *GPU_platform_support_level_key();
 const char *GPU_platform_gpu_name();
 GPUArchitectureType GPU_platform_architecture();
-
 blender::Span<GPUDevice> GPU_platform_devices_list();

@@ -81,7 +81,7 @@ class GHOST_ContextVK : public GHOST_Context {
                   int contextMajorVersion,
                   int contextMinorVersion,
                   int debug,
-                  GHOST_GPUDevice preferred_device);
+                  const GHOST_GPUDevice &preferred_device);
 
   /**
    * Destructor.
