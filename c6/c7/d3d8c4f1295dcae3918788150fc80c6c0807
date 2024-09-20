@@ -1,1 +1,2 @@
 Referenced by issue #127758, Keys deleting when moving key(s) in Graph Editor with shared animation across multiple objects
+Referenced by pull request #127911, Fix #127758: Resoring keys in the Graph Editor with multiple actions failed
