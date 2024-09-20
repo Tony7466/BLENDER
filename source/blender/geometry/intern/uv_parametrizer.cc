@@ -4449,8 +4449,8 @@ static bool p_validate_corrected_coords_point(const PEdge *corr_e,
                                               const float min_angle_cos)
 {
   /* Check whether the given corrected coordinates don't result in any other triangle with area
-   * lower than min_area.
-   */
+   * lower than min_area. */
+
   const PVert *corr_v = corr_e->vert;
   const PEdge *e = corr_v->edge;
 
@@ -4508,8 +4508,7 @@ static bool p_validate_corrected_coords(const PEdge *corr_e,
                                         float min_angle_cos)
 {
   /* Check whether the given corrected coordinates don't result in any other triangle with area
-   * lower than min_area.
-   */
+   * lower than min_area. */
 
   const PVert *corr_v = corr_e->vert;
   const PEdge *e = corr_v->edge;
@@ -4772,7 +4771,7 @@ static bool p_chart_correct_degenerate_triangles2(PChart *chart, float min_area,
     PEdge *corr_e = max_edge->next->next;
     PVert *corr_v = corr_e->vert;
 
-    /* check 4 distinct directions */
+    /* Check 4 distinct directions. */
     static const constexpr int DIR_COUNT = 16;
     static const constexpr int LEN_MULTIPLIER_COUNT = 2;
     float corr_co[3];
@@ -4878,7 +4877,9 @@ static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, 
 /** \name SLIM Integration
  * \{ */
 
-/* Get SLIM parameters from scene */
+/**
+ * Get SLIM parameters from the scene.
+ */
 static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_options)
 {
   slim::MatrixTransfer *mt = new slim::MatrixTransfer();
@@ -4892,8 +4893,10 @@ static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_o
   return mt;
 }
 
-/* For one chart, allocate memory. If no accurate estimate (e.g. for number of
- * pinned vertices) overestimate and correct later. */
+/**
+ * For one chart, allocate memory. If no accurate estimate
+ * (e.g. for number of pinned vertices) overestimate and correct later.
+ */
 static void slim_allocate_matrices(const PChart *chart, slim::MatrixTransferChart *mt_chart)
 {
   mt_chart->verts_num = chart->nverts;
@@ -4907,14 +4910,16 @@ static void slim_allocate_matrices(const PChart *chart, slim::MatrixTransferChar
   mt_chart->f_matrices.resize(mt_chart->faces_num * 3);
   mt_chart->p_matrices.resize(mt_chart->verts_num);
   mt_chart->b_vectors.resize(mt_chart->verts_num);
-  /* also clear memory for weight vectors, hence 'new' followed by '()' */
+  /* Also clear memory for weight vectors, hence 'new' followed by `()`. */
   mt_chart->w_vectors.resize(mt_chart->verts_num, 0.0);
 
   mt_chart->e_matrices.resize(mt_chart->edges_num * 2 * 2);
   mt_chart->el_vectors.resize(mt_chart->edges_num * 2);
 }
 
-/* Transfer edges and edge lengths */
+/**
+ * Transfer edges and edge lengths.
+ */
 static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_chart)
 {
   auto &E = mt_chart->e_matrices;
@@ -4961,7 +4966,9 @@ static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_cha
   }
 }
 
-/* Transfer vertices and pinned information */
+/**
+ * Transfer vertices and pinned information.
+ */
 static void slim_transfer_vertices(const PChart *chart,
                                    slim::MatrixTransferChart *mt_chart,
                                    slim::MatrixTransfer *mt)
@@ -5005,7 +5012,9 @@ static void slim_transfer_vertices(const PChart *chart,
   }
 }
 
-/* Transfer boundary vertices */
+/**
+ * Transfer boundary vertices.
+ */
 static void slim_transfer_boundary_vertices(PChart *chart,
                                             slim::MatrixTransferChart *mt_chart,
                                             const slim::MatrixTransfer *mt)
@@ -5041,7 +5050,9 @@ static void slim_transfer_boundary_vertices(PChart *chart,
   } while (be != outer);
 }
 
-/* Transfer faces */
+/**
+ * Transfer faces.
+ */
 static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *mt_chart)
 {
   int fid = 0;
@@ -5061,7 +5072,9 @@ static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *
   }
 }
 
-/* Conversion Function to build matrix for SLIM Parametrization */
+/**
+ * Conversion Function to build matrix for SLIM Parametrization.
+ */
 static void slim_convert_blender(ParamHandle *phandle, slim::MatrixTransfer *mt)
 {
   static const float SLIM_CORR_MIN_AREA = 1.0e-8;
@@ -5110,7 +5123,9 @@ static void slim_transfer_data_to_slim(ParamHandle *phandle, const ParamSlimOpti
   phandle->slim_mt = mt;
 }
 
-/* Set UV on each vertex after SLIM parametrization, for each chart. */
+/**
+ * Set UV on each vertex after SLIM parametrization, for each chart.
+ */
 static void slim_flush_uvs(ParamHandle *phandle,
                            slim::MatrixTransfer *mt,
                            int *count_changed,
@@ -5156,7 +5171,9 @@ static void slim_flush_uvs(ParamHandle *phandle,
   }
 }
 
-/* Cleanup memory. */
+/**
+ * Cleanup memory.
+ */
 static void slim_free_matrix_transfer(ParamHandle *phandle)
 {
   delete phandle->slim_mt;
@@ -5199,7 +5216,8 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
   PVert *v;
   for (v = chart->verts; v; v = v->nextlink) {
     if (!v->on_boundary_flag && (v->flag & PVERT_PIN)) {
-      p_vert_load_pin_select_uvs(phandle, v); /* reload v */
+      /* Reload `v`. */
+      p_vert_load_pin_select_uvs(phandle, v);
 
       if (v->flag & PVERT_SELECT) {
         selected_pins.push_back(v->slim_id);
@@ -5244,7 +5262,7 @@ void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOption
 
     bool select = false, deselect = false;
 
-    /* give vertices matrix indices and count pins */
+    /* Give vertices matrix indices and count pins. */
     for (PVert *v = chart->verts; v; v = v->nextlink) {
       if (v->flag & PVERT_PIN) {
         if (v->flag & PVERT_SELECT) {
@@ -5300,7 +5318,8 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
   }
 
   /* Assign new UVs back to each vertex. */
-  slim_flush_uvs(phandle, mt, nullptr, nullptr, true /* live */);
+  const bool live = true;
+  slim_flush_uvs(phandle, mt, nullptr, nullptr, live);
 }
 
 void uv_parametrizer_slim_live_end(ParamHandle *phandle)

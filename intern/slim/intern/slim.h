@@ -59,7 +59,7 @@ struct SLIMData {
       oldUVs; /* #V by dim list of mesh vertex positions (dim = 2 for parametrization,. */
               /* 3 otherwise). */
 
-  /* weightmap for weighted parameterization. */
+  /* Weight-map for weighted parameterization. */
   bool withWeightedParameterization;
   Eigen::VectorXf weightmap;
   Eigen::VectorXf weightPerFaceMap;

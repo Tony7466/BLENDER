@@ -81,7 +81,7 @@ inline void cotmatrix(const Eigen::PlainObjectBase<DerivedV> &V,
   IJV.reserve(F.rows() * edges.rows() * 4);
   /* Loop over triangles. */
   for (int i = 0; i < F.rows(); i++) {
-    /* loop over edges of element. */
+    /* Loop over edges of element. */
     for (int e = 0; e < edges.rows(); e++) {
       int source = F(i, edges(e, 0));
       int dest = F(i, edges(e, 1));

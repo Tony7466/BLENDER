@@ -223,7 +223,8 @@ static void modifier_unwrap_state(Object *obedit,
 
   md = static_cast<ModifierData *>(obedit->modifiers.first);
 
-  /* subsurf will take the modifier settings only if modifier is first or right after mirror */
+  /* Subdivision-surface will take the modifier settings
+   * only if modifier is first or right after mirror. */
   if (subsurf) {
     if (md && md->type == eModifierType_Subsurf) {
       subsurf = true;
@@ -311,7 +312,7 @@ static void unwrap_options_sync_flag(
 
 static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
 {
-  /* remember last method for live unwrap */
+  /* Remember last method for live unwrap. */
   if (RNA_struct_property_is_set(op->ptr, "method")) {
     ts->unwrapper = RNA_enum_get(op->ptr, "method");
   }
@@ -319,7 +320,7 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
     RNA_enum_set(op->ptr, "method", ts->unwrapper);
   }
 
-  /* remember packing margin */
+  /* Remember packing margin. */
   if (RNA_struct_property_is_set(op->ptr, "margin")) {
     ts->uvcalc_margin = RNA_float_get(op->ptr, "margin");
   }
@@ -544,7 +545,7 @@ static void construct_param_handle_face_add(ParamHandle *handle,
       pin[i] = true;
     }
 
-    /* optional vertex group weighting */
+    /* Optional vertex group weighting. */
     if (cd_weight_offset >= 0 && cd_weight_index >= 0) {
       MDeformVert *dv = (MDeformVert *)BM_ELEM_CD_GET_VOID_P(l->v, cd_weight_offset);
       weight[i] = BKE_defvert_find_weight(dv, cd_weight_index);
