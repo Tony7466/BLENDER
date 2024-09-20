@@ -359,12 +359,11 @@ class Action : public ::bAction {
   int strip_keyframe_data_append(StripKeyframeData *strip_data);
 
   /**
-   * Attempt to remove the keyframe strip data at `index`.
+   * Remove the keyframe strip data at `index` if it is no longer used anywhere
+   * in the action.
    *
-   * If successful, the strip data is both removed from the array *and* freed.
-   *
-   * Fails if the data at `index` is still used somewhere in the action, in
-   * which case no changes are made and the action remains as-is.
+   * If the strip data is unused, it is both removed from the array *and* freed.
+   * Otherwise no changes are made and the action remains as-is.
    *
    * Note: this may alter the indices of some strip data items, due to items
    * shifting around to fill the gap left by the removed item. This method
@@ -372,10 +371,8 @@ class Action : public ::bAction {
    * themselves) are properly updated to the new values so that everything is
    * still referencing the same data. However, if any indices are stored
    * *outside* the action, they will no longer be valid.
-   *
-   * \return True on success, false on failure.
    */
-  bool strip_keyframe_data_remove(int index);
+  void strip_keyframe_data_remove_if_unused(int index);
 
  private:
   Slot &slot_allocate();

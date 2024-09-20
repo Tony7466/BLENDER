@@ -600,7 +600,7 @@ int Action::strip_keyframe_data_append(StripKeyframeData *strip_data)
   return this->strip_keyframe_data_array_num - 1;
 }
 
-bool Action::strip_keyframe_data_remove(const int index)
+void Action::strip_keyframe_data_remove_if_unused(const int index)
 {
   BLI_assert(index >= 0 && index < this->strip_keyframe_data_array_num);
 
@@ -608,7 +608,7 @@ bool Action::strip_keyframe_data_remove(const int index)
   for (Layer *layer : this->layers()) {
     for (Strip *strip : layer->strips()) {
       if (strip->type() == Strip::Type::Keyframe && strip->data_index == index) {
-        return false;
+        return;
       }
     }
   }
@@ -634,8 +634,6 @@ bool Action::strip_keyframe_data_remove(const int index)
       }
     }
   }
-
-  return true;
 }
 
 Span<const StripKeyframeData *> Action::strip_keyframe_data() const
@@ -936,15 +934,19 @@ bool Layer::strip_remove(Action &owning_action, Strip &strip)
     return false;
   }
 
-  const Strip::Type strip_type = this->strip(strip_index)->type();
-  const int data_index = this->strip(strip_index)->data_index;
+  const Strip::Type strip_type = strip.type();
+  const int data_index = strip.data_index;
 
   dna::array::remove_index(
       &this->strip_array, &this->strip_array_num, nullptr, strip_index, strip_ptr_destructor);
 
+  /* It's important that we do this *after* removing the strip itself
+   * (immediately above), because otherwise the strip will be found as a
+   * still-existing user of the strip data and thus the strip data won't be
+   * removed even if this strip was the last user. */
   switch (strip_type) {
     case Strip::Type::Keyframe:
-      owning_action.strip_keyframe_data_remove(data_index);
+      owning_action.strip_keyframe_data_remove_if_unused(data_index);
       break;
   }
 
