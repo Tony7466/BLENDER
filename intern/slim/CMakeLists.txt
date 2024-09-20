@@ -39,3 +39,4 @@ set(LIB
 )
 
 blender_add_lib(bf_intern_slim "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::intern::slim ALIAS bf_intern_slim)
