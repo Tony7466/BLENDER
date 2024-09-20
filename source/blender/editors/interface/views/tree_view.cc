@@ -137,7 +137,7 @@ int AbstractTreeView::count_visible_descendants(const AbstractTreeViewItem &pare
   }
   int count = 0;
   for (const auto &item : parent.children_) {
-    if (!item->is_filtered_visible_cached()) {
+    if (!item->is_filtered_visible()) {
       continue;
     }
     count++;
@@ -158,7 +158,7 @@ void AbstractTreeView::get_hierarchy_lines(const ARegion &region,
       std::numeric_limits<int>::max());
 
   for (const auto &item : parent.children_) {
-    if (!item->is_filtered_visible_cached()) {
+    if (!item->is_filtered_visible()) {
       continue;
     }
 
@@ -191,8 +191,8 @@ void AbstractTreeView::get_hierarchy_lines(const ARegion &region,
       }
     }
 
-    const int x = ((first_descendant->indent_width() + uiLayoutListItemPaddingWidth() - (0.5f * UI_ICON_SIZE) + U.pixelsize +
-                    UI_SCALE_FAC) /
+    const int x = ((first_descendant->indent_width() + uiLayoutListItemPaddingWidth() -
+                    (0.5f * UI_ICON_SIZE) + U.pixelsize + UI_SCALE_FAC) /
                    aspect);
     const int ymax = std::max(0, first_descendant_index - scroll_ofs) * padded_item_height();
     const int ymin = std::min(max_visible_row_count, last_descendant_index - scroll_ofs) *
