@@ -205,7 +205,7 @@ struct NodeBBoxWidgetGroup {
   } update_data;
 };
 
-static void gizmo_node_crop_update(NodeBBoxWidgetGroup *bbox_group)
+static void gizmo_node_bbox_update(NodeBBoxWidgetGroup *bbox_group)
 {
   RNA_property_update(
       bbox_group->update_data.context, &bbox_group->update_data.ptr, bbox_group->update_data.prop);
@@ -299,7 +299,7 @@ static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
     std::swap(rct.ymin, rct.ymax);
   }
   two_xy_from_rect(nxy, &rct, dims, offset, is_relative);
-  gizmo_node_crop_update(crop_group);
+  gizmo_node_bbox_update(crop_group);
 }
 
 static bool WIDGETGROUP_node_crop_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
@@ -478,7 +478,7 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
   mask_node->x = rct.xmin + mask_node->width/2;
   mask_node->y = rct.ymin + mask_node->height/2;
 
-  gizmo_node_crop_update(mask_group);
+  gizmo_node_bbox_update(mask_group);
 }
 
 static bool WIDGETGROUP_node_box_mask_poll(const bContext *C, wmGizmoGroupType * /*gzgt*/)
