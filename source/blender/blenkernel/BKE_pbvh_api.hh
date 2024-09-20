@@ -145,6 +145,11 @@ struct MeshNode : public Node {
   LocalVertMap vert_indices_;
   /** The number of vertices in #vert_indices not shared with (owned by) another node. */
   int unique_verts_num_ = 0;
+  /**
+   * The number of corners in all of the node's referenced faces. This value can easily be
+   * recalculated but currently it's faster to avoid that and store it here.
+   */
+  int corners_num_;
 
   /** Return the faces contained by the node. */
   Span<int> faces() const;
@@ -155,6 +160,9 @@ struct MeshNode : public Node {
    * vertices added at the end of the array.
    */
   Span<int> all_verts() const;
+
+  /** The number of corners in all of the node's faces. */
+  int corners_num() const;
 };
 
 struct GridsNode : public Node {
@@ -235,9 +243,9 @@ class Tree {
   std::unique_ptr<DrawCache> draw_data;
 
  public:
-  Tree(const Tree &other) = default;
+  Tree(const Tree &other) = delete;
   Tree(Tree &&other) = default;
-  Tree &operator=(const Tree &other) = default;
+  Tree &operator=(const Tree &other) = delete;
   Tree &operator=(Tree &&other) = default;
   ~Tree();
 
@@ -324,7 +332,7 @@ bool raycast_node(Tree &pbvh,
                   const float3 &ray_start,
                   const float3 &ray_normal,
                   IsectRayPrecalc *isect_precalc,
-                  float *r_depth,
+                  float *depth,
                   PBVHVertRef *r_active_vertex,
                   int &r_active_face_grid_index,
                   float3 &r_face_normal);
@@ -600,6 +608,10 @@ inline Span<int> MeshNode::verts() const
 inline Span<int> MeshNode::all_verts() const
 {
   return this->vert_indices_;
+}
+inline int MeshNode::corners_num() const
+{
+  return corners_num_;
 }
 
 inline Span<int> GridsNode::grids() const
