@@ -173,17 +173,9 @@ bool GPU_type_matches_ex(eGPUDeviceType device,
          (GPG.backend & backend);
 }
 
-static blender::Vector<GPUDevice> devices;
 blender::Span<GPUDevice> GPU_platform_devices_list()
 {
-  if (devices.is_empty()) {
-    devices.append({"1002/7470", 0x1002, 0x7470, "AMD Radeon Graphics (RADV NAVI32)"});
-    devices.append({"8086/56a1", 0x8086, 0x56a1, "Intel(R) Arc(tm) A750 Graphics (DG2)"});
-    devices.append({"1002/164e", 0x1002, 0x164e, "AMD Radeon Graphics (RADV RAPHAEL_MENDOCINO)"});
-    devices.append({"10005/0000", 0x10005, 0x0000, "llvmpipe (LLVM 17.0.6, 256 bits)"});
-  }
-
-  return devices.as_span();
+  return GPG.devices.as_span();
 }
 
 /** \} */

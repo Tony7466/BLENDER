@@ -1002,9 +1002,11 @@ typedef struct UserDef {
   /** Seconds to zoom around current frame. */
   float view_frame_seconds;
 
-  /** Preferred device/vendor ID for GPU device selection */
+  /** Preferred device/vendor for GPU device selection. */
+  int gpu_preferred_index;
   uint32_t gpu_preferred_vendor_id;
   uint32_t gpu_preferred_device_id;
+  char _pad16[4];
   /** #eGPUBackendType */
   short gpu_backend;
 

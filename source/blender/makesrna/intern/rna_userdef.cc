@@ -176,7 +176,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 static const EnumPropertyItem rna_enum_preference_gpu_preferred_device_items[] = {
-    {0, "AUTO", 0, "Auto detect", "Auto detect best GPU for running Blender"},
+    {0, "AUTO", 0, "Auto", "Auto detect best GPU for running Blender"},
     RNA_ENUM_ITEM_SEPR,
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -1460,7 +1460,8 @@ static int rna_preference_gpu_preferred_device_get(PointerRNA *ptr)
   UserDef *preferences = (UserDef *)ptr->data;
   int index = 1;
   for (const GPUDevice &gpu_device : GPU_platform_devices_list()) {
-    if (gpu_device.vendor_id == preferences->gpu_preferred_vendor_id &&
+    if (gpu_device.index == preferences->gpu_preferred_index &&
+        gpu_device.vendor_id == preferences->gpu_preferred_vendor_id &&
         gpu_device.device_id == preferences->gpu_preferred_device_id)
     {
       /* Offset by one as first item in the list is always autodetection. */
@@ -1480,11 +1481,13 @@ static void rna_preference_gpu_preferred_device_set(PointerRNA *ptr, int value)
     blender::Span<GPUDevice> devices = GPU_platform_devices_list();
     if (value < devices.size()) {
       const GPUDevice &device = devices[value];
+      preferences->gpu_preferred_index = device.index;
       preferences->gpu_preferred_vendor_id = device.vendor_id;
       preferences->gpu_preferred_device_id = device.device_id;
       return;
     }
   }
+  preferences->gpu_preferred_index = 0;
   preferences->gpu_preferred_vendor_id = 0u;
   preferences->gpu_preferred_device_id = 0u;
 }

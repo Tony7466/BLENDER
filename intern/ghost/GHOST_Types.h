@@ -714,7 +714,11 @@ typedef struct {
 } GHOST_DisplaySetting;
 
 typedef struct {
+  /** Index of the GPU device in the list provided by the platform. */
+  int index;
+  /** (PCI) Vendor ID of the GPU. */
   uint vendor_id;
+  /** Device ID of the GPU provided by the vendor. */
   uint device_id;
 } GHOST_GPUDevice;
 

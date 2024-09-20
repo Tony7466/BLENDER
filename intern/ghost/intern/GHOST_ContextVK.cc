@@ -336,8 +336,10 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
   vkEnumeratePhysicalDevices(vk_instance, &device_count, physical_devices.data());
 
   int best_device_score = -1;
+  int device_index = -1;
   for (const auto &physical_device : physical_devices) {
     GHOST_DeviceVK device_vk(vk_instance, physical_device);
+    device_index++;
 
     if (!device_vk.has_extensions(required_extensions)) {
       continue;
@@ -393,6 +395,9 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
         device_vk.properties.vendorID == preferred_device.vendor_id)
     {
       device_score += 500;
+      if (preferred_device.index == device_index) {
+        device_score += 10;
+      }
     }
     if (device_score > best_device_score) {
       best_physical_device = physical_device;

@@ -66,6 +66,7 @@ enum GPUArchitectureType {
 
 typedef struct GPUDevice {
   std::string identifier;
+  int index;
   uint32_t vendor_id;
   uint32_t device_id;
   std::string name;
