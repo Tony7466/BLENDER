@@ -1756,7 +1756,7 @@ GHOST_WindowWayland::GHOST_WindowWayland(GHOST_SystemWayland *system,
                                          const bool stereoVisual,
                                          const bool exclusive,
                                          const bool is_debug,
-                                         const GHOST_GPUDevice preferred_device)
+                                         const GHOST_GPUDevice &preferred_device)
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       system_(system),
       window_(new GWL_Window),

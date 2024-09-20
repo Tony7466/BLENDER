@@ -79,7 +79,7 @@ class GHOST_WindowWayland : public GHOST_Window {
                       const bool stereoVisual,
                       const bool exclusive,
                       const bool is_debug,
-                      const GHOST_GPUDevice preferred_device);
+                      const GHOST_GPUDevice &preferred_device);
 
   ~GHOST_WindowWayland() override;
 

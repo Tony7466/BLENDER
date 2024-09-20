@@ -113,7 +113,7 @@ GHOST_WindowX11::GHOST_WindowX11(GHOST_SystemX11 *system,
                                  const bool stereoVisual,
                                  const bool exclusive,
                                  const bool is_debug,
-                                 GHOST_GPUDevice preferred_device)
+                                 const GHOST_GPUDevice &preferred_device)
     : GHOST_Window(width, height, state, stereoVisual, exclusive),
       m_display(display),
       m_visualInfo(nullptr),
