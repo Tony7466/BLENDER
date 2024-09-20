@@ -26,10 +26,10 @@ ccl_device float3 phase_sample_direction(float3 D, float cos_theta, float rand)
 ccl_device float phase_henyey_greenstein(float cos_theta, float g)
 {
   if (fabsf(g) < 1e-3f) {
-    return M_1_PI_F * 0.25f;
+    return M_1_4PI_F;
   }
-  return ((1.0f - g * g) / safe_powf(1.0f + g * g - 2.0f * g * cos_theta, 1.5f)) *
-         (M_1_PI_F * 0.25f);
+  const float fac = 1 + g * (g - 2 * cos_theta);
+  return (1 - sqr(g)) / (M_4PI_F * fac * safe_sqrtf(fac));
 }
 
 ccl_device float3 phase_henyey_greenstein_sample(float3 D,
@@ -37,14 +37,10 @@ ccl_device float3 phase_henyey_greenstein_sample(float3 D,
                                                  float2 rand,
                                                  ccl_private float *pdf)
 {
-  float cos_theta;
-
-  if (fabsf(g) < 1e-3f) {
-    cos_theta = (1.0f - 2.0f * rand.x);
-  }
-  else {
-    float k = (1.0f - g * g) / (1.0f - g + 2.0f * g * rand.x);
-    cos_theta = (1.0f + g * g - k * k) / (2.0f * g);
+  float cos_theta = 1 - 2 * rand.x;
+  if (fabsf(g) >= 1e-3f) {
+    const float k = (1 - sqr(g)) / (1 - g * cos_theta);
+    cos_theta = (1 + sqr(g) - sqr(k)) / (2 * g);
   }
 
   *pdf = phase_henyey_greenstein(cos_theta, g);
@@ -62,9 +58,9 @@ ccl_device float phase_rayleigh(float cos_theta)
 
 ccl_device float3 phase_rayleigh_sample(float3 D, float2 rand, ccl_private float *pdf)
 {
-  float a = 2.0f * (1.0f - 2.0f * rand.x);
+  float a = 2 - 4 * rand.x;
   float b = sqrtf(1.0f + sqr(a));
-  float cos_theta = powf(a + b, 1.0f / 3.0f) + powf(a - b, 1.0f / 3.0f);
+  float cos_theta = cbrt(a + b) + cbrt(a - b);
   *pdf = phase_rayleigh(cos_theta);
 
   return phase_sample_direction(D, cos_theta, rand.y);
@@ -87,43 +83,31 @@ ccl_device float phase_draine(float cos_theta, float g, float alpha)
     return phase_henyey_greenstein(cos_theta, g);
   }
 
-  return ((1.0f - g * g) * (1.0f + alpha * cos_theta * cos_theta)) /
-         (4.0f * (1.0f + (alpha * (1.0f + 2.0f * g * g)) / 3.0f) * M_PI_F *
-          powf(1.0f + g * g - 2.0f * g * cos_theta, 1.5f));
+  const float g2 = sqr(g);
+  const float fac = 1 + g2 - 2 * g * cos_theta;
+  return ((1 - g2) * (1 + alpha * sqr(cos_theta))) /
+         ((1 + (alpha * (1 + 2 * g2)) * (1 / 3.0f)) * M_4PI_F * fac * sqrtf(fac));
 }
 
 /* Adapted from the hlsl code provided in https://research.nvidia.com/labs/rtr/approximate-mie/ */
 ccl_device float phase_draine_sample_cos(float g, float alpha, float rand)
 {
-  const float g2 = g * g;
-  const float g3 = g * g2;
-  const float g4 = g2 * g2;
-  const float g6 = g2 * g4;
-  const float pgp1_2 = (1.0f + g2) * (1.0f + g2);
-  const float T1a = -alpha + alpha * g4;
-  const float T1a3 = T1a * T1a * T1a;
-  const float T2 = -1296.0f * (-1.0f + g2) * (alpha - alpha * g2) * (T1a) *
-                   (4.0f * g2 + alpha * pgp1_2);
-  const float T3 = 3.0f * g2 * (1.0f + g * (-1.0f + 2.0f * rand)) +
-                   alpha * (2.0f + g2 + g3 * (1.0f + 2.0f * g2) * (-1.0f + 2.0f * rand));
-  const float T4a = 432.0f * T1a3 + T2 + 432.0f * (alpha - alpha * g2) * T3 * T3;
-  const float T4b = -144.0f * alpha * g2 + 288.0f * alpha * g4 - 144.0f * alpha * g6;
-  const float T4b3 = T4b * T4b * T4b;
-  const float T4 = T4a + sqrtf(-4.0f * T4b3 + T4a * T4a);
-  const float T4p3 = powf(T4, 1.0f / 3.0f);
-  const float T6 = (2.0f * T1a +
-                    (48.0f * powf(2.0f, 1.0f / 3.0f) *
-                     (-(alpha * g2) + 2.0f * alpha * g4 - alpha * g6)) /
-                        T4p3 +
-                    T4p3 / (3.0f * powf(2.0f, 1.0f / 3.0f))) /
-                   (alpha - alpha * g2);
-  const float T5 = 6.0f * (1.0f + g2) + T6;
-  return (1.0f + g2 -
-          powf(-0.5f * sqrtf(T5) + sqrtf(6.0f * (1.0f + g2) -
-                                         (8.0f * T3) / (alpha * (-1.0f + g2) * sqrtf(T5)) - T6) /
-                                       2.0f,
-               2.0f)) /
-         (2.0f * g);
+  const float g2 = sqr(g), g3 = g * g2, g4 = sqr(g2), g6 = g2 * g4;
+  const float pgp1_2 = sqr(1 + g2);
+  const float T1a = alpha * (g4 - 1), T1a3 = sqr(T1a) * T1a;
+  const float T2 = -1296 * (g2 - 1) * (alpha - alpha * g2) * T1a * (4 * g2 + alpha * pgp1_2);
+  const float T9 = 2 + g2 + g3 * (1 + 2 * g2) * (2 * rand - 1);
+  const float T3 = 3 * g2 * (1 + g * (2 * rand - 1)) + alpha * T9;
+  const float T4a = 432 * T1a3 + T2 + 432 * (alpha * (1 - g2)) * sqr(T3);
+  const float T10 = alpha * (2 * g4 - g2 - g6);
+  const float T4b = 144 * T10, T4b3 = sqr(T4b) * T4b;
+  const float T4 = T4a + sqrtf(-4 * T4b3 + sqr(T4a));
+  const float T4p3 = cbrtf(T4);
+  const float T8 = 48 * M_CBRT2_F * T10;
+  const float T6 = (2 * T1a + T8 / T4p3 + T4p3 * (1 / (3 * M_CBRT2_F))) / (alpha * (1 - g2));
+  const float T5 = 6 * (1 + g2) + T6;
+  const float T7 = 6 * (1 + g2) - (8 * T3) / (alpha * (g2 - 1) * sqrtf(T5)) - T6;
+  return (1 + g2 - 0.25f * sqr(sqrtf(T7) - sqrtf(T5))) / (2 * g);
 }
 
 ccl_device float3
@@ -132,11 +116,11 @@ phase_draine_sample(float3 D, float g, float alpha, float2 rand, ccl_private flo
   float cos_theta;
 
   if (fabsf(g) < 1e-3f || fabsf(alpha) < 1e-3f) {
-    cos_theta = (1.0f - 2.0f * rand.x);
-    *pdf = M_1_PI_F * 0.25f;
+    cos_theta = 1 - 2 * rand.x;
+    *pdf = M_1_4PI_F;
   }
   else {
-    cos_theta = phase_draine_sample_cos(g, alpha, rand.x); /* TODO: Fold in */
+    cos_theta = phase_draine_sample_cos(g, alpha, rand.x);
     *pdf = phase_draine(cos_theta, g, alpha);
   }
 
