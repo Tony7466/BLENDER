@@ -150,7 +150,7 @@ void RNA_api_workspace_tool(StructRNA *srna)
   RNA_def_property_enum_items(parm, rna_enum_dummy_NULL_items);
   RNA_def_property_enum_funcs(parm, nullptr, nullptr, "rna_WorkSpaceTool_brush_type_itemf");
   RNA_def_property_enum_default(parm, -1);
-  RNA_def_property_ui_text(parm, "Brush Type", "");
+  RNA_def_property_ui_text(parm, "Brush Type", "Limit this tool to a specific type of brush");
   RNA_def_string(func, "data_block", nullptr, MAX_NAME, "Data Block", "");
   RNA_def_string(func, "operator", nullptr, MAX_NAME, "Operator", "");
   RNA_def_int(func, "index", 0, INT_MIN, INT_MAX, "Index", "", INT_MIN, INT_MAX);
