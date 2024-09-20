@@ -11,6 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_compiler_compat.h"
 #include "BLI_function_ref.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
@@ -24,13 +25,8 @@ enum class PaintMode : int8_t;
 
 struct ARegion;
 struct bContext;
-struct BMesh;
-struct BMVert;
 struct Brush;
-struct CCGElem;
-struct CCGKey;
 struct ColorManagedDisplay;
-struct ColorSpace;
 struct Depsgraph;
 struct Image;
 struct ImagePool;
@@ -46,7 +42,6 @@ struct ReportList;
 struct Scene;
 struct SculptSession;
 struct SpaceImage;
-struct SubdivCCG;
 struct ToolSettings;
 struct VertProjHandle;
 struct ViewContext;
@@ -137,7 +132,10 @@ void paint_stroke_jitter_pos(Scene &scene,
                              const float mval[2],
                              float r_mouse_out[2]);
 
+/** Returns true if the active tool uses brushes. */
 bool paint_brush_tool_poll(bContext *C);
+/** Returns true if the brush cursor should be activated. */
+bool paint_brush_cursor_poll(bContext *C);
 bool paint_brush_update(bContext *C,
                         const Brush &brush,
                         PaintMode mode,
@@ -280,7 +278,7 @@ void paint_2d_stroke(void *ps,
                      bool eraser,
                      float pressure,
                      float distance,
-                     float size);
+                     float base_size);
 /**
  * This function expects linear space color values.
  */
@@ -550,10 +548,11 @@ void init_session_data(const ToolSettings &ts, Object &ob);
 void init_session(
     Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob, eObjectMode object_mode);
 
-Vector<bke::pbvh::Node *> pbvh_gather_generic(const Depsgraph &depsgraph,
-                                              Object &ob,
-                                              const VPaint &wp,
-                                              const Brush &brush);
+IndexMask pbvh_gather_generic(const Depsgraph &depsgraph,
+                              const Object &ob,
+                              const VPaint &wp,
+                              const Brush &brush,
+                              IndexMaskMemory &memory);
 
 void mode_enter_generic(
     Main &bmain, Depsgraph &depsgraph, Scene &scene, Object &ob, eObjectMode mode_flag);
