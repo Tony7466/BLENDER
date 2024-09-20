@@ -13,32 +13,24 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_sys_types.h"
-#include "BLI_threads.h"
 #include "BLI_vector_set.hh"
 
 #include <cstring>
+#include <mutex>
 
 #include "MEM_guardedalloc.h"
 
-static ThreadMutex lookup_lock = BLI_MUTEX_INITIALIZER;
+static std::mutex lookup_lock;
 
 struct SequenceLookup {
-  GHash *seq_by_name;
-  GHash *meta_by_seq;
+  blender::Map<std::string, Sequence *> seq_by_name;
+  blender::Map<const Sequence *, Sequence *> meta_by_seq;
   blender::Map<const Sequence *, blender::VectorSet<Sequence *>> effects_by_seq;
-  eSequenceLookupTag tag;
+  eSequenceLookupTag tag = SEQ_LOOKUP_TAG_INVALID;
 };
-
-static void seq_sequence_lookup_init(SequenceLookup *lookup)
-{
-  lookup->seq_by_name = BLI_ghash_str_new(__func__);
-  lookup->meta_by_seq = BLI_ghash_ptr_new(__func__);
-  lookup->tag |= SEQ_LOOKUP_TAG_INVALID;
-}
 
 static void seq_sequence_lookup_append_effect(const Sequence *input,
                                               Sequence *effect,
@@ -68,8 +60,8 @@ static void seq_sequence_lookup_build_from_seqbase(Sequence *parent_meta,
                                                    SequenceLookup *lookup)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
-    BLI_ghash_insert(lookup->seq_by_name, seq->name + 2, seq);
-    BLI_ghash_insert(lookup->meta_by_seq, seq, parent_meta);
+    lookup->seq_by_name.add(seq->name + 2, seq);
+    lookup->meta_by_seq.add(seq, parent_meta);
     seq_sequence_lookup_build_effect(seq, lookup);
 
     if (seq->type == SEQ_TYPE_META) {
@@ -88,20 +80,11 @@ static void seq_sequence_lookup_build(const Scene *scene, SequenceLookup *lookup
 static SequenceLookup *seq_sequence_lookup_new()
 {
   SequenceLookup *lookup = MEM_new<SequenceLookup>(__func__);
-  seq_sequence_lookup_init(lookup);
   return lookup;
 }
 
 static void seq_sequence_lookup_free(SequenceLookup **lookup)
 {
-  if (*lookup == nullptr) {
-    return;
-  }
-
-  BLI_ghash_free((*lookup)->seq_by_name, nullptr, nullptr);
-  BLI_ghash_free((*lookup)->meta_by_seq, nullptr, nullptr);
-  (*lookup)->seq_by_name = nullptr;
-  (*lookup)->meta_by_seq = nullptr;
   MEM_delete(*lookup);
   *lookup = nullptr;
 }
@@ -133,43 +116,37 @@ static void seq_sequence_lookup_update_if_needed(const Scene *scene, SequenceLoo
 void SEQ_sequence_lookup_free(const Scene *scene)
 {
   BLI_assert(scene->ed);
-  BLI_mutex_lock(&lookup_lock);
+  std::lock_guard lock(lookup_lock);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   seq_sequence_lookup_free(&lookup);
-  BLI_mutex_unlock(&lookup_lock);
 }
 
 Sequence *SEQ_sequence_lookup_seq_by_name(const Scene *scene, const char *key)
 {
   BLI_assert(scene->ed);
-  BLI_mutex_lock(&lookup_lock);
+  std::lock_guard lock(lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
-  Sequence *seq = static_cast<Sequence *>(BLI_ghash_lookup(lookup->seq_by_name, key));
-  BLI_mutex_unlock(&lookup_lock);
-  return seq;
+  return lookup->seq_by_name.lookup_default(key, nullptr);
 }
 
 Sequence *seq_sequence_lookup_meta_by_seq(const Scene *scene, const Sequence *key)
 {
   BLI_assert(scene->ed);
-  BLI_mutex_lock(&lookup_lock);
+  std::lock_guard lock(lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
-  Sequence *seq = static_cast<Sequence *>(BLI_ghash_lookup(lookup->meta_by_seq, key));
-  BLI_mutex_unlock(&lookup_lock);
-  return seq;
+  return lookup->meta_by_seq.lookup_default(key, nullptr);
 }
 
 blender::Span<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
                                                              const Sequence *key)
 {
   BLI_assert(scene->ed);
-  BLI_mutex_lock(&lookup_lock);
+  std::lock_guard lock(lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   blender::VectorSet<Sequence *> &effects = lookup->effects_by_seq.lookup_or_add_default(key);
-  BLI_mutex_unlock(&lookup_lock);
   return effects.as_span();
 }
 
@@ -179,10 +156,9 @@ void SEQ_sequence_lookup_tag(const Scene *scene, eSequenceLookupTag tag)
     return;
   }
 
-  BLI_mutex_lock(&lookup_lock);
+  std::lock_guard lock(lookup_lock);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   if (lookup != nullptr) {
     lookup->tag |= tag;
   }
-  BLI_mutex_unlock(&lookup_lock);
 }
