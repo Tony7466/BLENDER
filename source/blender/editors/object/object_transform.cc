@@ -1800,7 +1800,7 @@ static int object_origin_set_exec(bContext *C, wmOperator *op)
       tot_change++;
 
       for (const int layer_i : grease_pencil.layers().index_range()) {
-        bke::greasepencil::Layer &layer = *grease_pencil.layer(layer_i);
+        bke::greasepencil::Layer &layer = grease_pencil.layer(layer_i);
         const float4x4 layer_to_object = layer.local_transform();
         const float4x4 object_to_layer = math::invert(layer_to_object);
         const Map<bke::greasepencil::FramesMapKeyT, GreasePencilFrame> frames = layer.frames();
