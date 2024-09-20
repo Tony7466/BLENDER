@@ -2982,7 +2982,6 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
              (cob->pchan) ? cob->pchan->name : nullptr);
     }
 
-
     /* Get the appropriate information from the action */
     if (cob->type == CONSTRAINT_OBTYPE_OBJECT || (data->flag & ACTCON_BONE_USE_OBJECT_ACTION)) {
       Object workob;
