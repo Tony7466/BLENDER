@@ -31,7 +31,12 @@ struct GeometryDeformation;
 
 namespace blender::ed::sculpt_paint {
 
-using DeltaProjectionFunc = std::function<float3(const float3 &)>;
+/**
+ * Projects a screen-space displacement vector into layer space.
+ * World position is used to compute the perspective distance (zfac).
+ */
+using DeltaProjectionFunc =
+    std::function<float3(const float2 &screen_delta, const float3 world_pos)>;
 
 struct InputSample {
   float2 mouse_position;
@@ -132,11 +137,11 @@ Array<float2> calculate_view_positions(const GreasePencilStrokeParams &params,
 Array<float> calculate_view_radii(const GreasePencilStrokeParams &params,
                                   const IndexMask &selection);
 
-/* Get an appropriate projection function from view space to layer space.
+/* Get an appropriate projection function from screen space to layer space.
  * This is an alternative to using the DrawingPlacement. */
-DeltaProjectionFunc get_view_projection_fn(const GreasePencilStrokeParams &params,
-                                           const Object &object,
-                                           const bke::greasepencil::Layer &layer);
+DeltaProjectionFunc get_screen_projection_fn(const GreasePencilStrokeParams &params,
+                                             const Object &object,
+                                             const bke::greasepencil::Layer &layer);
 
 bool do_vertex_color_points(const Brush &brush);
 bool do_vertex_color_fill(const Brush &brush);

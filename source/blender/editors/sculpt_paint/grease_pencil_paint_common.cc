@@ -194,57 +194,63 @@ bool is_brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
   return bool(brush.flag & BRUSH_DIR_IN) ^ (stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT);
 }
 
-DeltaProjectionFunc get_view_projection_fn(const GreasePencilStrokeParams &params,
-                                           const Object &object,
-                                           const bke::greasepencil::Layer &layer)
+DeltaProjectionFunc get_screen_projection_fn(const GreasePencilStrokeParams &params,
+                                             const Object &object,
+                                             const bke::greasepencil::Layer &layer)
 {
-  const float4x4 world_to_view = float4x4(params.rv3d.viewinv);
+  const float4x4 view_to_world = float4x4(params.rv3d.viewinv);
   const float4x4 layer_to_world = layer.to_world_space(object);
   const float4x4 world_to_layer = math::invert(layer_to_world);
-  const float4x4 view_to_layer = math::invert(world_to_view * layer_to_world);
+
+  auto screen_to_world = [=](const float2 &screen_delta, const float3 &world_pos) {
+    const float zfac = ED_view3d_calc_zfac(&params.rv3d, world_pos);
+    float3 world_delta;
+    ED_view3d_win_to_delta(&params.region, screen_delta, zfac, world_delta);
+    return world_delta;
+  };
 
   switch (params.toolsettings.gp_sculpt.lock_axis) {
     case GP_LOCKAXIS_VIEW: {
-      return [=](const float3 &view_delta) {
-        return math::transform_direction(view_to_layer, float3(view_delta.x, view_delta.y, 0.0f));
+      const float3 world_normal = view_to_world.z_axis();
+      return [=](const float2 &screen_delta, const float3 &world_pos) {
+        const float3 world_delta = screen_to_world(screen_delta, world_pos);
+        return math::transform_direction(
+            world_to_layer, world_delta - world_normal * math::dot(world_delta, world_normal));
       };
     }
     case GP_LOCKAXIS_X: {
-      const float3 world_normal = world_to_layer.x_axis();
-      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
-      return [=](const float3 &view_delta) {
-        return math::transform_direction(
-            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      return [=](const float2 &screen_delta, const float3 &world_pos) {
+        const float3 world_delta = screen_to_world(screen_delta, world_pos);
+        return math::transform_direction(world_to_layer,
+                                         float3(0.0f, world_delta.y, world_delta.z));
       };
     }
     case GP_LOCKAXIS_Y: {
-      const float3 world_normal = world_to_layer.y_axis();
-      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
-      return [=](const float3 &view_delta) {
-        return math::transform_direction(
-            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      return [=](const float2 &screen_delta, const float3 &world_pos) {
+        const float3 world_delta = screen_to_world(screen_delta, world_pos);
+        return math::transform_direction(world_to_layer,
+                                         float3(world_delta.x, 0.0f, world_delta.z));
       };
     }
     case GP_LOCKAXIS_Z: {
-      const float3 world_normal = world_to_layer.z_axis();
-      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
-      return [=](const float3 &view_delta) {
-        return math::transform_direction(
-            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+      return [=](const float2 &screen_delta, const float3 &world_pos) {
+        const float3 world_delta = screen_to_world(screen_delta, world_pos);
+        return math::transform_direction(world_to_layer,
+                                         float3(world_delta.x, world_delta.y, 0.0f));
       };
     }
     case GP_LOCKAXIS_CURSOR: {
       const float3 world_normal = params.scene.cursor.matrix<float3x3>().z_axis();
-      const float3 view_normal = math::transform_direction(world_to_view, world_normal);
-      return [=](const float3 &view_delta) {
+      return [=](const float2 &screen_delta, const float3 &world_pos) {
+        const float3 world_delta = screen_to_world(screen_delta, world_pos);
         return math::transform_direction(
-            view_to_layer, view_delta - view_normal * math::dot(view_delta, view_normal));
+            world_to_layer, world_delta - world_normal * math::dot(world_delta, world_normal));
       };
     }
   }
 
   BLI_assert_unreachable();
-  return [](const float3 &) { return float3(); };
+  return [](const float2 &, const float3 &) { return float3(); };
 }
 
 GreasePencilStrokeParams GreasePencilStrokeParams::from_context(
@@ -534,7 +540,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
         info.frame_number,
         info.multi_frame_falloff,
         info.drawing);
-    DeltaProjectionFunc projection_fn = get_view_projection_fn(params, object_eval, layer);
+    DeltaProjectionFunc projection_fn = get_screen_projection_fn(params, object_eval, layer);
     if (fn(params, projection_fn)) {
       changed = true;
     }

@@ -102,7 +102,7 @@ void GrabOperation::foreach_grabbed_drawing(
         data.frame_number,
         data.multi_frame_falloff,
         *drawing);
-    DeltaProjectionFunc projection_fn = get_view_projection_fn(params, object_eval, layer);
+    DeltaProjectionFunc projection_fn = get_screen_projection_fn(params, object_eval, layer);
     if (fn(params, projection_fn, data.point_mask, data.weights)) {
       changed = true;
     }
@@ -188,8 +188,6 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
 void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  const ARegion &region = *CTX_wm_region(&C);
-
   this->foreach_grabbed_drawing(
       C,
       [&](const GreasePencilStrokeParams &params,
@@ -198,15 +196,14 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
           const Span<float> weights) {
         /* Transform mouse delta into layer space. */
         const float2 mouse_delta_win = this->mouse_delta(extension_sample);
-        float3 mouse_delta_view;
-        ED_view3d_win_to_vector(&region, mouse_delta_win, mouse_delta_view);
 
         bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
         bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
         MutableSpan<float3> positions = curves.positions_for_write();
         mask.foreach_index(GrainSize(4096), [&](const int point_i, const int index) {
           /* Translate the point with the influence factor. */
-          const float3 delta_layer = projection_fn(mouse_delta_view * weights[index]);
+          const float3 delta_layer = projection_fn(mouse_delta_win * weights[index],
+                                                   deformation.positions[point_i]);
           positions[point_i] = deformation.positions[point_i] + delta_layer;
         });
 

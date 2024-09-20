@@ -65,14 +65,10 @@ void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &ex
             return;
           }
 
-          const float scale_offset = influence * influence / 25.0f;
-          const float scale = invert ? 1.0 + scale_offset : 1.0f - scale_offset;
-          // const float2 delta_view = (target - co) * (1.0f - scale);
-          const float2 delta_view = float2(0.2f, 0.0f) * influence;
-          std::cout << "delta_view=" << delta_view << std::endl;
-          std::cout << "  projection=" << projection_fn(float3(delta_view)) << std::endl;
-          std::cout << "  new=" << (positions[point_i] + projection_fn(float3(delta_view))) << std::endl;
-          positions[point_i] += projection_fn(float3(delta_view));
+          const float influence_squared = influence * influence / 25.0f;
+          const float influence_final = invert ? 1.0 + influence_squared :
+                                                 1.0f - influence_squared;
+          positions[point_i] += projection_fn((target - co) * (1.0f - influence_final), positions[point_i]);
         });
 
         params.drawing.tag_positions_changed();

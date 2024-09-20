@@ -42,9 +42,7 @@ void PushOperation::on_stroke_extended(const bContext &C, const InputSample &ext
       eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
 
   this->foreach_editable_drawing(
-      C,
-      [&](const GreasePencilStrokeParams &params,
-          const ed::greasepencil::DrawingPlacement &placement) {
+      C, [&](const GreasePencilStrokeParams &params, const DeltaProjectionFunc &projection_fn) {
         IndexMaskMemory selection_memory;
         const IndexMask selection = point_selection_mask(params, is_masking, selection_memory);
         if (selection.is_empty()) {
@@ -65,7 +63,8 @@ void PushOperation::on_stroke_extended(const bContext &C, const InputSample &ext
             return;
           }
 
-          positions[point_i] = placement.project(co + mouse_delta * influence);
+          // positions[point_i] = placement.project(co + mouse_delta * influence);
+          positions[point_i] += projection_fn(mouse_delta * influence, positions[point_i]);
         });
 
         params.drawing.tag_positions_changed();
