@@ -123,20 +123,18 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
 
   VKDescriptorSetTracker() {}
 
-  void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  /* Bind as uniform texel buffer. */
-  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
-  void bind_as_image(VKTexture &texture,
-                     VKDescriptorSet::Location location,
-                     VKImageViewArrayed arrayed);
-  void bind(VKTexture &texture,
-            VKDescriptorSet::Location location,
-            const VKSampler &sampler,
-            VKImageViewArrayed);
+  void reset();
+
+  void bind_texel_buffer(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  void bind_buffer(VkDescriptorType vk_descriptor_type,
+                   VkBuffer vk_buffer,
+                   VkDeviceSize size_in_bytes,
+                   VKDescriptorSet::Location location);
+  void bind_image(VkDescriptorType vk_descriptor_type,
+                  VkSampler vk_sampler,
+                  VkImageView vk_image_view,
+                  VkImageLayout vk_image_layout,
+                  VKDescriptorSet::Location location);
 
   std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
@@ -152,15 +150,6 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
-  void bind_buffer(VkDescriptorType vk_descriptor_type,
-                   VkBuffer vk_buffer,
-                   VkDeviceSize size_in_bytes,
-                   VKDescriptorSet::Location location);
-  void bind_image(VkDescriptorType vk_descriptor_type,
-                  VkSampler vk_sampler,
-                  VkImageView vk_image_view,
-                  VkImageLayout vk_image_layout,
-                  VKDescriptorSet::Location location);
 };
 
 }  // namespace blender::gpu

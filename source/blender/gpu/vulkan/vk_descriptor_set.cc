@@ -38,6 +38,13 @@ VKDescriptorSet::~VKDescriptorSet()
   }
 }
 
+void VKDescriptorSetTracker::reset()
+{
+  vk_descriptor_image_infos_.clear();
+  vk_descriptor_buffer_infos_.clear();
+  vk_write_descriptor_sets_.clear();
+}
+
 void VKDescriptorSetTracker::bind_buffer(VkDescriptorType vk_descriptor_type,
                                          VkBuffer vk_buffer,
                                          VkDeviceSize size_in_bytes,
@@ -51,6 +58,22 @@ void VKDescriptorSetTracker::bind_buffer(VkDescriptorType vk_descriptor_type,
                                     0,
                                     1,
                                     vk_descriptor_type,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr});
+}
+
+void VKDescriptorSetTracker::bind_texel_buffer(VKVertexBuffer &vertex_buffer,
+                                               const VKDescriptorSet::Location location)
+{
+  vk_buffer_views_.append(vertex_buffer.vk_buffer_view_get());
+  vk_write_descriptor_sets_.append({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                    nullptr,
+                                    VK_NULL_HANDLE,
+                                    location,
+                                    0,
+                                    1,
+                                    VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
                                     nullptr,
                                     nullptr,
                                     nullptr});
@@ -73,84 +96,6 @@ void VKDescriptorSetTracker::bind_image(VkDescriptorType vk_descriptor_type,
                                     nullptr,
                                     nullptr,
                                     nullptr});
-}
-
-/* TODO: These should all be removed or inlined. */
-void VKDescriptorSetTracker::bind(VKStorageBuffer &buffer,
-                                  const VKDescriptorSet::Location location)
-{
-  bind_buffer(
-      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, buffer.vk_handle(), buffer.size_in_bytes(), location);
-}
-
-void VKDescriptorSetTracker::bind_as_ssbo(VKVertexBuffer &buffer,
-                                          const VKDescriptorSet::Location location)
-{
-  bind_buffer(
-      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, buffer.vk_handle(), buffer.size_used_get(), location);
-}
-
-void VKDescriptorSetTracker::bind(VKUniformBuffer &buffer,
-                                  const VKDescriptorSet::Location location)
-{
-  bind_buffer(
-      VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, buffer.vk_handle(), buffer.size_in_bytes(), location);
-}
-
-void VKDescriptorSetTracker::bind_as_ssbo(VKIndexBuffer &buffer,
-                                          const VKDescriptorSet::Location location)
-{
-  bind_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, buffer.vk_handle(), buffer.size_get(), location);
-}
-
-void VKDescriptorSetTracker::bind_as_ssbo(VKUniformBuffer &buffer,
-                                          const VKDescriptorSet::Location location)
-{
-  bind_buffer(
-      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, buffer.vk_handle(), buffer.size_in_bytes(), location);
-}
-
-void VKDescriptorSetTracker::bind(VKVertexBuffer &vertex_buffer,
-                                  const VKDescriptorSet::Location location)
-{
-  vk_buffer_views_.append(vertex_buffer.vk_buffer_view_get());
-  vk_write_descriptor_sets_.append({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                    nullptr,
-                                    VK_NULL_HANDLE,
-                                    location,
-                                    0,
-                                    1,
-                                    VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-                                    nullptr,
-                                    nullptr,
-                                    nullptr});
-}
-
-void VKDescriptorSetTracker::bind_as_image(VKTexture &texture,
-                                           const VKDescriptorSet::Location location,
-                                           VKImageViewArrayed arrayed)
-{
-  /* TODO: Based on the actual usage we should use
-   * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL. */
-  bind_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-             VK_NULL_HANDLE,
-             texture.image_view_get(arrayed).vk_handle(),
-             VK_IMAGE_LAYOUT_GENERAL,
-             location);
-}
-
-void VKDescriptorSetTracker::bind(VKTexture &texture,
-                                  const VKDescriptorSet::Location location,
-                                  const VKSampler &sampler,
-                                  VKImageViewArrayed arrayed)
-{
-  /* TODO: Based on the actual usage we should use
-   * VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL. */
-  bind_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-             sampler.vk_handle(),
-             texture.image_view_get(arrayed).vk_handle(),
-             VK_IMAGE_LAYOUT_GENERAL,
-             location);
 }
 
 void VKDescriptorSetTracker::update(VKContext &context)
@@ -200,11 +145,7 @@ void VKDescriptorSetTracker::update(VKContext &context)
                          vk_write_descriptor_sets_.data(),
                          0,
                          nullptr);
-
-  /* TODO this should be invoked by the state manager. */
-  vk_descriptor_image_infos_.clear();
-  vk_descriptor_buffer_infos_.clear();
-  vk_write_descriptor_sets_.clear();
+  reset();
 }
 
 std::unique_ptr<VKDescriptorSet> VKDescriptorSetTracker::create_resource(VKContext &context)
