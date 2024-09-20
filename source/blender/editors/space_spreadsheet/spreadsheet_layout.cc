@@ -19,6 +19,7 @@
 #include "spreadsheet_layout.hh"
 
 #include "DNA_collection_types.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
@@ -220,20 +221,29 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        0,
                        nullptr);
     }
-    else if (data.type().is<std::string>()) {
-      uiDefIconTextBut(params.block,
-                       UI_BTYPE_LABEL,
-                       0,
-                       ICON_NONE,
-                       data.get<std::string>(real_index),
-                       params.xmin,
-                       params.ymin,
-                       params.width,
-                       params.height,
-                       nullptr,
-                       0,
-                       0,
-                       nullptr);
+    else if (data.type().is<MStringProperty>()) {
+      uiBut *but = uiDefIconTextBut(params.block,
+                                    UI_BTYPE_LABEL,
+                                    0,
+                                    ICON_NONE,
+                                    std::string(data.get<MStringProperty>(real_index).s, 255),
+                                    params.xmin,
+                                    params.ymin,
+                                    params.width,
+                                    params.height,
+                                    nullptr,
+                                    0,
+                                    0,
+                                    nullptr);
+      auto buf = MEM_mallocN(255, __func__);
+      memcpy(buf, data.get<MStringProperty>(real_index).s, 255);
+      UI_but_func_tooltip_set(
+          but,
+          [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+            return fmt::format(TIP_("{}"), (char *)argN);
+          },
+          buf,
+          MEM_freeN);
     }
   }
 
