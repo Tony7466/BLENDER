@@ -42,9 +42,11 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object_types.hh"
 #include "BKE_report.hh"
@@ -2066,7 +2068,7 @@ const wmTimer *uvedit_live_unwrap_timer()
   return g_live_unwrap.timer;
 }
 
-void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
+void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_for_timer)
 {
   ParamHandle *handle = nullptr;
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -2092,9 +2094,10 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
     options.slim_options.skip_initialization = true;
     uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
-    if (C) {
+    if (win_for_timer) {
+      wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
       BLI_assert(!g_live_unwrap.timer);
-      g_live_unwrap.timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
+      g_live_unwrap.timer = WM_event_timer_add(wm, win_for_timer, TIMER, 0.01f);
     }
   }
   else {
@@ -2133,11 +2136,13 @@ void ED_uvedit_live_unwrap_re_solve()
   }
 }
 
-void ED_uvedit_live_unwrap_end(bContext *C, short cancel)
+void ED_uvedit_live_unwrap_end(short cancel)
 {
-  if (C && g_live_unwrap.timer) {
-    WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), g_live_unwrap.timer);
-    g_live_unwrap.timer = NULL;
+  if (g_live_unwrap.timer) {
+    wmWindow *win = g_live_unwrap.timer->win;
+    wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
+    WM_event_timer_remove(wm, win, g_live_unwrap.timer);
+    g_live_unwrap.timer = nullptr;
   }
 
   if (g_live_unwrap.handles) {
@@ -2850,7 +2855,7 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropDecorate(layout, false);
 
   /* Main draw call */
-  PointerRNA ptr = RNA_pointer_create(NULL, op->type->srna, op->properties);
+  PointerRNA ptr = RNA_pointer_create(nullptr, op->type->srna, op->properties);
 
   uiLayout *col;
 

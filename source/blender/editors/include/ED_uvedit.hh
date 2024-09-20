@@ -263,9 +263,9 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, bool se
 struct wmTimer;
 const wmTimer *uvedit_live_unwrap_timer();
 
-void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit);
+void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, struct wmWindow *win_for_timer);
 void ED_uvedit_live_unwrap_re_solve();
-void ED_uvedit_live_unwrap_end(bContext *C, short cancel);
+void ED_uvedit_live_unwrap_end(short cancel);
 
 void ED_uvedit_live_unwrap(const Scene *scene, blender::Span<Object *> objects);
 void ED_uvedit_add_simple_uvs(Main *bmain, const Scene *scene, Object *ob);
