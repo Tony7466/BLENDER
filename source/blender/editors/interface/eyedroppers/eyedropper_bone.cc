@@ -41,6 +41,14 @@
 
 namespace blender::ui {
 
+enum class SampleResult {
+  SUCCESS,
+  NO_BONE_3DVIEW,
+  NO_BONE_OUTLINER,
+  WRONG_AREA,
+  WRONG_ARMATURE,
+};
+
 struct BoneDropper {
   PointerRNA ptr;
   PropertyRNA *prop;
@@ -54,6 +62,13 @@ struct BoneDropper {
   void *draw_handle_pixel;
   int name_pos[2];
   char name[64];
+};
+
+struct BoneSampleData {
+  /* Either EditBone, bPoseChannel or Bone. */
+  PointerRNA bone_rna;
+  char *name;
+  SampleResult sample_result;
 };
 
 static void datadropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, void *arg)
@@ -162,12 +177,6 @@ static void bonedropper_set_draw_callback_region(ScrArea &area, BoneDropper &bdr
       art, datadropper_draw_cb, &bdr, REGION_DRAW_POST_PIXEL);
 }
 
-struct BoneSampleData {
-  /* Either EditBone, bPoseChannel or Bone. */
-  PointerRNA bone_rna;
-  char *name;
-};
-
 static void sample_data_from_3d_view(bContext *C,
                                      const int mval[2],
                                      const BoneDropper &bdr,
@@ -179,34 +188,41 @@ static void sample_data_from_3d_view(bContext *C,
     case CTX_MODE_POSE: {
       bPoseChannel *bone = ED_armature_pick_pchan(C, mval, true, &base);
       if (!bone || !base) {
+        r_sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
         return;
       }
       Object *ob = base->object;
       bArmature *armature = (bArmature *)ob->data;
       if (!armature || &armature->id != bdr.search_ptr.owner_id) {
+        r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
         return;
       }
       r_sample_data.name = bone->name;
       /* Not using the search pointer owner ID because pose bones are part of the object. */
       r_sample_data.bone_rna = RNA_pointer_create(&base->object->id, &RNA_PoseBone, bone);
+      r_sample_data.sample_result = SampleResult::SUCCESS;
       break;
     }
     case CTX_MODE_EDIT_ARMATURE: {
       EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
       if (!ebone || !base) {
+        r_sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
         return;
       }
       Object *ob = base->object;
       bArmature *armature = (bArmature *)ob->data;
       if (!armature || &armature->id != bdr.search_ptr.owner_id) {
+        r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
         return;
       }
       r_sample_data.name = ebone->name;
       r_sample_data.bone_rna = RNA_pointer_create(&armature->id, &RNA_EditBone, ebone);
+      r_sample_data.sample_result = SampleResult::SUCCESS;
       break;
     }
 
     default:
+      r_sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
       break;
   }
 }
@@ -218,6 +234,7 @@ static void sample_data_from_outliner(bContext *C,
 {
   const bool success = ED_outliner_give_rna_under_cursor(C, mval, &r_sample_data.bone_rna);
   if (!success) {
+    r_sample_data.sample_result = SampleResult::NO_BONE_OUTLINER;
     return;
   }
   ID *bone_id = r_sample_data.bone_rna.owner_id;
@@ -225,21 +242,36 @@ static void sample_data_from_outliner(bContext *C,
 
   /* By comparing the ID of the RNA returned by the outliner with the ID we are searching in, we
    * can determine if the Bone is for the correct armature. */
-  if (r_sample_data.bone_rna.type == &RNA_Bone && bone_id == search_id) {
+  if (r_sample_data.bone_rna.type == &RNA_Bone) {
+    if (bone_id != search_id) {
+      r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
+      return;
+    }
     Bone *bone = (Bone *)r_sample_data.bone_rna.data;
     r_sample_data.name = bone->name;
+    r_sample_data.sample_result = SampleResult::SUCCESS;
+    return;
   }
-  else if (r_sample_data.bone_rna.type == &RNA_EditBone && bone_id == search_id) {
+
+  if (r_sample_data.bone_rna.type == &RNA_EditBone) {
+    if (bone_id != search_id) {
+      r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
+      return;
+    }
     EditBone *bone = (EditBone *)r_sample_data.bone_rna.data;
     r_sample_data.name = bone->name;
+    r_sample_data.sample_result = SampleResult::SUCCESS;
+    return;
   }
-  else if (r_sample_data.bone_rna.type == &RNA_PoseBone) {
+
+  if (r_sample_data.bone_rna.type == &RNA_PoseBone) {
     bPoseChannel *pose_bone = (bPoseChannel *)r_sample_data.bone_rna.data;
     /* Special case for pose bones. Because they are not stored in the Armature, the IDs of the
      * search property and the picked result might not match since the comparison would be between
      * armature and object. */
     if (bdr.search_ptr.type == &RNA_Object) {
       if (bone_id != search_id) {
+        r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
         return;
       }
     }
@@ -249,11 +281,17 @@ static void sample_data_from_outliner(bContext *C,
       BLI_assert(GS(r_sample_data.bone_rna.owner_id->name) == ID_OB);
       Object *armature_object = (Object *)r_sample_data.bone_rna.owner_id;
       if (armature_object->data != bdr.search_ptr.owner_id) {
+        r_sample_data.sample_result = SampleResult::WRONG_ARMATURE;
         return;
       }
     }
     r_sample_data.name = pose_bone->name;
+    r_sample_data.sample_result = SampleResult::SUCCESS;
+    return;
   }
+
+  r_sample_data.sample_result = SampleResult::NO_BONE_OUTLINER;
+  return;
 }
 
 static BoneSampleData bonedropper_sample_pt(
@@ -311,7 +349,7 @@ static BoneSampleData bonedropper_sample_pt(
   return sample_data;
 }
 
-static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy[2])
+static SampleResult bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy[2])
 {
   int event_xy_win[2];
   wmWindow *win = nullptr;
@@ -319,15 +357,15 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
   eyedropper_win_area_find(C, event_xy, event_xy_win, &win, &area);
 
   if (!win || !area) {
-    return false;
+    return SampleResult::WRONG_AREA;
   }
   if (!ELEM(area->spacetype, SPACE_VIEW3D, SPACE_OUTLINER)) {
-    return false;
+    return SampleResult::WRONG_AREA;
   }
 
   BoneSampleData sample_data = bonedropper_sample_pt(C, *win, *area, bdr, event_xy_win);
   if (!sample_data.name) {
-    return false;
+    return sample_data.sample_result;
   }
 
   StructRNA *search_type = RNA_property_pointer_type(&bdr.search_ptr, bdr.search_prop);
@@ -359,7 +397,7 @@ static bool bonedropper_sample(bContext *C, BoneDropper &bdr, const int event_xy
 
   RNA_property_update(C, &bdr.ptr, bdr.prop);
 
-  return true;
+  return SampleResult::SUCCESS;
 }
 
 static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -376,21 +414,36 @@ static int bonedropper_modal(bContext *C, wmOperator *op, const wmEvent *event)
         return OPERATOR_CANCELLED;
       case EYE_MODAL_SAMPLE_CONFIRM: {
         const bool is_undo = bdr->is_undo;
-        const bool success = bonedropper_sample(C, *bdr, event->xy);
+        const SampleResult result = bonedropper_sample(C, *bdr, event->xy);
         bonedropper_exit(C, op);
-        if (success) {
+        if (result == SampleResult::SUCCESS) {
           /* Could support finished & undo-skip. */
           return is_undo ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
         }
-        bScreen *screen = CTX_wm_screen(C);
-        ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
-        if (area->spacetype == SPACE_VIEW3D) {
-          BKE_report(op->reports,
-                     RPT_WARNING,
-                     "Armature needs to be in Pose Mode or Edit Mode to pick in the 3D Viewport");
-        }
-        else {
-          BKE_report(op->reports, RPT_WARNING, "Failed to set value");
+        switch (result) {
+          case SampleResult::WRONG_ARMATURE:
+            BKE_report(
+                op->reports, RPT_WARNING, "Can only pick bones belonging to the correct armature");
+            break;
+
+          case SampleResult::NO_BONE_3DVIEW:
+            BKE_report(op->reports,
+                       RPT_WARNING,
+                       "Selection is not a bone. Armature needs to be in Pose Mode or Edit Mode "
+                       "to pick in the 3D Viewport");
+            break;
+
+          case SampleResult::NO_BONE_OUTLINER:
+            BKE_report(op->reports, RPT_WARNING, "Selection is not a bone");
+            break;
+
+          case SampleResult::WRONG_AREA:
+            BKE_report(
+                op->reports, RPT_WARNING, "Can only pick from the 3D viewport or the outliner");
+            break;
+
+          default:
+            break;
         }
         return OPERATOR_CANCELLED;
       }
