@@ -4922,8 +4922,8 @@ static void slim_allocate_matrices(const PChart *chart, slim::MatrixTransferChar
  */
 static void slim_transfer_edges(PChart *chart, slim::MatrixTransferChart *mt_chart)
 {
-  auto &E = mt_chart->e_matrices;
-  auto &EL = mt_chart->el_vectors;
+  std::vector<int> &E = mt_chart->e_matrices;
+  std::vector<double> &EL = mt_chart->el_vectors;
 
   PEdge *outer;
   p_chart_boundaries(chart, &outer);
@@ -5019,8 +5019,8 @@ static void slim_transfer_boundary_vertices(PChart *chart,
                                             slim::MatrixTransferChart *mt_chart,
                                             const slim::MatrixTransfer *mt)
 {
-  auto &b_vec = mt_chart->b_vectors;
-  auto &w_vec = mt_chart->w_vectors;
+  std::vector<int> &b_vec = mt_chart->b_vectors;
+  std::vector<float> &w_vec = mt_chart->w_vectors;
 
   /* For every vertex, set slim_flag to 0 */
   for (PVert *v = chart->verts; v; v = v->nextlink) {
@@ -5063,7 +5063,7 @@ static void slim_transfer_faces(const PChart *chart, slim::MatrixTransferChart *
     PEdge *e2 = e1->next;
 
     int r = mt_chart->faces_num;
-    auto &F = mt_chart->f_matrices;
+    std::vector<int> &F = mt_chart->f_matrices;
 
     F[fid] = e->vert->slim_id;
     F[r + fid] = e1->vert->slim_id;
@@ -5144,8 +5144,7 @@ static void slim_flush_uvs(ParamHandle *phandle,
         (*count_changed)++;
       }
 
-      auto &UV = mt_chart->uv_matrices;
-
+      std::vector<double> &UV = mt_chart->uv_matrices;
       for (v = chart->verts; v; v = v->nextlink) {
         if (v->flag & PVERT_PIN) {
           continue;
