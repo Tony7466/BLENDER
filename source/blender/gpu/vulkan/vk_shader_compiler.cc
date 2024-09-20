@@ -37,7 +37,7 @@ BatchHandle VKShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
 {
   std::scoped_lock lock(mutex_);
   BatchHandle handle = next_batch_handle_++;
-  VKBatch batch;
+  VKBatch &batch = batches_.lookup_or_add_default(handle);
   batch.shaders.reserve(infos.size());
   for (const shader::ShaderCreateInfo *info : infos) {
     Shader *shader = compile(*info, true);
@@ -46,7 +46,6 @@ BatchHandle VKShaderCompiler::batch_compile(Span<const shader::ShaderCreateInfo 
   for (Shader *shader : batch.shaders) {
     BLI_task_pool_push(task_pool_, run, shader, false, nullptr);
   }
-  batches_.add_new(handle, std::move(batch));
   return handle;
 }
 
