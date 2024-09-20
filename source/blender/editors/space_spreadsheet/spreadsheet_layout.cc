@@ -19,7 +19,6 @@
 #include "spreadsheet_layout.hh"
 
 #include "DNA_collection_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
