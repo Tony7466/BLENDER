@@ -115,7 +115,7 @@ static void node_shader_update_tex_rounded_polygon(bNodeTree *ntree, bNode *node
   node_sock_label(inR_gonSidesSock, "Sides");
   node_sock_label(inR_gonRoundnessSock, "Roundness");
 
-  node_sock_label(outR_gonFieldSock, "Distance");
+  node_sock_label(outR_gonFieldSock, "Radius");
   node_sock_label(outR_gonParameterFieldSock, "Edge Parameter");
 }
 
