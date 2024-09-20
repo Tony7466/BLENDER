@@ -86,10 +86,18 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
 
   VectorSet<Material *> all_materials;
 
+  Vector<StringRefNull> layer_names(instance_selection.size());
+  instance_selection.foreach_index([&](const int instance_i) {
+    const bke::InstanceReference &reference = references[reference_handles[instance_i]];
+    layer_names[instance_i] = reference.name();
+  });
+
+  grease_pencil->add_layers_for_eval(layer_names);
+
   instance_selection.foreach_index([&](const int instance_i) {
     const bke::InstanceReference &reference = references[reference_handles[instance_i]];
 
-    bke::greasepencil::Layer &layer = grease_pencil->add_layer(reference.name());
+    bke::greasepencil::Layer &layer = *grease_pencil->layer(instance_i);
     grease_pencil->insert_frame(layer, grease_pencil->runtime->eval_frame);
     layer.set_local_transform(transforms[instance_i]);
 
