@@ -1,1 +1,2 @@
 Referenced by pull request #127886, Cleanup: Make depth naming variables consistent
+Referenced by pull request #127883, Cleanup: Silence gcc used uninitialized warning
