@@ -209,7 +209,7 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
                               (id->flag & ID_FLAG_EMBEDDED_DATA) == 0;
 
   if (id_in_mainlist) {
-    BKE_main_namemap_remove_name(bmain, id, id->name + 2);
+    BKE_main_namemap_remove_name(bmain, id, BKE_id_name(*id));
   }
 
   lib_id_library_local_paths(bmain, nullptr, id->lib, id);
@@ -872,9 +872,10 @@ void BKE_id_move_to_same_lib(Main &bmain, ID &id, const ID &owner_id)
   id.lib = owner_id.lib;
   id.tag |= ID_TAG_INDIRECT;
 
-  BKE_main_namemap_remove_name(&bmain, &id, id.name + 2);
+  BKE_main_namemap_remove_name(&bmain, &id, BKE_id_name(id));
   ListBase &lb = *which_libbase(&bmain, GS(id.name));
-  BKE_id_new_name_validate(bmain, lb, id, id.name + 2, IDNewNameMode::RenameExistingNever, true);
+  BKE_id_new_name_validate(
+      bmain, lb, id, BKE_id_name(id), IDNewNameMode::RenameExistingNever, true);
 }
 
 static void id_embedded_swap(ID **embedded_id_a,
@@ -1137,7 +1138,7 @@ void BKE_libblock_management_main_remove(Main *bmain, void *idv)
   ListBase *lb = which_libbase(bmain, GS(id->name));
   BKE_main_lock(bmain);
   BLI_remlink(lb, id);
-  BKE_main_namemap_remove_name(bmain, id, id->name + 2);
+  BKE_main_namemap_remove_name(bmain, id, BKE_id_name(*id));
   id->tag |= ID_TAG_NO_MAIN;
   bmain->is_memfile_undo_written = false;
   BKE_main_unlock(bmain);
@@ -1251,7 +1252,7 @@ void BKE_main_id_repair_duplicate_names_listbase(Main *bmain, ListBase *lb)
     }
   }
   for (i = 0; i < lb_len; i++) {
-    if (!BLI_gset_add(gset, id_array[i]->name + 2)) {
+    if (!BLI_gset_add(gset, BKE_id_name(*id_array[i]))) {
       BKE_id_new_name_validate(
           *bmain, *lb, *id_array[i], nullptr, IDNewNameMode::RenameExistingNever, false);
     }
@@ -1542,7 +1543,7 @@ void BKE_libblock_copy_in_lib(Main *bmain,
   }
   else {
     new_id = static_cast<ID *>(
-        BKE_libblock_alloc_in_lib(bmain, owner_library, GS(id->name), id->name + 2, flag));
+        BKE_libblock_alloc_in_lib(bmain, owner_library, GS(id->name), BKE_id_name(*id), flag));
   }
   BLI_assert(new_id != nullptr);
 
@@ -1688,7 +1689,7 @@ ID *BKE_libblock_find_name_and_library(Main *bmain,
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != nullptr);
   LISTBASE_FOREACH (ID *, id, lb) {
-    if (!STREQ(id->name + 2, name)) {
+    if (!STREQ(BKE_id_name(*id), name)) {
       continue;
     }
     if (lib_name == nullptr || lib_name[0] == '\0') {
@@ -1700,7 +1701,7 @@ ID *BKE_libblock_find_name_and_library(Main *bmain,
     if (id->lib == nullptr) {
       return nullptr;
     }
-    if (!STREQ(id->lib->id.name + 2, lib_name)) {
+    if (!STREQ(BKE_id_name(id->lib->id), lib_name)) {
       continue;
     }
     return id;
@@ -1716,7 +1717,7 @@ ID *BKE_libblock_find_name_and_library_filepath(Main *bmain,
   ListBase *lb = which_libbase(bmain, type);
   BLI_assert(lb != nullptr);
   LISTBASE_FOREACH (ID *, id, lb) {
-    if (!STREQ(id->name + 2, name)) {
+    if (!STREQ(BKE_id_name(*id), name)) {
       continue;
     }
     if (id->lib == nullptr && lib_filepath_abs == nullptr) {
@@ -1861,7 +1862,7 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
 
   /* If no name given, use name of current ID. */
   if (newname == nullptr) {
-    newname = id.name + 2;
+    newname = BKE_id_name(id);
   }
   /* Make a copy of given name (newname args can be const). */
   STRNCPY(name, newname);
@@ -1893,9 +1894,9 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
     int prev_number = 0;
     char new_name_root[MAX_ID_NAME - 2];
     int new_number = 0;
-    STRNCPY(prev_name, id.name + 2);
+    STRNCPY(prev_name, BKE_id_name(id));
     if (mode == IDNewNameMode::RenameExistingSameRoot) {
-      BLI_string_split_name_number(id.name + 2, '.', prev_name_root, &prev_number);
+      BLI_string_split_name_number(BKE_id_name(id), '.', prev_name_root, &prev_number);
       BLI_string_split_name_number(name, '.', new_name_root, &new_number);
     }
 
@@ -1910,7 +1911,7 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
       BLI_strncpy(id_other->name + 2, name, sizeof(id_other->name) - 2);
       id_sort_by_name(&lb, id_other, nullptr);
 
-      const bool is_idname_changed = !STREQ(id.name + 2, orig_name);
+      const bool is_idname_changed = !STREQ(BKE_id_name(id), orig_name);
       IDNewNameResult result = {IDNewNameResult::Action::UNCHANGED_COLLISION, id_other};
       if (is_idname_changed) {
         BLI_strncpy(id.name + 2, orig_name, sizeof(id.name) - 2);
@@ -1925,7 +1926,7 @@ IDNewNameResult BKE_id_new_name_validate(Main &bmain,
    * still differ from the current name of the renamed ID.
    * Conversely, the requested new name may have been colliding with an existing one, and the
    * generated unique name may end up being the current ID's name. */
-  const bool is_idname_changed = !STREQ(id.name + 2, name);
+  const bool is_idname_changed = !STREQ(BKE_id_name(id), name);
 
   IDNewNameResult result = {IDNewNameResult::Action::UNCHANGED, nullptr};
   if (is_idname_changed) {
@@ -2316,10 +2317,10 @@ IDNewNameResult BKE_libblock_rename(Main &bmain,
 {
   BLI_assert(BKE_id_is_in_main(&bmain, &id));
 
-  if (STREQ(id.name + 2, name.c_str())) {
+  if (STREQ(BKE_id_name(id), name.c_str())) {
     return {IDNewNameResult::Action::UNCHANGED, nullptr};
   }
-  BKE_main_namemap_remove_name(&bmain, &id, id.name + 2);
+  BKE_main_namemap_remove_name(&bmain, &id, BKE_id_name(id));
   ListBase &lb = *which_libbase(&bmain, GS(id.name));
   IDNewNameResult result = BKE_id_new_name_validate(bmain, lb, id, name.c_str(), mode, true);
   if (!ELEM(result.action,
@@ -2360,15 +2361,16 @@ IDNewNameResult BKE_id_rename(Main &bmain,
 
 void BKE_id_full_name_get(char name[MAX_ID_FULL_NAME], const ID *id, char separator_char)
 {
-  BLI_strncpy(name, id->name + 2, MAX_ID_FULL_NAME);
+  BLI_strncpy(name, BKE_id_name(*id), MAX_ID_FULL_NAME);
 
   if (ID_IS_LINKED(id)) {
-    const size_t idname_len = strlen(id->name + 2);
-    const size_t libname_len = strlen(id->lib->id.name + 2);
+    const size_t idname_len = strlen(BKE_id_name(*id));
+    const size_t libname_len = strlen(BKE_id_name(id->lib->id));
 
     name[idname_len] = separator_char ? separator_char : ' ';
     name[idname_len + 1] = '[';
-    BLI_strncpy(name + idname_len + 2, id->lib->id.name + 2, MAX_ID_FULL_NAME - (idname_len + 2));
+    BLI_strncpy(
+        name + idname_len + 2, BKE_id_name(id->lib->id), MAX_ID_FULL_NAME - (idname_len + 2));
     name[idname_len + 2 + libname_len] = ']';
     name[idname_len + 2 + libname_len + 1] = '\0';
   }
@@ -2404,7 +2406,7 @@ char *BKE_id_to_unique_string_key(const ID *id)
   /* Prefix with an ascii character in the range of 32..96 (visible)
    * this ensures we can't have a library ID pair that collide.
    * Where 'LIfooOBbarOBbaz' could be ('LIfoo, OBbarOBbaz') or ('LIfooOBbar', 'OBbaz'). */
-  const char ascii_len = strlen(id->lib->id.name + 2) + 32;
+  const char ascii_len = strlen(BKE_id_name(id->lib->id)) + 32;
   return BLI_sprintfN("%c%s%s", ascii_len, id->lib->id.name, id->name);
 }
 
