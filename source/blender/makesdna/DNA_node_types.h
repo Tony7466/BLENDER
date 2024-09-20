@@ -2743,6 +2743,15 @@ enum {
   SHD_POINTDENSITY_COLOR_VERTNOR = 2,
 };
 
+/* Scattering phase functions */
+enum {
+  SHD_PHASE_HENYEY_GREENSTEIN = 0,
+  SHD_PHASE_FOURNIER_FORAND = 1,
+  SHD_PHASE_DOUBLE_HENYEY_GREENSTEIN = 2,
+  SHD_PHASE_RAYLEIGH = 3,
+  SHD_PHASE_DRAINE_HENYEY_GREENSTEIN = 4,
+};
+
 /* Output shader node */
 
 typedef enum NodeShaderOutputTarget {
