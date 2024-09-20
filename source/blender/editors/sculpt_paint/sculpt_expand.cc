@@ -2154,7 +2154,7 @@ static bool set_initial_components_for_mouse(bContext *C,
     const int last_active_vert_index = ss.last_active_vert_index();
     /* It still may be the case that there is no last active vert in rare circumstances for
      * everyday usage.
-     * (i.e. if the cursor has never been over the mesh at all. A solutoin to both this problem
+     * (i.e. if the cursor has never been over the mesh at all. A solution to both this problem
      * and needing to store this data is to figure out which is the nearest vertex to the current
      * cursor position */
     if (last_active_vert_index == -1) {
@@ -2610,6 +2610,7 @@ static bool any_nonzero_mask(const Object &object)
 
 static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  const Scene &scene = *CTX_data_scene(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object &ob = *CTX_data_active_object(C);
   SculptSession &ss = *ob.sculpt;
@@ -2677,7 +2678,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
 
   /* Initialize undo. */
-  undo::push_begin(ob, op);
+  undo::push_begin(scene, ob, op);
   undo_push(*depsgraph, ob, *ss.expand_cache);
 
   /* Cache bke::pbvh::Tree nodes. */
