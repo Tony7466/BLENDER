@@ -5265,7 +5265,7 @@ void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, float blend)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
-  /* Do one iterationand tranfer UVs. */
+  /* Do one iteration and transfer UVs. */
   for (int i = 0; i < phandle->ncharts; i++) {
     mt->charts[i].parametrize_single_iteration();
     mt->charts[i].transfer_uvs_blended(blend);
@@ -5279,7 +5279,7 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
-  /* Do one iteration and tranfer UVs */
+  /* Do one iteration and transfer UVs */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
     slim::MatrixTransferChart &mt_chart = mt->charts[i];
