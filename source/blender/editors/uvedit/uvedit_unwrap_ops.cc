@@ -294,78 +294,143 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   return options;
 }
 
-static void unwrap_options_sync_flag(
-    wmOperator *op, ToolSettings *ts, const char *property_name, char flag, bool flipped)
+/* Generic sync functions
+ *
+ * NOTE: these could be moved to a generic API.
+ */
+
+static bool rna_property_sync_flag(
+    PointerRNA *ptr, const char *prop_name, char flag, bool flipped, char *value_p)
 {
-  if (RNA_struct_property_is_set(op->ptr, property_name)) {
-    if (RNA_boolean_get(op->ptr, property_name) ^ flipped) {
-      ts->uvcalc_flag |= flag;
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      if (RNA_property_boolean_get(ptr, prop) ^ flipped) {
+        *value_p |= flag;
+      }
+      else {
+        *value_p &= ~flag;
+      }
+      return true;
     }
-    else {
-      ts->uvcalc_flag &= ~flag;
+    RNA_property_boolean_set(ptr, prop, ((*value_p & flag) > 0) ^ flipped);
+    return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+static bool rna_property_sync_bool(PointerRNA *ptr, const char *prop_name, bool *value_p)
+{
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      *value_p = RNA_property_boolean_get(ptr, prop);
+      return true;
     }
+    RNA_property_boolean_set(ptr, prop, *value_p);
+    return false;
   }
-  else {
-    RNA_boolean_set(op->ptr, property_name, ((ts->uvcalc_flag & flag) > 0) ^ flipped);
+  BLI_assert_unreachable();
+  return false;
+}
+
+static bool rna_property_sync_bool_as_char(PointerRNA *ptr, const char *prop_name, char *value_p)
+{
+  bool value_b = *value_p;
+  if (rna_property_sync_bool(ptr, prop_name, &value_b)) {
+    *value_p = value_b;
+    return true;
   }
+  return false;
+}
+
+static bool rna_property_sync_enum(PointerRNA *ptr, const char *prop_name, int *value_p)
+{
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      *value_p = RNA_property_enum_get(ptr, prop);
+      return true;
+    }
+    RNA_property_enum_set(ptr, prop, *value_p);
+    return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+static bool rna_property_sync_enum_char(PointerRNA *ptr, const char *prop_name, char *value_p)
+{
+  int value_i = *value_p;
+  if (rna_property_sync_enum(ptr, prop_name, &value_i)) {
+    *value_p = value_i;
+    return true;
+  }
+  return false;
+}
+
+static bool rna_property_sync_int(PointerRNA *ptr, const char *prop_name, int *value_p)
+{
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      *value_p = RNA_property_int_get(ptr, prop);
+      return true;
+    }
+    RNA_property_int_set(ptr, prop, *value_p);
+    return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+static bool rna_property_sync_float(PointerRNA *ptr, const char *prop_name, float *value_p)
+{
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      *value_p = RNA_property_float_get(ptr, prop);
+      return true;
+    }
+    RNA_property_float_set(ptr, prop, *value_p);
+    return false;
+  }
+  BLI_assert_unreachable();
+  return false;
+}
+
+static bool rna_property_sync_string(PointerRNA *ptr, const char *prop_name, char value_p[])
+{
+  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
+    if (RNA_property_is_set(ptr, prop)) {
+      RNA_property_string_get(ptr, prop, value_p);
+      return true;
+    }
+    RNA_property_string_set(ptr, prop, value_p);
+    return false;
+  }
+  BLI_assert_unreachable();
+  return false;
 }
 
 static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
 {
   /* Remember last method for live unwrap. */
-  if (RNA_struct_property_is_set(op->ptr, "method")) {
-    ts->unwrapper = RNA_enum_get(op->ptr, "method");
-  }
-  else {
-    RNA_enum_set(op->ptr, "method", ts->unwrapper);
-  }
+  rna_property_sync_enum_char(op->ptr, "method", &ts->unwrapper);
 
   /* Remember packing margin. */
-  if (RNA_struct_property_is_set(op->ptr, "margin")) {
-    ts->uvcalc_margin = RNA_float_get(op->ptr, "margin");
-  }
-  else {
-    RNA_float_set(op->ptr, "margin", ts->uvcalc_margin);
-  }
+  rna_property_sync_float(op->ptr, "margin", &ts->uvcalc_margin);
 
-  if (RNA_struct_property_is_set(op->ptr, "allow_flips")) {
-    ts->uvcalc_allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
-  }
-  else {
-    RNA_boolean_set(op->ptr, "allow_flips", ts->uvcalc_allow_flips);
-  }
+  rna_property_sync_bool_as_char(op->ptr, "allow_flips", &ts->uvcalc_allow_flips);
 
-  if (RNA_struct_property_is_set(op->ptr, "iterations")) {
-    ts->uvcalc_iterations = RNA_int_get(op->ptr, "iterations");
-  }
-  else {
-    RNA_int_set(op->ptr, "iterations", ts->uvcalc_iterations);
-  }
+  rna_property_sync_int(op->ptr, "iterations", &ts->uvcalc_iterations);
 
-  if (RNA_struct_property_is_set(op->ptr, "importance_weights")) {
-    ts->uvcalc_importance_weights = RNA_boolean_get(op->ptr, "importance_weights");
-  }
-  else {
-    RNA_boolean_set(op->ptr, "importance_weights", ts->uvcalc_importance_weights);
-  }
+  rna_property_sync_bool_as_char(op->ptr, "importance_weights", &ts->uvcalc_importance_weights);
 
-  if (RNA_struct_property_is_set(op->ptr, "weights_factor")) {
-    ts->uvcalc_weights_factor = RNA_float_get(op->ptr, "weights_factor");
-  }
-  else {
-    RNA_float_set(op->ptr, "weights_factor", ts->uvcalc_weights_factor);
-  }
+  rna_property_sync_float(op->ptr, "weights_factor", &ts->uvcalc_weights_factor);
 
-  if (RNA_struct_property_is_set(op->ptr, "weights_group")) {
-    RNA_string_get(op->ptr, "weights_group", ts->uvcalc_weights_group);
-  }
-  else {
-    RNA_string_set(op->ptr, "weights_group", ts->uvcalc_weights_group);
-  }
+  rna_property_sync_string(op->ptr, "weights_group", ts->uvcalc_weights_group);
 
-  unwrap_options_sync_flag(op, ts, "fill_holes", UVCALC_FILLHOLES, false);
-  unwrap_options_sync_flag(op, ts, "correct_aspect", UVCALC_NO_ASPECT_CORRECT, true);
-  unwrap_options_sync_flag(op, ts, "use_subsurf_data", UVCALC_USESUBSURF, false);
+  rna_property_sync_flag(op->ptr, "fill_holes", UVCALC_FILLHOLES, false, &ts->uvcalc_flag);
+  rna_property_sync_flag(
+      op->ptr, "correct_aspect", UVCALC_NO_ASPECT_CORRECT, true, &ts->uvcalc_flag);
+  rna_property_sync_flag(op->ptr, "use_subsurf_data", UVCALC_USESUBSURF, false, &ts->uvcalc_flag);
 }
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
