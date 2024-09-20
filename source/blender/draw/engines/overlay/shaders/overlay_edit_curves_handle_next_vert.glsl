@@ -18,7 +18,7 @@ struct VertIn {
   vec3 ls_P;
   /* Edit Flags and Data. */
   uint e_data;
-  float selection;
+  float sel;
 };
 
 VertIn input_assembly(uint in_vertex_id)
@@ -28,7 +28,7 @@ VertIn input_assembly(uint in_vertex_id)
   VertIn vert_in;
   vert_in.ls_P = gpu_attr_load_float3(pos, gpu_attr_0, v_i);
   vert_in.e_data = data[gpu_attr_load_index(v_i, gpu_attr_1)];
-  vert_in.selection = selection[gpu_attr_load_index(v_i, gpu_attr_2)];
+  vert_in.sel = selection[gpu_attr_load_index(v_i, gpu_attr_2)];
   return vert_in;
 }
 
@@ -36,7 +36,7 @@ struct VertOut {
   vec3 ws_P;
   vec4 gpu_position;
   uint flag;
-  float selection;
+  float sel;
 };
 
 VertOut vertex_main(VertIn vert_in)
@@ -45,7 +45,7 @@ VertOut vertex_main(VertIn vert_in)
   vert.flag = vert_in.e_data;
   vert.ws_P = point_object_to_world(vert_in.ls_P);
   vert.gpu_position = point_world_to_ndc(vert.ws_P);
-  vert.selection = vert_in.selection;
+  vert.sel = vert_in.sel;
   return vert;
 }
 
@@ -147,16 +147,16 @@ void geometry_main(VertOut geom_in[2],
   uint line_end_point = is_odd_primitive && !is_odd_vertex || !is_odd_primitive && is_odd_vertex ? 1 : 0;
   vec4 inner_color;
   if ((geom_in[line_end_point].flag & EDIT_CURVES_BEZIER_HANDLE) != 0u) {
-    inner_color = get_bezier_handle_color(color_id, geom_in[line_end_point].selection);
+    inner_color = get_bezier_handle_color(color_id, geom_in[line_end_point].sel);
   }
   else if ((geom_in[line_end_point].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u) {
     inner_color = mix(globalsBlock.color_nurb_uline,
                       globalsBlock.color_nurb_sel_uline,
-                      geom_in[line_end_point].selection);
+                      geom_in[line_end_point].sel);
   }
   else {
     inner_color = mix(
-        globalsBlock.color_wire, globalsBlock.color_vertex_select, geom_in[line_end_point].selection);
+        globalsBlock.color_wire, globalsBlock.color_vertex_select, geom_in[line_end_point].sel);
   }
 
   /* Minimize active color bleeding on inner_color. */
