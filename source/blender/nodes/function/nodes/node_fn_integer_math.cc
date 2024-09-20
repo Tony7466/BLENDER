@@ -133,8 +133,8 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       "Power", [](int a, int b) { return math::pow(a, b); }, exec_preset);
   static auto madd_fn = mf::build::SI3_SO<int, int, int, int>(
       "Multiply Add", [](int a, int b, int c) { return a * b + c; }, exec_preset);
-  static auto mod_periodic_fn = mf::build::SI2_SO<int, int, int>(
-      "Modulo Periodic",
+  static auto floored_mod_fn = mf::build::SI2_SO<int, int, int>(
+      "Floored Modulo",
       [](int a, int b) { return b != 0 ? math::mod_periodic(a, b) : 0; },
       exec_preset);
   static auto mod_fn = mf::build::SI2_SO<int, int, int>(
@@ -173,8 +173,8 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       return &pow_fn;
     case NODE_INTEGER_MATH_MULTIPLY_ADD:
       return &madd_fn;
-    case NODE_INTEGER_MATH_MODULO_PERIODIC:
-      return &mod_periodic_fn;
+    case NODE_INTEGER_MATH_FLOORED_MODULO:
+      return &floored_mod_fn;
     case NODE_INTEGER_MATH_MODULO:
       return &mod_fn;
     case NODE_INTEGER_MATH_ABSOLUTE:
