@@ -60,6 +60,7 @@ Geometry::Geometry(const NodeType *node_type, const Type type)
   transform_normal = transform_identity();
   bounds = BoundBox::empty;
 
+  has_surface = false;
   has_volume = false;
   has_surface_bssrdf = false;
 
@@ -369,7 +370,9 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
   bool volume_images_updated = false;
 
   foreach (Geometry *geom, scene->geometry) {
-    geom->has_volume = false;
+    const bool prev_has_surface = geom->has_surface;
+    const bool prev_has_volume = geom->has_volume;
+    geom->has_volume = geom->has_surface = false;
 
     update_attribute_realloc_flags(device_update_flags, geom->attributes);
 
@@ -382,6 +385,10 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       Shader *shader = static_cast<Shader *>(node);
       if (shader->has_volume) {
         geom->has_volume = true;
+      }
+
+      if (shader->has_surface) {
+        geom->has_surface = true;
       }
 
       if (shader->has_surface_bssrdf) {
@@ -436,7 +443,7 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
     /* Re-create volume mesh if we will rebuild or refit the BVH. Note we
      * should only do it in that case, otherwise the BVH and mesh can go
      * out of sync. */
-    if (geom->is_modified() && geom->geometry_type == Geometry::VOLUME) {
+    if (geom->is_modified() && geom->is_volume()) {
       /* Create volume meshes if there is voxel data. */
       if (!volume_images_updated) {
         progress.set_status("Updating Meshes Volume Bounds");
@@ -446,9 +453,6 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
 
       Volume *volume = static_cast<Volume *>(geom);
       create_volume_mesh(scene, volume, progress);
-
-      /* always reallocate when we have a volume, as we need to rebuild the BVH */
-      device_update_flags |= DEVICE_MESH_DATA_NEEDS_REALLOC;
     }
 
     if (geom->is_hair()) {
@@ -484,6 +488,14 @@ void GeometryManager::device_update_preprocess(Device *device, Scene *scene, Pro
       else if (pointcloud->is_modified()) {
         device_update_flags |= DEVICE_POINT_DATA_MODIFIED;
       }
+    }
+
+    if (geom->has_surface != prev_has_surface) {
+      geom->tag_bvh_update(true);
+    }
+
+    if (geom->has_volume != prev_has_volume) {
+      scene->volume_manager->need_update_ = true;
     }
   }
 
@@ -731,7 +743,7 @@ void GeometryManager::device_update(Device *device,
 
     foreach (Geometry *geom, scene->geometry) {
       if (geom->is_modified()) {
-        if ((geom->geometry_type == Geometry::MESH || geom->geometry_type == Geometry::VOLUME)) {
+        if (geom->is_mesh() && geom->has_surface) {
           Mesh *mesh = static_cast<Mesh *>(geom);
 
           /* Update normals. */
@@ -752,7 +764,7 @@ void GeometryManager::device_update(Device *device,
             true_displacement_used = true;
           }
         }
-        else if (geom->geometry_type == Geometry::HAIR) {
+        else if (geom->is_hair()) {
           Hair *hair = static_cast<Hair *>(geom);
           if (hair->need_shadow_transparency()) {
             curve_shadow_transparency_used = true;
