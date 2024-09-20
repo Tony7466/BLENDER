@@ -158,7 +158,7 @@ Vector<Shader *> VKShaderCompiler::batch_finalize(BatchHandle &handle)
   BLI_assert(batches_.contains(handle));
   VKBatch batch = batches_.pop(handle);
   handle = 0;
-  return std::move(batch.shaders);
+  return batch.shaders;
 }
 
 /** \} */
