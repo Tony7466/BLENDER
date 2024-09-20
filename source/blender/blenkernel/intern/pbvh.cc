@@ -2027,7 +2027,7 @@ bool raycast_node(Tree &pbvh,
                   const float3 &ray_start,
                   const float3 &ray_normal,
                   IsectRayPrecalc *isect_precalc,
-                  float *r_depth,
+                  float *depth,
                   PBVHVertRef *r_active_vertex,
                   int &r_active_face_grid_index,
                   float3 &r_face_normal)
@@ -2047,7 +2047,7 @@ bool raycast_node(Tree &pbvh,
                                      ray_start,
                                      ray_normal,
                                      isect_precalc,
-                                     r_depth,
+                                     depth,
                                      r_active_vertex,
                                      r_active_face_grid_index,
                                      r_face_normal);
@@ -2058,7 +2058,7 @@ bool raycast_node(Tree &pbvh,
                                      ray_start,
                                      ray_normal,
                                      isect_precalc,
-                                     r_depth,
+                                     depth,
                                      r_active_vertex,
                                      r_active_face_grid_index,
                                      r_face_normal);
@@ -2067,7 +2067,7 @@ bool raycast_node(Tree &pbvh,
                                 ray_start,
                                 ray_normal,
                                 isect_precalc,
-                                r_depth,
+                                depth,
                                 use_origco,
                                 r_active_vertex,
                                 r_face_normal);
@@ -2212,7 +2212,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                            const Span<bool> hide_poly,
                                            const float3 &ray_start,
                                            const float3 &ray_normal,
-                                           float *depth,
+                                           float *r_depth,
                                            float *dist_sq)
 {
   const Span<int> face_indices = node.faces();
@@ -2232,7 +2232,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                     vert_positions[corner_verts[corner_tri[0]]],
                                     vert_positions[corner_verts[corner_tri[1]]],
                                     vert_positions[corner_verts[corner_tri[2]]],
-                                    depth,
+                                    r_depth,
                                     dist_sq);
       }
     }
@@ -2252,7 +2252,7 @@ static bool pbvh_faces_node_nearest_to_ray(const MeshNode &node,
                                     node_positions[vert_map.index_of(corner_verts[corner_tri[0]])],
                                     node_positions[vert_map.index_of(corner_verts[corner_tri[1]])],
                                     node_positions[vert_map.index_of(corner_verts[corner_tri[2]])],
-                                    depth,
+                                    r_depth,
                                     dist_sq);
       }
     }
@@ -2266,7 +2266,7 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
                                            const Span<float3> node_positions,
                                            const float ray_start[3],
                                            const float ray_normal[3],
-                                           float *depth,
+                                           float *r_depth,
                                            float *dist_sq)
 {
   const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
@@ -2293,7 +2293,7 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
               grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y)],
               grid_positions[CCG_grid_xy_to_index(grid_size, x + 1, y + 1)],
               grid_positions[CCG_grid_xy_to_index(grid_size, x, y + 1)],
-              depth,
+              r_depth,
               dist_sq);
         }
       }
@@ -2316,7 +2316,7 @@ static bool pbvh_grids_node_nearest_to_ray(const SubdivCCG &subdiv_ccg,
                                        grid_positions[y * grid_size + x + 1],
                                        grid_positions[(y + 1) * grid_size + x + 1],
                                        grid_positions[(y + 1) * grid_size + x],
-                                       depth,
+                                       r_depth,
                                        dist_sq);
         }
       }

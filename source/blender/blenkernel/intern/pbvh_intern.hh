@@ -57,7 +57,7 @@ bool bmesh_node_raycast(blender::bke::pbvh::BMeshNode &node,
 bool bmesh_node_nearest_to_ray(blender::bke::pbvh::BMeshNode &node,
                                const float3 &ray_start,
                                const float3 &ray_normal,
-                               float *depth,
+                               float *r_depth,
                                float *dist_sq,
                                bool use_original);
 

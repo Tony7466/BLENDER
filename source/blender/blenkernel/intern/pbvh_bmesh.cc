@@ -1979,7 +1979,7 @@ bool bmesh_node_raycast_detail(BMeshNode &node,
 bool bmesh_node_nearest_to_ray(BMeshNode &node,
                                const float3 &ray_start,
                                const float3 &ray_normal,
-                               float *depth,
+                               float *r_depth,
                                float *dist_sq,
                                bool use_original)
 {
@@ -1993,7 +1993,7 @@ bool bmesh_node_nearest_to_ray(BMeshNode &node,
                                   node.orig_positions_[t[0]],
                                   node.orig_positions_[t[1]],
                                   node.orig_positions_[t[2]],
-                                  depth,
+                                  r_depth,
                                   dist_sq);
     }
   }
@@ -2005,7 +2005,7 @@ bool bmesh_node_nearest_to_ray(BMeshNode &node,
 
         BM_face_as_array_vert_tri(f, v_tri);
         hit |= ray_face_nearest_tri(
-            ray_start, ray_normal, v_tri[0]->co, v_tri[1]->co, v_tri[2]->co, depth, dist_sq);
+            ray_start, ray_normal, v_tri[0]->co, v_tri[1]->co, v_tri[2]->co, r_depth, dist_sq);
       }
     }
   }
