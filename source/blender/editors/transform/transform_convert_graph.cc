@@ -278,9 +278,18 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 
   /* Loop 1: count how many BezTriples (specifically their verts)
    * are selected (or should be edited). */
+  blender::Set<FCurve *> visited_fcurves;
+  blender::Vector<bAnimListElem *> unique_fcu_anim_list_elements;
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
+    /* If 2 or more objects share the same action, multiple bAnimListElem might reference the same
+     * FCurve. */
+    if (visited_fcurves.contains(fcu)) {
+      continue;
+    }
+    visited_fcurves.add(fcu);
+    unique_fcu_anim_list_elements.append(ale);
     float cfra;
     int curvecount = 0;
     bool selected = false;
@@ -387,9 +396,10 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
   bool at_least_one_key_selected = false;
 
   /* Loop 2: build transdata arrays. */
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+  for (bAnimListElem *ale : unique_fcu_anim_list_elements) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
+    visited_fcurves.add(fcu);
     bool intvals = (fcu->flag & FCURVE_INT_VALUES) != 0;
     float unit_scale, offset;
     float cfra;
@@ -579,7 +589,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     /* Loop 2: build transdata arrays. */
     td = tc->data;
 
-    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    for (bAnimListElem *ale : unique_fcu_anim_list_elements) {
       AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
       TransData *td_start = td;
