@@ -4440,21 +4440,20 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
   switch (pbvh.type()) {
     case bke::pbvh::Type::Mesh: {
       int mesh_active_vert;
-      hit = bke::pbvh::faces_node_raycast(
-          static_cast<bke::pbvh::MeshNode &>(node),
-          origco,
-          srd.vert_positions,
-          srd.faces,
-          srd.corner_verts,
-          srd.corner_tris,
-          srd.hide_poly,
-          srd.ray_start,
-          srd.ray_normal,
-          &srd.isect_precalc,
-          &srd.depth,
-          mesh_active_vert,
-          srd.active_face_grid_index,
-          srd.face_normal);
+      hit = bke::pbvh::faces_node_raycast(static_cast<bke::pbvh::MeshNode &>(node),
+                                          origco,
+                                          srd.vert_positions,
+                                          srd.faces,
+                                          srd.corner_verts,
+                                          srd.corner_tris,
+                                          srd.hide_poly,
+                                          srd.ray_start,
+                                          srd.ray_normal,
+                                          &srd.isect_precalc,
+                                          &srd.depth,
+                                          mesh_active_vert,
+                                          srd.active_face_grid_index,
+                                          srd.face_normal);
       if (hit) {
         srd.active_vertex = mesh_active_vert;
       }
@@ -4462,17 +4461,16 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
     }
     case bke::pbvh::Type::Grids: {
       SubdivCCGCoord grids_active_vert;
-      hit = bke::pbvh::grids_node_raycast(
-          *srd.subdiv_ccg,
-          static_cast<bke::pbvh::GridsNode &>(node),
-          origco,
-          srd.ray_start,
-          srd.ray_normal,
-          &srd.isect_precalc,
-          &srd.depth,
-          grids_active_vert,
-          srd.active_face_grid_index,
-          srd.face_normal);
+      hit = bke::pbvh::grids_node_raycast(*srd.subdiv_ccg,
+                                          static_cast<bke::pbvh::GridsNode &>(node),
+                                          origco,
+                                          srd.ray_start,
+                                          srd.ray_normal,
+                                          &srd.isect_precalc,
+                                          &srd.depth,
+                                          grids_active_vert,
+                                          srd.active_face_grid_index,
+                                          srd.face_normal);
       if (hit) {
         srd.active_vertex = grids_active_vert;
       }
@@ -4480,15 +4478,14 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
     }
     case bke::pbvh::Type::BMesh: {
       BMVert *bmesh_active_vert;
-      hit = bke::pbvh::bmesh_node_raycast(
-          static_cast<bke::pbvh::BMeshNode &>(node),
-          srd.ray_start,
-          srd.ray_normal,
-          &srd.isect_precalc,
-          &srd.depth,
-          use_origco,
-          &bmesh_active_vert,
-          srd.face_normal);
+      hit = bke::pbvh::bmesh_node_raycast(static_cast<bke::pbvh::BMeshNode &>(node),
+                                          srd.ray_start,
+                                          srd.ray_normal,
+                                          &srd.isect_precalc,
+                                          &srd.depth,
+                                          use_origco,
+                                          &bmesh_active_vert,
+                                          srd.face_normal);
       if (hit) {
         srd.active_vertex = bmesh_active_vert;
       }
@@ -4496,8 +4493,7 @@ static void sculpt_raycast_cb(blender::bke::pbvh::Node &node, SculptRaycastData 
     }
   }
 
-  if (hit)
-  {
+  if (hit) {
     srd.hit = true;
     *tmin = srd.depth;
   }
