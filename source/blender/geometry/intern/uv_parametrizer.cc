@@ -371,7 +371,7 @@ static void p_triangle_cos(const float v1[3],
   *r_cos3 = p_vec_cos(v2, v3, v1);
 }
 
-static void p_face_cos(PFace *f, float *r_cos1, float *r_cos2, float *r_cos3)
+static void UNUSED_FUNCTION(p_face_cos)(PFace *f, float *r_cos1, float *r_cos2, float *r_cos3)
 {
   PEdge *e1 = f->edge, *e2 = e1->next, *e3 = e2->next;
   PVert *v1 = e1->vert, *v2 = e2->vert, *v3 = e3->vert;
@@ -4408,7 +4408,7 @@ static float p_collapse_doubles_cost(PEdge *edge, PEdge *pair)
   return p_edge_length_squared(collapse_e);
 }
 
-static void p_chart_collapse_doubles(PChart *chart, const float threshold)
+static void UNUSED_FUNCTION(p_chart_collapse_doubles)(PChart *chart, const float threshold)
 {
   const float threshold_squared = threshold * threshold;
 
