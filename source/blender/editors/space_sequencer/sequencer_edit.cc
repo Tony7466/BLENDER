@@ -1304,7 +1304,7 @@ static int sequencer_reassign_inputs_exec(bContext *C, wmOperator *op)
   /* Force time position update for reassigned effects.
    * TODO(Richard): This is because internally startdisp is still used, due to poor performance of
    * mapping effect range to inputs. This mapping could be cached though. */
-  SEQ_sequence_lookup_tag(scene, SEQ_LOOKUP_TAG_INVALID);
+  SEQ_sequence_lookup_invalidate(scene);
   SEQ_time_left_handle_frame_set(scene, seq1, SEQ_time_left_handle_frame_get(scene, seq1));
 
   SEQ_relations_invalidate_cache_preprocessed(scene, last_seq);

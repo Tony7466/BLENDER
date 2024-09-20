@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Authors
+/* SPDX-FileCopyrightText: 2021-2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,7 @@ struct SequenceLookup {
   blender::Map<std::string, Sequence *> seq_by_name;
   blender::Map<const Sequence *, Sequence *> meta_by_seq;
   blender::Map<const Sequence *, blender::VectorSet<Sequence *>> effects_by_seq;
-  eSequenceLookupTag tag = SEQ_LOOKUP_TAG_INVALID;
+  bool is_valid = false;
 };
 
 static void seq_sequence_lookup_append_effect(const Sequence *input,
@@ -74,7 +74,7 @@ static void seq_sequence_lookup_build(const Scene *scene, SequenceLookup *lookup
 {
   Editing *ed = SEQ_editing_get(scene);
   seq_sequence_lookup_build_from_seqbase(nullptr, &ed->seqbase, lookup);
-  lookup->tag &= ~SEQ_LOOKUP_TAG_INVALID;
+  lookup->is_valid = true;
 }
 
 static SequenceLookup *seq_sequence_lookup_new()
@@ -96,17 +96,12 @@ static void seq_sequence_lookup_rebuild(const Scene *scene, SequenceLookup **loo
   seq_sequence_lookup_build(scene, *lookup);
 }
 
-static bool seq_sequence_lookup_is_valid(const SequenceLookup *lookup)
-{
-  return (lookup->tag & SEQ_LOOKUP_TAG_INVALID) == 0;
-}
-
 static void seq_sequence_lookup_update_if_needed(const Scene *scene, SequenceLookup **lookup)
 {
   if (!scene->ed) {
     return;
   }
-  if (*lookup && seq_sequence_lookup_is_valid(*lookup)) {
+  if (*lookup && (*lookup)->is_valid) {
     return;
   }
 
@@ -150,15 +145,15 @@ blender::Span<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
   return effects.as_span();
 }
 
-void SEQ_sequence_lookup_tag(const Scene *scene, eSequenceLookupTag tag)
+void SEQ_sequence_lookup_invalidate(const Scene *scene)
 {
-  if (!scene->ed) {
+  if (scene == nullptr || scene->ed == nullptr) {
     return;
   }
 
   std::lock_guard lock(lookup_lock);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   if (lookup != nullptr) {
-    lookup->tag |= tag;
+    lookup->is_valid = false;
   }
 }
