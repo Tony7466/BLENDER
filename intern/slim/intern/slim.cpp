@@ -1,7 +1,11 @@
-/* SPDX-FileCopyrightText: 2016 Michael Rabinovich, 2023 Blender Authors
- * SPDX-License-Identifier: MPL-2.0
+/* SPDX-FileCopyrightText: 2016 Michael Rabinovich
+ *                         2023 Blender Authors
  *
- * Derived from libigl, a simple c++ geometry processing library. */
+ * SPDX-License-Identifier: MPL-2.0 */
+
+/** \file
+ * \ingroup slim
+ */
 
 #include "slim.h"
 #include "doublearea.h"

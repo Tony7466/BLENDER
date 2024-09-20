@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# Derived from `libigl`, a simple C++ geometry processing library.
+
 set(INC
   ./
   ../../source/blender/blenlib

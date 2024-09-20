@@ -1,7 +1,10 @@
 /* SPDX-FileCopyrightText: 2013 Alec Jacobson
- * SPDX-License-Identifier: MPL-2.0
  *
- * Derived from libigl, a simple c++ geometry processing library. */
+ * SPDX-License-Identifier: MPL-2.0 */
+
+/** \file
+ * \ingroup slim
+ */
 
 #include "doublearea.h"
 #include "edge_lengths.h"
