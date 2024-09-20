@@ -4380,7 +4380,9 @@ void uv_parametrizer_flush_restore(ParamHandle *phandle)
   }
 }
 
-/************************ Degenerate Geometry Fixing **************************/
+/* -------------------------------------------------------------------- */
+/** \name Degenerate Geometry Fixing
+ * \{ */
 
 static bool p_collapse_doubles_allowed(PEdge *edge, PEdge *pair, float threshold_squared)
 {
@@ -4869,6 +4871,8 @@ static bool p_chart_correct_degenerate_triangles(PChart *chart, float min_area, 
 
   return ret;
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name SLIM Integration

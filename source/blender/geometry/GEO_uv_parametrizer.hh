@@ -107,10 +107,10 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
 
 /* -------------------------------------------------------------------- */
 /** \name SLIM:
- * -----------------------------
- * - begin: data is gathered into matrices and transferred to SLIM
- * - solve: compute cheap initialization (if necessary) and refine iteratively
- * - end: clean up
+ *
+ * - begin: data is gathered into matrices and transferred to SLIM.
+ * - solve: compute cheap initialization (if necessary) and refine iteratively.
+ * - end: clean up.
  * \{ */
 
 struct ParamSlimOptions {
