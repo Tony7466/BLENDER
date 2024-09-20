@@ -616,14 +616,13 @@ GHOST_TSuccess GHOST_WindowSDL::hasCursorShape(GHOST_TStandardCursor shape)
   return (getStandardCursorShape(shape)) ? GHOST_kSuccess : GHOST_kFailure;
 }
 
-GHOST_TSuccess GHOST_WindowSDL::setWindowCustomCursorShape(uint8_t *bitmap,
-                                                           uint8_t *mask,
-                                                           int sizex,
-                                                           int sizey,
-                                                           int hotX,
-                                                           int hotY,
-                                                           bool /*canInvertColor*/)
+GHOST_TSuccess GHOST_WindowSDL::setWindowCustomCursorShape(
+    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool color)
 {
+  if (color) {
+    return GHOST_kFailure;
+  }
+
   if (m_sdl_custom_cursor) {
     SDL_FreeCursor(m_sdl_custom_cursor);
   }

@@ -362,14 +362,8 @@ class GHOST_WindowWin32 : public GHOST_Window {
    * Sets the cursor shape on the window using
    * native window system calls.
    */
-  GHOST_TSuccess setWindowCustomCursorShape(uint8_t *bitmap,
-                                            uint8_t *mask,
-                                            int sizex,
-                                            int sizey,
-                                            int hotX,
-                                            int hotY,
-                                            bool canInvertColor,
-                                            uint8_t bpp);
+  GHOST_TSuccess setWindowCustomCursorShape(
+      uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool color);
 
   /* Registration of the AppModel Properties that govern the taskbar button and jump lists. */
   void registerWindowAppUserModelProperties();

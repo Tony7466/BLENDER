@@ -129,7 +129,7 @@ static void window_set_custom_cursor(
                              16,
                              hotx,
                              hoty,
-                             true);
+                             false);
 }
 
 static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
@@ -141,7 +141,7 @@ static void window_set_custom_cursor_ex(wmWindow *win, BCursor *cursor)
                              16,
                              cursor->hotx,
                              cursor->hoty,
-                             cursor->can_invert_color);
+                             false);
 }
 
 static bool icon_cursor(wmWindow *win, WMCursorType curs)
@@ -152,18 +152,22 @@ static bool icon_cursor(wmWindow *win, WMCursorType curs)
   }
   IMB_flipy(imb);
 
-  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                             imb->byte_buffer.data,
-                             nullptr,
-                             imb->x,
-                             imb->y,
-                             2,
-                             2,
-                             false,
-                             32);
-  IMB_freeImBuf(imb);
+  /* Try full-color first. */
 
-  return true;
+  if (GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                                 imb->byte_buffer.data,
+                                 nullptr,
+                                 imb->x,
+                                 imb->y,
+                                 2,
+                                 2,
+                                 true) == GHOST_kSuccess)
+  {
+    IMB_freeImBuf(imb);
+    return true;
+  }
+
+  /* Monochrome. */
 
   char width = std::min(imb->x, 32);
   char height = std::min(imb->y, 32);
@@ -186,15 +190,19 @@ static bool icon_cursor(wmWindow *win, WMCursorType curs)
 
   IMB_freeImBuf(imb);
 
-  GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                             (uint8_t *)bitmap,
-                             (uint8_t *)mask,
-                             32,
-                             32,
-                             2,
-                             2,
-                             false,
-                             1);
+  if (GHOST_SetCustomCursorShape(static_cast<GHOST_WindowHandle>(win->ghostwin),
+                                 (uint8_t *)bitmap,
+                                 (uint8_t *)mask,
+                                 32,
+                                 32,
+                                 2,
+                                 2,
+                                 false) == GHOST_kSuccess)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 void WM_cursor_set(wmWindow *win, int curs)

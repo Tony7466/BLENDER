@@ -89,7 +89,7 @@ class GHOST_WindowSDL : public GHOST_Window {
                                             int sizey,
                                             int hotX,
                                             int hotY,
-                                            bool canInvertColor) override;
+                                            bool color) override;
 
   GHOST_TSuccess setWindowCursorVisibility(bool visible) override;
 

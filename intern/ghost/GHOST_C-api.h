@@ -360,7 +360,7 @@ extern GHOST_TSuccess GHOST_HasCursorShape(GHOST_WindowHandle windowhandle,
  * \param sizey: The height of the cursor.
  * \param hotX: The X coordinate of the cursor hot-spot.
  * \param hotY: The Y coordinate of the cursor hot-spot.
- * \param canInvertColor: Let macOS invert cursor color to match platform convention.
+ * \param color: bitmap is full-color 4 bytes per pixel.
  * \return Indication of success.
  */
 extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle,
@@ -370,8 +370,7 @@ extern GHOST_TSuccess GHOST_SetCustomCursorShape(GHOST_WindowHandle windowhandle
                                                  int sizey,
                                                  int hotX,
                                                  int hotY,
-                                                 bool canInvertColor,
-                                                 uint8_t bpp = 1);
+                                                 bool color);
 
 extern GHOST_TSuccess GHOST_GetCursorBitmap(GHOST_WindowHandle windowhandle,
                                             GHOST_CursorBitmapRef *bitmap);

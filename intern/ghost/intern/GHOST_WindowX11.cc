@@ -1452,14 +1452,13 @@ GHOST_TSuccess GHOST_WindowX11::hasCursorShape(GHOST_TStandardCursor shape)
   return getStandardCursor(shape, xcursor);
 }
 
-GHOST_TSuccess GHOST_WindowX11::setWindowCustomCursorShape(uint8_t *bitmap,
-                                                           uint8_t *mask,
-                                                           int sizex,
-                                                           int sizey,
-                                                           int hotX,
-                                                           int hotY,
-                                                           bool /*canInvertColor*/)
+GHOST_TSuccess GHOST_WindowX11::setWindowCustomCursorShape(
+    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool color)
 {
+  if (color) {
+    return GHOST_kFailure;
+  }
+
   Colormap colormap = DefaultColormap(m_display, m_visualInfo->screen);
   Pixmap bitmap_pix, mask_pix;
   XColor fg, bg;

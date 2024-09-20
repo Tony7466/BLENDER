@@ -292,7 +292,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
                                             int sizey,
                                             int hotX,
                                             int hotY,
-                                            bool canInvertColor) override;
+                                            bool color) override;
 
   /** The window containing the view */
   BlenderWindow *m_window;

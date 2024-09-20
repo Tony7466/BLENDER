@@ -198,7 +198,7 @@ class GHOST_WindowX11 : public GHOST_Window {
                                             int sizey,
                                             int hotX,
                                             int hotY,
-                                            bool canInvertColor) override;
+                                            bool color) override;
 
  private:
   /* Force use of public constructor. */

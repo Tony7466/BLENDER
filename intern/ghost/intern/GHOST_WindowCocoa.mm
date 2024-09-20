@@ -1183,12 +1183,16 @@ static uint16_t uns16ReverseBits(uint16_t shrt)
 }
 
 GHOST_TSuccess GHOST_WindowCocoa::setWindowCustomCursorShape(
-    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool canInvertColor)
+    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool color)
 {
   @autoreleasepool {
     if (m_customCursor) {
       [m_customCursor release];
       m_customCursor = nil;
+    }
+
+    if (color) {
+      return GHOST_kFailure;
     }
 
     NSBitmapImageRep *cursorImageRep = [[NSBitmapImageRep alloc]
@@ -1215,50 +1219,43 @@ GHOST_TSuccess GHOST_WindowCocoa::setWindowCustomCursorShape(
       cursorBitmap[nbUns16 + y] = uns16ReverseBits((mask[2 * y + 1] << 0) | (mask[2 * y] << 8));
 #endif
 
-      /* Flip white cursor with black outline to black cursor with white outline
-       * to match macOS platform conventions. */
-      if (canInvertColor) {
-        cursorBitmap[y] = ~cursorBitmap[y];
+      const NSSize imSize = {(CGFloat)sizex, (CGFloat)sizey};
+      NSImage *cursorImage = [[NSImage alloc] initWithSize:imSize];
+      [cursorImage addRepresentation:cursorImageRep];
+
+      const NSPoint hotSpotPoint = {(CGFloat)(hotX), (CGFloat)(hotY)};
+
+      /* Foreground and background color parameter is not handled for now (10.6). */
+      m_customCursor = [[NSCursor alloc] initWithImage:cursorImage hotSpot:hotSpotPoint];
+
+      [cursorImageRep release];
+      [cursorImage release];
+
+      if (m_window.isVisible) {
+        loadCursor(getCursorVisibility(), GHOST_kStandardCursorCustom);
       }
     }
-
-    const NSSize imSize = {(CGFloat)sizex, (CGFloat)sizey};
-    NSImage *cursorImage = [[NSImage alloc] initWithSize:imSize];
-    [cursorImage addRepresentation:cursorImageRep];
-
-    const NSPoint hotSpotPoint = {(CGFloat)(hotX), (CGFloat)(hotY)};
-
-    /* Foreground and background color parameter is not handled for now (10.6). */
-    m_customCursor = [[NSCursor alloc] initWithImage:cursorImage hotSpot:hotSpotPoint];
-
-    [cursorImageRep release];
-    [cursorImage release];
-
-    if (m_window.isVisible) {
-      loadCursor(getCursorVisibility(), GHOST_kStandardCursorCustom);
-    }
+    return GHOST_kSuccess;
   }
-  return GHOST_kSuccess;
-}
 
 #ifdef WITH_INPUT_IME
-void GHOST_WindowCocoa::beginIME(int32_t x, int32_t y, int32_t w, int32_t h, bool completed)
-{
-  if (m_openGLView) {
-    [m_openGLView beginIME:x y:y w:w h:h completed:completed];
+  void GHOST_WindowCocoa::beginIME(int32_t x, int32_t y, int32_t w, int32_t h, bool completed)
+  {
+    if (m_openGLView) {
+      [m_openGLView beginIME:x y:y w:w h:h completed:completed];
+    }
+    else {
+      [m_metalView beginIME:x y:y w:w h:h completed:completed];
+    }
   }
-  else {
-    [m_metalView beginIME:x y:y w:w h:h completed:completed];
-  }
-}
 
-void GHOST_WindowCocoa::endIME()
-{
-  if (m_openGLView) {
-    [m_openGLView endIME];
+  void GHOST_WindowCocoa::endIME()
+  {
+    if (m_openGLView) {
+      [m_openGLView endIME];
+    }
+    else {
+      [m_metalView endIME];
+    }
   }
-  else {
-    [m_metalView endIME];
-  }
-}
 #endif /* WITH_INPUT_IME */

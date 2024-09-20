@@ -100,7 +100,7 @@ class GHOST_WindowWayland : public GHOST_Window {
                                             int sizey,
                                             int hotX,
                                             int hotY,
-                                            bool canInvertColor) override;
+                                            bool color) override;
   bool getCursorGrabUseSoftwareDisplay() override;
 
   GHOST_TSuccess getCursorBitmap(GHOST_CursorBitmapRef *bitmap) override;

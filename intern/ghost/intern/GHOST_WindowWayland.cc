@@ -2265,11 +2265,15 @@ bool GHOST_WindowWayland::getCursorGrabUseSoftwareDisplay()
 }
 
 GHOST_TSuccess GHOST_WindowWayland::setWindowCustomCursorShape(
-    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool canInvertColor)
+    uint8_t *bitmap, uint8_t *mask, int sizex, int sizey, int hotX, int hotY, bool color)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*system_->server_mutex};
 #endif
+
+  if (color) {
+    return GHOST_kFailure;
+  }
 
   const bool is_active = this == static_cast<const GHOST_WindowWayland *>(
                                      system_->getWindowManager()->getActiveWindow());
@@ -2277,7 +2281,7 @@ GHOST_TSuccess GHOST_WindowWayland::setWindowCustomCursorShape(
   const int32_t hot_spot[2] = {hotX, hotY};
 
   gwl_window_cursor_custom_store(
-      window_->cursor_custom_shape, bitmap, mask, size, hot_spot, canInvertColor);
+      window_->cursor_custom_shape, bitmap, mask, size, hot_spot, false);
   m_cursorShape = GHOST_kStandardCursorCustom;
 
   GHOST_TSuccess ok;

@@ -1149,16 +1149,10 @@ static uint16_t uns16ReverseBits(uint16_t shrt)
 }
 #endif
 
-GHOST_TSuccess GHOST_WindowWin32::setWindowCustomCursorShape(uint8_t *bitmap,
-                                                             uint8_t *mask,
-                                                             int sizeX,
-                                                             int sizeY,
-                                                             int hotX,
-                                                             int hotY,
-                                                             bool /*canInvertColor*/,
-                                                             uint8_t bpp)
+GHOST_TSuccess GHOST_WindowWin32::setWindowCustomCursorShape(
+    uint8_t *bitmap, uint8_t *mask, int sizeX, int sizeY, int hotX, int hotY, bool color)
 {
-  if (bpp == 1) {
+  if (!color) {
     uint32_t andData[32];
     uint32_t xorData[32];
     uint32_t fullBitRow, fullMaskRow;
@@ -1192,7 +1186,7 @@ GHOST_TSuccess GHOST_WindowWin32::setWindowCustomCursorShape(uint8_t *bitmap,
 
     m_customCursor = ::CreateCursor(::GetModuleHandle(0), hotX, hotY, 32, 32, andData, xorData);
   }
-  else if (bpp == 32) {
+  else {
     BITMAPV5HEADER header;
     memset(&header, 0, sizeof(BITMAPV5HEADER));
     header.bV5Size = sizeof(BITMAPV5HEADER);

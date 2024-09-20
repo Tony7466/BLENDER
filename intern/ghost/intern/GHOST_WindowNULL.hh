@@ -59,8 +59,7 @@ class GHOST_WindowNULL : public GHOST_Window {
                                             int /*sizey*/,
                                             int /*hotX*/,
                                             int /*hotY*/,
-                                            bool /*canInvertColor*/,
-                                            uint8_t /*bpp*/) override
+                                            bool /*color*/) override
   {
     return GHOST_kSuccess;
   }
