@@ -3470,6 +3470,20 @@ NODE_DEFINE(ScatterVolumeNode)
   SOCKET_IN_COLOR(color, "Color", make_float3(0.8f, 0.8f, 0.8f));
   SOCKET_IN_FLOAT(density, "Density", 1.0f);
   SOCKET_IN_FLOAT(anisotropy, "Anisotropy", 0.0f);
+  SOCKET_IN_FLOAT(IOR, "IOR", 1.33f);
+  SOCKET_IN_FLOAT(B, "B", 0.1f);
+  SOCKET_IN_FLOAT(anisotropy2, "Anisotropy 2", 0.0f);
+  SOCKET_IN_FLOAT(alpha, "Alpha", 0.5f);
+  SOCKET_IN_FLOAT(mixture, "Mixture", 0.5f);
+
+  static NodeEnum phase_enum;
+  phase_enum.insert("Henyey-Greenstein", CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID);
+  phase_enum.insert("Fournier-Forand", CLOSURE_VOLUME_FOURNIER_FORAND_ID);
+  phase_enum.insert("Double Henyey-Greenstein", CLOSURE_VOLUME_DOUBLE_HENYEY_GREENSTEIN_ID);
+  phase_enum.insert("Rayleigh", CLOSURE_VOLUME_RAYLEIGH_ID);
+  phase_enum.insert("Draine-Henyey-Greenstein", CLOSURE_VOLUME_DRAINE_HENYEY_GREENSTEIN_ID);
+  SOCKET_ENUM(phase, "Phase", phase_enum, CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID);
+
   SOCKET_IN_FLOAT(volume_mix_weight, "VolumeMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
   SOCKET_OUT_CLOSURE(volume, "Volume");
@@ -3484,11 +3498,29 @@ ScatterVolumeNode::ScatterVolumeNode() : VolumeNode(get_node_type())
 
 void ScatterVolumeNode::compile(SVMCompiler &compiler)
 {
+  ShaderInput *ior_in = input("IOR");
+  ShaderInput *b_in = input("B");
+  ShaderInput *g2_in = input("Anisotropy 2");
+  ShaderInput *a_in = input("Alpha");
+  ShaderInput *m_in = input("Mixture");
+
+  closure = phase;
+
   VolumeNode::compile(compiler, input("Density"), input("Anisotropy"));
+
+  compiler.add_node(0,
+                    phase,
+                    __float_as_int(get_float(ior_in->socket_type)),
+                    __float_as_int(get_float(b_in->socket_type)));
+  compiler.add_node(__float_as_int(get_float(g2_in->socket_type)),
+                    __float_as_int(get_float(a_in->socket_type)),
+                    __float_as_int(get_float(m_in->socket_type)),
+                    0);
 }
 
 void ScatterVolumeNode::compile(OSLCompiler &compiler)
 {
+  compiler.parameter(this, "phase");
   compiler.add(this, "node_scatter_volume");
 }
 
