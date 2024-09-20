@@ -3,3 +3,4 @@ Referenced by issue #65175, Animation Data on lamp stays linked even after unlin
 Referenced by issue #59256, FCurve modifiers are not autonomous on Nodes
 Referenced by issue #59062, Keyframed node properties stay linked after shading network duplication
 Referenced by pull request #127850, Fix #127833: Action linked after particle settings duplication
+Referenced by commit 44a845d650ba020b64a58ee899c73aab1708b5df, Fix #127833: Action linked after particle settings duplication
