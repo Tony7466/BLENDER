@@ -1075,15 +1075,20 @@ def brush_settings_advanced(layout, context, brush, popover=False):
         row = col.row()
         row.prop(brush, "use_automasking_boundary_edges", text="Mesh Boundary")
 
-        is_boundary_masking_active = brush.use_automasking_boundary_edges or brush.use_automasking_boundary_face_sets
-
-        if is_boundary_masking_active:
+        if brush.use_automasking_boundary_edges:
             props = row.operator("sculpt.mask_from_boundary", text="Create Mask")
             props.settings_source = 'BRUSH'
+            props.boundary_mode = 'MESH'
 
-        col.prop(brush, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
+        row = col.row()
+        row.prop(brush, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
 
-        if is_boundary_masking_active:
+        if brush.use_automasking_boundary_face_sets:
+            props = row.operator("sculpt.mask_from_boundary", text="Create Mask")
+            props.settings_source = 'BRUSH'
+            props.boundary_mode = 'FACE_SETS'
+
+        if brush.use_automasking_boundary_edges or brush.use_automasking_boundary_face_sets:
             col = layout.column()
             col.use_property_split = False
             split = col.split(factor=0.4)

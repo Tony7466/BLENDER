@@ -9273,15 +9273,20 @@ class VIEW3D_PT_sculpt_automasking(Panel):
         row = col.row()
         row.prop(sculpt, "use_automasking_boundary_edges", text="Mesh Boundary")
 
-        is_boundary_masking_active = sculpt.use_automasking_boundary_edges or sculpt.use_automasking_boundary_face_sets
-
-        if is_boundary_masking_active:
+        if sculpt.use_automasking_boundary_edges:
             props = row.operator("sculpt.mask_from_boundary", text="Create Mask")
             props.settings_source = 'SCENE'
+            props.boundary_mode = 'MESH'
 
-        col.prop(sculpt, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
+        row = col.row()
+        row.prop(sculpt, "use_automasking_boundary_face_sets", text="Face Sets Boundary")
 
-        if is_boundary_masking_active:
+        if sculpt.use_automasking_boundary_face_sets:
+            props = row.operator("sculpt.mask_from_boundary", text="Create Mask")
+            props.settings_source = 'SCENE'
+            props.boundary_mode = 'FACE_SETS'
+
+        if sculpt.use_automasking_boundary_edges or sculpt.use_automasking_boundary_face_sets:
             col.prop(sculpt, "automasking_boundary_edges_propagation_steps")
 
         col.separator()
