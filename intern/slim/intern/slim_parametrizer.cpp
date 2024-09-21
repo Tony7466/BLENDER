@@ -101,9 +101,6 @@ static void adjust_pins(SLIMData &slim_data, const PinnedVertexData &pinned_vert
   }
 }
 
-/* Called from the native part during each iteration of interactive parametrisation.
- * The blend parameter decides the linear blending between the original UV map and the one
- * optained from the accumulated SLIM iterations so far. */
 void MatrixTransferChart::transfer_uvs_blended(float blend)
 {
   if (!succeeded) {
@@ -129,14 +126,12 @@ void MatrixTransferChart::try_slim_solve(int iter_num)
   }
 }
 
-/* Executes a single iteration of SLIM, must follow a proper setup & initialisation. */
 void MatrixTransferChart::parametrize_single_iteration()
 {
   int number_of_iterations = 1;
   try_slim_solve(number_of_iterations);
 }
 
-/* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
                                       const PinnedVertexData &pinned_vertex_data)
 {

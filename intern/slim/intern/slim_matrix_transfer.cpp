@@ -25,7 +25,6 @@ void MatrixTransferChart::free_slim_data()
   data.reset(nullptr);
 }
 
-/* Transfers all the matrices from the native part and initialises SLIM. */
 void MatrixTransfer::setup_slim_data(MatrixTransferChart &chart) const
 {
   SLIMDataPtr slim_data = std::make_unique<SLIMDataPtr::element_type>();
