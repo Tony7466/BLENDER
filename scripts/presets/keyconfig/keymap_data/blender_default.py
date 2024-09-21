@@ -3115,6 +3115,8 @@ def km_sequencerpreview(params):
         ("sequencer.text_select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.text_deselect_all", {"type": 'ESC', "value": 'PRESS'}, None),
         ("sequencer.text_edit_mode_toggle", {"type": 'TAB', "value": 'PRESS'}, None),
+        ("sequencer.text_edit_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.text_edit_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
 
         # Selection.
         *_template_sequencer_preview_select(

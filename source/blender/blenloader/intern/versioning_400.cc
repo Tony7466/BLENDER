@@ -846,7 +846,7 @@ static bool versioning_convert_strip_speed_factor(Sequence *seq, void *user_data
   return true;
 }
 
-static bool versioning_clear_strip_unused_flag(Sequence *seq, void *user_data)
+static bool versioning_clear_strip_unused_flag(Sequence *seq, void * /*user_data*/)
 {
   seq->flag &= ~(1 << 6);
   return true;
