@@ -280,7 +280,9 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   }
 
   options.use_abf = options.method == UVCALC_UNWRAP_METHOD_ANGLE;
+#ifdef WITH_UV_SLIM
   options.use_slim = options.method == UVCALC_UNWRAP_METHOD_MINIMUM_STRETCH;
+#endif
 
   /* SLIM requires hole filling */
   if (options.use_slim) {

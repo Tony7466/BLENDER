@@ -22,7 +22,9 @@
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
 
-#include "slim_matrix_transfer.h"
+#ifdef WITH_UV_SLIM
+#  include "slim_matrix_transfer.h"
+#endif
 
 #include "GEO_uv_pack.hh"
 
@@ -34,6 +36,13 @@ namespace blender::geometry {
 
 #define param_warning(message) \
   {/* `printf("Warning %s:%d: %s\n", __FILE__, __LINE__, message);` */}(void)0
+
+/* Prevent unused function warnings when slim is disabled.  */
+#ifdef WITH_UV_SLIM
+#  define UNUSED_FUNCTION_NO_SLIM(x) x
+#else
+#  define UNUSED_FUNCTION_NO_SLIM UNUSED_FUNCTION
+#endif
 
 /* Special Purpose Hash */
 
@@ -4835,9 +4844,9 @@ static bool p_validate_triangle_angles(const PVert *vert1,
 
 #endif
 
-static bool p_chart_correct_degenerate_triangles(PChart *chart,
-                                                 const float min_area,
-                                                 const float min_angle)
+static bool UNUSED_FUNCTION_NO_SLIM(p_chart_correct_degenerate_triangles)(PChart *chart,
+                                                                          const float min_area,
+                                                                          const float min_angle)
 {
   /* Look for degenerate triangles: triangles with angles lower than `min_angle` or having area
    * lower than `min_area` and try to correct vertex coordinates so that the resulting triangle is
@@ -4878,8 +4887,10 @@ static bool p_chart_correct_degenerate_triangles(PChart *chart,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name SLIM Integration
+/** \name SLIM Implementation (Private API)
  * \{ */
+
+#ifdef WITH_UV_SLIM
 
 /**
  * Get SLIM parameters from the scene.
@@ -5234,11 +5245,20 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
   mt_chart.pinned_vertices_num = pinned_vertex_indices.size();
 }
 
+#endif /* WITH_UV_SLIM */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name SLIM Integration (Public API)
+ * \{ */
+
 void uv_parametrizer_slim_solve(ParamHandle *phandle,
                                 const ParamSlimOptions *slim_options,
                                 int *count_changed,
                                 int *count_failed)
 {
+#ifdef WITH_UV_SLIM
   slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
@@ -5246,10 +5266,16 @@ void uv_parametrizer_slim_solve(ParamHandle *phandle,
 
   slim_flush_uvs(phandle, mt, count_changed, count_failed);
   slim_free_matrix_transfer(phandle);
+#else
+  *count_changed = 0;
+  *count_failed = 0;
+  UNUSED_VARS(phandle, slim_options, count_changed, count_failed);
+#endif /* !WITH_UV_SLIM */
 }
 
 void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOptions *slim_options)
 {
+#ifdef WITH_UV_SLIM
   slim_transfer_data_to_slim(phandle, slim_options);
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
@@ -5286,10 +5312,14 @@ void uv_parametrizer_slim_live_begin(ParamHandle *phandle, const ParamSlimOption
 
     mt->setup_slim_data(mt_chart);
   }
+#else
+  UNUSED_VARS(phandle, slim_options);
+#endif /* !WITH_UV_SLIM */
 }
 
 void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, const float blend)
 {
+#ifdef WITH_UV_SLIM
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   /* Do one iteration and transfer UVs. */
@@ -5300,10 +5330,14 @@ void uv_parametrizer_slim_stretch_iteration(ParamHandle *phandle, const float bl
 
   /* Assign new UVs back to each vertex. */
   slim_flush_uvs(phandle, mt, nullptr, nullptr);
+#else
+  UNUSED_VARS(phandle, blend);
+#endif /* !WITH_UV_SLIM */
 }
 
 void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
 {
+#ifdef WITH_UV_SLIM
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   /* Do one iteration and transfer UVs */
@@ -5323,10 +5357,14 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
   /* Assign new UVs back to each vertex. */
   const bool live = true;
   slim_flush_uvs(phandle, mt, nullptr, nullptr, live);
+#else
+  UNUSED_VARS(phandle);
+#endif /* !WITH_UV_SLIM */
 }
 
 void uv_parametrizer_slim_live_end(ParamHandle *phandle)
 {
+#ifdef WITH_UV_SLIM
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
   for (int i = 0; i < phandle->ncharts; i++) {
@@ -5335,11 +5373,19 @@ void uv_parametrizer_slim_live_end(ParamHandle *phandle)
   }
 
   slim_free_matrix_transfer(phandle);
+#else
+  UNUSED_VARS(phandle);
+#endif /* WITH_UV_SLIM */
 }
 
 bool uv_parametrizer_is_slim(const ParamHandle *phandle)
 {
+#ifdef WITH_UV_SLIM
   return phandle->slim_mt != nullptr;
+#else
+  UNUSED_VARS(phandle);
+  return false;
+#endif
 }
 
 /** \} */

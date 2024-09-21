@@ -10,7 +10,6 @@ set(INC
   ../functions
   ../makesrna
   ../../../intern/eigen
-  ../../../intern/slim
 )
 
 set(INC_SYS
@@ -99,9 +98,15 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::intern::slim
   PRIVATE bf::extern::fmtlib
 )
+
+if(WITH_UV_SLIM)
+  list(APPEND INC
+    ../../../intern/slim
+  )
+  add_definitions(-DWITH_UV_SLIM)
+endif()
 
 if(WITH_OPENVDB)
   list(APPEND INC

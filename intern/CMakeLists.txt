@@ -14,7 +14,6 @@ add_subdirectory(opensubdiv)
 add_subdirectory(mikktspace)
 add_subdirectory(eigen)
 add_subdirectory(sky)
-add_subdirectory(slim)
 
 if(WITH_AUDASPACE)
   add_subdirectory(audaspace)
@@ -51,6 +50,10 @@ endif()
 
 if(WITH_MOD_FLUID)
   add_subdirectory(mantaflow)
+endif()
+
+if(WITH_UV_SLIM)
+  add_subdirectory(slim)
 endif()
 
 if(WITH_OPENVDB)
