@@ -34,18 +34,23 @@ class Curves {
   PassSimple::Sub *edit_legacy_curve_points_ = nullptr;
   PassSimple::Sub *edit_legacy_curve_handles_ = nullptr;
 
-  bool xray_enabled = false;
-
   /* TODO(fclem): This is quite wasteful and expensive, prefer in shader Z modification like the
    * retopology offset. */
   View view_edit_cage = {"view_edit_cage"};
   float view_dist = 0.0f;
 
+  bool enabled_ = false;
+
  public:
   void begin_sync(Resources &res, const State &state, const View &view)
   {
+    enabled_ = state.space_type == SPACE_VIEW3D;
+
+    if (!enabled_) {
+      return;
+    }
+
     view_dist = state.view_dist_get(view.winmat());
-    xray_enabled = state.xray_enabled;
 
     {
       auto &pass = edit_curves_ps_;
@@ -53,9 +58,11 @@ class Curves {
       {
         auto &sub = pass.sub("Points");
         sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
+                          DRW_STATE_WRITE_DEPTH,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.bind_texture("weightTex", &res.weight_ramp_tx);
         sub.push_constant("useWeight", false);
         sub.push_constant("useGreasePencil", false);
         edit_curves_points_ = &sub;
@@ -63,16 +70,18 @@ class Curves {
       {
         auto &sub = pass.sub("Lines");
         sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA |
-                      DRW_STATE_WRITE_DEPTH | state.clipping_state);
+                          DRW_STATE_WRITE_DEPTH,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.curve_edit_line.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.bind_texture("weightTex", &res.weight_ramp_tx);
         sub.push_constant("useWeight", false);
         sub.push_constant("useGreasePencil", false);
         edit_curves_lines_ = &sub;
       }
       {
         auto &sub = pass.sub("Handles");
-        sub.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR, state.clipping_plane_count);
         sub.shader_set(res.shaders.curve_edit_handles.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         edit_curves_handles_ = &sub;
@@ -88,8 +97,8 @@ class Curves {
       pass.init();
       {
         auto &sub = pass.sub("Wires");
-        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
-                      state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.legacy_curve_edit_wires.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("normalSize", 0.0f);
@@ -97,8 +106,8 @@ class Curves {
       }
       if (show_normals) {
         auto &sub = pass.sub("Normals");
-        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH |
-                      state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_WRITE_DEPTH,
+                      state.clipping_plane_count);
         sub.shader_set(res.shaders.legacy_curve_edit_normals.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("normalSize", state.overlay.normals_length);
@@ -110,7 +119,7 @@ class Curves {
       }
       {
         auto &sub = pass.sub("Handles");
-        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ALPHA, state.clipping_plane_count);
         sub.shader_set(res.shaders.legacy_curve_edit_handles.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
@@ -120,7 +129,7 @@ class Curves {
       /* Points need to be rendered after handles. */
       {
         auto &sub = pass.sub("Points");
-        sub.state_set(DRW_STATE_WRITE_COLOR | state.clipping_state);
+        sub.state_set(DRW_STATE_WRITE_COLOR, state.clipping_plane_count);
         sub.shader_set(res.shaders.legacy_curve_edit_points.get());
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
@@ -132,7 +141,9 @@ class Curves {
 
   void edit_object_sync(Manager &manager, const ObjectRef &ob_ref, Resources & /*res*/)
   {
-    ResourceHandle res_handle = manager.resource_handle(ob_ref);
+    if (!enabled_) {
+      return;
+    }
 
     Object *ob = ob_ref.object;
     ::Curves &curves = *static_cast<::Curves *>(ob->data);
@@ -142,24 +153,27 @@ class Curves {
 
     if (show_points) {
       gpu::Batch *geom = DRW_curves_batch_cache_get_edit_points(&curves);
-      edit_curves_points_->draw(geom, res_handle);
+      edit_curves_points_->draw(geom, manager.unique_handle(ob_ref));
     }
     {
       gpu::Batch *geom = DRW_curves_batch_cache_get_edit_curves_handles(&curves);
       edit_curves_handles_->bind_ubo("curvesInfoBlock", ubo_storage);
-      edit_curves_handles_->draw(geom, res_handle);
+      edit_curves_handles_->draw(geom, manager.unique_handle(ob_ref));
     }
     {
       gpu::Batch *geom = DRW_curves_batch_cache_get_edit_curves_lines(&curves);
-      edit_curves_lines_->bind_ubo("curvesInfoBlock", ubo_storage);
-      edit_curves_lines_->draw(geom, res_handle);
+      edit_curves_lines_->draw(geom, manager.unique_handle(ob_ref));
     }
   }
 
   /* Used for legacy curves. */
   void edit_object_sync_legacy(Manager &manager, const ObjectRef &ob_ref, Resources & /*res*/)
   {
-    ResourceHandle res_handle = manager.resource_handle(ob_ref);
+    if (!enabled_) {
+      return;
+    }
+
+    ResourceHandle res_handle = manager.unique_handle(ob_ref);
 
     Object *ob = ob_ref.object;
     ::Curve &curve = *static_cast<::Curve *>(ob->data);
@@ -184,6 +198,10 @@ class Curves {
 
   void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)
   {
+    if (!enabled_) {
+      return;
+    }
+
     view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
 
     GPU_framebuffer_bind(framebuffer);

@@ -30,17 +30,18 @@ VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thre
   state_manager = new VKStateManager();
   imm = new VKImmediate();
 
-  /* For off-screen contexts. Default frame-buffer is empty. */
-  VKFrameBuffer *framebuffer = new VKFrameBuffer("back_left");
-  back_left = framebuffer;
-  active_fb = framebuffer;
+  back_left = new VKFrameBuffer("back_left");
+  front_left = new VKFrameBuffer("front_left");
+  active_fb = back_left;
 
-  compiler = new ShaderCompilerGeneric();
+  compiler = &VKBackend::get().shader_compiler;
 }
 
 VKContext::~VKContext()
 {
   if (surface_texture_) {
+    back_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
+    front_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
     GPU_texture_free(surface_texture_);
     surface_texture_ = nullptr;
   }
@@ -49,7 +50,7 @@ VKContext::~VKContext()
   delete imm;
   imm = nullptr;
 
-  delete compiler;
+  compiler = nullptr;
 }
 
 void VKContext::sync_backbuffer()
@@ -87,6 +88,8 @@ void VKContext::sync_backbuffer()
 
       back_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
                                 GPU_ATTACHMENT_TEXTURE(surface_texture_));
+      front_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
+                                 GPU_ATTACHMENT_TEXTURE(surface_texture_));
 
       back_left->bind(false);
 
