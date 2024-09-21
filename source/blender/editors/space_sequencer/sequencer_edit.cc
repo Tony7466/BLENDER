@@ -2063,9 +2063,10 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
   LISTBASE_FOREACH (Sequence *, seq, active_seqbase) {
     if (seq != seqm && seq->flag & SELECT) {
       strips_to_move.add(seq);
-      strips_to_move.add_multiple(SEQ_get_connected_strips(seq))
+      strips_to_move.add_multiple(SEQ_get_connected_strips(seq));
     }
   }
+
   for (Sequence *seq : strips_to_move) {
     SEQ_relations_invalidate_cache_preprocessed(scene, seq);
     BLI_remlink(active_seqbase, seq);
