@@ -1605,6 +1605,15 @@ typedef struct ToolSettings {
   int uvcalc_iterations;
   float uvcalc_weight_factor;
 
+  /**
+   * Regarding having a single vertex group for all meshes.
+   * In most cases there is no expectation for the names used for vertex groups.
+   * UV weights is a fairly specific feature for unwrapping and in this case
+   * users are expected to use the name `uv_importance`.
+   * While we could support setting a different group per mesh (similar to the active group).
+   * This isn't all that useful in practice, so use a "default" name instead.
+   * This approach may be reworked after gathering feedback from users.
+   */
   char uvcalc_weight_group[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
