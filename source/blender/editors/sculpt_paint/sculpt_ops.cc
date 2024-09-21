@@ -896,7 +896,26 @@ enum class ApplyMaskMode : int8_t {
   Subtract,
 };
 
+static EnumPropertyItem mix_modes[] = {
+    {int(ApplyMaskMode::Mix), "MIX", ICON_NONE, "Mix", ""},
+    {int(ApplyMaskMode::Multiply), "MULTIPLY", ICON_NONE, "Multiply", ""},
+    {int(ApplyMaskMode::Divide), "DIVIDE", ICON_NONE, "Divide", ""},
+    {int(ApplyMaskMode::Add), "ADD", ICON_NONE, "Add", ""},
+    {int(ApplyMaskMode::Subtract), "SUBTRACT", ICON_NONE, "Subtract", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 enum class MaskSettingsSource : int8_t { Operator, Scene, Brush };
+
+static EnumPropertyItem settings_sources[] = {
+    {int(MaskSettingsSource::Operator),
+     "OPERATOR",
+     ICON_NONE,
+     "Operator",
+     "Use settings from operator properties"},
+    {int(MaskSettingsSource::Brush), "BRUSH", ICON_NONE, "Brush", "Use settings from brush"},
+    {int(MaskSettingsSource::Scene), "SCENE", ICON_NONE, "Scene", "Use settings from scene"},
+    {0, nullptr, 0, nullptr, nullptr}};
 
 struct LocalData {
   Vector<float> mask;
@@ -1070,8 +1089,15 @@ static void apply_mask_from_settings(const Depsgraph &depsgraph,
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
-          apply_mask_mesh(
-              depsgraph, object, automasking, mode, factor, invert_automask, nodes[i], tls, mask.span);
+          apply_mask_mesh(depsgraph,
+                          object,
+                          automasking,
+                          mode,
+                          factor,
+                          invert_automask,
+                          nodes[i],
+                          tls,
+                          mask.span);
           bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
         });
       });
@@ -1085,7 +1111,8 @@ static void apply_mask_from_settings(const Depsgraph &depsgraph,
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
-          apply_mask_grids(depsgraph, object, automasking, mode, factor, invert_automask, nodes[i], tls);
+          apply_mask_grids(
+              depsgraph, object, automasking, mode, factor, invert_automask, nodes[i], tls);
           bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
         });
       });
@@ -1098,7 +1125,8 @@ static void apply_mask_from_settings(const Depsgraph &depsgraph,
       threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
         node_mask.slice(range).foreach_index([&](const int i) {
-          apply_mask_bmesh(depsgraph, object, automasking, mode, factor, invert_automask, nodes[i], tls);
+          apply_mask_bmesh(
+              depsgraph, object, automasking, mode, factor, invert_automask, nodes[i], tls);
           bke::pbvh::node_update_mask_bmesh(mask_offset, nodes[i]);
         });
       });
@@ -1262,17 +1290,8 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
   ot->name = "Mask From Cavity";
   ot->idname = "SCULPT_OT_mask_from_cavity";
   ot->description = "Creates a mask based on the curvature of the surface";
+
   ot->ui = mask_from_cavity_ui;
-
-  static EnumPropertyItem mix_modes[] = {
-      {int(ApplyMaskMode::Mix), "MIX", ICON_NONE, "Mix", ""},
-      {int(ApplyMaskMode::Multiply), "MULTIPLY", ICON_NONE, "Multiply", ""},
-      {int(ApplyMaskMode::Divide), "DIVIDE", ICON_NONE, "Divide", ""},
-      {int(ApplyMaskMode::Add), "ADD", ICON_NONE, "Add", ""},
-      {int(ApplyMaskMode::Subtract), "SUBTRACT", ICON_NONE, "Subtract", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   ot->exec = mask_from_cavity_exec;
   ot->poll = SCULPT_mode_poll;
 
@@ -1280,24 +1299,12 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
 
   RNA_def_enum(ot->srna, "mix_mode", mix_modes, int(ApplyMaskMode::Mix), "Mode", "Mix mode");
   RNA_def_float(ot->srna, "mix_factor", 1.0f, 0.0f, 5.0f, "Mix Factor", "", 0.0f, 1.0f);
-
-  static EnumPropertyItem settings_sources[] = {
-      {int(MaskSettingsSource::Operator),
-       "OPERATOR",
-       ICON_NONE,
-       "Operator",
-       "Use settings from operator properties"},
-      {int(MaskSettingsSource::Brush), "BRUSH", ICON_NONE, "Brush", "Use settings from brush"},
-      {int(MaskSettingsSource::Scene), "SCENE", ICON_NONE, "Scene", "Use settings from scene"},
-      {0, nullptr, 0, nullptr, nullptr}};
-
   RNA_def_enum(ot->srna,
                "settings_source",
                settings_sources,
                int(MaskSettingsSource::Operator),
                "Settings",
                "Use settings from here");
-
   RNA_def_float(ot->srna,
                 "factor",
                 0.5f,
@@ -1317,7 +1324,6 @@ static void SCULPT_OT_mask_from_cavity(wmOperatorType *ot)
               0,
               25);
   RNA_def_boolean(ot->srna, "use_curve", false, "Custom Curve", "");
-
   RNA_def_boolean(ot->srna, "invert", false, "Cavity (Inverted)", "");
 }
 
@@ -1440,18 +1446,14 @@ static void mask_from_boundary_ui(bContext *C, wmOperator *op)
     case MaskSettingsSource::Operator: {
       uiItemR(layout, op->ptr, "mix_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(layout, op->ptr, "mix_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "settings_source", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(layout, op->ptr, "boundary_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(layout, op->ptr, "propagation_steps", UI_ITEM_NONE, nullptr, ICON_NONE);
-
       break;
     }
     case MaskSettingsSource::Brush:
     case MaskSettingsSource::Scene:
       uiItemR(layout, op->ptr, "mix_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
       uiItemR(layout, op->ptr, "mix_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiItemR(layout, op->ptr, "settings_source", UI_ITEM_NONE, nullptr, ICON_NONE);
-
       break;
   }
 }
@@ -1461,34 +1463,15 @@ static void SCULPT_OT_mask_from_boundary(wmOperatorType *ot)
   ot->name = "Mask From Boundary";
   ot->idname = "SCULPT_OT_mask_from_boundary";
   ot->description = "Creates a mask based on the boundaries of the surface";
+
   ot->ui = mask_from_boundary_ui;
   ot->exec = mask_from_boundary_exec;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  static EnumPropertyItem mix_modes[] = {
-      {int(ApplyMaskMode::Mix), "MIX", ICON_NONE, "Mix", ""},
-      {int(ApplyMaskMode::Multiply), "MULTIPLY", ICON_NONE, "Multiply", ""},
-      {int(ApplyMaskMode::Divide), "DIVIDE", ICON_NONE, "Divide", ""},
-      {int(ApplyMaskMode::Add), "ADD", ICON_NONE, "Add", ""},
-      {int(ApplyMaskMode::Subtract), "SUBTRACT", ICON_NONE, "Subtract", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   RNA_def_enum(ot->srna, "mix_mode", mix_modes, int(ApplyMaskMode::Mix), "Mode", "Mix mode");
   RNA_def_float(ot->srna, "mix_factor", 1.0f, 0.0f, 5.0f, "Mix Factor", "", 0.0f, 1.0f);
-
-  static EnumPropertyItem settings_sources[] = {
-      {int(MaskSettingsSource::Operator),
-       "OPERATOR",
-       ICON_NONE,
-       "Operator",
-       "Use settings from operator properties"},
-      {int(MaskSettingsSource::Brush), "BRUSH", ICON_NONE, "Brush", "Use settings from brush"},
-      {int(MaskSettingsSource::Scene), "SCENE", ICON_NONE, "Scene", "Use settings from scene"},
-      {0, nullptr, 0, nullptr, nullptr}};
-
   RNA_def_enum(ot->srna,
                "settings_source",
                settings_sources,
@@ -1497,12 +1480,16 @@ static void SCULPT_OT_mask_from_boundary(wmOperatorType *ot)
                "Use settings from here");
 
   static EnumPropertyItem mask_boundary_modes[] = {
-      {int(MaskBoundaryMode::Mesh), "MESH", ICON_NONE, "Mesh", "Use mesh boundary"},
+      {int(MaskBoundaryMode::Mesh),
+       "MESH",
+       ICON_NONE,
+       "Mesh",
+       "Calculate the boundary mask based on disconnected mesh topology islands"},
       {int(MaskBoundaryMode::FaceSets),
        "FACE_SETS",
        ICON_NONE,
        "Face Sets",
-       "Use face set boundaries"},
+       "Calculate the boundary mask between face sets"},
       {0, nullptr, 0, nullptr, nullptr}};
 
   RNA_def_enum(ot->srna,
@@ -1511,7 +1498,6 @@ static void SCULPT_OT_mask_from_boundary(wmOperatorType *ot)
                int(MaskBoundaryMode::Mesh),
                "Mode",
                "Boundary type to mask");
-
   RNA_def_int(ot->srna, "propagation_steps", 1, 1, 20, "Propagation Steps", "", 1, 20);
 }
 
