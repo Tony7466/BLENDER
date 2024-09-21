@@ -116,7 +116,7 @@ struct ParamSlimOptions {
   float weight_influence = 0.0f;
   int iterations = 0;
   bool no_flip = false;
-  bool skip_initialization = false;
+  bool skip_init = false;
 };
 
 void uv_parametrizer_slim_solve(ParamHandle *phandle,

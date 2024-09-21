@@ -4903,7 +4903,7 @@ static slim::MatrixTransfer *slim_matrix_transfer(const ParamSlimOptions *slim_o
   mt->weight_influence = slim_options->weight_influence;
   mt->n_iterations = slim_options->iterations;
   mt->reflection_mode = slim_options->no_flip;
-  mt->skip_initialization = slim_options->skip_initialization;
+  mt->skip_initialization = slim_options->skip_init;
 
   return mt;
 }

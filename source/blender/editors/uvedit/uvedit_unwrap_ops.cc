@@ -243,7 +243,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   options.only_selected_uvs = false;
   options.pin_unselected = false;
 
-  options.slim_options.skip_initialization = false;
+  options.slim_options.skip_init = false;
 
   if (ts) {
     options.method = ts->unwrapper;
@@ -2066,7 +2066,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_for
 
   if (options.use_slim) {
     options.slim_options.no_flip = false;
-    options.slim_options.skip_initialization = true;
+    options.slim_options.skip_init = true;
     uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
     if (win_for_timer) {
