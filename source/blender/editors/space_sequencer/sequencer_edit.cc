@@ -2059,7 +2059,7 @@ static int sequencer_meta_make_exec(bContext *C, wmOperator *op)
 
   /* Remove all selected from main list, and put in meta.
    * Sequence is moved within the same edit, no need to re-generate the UID. */
-  LISTBASE_FOREACH_MUTABLE (Sequence *, seq, active_seqbase) {
+  LISTBASE_FOREACH (Sequence *, seq, active_seqbase) {
     if (seq != seqm && seq->flag & SELECT) {
       blender::VectorSet<Sequence *> related = SEQ_get_connected_strips(seq);
       related.add(seq);
