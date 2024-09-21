@@ -1,3 +1,4 @@
 Referenced by pull request #123866, Cleanup: Sculpt: Remove unused sculpt clay brush code
 Referenced by commit 868fed96c9290efdb2ea30c6220e38c81ee0930c, Cleanup: Sculpt: Remove unused sculpt clay brush code
 Referenced by issue #127828, Sculpt: Clay brush change of behavior in 4.3
+Referenced by pull request #127938, Fix #127828: Clay brush deforms mesh incorrectly
