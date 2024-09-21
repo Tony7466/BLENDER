@@ -246,7 +246,7 @@ static void store_result_geometry(
       const bool has_shape_keys = mesh.key != nullptr;
 
       if (object.mode == OB_MODE_SCULPT) {
-        sculpt_paint::undo::geometry_begin(object, &op);
+        sculpt_paint::undo::geometry_begin(scene, object, &op);
       }
 
       Mesh *new_mesh = geometry.get_component_for_write<bke::MeshComponent>().release();
@@ -571,7 +571,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   }
 
   geo_log::GeoTreeLog &tree_log = eval_log.log->get_tree_log(compute_context.hash());
-  tree_log.ensure_node_warnings();
+  tree_log.ensure_node_warnings(node_tree);
   for (const geo_log::NodeWarning &warning : tree_log.all_warnings) {
     if (warning.type == geo_log::NodeWarningType::Info) {
       BKE_report(op->reports, RPT_INFO, warning.message.c_str());
@@ -1142,6 +1142,7 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
           menus.add_new("Face");
           menus.add_new("Face/Face Data");
           menus.add_new("UV");
+          menus.add_new("UV/Unwrap");
           break;
         case OB_MODE_SCULPT:
           menus.add_new("View");

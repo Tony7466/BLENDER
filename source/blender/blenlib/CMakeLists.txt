@@ -48,6 +48,7 @@ set(SRC
   intern/array_utils.cc
   intern/astar.c
   intern/atomic_disjoint_set.cc
+  intern/bit_bool_conversion.cc
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
@@ -105,6 +106,7 @@ set(SRC
   intern/math_color_inline.c
   intern/math_geom.cc
   intern/math_geom_inline.c
+  intern/math_half.cc
   intern/math_interp.cc
   intern/math_matrix.cc
   intern/math_matrix_c.cc
@@ -188,10 +190,12 @@ set(SRC
   BLI_astar.h
   BLI_atomic_disjoint_set.hh
   BLI_binary_search.hh
+  BLI_bit_bool_conversion.hh
   BLI_bit_group_vector.hh
   BLI_bit_ref.hh
   BLI_bit_span.hh
   BLI_bit_span_ops.hh
+  BLI_bit_span_to_index_ranges.hh
   BLI_bit_vector.hh
   BLI_bitmap.h
   BLI_bitmap_draw_2d.h
@@ -264,6 +268,8 @@ set(SRC
   BLI_index_mask_expression.hh
   BLI_index_mask_fwd.hh
   BLI_index_range.hh
+  BLI_index_ranges_builder.hh
+  BLI_index_ranges_builder_fwd.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
   BLI_jitter_2d.h
@@ -298,6 +304,7 @@ set(SRC
   BLI_math_euler.hh
   BLI_math_euler_types.hh
   BLI_math_geom.h
+  BLI_math_half.hh
   BLI_math_inline.h
   BLI_math_interp.hh
   BLI_math_matrix.h
@@ -318,6 +325,7 @@ set(SRC
   BLI_math_vector.hh
   BLI_math_vector_mpq_types.hh
   BLI_math_vector_types.hh
+  BLI_math_vector_unroll.hh
   BLI_memarena.h
   BLI_memblock.h
   BLI_memiter.h
@@ -481,6 +489,7 @@ endif()
 
 if(APPLE)
   list(APPEND SRC
+    intern/fileops_apple.mm
     intern/storage_apple.mm
   )
 endif()
@@ -540,6 +549,7 @@ if(WITH_GTESTS)
     tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_mask_test.cc
     tests/BLI_index_range_test.cc
+    tests/BLI_index_ranges_builder_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
@@ -554,6 +564,7 @@ if(WITH_GTESTS)
     tests/BLI_math_bits_test.cc
     tests/BLI_math_color_test.cc
     tests/BLI_math_geom_test.cc
+    tests/BLI_math_half_test.cc
     tests/BLI_math_interp_test.cc
     tests/BLI_math_matrix_test.cc
     tests/BLI_math_matrix_types_test.cc
@@ -570,6 +581,7 @@ if(WITH_GTESTS)
     tests/BLI_mesh_boolean_test.cc
     tests/BLI_mesh_intersect_test.cc
     tests/BLI_multi_value_map_test.cc
+    tests/BLI_offset_indices_test.cc
     tests/BLI_path_util_test.cc
     tests/BLI_polyfill_2d_test.cc
     tests/BLI_pool_test.cc

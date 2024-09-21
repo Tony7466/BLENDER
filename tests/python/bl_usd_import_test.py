@@ -33,7 +33,6 @@ class AbstractUSDTest(unittest.TestCase):
 
 
 class USDImportTest(AbstractUSDTest):
-
     def test_import_operator(self):
         """Test running the import operator on valid and invalid files."""
 
@@ -202,6 +201,65 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(1.400, test_cam.sensor_height, 3)
         self.assertAlmostEqual(2.281, test_cam.shift_x, 3)
         self.assertAlmostEqual(0.496, test_cam.shift_y, 3)
+
+    def test_import_materials(self):
+        """Validate UsdPreviewSurface shader graphs."""
+
+        # Use the existing materials test file to create the USD file
+        # for import. It is validated as part of the bl_usd_export test.
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        testfile = str(self.tempdir / "temp_materials.usda")
+        res = bpy.ops.wm.usd_export(filepath=str(testfile), export_materials=True)
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {testfile}")
+
+        # Reload the empty file and import back in
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        res = bpy.ops.wm.usd_import(filepath=testfile)
+        self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {testfile}")
+
+        # Most shader graph validation should occur through the Hydra render test suite. Here we
+        # will only check some high-level criteria for each expected node graph.
+
+        def assert_all_nodes_present(mat, node_list):
+            nodes = mat.node_tree.nodes
+            self.assertEqual(len(nodes), len(node_list))
+            for node in node_list:
+                self.assertTrue(nodes.find(node) >= 0, f"Could not find node '{node}' in material '{mat.name}'")
+
+        def round_vector(vector):
+            return [round(c, 5) + 0 for c in vector]
+
+        mat = bpy.data.materials["Material"]
+        assert_all_nodes_present(mat, ["Principled BSDF", "Image Texture", "UV Map", "Material Output"])
+
+        mat = bpy.data.materials["Clip_With_LessThanInvert"]
+        assert_all_nodes_present(
+            mat, ["Principled BSDF", "Image Texture", "UV Map", "Math", "Math.001", "Material Output"])
+        node = [n for n in mat.node_tree.nodes if n.type == 'MATH' and n.operation == "LESS_THAN"][0]
+        self.assertAlmostEqual(node.inputs[1].default_value, 0.2, 3)
+
+        mat = bpy.data.materials["Clip_With_Round"]
+        assert_all_nodes_present(
+            mat, ["Principled BSDF", "Image Texture", "UV Map", "Math", "Math.001", "Material Output"])
+        node = [n for n in mat.node_tree.nodes if n.type == 'MATH' and n.operation == "LESS_THAN"][0]
+        self.assertAlmostEqual(node.inputs[1].default_value, 0.5, 3)
+
+        mat = bpy.data.materials["Transforms"]
+        assert_all_nodes_present(mat, ["Principled BSDF", "Image Texture", "UV Map", "Mapping", "Material Output"])
+        node = mat.node_tree.nodes["Mapping"]
+        self.assertEqual(round_vector(node.inputs[1].default_value), [0.75, 0.75, 0])
+        self.assertEqual(round_vector(node.inputs[2].default_value), [0, 0, 3.14159])
+        self.assertEqual(round_vector(node.inputs[3].default_value), [0.5, 0.5, 1])
+
+        mat = bpy.data.materials["NormalMap"]
+        assert_all_nodes_present(mat, ["Principled BSDF", "Image Texture", "UV Map", "Normal Map", "Material Output"])
+
+        mat = bpy.data.materials["NormalMap_Scale_Bias"]
+        assert_all_nodes_present(mat, ["Principled BSDF", "Image Texture", "UV Map",
+                                       "Normal Map", "Vector Math", "Vector Math.001", "Material Output"])
+        node = mat.node_tree.nodes["Vector Math"]
+        self.assertEqual(round_vector(node.inputs[1].default_value), [2, -2, 2])
+        self.assertEqual(round_vector(node.inputs[2].default_value), [-1, 1, -1])
 
     def test_import_shader_varname_with_connection(self):
         """Test importing USD shader where uv primvar is a connection"""
@@ -852,6 +910,9 @@ class USDImportTest(AbstractUSDTest):
 
         stage = Usd.Stage.Open(testfile)
 
+        def round_vector(vector):
+            return (round(vector[0], 5), round(vector[1], 5), round(vector[2], 5))
+
         #
         # Validate Mesh data
         #
@@ -865,9 +926,6 @@ class USDImportTest(AbstractUSDTest):
         for i in range(0, mesh_num):
             self.assertTrue(len(blender_mesh[i].modifiers) == 1 and blender_mesh[i].modifiers[0].type ==
                             'MESH_SEQUENCE_CACHE', f"{blender_mesh[i].name} has incorrect modifiers")
-
-        def round_vector(vector):
-            return (round(vector[0], 5), round(vector[1], 5), round(vector[2], 5))
 
         # Compare Blender and USD data against each other for every frame
         for frame in range(1, 16):
@@ -897,6 +955,68 @@ class USDImportTest(AbstractUSDTest):
                     blender_test_data,
                     usd_test_data,
                     f"Frame {frame}: {blender_mesh[i].name} test attributes do not match")
+
+        #
+        # Validate Point Cloud data
+        #
+        blender_pointclouds = [
+            bpy.data.objects["PointCloud"],
+            bpy.data.objects["PointCloud.001"],
+            bpy.data.objects["PointCloud.002"],
+            bpy.data.objects["PointCloud.003"]]
+        usd_points = [UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud1/PointCloud")),
+                      UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud2/PointCloud")),
+                      UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud3/PointCloud")),
+                      UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud4/PointCloud"))]
+        pointclouds_num = len(blender_pointclouds)
+
+        # Workaround: GeometrySet processing loses the data-block name on export. This is why the
+        # .001 etc. names are being used above. Since we need the order of Blender objects to match
+        # the order of USD prims, sort by the Y location to make them match in our test setup.
+        blender_pointclouds.sort(key=lambda ob: ob.location.y)
+
+        # A MeshSequenceCache modifier should be present on every imported object
+        for i in range(0, pointclouds_num):
+            self.assertTrue(len(blender_pointclouds[i].modifiers) == 1 and blender_pointclouds[i].modifiers[0].type ==
+                            'MESH_SEQUENCE_CACHE', f"{blender_pointclouds[i].name} has incorrect modifiers")
+
+        # Compare Blender and USD data against each other for every frame
+        for frame in range(1, 16):
+            bpy.context.scene.frame_set(frame)
+            depsgraph = bpy.context.evaluated_depsgraph_get()
+            for i in range(0, mesh_num):
+                blender_pointclouds[i] = blender_pointclouds[i].evaluated_get(depsgraph)
+
+            # Check positions, velocity, radius, and test data
+            for i in range(0, mesh_num):
+                blender_pos_data = [round_vector(d.vector)
+                                    for d in blender_pointclouds[i].data.attributes["position"].data]
+                blender_vel_data = [round_vector(d.vector)
+                                    for d in blender_pointclouds[i].data.attributes["velocity"].data]
+                blender_radius_data = [round(d.value, 5) for d in blender_pointclouds[i].data.attributes["radius"].data]
+                blender_test_data = [round(d.value, 5) for d in blender_pointclouds[i].data.attributes["test"].data]
+                usd_pos_data = [round_vector(d) for d in usd_points[i].GetPointsAttr().Get(frame)]
+                usd_vel_data = [round_vector(d) for d in usd_points[i].GetVelocitiesAttr().Get(frame)]
+                usd_radius_data = [round(d / 2, 5) for d in usd_points[i].GetWidthsAttr().Get(frame)]
+                usd_test_data = [round(d, 5) for d in UsdGeom.PrimvarsAPI(usd_points[i]).GetPrimvar("test").Get(frame)]
+
+                name = usd_points[i].GetPath().GetParentPath().name
+                self.assertEqual(
+                    blender_pos_data,
+                    usd_pos_data,
+                    f"Frame {frame}: {name} positions do not match")
+                self.assertEqual(
+                    blender_vel_data,
+                    usd_vel_data,
+                    f"Frame {frame}: {name} velocities do not match")
+                self.assertEqual(
+                    blender_radius_data,
+                    usd_radius_data,
+                    f"Frame {frame}: {name} radii do not match")
+                self.assertEqual(
+                    blender_test_data,
+                    usd_test_data,
+                    f"Frame {frame}: {name} test attributes do not match")
 
     def test_import_shapes(self):
         """Test importing USD Shape prims with time-varying attributes."""

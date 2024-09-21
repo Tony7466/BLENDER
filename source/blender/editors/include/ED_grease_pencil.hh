@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "BKE_anonymous_attribute_id.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BKE_attribute_filter.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_math_matrix_types.hh"
@@ -41,7 +41,6 @@ namespace bke {
 enum class AttrDomain : int8_t;
 class CurvesGeometry;
 namespace crazyspace {
-struct GeometryDeformation;
 }
 }  // namespace bke
 }  // namespace blender
@@ -64,16 +63,18 @@ void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
 void ED_operatortypes_grease_pencil_primitives();
 void ED_operatortypes_grease_pencil_weight_paint();
+void ED_operatortypes_grease_pencil_vertex_paint();
 void ED_operatortypes_grease_pencil_interpolate();
 void ED_operatortypes_grease_pencil_lineart();
 void ED_operatortypes_grease_pencil_trace();
+void ED_operatortypes_grease_pencil_bake_animation();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
 void ED_filltool_modal_keymap(wmKeyConfig *keyconf);
 void ED_interpolatetool_modal_keymap(wmKeyConfig *keyconf);
 
-void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
+void GREASE_PENCIL_OT_stroke_trim(wmOperatorType *ot);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
 
@@ -129,7 +130,9 @@ class DrawingPlacement {
                    const View3D &view3d,
                    const Object &eval_object,
                    const bke::greasepencil::Layer *layer,
-                   ReprojectMode reproject_mode);
+                   ReprojectMode reproject_mode,
+                   float surface_offset = 0.0f,
+                   ViewDepths *view_depths = nullptr);
   DrawingPlacement(const DrawingPlacement &other);
   DrawingPlacement(DrawingPlacement &&other);
   DrawingPlacement &operator=(const DrawingPlacement &other);
@@ -270,6 +273,7 @@ bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 bool grease_pencil_sculpting_poll(bContext *C);
 bool grease_pencil_weight_painting_poll(bContext *C);
+bool grease_pencil_vertex_painting_poll(bContext *C);
 
 float opacity_from_input_sample(const float pressure,
                                 const Brush *brush,
@@ -323,6 +327,10 @@ IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,
                                     int layer_index,
                                     IndexMaskMemory &memory);
+IndexMask retrieve_editable_fill_strokes(Object &grease_pencil_object,
+                                         const bke::greasepencil::Drawing &drawing,
+                                         int layer_index,
+                                         IndexMaskMemory &memory);
 IndexMask retrieve_editable_strokes_by_material(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 const int mat_i,
@@ -357,6 +365,10 @@ IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
                                                  const bke::greasepencil::Drawing &drawing,
                                                  int layer_index,
                                                  IndexMaskMemory &memory);
+IndexMask retrieve_editable_and_selected_fill_strokes(Object &grease_pencil_object,
+                                                      const bke::greasepencil::Drawing &drawing,
+                                                      int layer_index,
+                                                      IndexMaskMemory &memory);
 IndexMask retrieve_editable_and_selected_points(Object &object,
                                                 const bke::greasepencil::Drawing &drawing,
                                                 int layer_index,
@@ -402,11 +414,10 @@ IndexMask polyline_detect_corners(Span<float2> points,
  * Merge points that are close together on each selected curve.
  * Points are not merged across curves.
  */
-bke::CurvesGeometry curves_merge_by_distance(
-    const bke::CurvesGeometry &src_curves,
-    const float merge_distance,
-    const IndexMask &selection,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+bke::CurvesGeometry curves_merge_by_distance(const bke::CurvesGeometry &src_curves,
+                                             const float merge_distance,
+                                             const IndexMask &selection,
+                                             const bke::AttributeFilter &attribute_filter);
 
 /**
  * Merge points on the same curve that are close together.
@@ -426,7 +437,7 @@ bke::CurvesGeometry curves_merge_endpoints_by_distance(
     const float4x4 &layer_to_world,
     const float merge_distance,
     const IndexMask &selection,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+    const bke::AttributeFilter &attribute_filter);
 
 /**
  * Structure describing a point in the destination relatively to the source.
@@ -489,6 +500,12 @@ void normalize_vertex_weights(MDeformVert &dvert,
                               int active_vertex_group,
                               Span<bool> vertex_group_is_locked,
                               Span<bool> vertex_group_is_bone_deformed);
+
+/** Adds vertex groups for the bones in the armature (with matching names). */
+bool add_armature_vertex_groups(Object &object, const Object &armature);
+/** Create vertex groups for the bones in the armature and use the bone envelopes to assign
+ * weights. */
+void add_armature_envelope_weights(Scene &scene, Object &object, const Object &ob_armature);
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
@@ -810,14 +827,14 @@ bool apply_mask_as_segment_selection(bke::CurvesGeometry &curves,
                                      GrainSize grain_size,
                                      eSelectOp sel_op);
 
-namespace cutter {
+namespace trim {
 bke::CurvesGeometry trim_curve_segments(const bke::CurvesGeometry &src,
                                         Span<float2> screen_space_positions,
                                         Span<rcti> screen_space_curve_bounds,
                                         const IndexMask &curve_selection,
                                         const Vector<Vector<int>> &selected_points_in_curves,
                                         bool keep_caps);
-};  // namespace cutter
+};  // namespace trim
 
 /* Lineart */
 
