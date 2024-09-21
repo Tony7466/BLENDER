@@ -598,7 +598,7 @@ float3 CollisionShape::calculate_local_inertia(const float mass) const
 
 static CollisionShapeImpl *make_box_shape(const float3 &half_extent)
 {
-  JPH::BoxShapeSettings settings(to_jolt(math::max(half_extent, float3(shape_convex_radius))),
+  JPH::BoxShapeSettings settings(to_jolt(math::max(half_extent, float3(shape_convex_radius + 1.0e-6f))),
                                  shape_convex_radius,
                                  shape_physics_material);
   return CollisionShapeImpl::wrap(settings.Create().Get());
