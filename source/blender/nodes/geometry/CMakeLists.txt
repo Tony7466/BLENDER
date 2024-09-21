@@ -24,6 +24,9 @@ set(INC
   ../../io/ply
   ../../io/stl
   ../../io/wavefront_obj
+  ../../../../extern/fmtlib/include
+  ../../../../intern/guardedalloc
+  ../../../../intern/slim
   # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )

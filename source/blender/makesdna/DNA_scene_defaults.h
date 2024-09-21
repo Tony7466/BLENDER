@@ -363,14 +363,31 @@
     .sharp_max = DEG2RADF(180.0f), \
   }
 
+/* Regarding this default hard-coded name:
+ * in most cases there is no expectation for the names used for vertex groups.
+ * UV weights is a fairly specific feature for unwrapping and in this case
+ * users are expected to use the name "uv_importance".
+ * While we could support setting a different group per mesh (similar to the active group).
+ * This isn't all that useful in practice, so use a "default" name instead.
+ * This approach may be reworked after gathering feedback from users. */
+#define _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup "uv_importance"
+
 #define _DNA_DEFAULT_ToolSettings \
   { \
     .object_flag = SCE_OBJECT_MODE_LOCK, \
     .doublimit = 0.001, \
     .vgroup_weight = 1.0f, \
+ \
     .uvcalc_margin = 0.001f, \
     .uvcalc_flag = UVCALC_TRANSFORM_CORRECT_SLIDE, \
     .unwrapper = UVCALC_UNWRAP_METHOD_CONFORMAL, \
+    .uvcalc_iterations = 10, \
+    .uvcalc_weights_group = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup, \
+    .uvcalc_weights_factor = 1.0, \
+    .uvcalc_relative_scale = 1.0, \
+    .uvcalc_allow_flips = 1,\
+    .uvcalc_importance_weights = 0,\
+ \
     .select_thresh = 0.01f, \
  \
     .selectmode = SCE_SELECT_VERTEX, \

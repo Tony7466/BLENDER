@@ -390,7 +390,7 @@ static void createTransUVs(bContext *C, TransInfo *t)
     }
 
     if (sima->flag & SI_LIVE_UNWRAP) {
-      ED_uvedit_live_unwrap_begin(t->scene, tc->obedit);
+      ED_uvedit_live_unwrap_begin(C, t->scene, tc->obedit);
     }
 
   finally:

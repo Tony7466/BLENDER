@@ -14,6 +14,7 @@ add_subdirectory(opensubdiv)
 add_subdirectory(mikktspace)
 add_subdirectory(eigen)
 add_subdirectory(sky)
+add_subdirectory(slim)
 
 if(WITH_AUDASPACE)
   add_subdirectory(audaspace)

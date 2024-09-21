@@ -5,6 +5,11 @@
 #pragma once
 
 #include "BLI_sys_types.h" /* for intptr_t support */
+#include "DNA_ID.h"        /* for MAX_ID_NAME */
+
+namespace slim {
+struct MatrixTransfer;
+}
 
 /** \file
  * \ingroup geo
@@ -55,6 +60,9 @@ class ParamHandle {
 
   RNG *rng = nullptr;
   float blend = 0.0f;
+
+  /* SLIM uv unwrapping */
+  slim::MatrixTransfer *slim_mt = nullptr;
 };
 
 /* -------------------------------------------------------------------- */
@@ -84,6 +92,7 @@ void uv_parametrizer_face_add(ParamHandle *handle,
                               const ParamKey *vkeys,
                               const float **co,
                               float **uv, /* Output will eventually be written to `uv`. */
+                              float *weight,
                               const bool *pin,
                               const bool *select);
 
@@ -93,6 +102,34 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
                                    bool fill_holes,
                                    bool topology_from_uvs,
                                    int *r_count_failed = nullptr);
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name SLIM:
+ * -----------------------------
+ * - begin: data is gathered into matrices and transferred to SLIM
+ * - solve: compute cheap initialization (if necessary) and refine iteratively
+ * - end: clean up
+ * \{ */
+
+struct ParamSlimOptions {
+  float weight_influence = 0.0f;
+  int iterations = 0;
+  bool allow_flips = true;
+  bool skip_initialization = false;
+};
+
+void uv_parametrizer_slim_solve(ParamHandle *handle,
+                                const ParamSlimOptions *mt_options,
+                                int *count_changed,
+                                int *count_failed);
+
+void uv_parametrizer_slim_live_begin(ParamHandle *handle, const ParamSlimOptions *mt_options);
+void uv_parametrizer_slim_live_solve_iteration(ParamHandle *handle);
+void uv_parametrizer_slim_live_end(ParamHandle *handle);
+void uv_parametrizer_slim_stretch_iteration(ParamHandle *handle, float blend);
+bool uv_parametrizer_is_slim(ParamHandle *handle);
 
 /** \} */
 

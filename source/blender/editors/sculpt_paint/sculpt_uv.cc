@@ -588,7 +588,7 @@ static void uv_sculpt_stroke_exit(bContext *C, wmOperator *op)
 {
   SpaceImage *sima = CTX_wm_space_image(C);
   if (sima->flag & SI_LIVE_UNWRAP) {
-    ED_uvedit_live_unwrap_end(false);
+    ED_uvedit_live_unwrap_end(C, false);
   }
   UvSculptData *data = static_cast<UvSculptData *>(op->customdata);
   if (data->timer) {
@@ -905,7 +905,7 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 
     data->initial_stroke->totalInitialSelected = counter;
     if (sima->flag & SI_LIVE_UNWRAP) {
-      ED_uvedit_live_unwrap_begin(scene, obedit);
+      ED_uvedit_live_unwrap_begin(C, scene, obedit);
     }
   }
 
