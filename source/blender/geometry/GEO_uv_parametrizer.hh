@@ -115,7 +115,7 @@ void uv_parametrizer_construct_end(ParamHandle *handle,
 struct ParamSlimOptions {
   float weight_influence = 0.0f;
   int iterations = 0;
-  bool allow_flips = true;
+  bool no_flip = false;
   bool skip_initialization = false;
 };
 

@@ -384,11 +384,9 @@
     .uvcalc_flag = UVCALC_TRANSFORM_CORRECT_SLIDE, \
     .unwrapper = UVCALC_UNWRAP_METHOD_CONFORMAL, \
     .uvcalc_iterations = 10, \
-    .uvcalc_weights_group = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup, \
-    .uvcalc_weights_factor = 1.0, \
+    .uvcalc_weight_group = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup, \
+    .uvcalc_weight_factor = 1.0, \
     .uvcalc_relative_scale = 1.0, \
-    .uvcalc_allow_flips = 1,\
-    .uvcalc_importance_weights = 0,\
  \
     .select_thresh = 0.01f, \
  \

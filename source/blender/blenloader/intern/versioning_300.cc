@@ -4552,11 +4552,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Keep this block, even when empty. */
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->uvcalc_iterations = 10;
-      scene->toolsettings->uvcalc_weights_factor = 1.0f;
+      scene->toolsettings->uvcalc_weight_factor = 1.0f;
       scene->toolsettings->uvcalc_relative_scale = 1.0f;
-      scene->toolsettings->uvcalc_allow_flips = 1;
-      scene->toolsettings->uvcalc_importance_weights = 0;
-      STRNCPY(scene->toolsettings->uvcalc_weights_group, "uv_importance");
+      STRNCPY(scene->toolsettings->uvcalc_weight_group, "uv_importance");
     }
   }
 }

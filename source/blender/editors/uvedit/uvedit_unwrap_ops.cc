@@ -194,10 +194,10 @@ struct UnwrapOptions {
   bool use_slim;
   bool use_abf;
   bool use_subsurf;
+  bool use_weights;
 
-  bool importance_weights;
   ParamSlimOptions slim_options;
-  char weights_group[MAX_VGROUP_NAME];
+  char weight_group[MAX_VGROUP_NAME];
 };
 
 void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOptions &options)
@@ -251,12 +251,12 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = (ts->uvcalc_flag & UVCALC_FILLHOLES) != 0;
     options.use_subsurf = (ts->uvcalc_flag & UVCALC_USESUBSURF) != 0;
 
-    options.importance_weights = ts->uvcalc_importance_weights;
-    STRNCPY(options.weights_group, ts->uvcalc_weights_group);
-    options.slim_options.weight_influence = ts->uvcalc_weights_factor;
+    options.use_weights = ts->uvcalc_flag & UVCALC_UNWRAP_USE_WEIGHTS;
+    STRNCPY(options.weight_group, ts->uvcalc_weight_group);
+    options.slim_options.weight_influence = ts->uvcalc_weight_factor;
 
     options.slim_options.iterations = ts->uvcalc_iterations;
-    options.slim_options.allow_flips = ts->uvcalc_allow_flips;
+    options.slim_options.no_flip = ts->uvcalc_flag & UVCALC_UNWRAP_NO_FLIP;
   }
   else {
     options.method = RNA_enum_get(op->ptr, "method");
@@ -264,15 +264,15 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
     options.use_subsurf = RNA_boolean_get(op->ptr, "use_subsurf_data");
 
-    options.importance_weights = RNA_boolean_get(op->ptr, "importance_weights");
-    RNA_string_get(op->ptr, "weights_group", options.weights_group);
-    options.slim_options.weight_influence = RNA_float_get(op->ptr, "weights_factor");
+    options.use_weights = RNA_boolean_get(op->ptr, "use_weights");
+    RNA_string_get(op->ptr, "weight_group", options.weight_group);
+    options.slim_options.weight_influence = RNA_float_get(op->ptr, "weight_factor");
 
     options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
-    options.slim_options.allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
+    options.slim_options.no_flip = RNA_boolean_get(op->ptr, "no_flip");
   }
 
-  if (options.weights_group[0] == '\0' || options.importance_weights == false) {
+  if (options.weight_group[0] == '\0' || options.use_weights == false) {
     options.slim_options.weight_influence = 0.0f;
   }
 
@@ -317,30 +317,6 @@ static bool rna_property_sync_flag(
     return false;
   }
   BLI_assert_unreachable();
-  return false;
-}
-
-static bool rna_property_sync_bool(PointerRNA *ptr, const char *prop_name, bool *value_p)
-{
-  if (PropertyRNA *prop = RNA_struct_find_property(ptr, prop_name)) {
-    if (RNA_property_is_set(ptr, prop)) {
-      *value_p = RNA_property_boolean_get(ptr, prop);
-      return true;
-    }
-    RNA_property_boolean_set(ptr, prop, *value_p);
-    return false;
-  }
-  BLI_assert_unreachable();
-  return false;
-}
-
-static bool rna_property_sync_bool_as_char(PointerRNA *ptr, const char *prop_name, char *value_p)
-{
-  bool value_b = *value_p;
-  if (rna_property_sync_bool(ptr, prop_name, &value_b)) {
-    *value_p = value_b;
-    return true;
-  }
   return false;
 }
 
@@ -418,20 +394,20 @@ static void unwrap_options_sync_toolsettings(wmOperator *op, ToolSettings *ts)
   /* Remember packing margin. */
   rna_property_sync_float(op->ptr, "margin", &ts->uvcalc_margin);
 
-  rna_property_sync_bool_as_char(op->ptr, "allow_flips", &ts->uvcalc_allow_flips);
-
   rna_property_sync_int(op->ptr, "iterations", &ts->uvcalc_iterations);
 
-  rna_property_sync_bool_as_char(op->ptr, "importance_weights", &ts->uvcalc_importance_weights);
+  rna_property_sync_float(op->ptr, "weight_factor", &ts->uvcalc_weight_factor);
 
-  rna_property_sync_float(op->ptr, "weights_factor", &ts->uvcalc_weights_factor);
-
-  rna_property_sync_string(op->ptr, "weights_group", ts->uvcalc_weights_group);
+  rna_property_sync_string(op->ptr, "weight_group", ts->uvcalc_weight_group);
 
   rna_property_sync_flag(op->ptr, "fill_holes", UVCALC_FILLHOLES, false, &ts->uvcalc_flag);
   rna_property_sync_flag(
       op->ptr, "correct_aspect", UVCALC_NO_ASPECT_CORRECT, true, &ts->uvcalc_flag);
   rna_property_sync_flag(op->ptr, "use_subsurf_data", UVCALC_USESUBSURF, false, &ts->uvcalc_flag);
+  rna_property_sync_flag(op->ptr, "no_flip", UVCALC_UNWRAP_NO_FLIP, false, &ts->uvcalc_flag);
+
+  rna_property_sync_flag(
+      op->ptr, "use_weights", UVCALC_UNWRAP_USE_WEIGHTS, false, &ts->uvcalc_flag);
 }
 
 static bool uvedit_have_selection(const Scene *scene, BMEditMesh *em, const UnwrapOptions *options)
@@ -696,7 +672,7 @@ static ParamHandle *construct_param_handle(const Scene *scene,
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(bm);
   const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weight_group);
 
   BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
     if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -753,7 +729,7 @@ static ParamHandle *construct_param_handle_multi(const Scene *scene,
     }
 
     const int cd_weight_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
-    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->weights_group);
+    const int cd_weight_index = BKE_object_defgroup_name_index(obedit, options->weight_group);
 
     BM_ITER_MESH_INDEX (efa, &iter, bm, BM_FACES_OF_MESH, i) {
       if (uvedit_is_face_affected(scene, efa, options, offsets)) {
@@ -857,7 +833,7 @@ static ParamHandle *construct_param_handle_subsurfed(const Scene *scene,
   BMEdge **edgeMap;
 
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weights_group);
+  const int cd_weight_index = BKE_object_defgroup_name_index(ob, options->weight_group);
 
   ParamHandle *handle = new blender::geometry::ParamHandle();
 
@@ -2089,7 +2065,7 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_for
   }
 
   if (options.use_slim) {
-    options.slim_options.allow_flips = true;
+    options.slim_options.no_flip = false;
     options.slim_options.skip_initialization = true;
     uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
@@ -2864,15 +2840,15 @@ static void unwrap_draw(bContext * /*C*/, wmOperator *op)
 
   if (is_slim) {
     uiItemR(col, &ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(col, &ptr, "allow_flips", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "no_flip", UI_ITEM_NONE, nullptr, ICON_NONE);
 
     uiItemS(col);
-    uiItemR(col, &ptr, "importance_weights", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, &ptr, "use_weights", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    if (RNA_boolean_get(op->ptr, "importance_weights")) {
+    if (RNA_boolean_get(op->ptr, "use_weights")) {
       col = uiLayoutColumn(layout, true);
-      uiItemR(col, &ptr, "weights_group", UI_ITEM_NONE, nullptr, ICON_NONE);
-      uiItemR(col, &ptr, "weights_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, &ptr, "weight_group", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(col, &ptr, "weight_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
   }
   else {
@@ -2949,11 +2925,11 @@ void UV_OT_unwrap(wmOperatorType *ot)
 
   /* SLIM only */
   RNA_def_boolean(ot->srna,
-                  "allow_flips",
-                  tool_settings_default->uvcalc_allow_flips,
-                  "Allow Flips",
-                  "Allowing flips means that depending on the position of pins, the map may be "
-                  "flipped to lower distortion");
+                  "no_flip",
+                  tool_settings_default->uvcalc_flag & UVCALC_UNWRAP_NO_FLIP,
+                  "No Flip",
+                  "Prevent flipping UV's, "
+                  "flipping may lower distortion depending on the position of pins");
 
   RNA_def_int(ot->srna,
               "iterations",
@@ -2966,23 +2942,23 @@ void UV_OT_unwrap(wmOperatorType *ot)
               30);
 
   RNA_def_boolean(ot->srna,
-                  "importance_weights",
-                  tool_settings_default->uvcalc_importance_weights,
+                  "use_weights",
+                  tool_settings_default->uvcalc_flag & UVCALC_UNWRAP_USE_WEIGHTS,
                   "Importance Weights",
                   "Whether to take into account per-vertex importance weights");
   RNA_def_string(ot->srna,
-                 "weights_group",
-                 tool_settings_default->uvcalc_weights_group,
+                 "weight_group",
+                 tool_settings_default->uvcalc_weight_group,
                  MAX_ID_NAME,
-                 "Weights Group",
+                 "Weight Group",
                  "Vertex group name for importance weights (modulating the deform)");
   RNA_def_float(
       ot->srna,
-      "weights_factor",
-      tool_settings_default->uvcalc_weights_factor,
+      "weight_factor",
+      tool_settings_default->uvcalc_weight_factor,
       -10000.0,
       10000.0,
-      "Weights Factor",
+      "Weight Factor",
       "How much influence the weightmap has for weighted parameterization, 0 being no influence",
       -10.0,
       10.0);

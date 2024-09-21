@@ -1601,15 +1601,13 @@ typedef struct ToolSettings {
   char uv_sticky;
 
   float uvcalc_margin;
-  char uvcalc_allow_flips;
-  char uvcalc_importance_weights;
-  char _pad3[2];
+  char _pad3[4];
 
   int uvcalc_iterations;
-  float uvcalc_weights_factor;
+  float uvcalc_weight_factor;
   float uvcalc_relative_scale;
 
-  char uvcalc_weights_group[64]; /* MAX_VGROUP_NAME */
+  char uvcalc_weight_group[64]; /* MAX_VGROUP_NAME */
 
   /* Auto-IK. */
   /** Runtime only. */
@@ -2720,6 +2718,10 @@ enum {
   UVCALC_TRANSFORM_CORRECT = 1 << 4,
   /** Keep equal values merged while correcting custom-data. */
   UVCALC_TRANSFORM_CORRECT_KEEP_CONNECTED = 1 << 5,
+  /** Prevent unwrap that flips. */
+  UVCALC_UNWRAP_NO_FLIP = 1 << 6,
+  /** Use importance weights. */
+  UVCALC_UNWRAP_USE_WEIGHTS = 1 << 7,
 };
 
 /** #ToolSettings::uv_flag */
