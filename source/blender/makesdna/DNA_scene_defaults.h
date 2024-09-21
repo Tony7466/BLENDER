@@ -386,7 +386,6 @@
     .uvcalc_iterations = 10, \
     .uvcalc_weight_group = _DNA_DEFAULT_ToolSettings_UVCalc_WeightsGroup, \
     .uvcalc_weight_factor = 1.0, \
-    .uvcalc_relative_scale = 1.0, \
  \
     .select_thresh = 0.01f, \
  \

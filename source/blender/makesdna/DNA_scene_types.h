@@ -1601,11 +1601,9 @@ typedef struct ToolSettings {
   char uv_sticky;
 
   float uvcalc_margin;
-  char _pad3[4];
 
   int uvcalc_iterations;
   float uvcalc_weight_factor;
-  float uvcalc_relative_scale;
 
   char uvcalc_weight_group[64]; /* MAX_VGROUP_NAME */
 

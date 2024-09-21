@@ -4553,7 +4553,6 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->uvcalc_iterations = 10;
       scene->toolsettings->uvcalc_weight_factor = 1.0f;
-      scene->toolsettings->uvcalc_relative_scale = 1.0f;
       STRNCPY(scene->toolsettings->uvcalc_weight_group, "uv_importance");
     }
   }
