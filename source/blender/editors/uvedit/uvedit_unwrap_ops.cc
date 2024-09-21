@@ -198,12 +198,6 @@ struct UnwrapOptions {
   bool importance_weights;
   ParamSlimOptions slim_options;
   char weights_group[MAX_VGROUP_NAME];
-
-  void init_weight_influence(float w_influence)
-  {
-    slim_options.weight_influence = importance_weights && strlen(weights_group) ? w_influence :
-                                                                                  0.0f;
-  }
 };
 
 void blender::geometry::UVPackIsland_Params::setFromUnwrapOptions(const UnwrapOptions &options)
@@ -259,7 +253,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     options.importance_weights = ts->uvcalc_importance_weights;
     STRNCPY(options.weights_group, ts->uvcalc_weights_group);
-    options.init_weight_influence(ts->uvcalc_weights_factor);
+    options.slim_options.weight_influence = ts->uvcalc_weights_factor;
 
     options.slim_options.iterations = ts->uvcalc_iterations;
     options.slim_options.allow_flips = ts->uvcalc_allow_flips;
@@ -272,10 +266,14 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     options.importance_weights = RNA_boolean_get(op->ptr, "importance_weights");
     RNA_string_get(op->ptr, "weights_group", options.weights_group);
-    options.init_weight_influence(RNA_float_get(op->ptr, "weights_factor"));
+    options.slim_options.weight_influence = RNA_float_get(op->ptr, "weights_factor");
 
     options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
     options.slim_options.allow_flips = RNA_boolean_get(op->ptr, "allow_flips");
+  }
+
+  if (options.weights_group[0] == '\0' || options.importance_weights == false) {
+    options.slim_options.weight_influence = 0.0f;
   }
 
   options.use_abf = options.method == UVCALC_UNWRAP_METHOD_ANGLE;
