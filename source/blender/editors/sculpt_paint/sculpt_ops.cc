@@ -1101,6 +1101,7 @@ static void apply_mask_from_settings(const Depsgraph &depsgraph,
           bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
         });
       });
+      mask.finish();
       break;
     }
     case bke::pbvh::Type::Grids: {
