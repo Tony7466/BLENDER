@@ -107,6 +107,13 @@ set(LIB
   PRIVATE bf::intern::clog
 )
 
+if(WITH_UV_SLIM)
+  list(APPEND INC
+    ../../../intern/slim
+  )
+  add_definitions(-DWITH_UV_SLIM)
+endif()
+
 if(WITH_OPENVDB)
   list(APPEND INC
     ../../../intern/openvdb
