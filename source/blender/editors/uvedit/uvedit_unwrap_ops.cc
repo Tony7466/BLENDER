@@ -272,14 +272,21 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
     options.slim_options.no_flip = RNA_boolean_get(op->ptr, "no_flip");
   }
 
+#ifndef WITH_UV_SLIM
+  if (options.method == UVCALC_UNWRAP_METHOD_MINIMUM_STRETCH) {
+    options.method = UVCALC_UNWRAP_METHOD_CONFORMAL;
+    if (op) {
+      BKE_report(op->reports, RPT_WARNING, "Built without SLIM, falling back to conformal method");
+    }
+  }
+#endif /* !WITH_UV_SLIM */
+
   if (options.weight_group[0] == '\0' || options.use_weights == false) {
     options.slim_options.weight_influence = 0.0f;
   }
 
   options.use_abf = options.method == UVCALC_UNWRAP_METHOD_ANGLE;
-#ifdef WITH_UV_SLIM
   options.use_slim = options.method == UVCALC_UNWRAP_METHOD_MINIMUM_STRETCH;
-#endif
 
   /* SLIM requires hole filling */
   if (options.use_slim) {
