@@ -1005,7 +1005,7 @@ int transformEvent(TransInfo *t, wmOperator *op, const wmEvent *event)
     handled = true;
   }
   else if (event->type == TIMER) {
-    if (uvedit_live_unwrap_timer() == event->customdata) {
+    if (ED_uvedit_live_unwrap_timer() == event->customdata) {
       t->redraw |= TREDRAW_HARD;
     }
   }

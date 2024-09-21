@@ -2038,7 +2038,7 @@ static struct {
   wmTimer *timer;
 } g_live_unwrap = {nullptr};
 
-const wmTimer *uvedit_live_unwrap_timer()
+const wmTimer *ED_uvedit_live_unwrap_timer()
 {
   return g_live_unwrap.timer;
 }

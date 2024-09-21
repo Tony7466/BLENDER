@@ -29,6 +29,7 @@ struct bContext;
 struct bNode;
 struct bNodeTree;
 struct wmKeyConfig;
+struct wmTimer;
 
 /* `uvedit_ops.cc` */
 
@@ -259,9 +260,7 @@ char ED_uvedit_select_mode_get(const Scene *scene);
 void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, bool select);
 
 /* `uvedit_unwrap_ops.cc` */
-
-struct wmTimer;
-const wmTimer *uvedit_live_unwrap_timer();
+const wmTimer *ED_uvedit_live_unwrap_timer();
 
 void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, struct wmWindow *win_for_timer);
 void ED_uvedit_live_unwrap_re_solve();
