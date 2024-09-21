@@ -196,7 +196,7 @@ struct UnwrapOptions {
   bool use_subsurf;
   bool use_weights;
 
-  ParamSlimOptions slim_options;
+  ParamSlimOptions slim;
   char weight_group[MAX_VGROUP_NAME];
 };
 
@@ -243,7 +243,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
   options.only_selected_uvs = false;
   options.pin_unselected = false;
 
-  options.slim_options.skip_init = false;
+  options.slim.skip_init = false;
 
   if (ts) {
     options.method = ts->unwrapper;
@@ -253,10 +253,10 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     options.use_weights = ts->uvcalc_flag & UVCALC_UNWRAP_USE_WEIGHTS;
     STRNCPY(options.weight_group, ts->uvcalc_weight_group);
-    options.slim_options.weight_influence = ts->uvcalc_weight_factor;
+    options.slim.weight_influence = ts->uvcalc_weight_factor;
 
-    options.slim_options.iterations = ts->uvcalc_iterations;
-    options.slim_options.no_flip = ts->uvcalc_flag & UVCALC_UNWRAP_NO_FLIP;
+    options.slim.iterations = ts->uvcalc_iterations;
+    options.slim.no_flip = ts->uvcalc_flag & UVCALC_UNWRAP_NO_FLIP;
   }
   else {
     options.method = RNA_enum_get(op->ptr, "method");
@@ -266,10 +266,10 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 
     options.use_weights = RNA_boolean_get(op->ptr, "use_weights");
     RNA_string_get(op->ptr, "weight_group", options.weight_group);
-    options.slim_options.weight_influence = RNA_float_get(op->ptr, "weight_factor");
+    options.slim.weight_influence = RNA_float_get(op->ptr, "weight_factor");
 
-    options.slim_options.iterations = RNA_int_get(op->ptr, "iterations");
-    options.slim_options.no_flip = RNA_boolean_get(op->ptr, "no_flip");
+    options.slim.iterations = RNA_int_get(op->ptr, "iterations");
+    options.slim.no_flip = RNA_boolean_get(op->ptr, "no_flip");
   }
 
 #ifndef WITH_UV_SLIM
@@ -282,7 +282,7 @@ static UnwrapOptions unwrap_options_get(wmOperator *op, Object *ob, const ToolSe
 #endif /* !WITH_UV_SLIM */
 
   if (options.weight_group[0] == '\0' || options.use_weights == false) {
-    options.slim_options.weight_influence = 0.0f;
+    options.slim.weight_influence = 0.0f;
   }
 
   options.use_abf = options.method == UVCALC_UNWRAP_METHOD_ANGLE;
@@ -2072,9 +2072,9 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_mod
   }
 
   if (options.use_slim) {
-    options.slim_options.no_flip = false;
-    options.slim_options.skip_init = true;
-    uv_parametrizer_slim_live_begin(handle, &options.slim_options);
+    options.slim.no_flip = false;
+    options.slim.skip_init = true;
+    uv_parametrizer_slim_live_begin(handle, &options.slim);
 
     if (win_modal) {
       wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
@@ -2662,7 +2662,7 @@ static void uvedit_unwrap(const Scene *scene,
   }
 
   if (options->use_slim) {
-    uv_parametrizer_slim_solve(handle, &options->slim_options, r_count_changed, r_count_failed);
+    uv_parametrizer_slim_solve(handle, &options->slim, r_count_changed, r_count_failed);
   }
   else {
     blender::geometry::uv_parametrizer_lscm_begin(handle, false, options->use_abf);
