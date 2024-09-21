@@ -5282,12 +5282,15 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
 
     BM_custom_loop_normals_to_vector_layer(em->bm);
 
+    BM_mesh_elem_hflag_disable_all(em->bm, BM_FACE, BM_ELEM_TAG, false);
+
     if (!EDBM_op_call_and_selectf(
             em,
             op,
             "faces.out",
             true,
-            "join_triangles faces=%hf angle_face_threshold=%f angle_shape_threshold=%f "
+            "join_triangles "
+            "faces=%hf angle_face_threshold=%f angle_shape_threshold=%f "
             "cmp_seam=%b cmp_sharp=%b cmp_uvs=%b cmp_vcols=%b cmp_materials=%b",
             BM_ELEM_SELECT,
             angle_face_threshold,
@@ -5300,6 +5303,9 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
     {
       continue;
     }
+
+    int remaining = BM_iter_mesh_count_flag(BM_FACES_OF_MESH, em->bm, BM_ELEM_TAG, true);
+    BKE_reportf(op->reports, RPT_INFO, "%d triangles remain.", remaining);
 
     BM_custom_loop_normals_from_vector_layer(em->bm, false);
 
