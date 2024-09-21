@@ -5243,34 +5243,17 @@ static int edbm_tris_convert_to_quads_exec(bContext *C, wmOperator *op)
   const bool do_uvs = RNA_boolean_get(op->ptr, "uvs");
   const bool do_vcols = RNA_boolean_get(op->ptr, "vcols");
   const bool do_materials = RNA_boolean_get(op->ptr, "materials");
+  float angle_face_threshold = RNA_float_get(op->ptr, "face_threshold");
+  float angle_shape_threshold = RNA_float_get(op->ptr, "shape_threshold");
 
-  float angle_face_threshold, angle_shape_threshold;
-  bool is_face_pair;
-  {
-    int totelem_sel[3];
-    EDBM_mesh_stats_multi(objects, nullptr, totelem_sel);
-    is_face_pair = (totelem_sel[2] == 2);
-  }
-
-  /* When joining exactly 2 faces, no limit.
-   * this is useful for one off joins while editing. */
-  {
-    PropertyRNA *prop;
-    prop = RNA_struct_find_property(op->ptr, "face_threshold");
-    if (is_face_pair && (RNA_property_is_set(op->ptr, prop) == false)) {
-      angle_face_threshold = DEG2RADF(180.0f);
-    }
-    else {
-      angle_face_threshold = RNA_property_float_get(op->ptr, prop);
-    }
-
-    prop = RNA_struct_find_property(op->ptr, "shape_threshold");
-    if (is_face_pair && (RNA_property_is_set(op->ptr, prop) == false)) {
-      angle_shape_threshold = DEG2RADF(180.0f);
-    }
-    else {
-      angle_shape_threshold = RNA_property_float_get(op->ptr, prop);
-    }
+  /* When joining exactly 2 faces, no angle or shape limits, but still respect
+   * seams and other delmits.  This is useful for one off joins while editing. */
+  int totelem_sel[3];
+  EDBM_mesh_stats_multi(objects, nullptr, totelem_sel);
+  bool is_face_pair = (totelem_sel[2] == 2);
+  if (is_face_pair) {
+    angle_face_threshold = DEG2RADF(180.0f);
+    angle_shape_threshold = DEG2RADF(180.0f);
   }
 
   for (Object *obedit : objects) {
