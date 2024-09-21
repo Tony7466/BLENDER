@@ -12,7 +12,6 @@ set(INC
   ../../makesrna
   ../../windowmanager
   ../../../../intern/eigen
-  ../../../../intern/slim
   # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -40,7 +39,6 @@ set(SRC
 set(LIB
   PRIVATE bf::blenlib
   bf_bmesh
-  bf_intern_slim
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

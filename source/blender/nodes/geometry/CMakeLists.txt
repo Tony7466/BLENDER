@@ -253,7 +253,6 @@ set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
   PRIVATE bf::extern::xxhash
-  PRIVATE bf::intern::slim
 )
 
 if(WITH_IO_STL)
