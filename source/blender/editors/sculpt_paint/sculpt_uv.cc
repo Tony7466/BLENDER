@@ -905,8 +905,8 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
 
     data->initial_stroke->totalInitialSelected = counter;
     if (sima->flag & SI_LIVE_UNWRAP) {
-      wmWindow *win_for_timer = CTX_wm_window(C);
-      ED_uvedit_live_unwrap_begin(scene, obedit, win_for_timer);
+      wmWindow *win_modal = CTX_wm_window(C);
+      ED_uvedit_live_unwrap_begin(scene, obedit, win_modal);
     }
   }
 

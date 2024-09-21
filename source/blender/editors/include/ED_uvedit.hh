@@ -261,8 +261,10 @@ void ED_uvedit_select_sync_flush(const ToolSettings *ts, BMEditMesh *em, bool se
 
 /* `uvedit_unwrap_ops.cc` */
 const wmTimer *ED_uvedit_live_unwrap_timer();
-
-void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, struct wmWindow *win_for_timer);
+/**
+ * \param win_modal: Support interactive (modal) unwrapping that updates with a timer.
+ */
+void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, struct wmWindow *win_modal);
 void ED_uvedit_live_unwrap_re_solve();
 void ED_uvedit_live_unwrap_end(short cancel);
 

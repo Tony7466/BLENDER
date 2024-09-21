@@ -2043,7 +2043,7 @@ const wmTimer *ED_uvedit_live_unwrap_timer()
   return g_live_unwrap.timer;
 }
 
-void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_for_timer)
+void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_modal)
 {
   ParamHandle *handle = nullptr;
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
@@ -2069,10 +2069,10 @@ void ED_uvedit_live_unwrap_begin(Scene *scene, Object *obedit, wmWindow *win_for
     options.slim_options.skip_init = true;
     uv_parametrizer_slim_live_begin(handle, &options.slim_options);
 
-    if (win_for_timer) {
+    if (win_modal) {
       wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
       BLI_assert(!g_live_unwrap.timer);
-      g_live_unwrap.timer = WM_event_timer_add(wm, win_for_timer, TIMER, 0.01f);
+      g_live_unwrap.timer = WM_event_timer_add(wm, win_modal, TIMER, 0.01f);
     }
   }
   else {
