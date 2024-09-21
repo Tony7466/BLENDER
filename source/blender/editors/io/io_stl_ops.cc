@@ -219,7 +219,7 @@ static int wm_stl_import_exec(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
   ED_outliner_select_sync_from_object_tag(C);
 
-  return BKE_reports_contain(op->reports, RPT_ERROR) ? OPERATOR_CANCELLED : OPERATOR_FINISHED;
+  return OPERATOR_FINISHED;
 }
 
 static bool wm_stl_import_check(bContext * /*C*/, wmOperator *op)
