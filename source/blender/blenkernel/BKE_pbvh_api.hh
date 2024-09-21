@@ -337,7 +337,7 @@ bool raycast_node(Tree &pbvh,
                   int &r_active_face_grid_index,
                   float3 &r_face_normal);
 
-bool bmesh_node_raycast_detail(BMeshNode &node,
+bool raycast_node_detail_bmesh(BMeshNode &node,
                                const float3 &ray_start,
                                IsectRayPrecalc *isect_precalc,
                                float *depth,
