@@ -1802,20 +1802,20 @@ static void calc_mesh_intersect_data(const Span<int> corner_verts,
   }
 }
 
-bool faces_node_raycast(const MeshNode &node,
-                        const Span<float3> node_positions,
-                        const Span<float3> vert_positions,
-                        const OffsetIndices<int> faces,
-                        const Span<int> corner_verts,
-                        const Span<int3> corner_tris,
-                        const Span<bool> hide_poly,
-                        const float3 &ray_start,
-                        const float3 &ray_normal,
-                        IsectRayPrecalc *isect_precalc,
-                        float *depth,
-                        int &r_active_vertex,
-                        int &r_active_face_index,
-                        float3 &r_face_normal)
+bool node_raycast_mesh(const MeshNode &node,
+                       const Span<float3> node_positions,
+                       const Span<float3> vert_positions,
+                       const OffsetIndices<int> faces,
+                       const Span<int> corner_verts,
+                       const Span<int3> corner_tris,
+                       const Span<bool> hide_poly,
+                       const float3 &ray_start,
+                       const float3 &ray_normal,
+                       IsectRayPrecalc *isect_precalc,
+                       float *depth,
+                       int &r_active_vertex,
+                       int &r_active_face_index,
+                       float3 &r_face_normal)
 {
   const Span<int> face_indices = node.faces();
 
@@ -1918,7 +1918,7 @@ static void calc_grids_intersect_data(const float3 &ray_start,
   r_active_grid_index = grid;
 }
 
-bool grids_node_raycast(const SubdivCCG &subdiv_ccg,
+bool node_raycast_grids(const SubdivCCG &subdiv_ccg,
                         GridsNode &node,
                         const Span<float3> node_positions,
                         const float3 &ray_start,

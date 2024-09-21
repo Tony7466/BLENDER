@@ -1852,7 +1852,7 @@ static bool pbvh_bmesh_collapse_short_edges(EdgeQueueContext *eq_ctx,
 
 /************************* Called from pbvh.cc *************************/
 
-bool bmesh_node_raycast(BMeshNode &node,
+bool node_raycast_bmesh(BMeshNode &node,
                         const float3 &ray_start,
                         const float3 &ray_normal,
                         IsectRayPrecalc *isect_precalc,
