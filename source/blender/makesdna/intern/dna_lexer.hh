@@ -148,12 +148,6 @@ struct TokenIterator {
   /** Checks if the token iterator has reach the last token. */
   bool has_finish();
 
-  /** Appends a token. */
-  template<class TokenType> void append(TokenType &&token)
-  {
-    token_stream_.append(std::move(token));
-  }
-
   /**
    * Return the next token if it type matches to `Type`.
    * Break lines are skipped for non break line requested tokens.
@@ -179,6 +173,30 @@ struct TokenIterator {
 
   /** Return the next token if it matches to the requested symbol type. */
   SymbolToken *next_symbol(SymbolType type);
+
+ private:
+  /** Match any whitespace except break lines. */
+  void eval_space(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match break lines. */
+  void eval_break_line(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match identifiers and `C++` keywords. */
+  void eval_identifier(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match single-line comment. */
+  void eval_line_comment(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match a int literal. */
+  void eval_int_literal(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match a multi-line comment. */
+  void eval_multiline_comment(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match a symbol. */
+  void eval_symbol(std::string_view::iterator &itr, std::string_view::iterator last);
+  /** Match a string or char literal. */
+  void eval_string_literal(std::string_view::iterator &itr, std::string_view::iterator last);
+
+  /** Appends a token. */
+  template<class TokenType> void append(TokenType &&token)
+  {
+    token_stream_.append(std::move(token));
+  }
 };
 
 }  // namespace blender::dna::lex

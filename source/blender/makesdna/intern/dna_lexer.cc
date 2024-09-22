@@ -11,32 +11,25 @@ static std::string_view string_view_from_range(const std::string_view::iterator 
   return std::string_view{&*first, size_t(last - first)};
 }
 
-/** Match any whitespace except break lines. */
-static void eval_space(std::string_view::iterator &itr,
-                       std::string_view::iterator last,
-                       TokenIterator & /*cont*/)
+void TokenIterator::eval_space(std::string_view::iterator &itr, std::string_view::iterator last)
 {
   while (itr < last && itr[0] != '\n' && std::isspace(itr[0])) {
     itr++;
   }
 }
 
-/** Match break lines. */
-static void eval_break_line(std::string_view::iterator &itr,
-                            std::string_view::iterator /*last*/,
-                            TokenIterator &cont)
+void TokenIterator::eval_break_line(std::string_view::iterator &itr,
+                                    std::string_view::iterator /*last*/)
 {
   if (itr[0] != '\n') {
     return;
   }
-  cont.append(BreakLineToken{string_view_from_range(itr, itr + 1)});
+  this->append(BreakLineToken{string_view_from_range(itr, itr + 1)});
   itr++;
 }
 
-/** Match identifiers and `C++` keywords. */
-static void eval_identifier(std::string_view::iterator &itr,
-                            std::string_view::iterator last,
-                            TokenIterator &cont)
+void TokenIterator::eval_identifier(std::string_view::iterator &itr,
+                                    std::string_view::iterator last)
 {
   if (!(std::isalpha(itr[0]) || itr[0] == '_')) {
     return;
@@ -99,16 +92,14 @@ static void eval_identifier(std::string_view::iterator &itr,
   const KeywordItem *keyword_itr = std::find_if(
       std::begin(keywords), std::end(keywords), test_keyword_fn);
   if (keyword_itr != std::end(keywords)) {
-    cont.append(KeywordToken{str, keyword_itr->type});
+    this->append(KeywordToken{str, keyword_itr->type});
     return;
   }
-  cont.append(IdentifierToken{str});
+  this->append(IdentifierToken{str});
 }
 
-/** Match single-line comment. */
-static void eval_line_comment(std::string_view::iterator &itr,
-                              std::string_view::iterator last,
-                              TokenIterator & /*cont*/)
+void TokenIterator::eval_line_comment(std::string_view::iterator &itr,
+                                      std::string_view::iterator last)
 {
   if (last - itr < 2) {
     return;
@@ -121,10 +112,8 @@ static void eval_line_comment(std::string_view::iterator &itr,
   }
 }
 
-/* Match a int literal. */
-static void eval_int_literal(std::string_view::iterator &itr,
-                             std::string_view::iterator last,
-                             TokenIterator &cont)
+void TokenIterator::eval_int_literal(std::string_view::iterator &itr,
+                                     std::string_view::iterator last)
 {
   const std::string_view::iterator start{itr};
   while (itr < last && std::isdigit(itr[0])) {
@@ -135,13 +124,11 @@ static void eval_int_literal(std::string_view::iterator &itr,
   }
   int val{};
   std::from_chars(&*start, &*itr, val);
-  cont.append(IntLiteralToken{string_view_from_range(start, itr), val});
+  this->append(IntLiteralToken{string_view_from_range(start, itr), val});
 }
 
-/** Match a multi-line comment. */
-static void eval_multiline_comment(std::string_view::iterator &itr,
-                                   std::string_view::iterator last,
-                                   TokenIterator & /*cont*/)
+void TokenIterator::eval_multiline_comment(std::string_view::iterator &itr,
+                                           std::string_view::iterator last)
 {
   if (last - itr < +2) {
     return;
@@ -160,10 +147,8 @@ static void eval_multiline_comment(std::string_view::iterator &itr,
   }
 }
 
-/** Match a symbol. */
-static void eval_symbol(std::string_view::iterator &itr,
-                        std::string_view::iterator /*last*/,
-                        TokenIterator &cont)
+void TokenIterator::eval_symbol(std::string_view::iterator &itr,
+                                std::string_view::iterator /*last*/)
 {
   struct SymbolItem {
     char value;
@@ -184,15 +169,13 @@ static void eval_symbol(std::string_view::iterator &itr,
   auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
   const SymbolItem *symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
   if (symbol_itr != std::end(symbols)) {
-    cont.append(SymbolToken{string_view_from_range(itr, itr + 1), symbol_itr->type});
+    this->append(SymbolToken{string_view_from_range(itr, itr + 1), symbol_itr->type});
     itr++;
   }
 }
 
-/** Match a string or char literal. */
-static void eval_string_literal(std::string_view::iterator &itr,
-                                std::string_view::iterator last,
-                                TokenIterator &cont)
+void TokenIterator::eval_string_literal(std::string_view::iterator &itr,
+                                        std::string_view::iterator last)
 {
   const char opening = itr[0];
   if (!(opening == '"' || opening == '\'')) {
@@ -209,7 +192,7 @@ static void eval_string_literal(std::string_view::iterator &itr,
     return;
   }
   itr++;
-  cont.append(StringLiteralToken{string_view_from_range(start, itr)});
+  this->append(StringLiteralToken{string_view_from_range(start, itr)});
 }
 
 void TokenIterator::print_unkown_token(std::string_view filepath,
@@ -237,22 +220,25 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
 {
   std::string_view::iterator itr = text.begin();
   const std::string_view::iterator end = text.end();
-
-  auto eval_token = [this](std::string_view::iterator &itr,
-                           std::string_view::iterator end,
-                           auto &&eval_fn) -> bool {
+  const auto eval_token_type =
+      [this, &itr, end](void (TokenIterator::*fn)(std::string_view::iterator &,
+                                                  std::string_view::iterator)) -> bool {
     std::string_view::iterator current = itr;
-    eval_fn(itr, end, *this);
+    (this->*fn)(itr, end);
     return current != itr;
   };
 
   while (itr != text.end()) {
     const std::string_view::iterator current = itr;
 
-    if (eval_token(itr, end, eval_space) || eval_token(itr, end, eval_line_comment) ||
-        eval_token(itr, end, eval_multiline_comment) || eval_token(itr, end, eval_identifier) ||
-        eval_token(itr, end, eval_int_literal) || eval_token(itr, end, eval_string_literal) ||
-        eval_token(itr, end, eval_symbol) || eval_token(itr, end, eval_break_line))
+    if (eval_token_type(&TokenIterator::eval_space) ||
+        eval_token_type(&TokenIterator::eval_line_comment) ||
+        eval_token_type(&TokenIterator::eval_multiline_comment) ||
+        eval_token_type(&TokenIterator::eval_identifier) ||
+        eval_token_type(&TokenIterator::eval_int_literal) ||
+        eval_token_type(&TokenIterator::eval_string_literal) ||
+        eval_token_type(&TokenIterator::eval_symbol) ||
+        eval_token_type(&TokenIterator::eval_break_line))
     {
       continue;
     }
