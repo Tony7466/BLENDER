@@ -359,52 +359,6 @@ kmi_defs = (
      (('name', interface.NWCopyToSelectedMenu.bl_idname),), "Copy to selected (menu)"),
     ('wm.call_menu', 'S', 'PRESS', False, True, False,
      (('name', interface.NWSwitchNodeTypeMenu.bl_idname),), "Switch node type menu"),
-
-    # Fast Preview
-    (operators.NWFastPreview.bl_idname, 'ONE', 'PRESS', False, False, False,
-     (('viewer_index', 1), ('update_map', False)), "Fast Preview (view favorite node 1)"),
-    (operators.NWFastPreview.bl_idname, 'ONE', 'PRESS', True, False, False,
-     (('viewer_index', 1), ('update_map', True)), "Fast Preview (set favorite node 1)"),
-
-    (operators.NWFastPreview.bl_idname, 'TWO', 'PRESS', False, False, False,
-     (('viewer_index', 2), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'TWO', 'PRESS', True, False, False,
-     (('viewer_index', 2), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'THREE', 'PRESS', False, False, False,
-     (('viewer_index', 3), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'THREE', 'PRESS', True, False, False,
-     (('viewer_index', 3), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'FOUR', 'PRESS', False, False, False,
-     (('viewer_index', 4), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'FOUR', 'PRESS', True, False, False,
-     (('viewer_index', 4), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'FIVE', 'PRESS', False, False, False,
-     (('viewer_index', 5), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'FIVE', 'PRESS', True, False, False,
-     (('viewer_index', 5), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'SIX', 'PRESS', False, False, False,
-     (('viewer_index', 6), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'SIX', 'PRESS', True, False, False,
-     (('viewer_index', 6), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'SEVEN', 'PRESS', False, False, False,
-     (('viewer_index', 7), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'SEVEN', 'PRESS', True, False, False,
-     (('viewer_index', 7), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'EIGHT', 'PRESS', False, False, False,
-     (('viewer_index', 8), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'FIVE', 'PRESS', True, False, False,
-     (('viewer_index', 8), ('update_map', True)), "Fast Preview"),
-
-    (operators.NWFastPreview.bl_idname, 'NINE', 'PRESS', False, False, False,
-     (('viewer_index', 9), ('update_map', False)), "Fast Preview"),
-    (operators.NWFastPreview.bl_idname, 'NINE', 'PRESS', True, False, False,
-     (('viewer_index', 9), ('update_map', True)), "Fast Preview"),
 )
 
 classes = (

@@ -268,63 +268,6 @@ def nw_check_viewer_node(cls):
     return False
 
 
-def nw_check_viewer_connected(node):
-    for out in node.outputs:
-        for link in out.links:
-            if link.to_node.type == 'VIEWER':
-                return True
-    return False
-
-
-def nw_get_node_with_shorcut(context, shortcut):
-    nodes, _ = get_nodes_links(context)
-    for n in nodes:
-        if n.ui_shortcut == shortcut:
-            return n
-    return None
-
-
-def nw_get_connected_viewer(node):
-    for out in node.outputs:
-        for link in out.links:
-            nv = link.to_node
-            if nv.type == 'VIEWER':
-                return nv
-    return None
-
-
-def nw_get_node_from_viewer(viewer_node):
-    in_socket = viewer_node.inputs["Image"]
-    for link in in_socket.links:
-        return link.from_node
-    return None
-
-
-def nw_link_new_viewer(nodes, links, n):
-    if nw_check_viewer_connected(n):
-        # todo: link to the next available socket ?
-        return nw_get_connected_viewer(n)
-
-    # create a new node of type viewer
-    viewer_node = nodes.new("CompositorNodeViewer")
-    # link it to input node
-    # todo: check outputs[0] is valid
-    links.new(n.outputs[0], viewer_node.inputs[0])
-    viewer_node.location = n.location
-    viewer_node.location.x += n.width + 50
-
-    return viewer_node
-
-
-def nw_get_viewer_image():
-    for img in bpy.data.images:
-        if (img.source == 'VIEWER'
-                and len(img.render_slots) == 0
-                and sum(img.size) > 0):
-            return img
-    return None
-
-
 def get_first_enabled_output(node):
     for output in node.outputs:
         if output.enabled:
