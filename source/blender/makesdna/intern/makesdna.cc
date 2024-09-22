@@ -608,10 +608,10 @@ using namespace blender::dna::parser::ast;
 
 struct StrucMemberRegister {
 
-  int strct{0};
-  short *structpoin{nullptr};
-  short *sp{nullptr};
-  const char *filepath{nullptr};
+  int strct = 0;
+  short *structpoin = nullptr;
+  short *sp = nullptr;
+  const char *filepath = nullptr;
 
   std::optional<int> add_member_type(std::string_view type)
   {
@@ -650,7 +650,7 @@ struct StrucMemberRegister {
     return true;
   }
 
-  bool operator()(FunctionPtr &fn_ptr)
+  bool operator()(const FunctionPtr &fn_ptr)
   {
     std::optional<int> type = add_member_type(fn_ptr.type);
     if (!type.has_value()) {
@@ -660,7 +660,7 @@ struct StrucMemberRegister {
     return add_member_name(type.value(), name);
   }
 
-  bool operator()(PointerToArray &array_ptr)
+  bool operator()(const PointerToArray &array_ptr)
   {
     std::optional<int> type = add_member_type(array_ptr.type);
     if (!type.has_value()) {
@@ -670,14 +670,14 @@ struct StrucMemberRegister {
     return add_member_name(type.value(), name);
   }
 
-  bool operator()(Struct & /*struct*/)
+  bool operator()(const Struct & /*struct*/)
   {
     /* Unexpected child struct declaration. */
     BLI_assert_unreachable();
     return false;
   }
 
-  bool operator()(Variable &var)
+  bool operator()(const Variable &var)
   {
     std::optional<int> type = add_member_type(var.type);
     if (!type.has_value()) {
@@ -705,29 +705,18 @@ struct StrucMemberRegister {
 
 static int convert_include(const char *filepath)
 {
-  std::ifstream file(std::string{filepath});
-  if (!file.is_open()) {
-    fprintf(stderr, "Can't read file %s\n", filepath);
-    return 1;
-  }
-
-  std::stringstream buffer;
-  buffer << file.rdbuf();
-  std::string text = buffer.str();
-
-  /* Generate tokens. */
-  blender::dna::lex::TokenIterator iterator;
-  iterator.process_text(filepath, text);
-  /* Parse tokens. */
-  blender::Vector<blender::dna::parser::ast::CppType> cpp_defines;
-  blender::dna::parser::parse_include(filepath, text, iterator, cpp_defines);
+  const std::optional<blender::dna::parser::CppFile> cpp_file = blender::dna::parser::parse_file(
+      filepath);
+  if (!cpp_file.has_value()) {
+    return 0;
+  };
 
   /* Generate DNA. */
-  for (auto &cpp_type : cpp_defines) {
-    if (!std::holds_alternative<Struct>(cpp_type)) {
+  for (auto &cpp_def : cpp_file.value().cpp_defs) {
+    if (!std::holds_alternative<Struct>(cpp_def)) {
       continue;
     }
-    Struct &struct_def = std::get<Struct>(cpp_type);
+    const Struct &struct_def = std::get<Struct>(cpp_def);
     const std::string struct_name = fmt::format("{}", struct_def.name);
     const int strct = add_type(struct_name.c_str(), 0);
     if (strct == -1) {

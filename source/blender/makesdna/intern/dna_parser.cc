@@ -4,6 +4,8 @@
 
 #include "dna_parser.hh"
 #include <fmt/format.h>
+#include <fstream>
+#include <iostream>
 #include <sstream>
 
 namespace blender::dna::parser {
@@ -66,19 +68,14 @@ void to_string(std::stringstream &ss, const ast::Struct &val, size_t padding)
   ss << '}';
 }
 
-std::string cpp_types_to_string(blender::Span<ast::CppType> cpp_defs)
+std::string to_string(const CppFile &cpp_file)
 {
   std::stringstream ss;
-  for (auto &cpp_def : cpp_defs) {
+  for (auto &cpp_def : cpp_file.cpp_defs) {
     std::visit([&ss](auto &&cpp_def) { to_string(ss, cpp_def, 0); }, cpp_def);
     ss << ";\n";
   }
   return ss.str();
-}
-
-void print_cpp_types(blender::Span<ast::CppType> cpp_defs)
-{
-  printf("%s", cpp_types_to_string(cpp_defs).c_str());
 }
 
 }  // namespace blender::dna::parser
@@ -876,12 +873,27 @@ static void print_unhandled_token_error(std::string_view filepath,
   std::visit(visit_fn, *what);
 }
 
-bool parse_include(std::string_view filepath,
-                   std::string_view text,
-                   lex::TokenIterator &token_iterator,
-                   Vector<ast::CppType> &cpp_defs)
+std::string read_file(std::string_view filepath)
+{
+  std::ifstream file(filepath.data());
+  if (!file.is_open()) {
+    fprintf(stderr, "Can't read file %s\n", filepath.data());
+    return "";
+  }
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  return buffer.str();
+}
+
+std::optional<CppFile> parse_file(std::string_view filepath)
 {
   using namespace ast;
+  CppFile cpp_file;
+  cpp_file.text = read_file(filepath);
+  /* Generate tokens. */
+  lex::TokenIterator token_iterator;
+  token_iterator.process_text(filepath, cpp_file.text);
+
   int dna_deprecated_allow_count = 0;
   using DNADeprecatedAllowSeq = Sequence<HashSymbol, IfDefKeyword, DNADeprecatedAllowKeyword>;
   using EndIfSeq = Sequence<HashSymbol, EndIfKeyword>;
@@ -897,18 +909,18 @@ bool parse_include(std::string_view filepath,
                                    Skip>;
     ParseResult<CPPTypeVariant> val = parse_t<CPPTypeVariant>(token_iterator);
     if (!val.success()) {
-      print_unhandled_token_error(filepath, text, token_iterator.last_unmatched);
-      return false;
+      print_unhandled_token_error(filepath, cpp_file.text, token_iterator.last_unmatched);
+      return std::nullopt;
     }
     if (std::holds_alternative<Struct>(val.value())) {
-      cpp_defs.append(std::move(std::get<Struct>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<Struct>(val.value())));
     }
     else if (std::holds_alternative<DefineInt>(val.value())) {
-      cpp_defs.append(std::move(std::get<DefineInt>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<DefineInt>(val.value())));
     }
     else if (std::holds_alternative<Variable>(val.value())) {
       continue;
-      cpp_defs.append(std::move(std::get<Variable>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<Variable>(val.value())));
     }
     else if (std::holds_alternative<Enum>(val.value())) {
       Enum &enum_def = std::get<Enum>(val.value());
@@ -916,7 +928,7 @@ bool parse_include(std::string_view filepath,
       if (!enum_def.name.has_value() || !enum_def.type.has_value()) {
         continue;
       }
-      cpp_defs.append(std::move(std::get<Enum>(val.value())));
+      cpp_file.cpp_defs.append(std::move(std::get<Enum>(val.value())));
     }
     else if (std::holds_alternative<DNADeprecatedAllowSeq>(val.value())) {
       dna_deprecated_allow_count++;
@@ -926,11 +938,11 @@ bool parse_include(std::string_view filepath,
       BLI_assert(dna_deprecated_allow_count >= 0);
     }
   }
-  constexpr std::string_view debug_file{"DNA_action_types.h"};
+  constexpr std::string_view debug_file = "DNA_action_types.h";
   if (!debug_file.empty() && filepath.find(debug_file) != filepath.npos) {
-    print_cpp_types(cpp_defs);
+    printf("%s", to_string(cpp_file).c_str());
   }
-  return true;
+  return cpp_file;
 }
 
 }  // namespace blender::dna::parser

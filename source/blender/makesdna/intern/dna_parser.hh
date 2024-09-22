@@ -89,8 +89,15 @@ using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
 
 }  // namespace ast
 
-bool parse_include(std::string_view filepath,
-                   std::string_view text,
-                   lex::TokenIterator &token_iterator,
-                   Vector<ast::CppType> &c);
+std::string read_file(std::string_view filepath);
+
+struct CppFile {
+  std::string filepath;
+  std::string text;
+  Vector<ast::CppType> cpp_defs;
+};
+
+std::string to_string(const CppFile &cpp_file);
+
+std::optional<CppFile> parse_file(std::string_view filepath);
 }  // namespace blender::dna::parser
