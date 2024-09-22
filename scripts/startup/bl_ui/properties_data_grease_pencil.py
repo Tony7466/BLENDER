@@ -255,6 +255,109 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         row.prop(layer, "use_lights", text="Lights")
 
 
+class GREASE_PENCIL_MT_drawing_add_attribute(Menu):
+    bl_label = "Add Attribute"
+
+    @staticmethod
+    def add_standard_attribute(layout, drawing, name, data_type, domain):
+        exists = drawing.attributes.get(name) is not None
+
+        col = layout.column()
+        col.enabled = not exists
+        col.operator_context = 'EXEC_DEFAULT'
+
+        props = col.operator("grease_pencil.layer_attribute_add", text=name)
+        props.name = name
+        props.data_type = data_type
+        props.domain = domain
+
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.grease_pencil
+        layer = grease_pencil.layers.active
+        frame = layer.current_frame()
+        drawing = frame.drawing
+
+        self.add_standard_attribute(layout, drawing, "radius", 'FLOAT', 'POINT')
+        self.add_standard_attribute(layout, drawing, "opacity", 'FLOAT', 'POINT')
+        self.add_standard_attribute(layout, drawing, "vertex_color", 'FLOAT_COLOR', 'POINT')
+
+        layout.separator()
+
+        layout.operator_context = 'INVOKE_DEFAULT'
+        props = layout.operator("grease_pencil.layer_attribute_add", text="Custom...")
+
+
+class GREASE_PENCIL_UL_drawing_attributes(UIList):
+    def filter_items(self, _context, data, property):
+        attributes = getattr(data, property)
+        flags = []
+        indices = [i for i in range(len(attributes))]
+
+        # Filtering by name
+        if self.filter_name:
+            flags = bpy.types.UI_UL_list.filter_items_by_name(
+                self.filter_name, self.bitflag_filter_item, attributes, "name", reverse=self.use_filter_invert)
+        if not flags:
+            flags = [self.bitflag_filter_item] * len(attributes)
+
+        # Filtering internal attributes
+        for idx, item in enumerate(attributes):
+            flags[idx] = 0 if item.is_internal else flags[idx]
+
+        # Reorder by name.
+        if self.use_filter_sort_alpha:
+            indices = bpy.types.UI_UL_list.sort_items_by_name(attributes, "name")
+
+        return flags, indices
+
+    def draw_item(self, _context, layout, _data, attribute, _icon, _active_data, _active_propname, _index):
+        data_type = attribute.bl_rna.properties["data_type"].enum_items[attribute.data_type]
+        domain = attribute.bl_rna.properties["domain"].enum_items[attribute.domain]
+
+        split = layout.split(factor=0.5)
+        split.emboss = 'NONE'
+        row = split.row()
+        row.prop(attribute, "name", text="")
+        sub = split.split()
+        sub.alignment = 'RIGHT'
+        sub.active = False
+        sub.label(text=domain.name)
+        sub.label(text=data_type.name)
+
+
+class GreasePencil_LayerAttributePanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        frame = layer.current_frame()
+        drawing = frame.drawing
+
+        layout = self.layout
+        row = layout.row()
+
+        col = row.column()
+        col.template_list(
+            "GREASE_PENCIL_UL_drawing_attributes",
+            "attributes",
+            drawing,
+            "attributes",
+            drawing.attributes,
+            "active_index",
+            rows=3,
+        )
+
+        col = row.column(align=True)
+        col.menu("GREASE_PENCIL_MT_drawing_add_attribute", icon='ADD', text="")
+        col.operator("grease_pencil.layer_attribute_remove", icon='REMOVE', text="")
+
+
 class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_LayerMaskPanel, Panel):
     bl_label = "Masks"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
@@ -269,6 +372,12 @@ class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, GreasePencil_
 
 class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, GreasPencil_LayerRelationsPanel, Panel):
     bl_label = "Relations"
+    bl_parent_id = "DATA_PT_grease_pencil_layers"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
+class DATA_PT_grease_pencil_layer_attributes(LayerDataButtonsPanel, GreasePencil_LayerAttributePanel, Panel):
+    bl_label = "Attributes"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
@@ -369,11 +478,14 @@ classes = (
     DATA_PT_grease_pencil_layer_masks,
     DATA_PT_grease_pencil_layer_transform,
     DATA_PT_grease_pencil_layer_relations,
+    DATA_PT_grease_pencil_layer_attributes,
     DATA_PT_grease_pencil_onion_skinning,
     DATA_PT_grease_pencil_onion_skinning_custom_colors,
     DATA_PT_grease_pencil_onion_skinning_display,
     DATA_PT_grease_pencil_settings,
     DATA_PT_grease_pencil_custom_props,
+    GREASE_PENCIL_UL_drawing_attributes,
+    GREASE_PENCIL_MT_drawing_add_attribute,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
     GREASE_PENCIL_MT_group_context_menu,
     DATA_PT_grease_pencil_animation,

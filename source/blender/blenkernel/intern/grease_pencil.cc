@@ -1762,7 +1762,7 @@ std::optional<MutableSpan<float3>> GreasePencilDrawingEditHints::positions_for_w
 bool BKE_grease_pencil_drawing_attribute_required(const GreasePencilDrawing * /*drawing*/,
                                                   const char *name)
 {
-  return STREQ(name, ATTR_POSITION);
+  return STREQ(name, ATTR_POSITION) || STREQ(name, "curve_type");
 }
 
 void *BKE_grease_pencil_add(Main *bmain, const char *name)

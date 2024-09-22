@@ -332,7 +332,12 @@ const EnumPropertyItem *rna_enum_attribute_domain_itemf(const AttributeOwner &ow
       continue;
     }
     if (owner.type() == AttributeOwnerType::GreasePencil &&
-        ELEM(domain_item->value, int(AttrDomain::Layer)))
+        !ELEM(domain_item->value, int(AttrDomain::Layer)))
+    {
+      continue;
+    }
+    if (owner.type() == AttributeOwnerType::GreasePencilDrawing &&
+        !ELEM(domain_item->value, int(AttrDomain::Point), int(AttrDomain::Curve)))
     {
       continue;
     }
