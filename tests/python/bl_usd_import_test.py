@@ -1165,11 +1165,12 @@ class USDImportTest(AbstractUSDTest):
             usdz_downscale_custom_size=128)
         self.assertEqual({'FINISHED'}, res, f"Unable to export to {usdz2}")
 
-        def check_image(name, tiles_num, size):
+        def check_image(name, tiles_num, size, is_packed):
             self.assertTrue(name in bpy.data.images)
 
             image = bpy.data.images[name]
             self.assertEqual(len(image.tiles), tiles_num)
+            self.assertEqual(image.packed_file is not None, is_packed)
             for tile in range(0, tiles_num):
                 self.assertEqual(image.tiles[tile].size[0], size)
                 self.assertEqual(image.tiles[tile].size[1], size)
@@ -1189,10 +1190,10 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {usdz1}")
 
         self.assertEqual(len(bpy.data.images), 4)
-        check_image("test_grid_<UDIM>.png", 2, 1024)
-        check_image("test_normal.exr", 1, 128)
-        check_image("test_normal_invertY.exr", 1, 128)
-        check_image("color_121212.hdr", 1, 4)
+        check_image("test_grid_<UDIM>.png", 2, 1024, True)
+        check_image("test_normal.exr", 1, 128, True)
+        check_image("test_normal_invertY.exr", 1, 128, True)
+        check_image("color_121212.hdr", 1, 4, True)
         check_materials()
 
         # Reload the empty file and import back in using IMPORT_COPY
@@ -1205,10 +1206,10 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {usdz2}")
 
         self.assertEqual(len(bpy.data.images), 4)
-        check_image("test_grid_<UDIM>.png", 2, 128)
-        check_image("test_normal.exr", 1, 128)
-        check_image("test_normal_invertY.exr", 1, 128)
-        check_image("color_121212.hdr", 1, 4)
+        check_image("test_grid_<UDIM>.png", 2, 128, False)
+        check_image("test_normal.exr", 1, 128, False)
+        check_image("test_normal_invertY.exr", 1, 128, False)
+        check_image("color_121212.hdr", 1, 4, False)
         check_materials()
 
 
