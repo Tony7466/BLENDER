@@ -65,7 +65,7 @@
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.hh"
@@ -808,7 +808,7 @@ static void version_nla_tweakmode_incomplete(Main *bmain)
 
     /* Not enough info in the blend file to reliably stay in tweak mode. This is the most important
      * part of this versioning code, as it prevents future nullptr access. */
-    BKE_nla_tweakmode_exit(adt);
+    BKE_nla_tweakmode_exit({*id, *adt});
   }
   FOREACH_MAIN_ID_END;
 
@@ -2653,6 +2653,7 @@ static void update_paint_modes_for_brush_assets(Main &bmain)
                 CTX_MODE_SCULPT_GREASE_PENCIL,
                 CTX_MODE_WEIGHT_GPENCIL_LEGACY,
                 CTX_MODE_WEIGHT_GREASE_PENCIL,
+                CTX_MODE_VERTEX_GREASE_PENCIL,
                 CTX_MODE_VERTEX_GPENCIL_LEGACY,
                 CTX_MODE_SCULPT_CURVES))
       {
@@ -4622,6 +4623,21 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 22)) {
     add_bevel_modifier_attribute_name_defaults(*bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 23)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+        if (nmd.bake_target == NODES_MODIFIER_BAKE_TARGET_INHERIT) {
+          /* Use disk target for existing modifiers to avoid changing behavior. */
+          nmd.bake_target = NODES_MODIFIER_BAKE_TARGET_DISK;
+        }
+      }
+    }
   }
 
   /**

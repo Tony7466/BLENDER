@@ -327,12 +327,13 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *current_no
 
   {
     uiLayout *col = uiLayoutColumn(layout, false);
-    draw_bake_button(ctx, col);
+    draw_bake_button_row(ctx, col, true);
     if (const std::optional<std::string> bake_state_str = get_bake_state_string(ctx)) {
-      uiItemL(col, bake_state_str->c_str(), ICON_NONE);
+      uiLayout *row = uiLayoutRow(col, true);
+      uiItemL(row, bake_state_str->c_str(), ICON_NONE);
     }
   }
-  draw_common_bake_settings(ctx, layout);
+  draw_common_bake_settings(C, ctx, layout);
   draw_data_blocks(C, layout, ctx.bake_rna);
 }
 
@@ -518,6 +519,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   for (const int i : IndexRange(output_storage.items_num)) {
     const NodeSimulationItem &item = output_storage.items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    if (socket_type == SOCK_GEOMETRY && i > 0) {
+      b.add_separator();
+    }
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
     auto &input_decl = b.add_input(socket_type, name, identifier)
@@ -860,6 +864,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   for (const int i : IndexRange(storage.items_num)) {
     const NodeSimulationItem &item = storage.items[i];
     const eNodeSocketDatatype socket_type = eNodeSocketDatatype(item.socket_type);
+    if (socket_type == SOCK_GEOMETRY && i > 0) {
+      b.add_separator();
+    }
     const StringRef name = item.name;
     const std::string identifier = SimulationItemsAccessor::socket_identifier_for_item(item);
     auto &input_decl = b.add_input(socket_type, name, identifier)
