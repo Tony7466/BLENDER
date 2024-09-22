@@ -848,12 +848,7 @@ std::string VKShader::vertex_interface_declare(const shader::ShaderCreateInfo &i
 
   /* Retarget depth from -1..1 to 0..1. This will be done by geometry stage, when geometry shaders
    * are used. */
-  const bool has_geometry_stage = (bool(info.builtins_ & (BuiltinBits::BARYCENTRIC_COORD)) &&
-                                   workarounds.fragment_shader_barycentric) ||
-                                  (bool(info.builtins_ & (BuiltinBits::LAYER)) &&
-                                   workarounds.shader_output_layer) ||
-                                  (bool(info.builtins_ & (BuiltinBits::VIEWPORT_INDEX)) &&
-                                   workarounds.shader_output_viewport_index) ||
+  const bool has_geometry_stage = do_geometry_shader_injection(&info) ||
                                   !info.geometry_source_.is_empty();
   const bool retarget_depth = !has_geometry_stage;
   if (retarget_depth) {
@@ -1180,7 +1175,7 @@ std::string VKShader::workaround_geometry_shader_source_create(
   return ss.str();
 }
 
-bool VKShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info)
+bool VKShader::do_geometry_shader_injection(const shader::ShaderCreateInfo *info) const
 {
   const VKWorkarounds &workarounds = VKBackend::get().device.workarounds_get();
   BuiltinBits builtins = info->builtins_;
