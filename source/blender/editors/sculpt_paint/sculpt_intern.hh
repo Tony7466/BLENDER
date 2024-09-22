@@ -506,9 +506,6 @@ void sculpt_project_v3_normal_align(const SculptSession &ss,
 void SCULPT_vertex_random_access_ensure(Object &object);
 
 int SCULPT_vertex_count_get(const Object &object);
-const float *SCULPT_vertex_co_get(const Depsgraph &depsgraph,
-                                  const Object &object,
-                                  PBVHVertRef vertex);
 
 bool SCULPT_vertex_is_occluded(const Depsgraph &depsgraph,
                                const Object &object,
@@ -521,10 +518,6 @@ namespace blender::ed::sculpt_paint {
  * Coordinates used for manipulating the base mesh when Grab Active Vertex is enabled.
  */
 Span<float3> vert_positions_for_grab_active_get(const Depsgraph &depsgraph, const Object &object);
-
-}  // namespace blender::ed::sculpt_paint
-
-namespace blender::ed::sculpt_paint {
 
 Span<BMVert *> vert_neighbors_get_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
 Span<BMVert *> vert_neighbors_get_interior_bmesh(BMVert &vert, Vector<BMVert *, 64> &r_neighbors);
@@ -584,11 +577,6 @@ void calc_area_center(const Depsgraph &depsgraph,
                       const IndexMask &node_mask,
                       float r_area_co[3]);
 
-PBVHVertRef nearest_vert_calc(const Depsgraph &depsgraph,
-                              const Object &object,
-                              const float3 &location,
-                              float max_distance,
-                              bool use_original);
 std::optional<int> nearest_vert_calc_mesh(const bke::pbvh::Tree &pbvh,
                                           Span<float3> vert_positions,
                                           Span<bool> hide_vert,

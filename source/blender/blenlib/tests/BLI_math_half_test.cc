@@ -137,14 +137,14 @@ TEST(math_half, float_to_half_array)
  * Time to convert 100 million numbers FP16 -> FP32.
  *
  * Ryzen 5950X (VS2022):
- * - math::half_to_float: 164ms
- * - math::half_to_float_array: 132ms (scalar)
- * - math::half_to_float_array:  84ms (SSE2 4x wide path)
- * - math::half_to_float_array:  86ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
+ * - `half_to_float`: 164ms
+ * - `half_to_float_array`: 132ms (scalar)
+ * - `half_to_float_array`:  84ms (SSE2 4x wide path)
+ * - `half_to_float_array`:  86ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
  *
  * Mac M1 Max (Clang 15), using NEON VCVT:
- * - math::half_to_float: 97ms
- * - math::half_to_float_array: 53ms
+ * - `half_to_float`: 97ms
+ * - `half_to_float_array`: 53ms
  */
 TEST(math_half_perf, half_to_float_scalar)
 {
@@ -186,14 +186,14 @@ TEST(math_half_perf, half_to_float_array)
  * Time to convert 100 million numbers FP32 -> FP16.
  *
  * Ryzen 5950X (VS2022):
- * - math::float_to_half: 242ms
- * - math::float_to_half_array: 184ms (scalar)
- * - math::float_to_half_array:  68ms (SSE2 4x wide path)
- * - math::float_to_half_array:  50ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
+ * - `float_to_half`: 242ms
+ * - `float_to_half_array`: 184ms (scalar)
+ * - `float_to_half_array`:  68ms (SSE2 4x wide path)
+ * - `float_to_half_array`:  50ms (w/ AVX2 F16C - however Blender is not compiled for AVX2 yet)
  *
  * Mac M1 Max (Clang 15), using NEON VCVT:
- * - math::float_to_half: 93ms
- * - math::float_to_half_array: 21ms
+ * - `float_to_half`: 93ms
+ * - `float_to_half_array`: 21ms
  */
 TEST(math_half_perf, float_to_half_scalar)
 {
