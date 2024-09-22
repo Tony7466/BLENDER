@@ -28,7 +28,9 @@
  * NOTE: You can use bool type using bool32_t a int boolean type matching the GLSL type.
  */
 
-#ifdef GPU_SHADER
+#ifdef GLSL_CPP_STUBS
+/* Do nothing. */
+#elif defined(GPU_SHADER)
 /* Silence macros when compiling for shaders. */
 #  define BLI_STATIC_ASSERT(cond, msg)
 #  define BLI_STATIC_ASSERT_ALIGN(type_, align_)
