@@ -4653,6 +4653,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       if (!default_value->value) {
         continue;
       }
+      bool is_linked = false;
+      LISTBASE_FOREACH (bNodeLink *, link, &tree->links) {
+        if (link->tosock == skip_input) {
+          is_linked = true;
+        }
+      }
+      if (is_linked) {
+        continue;
+      }
+
       bNode &input_node = version_node_add_empty(*tree, "FunctionNodeInputBool");
       input_node.parent = node->parent;
       input_node.locx = node->locx - 25;
