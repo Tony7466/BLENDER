@@ -244,7 +244,8 @@ typedef enum {
   /* Trackballs and programmable buttons. */
   GHOST_kButtonMaskButton6,
   GHOST_kButtonMaskButton7,
-  GHOST_kButtonNum
+
+#define GHOST_kButtonNum (int(GHOST_kButtonMaskButton7) + 1)
 } GHOST_TButton;
 
 typedef enum {
@@ -368,6 +369,9 @@ typedef enum {
   GHOST_kStandardCursorLeftHandle,
   GHOST_kStandardCursorRightHandle,
   GHOST_kStandardCursorBothHandles,
+  GHOST_kStandardCursorHandOpen,
+  GHOST_kStandardCursorHandClosed,
+  GHOST_kStandardCursorHandPoint,
   GHOST_kStandardCursorCustom,
 
 #define GHOST_kStandardCursorNumCursors (int(GHOST_kStandardCursorCustom) + 1)

@@ -20,8 +20,10 @@ struct StoredValue {
   /**
    * The corresponding key. It's stored here, because only a reference to it is used as key in the
    * hash table.
+   *
+   * This is a shared_ptr instead of unique_ptr so that the entire struct is copy constructible.
    */
-  std::unique_ptr<const GenericKey> key;
+  std::shared_ptr<const GenericKey> key;
   /** The user-provided value. */
   std::shared_ptr<CachedValue> value;
   /** A logical time that indicates when the value was last used. Lower values are older. */
@@ -178,23 +180,25 @@ static void try_enforce_limit()
   /* Count used memory starting at the most recently touched element. Stop at the element when the
    * amount became larger than the capacity. */
   cache.memory.reset();
-  MemoryCounter memory_counter{cache.memory};
   std::optional<int> first_bad_index;
-  for (const int i : keys_with_time.index_range()) {
-    const GenericKey &key = *keys_with_time[i].second;
-    CacheMap::ConstAccessor accessor;
-    if (!cache.map.lookup(accessor, key)) {
-      continue;
+  {
+    MemoryCounter memory_counter{cache.memory};
+    for (const int i : keys_with_time.index_range()) {
+      const GenericKey &key = *keys_with_time[i].second;
+      CacheMap::ConstAccessor accessor;
+      if (!cache.map.lookup(accessor, key)) {
+        continue;
+      }
+      accessor->second.value->count_memory(memory_counter);
+      /* Undershoot a little bit. This typically results in more things being freed that have not
+       * been used in a while. The benefit is that we have to do the decision what to free less
+       * often than if we were always just freeing the minimum amount necessary. */
+      if (cache.memory.total_bytes <= approximate_limit * 0.75) {
+        continue;
+      }
+      first_bad_index = i;
+      break;
     }
-    accessor->second.value->count_memory(memory_counter);
-    /* Undershoot a little bit. This typically results in more things being freed that have not
-     * been used in a while. The benefit is that we have to do the decision what to free less
-     * often than if we were always just freeing the minimum amount necessary. */
-    if (cache.memory.total_bytes <= approximate_limit * 0.75) {
-      continue;
-    }
-    first_bad_index = i;
-    break;
   }
   if (!first_bad_index) {
     return;

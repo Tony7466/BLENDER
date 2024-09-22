@@ -23,13 +23,37 @@ class Node;
 
 namespace blender::ed::sculpt_paint::pose {
 
+/** Pose Brush IK Chain. */
+struct IKChainSegment {
+  float3 orig;
+  float3 head;
+
+  float3 initial_orig;
+  float3 initial_head;
+  float len;
+  float3 scale;
+  float rot[4];
+  Array<float> weights;
+
+  /* Store a 4x4 transform matrix for each of the possible combinations of enabled XYZ symmetry
+   * axis. */
+  std::array<float4x4, PAINT_SYMM_AREAS> trans_mat;
+  std::array<float4x4, PAINT_SYMM_AREAS> pivot_mat;
+  std::array<float4x4, PAINT_SYMM_AREAS> pivot_mat_inv;
+};
+
+struct IKChain {
+  Array<IKChainSegment> segments;
+  float3 grab_delta_offset;
+};
+
 /**
  * Main Brush Function.
  */
 void do_pose_brush(const Depsgraph &depsgraph,
                    const Sculpt &sd,
                    Object &ob,
-                   Span<bke::pbvh::Node *> nodes);
+                   const IndexMask &node_mask);
 /**
  * Calculate the pose origin and (Optionally the pose factor)
  * that is used when using the pose brush.
@@ -37,14 +61,6 @@ void do_pose_brush(const Depsgraph &depsgraph,
  * \param r_pose_origin: Must be a valid pointer.
  * \param r_pose_factor: Optional, when set to NULL it won't be calculated.
  */
-void calc_pose_data(const Depsgraph &depsgraph,
-                    Object &ob,
-                    SculptSession &ss,
-                    const float3 &initial_location,
-                    float radius,
-                    float pose_offset,
-                    float3 &r_pose_origin,
-                    MutableSpan<float> r_pose_factor);
 void pose_brush_init(const Depsgraph &depsgraph,
                      Object &ob,
                      SculptSession &ss,

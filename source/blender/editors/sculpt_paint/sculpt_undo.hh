@@ -8,17 +8,16 @@
 
 #pragma once
 
-#include "BLI_array.hh"
-#include "BLI_bit_group_vector.hh"
-#include "BLI_bit_vector.hh"
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_vector.hh"
-#include "BLI_vector.hh"
+
+#include "DNA_customdata_types.h"
 
 struct BMLogEntry;
 struct Depsgraph;
 struct Mesh;
 struct Object;
-struct StepData;
+struct Scene;
 struct wmOperator;
 namespace blender::bke::pbvh {
 class Node;
@@ -40,37 +39,7 @@ enum class Type : int8_t {
   Color,
 };
 
-struct Node {
-  Array<float3> position;
-  Array<float3> orig_position;
-  Array<float3> normal;
-  Array<float4> col;
-  Array<float> mask;
-
-  Array<float4> loop_col;
-  Array<float4> orig_loop_col;
-
-  /* Mesh. */
-
-  Array<int> vert_indices;
-  int unique_verts_num;
-
-  Array<int> corner_indices;
-
-  BitVector<> vert_hidden;
-  BitVector<> face_hidden;
-
-  /* Multires. */
-
-  /** Indices of grids in the pbvh::Tree node. */
-  Array<int> grids;
-  BitGroupVector<> grid_hidden;
-
-  /* Sculpt Face Sets */
-  Array<int> face_sets;
-
-  Vector<int> face_indices;
-};
+struct StepData;
 
 /**
  * Store undo data of the given type for a pbvh::Tree node. This function can be called by multiple
@@ -84,29 +53,21 @@ void push_node(const Depsgraph &depsgraph,
                undo::Type type);
 void push_nodes(const Depsgraph &depsgraph,
                 Object &object,
-                Span<const bke::pbvh::Node *> nodes,
+                const IndexMask &node_mask,
                 undo::Type type);
-
-/**
- * Retrieve the undo data of a given type for the active undo step. For example, this is used to
- * access "original" data from before the current stroke.
- *
- * This is only possible when building an undo step, in between #push_begin and #push_end.
- */
-const undo::Node *get_node(const bke::pbvh::Node *node, undo::Type type);
 
 /**
  * Pushes an undo step using the operator name. This is necessary for
  * redo panels to work; operators that do not support that may use
  * #push_begin_ex instead if so desired.
  */
-void push_begin(Object &ob, const wmOperator *op);
+void push_begin(const Scene &scene, Object &ob, const wmOperator *op);
 
 /**
  * NOTE: #push_begin is preferred since `name`
  * must match operator name for redo panels to work.
  */
-void push_begin_ex(Object &ob, const char *name);
+void push_begin_ex(const Scene &scene, Object &ob, const char *name);
 void push_end(Object &ob);
 void push_end_ex(Object &ob, bool use_nested_undo);
 

@@ -65,7 +65,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 #define SOCK_ALPHA_ID 4
   b.add_input<decl::Vector>("Normal").hide_value();
 #define SOCK_NORMAL_ID 5
-  b.add_input<decl::Float>("Weight").unavailable();
+  b.add_input<decl::Float>("Weight").available(false);
 #define SOCK_WEIGHT_ID 6
 
   /* Panel for Diffuse settings. */
@@ -166,8 +166,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description(
           "Amount of anisotropy for specular reflection. "
-          "Higher values give elongated highlights along the tangent direction; "
-          "negative values give highlights shaped perpendicular to the tangent direction");
+          "Higher values give elongated highlights along the tangent direction");
 #define SOCK_ANISOTROPIC_ID 15
   spec.add_input<decl::Float>("Anisotropic Rotation")
       .default_value(0.0f)

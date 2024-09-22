@@ -9,6 +9,7 @@
 #include <cmath>
 
 #include "BLI_listbase.h"
+#include "BLI_math_half.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rect.h"
@@ -91,7 +92,7 @@ using blender::float4;
 /** \name General Functions
  * \{ */
 
-void ED_view3d_update_viewmat(Depsgraph *depsgraph,
+void ED_view3d_update_viewmat(const Depsgraph *depsgraph,
                               const Scene *scene,
                               View3D *v3d,
                               ARegion *region,
@@ -375,7 +376,7 @@ void ED_view3d_draw_setup_view(const wmWindowManager *wm,
  * \{ */
 
 static void view3d_camera_border(const Scene *scene,
-                                 Depsgraph *depsgraph,
+                                 const Depsgraph *depsgraph,
                                  const ARegion *region,
                                  const View3D *v3d,
                                  const RegionView3D *rv3d,
@@ -436,7 +437,7 @@ void ED_view3d_calc_camera_border_size(const Scene *scene,
 }
 
 void ED_view3d_calc_camera_border(const Scene *scene,
-                                  Depsgraph *depsgraph,
+                                  const Depsgraph *depsgraph,
                                   const ARegion *region,
                                   const View3D *v3d,
                                   const RegionView3D *rv3d,
@@ -2414,7 +2415,7 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
   if (viewport != nullptr) {
     switch (mode) {
       case V3D_DEPTH_NO_OVERLAYS:
-        DRW_draw_depth_loop(depsgraph, region, v3d, viewport, false, true, false, false);
+        DRW_draw_depth_loop(depsgraph, region, v3d, viewport, true, true, false, false);
         break;
       case V3D_DEPTH_NO_GPENCIL:
         DRW_draw_depth_loop(depsgraph,
@@ -2759,15 +2760,15 @@ bool ViewportColorSampleSession::sample(const int mval[2], float r_col[3])
 
   blender::ushort4 pixel = data[mval[1] * tex_w + mval[0]];
 
-  if (half_to_float(pixel.w) < 0.5f) {
+  if (blender::math::half_to_float(pixel.w) < 0.5f) {
     /* Background etc. are not rendered to the viewport texture, so fall back to basic color
      * picking for those. */
     return false;
   }
 
-  r_col[0] = half_to_float(pixel.x);
-  r_col[1] = half_to_float(pixel.y);
-  r_col[2] = half_to_float(pixel.z);
+  r_col[0] = blender::math::half_to_float(pixel.x);
+  r_col[1] = blender::math::half_to_float(pixel.y);
+  r_col[2] = blender::math::half_to_float(pixel.z);
 
   return true;
 }

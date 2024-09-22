@@ -348,7 +348,8 @@ static bool reuse_bmain_move_id(ReuseOldBMainData *reuse_data,
 
   id->lib = lib;
   BLI_addtail(new_lb, id);
-  BKE_id_new_name_validate(new_bmain, new_lb, id, nullptr, true);
+  BKE_id_new_name_validate(
+      *new_bmain, *new_lb, *id, nullptr, IDNewNameMode::RenameExistingNever, true);
   BKE_lib_libblock_session_uid_renew(id);
 
   /* Remap to itself, to avoid re-processing this ID again. */
@@ -1122,7 +1123,7 @@ static void setup_app_data(bContext *C,
     /* Perform complex versioning that involves adding or removing IDs,
      * and/or needs to operate over the whole Main data-base
      * (versioning done in file reading code only operates on a per-library basis). */
-    BLO_read_do_version_after_setup(bmain, reports);
+    BLO_read_do_version_after_setup(bmain, nullptr, reports);
   }
 
   bmain->recovered = false;

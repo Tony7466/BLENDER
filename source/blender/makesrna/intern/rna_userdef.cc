@@ -171,7 +171,7 @@ static const EnumPropertyItem rna_enum_key_insert_channels[] = {
 static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
     {GPU_BACKEND_OPENGL, "OPENGL", 0, "OpenGL", "Use OpenGL backend"},
     {GPU_BACKEND_METAL, "METAL", 0, "Metal", "Use Metal backend"},
-    {GPU_BACKEND_VULKAN, "VULKAN", 0, "Vulkan", "Use Vulkan backend"},
+    {GPU_BACKEND_VULKAN, "VULKAN", 0, "Vulkan (experimental)", "Use Vulkan backend"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -222,10 +222,6 @@ static const EnumPropertyItem rna_enum_preferences_extension_repo_source_type_it
 #  include "MEM_guardedalloc.h"
 
 #  include "UI_interface.hh"
-
-#  ifdef WITH_SDL_DYNLOAD
-#    include "sdlew.h"
-#  endif
 
 static void rna_userdef_version_get(PointerRNA *ptr, int *value)
 {
@@ -5695,7 +5691,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
                            "Unselected F-Curve Opacity",
                            "The opacity of unselected F-Curves against the "
                            "background of the Graph Editor");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, "rna_userdef_update");
 
   /* FCurve keyframe visibility. */
   prop = RNA_def_property(srna, "show_only_selected_curve_keyframes", PROP_BOOLEAN, PROP_NONE);
@@ -5704,7 +5700,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Only Show Selected F-Curve Keyframes",
                            "Only keyframes of selected F-Curves are visible and editable");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, "rna_userdef_update");
 
   /* Graph Editor line drawing quality. */
   prop = RNA_def_property(srna, "use_fcurve_high_quality_drawing", PROP_BOOLEAN, PROP_NONE);
@@ -5712,7 +5708,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "F-Curve High Quality Drawing",
                            "Draw F-Curves using Anti-Aliasing (disable for better performance)");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, "rna_userdef_update");
 
   /* grease pencil */
   prop = RNA_def_property(srna, "grease_pencil_manhattan_distance", PROP_INT, PROP_PIXEL);
@@ -5752,6 +5748,14 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
       prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_SIMPLE_TWEAKING);
   RNA_def_property_ui_text(
       prop, "Tweak Handles", "Allows dragging handles without selecting them first");
+
+  prop = RNA_def_property(srna, "connect_strips_by_default", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT);
+  RNA_def_property_ui_text(
+      prop,
+      "Connect Movie Strips by Default",
+      "Connect newly added movie strips by default if they have multiple channels");
 
   /* duplication linking */
   prop = RNA_def_property(srna, "use_duplicate_mesh", PROP_BOOLEAN, PROP_NONE);
@@ -7437,7 +7441,7 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "enable_overlay_next", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "enable_overlay_next", 1);
   RNA_def_property_ui_text(
-      prop, "Overlay Next", "Enable the new Overlay codebase, requires restart");
+      prop, "Overlay Next", "Enable the new Overlay code-base, requires restart");
 
   prop = RNA_def_property(srna, "enable_new_cpu_compositor", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "enable_new_cpu_compositor", 1);

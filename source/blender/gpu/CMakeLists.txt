@@ -18,7 +18,7 @@ set(INC
   # For theme color access.
   ../editors/include
 
-  # For *_info.hh includes.
+  # For `*_info.hh` includes.
   ../compositor/realtime_compositor
   ../draw/engines/eevee_next
   ../draw/engines/gpencil
@@ -32,6 +32,10 @@ set(INC
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
 )
+
+if(WITH_BUILDINFO)
+  add_definitions(-DWITH_BUILDINFO)
+endif()
 
 if(WITH_RENDERDOC)
   list(APPEND INC
@@ -232,8 +236,10 @@ set(VULKAN_SRC
   vulkan/vk_sampler.cc
   vulkan/vk_samplers.cc
   vulkan/vk_shader.cc
+  vulkan/vk_shader_compiler.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
+  vulkan/vk_shader_module.cc
   vulkan/vk_staging_buffer.cc
   vulkan/vk_state_manager.cc
   vulkan/vk_storage_buffer.cc
@@ -267,6 +273,7 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
+  vulkan/render_graph/nodes/vk_begin_query_node.hh
   vulkan/render_graph/nodes/vk_begin_rendering_node.hh
   vulkan/render_graph/nodes/vk_blit_image_node.hh
   vulkan/render_graph/nodes/vk_clear_attachments_node.hh
@@ -282,10 +289,12 @@ set(VULKAN_SRC
   vulkan/render_graph/nodes/vk_draw_indexed_node.hh
   vulkan/render_graph/nodes/vk_draw_indirect_node.hh
   vulkan/render_graph/nodes/vk_draw_node.hh
+  vulkan/render_graph/nodes/vk_end_query_node.hh
   vulkan/render_graph/nodes/vk_end_rendering_node.hh
   vulkan/render_graph/nodes/vk_fill_buffer_node.hh
   vulkan/render_graph/nodes/vk_node_info.hh
   vulkan/render_graph/nodes/vk_pipeline_data.hh
+  vulkan/render_graph/nodes/vk_reset_query_pool_node.hh
   vulkan/render_graph/nodes/vk_synchronization_node.hh
   vulkan/render_graph/nodes/vk_update_mipmaps_node.hh
   vulkan/render_graph/vk_command_buffer_wrapper.hh
@@ -301,8 +310,10 @@ set(VULKAN_SRC
   vulkan/vk_sampler.hh
   vulkan/vk_samplers.hh
   vulkan/vk_shader.hh
+  vulkan/vk_shader_compiler.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
+  vulkan/vk_shader_module.hh
   vulkan/vk_staging_buffer.hh
   vulkan/vk_state_manager.hh
   vulkan/vk_storage_buffer.hh
@@ -508,6 +519,8 @@ set(GLSL_SRC
 
   shaders/gpu_shader_sequencer_strips_vert.glsl
   shaders/gpu_shader_sequencer_strips_frag.glsl
+  shaders/gpu_shader_sequencer_thumbs_vert.glsl
+  shaders/gpu_shader_sequencer_thumbs_frag.glsl
 
   shaders/gpu_shader_codegen_lib.glsl
 
@@ -528,6 +541,7 @@ set(GLSL_SRC
   shaders/common/gpu_shader_math_rotation_lib.glsl
   shaders/common/gpu_shader_math_vector_lib.glsl
   shaders/common/gpu_shader_print_lib.glsl
+  shaders/common/gpu_shader_sequencer_lib.glsl
   shaders/common/gpu_shader_shared_exponent_lib.glsl
   shaders/common/gpu_shader_smaa_lib.glsl
   shaders/common/gpu_shader_test_lib.glsl
@@ -569,6 +583,7 @@ set(GLSL_SRC
   shaders/material/gpu_shader_material_light_path.glsl
   shaders/material/gpu_shader_material_mapping.glsl
   shaders/material/gpu_shader_material_map_range.glsl
+  shaders/material/gpu_shader_material_metallic.glsl
   shaders/material/gpu_shader_material_mix_color.glsl
   shaders/material/gpu_shader_material_mix_shader.glsl
   shaders/material/gpu_shader_material_noise.glsl
@@ -873,7 +888,7 @@ endif()
 if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
   set(_manifest)
   if(WIN32)
-    # We can re-use the manifest from tests.exe here since it's
+    # We can re-use the manifest from `tests.exe` here since it's
     # rather generic and just selects the appropriate common
     # controls version.
     set(_manifest "${CMAKE_BINARY_DIR}/tests.exe.manifest")
@@ -889,6 +904,7 @@ if(WITH_GPU_BUILDTIME_SHADER_BUILDER)
 
   if(WITH_BUILD_INFO)
     target_link_libraries(shader_builder PRIVATE buildinfoobj)
+    add_definitions(-DWITH_BUILD_INFO)
   endif()
   target_link_libraries(shader_builder PRIVATE
     bf_gpu
@@ -965,7 +981,7 @@ if(WITH_GTESTS)
     )
   endif()
 
-  # Enable shader validation on buildbot for Metal
+  # Enable shader validation on build-bot for Metal
   if(WITH_METAL_BACKEND AND NOT WITH_GPU_DRAW_TESTS)
     list(APPEND TEST_SRC
       tests/shader_create_info_test.cc
