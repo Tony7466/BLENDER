@@ -436,11 +436,6 @@ template<> struct Parser<DefineInt> {
   }
 };
 
-bool DefineInt::operator==(const DefineInt &other) const
-{
-  return name == other.name && value == other.value;
-}
-
 /** Parses most c++ primitive types. */
 struct PrimitiveType {
   std::string_view str;
@@ -583,16 +578,6 @@ template<> struct Parser<Variable> {
   }
 };
 
-bool Variable::Item::operator==(const Variable::Item &other) const
-{
-  return ptr == other.ptr && name == other.name && array_size == other.array_size;
-}
-
-bool Variable::operator==(const Variable &other) const
-{
-  return type == other.type && items == other.items;
-}
-
 /* Skips tokens until match the closing right symbol, like function body braces `{...}`. */
 static void skip_until_match_paired_symbols(SymbolType left,
                                             SymbolType right,
@@ -645,16 +630,6 @@ template<> struct Parser<FunctionPtr> {
     return fn_ptr;
   }
 };
-
-bool FunctionPtr::operator==(const FunctionPtr &other) const
-{
-  return type == other.type && name == other.name;
-}
-
-bool PointerToArray::operator==(const PointerToArray &other) const
-{
-  return type == other.type && name == other.name && size == other.size;
-}
 
 /**
  * Parses array pointer variables, like `float (*vert_coords_prev)[3];`
@@ -774,11 +749,6 @@ template<> struct Parser<Struct> {
   }
 };
 
-bool Struct::operator==(const Struct &other) const
-{
-  return name == other.name && items == other.items;
-}
-
 /** Parses skipped declarations by makesdna. */
 struct Skip {};
 template<> struct Parser<Skip> {
@@ -846,10 +816,6 @@ template<> struct Parser<Enum> {
     return enum_def;
   }
 };
-bool Enum::operator==(const Enum &other) const
-{
-  return name == other.name && type == other.type;
-}
 
 }  // namespace blender::dna::parser::ast
 

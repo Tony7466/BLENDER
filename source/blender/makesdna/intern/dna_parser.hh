@@ -22,8 +22,6 @@ using namespace lex;
 struct DefineInt {
   std::string_view name;
   int32_t value{0};
-
-  bool operator==(const DefineInt &other) const;
 };
 
 /**
@@ -36,14 +34,10 @@ struct Variable {
     std::string_view name;
     /** Item array size definition, empty for not arrays items. */
     Vector<std::variant<std::string_view, int32_t>> array_size;
-
-    bool operator==(const Item &other) const;
   };
   bool const_tag{false};
   std::string_view type;
   Vector<Item> items;
-
-  bool operator==(const Variable &other) const;
 };
 
 /** Function pointer declaration. */
@@ -51,8 +45,6 @@ struct FunctionPtr {
   bool const_tag{false};
   std::string_view type;
   std::string_view name;
-
-  bool operator==(const FunctionPtr &other) const;
 };
 
 /** Pointer to array declaration. */
@@ -60,8 +52,6 @@ struct PointerToArray {
   std::string_view type;
   std::string_view name;
   int32_t size;
-
-  bool operator==(const PointerToArray &other) const;
 };
 
 /** Struct declaration.*/
@@ -71,8 +61,6 @@ struct Struct {
   Vector<std::variant<Variable, FunctionPtr, PointerToArray, Struct>, 0> items;
   /** Name set if struct is declared as member variable. */
   std::string_view member_name;
-
-  bool operator==(const Struct &other) const;
 };
 
 /** Enum declaration. */
@@ -81,8 +69,6 @@ struct Enum {
   std::optional<std::string_view> name;
   /** Fixed type specification. */
   std::optional<std::string_view> type;
-
-  bool operator==(const Enum &other) const;
 };
 
 using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
