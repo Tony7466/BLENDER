@@ -75,10 +75,22 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
       const Span<int> src_layer_indices = layers_to_merge[new_layer_i];
       const int first_src_layer_i = src_layer_indices[0];
       const Layer &first_src_layer = *src_grease_pencil.layer(first_src_layer_i);
-      const float4x4 new_layer_transform = first_src_layer.local_transform();
-      const float4x4 new_layer_transform_inv = math::invert(new_layer_transform);
 
+      const float4x4 new_layer_transform = first_src_layer.local_transform();
       new_layer.set_local_transform(new_layer_transform);
+
+      bke::CurvesGeometry &new_curves = *curves_by_new_layer[new_layer_i];
+
+      if (src_layer_indices.size() == 1) {
+        /* Optimization for the case if the new layer corresponds to exactly one source layer. */
+        const bke::CurvesGeometry &src_curves =
+            src_grease_pencil.get_eval_drawing(first_src_layer)->strokes();
+        new_curves = src_curves;
+        continue;
+      }
+
+      /* Needed to transform the positions from all spaces into the same space. */
+      const float4x4 new_layer_transform_inv = math::invert(new_layer_transform);
 
       Vector<const bke::CurvesGeometry *> all_src_curves(src_layer_indices.size());
       Vector<float4x4> transforms_to_apply(src_layer_indices.size());
@@ -90,7 +102,6 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
         all_src_curves[i] = &src_curves;
         transforms_to_apply[i] = new_layer_transform_inv * src_layer.local_transform();
       }
-      bke::CurvesGeometry &new_curves = *curves_by_new_layer[new_layer_i];
       new_curves = join_curves(
           src_grease_pencil, all_src_curves, transforms_to_apply, attribute_filter);
     }
