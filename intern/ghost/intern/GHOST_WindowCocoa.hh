@@ -95,7 +95,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * Apply the window client-side decorations (CSD) using the current decoration style flags and
    * settings.
    */
-  GHOST_TSuccess applyDecoration();
+  GHOST_TSuccess applyDecoration() override;
 
   /**
    * Returns the window rectangle dimensions.
