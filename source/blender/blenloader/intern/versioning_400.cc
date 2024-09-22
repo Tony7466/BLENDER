@@ -4640,6 +4640,38 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  LISTBASE_FOREACH (bNodeTree *, tree, &bmain->nodetrees) {
+    LISTBASE_FOREACH (bNode *, node, &tree->nodes) {
+      if (node->type != GEO_NODE_SIMULATION_OUTPUT) {
+        continue;
+      }
+      bNodeSocket *skip_input = static_cast<bNodeSocket *>(node->inputs.first);
+      if (!skip_input || !STREQ(skip_input->identifier, "Skip")) {
+        continue;
+      }
+      auto *default_value = static_cast<bNodeSocketValueBoolean *>(skip_input->default_value);
+      if (!default_value->value) {
+        continue;
+      }
+      bNode &input_node = version_node_add_empty(*tree, "FunctionNodeInputBool");
+      input_node.parent = node->parent;
+      input_node.locx = node->locx - 25;
+      input_node.locy = node->locy;
+
+      NodeInputBool *input_node_storage = MEM_cnew<NodeInputBool>(__func__);
+      input_node.storage = input_node_storage;
+      input_node_storage->boolean = true;
+
+      bNodeSocket &input_node_socket = version_node_add_socket(
+          *tree, input_node, SOCK_OUT, "NodeSocketBool", "Boolean");
+
+      version_node_add_link(*tree, input_node, input_node_socket, *node, *skip_input);
+
+      /* Change the old socket value so that the versioning code is not run again. */
+      default_value->value = false;
+    }
+  }
+
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
    * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
