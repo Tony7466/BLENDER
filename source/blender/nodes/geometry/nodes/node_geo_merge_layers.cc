@@ -18,45 +18,61 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Grease Pencil").propagate_all();
 }
 
+static void merge_layers(GeometrySet &geometry,
+                         const Field<bool> &selection_field,
+                         const AttributeFilter &attribute_filter)
+{
+  using namespace bke::greasepencil;
+
+  const GreasePencil *src_grease_pencil = geometry.get_grease_pencil();
+  if (!src_grease_pencil) {
+    return;
+  }
+  const int old_layers_num = src_grease_pencil->layers().size();
+
+  bke::GreasePencilFieldContext field_context{*src_grease_pencil};
+  FieldEvaluator field_evaluator{field_context, old_layers_num};
+  field_evaluator.add(selection_field);
+  field_evaluator.evaluate();
+  const VArray<bool> selection = field_evaluator.get_evaluated<bool>(0);
+
+  Vector<Vector<int>> layers_map;
+  Map<StringRef, int> new_layer_index_by_name;
+
+  for (const int layer_i : IndexRange(old_layers_num)) {
+    const bool is_selected = selection[layer_i];
+    if (!is_selected) {
+      layers_map.append({layer_i});
+      continue;
+    }
+
+    const Layer *layer = src_grease_pencil->layer(layer_i);
+    const int new_layer_index = new_layer_index_by_name.lookup_or_add_cb(
+        layer->name(), [&]() { return layers_map.append_and_get_index_as(); });
+    layers_map[new_layer_index].append(layer_i);
+  }
+
+  const int new_layers_num = layers_map.size();
+  if (old_layers_num == new_layers_num) {
+    return;
+  }
+
+  GreasePencil *new_grease_pencil = geometry::merge_layers(
+      *src_grease_pencil, layers_map, attribute_filter);
+  geometry.replace_grease_pencil(new_grease_pencil);
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
-  GeometrySet geometry = params.extract_input<GeometrySet>("Grease Pencil");
+  GeometrySet main_geometry = params.extract_input<GeometrySet>("Grease Pencil");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
 
   const NodeAttributeFilter attribute_filter = params.get_attribute_filter("Grease Pencil");
 
-  const GreasePencil *src_grease_pencil = geometry.get_grease_pencil();
-  if (src_grease_pencil) {
-    using namespace bke::greasepencil;
-    const int layers_num = src_grease_pencil->layers().size();
+  main_geometry.modify_geometry_sets(
+      [&](GeometrySet &geometry) { merge_layers(geometry, selection_field, attribute_filter); });
 
-    bke::GreasePencilFieldContext field_context{*src_grease_pencil};
-    FieldEvaluator field_evaluator{field_context, layers_num};
-    field_evaluator.add(selection_field);
-    field_evaluator.evaluate();
-    const VArray<bool> selection = field_evaluator.get_evaluated<bool>(0);
-
-    Vector<Vector<int>> layers_map;
-    Map<StringRef, int> new_layer_index_by_name;
-
-    for (const int layer_i : IndexRange(layers_num)) {
-      const bool is_selected = selection[layer_i];
-      if (!is_selected) {
-        layers_map.append({layer_i});
-        continue;
-      }
-
-      const Layer *layer = src_grease_pencil->layer(layer_i);
-      const int new_layer_index = new_layer_index_by_name.lookup_or_add_cb(
-          layer->name(), [&]() { return layers_map.append_and_get_index_as(); });
-      layers_map[new_layer_index].append(layer_i);
-    }
-
-    GreasePencil *new_grease_pencil = geometry::merge_layers(
-        *src_grease_pencil, layers_map, attribute_filter);
-    geometry.replace_grease_pencil(new_grease_pencil);
-  }
-  params.set_output("Grease Pencil", std::move(geometry));
+  params.set_output("Grease Pencil", std::move(main_geometry));
 }
 
 static void node_register()
