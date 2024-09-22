@@ -447,6 +447,7 @@ typedef struct bNode {
 
   bNodeRuntimeHandle *runtime;
 
+  /** Custom user-defined UI shortcut. */
   int shortcut;
   char _pad2[4];
 

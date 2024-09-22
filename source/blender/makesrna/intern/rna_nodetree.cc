@@ -10533,8 +10533,7 @@ static void rna_def_node(BlenderRNA *brna)
   RNA_def_property_int_sdna(prop, nullptr, "shortcut");
   RNA_def_property_range(prop, 1, 9);
   RNA_def_property_int_default(prop, -1);
-  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
-
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
 
   prop = RNA_def_property(srna, "show_options", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_OPTIONS);

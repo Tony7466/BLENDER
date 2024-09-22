@@ -2261,6 +2261,44 @@ def km_node_editor(params):
         ("wm.context_toggle", {"type": 'Z', "value": 'PRESS', "alt": True, "shift": True},
          {"properties": [("data_path", "space_data.overlay.show_overlays")]}),
         *_template_items_context_menu("NODE_MT_context_menu", params.context_menu_event),
+        # Fast preview
+        ("node.fast_preview", {"type": 'ONE', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 1)]}),
+        ("node.fast_preview", {"type": 'ONE', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 1)]}),
+        ("node.fast_preview", {"type": 'TWO', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 2)]}),
+        ("node.fast_preview", {"type": 'TWO', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 2)]}),
+        ("node.fast_preview", {"type": 'THREE', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 3)]}),
+        ("node.fast_preview", {"type": 'THREE', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 3)]}),
+        ("node.fast_preview", {"type": 'FOUR', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 4)]}),
+        ("node.fast_preview", {"type": 'FOUR', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 4)]}),
+        ("node.fast_preview", {"type": 'FIVE', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 5)]}),
+        ("node.fast_preview", {"type": 'FIVE', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 5)]}),
+        ("node.fast_preview", {"type": 'SIX', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 6)]}),
+        ("node.fast_preview", {"type": 'SIX', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 6)]}),
+        ("node.fast_preview", {"type": 'SEVEN', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 7)]}),
+        ("node.fast_preview", {"type": 'SEVEN', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 7)]}),
+        ("node.fast_preview", {"type": 'EIGHT', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 8)]}),
+        ("node.fast_preview", {"type": 'EIGHT', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 8)]}),
+        ("node.fast_preview", {"type": 'NINE', "value": 'PRESS'}, {
+         "properties": [("update_map", False), ("viewer_index", 9)]}),
+        ("node.fast_preview", {"type": 'NINE', "value": 'PRESS', 'ctrl': True},
+         {"properties": [("update_map", True), ("viewer_index", 9)]}),
+
     ])
 
     return keymap
