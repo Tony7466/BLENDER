@@ -386,6 +386,26 @@ kmi_defs = (
     (('viewer_index', 5), ('update_map', False)), "Fast Preview"),
     (operators.NWFastPreview.bl_idname, 'FIVE', 'PRESS', True, False, False,
     (('viewer_index', 5), ('update_map', True)), "Fast Preview"),
+
+    (operators.NWFastPreview.bl_idname, 'SIX', 'PRESS', False, False, False,
+    (('viewer_index', 6), ('update_map', False)), "Fast Preview"),
+    (operators.NWFastPreview.bl_idname, 'SIX', 'PRESS', True, False, False,
+    (('viewer_index', 6), ('update_map', True)), "Fast Preview"),
+
+    (operators.NWFastPreview.bl_idname, 'SEVEN', 'PRESS', False, False, False,
+    (('viewer_index', 7), ('update_map', False)), "Fast Preview"),
+    (operators.NWFastPreview.bl_idname, 'SEVEN', 'PRESS', True, False, False,
+    (('viewer_index', 7), ('update_map', True)), "Fast Preview"),
+
+    (operators.NWFastPreview.bl_idname, 'EIGHT', 'PRESS', False, False, False,
+    (('viewer_index', 8), ('update_map', False)), "Fast Preview"),
+    (operators.NWFastPreview.bl_idname, 'FIVE', 'PRESS', True, False, False,
+    (('viewer_index', 8), ('update_map', True)), "Fast Preview"),
+
+    (operators.NWFastPreview.bl_idname, 'NINE', 'PRESS', False, False, False,
+    (('viewer_index', 9), ('update_map', False)), "Fast Preview"),
+    (operators.NWFastPreview.bl_idname, 'NINE', 'PRESS', True, False, False,
+    (('viewer_index', 9), ('update_map', True)), "Fast Preview"),
 )
 
 classes = (

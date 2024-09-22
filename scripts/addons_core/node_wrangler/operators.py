@@ -38,7 +38,8 @@ from .utils.nodes import (node_mid_pt, autolink, node_at_pos, get_nodes_links,
                           nw_check_not_empty, nw_check_selected, nw_check_active, nw_check_space_type,
                           nw_check_node_type, nw_check_visible_outputs, nw_check_viewer_node, NWBase,
                           get_first_enabled_output, is_visible_socket, 
-                          nw_check_viewer_connected, nw_get_connected_viewer, nw_link_new_viewer, nw_get_viewer_image, nw_get_node_from_viewer)
+                          nw_check_viewer_connected, nw_get_connected_viewer, nw_link_new_viewer, nw_get_viewer_image, nw_get_node_from_viewer,
+                          nw_get_node_with_shorcut)
 
 
 class NWLazyMix(Operator, NWBase):
@@ -513,14 +514,15 @@ class NWFastPreview(Operator):
     def execute(self, context):
         nodes, links = get_nodes_links(context)
 
-        if self.node_preview_map != '':
-            temp_dict = json.loads(self.node_preview_map)
-        else:
-            temp_dict = {}
-
         selected_nodes = context.selected_nodes
         if self.update_map:
             if len(selected_nodes) > 0:
+                # reset node with exisiting shortcut
+                old_node = nw_get_node_with_shorcut(context, self.viewer_index)
+                if old_node:
+                    old_node.ui_shortcut = 0
+                    old_node.label = "Viewer"
+
                 n1 = selected_nodes[0]
 
                 # if selected node is a preview node:
@@ -537,39 +539,27 @@ class NWFastPreview(Operator):
                     viewer_node = nw_get_connected_viewer(n1)
                 else:
                     viewer_node = nw_link_new_viewer(nodes, links, n1)
-
-                img = nw_get_viewer_image()
-                if img:
-                    n1 = nw_get_node_from_viewer(viewer_node)
-                    img.name = "Viewer %i: %s" % (self.viewer_index, n1.name)
                     
-                viewer_node.label = "Viewer                  (%i)" % (self.viewer_index)                    
-                temp_dict[self.viewer_index] = viewer_node.name
-                self.node_preview_map = json.dumps(temp_dict)
-                """
-                temp_dict[self.viewer_index] = n1.name
-                self.node_preview_map = json.dumps(temp_dict)
-                bpy.ops.node.link_viewer()
-                """
+                viewer_node.label = "Viewer                  (%i)" % (self.viewer_index)      
+                viewer_node.ui_shortcut = self.viewer_index
                 self.report({'INFO'}, "Set viewer %s to shortcut %i" % (viewer_node.name, self.viewer_index))
             else:
                 self.report({'ERROR'}, "No previews to set. Reason: No nodes selected.")
 
         else:
-            if str(self.viewer_index) in temp_dict:
-                if temp_dict[str(self.viewer_index)] in nodes:
-                    # set selected viewer node to active 
-                    # ... 
-                    viewer_node = nodes[temp_dict[str(self.viewer_index)]]
-                    # n.select = True
-                    nodes.active = viewer_node
-                    # bpy.ops.node.link_viewer()
-                    # n.select = False
-            
-                    img = nw_get_viewer_image()
-                    if img:
-                        n1 = nw_get_node_from_viewer(viewer_node)
-                        img.name = "Viewer %i: %s" % (self.viewer_index, n1.name)
+            viewer_node = nw_get_node_with_shorcut(context, self.viewer_index)
+            if viewer_node:
+                # set selected viewer node to active 
+                # ... 
+                # n.select = True
+                nodes.active = viewer_node
+                # bpy.ops.node.link_viewer()
+                # n.select = False
+        
+                img = nw_get_viewer_image()
+                if img:
+                    n1 = nw_get_node_from_viewer(viewer_node)
+                    img.name = "Viewer %i: %s" % (self.viewer_index, n1.name)
                     
             else:
                 self.report({'WARNING'}, "No preview set for shortcut %i" % self.viewer_index)

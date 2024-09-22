@@ -447,6 +447,9 @@ typedef struct bNode {
 
   bNodeRuntimeHandle *runtime;
 
+  int shortcut;
+  char _pad2[4];
+
 #ifdef __cplusplus
   /** The index in the owner node tree. */
   int index() const;

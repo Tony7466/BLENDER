@@ -274,6 +274,14 @@ def nw_check_viewer_connected(node):
                 return True
     return False
 
+def nw_get_node_with_shorcut(context, shortcut):
+    nodes, _ = get_nodes_links(context)
+    for n in nodes:
+        if n.ui_shortcut == shortcut:
+            return n
+    return None
+
+
 def nw_get_connected_viewer(node):
     for out in node.outputs:
         for link in out.links:
