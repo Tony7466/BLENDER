@@ -60,6 +60,12 @@ template<typename T> std::ostream &operator<<(std::ostream &stream, Vector<T> da
   return stream;
 }
 
+template<typename T> std::ostream &operator<<(std::ostream &stream, Array<T> data)
+{
+  stream << data.as_span();
+  return stream;
+}
+
 static void table_iota(const int num)
 {
   for (const int i : IndexRange(num)) {
@@ -303,7 +309,7 @@ static int update_data(const float2 a_point_2d,
                        const float2 c_point_2d,
                        const float2 centre,
                        const float radius,
-                       int data)
+                       const int data)
 {
   if (triangle_is_in_range(a_point_2d, b_point_2d, c_point_2d, centre, radius)) {
     return data - 1;
@@ -1099,10 +1105,41 @@ static void edge_subdivide(Vector<float2> connected_2d_points,
   }
 }
 
+static int subdive_count(const float ab, const float bc, const float ca, const float max_length)
+{
+  float3 edges_squared = float3(ab, bc, ca);
+
+  bool min_max = true;
+  for (int index = 0; true; index++) {
+
+    // std::cout << " >> " << edges_squared << ", " << max_length << ";\n";
+
+    const int side_i = math::dominant_axis(edges_squared);
+    const float edge_to_split = edges_squared[side_i];
+    if (max_length >= edge_to_split) {
+      // std::cout << index << ";\n";
+      return index;
+    }
+    const float left_edge = edges_squared[topo_set::shift_front(side_i)];
+    const float right_edge = edges_squared[topo_set::shift_back(side_i)];
+    const int median = math::sqrt(
+        ((math::square(left_edge) + math::square(right_edge)) * 2 - math::square(edge_to_split)) /
+        4);
+    if (min_max) {
+      edges_squared = float3(edge_to_split / 2, median, math::max(left_edge, right_edge));
+    }
+    else {
+      edges_squared = float3(edge_to_split / 2, median, math::min(left_edge, right_edge));
+    }
+    // min_max = !min_max;
+  }
+}
+
 static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges,
                                               const GroupedSpan<int> edge_to_face_map,
                                               const Span<int2> edges,
                                               const Span<float3> positions,
+                                              const float max_length,
                                               MutableSpan<int> face_pre_subdiv_level)
 {
   std::priority_queue<std::pair<int, int>> level_edge_queue;
@@ -1126,6 +1163,9 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
     }
     visited_edge[edge_index] = true;
 
+    const float edge_length = math::distance(positions[edges[edge_index][0]],
+                                             positions[edges[edge_index][1]]);
+
     for (const int face_i : edge_to_face_map[edge_index]) {
       if (face_pre_subdiv_level[face_i] >= level) {
         continue;
@@ -1139,15 +1179,16 @@ static void smooth_propagate_pre_subdiv_level(const GroupedSpan<int> faces_edges
 
       const float prev_edge_length = math::distance(positions[edges[prev_edge_index][0]],
                                                     positions[edges[prev_edge_index][1]]);
-      const float edge_length = math::distance(positions[edges[edge_i][0]],
-                                               positions[edges[edge_i][1]]);
       const float next_edge_length = math::distance(positions[edges[next_edge_index][0]],
                                                     positions[edges[next_edge_index][1]]);
 
       constexpr float threshold_factor = 1.2f;
+      constexpr float threshold_length = 1.6f;
       // constexpr float length_threshold = 1.6f;
-      const bool prev_affected = prev_edge_length > edge_length * threshold_factor;
-      const bool next_affected = next_edge_length > edge_length * threshold_factor;
+      const bool prev_affected = (prev_edge_length > edge_length * threshold_factor) &&
+                                 (prev_edge_length > math::sqrt(max_length) * threshold_length);
+      const bool next_affected = (next_edge_length > edge_length * threshold_factor) &&
+                                 (next_edge_length > math::sqrt(max_length) * threshold_length);
 
       const int prev_level = (prev_affected) ? (level / 2 + 1) : (0);
       const int next_level = (next_affected) ? (level / 2 + 1) : (0);
@@ -1177,18 +1218,14 @@ static void blur_pre_subdiv_level(const GroupedSpan<int> faces_edges,
   threading::parallel_for(
       r_face_pre_subdiv_level.index_range(), 4096, [&](const IndexRange range) {
         for (const int face_i : range) {
-          int total_other_faces = 1;
+          int max_level = r_face_pre_subdiv_level[face_i];
           for (const int edge_i : faces_edges[face_i]) {
             for (const int other_face_i : edge_to_face_map[edge_i]) {
-              if (other_face_i != face_i) {
-                face_pre_subdiv_level_buffer[face_i] += r_face_pre_subdiv_level[other_face_i];
-                total_other_faces++;
-              }
+              max_level = math::max(max_level, r_face_pre_subdiv_level[other_face_i]);
             }
           }
-          face_pre_subdiv_level_buffer[face_i] = (r_face_pre_subdiv_level[face_i] +
-                                                  face_pre_subdiv_level_buffer[face_i] / 2) /
-                                                 total_other_faces;
+          face_pre_subdiv_level_buffer[face_i] = r_face_pre_subdiv_level[face_i] +
+                                                 log2(max_level - r_face_pre_subdiv_level[face_i]);
         }
       });
   r_face_pre_subdiv_level = std::move(face_pre_subdiv_level_buffer);
@@ -1248,14 +1285,27 @@ Mesh *subdivide(const Mesh &src_mesh,
       const float3 b_point_3d = src_positions[b_vert];
       const float3 c_point_3d = src_positions[c_vert];
 
-      face_pre_subdiv_level[face_i] = log2(math::distance(a_point_3d, b_point_3d) / max_length) +
-                                      log2(math::distance(b_point_3d, c_point_3d) / max_length) +
-                                      log2(math::distance(c_point_3d, a_point_3d) / max_length);
+      face_pre_subdiv_level[face_i] = subdive_count(math::distance(a_point_3d, b_point_3d),
+                                                    math::distance(b_point_3d, c_point_3d),
+                                                    math::distance(c_point_3d, a_point_3d),
+                                                    max_length);
+
+      // face_pre_subdiv_level[face_i] = log2(math::distance(a_point_3d, b_point_3d) / max_length)
+      // +
+      //                                 log2(math::distance(b_point_3d, c_point_3d) / max_length)
+      //                                 + log2(math::distance(c_point_3d, a_point_3d) /
+      //                                 max_length);
     }
   });
 
-  smooth_propagate_pre_subdiv_level(
-      {faces, corner_edges}, edge_to_face_map, edges, src_positions, face_pre_subdiv_level);
+  // std::cout << face_pre_subdiv_level << ";\n";
+
+  smooth_propagate_pre_subdiv_level({faces, corner_edges},
+                                    edge_to_face_map,
+                                    edges,
+                                    src_positions,
+                                    squared_max_length,
+                                    face_pre_subdiv_level);
 
   blur_pre_subdiv_level({faces, corner_edges}, edge_to_face_map, face_pre_subdiv_level);
 
