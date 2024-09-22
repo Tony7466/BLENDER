@@ -3099,7 +3099,6 @@ def km_sequencerpreview(params):
     items.extend([
         # Text editing.
         *_seq_preview_text_edit_cursor_move(),
-        ("sequencer.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
         ("sequencer.text_delete", {"type": 'DEL', "value": 'PRESS', "repeat": True},
          {"properties": [("type", 'NEXT_OR_SELECTION')]}),
         ("sequencer.text_delete", {"type": 'DEL', "value": 'PRESS', "ctrl": True, "repeat": True},
@@ -3117,6 +3116,8 @@ def km_sequencerpreview(params):
         ("sequencer.text_edit_mode_toggle", {"type": 'TAB', "value": 'PRESS'}, None),
         ("sequencer.text_edit_copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("sequencer.text_edit_paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.text_edit_cut", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
+        ("sequencer.text_insert", {"type": 'TEXTINPUT', "value": 'ANY', "any": True, "repeat": True}, None),
 
         # Selection.
         *_template_sequencer_preview_select(
