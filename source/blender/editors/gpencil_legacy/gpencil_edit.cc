@@ -4470,7 +4470,7 @@ void GPENCIL_OT_stroke_outline(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Convert Stroke to Outline";
   ot->idname = "GPENCIL_OT_stroke_outline";
-  ot->description = "Convert stroke to perimeter";
+  ot->description = "Convert stroke to outline";
 
   /* api callbacks */
   ot->exec = gpencil_stroke_outline_exec;
