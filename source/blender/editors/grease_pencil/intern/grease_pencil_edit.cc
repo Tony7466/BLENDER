@@ -3304,7 +3304,7 @@ static int grease_pencil_texture_gradient_invoke(bContext *C, wmOperator *op, co
   return ret;
 }
 
-void GREASE_PENCIL_OT_texture_gradient(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_texture_gradient(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Texture Gradient";
