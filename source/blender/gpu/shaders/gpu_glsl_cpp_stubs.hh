@@ -495,3 +495,26 @@ template<typename T, int C, int R> float determinant(MatBase<T, C, R>) {}
 template<typename T, int C, int R> MatBase<T, C, R> inverse(MatBase<T, C, R>) {}
 template<typename T, int C, int R> MatBase<T, R, C> transpose(MatBase<T, C, R>) {}
 #endif
+
+/* Vertex Shader Special Variables. */
+const int gl_VertexID;
+const int gl_InstanceID;
+const int gl_BaseVertex;
+const int gl_BaseInstance;
+float4 gl_Position;
+float gl_PointSize;
+/* Fragment Shader Special Variables. */
+const float4 gl_FragCoord;
+const bool gl_FrontFacing;
+const float2 gl_PointCoord;
+const int gl_PrimitiveID;
+float gl_FragDepth;
+/* Read-only in Fragment Shader and write-only in vertex shader. */
+float gl_ClipDistance[];
+float gl_CullDistance[];
+/* Use GPU variant as they can be emulated. */
+int gpu_Layer;
+int gpu_ViewportIndex;
+
+/* Keywords. */
+void discard;
