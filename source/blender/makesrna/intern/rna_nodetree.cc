@@ -342,6 +342,67 @@ const EnumPropertyItem rna_enum_node_float_compare_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_node_integer_math_items[] = {
+    RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Functions"), nullptr),
+    {NODE_INTEGER_MATH_ADD, "ADD", 0, "Add", "A + B"},
+    {NODE_INTEGER_MATH_SUBTRACT, "SUBTRACT", 0, "Subtract", "A - B"},
+    {NODE_INTEGER_MATH_MULTIPLY, "MULTIPLY", 0, "Multiply", "A * B"},
+    {NODE_INTEGER_MATH_DIVIDE, "DIVIDE", 0, "Divide", "A / B"},
+    {NODE_INTEGER_MATH_MULTIPLY_ADD, "MULTIPLY_ADD", 0, "Multiply Add", "A * B + C"},
+    RNA_ENUM_ITEM_SEPR,
+    {NODE_INTEGER_MATH_ABSOLUTE, "ABSOLUTE", 0, "Absolute", "Non-negative value of A, abs(A)"},
+    {NODE_INTEGER_MATH_NEGATE, "NEGATE", 0, "Negate", "-A"},
+    {NODE_INTEGER_MATH_POWER, "POWER", 0, "Power", "A power B, pow(A,B)"},
+    RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Comparison"), nullptr),
+    {NODE_INTEGER_MATH_MINIMUM,
+     "MINIMUM",
+     0,
+     "Minimum",
+     "The minimum value from A and B, min(A,B)"},
+    {NODE_INTEGER_MATH_MAXIMUM,
+     "MAXIMUM",
+     0,
+     "Maximum",
+     "The maximum value from A and B, max(A,B)"},
+    {NODE_INTEGER_MATH_SIGN, "SIGN", 0, "Sign", "Return the sign of A, sign(A)"},
+    RNA_ENUM_ITEM_HEADING(CTX_N_(BLT_I18NCONTEXT_ID_NODETREE, "Rounding"), nullptr),
+    {NODE_INTEGER_MATH_DIVIDE_ROUND,
+     "DIVIDE_ROUND",
+     0,
+     "Divide Round",
+     "Divide and round result toward zero"},
+    {NODE_INTEGER_MATH_DIVIDE_FLOOR,
+     "DIVIDE_FLOOR",
+     0,
+     "Divide Floor",
+     "Divide and floor result, the largest integer smaller than or equal A"},
+    {NODE_INTEGER_MATH_DIVIDE_CEIL,
+     "DIVIDE_CEIL",
+     0,
+     "Divide Ceiling",
+     "Divide and ceil result, the smallest integer greater than or equal A"},
+    RNA_ENUM_ITEM_SEPR,
+    {NODE_INTEGER_MATH_FLOORED_MODULO,
+     "FLOORED_MODULO",
+     0,
+     "Floored Modulo",
+     "Modulo that is periodic for both negative and positive operands"},
+    {NODE_INTEGER_MATH_MODULO, "MODULO", 0, "Modulo", "Modulo which is the remainder of A / B"},
+    RNA_ENUM_ITEM_SEPR,
+    {NODE_INTEGER_MATH_GCD,
+     "GCD",
+     0,
+     "Greatest Common Divisor",
+     "The largest positive integer that divides into each of the values A and B, "
+     "e.g. GCD(8,12) = 4"},
+    {NODE_INTEGER_MATH_LCM,
+     "LCM",
+     0,
+     "Least Common Multiple",
+     "The smallest positive integer that is divisible by both A and B, e.g. LCM(6,10) = 30"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_node_compare_operation_items[] = {
     {NODE_COMPARE_LESS_THAN,
      "LESS_THAN",
@@ -4117,6 +4178,27 @@ static void rna_NodeConvertColorSpace_to_color_space_set(PointerRNA *ptr, int va
   if (name && name[0]) {
     STRNCPY(node_storage->to_color_space, name);
   }
+}
+
+static void rna_reroute_node_socket_type_set(PointerRNA *ptr, const char *value)
+{
+  const bNodeTree &ntree = *reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  blender::bke::bNodeTreeType *ntree_type = ntree.typeinfo;
+
+  bNode &node = *static_cast<bNode *>(ptr->data);
+
+  blender::bke::bNodeSocketType *socket_type = blender::bke::node_socket_type_find(value);
+  if (socket_type == nullptr) {
+    return;
+  }
+  if (socket_type->subtype != PROP_NONE) {
+    return;
+  }
+  if (ntree_type->valid_socket_type && !ntree_type->valid_socket_type(ntree_type, socket_type)) {
+    return;
+  }
+  NodeReroute *storage = static_cast<NodeReroute *>(node.storage);
+  STRNCPY(storage->type_idname, value);
 }
 
 static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bContext * /*C*/,
@@ -10270,6 +10352,17 @@ static void rna_def_function_node(BlenderRNA *brna)
 }
 
 /* -------------------------------------------------------------------------- */
+
+static void def_reroute(StructRNA *srna)
+{
+  RNA_def_struct_sdna_from(srna, "NodeReroute", "storage");
+
+  PropertyRNA *prop = RNA_def_property(srna, "socket_idname", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "type_idname");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_reroute_node_socket_type_set");
+  RNA_def_property_ui_text(prop, "Type of socket", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
 
 static void rna_def_internal_node(BlenderRNA *brna)
 {
