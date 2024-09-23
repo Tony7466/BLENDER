@@ -753,7 +753,9 @@ static bool has_custom_props(Bone *bone, bool enabled, std::string key)
           bc_get_IDProperty(bone, key + "_z"));
 }
 
-void bc_enable_fcurves(bAction *act, blender::animrig::slot_handle_t slot_handle, char *bone_name)
+void bc_enable_fcurves(bAction *act,
+                       const blender::animrig::slot_handle_t slot_handle,
+                       char *bone_name)
 {
   char prefix[200];
 

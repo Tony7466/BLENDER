@@ -4744,7 +4744,9 @@ static bool modifiers_has_animation_check(const Object *ob)
   if (ob->adt != nullptr) {
     AnimData *adt = ob->adt;
     if (adt->action != nullptr) {
-      for (FCurve *fcu : blender::animrig::legacy::fcurves_all(adt->action)) {
+      for (FCurve *fcu :
+           blender::animrig::legacy::fcurves_for_action_slot(adt->action, adt->slot_handle))
+      {
         if (fcu->rna_path && strstr(fcu->rna_path, "modifiers[")) {
           return true;
         }
