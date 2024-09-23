@@ -33,10 +33,11 @@ namespace blender::ed::sculpt_paint {
 
 /**
  * Projects a screen-space displacement vector into layer space.
- * World position is used to compute the perspective distance (zfac).
+ * Current position (in layer space) is used to compute the perspective distance (zfac).
+ * Returns the new layer space position with the projected delta applied.
  */
 using DeltaProjectionFunc =
-    std::function<float3(const float2 &screen_delta, const float3 world_pos)>;
+    std::function<float3(const float3 position, const float2 &screen_delta)>;
 
 struct InputSample {
   float2 mouse_position;

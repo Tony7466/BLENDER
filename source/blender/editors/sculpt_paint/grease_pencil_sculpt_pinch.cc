@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_context.hh"
+#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
@@ -51,6 +52,7 @@ void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &ex
           return false;
         }
 
+        bke::crazyspace::GeometryDeformation deformation = get_drawing_deformation(params);
         Array<float2> view_positions = calculate_view_positions(params, selection);
         bke::CurvesGeometry &curves = params.drawing.strokes_for_write();
         MutableSpan<float3> positions = curves.positions_for_write();
@@ -68,7 +70,8 @@ void PinchOperation::on_stroke_extended(const bContext &C, const InputSample &ex
           const float influence_squared = influence * influence / 25.0f;
           const float influence_final = invert ? 1.0 + influence_squared :
                                                  1.0f - influence_squared;
-          positions[point_i] += projection_fn((target - co) * (1.0f - influence_final), positions[point_i]);
+          positions[point_i] = projection_fn(deformation.positions[point_i],
+                                             (target - co) * (1.0f - influence_final));
         });
 
         params.drawing.tag_positions_changed();

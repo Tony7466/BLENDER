@@ -202,9 +202,8 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
         MutableSpan<float3> positions = curves.positions_for_write();
         mask.foreach_index(GrainSize(4096), [&](const int point_i, const int index) {
           /* Translate the point with the influence factor. */
-          const float3 delta_layer = projection_fn(mouse_delta_win * weights[index],
-                                                   deformation.positions[point_i]);
-          positions[point_i] = deformation.positions[point_i] + delta_layer;
+          positions[point_i] = projection_fn(deformation.positions[point_i],
+                                             mouse_delta_win * weights[index]);
         });
 
         params.drawing.tag_positions_changed();
