@@ -4136,8 +4136,8 @@ static void rna_reroute_node_socket_type_set(PointerRNA *ptr, const char *value)
   if (ntree_type->valid_socket_type && !ntree_type->valid_socket_type(ntree_type, socket_type)) {
     return;
   }
-
-  static_cast<NodeReroute *>(node.storage)->set_socket_type(value);
+  NodeReroute *storage = static_cast<NodeReroute *>(node.storage);
+  STRNCPY(storage->type_idname, value);
 }
 
 static const EnumPropertyItem *rna_NodeConvertColorSpace_color_space_itemf(bContext * /*C*/,

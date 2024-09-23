@@ -1022,9 +1022,6 @@ typedef struct NodeReroute {
   /** Name of the socket type (e.g. `NodeSocketFloat`). */
   char type_idname[64];
 
-#ifdef __cplusplus
-  void set_socket_type(blender::StringRefNull idname);
-#endif
 } NodeReroute;
 
 /** \note This one has been replaced with #ImageUser, keep it for do_versions(). */

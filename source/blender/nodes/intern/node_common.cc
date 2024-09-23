@@ -588,7 +588,7 @@ static void node_reroute_declare(blender::nodes::NodeDeclarationBuilder &b)
 static void node_reroute_init(bNodeTree * /*ntree*/, bNode *node)
 {
   NodeReroute *data = MEM_cnew<NodeReroute>(__func__);
-  data->set_socket_type("NodeSocketColor");
+  STRNCPY(data->type_idname, "NodeSocketColor");
   node->storage = data;
 }
 
@@ -685,7 +685,8 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
   for (const auto item : reroute_types.items()) {
     bNode *reroute_node = item.key;
     const blender::bke::bNodeSocketType *socket_type = item.value;
-    static_cast<NodeReroute *>(reroute_node->storage)->set_socket_type(socket_type->idname);
+    NodeReroute *storage = static_cast<NodeReroute *>(reroute_node->storage);
+    STRNCPY(storage->type_idname, socket_type->idname);
     blender::nodes::update_node_declaration_and_sockets(*ntree, *reroute_node);
   }
 }

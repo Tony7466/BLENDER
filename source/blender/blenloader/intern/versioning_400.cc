@@ -2790,7 +2790,7 @@ static void node_reroute_add_storage(bNodeTree &tree)
 
       const bNodeSocket &input = *static_cast<const bNodeSocket *>(node->inputs.first);
       NodeReroute *data = MEM_cnew<NodeReroute>(__func__);
-      data->set_socket_type(input.idname);
+      STRNCPY(data->type_idname, input.idname);
       node->storage = data;
     }
   }
