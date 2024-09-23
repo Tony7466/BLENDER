@@ -52,7 +52,6 @@ set(SRC_OSL
   node_layer_weight.osl
   node_light_falloff.osl
   node_light_path.osl
-  node_linear_system_solver.osl
   node_magic_texture.osl
   node_map_range.osl
   node_mapping.osl

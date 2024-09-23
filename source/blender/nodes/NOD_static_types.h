@@ -38,7 +38,6 @@ DefNode(ShaderNode,     SH_NODE_MAPPING,         def_sh_mapping,         "MAPPIN
 DefNode(ShaderNode,     SH_NODE_CURVE_VEC,       def_vector_curve,       "CURVE_VEC",      VectorCurve,      "Vector Curves",     "Map input vector components with curves")
 DefNode(ShaderNode,     SH_NODE_CURVE_RGB,       def_rgb_curve,          "CURVE_RGB",      RGBCurve,         "RGB Curves",        "Apply color corrections for each color channel")
 DefNode(ShaderNode,     SH_NODE_CAMERA,          0,                      "CAMERA",         CameraData,       "Camera Data",       "Retrieve information about the camera and how it relates to the current shading point's position")
-DefNode(ShaderNode,     SH_NODE_LINEAR_SYSTEM_SOLVER,       def_linear_system_solver,          "LINEAR_SYSTEM_SOLVER",      LinearSystemSolver,         "Linear System Solver",         "Solve the system of linear equations Ax=b for x")
 DefNode(ShaderNode,     SH_NODE_MAP_RANGE,       def_map_range,          "MAP_RANGE",      MapRange,         "Map Range",         "Remap a value from a range to a target range")
 DefNode(ShaderNode,     SH_NODE_CLAMP,           def_clamp,              "CLAMP",          Clamp,            "Clamp",             "Clamp a value between a minimum and a maximum")
 DefNode(ShaderNode,     SH_NODE_MATH,            def_math,               "MATH",           Math,             "Math",              "Perform math operations")
