@@ -3562,6 +3562,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
             None,
             _defs_grease_pencil_edit.interpolate,
+            None,
             _defs_grease_pencil_edit.texture_gradient,
             None,
             *_tools_annotate,
