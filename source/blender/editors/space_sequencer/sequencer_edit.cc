@@ -137,9 +137,7 @@ bool ED_space_sequencer_has_playback_animation(const SpaceSeq *sseq, const Scene
     return false;
   }
 
-  for (FCurve *fcurve : blender::animrig::legacy::fcurves_for_action_slot(scene->adt->action,
-                                                                          scene->adt->slot_handle))
-  {
+  for (FCurve *fcurve : blender::animrig::legacy::fcurves_for_assigned_action(scene->adt)) {
     if (sequencer_fcurves_targets_color_strip(fcurve)) {
       return true;
     }

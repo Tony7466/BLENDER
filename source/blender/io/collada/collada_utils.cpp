@@ -753,10 +753,12 @@ static bool has_custom_props(Bone *bone, bool enabled, std::string key)
           bc_get_IDProperty(bone, key + "_z"));
 }
 
-void bc_enable_fcurves(bAction *act,
-                       const blender::animrig::slot_handle_t slot_handle,
-                       char *bone_name)
+void bc_enable_fcurves(AnimData *adt, char *bone_name)
 {
+  if (adt == nullptr) {
+    return;
+  }
+
   char prefix[200];
 
   if (bone_name) {
@@ -765,7 +767,7 @@ void bc_enable_fcurves(bAction *act,
     SNPRINTF(prefix, "pose.bones[\"%s\"]", bone_name_esc);
   }
 
-  for (FCurve *fcu : blender::animrig::legacy::fcurves_for_action_slot(act, slot_handle)) {
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_for_assigned_action(adt)) {
     if (bone_name) {
       if (STREQLEN(fcu->rna_path, prefix, strlen(prefix))) {
         fcu->flag &= ~FCURVE_DISABLED;
@@ -790,11 +792,9 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
     return false;
   }
 
-  bAction *action = bc_getSceneObjectAction(ob);
-  const blender::animrig::slot_handle_t slot_handle = ob->adt ? ob->adt->slot_handle : 0;
   bPoseChannel *parchan = pchan->parent;
 
-  bc_enable_fcurves(action, slot_handle, bone->name);
+  bc_enable_fcurves(ob->adt, bone->name);
   float ipar[4][4];
 
   if (bone->parent) {
@@ -823,7 +823,7 @@ bool bc_bone_matrix_local_get(Object *ob, Bone *bone, Matrix &mat, bool for_open
       mul_m4_m4m4(mat, temp, mat);
     }
   }
-  bc_enable_fcurves(action, slot_handle, nullptr);
+  bc_enable_fcurves(ob->adt, nullptr);
   return true;
 }
 
