@@ -22,6 +22,9 @@ static bke::CurvesGeometry join_curves(const GreasePencil &src_grease_pencil,
   Vector<bke::GeometrySet> src_geometries(all_src_curves.size());
   for (const int src_curves_i : all_src_curves.index_range()) {
     bke::CurvesGeometry src_curves = *all_src_curves[src_curves_i];
+    if (src_curves.curves_num() == 0) {
+      continue;
+    }
     const float4x4 &transform = transforms_to_apply[src_curves_i];
     src_curves.transform(transform);
     Curves *src_curves_id = bke::curves_new_nomain(std::move(src_curves));
@@ -30,8 +33,10 @@ static bke::CurvesGeometry join_curves(const GreasePencil &src_grease_pencil,
     src_geometries[src_curves_i].replace_curves(src_curves_id);
   }
   bke::GeometrySet joined_geometry = join_geometries(src_geometries, attribute_filter);
-  bke::CurvesGeometry new_curves = joined_geometry.get_curves()->geometry.wrap();
-  return new_curves;
+  if (joined_geometry.has_curves()) {
+    return joined_geometry.get_curves()->geometry.wrap();
+  }
+  return {};
 }
 
 GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
