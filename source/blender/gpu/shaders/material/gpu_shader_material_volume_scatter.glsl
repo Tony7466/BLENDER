@@ -7,9 +7,7 @@ void node_volume_scatter(vec4 color,
                          float anisotropy,
                          float IOR,
                          float B,
-                         float anisotropy2,
                          float alpha,
-                         float mixture,
                          float weight,
                          out Closure result)
 {

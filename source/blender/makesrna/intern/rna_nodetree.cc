@@ -4484,23 +4484,16 @@ static const EnumPropertyItem node_scatter_phase_items[] = {
      "Fournier-Forand",
      "Fournier-Forand phase function, used for the scattering of light in underwater "
      "environments"},
-    {SHD_PHASE_DOUBLE_HENYEY_GREENSTEIN,
-     "DOUBLE_HENYEY_GREENSTEIN",
+    {SHD_PHASE_DRAINE,
+     "DRAINE",
      0,
-     "Double Henyey-Greenstein",
-     "Double Henyey-Greenstein phase, used function for the scattering of light in planetary "
-     "atmospheres or when forward and backscatter need to be better characterized"},
+     "Draine",
+     "Draine phase functions, mostly used for the scattering of light in interstellar dust"},
     {SHD_PHASE_RAYLEIGH,
      "RAYLEIGH",
      0,
      "Rayleigh",
      "Rayleigh phase function, mostly used for the scattering of light in the sky"},
-    {SHD_PHASE_DRAINE_HENYEY_GREENSTEIN,
-     "DRAINE_HENYEY_GREENSTEIN",
-     0,
-     "Draine-Henyey-Greenstein",
-     "Draine-Henyey-Greenstein phase function, used for the scattering of light in clouds and "
-     "fog"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

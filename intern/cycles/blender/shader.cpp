@@ -730,14 +730,11 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeVolumeScatter::phase_FOURNIER_FORAND:
         scatter->set_phase(CLOSURE_VOLUME_FOURNIER_FORAND_ID);
         break;
-      case BL::ShaderNodeVolumeScatter::phase_DOUBLE_HENYEY_GREENSTEIN:
-        scatter->set_phase(CLOSURE_VOLUME_DOUBLE_HENYEY_GREENSTEIN_ID);
+      case BL::ShaderNodeVolumeScatter::phase_DRAINE:
+        scatter->set_phase(CLOSURE_VOLUME_DRAINE_ID);
         break;
       case BL::ShaderNodeVolumeScatter::phase_RAYLEIGH:
         scatter->set_phase(CLOSURE_VOLUME_RAYLEIGH_ID);
-        break;
-      case BL::ShaderNodeVolumeScatter::phase_DRAINE_HENYEY_GREENSTEIN:
-        scatter->set_phase(CLOSURE_VOLUME_DRAINE_HENYEY_GREENSTEIN_ID);
         break;
     }
     node = scatter;

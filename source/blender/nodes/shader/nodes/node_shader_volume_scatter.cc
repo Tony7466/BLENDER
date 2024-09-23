@@ -26,13 +26,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR);
   b.add_input<decl::Float>("IOR").default_value(1.33f).min(1.0f).max(2.0f).subtype(PROP_FACTOR);
   b.add_input<decl::Float>("B").default_value(0.1f).min(0.0f).max(0.5f).subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Anisotropy 2")
-      .default_value(0.0f)
-      .min(-1.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Alpha").default_value(0.5f).min(0.0f).max(500.0f).subtype(PROP_FACTOR);
-  b.add_input<decl::Float>("Mixture").default_value(0.5f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Alpha").default_value(0.5f).min(0.0f).max(500.0f);
   b.add_input<decl::Float>("Weight").available(false);
   b.add_output<decl::Shader>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
@@ -56,28 +50,11 @@ static void node_shader_update_scatter(bNodeTree *ntree, bNode *node)
       bke::node_set_socket_availability(ntree, sock, phase_function == SHD_PHASE_FOURNIER_FORAND);
     }
     else if (STR_ELEM(sock->name, "Anisotropy")) {
-      bke::node_set_socket_availability(ntree,
-                                        sock,
-                                        ELEM(phase_function,
-                                             SHD_PHASE_HENYEY_GREENSTEIN,
-                                             SHD_PHASE_DOUBLE_HENYEY_GREENSTEIN,
-                                             SHD_PHASE_DRAINE_HENYEY_GREENSTEIN));
-    }
-    else if (STR_ELEM(sock->name, "Anisotropy 2")) {
-      bke::node_set_socket_availability(ntree,
-                                        sock,
-                                        phase_function == SHD_PHASE_DOUBLE_HENYEY_GREENSTEIN ||
-                                            phase_function == SHD_PHASE_DRAINE_HENYEY_GREENSTEIN);
+      bke::node_set_socket_availability(
+          ntree, sock, ELEM(phase_function, SHD_PHASE_HENYEY_GREENSTEIN, SHD_PHASE_DRAINE));
     }
     else if (STR_ELEM(sock->name, "Alpha")) {
-      bke::node_set_socket_availability(
-          ntree, sock, phase_function == SHD_PHASE_DRAINE_HENYEY_GREENSTEIN);
-    }
-    else if (STR_ELEM(sock->name, "Mixture")) {
-      bke::node_set_socket_availability(ntree,
-                                        sock,
-                                        phase_function == SHD_PHASE_DOUBLE_HENYEY_GREENSTEIN ||
-                                            phase_function == SHD_PHASE_DRAINE_HENYEY_GREENSTEIN);
+      bke::node_set_socket_availability(ntree, sock, phase_function == SHD_PHASE_DRAINE);
     }
   }
 }

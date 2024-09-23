@@ -10,23 +10,18 @@ shader node_scatter_volume(string phase = "Henyey-Greenstein",
                            float Anisotropy = 0.0,
                            float IOR = 1.33,
                            float B = 0.1,
-                           float Anisotropy2 = 0.0,
                            float Alpha = 0.5,
-                           float Mixture = 0.5,
                            output closure color Volume = 0)
 {
   closure color scatter = 0;
   if (phase == "Fournier-Forand") {
     scatter = fournier_forand(B, IOR);
   }
-  else if (phase == "Double Henyey-Greenstein") {
-    scatter = mix(henyey_greenstein(Anisotropy), henyey_greenstein(Anisotropy2), Mixture);
+  else if (phase == "Draine") {
+    scatter = draine(AnisotropyAlpha);
   }
   else if (phase == "Rayleigh") {
     scatter = rayleigh();
-  }
-  else if (phase == "Draine-Henyey-Greenstein") {
-    scatter = mix(henyey_greenstein(Anisotropy), draine(Anisotropy2, Alpha), Mixture);
   }
   else {
     scatter = henyey_greenstein(Anisotropy);

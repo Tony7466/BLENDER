@@ -994,27 +994,24 @@ ccl_device
 }
 
 template<ShaderType shader_type>
-ccl_device_noinline int svm_node_closure_volume(KernelGlobals kg,
-                                                ccl_private ShaderData *sd,
-                                                ccl_private float *stack,
-                                                Spectrum closure_weight,
-                                                uint4 node,
-                                                int offset)
+ccl_device_noinline void svm_node_closure_volume(KernelGlobals kg,
+                                                 ccl_private ShaderData *sd,
+                                                 ccl_private float *stack,
+                                                 Spectrum closure_weight,
+                                                 uint4 node)
 {
 #ifdef __VOLUME__
   /* Only sum extinction for volumes, variable is shared with surface transparency. */
   if (shader_type != SHADER_TYPE_VOLUME) {
-    return offset;
+    return;
   }
 
-  uint type, density_offset, anisotropy_offset;
-
-  uint mix_weight_offset;
-  svm_unpack_node_uchar4(node.y, &type, &density_offset, &anisotropy_offset, &mix_weight_offset);
+  uint type, density_offset, param1_offset, mix_weight_offset;
+  svm_unpack_node_uchar4(node.y, &type, &density_offset, &param1_offset, &mix_weight_offset);
   float mix_weight = (stack_valid(mix_weight_offset) ? stack_load_float(stack, mix_weight_offset) :
                                                        1.0f);
   if (mix_weight == 0.0f) {
-    return offset;
+    return;
   }
 
   float density = (stack_valid(density_offset)) ? stack_load_float(stack, density_offset) :
@@ -1032,33 +1029,23 @@ ccl_device_noinline int svm_node_closure_volume(KernelGlobals kg,
 
   /* Add closure for volume scattering. */
   if (CLOSURE_IS_VOLUME_SCATTER(type)) {
-    uint4 atr_node = read_node(kg, &offset);
-    uint4 phase_node = read_node(kg, &offset);
-
-    switch (atr_node.y) {
+    switch (type) {
+      case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID: {
+        ccl_private HenyeyGreensteinVolume *volume = (ccl_private HenyeyGreensteinVolume *)
+            bsdf_alloc(sd, sizeof(HenyeyGreensteinVolume), weight);
+        if (volume) {
+          volume->g = stack_valid(param1_offset) ? stack_load_float(stack, param1_offset) :
+                                                   __uint_as_float(node.w);
+          sd->flag |= volume_henyey_greenstein_setup(volume);
+        }
+      } break;
       case CLOSURE_VOLUME_FOURNIER_FORAND_ID: {
         ccl_private FournierForandVolume *volume = (ccl_private FournierForandVolume *)bsdf_alloc(
             sd, sizeof(FournierForandVolume), weight);
         if (volume) {
-          const float B = __uint_as_float(atr_node.w), IOR = __uint_as_float(atr_node.z);
+          const float IOR = stack_load_float(stack, param1_offset);
+          const float B = stack_load_float(stack, node.w);
           sd->flag |= volume_fournier_forand_setup(volume, B, IOR);
-        }
-      } break;
-      case CLOSURE_VOLUME_DOUBLE_HENYEY_GREENSTEIN_ID: {
-        const float mix_factor = __uint_as_float(phase_node.z);
-        ccl_private HenyeyGreensteinVolume *volume = (ccl_private HenyeyGreensteinVolume *)
-            bsdf_alloc(sd, sizeof(HenyeyGreensteinVolume), weight * (1.0f - mix_factor));
-        if (volume) {
-          volume->g = (stack_valid(anisotropy_offset)) ?
-                          stack_load_float(stack, anisotropy_offset) :
-                          __uint_as_float(node.w);
-          sd->flag |= volume_henyey_greenstein_setup(volume);
-        }
-        volume = (ccl_private HenyeyGreensteinVolume *)bsdf_alloc(
-            sd, sizeof(HenyeyGreensteinVolume), weight * mix_factor);
-        if (volume) {
-          volume->g = __uint_as_float(phase_node.x);
-          sd->flag |= volume_henyey_greenstein_setup(volume);
         }
       } break;
       case CLOSURE_VOLUME_RAYLEIGH_ID: {
@@ -1069,31 +1056,13 @@ ccl_device_noinline int svm_node_closure_volume(KernelGlobals kg,
         }
         break;
       }
-      case CLOSURE_VOLUME_DRAINE_HENYEY_GREENSTEIN_ID: {
-        const float mix_factor = __uint_as_float(phase_node.z);
-        ccl_private HenyeyGreensteinVolume *hg = (ccl_private HenyeyGreensteinVolume *)bsdf_alloc(
-            sd, sizeof(HenyeyGreensteinVolume), weight * (1.0f - mix_factor));
-        if (hg) {
-          hg->g = (stack_valid(anisotropy_offset)) ? stack_load_float(stack, anisotropy_offset) :
-                                                     __uint_as_float(node.w);
-          sd->flag |= volume_henyey_greenstein_setup(hg);
-        }
-        ccl_private DraineVolume *draine = (ccl_private DraineVolume *)bsdf_alloc(
-            sd, sizeof(DraineVolume), weight * mix_factor);
-        if (draine) {
-          draine->g = __uint_as_float(phase_node.x);
-          draine->alpha = __uint_as_float(phase_node.y);
-          sd->flag |= volume_draine_setup(draine);
-        }
-      } break;
-      case CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID: {
-        ccl_private HenyeyGreensteinVolume *volume = (ccl_private HenyeyGreensteinVolume *)
-            bsdf_alloc(sd, sizeof(HenyeyGreensteinVolume), weight);
+      case CLOSURE_VOLUME_DRAINE_ID: {
+        ccl_private DraineVolume *volume = (ccl_private DraineVolume *)bsdf_alloc(
+            sd, sizeof(DraineVolume), weight);
         if (volume) {
-          volume->g = (stack_valid(anisotropy_offset)) ?
-                          stack_load_float(stack, anisotropy_offset) :
-                          __uint_as_float(node.w);
-          sd->flag |= volume_henyey_greenstein_setup(volume);
+          volume->g = stack_load_float(stack, param1_offset);
+          volume->alpha = stack_load_float(stack, node.w);
+          sd->flag |= volume_draine_setup(volume);
         }
       } break;
     }
@@ -1102,7 +1071,6 @@ ccl_device_noinline int svm_node_closure_volume(KernelGlobals kg,
   /* Sum total extinction weight. */
   volume_extinction_setup(sd, weight);
 #endif
-  return offset;
 }
 
 template<ShaderType shader_type>
