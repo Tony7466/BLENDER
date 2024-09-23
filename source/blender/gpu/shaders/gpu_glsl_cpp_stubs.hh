@@ -593,3 +593,23 @@ void discard;
 bool is_zero(vec2) {}
 bool is_zero(vec3) {}
 bool is_zero(vec4) {}
+
+/* Array syntax compatibility. */
+/* clang-format off */
+#define float_array(...) { __VA_ARGS__ }
+#define float2_array(...) { __VA_ARGS__ }
+#define float3_array(...) { __VA_ARGS__ }
+#define float4_array(...) { __VA_ARGS__ }
+#define int_array(...) { __VA_ARGS__ }
+#define int2_array(...) { __VA_ARGS__ }
+#define int3_array(...) { __VA_ARGS__ }
+#define int4_array(...) { __VA_ARGS__ }
+#define uint_array(...) { __VA_ARGS__ }
+#define uint2_array(...) { __VA_ARGS__ }
+#define uint3_array(...) { __VA_ARGS__ }
+#define uint4_array(...) { __VA_ARGS__ }
+#define bool_array(...) { __VA_ARGS__ }
+#define bool2_array(...) { __VA_ARGS__ }
+#define bool3_array(...) { __VA_ARGS__ }
+#define bool4_array(...) { __VA_ARGS__ }
+/* clang-format on */
