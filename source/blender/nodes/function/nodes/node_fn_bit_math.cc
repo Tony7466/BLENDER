@@ -20,11 +20,14 @@
 
 namespace blender::nodes::node_fn_bit_math_cc {
 
+constexpr static int max_shift_bits = 31;
+
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
   b.add_input<decl::Int>("Value");
   b.add_input<decl::Int>("Value", "Value_001");
+  b.add_input<decl::Int>("Shift").min(0).max(max_shift_bits);
   b.add_output<decl::Int>("Value");
 };
 
@@ -36,11 +39,15 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   const bool one_input_ops = ELEM(node->custom1, NODE_BIT_MATH_NOT);
+  const bool shift_input_ops = ELEM(
+      node->custom1, NODE_BIT_MATH_LEFT_SHIFT, NODE_BIT_MATH_RIGHT_SHIFT);
 
   bNodeSocket *sockA = static_cast<bNodeSocket *>(node->inputs.first);
   bNodeSocket *sockB = sockA->next;
+  bNodeSocket *sockShift = sockB->next;
 
-  bke::node_set_socket_availability(ntree, sockB, !one_input_ops);
+  bke::node_set_socket_availability(ntree, sockB, !one_input_ops && !shift_input_ops);
+  bke::node_set_socket_availability(ntree, sockShift, shift_input_ops);
 }
 
 class SocketSearchOp {
@@ -102,9 +109,13 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto and_not_fn = mf::build::SI2_SO<int, int, int>(
       "And Not", [](int a, int b) { return a & ~b; }, exec_preset);
   static auto left_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Left Shift", [](int a, int b) { return b > 0 ? a << b : a; }, exec_preset);
+      "Left Shift",
+      [](int a, int b) { return a << math::clamp(b, 0, max_shift_bits); },
+      exec_preset);
   static auto right_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Right Shift", [](int a, int b) { return b > 0 ? a >> b : a; }, exec_preset);
+      "Right Shift",
+      [](int a, int b) { return a >> math::clamp(b, 0, max_shift_bits); },
+      exec_preset);
 
   switch (operation) {
     case NODE_BIT_MATH_AND:
