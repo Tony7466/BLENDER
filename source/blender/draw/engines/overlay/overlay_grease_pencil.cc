@@ -20,7 +20,7 @@
 static bool is_point_selection_visible()
 {
   using namespace blender;
-  
+
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const ToolSettings *ts = draw_ctx->scene->toolsettings;
   const bool in_sculpt_mode = (draw_ctx->object_mode & OB_MODE_SCULPT_GPENCIL_LEGACY) != 0;
@@ -30,10 +30,11 @@ static bool is_point_selection_visible()
     /* Always display points in weight mode. */
     return true;
   }
-  
+
   if (in_sculpt_mode) {
     /* Sculpt selection modes are flags and can be disabled individually. */
-    static constexpr int sculpt_point_modes = GP_SCULPT_MASK_SELECTMODE_POINT | GP_SCULPT_MASK_SELECTMODE_SEGMENT;
+    static constexpr int sculpt_point_modes = GP_SCULPT_MASK_SELECTMODE_POINT |
+                                              GP_SCULPT_MASK_SELECTMODE_SEGMENT;
     return (ts->gpencil_selectmode_sculpt & sculpt_point_modes) != 0;
   }
 

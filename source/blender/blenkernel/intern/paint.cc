@@ -1400,21 +1400,45 @@ bool BKE_palette_from_hash(Main *bmain, GHash *color_table, const char *name, co
 
 bool BKE_paint_select_face_test(const Object *ob)
 {
-  return ((ob != nullptr) && (ob->type == OB_MESH) && (ob->data != nullptr) &&
-          (((Mesh *)ob->data)->editflag & ME_EDIT_PAINT_FACE_SEL) &&
-          (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT)));
+  if (ob == nullptr || ob->data == nullptr) {
+    return false;
+  }
+  if (ob->type == OB_MESH) {
+    const Mesh *mesh = static_cast<Mesh *>(ob->data);
+    return (mesh->editflag & ME_EDIT_PAINT_FACE_SEL) &&
+           (ob->mode & (OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT | OB_MODE_TEXTURE_PAINT));
+  }
+  return false;
 }
 
 bool BKE_paint_select_vert_test(const Object *ob)
 {
-  return ((ob != nullptr) && (ob->type == OB_MESH) && (ob->data != nullptr) &&
-          (((Mesh *)ob->data)->editflag & ME_EDIT_PAINT_VERT_SEL) &&
-          (ob->mode & OB_MODE_WEIGHT_PAINT || ob->mode & OB_MODE_VERTEX_PAINT));
+  if (ob == nullptr || ob->data == nullptr) {
+    return false;
+  }
+  if (ob->type == OB_MESH) {
+    const Mesh *mesh = static_cast<Mesh *>(ob->data);
+    return (mesh->editflag & ME_EDIT_PAINT_VERT_SEL) &&
+           (ob->mode & OB_MODE_WEIGHT_PAINT || ob->mode & OB_MODE_VERTEX_PAINT);
+  }
+  return false;
+}
+
+bool BKE_paint_select_grease_pencil_test(const Object *ob)
+{
+  if (ob == nullptr || ob->data == nullptr) {
+    return false;
+  }
+  if (ob->type == OB_GREASE_PENCIL) {
+    return (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY);
+  }
+  return false;
 }
 
 bool BKE_paint_select_elem_test(const Object *ob)
 {
-  return (BKE_paint_select_vert_test(ob) || BKE_paint_select_face_test(ob));
+  return (BKE_paint_select_vert_test(ob) || BKE_paint_select_face_test(ob) ||
+          BKE_paint_select_grease_pencil_test(ob));
 }
 
 bool BKE_paint_always_hide_test(const Object *ob)
