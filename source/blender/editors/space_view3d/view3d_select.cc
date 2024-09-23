@@ -258,12 +258,13 @@ static bool edbm_backbuf_check_and_select_verts(EditSelectBuf_Cache *esel,
                                                 Depsgraph *depsgraph,
                                                 Object *ob,
                                                 BMEditMesh *em,
-                                                const eSelectOp sel_op)
+                                                const eSelectOp sel_op,
+                                                BMVert **solo_eve)
 {
   BMVert *eve;
   BMIter iter;
   bool changed = false;
-
+  bool found_solo = false;
   const BLI_bitmap *select_bitmap = esel->select_bitmap;
   uint index = DRW_select_buffer_context_offset_for_object_elem(depsgraph, ob, SCE_SELECT_VERTEX);
   if (index == 0) {
@@ -278,6 +279,15 @@ static bool edbm_backbuf_check_and_select_verts(EditSelectBuf_Cache *esel,
       const int sel_op_result = ED_select_op_action_deselected(sel_op, is_select, is_inside);
       if (sel_op_result != -1) {
         BM_vert_select_set(em->bm, eve, sel_op_result);
+        if (sel_op_result > 0) {
+          if ((!found_solo) && (!*solo_eve)) {
+            *solo_eve = eve;
+            found_solo = true;
+          }
+          else {
+            *solo_eve = nullptr;
+          }
+        }
         changed = true;
       }
     }
@@ -431,6 +441,9 @@ struct LassoSelectUserData {
   int pass;
   bool is_done;
   bool is_changed;
+  int solo_eve_index;
+  BMVert *solo_eve;
+  bool found_solo;
 };
 
 static void view3d_userdata_lassoselect_init(LassoSelectUserData *r_data,
@@ -454,6 +467,9 @@ static void view3d_userdata_lassoselect_init(LassoSelectUserData *r_data,
   r_data->pass = 0;
   r_data->is_done = false;
   r_data->is_changed = false;
+  r_data->found_solo = false;
+  r_data->solo_eve = nullptr;
+  r_data->solo_eve_index = -1;
 }
 
 static bool view3d_selectable_data(bContext *C)
@@ -741,6 +757,15 @@ static void do_lasso_select_mesh__doSelectVert(void *user_data,
   const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_vert_select_set(data->vc->em->bm, eve, sel_op_result);
+    if (sel_op_result > 0) {
+      if ((!data->found_solo) && (!data->solo_eve)) {
+        data->solo_eve = eve;
+        data->found_solo = true;
+      }
+      else {
+        data->solo_eve = nullptr;
+      }
+    }
     data->is_changed = true;
   }
 }
@@ -862,7 +887,7 @@ static bool do_lasso_select_mesh(const ViewContext *vc,
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       data.is_changed |= edbm_backbuf_check_and_select_verts(
-          esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
+          esel, vc->depsgraph, vc->obedit, vc->em, sel_op, &data.solo_eve);
     }
     else {
       mesh_foreachScreenVert(
@@ -1243,6 +1268,15 @@ static void do_lasso_select_meshobject__doSelectVert(void *user_data,
   const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     mesh_data->select_vert[index] = sel_op_result == 1;
+    if (sel_op_result > 0) {
+      if ((!data->found_solo) && (data->solo_eve_index < 0)) {
+        data->solo_eve_index = index;
+        data->found_solo = true;
+      }
+      else {
+        data->solo_eve_index = -1;
+      }
+    }
     data->is_changed = true;
   }
 }
@@ -1290,6 +1324,7 @@ static bool do_lasso_select_paintvert(const ViewContext *vc,
         ".select_vert", bke::AttrDomain::Point);
 
     LassoSelectUserData_ForMeshVert data;
+    data.lasso_data.solo_eve_index = -1;
     data.select_vert = select_vert.span;
 
     view3d_userdata_lassoselect_init(&data.lasso_data, vc, &rect, mcoords, sel_op);
@@ -1301,6 +1336,12 @@ static bool do_lasso_select_paintvert(const ViewContext *vc,
 
     changed |= data.lasso_data.is_changed;
     select_vert.finish();
+
+    if (changed && (data.lasso_data.solo_eve_index >= 0)) {
+      BM_mesh_elem_table_ensure(vc->em->bm, BM_VERT);
+      BMVert *solo_eve = BM_vert_at_index(vc->em->bm, data.lasso_data.solo_eve_index);
+      BM_select_history_store(vc->em->bm, solo_eve);
+    }
   }
 
   if (changed) {
@@ -3563,6 +3604,8 @@ struct BoxSelectUserData {
   /* runtime */
   bool is_done;
   bool is_changed;
+  BMVert *solo_eve;
+  bool found_solo;
 };
 
 static void view3d_userdata_boxselect_init(BoxSelectUserData *r_data,
@@ -3583,6 +3626,8 @@ static void view3d_userdata_boxselect_init(BoxSelectUserData *r_data,
   /* runtime */
   r_data->is_done = false;
   r_data->is_changed = false;
+  r_data->found_solo = false;
+  r_data->solo_eve = nullptr;
 }
 
 bool edge_inside_circle(const float cent[2],
@@ -3823,6 +3868,15 @@ static void do_mesh_box_select__doSelectVert(void *user_data,
   const int sel_op_result = ED_select_op_action_deselected(data->sel_op, is_select, is_inside);
   if (sel_op_result != -1) {
     BM_vert_select_set(data->vc->em->bm, eve, sel_op_result);
+    if (sel_op_result > 0) {
+      if ((!data->found_solo) && (!data->solo_eve)) {
+        data->solo_eve = eve;
+        data->found_solo = true;
+      }
+      else {
+        data->solo_eve = nullptr;
+      }
+    }
     data->is_changed = true;
   }
 }
@@ -3935,8 +3989,9 @@ static bool do_mesh_box_select(const ViewContext *vc,
 
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
+      data.solo_eve = nullptr;
       data.is_changed |= edbm_backbuf_check_and_select_verts(
-          esel, vc->depsgraph, vc->obedit, vc->em, sel_op);
+          esel, vc->depsgraph, vc->obedit, vc->em, sel_op, &data.solo_eve);
     }
     else {
       mesh_foreachScreenVert(
@@ -3979,6 +4034,9 @@ static bool do_mesh_box_select(const ViewContext *vc,
   }
 
   if (data.is_changed) {
+    if (data.solo_eve) {
+      BM_select_history_store(vc->em->bm, data.solo_eve);
+    }
     EDBM_selectmode_flush(vc->em);
   }
   return data.is_changed;
@@ -4496,6 +4554,8 @@ struct CircleSelectUserData {
 
   /* runtime */
   bool is_changed;
+  BMVert *solo_eve;
+  bool found_solo;
 };
 
 static void view3d_userdata_circleselect_init(CircleSelectUserData *r_data,
@@ -4518,6 +4578,8 @@ static void view3d_userdata_circleselect_init(CircleSelectUserData *r_data,
 
   /* runtime */
   r_data->is_changed = false;
+  r_data->found_solo = false;
+  r_data->solo_eve = nullptr;
 }
 
 static void mesh_circle_doSelectVert(void *user_data,
@@ -4529,6 +4591,15 @@ static void mesh_circle_doSelectVert(void *user_data,
 
   if (len_squared_v2v2(data->mval_fl, screen_co) <= data->radius_squared) {
     BM_vert_select_set(data->vc->em->bm, eve, data->select);
+    if (data->select > 0) {
+      if ((!data->found_solo) && (!data->solo_eve)) {
+        data->solo_eve = eve;
+        data->found_solo = true;
+      }
+      else {
+        data->solo_eve = nullptr;
+      }
+    }
     data->is_changed = true;
   }
 }
@@ -4603,8 +4674,12 @@ static bool mesh_circle_select(const ViewContext *vc,
   if (ts->selectmode & SCE_SELECT_VERTEX) {
     if (use_zbuf) {
       if (esel->select_bitmap != nullptr) {
-        changed |= edbm_backbuf_check_and_select_verts(
-            esel, vc->depsgraph, vc->obedit, vc->em, select ? SEL_OP_ADD : SEL_OP_SUB);
+        changed |= edbm_backbuf_check_and_select_verts(esel,
+                                                       vc->depsgraph,
+                                                       vc->obedit,
+                                                       vc->em,
+                                                       select ? SEL_OP_ADD : SEL_OP_SUB,
+                                                       &data.solo_eve);
       }
     }
     else {
@@ -4643,6 +4718,9 @@ static bool mesh_circle_select(const ViewContext *vc,
   changed |= data.is_changed;
 
   if (changed) {
+    if (data.solo_eve) {
+      BM_select_history_store(vc->em->bm, data.solo_eve);
+    }
     BM_mesh_select_mode_flush_ex(
         vc->em->bm, vc->em->selectmode, BM_SELECT_LEN_FLUSH_RECALC_NOTHING);
   }
