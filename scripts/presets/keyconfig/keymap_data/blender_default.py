@@ -8898,7 +8898,7 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
     )
 
 # ------------------------------------------------------------------------------
-# Tool System (3D View, Grease Pencil V3, Edit)
+# Grease Pencil: Texture Gradient Tool
 
 
 def km_3d_view_tool_edit_grease_pencil_texture_gradient(params):
