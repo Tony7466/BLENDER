@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "atomic_ops.h"
 
 #include "BLI_array_utils.hh"
@@ -565,18 +567,23 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
   Array<int> vert_to_tri_indices;
   const GroupedSpan<int> vert_to_tri = build_vert_to_tri_map(
       mesh.verts_num, vert_tris, vert_to_tri_offsets, vert_to_tri_indices);
-  return IndexMask::from_predicate(unselected, GrainSize(1024), memory, [&](const int i) {
-    const Span<int> face_verts = src_corner_verts.slice(src_faces[i]);
+
+  auto face_added_by_triangulation = [&](const Span<int> face_verts) {
     if (face_verts.size() != 3) {
-      return true;
+      return false;
     }
     /* TODO: Sorting the three values with a few comparisons would be faster than a #Set. */
     const Set<int, 3> vert_set(face_verts);
-    return std::none_of(face_verts.begin(), face_verts.end(), [&](const int vert) {
-      return std::none_of(vert_to_tri[vert].begin(), vert_to_tri[vert].end(), [&](const int tri) {
-        return Set<int, 3>(Span(&vert_tris[tri].x, 3)) == vert_set;
+    return std::any_of(face_verts.begin(), face_verts.end(), [&](const int vert) {
+      return std::any_of(vert_to_tri[vert].begin(), vert_to_tri[vert].end(), [&](const int tri) {
+        const Set<int, 3> other_vert_set(Span(&vert_tris[tri].x, 3));
+        return other_vert_set == vert_set;
       });
     });
+  };
+
+  return IndexMask::from_predicate(unselected, GrainSize(1024), memory, [&](const int i) {
+    return !face_added_by_triangulation(src_corner_verts.slice(src_faces[i]));
   });
 }
 
