@@ -236,3 +236,53 @@ using usamplerCube = SamplerBase<uint, 2, true>;
 using samplerCubeArray = SamplerBase<double, 2, true, true>;
 using isamplerCubeArray = SamplerBase<int, 2, true, true>;
 using usamplerCubeArray = SamplerBase<uint, 2, true, true>;
+
+template<typename T, int Dimensions, bool Array = false> struct ImageBase {
+  static constexpr int coord_dim = Dimensions + int(Cube) + int(Array);
+  static constexpr int deriv_dim = Dimensions + int(Cube);
+  static constexpr int extent_dim = Dimensions + int(Array);
+
+  using int_coord_type = VecBase<int, coord_dim>;
+  using data_vec_type = VecBase<T, 4>;
+  using size_vec_type = VecBase<int, extent_dim>;
+};
+
+#define IMG_TEMPLATE \
+  template<typename T, \
+           typename IntCoord = typename T::int_coord_type, \
+           typename DataVec = typename T::data_vec_type, \
+           typename SizeVec = typename T::size_vec_type>
+
+IMG_TEMPLATE SizeVec imageSize(T) {}
+IMG_TEMPLATE DataVec imageLoad(T, IntCoord) {}
+IMG_TEMPLATE void imageStore(T, IntCoord, DataVec) {}
+IMG_TEMPLATE void imageFence(T) {}
+#define imageLoadFast imageLoad
+#define imageStoreFast imageStore
+
+#undef IMG_TEMPLATE
+
+using sampler1D = SamplerBase<double, 1>;
+using sampler2D = SamplerBase<double, 2>;
+using sampler3D = SamplerBase<double, 3>;
+using isampler1D = SamplerBase<int, 1>;
+using isampler2D = SamplerBase<int, 2>;
+using isampler3D = SamplerBase<int, 3>;
+using usampler1D = SamplerBase<uint, 1>;
+using usampler2D = SamplerBase<uint, 2>;
+using usampler3D = SamplerBase<uint, 3>;
+
+using sampler1DArray = SamplerBase<double, 1, false, true>;
+using sampler2DArray = SamplerBase<double, 2, false, true>;
+using isampler1DArray = SamplerBase<int, 1, false, true>;
+using isampler2DArray = SamplerBase<int, 2, false, true>;
+using usampler1DArray = SamplerBase<uint, 1, false, true>;
+using usampler2DArray = SamplerBase<uint, 2, false, true>;
+
+using samplerCube = SamplerBase<double, 2, true>;
+using isamplerCube = SamplerBase<int, 2, true>;
+using usamplerCube = SamplerBase<uint, 2, true>;
+
+using samplerCubeArray = SamplerBase<double, 2, true, true>;
+using isamplerCubeArray = SamplerBase<int, 2, true, true>;
+using usamplerCubeArray = SamplerBase<uint, 2, true, true>;
