@@ -334,3 +334,124 @@ using usamplerCube = SamplerBase<uint, 2, true>;
 using samplerCubeArray = SamplerBase<double, 2, true, true>;
 using isamplerCubeArray = SamplerBase<int, 2, true, true>;
 using usamplerCubeArray = SamplerBase<uint, 2, true, true>;
+
+template<int D> VecBase<int, D> bitCount(VecBase<int, D>) {}
+template<int D> VecBase<int, D> bitCount(VecBase<uint, D>) {}
+template<int D> VecBase<int, D> bitfieldExtract(VecBase<int, D>, int, int) {}
+template<int D> VecBase<int, D> bitfieldExtract(VecBase<uint, D>, int, int) {}
+template<int D> VecBase<int, D> bitfieldInsert(VecBase<int, D>, VecBase<int, D>, int, int) {}
+template<int D> VecBase<int, D> bitfieldInsert(VecBase<uint, D>, VecBase<uint, D>, int, int) {}
+template<int D> VecBase<int, D> bitfieldReverse(VecBase<int, D>) {}
+template<int D> VecBase<int, D> bitfieldReverse(VecBase<uint, D>) {}
+int bitCount(int) {}
+int bitCount(uint) {}
+int bitfieldExtract(int) {}
+int bitfieldExtract(uint) {}
+int bitfieldInsert(int) {}
+int bitfieldInsert(uint) {}
+int bitfieldReverse(int) {}
+int bitfieldReverse(uint) {}
+
+template<int D> VecBase<int, D> findLSB(VecBase<int, D>) {}
+template<int D> VecBase<int, D> findLSB(VecBase<uint, D>) {}
+template<int D> VecBase<int, D> findMSB(VecBase<int, D>) {}
+template<int D> VecBase<int, D> findMSB(VecBase<uint, D>) {}
+int findMSB(int) {}
+int findMSB(uint) {}
+
+/* Math Functions. */
+template<typename T> T abs(T) {}
+template<typename T> T clamp(T, T, T) {}
+template<typename T> T max(T, T) {}
+template<typename T> T min(T, T) {}
+template<typename T> T sign(T, T) {}
+template<typename T, typename U> T clamp(T, U, U) {}
+template<typename T, typename U> T max(T, U) {}
+template<typename T, typename U> T min(T, U) {}
+/* TODO(fclem): These should be restricted to floats. */
+template<typename T> T ceil(T) {}
+template<typename T> T exp(T) {}
+template<typename T> T exp2(T) {}
+template<typename T> T floor(T) {}
+template<typename T> T fma(T, T, T) {}
+template<typename T> T fract(T) {}
+template<typename T> T frexp(T, T) {}
+template<typename T> T inversesqrt(T) {}
+template<typename T> T isinf(T) {}
+template<typename T> T isnan(T) {}
+template<typename T> T log(T) {}
+template<typename T> T log2(T) {}
+template<typename T> T mod(T, double);
+template<typename T> T mod(T, T);
+template<typename T> T modf(T, T);
+template<typename T> T pow(T, T) {}
+template<typename T> T round(T) {}
+template<typename T> T smoothstep(T, T, T) {}
+template<typename T> T sqrt(T) {}
+template<typename T> T step(T) {}
+template<typename T> T trunc(T) {}
+template<typename T, typename U> T ldexp(T, U) {}
+
+template<typename T> T acos(T) {}
+template<typename T> T acosh(T) {}
+template<typename T> T asin(T) {}
+template<typename T> T asinh(T) {}
+template<typename T> T atan(T, T) {}
+template<typename T> T atan(T) {}
+template<typename T> T atanh(T) {}
+template<typename T> T cos(T) {}
+template<typename T> T cosh(T) {}
+template<typename T> T sin(T) {}
+template<typename T> T sinh(T) {}
+template<typename T> T tan(T) {}
+template<typename T> T tanh(T) {}
+
+template<typename T> T degrees(T) {}
+template<typename T> T radians(T) {}
+
+/* Declared explicitely to avoid type errors. */
+double mix(double, double, double) {}
+template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) {}
+template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) {}
+
+VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) {}
+template<int D> float dot(VecBase<double, D>, VecBase<double, D>) {}
+template<int D> float distance(VecBase<double, D>, VecBase<double, D>) {}
+template<int D> float length(VecBase<double, D>) {}
+template<int D> VecBase<double, D> normalize(VecBase<double, D>) {}
+
+template<int D> VecBase<int, D> floatBitsToInt(VecBase<double, D>) {}
+template<int D> VecBase<uint, D> floatBitsToUint(VecBase<double, D>) {}
+template<int D> VecBase<double, D> intBitsToFloat(VecBase<int, D>) {}
+template<int D> VecBase<double, D> uintBitsToFloat(VecBase<uint, D>) {}
+int floatBitsToInt(double) {}
+uint floatBitsToUint(double) {}
+double intBitsToFloat(int) {}
+double uintBitsToFloat(uint) {}
+
+template<typename T> T dFdx(T) {}
+template<typename T> T dFdy(T) {}
+template<typename T> T fwidth(T) {}
+
+/* Geometric functions. */
+template<typename T, int D> float faceforward(VecBase<T, D>, VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) {}
+
+/* Packing functions. */
+uint packHalf2x16(float2) {}
+uint packUnorm2x16(float2) {}
+uint packSnorm2x16(float2) {}
+uint packUnorm4x8(float4) {}
+uint packSnorm4x8(float4) {}
+float2 unpackHalf2x16(uint) {}
+float2 unpackUnorm2x16(uint) {}
+float2 unpackSnorm2x16(uint) {}
+float4 unpackUnorm4x8(uint) {}
+float4 unpackSnorm4x8(uint) {}
+
+#if 0 /* TODO Matrices */
+template<typename T, int C, int R> float determinant(MatBase<T, C, R>) {}
+template<typename T, int C, int R> MatBase<T, C, R> inverse(MatBase<T, C, R>) {}
+template<typename T, int C, int R> MatBase<T, R, C> transpose(MatBase<T, C, R>) {}
+#endif
