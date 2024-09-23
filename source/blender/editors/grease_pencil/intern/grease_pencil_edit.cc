@@ -1864,7 +1864,7 @@ static bke::greasepencil::Layer &find_or_create_layer_in_dst_by_name(
   using namespace bke::greasepencil;
 
   /* This assumes that the index is valid. Will cause an assert if it is not. */
-  const Layer &layer_src = *grease_pencil_src.layer(layer_index);
+  const Layer &layer_src = grease_pencil_src.layer(layer_index);
   if (TreeNode *node = grease_pencil_dst.find_node_by_name(layer_src.name())) {
     return node->as_layer();
   }
@@ -1959,8 +1959,8 @@ static bool grease_pencil_separate_layer(bContext &C,
 
   /* Create a new object for each layer. */
   for (const int layer_i : grease_pencil_src.layers().index_range()) {
-    Layer *layer_src = grease_pencil_src.layer(layer_i);
-    if (layer_src->is_selected() || layer_src->is_locked()) {
+    Layer &layer_src = grease_pencil_src.layer(layer_i);
+    if (layer_src.is_selected() || layer_src.is_locked()) {
       continue;
     }
 
@@ -1972,7 +1972,7 @@ static bool grease_pencil_separate_layer(bContext &C,
 
     /* Iterate through all the drawings at current frame. */
     const Vector<MutableDrawingInfo> drawings_src = retrieve_editable_drawings_from_layer(
-        scene, grease_pencil_src, *layer_src);
+        scene, grease_pencil_src, layer_src);
     for (const MutableDrawingInfo &info : drawings_src) {
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
@@ -2713,13 +2713,15 @@ static int grease_pencil_reproject_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const float offset = RNA_float_get(op->ptr, "offset");
 
+  ViewDepths *view_depths = nullptr;
+  if (mode == ReprojectMode::Surface) {
+    ED_view3d_depth_override(depsgraph, region, v3d, nullptr, V3D_DEPTH_NO_GPENCIL, &view_depths);
+  }
+
   const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
       scene.toolsettings);
 
   const int oldframe = int(DEG_get_ctime(depsgraph));
-  /* TODO: This can probably be optimized further for the non-Surface projection usecase by
-   * considering all drawings for the parallel loop instead of having to partition by frame number
-   */
   if (keep_original) {
     const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
     threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
@@ -2737,9 +2739,13 @@ static int grease_pencil_reproject_exec(bContext *C, wmOperator *op)
       else if (selection_domain == bke::AttrDomain::Point) {
         curves::duplicate_points(curves, elements);
       }
+      info.drawing.tag_topology_changed();
     });
   }
 
+  /* TODO: This can probably be optimized further for the non-Surface projection use case by
+   * considering all drawings for the parallel loop instead of having to partition by frame number.
+   */
   std::atomic<bool> changed = false;
   Array<Vector<MutableDrawingInfo>> drawings_per_frame =
       retrieve_editable_drawings_grouped_per_frame(scene, grease_pencil);
@@ -2762,20 +2768,16 @@ static int grease_pencil_reproject_exec(bContext *C, wmOperator *op)
         return;
       }
 
-      const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+      const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
       bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
       const DrawingPlacement drawing_placement(
-          scene, *region, *v3d, *object, &layer, mode, offset);
-      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+          scene, *region, *v3d, *object, &layer, mode, offset, view_depths);
+
       MutableSpan<float3> positions = curves.positions_for_write();
-      for (const int curve_index : curves.curves_range()) {
-        const IndexRange curve_points = points_by_curve[curve_index];
-        const IndexMask curve_points_to_reproject = points_to_reproject.slice_content(
-            curve_points);
-        curve_points_to_reproject.foreach_index(GrainSize(4096), [&](const int point_i) {
-          positions[point_i] = drawing_placement.reproject(positions[point_i]);
-        });
-      }
+      points_to_reproject.foreach_index(GrainSize(4096), [&](const int point_i) {
+        positions[point_i] = drawing_placement.reproject(positions[point_i]);
+      });
+      info.drawing.tag_positions_changed();
 
       changed.store(true, std::memory_order_relaxed);
     });
@@ -2920,7 +2922,7 @@ static int grease_pencil_snap_to_grid_exec(bContext *C, wmOperator * /*op*/)
     IndexMaskMemory memory;
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
 
-    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const Layer &layer = grease_pencil.layer(drawing_info.layer_index);
     const float4x4 layer_to_world = layer.to_world_space(object);
     const float4x4 world_to_layer = math::invert(layer_to_world);
 
@@ -2981,7 +2983,7 @@ static int grease_pencil_snap_to_cursor_exec(bContext *C, wmOperator *op)
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves,
                                                                            selected_points_memory);
 
-    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const Layer &layer = grease_pencil.layer(drawing_info.layer_index);
     const float4x4 layer_to_world = layer.to_world_space(object);
     const float4x4 world_to_layer = math::invert(layer_to_world);
     const float3 cursor_layer = math::transform_point(world_to_layer, cursor_world);
@@ -3071,7 +3073,7 @@ static bool grease_pencil_snap_compute_centroid(const Scene &scene,
     const IndexMask selected_points = ed::curves::retrieve_selected_points(curves,
                                                                            selected_points_memory);
 
-    const Layer &layer = *grease_pencil.layer(drawing_info.layer_index);
+    const Layer &layer = grease_pencil.layer(drawing_info.layer_index);
     const float4x4 layer_to_world = layer.to_world_space(object);
 
     Span<float3> positions = curves.positions();
