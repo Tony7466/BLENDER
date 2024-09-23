@@ -590,6 +590,6 @@ int gpu_ViewportIndex;
 void discard;
 
 /* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
-bool is_zero(vec2 A) {}
-bool is_zero(vec3 A) {}
-bool is_zero(vec4 A) {}
+bool is_zero(vec2) {}
+bool is_zero(vec3) {}
+bool is_zero(vec4) {}
