@@ -179,7 +179,7 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         space = context.space_data
 
         if space.type == 'PROPERTIES':
-            layout.operator("grease_pencil.layer_group_add", text="Add Group")
+            layout.operator("grease_pencil.layer_group_add", text="Add Group", icon='NEWFOLDER')
 
         layout.separator()
         layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE').empty_keyframes = False
@@ -233,6 +233,7 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub = col.column(align=True)
         sub.operator_context = 'EXEC_DEFAULT'
         sub.operator("grease_pencil.layer_add", icon='ADD', text="")
+        sub.operator("grease_pencil.layer_group_add", icon='NEWFOLDER', text="")
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
         col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
