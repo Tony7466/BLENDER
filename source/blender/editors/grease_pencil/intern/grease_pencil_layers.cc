@@ -217,6 +217,25 @@ static const EnumPropertyItem enum_layer_move_direction[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static bool grease_pencil_layer_move_poll(bContext *C)
+{
+  using namespace blender::bke::greasepencil;
+  if (!active_grease_pencil_poll(C)) {
+    return false;
+  }
+
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const TreeNode &active_node = *grease_pencil.get_active_node();
+  const LayerGroup *parent = active_node.parent_group();
+
+  if (parent == nullptr || parent->num_direct_nodes() < 2) {
+    return false;
+  }
+
+  return true;
+}
+
 static int grease_pencil_layer_move_exec(bContext *C, wmOperator *op)
 {
   using namespace blender::bke::greasepencil;
@@ -249,7 +268,7 @@ static void GREASE_PENCIL_OT_layer_move(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = grease_pencil_layer_move_exec;
-  ot->poll = active_grease_pencil_poll;
+  ot->poll = grease_pencil_layer_move_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
