@@ -3182,10 +3182,11 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
     const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
     const float4x4 layer_space_to_world_space = layer.to_world_space(*object);
 
-    const float2 sco_start(RNA_int_get(op->ptr, "xstart"), RNA_int_get(op->ptr, "ystart"));
-    const float2 sco_end(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
-    const float2 dif = sco_end - sco_start;
-    const float2 sco_tang = sco_start + float2(-dif[1], dif[0]);
+    /* Calculate screen space points. */
+    const float2 screen_start(RNA_int_get(op->ptr, "xstart"), RNA_int_get(op->ptr, "ystart"));
+    const float2 screen_end(RNA_int_get(op->ptr, "xend"), RNA_int_get(op->ptr, "yend"));
+    const float2 screen_direction = screen_end - screen_start;
+    const float2 screen_tangent = screen_start + float2(-screen_direction[1], screen_direction[0]);
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -3218,11 +3219,11 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       const float4 plane = float4(normal, -math::dot(normal, point));
 
       float3 start;
-      float3 tang;
+      float3 tangent;
       float3 end;
-      ED_view3d_win_to_3d_on_plane(region, plane, sco_start, false, start);
-      ED_view3d_win_to_3d_on_plane(region, plane, sco_tang, false, tang);
-      ED_view3d_win_to_3d_on_plane(region, plane, sco_end, false, end);
+      ED_view3d_win_to_3d_on_plane(region, plane, screen_start, false, start);
+      ED_view3d_win_to_3d_on_plane(region, plane, screen_tangent, false, tangent);
+      ED_view3d_win_to_3d_on_plane(region, plane, screen_end, false, end);
 
       const float3 origin = start;
       /* Invert the length by dividing by the length squared. */
@@ -3230,7 +3231,7 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       float3 v_dir = math::cross(u_dir, normal);
 
       /* Flip the texture if need so that it is not mirrored. */
-      if (math::dot(tang - start, v_dir) < 0.0f) {
+      if (math::dot(tangent - start, v_dir) < 0.0f) {
         v_dir = -v_dir;
       }
 
