@@ -361,8 +361,6 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(const Mesh &src_mesh,
                              bke::AttrDomain::Point,
                              attribute_filter,
                              dst_attributes);
-        CustomData_merge(
-            &src_mesh.vert_data, &dst_mesh->vert_data, CD_MASK_ORIGINDEX, src_mesh.verts_num);
         bke::gather_attributes(src_attributes,
                                bke::AttrDomain::Edge,
                                bke::AttrDomain::Edge,
@@ -448,15 +446,11 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(const Mesh &src_mesh,
                        bke::AttrDomain::Point,
                        attribute_filter,
                        dst_attributes);
-  CustomData_merge(
-      &src_mesh.vert_data, &dst_mesh->vert_data, CD_MASK_ORIGINDEX, src_mesh.verts_num);
   bke::copy_attributes(src_attributes,
                        bke::AttrDomain::Edge,
                        bke::AttrDomain::Edge,
                        attribute_filter,
                        dst_attributes);
-  CustomData_merge(
-      &src_mesh.edge_data, &dst_mesh->edge_data, CD_MASK_ORIGINDEX, src_mesh.edges_num);
   bke::gather_attributes(src_attributes,
                          bke::AttrDomain::Face,
                          bke::AttrDomain::Face,
