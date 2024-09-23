@@ -17,8 +17,6 @@
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
-#include <iostream>
-
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class PinchOperation : public GreasePencilStrokeOperationCommon {
