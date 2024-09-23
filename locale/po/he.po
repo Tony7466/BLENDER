@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.2.0 Alpha (b'5bc71c870435')\n"
+"Project-Id-Version: Blender 4.3.0 Alpha (b'd52d70324d18')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-06-03 07:20+0000\n"
+"POT-Creation-Date: 2024-09-16 11:03+0000\n"
 "PO-Revision-Date: 2023-10-06 09:54+0000\n"
 "Last-Translator: Eitan Traurig <eitant13@gmail.com>\n"
 "Language-Team: Hebrew <https://translate.blender.org/projects/blender-ui/ui/he/>\n"
@@ -89,6 +89,10 @@ msgstr "יובכ"
 
 msgid "Full"
 msgstr "אלמ"
+
+
+msgid "Center"
+msgstr "זכרמ"
 
 
 msgid "Animation Data"
@@ -240,30 +244,8 @@ msgid "Tail"
 msgstr "בנז"
 
 
-msgid "Remove"
-msgstr "רסה"
-
-
 msgid "Vertex Color"
 msgstr "דוקדוק עבצ"
-
-
-msgid "Pencil"
-msgstr "ןורפע"
-
-
-msgid "Pen"
-msgstr "טע"
-
-
-msgctxt "GPencil"
-msgid "Smooth"
-msgstr "קלח"
-
-
-msgctxt "GPencil"
-msgid "Strength"
-msgstr "המצוע"
 
 
 msgctxt "Amount"
@@ -289,10 +271,6 @@ msgstr "לאמש"
 
 msgid "Right"
 msgstr "ןימי"
-
-
-msgid "Center"
-msgstr "זכרמ"
 
 
 msgid "Gamma"
@@ -425,10 +403,6 @@ msgid "Vertex Group"
 msgstr "דוקדוק תצובק"
 
 
-msgid "Generated"
-msgstr "רצוימ"
-
-
 msgid "Collection"
 msgstr "ףסוא"
 
@@ -449,20 +423,8 @@ msgid "Tool Header"
 msgstr "ילכ תרתוכ"
 
 
-msgid "Edit Mode"
-msgstr "הכירע בצמ"
-
-
-msgid "Mirror"
-msgstr "הארמ"
-
-
-msgid "Smooth"
-msgstr "קלח"
-
-
-msgid "Space"
-msgstr "חוור"
+msgid "Generated"
+msgstr "רצוימ"
 
 
 msgid "Red Green Blue"
@@ -498,14 +460,23 @@ msgid "Smooth"
 msgstr "קלח"
 
 
+msgctxt "GPencil"
+msgid "Smooth"
+msgstr "קלח"
+
+
+msgctxt "GPencil"
+msgid "Strength"
+msgstr "המצוע"
+
+
 msgctxt "Mask"
 msgid "Smooth"
 msgstr "קלח"
 
 
-msgctxt "Brush"
-msgid "Sculpt Tool"
-msgstr "לוסיפ ילכ"
+msgid "Space"
+msgstr "חוור"
 
 
 msgid "Up"
@@ -518,10 +489,6 @@ msgstr "ביתנ"
 
 msgid "Mean"
 msgstr "עצוממ"
-
-
-msgid "Movie"
-msgstr "טרס"
 
 
 msgctxt "Material"
@@ -555,6 +522,10 @@ msgstr "ילכ"
 
 msgid "Faces"
 msgstr "תואפ"
+
+
+msgid "Edit Mode"
+msgstr "הכירע בצמ"
 
 
 msgid "Sculpt Mode"
@@ -628,16 +599,32 @@ msgid "Grease Pencil Color"
 msgstr "Grease Pencil יאבצ"
 
 
+msgid "Apply"
+msgstr "לחה"
+
+
+msgid "Face Data"
+msgstr "האפ ינותנ"
+
+
+msgid "Mirror"
+msgstr "הארמ"
+
+
+msgid "Convert"
+msgstr "רמה"
+
+
 msgid "Languages..."
 msgstr "..תופש"
 
 
+msgid "Smooth"
+msgstr "קלח"
+
+
 msgid "Add Modifier"
 msgstr "הנשמ ףסוה"
-
-
-msgid "Apply"
-msgstr "לחה"
 
 
 msgid "Python"
@@ -646,14 +633,6 @@ msgstr "Python"
 
 msgid "System"
 msgstr "תכרעמ"
-
-
-msgid "Face Data"
-msgstr "האפ ינותנ"
-
-
-msgid "Convert"
-msgstr "רמה"
 
 
 msgid "Vertex group name"
@@ -749,6 +728,10 @@ msgstr "םהינש"
 msgctxt "Operator"
 msgid "Select Vertex Group"
 msgstr "דוקדוק תצובק רחב"
+
+
+msgid "Remove"
+msgstr "רסה"
 
 
 msgid "Image Name"
@@ -872,14 +855,6 @@ msgid "Animation"
 msgstr "היצמינא"
 
 
-msgid "name"
-msgstr "םש"
-
-
-msgid "Path:"
-msgstr ":ביתנ"
-
-
 msgid "Credits"
 msgstr "תודות"
 
@@ -895,6 +870,10 @@ msgstr "טוריפ"
 
 msgid "Dimension"
 msgstr "דמימ"
+
+
+msgid "name"
+msgstr "םש"
 
 
 msgid "Sort By"
@@ -923,11 +902,6 @@ msgstr "טרס"
 
 msgid "Location:"
 msgstr "‏:םוקימ"
-
-
-msgctxt "Operator"
-msgid "Grease Pencil"
-msgstr "Grease Pencil"
 
 
 msgid "Nothing selected"
@@ -969,6 +943,14 @@ msgid "Saturation:"
 msgstr ":היוור"
 
 
+msgid "Cancel"
+msgstr "לוטיב"
+
+
+msgid "Movie"
+msgstr "טרס"
+
+
 msgid "No Properties"
 msgstr "םינייפאמ אלל"
 
@@ -983,10 +965,6 @@ msgstr "תודוקנ קחמ"
 
 msgid "Stop this job"
 msgstr "וז הדובע רוצע"
-
-
-msgid "Cancel"
-msgstr "לוטיב"
 
 
 msgid "vertex data"
@@ -1103,6 +1081,10 @@ msgstr "1 הנומת"
 
 msgid "Image 2"
 msgstr "2 הנומת"
+
+
+msgid "Path:"
+msgstr ":ביתנ"
 
 
 msgid "Add Input"

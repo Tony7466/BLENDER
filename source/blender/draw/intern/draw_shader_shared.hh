@@ -153,8 +153,9 @@ enum eObjectInfoFlag : uint32_t {
   OBJECT_FROM_SET = (1u << 2u),
   OBJECT_ACTIVE = (1u << 3u),
   OBJECT_NEGATIVE_SCALE = (1u << 4u),
+  OBJECT_HOLDOUT = (1u << 5u),
   /* Avoid skipped info to change culling. */
-  OBJECT_NO_INFO = ~OBJECT_NEGATIVE_SCALE
+  OBJECT_NO_INFO = ~OBJECT_HOLDOUT
 };
 
 struct ObjectInfos {
@@ -203,7 +204,16 @@ struct ObjectBounds {
 };
 BLI_STATIC_ASSERT_ALIGN(ObjectBounds, 16)
 
+/* Return true if `bounding_corners` are valid. Should be checked before accessing them.
+ * Does not guarantee that `bounding_sphere` is valid. */
 inline bool drw_bounds_are_valid(ObjectBounds bounds)
+{
+  return bounds.bounding_sphere.w != -1.0f;
+}
+
+/* Return true if bounds are ready for culling.
+ * In this case, both `bounding_corners` and `bounding_sphere` are valid. */
+inline bool drw_bounds_culling_enabled(ObjectBounds bounds)
 {
   return bounds.bounding_sphere.w >= 0.0f;
 }

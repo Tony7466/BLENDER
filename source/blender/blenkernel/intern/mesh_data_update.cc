@@ -306,7 +306,7 @@ static GeometrySet mesh_calc_modifiers(Depsgraph &depsgraph,
 {
   const Mesh &mesh_input = *static_cast<const Mesh *>(ob.data);
 
-  BLI_assert((mesh_input.id.tag & LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT) == 0);
+  BLI_assert((mesh_input.id.tag & ID_TAG_COPIED_ON_EVAL_FINAL_RESULT) == 0);
 
   GeometrySet geometry_set = GeometrySet::from_mesh(const_cast<Mesh *>(&mesh_input),
                                                     GeometryOwnershipType::ReadOnly);
@@ -1004,7 +1004,7 @@ void mesh_data_update(Depsgraph &depsgraph,
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
    * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
-  BLI_assert(ob.id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(ob.id.tag & ID_TAG_COPIED_ON_EVAL);
 
   BKE_object_free_derived_caches(&ob);
   if (DEG_is_active(&depsgraph)) {
@@ -1048,7 +1048,7 @@ Mesh *mesh_get_eval_deform(Depsgraph *depsgraph,
 
   /* Evaluated meshes aren't supposed to be created on original instances. If you do,
    * they aren't cleaned up properly on mode switch, causing crashes, e.g #58150. */
-  BLI_assert(ob->id.tag & LIB_TAG_COPIED_ON_EVAL);
+  BLI_assert(ob->id.tag & ID_TAG_COPIED_ON_EVAL);
 
   /* If there's no evaluated mesh or the last data mask used doesn't include
    * the data we need, rebuild the evaluated mesh. */
@@ -1128,7 +1128,7 @@ Mesh *editbmesh_get_eval_cage_from_orig(Depsgraph *depsgraph,
                                         Object *obedit,
                                         const CustomData_MeshMasks *dataMask)
 {
-  BLI_assert((obedit->id.tag & LIB_TAG_COPIED_ON_EVAL) == 0);
+  BLI_assert((obedit->id.tag & ID_TAG_COPIED_ON_EVAL) == 0);
   const Scene *scene_eval = (const Scene *)DEG_get_evaluated_id(depsgraph, (ID *)&scene->id);
   Object *obedit_eval = (Object *)DEG_get_evaluated_id(depsgraph, &obedit->id);
   BMEditMesh *em_eval = BKE_editmesh_from_object(obedit_eval);

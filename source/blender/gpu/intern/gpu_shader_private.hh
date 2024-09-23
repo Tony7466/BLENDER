@@ -24,6 +24,7 @@ namespace blender {
 namespace gpu {
 
 class GPULogParser;
+class Context;
 
 /* Set to 1 to log the full source of shaders that fail to compile. */
 #define DEBUG_LOG_SHADER_SRC_ON_ERROR 0
@@ -50,7 +51,7 @@ class Shader {
    * The backend is free to implement their support as they see fit.
    */
   struct Constants {
-    using Value = shader::ShaderCreateInfo::SpecializationConstant::Value;
+    using Value = shader::SpecializationConstant::Value;
     Vector<gpu::shader::Type> types;
     /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
      * that however it wants (i.e: bind another shader instead). */
@@ -173,11 +174,26 @@ class ShaderCompiler {
   };
 
  public:
+  virtual ~ShaderCompiler(){};
+
   Shader *compile(const shader::ShaderCreateInfo &info, bool is_batch_compilation);
 
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) = 0;
   virtual bool batch_is_ready(BatchHandle handle) = 0;
   virtual Vector<Shader *> batch_finalize(BatchHandle &handle) = 0;
+
+  virtual SpecializationBatchHandle precompile_specializations(
+      Span<ShaderSpecialization> /*specializations*/)
+  {
+    /* No-op.*/
+    return 0;
+  };
+
+  virtual bool specialization_batch_is_ready(SpecializationBatchHandle &handle)
+  {
+    handle = 0;
+    return true;
+  };
 };
 
 /* Generic (fully synchronous) implementation for backends that don't implement their own
@@ -193,7 +209,7 @@ class ShaderCompilerGeneric : public ShaderCompiler {
   Map<BatchHandle, Batch> batches;
 
  public:
-  ~ShaderCompilerGeneric();
+  virtual ~ShaderCompilerGeneric() override;
 
   virtual BatchHandle batch_compile(Span<const shader::ShaderCreateInfo *> &infos) override;
   virtual bool batch_is_ready(BatchHandle handle) override;
@@ -240,6 +256,9 @@ class GPULogParser {
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GPULogParser");
 };
+
+void printf_begin(Context *ctx);
+void printf_end(Context *ctx);
 
 }  // namespace gpu
 }  // namespace blender

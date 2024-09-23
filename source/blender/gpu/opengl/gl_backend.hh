@@ -17,6 +17,7 @@
 #endif
 
 #include "gl_batch.hh"
+#include "gl_compilation_subprocess.hh"
 #include "gl_compute.hh"
 #include "gl_context.hh"
 #include "gl_drawlist.hh"
@@ -106,7 +107,7 @@ class GLBackend : public GPUBackend {
     return new GLIndexBuf();
   };
 
-  PixelBuffer *pixelbuf_alloc(uint size) override
+  PixelBuffer *pixelbuf_alloc(size_t size) override
   {
     return new GLPixelBuffer(size);
   };
@@ -126,12 +127,12 @@ class GLBackend : public GPUBackend {
     return new GLTexture(name);
   };
 
-  UniformBuf *uniformbuf_alloc(int size, const char *name) override
+  UniformBuf *uniformbuf_alloc(size_t size, const char *name) override
   {
     return new GLUniformBuf(size, name);
   };
 
-  StorageBuf *storagebuf_alloc(int size, GPUUsageType usage, const char *name) override
+  StorageBuf *storagebuf_alloc(size_t size, GPUUsageType usage, const char *name) override
   {
     return new GLStorageBuf(size, usage, name);
   };
@@ -163,6 +164,13 @@ class GLBackend : public GPUBackend {
     glDispatchComputeIndirect((GLintptr)0);
     /* Unbind. */
     glBindBuffer(GL_DISPATCH_INDIRECT_BUFFER, 0);
+  }
+
+  void shader_cache_dir_clear_old() override
+  {
+#if BLI_SUBPROCESS_SUPPORT
+    GL_shader_cache_dir_clear_old();
+#endif
   }
 
   /* Render Frame Coordination */

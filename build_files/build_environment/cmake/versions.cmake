@@ -37,9 +37,9 @@ set(OPENAL_HASH_TYPE MD5)
 set(OPENAL_FILE openal-soft-${OPENAL_VERSION}.tar.bz2)
 set(OPENAL_HOMEPAGE https://openal-soft.org/)
 
-set(PNG_VERSION 1.6.37)
+set(PNG_VERSION 1.6.43)
 set(PNG_URI http://prdownloads.sourceforge.net/libpng/libpng-${PNG_VERSION}.tar.xz)
-set(PNG_HASH 505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca)
+set(PNG_HASH 6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c)
 set(PNG_HASH_TYPE SHA256)
 set(PNG_FILE libpng-${PNG_VERSION}.tar.xz)
 set(PNG_CPE "cpe:2.3:a:libpng:libpng:${PNG_VERSION}:*:*:*:*:*:*:*")
@@ -147,9 +147,9 @@ set(SDL_FILE SDL2-${SDL_VERSION}.tar.gz)
 set(SDL_CPE "cpe:2.3:a:libsdl:sdl:${SDL_VERSION}:*:*:*:*:*:*:*")
 set(SDL_HOMEPAGE https://www.libsdl.org)
 
-set(OPENCOLLADA_VERSION v1.6.68)
-set(OPENCOLLADA_URI https://github.com/KhronosGroup/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
-set(OPENCOLLADA_HASH ee7dae874019fea7be11613d07567493)
+set(OPENCOLLADA_VERSION dfc341ab0b3b23ee307ab8660c0213e64da1eac6)
+set(OPENCOLLADA_URI https://github.com/aras-p/OpenCOLLADA/archive/${OPENCOLLADA_VERSION}.tar.gz)
+set(OPENCOLLADA_HASH 2120c8c02aab840e81cb87e625a608f7)
 set(OPENCOLLADA_HASH_TYPE MD5)
 set(OPENCOLLADA_FILE opencollada-${OPENCOLLADA_VERSION}.tar.gz)
 
@@ -229,16 +229,27 @@ set(OSL_FILE OpenShadingLanguage-${OSL_VERSION}.tar.gz)
 # it wants to use in PCbuild/get_externals.bat for the following dependencies:
 # BZIP2, FFI, SQLITE and change the versions in this file as well. For compliance
 # reasons there can be no exceptions to this.
+# Additionally, keep the PYTHON_PIP_VERSION in sync with the pip version bundled
+# into Python.
 
-set(PYTHON_VERSION 3.11.7)
+set(PYTHON_VERSION 3.11.9)
 set(PYTHON_SHORT_VERSION 3.11)
 set(PYTHON_SHORT_VERSION_NO_DOTS 311)
 set(PYTHON_URI https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz)
-set(PYTHON_HASH d96c7e134c35a8c46236f8a0e566b69c)
+set(PYTHON_HASH 22ea467e7d915477152e99d5da856ddc)
 set(PYTHON_HASH_TYPE MD5)
 set(PYTHON_FILE Python-${PYTHON_VERSION}.tar.xz)
 set(PYTHON_CPE "cpe:2.3:a:python:python:${PYTHON_VERSION}:-:*:*:*:*:*:*")
 set(PYTHON_HOMEPAGE https://www.python.org/)
+
+# Python bundles pip wheel, and does not track CVEs from it. Add an explicit CPE
+# identifier for pip, so that cve_check can detect vulnerabilities in it.
+# The version needs to be kept in symc with the version bundled in Python.
+# Currently it is done manually by tracking _PIP_VERSION variable in the
+# `Lib/ensurepip/__init__.py`. For example,
+#   https://github.com/python/cpython/tree/v3.11.9/Lib/ensurepip/__init__.py
+set(PYTHON_PIP_VERSION 24.0)
+set(PYTHON_PIP_CPE "cpe:2.3:a:pypa:pip:${PYTHON_PIP_VERSION}:*:*:*:*:*:*:*")
 
 set(TBB_YEAR 2020)
 set(TBB_VERSION ${TBB_YEAR}_U3)
@@ -536,9 +547,9 @@ set(MATERIALX_HASH fad8f4e19305fb2ee920cbff638f3560)
 set(MATERIALX_HASH_TYPE MD5)
 set(MATERIALX_FILE materialx-v${MATERIALX_VERSION}.tar.gz)
 
-set(OIDN_VERSION 2.3.0-beta)
+set(OIDN_VERSION 2.3.0)
 set(OIDN_URI https://github.com/OpenImageDenoise/oidn/releases/download/v${OIDN_VERSION}/oidn-${OIDN_VERSION}.src.tar.gz)
-set(OIDN_HASH 3bb6596964a17143ad089aa29d1e775d)
+set(OIDN_HASH 31a3d8b9168966a2fa93daa6becad586)
 set(OIDN_HASH_TYPE MD5)
 set(OIDN_FILE oidn-${OIDN_VERSION}.src.tar.gz)
 
@@ -570,31 +581,31 @@ set(XR_OPENXR_SDK_HASH a2623ebab3d0b340bc16311b14f02075)
 set(XR_OPENXR_SDK_HASH_TYPE MD5)
 set(XR_OPENXR_SDK_FILE OpenXR-SDK-${XR_OPENXR_SDK_VERSION}.tar.gz)
 
-set(WL_PROTOCOLS_VERSION 1.32)
+set(WL_PROTOCOLS_VERSION 1.36)
 set(WL_PROTOCOLS_FILE wayland-protocols-${WL_PROTOCOLS_VERSION}.tar.xz)
 set(WL_PROTOCOLS_URI https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/${WL_PROTOCOLS_VERSION}/downloads/${WL_PROTOCOLS_FILE})
-set(WL_PROTOCOLS_HASH 00c2cedb0d2df714a0965a00c19385c6)
+set(WL_PROTOCOLS_HASH d733380202a75ca837744e65b4dbadc5)
 set(WL_PROTOCOLS_HASH_TYPE MD5)
 set(WL_PROTOCOLS_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland-protocols)
 
-set(WAYLAND_VERSION 1.22.0)
+set(WAYLAND_VERSION 1.23.0)
 set(WAYLAND_FILE wayland-${WAYLAND_VERSION}.tar.xz)
 set(WAYLAND_URI https://gitlab.freedesktop.org/wayland/wayland/-/releases/${WAYLAND_VERSION}/downloads/wayland-${WAYLAND_VERSION}.tar.xz)
-set(WAYLAND_HASH 7410ab549e3928fce9381455b17b0803)
+set(WAYLAND_HASH 23ad991e776ec8cf7e58b34cbd2efa75)
 set(WAYLAND_HASH_TYPE MD5)
 set(WAYLAND_HOMEPAGE https://gitlab.freedesktop.org/wayland/wayland)
 
-set(WAYLAND_LIBDECOR_VERSION 0.1.0)
+set(WAYLAND_LIBDECOR_VERSION 0.2.2)
 set(WAYLAND_LIBDECOR_FILE libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
-set(WAYLAND_LIBDECOR_URI https://gitlab.gnome.org/jadahl/libdecor/uploads/81adf91d27620e20bcc5f6b9b312d768/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz )
-set(WAYLAND_LIBDECOR_HASH 47b59eba76faa3787f0878bf8700e912)
+set(WAYLAND_LIBDECOR_URI https://gitlab.freedesktop.org/libdecor/libdecor/-/releases/${WAYLAND_LIBDECOR_VERSION}/downloads/libdecor-${WAYLAND_LIBDECOR_VERSION}.tar.xz)
+set(WAYLAND_LIBDECOR_HASH 5b7f4a10a9335b62101bccc220e2d13a)
 set(WAYLAND_LIBDECOR_HASH_TYPE MD5)
 set(WAYLAND_LIBDECOR_HOMEPAGE https://gitlab.freedesktop.org/libdecor/libdecor)
 
-set(WAYLAND_WESTON_VERSION 12.0.92)
+set(WAYLAND_WESTON_VERSION 13.0.3)
 set(WAYLAND_WESTON_FILE weston-${WAYLAND_WESTON_VERSION}.tar.xz)
 set(WAYLAND_WESTON_URI https://gitlab.freedesktop.org/wayland/weston/-/releases/${WAYLAND_WESTON_VERSION}/downloads/weston-${WAYLAND_WESTON_VERSION}.tar.xz)
-set(WAYLAND_WESTON_HASH 44542b60bf9b9fe3add904af11bbad98)
+set(WAYLAND_WESTON_HASH 9e10833f807214b4b060a1a8db1e3057)
 set(WAYLAND_WESTON_HASH_TYPE MD5)
 set(WAYLAND_WESTON_HOMEPAGE https://wayland.freedesktop.org)
 
@@ -633,9 +644,9 @@ set(ZSTD_HASH_TYPE SHA256)
 set(ZSTD_FILE zstd-${ZSTD_VERSION}.tar.gz)
 set(ZSTD_CPE "cpe:2.3:a:facebook:zstandard:${ZSTD_VERSION}:*:*:*:*:*:*:*")
 
-set(SSE2NEON_VERSION cfaa59fc04fecb117c0a0f3fe9c82dece6f359ad)
+set(SSE2NEON_VERSION 227cc413fb2d50b2a10073087be96b59d5364aea)
 set(SSE2NEON_URI https://github.com/DLTcollab/sse2neon/archive/${SSE2NEON_VERSION}.tar.gz)
-set(SSE2NEON_HASH 5491c5038a301a6b0ba0531e516568bb50d165d206360f03d8d56558a2490669)
+set(SSE2NEON_HASH 3427a495743bb6fd1b5f9f806b80f57d67b1ac7ccf39a5f44aedd487fd7e6da1)
 set(SSE2NEON_HASH_TYPE SHA256)
 set(SSE2NEON_FILE sse2neon-${SSE2NEON_VERSION}.tar.gz)
 
@@ -736,9 +747,9 @@ set(UNIFIED_MEMORY_FRAMEWORK_FILE unified-memory-framework-${UNIFIED_MEMORY_FRAM
 # compiler, the versions used are taken from the following location
 # https://github.com/intel/intel-graphics-compiler/releases
 
-set(IGC_VERSION 1.0.15468.25)
+set(IGC_VERSION 1.0.17384.29)
 set(IGC_URI https://github.com/intel/intel-graphics-compiler/archive/refs/tags/igc-${IGC_VERSION}.tar.gz)
-set(IGC_HASH c2c36af98ead4f4f6975633eaa53f45b84cb96ce48d9bfa879bebfaf12367b79)
+set(IGC_HASH de7b1ba9cb1369f9aa26343bb4ad1ac7e5cb5f9f4517071f25d853e46cae6195)
 set(IGC_HASH_TYPE SHA256)
 set(IGC_FILE igc-${IGC_VERSION}.tar.gz)
 
@@ -758,33 +769,33 @@ set(IGC_LLVM_FILE ${IGC_LLVM_VERSION}.tar.gz)
 #
 # WARNING WARNING WARNING
 
-set(IGC_OPENCL_CLANG_VERSION cf95b338d14685e4f3402ab1828bef31d48f1fd6)
+set(IGC_OPENCL_CLANG_VERSION 470cf0018e1ef6fc92eda1356f5f31f7da452abc)
 set(IGC_OPENCL_CLANG_URI https://github.com/intel/opencl-clang/archive/${IGC_OPENCL_CLANG_VERSION}.tar.gz)
-set(IGC_OPENCL_CLANG_HASH e6191148c87ac7fdc2806b04feeb008c217344ee4dd1308b87e4c6cf3112d4bc)
+set(IGC_OPENCL_CLANG_HASH fa410e0b4cc5b3fc3262e3b6aaace3543207a20ecd004f48dfec9a970f1fe4e2)
 set(IGC_OPENCL_CLANG_HASH_TYPE SHA256)
 set(IGC_OPENCL_CLANG_FILE opencl-clang-${IGC_OPENCL_CLANG_VERSION}.tar.gz)
 
-set(IGC_VCINTRINSICS_VERSION v0.13.0)
+set(IGC_VCINTRINSICS_VERSION v0.19.0)
 set(IGC_VCINTRINSICS_URI https://github.com/intel/vc-intrinsics/archive/refs/tags/${IGC_VCINTRINSICS_VERSION}.tar.gz)
-set(IGC_VCINTRINSICS_HASH f98e265b38312cceaa3276b9800e0c5b1f167e5807d50abd9585268c7025e9b7)
+set(IGC_VCINTRINSICS_HASH b708df2fddc9fcb2cac5d6f26870f2e105f8395c0208ecd8acc38cbf175aee52)
 set(IGC_VCINTRINSICS_HASH_TYPE SHA256)
 set(IGC_VCINTRINSICS_FILE vc-intrinsics-${IGC_VCINTRINSICS_VERSION}.tar.gz)
 
-set(IGC_SPIRV_HEADERS_VERSION sdk-1.3.239.0)
+set(IGC_SPIRV_HEADERS_VERSION vulkan-sdk-1.3.275.0)
 set(IGC_SPIRV_HEADERS_URI https://github.com/KhronosGroup/SPIRV-Headers/archive/refs/tags/${IGC_SPIRV_HEADERS_VERSION}.tar.gz)
-set(IGC_SPIRV_HEADERS_HASH fdaf6670e311cd1c08ae90bf813e89dd31630205bc60030ffd25fb0af39b51fe)
+set(IGC_SPIRV_HEADERS_HASH d46b261f1fbc5e85022cb2fada9a6facb5b0c9932b45007a77fe05639a605bd1)
 set(IGC_SPIRV_HEADERS_HASH_TYPE SHA256)
 set(IGC_SPIRV_HEADERS_FILE SPIR-V-Headers-${IGC_SPIRV_HEADERS_VERSION}.tar.gz)
 
-set(IGC_SPIRV_TOOLS_VERSION sdk-1.3.239.0)
+set(IGC_SPIRV_TOOLS_VERSION v2023.6.rc1)
 set(IGC_SPIRV_TOOLS_URI https://github.com/KhronosGroup/SPIRV-Tools/archive/refs/tags/${IGC_SPIRV_TOOLS_VERSION}.tar.gz)
-set(IGC_SPIRV_TOOLS_HASH 327b2dba4515646eee28c1a5fe1332891e81c8b6ff289363f52877f3e67c2d81)
+set(IGC_SPIRV_TOOLS_HASH 750e4bfcaccd636fb04dd912b668a8a6d29940f8f83b7d9a266170b1023a1a89)
 set(IGC_SPIRV_TOOLS_HASH_TYPE SHA256)
 set(IGC_SPIRV_TOOLS_FILE SPIR-V-Tools-${IGC_SPIRV_TOOLS_VERSION}.tar.gz)
 
-set(IGC_SPIRV_TRANSLATOR_VERSION 7e332d0acc8ee57462d9fbedefaf411fc193fdd0)
+set(IGC_SPIRV_TRANSLATOR_VERSION 2823e7052b7999c10fff63bc8089e5aa205716f4)
 set(IGC_SPIRV_TRANSLATOR_URI https://github.com/KhronosGroup/SPIRV-LLVM-Translator/archive/${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
-set(IGC_SPIRV_TRANSLATOR_HASH 29aadf5fd4e64ff1d4f86446eacd6a7439efeb280478988c36314c4441072c36)
+set(IGC_SPIRV_TRANSLATOR_HASH 39eb3e033a0a1f5c69622d6a0b87e296b4e090d2f613f1014ee6fedcc2d3ca83)
 set(IGC_SPIRV_TRANSLATOR_HASH_TYPE SHA256)
 set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.tar.gz)
 
@@ -792,15 +803,15 @@ set(IGC_SPIRV_TRANSLATOR_FILE SPIR-V-Translator-${IGC_SPIRV_TRANSLATOR_VERSION}.
 ### Intel Graphics Compiler DEPS END ###
 ########################################
 
-set(GMMLIB_VERSION intel-gmmlib-22.3.11)
+set(GMMLIB_VERSION intel-gmmlib-22.4.1)
 set(GMMLIB_URI https://github.com/intel/gmmlib/archive/refs/tags/${GMMLIB_VERSION}.tar.gz)
-set(GMMLIB_HASH b97f4e501c1e902a559cbd6597c008a700f4ab8c495680bf1968db99c6547afe)
+set(GMMLIB_HASH 451fbe2eac26533a896ca0da0356354ecc38680f273fce7d121c6a22251ed21e)
 set(GMMLIB_HASH_TYPE SHA256)
 set(GMMLIB_FILE ${GMMLIB_VERSION}.tar.gz)
 
-set(OCLOC_VERSION 23.43.27642.40)
+set(OCLOC_VERSION 24.31.30508.9)
 set(OCLOC_URI https://github.com/intel/compute-runtime/archive/refs/tags/${OCLOC_VERSION}.tar.gz)
-set(OCLOC_HASH 67d0c6f3103ff12408a628e14f7170da3e0220313e10799693d576cea7821fe2)
+set(OCLOC_HASH 7c2b5708e996fc9e61997f1821d9be1e0fd43c9f29cfe3fea383a01d9aa92868)
 set(OCLOC_HASH_TYPE SHA256)
 set(OCLOC_FILE ocloc-${OCLOC_VERSION}.tar.gz)
 
@@ -869,3 +880,10 @@ set(PYBIND11_URI https://github.com/pybind/pybind11/archive/refs/tags/v${PYBIND1
 set(PYBIND11_HASH ce07bfd5089245da7807b3faf6cbc878)
 set(PYBIND11_HASH_TYPE MD5)
 set(PYBIND11_FILE pybind-v${PYBIND11_VERSION}.tar.gz)
+
+set(HIPRT_VERSION 83e18cc9c3de8f2f9c48b663cf3189361e891054)
+set(HIPRT_LIBRARY_VERSION 02003)
+set(HIPRT_URI https://github.com/GPUOpen-LibrariesAndSDKs/HIPRT/archive/${HIPRT_VERSION}.tar.gz)
+set(HIPRT_HASH b5639fa06bea45eff98bea2929516f7c)
+set(HIPRT_HASH_TYPE MD5)
+set(HIPRT_FILE hiprt-${HIPRT_VERSION}.tar.gz)

@@ -24,7 +24,6 @@
 
 struct bContext;
 struct uiBlock;
-struct uiBut;
 struct uiLayout;
 
 namespace blender::ui {
@@ -93,6 +92,7 @@ class TreeViewItemContainer {
 
  protected:
   void foreach_item_recursive(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
+  void foreach_parent(ItemIterFn iter_fn) const;
 };
 
 ENUM_OPERATORS(TreeViewItemContainer::IterOptions,
@@ -144,8 +144,8 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   void update_children_from_old(const AbstractView &old_view) override;
   static void update_children_from_old_recursive(const TreeViewOrItem &new_items,
                                                  const TreeViewOrItem &old_items);
-  static AbstractTreeViewItem *find_matching_child(const AbstractTreeViewItem &lookup_item,
-                                                   const TreeViewOrItem &items);
+  static AbstractTreeViewItem *find_matching_child(
+      const AbstractTreeViewItem &lookup_item, const Span<AbstractTreeViewItem *> possible_items);
 
   void draw_hierarchy_lines(const ARegion &region) const;
   void draw_hierarchy_lines_recursive(const ARegion &region,
@@ -187,6 +187,8 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
 
   virtual void build_row(uiLayout &row) = 0;
 
+  /* virtual */ std::optional<std::string> debug_name() const override;
+
   std::unique_ptr<DropTargetInterface> create_item_drop_target() final;
   virtual std::unique_ptr<TreeViewItemDropTarget> create_drop_target();
 
@@ -227,6 +229,8 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
    */
   bool is_collapsed() const;
   bool is_collapsible() const;
+
+  int count_parents() const;
 
   /**
    * Called when the view changes an item's state from expanded to collapsed, or vice versa. Will
@@ -304,7 +308,6 @@ class AbstractTreeViewItem : public AbstractViewItem, public TreeViewItemContain
   void add_rename_button(uiLayout &row);
 
   bool has_active_child() const;
-  int count_parents() const;
 };
 
 /** \} */
@@ -332,7 +335,7 @@ class BasicTreeViewItem : public AbstractTreeViewItem {
   /**
    * Set a custom callback to check if this item should be active.
    */
-  void set_is_active_fn(IsActiveFn fn);
+  void set_is_active_fn(IsActiveFn is_active_fn);
 
  protected:
   /**
@@ -390,7 +393,10 @@ class TreeViewItemDropTarget : public DropTargetInterface {
 
 class TreeViewBuilder {
  public:
-  static void build_tree_view(AbstractTreeView &tree_view, uiLayout &layout);
+  static void build_tree_view(AbstractTreeView &tree_view,
+                              uiLayout &layout,
+                              std::optional<StringRef> search_string = {},
+                              bool add_box = true);
 
  private:
   static void ensure_min_rows_items(AbstractTreeView &tree_view);

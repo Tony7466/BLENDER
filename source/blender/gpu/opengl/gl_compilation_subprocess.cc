@@ -14,46 +14,72 @@
 #  include "GHOST_C-api.h"
 #  include "GPU_context.hh"
 #  include "GPU_init_exit.hh"
-#  include <epoxy/gl.h>
 #  include <iostream>
 #  include <string>
 
 #  ifndef _WIN32
 #    include <unistd.h>
+#  else
+#    include "BLI_winstuff.h"
 #  endif
+
+/* Include after BLI_winstuff.h to avoid APIENTRY redefinition.  */
+#  include <epoxy/gl.h>
 
 namespace blender::gpu {
 
 class SubprocessShader {
+  GLuint comp_ = 0;
   GLuint vert_ = 0;
+  GLuint geom_ = 0;
   GLuint frag_ = 0;
   GLuint program_ = 0;
   bool success_ = false;
 
  public:
-  SubprocessShader(const char *vert_src, const char *frag_src)
+  SubprocessShader(const char *comp_src,
+                   const char *vert_src,
+                   const char *geom_src,
+                   const char *frag_src)
   {
     GLint status;
-
-    vert_ = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vert_, 1, &vert_src, nullptr);
-    glCompileShader(vert_);
-    glGetShaderiv(vert_, GL_COMPILE_STATUS, &status);
-    if (!status) {
-      return;
-    }
-
-    frag_ = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(frag_, 1, &frag_src, nullptr);
-    glCompileShader(frag_);
-    glGetShaderiv(frag_, GL_COMPILE_STATUS, &status);
-    if (!status) {
-      return;
-    }
-
     program_ = glCreateProgram();
-    glAttachShader(program_, vert_);
-    glAttachShader(program_, frag_);
+
+    auto compile_stage = [&](const char *src, GLenum stage) -> GLuint {
+      if (src == nullptr) {
+        /* We only want status errors if compilation fails. */
+        status = GL_TRUE;
+        return 0;
+      }
+
+      GLuint shader = glCreateShader(stage);
+      glShaderSource(shader, 1, &src, nullptr);
+      glCompileShader(shader);
+      glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+      glAttachShader(program_, shader);
+      return shader;
+    };
+
+    comp_ = compile_stage(comp_src, GL_COMPUTE_SHADER);
+    if (!status) {
+      return;
+    }
+
+    vert_ = compile_stage(vert_src, GL_VERTEX_SHADER);
+    if (!status) {
+      return;
+    }
+
+    geom_ = compile_stage(geom_src, GL_GEOMETRY_SHADER);
+    if (!status) {
+      return;
+    }
+
+    frag_ = compile_stage(frag_src, GL_FRAGMENT_SHADER);
+    if (!status) {
+      return;
+    }
+
     glLinkProgram(program_);
     glGetProgramiv(program_, GL_LINK_STATUS, &status);
     if (!status) {
@@ -65,7 +91,9 @@ class SubprocessShader {
 
   ~SubprocessShader()
   {
+    glDeleteShader(comp_);
     glDeleteShader(vert_);
+    glDeleteShader(geom_);
     glDeleteShader(frag_);
     glDeleteProgram(program_);
   }
@@ -78,9 +106,11 @@ class SubprocessShader {
 
     if (success_) {
       glGetProgramiv(program_, GL_PROGRAM_BINARY_LENGTH, &bin->size);
-      if (bin->size + sizeof(ShaderBinaryHeader) < compilation_subprocess_shared_memory_size) {
-        glGetProgramBinary(program_, bin->size, nullptr, &bin->format, &bin->data_start);
+      if (bin->size > sizeof(ShaderBinaryHeader::data)) {
+        bin->size = 0;
+        return nullptr;
       }
+      glGetProgramBinary(program_, bin->size, nullptr, &bin->format, bin->data);
     }
 
     return bin;
@@ -92,7 +122,7 @@ static bool validate_binary(void *binary)
 {
   ShaderBinaryHeader *bin = reinterpret_cast<ShaderBinaryHeader *>(binary);
   GLuint program = glCreateProgram();
-  glProgramBinary(program, bin->format, &bin->data_start, bin->size);
+  glProgramBinary(program, bin->format, bin->data, bin->size);
   GLint status;
   glGetProgramiv(program, GL_LINK_STATUS, &status);
   glDeleteProgram(program);
@@ -100,6 +130,17 @@ static bool validate_binary(void *binary)
 }
 
 }  // namespace blender::gpu
+
+static std::string cache_dir_get()
+{
+  static char tmp_dir_buffer[1024];
+  BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+
+  std::string cache_dir = std::string(tmp_dir_buffer) + "gl-shader-cache" + SEP_STR;
+  BLI_dir_create_recursive(cache_dir.c_str());
+
+  return cache_dir;
+}
 
 void GPU_compilation_subprocess_run(const char *subprocess_name)
 {
@@ -139,9 +180,7 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GPUContext *gpu_context = GPU_context_create(nullptr, ghost_context);
   GPU_init();
 
-  BKE_tempdir_init(nullptr);
-  std::string cache_dir = std::string(BKE_tempdir_base()) + "BLENDER_SHADER_CACHE" + SEP_STR;
-  BLI_dir_create_recursive(cache_dir.c_str());
+  std::string cache_dir = cache_dir_get();
 
   while (true) {
     /* Process events to avoid crashes on Wayland.
@@ -165,19 +204,40 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       break;
     }
 
-    const char *shaders = reinterpret_cast<const char *>(shared_mem.get_data());
-
-    const char *vert_src = shaders;
-    const char *frag_src = shaders + strlen(shaders) + 1;
+    ShaderSourceHeader *source = reinterpret_cast<ShaderSourceHeader *>(shared_mem.get_data());
+    const char *next_src = source->sources;
+    const char *comp_src = nullptr;
+    const char *vert_src = nullptr;
+    const char *geom_src = nullptr;
+    const char *frag_src = nullptr;
 
     DefaultHash<StringRefNull> hasher;
-    uint64_t vert_hash = hasher(vert_src);
-    uint64_t frag_hash = hasher(frag_src);
-    std::string hash_str = std::to_string(vert_hash) + "_" + std::to_string(frag_hash);
+    std::string hash_str = "_";
+
+    auto get_src = [&]() {
+      const char *src = next_src;
+      next_src += strlen(src) + sizeof('\0');
+      hash_str += std::to_string(hasher(src)) + "_";
+      return src;
+    };
+
+    if (source->type == ShaderSourceHeader::Type::COMPUTE) {
+      comp_src = get_src();
+    }
+    else {
+      vert_src = get_src();
+      if (source->type == ShaderSourceHeader::Type::GRAPHICS_WITH_GEOMETRY_STAGE) {
+        geom_src = get_src();
+      }
+      frag_src = get_src();
+    }
+
     std::string cache_path = cache_dir + SEP_STR + hash_str;
 
     /* TODO: This should lock the files? */
     if (BLI_exists(cache_path.c_str())) {
+      /* Prevent old cache files from being deleted if they're still being used. */
+      BLI_file_touch(cache_path.c_str());
       /* Read cached binary. */
       fstream file(cache_path, std::ios::binary | std::ios::in | std::ios::ate);
       std::streamsize size = file.tellg();
@@ -185,14 +245,16 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
         file.seekg(0, std::ios::beg);
         file.read(reinterpret_cast<char *>(shared_mem.get_data()), size);
         /* Ensure it's valid. */
-        if (validate_binary(shared_mem.get_data())) {
-          end_semaphore.increment();
-          continue;
-        }
-        else {
+        if (!validate_binary(shared_mem.get_data())) {
           std::cout << "Compilation Subprocess: Failed to load cached shader binary " << hash_str
                     << "\n";
+          /* We can't compile the shader anymore since we have written over the source code,
+           * but we delete the cache for the next time this shader is requested. */
+          file.close();
+          BLI_delete(cache_path.c_str(), false, false);
         }
+        end_semaphore.increment();
+        continue;
       }
       else {
         /* This should never happen, since shaders larger than the pool size should be discarded
@@ -203,14 +265,16 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
       }
     }
 
-    SubprocessShader shader(vert_src, frag_src);
+    SubprocessShader shader(comp_src, vert_src, geom_src, frag_src);
     ShaderBinaryHeader *binary = shader.get_binary(shared_mem.get_data());
 
     end_semaphore.increment();
 
-    fstream file(cache_path, std::ios::binary | std::ios::out);
-    file.write(reinterpret_cast<char *>(shared_mem.get_data()),
-               binary->size + offsetof(ShaderBinaryHeader, data_start));
+    if (binary) {
+      fstream file(cache_path, std::ios::binary | std::ios::out);
+      file.write(reinterpret_cast<char *>(shared_mem.get_data()),
+                 binary->size + offsetof(ShaderBinaryHeader, data));
+    }
   }
 
   GPU_exit();
@@ -218,5 +282,27 @@ void GPU_compilation_subprocess_run(const char *subprocess_name)
   GHOST_DisposeGPUContext(ghost_system, ghost_context);
   GHOST_DisposeSystem(ghost_system);
 }
+
+namespace blender::gpu {
+void GL_shader_cache_dir_clear_old()
+{
+  std::string cache_dir = cache_dir_get();
+
+  direntry *entries = nullptr;
+  uint32_t dir_len = BLI_filelist_dir_contents(cache_dir.c_str(), &entries);
+  for (int i : blender::IndexRange(dir_len)) {
+    direntry entry = entries[i];
+    if (S_ISDIR(entry.s.st_mode)) {
+      continue;
+    }
+    const time_t ts_now = time(nullptr);
+    const time_t delete_threshold = 60 /*seconds*/ * 60 /*minutes*/ * 24 /*hours*/ * 30 /*days*/;
+    if (entry.s.st_mtime + delete_threshold < ts_now) {
+      BLI_delete(entry.path, false, false);
+    }
+  }
+  BLI_filelist_free(entries, dir_len);
+}
+}  // namespace blender::gpu
 
 #endif

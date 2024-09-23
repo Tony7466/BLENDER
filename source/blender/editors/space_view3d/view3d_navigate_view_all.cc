@@ -212,10 +212,7 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
     View3DCursor *cursor = &scene->cursor;
     zero_v3(min);
     zero_v3(max);
-    zero_v3(cursor->location);
-    float mat3[3][3];
-    unit_m3(mat3);
-    BKE_scene_cursor_mat3_to_rot(cursor, mat3, false);
+    cursor->set_matrix(blender::float4x4::identity(), false);
   }
   else {
     INIT_MINMAX(min, max);
@@ -391,7 +388,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     FOREACH_OBJECT_IN_MODE_BEGIN (
         scene_eval, view_layer_eval, v3d, obedit->type, obedit->mode, ob_eval_iter)
     {
-      ok |= ED_view3d_minmax_verts(ob_eval_iter, min, max);
+      ok |= ED_view3d_minmax_verts(scene_eval, ob_eval_iter, min, max);
     }
     FOREACH_OBJECT_IN_MODE_END;
   }
@@ -418,7 +415,7 @@ static int viewselected_exec(bContext *C, wmOperator *op)
     FOREACH_OBJECT_IN_MODE_BEGIN (
         scene_eval, view_layer_eval, v3d, ob_eval->type, ob_eval->mode, ob_eval_iter)
     {
-      ok |= ED_view3d_minmax_verts(ob_eval_iter, min, max);
+      ok |= ED_view3d_minmax_verts(scene_eval, ob_eval_iter, min, max);
     }
     FOREACH_OBJECT_IN_MODE_END;
   }
