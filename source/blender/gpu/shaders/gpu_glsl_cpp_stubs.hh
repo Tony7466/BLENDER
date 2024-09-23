@@ -524,6 +524,8 @@ double mix(double, double, double) {}
 template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) {}
 template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) {}
 
+#define select(A, B, C) mix(A, B, C)
+
 VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) {}
 template<int D> float dot(VecBase<double, D>, VecBase<double, D>) {}
 template<int D> float distance(VecBase<double, D>, VecBase<double, D>) {}
@@ -586,3 +588,8 @@ int gpu_ViewportIndex;
 
 /* Keywords. */
 void discard;
+
+/* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
+bool is_zero(vec2 A) {}
+bool is_zero(vec3 A) {}
+bool is_zero(vec4 A) {}
