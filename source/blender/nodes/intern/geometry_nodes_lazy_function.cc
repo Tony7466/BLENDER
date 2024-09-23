@@ -2846,6 +2846,9 @@ LazyFunctionForReduceForeachGeometryElement::LazyFunctionForReduceForeachGeometr
   const auto &node_storage = *static_cast<NodeGeometryForeachGeometryElementOutput *>(
       parent.output_bnode_.storage);
 
+  inputs_.reserve(eval_storage.total_iterations_num *
+                  (node_storage.main_items.items_num + node_storage.generation_items.items_num));
+
   for ([[maybe_unused]] const int i : eval_storage.lf_body_nodes.index_range()) {
     /* Add parameters for main items. */
     for (const int item_i : IndexRange(node_storage.main_items.items_num)) {
