@@ -19,6 +19,8 @@ OIIO_NAMESPACE_USING
 
 #include <sys/stat.h>
 
+#include <zstd.h>
+
 #if defined(_WIN32)
 #  define DIR_SEP '\\'
 #  define DIR_SEP_ALT '/'
@@ -49,7 +51,7 @@ typedef struct _stati64 path_stat_t;
 typedef struct _stat path_stat_t;
 #  endif
 #  ifndef S_ISDIR
-#    define S_ISDIR(x) (((x)&_S_IFDIR) == _S_IFDIR)
+#    define S_ISDIR(x) (((x) & _S_IFDIR) == _S_IFDIR)
 #  endif
 #else
 typedef struct stat path_stat_t;
@@ -337,19 +339,22 @@ void path_init(const string &path, const string &user_path)
 string path_get(const string &sub)
 {
   char *special = path_specials(sub);
-  if (special != NULL)
+  if (special != NULL) {
     return special;
+  }
 
-  if (cached_path == "")
+  if (cached_path == "") {
     cached_path = path_dirname(Sysutil::this_program_path());
+  }
 
   return path_join(cached_path, sub);
 }
 
 string path_user_get(const string &sub)
 {
-  if (cached_user_path == "")
+  if (cached_user_path == "") {
     cached_user_path = path_dirname(Sysutil::this_program_path());
+  }
 
   return path_join(cached_user_path, sub);
 }
@@ -653,11 +658,13 @@ bool path_write_binary(const string &path, const vector<uint8_t> &binary)
   /* write binary file from memory */
   FILE *f = path_fopen(path, "wb");
 
-  if (!f)
+  if (!f) {
     return false;
+  }
 
-  if (binary.size() > 0)
+  if (binary.size() > 0) {
     fwrite(&binary[0], sizeof(uint8_t), binary.size(), f);
+  }
 
   fclose(f);
 
@@ -699,12 +706,58 @@ bool path_read_binary(const string &path, vector<uint8_t> &binary)
   return true;
 }
 
+bool path_read_compressed_binary(const string &path, vector<uint8_t> &binary)
+{
+  if (!string_endswith(path, ".zst")) {
+    return path_read_binary(path, binary);
+  }
+
+  vector<uint8_t> compressed;
+  if (!path_read_binary(path, compressed)) {
+    return false;
+  }
+
+  const size_t full_size = ZSTD_getFrameContentSize(compressed.data(), compressed.size());
+
+  if (full_size == ZSTD_CONTENTSIZE_ERROR) {
+    /* Potentially corrupted file? */
+    return false;
+  }
+  if (full_size == ZSTD_CONTENTSIZE_UNKNOWN) {
+    /* Technically this is an optional field, but we can expect it to be set for now.
+     * Otherwise we'd need streaming decompression and repeated resizing of the vector. */
+    return false;
+  }
+
+  binary.resize(full_size);
+
+  size_t err = ZSTD_decompress(binary.data(), binary.size(), compressed.data(), compressed.size());
+
+  return ZSTD_isError(err) == 0;
+}
+
 bool path_read_text(const string &path, string &text)
 {
   vector<uint8_t> binary;
 
-  if (!path_exists(path) || !path_read_binary(path, binary))
+  if (!path_exists(path) || !path_read_binary(path, binary)) {
     return false;
+  }
+
+  const char *str = (const char *)&binary[0];
+  size_t size = binary.size();
+  text = string(str, size);
+
+  return true;
+}
+
+bool path_read_compressed_text(const string &path, string &text)
+{
+  vector<uint8_t> binary;
+
+  if (!path_exists(path) || !path_read_compressed_binary(path, binary)) {
+    return false;
+  }
 
   const char *str = (const char *)&binary[0];
   size_t size = binary.size();

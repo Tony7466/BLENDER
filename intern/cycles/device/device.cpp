@@ -62,51 +62,52 @@ void Device::build_bvh(BVH *bvh, Progress &progress, bool refit)
   }
 }
 
-Device *Device::create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
+Device *Device::create(const DeviceInfo &info, Stats &stats, Profiler &profiler, bool headless)
 {
   if (!info.multi_devices.empty()) {
     /* Always create a multi device when info contains multiple devices.
      * This is done so that the type can still be e.g. DEVICE_CPU to indicate
      * that it is a homogeneous collection of devices, which simplifies checks. */
-    return device_multi_create(info, stats, profiler);
+    return device_multi_create(info, stats, profiler, headless);
   }
 
   Device *device = NULL;
 
   switch (info.type) {
     case DEVICE_CPU:
-      device = device_cpu_create(info, stats, profiler);
+      device = device_cpu_create(info, stats, profiler, headless);
       break;
 #ifdef WITH_CUDA
     case DEVICE_CUDA:
-      if (device_cuda_init())
-        device = device_cuda_create(info, stats, profiler);
+      if (device_cuda_init()) {
+        device = device_cuda_create(info, stats, profiler, headless);
+      }
       break;
 #endif
 #ifdef WITH_OPTIX
     case DEVICE_OPTIX:
       if (device_optix_init())
-        device = device_optix_create(info, stats, profiler);
+        device = device_optix_create(info, stats, profiler, headless);
       break;
 #endif
 
 #ifdef WITH_HIP
     case DEVICE_HIP:
       if (device_hip_init())
-        device = device_hip_create(info, stats, profiler);
+        device = device_hip_create(info, stats, profiler, headless);
       break;
 #endif
 
 #ifdef WITH_METAL
     case DEVICE_METAL:
       if (device_metal_init())
-        device = device_metal_create(info, stats, profiler);
+        device = device_metal_create(info, stats, profiler, headless);
       break;
 #endif
 
 #ifdef WITH_ONEAPI
     case DEVICE_ONEAPI:
-      device = device_oneapi_create(info, stats, profiler);
+      device = device_oneapi_create(info, stats, profiler, headless);
       break;
 #endif
 
@@ -115,7 +116,7 @@ Device *Device::create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
   }
 
   if (device == NULL) {
-    device = device_dummy_create(info, stats, profiler);
+    device = device_dummy_create(info, stats, profiler, headless);
   }
 
   return device;
@@ -123,44 +124,60 @@ Device *Device::create(const DeviceInfo &info, Stats &stats, Profiler &profiler)
 
 DeviceType Device::type_from_string(const char *name)
 {
-  if (strcmp(name, "CPU") == 0)
+  if (strcmp(name, "CPU") == 0) {
     return DEVICE_CPU;
-  else if (strcmp(name, "CUDA") == 0)
+  }
+  else if (strcmp(name, "CUDA") == 0) {
     return DEVICE_CUDA;
-  else if (strcmp(name, "OPTIX") == 0)
+  }
+  else if (strcmp(name, "OPTIX") == 0) {
     return DEVICE_OPTIX;
-  else if (strcmp(name, "MULTI") == 0)
+  }
+  else if (strcmp(name, "MULTI") == 0) {
     return DEVICE_MULTI;
-  else if (strcmp(name, "HIP") == 0)
+  }
+  else if (strcmp(name, "HIP") == 0) {
     return DEVICE_HIP;
-  else if (strcmp(name, "METAL") == 0)
+  }
+  else if (strcmp(name, "METAL") == 0) {
     return DEVICE_METAL;
-  else if (strcmp(name, "ONEAPI") == 0)
+  }
+  else if (strcmp(name, "ONEAPI") == 0) {
     return DEVICE_ONEAPI;
-  else if (strcmp(name, "HIPRT") == 0)
+  }
+  else if (strcmp(name, "HIPRT") == 0) {
     return DEVICE_HIPRT;
+  }
 
   return DEVICE_NONE;
 }
 
 string Device::string_from_type(DeviceType type)
 {
-  if (type == DEVICE_CPU)
+  if (type == DEVICE_CPU) {
     return "CPU";
-  else if (type == DEVICE_CUDA)
+  }
+  else if (type == DEVICE_CUDA) {
     return "CUDA";
-  else if (type == DEVICE_OPTIX)
+  }
+  else if (type == DEVICE_OPTIX) {
     return "OPTIX";
-  else if (type == DEVICE_MULTI)
+  }
+  else if (type == DEVICE_MULTI) {
     return "MULTI";
-  else if (type == DEVICE_HIP)
+  }
+  else if (type == DEVICE_HIP) {
     return "HIP";
-  else if (type == DEVICE_METAL)
+  }
+  else if (type == DEVICE_METAL) {
     return "METAL";
-  else if (type == DEVICE_ONEAPI)
+  }
+  else if (type == DEVICE_ONEAPI) {
     return "ONEAPI";
-  else if (type == DEVICE_HIPRT)
+  }
+  else if (type == DEVICE_HIPRT) {
     return "HIPRT";
+  }
 
   return "";
 }
@@ -371,7 +388,6 @@ DeviceInfo Device::get_multi_device(const vector<DeviceInfo> &subdevices,
   info.num = 0;
 
   info.has_nanovdb = true;
-  info.has_light_tree = true;
   info.has_mnee = true;
   info.has_osl = true;
   info.has_guiding = true;
@@ -421,7 +437,6 @@ DeviceInfo Device::get_multi_device(const vector<DeviceInfo> &subdevices,
 
     /* Accumulate device info. */
     info.has_nanovdb &= device.has_nanovdb;
-    info.has_light_tree &= device.has_light_tree;
     info.has_mnee &= device.has_mnee;
     info.has_osl &= device.has_osl;
     info.has_guiding &= device.has_guiding;

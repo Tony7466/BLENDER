@@ -16,11 +16,11 @@
 
 #include "DNA_anim_types.h"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 
 #include "intern/builder/deg_builder_relations.h"
-#include "intern/depsgraph_relation.h"
-#include "intern/node/deg_node.h"
+#include "intern/depsgraph_relation.hh"
+#include "intern/node/deg_node.hh"
 
 namespace blender::deg {
 

@@ -6,11 +6,14 @@
  * \ingroup blenloader
  */
 
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BLI_utildefines.h"
 
 /* allow readfile to use deprecated functionality */
 #define DNA_DEPRECATED_ALLOW
+
+/* Define macros in `DNA_genfile.h`. */
+#define DNA_GENFILE_VERSIONING_MACROS
 
 #include "DNA_anim_types.h"
 #include "DNA_brush_types.h"
@@ -20,7 +23,6 @@
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_fluid_types.h"
 #include "DNA_genfile.h"
-#include "DNA_key_types.h"
 #include "DNA_light_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -30,11 +32,13 @@
 #include "DNA_object_fluidsim_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_sdna_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
+
+#undef DNA_GENFILE_VERSIONING_MACROS
 
 #include "MEM_guardedalloc.h"
 
@@ -42,41 +46,37 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
-
-#include "BLT_translation.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_anim_visualization.h"
+#include "BKE_customdata.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"  /* for Main */
-#include "BKE_mesh.hh" /* for ME_ defines (patching) */
+#include "BKE_main.hh" /* for Main */
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_modifier.h"
+#include "BKE_modifier.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_particle.h"
-#include "BKE_pointcache.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_scene.hh"
+#include "BKE_screen.hh"
 #include "BKE_text.h" /* for txt_extended_ascii_as_utf8 */
 #include "BKE_texture.h"
 #include "BKE_tracking.h"
 
-#include "SEQ_iterator.h"
-#include "SEQ_modifier.h"
-#include "SEQ_utils.h"
+#include "SEQ_iterator.hh"
+#include "SEQ_modifier.hh"
+#include "SEQ_utils.hh"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_writeffmpeg.h"
+#  include "BKE_writeffmpeg.hh"
 #endif
 
-#include "IMB_imbuf.h" /* for proxy / time-code versioning stuff. */
+#include "IMB_imbuf.hh" /* for proxy / time-code versioning stuff. */
 
 #include "NOD_common.h"
-#include "NOD_composite.h"
-#include "NOD_texture.h"
+#include "NOD_composite.hh"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -315,8 +315,8 @@ static void do_versions_nodetree_multi_file_output_format_2_62_1(Scene *sce, bNo
         }
       }
 
-      nodeRemoveSocket(ntree, node, old_image);
-      nodeRemoveSocket(ntree, node, old_z);
+      blender::bke::node_remove_socket(ntree, node, old_image);
+      blender::bke::node_remove_socket(ntree, node, old_z);
       if (old_data) {
         MEM_freeN(old_data);
       }
@@ -345,15 +345,15 @@ static void do_versions_nodetree_multi_file_output_format_2_62_1(Scene *sce, bNo
 }
 
 /* blue and red are swapped pre 2.62.1, be sane (red == red) now! */
-static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *me)
+static void do_versions_mesh_mloopcol_swap_2_62_1(Mesh *mesh)
 {
-  for (int a = 0; a < me->loop_data.totlayer; a++) {
-    CustomDataLayer *layer = &me->loop_data.layers[a];
+  for (int a = 0; a < mesh->corner_data.totlayer; a++) {
+    CustomDataLayer *layer = &mesh->corner_data.layers[a];
 
     if (layer->type == CD_PROP_BYTE_COLOR) {
       MLoopCol *mloopcol = static_cast<MLoopCol *>(layer->data);
-      for (int i = 0; i < me->totloop; i++, mloopcol++) {
-        SWAP(uchar, mloopcol->r, mloopcol->b);
+      for (int i = 0; i < mesh->corners_num; i++, mloopcol++) {
+        std::swap(mloopcol->r, mloopcol->b);
       }
     }
   }
@@ -567,6 +567,8 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeBsdfTranslucent";
       case SH_NODE_BSDF_TRANSPARENT:
         return "ShaderNodeBsdfTransparent";
+      case SH_NODE_BSDF_RAY_PORTAL:
+        return "ShaderNodeBsdfRayPortal";
       case /*SH_NODE_BSDF_VELVET*/ 139:
         return "ShaderNodeBsdfVelvet";
       case /*SH_NODE_VOLUME_TRANSPARENT*/ 161:
@@ -609,7 +611,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "ShaderNodeTexMagic";
       case SH_NODE_TEX_WAVE:
         return "ShaderNodeTexWave";
-      case SH_NODE_TEX_MUSGRAVE:
+      case SH_NODE_TEX_MUSGRAVE_DEPRECATED:
         return "ShaderNodeTexMusgrave";
       case SH_NODE_TEX_VORONOI:
         return "ShaderNodeTexVoronoi";
@@ -703,7 +705,7 @@ static const char *node_get_static_idname(int type, int treetype)
         return "CompositorNodeChannelMatte";
       case CMP_NODE_FLIP:
         return "CompositorNodeFlip";
-      case CMP_NODE_SPLITVIEWER:
+      case CMP_NODE_SPLITVIEWER__DEPRECATED:
         return "CompositorNodeSplitViewer";
       case CMP_NODE_MAP_UV:
         return "CompositorNodeMapUV";
@@ -859,28 +861,28 @@ static const char *node_socket_get_static_idname(bNodeSocket *sock)
   switch (sock->type) {
     case SOCK_FLOAT: {
       bNodeSocketValueFloat *dval = sock->default_value_typed<bNodeSocketValueFloat>();
-      return nodeStaticSocketType(SOCK_FLOAT, dval->subtype);
+      return blender::bke::node_static_socket_type(SOCK_FLOAT, dval->subtype);
     }
     case SOCK_INT: {
       bNodeSocketValueInt *dval = sock->default_value_typed<bNodeSocketValueInt>();
-      return nodeStaticSocketType(SOCK_INT, dval->subtype);
+      return blender::bke::node_static_socket_type(SOCK_INT, dval->subtype);
     }
     case SOCK_BOOLEAN: {
-      return nodeStaticSocketType(SOCK_BOOLEAN, PROP_NONE);
+      return blender::bke::node_static_socket_type(SOCK_BOOLEAN, PROP_NONE);
     }
     case SOCK_VECTOR: {
       bNodeSocketValueVector *dval = sock->default_value_typed<bNodeSocketValueVector>();
-      return nodeStaticSocketType(SOCK_VECTOR, dval->subtype);
+      return blender::bke::node_static_socket_type(SOCK_VECTOR, dval->subtype);
     }
     case SOCK_RGBA: {
-      return nodeStaticSocketType(SOCK_RGBA, PROP_NONE);
+      return blender::bke::node_static_socket_type(SOCK_RGBA, PROP_NONE);
     }
     case SOCK_STRING: {
       bNodeSocketValueString *dval = sock->default_value_typed<bNodeSocketValueString>();
-      return nodeStaticSocketType(SOCK_STRING, dval->subtype);
+      return blender::bke::node_static_socket_type(SOCK_STRING, dval->subtype);
     }
     case SOCK_SHADER: {
-      return nodeStaticSocketType(SOCK_SHADER, PROP_NONE);
+      return blender::bke::node_static_socket_type(SOCK_SHADER, PROP_NONE);
     }
   }
   return "";
@@ -1053,21 +1055,21 @@ static bNodeSocket *version_make_socket_stub(const char *idname,
 
   socket->limit = (in_out == SOCK_IN ? 1 : 0xFFF);
 
-  BLI_strncpy(socket->identifier, identifier, sizeof(socket->identifier));
-  BLI_strncpy(socket->name, name, sizeof(socket->name));
+  STRNCPY(socket->identifier, identifier);
+  STRNCPY(socket->name, name);
   socket->storage = nullptr;
   socket->flag |= SOCK_COLLAPSED;
 
-  /* Note: technically socket values can store ref-counted ID pointers, but at this stage the
+  /* NOTE: technically socket values can store ref-counted ID pointers, but at this stage the
    * refcount can be ignored. It gets recomputed after lib-linking for all ID pointers. Socket
-   * values don't have allocated data, so a simple dupalloc works here. */
+   * values don't have allocated data, so a simple duplication works here. */
   socket->default_value = default_value ? MEM_dupallocN(default_value) : nullptr;
   socket->prop = prop ? IDP_CopyProperty(prop) : nullptr;
 
   return socket;
 }
 
-/* Same as nodeAddStaticNode but does not rely on node typeinfo. */
+/* Same as node_add_static_node but does not rely on node typeinfo. */
 static bNode *version_add_group_in_out_node(bNodeTree *ntree, const int type)
 {
   ListBase *ntree_socket_list = nullptr;
@@ -1097,7 +1099,7 @@ static bNode *version_add_group_in_out_node(bNodeTree *ntree, const int type)
 
   node->runtime = MEM_new<blender::bke::bNodeRuntime>(__func__);
   BLI_addtail(&ntree->nodes, node);
-  nodeUniqueID(ntree, node);
+  blender::bke::node_unique_id(ntree, node);
 
   /* Manual initialization of the node,
    * node->typeinfo is only set after versioning. */
@@ -1253,8 +1255,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
           clip->aspy = 1.0f;
         }
 
-        clip->proxy.build_tc_flag = IMB_TC_RECORD_RUN | IMB_TC_FREE_RUN |
-                                    IMB_TC_INTERPOLATED_REC_DATE_FREE_RUN;
+        clip->proxy.build_tc_flag = IMB_TC_RECORD_RUN;
 
         if (clip->proxy.build_size_flag == 0) {
           clip->proxy.build_size_flag = IMB_PROXY_25;
@@ -1328,7 +1329,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 260, 8)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      if (brush->sculpt_tool == SCULPT_TOOL_ROTATE) {
+      if (brush->sculpt_brush_type == SCULPT_BRUSH_TYPE_ROTATE) {
         brush->alpha = 1.0f;
       }
     }
@@ -1726,14 +1727,6 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 263, 10)) {
     {
       /* composite redesign */
-      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-        if (scene->nodetree) {
-          if (scene->nodetree->chunksize == 0) {
-            scene->nodetree->chunksize = 256;
-          }
-        }
-      }
-
       FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
         if (ntree->type == NTREE_COMPOSIT) {
           LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
@@ -1903,7 +1896,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
     {
       LISTBASE_FOREACH (Mesh *, me, &bmain->meshes) {
         CustomData_update_typemap(&me->vert_data);
-        CustomData_free_layers(&me->vert_data, CD_MSTICKY, me->totvert);
+        CustomData_free_layers(&me->vert_data, CD_MSTICKY, me->verts_num);
       }
     }
   }
@@ -2010,7 +2003,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       if (scene->toolsettings->uvcalc_margin == 0.0f) {
         scene->toolsettings->uvcalc_margin = 0.001f;
-        scene->toolsettings->unwrapper = 0;
+        scene->toolsettings->unwrapper = UVCALC_UNWRAP_METHOD_ANGLE;
       }
     }
   }
@@ -2258,7 +2251,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-          nodeUniqueName(ntree, node);
+          blender::bke::node_unique_name(ntree, node);
         }
       }
       FOREACH_NODETREE_END;
@@ -2351,7 +2344,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
         }
 
         if (free_link) {
-          nodeRemLink(ntree, link);
+          blender::bke::node_remove_link(ntree, link);
         }
       }
 
@@ -2380,7 +2373,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       {
         next_link = link->next;
         if (link->fromnode == nullptr || link->tonode == nullptr) {
-          nodeRemLink(ntree, link);
+          blender::bke::node_remove_link(ntree, link);
         }
       }
     }
@@ -2410,7 +2403,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (bmain->versionfile < 267) {
-    // if (!DNA_struct_elem_find(fd->filesdna, "Brush", "int", "stencil_pos")) {
+    // if (!DNA_struct_member_exists(fd->filesdna, "Brush", "int", "stencil_pos")) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
       if (brush->stencil_dimension[0] == 0) {
         brush->stencil_dimension[0] = 256;
@@ -2428,10 +2421,10 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /**
      * TIP: to initialize new variables added, use the new function:
-     * `DNA_struct_elem_find(fd->filesdna, "structname", "typename", "varname")`, example:
+     * `DNA_struct_member_exists(fd->filesdna, "structname", "typename", "varname")`, example:
      *
      * \code{.cc}
-     * if (!DNA_struct_elem_find(fd->filesdna, "UserDef", "short", "image_gpubuffer_limit")) {
+     * if (!DNA_struct_member_exists(fd->filesdna, "UserDef", "short", "image_gpubuffer_limit")) {
      *     user->image_gpubuffer_limit = 10;
      * }
      * \endcode
@@ -2552,7 +2545,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 268, 1)) {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      brush->spacing = MAX2(1, brush->spacing);
+      brush->spacing = std::max(1, brush->spacing);
     }
   }
 
@@ -2717,7 +2710,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingTrack", "float", "weight")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "MovieTrackingTrack", "float", "weight")) {
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         const MovieTracking *tracking = &clip->tracking;
         LISTBASE_FOREACH (MovieTrackingObject *, tracking_object, &tracking->objects) {
@@ -2731,7 +2724,7 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "TriangulateModifierData", "int", "quad_method")) {
+    if (!DNA_struct_member_exists(fd->filesdna, "TriangulateModifierData", "int", "quad_method")) {
       LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
         LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
           if (md->type == eModifierType_Triangulate) {
@@ -2817,10 +2810,13 @@ void blo_do_versions_260(FileData *fd, Library * /*lib*/, Main *bmain)
       FOREACH_NODETREE_END;
     }
 
-    if (!DNA_struct_elem_find(fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity")) {
+    if (!DNA_struct_member_exists(
+            fd->filesdna, "MovieTrackingPlaneTrack", "float", "image_opacity"))
+    {
       LISTBASE_FOREACH (MovieClip *, clip, &bmain->movieclips) {
         LISTBASE_FOREACH (
-            MovieTrackingPlaneTrack *, plane_track, &clip->tracking.plane_tracks_legacy) {
+            MovieTrackingPlaneTrack *, plane_track, &clip->tracking.plane_tracks_legacy)
+        {
           plane_track->image_opacity = 1.0f;
         }
       }

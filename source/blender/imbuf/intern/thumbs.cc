@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,19 +6,20 @@
  * \ingroup imbuf
  */
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_blendfile.h"
+#include "BKE_blendfile.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_ghash.h"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_system.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -26,10 +27,10 @@
 
 #include "DNA_space_types.h" /* For FILE_MAX_LIBEXTRA */
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_thumbs.hh"
 
 #include <cctype>
 #include <cstring>
@@ -47,7 +48,7 @@
 /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
  * because 'near' is disabled through BLI_windstuff */
 #  include "BLI_winstuff.h"
-#  include "utfconv.h"
+#  include "utfconv.hh"
 #  include <direct.h> /* #chdir */
 #  include <shlobj.h>
 #endif
@@ -390,12 +391,12 @@ static ImBuf *thumb_create_ex(const char *file_path,
         }
       }
       else if (THB_SOURCE_MOVIE == source) {
-        anim *anim = nullptr;
+        ImBufAnim *anim = nullptr;
         anim = IMB_open_anim(file_path, IB_rect | IB_metadata, 0, nullptr);
         if (anim != nullptr) {
           img = IMB_anim_absolute(anim, 0, IMB_TC_NONE, IMB_PROXY_NONE);
           if (img == nullptr) {
-            printf("not an anim; %s\n", file_path);
+            // printf("not an anim; %s\n", file_path);
           }
           else {
             IMB_freeImBuf(img);
@@ -412,10 +413,10 @@ static ImBuf *thumb_create_ex(const char *file_path,
       }
 
       if (img->x > tsize || img->y > tsize) {
-        float scale = MIN2(float(tsize) / float(img->x), float(tsize) / float(img->y));
+        float scale = std::min(float(tsize) / float(img->x), float(tsize) / float(img->y));
         /* Scaling down must never assign zero width/height, see: #89868. */
-        short ex = MAX2(1, short(img->x * scale));
-        short ey = MAX2(1, short(img->y * scale));
+        short ex = std::max(short(1), short(img->x * scale));
+        short ey = std::max(short(1), short(img->y * scale));
         /* Save some time by only scaling byte buffer. */
         if (img->float_buffer.data) {
           if (img->byte_buffer.data == nullptr) {
@@ -423,7 +424,7 @@ static ImBuf *thumb_create_ex(const char *file_path,
           }
           imb_freerectfloatImBuf(img);
         }
-        IMB_scaleImBuf(img, ex, ey);
+        IMB_scale(img, ex, ey, IMBScaleFilter::Box, false);
       }
     }
     SNPRINTF(desc, "Thumbnail for %s", uri);
@@ -557,6 +558,17 @@ ImBuf *IMB_thumb_manage(const char *file_or_lib_path, ThumbSize size, ThumbSourc
   if (!uri_from_filename(file_or_lib_path, uri)) {
     return nullptr;
   }
+
+  /* Don't access offline files, only use already existing thumbnails (don't recreate). */
+  const eFileAttributes file_attributes = BLI_file_attributes(file_path);
+  if (file_attributes & FILE_ATTR_OFFLINE) {
+    char thumb_path[FILE_MAX];
+    if (thumbpath_from_uri(uri, thumb_path, sizeof(thumb_path), size)) {
+      return IMB_loadiffname(thumb_path, IB_rect | IB_metadata, nullptr);
+    }
+    return nullptr;
+  }
+
   char thumb_path[FILE_MAX];
   if (thumbpath_from_uri(uri, thumb_path, sizeof(thumb_path), THB_FAIL)) {
     /* failure thumb exists, don't try recreating */

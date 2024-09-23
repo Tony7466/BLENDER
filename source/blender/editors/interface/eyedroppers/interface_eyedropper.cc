@@ -12,8 +12,8 @@
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 
@@ -56,6 +56,7 @@ wmKeyMap *eyedropper_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_depth");
   WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_driver");
   WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_gpencil_color");
+  WM_modalkeymap_assign(keymap, "UI_OT_eyedropper_grease_pencil_color");
 
   return keymap;
 }

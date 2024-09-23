@@ -55,19 +55,19 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("The distance between the top point and the X axis");
   b.add_input<decl::Vector>("Point 1")
       .default_value({-1.0f, -1.0f, 0.0f})
-      .subtype(PROP_DISTANCE)
+      .subtype(PROP_TRANSLATION)
       .description("The exact location of the point to use");
   b.add_input<decl::Vector>("Point 2")
       .default_value({1.0f, -1.0f, 0.0f})
-      .subtype(PROP_DISTANCE)
+      .subtype(PROP_TRANSLATION)
       .description("The exact location of the point to use");
   b.add_input<decl::Vector>("Point 3")
       .default_value({1.0f, 1.0f, 0.0f})
-      .subtype(PROP_DISTANCE)
+      .subtype(PROP_TRANSLATION)
       .description("The exact location of the point to use");
   b.add_input<decl::Vector>("Point 4")
       .default_value({-1.0f, 1.0f, 0.0f})
-      .subtype(PROP_DISTANCE)
+      .subtype(PROP_TRANSLATION)
       .description("The exact location of the point to use");
   b.add_output<decl::Geometry>("Curve");
 }
@@ -120,7 +120,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   }
 
   LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-    bke::nodeSetSocketAvailability(ntree, sock, available_sockets.contains(sock));
+    bke::node_set_socket_availability(ntree, sock, available_sockets.contains(sock));
   }
 }
 
@@ -138,7 +138,7 @@ class SocketSearchOp {
 
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
-  const NodeDeclaration &declaration = *params.node_type().fixed_declaration;
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
   if (params.in_out() == SOCK_OUT) {
     search_link_ops_for_declarations(params, declaration.outputs);
   }
@@ -305,7 +305,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_PRIMITIVE_QUADRILATERAL, "Quadrilateral", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
@@ -313,12 +313,12 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
-  node_type_storage(&ntype,
-                    "NodeGeometryCurvePrimitiveQuad",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryCurvePrimitiveQuad",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

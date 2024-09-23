@@ -77,6 +77,7 @@ class Shader : public Node {
   /* sampling */
   NODE_SOCKET_API(EmissionSampling, emission_sampling_method)
   NODE_SOCKET_API(bool, use_transparent_shadow)
+  NODE_SOCKET_API(bool, use_bump_map_correction)
   NODE_SOCKET_API(bool, heterogeneous_volume)
   NODE_SOCKET_API(VolumeSampling, volume_sampling_method)
   NODE_SOCKET_API(int, volume_interpolation_method)
@@ -249,6 +250,7 @@ class ShaderManager {
   float3 xyz_to_g;
   float3 xyz_to_b;
   float3 rgb_to_y;
+  float3 white_xyz;
   float3 rec709_to_r;
   float3 rec709_to_g;
   float3 rec709_to_b;

@@ -2,13 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_material.h"
-#include "BKE_mesh.hh"
 
 #include "NOD_rna_define.hh"
+
+#include "GEO_mesh_primitive_cylinder_cone.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -49,9 +47,10 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_DISTANCE)
       .description("The height of the cylinder");
   b.add_output<decl::Geometry>("Mesh");
-  b.add_output<decl::Bool>("Top").field_on_all();
+  b.add_output<decl::Bool>("Top").field_on_all().translation_context(BLT_I18NCONTEXT_ID_NODETREE);
   b.add_output<decl::Bool>("Side").field_on_all();
-  b.add_output<decl::Bool>("Bottom").field_on_all();
+  b.add_output<decl::Bool>("Bottom").field_on_all().translation_context(
+      BLT_I18NCONTEXT_ID_NODETREE);
   b.add_output<decl::Vector>("UV Map").field_on_all();
 }
 
@@ -80,7 +79,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const NodeGeometryMeshCylinder &storage = node_storage(*node);
   const GeometryNodeMeshCircleFillType fill = (GeometryNodeMeshCircleFillType)storage.fill_type;
   const bool has_fill = fill != GEO_NODE_MESH_CIRCLE_FILL_NONE;
-  bke::nodeSetSocketAvailability(ntree, fill_subdiv_socket, has_fill);
+  bke::node_set_socket_availability(ntree, fill_subdiv_socket, has_fill);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -112,21 +111,22 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  ConeAttributeOutputs attribute_outputs;
+  geometry::ConeAttributeOutputs attribute_outputs;
   attribute_outputs.top_id = params.get_output_anonymous_attribute_id_if_needed("Top");
   attribute_outputs.bottom_id = params.get_output_anonymous_attribute_id_if_needed("Bottom");
   attribute_outputs.side_id = params.get_output_anonymous_attribute_id_if_needed("Side");
   attribute_outputs.uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   /* The cylinder is a special case of the cone mesh where the top and bottom radius are equal. */
-  Mesh *mesh = create_cylinder_or_cone_mesh(radius,
-                                            radius,
-                                            depth,
-                                            circle_segments,
-                                            side_segments,
-                                            fill_segments,
-                                            fill,
-                                            attribute_outputs);
+  Mesh *mesh = geometry::create_cylinder_or_cone_mesh(radius,
+                                                      radius,
+                                                      depth,
+                                                      circle_segments,
+                                                      side_segments,
+                                                      fill_segments,
+                                                      geometry::ConeFillType(fill),
+                                                      attribute_outputs);
+  BKE_id_material_eval_ensure_default_slot(reinterpret_cast<ID *>(mesh));
 
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
@@ -139,21 +139,23 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_enum_node_geometry_mesh_circle_fill_type_items,
                     NOD_storage_enum_accessors(fill_type),
-                    GEO_NODE_MESH_CIRCLE_FILL_NGON);
+                    GEO_NODE_MESH_CIRCLE_FILL_NGON,
+                    nullptr,
+                    true);
 }
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_CYLINDER, "Cylinder", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryMeshCylinder", node_free_standard_storage, node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

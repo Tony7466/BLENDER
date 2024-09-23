@@ -7,17 +7,17 @@
  */
 #include "BLI_rect.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "gpencil_engine.h"
 
@@ -146,7 +146,7 @@ static void GPENCIL_render_cache(void *vedata,
                                  RenderEngine * /*engine*/,
                                  Depsgraph * /*depsgraph*/)
 {
-  if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_LAMP)) {
+  if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL, OB_LAMP)) {
     if (DRW_object_visibility_in_active_context(ob) & OB_VISIBLE_SELF) {
       GPENCIL_cache_populate(vedata, ob);
     }

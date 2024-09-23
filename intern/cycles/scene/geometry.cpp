@@ -76,8 +76,9 @@ Geometry::~Geometry()
 
 void Geometry::clear(bool preserve_shaders)
 {
-  if (!preserve_shaders)
+  if (!preserve_shaders) {
     used_shaders.clear();
+  }
 
   transform_applied = false;
   transform_negative_scaled = false;
@@ -612,7 +613,9 @@ void GeometryManager::device_update_displacement_images(Device *device,
   TaskPool pool;
   ImageManager *image_manager = scene->image_manager;
   set<int> bump_images;
+#ifdef WITH_OSL
   bool has_osl_node = false;
+#endif
   foreach (Geometry *geom, scene->geometry) {
     if (geom->is_modified()) {
       /* Geometry-level check for hair shadow transparency.
@@ -632,9 +635,11 @@ void GeometryManager::device_update_displacement_images(Device *device,
           continue;
         }
         foreach (ShaderNode *node, shader->graph->nodes) {
+#ifdef WITH_OSL
           if (node->special_type == SHADER_SPECIAL_TYPE_OSL) {
             has_osl_node = true;
           }
+#endif
           if (node->special_type != SHADER_SPECIAL_TYPE_IMAGE_SLOT) {
             continue;
           }
@@ -707,8 +712,9 @@ void GeometryManager::device_update(Device *device,
                                     Scene *scene,
                                     Progress &progress)
 {
-  if (!need_update())
+  if (!need_update()) {
     return;
+  }
 
   VLOG_INFO << "Total " << scene->geometry.size() << " meshes.";
 
@@ -787,11 +793,13 @@ void GeometryManager::device_update(Device *device,
       Mesh *mesh = static_cast<Mesh *>(geom);
       if (mesh->need_tesselation()) {
         string msg = "Tessellating ";
-        if (mesh->name == "")
+        if (mesh->name == "") {
           msg += string_printf("%u/%u", (uint)(i + 1), (uint)total_tess_needed);
-        else
+        }
+        else {
           msg += string_printf(
               "%s %u/%u", mesh->name.c_str(), (uint)(i + 1), (uint)total_tess_needed);
+        }
 
         progress.set_status("Updating Mesh", msg);
 
@@ -813,7 +821,6 @@ void GeometryManager::device_update(Device *device,
   }
 
   /* Update images needed for true displacement. */
-  bool old_need_object_flags_update = false;
   if (true_displacement_used || curve_shadow_transparency_used) {
     scoped_callback_timer timer([scene](double time) {
       if (scene->update_stats) {
@@ -822,7 +829,6 @@ void GeometryManager::device_update(Device *device,
       }
     });
     device_update_displacement_images(device, scene, progress);
-    old_need_object_flags_update = scene->object_manager->need_flags_update;
     scene->object_manager->device_update_flags(device, dscene, scene, progress, false);
   }
 
@@ -1005,16 +1011,6 @@ void GeometryManager::device_update(Device *device,
     if (progress.get_cancel()) {
       return;
     }
-  }
-
-  if (true_displacement_used) {
-    /* Re-tag flags for update, so they're re-evaluated
-     * for meshes with correct bounding boxes.
-     *
-     * This wouldn't cause wrong results, just true
-     * displacement might be less optimal to calculate.
-     */
-    scene->object_manager->need_flags_update = old_need_object_flags_update;
   }
 
   /* unset flags */
