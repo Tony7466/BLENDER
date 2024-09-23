@@ -3292,11 +3292,11 @@ static int grease_pencil_texture_gradient_invoke(bContext *C, wmOperator *op, co
 
   if ((ret & OPERATOR_RUNNING_MODAL) != 0) {
     ARegion *region = CTX_wm_region(C);
-    if (region->regiontype == RGN_TYPE_WINDOW) {
-      if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
-        wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
-        gesture->is_active = true;
-      }
+    if (region->regiontype == RGN_TYPE_WINDOW && event->type == LEFTMOUSE &&
+        event->val == KM_PRESS)
+    {
+      wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+      gesture->is_active = true;
     }
   }
 
