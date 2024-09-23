@@ -4,9 +4,6 @@
 
 #include <type_traits>
 
-#define BLI_ENABLE_IF(condition) typename std::enable_if_t<(condition)> * = nullptr
-#define BLI_ENABLE_IF_VEC(_size, _test) int S = _size, BLI_ENABLE_IF((S _test))
-
 template<typename T, int Sz> struct VecOp {
   T operator[](int) {}
 
@@ -38,32 +35,35 @@ template<typename T, int Sz> struct VecOp {
   friend VecOp operator/(T a, VecOp b) {}
   friend VecOp operator*(T a, VecOp b) {}
 
-#define BLI_INT_OP(_T) template<typename U = _T, BLI_ENABLE_IF((std::is_integral_v<U>))>
+#define INT_OP \
+  template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
-  BLI_INT_OP(T) VecOp operator%(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator&(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator|(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator^(VecOp b) {}
+  INT_OP VecOp operator%(VecOp b) {}
+  INT_OP VecOp operator&(VecOp b) {}
+  INT_OP VecOp operator|(VecOp b) {}
+  INT_OP VecOp operator^(VecOp b) {}
 
-  BLI_INT_OP(T) VecOp operator%=(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator&=(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator|=(VecOp b) {}
-  BLI_INT_OP(T) VecOp operator^=(VecOp b) {}
+  INT_OP VecOp operator%=(VecOp b) {}
+  INT_OP VecOp operator&=(VecOp b) {}
+  INT_OP VecOp operator|=(VecOp b) {}
+  INT_OP VecOp operator^=(VecOp b) {}
 
-  BLI_INT_OP(T) VecOp operator%(T b) {}
-  BLI_INT_OP(T) VecOp operator&(T b) {}
-  BLI_INT_OP(T) VecOp operator|(T b) {}
-  BLI_INT_OP(T) VecOp operator^(T b) {}
+  INT_OP VecOp operator%(T b) {}
+  INT_OP VecOp operator&(T b) {}
+  INT_OP VecOp operator|(T b) {}
+  INT_OP VecOp operator^(T b) {}
 
-  BLI_INT_OP(T) VecOp operator%=(T b) {}
-  BLI_INT_OP(T) VecOp operator&=(T b) {}
-  BLI_INT_OP(T) VecOp operator|=(T b) {}
-  BLI_INT_OP(T) VecOp operator^=(T b) {}
+  INT_OP VecOp operator%=(T b) {}
+  INT_OP VecOp operator&=(T b) {}
+  INT_OP VecOp operator|=(T b) {}
+  INT_OP VecOp operator^=(T b) {}
 
-  BLI_INT_OP(T) friend VecOp operator%(T a, VecOp<T, Sz> b) {}
-  BLI_INT_OP(T) friend VecOp operator&(T a, VecOp<T, Sz> b) {}
-  BLI_INT_OP(T) friend VecOp operator|(T a, VecOp<T, Sz> b) {}
-  BLI_INT_OP(T) friend VecOp operator^(T a, VecOp<T, Sz> b) {}
+  INT_OP friend VecOp operator%(T a, VecOp<T, Sz> b) {}
+  INT_OP friend VecOp operator&(T a, VecOp<T, Sz> b) {}
+  INT_OP friend VecOp operator|(T a, VecOp<T, Sz> b) {}
+  INT_OP friend VecOp operator^(T a, VecOp<T, Sz> b) {}
+
+#undef INT_OP
 };
 
 template<typename T, int Sz> struct VecBase {};
