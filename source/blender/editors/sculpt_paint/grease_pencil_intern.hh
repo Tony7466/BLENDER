@@ -177,9 +177,6 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
       const bContext &C,
       GrainSize grain_size,
       FunctionRef<bool(const GreasePencilStrokeParams &params)> fn) const;
-  void foreach_editable_drawing(const bContext &C,
-                                FunctionRef<bool(const GreasePencilStrokeParams &params,
-                                                 const DrawingPlacement &placement)> fn) const;
   void foreach_editable_drawing(
       const bContext &C,
       FunctionRef<bool(const GreasePencilStrokeParams &params,
