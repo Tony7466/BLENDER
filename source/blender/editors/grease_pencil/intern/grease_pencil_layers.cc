@@ -223,19 +223,15 @@ static int grease_pencil_layer_move_exec(bContext *C, wmOperator *op)
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  if (!grease_pencil.has_active_layer()) {
-    return OPERATOR_CANCELLED;
-  }
-
   const LayerMoveDirection direction = LayerMoveDirection(RNA_enum_get(op->ptr, "direction"));
 
-  Layer &active_layer = *grease_pencil.get_active_layer();
+  TreeNode &active_node = *grease_pencil.get_active_node();
 
   if (direction == LayerMoveDirection::Up) {
-    grease_pencil.move_node_up(active_layer.as_node());
+    grease_pencil.move_node_up(active_node);
   }
   else if (direction == LayerMoveDirection::Down) {
-    grease_pencil.move_node_down(active_layer.as_node());
+    grease_pencil.move_node_down(active_node);
   }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -249,7 +245,7 @@ static void GREASE_PENCIL_OT_layer_move(wmOperatorType *ot)
   /* identifiers */
   ot->name = "Reorder Layer";
   ot->idname = "GREASE_PENCIL_OT_layer_move";
-  ot->description = "Move the active Grease Pencil layer";
+  ot->description = "Move the active Grease Pencil layer or Group";
 
   /* callbacks */
   ot->exec = grease_pencil_layer_move_exec;

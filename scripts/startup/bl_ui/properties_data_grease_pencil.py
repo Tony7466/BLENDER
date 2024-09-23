@@ -239,15 +239,15 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-        if not layer:
-            return
-
         if len(grease_pencil.layers) > 1:
             col.separator()
 
             sub = col.column(align=True)
             sub.operator("grease_pencil.layer_move", icon='TRIA_UP', text="").direction = 'UP'
             sub.operator("grease_pencil.layer_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+        if not layer:
+            return
 
         layout.use_property_split = True
         layout.use_property_decorate = True
