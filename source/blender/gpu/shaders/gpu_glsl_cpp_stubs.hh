@@ -152,6 +152,47 @@ template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
   explicit VecBase(T, VecBase<T, 3>) {}
 };
 
+/* Boolean vectors do not have operators and are not convertible from other types. */
+
+template<> struct VecBase<bool, 1> {
+  bool x;
+
+  VecBase() = default;
+  operator bool() const {}
+};
+
+template<> struct VecBase<bool, 2> : VecSwizzle2<bool> {
+  bool x, y;
+
+  VecBase() = default;
+  explicit VecBase(bool) {}
+  explicit VecBase(bool, bool) {}
+};
+
+template<> struct VecBase<bool, 3> : VecSwizzle3<bool> {
+  bool x, y, z;
+
+  VecBase() = default;
+  explicit VecBase(bool) {}
+  explicit VecBase(bool, bool, bool) {}
+  explicit VecBase(VecBase<bool, 2>, bool) {}
+  explicit VecBase(bool, VecBase<bool, 2>) {}
+};
+
+template<> struct VecBase<bool, 4> : VecSwizzle4<bool> {
+  bool x, y, z, w;
+
+  VecBase() = default;
+  explicit VecBase(bool) {}
+  explicit VecBase(bool, bool, bool, bool) {}
+  explicit VecBase(VecBase<bool, 2>, bool, bool) {}
+  explicit VecBase(bool, VecBase<bool, 2>, bool) {}
+  explicit VecBase(bool, bool, VecBase<bool, 2>) {}
+  explicit VecBase(VecBase<bool, 2>, VecBase<bool, 2>) {}
+  explicit VecBase(VecBase<bool, 3>, bool) {}
+  explicit VecBase(bool, VecBase<bool, 3>) {}
+};
+
 using uint = unsigned int;
 
 using float2 = VecBase<double, 2>;
@@ -166,6 +207,10 @@ using int2 = VecBase<int, 2>;
 using int3 = VecBase<int, 3>;
 using int4 = VecBase<int, 4>;
 
+using bool2 = VecBase<bool, 2>;
+using bool3 = VecBase<bool, 3>;
+using bool4 = VecBase<bool, 4>;
+
 using vec2 = float2;
 using vec3 = float3;
 using vec4 = float4;
@@ -177,6 +222,22 @@ using ivec4 = int4;
 using uvec2 = uint2;
 using uvec3 = uint3;
 using uvec4 = uint4;
+
+using bvec2 = bool2;
+using bvec3 = bool3;
+using bvec4 = bool4;
+
+template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> lessThanEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> greaterThanEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> equal(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> notEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<int D> bool any(VecBase<bool, D>) {}
+template<int D> bool all(VecBase<bool, D>) {}
+/* `not` is a C++ keyword. Use dirty macro to allow this. */
+template<int D> VecBase<bool, D> not_impl(VecBase<bool, D>) {}
+#define not not_impl
 
 #define inout
 #define in
