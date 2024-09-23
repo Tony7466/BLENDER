@@ -3179,7 +3179,7 @@ static int grease_pencil_texture_gradient_exec(bContext *C, wmOperator *op)
       return;
     }
 
-    const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
     const float4x4 layer_space_to_world_space = layer.to_world_space(*object);
 
     const float2 sco_start(RNA_int_get(op->ptr, "xstart"), RNA_int_get(op->ptr, "ystart"));
