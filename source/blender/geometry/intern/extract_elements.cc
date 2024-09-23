@@ -21,7 +21,7 @@ using bke::AttrDomain;
 struct PropagationAttribute {
   StringRef name;
   eCustomDataType cd_type;
-  bke::AttrDomain domain;
+  AttrDomain domain;
   GVArray data;
 };
 
