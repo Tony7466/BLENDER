@@ -64,7 +64,7 @@ using namespace mem_guarded::internal;
  * NOTE: The default linking options cause the stack traces only to include addresses.
  * Use `addr2line` to expand into file, line & function identifiers,
  * see: `tools/utils/addr2line_backtrace.py` convenience utility. */
-// #  define DEBUG_BACKTRACE
+#  define DEBUG_BACKTRACE
 #endif
 
 #ifdef DEBUG_BACKTRACE
