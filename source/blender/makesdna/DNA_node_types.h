@@ -1019,7 +1019,7 @@ typedef struct NodeFrame {
 } NodeFrame;
 
 typedef struct NodeReroute {
-  /* Idname of sockets type is used just to support custom socket types. */
+  /** Name of the socket type (e.g. `NodeSocketFloat`). */
   char type_idname[64];
 
 #ifdef __cplusplus
