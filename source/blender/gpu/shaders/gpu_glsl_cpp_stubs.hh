@@ -105,6 +105,14 @@ template<typename T> struct VecSwizzle4 : VecSwizzle3<T> {
       wwxw, wwyx, wwyy, wwyz, wwyw, wwzx, wwzy, wwzz, wwzw, wwwx, wwwy, wwwz, wwww;
 };
 
+template<typename T> struct VecBase<T, 1> {
+  T x;
+
+  VecBase() = default;
+  VecBase(VecOp<T, 1>) {}
+  operator T() const {}
+};
+
 template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
   T x, y;
 
