@@ -641,7 +641,7 @@ static int calc_new_edges(const Mesh &src_mesh,
     }
   });
 
-  Array<int2> edges_with_duplicates(new_edges);
+  Array<int2> edges_with_duplicates = new_edges;
   array_utils::gather(edges_with_duplicates.as_span(),
                       non_duplicate_new_edges,
                       edges.slice(new_edges_range.start(), non_duplicate_new_edges.size()));
