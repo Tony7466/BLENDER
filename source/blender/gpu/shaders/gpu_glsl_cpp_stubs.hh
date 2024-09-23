@@ -9,7 +9,7 @@ template<typename T, int Sz> struct VecBase {};
 template<typename T, int Sz> struct VecOp {
   using VecT = VecBase<T, Sz>;
 
-  T operator[](int) {}
+  T &operator[](int) {}
 
   VecT operator+() const {}
   VecT operator-() const {}
@@ -249,6 +249,76 @@ using uvec4 = uint4;
 using bvec2 = bool2;
 using bvec3 = bool3;
 using bvec4 = bool4;
+
+template<int C, int R> struct MatBase {};
+
+template<int C, int R> struct MatOp {
+  using MatT = MatBase<C, R>;
+  using ColT = VecBase<double, R>;
+  using RowT = VecBase<double, C>;
+
+  ColT &operator[](int) {}
+
+  MatT operator*(MatT) const {}
+
+  friend ColT operator*(RowT, MatT) {}
+  friend RowT operator*(MatT, ColT) {}
+};
+
+template<int R> struct MatBase<2, R> : MatOp<2, R> {
+  using T = double;
+  using ColT = VecBase<double, R>;
+  ColT x, y;
+
+  MatBase() = default;
+  explicit MatBase(T) {}
+  explicit MatBase(ColT, ColT) {}
+  template<typename OtherC, typename OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
+};
+
+template<int R> struct MatBase<3, R> : MatOp<3, R> {
+  using ColT = VecBase<double, R>;
+  ColT x, y, z;
+
+  MatBase() = default;
+  explicit MatBase(double) {}
+  explicit MatBase(ColT, ColT, ColT) {}
+  template<int OtherC, int OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
+};
+
+template<int R> struct MatBase<4, R> : MatOp<4, R> {
+  using ColT = VecBase<double, R>;
+  ColT x, y, z, w;
+
+  MatBase() = default;
+  explicit MatBase(double) {}
+  explicit MatBase(ColT, ColT, ColT, ColT) {}
+  template<int OtherC, int OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
+};
+
+using float2x2 = MatBase<2, 2>;
+using float2x3 = MatBase<2, 3>;
+using float2x4 = MatBase<2, 4>;
+using float3x2 = MatBase<3, 2>;
+using float3x3 = MatBase<3, 3>;
+using float3x4 = MatBase<3, 4>;
+using float4x2 = MatBase<4, 2>;
+using float4x3 = MatBase<4, 3>;
+using float4x4 = MatBase<4, 4>;
+
+using mat2x2 = float2x2;
+using mat2x3 = float2x3;
+using mat2x4 = float2x4;
+using mat3x2 = float3x2;
+using mat3x3 = float3x3;
+using mat3x4 = float3x4;
+using mat4x2 = float4x2;
+using mat4x3 = float4x3;
+using mat4x4 = float4x4;
+
+using mat2 = float2x2;
+using mat3 = float3x3;
+using mat4 = float4x4;
 
 template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) {}
 template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) {}
@@ -490,11 +560,9 @@ float2 unpackSnorm2x16(uint) {}
 float4 unpackUnorm4x8(uint) {}
 float4 unpackSnorm4x8(uint) {}
 
-#if 0 /* TODO Matrices */
-template<typename T, int C, int R> float determinant(MatBase<T, C, R>) {}
-template<typename T, int C, int R> MatBase<T, C, R> inverse(MatBase<T, C, R>) {}
-template<typename T, int C, int R> MatBase<T, R, C> transpose(MatBase<T, C, R>) {}
-#endif
+template<int C, int R> float determinant(MatBase<C, R>) {}
+template<int C, int R> MatBase<C, R> inverse(MatBase<C, R>) {}
+template<int C, int R> MatBase<R, C> transpose(MatBase<C, R>) {}
 
 /* Vertex Shader Special Variables. */
 const int gl_VertexID;
