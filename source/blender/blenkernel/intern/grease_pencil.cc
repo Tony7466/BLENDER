@@ -3116,16 +3116,16 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(
   return new_layer;
 }
 
-void GreasePencil::add_layers_for_eval(const Span<blender::StringRefNull> names)
+void GreasePencil::add_layers_for_eval(const int num_new_layers)
 {
   using namespace blender;
-  const int num_layers = layers().size();
-  CustomData_realloc(&layers_data, num_layers, num_layers + names.size());
-  for (StringRefNull name : names) {
-    bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__, name);
+  const int num_layers = this->layers().size();
+  CustomData_realloc(&layers_data, num_layers, num_layers + num_new_layers);
+  for ([[maybe_unused]] const int i : IndexRange(num_new_layers)) {
+    bke::greasepencil::Layer *new_layer = MEM_new<bke::greasepencil::Layer>(__func__);
     /* Hide masks by default. */
     new_layer->base.flag |= GP_LAYER_TREE_NODE_HIDE_MASKS;
-    root_group().add_node(new_layer->as_node());
+    this->root_group().add_node(new_layer->as_node());
   }
 }
 
