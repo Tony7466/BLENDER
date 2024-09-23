@@ -2489,10 +2489,8 @@ void GreasePencil::insert_frames(Span<blender::bke::greasepencil::Layer *> layer
     return;
   }
 
-  const int prev_drawings_num = this->drawings().size();
   this->add_empty_drawings(frames.size());
-
-  const IndexRange new_drawings = this->drawings().index_range().drop_front(prev_drawings_num);
+  const IndexRange new_drawings = this->drawings().index_range().take_back(frames.size());
   for (const int frame_i : frames.index_range()) {
     GreasePencilFrame *frame = frames[frame_i];
     frame->drawing_index = new_drawings[frame_i];
