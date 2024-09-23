@@ -110,6 +110,7 @@ template<typename T> struct VecBase<T, 1> {
 
   VecBase() = default;
   VecBase(VecOp<T, 1>) {}
+  template<typename U> explicit VecBase(VecBase<U, 1>) {}
   operator T() const {}
 };
 
@@ -118,6 +119,7 @@ template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
 
   VecBase() = default;
   VecBase(VecOp<T, 2>) {}
+  template<typename U> explicit VecBase(VecBase<U, 2>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T) {}
 };
@@ -127,6 +129,7 @@ template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T> {
 
   VecBase() = default;
   VecBase(VecOp<T, 3>) {}
+  template<typename U> explicit VecBase(VecBase<U, 3>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T, T) {}
   explicit VecBase(VecBase<T, 2>, T) {}
@@ -138,6 +141,7 @@ template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
 
   VecBase() = default;
   VecBase(VecOp<T, 4>) {}
+  template<typename U> explicit VecBase(VecBase<U, 4>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T, T, T) {}
   explicit VecBase(VecBase<T, 2>, T, T) {}
