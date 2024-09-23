@@ -102,9 +102,9 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto and_not_fn = mf::build::SI2_SO<int, int, int>(
       "And Not", [](int a, int b) { return a & ~b; }, exec_preset);
   static auto left_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Left Shift", [](int a, int b) { return a << b; }, exec_preset);
+      "Left Shift", [](int a, int b) { return b > 0 ? a << b : a; }, exec_preset);
   static auto right_shift_fn = mf::build::SI2_SO<int, int, int>(
-      "Right Shift", [](int a, int b) { return a >> b; }, exec_preset);
+      "Right Shift", [](int a, int b) { return b > 0 ? a >> b : a; }, exec_preset);
 
   switch (operation) {
     case NODE_BIT_MATH_AND:
