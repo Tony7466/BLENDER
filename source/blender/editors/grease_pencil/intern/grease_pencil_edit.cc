@@ -3290,7 +3290,7 @@ static int grease_pencil_texture_gradient_invoke(bContext *C, wmOperator *op, co
   /* Invoke interactive line drawing (representing the gradient) in viewport. */
   const int ret = WM_gesture_straightline_invoke(C, op, event);
 
-  if (ret & OPERATOR_RUNNING_MODAL) {
+  if ((ret & OPERATOR_RUNNING_MODAL) != 0) {
     ARegion *region = CTX_wm_region(C);
     if (region->regiontype == RGN_TYPE_WINDOW) {
       if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
