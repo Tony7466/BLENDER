@@ -14,58 +14,58 @@ template<typename T, int Sz> struct VecOp {
   VecT operator+() const {}
   VecT operator-() const {}
 
-  VecT operator+(VecT b) const {}
-  VecT operator-(VecT b) const {}
-  VecT operator/(VecT b) const {}
-  VecT operator*(VecT b) const {}
+  VecT operator+(VecT) const {}
+  VecT operator-(VecT) const {}
+  VecT operator/(VecT) const {}
+  VecT operator*(VecT) const {}
 
-  VecT operator+=(VecT b) const {}
-  VecT operator-=(VecT b) const {}
-  VecT operator/=(VecT b) const {}
-  VecT operator*=(VecT b) const {}
+  VecT operator+=(VecT) const {}
+  VecT operator-=(VecT) const {}
+  VecT operator/=(VecT) const {}
+  VecT operator*=(VecT) const {}
 
-  VecT operator+(T b) const {}
-  VecT operator-(T b) const {}
-  VecT operator/(T b) const {}
-  VecT operator*(T b) const {}
+  VecT operator+(T) const {}
+  VecT operator-(T) const {}
+  VecT operator/(T) const {}
+  VecT operator*(T) const {}
 
-  VecT operator+=(T b) const {}
-  VecT operator-=(T b) const {}
-  VecT operator/=(T b) const {}
-  VecT operator*=(T b) const {}
+  VecT operator+=(T) const {}
+  VecT operator-=(T) const {}
+  VecT operator/=(T) const {}
+  VecT operator*=(T) const {}
 
-  friend VecT operator+(T a, VecT b) {}
-  friend VecT operator-(T a, VecT b) {}
-  friend VecT operator/(T a, VecT b) {}
-  friend VecT operator*(T a, VecT b) {}
+  friend VecT operator+(T, VecT) {}
+  friend VecT operator-(T, VecT) {}
+  friend VecT operator/(T, VecT) {}
+  friend VecT operator*(T, VecT) {}
 
 #define INT_OP \
   template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
-  INT_OP VecT operator%(VecT b) {}
-  INT_OP VecT operator&(VecT b) {}
-  INT_OP VecT operator|(VecT b) {}
-  INT_OP VecT operator^(VecT b) {}
+  INT_OP VecT operator%(VecT) const {}
+  INT_OP VecT operator&(VecT) const {}
+  INT_OP VecT operator|(VecT) const {}
+  INT_OP VecT operator^(VecT) const {}
 
-  INT_OP VecT operator%=(VecT b) {}
-  INT_OP VecT operator&=(VecT b) {}
-  INT_OP VecT operator|=(VecT b) {}
-  INT_OP VecT operator^=(VecT b) {}
+  INT_OP VecT operator%=(VecT) const {}
+  INT_OP VecT operator&=(VecT) const {}
+  INT_OP VecT operator|=(VecT) const {}
+  INT_OP VecT operator^=(VecT) const {}
 
-  INT_OP VecT operator%(T b) {}
-  INT_OP VecT operator&(T b) {}
-  INT_OP VecT operator|(T b) {}
-  INT_OP VecT operator^(T b) {}
+  INT_OP VecT operator%(T) const {}
+  INT_OP VecT operator&(T) const {}
+  INT_OP VecT operator|(T) const {}
+  INT_OP VecT operator^(T) const {}
 
-  INT_OP VecT operator%=(T b) {}
-  INT_OP VecT operator&=(T b) {}
-  INT_OP VecT operator|=(T b) {}
-  INT_OP VecT operator^=(T b) {}
+  INT_OP VecT operator%=(T) const {}
+  INT_OP VecT operator&=(T) const {}
+  INT_OP VecT operator|=(T) const {}
+  INT_OP VecT operator^=(T) const {}
 
-  INT_OP friend VecT operator%(T a, VecT b) {}
-  INT_OP friend VecT operator&(T a, VecT b) {}
-  INT_OP friend VecT operator|(T a, VecT b) {}
-  INT_OP friend VecT operator^(T a, VecT b) {}
+  INT_OP friend VecT operator%(T, VecT) {}
+  INT_OP friend VecT operator&(T, VecT) {}
+  INT_OP friend VecT operator|(T, VecT) {}
+  INT_OP friend VecT operator^(T, VecT) {}
 
 #undef INT_OP
 };
