@@ -436,7 +436,7 @@ Array<GreasePencil *> extract_greasepencil_layer_points(
     const bke::AttributeFilter &attribute_filter)
 {
   using namespace bke::greasepencil;
-  const Layer &src_layer = *grease_pencil.layer(layer_i);
+  const Layer &src_layer = grease_pencil.layer(layer_i);
   const Drawing &src_drawing = *grease_pencil.get_eval_drawing(src_layer);
   const bke::CurvesGeometry &src_curves = src_drawing.strokes();
   const bke::AttributeAccessor src_layer_attributes = grease_pencil.attributes();
@@ -492,7 +492,7 @@ Array<GreasePencil *> extract_greasepencil_layer_curves(
     const bke::AttributeFilter &attribute_filter)
 {
   using namespace bke::greasepencil;
-  const Layer &src_layer = *grease_pencil.layer(layer_i);
+  const Layer &src_layer = grease_pencil.layer(layer_i);
   const Drawing &src_drawing = *grease_pencil.get_eval_drawing(src_layer);
   const bke::CurvesGeometry &src_curves = src_drawing.strokes();
   const bke::AttributeAccessor src_layer_attributes = grease_pencil.attributes();

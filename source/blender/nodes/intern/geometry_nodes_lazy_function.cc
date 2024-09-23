@@ -2142,9 +2142,8 @@ struct ForeachElementComponent {
     {
       BLI_assert(this->id.layer_index.has_value());
       GreasePencil *grease_pencil = geometry.get_grease_pencil_for_write();
-      const bke::greasepencil::Layer *layer = grease_pencil->layer(*this->id.layer_index);
-      BLI_assert(layer);
-      bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(*layer);
+      const bke::greasepencil::Layer &layer = grease_pencil->layer(*this->id.layer_index);
+      bke::greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(layer);
       BLI_assert(drawing);
       return drawing->strokes_for_write().attributes_for_write();
     }
@@ -2498,7 +2497,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         const GreasePencil &grease_pencil = *eval_storage.main_geometry.get_grease_pencil();
         for (const int layer_i : grease_pencil.layers().index_range()) {
           const bke::greasepencil::Drawing *drawing = grease_pencil.get_eval_drawing(
-              *grease_pencil.layer(layer_i));
+              grease_pencil.layer(layer_i));
           if (drawing == nullptr) {
             continue;
           }
