@@ -77,6 +77,13 @@ template<typename T> struct VecSwizzle2 {
       yyxx, yyxy, yyyx, yyyy;
 };
 
+template<typename T> struct ColSwizzle2 {
+  static VecBase<T, 2> rr, rg, gr, gg;
+  static VecBase<T, 3> rrr, rrg, rgr, rgg, grr, grg, ggr, ggg;
+  static VecBase<T, 4> rrrr, rrrg, rrgr, rrgg, rgrr, rgrg, rggr, rggg, grrr, grrg, grgr, grgg,
+      ggrr, ggrg, gggr, gggg;
+};
+
 template<typename T> struct VecSwizzle3 : VecSwizzle2<T> {
   static VecBase<T, 2> xz, yz, zx, zy, zz, zw;
   static VecBase<T, 3> xxz, xyz, xzx, xzy, xzz, yxz, yyz, yzx, yzy, yzz, zxx, zxy, zxz, zyx, zyy,
@@ -86,6 +93,17 @@ template<typename T> struct VecSwizzle3 : VecSwizzle2<T> {
       yyzy, yyzz, yzxx, yzxy, yzxz, yzyx, yzyy, yzyz, yzzx, yzzy, yzzz, zxxx, zxxy, zxxz, zxyx,
       zxyy, zxyz, zxzx, zxzy, zxzz, zyxx, zyxy, zyxz, zyyx, zyyy, zyyz, zyzx, zyzy, zyzz, zzxx,
       zzxy, zzxz, zzyx, zzyy, zzyz, zzzx, zzzy, zzzz;
+};
+
+template<typename T> struct ColSwizzle3 : ColSwizzle2<T> {
+  static VecBase<T, 2> rb, gb, br, bg, bb, bw;
+  static VecBase<T, 3> rrb, rgb, rbr, rbg, rbb, grb, ggb, gbr, gbg, gbb, brr, brg, brb, bgr, bgg,
+      bgb, bbr, bbg, bbb;
+  static VecBase<T, 4> rrrb, rrgb, rrbr, rrbg, rrbb, rgrb, rggb, rgbr, rgbg, rgbb, rbrr, rbrg,
+      rbrb, rbgr, rbgg, rbgb, rbbr, rbbg, rbbb, grrb, grgb, grbr, grbg, grbb, ggrb, gggb, ggbr,
+      ggbg, ggbb, gbrr, gbrg, gbrb, gbgr, gbgg, gbgb, gbbr, gbbg, gbbb, brrr, brrg, brrb, brgr,
+      brgg, brgb, brbr, brbg, brbb, bgrr, bgrg, bgrb, bggr, bggg, bggb, bgbr, bgbg, bgbb, bbrr,
+      bbrg, bbrb, bbgr, bbgg, bbgb, bbbr, bbbg, bbbb;
 };
 
 template<typename T> struct VecSwizzle4 : VecSwizzle3<T> {
@@ -107,8 +125,28 @@ template<typename T> struct VecSwizzle4 : VecSwizzle3<T> {
       wwxw, wwyx, wwyy, wwyz, wwyw, wwzx, wwzy, wwzz, wwzw, wwwx, wwwy, wwwz, wwww;
 };
 
-template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
+template<typename T> struct ColSwizzle4 : ColSwizzle3<T> {
+  static VecBase<T, 2> ra, ga, ar, ag, ab, aa;
+  static VecBase<T, 3> rra, rga, rba, rar, rag, rab, raa, gra, gga, gba, gar, gag, gab, gaa, bra,
+      bga, bba, bar, bag, bab, baa, arr, arg, arb, ara, agr, agg, agb, aga, abr, abg, abb, aba,
+      aar, aag, aab, aaa;
+  static VecBase<T, 4> rrra, rrga, rrba, rrar, rrag, rrab, rraa, rgra, rgga, rgba, rgar, rgag,
+      rgab, rgaa, rbra, rbga, rbba, rbar, rbag, rbab, rbaa, rarr, rarg, rarb, rara, ragr, ragg,
+      ragb, raga, rabr, rabg, rabb, raba, raar, raag, raab, raaa, grra, grga, grba, grar, grag,
+      grab, graa, ggra, ggga, ggba, ggar, ggag, ggab, ggaa, gbra, gbga, gbba, gbar, gbag, gbab,
+      gbaa, garr, garg, garb, gara, gagr, gagg, gagb, gaga, gabr, gabg, gabb, gaba, gaar, gaag,
+      gaab, gaaa, brra, brga, brba, brar, brag, brab, braa, bgra, bgga, bgba, bgar, bgag, bgab,
+      bgaa, bbra, bbga, bbba, bbar, bbag, bbab, bbaa, barr, barg, barb, bara, bagr, bagg, bagb,
+      baga, babr, babg, babb, baba, baar, baag, baab, baaa, arrr, arrg, arrb, arra, argr, argg,
+      argb, arga, arbr, arbg, arbb, arba, arar, arag, arab, araa, agrr, agrg, agrb, agra, aggr,
+      aggg, aggb, agga, agbr, agbg, agbb, agba, agar, agag, agab, agaa, abrr, abrg, abrb, abra,
+      abgr, abgg, abgb, abga, abbr, abbg, abbb, abba, abar, abag, abab, abaa, aarr, aarg, aarb,
+      aara, aagr, aagg, aagb, aaga, aabr, aabg, aabb, aaba, aaar, aaag, aaab, aaaa;
+};
+
+template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T>, ColSwizzle2<T> {
   T x, y;
+  T r, g;
 
   VecBase() = default;
   template<typename U> explicit VecBase(VecBase<U, 2>) {}
@@ -116,8 +154,9 @@ template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
   explicit VecBase(T, T) {}
 };
 
-template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T> {
+template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T>, ColSwizzle3<T> {
   T x, y, z;
+  T r, g, b;
 
   VecBase() = default;
   template<typename U> explicit VecBase(VecBase<U, 3>) {}
@@ -127,8 +166,9 @@ template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T> {
   explicit VecBase(T, VecBase<T, 2>) {}
 };
 
-template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
+template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T>, ColSwizzle4<T> {
   T x, y, z, w;
+  T r, g, b, a;
 
   VecBase() = default;
   template<typename U> explicit VecBase(VecBase<U, 4>) {}
