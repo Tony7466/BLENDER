@@ -725,9 +725,9 @@ static void attr_create_generic(Scene *scene,
   const bool need_uv = hair->need_attribute(scene, ATTR_STD_UV);
   bool have_uv = false;
 
-  b_attributes.for_all([&](const blender::bke::AttributeIDRef &id,
+  b_attributes.for_all([&](const blender::StringRef id,
                            const blender::bke::AttributeMetaData meta_data) {
-    const ustring name{std::string_view(id.name())};
+    const ustring name{std::string_view(id)};
 
     const blender::bke::AttrDomain b_domain = meta_data.domain;
     const eCustomDataType b_data_type = meta_data.data_type;
@@ -931,7 +931,8 @@ static void export_hair_curves_motion(Hair *hair,
   }
 
   /* Export motion keys. */
-  const int num_keys = hair->get_curve_keys().size();
+  const size_t num_keys = hair->num_keys();
+  const size_t num_curves = hair->num_curves();
   float4 *mP = attr_mP->data_float4() + motion_step * num_keys;
   bool have_motion = false;
   int num_motion_keys = 0;
@@ -944,6 +945,9 @@ static void export_hair_curves_motion(Hair *hair,
 
   for (const int i : points_by_curve.index_range()) {
     const blender::IndexRange points = points_by_curve[i];
+    if (curve_index >= num_curves) {
+      break;
+    }
 
     Hair::Curve curve = hair->get_curve(curve_index);
     curve_index++;

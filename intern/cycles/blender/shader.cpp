@@ -23,7 +23,7 @@
 #include "util/string.h"
 #include "util/task.h"
 
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 
 CCL_NAMESPACE_BEGIN
 
@@ -548,6 +548,32 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfMetallic)) {
+    BL::ShaderNodeBsdfMetallic b_metallic_node(b_node);
+    MetallicBsdfNode *metal = graph->create_node<MetallicBsdfNode>();
+
+    switch (b_metallic_node.distribution()) {
+      case BL::ShaderNodeBsdfMetallic::distribution_BECKMANN:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
+        break;
+      case BL::ShaderNodeBsdfMetallic::distribution_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
+        break;
+      case BL::ShaderNodeBsdfMetallic::distribution_MULTI_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+        break;
+    }
+
+    switch (b_metallic_node.fresnel_type()) {
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_PHYSICAL_CONDUCTOR:
+        metal->set_fresnel_type(CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
+        break;
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_F82:
+        metal->set_fresnel_type(CLOSURE_BSDF_F82_CONDUCTOR);
+        break;
+    }
+    node = metal;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
     BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
@@ -666,6 +692,9 @@ static ShaderNode *add_node(Scene *scene,
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfTransparent)) {
     node = graph->create_node<TransparentBsdfNode>();
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfRayPortal)) {
+    node = graph->create_node<RayPortalBsdfNode>();
   }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfSheen)) {
     BL::ShaderNodeBsdfSheen b_sheen_node(b_node);
@@ -803,9 +832,7 @@ static ShaderNode *add_node(Scene *scene,
       /* builtin images will use callback-based reading because
        * they could only be loaded correct from blender side
        */
-      bool is_builtin = b_image.packed_file() || b_image_source == BL::Image::source_GENERATED ||
-                        b_image_source == BL::Image::source_MOVIE ||
-                        (b_engine.is_preview() && b_image_source != BL::Image::source_SEQUENCE);
+      const bool is_builtin = image_is_builtin(b_image, b_engine);
 
       if (is_builtin) {
         /* for builtin images we're using image datablock name to find an image to
@@ -858,9 +885,7 @@ static ShaderNode *add_node(Scene *scene,
       env->set_animated(is_image_animated(b_image_source, b_image_user));
       env->set_alpha_type(get_image_alpha_type(b_image));
 
-      bool is_builtin = b_image.packed_file() || b_image_source == BL::Image::source_GENERATED ||
-                        b_image_source == BL::Image::source_MOVIE ||
-                        (b_engine.is_preview() && b_image_source != BL::Image::source_SEQUENCE);
+      const bool is_builtin = image_is_builtin(b_image, b_engine);
 
       if (is_builtin) {
         int scene_frame = b_scene.frame_current();
@@ -941,6 +966,14 @@ static ShaderNode *add_node(Scene *scene,
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
+  }
+  else if (b_node.is_a(&RNA_ShaderNodeTexGabor)) {
+    BL::ShaderNodeTexGabor b_gabor_node(b_node);
+    GaborTextureNode *gabor = graph->create_node<GaborTextureNode>();
+    gabor->set_type((NodeGaborType)b_gabor_node.gabor_type());
+    BL::TexMapping b_texture_mapping(b_gabor_node.texture_mapping());
+    get_tex_mapping(gabor, b_texture_mapping);
+    node = gabor;
   }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
@@ -1064,7 +1097,7 @@ static ShaderNode *add_node(Scene *scene,
   else if (b_node.is_a(&RNA_ShaderNodeOutputAOV)) {
     BL::ShaderNodeOutputAOV b_aov_node(b_node);
     OutputAOVNode *aov = graph->create_node<OutputAOVNode>();
-    aov->set_name(ustring(b_aov_node.name()));
+    aov->set_name(ustring(b_aov_node.aov_name()));
     node = aov;
   }
 
@@ -1592,7 +1625,7 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
   Integrator *integrator = scene->integrator;
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 
-  BL::World b_world = b_scene.world();
+  BL::World b_world = view_layer.world_override ? view_layer.world_override : b_scene.world();
 
   BlenderViewportParameters new_viewport_parameters(b_v3d, use_developer_ui);
 

@@ -2,10 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DNA_volume_types.h"
-
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_volume.hh"
 
 namespace blender::bke {
@@ -91,6 +89,13 @@ void VolumeComponent::ensure_owns_direct_data()
       volume_ = BKE_volume_copy_for_eval(volume_);
     }
     ownership_ = GeometryOwnershipType::Owned;
+  }
+}
+
+void VolumeComponent::count_memory(MemoryCounter &memory) const
+{
+  if (volume_) {
+    BKE_volume_count_memory(*volume_, memory);
   }
 }
 

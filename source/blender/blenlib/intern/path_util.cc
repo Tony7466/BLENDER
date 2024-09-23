@@ -12,13 +12,10 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "DNA_listBase.h"
-
 #include "BLI_fileops.h"
 #include "BLI_fnmatch.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
@@ -104,7 +101,7 @@ int BLI_path_sequence_decode(const char *path,
         BLI_strncpy(tail, &path[nume + 1], tail_maxncpy);
       }
       if (head) {
-        BLI_strncpy(head, path, MIN2(head_maxncpy, nums + 1));
+        BLI_strncpy(head, path, std::min<size_t>(head_maxncpy, nums + 1));
       }
       if (r_digits_len) {
         *r_digits_len = nume - nums + 1;
@@ -119,7 +116,7 @@ int BLI_path_sequence_decode(const char *path,
   if (head) {
     /* Name_end points to last character of head,
      * make it +1 so null-terminator is nicely placed. */
-    BLI_strncpy(head, path, MIN2(head_maxncpy, name_end + 1));
+    BLI_strncpy(head, path, std::min<size_t>(head_maxncpy, name_end + 1));
   }
   if (r_digits_len) {
     *r_digits_len = 0;
@@ -790,6 +787,7 @@ void BLI_path_rel(char path[FILE_MAX], const char *basepath)
 
     /* Don't copy the slash at the beginning. */
     r += BLI_strncpy_rlen(r, q + 1, sizeof(res) - (r - res));
+    UNUSED_VARS(r);
 
 #ifdef WIN32
     BLI_string_replace_char(res + 2, '/', '\\');
@@ -882,15 +880,15 @@ bool BLI_path_parent_dir(char *path)
   return true;
 }
 
-bool BLI_path_parent_dir_until_exists(char *dir)
+bool BLI_path_parent_dir_until_exists(char *path)
 {
   bool valid_path = true;
 
   /* Loop as long as cur path is not a dir, and we can get a parent path. */
-  while ((BLI_access(dir, R_OK) != 0) && (valid_path = BLI_path_parent_dir(dir))) {
+  while ((BLI_access(path, R_OK) != 0) && (valid_path = BLI_path_parent_dir(path))) {
     /* Pass. */
   }
-  return (valid_path && dir[0]);
+  return (valid_path && path[0]);
 }
 
 /**
@@ -2015,4 +2013,40 @@ int BLI_path_cmp_normalized(const char *p1, const char *p2)
     MEM_freeN(norm_p2);
   }
   return result;
+}
+
+bool BLI_path_has_hidden_component(const char *path)
+{
+  bool component_start = true;
+  char cur_char = path[0];
+  char prev_char = '\0';
+
+  while (cur_char != '\0') {
+    char next_char = path[1];
+    /* If we're at a start of path component, current is '.'
+     * and next one is not '.', end or separator: hidden. */
+    if (component_start && cur_char == '.') {
+      if (!ELEM(path[1], '.', '\0', '/', '\\')) {
+        return true;
+      }
+    }
+
+    component_start = ELEM(cur_char, '/', '\\');
+    /* Separator, and previous was tilde: hidden. */
+    if (component_start && prev_char == '~') {
+      return true;
+    }
+
+    path++;
+    prev_char = cur_char;
+    cur_char = next_char;
+  }
+
+  /* Was a tilde right at end of path: hidden. */
+  if (prev_char == '~') {
+    return true;
+  }
+
+  /* Nothing was hidden. */
+  return false;
 }

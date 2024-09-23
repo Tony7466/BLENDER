@@ -9,10 +9,10 @@
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -28,6 +28,11 @@ namespace blender::bke {
 
 MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
 
+MeshComponent::MeshComponent(Mesh *mesh, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Mesh), mesh_(mesh), ownership_(ownership)
+{
+}
+
 MeshComponent::~MeshComponent()
 {
   this->clear();
@@ -37,7 +42,7 @@ GeometryComponentPtr MeshComponent::copy() const
 {
   MeshComponent *new_component = new MeshComponent();
   if (mesh_ != nullptr) {
-    new_component->mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    new_component->mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
   return GeometryComponentPtr(new_component);
@@ -84,7 +89,7 @@ Mesh *MeshComponent::get_for_write()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ == GeometryOwnershipType::ReadOnly) {
-    mesh_ = BKE_mesh_copy_for_eval(mesh_);
+    mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     ownership_ = GeometryOwnershipType::Owned;
   }
   return mesh_;
@@ -105,9 +110,16 @@ void MeshComponent::ensure_owns_direct_data()
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
     if (mesh_) {
-      mesh_ = BKE_mesh_copy_for_eval(mesh_);
+      mesh_ = BKE_mesh_copy_for_eval(*mesh_);
     }
     ownership_ = GeometryOwnershipType::Owned;
+  }
+}
+
+void MeshComponent::count_memory(MemoryCounter &memory) const
+{
+  if (mesh_) {
+    mesh_->count_memory(memory);
   }
 }
 
@@ -871,17 +883,16 @@ static void tag_component_sharpness_changed(void *owner)
  */
 class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider {
  public:
-  GAttributeReader try_get_for_read(const void *owner,
-                                    const AttributeIDRef &attribute_id) const final
+  GAttributeReader try_get_for_read(const void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return {};
     }
     const Mesh *mesh = static_cast<const Mesh *>(owner);
     if (mesh == nullptr) {
       return {};
     }
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
     const int vertex_group_index = BLI_findstringindex(
         &mesh->vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
     if (vertex_group_index < 0) {
@@ -895,9 +906,9 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
-  GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
+  GAttributeWriter try_get_for_write(void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return {};
     }
     Mesh *mesh = static_cast<Mesh *>(owner);
@@ -905,7 +916,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
       return {};
     }
 
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
     const int vertex_group_index = BLI_findstringindex(
         &mesh->vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
     if (vertex_group_index < 0) {
@@ -915,9 +926,9 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
-  bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
+  bool try_delete(void *owner, const StringRef attribute_id) const final
   {
-    if (attribute_id.is_anonymous()) {
+    if (bke::attribute_name_is_anonymous(attribute_id)) {
       return false;
     }
     Mesh *mesh = static_cast<Mesh *>(owner);
@@ -925,7 +936,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
       return true;
     }
 
-    const std::string name = attribute_id.name();
+    const std::string name = attribute_id;
 
     int index;
     bDeformGroup *group;
@@ -1005,8 +1016,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider position("position",
                                                  AttrDomain::Point,
                                                  CD_PROP_FLOAT3,
-                                                 CD_PROP_FLOAT3,
-                                                 BuiltinAttributeProvider::Creatable,
                                                  BuiltinAttributeProvider::NonDeletable,
                                                  point_access,
                                                  tag_component_positions_changed);
@@ -1014,8 +1023,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider id("id",
                                            AttrDomain::Point,
                                            CD_PROP_INT32,
-                                           CD_PROP_INT32,
-                                           BuiltinAttributeProvider::Creatable,
                                            BuiltinAttributeProvider::Deletable,
                                            point_access,
                                            nullptr);
@@ -1030,8 +1037,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider material_index("material_index",
                                                        AttrDomain::Face,
                                                        CD_PROP_INT32,
-                                                       CD_PROP_INT32,
-                                                       BuiltinAttributeProvider::Creatable,
                                                        BuiltinAttributeProvider::Deletable,
                                                        face_access,
                                                        nullptr,
@@ -1044,14 +1049,12 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
                                                    AttrDomain::Edge,
                                                    CD_PROP_INT32_2D,
-                                                   CD_PROP_INT32_2D,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::NonDeletable,
                                                    edge_access,
                                                    nullptr,
                                                    AttributeValidator{&int2_index_clamp});
 
-  /* Note: This clamping is more of a last resort, since it's quite easy to make an
+  /* NOTE: This clamping is more of a last resort, since it's quite easy to make an
    * invalid mesh that will crash Blender by arbitrarily editing this attribute. */
   static const auto int_index_clamp = mf::build::SI1_SO<int, int>(
       "Index Validate",
@@ -1060,8 +1063,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider corner_vert(".corner_vert",
                                                     AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
@@ -1069,8 +1070,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider corner_edge(".corner_edge",
                                                     AttrDomain::Corner,
                                                     CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
                                                     BuiltinAttributeProvider::NonDeletable,
                                                     corner_access,
                                                     nullptr,
@@ -1079,8 +1078,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider sharp_face("sharp_face",
                                                    AttrDomain::Face,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
                                                    tag_component_sharpness_changed);
@@ -1088,8 +1085,6 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    AttrDomain::Edge,
                                                    CD_PROP_BOOL,
-                                                   CD_PROP_BOOL,
-                                                   BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
                                                    tag_component_sharpness_changed);
