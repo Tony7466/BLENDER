@@ -489,7 +489,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     const Layer &layer = *grease_pencil.layer(info.layer_index);
 
-    GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
+    const GreasePencilStrokeParams params = GreasePencilStrokeParams::from_context(
         scene,
         depsgraph,
         region,
@@ -499,7 +499,7 @@ void GreasePencilStrokeOperationCommon::foreach_editable_drawing(
         info.frame_number,
         info.multi_frame_falloff,
         info.drawing);
-    DeltaProjectionFunc projection_fn = get_screen_projection_fn(params, object_eval, layer);
+    const DeltaProjectionFunc projection_fn = get_screen_projection_fn(params, object_eval, layer);
     if (fn(params, projection_fn)) {
       changed = true;
     }
