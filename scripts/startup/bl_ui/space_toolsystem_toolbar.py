@@ -1891,6 +1891,36 @@ class _defs_weight_paint:
         return ()
 
     @ToolDef.from_fn
+    def blur():
+        return dict(
+            idname="builtin.blur",
+            label="Blur",
+            icon="brush.paint_weight.blur",
+            options={'USE_BRUSHES'},
+            brush_type='BLUR',
+        )
+
+    @ToolDef.from_fn
+    def average():
+        return dict(
+            idname="builtin_brush.average",
+            label="Average",
+            icon="brush.paint_weight.average",
+            options={'USE_BRUSHES'},
+            brush_type='AVERAGE',
+        )
+
+    @ToolDef.from_fn
+    def smear():
+        return dict(
+            idname="builtin_brush.smear",
+            label="Smear",
+            icon="brush.paint_weight.smear",
+            options={'USE_BRUSHES'},
+            brush_type='SMEAR',
+        )
+
+    @ToolDef.from_fn
     def sample_weight():
         def draw_settings(context, layout, _tool):
             if context.tool_settings.unified_paint_settings.use_unified_weight:
@@ -3636,6 +3666,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'PAINT_WEIGHT': [
             _brush_tool,
+            _defs_weight_paint.blur,
+            _defs_weight_paint.average,
+            _defs_weight_paint.smear,
             _defs_weight_paint.gradient,
             None,
             (

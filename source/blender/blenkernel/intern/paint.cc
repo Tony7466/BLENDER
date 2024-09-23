@@ -778,6 +778,22 @@ static void paint_brush_default_essentials_name_get(
       break;
     case OB_MODE_WEIGHT_PAINT:
       name = "Paint Weight";
+      if (brush_type) {
+        switch (eBrushWeightPaintType(*brush_type)) {
+          case WPAINT_BRUSH_TYPE_BLUR:
+            name = "Blur Weight";
+            break;
+          case WPAINT_BRUSH_TYPE_AVERAGE:
+            name = "Average Weight";
+            break;
+          case WPAINT_BRUSH_TYPE_SMEAR:
+            name = "Smear Weight";
+            break;
+          case WPAINT_BRUSH_TYPE_DRAW:
+            /* Use default, don't override. */
+            break;
+        }
+      }
       break;
     case OB_MODE_TEXTURE_PAINT:
       name = "Paint Texture";
