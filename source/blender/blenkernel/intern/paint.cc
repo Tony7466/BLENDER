@@ -775,6 +775,22 @@ static void paint_brush_default_essentials_name_get(
       break;
     case OB_MODE_VERTEX_PAINT:
       name = "Paint Vertex";
+      if (brush_type) {
+        switch (eBrushVertexPaintType(*brush_type)) {
+          case VPAINT_BRUSH_TYPE_BLUR:
+            name = "Blur Vertex";
+            break;
+          case VPAINT_BRUSH_TYPE_AVERAGE:
+            name = "Average Vertex";
+            break;
+          case VPAINT_BRUSH_TYPE_SMEAR:
+            name = "Smear Vertex";
+            break;
+          case VPAINT_BRUSH_TYPE_DRAW:
+            /* Use default, don't override. */
+            break;
+        }
+      }
       break;
     case OB_MODE_WEIGHT_PAINT:
       name = "Paint Weight";

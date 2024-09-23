@@ -1853,6 +1853,36 @@ class _defs_vertex_paint:
                 (ob.data.use_paint_mask or
                  ob.data.use_paint_mask_vertex))
 
+    @ToolDef.from_fn
+    def blur():
+        return dict(
+            idname="builtin.blur",
+            label="Blur",
+            icon="brush.paint_vertex.blur",
+            options={'USE_BRUSHES'},
+            brush_type='BLUR',
+        )
+
+    @ToolDef.from_fn
+    def average():
+        return dict(
+            idname="builtin_brush.average",
+            label="Average",
+            icon="brush.paint_vertex.average",
+            options={'USE_BRUSHES'},
+            brush_type='AVERAGE',
+        )
+
+    @ToolDef.from_fn
+    def smear():
+        return dict(
+            idname="builtin_brush.smear",
+            label="Smear",
+            icon="brush.paint_vertex.smear",
+            options={'USE_BRUSHES'},
+            brush_type='SMEAR',
+        )
+
 
 class _defs_texture_paint:
 
@@ -3656,6 +3686,9 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'PAINT_VERTEX': [
             _brush_tool,
+            _defs_vertex_paint.blur,
+            _defs_vertex_paint.average,
+            _defs_vertex_paint.smear,
             None,
             lambda context: (
                 VIEW3D_PT_tools_active._tools_select
