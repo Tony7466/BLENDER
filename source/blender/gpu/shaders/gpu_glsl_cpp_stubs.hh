@@ -4,69 +4,71 @@
 
 #include <type_traits>
 
+template<typename T, int Sz> struct VecBase {};
+
 template<typename T, int Sz> struct VecOp {
+  using VecT = VecBase<T, Sz>;
+
   T operator[](int) {}
 
-  VecOp operator+() const {}
-  VecOp operator-() const {}
+  VecT operator+() const {}
+  VecT operator-() const {}
 
-  VecOp operator+(VecOp b) const {}
-  VecOp operator-(VecOp b) const {}
-  VecOp operator/(VecOp b) const {}
-  VecOp operator*(VecOp b) const {}
+  VecT operator+(VecT b) const {}
+  VecT operator-(VecT b) const {}
+  VecT operator/(VecT b) const {}
+  VecT operator*(VecT b) const {}
 
-  VecOp operator+=(VecOp b) const {}
-  VecOp operator-=(VecOp b) const {}
-  VecOp operator/=(VecOp b) const {}
-  VecOp operator*=(VecOp b) const {}
+  VecT operator+=(VecT b) const {}
+  VecT operator-=(VecT b) const {}
+  VecT operator/=(VecT b) const {}
+  VecT operator*=(VecT b) const {}
 
-  VecOp operator+(T b) const {}
-  VecOp operator-(T b) const {}
-  VecOp operator/(T b) const {}
-  VecOp operator*(T b) const {}
+  VecT operator+(T b) const {}
+  VecT operator-(T b) const {}
+  VecT operator/(T b) const {}
+  VecT operator*(T b) const {}
 
-  VecOp operator+=(T b) const {}
-  VecOp operator-=(T b) const {}
-  VecOp operator/=(T b) const {}
-  VecOp operator*=(T b) const {}
+  VecT operator+=(T b) const {}
+  VecT operator-=(T b) const {}
+  VecT operator/=(T b) const {}
+  VecT operator*=(T b) const {}
 
-  friend VecOp operator+(T a, VecOp b) {}
-  friend VecOp operator-(T a, VecOp b) {}
-  friend VecOp operator/(T a, VecOp b) {}
-  friend VecOp operator*(T a, VecOp b) {}
+  friend VecT operator+(T a, VecT b) {}
+  friend VecT operator-(T a, VecT b) {}
+  friend VecT operator/(T a, VecT b) {}
+  friend VecT operator*(T a, VecT b) {}
 
 #define INT_OP \
   template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
-  INT_OP VecOp operator%(VecOp b) {}
-  INT_OP VecOp operator&(VecOp b) {}
-  INT_OP VecOp operator|(VecOp b) {}
-  INT_OP VecOp operator^(VecOp b) {}
+  INT_OP VecT operator%(VecT b) {}
+  INT_OP VecT operator&(VecT b) {}
+  INT_OP VecT operator|(VecT b) {}
+  INT_OP VecT operator^(VecT b) {}
 
-  INT_OP VecOp operator%=(VecOp b) {}
-  INT_OP VecOp operator&=(VecOp b) {}
-  INT_OP VecOp operator|=(VecOp b) {}
-  INT_OP VecOp operator^=(VecOp b) {}
+  INT_OP VecT operator%=(VecT b) {}
+  INT_OP VecT operator&=(VecT b) {}
+  INT_OP VecT operator|=(VecT b) {}
+  INT_OP VecT operator^=(VecT b) {}
 
-  INT_OP VecOp operator%(T b) {}
-  INT_OP VecOp operator&(T b) {}
-  INT_OP VecOp operator|(T b) {}
-  INT_OP VecOp operator^(T b) {}
+  INT_OP VecT operator%(T b) {}
+  INT_OP VecT operator&(T b) {}
+  INT_OP VecT operator|(T b) {}
+  INT_OP VecT operator^(T b) {}
 
-  INT_OP VecOp operator%=(T b) {}
-  INT_OP VecOp operator&=(T b) {}
-  INT_OP VecOp operator|=(T b) {}
-  INT_OP VecOp operator^=(T b) {}
+  INT_OP VecT operator%=(T b) {}
+  INT_OP VecT operator&=(T b) {}
+  INT_OP VecT operator|=(T b) {}
+  INT_OP VecT operator^=(T b) {}
 
-  INT_OP friend VecOp operator%(T a, VecOp<T, Sz> b) {}
-  INT_OP friend VecOp operator&(T a, VecOp<T, Sz> b) {}
-  INT_OP friend VecOp operator|(T a, VecOp<T, Sz> b) {}
-  INT_OP friend VecOp operator^(T a, VecOp<T, Sz> b) {}
+  INT_OP friend VecT operator%(T a, VecT b) {}
+  INT_OP friend VecT operator&(T a, VecT b) {}
+  INT_OP friend VecT operator|(T a, VecT b) {}
+  INT_OP friend VecT operator^(T a, VecT b) {}
 
 #undef INT_OP
 };
-
-template<typename T, int Sz> struct VecBase {};
 
 template<typename T> struct VecSwizzle2 {
   static VecBase<T, 2> xx, xy, yx, yy;
@@ -105,20 +107,10 @@ template<typename T> struct VecSwizzle4 : VecSwizzle3<T> {
       wwxw, wwyx, wwyy, wwyz, wwyw, wwzx, wwzy, wwzz, wwzw, wwwx, wwwy, wwwz, wwww;
 };
 
-template<typename T> struct VecBase<T, 1> {
-  T x;
-
-  VecBase() = default;
-  VecBase(VecOp<T, 1>) {}
-  template<typename U> explicit VecBase(VecBase<U, 1>) {}
-  operator T() const {}
-};
-
 template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
   T x, y;
 
   VecBase() = default;
-  VecBase(VecOp<T, 2>) {}
   template<typename U> explicit VecBase(VecBase<U, 2>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T) {}
@@ -128,7 +120,6 @@ template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T> {
   T x, y, z;
 
   VecBase() = default;
-  VecBase(VecOp<T, 3>) {}
   template<typename U> explicit VecBase(VecBase<U, 3>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T, T) {}
@@ -140,7 +131,6 @@ template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
   T x, y, z, w;
 
   VecBase() = default;
-  VecBase(VecOp<T, 4>) {}
   template<typename U> explicit VecBase(VecBase<U, 4>) {}
   explicit VecBase(T) {}
   explicit VecBase(T, T, T, T) {}
@@ -153,13 +143,6 @@ template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
 };
 
 /* Boolean vectors do not have operators and are not convertible from other types. */
-
-template<> struct VecBase<bool, 1> {
-  bool x;
-
-  VecBase() = default;
-  operator bool() const {}
-};
 
 template<> struct VecBase<bool, 2> : VecSwizzle2<bool> {
   bool x, y;
