@@ -114,7 +114,7 @@ template<typename T> struct VecBase<T, 2> : VecOp<T, 2>, VecSwizzle2<T> {
   explicit VecBase(T, T) {}
 };
 
-template<typename T> struct VecBase<T, 3> : VecOp<T, 2>, VecSwizzle3<T> {
+template<typename T> struct VecBase<T, 3> : VecOp<T, 3>, VecSwizzle3<T> {
   T x, y, z;
 
   VecBase() = default;
@@ -125,7 +125,7 @@ template<typename T> struct VecBase<T, 3> : VecOp<T, 2>, VecSwizzle3<T> {
   explicit VecBase(T, VecBase<T, 2>) {}
 };
 
-template<typename T> struct VecBase<T, 4> : VecOp<T, 3>, VecSwizzle4<T> {
+template<typename T> struct VecBase<T, 4> : VecOp<T, 4>, VecSwizzle4<T> {
   T x, y, z, w;
 
   VecBase() = default;
