@@ -166,6 +166,14 @@ using vec2 = float2;
 using vec3 = float3;
 using vec4 = float4;
 
+using ivec2 = int2;
+using ivec3 = int3;
+using ivec4 = int4;
+
+using uvec2 = uint2;
+using uvec3 = uint3;
+using uvec4 = uint4;
+
 #define inout
 #define in
 #define out
