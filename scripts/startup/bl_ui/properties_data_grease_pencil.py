@@ -239,7 +239,7 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-        if len(grease_pencil.layers) > 1:
+        if len(grease_pencil.layers) + len(grease_pencil.layer_groups) > 1:
             col.separator()
 
             sub = col.column(align=True)
