@@ -980,9 +980,7 @@ static void apply_mask_mesh(const Depsgraph &depsgraph,
   auto_mask::calc_vert_factors(depsgraph, object, automasking, node, verts, new_mask);
 
   if (invert_automask) {
-    for (float &m : new_mask) {
-      m = 1.0f - m;
-    }
+    mask::invert_mask(new_mask);
   }
 
   tls.mask.resize(verts.size());
@@ -1408,7 +1406,6 @@ static int mask_from_boundary_exec(bContext *C, wmOperator *op)
   brush_copy.sculpt_brush_type = SCULPT_BRUSH_TYPE_SMOOTH;
   brush_copy.automasking_flags = 0;
   brush_copy.automasking_boundary_edges_propagation_steps = 1;
-  brush_copy.automasking_cavity_curve = scene_copy.automasking_cavity_curve;
 
   std::unique_ptr<auto_mask::Cache> automasking = auto_mask::cache_init(
       *depsgraph, scene_copy, &brush_copy, ob);
