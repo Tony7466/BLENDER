@@ -753,21 +753,22 @@ void BKE_animdata_transfer_by_basepath(Main *bmain, ID *srcID, ID *dstID, ListBa
 
   /* active action */
   if (srcAdt->action) {
-    /* Set up an action if necessary,
-     * and name it in a similar way so that it can be easily found again. */
-    if (!dstAdt->action || dstAdt->action == srcAdt->action) {
-      const OwnedAnimData dst_owned_adt = {*dstID, *dstAdt};
+    const OwnedAnimData dst_owned_adt = {*dstID, *dstAdt};
+    if (dstAdt->action == srcAdt->action) {
+      CLOG_WARN(&LOG,
+                "Source and Destination share animation! "
+                "('%s' and '%s' both use '%s') Making new empty action",
+                srcID->name,
+                dstID->name,
+                srcAdt->action->id.name);
 
-      if (dstAdt->action) {
-        CLOG_WARN(&LOG,
-                  "Source and Destination share animation! "
-                  "('%s' and '%s' both use '%s') Making new empty action",
-                  srcID->name,
-                  dstID->name,
-                  srcAdt->action->id.name);
-        animrig::unassign_action(dst_owned_adt);
-      }
+      /* This sets dstAdt->action to nullptr. */
+      animrig::unassign_action(dst_owned_adt);
+    }
 
+    /* Set up an action if necessary, and name it in a similar way so that it
+     * can be easily found again. */
+    if (!dstAdt->action) {
       bAction *new_action = BKE_action_add(bmain, srcAdt->action->id.name + 2);
       /* Reduce user count to 0 as the Action is unused before it's assigned. */
       id_us_min(&new_action->id);
