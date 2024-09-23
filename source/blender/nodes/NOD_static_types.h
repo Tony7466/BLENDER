@@ -23,7 +23,7 @@ DefNode(Node,           NODE_FRAME,              def_frame,              "FRAME"
 DefNode(Node,           NODE_GROUP,              def_group,              "GROUP",          Group,            "Group",             "")
 DefNode(Node,           NODE_GROUP_INPUT,        def_group_input,        "GROUP_INPUT",    GroupInput,       "Group Input",       "Expose connected data from inside a node group as inputs to its interface")
 DefNode(Node,           NODE_GROUP_OUTPUT,       def_group_output,       "GROUP_OUTPUT",   GroupOutput,      "Group Output",      "Output data from inside of a node group")
-DefNode(Node,           NODE_REROUTE,            0,                      "REROUTE",        Reroute,          "Reroute",           "A single-socket organization tool that supports one input and multiple outputs")
+DefNode(Node,           NODE_REROUTE,            def_reroute,            "REROUTE",        Reroute,          "Reroute",           "A single-socket organization tool that supports one input and multiple outputs")
 
 DefNode(ShaderNode,     SH_NODE_RGB,             0,                      "RGB",            RGB,              "RGB",               "A color picker")
 DefNode(ShaderNode,     SH_NODE_VALUE,           0,                      "VALUE",          Value,            "Value",             "Input numerical values to other nodes in the tree")
@@ -269,6 +269,7 @@ DefNode(FunctionNode, FN_NODE_ALIGN_EULER_TO_VECTOR, 0, "ALIGN_EULER_TO_VECTOR",
 DefNode(FunctionNode, FN_NODE_ALIGN_ROTATION_TO_VECTOR, 0, "ALIGN_ROTATION_TO_VECTOR", AlignRotationToVector, "Align Rotation to Vector", "")
 DefNode(FunctionNode, FN_NODE_AXES_TO_ROTATION, 0, "AXES_TO_ROTATION", AxesToRotation, "Axes to Rotation", "Create a rotation from a primary and (ideally orthogonal) secondary axis")
 DefNode(FunctionNode, FN_NODE_AXIS_ANGLE_TO_ROTATION, 0, "AXIS_ANGLE_TO_ROTATION", AxisAngleToRotation, "Axis Angle to Rotation", "")
+DefNode(FunctionNode, FN_NODE_BIT_MATH, 0, "BIT_MATH", BitMath, "Bit Math", "")
 DefNode(FunctionNode, FN_NODE_BOOLEAN_MATH, 0, "BOOLEAN_MATH", BooleanMath, "Boolean Math", "")
 DefNode(FunctionNode, FN_NODE_COMBINE_COLOR, 0, "COMBINE_COLOR", CombineColor, "Combine Color", "")
 DefNode(FunctionNode, FN_NODE_COMBINE_MATRIX, 0, "COMBINE_MATRIX", CombineMatrix, "Combine Matrix", "Construct a 4x4 matrix from its individual values")
@@ -285,7 +286,8 @@ DefNode(FunctionNode, FN_NODE_INPUT_ROTATION, def_fn_input_rotation, "INPUT_ROTA
 DefNode(FunctionNode, FN_NODE_INPUT_SPECIAL_CHARACTERS, 0, "INPUT_SPECIAL_CHARACTERS", InputSpecialCharacters, "Special Characters", "")
 DefNode(FunctionNode, FN_NODE_INPUT_STRING, def_fn_input_string, "INPUT_STRING", InputString, "String", "")
 DefNode(FunctionNode, FN_NODE_INPUT_VECTOR, def_fn_input_vector, "INPUT_VECTOR", InputVector, "Vector", "")
-DefNode(FunctionNode, FN_NODE_BIT_MATH, 0, "BIT_MATH", BitMath, "Bit Math", "")
+
+DefNode(FunctionNode, FN_NODE_INTEGER_MATH, 0, "INTEGER_MATH", IntegerMath, "Integer Math", "")
 DefNode(FunctionNode, FN_NODE_INVERT_MATRIX, 0, "INVERT_MATRIX", InvertMatrix, "Invert Matrix", "")
 DefNode(FunctionNode, FN_NODE_INVERT_ROTATION, 0, "INVERT_ROTATION", InvertRotation, "Invert Rotation", "")
 DefNode(FunctionNode, FN_NODE_MATRIX_MULTIPLY, 0, "MATRIX_MULTIPLY", MatrixMultiply, "Multiply Matrices", "")
