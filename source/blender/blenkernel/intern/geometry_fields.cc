@@ -526,7 +526,7 @@ GVArray NamedLayerSelectionFieldInput::get_varray_for_context(
     if (layer_i < 0 || layer_i >= grease_pencil.layers().size()) {
       return false;
     }
-    const Layer &layer = *grease_pencil.layer(layer_i);
+    const Layer &layer = grease_pencil.layer(layer_i);
     for (const TreeNode *node = &layer.as_node(); node; node = node->parent_node()) {
       if (node->name() == selection_name) {
         return true;

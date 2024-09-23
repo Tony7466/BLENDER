@@ -75,9 +75,9 @@ static Vector<Vector<int>> get_layers_map_by_name(const GreasePencil &src_grease
       continue;
     }
 
-    const Layer *layer = src_grease_pencil.layer(layer_i);
+    const Layer &layer = src_grease_pencil.layer(layer_i);
     const int new_layer_index = new_layer_index_by_name.lookup_or_add_cb(
-        layer->name(), [&]() { return layers_map.append_and_get_index_as(); });
+        layer.name(), [&]() { return layers_map.append_and_get_index_as(); });
     layers_map[new_layer_index].append(layer_i);
   }
   return layers_map;

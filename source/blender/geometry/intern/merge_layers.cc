@@ -54,7 +54,7 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
     const Span<int> src_layer_indices = layers_to_merge[new_layer_i];
     BLI_assert(!src_layer_indices.is_empty());
     const int first_src_layer_i = src_layer_indices[0];
-    const Layer &first_src_layer = *src_grease_pencil.layer(first_src_layer_i);
+    const Layer &first_src_layer = src_grease_pencil.layer(first_src_layer_i);
     new_layer_names[new_layer_i] = first_src_layer.name();
   }
 
@@ -62,7 +62,7 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
   Vector<bke::CurvesGeometry *> curves_by_new_layer(new_layers_num);
 
   for (const int new_layer_i : IndexRange(new_layers_num)) {
-    Layer &layer = *new_grease_pencil->layer(new_layer_i);
+    Layer &layer = new_grease_pencil->layer(new_layer_i);
     new_grease_pencil->insert_frame(layer, new_grease_pencil->runtime->eval_frame);
     Drawing *drawing = new_grease_pencil->get_eval_drawing(layer);
     curves_by_new_layer[new_layer_i] = &drawing->strokes_for_write();
@@ -70,11 +70,11 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
 
   threading::parallel_for(IndexRange(new_layers_num), 32, [&](const IndexRange new_layers_range) {
     for (const int new_layer_i : new_layers_range) {
-      Layer &new_layer = *new_grease_pencil->layer(new_layer_i);
+      Layer &new_layer = new_grease_pencil->layer(new_layer_i);
 
       const Span<int> src_layer_indices = layers_to_merge[new_layer_i];
       const int first_src_layer_i = src_layer_indices[0];
-      const Layer &first_src_layer = *src_grease_pencil.layer(first_src_layer_i);
+      const Layer &first_src_layer = src_grease_pencil.layer(first_src_layer_i);
 
       const float4x4 new_layer_transform = first_src_layer.local_transform();
       new_layer.set_local_transform(new_layer_transform);
@@ -96,7 +96,7 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
       Vector<float4x4> transforms_to_apply(src_layer_indices.size());
       for (const int i : src_layer_indices.index_range()) {
         const int src_layer_i = src_layer_indices[i];
-        const Layer &src_layer = *src_grease_pencil.layer(src_layer_i);
+        const Layer &src_layer = src_grease_pencil.layer(src_layer_i);
         const Drawing &src_drawing = *src_grease_pencil.get_eval_drawing(src_layer);
         const bke::CurvesGeometry &src_curves = src_drawing.strokes();
         all_src_curves[i] = &src_curves;
