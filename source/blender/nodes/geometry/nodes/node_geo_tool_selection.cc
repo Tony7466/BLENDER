@@ -62,7 +62,7 @@ class SoftSelectionFieldInput final : public bke::GeometryFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
-                                 const IndexMask & /*mask*/) const final
+                                 const IndexMask &mask) const final
   {
     const AttrDomain domain = context.domain();
     const AttributeAccessor attributes = *context.attributes();
@@ -71,14 +71,12 @@ class SoftSelectionFieldInput final : public bke::GeometryFieldInput {
       case GeometryComponent::Type::PointCloud:
         return *attributes.lookup_or_default<float>(".selection", domain, 1.0f);
       case GeometryComponent::Type::Mesh: {
-        Array<float> selection(attributes.domain_size(domain));
-        const VArraySpan<float> mask = *attributes.lookup_or_default<float>(
+        const VArraySpan<float> attribute = *attributes.lookup_or_default<float>(
             ".sculpt_mask", domain, 0.0f);
-        threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
-          for (const int i : range) {
-            selection[i] = 1.0f - mask[i];
-          }
-        });
+
+        Array<float> selection(mask.min_array_size());
+        mask.foreach_index_optimized<int>(GrainSize(4096),
+                                          [&](const int i) { selection[i] = 1.0f - mask[i]; });
         return VArray<float>::ForContainer(std::move(selection));
       }
       default:
