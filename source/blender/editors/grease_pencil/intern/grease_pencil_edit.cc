@@ -3275,12 +3275,11 @@ static int grease_pencil_texture_gradient_modal(bContext *C, wmOperator *op, con
   int ret = WM_gesture_straightline_modal(C, op, event);
 
   /* Check for mouse release. */
-  if (ret & OPERATOR_RUNNING_MODAL) {
-    if (event->type == LEFTMOUSE && event->val == KM_RELEASE) {
-      WM_gesture_straightline_cancel(C, op);
-      ret &= ~OPERATOR_RUNNING_MODAL;
-      ret |= OPERATOR_FINISHED;
-    }
+  if ((ret & OPERATOR_RUNNING_MODAL) != 0 && event->type == LEFTMOUSE && event->val == KM_RELEASE)
+  {
+    WM_gesture_straightline_cancel(C, op);
+    ret &= ~OPERATOR_RUNNING_MODAL;
+    ret |= OPERATOR_FINISHED;
   }
 
   return ret;
