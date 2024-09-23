@@ -253,7 +253,7 @@ template<typename T, int Dimensions, bool Cube = false, bool Array = false> stru
 TEX_TEMPLATE SizeVec textureSize(T, int) {}
 TEX_TEMPLATE DataVec texelFetch(T, IntCoord, int) {}
 TEX_TEMPLATE DataVec texelFetchOffset(T, IntCoord, int, IntCoord) {}
-TEX_TEMPLATE DataVec texture(T, FltCoord) {}
+TEX_TEMPLATE DataVec texture(T, FltCoord, double bias = 0.0) {}
 TEX_TEMPLATE DataVec textureGather(T, FltCoord) {}
 TEX_TEMPLATE DataVec textureGrad(T, FltCoord, DerivVec, DerivVec) {}
 TEX_TEMPLATE DataVec textureLod(T, FltCoord, double) {}
