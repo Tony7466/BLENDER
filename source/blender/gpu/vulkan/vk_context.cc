@@ -45,9 +45,8 @@ VKContext::~VKContext()
     GPU_texture_free(surface_texture_);
     surface_texture_ = nullptr;
   }
-  auto &device = VKBackend::get().device;
-  device.context_unregister(*this);
-  device.discard_pool_for_current_thread().destroy_discarded_resources(device);
+
+  VKBackend::get().device.context_unregister(*this);
 
   delete imm;
   imm = nullptr;
