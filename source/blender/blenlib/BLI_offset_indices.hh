@@ -177,17 +177,6 @@ inline OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets
 {
   return gather_selected_offsets(src_offsets, selection, 0, dst_offsets);
 }
-OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
-                                           IndexMaskSegment selection,
-                                           int start_offset,
-                                           MutableSpan<int> dst_offsets);
-inline OffsetIndices<int> gather_selected_offsets(OffsetIndices<int> src_offsets,
-                                                  IndexMaskSegment selection,
-                                                  MutableSpan<int> dst_offsets)
-{
-  return gather_selected_offsets(src_offsets, selection, 0, dst_offsets);
-}
-
 /**
  * Create a map from indexed elements to the source indices, in other words from the larger array
  * to the smaller array.

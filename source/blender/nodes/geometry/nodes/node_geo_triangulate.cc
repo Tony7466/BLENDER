@@ -40,8 +40,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
-      "Mesh");
+  const AttributeFilter &attribute_filter = params.get_attribute_filter("Mesh");
 
   geometry::TriangulateNGonMode ngon_method = geometry::TriangulateNGonMode(params.node().custom2);
   geometry::TriangulateQuadMode quad_method = geometry::TriangulateQuadMode(params.node().custom1);
@@ -66,7 +65,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         selection,
         geometry::TriangulateNGonMode(ngon_method),
         geometry::TriangulateQuadMode(quad_method),
-        propagation_info);
+        attribute_filter);
     if (!mesh) {
       return;
     }

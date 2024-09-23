@@ -2213,8 +2213,8 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
   }
 
   for (bNode *triangulate : triangulate_nodes) {
-    bNodeSocket *selection = nodeFindSocket(triangulate, SOCK_IN, "Selection");
-    bNodeSocket *min_verts = nodeFindSocket(triangulate, SOCK_IN, "Minimum Vertices");
+    bNodeSocket *selection = bke::node_find_socket(triangulate, SOCK_IN, "Selection");
+    bNodeSocket *min_verts = bke::node_find_socket(triangulate, SOCK_IN, "Minimum Vertices");
     if (!min_verts) {
       /* Make versioning idempotent. */
       continue;
@@ -2223,7 +2223,7 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
     if (!input_links.contains(min_verts) && old_min_verts <= 4) {
       continue;
     }
-    bNode *corners_of_face = nodeAddNode(nullptr, tree, "GeometryNodeCornersOfFace");
+    bNode *corners_of_face = bke::node_add_node(nullptr, tree, "GeometryNodeCornersOfFace");
     corners_of_face->locx = triangulate->locx - 200;
     corners_of_face->locy = triangulate->locy - 50;
     corners_of_face->parent = triangulate->parent;
@@ -2236,7 +2236,7 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
       }
     }
 
-    bNode *greater_or_equal = nodeAddNode(nullptr, tree, "FunctionNodeCompare");
+    bNode *greater_or_equal = bke::node_add_node(nullptr, tree, "FunctionNodeCompare");
     greater_or_equal->locx = triangulate->locx - 100;
     greater_or_equal->locy = triangulate->locy - 50;
     greater_or_equal->parent = triangulate->parent;
@@ -2244,22 +2244,22 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
     NodeFunctionCompare *storage = static_cast<NodeFunctionCompare *>(greater_or_equal->storage);
     storage->operation = NODE_COMPARE_GREATER_EQUAL;
     storage->data_type = SOCK_INT;
-    nodeAddLink(tree,
-                corners_of_face,
-                nodeFindSocket(corners_of_face, SOCK_OUT, "Total"),
-                greater_or_equal,
-                nodeFindSocket(greater_or_equal, SOCK_IN, "A_INT"));
+    bke::node_add_link(tree,
+                       corners_of_face,
+                       bke::node_find_socket(corners_of_face, SOCK_OUT, "Total"),
+                       greater_or_equal,
+                       bke::node_find_socket(greater_or_equal, SOCK_IN, "A_INT"));
     if (bNodeLink **min_verts_link = input_links.lookup_ptr(min_verts)) {
       (*min_verts_link)->tonode = greater_or_equal;
-      (*min_verts_link)->tosock = nodeFindSocket(greater_or_equal, SOCK_IN, "B_INT");
+      (*min_verts_link)->tosock = bke::node_find_socket(greater_or_equal, SOCK_IN, "B_INT");
     }
     else {
-      bNodeSocket *new_min_verts = nodeFindSocket(greater_or_equal, SOCK_IN, "B_INT");
+      bNodeSocket *new_min_verts = bke::node_find_socket(greater_or_equal, SOCK_IN, "B_INT");
       static_cast<bNodeSocketValueInt *>(new_min_verts->default_value)->value = old_min_verts;
     }
 
     if (bNodeLink **selection_link = input_links.lookup_ptr(selection)) {
-      bNode *boolean_and = nodeAddNode(nullptr, tree, "FunctionNodeBooleanMath");
+      bNode *boolean_and = bke::node_add_node(nullptr, tree, "FunctionNodeBooleanMath");
       boolean_and->locx = triangulate->locx - 75;
       boolean_and->locy = triangulate->locy - 50;
       boolean_and->parent = triangulate->parent;
@@ -2267,29 +2267,29 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
       boolean_and->custom1 = NODE_BOOLEAN_MATH_AND;
 
       (*selection_link)->tonode = boolean_and;
-      (*selection_link)->tosock = nodeFindSocket(boolean_and, SOCK_IN, "Boolean");
-      nodeAddLink(tree,
-                  greater_or_equal,
-                  nodeFindSocket(greater_or_equal, SOCK_OUT, "Result"),
-                  boolean_and,
-                  nodeFindSocket(boolean_and, SOCK_IN, "Boolean_001"));
+      (*selection_link)->tosock = bke::node_find_socket(boolean_and, SOCK_IN, "Boolean");
+      bke::node_add_link(tree,
+                         greater_or_equal,
+                         bke::node_find_socket(greater_or_equal, SOCK_OUT, "Result"),
+                         boolean_and,
+                         bke::node_find_socket(boolean_and, SOCK_IN, "Boolean_001"));
 
-      nodeAddLink(tree,
-                  boolean_and,
-                  nodeFindSocket(boolean_and, SOCK_OUT, "Boolean"),
-                  triangulate,
-                  selection);
+      bke::node_add_link(tree,
+                         boolean_and,
+                         bke::node_find_socket(boolean_and, SOCK_OUT, "Boolean"),
+                         triangulate,
+                         selection);
     }
     else {
-      nodeAddLink(tree,
-                  greater_or_equal,
-                  nodeFindSocket(greater_or_equal, SOCK_OUT, "Result"),
-                  triangulate,
-                  selection);
+      bke::node_add_link(tree,
+                         greater_or_equal,
+                         bke::node_find_socket(greater_or_equal, SOCK_OUT, "Result"),
+                         triangulate,
+                         selection);
     }
 
     /* Make versioning idempotent. */
-    nodeRemoveSocket(tree, triangulate, min_verts);
+    bke::node_remove_socket(tree, triangulate, min_verts);
   }
 }
 /* Convert specular tint in Principled BSDF. */

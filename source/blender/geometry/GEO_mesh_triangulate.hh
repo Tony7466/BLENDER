@@ -39,11 +39,10 @@ enum class TriangulateQuadMode {
  * \return #std::nullopt if the mesh is not changed (when every selected face is already a
  * triangle).
  */
-std::optional<Mesh *> mesh_triangulate(
-    const Mesh &src_mesh,
-    const IndexMask &selection,
-    TriangulateNGonMode ngon_mode,
-    TriangulateQuadMode quad_mode,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
+std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
+                                       const IndexMask &selection,
+                                       TriangulateNGonMode ngon_mode,
+                                       TriangulateQuadMode quad_mode,
+                                       const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

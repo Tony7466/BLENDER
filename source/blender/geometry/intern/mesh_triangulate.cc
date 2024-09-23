@@ -84,24 +84,6 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
   }
 }
 
-static Mesh *create_mesh_no_attributes(const Mesh &params_mesh,
-                                       const int verts_num,
-                                       const int edges_num,
-                                       const int faces_num,
-                                       const int corners_num)
-{
-  Mesh *mesh = BKE_mesh_new_nomain(0, 0, faces_num, 0);
-  BKE_mesh_copy_parameters_for_eval(mesh, &params_mesh);
-  CustomData_free_layer_named(&mesh->vert_data, "position", 0);
-  CustomData_free_layer_named(&mesh->edge_data, ".edge_verts", 0);
-  CustomData_free_layer_named(&mesh->corner_data, ".corner_vert", 0);
-  CustomData_free_layer_named(&mesh->corner_data, ".corner_edge", 0);
-  mesh->verts_num = verts_num;
-  mesh->edges_num = edges_num;
-  mesh->corners_num = corners_num;
-  return mesh;
-}
-
 static OffsetIndices<int> calc_faces(const OffsetIndices<int> src_faces,
                                      const IndexMask &unselected,
                                      MutableSpan<int> offsets)
@@ -301,6 +283,19 @@ static void copy_face_data_to_tris(const GSpan src, const IndexMask &quads, GMut
 
 }  // namespace quad
 
+static OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
+                                                  const IndexMaskSegment selection,
+                                                  MutableSpan<int> dst_offsets)
+{
+  int offset = 0;
+  for (const int64_t i : selection.index_range()) {
+    dst_offsets[i] = offset;
+    offset += src_offsets[selection[i]].size();
+  }
+  dst_offsets.last() = offset;
+  return OffsetIndices<int>(dst_offsets);
+}
+
 namespace ngon {
 
 static OffsetIndices<int> calc_tris_by_ngon(const OffsetIndices<int> src_faces,
@@ -360,7 +355,7 @@ static void calc_corner_maps(const Span<float3> positions,
     /* In order to simplify and "parallelize" the next loops, gather offsets used to group an array
      * large enough for all the local face corners. */
     data.offset_data.reinitialize(ngons.size() + 1);
-    const OffsetIndices local_corner_offsets = offset_indices::gather_selected_offsets(
+    const OffsetIndices local_corner_offsets = gather_selected_offsets(
         src_faces, ngons, data.offset_data);
 
     /* Use face normals to build projection matrices to make the face positions 2D. */
@@ -569,7 +564,7 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
   Array<int> vert_to_tri_offsets;
   Array<int> vert_to_tri_indices;
   const GroupedSpan<int> vert_to_tri = build_vert_to_tri_map(
-      mesh.verts_num, corner_map.cast<int3>(), vert_to_tri_offsets, vert_to_tri_indices);
+      mesh.verts_num, vert_tris, vert_to_tri_offsets, vert_to_tri_indices);
   return IndexMask::from_predicate(unselected, GrainSize(1024), memory, [&](const int i) {
     const Span<int> face_verts = src_corner_verts.slice(src_faces[i]);
     if (face_verts.size() != 3) {
@@ -655,12 +650,11 @@ static int calc_new_edges(const Mesh &src_mesh,
 
 }  // namespace deduplication
 
-std::optional<Mesh *> mesh_triangulate(
-    const Mesh &src_mesh,
-    const IndexMask &selection_with_tris,
-    const TriangulateNGonMode ngon_mode,
-    const TriangulateQuadMode quad_mode,
-    const bke::AnonymousAttributePropagationInfo &propagation_info)
+std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
+                                       const IndexMask &selection_with_tris,
+                                       const TriangulateNGonMode ngon_mode,
+                                       const TriangulateQuadMode quad_mode,
+                                       const bke::AttributeFilter &attribute_filter)
 {
   const Span<float3> positions = src_mesh.vert_positions();
   const Span<int2> src_edges = src_mesh.edges();
@@ -749,11 +743,11 @@ std::optional<Mesh *> mesh_triangulate(
    *  - The number of edges is a guess that doesn't include deduplication of new edges with
    *    existing edges. If those are found, the mesh will be resized later.
    *  - Don't create attributes to facilite implicit sharing of the positions array. */
-  Mesh *mesh = create_mesh_no_attributes(src_mesh,
-                                         src_mesh.verts_num,
-                                         src_edges.size() + tri_edges_range.size(),
-                                         tris_range.size() + unselected.size(),
-                                         0);
+  Mesh *mesh = bke::mesh_new_no_attributes(src_mesh.verts_num,
+                                           src_edges.size() + tri_edges_range.size(),
+                                           tris_range.size() + unselected.size(),
+                                           0);
+  BKE_mesh_copy_parameters_for_eval(mesh, &src_mesh);
 
   /* Find the face corner ranges using the offsets array from the new mesh. That gives us the
    * final number of face corners. */
@@ -770,7 +764,8 @@ std::optional<Mesh *> mesh_triangulate(
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
 
-  bke::attribute_math::gather(src_corner_verts, corner_map, corner_verts.slice(tri_corners_range));
+  array_utils::gather(
+      src_corner_verts, corner_map.as_span(), corner_verts.slice(tri_corners_range));
 
   if (!ngons.is_empty()) {
     ngon::calc_edges(src_faces,
@@ -812,11 +807,14 @@ std::optional<Mesh *> mesh_triangulate(
   }
 
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
-   * Use the #CustomData API for better support for vertex groups. */
+   * Use the #CustomData API for simpler support for vertex groups. */
   CustomData_merge(&src_mesh.vert_data, &mesh->vert_data, CD_MASK_MESH.vmask, mesh->verts_num);
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
-           src_attributes, attributes, ATTR_DOMAIN_MASK_EDGE, propagation_info, {".edge_verts"}))
+           src_attributes,
+           attributes,
+           ATTR_DOMAIN_MASK_EDGE,
+           bke::attribute_filter_with_skip_ref(attribute_filter, {".edge_verts"})))
   {
     attribute.dst.span.slice(src_edges_range).copy_from(attribute.src);
     GMutableSpan new_data = attribute.dst.span.drop_front(src_edges.size());
@@ -839,7 +837,7 @@ std::optional<Mesh *> mesh_triangulate(
   }
 
   for (auto &attribute : bke::retrieve_attributes_for_transfer(
-           src_attributes, attributes, ATTR_DOMAIN_MASK_FACE, propagation_info, {}))
+           src_attributes, attributes, ATTR_DOMAIN_MASK_FACE, attribute_filter))
   {
     bke::attribute_math::gather_to_groups(
         tris_by_ngon, ngons, attribute.src, attribute.dst.span.slice(ngon_tris_range));
@@ -864,11 +862,12 @@ std::optional<Mesh *> mesh_triangulate(
       src_faces, faces_unselected, unselected, src_corner_verts, corner_verts);
   array_utils::gather_group_to_group(
       src_faces, faces_unselected, unselected, src_corner_edges, corner_edges);
-  for (auto &attribute : bke::retrieve_attributes_for_transfer(src_attributes,
-                                                               attributes,
-                                                               ATTR_DOMAIN_MASK_CORNER,
-                                                               propagation_info,
-                                                               {".corner_vert", ".corner_edge"}))
+  for (auto &attribute : bke::retrieve_attributes_for_transfer(
+           src_attributes,
+           attributes,
+           ATTR_DOMAIN_MASK_CORNER,
+           bke::attribute_filter_with_skip_ref(attribute_filter,
+                                               {".corner_vert", ".corner_edge"})))
   {
     bke::attribute_math::gather_group_to_group(
         src_faces, faces_unselected, unselected, attribute.src, attribute.dst.span);
