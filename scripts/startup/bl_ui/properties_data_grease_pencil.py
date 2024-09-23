@@ -225,6 +225,8 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
 
         grease_pencil = context.grease_pencil
         layer = grease_pencil.layers.active
+        is_layer_active = layer is not None
+        is_group_active = grease_pencil.layer_groups.active is not None
 
         row = layout.row()
         row.template_grease_pencil_layer_tree()
@@ -233,11 +235,16 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub = col.column(align=True)
         sub.operator_context = 'EXEC_DEFAULT'
         sub.operator("grease_pencil.layer_add", icon='ADD', text="")
+        if is_layer_active:
+            sub.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+        if is_group_active:
+            sub.operator("grease_pencil.layer_group_remove", icon='REMOVE', text="").keep_children = True
+
+        sub.separator()
+
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-        col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
-
-        if not layer:
+        if not is_layer_active:
             return
 
         layout.use_property_split = True
