@@ -198,10 +198,6 @@ namespace face_set {
 int active_face_set_get(const Object &object)
 {
   const SculptSession &ss = *object.sculpt;
-  if (std::holds_alternative<std::monostate>(ss.active_vert())) {
-    return SCULPT_FACE_SET_NONE;
-  }
-
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -210,7 +206,7 @@ int active_face_set_get(const Object &object)
       if (!face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
-      return face_sets[std::get<int>(ss.active_vert())];
+      return face_sets[ss.active_face_index];
     }
     case bke::pbvh::Type::Grids: {
       const Mesh &mesh = *static_cast<const Mesh *>(object.data);
@@ -219,8 +215,8 @@ int active_face_set_get(const Object &object)
       if (!face_sets) {
         return SCULPT_FACE_SET_NONE;
       }
-      const SubdivCCGCoord vert = std::get<SubdivCCGCoord>(ss.active_vert());
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, vert.grid_index);
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg,
+                                                               ss.active_grid_index);
       return face_sets[face_index];
     }
     case bke::pbvh::Type::BMesh:
@@ -4655,6 +4651,21 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
 
   ss.set_active_vert(active_vert);
   out->active_vertex_co = ss.active_vert_position(*depsgraph, ob);
+
+  switch (pbvh->type()) {
+    case bke::pbvh::Type::Mesh:
+      ss.active_face_index = srd.active_face_grid_index;
+      ss.active_grid_index = 0;
+      break;
+    case bke::pbvh::Type::Grids:
+      ss.active_face_index = 0;
+      ss.active_grid_index = srd.active_face_grid_index;
+      break;
+    case bke::pbvh::Type::BMesh:
+      ss.active_face_index = 0;
+      ss.active_grid_index = 0;
+      break;
+  }
 
   copy_v3_v3(out->location, ray_normal);
   mul_v3_fl(out->location, srd.depth);

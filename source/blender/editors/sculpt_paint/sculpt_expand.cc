@@ -2230,16 +2230,12 @@ static void ensure_sculptsession_data(Object &ob)
 static int active_face_set_id_get(Object &object, Cache &expand_cache)
 {
   SculptSession &ss = *object.sculpt;
-  if (std::holds_alternative<std::monostate>(ss.active_vert())) {
-    return false;
-  }
-
   switch (bke::object::pbvh_get(object)->type()) {
     case bke::pbvh::Type::Mesh:
-      return expand_cache.original_face_sets[std::get<int>(ss.active_vert())];
+      return expand_cache.original_face_sets[ss.active_face_index];
     case bke::pbvh::Type::Grids: {
-      const SubdivCCGCoord vert = std::get<SubdivCCGCoord>(ss.active_vert());
-      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg, vert.grid_index);
+      const int face_index = BKE_subdiv_ccg_grid_to_face_index(*ss.subdiv_ccg,
+                                                               ss.active_grid_index);
       return expand_cache.original_face_sets[face_index];
     }
     case bke::pbvh::Type::BMesh: {
