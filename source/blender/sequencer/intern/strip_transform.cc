@@ -662,7 +662,7 @@ static void seq_image_transform_quad_get_ex(const Scene *scene,
   if (seq->type == SEQ_TYPE_TEXT && seq->effectdata != nullptr) {
     TextVars *data = static_cast<TextVars *>(seq->effectdata);
     if (data->runtime != nullptr) {
-      image_size[0] = scene->r.xsch * data->wrap_width;
+      image_size[0] = BLI_rcti_size_x(&data->runtime->text_boundbox);
       image_size[1] = BLI_rcti_size_y(&data->runtime->text_boundbox);
     }
   }

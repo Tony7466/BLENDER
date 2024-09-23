@@ -83,7 +83,6 @@ int2 seq_text_cursor_offset_to_position(const TextVarsRuntime *text, int cursor_
     cursor_position.y += 1;
   }
 
-  // xxx bad!
   cursor_position.y = std::clamp(cursor_position.y, 0, int(text->lines.size() - 1));
   cursor_position.x = std::clamp(
       cursor_position.x, 0, int(text->lines[cursor_position.y].characters.size() - 1));
@@ -91,14 +90,22 @@ int2 seq_text_cursor_offset_to_position(const TextVarsRuntime *text, int cursor_
   return cursor_position;
 }
 
+static seq::CharInfo character_at_cursor_pos_get(const TextVarsRuntime *text,
+                                                 const int2 cursor_pos)
+{
+  return text->lines[cursor_pos.y].characters[cursor_pos.x];
+}
+
+static seq::CharInfo character_at_cursor_offset_get(const TextVarsRuntime *text,
+                                                    const int cursor_offset)
+{
+  const int2 cursor_pos = seq_text_cursor_offset_to_position(text, cursor_offset);
+  return character_at_cursor_pos_get(text, cursor_pos);
+}
+
 static int cursor_position_to_offset(TextVarsRuntime *text, int2 cursor_position)
 {
-  int cursor_offset = cursor_position.x;
-
-  for (int line : IndexRange(0, cursor_position.y)) {
-    cursor_offset += text->lines[line].characters.size();
-  }
-  return cursor_offset;
+  return character_at_cursor_pos_get(text, cursor_position).index;
 }
 
 static void text_selection_cancel(TextVars *data)
@@ -122,19 +129,6 @@ IndexRange seq_text_selection_range_get(TextVars *data)
 static bool text_has_selection(TextVars *data)
 {
   return !seq_text_selection_range_get(data).is_empty();
-}
-
-static seq::CharInfo character_at_cursor_pos_get(const TextVarsRuntime *text,
-                                                 const int2 cursor_pos)
-{
-  return text->lines[cursor_pos.y].characters[cursor_pos.x];
-}
-
-static seq::CharInfo character_at_cursor_offset_get(const TextVarsRuntime *text,
-                                                    const int cursor_offset)
-{
-  const int2 cursor_pos = seq_text_cursor_offset_to_position(text, cursor_offset);
-  return character_at_cursor_pos_get(text, cursor_pos);
 }
 
 static size_t strlen_include_null_terminator(const char *str, size_t maxlen)
@@ -783,16 +777,9 @@ void SEQUENCER_OT_text_cursor_set(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
-static int sequencer_text_edit_copy_exec(bContext *C, wmOperator * /*op*/)
+static void text_edit_copy(TextVars *data)
 {
-  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
   TextVarsRuntime *text = data->runtime;
-
-  if (!text_has_selection(data)) {
-    return OPERATOR_CANCELLED;
-  }
-
   IndexRange selection_range = seq_text_selection_range_get(data);
   seq::CharInfo start = character_at_cursor_offset_get(text, selection_range.first());
   seq::CharInfo end = character_at_cursor_offset_get(text, selection_range.last());
@@ -801,6 +788,18 @@ static int sequencer_text_edit_copy_exec(bContext *C, wmOperator * /*op*/)
   char clipboard_buf[512] = {0};  // xxx
   memcpy(clipboard_buf, start.str_ptr, math::min(len, sizeof(clipboard_buf)));
   WM_clipboard_text_set(clipboard_buf, false);
+}
+
+static int sequencer_text_edit_copy_exec(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  if (!text_has_selection(data)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  text_edit_copy(data);
 
   return OPERATOR_FINISHED;
 }
@@ -830,6 +829,10 @@ static int sequencer_text_edit_paste_exec(bContext *C, wmOperator * /*op*/)
   int clipboard_len;
   char *clipboard_buf = WM_clipboard_text_get(false, true, &clipboard_len);
 
+  if (clipboard_len == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
   seq::CharInfo cur_char = character_at_cursor_offset_get(text, data->cursor_offset);
   char *cursor_addr = const_cast<char *>(cur_char.str_ptr);
   /* XXX hardcoded size.*/
@@ -854,6 +857,36 @@ void SEQUENCER_OT_text_edit_paste(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = sequencer_text_edit_paste_exec;
+  ot->poll = sequencer_text_editing_active_poll;
+
+  /* flags */
+  ot->flag = OPTYPE_UNDO;
+}
+
+static int sequencer_text_edit_cut_exec(bContext *C, wmOperator * /*op*/)
+{
+  Sequence *seq = SEQ_select_active_get(CTX_data_scene(C));
+  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+
+  if (!text_has_selection(data)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  text_edit_copy(data);
+  delete_selected_text(data);
+
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_text_edit_cut(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Cut Text";
+  ot->description = "Cut text to clipboard";
+  ot->idname = "SEQUENCER_OT_text_edit_cut";
+
+  /* api callbacks */
+  ot->exec = sequencer_text_edit_cut_exec;
   ot->poll = sequencer_text_editing_active_poll;
 
   /* flags */
