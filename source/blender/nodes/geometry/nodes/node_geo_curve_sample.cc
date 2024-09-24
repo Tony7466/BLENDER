@@ -58,7 +58,7 @@ static void node_declare(NodeDeclarationBuilder &b)
     b.add_output(eCustomDataType(storage.data_type), "Value").dependent_field({2, 3, 4});
 
     factor.available(mode == GEO_NODE_CURVE_SAMPLE_FACTOR);
-    factor.available(mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
+    length.available(mode == GEO_NODE_CURVE_SAMPLE_LENGTH);
     index.available(!storage.use_all_curves);
   }
 
