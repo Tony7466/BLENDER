@@ -6985,6 +6985,11 @@ static bool ui_numedit_but_HSVCIRCLE(uiBut *but,
   rcti rect;
   BLI_rcti_rctf_copy(&rect, &but->rect);
 
+  float rgb[3];
+  ui_but_v3_get(but, rgb);
+  ui_scene_linear_to_perceptual_space(but, rgb);
+  ui_color_picker_rgb_to_hsv_compat(rgb, hsv);
+
   if (bool(flags & (ButEditFlags::Shift | ButEditFlags::ContinuousGrab))) {
     const float fac = ui_mouse_scale_warp_factor(bool(flags & ButEditFlags::Shift));
     mval[0] = (mx - float(data->draglastx)) * fac + mval[0];
@@ -7038,7 +7043,6 @@ static bool ui_numedit_but_HSVCIRCLE(uiBut *but,
     ui_color_snap_hue(snap, &hsv[0]);
   }
 
-  float rgb[3];
   ui_color_picker_hsv_to_rgb(hsv, rgb);
 
   if (cpicker->use_luminosity_lock) {
