@@ -107,6 +107,13 @@ static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
   }
 }
 
+struct ActionUserInfo {
+  ID *id;
+  blender::animrig::slot_handle_t *slot_handle;
+  bAction **action_ptr_ptr;
+  char *slot_name;
+};
+
 static void convert_action_in_place(blender::animrig::Action &action)
 {
   using namespace blender::animrig;
@@ -114,6 +121,8 @@ static void convert_action_in_place(blender::animrig::Action &action)
     return;
   }
   Slot &slot = action.slot_add();
+  slot.idtype = action.idroot;
+  action.idroot = 0;
   Layer &layer = action.layer_add("Layer");
   blender::animrig::Strip &strip = layer.strip_add(action,
                                                    blender::animrig::Strip::Type::Keyframe);
@@ -158,7 +167,7 @@ static void convert_action_in_place(blender::animrig::Action &action)
 static void version_legacy_actions_to_layered(Main *bmain)
 {
   using namespace blender::animrig;
-  blender::Map<bAction *, blender::Vector<std::pair<ID *, slot_handle_t *>>> action_users;
+  blender::Map<bAction *, blender::Vector<ActionUserInfo>> action_users;
   LISTBASE_FOREACH (bAction *, dna_action, &bmain->actions) {
     Action &action = dna_action->wrap();
     if (action.is_action_layered()) {
@@ -169,18 +178,23 @@ static void version_legacy_actions_to_layered(Main *bmain)
 
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
-    auto callback = [&](bAction *&action_ptr_ref,
-                        slot_handle_t &slot_handle_ref,
-                        char * /* slot_name */) -> bool {
-      blender::Vector<std::pair<ID *, slot_handle_t *>> *action_user_vector =
-          action_users.lookup_ptr(action_ptr_ref);
+    auto callback =
+        [&](bAction *&action_ptr_ref, slot_handle_t &slot_handle_ref, char *slot_name) -> bool {
+      blender::Vector<ActionUserInfo> *action_user_vector = action_users.lookup_ptr(
+          action_ptr_ref);
       /* Only actions that need to be converted are in this map. */
       if (!action_user_vector) {
         return true;
       }
-      action_user_vector->append({id, &slot_handle_ref});
+      ActionUserInfo user_info;
+      user_info.id = id;
+      user_info.action_ptr_ptr = &action_ptr_ref;
+      user_info.slot_handle = &slot_handle_ref;
+      user_info.slot_name = slot_name;
+      action_user_vector->append(user_info);
       return true;
     };
+
     foreach_action_slot_use_with_references(*id, callback);
   }
   FOREACH_MAIN_ID_END;
@@ -188,11 +202,19 @@ static void version_legacy_actions_to_layered(Main *bmain)
   for (const auto &item : action_users.items()) {
     Action &action = item.key->wrap();
     convert_action_in_place(action);
-    for (std::pair<ID *, slot_handle_t *> action_user : item.value) {
-      BLI_assert_msg(*action_user.second == Slot::unassigned,
+    for (ActionUserInfo &action_user : item.value) {
+      BLI_assert_msg(*action_user.slot_handle == Slot::unassigned,
                      "Because the action was just converted from legacy, none of the users of "
                      "that action should have a slot set yet.");
-      *action_user.second = action.slot(0)->handle;
+
+      ActionSlotAssignmentResult result = generic_assign_action_slot_handle(
+          action.slot(0)->handle,
+          *action_user.id,
+          *action_user.action_ptr_ptr,
+          *action_user.slot_handle,
+          action_user.slot_name);
+      BLI_assert(result == ActionSlotAssignmentResult::OK);
+      UNUSED_VARS_NDEBUG(result);
     }
   }
 }
