@@ -423,6 +423,32 @@ static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData &data,
 
 #endif /* WITH_PYTHON */
 
+static bool ui_tooltip_period_needed(blender::StringRef tip)
+{
+  if (tip.is_empty()) {
+    return false;
+  }
+
+  /* Already ends with puncuation. */
+  char last = tip[tip.size() - 1];
+  const std::string end_punctuation = ".!?";
+  if (end_punctuation.find(last) != std::string::npos) {
+    return false;
+  }
+
+  /* Contains less than 3 spaces. */
+  if (std::count(tip.begin(), tip.end(), ' ') < 3) {
+    return false;
+  }
+
+  /* Contains a bullet Unicode character. */
+  if (tip.find("\xe2\x80\xa2") != std::string::npos) {
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Special tool-system exception.
  */
@@ -551,7 +577,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_tool(bContext *C,
       expr_result = BLI_strdup(has_valid_context_error);
     }
     else if (BPY_run_string_as_string(C, expr_imports, expr, nullptr, &expr_result)) {
-      if (STREQ(expr_result, ".")) {
+      if (STREQ(expr_result, "")) {
         MEM_freeN(expr_result);
         expr_result = nullptr;
       }
@@ -564,8 +590,9 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_tool(bContext *C,
     }
 
     if (expr_result != nullptr) {
+      const bool add_period = ui_tooltip_period_needed(expr_result);
       UI_tooltip_text_field_add(*data,
-                                expr_result,
+                                fmt::format("{}{}", expr_result, add_period ? "." : ""),
                                 {},
                                 UI_TIP_STYLE_NORMAL,
                                 (is_error) ? UI_TIP_LC_ALERT : UI_TIP_LC_MAIN,
@@ -846,8 +873,12 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
           *data, fmt::format("{}: ", but_tip), enum_label, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
     }
     else {
-      UI_tooltip_text_field_add(
-          *data, fmt::format("{}", but_tip), {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL);
+      const bool add_period = ui_tooltip_period_needed(but_tip);
+      UI_tooltip_text_field_add(*data,
+                                fmt::format("{}{}", but_tip, add_period ? "." : ""),
+                                {},
+                                UI_TIP_STYLE_HEADER,
+                                UI_TIP_LC_NORMAL);
     }
 
     /* special case enum rna buttons */
@@ -872,8 +903,12 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
 
   /* Enum field label & tip. */
   if (!enum_tip.empty()) {
-    UI_tooltip_text_field_add(
-        *data, std::move(enum_tip), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE);
+    const bool add_period = ui_tooltip_period_needed(enum_tip);
+    UI_tooltip_text_field_add(*data,
+                              fmt::format("{}{}", enum_tip, add_period ? "." : ""),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_VALUE);
   }
 
   /* Operator shortcut. */
@@ -1145,9 +1180,12 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
         std::string info = WM_operatortype_description_or_name(C, gzop->type, &gzop->ptr);
 
         if (!info.empty()) {
+          const bool add_period = ui_tooltip_period_needed(info);
           UI_tooltip_text_field_add(
               *data,
-              gzop_actions[i].prefix ? fmt::format("{}: {}", gzop_actions[i].prefix, info) : info,
+              gzop_actions[i].prefix ?
+                  fmt::format("{}: {}{}", gzop_actions[i].prefix, info, add_period ? "." : "") :
+                  fmt::format("{}{}", info, add_period ? "." : ""),
               {},
               UI_TIP_STYLE_HEADER,
               UI_TIP_LC_VALUE,
@@ -1181,7 +1219,13 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
       if (gz_prop->prop != nullptr) {
         const char *info = RNA_property_ui_description(gz_prop->prop);
         if (info && info[0]) {
-          UI_tooltip_text_field_add(*data, info, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, true);
+          const bool add_period = ui_tooltip_period_needed(info);
+          UI_tooltip_text_field_add(*data,
+                                    fmt::format("{}{}", info, add_period ? "." : ""),
+                                    {},
+                                    UI_TIP_STYLE_NORMAL,
+                                    UI_TIP_LC_VALUE,
+                                    true);
         }
       }
     }
