@@ -446,6 +446,7 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
             if (dist_to_tip < radius_squared) {
               return get_weight(dist_to_tip, decay_rad, diff_rad);
             }
+            return 0.0f;
           }
           /* Inside bone cylinder. */
           return get_weight(dist_to_bone, decay_rad, diff_rad);
