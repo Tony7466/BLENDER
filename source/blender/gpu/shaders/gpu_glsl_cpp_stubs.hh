@@ -527,7 +527,7 @@ template<typename T> T abs(T) {}
 template<typename T> T clamp(T, T, T) {}
 template<typename T> T max(T, T) {}
 template<typename T> T min(T, T) {}
-template<typename T> T sign(T, T) {}
+template<typename T> T sign(T) {}
 template<typename T, typename U> T clamp(T, U, U) {}
 template<typename T, typename U> T max(T, U) {}
 template<typename T, typename U> T min(T, U) {}
