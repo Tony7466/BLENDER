@@ -285,10 +285,9 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     FCurve *fcu = (FCurve *)ale->key_data;
     /* If 2 or more objects share the same action, multiple bAnimListElem might reference the same
      * FCurve. */
-    if (visited_fcurves.contains(fcu)) {
+    if (!visited_fcurves.add(fcu)) {
       continue;
     }
-    visited_fcurves.add(fcu);
     unique_fcu_anim_list_elements.append(ale);
     float cfra;
     int curvecount = 0;
