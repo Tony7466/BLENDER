@@ -466,6 +466,11 @@ class VersioningTest(unittest.TestCase):
         self.assertEqual(object_a.animation_data.action, object_b.animation_data.action)
         self.assertEqual(object_a.animation_data.action_slot_handle, object_b.animation_data.action_slot_handle)
 
+        action = object_a.animation_data.action
+        self.assertEqual(len(action.fcurves), 9)
+        self.assertEqual(len(action.groups), 1)
+        self.assertEqual(len(action.groups[0].channels), 9)
+
     def test_action_constraint(self):
         constrained_object = bpy.data.objects["action_constraint_constrained"]
         action_constraint = constrained_object.constraints[0]
