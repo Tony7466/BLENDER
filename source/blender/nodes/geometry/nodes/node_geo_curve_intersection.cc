@@ -344,6 +344,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
 
               if (isectinfo.intersects && isectinfo.lambda_ab != 1.0f &&
                   isectinfo.lambda_cd != 1.0f) {
+                const bool first_curve = ab.curve_index <= cd.curve_index;
                 add_intersection_data(
                     data,
                     isectinfo.closest_ab,
@@ -351,7 +352,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     ab.curve_index,
                     math::interpolate(ab.len_start, ab.len_end, isectinfo.lambda_ab),
                     ab.curve_length,
-                    true);
+                    first_curve);
                 add_intersection_data(
                     data,
                     isectinfo.closest_cd,
@@ -359,7 +360,7 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                     cd.curve_index,
                     math::interpolate(cd.len_start, cd.len_end, isectinfo.lambda_cd),
                     cd.curve_length,
-                    false);
+                    !first_curve);
               }
             }
           });
@@ -471,7 +472,7 @@ static void node_rna(StructRNA *srna)
        0,
        "Plane",
        "Find all the intersection positions for each curve in reference to a plane"},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   RNA_def_node_enum(srna,
