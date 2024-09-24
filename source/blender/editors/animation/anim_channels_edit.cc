@@ -5182,7 +5182,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                   "Bake Modifiers into keyframes and delete them after");
 }
 
-static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator *op)
+static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op */)
 {
   using namespace blender::animrig;
   bAnimContext ac;
@@ -5194,7 +5194,8 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator *op)
 
   ListBase anim_data = {nullptr, nullptr};
   const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_DATA_VISIBLE |
-                      ANIMFILTER_LIST_VISIBLE);
+                      ANIMFILTER_LIST_CHANNELS);
+
   size_t anim_data_length = ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
@@ -5203,12 +5204,12 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  blender::Vector<Slot *> slots;
+  blender::Vector<std::pair<Slot *, bAction *>> slots;
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     if (ale->type != ANIMTYPE_ACTION_SLOT) {
       continue;
     }
-    slots.append(reinterpret_cast<Slot *>(ale->data));
+    slots.append({reinterpret_cast<Slot *>(ale->data), ale->adt->action});
   }
   ANIM_animdata_freelist(&anim_data);
 
@@ -5217,7 +5218,30 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  bAction *new_action = reinterpret_cast<bAction *>(BKE_id_new(CTX_data_main(C), ID_AC, ""));
+  /* If multiple slots are selected they are moved to the new action together. In that case it is
+   * hard to determine a name, so a constant default is used. */
+  bAction *dna_new_action;
+  if (slots.size() == 1) {
+    dna_new_action = reinterpret_cast<bAction *>(
+        BKE_id_new(CTX_data_main(C), ID_AC, slots[0].first->name + 2));
+  }
+  else {
+    dna_new_action = reinterpret_cast<bAction *>(
+        BKE_id_new(CTX_data_main(C), ID_AC, "CombinedAction"));
+  }
+
+  Action &target_action = dna_new_action->wrap();
+  Layer &layer = target_action.layer_add("Layer");
+  layer.strip_add(target_action, Strip::Type::Keyframe);
+
+  for (std::pair<Slot *, bAction *> &slot_data : slots) {
+    Action &source_action = slot_data.second->wrap();
+    move_slot(*CTX_data_main(C), *slot_data.first, source_action, target_action);
+  }
+
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+
+  return OPERATOR_FINISHED;
 }
 
 static bool slot_channels_move_to_new_action_poll(bContext *C)
@@ -5233,6 +5257,8 @@ static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
 
   ot->exec = slot_channels_move_to_new_action_exec;
   ot->poll = slot_channels_move_to_new_action_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
 /**
@@ -5616,6 +5642,8 @@ void ED_operatortypes_animchannels()
   WM_operatortype_append(ANIM_OT_channels_ungroup);
 
   WM_operatortype_append(ANIM_OT_channels_bake);
+
+  WM_operatortype_append(ANIM_OT_slot_channels_move_to_new_action);
 }
 
 void ED_keymap_animchannels(wmKeyConfig *keyconf)
