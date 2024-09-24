@@ -598,9 +598,10 @@ float3 CollisionShape::calculate_local_inertia(const float mass) const
 
 static CollisionShapeImpl *make_box_shape(const float3 &half_extent)
 {
-  JPH::BoxShapeSettings settings(to_jolt(math::max(half_extent, float3(shape_convex_radius + 1.0e-6f))),
-                                 shape_convex_radius,
-                                 shape_physics_material);
+  JPH::BoxShapeSettings settings(
+      to_jolt(math::max(half_extent, float3(shape_convex_radius + 1.0e-6f))),
+      shape_convex_radius,
+      shape_physics_material);
   return CollisionShapeImpl::wrap(settings.Create().Get());
 }
 
@@ -633,8 +634,7 @@ TriangleCollisionShape::TriangleCollisionShape(const float3 &pt0,
 static CollisionShapeImpl *make_convex_hull_shape(const VArray<float3> &points)
 {
   if (points.size() < 3) {
-    JPH::Ref<JPH::Shape> fallback_shape = JPH::Ref<JPH::Shape>(
-        new JPH::SphereShape(1.0f));
+    JPH::Ref<JPH::Shape> fallback_shape = JPH::Ref<JPH::Shape>(new JPH::SphereShape(1.0f));
     return CollisionShapeImpl::wrap(fallback_shape.GetPtr());
   }
 

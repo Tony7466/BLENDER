@@ -16,6 +16,7 @@ struct GreasePencil;
 
 namespace blender::bke {
 class Instances;
+class PhysicsGeometry;
 }
 
 namespace blender::geometry {
@@ -63,5 +64,18 @@ Array<GreasePencil *> extract_greasepencil_layer_curves(
     int layer_i,
     const IndexMask &mask,
     const bke::AttributeFilter &attribute_filter);
+
+Array<bke::PhysicsGeometry *> extract_physics_bodies(const bke::PhysicsGeometry &physics,
+                                                     const IndexMask &mask,
+                                                     const bke::AttributeFilter &attribute_filter);
+
+Array<bke::PhysicsGeometry *> extract_physics_constraints(
+    const bke::PhysicsGeometry &physics,
+    const IndexMask &mask,
+    const bke::AttributeFilter &attribute_filter);
+
+Array<bke::PhysicsGeometry *> extract_physics_shapes(const bke::PhysicsGeometry &physics,
+                                                     const IndexMask &mask,
+                                                     const bke::AttributeFilter &attribute_filter);
 
 }  // namespace blender::geometry

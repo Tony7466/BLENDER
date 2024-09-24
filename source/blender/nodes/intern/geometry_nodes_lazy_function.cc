@@ -2691,6 +2691,34 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
         }
         return element_geometries;
       }
+      case GeometryComponent::Type::Physics: {
+        const bke::PhysicsGeometry &main_physics = *main_geometry.get_physics();
+        Array<bke::PhysicsGeometry *> element_physics;
+        switch (id.domain) {
+          case AttrDomain::Point: {
+            element_physics = geometry::extract_physics_bodies(
+                main_physics, mask, attribute_filter);
+            break;
+          }
+          case AttrDomain::Edge: {
+            element_physics = geometry::extract_physics_constraints(
+                main_physics, mask, attribute_filter);
+            break;
+          }
+          case AttrDomain::Instance: {
+            element_physics = geometry::extract_physics_shapes(
+                main_physics, mask, attribute_filter);
+            break;
+          }
+          default:
+            return std::nullopt;
+        }
+        Array<GeometrySet> element_geometries(element_physics.size());
+        for (const int i : element_physics.index_range()) {
+          element_geometries[i].replace_physics(element_physics[i]);
+        }
+        return element_geometries;
+      }
       default:
         break;
     }

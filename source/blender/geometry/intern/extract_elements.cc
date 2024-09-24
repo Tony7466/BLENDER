@@ -12,6 +12,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_mesh.hh"
+#include "BKE_physics_geometry.hh"
 #include "BKE_pointcloud.hh"
 
 namespace blender::geometry {
@@ -534,6 +535,82 @@ Array<GreasePencil *> extract_greasepencil_layer_curves(
                            element->attributes_for_write());
 
     new_curves.update_curve_types();
+    elements[element_i] = element;
+  });
+
+  return elements;
+}
+
+Array<bke::PhysicsGeometry *> extract_physics_bodies(const bke::PhysicsGeometry &physics,
+                                                     const IndexMask &mask,
+                                                     const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= physics.bodies_num());
+  Array<bke::PhysicsGeometry *> elements(mask.size(), nullptr);
+
+  const bke::AttributeAccessor src_attributes = physics.attributes();
+
+  mask.foreach_index(GrainSize(32), [&](const int body_i, const int element_i) {
+    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(1, 0, 0);
+
+    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
+    bke::gather_attributes(src_attributes,
+                           AttrDomain::Point,
+                           AttrDomain::Point,
+                           attribute_filter,
+                           Span<int>{body_i},
+                           element_attributes);
+    elements[element_i] = element;
+  });
+
+  return elements;
+}
+
+Array<bke::PhysicsGeometry *> extract_physics_constraints(
+    const bke::PhysicsGeometry &physics,
+    const IndexMask &mask,
+    const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= physics.constraints_num());
+  Array<bke::PhysicsGeometry *> elements(mask.size(), nullptr);
+
+  const bke::AttributeAccessor src_attributes = physics.attributes();
+
+  mask.foreach_index(GrainSize(32), [&](const int constraint_i, const int element_i) {
+    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(0, 1, 0);
+
+    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
+    bke::gather_attributes(src_attributes,
+                           AttrDomain::Edge,
+                           AttrDomain::Edge,
+                           attribute_filter,
+                           Span<int>{constraint_i},
+                           element_attributes);
+    elements[element_i] = element;
+  });
+
+  return elements;
+}
+
+Array<bke::PhysicsGeometry *> extract_physics_shapes(const bke::PhysicsGeometry &physics,
+                                                     const IndexMask &mask,
+                                                     const bke::AttributeFilter &attribute_filter)
+{
+  BLI_assert(mask.min_array_size() <= physics.shapes_num());
+  Array<bke::PhysicsGeometry *> elements(mask.size(), nullptr);
+
+  const bke::AttributeAccessor src_attributes = physics.attributes();
+
+  mask.foreach_index(GrainSize(32), [&](const int shape_i, const int element_i) {
+    bke::PhysicsGeometry *element = new bke::PhysicsGeometry(0, 0, 1);
+
+    bke::MutableAttributeAccessor element_attributes = element->attributes_for_write();
+    bke::gather_attributes(src_attributes,
+                           AttrDomain::Instance,
+                           AttrDomain::Instance,
+                           attribute_filter,
+                           Span<int>{shape_i},
+                           element_attributes);
     elements[element_i] = element;
   });
 
