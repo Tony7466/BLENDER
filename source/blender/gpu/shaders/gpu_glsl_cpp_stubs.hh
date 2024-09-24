@@ -8,7 +8,12 @@
  * The goal of this header is to make the GLSL source file compile using a modern C++ compiler.
  * This allows for linting and IDE functionalities to work.
  *
- * This is why the implementation of each function is not needed.
+ * This is why the implementation of each function is not needed. However, we make sure that type
+ * casting is always explicit. This is because implicit casts are not always supported on all
+ * implementations.
+ *
+ * Float types are set to double to accept float literals without trailing f and avoid casting
+ * issues.
  *
  * Some of the features of GLSL are omitted by design. They are either:
  * - not needed (e.g. per component matrix multiplication)
@@ -302,26 +307,31 @@ template<int R> struct MatBase<2, R> : MatOp<2, R> {
 
   MatBase() = default;
   explicit MatBase(T) {}
+  explicit MatBase(T, T, T, T) {}
   explicit MatBase(ColT, ColT) {}
   template<typename OtherC, typename OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
 };
 
 template<int R> struct MatBase<3, R> : MatOp<3, R> {
+  using T = double;
   using ColT = VecBase<double, R>;
   ColT x, y, z;
 
   MatBase() = default;
-  explicit MatBase(double) {}
+  explicit MatBase(T) {}
+  explicit MatBase(T, T, T, T, T, T, T, T, T) {}
   explicit MatBase(ColT, ColT, ColT) {}
   template<int OtherC, int OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
 };
 
 template<int R> struct MatBase<4, R> : MatOp<4, R> {
+  using T = double;
   using ColT = VecBase<double, R>;
   ColT x, y, z, w;
 
   MatBase() = default;
-  explicit MatBase(double) {}
+  explicit MatBase(T) {}
+  explicit MatBase(T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T) {}
   explicit MatBase(ColT, ColT, ColT, ColT) {}
   template<int OtherC, int OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
 };
