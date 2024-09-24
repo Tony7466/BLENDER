@@ -360,7 +360,15 @@ static void test_constraint(
     else {
       animrig::Action &action = data->act->wrap();
       if (action.is_action_legacy()) {
-        if (data->act->idroot != ID_OB && data->act->idroot != 0) {
+        /* If the action hasn't been rooted yet, root it to the object ID type,
+         * which is the right type for action constraints. It feels a little
+         * hacky to set this here, but in fact this function is called at the
+         * right times for this. */
+        if (data->act->idroot == 0) {
+          data->act->idroot = ID_OB;
+        }
+
+        if (data->act->idroot != ID_OB) {
           /* Only object-rooted actions can be used. */
           data->act = nullptr;
           con->flag |= CONSTRAINT_DISABLE;
