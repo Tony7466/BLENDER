@@ -54,10 +54,12 @@ static void node_declare(NodeDeclarationBuilder &b)
                            });
 
   if (node != nullptr) {
-    output_edges.available(geometry::boolean::Solver(node->custom2) ==
-                           geometry::boolean::Solver::MeshArr);
+    const auto operation = geometry::boolean::Operation(node->custom1);
+    const auto solver = geometry::boolean::Solver(node->custom2);
 
-    switch (geometry::boolean::Operation(node->custom1)) {
+    output_edges.available(solver == geometry::boolean::Solver::MeshArr);
+
+    switch (operation) {
       case geometry::boolean::Operation::Intersect:
       case geometry::boolean::Operation::Union:
         first_geometry.available(false);
