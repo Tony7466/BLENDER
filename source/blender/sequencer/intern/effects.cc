@@ -3286,13 +3286,16 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime,
       character.position += alignment;
     }
   }
-  runtime.text_boundbox.xmin = image_center.x - width_max / 2;
-  runtime.text_boundbox.xmax = image_center.x + width_max / 2;
+  runtime.text_boundbox.xmin = image_center.x - width_max / 2 + runtime.font_descender;
+  runtime.text_boundbox.xmax = image_center.x + width_max / 2 - runtime.font_descender;
   runtime.text_boundbox.ymax = image_center.y + text_height / 2;
   runtime.text_boundbox.ymin = image_center.y - text_height / 2;
 }
 
-static void calc_text_runtime(const Sequence *seq, int font, ImBuf *ibuf, TextVarsRuntime &r_runtime)
+static void calc_text_runtime(const Sequence *seq,
+                              int font,
+                              ImBuf *ibuf,
+                              TextVarsRuntime &r_runtime)
 {
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
