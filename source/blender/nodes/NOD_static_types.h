@@ -319,7 +319,7 @@ DefNode(GeometryNode, GEO_NODE_COLLECTION_INFO, 0, "COLLECTION_INFO", Collection
 DefNode(GeometryNode, GEO_NODE_CONVEX_HULL, 0, "CONVEX_HULL", ConvexHull, "Convex Hull", "Create a mesh that encloses all points in the input geometry with the smallest number of points")
 DefNode(GeometryNode, GEO_NODE_CURVE_ENDPOINT_SELECTION, 0, "CURVE_ENDPOINT_SELECTION", CurveEndpointSelection, "Endpoint Selection", "Provide a selection for an arbitrary number of endpoints in each spline")
 DefNode(GeometryNode, GEO_NODE_CURVE_HANDLE_TYPE_SELECTION, def_geo_curve_handle_type_selection, "CURVE_HANDLE_TYPE_SELECTION", CurveHandleTypeSelection, "Handle Type Selection", "Provide a selection based on the handle types of Bézier control points")
-DefNode(GeometryNode, GEO_NODE_CURVE_INTERSECTIONS, def_geo_curve_intersections, "CURVE_INTERSECTIONS", CurveIntersections, "Curve Intersections", "Calculate and ouput curve intersections as a point cloud")
+DefNode(GeometryNode, GEO_NODE_CURVE_INTERSECTIONS, 0, "CURVE_INTERSECTIONS", CurveIntersections, "Curve Intersections", "Calculate and ouput curve intersections as a point cloud")
 DefNode(GeometryNode, GEO_NODE_CURVE_LENGTH, 0, "CURVE_LENGTH", CurveLength, "Curve Length", "Retrieve the length of all splines added together")
 DefNode(GeometryNode, GEO_NODE_CURVE_PRIMITIVE_ARC, 0, "CURVE_PRIMITIVE_ARC",CurveArc, "Arc", "Generate a poly spline arc")
 DefNode(GeometryNode, GEO_NODE_CURVE_PRIMITIVE_BEZIER_SEGMENT, 0, "CURVE_PRIMITIVE_BEZIER_SEGMENT", CurvePrimitiveBezierSegment, "Bézier Segment", "Generate a 2D Bézier spline from the given control points and handles")

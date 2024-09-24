@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,16 +7,17 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_curves.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "BLI_bounds.hh"
 #include "BLI_kdopbvh.h"
+#include "BLI_math_geom.h"
 #include "BLI_task.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "NOD_socket_search_link.hh"
+#include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
 
@@ -70,17 +71,17 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   const NodeGeometryCurveIntersections &storage = node_storage(*node);
-  const GeometryNodeCurveIntersectionMode mode = (GeometryNodeCurveIntersectionMode)storage.mode;
+  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(storage.mode);
 
   bNodeSocket *self = static_cast<bNodeSocket *>(node->inputs.first)->next;
   bNodeSocket *direction = self->next;
   bNodeSocket *plane_offset = direction->next;
   bNodeSocket *distance = plane_offset->next;
 
-  bke::nodeSetSocketAvailability(ntree, self, mode == GEO_NODE_CURVE_INTERSECT_ALL);
-  bke::nodeSetSocketAvailability(ntree, direction, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
-  bke::nodeSetSocketAvailability(ntree, plane_offset, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
-  bke::nodeSetSocketAvailability(ntree, distance, mode != GEO_NODE_CURVE_INTERSECT_PLANE);
+  bke::node_set_socket_availability(ntree, self, mode == GEO_NODE_CURVE_INTERSECT_ALL);
+  bke::node_set_socket_availability(ntree, direction, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
+  bke::node_set_socket_availability(ntree, plane_offset, mode == GEO_NODE_CURVE_INTERSECT_PLANE);
+  bke::node_set_socket_availability(ntree, distance, mode != GEO_NODE_CURVE_INTERSECT_PLANE);
 }
 
 struct IntersectionData {
@@ -415,13 +416,20 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
   BLI_SCOPED_DEFER([&]() { BLI_bvhtree_free(bvhtree); });
 }
 
+struct AttributeOutputs {
+  std::optional<std::string> curve_index_attr_id;
+  std::optional<std::string> factor_attr_id;
+  std::optional<std::string> length_attr_id;
+  std::optional<std::string> direction_attr_id;
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const NodeGeometryCurveIntersections &storage = node_storage(params.node());
-  const GeometryNodeCurveIntersectionMode mode = (GeometryNodeCurveIntersectionMode)storage.mode;
+  const GeometryNodeCurveIntersectionMode mode = GeometryNodeCurveIntersectionMode(storage.mode);
 
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curve");
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (!geometry_set.has_curves()) {
@@ -464,59 +472,93 @@ static void node_geo_exec(GeoNodeExecParams params)
     PointCloud *pointcloud = BKE_pointcloud_new_nomain(r_data.position.size());
     MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
 
-    AnonymousAttributeIDPtr curve_index_attr_id =
-        params.get_output_anonymous_attribute_id_if_needed("Curve Index");
-    AnonymousAttributeIDPtr factor_attr_id = params.get_output_anonymous_attribute_id_if_needed(
+    AttributeOutputs attribute_outputs;
+    attribute_outputs.curve_index_attr_id = params.get_output_anonymous_attribute_id_if_needed(
+        "Curve Index");
+    attribute_outputs.factor_attr_id = params.get_output_anonymous_attribute_id_if_needed(
         "Factor");
-    AnonymousAttributeIDPtr length_attr_id = params.get_output_anonymous_attribute_id_if_needed(
+    attribute_outputs.length_attr_id = params.get_output_anonymous_attribute_id_if_needed(
         "Length");
-    AnonymousAttributeIDPtr direction_attr_id = params.get_output_anonymous_attribute_id_if_needed(
+    attribute_outputs.direction_attr_id = params.get_output_anonymous_attribute_id_if_needed(
         "Direction");
 
     geometry_set.replace_pointcloud(pointcloud);
 
     SpanAttributeWriter<float3> point_positions =
-        point_attributes.lookup_or_add_for_write_only_span<float3>("position", ATTR_DOMAIN_POINT);
+        point_attributes.lookup_or_add_for_write_only_span<float3>("position", AttrDomain::Point);
     point_positions.span.copy_from(r_data.position);
     point_positions.finish();
 
-    point_attributes.add<int>(curve_index_attr_id.get(),
-                              ATTR_DOMAIN_POINT,
+    point_attributes.add<int>("Curve Index",
+                              bke::AttrDomain::Point,
                               bke::AttributeInitVArray(VArray<int>::ForSpan(r_data.curve_id)));
 
-    point_attributes.add<float>(factor_attr_id.get(),
-                                ATTR_DOMAIN_POINT,
-                                bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
+    point_attributes.add<float>(
+        "Factor",
+        AttrDomain::Point,
+        blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.factor)));
 
-    point_attributes.add<float>(length_attr_id.get(),
-                                ATTR_DOMAIN_POINT,
-                                bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
+    point_attributes.add<float>(
+        "Length",
+        AttrDomain::Point,
+        blender::bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
 
     point_attributes.add<float3>(
-        direction_attr_id.get(),
-        ATTR_DOMAIN_POINT,
+        "Direction",
+        AttrDomain::Point,
         bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
   });
 
   params.set_output("Points", std::move(geometry_set));
 }
-}  // namespace blender::nodes::node_geo_curve_intersection_cc
 
-void register_node_type_geo_curve_intersections()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_curve_intersection_cc;
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_INTERSECT_SELF,
+       "SELF",
+       0,
+       "Self",
+       "Find the self intersection positions for each curve"},
+      {GEO_NODE_CURVE_INTERSECT_ALL,
+       "ALL",
+       0,
+       "All",
+       "Find all the intersection positions for all curves"},
+      {GEO_NODE_CURVE_INTERSECT_PLANE,
+       "PLANE",
+       0,
+       "Plane",
+       "Find all the intersection positions for each curve in reference to a plane"},
+      {0, NULL, 0, NULL, NULL},
+  };
 
-  static bNodeType ntype;
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "How to find intersection positions for the spline",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode));
+}
+
+static void node_register()
+{
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_INTERSECTIONS, "Curve Intersections", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.declare = file_ns::node_declare;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  node_type_storage(&ntype,
-                    "NodeGeometryCurveIntersections",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
-  nodeRegisterType(&ntype);
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.declare = node_declare;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryCurveIntersections",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
+  blender::bke::node_register_type(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_intersection_cc
