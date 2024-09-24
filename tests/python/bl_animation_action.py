@@ -483,6 +483,15 @@ class VersioningTest(unittest.TestCase):
         self.assertEqual(action, action_constraint.action)
         self.assertEqual(action_owner_object.animation_data.action_slot_handle, action_constraint.action_slot_handle)
 
+    def test_armature_action_conversion(self):
+        armature_object = bpy.data.objects["armature_object"]
+        action = armature_object.animation_data.action
+        self.assertTrue(action.is_action_layered)
+        self.assertEqual(len(action.groups), 2)
+        self.assertEqual(len(action.fcurves), 20)
+        self.assertEqual(len(action.groups[0].channels), 10)
+        self.assertEqual(len(action.groups[1].channels), 10)
+
 
 def main():
     global args
