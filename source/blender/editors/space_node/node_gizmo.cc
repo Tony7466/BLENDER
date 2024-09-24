@@ -489,10 +489,7 @@ static bool WIDGETGROUP_node_box_mask_poll(const bContext *C, wmGizmoGroupType *
     bNode *node = bke::node_get_active(snode->edittree);
 
     if (node && ELEM(node->type, CMP_NODE_MASK_BOX)) {
-      /* ignore 'use_crop_size', we can't usefully edit the crop in this case. */
-      if ((node->custom1 & (1 << 0)) == 0) {
-        return true;
-      }
+      return true;
     }
   }
 
@@ -501,15 +498,15 @@ static bool WIDGETGROUP_node_box_mask_poll(const bContext *C, wmGizmoGroupType *
 
 static void WIDGETGROUP_node_box_mask_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
-  NodeBBoxWidgetGroup *crop_group = MEM_new<NodeBBoxWidgetGroup>(__func__);
-  crop_group->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
+  NodeBBoxWidgetGroup *mask_group = MEM_new<NodeBBoxWidgetGroup>(__func__);
+  mask_group->border = WM_gizmo_new("GIZMO_GT_cage_2d", gzgroup, nullptr);
 
-  RNA_enum_set(crop_group->border->ptr,
+  RNA_enum_set(mask_group->border->ptr,
                "transform",
                ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_ROTATE |
                    ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
-  gzgroup->customdata = crop_group;
+  gzgroup->customdata = mask_group;
 }
 
 static void WIDGETGROUP_node_box_mask_draw_prepare(const bContext *C, wmGizmoGroup *gzgroup)
