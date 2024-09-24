@@ -2158,16 +2158,98 @@ Span<const FCurve *> fcurves_for_action_slot(const Action &action, const slot_ha
   return bag->fcurves();
 }
 
-FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor)
+FCurve *fcurve_find_in_action(bAction *act, FCurveDescriptor fcurve_descriptor)
 {
   if (act == nullptr) {
     return nullptr;
   }
-#ifdef WITH_ANIM_BAKLAVA
-  BLI_assert(act->wrap().is_action_legacy());
-#endif
-  return BKE_fcurve_find(
-      &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
+
+  Action &action = act->wrap();
+  if (action.is_action_legacy()) {
+    return BKE_fcurve_find(
+        &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
+  }
+
+  assert_baklava_phase_1_invariants(action);
+  Layer *layer = action.layer(0);
+  if (!layer) {
+    return nullptr;
+  }
+  Strip *strip = layer->strip(0);
+  if (!strip) {
+    return nullptr;
+  }
+
+  StripKeyframeData &strip_data = strip->data<StripKeyframeData>(action);
+
+  for (ChannelBag *channelbag : strip_data.channelbags()) {
+    FCurve *fcu = channelbag->fcurve_find(fcurve_descriptor);
+    if (fcu) {
+      return fcu;
+    }
+  }
+
+  return nullptr;
+}
+
+FCurve *fcurve_find_in_assigned_slot(AnimData &adt, FCurveDescriptor fcurve_descriptor)
+{
+  return fcurve_find_in_action_slot(adt.action, adt.slot_handle, fcurve_descriptor);
+}
+
+FCurve *fcurve_find_in_action_slot(bAction *act,
+                                   const slot_handle_t slot_handle,
+                                   FCurveDescriptor fcurve_descriptor)
+{
+  if (act == nullptr) {
+    return nullptr;
+  }
+
+  Action &action = act->wrap();
+  if (action.is_action_legacy()) {
+    return BKE_fcurve_find(
+        &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
+  }
+
+  ChannelBag *cbag = channelbag_for_action_slot(action, slot_handle);
+  if (!cbag) {
+    return nullptr;
+  }
+  return cbag->fcurve_find(fcurve_descriptor);
+}
+
+Vector<FCurve *> fcurve_find_in_action_slot_filtered(bAction *act,
+                                                     const slot_handle_t slot_handle,
+                                                     const StringRefNull collection_rna_path,
+                                                     const StringRefNull data_name)
+{
+  BLI_assert(act);
+  BLI_assert(!collection_rna_path.is_empty());
+
+  Vector<FCurve *> found;
+
+  const size_t quoted_name_size = data_name.size() + 1;
+  char *quoted_name = static_cast<char *>(alloca(quoted_name_size));
+
+  foreach_fcurve_in_action_slot(act->wrap(), slot_handle, [&](FCurve &fcurve) {
+    if (!fcurve.rna_path) {
+      return;
+    }
+    /* Skipping names longer than `quoted_name_size` is OK since we're after an exact match. */
+    if (!BLI_str_quoted_substr(
+            fcurve.rna_path, collection_rna_path.c_str(), quoted_name, quoted_name_size))
+    {
+      return;
+    }
+    if (quoted_name != data_name) {
+      return;
+    }
+
+    found.append(&fcurve);
+    return;
+  });
+
+  return found;
 }
 
 FCurve *action_fcurve_ensure(Main *bmain,
@@ -2181,7 +2263,9 @@ FCurve *action_fcurve_ensure(Main *bmain,
   }
   Action &action = act->wrap();
 
-  if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_action_layered()) {
+  if ((USER_EXPERIMENTAL_TEST(&U, use_animation_baklava) && action.is_empty()) ||
+      !action.is_action_legacy())
+  {
     /* NOTE: for layered actions we require the following:
      *
      * - `ptr` is non-null.
@@ -2227,8 +2311,7 @@ FCurve *action_fcurve_ensure(Main *bmain,
    * - add if not found and allowed to add one
    *   TODO: add auto-grouping support? how this works will need to be resolved
    */
-  FCurve *fcu = BKE_fcurve_find(
-      &act->curves, fcurve_descriptor.rna_path.c_str(), fcurve_descriptor.array_index);
+  FCurve *fcu = animrig::fcurve_find_in_action(act, fcurve_descriptor);
 
   if (fcu != nullptr) {
     return fcu;

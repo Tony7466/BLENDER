@@ -114,6 +114,9 @@ static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContex
     }
   }
   else if (mode == PaintMode::SculptGreasePencil) {
+    if (stroke_mode == BRUSH_STROKE_SMOOTH) {
+      return greasepencil::new_smooth_operation(stroke_mode);
+    }
     switch (eBrushGPSculptType(brush.gpencil_sculpt_brush_type)) {
       case GPSCULPT_BRUSH_TYPE_SMOOTH:
         return greasepencil::new_smooth_operation(stroke_mode);
@@ -327,6 +330,7 @@ static bool grease_pencil_sculpt_paint_poll(bContext *C)
 
 static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
@@ -356,7 +360,7 @@ static int grease_pencil_sculpt_paint_invoke(bContext *C, wmOperator *op, const 
    * the previous key. */
   const bool use_duplicate_previous_key = true;
   if (!ed::greasepencil::ensure_active_keyframe(
-          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
+          *scene, grease_pencil, active_layer, use_duplicate_previous_key, inserted_keyframe))
   {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
@@ -523,6 +527,7 @@ static int grease_pencil_vertex_brush_stroke_invoke(bContext *C,
                                                     wmOperator *op,
                                                     const wmEvent *event)
 {
+  const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return OPERATOR_CANCELLED;
@@ -552,7 +557,7 @@ static int grease_pencil_vertex_brush_stroke_invoke(bContext *C,
    * duplicate the previous key. */
   const bool use_duplicate_previous_key = true;
   if (!ed::greasepencil::ensure_active_keyframe(
-          C, grease_pencil, use_duplicate_previous_key, inserted_keyframe))
+          *scene, grease_pencil, active_layer, use_duplicate_previous_key, inserted_keyframe))
   {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
