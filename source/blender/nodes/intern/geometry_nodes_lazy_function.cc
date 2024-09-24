@@ -1938,18 +1938,25 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       lf_border_link_usage_or_nodes[i] = &lf_node;
     }
 
-    eval_storage.index_values.reinitialize(iterations);
-    threading::parallel_for(IndexRange(iterations), 1024, [&](const IndexRange range) {
-      for (const int i : range) {
-        eval_storage.index_values[i].set(i);
-      }
-    });
+    const bool use_index_values = zone_.input_node->output_socket(0).is_directly_linked();
+
+    if (use_index_values) {
+      eval_storage.index_values.reinitialize(iterations);
+      threading::parallel_for(IndexRange(iterations), 1024, [&](const IndexRange range) {
+        for (const int i : range) {
+          eval_storage.index_values[i].set(i);
+        }
+      });
+    }
 
     /* Handle body nodes one by one. */
+    static const SocketValueVariant static_unused_index{-1};
     for (const int iter_i : lf_body_nodes.index_range()) {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
-      lf_node.input(body_fn_.indices.inputs.main[0])
-          .set_default_value(&eval_storage.index_values[iter_i]);
+      const SocketValueVariant *index_value = use_index_values ?
+                                                  &eval_storage.index_values[iter_i] :
+                                                  &static_unused_index;
+      lf_node.input(body_fn_.indices.inputs.main[0]).set_default_value(index_value);
       for (const int i : IndexRange(num_border_links)) {
         lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.border_links[i]],
                           lf_node.input(body_fn_.indices.inputs.border_links[i]));
