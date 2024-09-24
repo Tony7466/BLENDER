@@ -1629,10 +1629,6 @@ static void drawTransformPixel(const bContext * /*C*/, ARegion *region, void *ar
 {
   TransInfo *t = static_cast<TransInfo *>(arg);
 
-  if (!transinfo_show_overlay(t, region)) {
-    return;
-  }
-
   if (region == t->region) {
     Scene *scene = t->scene;
     ViewLayer *view_layer = t->view_layer;
