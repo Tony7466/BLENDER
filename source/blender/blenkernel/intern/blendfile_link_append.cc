@@ -34,6 +34,7 @@
 #include "BLI_linklist.h"
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
+#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -193,16 +194,16 @@ static BlendHandle *link_append_context_library_blohandle_ensure(
     lib_context.bf_reports.reports = reports;
   }
 
-  const char *libname = lib_context.path.c_str();
+  const blender::StringRefNull libname = lib_context.path;
   BlendHandle *blo_handle = lib_context.blo_handle;
   if (blo_handle == nullptr) {
-    if (STREQ(libname, BLO_EMBEDDED_STARTUP_BLEND)) {
+    if (libname == BLO_EMBEDDED_STARTUP_BLEND) {
       blo_handle = BLO_blendhandle_from_memory(lapp_context.blendfile_mem,
                                                int(lapp_context.blendfile_memsize),
                                                &lib_context.bf_reports);
     }
     else {
-      blo_handle = BLO_blendhandle_from_file(libname, &lib_context.bf_reports);
+      blo_handle = BLO_blendhandle_from_file(libname.c_str(), &lib_context.bf_reports);
     }
     lib_context.blo_handle = blo_handle;
     lib_context.blo_handle_is_owned = true;
@@ -360,7 +361,7 @@ void BKE_blendfile_link_append_context_item_library_index_enable(
     BlendfileLinkAppendContextItem *item,
     const int library_index)
 {
-  item->libraries[library_index].set(true);
+  item->libraries[library_index].set();
 }
 
 bool BKE_blendfile_link_append_context_is_empty(BlendfileLinkAppendContext *lapp_context)
