@@ -15,6 +15,8 @@
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 
+#include "BKE_anim_data.hh"
+
 #include "BLI_math_vector.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -1110,16 +1112,37 @@ static_assert(sizeof(ChannelGroup) == sizeof(::bActionGroup),
  * be animated). If the above fall-through case of "no slot found" is reached, this function
  * will still return `true` as the Action was successfully assigned.
  */
-bool assign_action(Action *action, ID &animated_id);
+bool assign_action(bAction *action, ID &animated_id);
+
+/**
+ * Same as assign_action(action, id) above.
+ *
+ * Use this function when you already have the AnimData struct of this ID.
+ */
+void assign_action(bAction *action, OwnedAnimData owned_adt);
+
+/**
+ * Same as assign_action, except it assigns to AnimData::tmpact and tmp_slot_handle.
+ */
+void assign_tmpaction(bAction *action, OwnedAnimData owned_adt);
 
 /**
  * Un-assign the Action assigned to this ID.
  *
  * Same as calling `assign_action(nullptr, animated_id)`.
  *
- * \see assign_action
+ * \see blender::animrig::assign_action(ID &animated_id)
  */
 void unassign_action(ID &animated_id);
+
+/**
+ * Un-assign the Action assigned to this ID.
+ *
+ * Same as calling `assign_action(nullptr, owned_adt)`.
+ *
+ * \see blender::animrig::assign_action(OwnedAnimData owned_adt)
+ */
+void unassign_action(OwnedAnimData owned_adt);
 
 /**
  * Assign the Action, ensuring that a Slot is also assigned.
@@ -1148,7 +1171,7 @@ Slot *assign_action_ensure_slot_for_keying(Action &action, ID &animated_id);
  * This function always succeeds, and thus it doesn't have any return value.
  */
 void generic_assign_action(ID &animated_id,
-                           Action *action_to_assign,
+                           bAction *action_to_assign,
                            bAction *&action_ptr_ref,
                            slot_handle_t &slot_handle_ref,
                            char *slot_name);
@@ -1386,6 +1409,17 @@ void assert_baklava_phase_1_invariants(const Strip &strip);
  * Returns a nullptr if the action is empty or already layered.
  */
 Action *convert_to_layered_action(Main &bmain, const Action &legacy_action);
+
+/**
+ * Move the given slot from `from_action` to `to_action`.
+ * The slot name might not be exactly the same if the name already exists in the slots of
+ * `to_action`. Also the slot handle is likely going to be different on `to_action`.
+ * All users of the slot will be reassigned to the moved slot on `to_action`.
+ *
+ * \note The `from_action` will not be deleted by this function. But it might leave it without
+ * users which means it will not be saved (unless it has a fake user).
+ */
+void move_slot(Main &bmain, Slot &slot, Action &from_action, Action &to_action);
 
 /**
  * Deselect the keys of all actions in the Span. Duplicate entries are only visited once.
