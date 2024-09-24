@@ -399,7 +399,6 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
   for (bAnimListElem *ale : unique_fcu_anim_list_elements) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
-    visited_fcurves.add(fcu);
     bool intvals = (fcu->flag & FCURVE_INT_VALUES) != 0;
     float unit_scale, offset;
     float cfra;
