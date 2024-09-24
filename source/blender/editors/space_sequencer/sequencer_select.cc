@@ -162,11 +162,11 @@ static void select_active_side(
 static void select_active_side_range(const Scene *scene,
                                      ListBase *seqbase,
                                      const int sel_side,
-                                     const int frame_ranges[MAXSEQ],
+                                     const int frame_ranges[SEQ_MAX_CHANNELS],
                                      const int frame_ignore)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
-    if (seq->machine < MAXSEQ) {
+    if (seq->machine < SEQ_MAX_CHANNELS) {
       const int frame = frame_ranges[seq->machine];
       if (frame == frame_ignore) {
         continue;
@@ -1952,13 +1952,13 @@ static int sequencer_select_side_exec(bContext *C, wmOperator *op)
 
   const int sel_side = RNA_enum_get(op->ptr, "side");
   const int frame_init = sel_side == SEQ_SIDE_LEFT ? INT_MIN : INT_MAX;
-  int frame_ranges[MAXSEQ];
+  int frame_ranges[SEQ_MAX_CHANNELS];
   bool selected = false;
 
   copy_vn_i(frame_ranges, ARRAY_SIZE(frame_ranges), frame_init);
 
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if (UNLIKELY(seq->machine >= MAXSEQ)) {
+    if (UNLIKELY(seq->machine >= SEQ_MAX_CHANNELS)) {
       continue;
     }
     int *frame_limit_p = &frame_ranges[seq->machine];
@@ -2190,6 +2190,19 @@ static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEven
     StripSelection selection = ED_sequencer_pick_strip_and_handle(scene, v2d, mouse_co);
 
     if (selection.seq1 != nullptr) {
+      if (selection.handle != SEQ_HANDLE_NONE) {
+        SpaceSeq *sseq = CTX_wm_space_seq(C);
+        sseq->flag |= SPACE_SEQ_DESELECT_STRIP_HANDLE;
+        ED_sequencer_deselect_all(scene);
+
+        selection.seq1->flag |= (SELECT) | ((selection.handle == SEQ_HANDLE_RIGHT) ? SEQ_RIGHTSEL :
+                                                                                     SEQ_LEFTSEL);
+        if (selection.seq2 != nullptr) {
+          selection.seq2->flag |= (SELECT) |
+                                  ((selection.handle == SEQ_HANDLE_RIGHT) ? SEQ_LEFTSEL :
+                                                                            SEQ_RIGHTSEL);
+        }
+      }
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
     }
   }

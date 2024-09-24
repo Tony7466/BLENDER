@@ -114,6 +114,9 @@ static std::unique_ptr<GreasePencilStrokeOperation> get_stroke_operation(bContex
     }
   }
   else if (mode == PaintMode::SculptGreasePencil) {
+    if (stroke_mode == BRUSH_STROKE_SMOOTH) {
+      return greasepencil::new_smooth_operation(stroke_mode);
+    }
     switch (eBrushGPSculptType(brush.gpencil_sculpt_brush_type)) {
       case GPSCULPT_BRUSH_TYPE_SMOOTH:
         return greasepencil::new_smooth_operation(stroke_mode);
@@ -395,7 +398,7 @@ static void grease_pencil_sculpt_paint_cancel(bContext *C, wmOperator *op)
 
 static void GREASE_PENCIL_OT_sculpt_paint(wmOperatorType *ot)
 {
-  ot->name = "Grease Pencil Draw";
+  ot->name = "Grease Pencil Sculpt";
   ot->idname = "GREASE_PENCIL_OT_sculpt_paint";
   ot->description = "Sculpt strokes in the active Grease Pencil object";
 
@@ -734,7 +737,7 @@ static void grease_pencil_fill_extension_cut(const bContext &C,
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const Span<float3> positions = curves.positions();
     const VArray<bool> cyclic = curves.cyclic();
-    const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+    const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
     const float4x4 layer_to_view = view_matrix * layer.to_world_space(object);
 
     for (const int i_curve : curves.curves_range()) {
@@ -970,7 +973,7 @@ static ed::greasepencil::ExtensionData grease_pencil_fill_get_extension_data(
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const Span<float3> positions = curves.positions();
     const VArray<bool> cyclic = curves.cyclic();
-    const float4x4 layer_to_world = grease_pencil.layer(info.layer_index)->to_world_space(object);
+    const float4x4 layer_to_world = grease_pencil.layer(info.layer_index).to_world_space(object);
 
     for (const int i_curve : curves.curves_range()) {
       const IndexRange points = points_by_curve[i_curve];
@@ -1082,8 +1085,7 @@ static void grease_pencil_fill_overlay_cb(const bContext *C, ARegion * /*region*
       const IndexMask curve_mask = info.drawing.strokes().curves_range();
       const VArray<ColorGeometry4f> colors = VArray<ColorGeometry4f>::ForSingle(
           stroke_curves_color, info.drawing.strokes().points_num());
-      const float4x4 layer_to_world =
-          grease_pencil.layer(info.layer_index)->to_world_space(object);
+      const float4x4 layer_to_world = grease_pencil.layer(info.layer_index).to_world_space(object);
       const bool use_xray = false;
       const float radius_scale = 1.0f;
 
