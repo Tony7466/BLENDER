@@ -471,6 +471,9 @@ class VersioningTest(unittest.TestCase):
         self.assertEqual(len(action.groups), 1)
         self.assertEqual(len(action.groups[0].channels), 9)
 
+        # Multi user slots do not get named after their users.
+        self.assertEqual(action.slots[0].name, "OBSlot")
+
     def test_action_constraint(self):
         constrained_object = bpy.data.objects["action_constraint_constrained"]
         action_constraint = constrained_object.constraints[0]
@@ -491,6 +494,9 @@ class VersioningTest(unittest.TestCase):
         self.assertEqual(len(action.fcurves), 20)
         self.assertEqual(len(action.groups[0].channels), 10)
         self.assertEqual(len(action.groups[1].channels), 10)
+
+        # Slots with a single user are named after their user.
+        self.assertEqual(action.slots[0].name, "OBarmature_object")
 
 
 def main():
