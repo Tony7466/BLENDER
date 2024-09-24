@@ -223,7 +223,6 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
                                      const float2 &mval,
                                      const bool use_calc_direction)
 {
-  BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
   ARegion *region = t->region;
   View3D *v3d = nullptr;
 
@@ -231,12 +230,15 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
   bool use_occlude_geometry = false;
   if (t->spacetype == SPACE_VIEW3D) {
     v3d = static_cast<View3D *>(t->area ? t->area->spacedata.first : nullptr);
-    use_occlude_geometry = (v3d && tc->obedit->dt > OB_WIRE && !XRAY_ENABLED(v3d));
+    if (tc->obedit->type == OB_MESH) {
+      use_occlude_geometry = (v3d && tc->obedit->dt > OB_WIRE && !XRAY_ENABLED(v3d));
+    }
   }
   const blender::float4x4 projection = edge_slide_projmat_get(t, tc);
 
   BMBVHTree *bmbvh = nullptr;
   if (use_occlude_geometry) {
+    BMEditMesh *em = BKE_editmesh_from_object(tc->obedit);
     bmbvh = BKE_bmbvh_new_from_editmesh(em, BMBVH_RESPECT_HIDDEN, nullptr, false);
   }
 
