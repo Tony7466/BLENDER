@@ -232,6 +232,10 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
       BMEdge *e;
       BMVert *v = static_cast<BMVert *>(sv->td->extra);
 
+      /* Screen-space coords. */
+      float2 sco_a, sco_b;
+      sld->project(sv, sco_a, sco_b);
+
       /* Search cross edges for visible edge to the mouse cursor,
        * then use the shared vertex to calculate screen vector. */
       BM_ITER_ELEM (e, &iter_other, v, BM_EDGES_OF_VERT) {
@@ -247,10 +251,6 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
         if (!is_visible && !use_calc_direction) {
           continue;
         }
-
-        /* Screen-space coords. */
-        float2 sco_a, sco_b;
-        sld->project(sv, sco_a, sco_b);
 
         /* Global direction. */
         float dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
