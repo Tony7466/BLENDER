@@ -22,8 +22,10 @@ class VKVertexBuffer;
 class VKStorageBuffer;
 class VKIndexBuffer;
 class VKContext;
+class VKDescriptorSetTracker;
 
 class VKStateManager : public StateManager {
+  friend class VKDescriptorSetTracker;
 
   uint texture_unpack_row_length_ = 0;
 
@@ -34,6 +36,8 @@ class VKStateManager : public StateManager {
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
 
  public:
+  bool is_dirty = false;
+
   void apply_state() override;
   void force_state() override;
 

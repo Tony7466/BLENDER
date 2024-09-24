@@ -50,10 +50,7 @@ void VKUniformBuffer::clear_to_zero()
   buffer_.clear(context, 0);
 }
 
-void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
-                                            int binding,
-                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
-                                            const GPUSamplerState /*sampler_state*/)
+void VKUniformBuffer::ensure_updated()
 {
   if (!buffer_.is_allocated()) {
     allocate();
@@ -64,22 +61,26 @@ void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
     update(data_);
     MEM_SAFE_FREE(data_);
   }
+}
+
+void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
+                                            int binding,
+                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                            const GPUSamplerState /*sampler_state*/)
+{
+  ensure_updated();
 
   const std::optional<VKDescriptorSet::Location> location =
       data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    if (bind_type == shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
-      data.descriptor_set.bind_buffer(
-          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, vk_handle(), size_in_bytes(), *location);
-    }
-    else {
+    if (bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
       data.descriptor_set.bind_buffer(
           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vk_handle(), size_in_bytes(), *location);
+      render_graph::VKBufferAccess buffer_access = {};
+      buffer_access.vk_buffer = buffer_.vk_handle();
+      buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);
+      data.resource_access_info.buffers.append(buffer_access);
     }
-    render_graph::VKBufferAccess buffer_access = {};
-    buffer_access.vk_buffer = buffer_.vk_handle();
-    buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);
-    data.resource_access_info.buffers.append(buffer_access);
   }
 }
 

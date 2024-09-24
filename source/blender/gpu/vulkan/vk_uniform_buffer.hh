@@ -48,6 +48,7 @@ class VKUniformBuffer : public UniformBuf, public VKBindableResource, NonCopyabl
                              int binding,
                              shader::ShaderCreateInfo::Resource::BindType bind_type,
                              const GPUSamplerState sampler_state) override;
+  void ensure_updated();
 
  private:
   void allocate();

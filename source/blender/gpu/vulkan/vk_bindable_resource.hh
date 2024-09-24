@@ -141,6 +141,16 @@ class VKBindSpace {
     }
   }
 
+  const ResourceBinding *get(int binding) const
+  {
+    for (const ResourceBinding &bind : bindings_) {
+      if (bind.binding == binding) {
+        return &bind;
+      }
+    }
+    return nullptr;
+  }
+
   /**
    * Unregister the given resource from this namespace.
    */
