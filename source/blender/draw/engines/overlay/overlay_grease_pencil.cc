@@ -54,7 +54,6 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PassList *psl = vedata->psl;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  const View3D *v3d = draw_ctx->v3d;
   const bool use_weight = (draw_ctx->object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
 
   GPUShader *sh;

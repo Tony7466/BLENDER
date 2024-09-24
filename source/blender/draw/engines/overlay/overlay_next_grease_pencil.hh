@@ -56,7 +56,6 @@ class GreasePencil {
     const ToolSettings *ts = state.scene->toolsettings;
 
     const bke::AttrDomain selection_domain_edit = ED_grease_pencil_edit_selection_domain_get(ts);
-    const bke::AttrDomain selection_domain_sculpt = ED_grease_pencil_edit_selection_domain_get(ts);
     const bool show_edit_point = selection_domain_edit == bke::AttrDomain::Point;
     const bool show_lines = (v3d->gp_flag & V3D_GP_SHOW_EDIT_LINES);
 
