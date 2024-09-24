@@ -4655,15 +4655,15 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   switch (pbvh->type()) {
     case bke::pbvh::Type::Mesh:
       ss.active_face_index = srd.active_face_grid_index;
-      ss.active_grid_index = {};
+      ss.active_grid_index = std::nullopt;
       break;
     case bke::pbvh::Type::Grids:
-      ss.active_face_index = {};
+      ss.active_face_index = std::nullopt;
       ss.active_grid_index = srd.active_face_grid_index;
       break;
     case bke::pbvh::Type::BMesh:
-      ss.active_face_index = {};
-      ss.active_grid_index = {};
+      ss.active_face_index = std::nullopt;
+      ss.active_grid_index = std::nullopt;
       break;
   }
 
