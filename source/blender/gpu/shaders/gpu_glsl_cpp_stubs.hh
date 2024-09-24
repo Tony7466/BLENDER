@@ -8,6 +8,9 @@
  * The goal of this header is to make the GLSL source file compile using a modern C++ compiler.
  * This allows for linting and IDE functionalities to work.
  *
+ * This file can be included inside any GLSL file to make the GLSL syntax to work. Then your IDE
+ * must to be configured to associate .glsl files to C++ so that the C++ linter does the analysis.
+ *
  * This is why the implementation of each function is not needed. However, we make sure that type
  * casting is always explicit. This is because implicit casts are not always supported on all
  * implementations.
