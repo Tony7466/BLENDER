@@ -267,6 +267,10 @@ bool BKE_paint_select_face_test(const Object *ob);
  */
 bool BKE_paint_select_vert_test(const Object *ob);
 /**
+ * Return true when in grease pencil sculpt mode.
+ */
+bool BKE_paint_select_grease_pencil_test(const Object *ob);
+/**
  * used to check if selection is possible
  * (when we don't care if its face or vert)
  */
@@ -333,8 +337,6 @@ struct SculptBoundaryPreview {
 };
 
 struct SculptFakeNeighbors {
-  bool use_fake_neighbors;
-
   /* Max distance used to calculate neighborhood information. */
   float current_max_distance;
 
