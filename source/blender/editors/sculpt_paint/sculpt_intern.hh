@@ -624,7 +624,7 @@ namespace blender::ed::sculpt_paint {
 
 /**
  * Utility functions to get the closest vertices after flipping an original vertex position for
- * all symmetry passes.
+ * all symmetry passes. The returned vector is sorted.
  */
 Vector<int> find_symm_verts_mesh(const Depsgraph &depsgraph,
                                  const Object &object,
