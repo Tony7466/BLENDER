@@ -312,7 +312,7 @@ template<int R> struct MatBase<2, R> : MatOp<2, R> {
   explicit MatBase(T) {}
   explicit MatBase(T, T, T, T) {}
   explicit MatBase(ColT, ColT) {}
-  template<typename OtherC, typename OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
+  template<int OtherC, int OtherR> explicit MatBase(const MatBase<OtherC, OtherR> &) {}
 };
 
 template<int R> struct MatBase<3, R> : MatOp<3, R> {
@@ -605,22 +605,22 @@ template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) {}
 template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) {}
 
 /* Atomic operations. */
-int atomicAdd(int &, int);
-int atomicAnd(int &, int);
-int atomicOr(int &, int);
-int atomicXor(int &, int);
-int atomicMin(int &, int);
-int atomicMax(int &, int);
-int atomicExchange(int &, int);
-int atomicCompSwap(int &, int, int);
-uint atomicAdd(uint &, uint);
-uint atomicAnd(uint &, uint);
-uint atomicOr(uint &, uint);
-uint atomicXor(uint &, uint);
-uint atomicMin(uint &, uint);
-uint atomicMax(uint &, uint);
-uint atomicExchange(uint &, uint);
-uint atomicCompSwap(uint &, uint, uint);
+int atomicAdd(int &, int) {}
+int atomicAnd(int &, int) {}
+int atomicOr(int &, int) {}
+int atomicXor(int &, int) {}
+int atomicMin(int &, int) {}
+int atomicMax(int &, int) {}
+int atomicExchange(int &, int) {}
+int atomicCompSwap(int &, int, int) {}
+uint atomicAdd(uint &, uint) {}
+uint atomicAnd(uint &, uint) {}
+uint atomicOr(uint &, uint) {}
+uint atomicXor(uint &, uint) {}
+uint atomicMin(uint &, uint) {}
+uint atomicMax(uint &, uint) {}
+uint atomicExchange(uint &, uint) {}
+uint atomicCompSwap(uint &, uint, uint) {}
 
 /* Packing functions. */
 uint packHalf2x16(float2) {}
@@ -651,23 +651,23 @@ bool is_zero(vec4) {}
  * \{ */
 
 /* Vertex Shader Special Variables. */
-const int gl_VertexID;
-const int gl_InstanceID;
-const int gl_BaseVertex;
-const int gl_BaseInstance;
-float4 gl_Position;
-float gl_PointSize;
+const int gl_VertexID = 0;
+const int gl_InstanceID = 0;
+const int gl_BaseVertex = 0;
+const int gl_BaseInstance = 0;
+float4 gl_Position = float4(0);
+double gl_PointSize = 0;
 /* Fragment Shader Special Variables. */
-const float4 gl_FragCoord;
-const bool gl_FrontFacing;
-const float2 gl_PointCoord;
-const int gl_PrimitiveID;
-float gl_FragDepth;
+const float4 gl_FragCoord = float4(0);
+const bool gl_FrontFacing = true;
+const float2 gl_PointCoord = float2(0);
+const int gl_PrimitiveID = 0;
+float gl_FragDepth = 0;
 /* Read-only in Fragment Shader and write-only in vertex shader. */
-float gl_ClipDistance[];
+float gl_ClipDistance[6] = {0};
 /* Note: Use GPU variant as they might be emulated. */
-int gpu_Layer;
-int gpu_ViewportIndex;
+int gpu_Layer = 0;
+int gpu_ViewportIndex = 0;
 
 /** \} */
 
@@ -684,8 +684,8 @@ int gpu_ViewportIndex;
 /* Pass argument by copy (default). */
 #  define in
 
-/* Cannot easily mutate them. Pass every by copy for now. */
-void discard;
+/* Discards the output of the current fragment shader invocation and halts its execution. */
+#  define discard
 
 /** \} */
 
