@@ -132,7 +132,6 @@ static void convert_action_in_place(blender::animrig::Action &action)
 
     group->channel_bag = &bag;
     group->fcurve_range_start = fcurve_index;
-    group->fcurve_range_length = 0;
 
     LISTBASE_FOREACH (FCurve *, fcu, &group->channels) {
       if (fcu->grp != group) {
@@ -140,6 +139,8 @@ static void convert_action_in_place(blender::animrig::Action &action)
       }
       bag.fcurve_array[fcurve_index++] = fcu;
     }
+
+    group->fcurve_range_length = fcurve_index - group->fcurve_range_start;
   }
 
   LISTBASE_FOREACH (FCurve *, fcu, &action.curves) {
