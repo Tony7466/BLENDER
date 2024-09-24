@@ -20,14 +20,16 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_fcurve.h"
+#include "BKE_action.hh"
+#include "BKE_armature.hh"
+#include "BKE_fcurve.hh"
 
-#include "DEG_depsgraph.h"
+#include "ANIM_action_legacy.hh"
+
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Flip the Action (Armature/Pose Objects)
@@ -394,7 +396,7 @@ static void action_flip_pchan_rna_paths(bAction *act)
     agrp->flag &= ~AGRP_TEMP;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_all(act)) {
     if (!STRPREFIX(fcu->rna_path, path_pose_prefix)) {
       continue;
     }
@@ -458,7 +460,7 @@ void BKE_action_flip_with_pose(bAction *act, Object *ob_arm)
 
   action_flip_pchan_rna_paths(act);
 
-  DEG_id_tag_update(&act->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&act->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 /** \} */

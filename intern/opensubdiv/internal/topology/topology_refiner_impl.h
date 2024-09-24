@@ -15,12 +15,11 @@
 
 #include "internal/base/memory.h"
 #include "internal/topology/mesh_topology.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 struct OpenSubdiv_Converter;
 
-namespace blender {
-namespace opensubdiv {
+namespace blender::opensubdiv {
 
 class TopologyRefinerImpl {
  public:
@@ -61,10 +60,8 @@ class TopologyRefinerImpl {
   MEM_CXX_CLASS_ALLOC_FUNCS("TopologyRefinerImpl");
 };
 
-}  // namespace opensubdiv
-}  // namespace blender
+}  // namespace blender::opensubdiv
 
-struct OpenSubdiv_TopologyRefinerImpl : public blender::opensubdiv::TopologyRefinerImpl {
-};
+struct OpenSubdiv_TopologyRefinerImpl : public blender::opensubdiv::TopologyRefinerImpl {};
 
 #endif  // OPENSUBDIV_TOPOLOGY_REFINER_IMPL_H_

@@ -4,12 +4,14 @@
 
 #include "testing/testing.h"
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
+
+#define DO_PERF_TESTS 0
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -439,6 +441,101 @@ TEST(path_util, NameAtIndex_NoneComplexNeg)
 }
 
 #undef AT_INDEX
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_unc
+ * \{ */
+
+TEST(path_util, IsUnc)
+{
+  EXPECT_TRUE(BLI_path_is_unc("\\\\server_name\\share_name"));
+  EXPECT_TRUE(BLI_path_is_unc("\\\\.\\C:\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_unc("\\\\?\\C:\\file.txt"));
+
+  EXPECT_FALSE(BLI_path_is_unc(""));
+  EXPECT_FALSE(BLI_path_is_unc("."));
+  EXPECT_FALSE(BLI_path_is_unc("..\\relative\\path"));
+  EXPECT_FALSE(BLI_path_is_unc(".\\relative\\path"));
+  EXPECT_FALSE(BLI_path_is_unc("\\a_single_backslash"));
+  EXPECT_FALSE(BLI_path_is_unc("//must_be_backslashes"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_win32_drive
+ * \{ */
+
+TEST(path_util, IsWin32Drive)
+{
+  EXPECT_TRUE(BLI_path_is_win32_drive("E:\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_win32_drive("E:/file.txt"));
+  EXPECT_TRUE(BLI_path_is_win32_drive("E:/"));
+  EXPECT_TRUE(BLI_path_is_win32_drive("E:\\"));
+  EXPECT_TRUE(BLI_path_is_win32_drive("E:"));
+  EXPECT_TRUE(BLI_path_is_win32_drive("e:"));
+
+  EXPECT_FALSE(BLI_path_is_win32_drive(""));
+  EXPECT_FALSE(BLI_path_is_win32_drive("."));
+  EXPECT_FALSE(BLI_path_is_win32_drive("Ef"));
+  EXPECT_FALSE(BLI_path_is_win32_drive("1:"));
+  EXPECT_FALSE(BLI_path_is_win32_drive("../file"));
+  EXPECT_FALSE(BLI_path_is_win32_drive("\\\\server_name\\share_name"));
+  EXPECT_FALSE(BLI_path_is_win32_drive("\\\\?\\C:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_win32_drive("//relative.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_win32_drive_only
+ * \{ */
+
+TEST(path_util, IsWin32DriveOnly)
+{
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("E:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("E:/file.txt"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("E:/"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("E:\\"));
+
+  EXPECT_TRUE(BLI_path_is_win32_drive_only("E:"));
+  EXPECT_TRUE(BLI_path_is_win32_drive_only("e:"));
+
+  EXPECT_FALSE(BLI_path_is_win32_drive_only(""));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("."));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("Ef"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("1:"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("../file"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("\\\\server_name\\share_name"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("\\\\?\\C:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_only("//relative.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_win32_drive_with_slash
+ * \{ */
+
+TEST(path_util, IsWin32DriveWithSlash)
+{
+  EXPECT_TRUE(BLI_path_is_win32_drive_with_slash("E:\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_win32_drive_with_slash("E:/file.txt"));
+
+  EXPECT_TRUE(BLI_path_is_win32_drive_with_slash("E:/"));
+  EXPECT_TRUE(BLI_path_is_win32_drive_with_slash("E:\\"));
+
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("E:"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("e:"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("Ef"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("1:"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("../file"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("\\\\server_name\\share_name"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("\\\\?\\C:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_win32_drive_with_slash("//relative.txt"));
+}
 
 /** \} */
 
@@ -1283,6 +1380,59 @@ TEST(path_util, RelPath_BufferOverflowSubdir)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_rel
+ * \{ */
+
+TEST(path_util, PathIsRel)
+{
+  EXPECT_TRUE(BLI_path_is_rel("//file.txt"));
+
+  EXPECT_FALSE(BLI_path_is_rel(""));
+  EXPECT_FALSE(BLI_path_is_rel("."));
+  EXPECT_FALSE(BLI_path_is_rel("\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel(".hide/file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("C:/file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("../file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\host\\server\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_rel("\\\\?\\C:\\server\\file.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_is_abs_from_cwd
+ * \{ */
+
+TEST(path_util, PathIsAbsFromCwd)
+{
+#ifdef WIN32
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("/file.txt"));
+
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("C:/file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("C:\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("\\\\host\\server\\file.txt"));
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("\\\\?\\C:\\server\\file.txt"));
+#else
+  EXPECT_TRUE(BLI_path_is_abs_from_cwd("/file.txt"));
+
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("C:/file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("C:\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("\\\\host\\server\\file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("\\\\?\\C:\\server\\file.txt"));
+#endif
+
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd(""));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("."));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("../file.txt"));
+  EXPECT_FALSE(BLI_path_is_abs_from_cwd("./file.txt"));
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Tests for: #BLI_path_contains
  * \{ */
 
@@ -1315,5 +1465,97 @@ TEST(path_util, Contains_Windows_case_insensitive)
       << "On Windows path comparison should ignore case";
 }
 #endif /* WIN32 */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tests for: #BLI_path_has_hidden_component
+ * \{ */
+
+TEST(path_util, HasHiddenComponents)
+{
+  /* No hidden components: */
+  EXPECT_FALSE(BLI_path_has_hidden_component(""));
+  EXPECT_FALSE(BLI_path_has_hidden_component(" "));
+  EXPECT_FALSE(BLI_path_has_hidden_component(".."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("../.."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("..\\.."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/../b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\..\\b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a~b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/b/c"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\b\\c"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("/a/b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("C:/a/b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("C:/\a\\b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a.txt"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/b.txt"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\b.txt"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("/"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("\\"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a./b."));
+
+  /* NOTE: path component that is just a dot is not considered hidden. */
+  EXPECT_FALSE(BLI_path_has_hidden_component("."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\."));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a/./b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("a\\.\\b"));
+  EXPECT_FALSE(BLI_path_has_hidden_component("./a"));
+  EXPECT_FALSE(BLI_path_has_hidden_component(".\\a"));
+
+  /* Does contain hidden components: */
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a"));
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a.b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a/.b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a\\.b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a/b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a\\b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a/.b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component(".a\\.b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a/.b.c"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a/.b/c.txt"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a\\.b\\c.txt"));
+
+  /* Tilde at end of path component: considered hidden. */
+  EXPECT_TRUE(BLI_path_has_hidden_component("~"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a~"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a/~/c"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a/b~/c"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a\\b~\\c"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("~/b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a~/b"));
+  EXPECT_TRUE(BLI_path_has_hidden_component("a~\\b"));
+}
+
+#if DO_PERF_TESTS
+
+#  include "BLI_timeit.hh"
+
+TEST(path_util, HasHiddenComponents_Performance)
+{
+  SCOPED_TIMER(__func__);
+  const char *test_paths[] = {
+      "test.txt",
+      "test/a_fairly_long/path/here/shall_we/ok.txt",
+      "test/a_fairly_long/path/here/.with_a_hidden_component/shall_we/ok.txt",
+      "test/.another_path_with_hidden_component/yes.txt",
+      "test/another/path/with/.hidden_filename",
+  };
+  const int RUN_COUNT = 10'000'000;
+  int hidden = 0;
+  for (int i = 0; i < RUN_COUNT; i++) {
+    for (int j = 0; j < ARRAY_SIZE(test_paths); j++) {
+      hidden += BLI_path_has_hidden_component(test_paths[j]) ? 1 : 0;
+    }
+  }
+  EXPECT_EQ(RUN_COUNT * 3, hidden);
+}
+
+#endif
 
 /** \} */

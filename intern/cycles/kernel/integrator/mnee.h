@@ -157,8 +157,7 @@ ccl_device_forceinline void mnee_setup_manifold_vertex(KernelGlobals kg,
         kg, sd_vtx->object, sd_vtx->prim, sd_vtx->time, verts, normals);
 
     /* Compute refined position. */
-    sd_vtx->P = motion_triangle_point_from_uv(
-        kg, sd_vtx, isect->object, isect->prim, isect->u, isect->v, verts);
+    sd_vtx->P = motion_triangle_point_from_uv(kg, sd_vtx, isect->u, isect->v, verts);
   }
 
   /* Instance transform. */
@@ -599,7 +598,8 @@ mnee_sample_bsdf_dh(ClosureType type, float alpha_x, float alpha_y, float sample
  * We assume here that the pdf (in half-vector measure) is the same as
  * the one calculation when sampling the microfacet normals from the
  * specular chain above: this allows us to simplify the bsdf weight */
-ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(ccl_private ShaderClosure *closure,
+ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(KernelGlobals kg,
+                                                            ccl_private ShaderClosure *closure,
                                                             float3 wi,
                                                             float3 wo)
 {
@@ -623,7 +623,8 @@ ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(ccl_private ShaderCl
     G = bsdf_G<MicrofacetType::GGX>(alpha2, cosNI, cosNO);
   }
 
-  Spectrum F = microfacet_fresnel(bsdf, wi, Ht, true);
+  Spectrum reflectance, transmittance;
+  microfacet_fresnel(kg, bsdf, cosHI, nullptr, &reflectance, &transmittance);
 
   /*
    * bsdf_do = (1 - F) * D_do * G * |h.wi| / (n.wi * n.wo)
@@ -634,7 +635,7 @@ ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(ccl_private ShaderCl
    *              = (1 - F) * G * |h.wi / (n.wi * n.h^2)|
    */
   /* TODO: energy compensation for multi-GGX. */
-  return bsdf->weight * F * G * fabsf(cosHI / (cosNI * sqr(cosThetaM)));
+  return bsdf->weight * transmittance * G * fabsf(cosHI / (cosNI * sqr(cosThetaM)));
 }
 
 /* Compute transfer matrix determinant |T1| = |dx1/dxn| (and |dh/dx| in the process) */
@@ -788,7 +789,7 @@ ccl_device_forceinline bool mnee_path_contribution(KernelGlobals kg,
   const int diffuse_bounce = INTEGRATOR_STATE(state, path, diffuse_bounce);
   const int bounce = INTEGRATOR_STATE(state, path, bounce);
 
-  /* Set diffuse bounce info . */
+  /* Set diffuse bounce info. */
   INTEGRATOR_STATE_WRITE(state, path, diffuse_bounce) = diffuse_bounce + 1;
 
   /* Evaluate light sample
@@ -858,7 +859,7 @@ ccl_device_forceinline bool mnee_path_contribution(KernelGlobals kg,
     probe_ray.self.prim = v.prim;
     probe_ray.P = v.p;
 
-    /* Set view looking dir. */
+    /* Set view looking direction. */
     wi = -wo;
     wi_len = wo_len;
 
@@ -887,7 +888,7 @@ ccl_device_forceinline bool mnee_path_contribution(KernelGlobals kg,
     surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
         kg, state, sd_mnee, NULL, PATH_RAY_DIFFUSE, true);
 
-    /* Set light looking dir. */
+    /* Set light looking direction. */
     wo = (vi == vertex_count - 1) ? (light_fixed_direction ? ls->D : ls->P - v.p) :
                                     vertices[vi + 1].p - v.p;
     wo = normalize_len(wo, &wo_len);
@@ -895,7 +896,7 @@ ccl_device_forceinline bool mnee_path_contribution(KernelGlobals kg,
     /* Evaluate product term inside eq.6 at solution interface. vi
      * divided by corresponding sampled pdf:
      * fr(vi)_do / pdf_dh(vi) x |do/dh| x |n.wo / n.h| */
-    Spectrum bsdf_contribution = mnee_eval_bsdf_contribution(v.bsdf, wi, wo);
+    Spectrum bsdf_contribution = mnee_eval_bsdf_contribution(kg, v.bsdf, wi, wo);
     bsdf_eval_mul(throughput, bsdf_contribution);
   }
 

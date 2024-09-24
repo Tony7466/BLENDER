@@ -136,8 +136,9 @@ void Film::add_default(Scene *scene)
 
 void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 {
-  if (!is_modified())
+  if (!is_modified()) {
     return;
+  }
 
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
@@ -328,6 +329,9 @@ void Film::device_update(Device *device, DeviceScene *dscene, Scene *scene)
 
       case PASS_BAKE_PRIMITIVE:
         kfilm->pass_bake_primitive = kfilm->pass_stride;
+        break;
+      case PASS_BAKE_SEED:
+        kfilm->pass_bake_seed = kfilm->pass_stride;
         break;
       case PASS_BAKE_DIFFERENTIAL:
         kfilm->pass_bake_differential = kfilm->pass_stride;
@@ -552,6 +556,9 @@ void Film::update_passes(Scene *scene, bool add_sample_count_pass)
   if (bake_manager->get_baking()) {
     add_auto_pass(scene, PASS_BAKE_PRIMITIVE, "BakePrimitive");
     add_auto_pass(scene, PASS_BAKE_DIFFERENTIAL, "BakeDifferential");
+    if (bake_manager->get_use_seed()) {
+      add_auto_pass(scene, PASS_BAKE_SEED, "BakeSeed");
+    }
   }
 
   if (add_sample_count_pass) {

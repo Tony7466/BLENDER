@@ -16,7 +16,6 @@
 #endif
 
 struct AnimData;
-struct CurveMapping;
 struct Ipo;
 struct bNodeTree;
 
@@ -73,9 +72,16 @@ typedef struct Light {
   float contact_bias;
   float contact_thickness;
 
-  float diff_fac, volume_fac;
-  float spec_fac, att_dist;
-  float _pad0;
+  float diff_fac;
+  float spec_fac;
+  float transmission_fac;
+  float volume_fac;
+
+  float att_dist;
+  float shadow_filter_radius;
+  float shadow_maximum_resolution;
+  float shadow_jitter_overblur;
+  char _pad3[4];
 
   /* Preview */
   struct PreviewImage *preview;
@@ -113,7 +119,7 @@ enum {
 /** #Light::mode */
 enum {
   LA_SHADOW = 1 << 0,
-  // LA_HALO = 1 << 1, /* Deprecated. .*/
+  // LA_HALO = 1 << 1, /* Deprecated. */
   // LA_LAYER = 1 << 2, /* Deprecated. */
   // LA_QUAD = 1 << 3, /* Deprecated. */
   // LA_NEG = 1 << 4, /* Deprecated. */
@@ -129,7 +135,7 @@ enum {
   /**
    * YAFRAY: light shadow-buffer flag, soft-light.
    * Since it is used with LOCAL light, can't use LA_SHAD.
-   * */
+   */
   // LA_YF_SOFT = 1 << 14, /* Deprecated. */
   // LA_LAYER_SHADOW = 1 << 15, /* Deprecated. */
   // LA_SHAD_TEX = 1 << 16, /* Deprecated. */
@@ -137,6 +143,10 @@ enum {
   // LA_SHOW_SHADOW_BOX = 1 << 18,
   LA_SHAD_CONTACT = 1 << 19,
   LA_CUSTOM_ATTENUATION = 1 << 20,
+  LA_USE_SOFT_FALLOFF = 1 << 21,
+  /** Use absolute resolution clamping instead of relative. */
+  LA_SHAD_RES_ABSOLUTE = 1 << 22,
+  LA_SHADOW_JITTER = 1 << 23,
 };
 
 /** #Light::falloff_type */

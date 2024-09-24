@@ -15,10 +15,9 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
-#include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_linestyle_types.h"
 #include "DNA_material_types.h"
@@ -27,20 +26,19 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_layer.h"
+#include "BKE_action.hh"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_linestyle.h"
 #include "BKE_material.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "ED_buttons.hh"
 #include "ED_physics.hh"
@@ -51,7 +49,7 @@
 
 #include "WM_api.hh"
 
-#include "buttons_intern.h" /* own include */
+#include "buttons_intern.hh" /* own include */
 
 static int set_pointer_type(ButsContextPath *path, bContextDataResult *result, StructRNA *type)
 {
@@ -327,7 +325,7 @@ static bool buttons_context_path_shaderfx(ButsContextPath *path)
   if (buttons_context_path_object(path)) {
     Object *ob = static_cast<Object *>(path->ptr[path->len - 1].data);
 
-    if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY)) {
+    if (ob && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
       return true;
     }
   }
@@ -554,7 +552,7 @@ static bool buttons_context_path(
   Scene *scene = WM_window_get_active_scene(window);
   ViewLayer *view_layer = WM_window_get_active_view_layer(window);
 
-  memset(path, 0, sizeof(*path));
+  *path = {};
   path->flag = flag;
 
   /* If some ID datablock is pinned, set the root pointer. */
@@ -693,7 +691,7 @@ static int buttons_shading_new_context(const bContext *C, int flag)
 void buttons_context_compute(const bContext *C, SpaceProperties *sbuts)
 {
   if (!sbuts->path) {
-    sbuts->path = MEM_callocN(sizeof(ButsContextPath), "ButsContextPath");
+    sbuts->path = MEM_new<ButsContextPath>("ButsContextPath");
   }
 
   ButsContextPath *path = static_cast<ButsContextPath *>(sbuts->path);
@@ -829,6 +827,7 @@ const char *buttons_context_dir[] = {
     "texture",
     "texture_user",
     "texture_user_property",
+    "texture_node",
     "bone",
     "edit_bone",
     "pose_bone",

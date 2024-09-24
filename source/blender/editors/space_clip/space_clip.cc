@@ -21,15 +21,14 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_context.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_movieclip.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "ED_anim_api.hh" /* for timeline cursor drawing */
 #include "ED_clip.hh"
@@ -39,9 +38,9 @@
 #include "ED_time_scrub_ui.hh"
 #include "ED_uvedit.hh" /* just for ED_image_draw_cursor */
 
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
-#include "GPU_matrix.h"
+#include "GPU_matrix.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -54,7 +53,7 @@
 
 #include "RNA_access.hh"
 
-#include "clip_intern.h" /* own include */
+#include "clip_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Local Utilities
@@ -227,7 +226,7 @@ static void clip_free(SpaceLink *sl)
 /* spacetype; init callback */
 static void clip_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
-  ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
+  ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
 
   /* add drop boxes */
   WM_event_add_dropbox_handler(&area->handlers, lb);
@@ -474,17 +473,17 @@ static void clip_operatortypes()
 static void clip_keymap(wmKeyConfig *keyconf)
 {
   /* ******** Global hotkeys available for all regions ******** */
-  WM_keymap_ensure(keyconf, "Clip", SPACE_CLIP, 0);
+  WM_keymap_ensure(keyconf, "Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
 
   /* ******** Hotkeys available for main region only ******** */
-  WM_keymap_ensure(keyconf, "Clip Editor", SPACE_CLIP, 0);
+  WM_keymap_ensure(keyconf, "Clip Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
   //  keymap->poll = ED_space_clip_tracking_poll;
 
   /* ******** Hotkeys available for preview region only ******** */
-  WM_keymap_ensure(keyconf, "Clip Graph Editor", SPACE_CLIP, 0);
+  WM_keymap_ensure(keyconf, "Clip Graph Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
 
   /* ******** Hotkeys available for channels region only ******** */
-  WM_keymap_ensure(keyconf, "Clip Dopesheet Editor", SPACE_CLIP, 0);
+  WM_keymap_ensure(keyconf, "Clip Dopesheet Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
 }
 
 /* DO NOT make this static, this hides the symbol and breaks API generation script. */
@@ -523,7 +522,7 @@ static bool clip_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*eve
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
+    if (ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
       return true;
     }
   }
@@ -536,7 +535,7 @@ static void clip_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   PointerRNA itemptr;
   char dir[FILE_MAX], file[FILE_MAX];
 
-  BLI_path_split_dir_file(WM_drag_get_path(drag), dir, sizeof(dir), file, sizeof(file));
+  BLI_path_split_dir_file(WM_drag_get_single_path(drag), dir, sizeof(dir), file, sizeof(file));
 
   RNA_string_set(drop->ptr, "directory", dir);
 
@@ -548,7 +547,7 @@ static void clip_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 /* area+region dropbox definition */
 static void clip_dropboxes()
 {
-  ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
+  ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
 
   WM_dropbox_add(lb, "CLIP_OT_open", clip_drop_poll, clip_drop_copy, nullptr, nullptr);
 }
@@ -658,17 +657,17 @@ static void clip_main_region_init(wmWindowManager *wm, ARegion *region)
   wmKeyMap *keymap;
 
   /* NOTE: don't use `UI_view2d_region_reinit(&region->v2d, ...)`
-   * since the space clip manages own v2d in #movieclip_main_area_set_view2d */
+   * since the space clip manages its own v2d in #movieclip_main_area_set_view2d */
 
   /* mask polls mode */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Editor", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -826,16 +825,16 @@ static void clip_preview_region_init(wmWindowManager *wm, ARegion *region)
 
   /* own keymap */
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   keymap = WM_keymap_ensure(wm->defaultconf, "Clip Time Scrub", SPACE_CLIP, RGN_TYPE_PREVIEW);
   WM_event_add_keymap_handler_poll(&region->handlers, keymap, ED_time_scrub_event_in_region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Graph Editor", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Graph Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -874,7 +873,10 @@ static void graph_region_draw(const bContext *C, ARegion *region)
   ED_time_scrub_draw_current_frame(region, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, nullptr);
+  if (region->winy > HEADERY * UI_SCALE_FAC) {
+    const rcti scroller_mask = ED_time_scrub_clamp_scroller_mask(v2d->mask);
+    UI_view2d_scrollers_draw(v2d, &scroller_mask);
+  }
 
   /* scale indicators */
   {
@@ -924,7 +926,9 @@ static void dopesheet_region_draw(const bContext *C, ARegion *region)
   ED_time_scrub_draw_current_frame(region, scene, sc->flag & SC_SHOW_SECONDS);
 
   /* scrollers */
-  UI_view2d_scrollers_draw(v2d, nullptr);
+  if (region->winy > HEADERY * UI_SCALE_FAC) {
+    UI_view2d_scrollers_draw(v2d, nullptr);
+  }
 }
 
 static void clip_preview_region_draw(const bContext *C, ARegion *region)
@@ -962,7 +966,7 @@ static void clip_channels_region_init(wmWindowManager *wm, ARegion *region)
 
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip Dopesheet Editor", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -1048,7 +1052,7 @@ static void clip_tools_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -1112,7 +1116,7 @@ static void clip_properties_region_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Clip", SPACE_CLIP, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -1151,16 +1155,18 @@ static void clip_properties_region_listener(const wmRegionListenerParams *params
 /** \name IO Callbacks
  * \{ */
 
-static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void clip_id_remap(ScrArea * /*area*/,
+                          SpaceLink *slink,
+                          const blender::bke::id::IDRemapper &mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 
-  if (!BKE_id_remapper_has_mapping_for(mappings, FILTER_ID_MC | FILTER_ID_MSK)) {
+  if (!mappings.contains_mappings_for_any(FILTER_ID_MC | FILTER_ID_MSK)) {
     return;
   }
 
-  BKE_id_remapper_apply(mappings, (ID **)&sclip->clip, ID_REMAP_APPLY_ENSURE_REAL);
-  BKE_id_remapper_apply(mappings, (ID **)&sclip->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&sclip->clip), ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&sclip->mask_info.mask), ID_REMAP_APPLY_ENSURE_REAL);
 }
 
 static void clip_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
@@ -1169,8 +1175,10 @@ static void clip_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
   const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
 
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sclip->clip, IDWALK_CB_USER_ONE);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sclip->mask_info.mask, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(
+      data, sclip->clip, IDWALK_CB_USER_ONE | IDWALK_CB_DIRECT_WEAK_LINK);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(
+      data, sclip->mask_info.mask, IDWALK_CB_USER_ONE | IDWALK_CB_DIRECT_WEAK_LINK);
 
   if (!is_readonly) {
     sclip->scopes.ok = 0;
@@ -1199,7 +1207,7 @@ static void clip_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_clip()
 {
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype clip");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_CLIP;
@@ -1281,8 +1289,6 @@ void ED_spacetype_clip()
 
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
-
   /* channels */
   art = MEM_cnew<ARegionType>("spacetype clip channels region");
   art->regionid = RGN_TYPE_CHANNELS;
@@ -1298,6 +1304,8 @@ void ED_spacetype_clip()
   /* regions: hud */
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
+
+  BKE_spacetype_register(std::move(st));
 }
 
 /** \} */

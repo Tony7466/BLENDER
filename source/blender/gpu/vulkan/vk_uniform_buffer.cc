@@ -10,6 +10,7 @@
 #include "vk_context.hh"
 #include "vk_shader.hh"
 #include "vk_shader_interface.hh"
+#include "vk_staging_buffer.hh"
 #include "vk_state_manager.hh"
 
 namespace blender::gpu {
@@ -19,12 +20,24 @@ void VKUniformBuffer::update(const void *data)
   if (!buffer_.is_allocated()) {
     allocate();
   }
-  buffer_.update(data);
+  VKContext &context = *VKContext::get();
+  if (buffer_.is_mapped()) {
+    buffer_.update(data);
+  }
+  else {
+    VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
+    staging_buffer.host_buffer_get().update(data);
+    staging_buffer.copy_to_device(context);
+  }
 }
 
 void VKUniformBuffer::allocate()
 {
-  buffer_.create(size_in_bytes_, GPU_USAGE_STATIC, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+  buffer_.create(size_in_bytes_,
+                 GPU_USAGE_STATIC,
+                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                 false);
   debug::object_label(buffer_.vk_handle(), name_);
 }
 
@@ -37,26 +50,36 @@ void VKUniformBuffer::clear_to_zero()
   buffer_.clear(context, 0);
 }
 
-void VKUniformBuffer::bind(int slot, shader::ShaderCreateInfo::Resource::BindType bind_type)
+void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
+                                            int binding,
+                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                            const GPUSamplerState /*sampler_state*/)
 {
   if (!buffer_.is_allocated()) {
     allocate();
   }
 
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  const VKShaderInterface &shader_interface = shader->interface_get();
+  /* Upload attached data, during bind time. */
+  if (data_) {
+    update(data_);
+    MEM_SAFE_FREE(data_);
+  }
+
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(bind_type, slot);
+      data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    VKDescriptorSetTracker &descriptor_set = shader->pipeline_get().descriptor_set_get();
-    /* TODO: move to descriptor set. */
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER) {
-      descriptor_set.bind(*this, *location);
+      data.descriptor_set.bind_buffer(
+          VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, vk_handle(), size_in_bytes(), *location);
     }
     else {
-      descriptor_set.bind_as_ssbo(*this, *location);
+      data.descriptor_set.bind_buffer(
+          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vk_handle(), size_in_bytes(), *location);
     }
+    render_graph::VKBufferAccess buffer_access = {};
+    buffer_access.vk_buffer = buffer_.vk_handle();
+    buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);
+    data.resource_access_info.buffers.append(buffer_access);
   }
 }
 

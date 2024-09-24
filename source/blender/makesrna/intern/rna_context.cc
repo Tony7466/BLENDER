@@ -11,14 +11,14 @@
 #include "DNA_ID.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BLI_utildefines.h"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 const EnumPropertyItem rna_enum_context_mode_items[] = {
     {CTX_MODE_EDIT_MESH, "EDIT_MESH", 0, "Mesh Edit", ""},
@@ -46,6 +46,9 @@ const EnumPropertyItem rna_enum_context_mode_items[] = {
     {CTX_MODE_VERTEX_GPENCIL_LEGACY, "VERTEX_GPENCIL", 0, "Grease Pencil Vertex Paint", ""},
     {CTX_MODE_SCULPT_CURVES, "SCULPT_CURVES", 0, "Curves Sculpt", ""},
     {CTX_MODE_PAINT_GREASE_PENCIL, "PAINT_GREASE_PENCIL", 0, "Grease Pencil Paint", ""},
+    {CTX_MODE_SCULPT_GREASE_PENCIL, "SCULPT_GREASE_PENCIL", 0, "Grease Pencil Sculpt", ""},
+    {CTX_MODE_WEIGHT_GREASE_PENCIL, "WEIGHT_GREASE_PENCIL", 0, "Grease Pencil Weight Paint", ""},
+    {CTX_MODE_VERTEX_GREASE_PENCIL, "VERTEX_GREASE_PENCIL", 0, "Grease Pencil Vertex Paint", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -118,6 +121,14 @@ static PointerRNA rna_Context_region_data_get(PointerRNA *ptr)
   return PointerRNA_NULL;
 }
 
+static PointerRNA rna_Context_region_popup_get(PointerRNA *ptr)
+{
+  bContext *C = (bContext *)ptr->data;
+  PointerRNA newptr = RNA_pointer_create(
+      (ID *)CTX_wm_screen(C), &RNA_Region, CTX_wm_region_popup(C));
+  return newptr;
+}
+
 static PointerRNA rna_Context_gizmo_group_get(PointerRNA *ptr)
 {
   bContext *C = (bContext *)ptr->data;
@@ -125,19 +136,10 @@ static PointerRNA rna_Context_gizmo_group_get(PointerRNA *ptr)
   return newptr;
 }
 
-static PointerRNA rna_Context_asset_file_handle_get(PointerRNA *ptr)
+static PointerRNA rna_Context_asset_get(PointerRNA *ptr)
 {
   bContext *C = (bContext *)ptr->data;
-  bool is_handle_valid;
-  AssetHandle asset_handle = CTX_wm_asset_handle(C, &is_handle_valid);
-  if (!is_handle_valid) {
-    return PointerRNA_NULL;
-  }
-
-  /* Have to cast away const, but the file entry API doesn't allow modifications anyway. */
-  PointerRNA newptr = RNA_pointer_create(
-      nullptr, &RNA_FileSelectEntry, (FileDirEntry *)asset_handle.file_data);
-  return newptr;
+  return RNA_pointer_create(nullptr, &RNA_AssetRepresentation, CTX_wm_asset(C));
 }
 
 static PointerRNA rna_Context_main_get(PointerRNA *ptr)
@@ -280,6 +282,13 @@ void RNA_def_context(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "Region");
   RNA_def_property_pointer_funcs(prop, "rna_Context_region_get", nullptr, nullptr, nullptr);
 
+  prop = RNA_def_property(srna, "region_popup", PROP_POINTER, PROP_NONE);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_struct_type(prop, "Region");
+  RNA_def_property_pointer_funcs(prop, "rna_Context_region_popup_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Popup Region", "The temporary region for pop-ups (including menus and pop-overs)");
+
   prop = RNA_def_property(srna, "region_data", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "RegionView3D");
@@ -290,17 +299,10 @@ void RNA_def_context(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "GizmoGroup");
   RNA_def_property_pointer_funcs(prop, "rna_Context_gizmo_group_get", nullptr, nullptr, nullptr);
 
-  /* TODO can't expose AssetHandle, since there is no permanent storage to it (so we can't
-   * return a pointer). Instead provide the FileDirEntry pointer it wraps. */
-  prop = RNA_def_property(srna, "asset_file_handle", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(srna, "asset", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_struct_type(prop, "FileSelectEntry");
-  RNA_def_property_pointer_funcs(
-      prop, "rna_Context_asset_file_handle_get", nullptr, nullptr, nullptr);
-  RNA_def_property_ui_text(prop,
-                           "",
-                           "The file of an active asset. Avoid using this, it will be replaced by "
-                           "a proper AssetHandle design");
+  RNA_def_property_struct_type(prop, "AssetRepresentation");
+  RNA_def_property_pointer_funcs(prop, "rna_Context_asset_get", nullptr, nullptr, nullptr);
 
   /* Data */
   prop = RNA_def_property(srna, "blend_data", PROP_POINTER, PROP_NONE);

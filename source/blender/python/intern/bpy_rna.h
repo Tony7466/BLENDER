@@ -18,7 +18,7 @@
 #  define USE_WEAKREFS
 
 /* method to invalidate removed py data, XXX, slow to remove objects, otherwise no overhead */
-/* #define USE_PYRNA_INVALIDATE_GC */
+// #define USE_PYRNA_INVALIDATE_GC
 
 /* different method */
 #  define USE_PYRNA_INVALIDATE_WEAKREF
@@ -93,6 +93,16 @@ extern PyTypeObject pyrna_func_Type;
 #define PYRNA_PROP_CHECK_INT(obj) \
   if (UNLIKELY(pyrna_prop_validity_check(obj) == -1)) { \
     return -1; \
+  } \
+  (void)0
+
+#define PYRNA_STRUCT_CHECK_OBJ_UNLESS(obj, unless) \
+  { \
+    const BPy_StructRNA *_obj = obj; \
+    if (UNLIKELY(pyrna_struct_validity_check_only(_obj) == -1) && !(unless)) { \
+      pyrna_struct_validity_exception_only(_obj); \
+      return NULL; \
+    } \
   } \
   (void)0
 
@@ -179,6 +189,7 @@ PyObject *BPY_rna_module(void);
 void BPY_update_rna_module(void);
 // PyObject *BPY_rna_doc(void);
 PyObject *BPY_rna_types(void);
+void BPY_rna_types_finalize_external_types(PyObject *submodule);
 
 PyObject *pyrna_struct_CreatePyObject_with_primitive_support(PointerRNA *ptr);
 PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr);
@@ -223,8 +234,8 @@ int pyrna_struct_as_ptr_parse(PyObject *o, void *p);
 int pyrna_struct_as_ptr_or_null_parse(PyObject *o, void *p);
 
 void pyrna_struct_type_extend_capi(struct StructRNA *srna,
-                                   struct PyMethodDef *py_method,
-                                   struct PyGetSetDef *py_getset);
+                                   struct PyMethodDef *method,
+                                   struct PyGetSetDef *getset);
 
 /* Called before stopping Python. */
 
@@ -256,8 +267,12 @@ bool pyrna_write_check(void);
 void pyrna_write_set(bool val);
 
 void pyrna_invalidate(BPy_DummyPointerRNA *self);
-int pyrna_struct_validity_check(BPy_StructRNA *pysrna);
-int pyrna_prop_validity_check(BPy_PropertyRNA *self);
+
+int pyrna_struct_validity_check_only(const BPy_StructRNA *pysrna);
+void pyrna_struct_validity_exception_only(const BPy_StructRNA *pysrna);
+int pyrna_struct_validity_check(const BPy_StructRNA *pysrna);
+
+int pyrna_prop_validity_check(const BPy_PropertyRNA *self);
 
 /* bpy.utils.(un)register_class */
 extern PyMethodDef meth_bpy_register_class;

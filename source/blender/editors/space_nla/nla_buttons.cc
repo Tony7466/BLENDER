@@ -19,26 +19,30 @@
 
 #include "BLI_blenlib.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_fcurve.h"
-#include "BKE_nla.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_fcurve.hh"
+#include "BKE_nla.hh"
+#include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
+
+#include "ANIM_action.hh"
 
 #include "ED_anim_api.hh"
-#include "ED_screen.hh"
 
 #include "UI_interface.hh"
+#include "UI_interface_c.hh"
 #include "UI_resources.hh"
 
 #include "nla_intern.hh" /* own include */
+
+using namespace blender;
 
 /* ******************* nla editor space & buttons ************** */
 
@@ -161,6 +165,30 @@ bool nla_panel_context(const bContext *C,
        */
       case ANIMTYPE_NLAACTION:
         break;
+
+      case ANIMTYPE_NONE:
+      case ANIMTYPE_ANIMDATA:
+      case ANIMTYPE_SPECIALDATA__UNUSED:
+      case ANIMTYPE_SUMMARY:
+      case ANIMTYPE_GROUP:
+      case ANIMTYPE_FCURVE:
+      case ANIMTYPE_NLACONTROLS:
+      case ANIMTYPE_NLACURVE:
+      case ANIMTYPE_FILLACT_LAYERED:
+      case ANIMTYPE_ACTION_SLOT:
+      case ANIMTYPE_FILLACTD:
+      case ANIMTYPE_FILLDRIVERS:
+      case ANIMTYPE_DSMCLIP:
+      case ANIMTYPE_SHAPEKEY:
+      case ANIMTYPE_GPDATABLOCK:
+      case ANIMTYPE_GPLAYER:
+      case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+      case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+      case ANIMTYPE_GREASE_PENCIL_LAYER:
+      case ANIMTYPE_MASKDATABLOCK:
+      case ANIMTYPE_MASKLAYER:
+      case ANIMTYPE_NUM_TYPES:
+        break;
     }
 
     if (found > 0) {
@@ -265,7 +293,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
 {
   PointerRNA adt_ptr;
   PointerRNA strip_ptr;
-  /* AnimData *adt; */
+  // AnimData *adt;
   uiLayout *layout = panel->layout;
   uiLayout *row;
   uiBlock *block;
@@ -279,7 +307,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
     return;
   }
 
-  /* adt = adt_ptr.data; */
+  // adt = adt_ptr.data;
 
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, nullptr);
@@ -309,16 +337,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
   /* Active Action Properties ------------------------------------- */
   /* action */
   row = uiLayoutRow(layout, true);
-  uiTemplateID(row,
-               C,
-               &adt_ptr,
-               "action",
-               "ACTION_OT_new",
-               nullptr,
-               "NLA_OT_action_unlink",
-               UI_TEMPLATE_ID_FILTER_ALL,
-               false,
-               nullptr);
+  uiTemplateID(row, C, &adt_ptr, "action", "ACTION_OT_new", nullptr, "NLA_OT_action_unlink");
 
   /* extrapolation */
   row = uiLayoutRow(layout, true);
@@ -456,12 +475,36 @@ static void nla_panel_actclip(const bContext *C, Panel *panel)
   block = uiLayoutGetBlock(layout);
   UI_block_func_handle_set(block, do_nla_region_buttons, nullptr);
   uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
+  uiLayoutSetPropDecorate(layout, true);
 
   /* Strip Properties ------------------------------------- */
   /* action pointer */
-  row = uiLayoutRow(layout, true);
-  uiItemR(row, &strip_ptr, "action", UI_ITEM_NONE, nullptr, ICON_ACTION);
+  column = uiLayoutColumn(layout, true);
+  uiItemR(column, &strip_ptr, "action", UI_ITEM_NONE, nullptr, ICON_ACTION);
+
+#ifdef WITH_ANIM_BAKLAVA
+  NlaStrip *strip = static_cast<NlaStrip *>(strip_ptr.data);
+  if (strip->act) {
+    BLI_assert(strip_ptr.owner_id);
+
+    animrig::Action &action = strip->act->wrap();
+    ID &animated_id = *strip_ptr.owner_id;
+    if (action.is_action_layered()) {
+      PointerRNA animated_id_ptr = RNA_id_pointer_create(&animated_id);
+      uiLayoutSetContextPointer(column, "animated_id", &animated_id_ptr);
+      uiLayoutSetContextPointer(column, "nla_strip", &strip_ptr);
+      uiTemplateSearch(column,
+                       C,
+                       &strip_ptr,
+                       "action_slot",
+                       &strip_ptr,
+                       "action_slots",
+                       nullptr,
+                       "anim.slot_unassign_from_nla_strip",
+                       "Slot");
+    }
+  }
+#endif
 
   /* action extents */
   column = uiLayoutColumn(layout, true);

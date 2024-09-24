@@ -4,7 +4,6 @@
 
 #include <numeric>
 
-#include "BLI_math_base_safe.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -131,19 +130,19 @@ static void node_update(bNodeTree *ntree, bNode *node)
   const bool radius_mode = (mode == GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_RADIUS);
   const bool points_mode = (mode == GEO_NODE_CURVE_PRIMITIVE_ARC_TYPE_POINTS);
 
-  bke::nodeSetSocketAvailability(ntree, start_socket, points_mode);
-  bke::nodeSetSocketAvailability(ntree, middle_socket, points_mode);
-  bke::nodeSetSocketAvailability(ntree, end_socket, points_mode);
+  bke::node_set_socket_availability(ntree, start_socket, points_mode);
+  bke::node_set_socket_availability(ntree, middle_socket, points_mode);
+  bke::node_set_socket_availability(ntree, end_socket, points_mode);
 
-  bke::nodeSetSocketAvailability(ntree, radius_socket, radius_mode);
-  bke::nodeSetSocketAvailability(ntree, start_angle_socket, radius_mode);
-  bke::nodeSetSocketAvailability(ntree, sweep_angle_socket, radius_mode);
+  bke::node_set_socket_availability(ntree, radius_socket, radius_mode);
+  bke::node_set_socket_availability(ntree, start_angle_socket, radius_mode);
+  bke::node_set_socket_availability(ntree, sweep_angle_socket, radius_mode);
 
-  bke::nodeSetSocketAvailability(ntree, offset_angle_socket, points_mode);
+  bke::node_set_socket_availability(ntree, offset_angle_socket, points_mode);
 
-  bke::nodeSetSocketAvailability(ntree, center_out_socket, points_mode);
-  bke::nodeSetSocketAvailability(ntree, normal_out_socket, points_mode);
-  bke::nodeSetSocketAvailability(ntree, radius_out_socket, points_mode);
+  bke::node_set_socket_availability(ntree, center_out_socket, points_mode);
+  bke::node_set_socket_availability(ntree, normal_out_socket, points_mode);
+  bke::node_set_socket_availability(ntree, radius_out_socket, points_mode);
 }
 
 static float3 rotate_vector_around_axis(const float3 vector, const float3 axis, const float angle)
@@ -386,18 +385,18 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_CURVE_PRIMITIVE_ARC, "Arc", NODE_CLASS_GEOMETRY);
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
-  node_type_storage(&ntype,
-                    "NodeGeometryCurvePrimitiveArc",
-                    node_free_standard_storage,
-                    node_copy_standard_storage);
+  blender::bke::node_type_storage(&ntype,
+                                  "NodeGeometryCurvePrimitiveArc",
+                                  node_free_standard_storage,
+                                  node_copy_standard_storage);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

@@ -3,13 +3,19 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
-from bpy.types import Panel, Menu
+from bpy.types import (
+    Menu,
+    Panel,
+    UIList,
+)
 from rna_prop_ui import PropertyPanel
 from bpy.app.translations import (
     contexts as i18n_contexts,
     pgettext_iface as iface_,
+    pgettext_rpt as rpt_,
 )
 from bl_ui.utils import PresetPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bl_ui.properties_physics_common import (
     point_cache_ui,
@@ -59,7 +65,8 @@ class PARTICLE_MT_context_menu(Menu):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -81,9 +88,7 @@ class PARTICLE_MT_context_menu(Menu):
         props.remove_target_particles = True
 
         if psys is not None and psys.settings.type == 'HAIR':
-            layout.operator(
-                "curves.convert_from_particle_system",
-                text="Convert to Curves")
+            layout.operator("curves.convert_from_particle_system", text="Convert to Curves")
 
         layout.separator()
 
@@ -102,7 +107,8 @@ class PARTICLE_PT_hair_dynamics_presets(PresetPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
 
 class ParticleButtonsPanel:
@@ -123,7 +129,7 @@ def find_modifier(ob, psys):
     return None
 
 
-class PARTICLE_UL_particle_systems(bpy.types.UIList):
+class PARTICLE_UL_particle_systems(UIList):
 
     def draw_item(self, _context, layout, data, item, icon, _active_data, _active_propname, _index, _flt_flag):
         ob = data
@@ -160,7 +166,8 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -218,7 +225,7 @@ class PARTICLE_PT_context_particles(ParticleButtonsPanel, Panel):
                 row.template_ID(psys, "settings", new="particle.new")
 
             if part.is_fluid:
-                layout.label(text=iface_("%d fluid particles for this frame") % part.count, translate=False)
+                layout.label(text=rpt_("{:d} fluid particles for this frame").format(part.count), translate=False)
                 return
 
             row = layout.row()
@@ -258,7 +265,8 @@ class PARTICLE_PT_emission(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -314,7 +322,8 @@ class PARTICLE_PT_emission_source(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -355,7 +364,8 @@ class PARTICLE_PT_hair_dynamics(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -426,12 +436,18 @@ class PARTICLE_PT_hair_dynamics(ParticleButtonsPanel, Panel):
                 label = "ERROR"
                 icon = 'ERROR'
             box.label(text=label, icon=icon)
-            box.label(text=iface_("Iterations: %d .. %d (avg. %d)") %
-                      (result.min_iterations, result.max_iterations, result.avg_iterations),
-                      translate=False)
-            box.label(text=iface_("Error: %.5f .. %.5f (avg. %.5f)")
-                      % (result.min_error, result.max_error, result.avg_error),
-                      translate=False)
+            box.label(
+                text=rpt_("Iterations: {:d} .. {:d} (avg. {:d})").format(
+                    result.min_iterations, result.max_iterations, result.avg_iterations,
+                ),
+                translate=False,
+            )
+            box.label(
+                text=rpt_("Error: {:.5f} .. {:.5f} (avg. {:.5f})").format(
+                    result.min_error, result.max_error, result.avg_error,
+                ),
+                translate=False,
+            )
 
 
 class PARTICLE_PT_hair_dynamics_collision(ParticleButtonsPanel, Panel):
@@ -442,7 +458,8 @@ class PARTICLE_PT_hair_dynamics_collision(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -478,7 +495,8 @@ class PARTICLE_PT_hair_dynamics_structure(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -513,7 +531,8 @@ class PARTICLE_PT_hair_dynamics_volume(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -548,7 +567,8 @@ class PARTICLE_PT_cache(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -585,7 +605,8 @@ class PARTICLE_PT_velocity(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -638,7 +659,8 @@ class PARTICLE_PT_rotation(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -697,7 +719,8 @@ class PARTICLE_PT_rotation_angular_velocity(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -726,7 +749,8 @@ class PARTICLE_PT_physics(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -783,7 +807,8 @@ class PARTICLE_PT_physics_fluid_advanced(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -821,7 +846,7 @@ class PARTICLE_PT_physics_fluid_advanced(ParticleButtonsPanel, Panel):
             particle_volume = part.mass / fluid.rest_density
             spacing = pow(particle_volume, 1.0 / 3.0)
 
-            sub.label(text=iface_("Spacing: %g") % spacing, translate=False)
+            sub.label(text=iface_("Spacing: {:g}").format(spacing), translate=False)
 
 
 class PARTICLE_PT_physics_fluid_springs(ParticleButtonsPanel, Panel):
@@ -832,7 +857,8 @@ class PARTICLE_PT_physics_fluid_springs(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -860,7 +886,8 @@ class PARTICLE_PT_physics_fluid_springs_viscoelastic(ParticleButtonsPanel, Panel
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -900,7 +927,8 @@ class PARTICLE_PT_physics_fluid_springs_advanced(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -928,7 +956,8 @@ class PARTICLE_PT_physics_boids_movement(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -985,7 +1014,8 @@ class PARTICLE_PT_physics_boids_battle(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1016,7 +1046,8 @@ class PARTICLE_PT_physics_boids_misc(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1045,7 +1076,8 @@ class PARTICLE_PT_physics_relations(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1061,8 +1093,10 @@ class PARTICLE_PT_physics_relations(ParticleButtonsPanel, Panel):
         part = particle_get_settings(context)
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_targets", psys, "targets",
-                          psys, "active_particle_target_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_targets", psys, "targets",
+            psys, "active_particle_target_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1104,7 +1138,8 @@ class PARTICLE_PT_physics_fluid_interaction(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1118,8 +1153,10 @@ class PARTICLE_PT_physics_fluid_interaction(ParticleButtonsPanel, Panel):
         psys = context.particle_system
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_targets", psys, "targets",
-                          psys, "active_particle_target_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_targets", psys, "targets",
+                          psys, "active_particle_target_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1149,7 +1186,8 @@ class PARTICLE_PT_physics_deflection(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1179,7 +1217,8 @@ class PARTICLE_PT_physics_forces(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1210,7 +1249,8 @@ class PARTICLE_PT_physics_integration(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1248,7 +1288,8 @@ class PARTICLE_PT_boidbrain(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1288,8 +1329,10 @@ class PARTICLE_PT_boidbrain(ParticleButtonsPanel, Panel):
         # layout.prop(state, "name", text="State name")
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_boids_rules", state,
-                          "rules", state, "active_boid_rule_index", rows=4)
+        row.template_list(
+            "UI_UL_list", "particle_boids_rules", state,
+            "rules", state, "active_boid_rule_index", rows=4,
+        )
 
         col = row.column()
         sub = col.row()
@@ -1350,7 +1393,8 @@ class PARTICLE_PT_render(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1401,7 +1445,8 @@ class PARTICLE_PT_render_extra(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1429,7 +1474,8 @@ class PARTICLE_PT_render_path(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1455,7 +1501,8 @@ class PARTICLE_PT_render_path_timing(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1487,7 +1534,8 @@ class PARTICLE_PT_render_object(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1516,7 +1564,8 @@ class PARTICLE_PT_render_collection(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1550,7 +1599,8 @@ class PARTICLE_PT_render_collection_use_count(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1576,8 +1626,10 @@ class PARTICLE_PT_render_collection_use_count(ParticleButtonsPanel, Panel):
         layout.active = part.use_collection_count and not part.use_whole_collection
 
         row = layout.row()
-        row.template_list("UI_UL_list", "particle_instance_weights", part, "instance_weights",
-                          part, "active_instanceweight_index")
+        row.template_list(
+            "UI_UL_list", "particle_instance_weights", part, "instance_weights",
+            part, "active_instanceweight_index",
+        )
 
         col = row.column()
         sub = col.row()
@@ -1602,7 +1654,8 @@ class PARTICLE_PT_draw(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1665,7 +1718,8 @@ class PARTICLE_PT_children(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1722,7 +1776,8 @@ class PARTICLE_PT_children_parting(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1757,7 +1812,8 @@ class PARTICLE_PT_children_clumping(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1797,7 +1853,8 @@ class PARTICLE_PT_children_clumping_noise(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw_header(self, context):
 
@@ -1825,7 +1882,8 @@ class PARTICLE_PT_children_roughness(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1870,7 +1928,8 @@ class PARTICLE_PT_children_kink(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1924,7 +1983,8 @@ class PARTICLE_PT_field_weights(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -1949,7 +2009,8 @@ class PARTICLE_PT_force_fields(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -1969,7 +2030,8 @@ class PARTICLE_PT_force_fields_type1(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -1990,7 +2052,8 @@ class PARTICLE_PT_force_fields_type2(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -2012,7 +2075,8 @@ class PARTICLE_PT_force_fields_type1_falloff(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -2032,7 +2096,8 @@ class PARTICLE_PT_force_fields_type2_falloff(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -2051,7 +2116,8 @@ class PARTICLE_PT_vertexgroups(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -2144,7 +2210,8 @@ class PARTICLE_PT_textures(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -2180,7 +2247,8 @@ class PARTICLE_PT_hair_shape(ParticleButtonsPanel, Panel):
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
 
     @classmethod
     def poll(cls, context):
@@ -2207,12 +2275,27 @@ class PARTICLE_PT_hair_shape(ParticleButtonsPanel, Panel):
         col.prop(part, "use_close_tip")
 
 
+class PARTICLE_PT_animation(ParticleButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+    }
+
+    @classmethod
+    def _animated_id(cls, context):
+        psys = getattr(context, 'particle_system', None)
+        return psys and psys.settings
+
+
 class PARTICLE_PT_custom_props(ParticleButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
         'BLENDER_EEVEE',
         'BLENDER_EEVEE_NEXT',
-        'BLENDER_WORKBENCH'}
+        'BLENDER_WORKBENCH',
+    }
     _context_path = "particle_system.settings"
     _property_type = bpy.types.ParticleSettings
 
@@ -2269,6 +2352,7 @@ classes = (
     PARTICLE_PT_force_fields_type2_falloff,
     PARTICLE_PT_vertexgroups,
     PARTICLE_PT_textures,
+    PARTICLE_PT_animation,
     PARTICLE_PT_custom_props,
 )
 
