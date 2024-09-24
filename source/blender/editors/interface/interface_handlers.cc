@@ -5715,14 +5715,12 @@ static bool ui_numedit_but_SLI(uiBut *but,
                                const bool is_horizontal,
                                const bool is_motion,
                                const bool snap,
-                               const bool shift,
-                               const bool use_continuous_grab)
+                               const bool shift)
 {
   uiButNumberSlider *slider_but = reinterpret_cast<uiButNumberSlider *>(but);
   float cursor_x_range, f, tempf, softmin, softmax, softrange;
   int temp, lvalue;
   bool changed = false;
-  float mx_fl = float(mx);
 
   /* prevent unwanted drag adjustments, test motion so modifier keys refresh. */
   if ((but->type != UI_BTYPE_SCROLL) && (is_motion || data->draglock) &&
@@ -5740,22 +5738,30 @@ static bool ui_numedit_but_SLI(uiBut *but,
   softmax = but->softmax;
   softrange = softmax - softmin;
 
-  if (but->type == UI_BTYPE_NUM_SLIDER) {
+  if ((but->type == UI_BTYPE_NUM_SLIDER) && ui_but_is_cursor_warp(but)) {
+    float mx_fl = float(mx);
+    const float fac = ui_mouse_scale_warp_factor(shift);
     cursor_x_range = BLI_rctf_size_x(&but->rect);
-    if (use_continuous_grab) {
-      const float fac = ui_mouse_scale_warp_factor(shift);
-      f = ((mx_fl - data->draglastx) / cursor_x_range) * fac + data->dragf;
+    f = ((mx_fl - data->draglastx) / cursor_x_range) * fac + data->dragf;
+  }
+  else {
+    float mx_fl, my_fl;
+
+    /* yes, 'mx' as both x/y is intentional */
+    ui_mouse_scale_warp(data, mx, mx, &mx_fl, &my_fl, shift);
+    if (but->type == UI_BTYPE_NUM_SLIDER) {
+      cursor_x_range = BLI_rctf_size_x(&but->rect);
+    }
+    else if (but->type == UI_BTYPE_SCROLL) {
+      const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) :
+                                           -BLI_rctf_size_y(&but->rect);
+      cursor_x_range = size * (but->softmax - but->softmin) /
+                       (but->softmax - but->softmin + slider_but->step_size);
     }
     else {
-      mx_fl = clamp_f(mx_fl, but->rect.xmin, but->rect.xmax);
-      f = (mx_fl - but->rect.xmin) / cursor_x_range;
+      const float ofs = (BLI_rctf_size_y(&but->rect) / 2.0f);
+      cursor_x_range = (BLI_rctf_size_x(&but->rect) - ofs);
     }
-  }
-  else if (but->type == UI_BTYPE_SCROLL) {
-    const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) :
-                                         -BLI_rctf_size_y(&but->rect);
-    cursor_x_range = size * (but->softmax - but->softmin) /
-                     (but->softmax - but->softmin + slider_but->step_size);
 
     f = (mx_fl - data->dragstartx) / cursor_x_range + data->dragfstart;
   }
@@ -5965,11 +5971,14 @@ static int ui_do_but_SLI(
       data->multi_data.drag_dir[0] += abs(data->draglastx - mx);
       data->multi_data.drag_dir[1] += abs(data->draglasty - my);
 #endif
-      const bool ctrl = event->modifier & KM_CTRL;
-      const bool shift = event->modifier & KM_SHIFT;
-      const bool use_continuous_grab = ui_but_is_cursor_warp(but) &&
-                                       event->tablet.active == EVT_TABLET_NONE;
-      if (ui_numedit_but_SLI(but, data, mx, true, is_motion, ctrl, shift, use_continuous_grab)) {
+      if (ui_numedit_but_SLI(but,
+                             data,
+                             mx,
+                             true,
+                             is_motion,
+                             event->modifier & KM_CTRL,
+                             event->modifier & KM_SHIFT))
+      {
         ui_numedit_apply(C, block, but, data);
       }
 
@@ -6124,7 +6133,7 @@ static int ui_do_but_SCROLL(
     else if (event->type == MOUSEMOVE) {
       const bool is_motion = true;
       if (ui_numedit_but_SLI(
-              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false, false))
+              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false))
       {
         ui_numedit_apply(C, block, but, data);
       }
