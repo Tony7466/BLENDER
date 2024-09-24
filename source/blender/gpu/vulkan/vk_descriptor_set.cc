@@ -42,6 +42,7 @@ void VKDescriptorSetTracker::reset()
 {
   vk_descriptor_image_infos_.clear();
   vk_descriptor_buffer_infos_.clear();
+  vk_buffer_views_.clear();
   vk_write_descriptor_sets_.clear();
 }
 
