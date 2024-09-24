@@ -448,6 +448,14 @@ IMG_TEMPLATE void imageFence(T) {}
 #  define imageLoadFast imageLoad
 #  define imageStoreFast imageStore
 
+IMG_TEMPLATE uint imageAtomicAdd(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicMin(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicMax(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicAnd(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicXor(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicExchange(T, IntCoord, uint);
+IMG_TEMPLATE uint imageAtomicCompSwap(T, IntCoord, uint, uint);
+
 #  undef IMG_TEMPLATE
 
 using image1D = ImageBase<double, 1>;
@@ -583,6 +591,7 @@ uint floatBitsToUint(double) {}
 double intBitsToFloat(int) {}
 double uintBitsToFloat(uint) {}
 
+/* Derivative functions. */
 template<typename T> T dFdx(T) {}
 template<typename T> T dFdy(T) {}
 template<typename T> T fwidth(T) {}
@@ -591,6 +600,24 @@ template<typename T> T fwidth(T) {}
 template<typename T, int D> float faceforward(VecBase<T, D>, VecBase<T, D>, VecBase<T, D>) {}
 template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) {}
 template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) {}
+
+/* Atomic operations. */
+int atomicAdd(int &, int);
+int atomicAnd(int &, int);
+int atomicOr(int &, int);
+int atomicXor(int &, int);
+int atomicMin(int &, int);
+int atomicMax(int &, int);
+int atomicExchange(int &, int);
+int atomicCompSwap(int &, int, int);
+uint atomicAdd(uint &, uint);
+uint atomicAnd(uint &, uint);
+uint atomicOr(uint &, uint);
+uint atomicXor(uint &, uint);
+uint atomicMin(uint &, uint);
+uint atomicMax(uint &, uint);
+uint atomicExchange(uint &, uint);
+uint atomicCompSwap(uint &, uint, uint);
 
 /* Packing functions. */
 uint packHalf2x16(float2) {}
