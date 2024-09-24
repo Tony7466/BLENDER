@@ -622,6 +622,10 @@ void SCULPT_flip_quat_by_symm_area(float quat[4],
 
 namespace blender::ed::sculpt_paint {
 
+/**
+ * Utility functions to get the closest vertices after flipping an original vertex position for
+ * all symmetry passes.
+ */
 Vector<int> find_symm_verts_mesh(const Depsgraph &depsgraph,
                                  const Object &object,
                                  int original_vert,

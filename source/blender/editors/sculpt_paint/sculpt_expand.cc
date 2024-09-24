@@ -656,10 +656,6 @@ Vector<int> find_symm_verts_bmesh(const Object &object,
   return symm_verts;
 }
 
-/**
- * Utility function to get the closest vertices after flipping an original vertex position for
- * all symmetry passes.
- */
 Vector<int> find_symm_verts(const Depsgraph &depsgraph,
                             const Object &object,
                             const int original_vert,
