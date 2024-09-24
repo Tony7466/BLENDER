@@ -855,11 +855,9 @@ bool bc_is_animated(BCMatrixSampleMap &values)
 bool bc_has_animations(Object *ob)
 {
   /* Check for object, light and camera transform animations */
-  if (!blender::animrig::legacy::fcurves_for_assigned_action(ob->adt).is_empty() ||
-      !blender::animrig::legacy::fcurves_for_assigned_action(bc_getSceneLightAnimData(ob))
-           .is_empty() ||
-      !blender::animrig::legacy::fcurves_for_assigned_action(bc_getSceneCameraAnimData(ob))
-           .is_empty())
+  if (blender::animrig::legacy::assigned_action_has_keyframes(ob->adt) ||
+      blender::animrig::legacy::assigned_action_has_keyframes(bc_getSceneLightAnimData(ob)) ||
+      blender::animrig::legacy::assigned_action_has_keyframes(bc_getSceneCameraAnimData(ob)))
   {
     return true;
   }
@@ -870,15 +868,13 @@ bool bc_has_animations(Object *ob)
     if (!ma) {
       continue;
     }
-    if (!blender::animrig::legacy::fcurves_for_assigned_action(bc_getSceneMaterialAnimData(ma))
-             .is_empty())
-    {
+    if (blender::animrig::legacy::assigned_action_has_keyframes(bc_getSceneMaterialAnimData(ma))) {
       return true;
     }
   }
 
   Key *key = BKE_key_from_object(ob);
-  if (!blender::animrig::legacy::fcurves_for_assigned_action(key->adt).is_empty()) {
+  if (blender::animrig::legacy::assigned_action_has_keyframes(key->adt)) {
     return true;
   }
 
