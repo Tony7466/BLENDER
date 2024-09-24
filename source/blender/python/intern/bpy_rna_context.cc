@@ -8,15 +8,23 @@
  * This file adds some helper methods to the context, that cannot fit well in RNA itself.
  */
 
+#define PY_SSIZE_T_CLEAN
+
 #include <Python.h>
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
+#include "BKE_blender_undo.hh"
 #include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_image.h"
 #include "BKE_main.hh"
 #include "BKE_screen.hh"
+#include "BKE_undo_system.hh"
 #include "BKE_workspace.hh"
+
+#include "ED_paint.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -475,6 +483,67 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
   Py_RETURN_NONE;
 }
 
+static bool image_push_begin(bContext *C, const char *message)
+{
+  if (G.background) {
+    /* Exception for background mode, see: #60934.
+     * NOTE: since the undo stack isn't initialized on startup, background mode behavior
+     * won't match regular usage, this is just for scripts to do explicit undo pushes. */
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->undo_stack == nullptr) {
+      wm->undo_stack = BKE_undosys_stack_create();
+    }
+  }
+
+  Image *ima = CTX_data_edit_image(C);
+  if (!ima) {
+    return false;
+  }
+  ImageUser iuser;
+  BKE_imageuser_default(&iuser);
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, &iuser, nullptr);
+  ED_image_undo_push_begin_with_image(message, ima, ibuf, &iuser);
+  return true;
+}
+
+static void image_push_end()
+{
+  ED_image_undo_push_end();
+}
+
+struct BPyImageUndoHandler {
+  PyObject_HEAD /* Required Python macro. */
+
+  bContext *context;
+  const char *message;
+  bool push_success;
+};
+
+static void bpy_rna_image_undo_handler__tp_dealloc(BPyImageUndoHandler *self)
+{
+  PyObject_DEL(self);
+}
+
+static PyObject *bpy_rna_image_undo_handler_enter(BPyImageUndoHandler *self)
+{
+  bContext *C = self->context;
+
+  bool result = image_push_begin(C, self->message);
+
+  self->push_success = result;
+
+  Py_RETURN_NONE;
+}
+
+static PyObject *bpy_rna_image_undo_handler_exit(BPyImageUndoHandler *self, PyObject * /*args*/)
+{
+  if (self->push_success) {
+    image_push_end();
+  }
+
+  Py_RETURN_NONE;
+}
+
 #if (defined(__GNUC__) && !defined(__clang__))
 #  pragma GCC diagnostic push
 #  pragma GCC diagnostic ignored "-Wcast-function-type"
@@ -483,6 +552,12 @@ static PyObject *bpy_rna_context_temp_override_exit(BPyContextTempOverride *self
 static PyMethodDef bpy_rna_context_temp_override__tp_methods[] = {
     {"__enter__", (PyCFunction)bpy_rna_context_temp_override_enter, METH_NOARGS},
     {"__exit__", (PyCFunction)bpy_rna_context_temp_override_exit, METH_VARARGS},
+    {nullptr},
+};
+
+static PyMethodDef bpy_rna_image_undo_handler__tp_methods[] = {
+    {"__enter__", (PyCFunction)bpy_rna_image_undo_handler_enter, METH_NOARGS},
+    {"__exit__", (PyCFunction)bpy_rna_image_undo_handler_exit, METH_VARARGS},
     {nullptr},
 };
 
@@ -519,6 +594,58 @@ static PyTypeObject BPyContextTempOverride_Type = {
     /*tp_iter*/ nullptr,
     /*tp_iternext*/ nullptr,
     /*tp_methods*/ bpy_rna_context_temp_override__tp_methods,
+    /*tp_members*/ nullptr,
+    /*tp_getset*/ nullptr,
+    /*tp_base*/ nullptr,
+    /*tp_dict*/ nullptr,
+    /*tp_descr_get*/ nullptr,
+    /*tp_descr_set*/ nullptr,
+    /*tp_dictoffset*/ 0,
+    /*tp_init*/ nullptr,
+    /*tp_alloc*/ nullptr,
+    /*tp_new*/ nullptr,
+    /*tp_free*/ nullptr,
+    /*tp_is_gc*/ nullptr,
+    /*tp_bases*/ nullptr,
+    /*tp_mro*/ nullptr,
+    /*tp_cache*/ nullptr,
+    /*tp_subclasses*/ nullptr,
+    /*tp_weaklist*/ nullptr,
+    /*tp_del*/ nullptr,
+    /*tp_version_tag*/ 0,
+    /*tp_finalize*/ nullptr,
+    /*tp_vectorcall*/ nullptr,
+};
+
+static PyTypeObject BPyImageUndoHandler_Type = {
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
+    /*tp_name*/ "ImageUndoHandler",
+    /*tp_basicsize*/ sizeof(BPyImageUndoHandler),
+    /*tp_itemsize*/ 0,
+    /*tp_dealloc*/ (destructor)bpy_rna_image_undo_handler__tp_dealloc,
+    /*tp_vectorcall_offset*/ 0,
+    /*tp_getattr*/ nullptr,
+    /*tp_setattr*/ nullptr,
+    /*tp_as_async*/ nullptr,
+    /*tp_repr*/ nullptr,
+    /*tp_as_number*/ nullptr,
+    /*tp_as_sequence*/ nullptr,
+    /*tp_as_mapping*/ nullptr,
+    /*tp_hash*/ nullptr,
+    /*tp_call*/ nullptr,
+    /*tp_str*/ nullptr,
+    /*tp_getattro*/ nullptr,
+    /*tp_setattro*/ nullptr,
+    /*tp_as_buffer*/ nullptr,
+    /*tp_flags*/ Py_TPFLAGS_DEFAULT,
+    /*tp_doc*/ nullptr,
+    /*tp_traverse*/ nullptr,
+    /*tp_clear*/ nullptr,
+    /*tp_richcompare*/ nullptr,
+    /*tp_weaklistoffset*/ 0,
+    /*tp_iter*/ nullptr,
+    /*tp_iternext*/ nullptr,
+    /*tp_methods*/ bpy_rna_image_undo_handler__tp_methods,
     /*tp_members*/ nullptr,
     /*tp_getset*/ nullptr,
     /*tp_base*/ nullptr,
@@ -707,6 +834,60 @@ static PyObject *bpy_context_temp_override(PyObject *self, PyObject *args, PyObj
   return (PyObject *)ret;
 }
 
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_image_undo_handler_doc,
+    ".. method:: undo_handler(message='Image modifications')\n"
+    "\n"
+    "   Context manager to temporarily override members in the context.\n"
+    "\n"
+    "      .. note:: Put all modifications to an image inside`with image.undo_handler()` "
+    "code block for your modifications to be registered as an undo step.\n"
+    "\n");
+static PyObject *bpy_image_undo_handler(PyObject *self, PyObject *args, PyObject *kwds)
+{
+  const PointerRNA *context_ptr = pyrna_struct_as_ptr(self, &RNA_Context);
+  if (context_ptr == nullptr) {
+    return nullptr;
+  }
+
+  if (kwds == nullptr) {
+    /* While this is effectively NOP, support having no keywords as it's more involved
+     * to return an alternative (dummy) context manager. */
+  }
+  else {
+    /* Needed because the keywords copied into `kwds_parse` could contain anything.
+     * As the types of keys aren't checked. */
+    if (!PyArg_ValidateKeywordArguments(kwds)) {
+      return nullptr;
+    }
+  }
+
+  const char *message = "Image modifications";
+  Py_ssize_t message_len;
+  static const char *const _keywords[] = {
+      "message",
+      nullptr,
+  };
+  static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
+      "|$" /* Optional keyword only arguments. */
+      "s#" /* Message, keyword only arguments. */
+      ":image_undo_handler",
+      _keywords,
+      nullptr,
+  };
+  if (!_PyArg_ParseTupleAndKeywordsFast(args, kwds, &_parser, &message, &message_len)) {
+    return nullptr;
+  }
+
+  BPyImageUndoHandler *ret = PyObject_New(BPyImageUndoHandler, &BPyImageUndoHandler_Type);
+  ret->context = static_cast<bContext *>(context_ptr->data);
+  ret->message = message;
+
+  return (PyObject *)ret;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -725,6 +906,13 @@ PyMethodDef BPY_rna_context_temp_override_method_def = {
     bpy_context_temp_override_doc,
 };
 
+PyMethodDef BPY_rna_image_undo_handler_def = {
+    "image_undo_handler",
+    (PyCFunction)bpy_image_undo_handler,
+    METH_VARARGS | METH_KEYWORDS,
+    bpy_image_undo_handler_doc,
+};
+
 #if (defined(__GNUC__) && !defined(__clang__))
 #  pragma GCC diagnostic pop
 #endif
@@ -732,6 +920,10 @@ PyMethodDef BPY_rna_context_temp_override_method_def = {
 void bpy_rna_context_types_init()
 {
   if (PyType_Ready(&BPyContextTempOverride_Type) < 0) {
+    BLI_assert_unreachable();
+    return;
+  }
+  if (PyType_Ready(&BPyImageUndoHandler_Type) < 0) {
     BLI_assert_unreachable();
     return;
   }
