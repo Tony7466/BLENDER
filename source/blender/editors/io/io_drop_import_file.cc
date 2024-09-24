@@ -200,7 +200,6 @@ static bool drop_import_file_poll(bContext *C, wmDrag *drag, const wmEvent * /*e
   }
   const auto paths = WM_drag_get_paths(drag);
   const auto file_handlers = drop_import_file_poll_file_handlers(C, paths, true);
-  drag->tooltip = "";
   /* Get tooltip now, `drop_import_file_tooltip` may run in a different context. */
   if (file_handlers.size() == 1) {
     wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);

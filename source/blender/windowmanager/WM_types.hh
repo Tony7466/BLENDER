@@ -1292,7 +1292,7 @@ struct wmDrag {
   ListBase ids;
   /** List of `wmDragAssetListItem`s. */
   ListBase asset_items;
-  /** Drag tooltip that deppends on `wmDropBox::poll` context, `wmDropBox::tooltip` may run in a
+  /** Drag tooltip that depends on `wmDropBox::poll` context, `wmDropBox::tooltip` may run in a
    * different draw context. */
   std::string tooltip;
 };
