@@ -87,14 +87,20 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
 }
 
 static OffsetIndices<int> calc_faces(const OffsetIndices<int> src_faces,
+                                     const OffsetIndices<int> faces_by_src_face,
+                                     const IndexMask &selection,
                                      const IndexMask &unselected,
                                      MutableSpan<int> offsets)
 {
-  MutableSpan<int> new_tri_offsets = offsets.drop_back(unselected.size());
-  offset_indices::fill_constant_group_size(3, new_tri_offsets.first(), new_tri_offsets);
-  offset_indices::gather_selected_offsets(
-      src_faces, unselected, new_tri_offsets.last(), offsets.take_back(unselected.size() + 1));
-  return OffsetIndices<int>(offsets);
+  selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int src_face) {
+    // TODO: Better slicing for range index mask segments
+    offsets.slice(faces_by_src_face[src_face]).fill(3);
+  });
+  selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int src_face) {
+    const int face = faces_by_src_face[src_face].first();
+    offsets[face] = src_faces[src_face].size();
+  });
+  return offset_indices::accumulate_counts_to_offsets(offsets);
 }
 
 namespace quad {
@@ -674,34 +680,30 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
    * for correctness, but considering groups of each face type separately simplifies optimizing
    * for each type. For example, quad triangulation is much simpler than Ngon triangulation. */
   IndexMaskMemory memory;
-  const IndexMask selection = IndexMask::from_predicate(
-      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
-        return src_faces[i].size() > 3;
-      });
   const IndexMask quads = IndexMask::from_predicate(
-      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() == 4; });
+      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
+        return src_faces[i].size() == 4;
+      });
   const IndexMask ngons = IndexMask::from_predicate(
-      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() > 4; });
+      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
+        return src_faces[i].size() > 4;
+      });
   if (quads.is_empty() && ngons.is_empty()) {
     /* All selected faces are already triangles. */
     return std::nullopt;
   }
 
-  /* Calculate group of triangle indices for each selected Ngon to facilitate calculating them in
-   * parallel later. */
-  Array<int> tri_offsets(ngons.size() + 1);
-  const OffsetIndices tris_by_ngon = ngon::calc_tris_by_ngon(src_faces, ngons, tri_offsets);
-  const int ngon_tris_num = tris_by_ngon.total_size();
-  const int quad_tris_num = quads.size() * 2;
-  const IndexRange tris_range(ngon_tris_num + quad_tris_num);
-  const IndexRange ngon_tris_range = tris_range.take_front(ngon_tris_num);
-  const IndexRange quad_tris_range = tris_range.take_front(quad_tris_num);
+  const IndexMask selection = IndexMask::from_union(quads, ngons, memory);
+  const IndexMask unselected = selection.complement(src_faces.index_range(), memory);
 
-  const int ngon_corners_num = tris_by_ngon.total_size() * 3;
-  const int quad_corners_num = quads.size() * 6;
-  const IndexRange tri_corners_range(quad_corners_num + ngon_corners_num);
-  const IndexRange ngon_corners_range = tri_corners_range.take_front(ngon_corners_num);
-  const IndexRange quad_corners_range = tri_corners_range.take_back(quad_corners_num);
+  Array<int> faces_by_src_face_data(src_faces.size() + 1);
+  index_mask::masked_fill<int>(faces_by_src_face_data, 1, unselected);
+  index_mask::masked_fill<int>(faces_by_src_face_data, 2, quads);
+  ngons.foreach_index_optimized<int>([&](const int face) {
+    faces_by_src_face_data[face] = bke::mesh::face_triangles_num(src_faces[face].size());
+  });
+  const OffsetIndices faces_by_src_face = offset_indices::accumulate_counts_to_offsets(
+      faces_by_src_face_data);
 
   /* Calculate groups of new inner edges for each selected Ngon so they can be filled in parallel
    * later. */
@@ -715,11 +717,24 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
   const IndexRange ngon_edges_range = tri_edges_range.take_front(ngon_edges_num);
   const IndexRange quad_edges_range = tri_edges_range.take_front(quad_edges_num);
 
+  Mesh *mesh = bke::mesh_new_no_attributes(src_mesh.verts_num,
+                                           src_edges.size() + tri_edges_range.size(),
+                                           faces_by_src_face.total_size(),
+                                           0);
+
+  const OffsetIndices faces = calc_faces(
+      src_faces, faces_by_src_face, selection, unselected, mesh->face_offsets_for_write());
+  mesh->corners_num = faces.total_size();
+
   /* An index map that maps from newly created corners in `tri_corners_range` to original corner
    * indices. This is used to interpolate `corner_vert` indices and face corner attributes. If
    * there are no face corner attributes, theoretically the map could be skipped and corner
    * vertex indices could be interpolated immediately, but that isn't done for simplicity. */
-  Array<int> corner_map(tri_corners_range.size());
+  Array<int> corner_map(mesh->corners_num);
+
+  if (!quads.is_empty()) {
+    quad::calc_corner_maps(positions, src_faces, src_corner_verts, quads, quad_mode, corner_map);
+  }
 
   if (!ngons.is_empty()) {
     ngon::calc_corner_maps(positions,
@@ -729,20 +744,8 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
                            ngons,
                            tris_by_ngon,
                            ngon_mode,
-                           corner_map.as_mutable_span().slice(ngon_corners_range));
+                           corner_map);
   }
-  if (!quads.is_empty()) {
-    quad::calc_corner_maps(positions,
-                           src_faces,
-                           src_corner_verts,
-                           quads,
-                           quad_mode,
-                           corner_map.as_mutable_span().slice(quad_corners_range));
-  }
-
-  const IndexMask unselected = deduplication::calc_unselected_faces(
-      src_mesh, src_faces, src_corner_verts, selection, corner_map, memory);
-  const IndexRange unselected_range(tris_range.one_after_last(), unselected.size());
 
   /* Create a mesh with no face corners.
    *  - We haven't yet counted the number of corners from unselected faces. Creating the final face
