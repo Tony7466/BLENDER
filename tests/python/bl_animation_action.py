@@ -436,7 +436,7 @@ class DataPathTest(unittest.TestCase):
 class VersioningTest(unittest.TestCase):
     def setUp(self):
         enable_experimental_animation_baklava()
-        bpy.ops.wm.open_mainfile(filepath=str(args.testdir / "layered_action_versioning.blend"), load_ui=False)
+        bpy.ops.wm.open_mainfile(filepath=str(args.testdir / "layered_action_versioning_42.blend"), load_ui=False)
 
     def tearDown(self) -> None:
         disable_experimental_animation_baklava()
