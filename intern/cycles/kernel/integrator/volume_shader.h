@@ -425,12 +425,12 @@ ccl_device_inline void volume_shader_motion_blur(KernelGlobals kg,
 
 /* Volume Evaluation */
 
-template<const bool shadow, typename StackReadOp, typename ConstIntegratorGenericState>
+template<const bool shadow, typename ConstIntegratorGenericState>
 ccl_device_inline void volume_shader_eval(KernelGlobals kg,
                                           ConstIntegratorGenericState state,
                                           ccl_private ShaderData *ccl_restrict sd,
                                           const uint32_t path_flag,
-                                          StackReadOp stack_read)
+                                          const ccl_global KernelOctreeNode *knode)
 {
   /* If path is being terminated, we are tracing a shadow ray or evaluating
    * emission, then we don't need to store closures. The emission and shadow
@@ -450,17 +450,16 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
   sd->flag = SD_IS_VOLUME_SHADER_EVAL;
   sd->object_flag = 0;
 
-  for (int i = 0;; i++) {
-    const VolumeStack entry = stack_read(i);
-    if (entry.shader == SHADER_NONE) {
+  for (int i = 0; i < MAX_VOLUME_STACK_SIZE; i++) {
+    if (knode->shaders[i] == SHADER_NONE) {
       break;
     }
 
     /* Setup shader-data from stack. it's mostly setup already in
      * shader_setup_from_volume, this switching should be quick. */
-    sd->object = entry.object;
+    sd->object = knode->objects[i];
     sd->lamp = LAMP_NONE;
-    sd->shader = entry.shader;
+    sd->shader = knode->shaders[i];
 
     sd->flag &= ~SD_SHADER_FLAGS;
     sd->flag |= kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
@@ -472,6 +471,7 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
       if (shadow && !(kernel_data_fetch(objects, sd->object).visibility &
                       (path_flag & PATH_RAY_ALL_VISIBILITY)))
       {
+        /* TODO(weizhen): revisit. */
         /* If volume is invisible to shadow ray, the hit is not registered, but the volume is still
          * in the stack. Skip the volume in such cases. */
         /* NOTE: `SHADOW_CATCHER_PATH_VISIBILITY()` is omitted because `path_flag` is just
