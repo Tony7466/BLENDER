@@ -2,11 +2,31 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/**
+ * GLSL to C++ stubs.
+ *
+ * The goal of this header is to make the GLSL source file compile using a modern C++ compiler.
+ * This allows for linting and IDE functionalities to work.
+ *
+ * This is why the implementation of each function is not needed.
+ *
+ * Some of the features of GLSL are omitted by design. They are either:
+ * - not needed (e.g. per component matrix multiplication)
+ * - against our code-style (e.g. stpq swizzle)
+ * - unsupported by our Metal Shading Language layer (e.g. mixed vector-scalar matrix constructor).
+ *
+ * IMPORTANT: Please ask the module team if you need some feature that are not listed in this file.
+ */
+
 #pragma once
 
-#if defined(__cplusplus) && !defined(GPU_SHADER)
+#ifndef GPU_SHADER
 
 #  include <type_traits>
+
+/* -------------------------------------------------------------------- */
+/** \name Vector Types
+ * \{ */
 
 template<typename T, int Sz> struct VecBase {};
 
@@ -44,7 +64,7 @@ template<typename T, int Sz> struct VecOp {
   friend VecT operator*(T, VecT) {}
 
 #  define INT_OP \
-    template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
+    template<typename U = T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
   INT_OP VecT operator%(VecT) const {}
   INT_OP VecT operator&(VecT) const {}
@@ -254,6 +274,12 @@ using bvec2 = bool2;
 using bvec3 = bool3;
 using bvec4 = bool4;
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Matrix Types
+ * \{ */
+
 template<int C, int R> struct MatBase {};
 
 template<int C, int R> struct MatOp {
@@ -324,25 +350,11 @@ using mat2 = float2x2;
 using mat3 = float3x3;
 using mat4 = float4x4;
 
-template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> lessThanEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> greaterThanEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> equal(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> notEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<int D> bool any(VecBase<bool, D>) {}
-template<int D> bool all(VecBase<bool, D>) {}
-/* `not` is a C++ keyword. Use dirty macro to allow this. */
-template<int D> VecBase<bool, D> not_impl(VecBase<bool, D>) {}
-#  define not not_impl
+/** \} */
 
-#  define inout
-#  define in
-#  define out
-
-template<typename T> using Vec4 = VecBase<T, 4>;
-template<int D> using VecInt = VecBase<int, D>;
-template<int D> using VecFlt = VecBase<double, D>;
+/* -------------------------------------------------------------------- */
+/** \name Sampler Types
+ * \{ */
 
 template<typename T, int Dimensions, bool Cube = false, bool Array = false> struct SamplerBase {
   static constexpr int coord_dim = Dimensions + int(Cube) + int(Array);
@@ -399,14 +411,18 @@ using samplerCubeArray = SamplerBase<double, 2, true, true>;
 using isamplerCubeArray = SamplerBase<int, 2, true, true>;
 using usamplerCubeArray = SamplerBase<uint, 2, true, true>;
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Image Types
+ * \{ */
+
 template<typename T, int Dimensions, bool Array = false> struct ImageBase {
-  static constexpr int coord_dim = Dimensions + int(Cube) + int(Array);
-  static constexpr int deriv_dim = Dimensions + int(Cube);
-  static constexpr int extent_dim = Dimensions + int(Array);
+  static constexpr int coord_dim = Dimensions + int(Array);
 
   using int_coord_type = VecBase<int, coord_dim>;
   using data_vec_type = VecBase<T, 4>;
-  using size_vec_type = VecBase<int, extent_dim>;
+  using size_vec_type = VecBase<int, coord_dim>;
 };
 
 #  define IMG_TEMPLATE \
@@ -424,30 +440,42 @@ IMG_TEMPLATE void imageFence(T) {}
 
 #  undef IMG_TEMPLATE
 
-using sampler1D = SamplerBase<double, 1>;
-using sampler2D = SamplerBase<double, 2>;
-using sampler3D = SamplerBase<double, 3>;
-using isampler1D = SamplerBase<int, 1>;
-using isampler2D = SamplerBase<int, 2>;
-using isampler3D = SamplerBase<int, 3>;
-using usampler1D = SamplerBase<uint, 1>;
-using usampler2D = SamplerBase<uint, 2>;
-using usampler3D = SamplerBase<uint, 3>;
+using image1D = ImageBase<double, 1>;
+using image2D = ImageBase<double, 2>;
+using image3D = ImageBase<double, 3>;
+using iimage1D = ImageBase<int, 1>;
+using iimage2D = ImageBase<int, 2>;
+using iimage3D = ImageBase<int, 3>;
+using uimage1D = ImageBase<uint, 1>;
+using uimage2D = ImageBase<uint, 2>;
+using uimage3D = ImageBase<uint, 3>;
 
-using sampler1DArray = SamplerBase<double, 1, false, true>;
-using sampler2DArray = SamplerBase<double, 2, false, true>;
-using isampler1DArray = SamplerBase<int, 1, false, true>;
-using isampler2DArray = SamplerBase<int, 2, false, true>;
-using usampler1DArray = SamplerBase<uint, 1, false, true>;
-using usampler2DArray = SamplerBase<uint, 2, false, true>;
+using image1DArray = ImageBase<double, 1, true>;
+using image2DArray = ImageBase<double, 2, true>;
+using iimage1DArray = ImageBase<int, 1, true>;
+using iimage2DArray = ImageBase<int, 2, true>;
+using uimage1DArray = ImageBase<uint, 1, true>;
+using uimage2DArray = ImageBase<uint, 2, true>;
 
-using samplerCube = SamplerBase<double, 2, true>;
-using isamplerCube = SamplerBase<int, 2, true>;
-using usamplerCube = SamplerBase<uint, 2, true>;
+/* Forbid Cube and cube arrays. Bind them as 3D textures instead. */
 
-using samplerCubeArray = SamplerBase<double, 2, true, true>;
-using isamplerCubeArray = SamplerBase<int, 2, true, true>;
-using usamplerCubeArray = SamplerBase<uint, 2, true, true>;
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Builtin Functions
+ * \{ */
+
+template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> lessThanEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> greaterThanEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> equal(VecBase<T, D>, VecBase<T, D>) {}
+template<typename T, int D> VecBase<bool, D> notEqual(VecBase<T, D>, VecBase<T, D>) {}
+template<int D> bool any(VecBase<bool, D>) {}
+template<int D> bool all(VecBase<bool, D>) {}
+/* `not` is a C++ keyword. Use dirty macro to allow this. */
+template<int D> VecBase<bool, D> not_impl(VecBase<bool, D>) {}
+#  define not not_impl
 
 template<int D> VecBase<int, D> bitCount(VecBase<int, D>) {}
 template<int D> VecBase<int, D> bitCount(VecBase<uint, D>) {}
@@ -566,9 +594,21 @@ float2 unpackSnorm2x16(uint) {}
 float4 unpackUnorm4x8(uint) {}
 float4 unpackSnorm4x8(uint) {}
 
+/* Matrices functions. */
 template<int C, int R> float determinant(MatBase<C, R>) {}
 template<int C, int R> MatBase<C, R> inverse(MatBase<C, R>) {}
 template<int C, int R> MatBase<R, C> transpose(MatBase<C, R>) {}
+
+/* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
+bool is_zero(vec2) {}
+bool is_zero(vec3) {}
+bool is_zero(vec4) {}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Special Variables
+ * \{ */
 
 /* Vertex Shader Special Variables. */
 const int gl_VertexID;
@@ -585,18 +625,33 @@ const int gl_PrimitiveID;
 float gl_FragDepth;
 /* Read-only in Fragment Shader and write-only in vertex shader. */
 float gl_ClipDistance[];
-float gl_CullDistance[];
-/* Use GPU variant as they can be emulated. */
+/* Note: Use GPU variant as they might be emulated. */
 int gpu_Layer;
 int gpu_ViewportIndex;
 
-/* Keywords. */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Keywords
+ * \{ */
+
+/* Note: Cannot easily mutate them. Pass every by copy for now. */
+
+/* Pass argument by reference. */
+#  define inout
+/* Pass argument by reference but only write to it. Its initial value is undefined. */
+#  define out
+/* Pass argument by copy (default). */
+#  define in
+
+/* Cannot easily mutate them. Pass every by copy for now. */
 void discard;
 
-/* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
-bool is_zero(vec2) {}
-bool is_zero(vec3) {}
-bool is_zero(vec4) {}
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Compatibility
+ * \{ */
 
 /* Array syntax compatibility. */
 /* clang-format off */
@@ -617,5 +672,7 @@ bool is_zero(vec4) {}
 #define bool3_array(...) { __VA_ARGS__ }
 #define bool4_array(...) { __VA_ARGS__ }
 /* clang-format on */
+
+/** \} */
 
 #endif
