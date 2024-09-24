@@ -663,6 +663,7 @@ static void seq_image_transform_quad_get_ex(const Scene *scene,
     TextVars *data = static_cast<TextVars *>(seq->effectdata);
     if (data->runtime != nullptr && data->runtime->character_count > 0) {
       image_size[0] = BLI_rcti_size_x(&data->runtime->text_boundbox);
+      image_size[1] = BLI_rcti_size_y(&data->runtime->text_boundbox);
     }
     else {
       /* Arbitrary size for empty text box. */
