@@ -5182,6 +5182,59 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                   "Bake Modifiers into keyframes and delete them after");
 }
 
+static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender::animrig;
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ListBase anim_data = {nullptr, nullptr};
+  const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_DATA_VISIBLE |
+                      ANIMFILTER_LIST_VISIBLE);
+  size_t anim_data_length = ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
+
+  if (anim_data_length == 0) {
+    WM_report(RPT_WARNING, "No channels to operate on");
+    return OPERATOR_CANCELLED;
+  }
+
+  blender::Vector<Slot *> slots;
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    if (ale->type != ANIMTYPE_ACTION_SLOT) {
+      continue;
+    }
+    slots.append(reinterpret_cast<Slot *>(ale->data));
+  }
+  ANIM_animdata_freelist(&anim_data);
+
+  if (slots.size() == 0) {
+    WM_report(RPT_WARNING, "None of the selected channels is an Action Slot");
+    return OPERATOR_CANCELLED;
+  }
+
+  bAction *new_action = reinterpret_cast<bAction *>(BKE_id_new(CTX_data_main(C), ID_AC, ""));
+}
+
+static bool slot_channels_move_to_new_action_poll(bContext *C)
+{
+  return ED_operator_action_active(C);
+}
+
+static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
+{
+  ot->name = "Move Slots to new Action";
+  ot->idname = "ANIM_OT_slot_channel_move_to_new_action";
+  ot->description = "Move the selected slots into a newly created action";
+
+  ot->exec = slot_channels_move_to_new_action_exec;
+  ot->poll = slot_channels_move_to_new_action_poll;
+}
+
 /**
  *  Find a Graph Editor area and set the context arguments accordingly.
  */
