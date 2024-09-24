@@ -225,28 +225,68 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
     copy_vn_fl(loop_maxdist, loop_nr, FLT_MAX);
   }
 
-  for (int i : sld->sv.index_range()) {
-    TransDataEdgeSlideVert *sv = &sld->sv[i];
-    BMIter iter_other;
-    BMEdge *e;
-    BMVert *v = static_cast<BMVert *>(sv->td->extra);
+  if (use_occlude_geometry) {
+    for (int i : sld->sv.index_range()) {
+      TransDataEdgeSlideVert *sv = &sld->sv[i];
+      BMIter iter_other;
+      BMEdge *e;
+      BMVert *v = static_cast<BMVert *>(sv->td->extra);
 
-    /* Search cross edges for visible edge to the mouse cursor,
-     * then use the shared vertex to calculate screen vector. */
-    BM_ITER_ELEM (e, &iter_other, v, BM_EDGES_OF_VERT) {
+      /* Search cross edges for visible edge to the mouse cursor,
+       * then use the shared vertex to calculate screen vector. */
+      BM_ITER_ELEM (e, &iter_other, v, BM_EDGES_OF_VERT) {
 
-      if (BM_elem_flag_test(e, BM_ELEM_SELECT)) {
-        continue;
+        if (BM_elem_flag_test(e, BM_ELEM_SELECT)) {
+          continue;
+        }
+
+        /* This test is only relevant if object is not wire-drawn! See #32068. */
+        bool is_visible = /* `!use_occlude_geometry ||` - always false, no need to check. */
+            BMBVH_EdgeVisible(bmbvh, e, t->depsgraph, region, v3d, tc->obedit);
+
+        if (!is_visible && !use_calc_direction) {
+          continue;
+        }
+
+        /* Screen-space coords. */
+        float2 sco_a, sco_b;
+        sld->project(sv, sco_a, sco_b);
+
+        /* Global direction. */
+        float dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
+        if (is_visible) {
+          if ((dist_sq < dist_best_sq) && (len_squared_v2v2(sco_b, sco_a) > 0.1f)) {
+            dist_best_sq = dist_sq;
+            mval_dir = sco_b - sco_a;
+            sld->curr_sv_index = i;
+          }
+        }
+
+        if (use_calc_direction) {
+          /* Per loop direction. */
+          int l_nr = sv->loop_nr;
+          if (dist_sq < loop_maxdist[l_nr]) {
+            loop_maxdist[l_nr] = dist_sq;
+            loop_dir[l_nr] = sco_b - sco_a;
+          }
+        }
       }
+    }
+  }
+  else {
+    /* Generic, non-BMesh logic. */
+    for (int i : sld->sv.index_range()) {
+      TransDataEdgeSlideVert *sv = &sld->sv[i];
+      bool is_visible = !use_occlude_geometry || true /* TODO: generic vertex visibility check. */
+          ;
 
       /* This test is only relevant if object is not wire-drawn! See #32068. */
-      bool is_visible = !use_occlude_geometry ||
-                        BMBVH_EdgeVisible(bmbvh, e, t->depsgraph, region, v3d, tc->obedit);
-
       if (!is_visible && !use_calc_direction) {
         continue;
       }
 
+      /* Search cross edges for visible edge to the mouse cursor,
+       * then use the shared vertex to calculate screen vector. */
       /* Screen-space coords. */
       float2 sco_a, sco_b;
       sld->project(sv, sco_a, sco_b);
@@ -254,10 +294,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
       /* Global direction. */
       float dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
       if (is_visible) {
-        if ((dist_best_sq == -1.0f) ||
-            /* intentionally use 2d size on 3d vector */
-            (dist_sq < dist_best_sq && (len_squared_v2v2(sco_b, sco_a) > 0.1f)))
-        {
+        if (dist_sq < dist_best_sq && (len_squared_v2v2(sco_b, sco_a) > 0.1f)) {
           dist_best_sq = dist_sq;
           mval_dir = sco_b - sco_a;
           sld->curr_sv_index = i;
