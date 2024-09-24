@@ -5755,7 +5755,8 @@ static bool ui_numedit_but_SLI(uiBut *but,
     const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) :
                                          -BLI_rctf_size_y(&but->rect);
     cursor_x_range = size * (but->softmax - but->softmin) /
-                     (but->softmax - but->softmin + but->a1);
+                     (but->softmax - but->softmin + slider_but->step_size);
+
     f = (mx_fl - data->dragstartx) / cursor_x_range + data->dragfstart;
   }
 
