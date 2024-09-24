@@ -215,13 +215,12 @@ void Instance::object_sync(ObjectRef &ob_ref, Manager &manager)
       case OB_ARMATURE:
         layer.armatures.edit_object_sync(ob_ref, resources, shapes, state);
         break;
+      case OB_SURF:
       case OB_CURVES_LEGACY:
         layer.curves.edit_object_sync_legacy(manager, ob_ref, resources);
         break;
       case OB_CURVES:
         layer.curves.edit_object_sync(manager, ob_ref, resources);
-        break;
-      case OB_SURF:
         break;
       case OB_LATTICE:
         layer.lattices.edit_object_sync(manager, ob_ref, resources);

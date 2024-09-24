@@ -178,7 +178,7 @@ class Curves {
     Object *ob = ob_ref.object;
     ::Curve &curve = *static_cast<::Curve *>(ob->data);
 
-    {
+    if (ob->type == OB_CURVES_LEGACY) {
       gpu::Batch *geom = DRW_cache_curve_edge_wire_get(ob);
       edit_legacy_curve_wires_->draw(geom, res_handle);
     }
