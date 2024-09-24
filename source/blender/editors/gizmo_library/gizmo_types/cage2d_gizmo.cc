@@ -18,6 +18,7 @@
 #include "BLI_dial_2d.h"
 #include "BLI_math_base_safe.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 
@@ -587,8 +588,7 @@ static void cage2d_draw_rect_corner_handles(const rctf *r,
                                             bool solid)
 {
   /* Only draw corner handles when hovering over the corners. */
-  if (highlighted < ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y ||
-      highlighted > ED_GIZMO_CAGE2D_PART_SCALE_MAX_X_MAX_Y)
+  if (highlighted < ED_GIZMO_CAGE2D_PART_SCALE_MIN_X_MIN_Y)
   {
     return;
   }
@@ -1103,7 +1103,7 @@ static int gizmo_cage2d_modal(bContext *C,
     }
   }
 
-  float point_local[2];
+  float point_local[2] = {float(event->mval[0]), float(event->mval[1])};
 
   float dims[2];
   RNA_float_get_array(gz->ptr, "dimensions", dims);
@@ -1115,9 +1115,8 @@ static int gizmo_cage2d_modal(bContext *C,
 
     /* The mouse coords are projected into the matrix so we don't need to worry about axis
      * alignment. */
-    // todo: when gizmo is rotated, mouse coordinates are still not rotated. Setting use_offset in gizmo_window_project_2d below fixes the rotation problem but breaks the offset. 
     bool ok = gizmo_window_project_2d(
-        C, gz, blender::float2(blender::int2(event->mval)), 2, false, point_local);
+        C, gz, point_local, 2, false, point_local);
     copy_m4_m4(gz->matrix_offset, matrix_back);
     if (!ok) {
       return OPERATOR_RUNNING_MODAL;
@@ -1193,19 +1192,43 @@ static int gizmo_cage2d_modal(bContext *C,
       zero_v2(pivot);
     }
 
+    float test_co[2];
+    copy_v2_v2(test_co, data->orig_mouse);
     if(transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_ROTATE) {
       // rotate mouse coordinates around pivot by angle
 
-      //      float rot[3][3];
-      //      float loc[3];
-      //      float size[3];
-      //
-      //      rot[2][0] = pivot[0];
-      //      rot[2][1] = pivot[1];
-      //      mat4_to_loc_rot_size(loc, rot, size, data->orig_matrix_final_no_offset);
-      //
-      //      invert_m3(rot);
-      //      mul_m3_v2(rot, point_local);
+      /*
+       1) translate to origin
+       2) revert rotation
+       3) <scale>
+       4) rotate
+       5) translate back */
+
+      float rot[3][3];
+      float loc[3];
+      float size[3];
+
+      mat4_to_loc_rot_size(loc, rot, size, gz->matrix_offset);
+
+      print_v3("loc", loc);
+      print_v3("size", size);
+      float angle[3];
+      mat3_to_eul(angle, rot);
+      print_v3("angle", angle);
+
+
+      print_v2("point_local before", point_local);
+      invert_m3(rot);
+      sub_v2_v2(point_local, loc);
+      mul_m3_v2(rot, point_local);
+      add_v2_v2(point_local, loc);
+      print_v2("point_local after", point_local);
+
+      print_v2("orig_mouse before", data->orig_mouse);
+      sub_v2_v2(test_co, loc);
+      mul_m3_v2(rot, test_co);
+      add_v2_v2(test_co, loc);
+      print_v2("orig_mouse/test_co after", data->orig_mouse);
     }
 
     bool constrain_axis[2] = {false};
@@ -1217,20 +1240,47 @@ static int gizmo_cage2d_modal(bContext *C,
       size_new[i] = size_orig[i];
       if (constrain_axis[i] == false) {
         /* Original cursor position relative to pivot. */
-        const float delta_orig = data->orig_mouse[i] - data->orig_matrix_offset[3][i] -
-                                 pivot[i] * size_orig[i];
+         float delta_orig = test_co[i] - data->orig_matrix_offset[3][i] -
+        pivot[i] * size_orig[i];
         const float delta_curr = point_local[i] - data->orig_matrix_offset[3][i] -
-                                 pivot[i] * size_orig[i];
+        pivot[i] * size_orig[i];
 
-        if ((transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_SCALE_SIGNED) == 0) {
-          if (signum_i(delta_orig) != signum_i(delta_curr)) {
-            size_new[i] = 0.0f;
-            continue;
+//        if ((transform_flag & ED_GIZMO_CAGE_XFORM_FLAG_SCALE_SIGNED) == 0) {
+//          if (signum_i(delta_orig) != signum_i(delta_curr)) {
+//            size_new[i] = 0.0f;
+//            continue;
+//          }
+//        }
+        {
+          float rot[3][3];
+          float loc[3];
+          float size[3];
+
+          //      rot[2][0] = loc[0];
+          //      rot[2][1] = loc[1];
+          mat4_to_loc_rot_size(loc, rot, size, data->orig_matrix_offset);
+
+          print_v3("orig_matrix_offset loc", loc);
+          print_v3("orig_matrix_offset size", size);
+          float angle[3];
+          mat3_to_eul(angle, rot);
+          print_v3("orig_matrix_offset angle", angle);
+
+          if (angle[2] > M_PI_2) {
+//            delta_orig *= -1.0f ;
           }
         }
-
         /* Original cursor position does not exactly lie on the cage boundary due to margin. */
         size_new[i] = delta_curr / (signf(delta_orig) * 0.5f * dims[i] - pivot[i]);
+//        size_new[i] = delta_curr / (0.5f * dims[i] - pivot[i]);
+
+
+        if (size_new[i] > 99999999) {
+          print_v2("size_new is inf", size_new);
+          printf("\tdelta_curr: %2f\n", delta_curr);
+          printf("\tdelta_orig: %2f\n", delta_orig);
+          printf("\t: 0.5f * dims[i] - pivot[i] %2f\n", 0.5f * dims[i] - pivot[i]);
+        }
       }
     }
 
