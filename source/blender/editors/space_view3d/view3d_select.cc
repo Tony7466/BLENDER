@@ -1192,7 +1192,7 @@ static bool do_lasso_select_grease_pencil(const ViewContext *vc,
           const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+        const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *object, info.layer_index, info.frame_number);
@@ -3240,7 +3240,7 @@ static bool ed_grease_pencil_select_pick(bContext *C,
         ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
           ed::greasepencil::MutableDrawingInfo info = drawings[i];
-          const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+          const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
           /* Get deformation by modifiers. */
           bke::crazyspace::GeometryDeformation deformation =
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
@@ -4295,7 +4295,7 @@ static bool do_grease_pencil_box_select(const ViewContext *vc,
           const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+        const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *object, info.layer_index, info.frame_number);
@@ -5162,7 +5162,7 @@ static bool grease_pencil_circle_select(const ViewContext *vc,
           const StringRef attribute_name,
           IndexMaskMemory &memory) {
         bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
-        const bke::greasepencil::Layer &layer = *grease_pencil.layer(info.layer_index);
+        const bke::greasepencil::Layer &layer = grease_pencil.layer(info.layer_index);
         const bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *object, info.layer_index, info.frame_number);
