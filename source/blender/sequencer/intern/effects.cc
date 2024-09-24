@@ -3297,8 +3297,9 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime *runtime,
       character.position += alignment;
     }
   }
-  runtime->text_boundbox.xmin = image_center.x - width_max / 2;
-  runtime->text_boundbox.xmax = image_center.x + width_max / 2;
+  /* Pad box by descender on X axis to make box symmetrical. */
+  runtime->text_boundbox.xmin = image_center.x - width_max / 2 + runtime->font_descender;
+  runtime->text_boundbox.xmax = image_center.x + width_max / 2 - runtime->font_descender;
   runtime->text_boundbox.ymax = image_center.y + text_height / 2;
   runtime->text_boundbox.ymin = image_center.y - text_height / 2;
 }
