@@ -2,7 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <type_traits>
+#pragma once
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+
+#  include <type_traits>
 
 template<typename T, int Sz> struct VecBase {};
 
@@ -39,8 +43,8 @@ template<typename T, int Sz> struct VecOp {
   friend VecT operator/(T, VecT) {}
   friend VecT operator*(T, VecT) {}
 
-#define INT_OP \
-  template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
+#  define INT_OP \
+    template<typename U = _T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
   INT_OP VecT operator%(VecT) const {}
   INT_OP VecT operator&(VecT) const {}
@@ -67,7 +71,7 @@ template<typename T, int Sz> struct VecOp {
   INT_OP friend VecT operator|(T, VecT) {}
   INT_OP friend VecT operator^(T, VecT) {}
 
-#undef INT_OP
+#  undef INT_OP
 };
 
 template<typename T> struct VecSwizzle2 {
@@ -330,11 +334,11 @@ template<int D> bool any(VecBase<bool, D>) {}
 template<int D> bool all(VecBase<bool, D>) {}
 /* `not` is a C++ keyword. Use dirty macro to allow this. */
 template<int D> VecBase<bool, D> not_impl(VecBase<bool, D>) {}
-#define not not_impl
+#  define not not_impl
 
-#define inout
-#define in
-#define out
+#  define inout
+#  define in
+#  define out
 
 template<typename T> using Vec4 = VecBase<T, 4>;
 template<int D> using VecInt = VecBase<int, D>;
@@ -352,13 +356,13 @@ template<typename T, int Dimensions, bool Cube = false, bool Array = false> stru
   using size_vec_type = VecBase<int, extent_dim>;
 };
 
-#define TEX_TEMPLATE \
-  template<typename T, \
-           typename IntCoord = typename T::int_coord_type, \
-           typename FltCoord = typename T::flt_coord_type, \
-           typename DerivVec = typename T::derivative_type, \
-           typename DataVec = typename T::data_vec_type, \
-           typename SizeVec = typename T::size_vec_type>
+#  define TEX_TEMPLATE \
+    template<typename T, \
+             typename IntCoord = typename T::int_coord_type, \
+             typename FltCoord = typename T::flt_coord_type, \
+             typename DerivVec = typename T::derivative_type, \
+             typename DataVec = typename T::data_vec_type, \
+             typename SizeVec = typename T::size_vec_type>
 
 TEX_TEMPLATE SizeVec textureSize(T, int) {}
 TEX_TEMPLATE DataVec texelFetch(T, IntCoord, int) {}
@@ -368,7 +372,7 @@ TEX_TEMPLATE DataVec textureGather(T, FltCoord) {}
 TEX_TEMPLATE DataVec textureGrad(T, FltCoord, DerivVec, DerivVec) {}
 TEX_TEMPLATE DataVec textureLod(T, FltCoord, double) {}
 
-#undef TEX_TEMPLATE
+#  undef TEX_TEMPLATE
 
 using sampler1D = SamplerBase<double, 1>;
 using sampler2D = SamplerBase<double, 2>;
@@ -405,20 +409,20 @@ template<typename T, int Dimensions, bool Array = false> struct ImageBase {
   using size_vec_type = VecBase<int, extent_dim>;
 };
 
-#define IMG_TEMPLATE \
-  template<typename T, \
-           typename IntCoord = typename T::int_coord_type, \
-           typename DataVec = typename T::data_vec_type, \
-           typename SizeVec = typename T::size_vec_type>
+#  define IMG_TEMPLATE \
+    template<typename T, \
+             typename IntCoord = typename T::int_coord_type, \
+             typename DataVec = typename T::data_vec_type, \
+             typename SizeVec = typename T::size_vec_type>
 
 IMG_TEMPLATE SizeVec imageSize(T) {}
 IMG_TEMPLATE DataVec imageLoad(T, IntCoord) {}
 IMG_TEMPLATE void imageStore(T, IntCoord, DataVec) {}
 IMG_TEMPLATE void imageFence(T) {}
-#define imageLoadFast imageLoad
-#define imageStoreFast imageStore
+#  define imageLoadFast imageLoad
+#  define imageStoreFast imageStore
 
-#undef IMG_TEMPLATE
+#  undef IMG_TEMPLATE
 
 using sampler1D = SamplerBase<double, 1>;
 using sampler2D = SamplerBase<double, 2>;
@@ -524,7 +528,7 @@ double mix(double, double, double) {}
 template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) {}
 template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) {}
 
-#define select(A, B, C) mix(A, B, C)
+#  define select(A, B, C) mix(A, B, C)
 
 VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) {}
 template<int D> float dot(VecBase<double, D>, VecBase<double, D>) {}
@@ -613,3 +617,5 @@ bool is_zero(vec4) {}
 #define bool3_array(...) { __VA_ARGS__ }
 #define bool4_array(...) { __VA_ARGS__ }
 /* clang-format on */
+
+#endif
