@@ -202,7 +202,13 @@ static void version_legacy_actions_to_layered(Main *bmain)
   for (const auto &item : action_users.items()) {
     Action &action = item.key->wrap();
     convert_action_in_place(action);
-    for (ActionUserInfo &action_user : item.value) {
+    blender::Vector<ActionUserInfo> &user_infos = item.value;
+    if (user_infos.size() == 1) {
+      /* Rename the slot after its single user. If there are multiple users, the name is unchanged
+       * because there is no good way to determine a name. */
+      action.slot_name_set(*bmain, *action.slot(0), user_infos[0].id->name);
+    }
+    for (ActionUserInfo &action_user : user_infos) {
       BLI_assert_msg(*action_user.slot_handle == Slot::unassigned,
                      "Because the action was just converted from legacy, none of the users of "
                      "that action should have a slot set yet.");
