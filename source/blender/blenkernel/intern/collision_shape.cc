@@ -632,6 +632,12 @@ TriangleCollisionShape::TriangleCollisionShape(const float3 &pt0,
 
 static CollisionShapeImpl *make_convex_hull_shape(const VArray<float3> &points)
 {
+  if (points.size() < 3) {
+    JPH::Ref<JPH::Shape> fallback_shape = JPH::Ref<JPH::Shape>(
+        new JPH::SphereShape(1.0f));
+    return CollisionShapeImpl::wrap(fallback_shape.GetPtr());
+  }
+
   JPH::ConvexHullShapeSettings settings;
   settings.mPoints.reserve(points.size());
   for (const int i : points.index_range()) {
