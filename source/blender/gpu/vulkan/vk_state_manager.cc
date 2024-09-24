@@ -68,7 +68,7 @@ void VKStateManager::issue_barrier(eGPUBarrier barrier_bits)
 
 void VKStateManager::texture_bind(Texture *texture, GPUSamplerState sampler, int binding)
 {
-  textures_.bind(BindSpaceTypedSampled::Type::Texture, texture, sampler, binding);
+  textures_.bind(BindSpaceTextures::Type::Texture, texture, sampler, binding);
   is_dirty = true;
 }
 
@@ -133,7 +133,7 @@ void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
 
 void VKStateManager::texel_buffer_bind(VKVertexBuffer &vertex_buffer, int binding)
 {
-  textures_.bind(BindSpaceTypedSampled::Type::VertexBuffer,
+  textures_.bind(BindSpaceTextures::Type::VertexBuffer,
                  &vertex_buffer,
                  GPUSamplerState::default_sampler(),
                  binding);
@@ -146,7 +146,7 @@ void VKStateManager::texel_buffer_unbind(VKVertexBuffer &vertex_buffer)
   is_dirty = true;
 }
 
-void VKStateManager::storage_buffer_bind(BindSpaceTyped::Type resource_type,
+void VKStateManager::storage_buffer_bind(BindSpaceStorageBuffers::Type resource_type,
                                          void *resource,
                                          int binding)
 {

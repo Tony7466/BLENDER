@@ -124,10 +124,10 @@ void VKDescriptorSetTracker::update(VKContext &context,
       }
 
       case shader::ShaderCreateInfo::Resource::BindType::SAMPLER: {
-        const BindSpaceTypedSampled::Elem &elem = state_manager.textures_.get(
+        const BindSpaceTextures::Elem &elem = state_manager.textures_.get(
             resource_binding.binding);
         switch (elem.resource_type) {
-          case BindSpaceTypedSampled::Type::VertexBuffer: {
+          case BindSpaceTextures::Type::VertexBuffer: {
             VKVertexBuffer *vertex_buffer = static_cast<VKVertexBuffer *>(elem.resource);
             vertex_buffer->ensure_updated();
             vertex_buffer->ensure_buffer_view();
@@ -135,7 +135,7 @@ void VKDescriptorSetTracker::update(VKContext &context,
             access_info.buffers.append({vertex_buffer->vk_handle(), resource_binding.access_mask});
             break;
           }
-          case BindSpaceTypedSampled::Type::Texture: {
+          case BindSpaceTextures::Type::Texture: {
             VKTexture *texture = static_cast<VKTexture *>(elem.resource);
             const VKSampler &sampler = device.samplers().get(elem.sampler);
             bind_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -150,7 +150,7 @@ void VKDescriptorSetTracker::update(VKContext &context,
                                        VK_REMAINING_ARRAY_LAYERS});
             break;
           }
-          case BindSpaceTypedSampled::Type::Unused: {
+          case BindSpaceTextures::Type::Unused: {
             BLI_assert_unreachable();
           }
         }
@@ -159,40 +159,40 @@ void VKDescriptorSetTracker::update(VKContext &context,
       }
 
       case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
-        const BindSpaceTyped::Elem &elem = state_manager.storage_buffers_.get(
+        const BindSpaceStorageBuffers::Elem &elem = state_manager.storage_buffers_.get(
             resource_binding.binding);
         VkBuffer vk_buffer = VK_NULL_HANDLE;
         VkDeviceSize vk_device_size = 0;
         switch (elem.resource_type) {
-          case BindSpaceTyped::Type::IndexBuffer: {
+          case BindSpaceStorageBuffers::Type::IndexBuffer: {
             VKIndexBuffer *index_buffer = static_cast<VKIndexBuffer *>(elem.resource);
             index_buffer->ensure_updated();
             vk_buffer = index_buffer->vk_handle();
             vk_device_size = index_buffer->size_get();
             break;
           }
-          case BindSpaceTyped::Type::VertexBuffer: {
+          case BindSpaceStorageBuffers::Type::VertexBuffer: {
             VKVertexBuffer *vertex_buffer = static_cast<VKVertexBuffer *>(elem.resource);
             vertex_buffer->ensure_updated();
             vk_buffer = vertex_buffer->vk_handle();
             vk_device_size = vertex_buffer->size_used_get();
             break;
           }
-          case BindSpaceTyped::Type::UniformBuffer: {
+          case BindSpaceStorageBuffers::Type::UniformBuffer: {
             VKUniformBuffer *uniform_buffer = static_cast<VKUniformBuffer *>(elem.resource);
             uniform_buffer->ensure_updated();
             vk_buffer = uniform_buffer->vk_handle();
             vk_device_size = uniform_buffer->size_in_bytes();
             break;
           }
-          case BindSpaceTyped::Type::StorageBuffer: {
+          case BindSpaceStorageBuffers::Type::StorageBuffer: {
             VKStorageBuffer *storage_buffer = static_cast<VKStorageBuffer *>(elem.resource);
             storage_buffer->ensure_allocated();
             vk_buffer = storage_buffer->vk_handle();
             vk_device_size = storage_buffer->size_in_bytes();
             break;
           }
-          case BindSpaceTyped::Type::Unused: {
+          case BindSpaceStorageBuffers::Type::Unused: {
             BLI_assert_unreachable();
           }
         }

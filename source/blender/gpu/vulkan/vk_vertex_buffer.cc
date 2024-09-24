@@ -27,7 +27,7 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
 {
   VKContext &context = *VKContext::get();
   VKStateManager &state_manager = context.state_manager_get();
-  state_manager.storage_buffer_bind(BindSpaceTyped::Type::VertexBuffer, this, binding);
+  state_manager.storage_buffer_bind(BindSpaceStorageBuffers::Type::VertexBuffer, this, binding);
 }
 
 void VKVertexBuffer::bind_as_texture(uint binding)

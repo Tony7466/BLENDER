@@ -24,12 +24,12 @@ class VKIndexBuffer;
 class VKContext;
 class VKDescriptorSetTracker;
 
-/** Bind space for a single resource type. */
-template<typename StorageType> class BindSpace {
+/** Bind space for a uniform buffers. */
+class BindSpaceUniformBuffers {
  public:
-  Vector<StorageType *> bound_resources;
+  Vector<VKUniformBuffer *> bound_resources;
 
-  void bind(StorageType *resource, int binding)
+  void bind(VKUniformBuffer *resource, int binding)
   {
     if (bound_resources.size() <= binding) {
       bound_resources.resize(binding + 1);
@@ -37,7 +37,7 @@ template<typename StorageType> class BindSpace {
     bound_resources[binding] = resource;
   }
 
-  StorageType *get(int binding)
+  VKUniformBuffer *get(int binding)
   {
     return bound_resources[binding];
   }
@@ -58,13 +58,13 @@ template<typename StorageType> class BindSpace {
 };
 
 /**
- * Bind space for resource classes that are offsetted.
+ * Bind space for image resources.
  */
-template<typename StorageType, int Offset> class BindSpaceOffset {
+template<int Offset> class BindSpaceImages {
  public:
-  Vector<StorageType *> bound_resources;
+  Vector<VKTexture *> bound_resources;
 
-  void bind(StorageType *resource, int binding)
+  void bind(VKTexture *resource, int binding)
   {
     if (binding >= Offset) {
       binding -= Offset;
@@ -75,7 +75,7 @@ template<typename StorageType, int Offset> class BindSpaceOffset {
     bound_resources[binding] = resource;
   }
 
-  StorageType *get(int binding)
+  VKTexture *get(int binding)
   {
     if (binding >= Offset) {
       binding -= Offset;
@@ -98,8 +98,8 @@ template<typename StorageType, int Offset> class BindSpaceOffset {
   }
 };
 
-/** Bind space where different type of resources are used. */
-class BindSpaceTyped {
+/** Bind space for storage buffers. */
+class BindSpaceStorageBuffers {
  public:
   enum class Type {
     Unused,
@@ -144,12 +144,13 @@ class BindSpaceTyped {
   }
 };
 
-class BindSpaceTypedSampled {
+/** Bind space for textures. */
+class BindSpaceTextures {
  public:
   enum class Type {
     Unused,
-    VertexBuffer,
     Texture,
+    VertexBuffer,
   };
   struct Elem {
     Type resource_type;
@@ -195,10 +196,10 @@ class VKStateManager : public StateManager {
 
   uint texture_unpack_row_length_ = 0;
 
-  BindSpaceTypedSampled textures_;
-  BindSpaceOffset<VKTexture, BIND_SPACE_IMAGE_OFFSET> images_;
-  BindSpace<VKUniformBuffer> uniform_buffers_;
-  BindSpaceTyped storage_buffers_;
+  BindSpaceTextures textures_;
+  BindSpaceImages<BIND_SPACE_IMAGE_OFFSET> images_;
+  BindSpaceUniformBuffers uniform_buffers_;
+  BindSpaceStorageBuffers storage_buffers_;
 
  public:
   bool is_dirty = false;
@@ -227,7 +228,9 @@ class VKStateManager : public StateManager {
   void texel_buffer_bind(VKVertexBuffer &vertex_buffer, int slot);
   void texel_buffer_unbind(VKVertexBuffer &vertex_buffer);
 
-  void storage_buffer_bind(BindSpaceTyped::Type resource_type, void *resource, int binding);
+  void storage_buffer_bind(BindSpaceStorageBuffers::Type resource_type,
+                           void *resource,
+                           int binding);
   void storage_buffer_unbind(VKBindableResource &resource);
   void storage_buffer_unbind_all();
 

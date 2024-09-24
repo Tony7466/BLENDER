@@ -44,7 +44,7 @@ void VKIndexBuffer::upload_data()
 void VKIndexBuffer::bind_as_ssbo(uint binding)
 {
   VKContext::get()->state_manager_get().storage_buffer_bind(
-      BindSpaceTyped::Type::IndexBuffer, this, binding);
+      BindSpaceStorageBuffers::Type::IndexBuffer, this, binding);
 }
 
 void VKIndexBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
