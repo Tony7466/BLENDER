@@ -3203,15 +3203,9 @@ static void apply_text_alignment(const TextVars *data,
   const int width_max = text_box_width_get(runtime.lines);
   const int text_height = runtime.lines.size() * runtime.line_height;
 
-<<<<<<< HEAD
-  const float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
+  const float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
   const float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
   const float2 alignment_y(0.0f, text_height / 2.0f);
-=======
-  float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
-  float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
-  float2 alignment_y(0.0f, text_height / 2.0f);
->>>>>>> 1a824b79ccff0c79c15abc44f51216a44f6b06d0
 
   for (LineInfo &line : runtime.lines) {
     const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
