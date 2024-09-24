@@ -114,7 +114,7 @@ static void convert_action_in_place(blender::animrig::Action &action)
     return;
   }
   Slot &slot = action.slot_add();
-  Layer &layer = action.layer_add(action.id.name + 2);
+  Layer &layer = action.layer_add("Layer");
   blender::animrig::Strip &strip = layer.strip_add(action,
                                                    blender::animrig::Strip::Type::Keyframe);
   ChannelBag &bag = strip.data<StripKeyframeData>(action).channelbag_for_slot_ensure(slot);
@@ -145,6 +145,49 @@ static void convert_action_in_place(blender::animrig::Action &action)
 
   action.curves = {nullptr, nullptr};
   action.groups = {nullptr, nullptr};
+}
+
+static void version_legacy_actions_to_layered()
+{
+  using namespace blender::animrig;
+  blender::Map<bAction *, blender::Vector<std::pair<ID *, slot_handle_t *>>> action_users;
+  LISTBASE_FOREACH (bAction *, dna_action, &bmain->actions) {
+    Action &action = dna_action->wrap();
+    if (action.is_action_layered()) {
+      continue;
+    }
+    action_users.add(dna_action, {});
+  }
+
+  ListBase *ids_of_idtype;
+  ID *id;
+  FOREACH_MAIN_ID_BEGIN (bmain, id) {
+    auto callback = [&](bAction *&action_ptr_ref,
+                        slot_handle_t &slot_handle_ref,
+                        char * /* slot_name */) -> bool {
+      blender::Vector<std::pair<ID *, slot_handle_t *>> *action_user_vector =
+          action_users.lookup_ptr(action_ptr_ref);
+      /* Only actions that need to be converted are in this map. */
+      if (!action_user_vector) {
+        return true;
+      }
+      action_user_vector->append({id, &slot_handle_ref});
+      return true;
+    };
+    foreach_action_slot_use_with_references(*id, callback);
+  }
+  FOREACH_MAIN_ID_END;
+
+  for (const auto &item : action_users.items()) {
+    Action &action = *item.key;
+    convert_action_in_place(action);
+    for (std::pair<ID *, slot_handle_t *> action_user : item.value) {
+      BLI_assert_msg(*action_user.second == Slot::unassigned,
+                     "Because the action was just converted from legacy, none of the users of "
+                     "that action should have a slot set yet.");
+      *action_user.second = action.slot(0)->handle;
+    }
+  }
 }
 
 /* Move bone-group color to the individual bones. */
@@ -1102,47 +1145,7 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
   /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
    * removed. */
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
-    using namespace blender::animrig;
-    blender::Map<Action *, blender::Vector<std::pair<ID *, slot_handle_t *>>> action_users;
-    LISTBASE_FOREACH (bAction *, dna_action, &bmain->actions) {
-      Action &action = dna_action->wrap();
-      if (action.is_action_layered()) {
-        continue;
-      }
-      action_users.add(&action, {});
-    }
-
-    ListBase *ids_of_idtype;
-    ID *id;
-    FOREACH_MAIN_LISTBASE_BEGIN (bmain, ids_of_idtype) {
-      FOREACH_MAIN_LISTBASE_ID_BEGIN (ids_of_idtype, id) {
-        auto callback = [&](bAction *&action_ptr_ref,
-                            slot_handle_t &slot_handle_ref,
-                            char * /* slot_name */) -> bool {
-          Action &action = action_ptr_ref->wrap();
-          if (!action_users.contains(&action)) {
-            return true;
-          }
-          action_users.lookup(&action).append({id, &slot_handle_ref});
-          return true;
-        };
-        foreach_action_slot_use_with_references(*id, callback);
-      }
-      FOREACH_MAIN_LISTBASE_ID_END;
-    }
-    FOREACH_MAIN_LISTBASE_END;
-
-    for (const auto &item : action_users.items()) {
-      Action &action = *item.key;
-      convert_action_in_place(action);
-      for (std::pair<ID *, slot_handle_t *> action_user : item.value) {
-        /* Because the action was just converted from legacy, none of the users of that action
-         * should have a slot set yet. */
-        BLI_assert(*action_user.second == Slot::unassigned);
-        *action_user.second = action.slot(0)->handle;
-        action.slot(0)->users_add(*action_user.first);
-      }
-    }
+    version_legacy_actions_to_layered();
   }
 }
 
