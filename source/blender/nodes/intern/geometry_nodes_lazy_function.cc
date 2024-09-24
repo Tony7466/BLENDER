@@ -3168,7 +3168,8 @@ void LazyFunctionForReduceForeachGeometryElement::handle_generation_items_group(
             GeometryComponent::Type::PointCloud,
             GeometryComponent::Type::Curve,
             GeometryComponent::Type::GreasePencil,
-            GeometryComponent::Type::Instance})
+            GeometryComponent::Type::Instance,
+            GeometryComponent::Type::Physics})
       {
         if (!geometry.has(dst_component_type)) {
           continue;
