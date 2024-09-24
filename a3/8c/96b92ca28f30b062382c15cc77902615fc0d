@@ -1,1 +1,2 @@
 Referenced by issue #128053, Gpencil: GPv3 crash on using CTRL key to switch to eraser
+Referenced by commit ebc4759df5868f648515618fc418d39680176fc3, Fix #128053: Crash when using Ctrl for eraser in grease pencil draw mode
