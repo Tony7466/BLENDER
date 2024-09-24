@@ -422,7 +422,6 @@ class MTLParallelShaderCompiler {
     Vector<Shader::Constants::Value> specialization_values;
 
     ParallelWorkType work_type = PARALLELWORKTYPE_UNSPECIFIED;
-    bool do_async_compilation = false;
     bool is_ready = false;
   };
 
@@ -437,9 +436,6 @@ class MTLParallelShaderCompiler {
 
   std::vector<std::thread> compile_threads;
 
-  // MTLContext *metal_context;
-  // id<MTLDevice> metal_device;
-
   volatile bool terminate_compile_threads;
   std::condition_variable cond_var;
   std::mutex queue_mutex;
@@ -451,7 +447,7 @@ class MTLParallelShaderCompiler {
   void add_parallel_item_to_queue(ParallelWork *add_parallel_item_to_queuework_item,
                                   BatchHandle batch_handle);
 
-  std::atomic_int ref_count;
+  std::atomic<int> ref_count;
 
  public:
   MTLParallelShaderCompiler();
@@ -464,6 +460,7 @@ class MTLParallelShaderCompiler {
   Vector<Shader *> batch_finalize(BatchHandle &handle);
 
   SpecializationBatchHandle precompile_specializations(Span<ShaderSpecialization> specializations);
+  bool specialization_batch_is_ready(SpecializationBatchHandle &handle);
 
   void increment_ref_count()
   {
@@ -493,6 +490,7 @@ class MTLShaderCompiler : public ShaderCompiler {
 
   virtual SpecializationBatchHandle precompile_specializations(
       Span<ShaderSpecialization> specializations) override;
+  virtual bool specialization_batch_is_ready(SpecializationBatchHandle &handle) override;
 
   void release_parallel_shader_compiler();
 };

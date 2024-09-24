@@ -29,7 +29,6 @@
 #include "mtl_common.hh"
 #include "mtl_context.hh"
 #include "mtl_debug.hh"
-#include "mtl_misc.hh"
 #include "mtl_pso_descriptor_state.hh"
 #include "mtl_shader.hh"
 #include "mtl_shader_generator.hh"
@@ -1817,34 +1816,34 @@ bool MTLShader::has_transform_feedback_varying(std::string str)
  * don't want to create an instance per context as we want to restrict the
  * number of simultanenous compliation threads to ensure system respsonsiveness.
  * Hence the global shared instance. */
-MTLParallelShaderCompiler *shared_parallel_shader_compiler = nullptr;
-std::mutex shared_parallel_shader_compiler_mutex;
+MTLParallelShaderCompiler *g_shared_parallel_shader_compiler = nullptr;
+std::mutex g_shared_parallel_shader_compiler_mutex;
 
 MTLParallelShaderCompiler *get_shared_parallel_shader_compiler()
 {
-  std::scoped_lock lock(shared_parallel_shader_compiler_mutex);
+  std::scoped_lock lock(g_shared_parallel_shader_compiler_mutex);
 
-  if (!shared_parallel_shader_compiler) {
-    shared_parallel_shader_compiler = new MTLParallelShaderCompiler();
+  if (!g_shared_parallel_shader_compiler) {
+    g_shared_parallel_shader_compiler = new MTLParallelShaderCompiler();
   }
   else {
-    shared_parallel_shader_compiler->increment_ref_count();
+    g_shared_parallel_shader_compiler->increment_ref_count();
   }
-  return shared_parallel_shader_compiler;
+  return g_shared_parallel_shader_compiler;
 }
 
 void release_shared_parallel_shader_compiler()
 {
-  std::scoped_lock lock(shared_parallel_shader_compiler_mutex);
+  std::scoped_lock lock(g_shared_parallel_shader_compiler_mutex);
 
-  if (!shared_parallel_shader_compiler) {
+  if (!g_shared_parallel_shader_compiler) {
     return;
   }
 
-  shared_parallel_shader_compiler->decrement_ref_count();
-  if (shared_parallel_shader_compiler->get_ref_count() == 0) {
-    delete shared_parallel_shader_compiler;
-    shared_parallel_shader_compiler = nullptr;
+  g_shared_parallel_shader_compiler->decrement_ref_count();
+  if (g_shared_parallel_shader_compiler->get_ref_count() == 0) {
+    delete g_shared_parallel_shader_compiler;
+    g_shared_parallel_shader_compiler = nullptr;
   }
 }
 
@@ -1903,7 +1902,7 @@ void MTLParallelShaderCompiler::create_compile_threads()
   for (int i = 0; i < max_mtlcompiler_threads; i++) {
 
     /* Create a GPU context for each thread to use */
-    void *system_gpu_context = create_system_gpu_context();
+    void *system_gpu_context = GPU_system_context_create();
     BLI_assert(system_gpu_context);
     GPUContext *per_thread_context = GPU_context_create(nullptr, system_gpu_context);
 
@@ -1962,7 +1961,7 @@ void MTLParallelShaderCompiler::parallel_compilation_thread_func(GPUContext *ble
     /* Bake PSO */
     else if (work_item->work_type == PARALLELWORKTYPE_BAKE_PSO) {
       MTLShader *shader = work_item->shader;
-      // Currently only support Compute
+      /* Currently only support Compute */
       BLI_assert(shader && shader->has_compute_shader_lib());
 
       /* Create descriptor using these specialization constants. */
@@ -2133,6 +2132,35 @@ SpecializationBatchHandle MTLParallelShaderCompiler::precompile_specializations(
   return batch_handle;
 }
 
+bool MTLParallelShaderCompiler::specialization_batch_is_ready(SpecializationBatchHandle &handle)
+{
+  /* Check empty batch case where we have no handle */
+  if (!handle) {
+    return true;
+  }
+
+  std::scoped_lock lock(batch_mutex);
+  Batch &batch = batches.lookup(handle);
+  if (batch.is_ready) {
+    return true;
+  }
+
+  for (ParallelWork *item : batch.items) {
+    if (item->is_ready) {
+      continue;
+    }
+    else {
+      return false;
+    }
+  }
+
+  /* Handle is zeroed once the batch is ready */
+  handle = 0;
+  batch.is_ready = true;
+  shader_debug_printf("Specialization Batch %llu is now ready\n", handle);
+  return batch.is_ready;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -2174,6 +2202,11 @@ SpecializationBatchHandle MTLShaderCompiler::precompile_specializations(
     Span<ShaderSpecialization> specializations)
 {
   return parallel_shader_compiler->precompile_specializations(specializations);
+}
+
+bool MTLShaderCompiler::specialization_batch_is_ready(SpecializationBatchHandle &handle)
+{
+  return parallel_shader_compiler->specialization_batch_is_ready(handle);
 }
 
 /** \} */

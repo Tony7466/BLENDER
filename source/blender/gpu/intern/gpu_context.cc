@@ -19,6 +19,8 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 
+#include "WM_api.hh"
+
 #include "GPU_context.hh"
 #include "GPU_framebuffer.hh"
 
@@ -169,6 +171,12 @@ void GPU_context_end_frame(GPUContext *ctx)
   if (_ctx) {
     _ctx->end_frame();
   }
+}
+
+void *GPU_system_context_create()
+{
+  void *system_gpu_context = WM_system_gpu_context_create();
+  return system_gpu_context;
 }
 
 /* -------------------------------------------------------------------- */
