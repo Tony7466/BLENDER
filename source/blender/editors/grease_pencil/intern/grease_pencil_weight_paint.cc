@@ -350,7 +350,6 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
   const bArmature &armature = *static_cast<const bArmature *>(ob_armature.data);
   const float4x4 armature_to_world = ob_armature.object_to_world();
-  const float scale = mat4_to_scale(armature_to_world.ptr());
   /* Note: These constant values are taken from the legacy grease pencil code. */
   const float default_ratio = 0.1f;
   const float default_decay = 0.8f;
@@ -411,7 +410,6 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
     });
 
     for (const int bone_i : skinnable_bones.index_range()) {
-      const Bone *bone = skinnable_bones[bone_i];
       const char *deform_group_name = deform_group_names[bone_i].c_str();
       const float3 bone_root = roots[bone_i];
       const float3 bone_tip = tips[bone_i];
