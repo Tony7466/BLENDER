@@ -147,24 +147,30 @@ struct GPUSource {
   /* Mutate pragma once directive so they don't invalidate the GLSL. */
   void pragma_preprocess()
   {
+    processed_source = source;
+    source = processed_source.c_str();
+
     int64_t pos = source.find("#pragma once");
     if (pos != StringRef::not_found) {
-      /* Mutate the string in place to avoid duplicating the memory for all source files.
+      /* Mutate the string in place to avoid allocation overhead for all source files.
        * Eventually, this can be done inside datatoc instead of here. */
-      *const_cast<char *>(&source.c_str()[pos + 0]) = '/';
-      *const_cast<char *>(&source.c_str()[pos + 1]) = '/';
+      processed_source[pos + 0] = '/';
+      processed_source[pos + 1] = '/';
     }
   }
 
   /* Mutate include directive so they don't invalidate the GLSL. */
   void include_preprocess()
   {
+    processed_source = source;
+    source = processed_source.c_str();
+
     int64_t pos;
     while ((pos = source.find("#include")) != StringRef::not_found) {
-      /* Mutate the string in place to avoid duplicating the memory for all source files.
+      /* Mutate the string in place to avoid allocation overhead for all source files.
        * Eventually, this can be done inside datatoc. */
-      *const_cast<char *>(&source.c_str()[pos + 0]) = '/';
-      *const_cast<char *>(&source.c_str()[pos + 1]) = '/';
+      processed_source[pos + 0] = '/';
+      processed_source[pos + 1] = '/';
     }
   }
 
@@ -1064,7 +1070,7 @@ struct GPUSource {
           return 0;
         }
         int64_t start = source.find('"', pos) + 1;
-        int64_t end = source.find('"', pos);
+        int64_t end = source.find('"', start + 1);
         if (end == -1) {
           print_error(source, start, "Malformed include: Missing \" token");
           return 1;
