@@ -86,13 +86,26 @@ void VKDescriptorSetTracker::bind_image(VkDescriptorType vk_descriptor_type,
 void VKDescriptorSetTracker::update(VKContext &context,
                                     render_graph::VKResourceAccessInfo &access_info)
 {
-  reset();
+
   // pre-allocate the vector sizes so we can directly set the correct data and don't need to loop
   // at the end of this function.
   const VKDevice &device = VKBackend::get().device;
   VKShader &shader = *unwrap(context.shader);
   const VKShaderInterface &shader_interface = shader.interface_get();
   VKStateManager &state_manager = context.state_manager_get();
+
+  /* Can we reuse precious descriptor set. */
+  if (!state_manager.is_dirty &&
+      !assign_if_different(vk_descriptor_set_layout_, shader.vk_descriptor_set_layout_get()) &&
+      shader.push_constants.layout_get().storage_type_get() !=
+          VKPushConstants::StorageType::UNIFORM_BUFFER)
+  {
+    return;
+  }
+  state_manager.is_dirty = false;
+
+  reset();
+
   for (const VKResourceBinding &resource_binding : shader_interface.resource_bindings_get()) {
     if (resource_binding.location.binding == -1) {
       continue;

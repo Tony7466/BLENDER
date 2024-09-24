@@ -87,12 +87,13 @@ class VKDescriptorSetTracker {
   Vector<VkDescriptorImageInfo> vk_descriptor_image_infos_;
   Vector<VkWriteDescriptorSet> vk_write_descriptor_sets_;
 
+  /* Last used layout to identify changes. */
+  VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
+
  public:
   VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
 
   VKDescriptorSetTracker() {}
-
-  void reset();
 
   void bind_texel_buffer(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
   void bind_buffer(VkDescriptorType vk_descriptor_type,
@@ -111,6 +112,7 @@ class VKDescriptorSetTracker {
   void update(VKContext &context, render_graph::VKResourceAccessInfo &resource_access_info);
 
  private:
+  void reset();
 };
 
 }  // namespace blender::gpu
