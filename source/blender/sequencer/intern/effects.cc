@@ -72,12 +72,10 @@ static SeqEffectHandle get_sequence_effect_impl(int seq_type);
 static void slice_get_byte_buffers(const SeqRenderData *context,
                                    const ImBuf *ibuf1,
                                    const ImBuf *ibuf2,
-                                   const ImBuf *ibuf3,
                                    const ImBuf *out,
                                    int start_line,
                                    uchar **rect1,
                                    uchar **rect2,
-                                   uchar **rect3,
                                    uchar **rect_out)
 {
   int offset = 4 * start_line * context->rectx;
@@ -88,21 +86,15 @@ static void slice_get_byte_buffers(const SeqRenderData *context,
   if (ibuf2) {
     *rect2 = ibuf2->byte_buffer.data + offset;
   }
-
-  if (ibuf3) {
-    *rect3 = ibuf3->byte_buffer.data + offset;
-  }
 }
 
 static void slice_get_float_buffers(const SeqRenderData *context,
                                     const ImBuf *ibuf1,
                                     const ImBuf *ibuf2,
-                                    const ImBuf *ibuf3,
                                     const ImBuf *out,
                                     int start_line,
                                     float **rect1,
                                     float **rect2,
-                                    float **rect3,
                                     float **rect_out)
 {
   int offset = 4 * start_line * context->rectx;
@@ -112,10 +104,6 @@ static void slice_get_float_buffers(const SeqRenderData *context,
 
   if (ibuf2) {
     *rect2 = ibuf2->float_buffer.data + offset;
-  }
-
-  if (ibuf3) {
-    *rect3 = ibuf3->float_buffer.data + offset;
   }
 }
 
@@ -166,7 +154,6 @@ static void store_opaque_black_pixel(float *dst)
 static ImBuf *prepare_effect_imbufs(const SeqRenderData *context,
                                     ImBuf *ibuf1,
                                     ImBuf *ibuf2,
-                                    ImBuf *ibuf3,
                                     bool uninitialized_pixels = true)
 {
   ImBuf *out;
@@ -175,15 +162,12 @@ static ImBuf *prepare_effect_imbufs(const SeqRenderData *context,
   int y = context->recty;
   int base_flags = uninitialized_pixels ? IB_uninitialized_pixels : 0;
 
-  if (!ibuf1 && !ibuf2 && !ibuf3) {
+  if (!ibuf1 && !ibuf2) {
     /* hmmm, global float option ? */
     out = IMB_allocImBuf(x, y, 32, IB_rect | base_flags);
   }
-  else if ((ibuf1 && ibuf1->float_buffer.data) || (ibuf2 && ibuf2->float_buffer.data) ||
-           (ibuf3 && ibuf3->float_buffer.data))
-  {
-    /* if any inputs are rectfloat, output is float too */
-
+  else if ((ibuf1 && ibuf1->float_buffer.data) || (ibuf2 && ibuf2->float_buffer.data)) {
+    /* if any inputs are float, output is float too */
     out = IMB_allocImBuf(x, y, 32, IB_rectfloat | base_flags);
   }
   else {
@@ -199,10 +183,6 @@ static ImBuf *prepare_effect_imbufs(const SeqRenderData *context,
       seq_imbuf_to_sequencer_space(scene, ibuf2, true);
     }
 
-    if (ibuf3 && !ibuf3->float_buffer.data) {
-      seq_imbuf_to_sequencer_space(scene, ibuf3, true);
-    }
-
     IMB_colormanagement_assign_float_colorspace(out, scene->sequencer_colorspace_settings.name);
   }
   else {
@@ -213,14 +193,10 @@ static ImBuf *prepare_effect_imbufs(const SeqRenderData *context,
     if (ibuf2 && !ibuf2->byte_buffer.data) {
       IMB_rect_from_float(ibuf2);
     }
-
-    if (ibuf3 && !ibuf3->byte_buffer.data) {
-      IMB_rect_from_float(ibuf3);
-    }
   }
 
   /* If effect only affecting a single channel, forward input's metadata to the output. */
-  if (ibuf1 != nullptr && ibuf1 == ibuf2 && ibuf2 == ibuf3) {
+  if (ibuf1 != nullptr && ibuf1 == ibuf2) {
     IMB_metadata_copy(out, ibuf1);
   }
 
@@ -290,7 +266,6 @@ static void do_alphaover_effect(const SeqRenderData *context,
                                 float fac,
                                 const ImBuf *ibuf1,
                                 const ImBuf *ibuf2,
-                                const ImBuf * /*ibuf3*/,
                                 int start_line,
                                 int total_lines,
                                 ImBuf *out)
@@ -298,16 +273,14 @@ static void do_alphaover_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_alphaover_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_alphaover_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -355,7 +328,6 @@ static void do_alphaunder_effect(const SeqRenderData *context,
                                  float fac,
                                  const ImBuf *ibuf1,
                                  const ImBuf *ibuf2,
-                                 const ImBuf * /*ibuf3*/,
                                  int start_line,
                                  int total_lines,
                                  ImBuf *out)
@@ -363,16 +335,14 @@ static void do_alphaunder_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_alphaunder_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_alphaunder_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -435,7 +405,6 @@ static void do_cross_effect(const SeqRenderData *context,
                             float fac,
                             const ImBuf *ibuf1,
                             const ImBuf *ibuf2,
-                            const ImBuf * /*ibuf3*/,
                             int start_line,
                             int total_lines,
                             ImBuf *out)
@@ -443,16 +412,14 @@ static void do_cross_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_cross_effect_float(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_cross_effect_byte(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -504,22 +471,12 @@ static void do_gammacross_effect(
   }
 }
 
-static ImBuf *gammacross_init_execution(const SeqRenderData *context,
-                                        ImBuf *ibuf1,
-                                        ImBuf *ibuf2,
-                                        ImBuf *ibuf3)
-{
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3);
-  return out;
-}
-
 static void do_gammacross_effect(const SeqRenderData *context,
                                  Sequence * /*seq*/,
                                  float /*timeline_frame*/,
                                  float fac,
                                  const ImBuf *ibuf1,
                                  const ImBuf *ibuf2,
-                                 const ImBuf * /*ibuf3*/,
                                  int start_line,
                                  int total_lines,
                                  ImBuf *out)
@@ -527,16 +484,14 @@ static void do_gammacross_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_gammacross_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_gammacross_effect(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -598,7 +553,6 @@ static void do_add_effect(const SeqRenderData *context,
                           float fac,
                           const ImBuf *ibuf1,
                           const ImBuf *ibuf2,
-                          const ImBuf * /*ibuf3*/,
                           int start_line,
                           int total_lines,
                           ImBuf *out)
@@ -606,16 +560,14 @@ static void do_add_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_add_effect_float(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_add_effect_byte(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -679,7 +631,6 @@ static void do_sub_effect(const SeqRenderData *context,
                           float fac,
                           const ImBuf *ibuf1,
                           const ImBuf *ibuf2,
-                          const ImBuf * /*ibuf3*/,
                           int start_line,
                           int total_lines,
                           ImBuf *out)
@@ -687,16 +638,14 @@ static void do_sub_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_sub_effect_float(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_sub_effect_byte(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -840,7 +789,6 @@ static void do_mul_effect(const SeqRenderData *context,
                           float fac,
                           const ImBuf *ibuf1,
                           const ImBuf *ibuf2,
-                          const ImBuf * /*ibuf3*/,
                           int start_line,
                           int total_lines,
                           ImBuf *out)
@@ -848,16 +796,14 @@ static void do_mul_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_mul_effect_float(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_mul_effect_byte(fac, context->rectx, total_lines, rect1, rect2, rect_out);
   }
@@ -1038,22 +984,19 @@ static void do_blend_mode_effect(const SeqRenderData *context,
                                  float fac,
                                  const ImBuf *ibuf1,
                                  const ImBuf *ibuf2,
-                                 const ImBuf * /*ibuf3*/,
                                  int start_line,
                                  int total_lines,
                                  ImBuf *out)
 {
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
     do_blend_effect_float(
         fac, context->rectx, total_lines, rect1, rect2, seq->blend_mode, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
     do_blend_effect_byte(
         fac, context->rectx, total_lines, rect1, rect2, seq->blend_mode, rect_out);
   }
@@ -1084,7 +1027,6 @@ static void do_colormix_effect(const SeqRenderData *context,
                                float /*fac*/,
                                const ImBuf *ibuf1,
                                const ImBuf *ibuf2,
-                               const ImBuf * /*ibuf3*/,
                                int start_line,
                                int total_lines,
                                ImBuf *out)
@@ -1096,15 +1038,13 @@ static void do_colormix_effect(const SeqRenderData *context,
 
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
     do_blend_effect_float(
         fac, context->rectx, total_lines, rect1, rect2, data->blend_effect, rect_out);
   }
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
     do_blend_effect_byte(
         fac, context->rectx, total_lines, rect1, rect2, data->blend_effect, rect_out);
   }
@@ -1458,10 +1398,9 @@ static ImBuf *do_wipe_effect(const SeqRenderData *context,
                              float /*timeline_frame*/,
                              float fac,
                              ImBuf *ibuf1,
-                             ImBuf *ibuf2,
-                             ImBuf *ibuf3)
+                             ImBuf *ibuf2)
 {
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3);
+  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2);
 
   if (out->float_buffer.data) {
     do_wipe_effect(seq,
@@ -1608,7 +1547,6 @@ static void do_transform_effect(const SeqRenderData *context,
                                 float /*fac*/,
                                 const ImBuf *ibuf1,
                                 const ImBuf * /*ibuf2*/,
-                                const ImBuf * /*ibuf3*/,
                                 int start_line,
                                 int total_lines,
                                 ImBuf *out)
@@ -1875,10 +1813,9 @@ static ImBuf *do_glow_effect(const SeqRenderData *context,
                              float /*timeline_frame*/,
                              float fac,
                              ImBuf *ibuf1,
-                             ImBuf *ibuf2,
-                             ImBuf *ibuf3)
+                             ImBuf *ibuf2)
 {
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3);
+  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2);
 
   int render_size = 100 * context->rectx / context->scene->r.xsch;
 
@@ -1951,11 +1888,10 @@ static ImBuf *do_solid_color(const SeqRenderData *context,
                              float /*timeline_frame*/,
                              float /*fac*/,
                              ImBuf *ibuf1,
-                             ImBuf *ibuf2,
-                             ImBuf *ibuf3)
+                             ImBuf *ibuf2)
 {
   using namespace blender;
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3);
+  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2);
 
   SolidColorVars *cv = (SolidColorVars *)seq->effectdata;
 
@@ -2017,8 +1953,7 @@ static ImBuf *do_multicam(const SeqRenderData *context,
                           float timeline_frame,
                           float /*fac*/,
                           ImBuf * /*ibuf1*/,
-                          ImBuf * /*ibuf2*/,
-                          ImBuf * /*ibuf3*/)
+                          ImBuf * /*ibuf2*/)
 {
   ImBuf *out;
   Editing *ed;
@@ -2104,8 +2039,7 @@ static ImBuf *do_adjustment(const SeqRenderData *context,
                             float timeline_frame,
                             float /*fac*/,
                             ImBuf * /*ibuf1*/,
-                            ImBuf * /*ibuf2*/,
-                            ImBuf * /*ibuf3*/)
+                            ImBuf * /*ibuf2*/)
 {
   ImBuf *out;
   Editing *ed;
@@ -2295,8 +2229,7 @@ static ImBuf *do_speed_effect(const SeqRenderData *context,
                               float timeline_frame,
                               float fac,
                               ImBuf *ibuf1,
-                              ImBuf *ibuf2,
-                              ImBuf *ibuf3)
+                              ImBuf *ibuf2)
 {
   SpeedControlVars *s = (SpeedControlVars *)seq->effectdata;
   SeqEffectHandle cross_effect = get_sequence_effect_impl(SEQ_TYPE_CROSS);
@@ -2306,7 +2239,7 @@ static ImBuf *do_speed_effect(const SeqRenderData *context,
     fac = speed_effect_interpolation_ratio_get(context->scene, seq, timeline_frame);
     /* Current frame is ibuf1, next frame is ibuf2. */
     out = seq_render_effect_execute_threaded(
-        &cross_effect, context, nullptr, timeline_frame, fac, ibuf1, ibuf2, ibuf3);
+        &cross_effect, context, nullptr, timeline_frame, fac, ibuf1, ibuf2);
     return out;
   }
 
@@ -2326,7 +2259,6 @@ static void do_overdrop_effect(const SeqRenderData *context,
                                float fac,
                                const ImBuf *ibuf1,
                                const ImBuf *ibuf2,
-                               const ImBuf * /*ibuf3*/,
                                int start_line,
                                int total_lines,
                                ImBuf *out)
@@ -2337,8 +2269,7 @@ static void do_overdrop_effect(const SeqRenderData *context,
   if (out->float_buffer.data) {
     float *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_float_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_float_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_drop_effect_float(fac, x, y, rect1, rect2, rect_out);
     do_alphaover_effect(fac, x, y, rect1, rect2, rect_out);
@@ -2346,8 +2277,7 @@ static void do_overdrop_effect(const SeqRenderData *context,
   else {
     uchar *rect1 = nullptr, *rect2 = nullptr, *rect_out = nullptr;
 
-    slice_get_byte_buffers(
-        context, ibuf1, ibuf2, nullptr, out, start_line, &rect1, &rect2, nullptr, &rect_out);
+    slice_get_byte_buffers(context, ibuf1, ibuf2, out, start_line, &rect1, &rect2, &rect_out);
 
     do_drop_effect_byte(fac, x, y, rect1, rect2, rect_out);
     do_alphaover_effect(fac, x, y, rect1, rect2, rect_out);
@@ -2486,8 +2416,7 @@ static ImBuf *do_gaussian_blur_effect(const SeqRenderData *context,
                                       float /*timeline_frame*/,
                                       float /*fac*/,
                                       ImBuf *ibuf1,
-                                      ImBuf * /*ibuf2*/,
-                                      ImBuf * /*ibuf3*/)
+                                      ImBuf * /*ibuf2*/)
 {
   using namespace blender;
 
@@ -2503,7 +2432,7 @@ static ImBuf *do_gaussian_blur_effect(const SeqRenderData *context,
   const bool is_float = ibuf1->float_buffer.data;
 
   /* Horizontal blur: create output, blur ibuf1 into it. */
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, nullptr, nullptr);
+  ImBuf *out = prepare_effect_imbufs(context, ibuf1, nullptr);
   threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
     const int y_first = y_range.first();
     const int y_size = y_range.size();
@@ -2531,7 +2460,7 @@ static ImBuf *do_gaussian_blur_effect(const SeqRenderData *context,
 
   /* Vertical blur: create output, blur previous output into it. */
   ibuf1 = out;
-  out = prepare_effect_imbufs(context, ibuf1, nullptr, nullptr);
+  out = prepare_effect_imbufs(context, ibuf1, nullptr);
   threading::parallel_for(IndexRange(context->recty), 32, [&](const IndexRange y_range) {
     const int y_first = y_range.first();
     const int y_size = y_range.size();
@@ -3186,21 +3115,21 @@ static blender::Vector<CharInfo> build_character_info(const TextVars *data, int 
   return characters;
 }
 
-static int wrap_width_get(const TextVars *data, const ImBuf *ibuf)
+static int wrap_width_get(const TextVars *data, const int2 image_size)
 {
   if (data->wrap_width == 0.0f) {
     return std::numeric_limits<int>::max();
   }
-  return data->wrap_width * ibuf->x;
+  return data->wrap_width * image_size.x;
 }
 
 /* Lines must contain CharInfo for newlines and \0, as UI must know where they begin. */
 static void apply_word_wrapping(const TextVars *data,
                                 TextVarsRuntime &runtime,
-                                const ImBuf *ibuf,
+                                const int2 image_size,
                                 blender::Vector<CharInfo> &characters)
 {
-  const int wrap_width = wrap_width_get(data, ibuf);
+  const int wrap_width = wrap_width_get(data, image_size);
 
   float2 char_position{0.0f, 0.0f};
   CharInfo *last_space = nullptr;
@@ -3267,16 +3196,22 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
   return {center_offset - line_offset, 0.0f};
 }
 
-static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime, const ImBuf *ibuf)
+static void apply_text_alignment(const TextVars *data,
+                                 TextVarsRuntime &runtime,
+                                 const int2 image_size)
 {
-  const int image_width = ibuf->x;
-  const int image_height = ibuf->y;
   const int width_max = text_box_width_get(runtime.lines);
   const int text_height = runtime.lines.size() * runtime.line_height;
 
+<<<<<<< HEAD
   const float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
   const float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
   const float2 alignment_y(0.0f, text_height / 2.0f);
+=======
+  float2 image_center{data->loc[0] * image_size.x, data->loc[1] * image_size.y};
+  float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
+  float2 alignment_y(0.0f, text_height / 2.0f);
+>>>>>>> 1a824b79ccff0c79c15abc44f51216a44f6b06d0
 
   for (LineInfo &line : runtime.lines) {
     const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
@@ -3294,7 +3229,7 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime,
 
 static void calc_text_runtime(const Sequence *seq,
                               int font,
-                              ImBuf *ibuf,
+                              const int2 image_size,
                               TextVarsRuntime &r_runtime)
 {
   const TextVars *data = static_cast<TextVars *>(seq->effectdata);
@@ -3305,8 +3240,8 @@ static void calc_text_runtime(const Sequence *seq,
   r_runtime.character_count = BLI_strlen_utf8(data->text);
 
   blender::Vector<CharInfo> characters_temp = build_character_info(data, font);
-  apply_word_wrapping(data, r_runtime, ibuf, characters_temp);
-  apply_text_alignment(data, r_runtime, ibuf);
+  apply_word_wrapping(data, r_runtime, image_size, characters_temp);
+  apply_text_alignment(data, r_runtime, image_size);
 }
 
 static ImBuf *do_text_effect(const SeqRenderData *context,
@@ -3314,12 +3249,11 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
                              float /*timeline_frame*/,
                              float /*fac*/,
                              ImBuf * /*ibuf1*/,
-                             ImBuf * /*ibuf2*/,
-                             ImBuf * /*ibuf3*/)
+                             ImBuf * /*ibuf2*/)
 {
   /* NOTE: text rasterization only fills in part of output image,
    * need to clear it. */
-  ImBuf *out = prepare_effect_imbufs(context, nullptr, nullptr, nullptr, false);
+  ImBuf *out = prepare_effect_imbufs(context, nullptr, nullptr, false);
   TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
   const char *display_device = context->scene->display_settings.display_device;
@@ -3330,7 +3264,7 @@ static ImBuf *do_text_effect(const SeqRenderData *context,
   const int font = text_effect_font_init(context, seq, font_flags);
 
   TextVarsRuntime runtime;
-  calc_text_runtime(seq, font, out, runtime);
+  calc_text_runtime(seq, font, {out->x, out->y}, runtime);
 
   rcti outline_rect = draw_text_outline(context, data, runtime, display, out);
   BLF_buffer(font, nullptr, out->byte_buffer.data, out->x, out->y, display);
@@ -3436,13 +3370,9 @@ static void get_default_fac_fade(const Scene *scene,
   *fac = math::clamp(*fac, 0.0f, 1.0f);
 }
 
-static ImBuf *init_execution(const SeqRenderData *context,
-                             ImBuf *ibuf1,
-                             ImBuf *ibuf2,
-                             ImBuf *ibuf3)
+static ImBuf *init_execution(const SeqRenderData *context, ImBuf *ibuf1, ImBuf *ibuf2)
 {
-  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2, ibuf3);
-
+  ImBuf *out = prepare_effect_imbufs(context, ibuf1, ibuf2);
   return out;
 }
 
@@ -3475,7 +3405,6 @@ static SeqEffectHandle get_sequence_effect_impl(int seq_type)
       rval.multithreaded = true;
       rval.early_out = early_out_fade;
       rval.get_default_fac = get_default_fac_fade;
-      rval.init_execution = gammacross_init_execution;
       rval.execute_slice = do_gammacross_effect;
       break;
     case SEQ_TYPE_ADD:

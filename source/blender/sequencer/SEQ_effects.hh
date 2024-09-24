@@ -75,10 +75,9 @@ struct SeqEffectHandle {
                     float timeline_frame,
                     float fac,
                     ImBuf *ibuf1,
-                    ImBuf *ibuf2,
-                    ImBuf *ibuf3);
+                    ImBuf *ibuf2);
 
-  ImBuf *(*init_execution)(const SeqRenderData *context, ImBuf *ibuf1, ImBuf *ibuf2, ImBuf *ibuf3);
+  ImBuf *(*init_execution)(const SeqRenderData *context, ImBuf *ibuf1, ImBuf *ibuf2);
 
   void (*execute_slice)(const SeqRenderData *context,
                         Sequence *seq,
@@ -86,7 +85,6 @@ struct SeqEffectHandle {
                         float fac,
                         const ImBuf *ibuf1,
                         const ImBuf *ibuf2,
-                        const ImBuf *ibuf3,
                         int start_line,
                         int total_lines,
                         ImBuf *out);
