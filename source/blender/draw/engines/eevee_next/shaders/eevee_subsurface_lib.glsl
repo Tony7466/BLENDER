@@ -9,7 +9,7 @@
  * - utility_tx
  */
 
-#pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
+#include "eevee_shadow_lib.glsl"
 
 #ifdef EEVEE_UTILITY_TX
 

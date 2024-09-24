@@ -6,6 +6,6 @@
  * Sampling of Normal Distribution Function for various BxDF.
  */
 
-#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_bxdf_microfacet_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_bxdf_diffuse_lib.glsl)
+#include "eevee_bxdf_diffuse_lib.glsl"
+#include "eevee_bxdf_lib.glsl"
+#include "eevee_bxdf_microfacet_lib.glsl"

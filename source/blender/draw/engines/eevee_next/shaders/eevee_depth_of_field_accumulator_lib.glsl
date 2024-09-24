@@ -8,12 +8,12 @@
  * One is for the half-resolution gather passes and the other one for slight in focus regions.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_debug_gradients_lib.glsl)
-#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#include "draw_view_lib.glsl"
+#include "eevee_colorspace_lib.glsl"
+#include "eevee_depth_of_field_lib.glsl"
+#include "eevee_sampling_lib.glsl"
+#include "gpu_shader_debug_gradients_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Options.

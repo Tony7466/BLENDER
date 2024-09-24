@@ -25,7 +25,7 @@
  * IMPORTANT: Do not forget to manually store the tile data after doing operations on them.
  */
 
-#pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
+#include "eevee_shadow_tilemap_lib.glsl"
 
 /* TODO(@fclem): Implement. */
 #ifndef GPU_METAL

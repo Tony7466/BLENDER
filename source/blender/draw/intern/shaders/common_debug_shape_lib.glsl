@@ -6,8 +6,8 @@
  * Debug drawing of shapes.
  */
 
-#pragma BLENDER_REQUIRE(common_debug_draw_lib.glsl)
-#pragma BLENDER_REQUIRE(common_shape_lib.glsl)
+#include "common_debug_draw_lib.glsl"
+#include "common_shape_lib.glsl"
 
 void drw_debug(Box shape, vec4 color)
 {

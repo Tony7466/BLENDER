@@ -7,7 +7,7 @@
  * This should ultimately be rewritten inside a gpu_shader lib with higher quality standard.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
+#include "gpu_shader_math_vector_lib.glsl"
 
 /* ---------------------------------------------------------------------- */
 /** \name Math intersection & projection functions.

@@ -10,9 +10,9 @@
  * by Olivier Therrien, Yannick Levesque, Guillaume Gilet
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
+#include "gpu_shader_math_fast_lib.glsl"
+#include "gpu_shader_math_vector_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 /**
  * Returns the bitmask for a given ordered pair of angle in [-pi/2..pi/2] range.

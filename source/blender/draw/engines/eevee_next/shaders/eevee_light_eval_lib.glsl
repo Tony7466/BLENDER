@@ -13,14 +13,13 @@
  * - utility_tx
  */
 
-#pragma BLENDER_REQUIRE(eevee_shadow_tracing_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_thickness_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_closure_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
+#include "eevee_bxdf_lib.glsl"
+#include "eevee_closure_lib.glsl"
+#include "eevee_light_lib.glsl"
+#include "eevee_shadow_lib.glsl"
+#include "eevee_shadow_tracing_lib.glsl"
+#include "eevee_thickness_lib.glsl"
+#include "gpu_shader_codegen_lib.glsl"
 
 /* If using compute, the shader should define its own pixel. */
 #if !defined(PIXEL) && defined(GPU_FRAGMENT_SHADER)

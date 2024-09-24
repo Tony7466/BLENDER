@@ -7,7 +7,7 @@
  * Also contains some sample mapping functions.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#include "gpu_shader_math_base_lib.glsl"
 
 /* -------------------------------------------------------------------- */
 /** \name Sampling data.

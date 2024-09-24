@@ -6,9 +6,9 @@
  * BxDF evaluation functions.
  */
 
-#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
+#include "gpu_shader_math_base_lib.glsl"
+#include "gpu_shader_math_fast_lib.glsl"
+#include "gpu_shader_utildefines_lib.glsl"
 
 struct BsdfSample {
   vec3 direction;
