@@ -13,7 +13,6 @@
 #include "BLI_array.hh"
 
 #include "render_graph/vk_resource_access_info.hh"
-#include "vk_bindable_resource.hh"
 
 namespace blender::gpu {
 class VKTexture;
@@ -23,6 +22,15 @@ class VKStorageBuffer;
 class VKIndexBuffer;
 class VKContext;
 class VKDescriptorSetTracker;
+
+/**
+ * Offset when searching for bindings.
+ *
+ * When shaders combine images and samplers, the images have to be offset to find the correct
+ * shader input. Both textures and images are stored in the uniform list and their ID can be
+ * overlapping.
+ */
+static constexpr int BIND_SPACE_IMAGE_OFFSET = 512;
 
 /** Bind space for a uniform buffers. */
 class BindSpaceUniformBuffers {
@@ -209,10 +217,6 @@ class VKStateManager : public StateManager {
 
   void issue_barrier(eGPUBarrier barrier_bits) override;
 
-  /** Apply resources to the bindings of the active shader. */
-  void apply_bindings(VKContext &context,
-                      render_graph::VKResourceAccessInfo &resource_access_info);
-
   void texture_bind(Texture *tex, GPUSamplerState sampler, int unit) override;
   void texture_unbind(Texture *tex) override;
   void texture_unbind_all() override;
@@ -231,10 +235,10 @@ class VKStateManager : public StateManager {
   void storage_buffer_bind(BindSpaceStorageBuffers::Type resource_type,
                            void *resource,
                            int binding);
-  void storage_buffer_unbind(VKBindableResource &resource);
+  void storage_buffer_unbind(void *resource);
   void storage_buffer_unbind_all();
 
-  void unbind_from_all_namespaces(VKBindableResource &bindable_resource);
+  void unbind_from_all_namespaces(void *resource);
 
   void texture_unpack_row_length_set(uint len) override;
 

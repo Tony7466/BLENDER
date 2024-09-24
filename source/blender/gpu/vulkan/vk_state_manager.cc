@@ -24,19 +24,6 @@ void VKStateManager::apply_state()
    * If this leads to issues we should have an active state. */
 }
 
-void VKStateManager::apply_bindings(VKContext &context,
-                                    render_graph::VKResourceAccessInfo &resource_access_info)
-{
-  VKShader *shader = unwrap(context.shader);
-  if (shader == nullptr) {
-    return;
-  }
-  AddToDescriptorSetContext data(
-      context.descriptor_set_get(), shader->interface_get(), resource_access_info);
-  context.descriptor_set_get().reset();
-  is_dirty = false;
-}
-
 void VKStateManager::force_state()
 {
   /* Intentionally empty. State is polled during pipeline creation and is always forced. */
@@ -122,12 +109,12 @@ void VKStateManager::uniform_buffer_unbind_all()
   is_dirty = true;
 }
 
-void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
+void VKStateManager::unbind_from_all_namespaces(void *resource)
 {
-  uniform_buffers_.unbind(&resource);
-  storage_buffers_.unbind(&resource);
-  images_.unbind(&resource);
-  textures_.unbind(&resource);
+  uniform_buffers_.unbind(resource);
+  storage_buffers_.unbind(resource);
+  images_.unbind(resource);
+  textures_.unbind(resource);
   is_dirty = true;
 }
 
@@ -154,9 +141,9 @@ void VKStateManager::storage_buffer_bind(BindSpaceStorageBuffers::Type resource_
   is_dirty = true;
 }
 
-void VKStateManager::storage_buffer_unbind(VKBindableResource &resource)
+void VKStateManager::storage_buffer_unbind(void *resource)
 {
-  storage_buffers_.unbind(&resource);
+  storage_buffers_.unbind(resource);
   is_dirty = true;
 }
 

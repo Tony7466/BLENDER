@@ -274,10 +274,9 @@ void VKContext::update_pipeline_data(VKShader &vk_shader,
   }
 }
 
-render_graph::VKResourceAccessInfo &VKContext::update_and_get_access_info()
+render_graph::VKResourceAccessInfo &VKContext::reset_and_get_access_info()
 {
   access_info_.reset();
-  state_manager_get().apply_bindings(*this, access_info_);
   return access_info_;
 }
 

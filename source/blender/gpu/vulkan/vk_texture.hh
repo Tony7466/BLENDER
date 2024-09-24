@@ -10,7 +10,6 @@
 
 #include "gpu_texture_private.hh"
 
-#include "vk_bindable_resource.hh"
 #include "vk_context.hh"
 #include "vk_image_view.hh"
 
@@ -19,7 +18,7 @@ namespace blender::gpu {
 class VKSampler;
 class VKDescriptorSetTracker;
 
-class VKTexture : public Texture, public VKBindableResource {
+class VKTexture : public Texture {
   friend class VKDescriptorSetTracker;
 
   /**
@@ -95,11 +94,6 @@ class VKTexture : public Texture, public VKBindableResource {
 
   /* TODO(fclem): Legacy. Should be removed at some point. */
   uint gl_bindcode_get() const override;
-
-  void add_to_descriptor_set(AddToDescriptorSetContext &data,
-                             int location,
-                             shader::ShaderCreateInfo::Resource::BindType bind_type,
-                             const GPUSamplerState sampler_state) override;
 
   VkImage vk_image_handle() const
   {

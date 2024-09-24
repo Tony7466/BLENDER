@@ -63,27 +63,6 @@ void VKUniformBuffer::ensure_updated()
   }
 }
 
-void VKUniformBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
-                                            int binding,
-                                            shader::ShaderCreateInfo::Resource::BindType bind_type,
-                                            const GPUSamplerState /*sampler_state*/)
-{
-  ensure_updated();
-
-  const std::optional<VKDescriptorSet::Location> location =
-      data.shader_interface.descriptor_set_location(bind_type, binding);
-  if (location) {
-    if (bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER) {
-      data.descriptor_set.bind_buffer(
-          VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, vk_handle(), size_in_bytes(), *location);
-      render_graph::VKBufferAccess buffer_access = {};
-      buffer_access.vk_buffer = buffer_.vk_handle();
-      buffer_access.vk_access_flags = data.shader_interface.access_mask(bind_type, binding);
-      data.resource_access_info.buffers.append(buffer_access);
-    }
-  }
-}
-
 void VKUniformBuffer::bind(int slot)
 {
   VKContext &context = *VKContext::get();
@@ -103,7 +82,7 @@ void VKUniformBuffer::unbind()
   if (context != nullptr) {
     VKStateManager &state_manager = context->state_manager_get();
     state_manager.uniform_buffer_unbind(this);
-    state_manager.storage_buffer_unbind(*this);
+    state_manager.storage_buffer_unbind(this);
   }
 }
 

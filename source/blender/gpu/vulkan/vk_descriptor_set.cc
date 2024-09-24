@@ -86,7 +86,7 @@ void VKDescriptorSetTracker::bind_image(VkDescriptorType vk_descriptor_type,
 void VKDescriptorSetTracker::update(VKContext &context,
                                     render_graph::VKResourceAccessInfo &access_info)
 {
-  // reset();
+  reset();
   // pre-allocate the vector sizes so we can directly set the correct data and don't need to loop
   // at the end of this function.
   const VKDevice &device = VKBackend::get().device;
@@ -234,14 +234,10 @@ void VKDescriptorSetTracker::update(VKContext &context,
     access_info.buffers.append({uniform_buffer.vk_handle(), VK_ACCESS_UNIFORM_READ_BIT});
   }
 
-  // go over each resource binding
-  // get resource from context.statemanager
-  // get descriptor set location
-  // determine image, texel buffer or buffer
-  // bind
-
-  // if shader_interface has uniform push constants...
-
+  /* Allocate a new descriptor set. This should be minimized as allocating descriptor sets has a
+   * very restrictive API which can lead to performance issue especially when drawing grease pencil
+   * objects.
+   */
   VkDescriptorSetLayout vk_descriptor_set_layout = shader.vk_descriptor_set_layout_get();
   vk_descriptor_set = context.descriptor_pools_get().allocate(vk_descriptor_set_layout);
   BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);

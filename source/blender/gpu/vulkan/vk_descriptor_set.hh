@@ -13,6 +13,7 @@
 
 #include "gpu_shader_private.hh"
 
+#include "render_graph/vk_resource_access_info.hh"
 #include "vk_buffer.hh"
 #include "vk_common.hh"
 #include "vk_resource_tracker.hh"
