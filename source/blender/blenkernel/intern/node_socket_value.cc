@@ -302,6 +302,8 @@ void *SocketValueVariant::allocate_single(const eNodeSocketDatatype socket_type)
       return value_.allocate<ColorGeometry4f>();
     case SOCK_STRING:
       return value_.allocate<std::string>();
+    case SOCK_MENU:
+      return value_.allocate<int>();
     default: {
       BLI_assert_unreachable();
       return nullptr;
