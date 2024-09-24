@@ -1191,6 +1191,11 @@ static void trim_stroke_ends(bke::greasepencil::Drawing &drawing,
       point_selection,
       true);
 
+  /* No intersection found. */
+  if (stroke_trimmed.points_num() == 0) {
+    return;
+  }
+
   /* Remove the original stroke. */
   drawing.strokes_for_write().remove_curves(IndexRange::from_single(active_curve), {});
 
@@ -1332,7 +1337,7 @@ static void deselect_stroke(const bContext &C,
   const IndexRange points = drawing.strokes().points_by_curve()[active_curve];
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
-  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+  const bke::AttrDomain selection_domain = ED_grease_pencil_edit_selection_domain_get(
       scene->toolsettings);
 
   bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(

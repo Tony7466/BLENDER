@@ -401,7 +401,8 @@ void NODE_GGT_backdrop_box_mask(wmGizmoGroupType *gzgt);
 void node_geometry_add_attribute_search_button(const bContext &C,
                                                const bNode &node,
                                                PointerRNA &socket_ptr,
-                                               uiLayout &layout);
+                                               uiLayout &layout,
+                                               StringRefNull placeholder = "");
 
 /* `node_context_path.cc` */
 
