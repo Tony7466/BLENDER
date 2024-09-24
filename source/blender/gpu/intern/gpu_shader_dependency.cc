@@ -109,16 +109,9 @@ struct GPUSource {
       small_types_check();
     }
     else {
-      if (source.find("#pragma once") != StringRef::not_found) {
-        processed_source = std::regex_replace(std::string(source), std::regex("#pragma once"), "");
-        source = processed_source.c_str();
-      }
-      if (source.find("#include ") != StringRef::not_found) {
-        processed_source = std::regex_replace(std::string(source),
-                                              std::regex("#include \"([a-zA-Z0-9_\\.]+)\""),
-                                              "#pragma BLENDER_REQUIRE($1)");
-        source = processed_source.c_str();
-      }
+      pragma_preprocess();
+      include_preprocess();
+
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }
@@ -150,6 +143,30 @@ struct GPUSource {
       material_functions_parse(g_functions);
     }
   };
+
+  /* Mutate pragma once directive so they don't invalidate the GLSL. */
+  void pragma_preprocess()
+  {
+    int64_t pos = source.find("#pragma once");
+    if (pos != StringRef::not_found) {
+      /* Mutate the string in place to avoid duplicating the memory for all source files.
+       * Eventually, this can be done inside datatoc instead of here. */
+      *const_cast<char *>(&source.c_str()[pos + 0]) = '/';
+      *const_cast<char *>(&source.c_str()[pos + 1]) = '/';
+    }
+  }
+
+  /* Mutate include directive so they don't invalidate the GLSL. */
+  void include_preprocess()
+  {
+    int64_t pos;
+    while ((pos = source.find("#include")) != StringRef::not_found) {
+      /* Mutate the string in place to avoid duplicating the memory for all source files.
+       * Eventually, this can be done inside datatoc. */
+      *const_cast<char *>(&source.c_str()[pos + 0]) = '/';
+      *const_cast<char *>(&source.c_str()[pos + 1]) = '/';
+    }
+  }
 
   static bool is_in_comment(const StringRef &input, int64_t offset)
   {
@@ -1041,14 +1058,15 @@ struct GPUSource {
       GPUSource *dependency_source = nullptr;
 
       {
-        pos = source.find("pragma BLENDER_REQUIRE(", pos + 1);
+        /* Include directive has been mangled on purpose. See `include_preprocess`. */
+        pos = source.find("//nclude \"", pos + 1);
         if (pos == -1) {
           return 0;
         }
-        int64_t start = source.find('(', pos) + 1;
-        int64_t end = source.find(')', pos);
+        int64_t start = source.find('"', pos) + 1;
+        int64_t end = source.find('"', pos);
         if (end == -1) {
-          print_error(source, start, "Malformed BLENDER_REQUIRE: Missing \")\" token");
+          print_error(source, start, "Malformed include: Missing \" token");
           return 1;
         }
         StringRef dependency_name = source.substr(start, end - start);
