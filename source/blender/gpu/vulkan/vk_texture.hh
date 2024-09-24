@@ -17,8 +17,11 @@
 namespace blender::gpu {
 
 class VKSampler;
+class VKDescriptorSetTracker;
 
 class VKTexture : public Texture, public VKBindableResource {
+  friend class VKDescriptorSetTracker;
+
   /**
    * Texture format how the texture is stored on the device.
    *

@@ -87,6 +87,8 @@ void VKDescriptorSetTracker::update(VKContext &context,
                                     render_graph::VKResourceAccessInfo &access_info)
 {
   // reset();
+  // pre-allocate the vector sizes so we can directly set the correct data and don't need to loop
+  // at the end of this function.
   VKShader &shader = *unwrap(context.shader);
   const VKShaderInterface &shader_interface = shader.interface_get();
   VKStateManager &state_manager = context.state_manager_get();
@@ -96,12 +98,35 @@ void VKDescriptorSetTracker::update(VKContext &context,
     }
 
     switch (resource_binding.bind_type) {
-      case shader::ShaderCreateInfo::Resource::BindType::IMAGE:
+      case shader::ShaderCreateInfo::Resource::BindType::IMAGE: {
+        VKTexture &texture = *state_manager.images_.get(resource_binding.binding);
+        bind_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                   VK_NULL_HANDLE,
+                   texture.image_view_get(resource_binding.arrayed).vk_handle(),
+                   VK_IMAGE_LAYOUT_GENERAL,
+                   resource_binding.location);
+        /* Update access info. */
+        uint32_t layer_base = 0;
+        uint32_t layer_count = VK_REMAINING_ARRAY_LAYERS;
+        if (resource_binding.arrayed == VKImageViewArrayed::ARRAYED && texture.is_texture_view()) {
+          IndexRange layer_range = texture.layer_range();
+          layer_base = layer_range.start();
+          layer_count = layer_range.size();
+        }
+        access_info.images.append({texture.vk_image_handle(),
+                                   resource_binding.access_mask,
+                                   to_vk_image_aspect_flag_bits(texture.device_format_get()),
+                                   layer_base,
+                                   layer_count});
+
         break;
+      }
+
       case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
         break;
       case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
         break;
+
       case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
         VKUniformBuffer &uniform_buffer = *state_manager.uniform_buffers_.get(
             resource_binding.binding);
@@ -143,7 +168,7 @@ void VKDescriptorSetTracker::update(VKContext &context,
   BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);
   debug::object_label(vk_descriptor_set, shader.name_get());
 
-  /* Populate the final addresses and handles */
+  /* TODO: remove: Populate the final addresses and handles. */
   int buffer_index = 0;
   int buffer_view_index = 0;
   int image_index = 0;

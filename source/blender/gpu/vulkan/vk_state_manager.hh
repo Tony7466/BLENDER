@@ -24,47 +24,88 @@ class VKIndexBuffer;
 class VKContext;
 class VKDescriptorSetTracker;
 
+/** Bind space for a single resource type. */
+template<typename StorageType> class BindSpace {
+ public:
+  Vector<StorageType *> bound_resources;
+
+  void bind(StorageType *resource, int binding)
+  {
+    if (bound_resources.size() <= binding) {
+      bound_resources.resize(binding + 1);
+    }
+    bound_resources[binding] = resource;
+  }
+
+  StorageType *get(int binding)
+  {
+    return bound_resources[binding];
+  }
+
+  void unbind(void *resource)
+  {
+    for (int index : IndexRange(bound_resources.size())) {
+      if (bound_resources[index] == resource) {
+        bound_resources[index] = nullptr;
+      }
+    }
+  }
+
+  void unbind_all()
+  {
+    bound_resources.clear();
+  }
+};
+
+/**
+ * Bind space for resource classes that are offsetted.
+ */
+template<typename StorageType, int Offset> class BindSpaceOffset {
+ public:
+  Vector<StorageType *> bound_resources;
+
+  void bind(StorageType *resource, int binding)
+  {
+    if (binding >= Offset) {
+      binding -= Offset;
+    }
+    if (bound_resources.size() <= binding) {
+      bound_resources.resize(binding + 1);
+    }
+    bound_resources[binding] = resource;
+  }
+
+  StorageType *get(int binding)
+  {
+    if (binding >= Offset) {
+      binding -= Offset;
+    }
+    return bound_resources[binding];
+  }
+
+  void unbind(void *resource)
+  {
+    for (int index : IndexRange(bound_resources.size())) {
+      if (bound_resources[index] == resource) {
+        bound_resources[index] = nullptr;
+      }
+    }
+  }
+
+  void unbind_all()
+  {
+    bound_resources.clear();
+  }
+};
+
 class VKStateManager : public StateManager {
   friend class VKDescriptorSetTracker;
-
-  class BindSpaceUniformBuffers {
-   public:
-    Vector<VKUniformBuffer *> bound_resources;
-
-    void bind(VKUniformBuffer *uniform_buffer, int binding)
-    {
-      if (bound_resources.size() <= binding) {
-        bound_resources.resize(binding + 1);
-      }
-      bound_resources[binding] = uniform_buffer;
-    }
-
-    VKUniformBuffer *get(int binding)
-    {
-      return bound_resources[binding];
-    }
-
-    void unbind(void *uniform_buffer)
-    {
-      for (int index : IndexRange(bound_resources.size())) {
-        if (bound_resources[index] == uniform_buffer) {
-          bound_resources[index] = nullptr;
-        }
-      }
-    }
-
-    void unbind_all()
-    {
-      bound_resources.clear();
-    }
-  };
 
   uint texture_unpack_row_length_ = 0;
 
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> textures_;
-  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::IMAGE, BIND_SPACE_IMAGE_OFFSET>
-      images_;
-  BindSpaceUniformBuffers uniform_buffers_;
+  BindSpaceOffset<VKTexture, BIND_SPACE_IMAGE_OFFSET> images_;
+  BindSpace<VKUniformBuffer> uniform_buffers_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
 
  public:
