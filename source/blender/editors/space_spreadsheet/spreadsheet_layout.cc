@@ -235,6 +235,21 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        0,
                        nullptr);
     }
+    else if (data.type().is<std::string>()) {
+      uiDefIconTextBut(params.block,
+                       UI_BTYPE_LABEL,
+                       0,
+                       ICON_NONE,
+                       data.get<std::string>(real_index),
+                       params.xmin,
+                       params.ymin,
+                       params.width,
+                       params.height,
+                       nullptr,
+                       0,
+                       0,
+                       nullptr);
+    }
     else if (data.type().is<MStringProperty>()) {
       uiBut *but = uiDefIconTextBut(params.block,
                                     UI_BTYPE_LABEL,
