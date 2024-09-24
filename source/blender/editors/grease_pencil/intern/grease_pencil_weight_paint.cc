@@ -255,7 +255,7 @@ bool add_armature_vertex_groups(Object &object, const Object &ob_armature)
 static bool get_skinnable_bones_and_deform_group_names(const bArmature &armature,
                                                        Object &object,
                                                        Vector<const Bone *> &r_skinnable_bones,
-                                                       Vector<std::string> r_deform_group_names)
+                                                       Vector<std::string> &r_deform_group_names)
 {
   const int added_vertex_groups = foreach_bone_in_armature(
       object, armature, [&](Object &object, const Bone *bone) {
