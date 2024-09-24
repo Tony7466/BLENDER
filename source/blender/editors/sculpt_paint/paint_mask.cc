@@ -43,6 +43,7 @@
 
 #include "mesh_brush_common.hh"
 #include "paint_intern.hh"
+#include "sculpt_automask.hh"
 #include "sculpt_gesture.hh"
 #include "sculpt_hide.hh"
 #include "sculpt_intern.hh"
@@ -110,6 +111,13 @@ void clamp_mask(const MutableSpan<float> masks)
 {
   for (float &mask : masks) {
     mask = std::clamp(mask, 0.0f, 1.0f);
+  }
+}
+
+void invert_mask(const MutableSpan<float> masks)
+{
+  for (float &mask : masks) {
+    mask = 1.0f - mask;
   }
 }
 
@@ -659,7 +667,7 @@ static int mask_flood_fill_exec(bContext *C, wmOperator *op)
 
   BKE_sculpt_update_object_for_edit(&depsgraph, &object, false);
 
-  undo::push_begin(object, op);
+  undo::push_begin(scene, object, op);
   switch (mode) {
     case FloodFillMode::Value:
       fill_mask(bmain, scene, depsgraph, object, value);
@@ -722,9 +730,10 @@ struct MaskOperation {
 
 static void gesture_begin(bContext &C, wmOperator &op, gesture::GestureData &gesture_data)
 {
+  const Scene &scene = *CTX_data_scene(&C);
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
   BKE_sculpt_update_object_for_edit(depsgraph, gesture_data.vc.obact, false);
-  undo::push_begin(*gesture_data.vc.obact, &op);
+  undo::push_begin(scene, *gesture_data.vc.obact, &op);
 }
 
 static float mask_gesture_get_new_value(const float elem, FloodFillMode mode, float value)
