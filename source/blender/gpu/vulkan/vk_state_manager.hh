@@ -144,15 +144,60 @@ class BindSpaceTyped {
   }
 };
 
+class BindSpaceTypedSampled {
+ public:
+  enum class Type {
+    Unused,
+    VertexBuffer,
+    Texture,
+  };
+  struct Elem {
+    Type resource_type;
+    void *resource;
+    GPUSamplerState sampler;
+  };
+  Vector<Elem> bound_resources;
+
+  void bind(Type resource_type, void *resource, GPUSamplerState sampler, int binding)
+  {
+    if (bound_resources.size() <= binding) {
+      bound_resources.resize(binding + 1);
+    }
+    bound_resources[binding].resource_type = resource_type;
+    bound_resources[binding].resource = resource;
+    bound_resources[binding].sampler = sampler;
+  }
+
+  const Elem &get(int binding) const
+  {
+    return bound_resources[binding];
+  }
+
+  void unbind(void *resource)
+  {
+    for (int index : IndexRange(bound_resources.size())) {
+      if (bound_resources[index].resource == resource) {
+        bound_resources[index].resource = nullptr;
+        bound_resources[index].resource_type = Type::Unused;
+        bound_resources[index].sampler = GPUSamplerState::default_sampler();
+      }
+    }
+  }
+
+  void unbind_all()
+  {
+    bound_resources.clear();
+  }
+};
+
 class VKStateManager : public StateManager {
   friend class VKDescriptorSetTracker;
 
   uint texture_unpack_row_length_ = 0;
 
-  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> textures_;
+  BindSpaceTypedSampled textures_;
   BindSpaceOffset<VKTexture, BIND_SPACE_IMAGE_OFFSET> images_;
   BindSpace<VKUniformBuffer> uniform_buffers_;
-  /* Can contain uniform, index, vertex, storage. */
   BindSpaceTyped storage_buffers_;
 
  public:

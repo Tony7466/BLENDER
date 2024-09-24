@@ -34,7 +34,6 @@ void VKStateManager::apply_bindings(VKContext &context,
   AddToDescriptorSetContext data(
       context.descriptor_set_get(), shader->interface_get(), resource_access_info);
   context.descriptor_set_get().reset();
-  textures_.add_to_descriptor_set(data);
   is_dirty = false;
 }
 
@@ -67,17 +66,15 @@ void VKStateManager::issue_barrier(eGPUBarrier barrier_bits)
   }
 }
 
-void VKStateManager::texture_bind(Texture *tex, GPUSamplerState sampler, int unit)
+void VKStateManager::texture_bind(Texture *texture, GPUSamplerState sampler, int binding)
 {
-  VKTexture *texture = unwrap(tex);
-  textures_.bind(unit, *texture, sampler);
+  textures_.bind(BindSpaceTypedSampled::Type::Texture, texture, sampler, binding);
   is_dirty = true;
 }
 
-void VKStateManager::texture_unbind(Texture *tex)
+void VKStateManager::texture_unbind(Texture *texture)
 {
-  VKTexture *texture = unwrap(tex);
-  textures_.unbind(*texture);
+  textures_.unbind(texture);
   is_dirty = true;
 }
 
@@ -130,19 +127,22 @@ void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
   uniform_buffers_.unbind(&resource);
   storage_buffers_.unbind(&resource);
   images_.unbind(&resource);
-  textures_.unbind(resource);
+  textures_.unbind(&resource);
   is_dirty = true;
 }
 
-void VKStateManager::texel_buffer_bind(VKVertexBuffer &vertex_buffer, int slot)
+void VKStateManager::texel_buffer_bind(VKVertexBuffer &vertex_buffer, int binding)
 {
-  textures_.bind(slot, vertex_buffer);
+  textures_.bind(BindSpaceTypedSampled::Type::VertexBuffer,
+                 &vertex_buffer,
+                 GPUSamplerState::default_sampler(),
+                 binding);
   is_dirty = true;
 }
 
 void VKStateManager::texel_buffer_unbind(VKVertexBuffer &vertex_buffer)
 {
-  textures_.unbind(vertex_buffer);
+  textures_.unbind(&vertex_buffer);
   is_dirty = true;
 }
 

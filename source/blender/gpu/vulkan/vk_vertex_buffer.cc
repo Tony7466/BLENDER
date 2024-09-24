@@ -42,6 +42,27 @@ void VKVertexBuffer::ensure_updated()
   upload_data();
 }
 
+void VKVertexBuffer::ensure_buffer_view()
+{
+  if (vk_buffer_view_ != VK_NULL_HANDLE) {
+    return;
+  }
+
+  VkBufferViewCreateInfo buffer_view_info = {};
+  eGPUTextureFormat texture_format = to_texture_format(&format);
+
+  buffer_view_info.sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+  buffer_view_info.buffer = buffer_.vk_handle();
+  buffer_view_info.format = to_vk_format(texture_format);
+  buffer_view_info.range = buffer_.size_in_bytes();
+
+  VK_ALLOCATION_CALLBACKS;
+  const VKDevice &device = VKBackend::get().device;
+  vkCreateBufferView(
+      device.vk_handle(), &buffer_view_info, vk_allocation_callbacks, &vk_buffer_view_);
+  debug::object_label(vk_buffer_view_, "VertexBufferView");
+}
+
 void VKVertexBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,
                                            int binding,
                                            shader::ShaderCreateInfo::Resource::BindType bind_type,

@@ -89,6 +89,7 @@ void VKDescriptorSetTracker::update(VKContext &context,
   // reset();
   // pre-allocate the vector sizes so we can directly set the correct data and don't need to loop
   // at the end of this function.
+  const VKDevice &device = VKBackend::get().device;
   VKShader &shader = *unwrap(context.shader);
   const VKShaderInterface &shader_interface = shader.interface_get();
   VKStateManager &state_manager = context.state_manager_get();
@@ -122,8 +123,40 @@ void VKDescriptorSetTracker::update(VKContext &context,
         break;
       }
 
-      case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
+      case shader::ShaderCreateInfo::Resource::BindType::SAMPLER: {
+        const BindSpaceTypedSampled::Elem &elem = state_manager.textures_.get(
+            resource_binding.binding);
+        switch (elem.resource_type) {
+          case BindSpaceTypedSampled::Type::VertexBuffer: {
+            VKVertexBuffer *vertex_buffer = static_cast<VKVertexBuffer *>(elem.resource);
+            vertex_buffer->ensure_updated();
+            vertex_buffer->ensure_buffer_view();
+            bind_texel_buffer(*vertex_buffer, resource_binding.location);
+            access_info.buffers.append({vertex_buffer->vk_handle(), resource_binding.access_mask});
+            break;
+          }
+          case BindSpaceTypedSampled::Type::Texture: {
+            VKTexture *texture = static_cast<VKTexture *>(elem.resource);
+            const VKSampler &sampler = device.samplers().get(elem.sampler);
+            bind_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                       sampler.vk_handle(),
+                       texture->image_view_get(resource_binding.arrayed).vk_handle(),
+                       VK_IMAGE_LAYOUT_GENERAL,
+                       resource_binding.location);
+            access_info.images.append({texture->vk_image_handle(),
+                                       resource_binding.access_mask,
+                                       to_vk_image_aspect_flag_bits(texture->device_format_get()),
+                                       0,
+                                       VK_REMAINING_ARRAY_LAYERS});
+            break;
+          }
+          case BindSpaceTypedSampled::Type::Unused: {
+            BLI_assert_unreachable();
+          }
+        }
+
         break;
+      }
 
       case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
         const BindSpaceTyped::Elem &elem = state_manager.storage_buffers_.get(
@@ -138,7 +171,6 @@ void VKDescriptorSetTracker::update(VKContext &context,
             vk_device_size = index_buffer->size_get();
             break;
           }
-
           case BindSpaceTyped::Type::VertexBuffer: {
             VKVertexBuffer *vertex_buffer = static_cast<VKVertexBuffer *>(elem.resource);
             vertex_buffer->ensure_updated();
@@ -146,7 +178,6 @@ void VKDescriptorSetTracker::update(VKContext &context,
             vk_device_size = vertex_buffer->size_used_get();
             break;
           }
-
           case BindSpaceTyped::Type::UniformBuffer: {
             VKUniformBuffer *uniform_buffer = static_cast<VKUniformBuffer *>(elem.resource);
             uniform_buffer->ensure_updated();
@@ -161,8 +192,9 @@ void VKDescriptorSetTracker::update(VKContext &context,
             vk_device_size = storage_buffer->size_in_bytes();
             break;
           }
-          default:
+          case BindSpaceTyped::Type::Unused: {
             BLI_assert_unreachable();
+          }
         }
 
         bind_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -245,7 +277,6 @@ void VKDescriptorSetTracker::update(VKContext &context,
   }
 
   /* Update the descriptor set on the device. */
-  const VKDevice &device = VKBackend::get().device;
   vkUpdateDescriptorSets(device.vk_handle(),
                          vk_write_descriptor_sets_.size(),
                          vk_write_descriptor_sets_.data(),
