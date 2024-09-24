@@ -63,7 +63,8 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
                    DRW_STATE_BLEND_ALPHA;
   DRW_PASS_CREATE(psl->edit_grease_pencil_ps, (state | pd->clipping_state));
 
-  bool show_points, show_lines;
+  bool show_points = false;
+  bool show_lines = false;
   is_selection_visible(show_points, show_lines);
 
   if (show_lines) {
