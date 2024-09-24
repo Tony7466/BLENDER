@@ -263,8 +263,6 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
   matrix[1][1] = fabsf(BLI_rctf_size_y(&rct));
   matrix[3][0] = (BLI_rctf_cent_x(&rct) - 0.5f) * dims[0];
   matrix[3][1] = (BLI_rctf_cent_y(&rct) - 0.5f) * dims[1];
-
-  //  print_m4("matrix crop get", matrix);
 }
 
 static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
@@ -417,21 +415,18 @@ static void gizmo_node_box_mask_prop_matrix_get(const wmGizmo *gz,
   BLI_assert(gz_prop->type->array_length == 16);
   NodeBBoxWidgetGroup *mask_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float2 dims = mask_group->state.dims;
+  const float2 offset = mask_group->state.offset;
   const bNode *node = (const bNode *)gz_prop->custom_func.user_data;
   const NodeBoxMask *mask_node = (const NodeBoxMask *)node->storage;
   float aspect = dims.x / dims.y;
-
-  // todo: implement offset
-  // todo: prevent matrix from becoming singular
-  // todo: fix behavior for rotation > 90°
 
   float loc[3], rot[3][3], size[3];
   mat4_to_loc_rot_size(loc, rot, size, matrix);
 
   axis_angle_to_mat3_single(rot, 'Z', mask_node->rotation);
 
-  loc[0] = (mask_node->x - 0.5) * dims.x;
-  loc[1] = (mask_node->y - 0.5) * dims.y;
+  loc[0] = (mask_node->x - 0.5) * dims.x + offset.x;
+  loc[1] = (mask_node->y - 0.5) * dims.y + offset.y;
   loc[2] = 0;
 
   /* Prevent the matrix to become singular. */
@@ -450,6 +445,7 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
   BLI_assert(gz_prop->type->array_length == 16);
   NodeBBoxWidgetGroup *mask_group = (NodeBBoxWidgetGroup *)gz->parent_gzgroup->customdata;
   const float2 dims = mask_group->state.dims;
+  const float2 offset = mask_group->state.offset;
   bNode *node = (bNode *)gz_prop->custom_func.user_data;
   NodeBoxMask *mask_node = (NodeBoxMask *)node->storage;
 
@@ -470,7 +466,8 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
   mask_node->rotation = eul[2];
 
   BLI_rctf_resize(&rct, fabsf(size[0]), fabsf(size[1]) / aspect);
-  BLI_rctf_recenter(&rct, (loc[0] / dims[0]) + 0.5, (loc[1] / dims[1]) + 0.5);
+  BLI_rctf_recenter(
+      &rct, ((loc[0] - offset.x) / dims.x) + 0.5, ((loc[1] - offset.y) / dims.y) + 0.5);
 
   mask_node->width = size[0];
   mask_node->height = size[1] / aspect;
@@ -528,27 +525,28 @@ static void WIDGETGROUP_node_box_mask_draw_prepare(const bContext *C, wmGizmoGro
 static void WIDGETGROUP_node_box_mask_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
   Main *bmain = CTX_data_main(C);
-  NodeBBoxWidgetGroup *crop_group = (NodeBBoxWidgetGroup *)gzgroup->customdata;
-  wmGizmo *gz = crop_group->border;
+  NodeBBoxWidgetGroup *mask_group = (NodeBBoxWidgetGroup *)gzgroup->customdata;
+  wmGizmo *gz = mask_group->border;
 
   void *lock;
   Image *ima = BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Render Result");
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
 
   if (ibuf) {
-    crop_group->state.dims[0] = (ibuf->x > 0) ? ibuf->x : 64.0f;
-    crop_group->state.dims[1] = (ibuf->y > 0) ? ibuf->y : 64.0f;
+    mask_group->state.dims[0] = (ibuf->x > 0) ? ibuf->x : 64.0f;
+    mask_group->state.dims[1] = (ibuf->y > 0) ? ibuf->y : 64.0f;
+    copy_v2_v2(mask_group->state.offset, ima->runtime.backdrop_offset);
 
-    RNA_float_set_array(gz->ptr, "dimensions", crop_group->state.dims);
+    RNA_float_set_array(gz->ptr, "dimensions", mask_group->state.dims);
     WM_gizmo_set_flag(gz, WM_GIZMO_HIDDEN, false);
 
     SpaceNode *snode = CTX_wm_space_node(C);
     bNode *node = bke::node_get_active(snode->edittree);
 
-    crop_group->update_data.context = (bContext *)C;
-    crop_group->update_data.ptr = RNA_pointer_create(
+    mask_group->update_data.context = (bContext *)C;
+    mask_group->update_data.ptr = RNA_pointer_create(
         (ID *)snode->edittree, &RNA_CompositorNodeCrop, node);
-    crop_group->update_data.prop = RNA_struct_find_property(&crop_group->update_data.ptr, "x");
+    mask_group->update_data.prop = RNA_struct_find_property(&mask_group->update_data.ptr, "x");
 
     wmGizmoPropertyFnParams params{};
     params.value_get_fn = gizmo_node_box_mask_prop_matrix_get;

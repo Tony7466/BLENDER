@@ -1221,7 +1221,8 @@ static int gizmo_cage2d_modal(bContext *C,
       size_new[i] = size_orig[i];
       if (constrain_axis[i] == false) {
         /* Original cursor position relative to pivot. */
-        const float delta_orig = test_co[i] - data->orig_matrix_offset[3][i] - pivot[i] * size_orig[i];
+        const float delta_orig = test_co[i] - data->orig_matrix_offset[3][i] -
+                                 pivot[i] * size_orig[i];
         const float delta_curr = point_local[i] - data->orig_matrix_offset[3][i] -
                                  pivot[i] * size_orig[i];
 
