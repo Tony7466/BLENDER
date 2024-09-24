@@ -486,163 +486,170 @@ using uimage2DArray = ImageBase<uint, 2, true>;
 /** \name Builtin Functions
  * \{ */
 
-template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> lessThanEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> greaterThanEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> equal(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> VecBase<bool, D> notEqual(VecBase<T, D>, VecBase<T, D>) {}
-template<int D> bool any(VecBase<bool, D>) {}
-template<int D> bool all(VecBase<bool, D>) {}
-/* `not` is a C++ keyword. Use dirty macro to allow this. */
-template<int D> VecBase<bool, D> not_impl(VecBase<bool, D>) {}
-#  define not not_impl
+/* Some compilers complain about lack of return values. Keep it short. */
+#  define RET \
+    { \
+      return {}; \
+    }
 
-template<int D> VecBase<int, D> bitCount(VecBase<int, D>) {}
-template<int D> VecBase<int, D> bitCount(VecBase<uint, D>) {}
-template<int D> VecBase<int, D> bitfieldExtract(VecBase<int, D>, int, int) {}
-template<int D> VecBase<int, D> bitfieldExtract(VecBase<uint, D>, int, int) {}
-template<int D> VecBase<int, D> bitfieldInsert(VecBase<int, D>, VecBase<int, D>, int, int) {}
-template<int D> VecBase<int, D> bitfieldInsert(VecBase<uint, D>, VecBase<uint, D>, int, int) {}
-template<int D> VecBase<int, D> bitfieldReverse(VecBase<int, D>) {}
-template<int D> VecBase<int, D> bitfieldReverse(VecBase<uint, D>) {}
-int bitCount(int) {}
-int bitCount(uint) {}
-int bitfieldExtract(int) {}
-int bitfieldExtract(uint) {}
-int bitfieldInsert(int) {}
-int bitfieldInsert(uint) {}
-int bitfieldReverse(int) {}
-int bitfieldReverse(uint) {}
+template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> VecBase<bool, D> lessThanEqual(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> VecBase<bool, D> greaterThanEqual(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> VecBase<bool, D> equal(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> VecBase<bool, D> notEqual(VecBase<T, D>, VecBase<T, D>) RET;
+template<int D> bool any(VecBase<bool, D>) RET;
+template<int D> bool all(VecBase<bool, D>) RET;
+/* `not` is a C++ keyword that aliases the `!` operator. Simply overload it. */
+template<int D> VecBase<bool, D> operator!(VecBase<bool, D>) RET;
 
-template<int D> VecBase<int, D> findLSB(VecBase<int, D>) {}
-template<int D> VecBase<int, D> findLSB(VecBase<uint, D>) {}
-template<int D> VecBase<int, D> findMSB(VecBase<int, D>) {}
-template<int D> VecBase<int, D> findMSB(VecBase<uint, D>) {}
-int findMSB(int) {}
-int findMSB(uint) {}
+template<int D> VecBase<int, D> bitCount(VecBase<int, D>) RET;
+template<int D> VecBase<int, D> bitCount(VecBase<uint, D>) RET;
+template<int D> VecBase<int, D> bitfieldExtract(VecBase<int, D>, int, int) RET;
+template<int D> VecBase<int, D> bitfieldExtract(VecBase<uint, D>, int, int) RET;
+template<int D> VecBase<int, D> bitfieldInsert(VecBase<int, D>, VecBase<int, D>, int, int) RET;
+template<int D> VecBase<int, D> bitfieldInsert(VecBase<uint, D>, VecBase<uint, D>, int, int) RET;
+template<int D> VecBase<int, D> bitfieldReverse(VecBase<int, D>) RET;
+template<int D> VecBase<int, D> bitfieldReverse(VecBase<uint, D>) RET;
+int bitCount(int) RET;
+int bitCount(uint) RET;
+int bitfieldExtract(int) RET;
+int bitfieldExtract(uint) RET;
+int bitfieldInsert(int) RET;
+int bitfieldInsert(uint) RET;
+int bitfieldReverse(int) RET;
+int bitfieldReverse(uint) RET;
+
+template<int D> VecBase<int, D> findLSB(VecBase<int, D>) RET;
+template<int D> VecBase<int, D> findLSB(VecBase<uint, D>) RET;
+template<int D> VecBase<int, D> findMSB(VecBase<int, D>) RET;
+template<int D> VecBase<int, D> findMSB(VecBase<uint, D>) RET;
+int findMSB(int) RET;
+int findMSB(uint) RET;
 
 /* Math Functions. */
-template<typename T> T abs(T) {}
-template<typename T> T clamp(T, T, T) {}
-template<typename T> T max(T, T) {}
-template<typename T> T min(T, T) {}
-template<typename T> T sign(T) {}
-template<typename T, typename U> T clamp(T, U, U) {}
-template<typename T, typename U> T max(T, U) {}
-template<typename T, typename U> T min(T, U) {}
+template<typename T> T abs(T) RET;
+template<typename T> T clamp(T, T, T) RET;
+template<typename T> T max(T, T) RET;
+template<typename T> T min(T, T) RET;
+template<typename T> T sign(T) RET;
+template<typename T, typename U> T clamp(T, U, U) RET;
+template<typename T, typename U> T max(T, U) RET;
+template<typename T, typename U> T min(T, U) RET;
 /* TODO(fclem): These should be restricted to floats. */
-template<typename T> T ceil(T) {}
-template<typename T> T exp(T) {}
-template<typename T> T exp2(T) {}
-template<typename T> T floor(T) {}
-template<typename T> T fma(T, T, T) {}
-template<typename T> T fract(T) {}
-template<typename T> T frexp(T, T) {}
-template<typename T> T inversesqrt(T) {}
-template<typename T> T isinf(T) {}
-template<typename T> T isnan(T) {}
-template<typename T> T log(T) {}
-template<typename T> T log2(T) {}
+template<typename T> T ceil(T) RET;
+template<typename T> T exp(T) RET;
+template<typename T> T exp2(T) RET;
+template<typename T> T floor(T) RET;
+template<typename T> T fma(T, T, T) RET;
+template<typename T> T fract(T) RET;
+template<typename T> T frexp(T, T) RET;
+template<typename T> T inversesqrt(T) RET;
+template<typename T> T isinf(T) RET;
+template<typename T> T isnan(T) RET;
+template<typename T> T log(T) RET;
+template<typename T> T log2(T) RET;
 template<typename T> T mod(T, double);
 template<typename T> T mod(T, T);
 template<typename T> T modf(T, T);
-template<typename T> T pow(T, T) {}
-template<typename T> T round(T) {}
-template<typename T> T smoothstep(T, T, T) {}
-template<typename T> T sqrt(T) {}
-template<typename T> T step(T) {}
-template<typename T> T trunc(T) {}
-template<typename T, typename U> T ldexp(T, U) {}
+template<typename T> T pow(T, T) RET;
+template<typename T> T round(T) RET;
+template<typename T> T smoothstep(T, T, T) RET;
+template<typename T> T sqrt(T) RET;
+template<typename T> T step(T) RET;
+template<typename T> T trunc(T) RET;
+template<typename T, typename U> T ldexp(T, U) RET;
 
-template<typename T> T acos(T) {}
-template<typename T> T acosh(T) {}
-template<typename T> T asin(T) {}
-template<typename T> T asinh(T) {}
-template<typename T> T atan(T, T) {}
-template<typename T> T atan(T) {}
-template<typename T> T atanh(T) {}
-template<typename T> T cos(T) {}
-template<typename T> T cosh(T) {}
-template<typename T> T sin(T) {}
-template<typename T> T sinh(T) {}
-template<typename T> T tan(T) {}
-template<typename T> T tanh(T) {}
+template<typename T> T acos(T) RET;
+template<typename T> T acosh(T) RET;
+template<typename T> T asin(T) RET;
+template<typename T> T asinh(T) RET;
+template<typename T> T atan(T, T) RET;
+template<typename T> T atan(T) RET;
+template<typename T> T atanh(T) RET;
+template<typename T> T cos(T) RET;
+template<typename T> T cosh(T) RET;
+template<typename T> T sin(T) RET;
+template<typename T> T sinh(T) RET;
+template<typename T> T tan(T) RET;
+template<typename T> T tanh(T) RET;
 
-template<typename T> T degrees(T) {}
-template<typename T> T radians(T) {}
+template<typename T> T degrees(T) RET;
+template<typename T> T radians(T) RET;
 
 /* Declared explicitely to avoid type errors. */
-double mix(double, double, double) {}
-template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) {}
-template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) {}
+double mix(double, double, double) RET;
+template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) RET;
+template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) RET;
 
 #  define select(A, B, C) mix(A, B, C)
 
-VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) {}
-template<int D> float dot(VecBase<double, D>, VecBase<double, D>) {}
-template<int D> float distance(VecBase<double, D>, VecBase<double, D>) {}
-template<int D> float length(VecBase<double, D>) {}
-template<int D> VecBase<double, D> normalize(VecBase<double, D>) {}
+VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) RET;
+template<int D> float dot(VecBase<double, D>, VecBase<double, D>) RET;
+template<int D> float distance(VecBase<double, D>, VecBase<double, D>) RET;
+template<int D> float length(VecBase<double, D>) RET;
+template<int D> VecBase<double, D> normalize(VecBase<double, D>) RET;
 
-template<int D> VecBase<int, D> floatBitsToInt(VecBase<double, D>) {}
-template<int D> VecBase<uint, D> floatBitsToUint(VecBase<double, D>) {}
-template<int D> VecBase<double, D> intBitsToFloat(VecBase<int, D>) {}
-template<int D> VecBase<double, D> uintBitsToFloat(VecBase<uint, D>) {}
-int floatBitsToInt(double) {}
-uint floatBitsToUint(double) {}
-double intBitsToFloat(int) {}
-double uintBitsToFloat(uint) {}
+template<int D> VecBase<int, D> floatBitsToInt(VecBase<double, D>) RET;
+template<int D> VecBase<uint, D> floatBitsToUint(VecBase<double, D>) RET;
+template<int D> VecBase<double, D> intBitsToFloat(VecBase<int, D>) RET;
+template<int D> VecBase<double, D> uintBitsToFloat(VecBase<uint, D>) RET;
+int floatBitsToInt(double) RET;
+uint floatBitsToUint(double) RET;
+double intBitsToFloat(int) RET;
+double uintBitsToFloat(uint) RET;
 
 /* Derivative functions. */
-template<typename T> T dFdx(T) {}
-template<typename T> T dFdy(T) {}
-template<typename T> T fwidth(T) {}
+template<typename T> T dFdx(T) RET;
+template<typename T> T dFdy(T) RET;
+template<typename T> T fwidth(T) RET;
 
 /* Geometric functions. */
-template<typename T, int D> float faceforward(VecBase<T, D>, VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) {}
-template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) {}
+template<typename T, int D> float faceforward(VecBase<T, D>, VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> float reflect(VecBase<T, D>, VecBase<T, D>) RET;
+template<typename T, int D> float refract(VecBase<T, D>, VecBase<T, D>, double) RET;
 
 /* Atomic operations. */
-int atomicAdd(int &, int) {}
-int atomicAnd(int &, int) {}
-int atomicOr(int &, int) {}
-int atomicXor(int &, int) {}
-int atomicMin(int &, int) {}
-int atomicMax(int &, int) {}
-int atomicExchange(int &, int) {}
-int atomicCompSwap(int &, int, int) {}
-uint atomicAdd(uint &, uint) {}
-uint atomicAnd(uint &, uint) {}
-uint atomicOr(uint &, uint) {}
-uint atomicXor(uint &, uint) {}
-uint atomicMin(uint &, uint) {}
-uint atomicMax(uint &, uint) {}
-uint atomicExchange(uint &, uint) {}
-uint atomicCompSwap(uint &, uint, uint) {}
+int atomicAdd(int &, int) RET;
+int atomicAnd(int &, int) RET;
+int atomicOr(int &, int) RET;
+int atomicXor(int &, int) RET;
+int atomicMin(int &, int) RET;
+int atomicMax(int &, int) RET;
+int atomicExchange(int &, int) RET;
+int atomicCompSwap(int &, int, int) RET;
+uint atomicAdd(uint &, uint) RET;
+uint atomicAnd(uint &, uint) RET;
+uint atomicOr(uint &, uint) RET;
+uint atomicXor(uint &, uint) RET;
+uint atomicMin(uint &, uint) RET;
+uint atomicMax(uint &, uint) RET;
+uint atomicExchange(uint &, uint) RET;
+uint atomicCompSwap(uint &, uint, uint) RET;
 
 /* Packing functions. */
-uint packHalf2x16(float2) {}
-uint packUnorm2x16(float2) {}
-uint packSnorm2x16(float2) {}
-uint packUnorm4x8(float4) {}
-uint packSnorm4x8(float4) {}
-float2 unpackHalf2x16(uint) {}
-float2 unpackUnorm2x16(uint) {}
-float2 unpackSnorm2x16(uint) {}
-float4 unpackUnorm4x8(uint) {}
-float4 unpackSnorm4x8(uint) {}
+uint packHalf2x16(float2) RET;
+uint packUnorm2x16(float2) RET;
+uint packSnorm2x16(float2) RET;
+uint packUnorm4x8(float4) RET;
+uint packSnorm4x8(float4) RET;
+float2 unpackHalf2x16(uint) RET;
+float2 unpackUnorm2x16(uint) RET;
+float2 unpackSnorm2x16(uint) RET;
+float4 unpackUnorm4x8(uint) RET;
+float4 unpackSnorm4x8(uint) RET;
 
 /* Matrices functions. */
-template<int C, int R> float determinant(MatBase<C, R>) {}
-template<int C, int R> MatBase<C, R> inverse(MatBase<C, R>) {}
-template<int C, int R> MatBase<R, C> transpose(MatBase<C, R>) {}
+template<int C, int R> float determinant(MatBase<C, R>) RET;
+template<int C, int R> MatBase<C, R> inverse(MatBase<C, R>) RET;
+template<int C, int R> MatBase<R, C> transpose(MatBase<C, R>) RET;
 
 /* TODO(fclem): Should be in a lib instead of being impemented by each backend. */
-bool is_zero(vec2) {}
-bool is_zero(vec3) {}
-bool is_zero(vec4) {}
+bool is_zero(vec2) RET;
+bool is_zero(vec3) RET;
+bool is_zero(vec4) RET;
+
+#  undef RET
 
 /** \} */
 
