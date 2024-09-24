@@ -66,10 +66,10 @@ struct BoneDropper {
 };
 
 struct BoneSampleData {
+  SampleResult sample_result = SampleResult::UNKNOWN_FAILURE;
   /* Either EditBone, bPoseChannel or Bone. */
   PointerRNA bone_rna;
   char *name = nullptr;
-  SampleResult sample_result = SampleResult::UNKNOWN_FAILURE;
 };
 
 static void datadropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, void *arg)
@@ -182,53 +182,49 @@ static BoneSampleData sample_data_from_3d_view(bContext *C,
                                                const int mval[2],
                                                const BoneDropper &bdr)
 {
-  BoneSampleData sample_data;
-
   Base *base = nullptr;
 
   switch (CTX_data_mode_enum(C)) {
     case CTX_MODE_POSE: {
       bPoseChannel *bone = ED_armature_pick_pchan(C, mval, true, &base);
       if (!bone || !base) {
-        sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
-        return sample_data;
+        return {SampleResult::NO_BONE_3DVIEW};
       }
       Object *ob = base->object;
       bArmature *armature = (bArmature *)ob->data;
       if (!armature || &armature->id != bdr.search_ptr.owner_id) {
-        sample_data.sample_result = SampleResult::WRONG_ARMATURE;
-        return sample_data;
+        return {SampleResult::WRONG_ARMATURE};
       }
+
+      BoneSampleData sample_data;
       sample_data.name = bone->name;
       /* Not using the search pointer owner ID because pose bones are part of the object. */
       sample_data.bone_rna = RNA_pointer_create(&base->object->id, &RNA_PoseBone, bone);
       sample_data.sample_result = SampleResult::SUCCESS;
-      break;
+      return sample_data;
     }
+
     case CTX_MODE_EDIT_ARMATURE: {
       EditBone *ebone = ED_armature_pick_ebone(C, mval, true, &base);
       if (!ebone || !base) {
-        sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
-        return sample_data;
+        return {SampleResult::NO_BONE_3DVIEW};
       }
       Object *ob = base->object;
       bArmature *armature = (bArmature *)ob->data;
       if (!armature || &armature->id != bdr.search_ptr.owner_id) {
-        sample_data.sample_result = SampleResult::WRONG_ARMATURE;
-        return sample_data;
+        return {SampleResult::WRONG_ARMATURE};
       }
+
+      BoneSampleData sample_data;
       sample_data.name = ebone->name;
       sample_data.bone_rna = RNA_pointer_create(&armature->id, &RNA_EditBone, ebone);
       sample_data.sample_result = SampleResult::SUCCESS;
-      break;
+      return sample_data;
     }
 
     default:
-      sample_data.sample_result = SampleResult::NO_BONE_3DVIEW;
-      break;
+      return {SampleResult::NO_BONE_3DVIEW};
   }
-
-  return sample_data;
 }
 
 static BoneSampleData sample_data_from_outliner(bContext *C,

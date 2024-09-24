@@ -485,8 +485,6 @@ Base *ED_outliner_give_base_under_cursor(bContext *C, const int mval[2])
 bool ED_outliner_give_rna_under_cursor(bContext *C, const int mval[2], PointerRNA *r_ptr)
 {
   ARegion *region = CTX_wm_region(C);
-  const Scene *scene = CTX_data_scene(C);
-  ViewLayer *view_layer = CTX_data_view_layer(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
 
   float view_mval[2];
