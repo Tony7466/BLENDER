@@ -103,8 +103,8 @@ void VKDescriptorSetTracker::update(VKContext &context,
       case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
         break;
       case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
-        VKUniformBuffer &uniform_buffer = *static_cast<VKUniformBuffer *>(
-            state_manager.uniform_buffers_.get(resource_binding.binding)->resource);
+        VKUniformBuffer &uniform_buffer = *state_manager.uniform_buffers_.get(
+            resource_binding.binding);
         uniform_buffer.ensure_updated();
         bind_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                     uniform_buffer.vk_handle(),

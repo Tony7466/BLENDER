@@ -36,7 +36,6 @@ void VKStateManager::apply_bindings(VKContext &context,
   context.descriptor_set_get().reset();
   textures_.add_to_descriptor_set(data);
   images_.add_to_descriptor_set(data);
-  uniform_buffers_.add_to_descriptor_set(data);
   storage_buffers_.add_to_descriptor_set(data);
   is_dirty = false;
 }
@@ -110,15 +109,15 @@ void VKStateManager::image_unbind_all()
   is_dirty = true;
 }
 
-void VKStateManager::uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int slot)
+void VKStateManager::uniform_buffer_bind(VKUniformBuffer *uniform_buffer, int binding)
 {
-  uniform_buffers_.bind(slot, *uniform_buffer);
+  uniform_buffers_.bind(uniform_buffer, binding);
   is_dirty = true;
 }
 
 void VKStateManager::uniform_buffer_unbind(VKUniformBuffer *uniform_buffer)
 {
-  uniform_buffers_.unbind(*uniform_buffer);
+  uniform_buffers_.unbind(uniform_buffer);
   is_dirty = true;
 }
 
@@ -130,7 +129,7 @@ void VKStateManager::uniform_buffer_unbind_all()
 
 void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
 {
-  uniform_buffers_.unbind(resource);
+  uniform_buffers_.unbind(static_cast<void *>(&resource));
   storage_buffers_.unbind(resource);
   images_.unbind(resource);
   textures_.unbind(resource);

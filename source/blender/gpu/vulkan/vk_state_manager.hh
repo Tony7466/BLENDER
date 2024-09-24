@@ -27,12 +27,44 @@ class VKDescriptorSetTracker;
 class VKStateManager : public StateManager {
   friend class VKDescriptorSetTracker;
 
+  class BindSpaceUniformBuffers {
+   public:
+    Vector<VKUniformBuffer *> bound_resources;
+
+    void bind(VKUniformBuffer *uniform_buffer, int binding)
+    {
+      if (bound_resources.size() <= binding) {
+        bound_resources.resize(binding + 1);
+      }
+      bound_resources[binding] = uniform_buffer;
+    }
+
+    VKUniformBuffer *get(int binding)
+    {
+      return bound_resources[binding];
+    }
+
+    void unbind(void *uniform_buffer)
+    {
+      for (int index : IndexRange(bound_resources.size())) {
+        if (bound_resources[index] == uniform_buffer) {
+          bound_resources[index] = nullptr;
+        }
+      }
+    }
+
+    void unbind_all()
+    {
+      bound_resources.clear();
+    }
+  };
+
   uint texture_unpack_row_length_ = 0;
 
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> textures_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::IMAGE, BIND_SPACE_IMAGE_OFFSET>
       images_;
-  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER> uniform_buffers_;
+  BindSpaceUniformBuffers uniform_buffers_;
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
 
  public:
