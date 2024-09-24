@@ -1299,9 +1299,44 @@ FCurve *action_fcurve_ensure(Main *bmain,
                              FCurveDescriptor fcurve_descriptor);
 
 /**
- * Find the F-Curve from the given Action. This assumes that all the destinations are valid.
+ * Find the F-Curve in the given Action.
+ *
+ * All the Action slots are searched for this F-Curve. To limit to a single
+ * slot, use fcurve_find_in_action_slot().
+ *
+ * \see blender::animrig::fcurve_find_in_action_slot
  */
-FCurve *action_fcurve_find(bAction *act, FCurveDescriptor fcurve_descriptor);
+FCurve *fcurve_find_in_action(bAction *act, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find the F-Curve in the given Action Slot.
+ *
+ * \see blender::animrig::fcurve_find_in_action
+ */
+FCurve *fcurve_find_in_action_slot(bAction *act,
+                                   slot_handle_t slot_handle,
+                                   FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find the F-Curve in the Action Slot assigned to this ADT.
+ *
+ * \see blender::animrig::fcurve_find_in_action
+ */
+FCurve *fcurve_find_in_assigned_slot(AnimData &adt, FCurveDescriptor fcurve_descriptor);
+
+/**
+ * Find all F-Curves that target the named item in the collection.
+ *
+ * For example, to find all F-Curves for the pose bone named "botje", you'd pass
+ * `collection_rna_path = "pose.bones["` and `item_name="botje"`.
+ *
+ * This could be implemented as iterator as well, but it's only used in one
+ * place, and that modifies the Action while it's looping.
+ */
+Vector<FCurve *> fcurve_find_in_action_slot_filtered(bAction *act,
+                                                     slot_handle_t slot_handle,
+                                                     StringRefNull collection_rna_path,
+                                                     StringRefNull data_name);
 
 /**
  * Remove the given FCurve from the action by searching for it in all channelbags.
