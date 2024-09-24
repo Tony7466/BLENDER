@@ -40,10 +40,11 @@ class VKIndexBuffer : public IndexBuf, public VKBindableResource {
     return to_vk_index_type(index_type_);
   }
 
+  void ensure_updated();
+
  private:
   void strip_restart_indices() override;
   void allocate();
-  void ensure_updated();
   VKBuffer &buffer_get();
   const VKBuffer &buffer_get() const;
 };

@@ -93,7 +93,7 @@ void VKUniformBuffer::bind(int slot)
 void VKUniformBuffer::bind_as_ssbo(int slot)
 {
   VKContext &context = *VKContext::get();
-  context.state_manager_get().storage_buffer_bind(*this, slot);
+  context.state_manager_get().storage_buffer_bind(BindSpaceTyped::Type::UniformBuffer, this, slot);
 }
 
 void VKUniformBuffer::unbind()

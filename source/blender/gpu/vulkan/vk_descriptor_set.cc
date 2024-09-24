@@ -124,8 +124,55 @@ void VKDescriptorSetTracker::update(VKContext &context,
 
       case shader::ShaderCreateInfo::Resource::BindType::SAMPLER:
         break;
-      case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER:
+
+      case shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER: {
+        const BindSpaceTyped::Elem &elem = state_manager.storage_buffers_.get(
+            resource_binding.binding);
+        VkBuffer vk_buffer = VK_NULL_HANDLE;
+        VkDeviceSize vk_device_size = 0;
+        switch (elem.resource_type) {
+          case BindSpaceTyped::Type::IndexBuffer: {
+            VKIndexBuffer *index_buffer = static_cast<VKIndexBuffer *>(elem.resource);
+            index_buffer->ensure_updated();
+            vk_buffer = index_buffer->vk_handle();
+            vk_device_size = index_buffer->size_get();
+            break;
+          }
+
+          case BindSpaceTyped::Type::VertexBuffer: {
+            VKVertexBuffer *vertex_buffer = static_cast<VKVertexBuffer *>(elem.resource);
+            vertex_buffer->ensure_updated();
+            vk_buffer = vertex_buffer->vk_handle();
+            vk_device_size = vertex_buffer->size_used_get();
+            break;
+          }
+
+          case BindSpaceTyped::Type::UniformBuffer: {
+            VKUniformBuffer *uniform_buffer = static_cast<VKUniformBuffer *>(elem.resource);
+            uniform_buffer->ensure_updated();
+            vk_buffer = uniform_buffer->vk_handle();
+            vk_device_size = uniform_buffer->size_in_bytes();
+            break;
+          }
+          case BindSpaceTyped::Type::StorageBuffer: {
+            VKStorageBuffer *storage_buffer = static_cast<VKStorageBuffer *>(elem.resource);
+            storage_buffer->ensure_allocated();
+            vk_buffer = storage_buffer->vk_handle();
+            vk_device_size = storage_buffer->size_in_bytes();
+            break;
+          }
+          default:
+            BLI_assert_unreachable();
+        }
+
+        bind_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                    vk_buffer,
+                    vk_device_size,
+                    resource_binding.location);
+        access_info.buffers.append({vk_buffer, resource_binding.access_mask});
+
         break;
+      }
 
       case shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER: {
         VKUniformBuffer &uniform_buffer = *state_manager.uniform_buffers_.get(

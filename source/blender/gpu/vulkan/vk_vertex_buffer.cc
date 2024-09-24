@@ -27,7 +27,7 @@ void VKVertexBuffer::bind_as_ssbo(uint binding)
 {
   VKContext &context = *VKContext::get();
   VKStateManager &state_manager = context.state_manager_get();
-  state_manager.storage_buffer_bind(*this, binding);
+  state_manager.storage_buffer_bind(BindSpaceTyped::Type::VertexBuffer, this, binding);
 }
 
 void VKVertexBuffer::bind_as_texture(uint binding)
@@ -35,6 +35,11 @@ void VKVertexBuffer::bind_as_texture(uint binding)
   VKContext &context = *VKContext::get();
   VKStateManager &state_manager = context.state_manager_get();
   state_manager.texel_buffer_bind(*this, binding);
+}
+
+void VKVertexBuffer::ensure_updated()
+{
+  upload_data();
 }
 
 void VKVertexBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,

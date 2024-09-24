@@ -35,7 +35,6 @@ void VKStateManager::apply_bindings(VKContext &context,
       context.descriptor_set_get(), shader->interface_get(), resource_access_info);
   context.descriptor_set_get().reset();
   textures_.add_to_descriptor_set(data);
-  storage_buffers_.add_to_descriptor_set(data);
   is_dirty = false;
 }
 
@@ -129,7 +128,7 @@ void VKStateManager::uniform_buffer_unbind_all()
 void VKStateManager::unbind_from_all_namespaces(VKBindableResource &resource)
 {
   uniform_buffers_.unbind(&resource);
-  storage_buffers_.unbind(resource);
+  storage_buffers_.unbind(&resource);
   images_.unbind(&resource);
   textures_.unbind(resource);
   is_dirty = true;
@@ -147,15 +146,17 @@ void VKStateManager::texel_buffer_unbind(VKVertexBuffer &vertex_buffer)
   is_dirty = true;
 }
 
-void VKStateManager::storage_buffer_bind(VKBindableResource &resource, int slot)
+void VKStateManager::storage_buffer_bind(BindSpaceTyped::Type resource_type,
+                                         void *resource,
+                                         int binding)
 {
-  storage_buffers_.bind(slot, resource);
+  storage_buffers_.bind(resource_type, resource, binding);
   is_dirty = true;
 }
 
 void VKStateManager::storage_buffer_unbind(VKBindableResource &resource)
 {
-  storage_buffers_.unbind(resource);
+  storage_buffers_.unbind(&resource);
   is_dirty = true;
 }
 

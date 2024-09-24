@@ -50,7 +50,7 @@ void VKStorageBuffer::allocate()
 void VKStorageBuffer::bind(int slot)
 {
   VKContext &context = *VKContext::get();
-  context.state_manager_get().storage_buffer_bind(*this, slot);
+  context.state_manager_get().storage_buffer_bind(BindSpaceTyped::Type::StorageBuffer, this, slot);
 }
 
 void VKStorageBuffer::add_to_descriptor_set(AddToDescriptorSetContext &data,

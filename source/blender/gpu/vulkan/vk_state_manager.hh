@@ -98,6 +98,52 @@ template<typename StorageType, int Offset> class BindSpaceOffset {
   }
 };
 
+/** Bind space where different type of resources are used. */
+class BindSpaceTyped {
+ public:
+  enum class Type {
+    Unused,
+    UniformBuffer,
+    VertexBuffer,
+    IndexBuffer,
+    StorageBuffer,
+  };
+  struct Elem {
+    Type resource_type;
+    void *resource;
+  };
+  Vector<Elem> bound_resources;
+
+  void bind(Type resource_type, void *resource, int binding)
+  {
+    if (bound_resources.size() <= binding) {
+      bound_resources.resize(binding + 1);
+    }
+    bound_resources[binding].resource_type = resource_type;
+    bound_resources[binding].resource = resource;
+  }
+
+  const Elem &get(int binding) const
+  {
+    return bound_resources[binding];
+  }
+
+  void unbind(void *resource)
+  {
+    for (int index : IndexRange(bound_resources.size())) {
+      if (bound_resources[index].resource == resource) {
+        bound_resources[index].resource = nullptr;
+        bound_resources[index].resource_type = Type::Unused;
+      }
+    }
+  }
+
+  void unbind_all()
+  {
+    bound_resources.clear();
+  }
+};
+
 class VKStateManager : public StateManager {
   friend class VKDescriptorSetTracker;
 
@@ -106,7 +152,8 @@ class VKStateManager : public StateManager {
   VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::SAMPLER> textures_;
   BindSpaceOffset<VKTexture, BIND_SPACE_IMAGE_OFFSET> images_;
   BindSpace<VKUniformBuffer> uniform_buffers_;
-  VKBindSpace<shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER> storage_buffers_;
+  /* Can contain uniform, index, vertex, storage. */
+  BindSpaceTyped storage_buffers_;
 
  public:
   bool is_dirty = false;
@@ -135,7 +182,7 @@ class VKStateManager : public StateManager {
   void texel_buffer_bind(VKVertexBuffer &vertex_buffer, int slot);
   void texel_buffer_unbind(VKVertexBuffer &vertex_buffer);
 
-  void storage_buffer_bind(VKBindableResource &resource, int slot);
+  void storage_buffer_bind(BindSpaceTyped::Type resource_type, void *resource, int binding);
   void storage_buffer_unbind(VKBindableResource &resource);
   void storage_buffer_unbind_all();
 
