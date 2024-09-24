@@ -267,7 +267,7 @@ bool BKE_paint_select_face_test(const Object *ob);
  */
 bool BKE_paint_select_vert_test(const Object *ob);
 /**
- * Return true when in grease pencil sculpt mode mode.
+ * Return true when in grease pencil sculpt mode.
  */
 bool BKE_paint_select_grease_pencil_test(const Object *ob);
 /**
