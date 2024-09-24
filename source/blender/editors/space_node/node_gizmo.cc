@@ -9,11 +9,10 @@
 #include <cmath>
 
 #include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
-#include "BLI_math_matrix.h"
-#include "BLI_math_rotation.h"
 
 #include "BKE_context.hh"
 #include "BKE_image.h"
@@ -265,7 +264,7 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
   matrix[3][0] = (BLI_rctf_cent_x(&rct) - 0.5f) * dims[0];
   matrix[3][1] = (BLI_rctf_cent_y(&rct) - 0.5f) * dims[1];
 
-//  print_m4("matrix crop get", matrix);
+  //  print_m4("matrix crop get", matrix);
 }
 
 static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
@@ -331,7 +330,7 @@ static void WIDGETGROUP_node_crop_setup(const bContext * /*C*/, wmGizmoGroup *gz
 
   RNA_enum_set(crop_group->border->ptr,
                "transform",
-               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE |  ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
+               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
   gzgroup->customdata = crop_group;
   gzgroup->customdata_free = [](void *customdata) {
@@ -411,8 +410,8 @@ void NODE_GGT_backdrop_crop(wmGizmoGroupType *gzgt)
  * \{ */
 
 static void gizmo_node_box_mask_prop_matrix_get(const wmGizmo *gz,
-                                            wmGizmoProperty *gz_prop,
-                                            void *value_p)
+                                                wmGizmoProperty *gz_prop,
+                                                void *value_p)
 {
   float(*matrix)[4] = (float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
@@ -444,8 +443,8 @@ static void gizmo_node_box_mask_prop_matrix_get(const wmGizmo *gz,
 }
 
 static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
-                                            wmGizmoProperty *gz_prop,
-                                            const void *value_p)
+                                                wmGizmoProperty *gz_prop,
+                                                const void *value_p)
 {
   const float(*matrix)[4] = (const float(*)[4])value_p;
   BLI_assert(gz_prop->type->array_length == 16);
@@ -454,12 +453,12 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
   bNode *node = (bNode *)gz_prop->custom_func.user_data;
   NodeBoxMask *mask_node = (NodeBoxMask *)node->storage;
 
-  float aspect = dims.x/dims.y;
+  float aspect = dims.x / dims.y;
   rctf rct;
-  rct.xmin = mask_node->x - mask_node->width/2;
-  rct.xmax = mask_node->x + mask_node->width/2;
-  rct.ymin = mask_node->y - mask_node->height/2;
-  rct.ymax = mask_node->y + mask_node->height/2;
+  rct.xmin = mask_node->x - mask_node->width / 2;
+  rct.xmax = mask_node->x + mask_node->width / 2;
+  rct.ymin = mask_node->y - mask_node->height / 2;
+  rct.ymax = mask_node->y + mask_node->height / 2;
 
   float loc[3];
   float rot[3][3];
@@ -475,8 +474,8 @@ static void gizmo_node_box_mask_prop_matrix_set(const wmGizmo *gz,
 
   mask_node->width = size[0];
   mask_node->height = size[1] / aspect;
-  mask_node->x = rct.xmin + mask_node->width/2;
-  mask_node->y = rct.ymin + mask_node->height/2;
+  mask_node->x = rct.xmin + mask_node->width / 2;
+  mask_node->y = rct.ymin + mask_node->height / 2;
 
   gizmo_node_bbox_update(mask_group);
 }
@@ -510,7 +509,8 @@ static void WIDGETGROUP_node_box_mask_setup(const bContext * /*C*/, wmGizmoGroup
 
   RNA_enum_set(crop_group->border->ptr,
                "transform",
-               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_ROTATE | ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
+               ED_GIZMO_CAGE_XFORM_FLAG_TRANSLATE | ED_GIZMO_CAGE_XFORM_FLAG_ROTATE |
+                   ED_GIZMO_CAGE_XFORM_FLAG_SCALE);
 
   gzgroup->customdata = crop_group;
 }
@@ -524,7 +524,6 @@ static void WIDGETGROUP_node_box_mask_draw_prepare(const bContext *C, wmGizmoGro
 
   node_gizmo_calc_matrix_space(snode, region, gz->matrix_space);
 }
-
 
 static void WIDGETGROUP_node_box_mask_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 {
@@ -548,9 +547,8 @@ static void WIDGETGROUP_node_box_mask_refresh(const bContext *C, wmGizmoGroup *g
 
     crop_group->update_data.context = (bContext *)C;
     crop_group->update_data.ptr = RNA_pointer_create(
-                                                     (ID *)snode->edittree, &RNA_CompositorNodeCrop, node);
-    crop_group->update_data.prop = RNA_struct_find_property(&crop_group->update_data.ptr,
-                                                            "x");
+        (ID *)snode->edittree, &RNA_CompositorNodeCrop, node);
+    crop_group->update_data.prop = RNA_struct_find_property(&crop_group->update_data.ptr, "x");
 
     wmGizmoPropertyFnParams params{};
     params.value_get_fn = gizmo_node_box_mask_prop_matrix_get;
