@@ -22,18 +22,16 @@
 #include "BKE_object.hh"
 #include "BKE_report.hh"
 
+#include "BLI_array.hh"
 #include "BLI_map.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
-#include "BLI_task.hh"
 
 #include "DNA_customdata_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
-
-#include "MEM_guardedalloc.h"
 
 #include <pxr/base/gf/matrix4f.h>
 #include <pxr/base/vt/array.h>
@@ -43,6 +41,8 @@
 #include <pxr/usd/usdGeom/subset.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 #include <pxr/usd/usdSkel/bindingAPI.h>
+
+#include <algorithm>
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
@@ -271,14 +271,6 @@ bool USDMeshReader::topology_changed(const Mesh *existing_mesh, const double mot
     normal_interpolation_ = mesh_prim_.GetNormalsInterpolation();
   }
 
-  /* Blender expects mesh normals to actually be normalized. */
-  MutableSpan<pxr::GfVec3f> usd_data(normals_.data(), normals_.size());
-  threading::parallel_for(usd_data.index_range(), 4096, [&](const IndexRange range) {
-    for (const int normal_i : range) {
-      usd_data[normal_i].Normalize();
-    }
-  });
-
   return positions_.size() != existing_mesh->verts_num ||
          face_counts_.size() != existing_mesh->faces_num ||
          face_indices_.size() != existing_mesh->corners_num;
@@ -443,7 +435,7 @@ void USDMeshReader::read_vertex_creases(Mesh *mesh, const double motionSampleTim
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter creases = attributes.lookup_or_add_for_write_span<float>(
+  bke::SpanAttributeWriter creases = attributes.lookup_or_add_for_write_only_span<float>(
       "crease_vert", bke::AttrDomain::Point);
 
   for (size_t i = 0; i < corner_indices.size(); i++) {
@@ -459,28 +451,23 @@ void USDMeshReader::read_velocities(Mesh *mesh, const double motionSampleTime)
 
   if (!velocities.empty()) {
     bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-    bke::GSpanAttributeWriter attribute = attributes.lookup_or_add_for_write_span(
-        "velocity", bke::AttrDomain::Point, CD_PROP_FLOAT3);
+    bke::SpanAttributeWriter<float3> velocity =
+        attributes.lookup_or_add_for_write_only_span<float3>("velocity", bke::AttrDomain::Point);
 
     Span<pxr::GfVec3f> usd_data(velocities.data(), velocities.size());
-    attribute.span.typed<float3>().copy_from(usd_data.cast<float3>());
-
-    attribute.finish();
+    velocity.span.copy_from(usd_data.cast<float3>());
+    velocity.finish();
   }
 }
 
 void USDMeshReader::process_normals_vertex_varying(Mesh *mesh)
 {
-  if (!mesh) {
-    return;
-  }
-
   if (normals_.empty()) {
     return;
   }
 
   if (normals_.size() != mesh->verts_num) {
-    CLOG_WARN(&LOG, "Vertex varying normals count mismatch for mesh %s", prim_path_.c_str());
+    CLOG_WARN(&LOG, "Vertex varying normals count mismatch for mesh '%s'", prim_path_.c_str());
     return;
   }
 
@@ -497,20 +484,17 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh) const
 
   /* Check for normals count mismatches to prevent crashes. */
   if (normals_.size() != mesh->corners_num) {
-    CLOG_WARN(&LOG, "Loop normal count mismatch for mesh %s", mesh->id.name);
+    CLOG_WARN(&LOG, "Loop normal count mismatch for mesh '%s'", prim_path_.c_str());
     return;
   }
 
-  long int loop_count = normals_.size();
-
-  float(*lnors)[3] = static_cast<float(*)[3]>(
-      MEM_malloc_arrayN(loop_count, sizeof(float[3]), "USD::FaceNormals"));
+  Array<float3> corner_normals(mesh->corners_num);
 
   const OffsetIndices faces = mesh->faces();
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
     for (int j : face.index_range()) {
-      int blender_index = face.start() + j;
+      const int corner = face.start() + j;
 
       int usd_index = face.start();
       if (is_left_handed_) {
@@ -520,14 +504,11 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh) const
         usd_index += j;
       }
 
-      lnors[blender_index][0] = normals_[usd_index][0];
-      lnors[blender_index][1] = normals_[usd_index][1];
-      lnors[blender_index][2] = normals_[usd_index][2];
+      corner_normals[corner] = detail::convert_value<pxr::GfVec3f, float3>(normals_[usd_index]);
     }
   }
-  BKE_mesh_set_custom_normals(mesh, lnors);
 
-  MEM_freeN(lnors);
+  BKE_mesh_set_custom_normals(mesh, reinterpret_cast<float(*)[3]>(corner_normals.data()));
 }
 
 void USDMeshReader::process_normals_uniform(Mesh *mesh) const
@@ -538,25 +519,20 @@ void USDMeshReader::process_normals_uniform(Mesh *mesh) const
 
   /* Check for normals count mismatches to prevent crashes. */
   if (normals_.size() != mesh->faces_num) {
-    CLOG_WARN(&LOG, "Uniform normal count mismatch for mesh %s", mesh->id.name);
+    CLOG_WARN(&LOG, "Uniform normal count mismatch for mesh '%s'", prim_path_.c_str());
     return;
   }
 
-  float(*lnors)[3] = static_cast<float(*)[3]>(
-      MEM_malloc_arrayN(mesh->corners_num, sizeof(float[3]), "USD::FaceNormals"));
+  Array<float3> corner_normals(mesh->corners_num);
 
   const OffsetIndices faces = mesh->faces();
   for (const int i : faces.index_range()) {
     for (const int corner : faces[i]) {
-      lnors[corner][0] = normals_[i][0];
-      lnors[corner][1] = normals_[i][1];
-      lnors[corner][2] = normals_[i][2];
+      corner_normals[corner] = detail::convert_value<pxr::GfVec3f, float3>(normals_[i]);
     }
   }
 
-  BKE_mesh_set_custom_normals(mesh, lnors);
-
-  MEM_freeN(lnors);
+  BKE_mesh_set_custom_normals(mesh, reinterpret_cast<float(*)[3]>(corner_normals.data()));
 }
 
 void USDMeshReader::read_mesh_sample(ImportSettings *settings,
@@ -570,9 +546,7 @@ void USDMeshReader::read_mesh_sample(ImportSettings *settings,
 
   if (new_mesh || (settings->read_flag & MOD_MESHSEQ_READ_VERT) != 0) {
     MutableSpan<float3> vert_positions = mesh->vert_positions_for_write();
-    for (int i = 0; i < positions_.size(); i++) {
-      vert_positions[i] = {positions_[i][0], positions_[i][1], positions_[i][2]};
-    }
+    vert_positions.copy_from(Span(positions_.data(), positions_.size()).cast<float3>());
     mesh->tag_positions_changed();
 
     read_vertex_creases(mesh, motionSampleTime);
@@ -745,26 +719,46 @@ void USDMeshReader::assign_facesets_to_material_indices(double motionSampleTime,
   int current_mat = 0;
   if (!subsets.empty()) {
     for (const pxr::UsdGeomSubset &subset : subsets) {
-
-      pxr::UsdShadeMaterial subset_mtl = utils::compute_bound_material(subset.GetPrim());
+      pxr::UsdPrim subset_prim = subset.GetPrim();
+      pxr::UsdShadeMaterial subset_mtl = utils::compute_bound_material(subset_prim);
       if (!subset_mtl) {
         continue;
       }
 
       pxr::SdfPath subset_mtl_path = subset_mtl.GetPath();
-
       if (subset_mtl_path.IsEmpty()) {
         continue;
       }
 
+      pxr::TfToken element_type;
+      subset.GetElementTypeAttr().Get(&element_type, motionSampleTime);
+      if (element_type != pxr::UsdGeomTokens->face) {
+        CLOG_WARN(&LOG,
+                  "UsdGeomSubset '%s' uses unsupported elementType: %s",
+                  subset_prim.GetName().GetText(),
+                  element_type.GetText());
+        continue;
+      }
+
       const int mat_idx = r_mat_map->lookup_or_add(subset_mtl_path, 1 + current_mat++);
+      const int max_element_idx = std::max(0, int(material_indices.size() - 1));
 
-      pxr::UsdAttribute indicesAttribute = subset.GetIndicesAttr();
       pxr::VtIntArray indices;
-      indicesAttribute.Get(&indices, motionSampleTime);
+      subset.GetIndicesAttr().Get(&indices, motionSampleTime);
 
-      for (const int i : indices) {
-        material_indices[i] = mat_idx - 1;
+      int bad_element_count = 0;
+      for (const int element_idx : indices) {
+        const int safe_element_idx = std::clamp(element_idx, 0, max_element_idx);
+        bad_element_count += (safe_element_idx != element_idx) ? 1 : 0;
+        material_indices[safe_element_idx] = mat_idx - 1;
+      }
+
+      if (bad_element_count > 0) {
+        CLOG_WARN(&LOG,
+                  "UsdGeomSubset '%s' contains invalid indices; material assignment may be "
+                  "incorrect (%d were out of range)",
+                  subset_prim.GetName().GetText(),
+                  bad_element_count);
       }
     }
   }
@@ -810,7 +804,7 @@ void USDMeshReader::readFaceSetsSample(Main *bmain, Mesh *mesh, const double mot
 
 Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
                                const USDMeshReadParams params,
-                               const char ** /*err_str*/)
+                               const char ** /*r_err_str*/)
 {
   if (!mesh_prim_) {
     return existing_mesh;
@@ -868,10 +862,10 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 
 void USDMeshReader::read_geometry(bke::GeometrySet &geometry_set,
                                   const USDMeshReadParams params,
-                                  const char **err_str)
+                                  const char **r_err_str)
 {
   Mesh *existing_mesh = geometry_set.get_mesh_for_write();
-  Mesh *new_mesh = read_mesh(existing_mesh, params, err_str);
+  Mesh *new_mesh = read_mesh(existing_mesh, params, r_err_str);
 
   if (new_mesh != existing_mesh) {
     geometry_set.replace_mesh(new_mesh);

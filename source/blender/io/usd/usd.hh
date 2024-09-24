@@ -113,6 +113,7 @@ struct USDExportParams {
   bool export_lights = true;
   bool export_cameras = true;
   bool export_curves = true;
+  bool export_points = true;
   bool export_volumes = true;
   bool export_hair = true;
   bool export_uvmaps = true;
@@ -270,13 +271,13 @@ void USD_read_geometry(CacheReader *reader,
                        const Object *ob,
                        blender::bke::GeometrySet &geometry_set,
                        USDMeshReadParams params,
-                       const char **err_str);
+                       const char **r_err_str);
 
 bool USD_mesh_topology_changed(CacheReader *reader,
                                const Object *ob,
                                const Mesh *existing_mesh,
                                double time,
-                               const char **err_str);
+                               const char **r_err_str);
 
 CacheReader *CacheReader_open_usd_object(CacheArchiveHandle *handle,
                                          CacheReader *reader,

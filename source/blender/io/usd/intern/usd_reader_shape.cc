@@ -133,7 +133,7 @@ bool USDShapeReader::read_mesh_values(double motionSampleTime,
 
 Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
                                 const USDMeshReadParams params,
-                                const char ** /*err_str*/)
+                                const char ** /*r_err_str*/)
 {
   pxr::VtIntArray face_indices;
   pxr::VtIntArray face_counts;
@@ -169,10 +169,10 @@ Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
 
 void USDShapeReader::read_geometry(bke::GeometrySet &geometry_set,
                                    USDMeshReadParams params,
-                                   const char **err_str)
+                                   const char **r_err_str)
 {
   Mesh *existing_mesh = geometry_set.get_mesh_for_write();
-  Mesh *new_mesh = read_mesh(existing_mesh, params, err_str);
+  Mesh *new_mesh = read_mesh(existing_mesh, params, r_err_str);
 
   if (new_mesh != existing_mesh) {
     geometry_set.replace_mesh(new_mesh);
@@ -265,12 +265,7 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
   }
 
   MutableSpan<float3> vert_positions = active_mesh->vert_positions_for_write();
-
-  for (int i = 0; i < positions.size(); i++) {
-    vert_positions[i][0] = positions[i][0];
-    vert_positions[i][1] = positions[i][1];
-    vert_positions[i][2] = positions[i][2];
-  }
+  vert_positions.copy_from(Span(positions.data(), positions.size()).cast<float3>());
 
   if (params.read_flags & MOD_MESHSEQ_READ_COLOR) {
     if (active_mesh != existing_mesh) {

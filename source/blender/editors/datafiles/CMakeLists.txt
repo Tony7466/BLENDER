@@ -69,7 +69,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.gpencil.primitive_line
   ops.gpencil.primitive_polyline
   ops.gpencil.radius
-  ops.gpencil.stroke_cutter
+  ops.gpencil.stroke_trim
   ops.gpencil.transform_fill
   ops.mesh.bevel
   ops.mesh.bisect
@@ -157,6 +157,7 @@ if(WITH_BLENDER)
 
     set(SVG_FILENAMES_NOEXT
       action
+      action_slot
       action_tweak
       add
       aliased
@@ -177,7 +178,11 @@ if(WITH_BLENDER)
       anim_data
       antialiased
       append_blend
+      area_dock
       area_join
+      area_join_down
+      area_join_left
+      area_join_up
       area_swap
       armature_data
       arrow_leftright

@@ -1170,7 +1170,6 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
   Text *text = st->text;
   int vcurl, vcurc, vsell, vselc;
   bool hidden = false;
-  int x, y, w, i;
   int offl, offc;
   const int lheight = TXT_LINE_HEIGHT(st);
 
@@ -1206,8 +1205,8 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
     immUniformThemeColor(TH_SHADE2);
 
-    x = TXT_BODY_LEFT(st);
-    y = region->winy;
+    int x = TXT_BODY_LEFT(st);
+    int y = region->winy;
     if (st->flags & ST_SCROLL_SELECT) {
       y += st->runtime->scroll_ofs_px[1];
     }
@@ -1252,7 +1251,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
           pos, x + fromc * st->runtime->cwidth_px - U.pixelsize, y, region->winx, y - lheight);
       y -= lheight;
 
-      for (i = froml + 1; i < tol; i++) {
+      for (int i = froml + 1; i < tol; i++) {
         immRecti(pos, x - U.pixelsize, y, region->winx, y - lheight);
         y -= lheight;
       }
@@ -1262,6 +1261,8 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
       }
       y -= lheight;
     }
+    /* Quiet warnings. */
+    UNUSED_VARS(x, y);
   }
 
   if (st->line_hlight) {
@@ -1299,8 +1300,8 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
 
   if (!hidden) {
     /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
-    x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
-    y = region->winy - vsell * lheight;
+    int x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
+    int y = region->winy - vsell * lheight;
     if (st->flags & ST_SCROLL_SELECT) {
       y += st->runtime->scroll_ofs_px[1];
     }
@@ -1311,7 +1312,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
       char ch = text->sell->line[text->selc];
 
       y += TXT_LINE_SPACING(st);
-      w = st->runtime->cwidth_px;
+      int w = st->runtime->cwidth_px;
       if (ch == '\t') {
         w *= st->tabnumber - (vselc + st->left) % st->tabnumber;
       }
@@ -1790,33 +1791,34 @@ bool ED_space_text_region_location_from_cursor(const SpaceText *st,
                                                const int cursor_co[2],
                                                int r_pixel_co[2])
 {
-  TextLine *line = nullptr;
+  Text *text = st->text;
 
-  if (!st->text) {
-    goto error;
+  if (!text) {
+    return false;
+  }
+  TextLine *line = static_cast<TextLine *>(BLI_findlink(&text->lines, cursor_co[0]));
+  if (!line) {
+    return false;
   }
 
-  line = static_cast<TextLine *>(BLI_findlink(&st->text->lines, cursor_co[0]));
-  if (!line || (cursor_co[1] < 0) || (cursor_co[1] > line->len)) {
-    goto error;
+  /* Convert character index to char byte offset. */
+  const int char_ofs = BLI_str_utf8_offset_from_index(line->line, line->len, cursor_co[1]);
+  if (char_ofs < 0 || char_ofs > line->len) {
+    return false;
   }
-  else {
-    int offl, offc;
-    int linenr_offset = TXT_BODY_LEFT(st);
-    /* handle tabs as well! */
-    int char_pos = space_text_get_char_pos(st, line->line, cursor_co[1]);
 
-    space_text_wrap_offset(st, region, line, cursor_co[1], &offl, &offc);
-    r_pixel_co[0] = (char_pos + offc - st->left) * st->runtime->cwidth_px + linenr_offset;
-    r_pixel_co[1] = (cursor_co[0] + offl - st->top) * TXT_LINE_HEIGHT(st);
-    r_pixel_co[1] = (region->winy - (r_pixel_co[1] + (TXT_BODY_LPAD * st->runtime->cwidth_px))) -
-                    st->runtime->lheight_px;
-  }
+  /* All values are in-range, calculate the pixel offset.
+   * Note that !126720 provides a useful interactive test-case for this logic. */
+  const int lheight = TXT_LINE_HEIGHT(st);
+  const int linenr_offset = TXT_BODY_LEFT(st);
+  /* Handle tabs as well! */
+  const int char_pos = space_text_get_char_pos(st, line->line, char_ofs);
+
+  int offl, offc;
+  space_text_wrap_offset(st, region, line, char_ofs, &offl, &offc);
+  r_pixel_co[0] = (char_pos + offc - st->left) * st->runtime->cwidth_px + linenr_offset;
+  r_pixel_co[1] = (region->winy - ((cursor_co[0] + offl - st->top) * lheight)) - lheight;
   return true;
-
-error:
-  r_pixel_co[0] = r_pixel_co[1] = -1;
-  return false;
 }
 
 /** \} */

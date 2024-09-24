@@ -65,10 +65,11 @@
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
 #include "BKE_scene.hh"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "IMB_imbuf_enums.h"
@@ -807,7 +808,7 @@ static void version_nla_tweakmode_incomplete(Main *bmain)
 
     /* Not enough info in the blend file to reliably stay in tweak mode. This is the most important
      * part of this versioning code, as it prevents future nullptr access. */
-    BKE_nla_tweakmode_exit(adt);
+    BKE_nla_tweakmode_exit({*id, *adt});
   }
   FOREACH_MAIN_ID_END;
 
@@ -2652,6 +2653,7 @@ static void update_paint_modes_for_brush_assets(Main &bmain)
                 CTX_MODE_SCULPT_GREASE_PENCIL,
                 CTX_MODE_WEIGHT_GPENCIL_LEGACY,
                 CTX_MODE_WEIGHT_GREASE_PENCIL,
+                CTX_MODE_VERTEX_GREASE_PENCIL,
                 CTX_MODE_VERTEX_GPENCIL_LEGACY,
                 CTX_MODE_SCULPT_CURVES))
       {
@@ -2778,6 +2780,31 @@ static void add_image_editor_asset_shelf(Main &bmain)
   }
 }
 
+static void node_reroute_add_storage(bNodeTree &tree)
+{
+  for (bNode *node : tree.all_nodes()) {
+    if (node->is_reroute()) {
+      if (node->storage != nullptr) {
+        continue;
+      }
+
+      bNodeSocket &input = *static_cast<bNodeSocket *>(node->inputs.first);
+      bNodeSocket &output = *static_cast<bNodeSocket *>(node->outputs.first);
+
+      /* Use uniform identifier for sockets. In old Blender versions (<=2021, up to af0b7925), the
+       * identifiers were sometimes all lower case. Fixing those wrong socket identifiers is
+       * important because otherwise they loose links now that the reroute node also uses node
+       * declarations. */
+      STRNCPY(input.identifier, "Input");
+      STRNCPY(output.identifier, "Output");
+
+      NodeReroute *data = MEM_cnew<NodeReroute>(__func__);
+      STRNCPY(data->type_idname, input.idname);
+      node->storage = data;
+    }
+  }
+}
+
 /**
  * It was possible that curve attributes were initialized to 0 even if that is not allowed for some
  * attributes.
@@ -2799,6 +2826,71 @@ static void fix_built_in_curve_attribute_defaults(Main *bmain)
       for (int8_t &nurbs_order : blender::MutableSpan{nurb_orders, curves_num}) {
         nurbs_order = std::max<int8_t>(nurbs_order, 1);
       }
+    }
+  }
+}
+
+static void add_bevel_modifier_attribute_name_defaults(Main &bmain)
+{
+  LISTBASE_FOREACH (Object *, ob, &bmain.objects) {
+    if (ob->type != OB_MESH) {
+      continue;
+    }
+    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
+      if (md->type == eModifierType_Bevel) {
+        BevelModifierData *bmd = reinterpret_cast<BevelModifierData *>(md);
+        if (bmd->vertex_weight_name[0] == '\0') {
+          STRNCPY(bmd->vertex_weight_name, "bevel_weight_vert");
+        }
+        if (bmd->edge_weight_name[0] == '\0') {
+          STRNCPY(bmd->edge_weight_name, "bevel_weight_edge");
+        }
+      }
+    }
+  }
+}
+
+static void hide_simulation_node_skip_socket_value(Main &bmain)
+{
+  LISTBASE_FOREACH (bNodeTree *, tree, &bmain.nodetrees) {
+    LISTBASE_FOREACH (bNode *, node, &tree->nodes) {
+      if (node->type != GEO_NODE_SIMULATION_OUTPUT) {
+        continue;
+      }
+      bNodeSocket *skip_input = static_cast<bNodeSocket *>(node->inputs.first);
+      if (!skip_input || !STREQ(skip_input->identifier, "Skip")) {
+        continue;
+      }
+      auto *default_value = static_cast<bNodeSocketValueBoolean *>(skip_input->default_value);
+      if (!default_value->value) {
+        continue;
+      }
+      bool is_linked = false;
+      LISTBASE_FOREACH (bNodeLink *, link, &tree->links) {
+        if (link->tosock == skip_input) {
+          is_linked = true;
+        }
+      }
+      if (is_linked) {
+        continue;
+      }
+
+      bNode &input_node = version_node_add_empty(*tree, "FunctionNodeInputBool");
+      input_node.parent = node->parent;
+      input_node.locx = node->locx - 25;
+      input_node.locy = node->locy;
+
+      NodeInputBool *input_node_storage = MEM_cnew<NodeInputBool>(__func__);
+      input_node.storage = input_node_storage;
+      input_node_storage->boolean = true;
+
+      bNodeSocket &input_node_socket = version_node_add_socket(
+          *tree, input_node, SOCK_OUT, "NodeSocketBool", "Boolean");
+
+      version_node_add_link(*tree, input_node, input_node_socket, *node, *skip_input);
+
+      /* Change the old socket value so that the versioning code is not run again. */
+      default_value->value = false;
     }
   }
 }
@@ -4566,6 +4658,67 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
     FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 20)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_SEQ) {
+            ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_TOOLS);
+            if (region != nullptr) {
+              region->flag &= ~RGN_FLAG_HIDDEN;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 21)) {
+    LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+      LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+        LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+          if (sl->spacetype == SPACE_CLIP) {
+            ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
+            if (region != nullptr) {
+              View2D *v2d = &region->v2d;
+              v2d->flag &= ~V2D_VIEWSYNC_SCREEN_TIME;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 22)) {
+    add_bevel_modifier_attribute_name_defaults(*bmain);
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 23)) {
+    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
+      LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+        if (nmd.bake_target == NODES_MODIFIER_BAKE_TARGET_INHERIT) {
+          /* Use disk target for existing modifiers to avoid changing behavior. */
+          nmd.bake_target = NODES_MODIFIER_BAKE_TARGET_DISK;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 24)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      node_reroute_add_storage(*ntree);
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 403, 26)) {
+    hide_simulation_node_skip_socket_value(*bmain);
   }
 
   /**
