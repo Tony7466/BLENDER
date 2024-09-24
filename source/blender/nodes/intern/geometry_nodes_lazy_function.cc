@@ -2931,6 +2931,8 @@ static std::optional<AttrDomain> get_foreach_attribute_propagation_target_domain
       return AttrDomain::Instance;
     case GeometryComponent::Type::GreasePencil:
       return AttrDomain::Layer;
+    case GeometryComponent::Type::Physics:
+      return AttrDomain::Point;
     default:
       break;
   }
