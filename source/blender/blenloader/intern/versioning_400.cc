@@ -125,29 +125,36 @@ static void convert_action_in_place(blender::animrig::Action &action)
   bag.group_array = MEM_cnew_array<bActionGroup *>(group_count, "Action versioning - groups");
   bag.group_array_num = group_count;
 
-  int i = 0;
-  LISTBASE_FOREACH_INDEX (bActionGroup *, group, &action.groups, i) {
-    bag.group_array[i] = group;
+  int group_index = 0;
+  int fcurve_index = 0;
+  LISTBASE_FOREACH_INDEX (bActionGroup *, group, &action.groups, group_index) {
+    bag.group_array[group_index] = group;
+
     group->channel_bag = &bag;
+    group->fcurve_range_start = fcurve_index;
+    group->fcurve_range_length = 0;
+
+    LISTBASE_FOREACH (FCurve *, fcu, &group->channels) {
+      if (fcu->grp != group) {
+        break;
+      }
+      bag.fcurve_array[fcurve_index++] = fcu;
+    }
   }
 
-  LISTBASE_FOREACH_INDEX (FCurve *, fcu, &action.curves, i) {
-    bag.fcurve_array[i] = fcu;
-  }
-  LISTBASE_FOREACH_INDEX (FCurve *, fcu, &action.curves, i) {
-    if (!fcu->grp) {
+  LISTBASE_FOREACH (FCurve *, fcu, &action.curves) {
+    /* Any fcurves with groups have already been added to the fcurve array. */
+    if (fcu->grp) {
       continue;
     }
-    bActionGroup *grp = fcu->grp;
-    fcu->grp = nullptr;
-    bag.fcurve_assign_to_channel_group(*fcu, *grp);
+    bag.fcurve_array[fcurve_index++] = fcu;
   }
 
   action.curves = {nullptr, nullptr};
   action.groups = {nullptr, nullptr};
 }
 
-static void version_legacy_actions_to_layered()
+static void version_legacy_actions_to_layered(Main *bmain)
 {
   using namespace blender::animrig;
   blender::Map<bAction *, blender::Vector<std::pair<ID *, slot_handle_t *>>> action_users;
@@ -159,7 +166,6 @@ static void version_legacy_actions_to_layered()
     action_users.add(dna_action, {});
   }
 
-  ListBase *ids_of_idtype;
   ID *id;
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
     auto callback = [&](bAction *&action_ptr_ref,
@@ -179,7 +185,7 @@ static void version_legacy_actions_to_layered()
   FOREACH_MAIN_ID_END;
 
   for (const auto &item : action_users.items()) {
-    Action &action = *item.key;
+    Action &action = item.key->wrap();
     convert_action_in_place(action);
     for (std::pair<ID *, slot_handle_t *> action_user : item.value) {
       BLI_assert_msg(*action_user.second == Slot::unassigned,
@@ -1145,7 +1151,7 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
   /* Keeping this block is without a `MAIN_VERSION_FILE_ATLEAST` until the experimental flag is
    * removed. */
   if (USER_EXPERIMENTAL_TEST(&U, use_animation_baklava)) {
-    version_legacy_actions_to_layered();
+    version_legacy_actions_to_layered(bmain);
   }
 }
 
