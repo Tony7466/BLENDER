@@ -400,7 +400,7 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
   /* Note: This is taken from the legacy grease pencil code. */
   const auto get_weight = [](const float dist, const float decay_rad, const float diff_rad) {
     return (dist < decay_rad) ? 1.0f :
-                                math::interpolate(0.0f, 0.9f, (dist - decay_rad) / diff_rad);
+                                math::interpolate(0.9f, 0.0f, (dist - decay_rad) / diff_rad);
   };
 
   Span<const bke::greasepencil::Layer *> layers = grease_pencil.layers();
