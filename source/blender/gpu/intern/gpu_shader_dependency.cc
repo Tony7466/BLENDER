@@ -109,6 +109,16 @@ struct GPUSource {
       small_types_check();
     }
     else {
+      if (source.find("#pragma once") != StringRef::not_found) {
+        processed_source = std::regex_replace(std::string(source), std::regex("#pragma once"), "");
+        source = processed_source.c_str();
+      }
+      if (source.find("#include ") != StringRef::not_found) {
+        processed_source = std::regex_replace(std::string(source),
+                                              std::regex("#include \"([a-zA-Z0-9_\\.]+)\""),
+                                              "#pragma BLENDER_REQUIRE($1)");
+        source = processed_source.c_str();
+      }
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }

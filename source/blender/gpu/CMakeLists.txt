@@ -29,6 +29,11 @@ set(INC
   # For node muting stuff.
   ../nodes
 
+  # For shader includes
+  intern/shaders
+  shaders/common
+  shaders
+
   ../../../intern/ghost
   ../../../intern/mantaflow/extern
 )
