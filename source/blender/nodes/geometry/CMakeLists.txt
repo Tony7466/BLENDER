@@ -21,6 +21,7 @@ set(INC
   ../../render
   ../../windowmanager
   ../../io/common
+  ../../io/ply
   ../../io/stl
   ../../io/wavefront_obj
   # RNA_prototypes.hh
@@ -83,6 +84,7 @@ set(SRC
   nodes/node_geo_evaluate_on_domain.cc
   nodes/node_geo_extrude_mesh.cc
   nodes/node_geo_flip_faces.cc
+  nodes/node_geo_foreach_geometry_element.cc
   nodes/node_geo_geometry_to_instance.cc
   nodes/node_geo_get_named_grid.cc
   nodes/node_geo_gizmo_dial.cc
@@ -94,6 +96,7 @@ set(SRC
   nodes/node_geo_image_info.cc
   nodes/node_geo_image_texture.cc
   nodes/node_geo_import_obj.cc
+  nodes/node_geo_import_ply.cc
   nodes/node_geo_import_stl.cc
   nodes/node_geo_index_of_nearest.cc
   nodes/node_geo_index_switch.cc
@@ -224,6 +227,7 @@ set(SRC
   nodes/node_geo_viewport_transform.cc
   nodes/node_geo_volume_cube.cc
   nodes/node_geo_volume_to_mesh.cc
+  nodes/node_geo_warning.cc
 
   include/NOD_geo_bake.hh
   include/NOD_geo_capture_attribute.hh
@@ -249,6 +253,7 @@ set(LIB
   bf_nodes
   PRIVATE bf::intern::atomic
   PRIVATE bf::extern::fmtlib
+  PRIVATE bf::extern::xxhash
 )
 
 if(WITH_IO_STL)
@@ -257,6 +262,14 @@ if(WITH_IO_STL)
     PRIVATE bf_io_stl
   )
   add_definitions(-DWITH_IO_STL)
+endif()
+
+if(WITH_IO_PLY)
+  list(APPEND LIB
+    PRIVATE bf_io_common
+    PRIVATE bf_io_ply
+  )
+  add_definitions(-DWITH_IO_PLY)
 endif()
 
 if(WITH_IO_WAVEFRONT_OBJ)
@@ -281,7 +294,7 @@ endif()
 if(WITH_TBB)
   if(WIN32)
     # TBB includes Windows.h which will define min/max macros
-    # that will collide with the stl versions.
+    # that will collide with the STL versions.
     add_definitions(-DNOMINMAX)
   endif()
 endif()
@@ -327,8 +340,8 @@ list(APPEND LIB
   bf_nodes_geometry_generated
 )
 
-# If compiling with msvc clang we need to add the D_LIBCPP_VERSION define
-# so we don't run into tbb errors when compiling with lib
+# If compiling with MSVC clang we need to add the `D_LIBCPP_VERSION` define
+# so we don't run into TBB errors when compiling with lib.
 if(WITH_TBB AND MSVC_CLANG)
   string(APPEND CMAKE_CXX_FLAGS " /D_LIBCPP_VERSION")
 endif()

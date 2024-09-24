@@ -13,6 +13,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_join_geometries.hh"
 #include "GEO_mesh_boolean.hh"
 #include "GEO_randomize.hh"
 
@@ -42,7 +43,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 }
 
 struct AttributeOutputs {
-  AnonymousAttributeIDPtr intersecting_edges_id;
+  std::optional<std::string> intersecting_edges_id;
 };
 
 static void node_update(bNodeTree *ntree, bNode *node)
@@ -58,16 +59,16 @@ static void node_update(bNodeTree *ntree, bNode *node)
   switch (operation) {
     case geometry::boolean::Operation::Intersect:
     case geometry::boolean::Operation::Union:
-      bke::nodeSetSocketAvailability(ntree, geometry_1_socket, false);
+      bke::node_set_socket_availability(ntree, geometry_1_socket, false);
       node_sock_label(geometry_2_socket, "Mesh");
       break;
     case geometry::boolean::Operation::Difference:
-      bke::nodeSetSocketAvailability(ntree, geometry_1_socket, true);
+      bke::node_set_socket_availability(ntree, geometry_1_socket, true);
       node_sock_label(geometry_2_socket, "Mesh 2");
       break;
   }
 
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, intersecting_edges_socket, solver == geometry::boolean::Solver::MeshArr);
 }
 
@@ -198,7 +199,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (attribute_outputs.intersecting_edges_id) {
     MutableAttributeAccessor attributes = result->attributes_for_write();
     SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_only_span<bool>(
-        attribute_outputs.intersecting_edges_id.get(), AttrDomain::Edge);
+        *attribute_outputs.intersecting_edges_id, AttrDomain::Edge);
 
     selection.span.fill(false);
     for (const int i : intersecting_edges) {
@@ -208,8 +209,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   geometry::debug_randomize_mesh_order(result);
 
-  GeometrySet result_geometry = GeometrySet::from_mesh(result);
+  Vector<GeometrySet> all_geometries;
+  all_geometries.append(set_a);
+  all_geometries.extend(geometry_sets);
+
+  const std::array types_to_join = {GeometryComponent::Type::Edit};
+  GeometrySet result_geometry = geometry::join_geometries(
+      all_geometries, {}, std::make_optional(types_to_join));
+  result_geometry.replace_mesh(result);
   result_geometry.name = set_a.name;
+
   params.set_output("Mesh", std::move(result_geometry));
 #else
   params.error_message_add(NodeWarningType::Error,
@@ -279,7 +288,7 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.initfunc = node_init;
   ntype.geometry_node_execute = node_geo_exec;
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

@@ -684,6 +684,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_NODE_ZONE_REPEAT:
           cp = ts->node_zone_repeat;
           break;
+        case TH_NODE_ZONE_FOREACH_GEOMETRY_ELEMENT:
+          cp = ts->node_zone_foreach_geometry_element;
+          break;
         case TH_SIMULATED_FRAMES:
           cp = ts->simulated_frames;
           break;
@@ -1012,6 +1015,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
           break;
         case TH_ICON_FOLDER:
           cp = btheme->tui.icon_folder;
+          break;
+        case TH_ICON_AUTOKEY:
+          cp = btheme->tui.icon_autokey;
           break;
         case TH_ICON_FUND: {
           /* Development fund icon color is not part of theme. */

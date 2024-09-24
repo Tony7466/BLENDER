@@ -195,6 +195,10 @@ struct uiBut {
   char *poin = nullptr;
   float hardmin = 0, hardmax = 0, softmin = 0, softmax = 0;
 
+  /**
+   * Optional color for monochrome icon. Also used as text
+   * color for labels without icons. Set with #UI_but_color_set().
+   */
   uchar col[4] = {0};
 
   /** See \ref UI_but_func_identity_compare_set(). */
@@ -222,6 +226,11 @@ struct uiBut {
   uiButHandleRenameFunc rename_func = nullptr;
   void *rename_arg1 = nullptr;
   void *rename_orig = nullptr;
+
+  /* When defined, and the button edits a string RNA property, the new name is _not_ set at all,
+   * instead this function is called with the new name. */
+  std::function<void(std::string &new_name)> rename_full_func = nullptr;
+  std::string rename_full_new = "";
 
   /** Run an action when holding the button down. */
   uiButHandleHoldFunc hold_func = nullptr;
@@ -385,8 +394,8 @@ struct uiButSearch : public uiBut {
  * Decorators have their own RNA data, using the normal #uiBut RNA members has many side-effects.
  */
 struct uiButDecorator : public uiBut {
-  struct PointerRNA decorated_rnapoin = {};
-  struct PropertyRNA *decorated_rnaprop = nullptr;
+  PointerRNA decorated_rnapoin = {};
+  PropertyRNA *decorated_rnaprop = nullptr;
   int decorated_rnaindex = -1;
 };
 
@@ -1339,14 +1348,10 @@ int ui_id_icon_get(const bContext *C, ID *id, bool big);
 
 /* interface_icons_event.cc */
 
-void icon_draw_rect_input(float x,
-                          float y,
-                          int w,
-                          int h,
-                          float alpha,
-                          short event_type,
-                          short event_value,
-                          bool inverted = false);
+float ui_event_icon_offset(int icon_id);
+
+void icon_draw_rect_input(
+    float x, float y, int w, int h, int icon_id, float aspect, float alpha, bool inverted);
 
 /* resources.cc */
 
@@ -1558,6 +1563,10 @@ void UI_OT_eyedropper_driver(wmOperatorType *ot);
 /* interface_eyedropper_gpencil_color.c */
 
 void UI_OT_eyedropper_gpencil_color(wmOperatorType *ot);
+
+/* eyedropper_grease_pencil_color.cc */
+
+void UI_OT_eyedropper_grease_pencil_color(wmOperatorType *ot);
 
 /* interface_template_asset_shelf_popover.cc */
 std::optional<blender::StringRefNull> UI_asset_shelf_idname_from_button_context(const uiBut *but);

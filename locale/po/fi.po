@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.3.0 Alpha (b'de443e038c4e')\n"
+"Project-Id-Version: Blender 4.3.0 Alpha (b'd52d70324d18')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-22 07:23+0000\n"
+"POT-Creation-Date: 2024-09-16 11:03+0000\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -804,10 +804,6 @@ msgstr "Työtila"
 msgctxt "ID"
 msgid "World"
 msgstr "Maailma"
-
-
-msgid "All"
-msgstr "Kaikki"
 
 
 msgid "Current File"
@@ -2156,6 +2152,10 @@ msgid "Normal"
 msgstr "Normaali"
 
 
+msgid "All"
+msgstr "Kaikki"
+
+
 msgid "Strokes"
 msgstr "Piirrot"
 
@@ -3459,10 +3459,6 @@ msgid "Active curve spline"
 msgstr "Aktiivinen käyräsplini"
 
 
-msgid "Material Index"
-msgstr "Materiaali-indeksi"
-
-
 msgid "Viewport"
 msgstr "Näkymä"
 
@@ -4615,6 +4611,10 @@ msgid "Auto-Masking Strokes"
 msgstr "Automaattinen maskauspiirto"
 
 
+msgid "Material Index"
+msgstr "Materiaali-indeksi"
+
+
 msgid "Active Grease Pencil layer"
 msgstr "Aktiivinen öljykynän taso"
 
@@ -4699,16 +4699,56 @@ msgid "Mirror Object"
 msgstr "Peilaa objekti"
 
 
-msgid "Basic"
-msgstr "Tavallinen"
+msgid "Names"
+msgstr "Nimet"
+
+
+msgid "Show/Hide"
+msgstr "Näytä/Piilota"
+
+
+msgid "Mesh Select Mode"
+msgstr "Muodon valintatila"
+
+
+msgid "UV Mapping"
+msgstr "UV-kartoittaminen"
+
+
+msgid "Select More/Less"
+msgstr "Valitse enemmän/vähemmän"
+
+
+msgid "Select Similar"
+msgstr "Valitse samankaltainen"
+
+
+msgid "Select All by Trait"
+msgstr "Valitse kaikki piirteen mukaan"
+
+
+msgid "Select Loops"
+msgstr "Valitse silmukat"
+
+
+msgid "Add Image"
+msgstr "Lisää kuva"
 
 
 msgid "Track"
 msgstr "Raide"
 
 
-msgid "Show/Hide"
-msgstr "Näytä/Piilota"
+msgid "Hooks"
+msgstr "Koukut"
+
+
+msgid "Random Mask"
+msgstr "Satunnainen maski"
+
+
+msgid "Basic"
+msgstr "Tavallinen"
 
 
 msgid "Console"
@@ -4821,49 +4861,9 @@ msgid "Save & Load"
 msgstr "Tallenna & lataa"
 
 
-msgid "Names"
-msgstr "Nimet"
-
-
 msgctxt "Operator"
 msgid "Parent"
 msgstr "Isäntä"
-
-
-msgid "Select More/Less"
-msgstr "Valitse enemmän/vähemmän"
-
-
-msgid "Select All by Trait"
-msgstr "Valitse kaikki piirteen mukaan"
-
-
-msgid "Select Loops"
-msgstr "Valitse silmukat"
-
-
-msgid "Mesh Select Mode"
-msgstr "Muodon valintatila"
-
-
-msgid "Select Similar"
-msgstr "Valitse samankaltainen"
-
-
-msgid "Hooks"
-msgstr "Koukut"
-
-
-msgid "Add Image"
-msgstr "Lisää kuva"
-
-
-msgid "Random Mask"
-msgstr "Satunnainen maski"
-
-
-msgid "UV Mapping"
-msgstr "UV-kartoittaminen"
 
 
 msgid "Seam"
@@ -5863,6 +5863,10 @@ msgid "File Output"
 msgstr "Tiedoston ulostulo"
 
 
+msgid "Save as Render"
+msgstr "Tallenna renderinä"
+
+
 msgid "Pixelate"
 msgstr "Pikselöi"
 
@@ -6303,6 +6307,10 @@ msgid "Volume Cube"
 msgstr "Volyymikuutio"
 
 
+msgid "Warning"
+msgstr "Varoitus"
+
+
 msgctxt "NodeTree"
 msgid "Frame"
 msgstr "Kehys"
@@ -6581,10 +6589,6 @@ msgid "To node"
 msgstr "Noodiin"
 
 
-msgid "Save as Render"
-msgstr "Tallenna renderinä"
-
-
 msgid "Use Node Format"
 msgstr "Käytä noodiformaattia"
 
@@ -6635,6 +6639,11 @@ msgstr "Objektin muuntimet"
 
 msgid "Active Modifier"
 msgstr "Aktiivinen muunnin"
+
+
+msgctxt "Operator"
+msgid "New"
+msgstr "Uusi"
 
 
 msgid "Only Channel"
@@ -7126,11 +7135,6 @@ msgid "Show all Grease Pencil layers"
 msgstr "Näytä kaikki öljykynän tasot"
 
 
-msgctxt "Operator"
-msgid "Add Segment"
-msgstr "Lisää segmentti"
-
-
 msgid "Mouse location"
 msgstr "Hiiren sijainti"
 
@@ -7385,8 +7389,8 @@ msgstr "Apina"
 
 
 msgctxt "Operator"
-msgid "New"
-msgstr "Uusi"
+msgid "Add Segment"
+msgstr "Lisää segmentti"
 
 
 msgid "Column"
@@ -7714,10 +7718,6 @@ msgstr "Poista valinta"
 msgctxt "WindowManager"
 msgid "Snap"
 msgstr "Napsauta"
-
-
-msgid "Warning"
-msgstr "Varoitus"
 
 
 msgid "Viewports"
@@ -8114,11 +8114,6 @@ msgstr "Linkitetyt"
 msgctxt "Operator"
 msgid "Shortest Path"
 msgstr "Lyhyin polku"
-
-
-msgctxt "Image"
-msgid "New"
-msgstr "Uusi"
 
 
 msgctxt "Operator"
@@ -8838,6 +8833,18 @@ msgid "Remove Shortcut"
 msgstr "Poista pikakomento"
 
 
+msgid "OS"
+msgstr "OS"
+
+
+msgid "Home"
+msgstr "Koti"
+
+
+msgid "Esc"
+msgstr "Esc"
+
+
 msgid "Menu Missing:"
 msgstr "Valikko kateissa:"
 
@@ -8940,6 +8947,10 @@ msgid "Sort By:"
 msgstr "Lajittele:"
 
 
+msgid "Swap Areas"
+msgstr "Vaihda alueet"
+
+
 msgid "Manual Scale"
 msgstr "Manuaalinen skaala"
 
@@ -9012,6 +9023,11 @@ msgstr "Uusi"
 
 
 msgctxt "GPencil"
+msgid "New"
+msgstr "Uusi"
+
+
+msgctxt "Image"
 msgid "New"
 msgstr "Uusi"
 
@@ -9476,10 +9492,6 @@ msgid "Failed to open window!"
 msgstr "Ikkunan avaaminen epäonnistui!"
 
 
-msgid "Swap Areas"
-msgstr "Vaihda alueet"
-
-
 msgid "Restore Areas"
 msgstr "Palauta alueet"
 
@@ -9586,10 +9598,6 @@ msgstr "Tiedostopolku"
 
 msgid "File name"
 msgstr "Tiedostonimi"
-
-
-msgid "Home"
-msgstr "Koti"
 
 
 msgid "Desktop"
@@ -9937,38 +9945,6 @@ msgid "UV Vertex"
 msgstr "UV-kärki"
 
 
-msgid "Custom Camera"
-msgstr "Mukautettu kamera"
-
-
-msgid "Geometry Space"
-msgstr "Geometriatila"
-
-
-msgid "Depth Offset"
-msgstr "Syvyyssiirros"
-
-
-msgid "Edge Types"
-msgstr "Reunatyypit"
-
-
-msgid "Light Reference"
-msgstr "Valoreferenssi"
-
-
-msgid "Composition"
-msgstr "Kompositio"
-
-
-msgid "TextureMapping"
-msgstr "Tekstuurikartoittaminen"
-
-
-msgid "TimeOffset"
-msgstr "Aikasiirros"
-
-
 msgctxt "Action"
 msgid "Group"
 msgstr "Ryhmä"
@@ -10014,10 +9990,6 @@ msgid "Z Force"
 msgstr "Z-voima"
 
 
-msgid "Modify"
-msgstr "Muuta"
-
-
 msgid "Image not packed"
 msgstr "Kuvaa ei ole pakattu"
 
@@ -10025,6 +9997,10 @@ msgstr "Kuvaa ei ole pakattu"
 msgctxt "Key"
 msgid "Key"
 msgstr "Avain"
+
+
+msgid "Modify"
+msgstr "Muuta"
 
 
 msgid "CustomGroup"
@@ -10091,8 +10067,36 @@ msgid "Refresh"
 msgstr "Virkistä"
 
 
+msgid "TimeOffset"
+msgstr "Aikasiirros"
+
+
 msgid "Recenter"
 msgstr "Keskitä uudelleen"
+
+
+msgid "Custom Camera"
+msgstr "Mukautettu kamera"
+
+
+msgid "Geometry Space"
+msgstr "Geometriatila"
+
+
+msgid "Depth Offset"
+msgstr "Syvyyssiirros"
+
+
+msgid "Edge Types"
+msgstr "Reunatyypit"
+
+
+msgid "Light Reference"
+msgstr "Valoreferenssi"
+
+
+msgid "Composition"
+msgstr "Kompositio"
 
 
 msgid "MeshCache"
@@ -10924,16 +10928,8 @@ msgid "Win"
 msgstr "Win"
 
 
-msgid "OS"
-msgstr "OS"
-
-
 msgid "Bksp"
 msgstr "Bksp"
-
-
-msgid "Esc"
-msgstr "Esc"
 
 
 msgid "dbl-"

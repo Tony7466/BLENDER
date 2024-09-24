@@ -20,6 +20,8 @@
 
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/paint_intern.hh"
+#include "editors/sculpt_paint/paint_mask.hh"
+#include "editors/sculpt_paint/sculpt_automask.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
@@ -59,11 +61,12 @@ BLI_NOINLINE static void clamp_mask(const MutableSpan<float> masks)
   }
 }
 
-static void calc_faces(const Brush &brush,
+static void calc_faces(const Depsgraph &depsgraph,
+                       const Brush &brush,
                        const float strength,
                        const Span<float3> positions,
                        const Span<float3> vert_normals,
-                       const bke::pbvh::Node &node,
+                       const bke::pbvh::MeshNode &node,
                        Object &object,
                        Mesh &mesh,
                        LocalData &tls,
@@ -72,14 +75,14 @@ static void calc_faces(const Brush &brush,
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
 
-  const Span<int> verts = bke::pbvh::node_unique_verts(node);
+  const Span<int> verts = node.verts();
 
   tls.factors.resize(verts.size());
   const MutableSpan<float> factors = tls.factors;
   fill_factor_from_hide(mesh, verts, factors);
   filter_region_clip_factors(ss, positions, verts, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, vert_normals, verts, factors);
+    calc_front_face(cache.view_normal_symm, vert_normals, verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -89,9 +92,7 @@ static void calc_faces(const Brush &brush,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, verts, factors);
 
@@ -110,17 +111,18 @@ static void calc_faces(const Brush &brush,
   scatter_data_mesh(new_masks.as_span(), verts, mask);
 }
 
-static void calc_grids(Object &object,
+static void calc_grids(const Depsgraph &depsgraph,
+                       Object &object,
                        const Brush &brush,
                        const float strength,
-                       bke::pbvh::Node &node,
+                       bke::pbvh::GridsNode &node,
                        LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
   const StrokeCache &cache = *ss.cache;
   SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
 
-  const Span<int> grids = bke::pbvh::node_grid_indices(node);
+  const Span<int> grids = node.grids();
   const MutableSpan positions = gather_grids_positions(subdiv_ccg, grids, tls.positions);
 
   tls.factors.resize(positions.size());
@@ -128,7 +130,7 @@ static void calc_grids(Object &object,
   fill_factor_from_hide(subdiv_ccg, grids, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, subdiv_ccg, grids, factors);
+    calc_front_face(cache.view_normal_symm, subdiv_ccg, grids, factors);
   }
 
   tls.distances.resize(positions.size());
@@ -138,9 +140,7 @@ static void calc_grids(Object &object,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_grids_factors(object, *cache.automasking, node, grids, factors);
-  }
+  auto_mask::calc_grids_factors(depsgraph, object, cache.automasking.get(), node, grids, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -159,10 +159,11 @@ static void calc_grids(Object &object,
   mask::scatter_mask_grids(new_masks.as_span(), subdiv_ccg, grids);
 }
 
-static void calc_bmesh(Object &object,
+static void calc_bmesh(const Depsgraph &depsgraph,
+                       Object &object,
                        const Brush &brush,
                        const float strength,
-                       bke::pbvh::Node &node,
+                       bke::pbvh::BMeshNode &node,
                        LocalData &tls)
 {
   SculptSession &ss = *object.sculpt;
@@ -177,7 +178,7 @@ static void calc_bmesh(Object &object,
   fill_factor_from_hide(verts, factors);
   filter_region_clip_factors(ss, positions, factors);
   if (brush.flag & BRUSH_FRONTFACE) {
-    calc_front_face(cache.view_normal, verts, factors);
+    calc_front_face(cache.view_normal_symm, verts, factors);
   }
 
   tls.distances.resize(verts.size());
@@ -187,9 +188,7 @@ static void calc_bmesh(Object &object,
   apply_hardness_to_distances(cache, distances);
   calc_brush_strength_factors(cache, brush, distances, factors);
 
-  if (cache.automasking) {
-    auto_mask::calc_vert_factors(object, *cache.automasking, node, verts, factors);
-  }
+  auto_mask::calc_vert_factors(depsgraph, object, cache.automasking.get(), node, verts, factors);
 
   calc_brush_texture_factors(ss, brush, positions, factors);
 
@@ -210,54 +209,77 @@ static void calc_bmesh(Object &object,
 
 }  // namespace mask_cc
 
-void do_mask_brush(const Sculpt &sd, Object &object, Span<bke::pbvh::Node *> nodes)
+void do_mask_brush(const Depsgraph &depsgraph,
+                   const Sculpt &sd,
+                   Object &object,
+                   const IndexMask &node_mask)
 {
   SculptSession &ss = *object.sculpt;
+  bke::pbvh::Tree &pbvh = *bke::object::pbvh_get(object);
   const Brush &brush = *BKE_paint_brush_for_read(&sd.paint);
   const float bstrength = ss.cache->bstrength;
 
   threading::EnumerableThreadSpecific<LocalData> all_tls;
-  switch (ss.pbvh->type()) {
+  switch (pbvh.type()) {
     case blender::bke::pbvh::Type::Mesh: {
+      MutableSpan<bke::pbvh::MeshNode> nodes = pbvh.nodes<bke::pbvh::MeshNode>();
       Mesh &mesh = *static_cast<Mesh *>(object.data);
-
-      const blender::bke::pbvh::Tree &pbvh = *ss.pbvh;
-      const Span<float3> positions = BKE_pbvh_get_vert_positions(pbvh);
-      const Span<float3> vert_normals = BKE_pbvh_get_vert_normals(pbvh);
+      const Span<float3> positions = bke::pbvh::vert_positions_eval(depsgraph, object);
+      const Span<float3> vert_normals = bke::pbvh::vert_normals_eval(depsgraph, object);
 
       bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
 
       bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
           ".sculpt_mask", bke::AttrDomain::Point);
 
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_faces(
-              brush, bstrength, positions, vert_normals, *nodes[i], object, mesh, tls, mask.span);
-        }
+        node_mask.slice(range).foreach_index([&](const int i) {
+          calc_faces(depsgraph,
+                     brush,
+                     bstrength,
+                     positions,
+                     vert_normals,
+                     nodes[i],
+                     object,
+                     mesh,
+                     tls,
+                     mask.span);
+          bke::pbvh::node_update_mask_mesh(mask.span, nodes[i]);
+        });
       });
       mask.finish();
       break;
     }
     case blender::bke::pbvh::Type::Grids: {
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      SubdivCCG &subdiv_ccg = *ss.subdiv_ccg;
+      const CCGKey key = BKE_subdiv_ccg_key_top_level(subdiv_ccg);
+      MutableSpan<float> masks = subdiv_ccg.masks;
+      MutableSpan<bke::pbvh::GridsNode> nodes = pbvh.nodes<bke::pbvh::GridsNode>();
+      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_grids(object, brush, bstrength, *nodes[i], tls);
-        }
+        node_mask.slice(range).foreach_index([&](const int i) {
+          calc_grids(depsgraph, object, brush, bstrength, nodes[i], tls);
+          bke::pbvh::node_update_mask_grids(key, masks, nodes[i]);
+        });
       });
       break;
     }
     case blender::bke::pbvh::Type::BMesh: {
-      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      const int mask_offset = CustomData_get_offset_named(
+          &ss.bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+      MutableSpan<bke::pbvh::BMeshNode> nodes = pbvh.nodes<bke::pbvh::BMeshNode>();
+      threading::parallel_for(node_mask.index_range(), 1, [&](const IndexRange range) {
         LocalData &tls = all_tls.local();
-        for (const int i : range) {
-          calc_bmesh(object, brush, bstrength, *nodes[i], tls);
-        }
+        node_mask.slice(range).foreach_index([&](const int i) {
+          calc_bmesh(depsgraph, object, brush, bstrength, nodes[i], tls);
+          bke::pbvh::node_update_mask_bmesh(mask_offset, nodes[i]);
+        });
       });
       break;
     }
   }
+  pbvh.tag_masks_changed(node_mask);
 }
+
 }  // namespace blender::ed::sculpt_paint

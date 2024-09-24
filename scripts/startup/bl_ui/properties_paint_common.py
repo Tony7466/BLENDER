@@ -10,17 +10,48 @@ class BrushAssetShelf:
     bl_options = {'DEFAULT_VISIBLE', 'NO_ASSET_DRAG', 'STORE_ENABLED_CATALOGS_IN_PREFERENCES'}
     bl_activate_operator = "BRUSH_OT_asset_activate"
     bl_default_preview_size = 48
+    brush_type_prop = None
+    tool_prop = None
+    mode_prop = None
 
     @classmethod
     def poll(cls, context):
-        return context.object and context.object.mode == cls.mode
+        return hasattr(context, "object") and context.object and context.object.mode == cls.mode
+
+    @classmethod
+    def brush_type_poll(cls, context, asset):
+        from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+        tool = ToolSelectPanelHelper.tool_active_from_context(context)
+
+        if not tool or tool.brush_type == 'ANY':
+            return True
+        if not cls.brush_type_prop or not cls.tool_prop:
+            return True
+
+        asset_brush_type = asset.metadata.get(cls.brush_type_prop)
+        # Asset metadata doesn't store a brush type. Only show it when the tool doesn't require a
+        # certain brush type.
+        if asset_brush_type is None:
+            return False
+        brush_type_items = bpy.types.Brush.bl_rna.properties[cls.tool_prop].enum_items
+
+        return brush_type_items[asset_brush_type].identifier == tool.brush_type
 
     @classmethod
     def asset_poll(cls, asset):
         if asset.id_type != 'BRUSH':
             return False
-        if hasattr(cls, "mode_prop"):
-            return asset.metadata.get(cls.mode_prop, False)
+        if cls.mode_prop and not asset.metadata.get(cls.mode_prop, False):
+            return False
+
+        context = bpy.context
+
+        is_asset_shelf_region = context.region and context.region.type == 'ASSET_SHELF'
+        # Show all brushes in the permanent asset shelf region. Otherwise filter out brushes that
+        # are incompatible with the tool.
+        if not is_asset_shelf_region and not cls.brush_type_poll(context, asset):
+            return False
+
         return True
 
     @classmethod
@@ -28,7 +59,7 @@ class BrushAssetShelf:
         # Only show active highlight when using the brush tool.
         from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.tool_active_from_context(bpy.context)
-        if not tool or tool.idname != "builtin.brush":
+        if not tool or not tool.use_brushes:
             return None
 
         paint_settings = UnifiedPaintPanel.paint_settings(bpy.context)
@@ -103,8 +134,7 @@ class UnifiedPaintPanel:
             # If there is no active tool, then there can't be an active brush.
             return None
 
-        if not tool.has_datablock:
-            # tool.has_datablock is always true for tools that use brushes.
+        if not tool.use_brushes:
             return None
 
         space_data = context.space_data
@@ -152,6 +182,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_weight_paint
         elif mode == 'VERTEX_GPENCIL':
             return tool_settings.gpencil_vertex_paint
+        elif mode == 'PAINT_GREASE_PENCIL':
+            return tool_settings.gpencil_paint
         elif mode == 'SCULPT_CURVES':
             return tool_settings.curves_sculpt
         elif mode == 'PAINT_GREASE_PENCIL':
@@ -160,6 +192,8 @@ class UnifiedPaintPanel:
             return tool_settings.gpencil_sculpt_paint
         elif mode == 'WEIGHT_GREASE_PENCIL':
             return tool_settings.gpencil_weight_paint
+        elif mode == 'VERTEX_GREASE_PENCIL':
+            return tool_settings.gpencil_vertex_paint
         return None
 
     @staticmethod
@@ -1637,7 +1671,7 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         layout.use_property_split = use_property_split_prev
     elif grease_pencil_tool == 'ERASE':
         layout.prop(gp_settings, "eraser_mode", expand=True)
-        if gp_settings.eraser_mode == 'HARD':
+        if gp_settings.eraser_mode in {'HARD', 'SOFT'}:
             layout.prop(gp_settings, "use_keep_caps_eraser")
         layout.prop(gp_settings, "use_active_layer_only")
     elif grease_pencil_tool == 'TINT':
@@ -1745,6 +1779,37 @@ def brush_basic_grease_pencil_weight_settings(layout, context, brush, *, compact
             header=compact,
         )
         layout.prop(brush, "direction", expand=True, text="" if compact else "Direction")
+
+
+def brush_basic_grease_pencil_vertex_settings(layout, context, brush, *, compact=False):
+    UnifiedPaintPanel.prop_unified(
+        layout,
+        context,
+        brush,
+        "size",
+        pressure_name="use_pressure_size",
+        unified_name="use_unified_size",
+        text="Radius",
+        slider=True,
+        header=compact,
+    )
+
+    if brush.gpencil_vertex_tool in {'DRAW', 'BLUR', 'SMEAR'}:
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            pressure_name="use_pressure_strength",
+            unified_name="use_unified_strength",
+            text="Strength",
+            header=compact,
+        )
+
+    gp_settings = brush.gpencil_settings
+    if brush.gpencil_vertex_tool in {'DRAW', 'REPLACE'}:
+        row = layout.row(align=True)
+        row.prop(gp_settings, "vertex_mode", text="Mode")
 
 
 classes = (

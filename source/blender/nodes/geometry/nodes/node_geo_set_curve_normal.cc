@@ -42,7 +42,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 {
   const NormalMode mode = NormalMode(node->custom1);
   bNodeSocket *normal_socket = static_cast<bNodeSocket *>(node->inputs.last);
-  bke::nodeSetSocketAvailability(ntree, normal_socket, mode == NORMAL_MODE_FREE);
+  bke::node_set_socket_availability(ntree, normal_socket, mode == NORMAL_MODE_FREE);
 }
 
 static void set_curve_normal(bke::CurvesGeometry &curves,
@@ -79,7 +79,7 @@ static void set_grease_pencil_normal(GreasePencil &grease_pencil,
 {
   using namespace blender::bke::greasepencil;
   for (const int layer_index : grease_pencil.layers().index_range()) {
-    Drawing *drawing = grease_pencil.get_eval_drawing(*grease_pencil.layer(layer_index));
+    Drawing *drawing = grease_pencil.get_eval_drawing(grease_pencil.layer(layer_index));
     if (drawing == nullptr) {
       continue;
     }
@@ -142,7 +142,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
 
-  blender::bke::nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

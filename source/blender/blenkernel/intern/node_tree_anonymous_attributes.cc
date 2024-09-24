@@ -24,7 +24,7 @@ using nodes::NodeDeclaration;
 
 static bool socket_is_field(const bNodeSocket &socket)
 {
-  return socket.display_shape == SOCK_DISPLAY_SHAPE_DIAMOND;
+  return socket.runtime->field_state == FieldSocketState::IsField;
 }
 
 static const aal::RelationsInNode &get_relations_in_node(const bNode &node, ResourceScope &scope)
@@ -32,7 +32,7 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
   if (node.is_group()) {
     if (const bNodeTree *group = reinterpret_cast<const bNodeTree *>(node.id)) {
       /* Undefined tree types have no relations. */
-      if (!bke::ntreeIsRegistered(group)) {
+      if (!bke::node_tree_is_registered(group)) {
         return scope.construct<aal::RelationsInNode>();
       }
       /* It's possible that the inferencing failed on the group. */
@@ -273,7 +273,7 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
   /* Find input field and geometry sources. */
   for (const int i : tree.interface_inputs().index_range()) {
     const bNodeTreeInterfaceSocket &interface_socket = *tree.interface_inputs()[i];
-    const bNodeSocketType *typeinfo = bke::nodeSocketTypeFind(interface_socket.socket_type);
+    const bNodeSocketType *typeinfo = bke::node_socket_type_find(interface_socket.socket_type);
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     if (type == SOCK_GEOMETRY) {
       all_geometry_sources.append_and_get_index({InputGeometrySource{i}});
@@ -406,6 +406,29 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
                 propagated_geometries_by_socket[src_index];
             available_fields_by_geometry_socket[dst_index] |=
                 available_fields_by_geometry_socket[src_index];
+          }
+          /* This zone needs additional special handling because attributes from the input geometry
+           * are propagated to the output node. */
+          if (node->type == GEO_NODE_FOREACH_GEOMETRY_ELEMENT_OUTPUT) {
+            if (zones == nullptr) {
+              break;
+            }
+            const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier);
+            if (!zone->input_node) {
+              break;
+            }
+            const bNode *input_node = zone->input_node;
+            const bNode *output_node = node;
+            const int src_index = input_node->input_socket(0).index_in_tree();
+            for (const bNodeSocket *output_socket : output_node->output_sockets()) {
+              if (output_socket->type == SOCK_GEOMETRY) {
+                const int dst_index = output_socket->index_in_tree();
+                propagated_geometries_by_socket[dst_index] |=
+                    propagated_geometries_by_socket[src_index];
+                available_fields_by_geometry_socket[dst_index] |=
+                    available_fields_by_geometry_socket[src_index];
+              }
+            }
           }
           break;
         }
@@ -636,6 +659,32 @@ static AnonymousAttributeInferencingResult analyze_anonymous_attribute_usages(
         const bNodeSocket &field_socket = node->input_socket(relation.field_input);
         required_fields_by_geometry_socket[geometry_socket.index_in_tree()] |=
             propagated_fields_by_socket[field_socket.index_in_tree()];
+      }
+
+      switch (node->type) {
+        case GEO_NODE_FOREACH_GEOMETRY_ELEMENT_INPUT: {
+          if (!zones) {
+            break;
+          }
+          /* Propagate from the geometry outputs to the geometry input. */
+          const bNodeTreeZone *zone = zones->get_zone_by_node(node->identifier);
+          if (!zone) {
+            break;
+          }
+          const bNode *input_node = node;
+          const bNode *output_node = zone->output_node;
+          const int dst_index = input_node->input_socket(0).index_in_tree();
+          for (const bNodeSocket *output_socket : output_node->output_sockets()) {
+            if (output_socket->type == SOCK_GEOMETRY) {
+              const int src_index = output_socket->index_in_tree();
+              required_fields_by_geometry_socket[dst_index] |=
+                  required_fields_by_geometry_socket[src_index];
+              propagate_to_output_by_geometry_socket[dst_index] |=
+                  propagate_to_output_by_geometry_socket[src_index];
+            }
+          }
+          break;
+        }
       }
     }
   };

@@ -11,6 +11,7 @@
 #include "BLI_array.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_compiler_attrs.h"
+#include "BLI_function_ref.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_sys_types.h"
 #include "BLI_vector.hh"
@@ -151,9 +152,17 @@ void BLF_draw_svg_icon(uint icon_id,
                        float y,
                        float size,
                        float color[4] = nullptr,
-                       float outline_alpha = 1.0f);
+                       float outline_alpha = 1.0f,
+                       bool multicolor = false,
+                       blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr);
 
-blender::Array<uchar> BLF_svg_icon_bitmap(uint icon_id, float size, int *r_width, int *r_height);
+blender::Array<uchar> BLF_svg_icon_bitmap(
+    uint icon_id,
+    float size,
+    int *r_width,
+    int *r_height,
+    bool multicolor = false,
+    blender::FunctionRef<void(std::string &)> edit_source_cb = nullptr);
 
 typedef bool (*BLF_GlyphBoundsFn)(const char *str,
                                   size_t str_step_ofs,
@@ -194,7 +203,7 @@ bool BLF_str_offset_to_glyph_bounds(int fontid,
  * Return left edge of text cursor (caret), given a character offset and cursor width.
  */
 int BLF_str_offset_to_cursor(
-    int fontid, const char *str, size_t str_len, size_t str_offset, float cursor_width);
+    int fontid, const char *str, size_t str_len, size_t str_offset, int cursor_width);
 
 /**
  * Return bounds of selection boxes. There is just one normally but there could

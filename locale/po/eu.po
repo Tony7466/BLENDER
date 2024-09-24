@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.3.0 Alpha (b'de443e038c4e')\n"
+"Project-Id-Version: Blender 4.3.0 Alpha (b'd52d70324d18')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-07-22 07:23+0000\n"
+"POT-Creation-Date: 2024-09-16 11:03+0000\n"
 "PO-Revision-Date: 2024-04-29 13:54+0000\n"
 "Last-Translator: Anonymous <noreply@weblate.org>\n"
 "Language-Team: Basque <https://translate.blender.org/projects/blender-ui/ui/eu/>\n"
@@ -435,20 +435,6 @@ msgid "Tools"
 msgstr "Tresnak"
 
 
-msgid "Speed Factor"
-msgstr "Azelerazio-faktorea"
-
-
-msgctxt "Curve"
-msgid "Curve"
-msgstr "Kurba"
-
-
-msgctxt "Curve"
-msgid "Sphere"
-msgstr "Esfera"
-
-
 msgid "Sound"
 msgstr "Soinua"
 
@@ -578,8 +564,17 @@ msgid "Min Angle"
 msgstr "Angelu Minimoa"
 
 
+msgctxt "Curve"
+msgid "Sphere"
+msgstr "Esfera"
+
+
 msgid "Show/Hide"
 msgstr "Erakutsi/Ezkutatu"
+
+
+msgid "Relations"
+msgstr "Loturak"
 
 
 msgid "UV"
@@ -614,12 +609,17 @@ msgid "Help"
 msgstr "Laguntza"
 
 
-msgid "Relations"
-msgstr "Loturak"
-
-
 msgid "New"
 msgstr "Berria"
+
+
+msgid "Speed Factor"
+msgstr "Azelerazio-faktorea"
+
+
+msgctxt "Curve"
+msgid "Curve"
+msgstr "Kurba"
 
 
 msgctxt "Curve"
@@ -677,6 +677,31 @@ msgstr "Z ardatza"
 
 msgid "Z Axis"
 msgstr "Z Ardatza"
+
+
+msgctxt "Operator"
+msgid "Console Execute"
+msgstr "Kontsola Exekutatu"
+
+
+msgctxt "Operator"
+msgid "Console Language"
+msgstr "Kontsolaren Hizkuntza"
+
+
+msgctxt "Operator"
+msgid "New"
+msgstr "Berria"
+
+
+msgctxt "Operator"
+msgid "Play Rendered Animation"
+msgstr "Renderizatutako Animazioa Erreproduzitu"
+
+
+msgctxt "Operator"
+msgid "Save System Info"
+msgstr "Sistemaren Informazioa Gorde"
 
 
 msgctxt "Operator"
@@ -770,11 +795,6 @@ msgid "Previous Word"
 msgstr "Aurreko Hitza"
 
 
-msgctxt "Operator"
-msgid "Console Execute"
-msgstr "Kontsola Exekutatu"
-
-
 msgid "The index of the cursor"
 msgstr "Kurtsorearen indizea"
 
@@ -794,11 +814,6 @@ msgstr "Lerroaren hasieran 4 zuriune gehitu"
 msgctxt "Operator"
 msgid "Insert"
 msgstr "Txertatu"
-
-
-msgctxt "Operator"
-msgid "Console Language"
-msgstr "Kontsolaren Hizkuntza"
 
 
 msgctxt "Operator"
@@ -1505,11 +1520,6 @@ msgid "Join"
 msgstr "Elkartu"
 
 
-msgctxt "Operator"
-msgid "New"
-msgstr "Berria"
-
-
 msgid "Child"
 msgstr "Umea"
 
@@ -1539,11 +1549,6 @@ msgstr "Bistaratu/Izkutatu Maila Bat"
 
 msgid "Write Image"
 msgstr "Irudia Gorde"
-
-
-msgctxt "Operator"
-msgid "Play Rendered Animation"
-msgstr "Renderizatutako Animazioa Erreproduzitu"
 
 
 msgctxt "Operator"
@@ -1702,11 +1707,6 @@ msgstr "Lehenetsitako ezarpenak kargatu"
 msgctxt "Operator"
 msgid "Recover Last Session"
 msgstr "Azken Saioa Berreskuratu"
-
-
-msgctxt "Operator"
-msgid "Save System Info"
-msgstr "Sistemaren Informazioa Gorde"
 
 
 msgid "Dynamics"
@@ -1902,11 +1902,6 @@ msgid "Refraction"
 msgstr "Errefrakzioa"
 
 
-msgctxt "Image"
-msgid "New"
-msgstr "Berria"
-
-
 msgctxt "Operator"
 msgid "Save As..."
 msgstr "Gorde honela..."
@@ -2064,6 +2059,11 @@ msgstr "Berria"
 
 
 msgctxt "GPencil"
+msgid "New"
+msgstr "Berria"
+
+
+msgctxt "Image"
 msgid "New"
 msgstr "Berria"
 

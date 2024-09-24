@@ -323,12 +323,11 @@ static void ui_update_window_matrix(const wmWindow *window, const ARegion *regio
   else {
     /* No sub-window created yet, for menus for example, so we use the main
      * window instead, since buttons are created there anyway. */
-    const int width = WM_window_pixels_x(window);
-    const int height = WM_window_pixels_y(window);
-    const rcti winrct = {0, width - 1, 0, height - 1};
+    const blender::int2 win_size = WM_window_native_pixel_size(window);
+    const rcti winrct = {0, win_size[0] - 1, 0, win_size[1] - 1};
 
     wmGetProjectionMatrix(block->winmat, &winrct);
-    block->aspect = 2.0f / fabsf(width * block->winmat[0][0]);
+    block->aspect = 2.0f / fabsf(win_size[0] * block->winmat[0][0]);
   }
 }
 
@@ -346,7 +345,7 @@ void ui_region_winrct_get_no_margin(const ARegion *region, rcti *r_rect)
 
 /* ******************* block calc ************************* */
 
-void UI_block_translate(uiBlock *block, int x, int y)
+void UI_block_translate(uiBlock *block, float x, float y)
 {
   LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
     BLI_rctf_translate(&but->rect, x, y);
@@ -475,16 +474,16 @@ static void ui_block_bounds_calc_centered(wmWindow *window, uiBlock *block)
   /* NOTE: this is used for the splash where window bounds event has not been
    * updated by ghost, get the window bounds from ghost directly */
 
-  const int xmax = WM_window_pixels_x(window);
-  const int ymax = WM_window_pixels_y(window);
+  /* Clamp to the window size. */
+  const blender::int2 win_size = WM_window_native_pixel_size(window);
 
   ui_block_bounds_calc(block);
 
   const int width = BLI_rctf_size_x(&block->rect);
   const int height = BLI_rctf_size_y(&block->rect);
 
-  const int startx = (xmax * 0.5f) - (width * 0.5f);
-  const int starty = (ymax * 0.5f) - (height * 0.5f);
+  const int startx = (win_size[0] * 0.5f) - (width * 0.5f);
+  const int starty = (win_size[1] * 0.5f) - (height * 0.5f);
 
   UI_block_translate(block, startx - block->rect.xmin, starty - block->rect.ymin);
 
@@ -513,8 +512,8 @@ static void ui_block_bounds_calc_popup(
   /* compute mouse position with user defined offset */
   ui_block_bounds_calc(block);
 
-  const int xmax = WM_window_pixels_x(window);
-  const int ymax = WM_window_pixels_y(window);
+  /* Clamp to the window size. */
+  const blender::int2 win_size = WM_window_native_pixel_size(window);
 
   int oldwidth = BLI_rctf_size_x(&block->rect);
   int oldheight = BLI_rctf_size_y(&block->rect);
@@ -553,8 +552,8 @@ static void ui_block_bounds_calc_popup(
   const int margin = UI_SCREEN_MARGIN;
   rect_bounds.xmin = margin;
   rect_bounds.ymin = margin;
-  rect_bounds.xmax = xmax - margin;
-  rect_bounds.ymax = ymax - UI_POPUP_MENU_TOP;
+  rect_bounds.xmax = win_size[0] - margin;
+  rect_bounds.ymax = win_size[1] - UI_POPUP_MENU_TOP;
 
   int ofs_dummy[2];
   BLI_rcti_clamp(&rect, &rect_bounds, ofs_dummy);
@@ -762,6 +761,9 @@ static bool ui_but_equals_old(const uiBut *but, const uiBut *oldbut)
     return false;
   }
   if (!ELEM(oldbut->func_arg2, oldbut, but->func_arg2)) {
+    return false;
+  }
+  if (but->block_create_func != oldbut->block_create_func) {
     return false;
   }
   if (!but->funcN && ((but->poin != oldbut->poin && (uiBut *)oldbut->poin != oldbut) ||
@@ -1629,7 +1631,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
   extra_op_icon->icon = icon;
   extra_op_icon->optype_params = MEM_cnew<wmOperatorCallParams>(__func__);
   extra_op_icon->optype_params->optype = optype;
-  extra_op_icon->optype_params->opptr = MEM_cnew<PointerRNA>(__func__);
+  extra_op_icon->optype_params->opptr = MEM_new<PointerRNA>(__func__);
   WM_operator_properties_create_ptr(extra_op_icon->optype_params->opptr,
                                     extra_op_icon->optype_params->optype);
   extra_op_icon->optype_params->opcontext = opcontext;
@@ -1644,7 +1646,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
 static void ui_but_extra_operator_icon_free(uiButExtraOpIcon *extra_icon)
 {
   WM_operator_properties_free(extra_icon->optype_params->opptr);
-  MEM_freeN(extra_icon->optype_params->opptr);
+  MEM_delete(extra_icon->optype_params->opptr);
   MEM_freeN(extra_icon->optype_params);
   MEM_freeN(extra_icon);
 }
@@ -3080,8 +3082,14 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
       const PropertyType type = RNA_property_type(but->rnaprop);
 
       if (type == PROP_STRING) {
-        /* RNA string */
-        RNA_property_string_set(&but->rnapoin, but->rnaprop, str);
+        /* RNA string, only set it if full rename callback is not defined, otherwise just store the
+         * user-defined new name to call the callback later. */
+        if (but->rename_full_func) {
+          but->rename_full_new = str;
+        }
+        else {
+          RNA_property_string_set(&but->rnapoin, but->rnaprop, str);
+        }
         return true;
       }
 
@@ -3382,12 +3390,75 @@ static void ui_but_free_type_specific(uiBut *but)
   }
 }
 
+/**
+ * Ensures that the proper type of data is destructed, from a generic #uiBut pointer. Should always
+ * match behavior of #ui_but_new.
+ */
+static void ui_but_mem_delete(const uiBut *but)
+{
+  switch (but->type) {
+    case UI_BTYPE_NUM:
+      MEM_delete(reinterpret_cast<const uiButNumber *>(but));
+      break;
+    case UI_BTYPE_NUM_SLIDER:
+      MEM_delete(reinterpret_cast<const uiButNumberSlider *>(but));
+      break;
+    case UI_BTYPE_COLOR:
+      MEM_delete(reinterpret_cast<const uiButColor *>(but));
+      break;
+    case UI_BTYPE_DECORATOR:
+      MEM_delete(reinterpret_cast<const uiButDecorator *>(but));
+      break;
+    case UI_BTYPE_TAB:
+      MEM_delete(reinterpret_cast<const uiButTab *>(but));
+      break;
+    case UI_BTYPE_SEARCH_MENU:
+      MEM_delete(reinterpret_cast<const uiButSearch *>(but));
+      break;
+    case UI_BTYPE_PROGRESS:
+      MEM_delete(reinterpret_cast<const uiButProgress *>(but));
+      break;
+    case UI_BTYPE_SEPR_LINE:
+      MEM_delete(reinterpret_cast<const uiButSeparatorLine *>(but));
+      break;
+    case UI_BTYPE_HSVCUBE:
+      MEM_delete(reinterpret_cast<const uiButHSVCube *>(but));
+      break;
+    case UI_BTYPE_COLORBAND:
+      MEM_delete(reinterpret_cast<const uiButColorBand *>(but));
+      break;
+    case UI_BTYPE_CURVE:
+      MEM_delete(reinterpret_cast<const uiButCurveMapping *>(but));
+      break;
+    case UI_BTYPE_CURVEPROFILE:
+      MEM_delete(reinterpret_cast<const uiButCurveProfile *>(but));
+      break;
+    case UI_BTYPE_HOTKEY_EVENT:
+      MEM_delete(reinterpret_cast<const uiButHotkeyEvent *>(but));
+      break;
+    case UI_BTYPE_VIEW_ITEM:
+      MEM_delete(reinterpret_cast<const uiButViewItem *>(but));
+      break;
+    case UI_BTYPE_LABEL:
+      MEM_delete(reinterpret_cast<const uiButLabel *>(but));
+      break;
+    case UI_BTYPE_SCROLL:
+      MEM_delete(reinterpret_cast<const uiButScrollBar *>(but));
+      break;
+    default:
+      BLI_assert_msg(MEM_allocN_len(but) == sizeof(uiBut),
+                     "Derived button type needs type specific deletion");
+      MEM_delete(but);
+      break;
+  }
+}
+
 /* can be called with C==nullptr */
 static void ui_but_free(const bContext *C, uiBut *but)
 {
   if (but->opptr) {
     WM_operator_properties_free(but->opptr);
-    MEM_freeN(but->opptr);
+    MEM_delete(but->opptr);
   }
 
   if (but->func_argN) {
@@ -3439,7 +3510,7 @@ static void ui_but_free(const bContext *C, uiBut *but)
 
   BLI_assert(UI_butstore_is_registered(but->block, but) == false);
 
-  MEM_delete(but);
+  ui_but_mem_delete(but);
 }
 
 static void ui_block_free_active_operator(uiBlock *block)
@@ -3447,7 +3518,7 @@ static void ui_block_free_active_operator(uiBlock *block)
   if (block->ui_operator_free) {
     /* This assumes the operator instance owns the pointer. This is not
      * true for all operators by default, but it can be copied when needed. */
-    MEM_freeN(block->ui_operator->ptr);
+    MEM_delete(block->ui_operator->ptr);
     MEM_freeN(block->ui_operator);
   }
 
@@ -3951,6 +4022,8 @@ void ui_block_cm_to_display_space_v3(uiBlock *block, float pixel[3])
 
 /**
  * Factory function: Allocate button and set #uiBut.type.
+ *
+ * \note: #ui_but_mem_delete is the matching 'destructor' function.
  */
 static uiBut *ui_but_new(const eButType type)
 {
@@ -4053,7 +4126,7 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
   }
 #endif
 
-  MEM_delete(old_but_ptr);
+  ui_but_mem_delete(old_but_ptr);
 
   return but;
 }
@@ -4310,7 +4383,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   }
 
   /* If the estimated width is greater than available size, collapse to one column. */
-  if (columns > 1 && text_width > WM_window_pixels_x(win)) {
+  if (columns > 1 && text_width > WM_window_native_pixel_x(win)) {
     columns = 1;
     rows = totitems;
   }
@@ -5641,9 +5714,12 @@ void UI_but_operator_set(uiBut *but,
   but->opcontext = opcontext;
   but->flag &= ~UI_BUT_UNDO; /* no need for ui_but_is_rna_undo(), we never need undo here */
 
-  MEM_SAFE_FREE(but->opptr);
+  if (but->opptr) {
+    MEM_delete(but->opptr);
+    but->opptr = nullptr;
+  }
   if (opptr) {
-    but->opptr = MEM_cnew<PointerRNA>(__func__, *opptr);
+    but->opptr = MEM_new<PointerRNA>(__func__, *opptr);
   }
 }
 
@@ -5736,6 +5812,11 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
   but->disabled_info = disabled_hint;
 }
 
+void UI_but_color_set(uiBut *but, const uchar color[4])
+{
+  copy_v4_v4_uchar(but->col, color);
+}
+
 void UI_but_placeholder_set(uiBut *but, const char *placeholder_text)
 {
   MEM_SAFE_FREE(but->placeholder);
@@ -5782,7 +5863,7 @@ int UI_but_return_value_get(uiBut *but)
 PointerRNA *UI_but_operator_ptr_ensure(uiBut *but)
 {
   if (but->optype && !but->opptr) {
-    but->opptr = MEM_cnew<PointerRNA>(__func__);
+    but->opptr = MEM_new<PointerRNA>(__func__);
     WM_operator_properties_create_ptr(but->opptr, but->optype);
   }
 
@@ -5868,6 +5949,12 @@ void UI_but_func_rename_set(uiBut *but, uiButHandleRenameFunc func, void *arg1)
 {
   but->rename_func = func;
   but->rename_arg1 = arg1;
+}
+
+void UI_but_func_rename_full_set(uiBut *but,
+                                 std::function<void(std::string &new_name)> rename_full_func)
+{
+  but->rename_full_func = rename_full_func;
 }
 
 void UI_but_func_drawextra_set(

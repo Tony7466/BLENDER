@@ -34,7 +34,6 @@ namespace blender::bke {
 class bNodeTreeRuntime;
 class bNodeRuntime;
 class bNodeSocketRuntime;
-struct bNodeTreeInterfaceCache;
 }  // namespace blender::bke
 namespace blender::bke {
 class bNodeTreeZones;
@@ -348,6 +347,13 @@ typedef struct bNodePanelState {
 #endif
 } bNodePanelState;
 
+typedef enum NodeWarningPropagation {
+  NODE_WARNING_PROPAGATION_ALL = 0,
+  NODE_WARNING_PROPAGATION_NONE = 1,
+  NODE_WARNING_PROPAGATION_ONLY_ERRORS = 2,
+  NODE_WARNING_PROPAGATION_ONLY_ERRORS_AND_WARNINGS = 3,
+} NodeWarningPropagation;
+
 typedef struct bNode {
   struct bNode *next, *prev;
 
@@ -393,6 +399,12 @@ typedef struct bNode {
   /** Used for some builtin nodes that store properties but don't have a storage struct. */
   int16_t custom1, custom2;
   float custom3, custom4;
+
+  /**
+   * #NodeWarningPropagation.
+   */
+  int8_t warning_propagation;
+  char _pad[7];
 
   /**
    * Optional link to libdata.
@@ -700,7 +712,12 @@ typedef struct bNodeTree {
 
   /** #blender::bke::NodeGroupColorTag. */
   int color_tag;
-  char _pad[4];
+
+  /**
+   * Default width of a group node created for this group. May be zero, in which case this value
+   * should be ignored.
+   */
+  int default_group_node_width;
 
   rctf viewer_border;
 
@@ -853,7 +870,7 @@ enum {
   NTREE_VIEWER_BORDER = 1 << 4,
   /**
    * Tree is localized copy, free when deleting node groups.
-   * NOTE: DEPRECATED, use (id->tag & LIB_TAG_LOCALIZED) instead.
+   * NOTE: DEPRECATED, use (id->tag & ID_TAG_LOCALIZED) instead.
    */
   // NTREE_IS_LOCALIZED = 1 << 5,
 };
@@ -1001,6 +1018,12 @@ typedef struct NodeFrame {
   short label_size;
 } NodeFrame;
 
+typedef struct NodeReroute {
+  /** Name of the socket type (e.g. `NodeSocketFloat`). */
+  char type_idname[64];
+
+} NodeReroute;
+
 /** \note This one has been replaced with #ImageUser, keep it for do_versions(). */
 typedef struct NodeImageAnim {
   int frames DNA_DEPRECATED;
@@ -1126,7 +1149,8 @@ typedef struct NodeImageMultiFile {
   int sfra DNA_DEPRECATED, efra DNA_DEPRECATED;
   /** Selected input in details view list. */
   int active_input;
-  char _pad[4];
+  char save_as_render;
+  char _pad[3];
 } NodeImageMultiFile;
 typedef struct NodeImageMultiFileSocket {
   /* single layer file output */
@@ -1949,6 +1973,79 @@ typedef struct NodeGeometryRepeatOutput {
 #endif
 } NodeGeometryRepeatOutput;
 
+typedef struct NodeGeometryForeachGeometryElementInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometryForeachGeometryElementInput;
+
+typedef struct NodeForeachGeometryElementInputItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /** Generated identifier that stays the same even when the name or order changes. */
+  int identifier;
+} NodeForeachGeometryElementInputItem;
+
+typedef struct NodeForeachGeometryElementMainItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /** Generated identifier that stays the same even when the name or order changes. */
+  int identifier;
+} NodeForeachGeometryElementMainItem;
+
+typedef struct NodeForeachGeometryElementGenerationItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  /** #AttrDomain. */
+  uint8_t domain;
+  char _pad[1];
+  /** Generated identifier that stays the same even when the name or order changes. */
+  int identifier;
+} NodeForeachGeometryElementGenerationItem;
+
+typedef struct NodeForeachGeometryElementInputItems {
+  NodeForeachGeometryElementInputItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeForeachGeometryElementInputItems;
+
+typedef struct NodeForeachGeometryElementMainItems {
+  NodeForeachGeometryElementMainItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeForeachGeometryElementMainItems;
+
+typedef struct NodeForeachGeometryElementGenerationItems {
+  NodeForeachGeometryElementGenerationItem *items;
+  int items_num;
+  int active_index;
+  int next_identifier;
+  char _pad[4];
+} NodeForeachGeometryElementGenerationItems;
+
+typedef struct NodeGeometryForeachGeometryElementOutput {
+  /**
+   * The foreach zone has three sets of dynamic sockets.One on the input node and two on the
+   * output node. All settings are stored centrally in the output node storage though.
+   */
+  NodeForeachGeometryElementInputItems input_items;
+  NodeForeachGeometryElementMainItems main_items;
+  NodeForeachGeometryElementGenerationItems generation_items;
+  /** This index is used when displaying socket values or using the viewer node. */
+  int inspection_index;
+  /** #AttrDomain. This is the domain that is iterated over. */
+  uint8_t domain;
+  char _pad[3];
+} NodeGeometryForeachGeometryElementOutput;
+
 typedef struct IndexSwitchItem {
   /** Generated unique identifier which stays the same even when the item order or names change. */
   int identifier;
@@ -2103,6 +2200,12 @@ enum {
   CMP_NODE_CHANNEL_MATTE_CS_HSV = 2,
   CMP_NODE_CHANNEL_MATTE_CS_YUV = 3,
   CMP_NODE_CHANNEL_MATTE_CS_YCC = 4,
+};
+
+/* Conductive fresnel types */
+enum {
+  SHD_PHYSICAL_CONDUCTOR = 0,
+  SHD_CONDUCTOR_F82 = 1,
 };
 
 /* glossy distributions */
@@ -2457,6 +2560,27 @@ typedef enum NodeCompareOperation {
   NODE_COMPARE_COLOR_BRIGHTER = 6,
   NODE_COMPARE_COLOR_DARKER = 7,
 } NodeCompareOperation;
+
+typedef enum NodeIntegerMathOperation {
+  NODE_INTEGER_MATH_ADD = 0,
+  NODE_INTEGER_MATH_SUBTRACT = 1,
+  NODE_INTEGER_MATH_MULTIPLY = 2,
+  NODE_INTEGER_MATH_DIVIDE = 3,
+  NODE_INTEGER_MATH_MULTIPLY_ADD = 4,
+  NODE_INTEGER_MATH_POWER = 5,
+  NODE_INTEGER_MATH_FLOORED_MODULO = 6,
+  NODE_INTEGER_MATH_ABSOLUTE = 7,
+  NODE_INTEGER_MATH_MINIMUM = 8,
+  NODE_INTEGER_MATH_MAXIMUM = 9,
+  NODE_INTEGER_MATH_GCD = 10,
+  NODE_INTEGER_MATH_LCM = 11,
+  NODE_INTEGER_MATH_NEGATE = 12,
+  NODE_INTEGER_MATH_SIGN = 13,
+  NODE_INTEGER_MATH_DIVIDE_FLOOR = 14,
+  NODE_INTEGER_MATH_DIVIDE_CEIL = 15,
+  NODE_INTEGER_MATH_DIVIDE_ROUND = 16,
+  NODE_INTEGER_MATH_MODULO = 17,
+} NodeIntegerMathOperation;
 
 typedef enum FloatToIntRoundingMode {
   FN_NODE_FLOAT_TO_INT_ROUND = 0,

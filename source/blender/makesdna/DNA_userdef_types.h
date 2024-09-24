@@ -202,6 +202,9 @@ typedef struct ThemeUI {
   unsigned char icon_shading[4];
   /** File folders. */
   unsigned char icon_folder[4];
+  /** Auto Keying indicator. */
+  unsigned char icon_autokey[4];
+  char _pad3[4];
   /** Intensity of the border icons. >0 will render an border around themed
    * icons. */
   float icon_border_intensity;
@@ -340,7 +343,6 @@ typedef struct ThemeSpace {
   unsigned char syntaxd[4], syntaxr[4]; /* In node-space used for distort. */
 
   unsigned char line_numbers[4];
-  char _pad6[3];
 
   unsigned char nodeclass_output[4], nodeclass_filter[4];
   unsigned char nodeclass_vector[4], nodeclass_texture[4];
@@ -350,6 +352,7 @@ typedef struct ThemeSpace {
 
   unsigned char node_zone_simulation[4];
   unsigned char node_zone_repeat[4];
+  unsigned char node_zone_foreach_geometry_element[4];
   unsigned char simulated_frames[4];
 
   /** For sequence editor. */
@@ -358,7 +361,6 @@ typedef struct ThemeSpace {
   unsigned char active_strip[4], selected_strip[4];
 
   /** For dopesheet - scale factor for size of keyframes (i.e. height of channels). */
-  char _pad7[1];
   float keyframe_scale_fac;
 
   unsigned char editmesh_active[4];
@@ -757,7 +759,8 @@ typedef struct UserDef_Experimental {
   char use_shader_node_previews;
   char use_animation_baklava;
   char use_docking;
-  char _pad[2];
+  char enable_new_cpu_compositor;
+  char _pad[1];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -998,6 +1001,11 @@ typedef struct UserDef {
   /** Seconds to zoom around current frame. */
   float view_frame_seconds;
 
+  /** Preferred device/vendor for GPU device selection. */
+  int gpu_preferred_index;
+  uint32_t gpu_preferred_vendor_id;
+  uint32_t gpu_preferred_device_id;
+  char _pad16[4];
   /** #eGPUBackendType */
   short gpu_backend;
 
@@ -1593,6 +1601,7 @@ typedef enum eUserpref_SeqProxySetup {
 
 typedef enum eUserpref_SeqEditorFlags {
   USER_SEQ_ED_SIMPLE_TWEAKING = (1 << 0),
+  USER_SEQ_ED_CONNECT_STRIPS_BY_DEFAULT = (1 << 1),
 } eUserpref_SeqEditorFlags;
 
 /* Locale Ids. Auto will try to get local from OS. Our default is English though. */

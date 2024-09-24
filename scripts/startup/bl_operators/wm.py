@@ -1086,8 +1086,8 @@ class WM_OT_url_open_preset(Operator):
     )
 
     def _url_from_bug(self, _context):
-        from bl_ui_utils.bug_report_url import url_prefill_from_blender
-        return url_prefill_from_blender()
+        from _bpy_internal.system_info.url_prefill_runtime import url_from_blender
+        return url_from_blender()
 
     def _url_from_release_notes(self, _context):
         return "https://www.blender.org/download/releases/{:d}-{:d}/".format(*bpy.app.version[:2])
@@ -1886,6 +1886,11 @@ class WM_OT_properties_edit(Operator):
 
         self._update_blender_for_prop_change(context, item, name, prop_type_old, prop_type_new)
 
+        if name_old != name:
+            adt = getattr(item, "animation_data", None)
+            if adt is not None:
+                adt.fix_paths_rename_all(prefix="", old_name=name_old, new_name=name)
+
         return {'FINISHED'}
 
     def invoke(self, context, _event):
@@ -2192,8 +2197,18 @@ class WM_OT_sysinfo(Operator):
     )
 
     def execute(self, _context):
-        import sys_info
-        sys_info.write_sysinfo(self.filepath)
+        from _bpy_internal.system_info.text_generate_runtime import write
+        with open(self.filepath, "w", encoding="utf-8") as output:
+            try:
+                write(output)
+            except Exception as ex:
+                # Not expected to occur, simply forward the exception.
+                self.report({'ERROR'}, str(ex))
+
+                # Also write into the file (to avoid confusion).
+                output.write("ERROR: {:s}\n".format(str(ex)))
+                return {'CANCELLED'}
+
         return {'FINISHED'}
 
     def invoke(self, context, _event):
@@ -2712,7 +2727,7 @@ class WM_OT_batch_rename(Operator):
         return tuple(set([
             id for id_base in context.selected_ids
             if isinstance(id := id_base.data if isinstance(id_base, Object) else id_base, ty)
-            if id.is_editabe
+            if id.is_editable
         ]))
 
     @staticmethod
@@ -2736,6 +2751,8 @@ class WM_OT_batch_rename(Operator):
 
     @classmethod
     def _data_from_context(cls, context, data_type, only_selected, *, check_context=False):
+        def _is_editable(data):
+            return data.is_editable and not data.override_library
 
         mode = context.mode
         scene = context.scene
@@ -2897,7 +2914,8 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.is_editable]
+                        if ((space_type == 'OUTLINER') and only_selected) else
+                        [id for id in bpy.data.scenes if id.is_editable]
                     ),
                     "name",
                     iface_("Scene(s)"),
@@ -2907,7 +2925,8 @@ class WM_OT_batch_rename(Operator):
                     (
                         # Outliner.
                         cls._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.is_editable]
+                        if ((space_type == 'OUTLINER') and only_selected) else
+                        [id for id in bpy.data.brushes if id.is_editable]
                     ),
                     "name",
                     iface_("Brush(es)"),
@@ -2932,6 +2951,7 @@ class WM_OT_batch_rename(Operator):
                     "name",
                     descr,
                 )
+        data = ([id for id in data[0] if _is_editable(id)], data[1], data[2])
 
         return data
 

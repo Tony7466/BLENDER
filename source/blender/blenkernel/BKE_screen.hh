@@ -655,7 +655,7 @@ ARegion *BKE_region_find_in_listbase_by_type(const ListBase *regionbase, const i
  * \note This does _not_ work if the region to look up is not in the active space.
  * Use #BKE_spacedata_find_region_type if that may be the case.
  */
-ARegion *BKE_area_find_region_type(const ScrArea *area, int regon_type);
+ARegion *BKE_area_find_region_type(const ScrArea *area, int region_type);
 ARegion *BKE_area_find_region_active_win(const ScrArea *area);
 ARegion *BKE_area_find_region_xy(const ScrArea *area, int regiontype, const int xy[2])
     ATTR_NONNULL(3);
@@ -676,6 +676,10 @@ ScrArea *BKE_screen_find_area_from_space(const bScreen *screen,
                                          const SpaceLink *sl) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL(1, 2);
 /**
+ * \note used to get proper RNA paths for spaces (editors).
+ */
+std::optional<std::string> BKE_screen_path_from_screen_to_space(const PointerRNA *ptr);
+/**
  * \note Using this function is generally a last resort, you really want to be
  * using the context when you can - campbell
  */
@@ -687,6 +691,12 @@ ScrArea *BKE_screen_find_area_xy(const bScreen *screen, int spacetype, const int
     ATTR_NONNULL(1, 3);
 
 void BKE_screen_gizmo_tag_refresh(bScreen *screen);
+
+/**
+ * Refresh any screen data that should be set on file-load
+ * with "Load UI" disabled.
+ */
+void BKE_screen_runtime_refresh_for_blendfile(bScreen *screen);
 
 void BKE_screen_view3d_sync(View3D *v3d, Scene *scene);
 void BKE_screen_view3d_scene_sync(bScreen *screen, Scene *scene);
