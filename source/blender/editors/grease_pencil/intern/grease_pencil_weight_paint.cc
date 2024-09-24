@@ -435,23 +435,9 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
       for (const int point_i : curves.points_range()) {
         const float3 position = positions[point_i];
         const float dist_to_bone = dist_squared_to_line_segment_v3(position, bone_root, bone_tip);
-        const float weight = [&]() {
-          if (dist_to_bone > radius_squared) {
-            /* If not in cylinder, check if inside extreme spheres. */
-            const float dist_to_root = math::distance_squared(bone_root, position);
-            if (dist_to_root < radius_squared) {
-              return get_weight(dist_to_root, decay_rad, diff_rad);
-            }
-            const float dist_to_tip = math::distance_squared(bone_tip, position);
-            if (dist_to_tip < radius_squared) {
-              return get_weight(dist_to_tip, decay_rad, diff_rad);
-            }
-            return 0.0f;
-          }
-          /* Inside bone cylinder. */
-          return get_weight(dist_to_bone, decay_rad, diff_rad);
-        }();
-
+        const float weight = (dist_to_bone > radius_squared) ?
+                                 0.0f :
+                                 get_weight(dist_to_bone, decay_rad, diff_rad);
         if (weight != 0.0f) {
           weights.set(point_i, weight);
         }
