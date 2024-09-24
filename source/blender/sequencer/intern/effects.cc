@@ -3254,8 +3254,8 @@ static float2 horizontal_alignment_offset_get(const TextVars *data,
                                               float line_width,
                                               int width_max)
 {
-  float line_offset = (width_max - line_width) / 2.0f;
-  float center_offset = -line_width / 2.0f;
+  const float line_offset = (width_max - line_width) / 2.0f;
+  const float center_offset = -line_width / 2.0f;
 
   if (data->align == SEQ_TEXT_ALIGN_X_RIGHT) {
     return {center_offset + line_offset, 0.0f};
@@ -3274,13 +3274,13 @@ static void apply_text_alignment(const TextVars *data, TextVarsRuntime &runtime,
   const int width_max = text_box_width_get(runtime.lines);
   const int text_height = runtime.lines.size() * runtime.line_height;
 
-  float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
-  float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
-  float2 alignment_y(0.0f, text_height / 2.0f);
+  const float2 image_center{data->loc[0] * image_width, data->loc[1] * image_height};
+  const float2 line_height_offset{0.0f, float(-runtime.line_height - BLF_descender(runtime.font))};
+  const float2 alignment_y(0.0f, text_height / 2.0f);
 
   for (LineInfo &line : runtime.lines) {
-    float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
-    float2 alignment = image_center + line_height_offset + alignment_x + alignment_y;
+    const float2 alignment_x = horizontal_alignment_offset_get(data, line.width, width_max);
+    const float2 alignment = image_center + line_height_offset + alignment_x + alignment_y;
 
     for (CharInfo &character : line.characters) {
       character.position += alignment;
@@ -3297,7 +3297,7 @@ static void calc_text_runtime(const Sequence *seq,
                               ImBuf *ibuf,
                               TextVarsRuntime &r_runtime)
 {
-  TextVars *data = static_cast<TextVars *>(seq->effectdata);
+  const TextVars *data = static_cast<TextVars *>(seq->effectdata);
 
   r_runtime.font = font;
   r_runtime.line_height = BLF_height_max(font);
