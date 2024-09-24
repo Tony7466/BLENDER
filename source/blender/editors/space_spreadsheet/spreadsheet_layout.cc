@@ -251,11 +251,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        nullptr);
     }
     else if (data.type().is<MStringProperty>()) {
+      char len=data.get<MStringProperty>(real_index).s_len;
       uiBut *but = uiDefIconTextBut(params.block,
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    std::string(data.get<MStringProperty>(real_index).s, 255),
+                                    std::string(data.get<MStringProperty>(real_index).s, len),
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -264,8 +265,9 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
-      auto buf = MEM_mallocN(255, __func__);
-      memcpy(buf, data.get<MStringProperty>(real_index).s, 255);
+      auto buf = (char*)MEM_mallocN(len+1, __func__);
+      memcpy(buf, data.get<MStringProperty>(real_index).s, len);
+      buf[len]=0;
       UI_but_func_tooltip_set(
           but,
           [](bContext * /*C*/, void *argN, const char * /*tip*/) {
