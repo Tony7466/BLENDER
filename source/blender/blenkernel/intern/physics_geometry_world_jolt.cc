@@ -82,8 +82,14 @@ static void set_constraint_frame2(JPH::Constraint & /*constraint*/, float4x4 /*v
 
 static Array<JPH::BodyID> get_body_ids(const Span<JPH::Body *> bodies, const IndexMask &selection)
 {
-  Array<JPH::BodyID> body_ids(selection.size());
-  selection.foreach_index(GrainSize(4096), [&](const int src_i, const int dst_i) {
+  IndexMaskMemory memory;
+  IndexMask selection_valid = IndexMask::from_predicate(
+      selection, GrainSize(4096), memory, [&](const int index) {
+        return bodies[index] != nullptr;
+      });
+
+  Array<JPH::BodyID> body_ids(selection_valid.size());
+  selection_valid.foreach_index(GrainSize(4096), [&](const int src_i, const int dst_i) {
     body_ids[dst_i] = bodies[src_i]->GetID();
   });
   return body_ids;
