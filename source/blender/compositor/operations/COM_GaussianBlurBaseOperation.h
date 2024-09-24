@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,6 +29,16 @@ class GaussianBlurBaseOperation : public BlurBaseOperation {
   virtual void update_memory_buffer_partial(MemoryBuffer *output,
                                             const rcti &area,
                                             Span<MemoryBuffer *> inputs) override;
+};
+
+class GaussianXBlurOperation : public GaussianBlurBaseOperation {
+ public:
+  GaussianXBlurOperation() : GaussianBlurBaseOperation(eDimension::X) {}
+};
+
+class GaussianYBlurOperation : public GaussianBlurBaseOperation {
+ public:
+  GaussianYBlurOperation() : GaussianBlurBaseOperation(eDimension::Y) {}
 };
 
 }  // namespace blender::compositor

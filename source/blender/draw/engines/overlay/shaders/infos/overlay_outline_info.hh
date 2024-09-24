@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,13 +16,13 @@ GPU_SHADER_CREATE_INFO(overlay_outline_prepass)
     /* Using uint because 16bit uint can contain more ids than int. */
     .fragment_out(0, Type::UINT, "out_object_id")
     .fragment_source("overlay_outline_prepass_frag.glsl")
-    .additional_info("draw_resource_handle", "draw_globals");
+    .additional_info("draw_globals");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_mesh)
     .do_static_compilation(true)
     .vertex_in(0, Type::VEC3, "pos")
     .vertex_source("overlay_outline_prepass_vert.glsl")
-    .additional_info("draw_mesh", "overlay_outline_prepass")
+    .additional_info("draw_mesh", "draw_resource_handle", "overlay_outline_prepass")
     .additional_info("draw_object_infos");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_mesh_clipped)
@@ -34,21 +34,20 @@ GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_wire_iface, "vert").flat(Type:
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_curves)
     .do_static_compilation(true)
     .vertex_source("overlay_outline_prepass_curves_vert.glsl")
-    .additional_info("draw_hair", "overlay_outline_prepass")
+    .additional_info("draw_hair", "draw_resource_handle", "overlay_outline_prepass")
     .additional_info("draw_object_infos");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_curves_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_outline_prepass_curves", "drw_clipped");
 
-GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire_common)
-    .vertex_in(0, Type::VEC3, "pos")
-    .additional_info("draw_mesh", "overlay_outline_prepass")
-    .additional_info("draw_object_infos");
-
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire)
     .do_static_compilation(true)
-    .additional_info("overlay_outline_prepass_wire_common")
+    .additional_info("overlay_outline_prepass",
+                     "draw_object_infos",
+                     "draw_mesh",
+                     "draw_resource_handle")
+    .vertex_in(0, Type::VEC3, "pos")
     .define("USE_GEOM")
     .vertex_out(overlay_outline_prepass_wire_iface)
     .geometry_layout(PrimitiveIn::LINES_ADJACENCY, PrimitiveOut::LINE_STRIP, 2)
@@ -56,27 +55,46 @@ GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire)
     .vertex_source("overlay_outline_prepass_vert.glsl")
     .geometry_source("overlay_outline_prepass_geom.glsl");
 
+GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire_next)
+    .do_static_compilation(true)
+    .additional_info("overlay_outline_prepass",
+                     "draw_view",
+                     "draw_mesh_new",
+                     "draw_object_infos_new",
+                     "draw_resource_handle_new",
+                     "gpu_index_load")
+    .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
+    .push_constant(Type::IVEC2, "gpu_attr_0")
+    .vertex_source("overlay_outline_prepass_wire_vert.glsl");
+
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire_no_geom)
     .metal_backend_only(true)
     .do_static_compilation(true)
-    .additional_info("overlay_outline_prepass_wire_common")
+    .vertex_in(0, Type::VEC3, "pos")
+    .additional_info("overlay_outline_prepass",
+                     "draw_object_infos",
+                     "draw_mesh",
+                     "draw_resource_handle")
     .vertex_source("overlay_outline_prepass_vert_no_geom.glsl");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_wire_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_outline_prepass_wire", "drw_clipped");
 
-GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_gpencil_iface, "gp_interp")
-    .no_perspective(Type::VEC2, "thickness")
-    .no_perspective(Type::FLOAT, "hardness")
+GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_gpencil_flat_iface, "gp_interp_flat")
     .flat(Type::VEC2, "aspect")
     .flat(Type::VEC4, "sspos");
+GPU_SHADER_INTERFACE_INFO(overlay_outline_prepass_gpencil_noperspective_iface,
+                          "gp_interp_noperspective")
+    .no_perspective(Type::VEC2, "thickness")
+    .no_perspective(Type::FLOAT, "hardness");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_gpencil)
     .do_static_compilation(true)
     .push_constant(Type::BOOL, "isTransform")
     .vertex_out(overlay_outline_prepass_iface)
-    .vertex_out(overlay_outline_prepass_gpencil_iface)
+    .vertex_out(overlay_outline_prepass_gpencil_flat_iface)
+    .vertex_out(overlay_outline_prepass_gpencil_noperspective_iface)
     .vertex_source("overlay_outline_prepass_gpencil_vert.glsl")
     .push_constant(Type::BOOL, "gpStrokeOrder3d") /* TODO(fclem): Move to a GPencil object UBO. */
     .push_constant(Type::VEC4, "gpDepthPlane")    /* TODO(fclem): Move to a GPencil object UBO. */
@@ -93,7 +111,7 @@ GPU_SHADER_CREATE_INFO(overlay_outline_prepass_gpencil_clipped)
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_pointcloud)
     .do_static_compilation(true)
     .vertex_source("overlay_outline_prepass_pointcloud_vert.glsl")
-    .additional_info("draw_pointcloud", "overlay_outline_prepass")
+    .additional_info("draw_pointcloud", "draw_resource_handle", "overlay_outline_prepass")
     .additional_info("draw_object_infos");
 
 GPU_SHADER_CREATE_INFO(overlay_outline_prepass_pointcloud_clipped)

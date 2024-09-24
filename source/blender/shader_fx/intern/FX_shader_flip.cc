@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,15 +15,15 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "FX_shader_types.h"
 #include "FX_ui_common.h"

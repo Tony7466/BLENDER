@@ -6,6 +6,7 @@
  * \ingroup render
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <cstdio>
@@ -17,15 +18,15 @@
 #  include <io.h>
 #endif
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_image_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_interp.hh"
+#include "BLI_math_vector.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -74,7 +75,7 @@ static void ibuf_get_color(float col[4], ImBuf *ibuf, int x, int y)
     col[2] = float(rect[2]) * (1.0f / 255.0f);
     col[3] = float(rect[3]) * (1.0f / 255.0f);
 
-    /* bytes are internally straight, however render pipeline seems to expect premul */
+    /* Bytes are internally straight, however render pipeline seems to expect pre-multiplied. */
     col[0] *= col[3];
     col[1] *= col[3];
     col[2] *= col[3];
@@ -135,7 +136,7 @@ int imagewrap(Tex *tex,
 
   /* setup mapping */
   if (tex->imaflag & TEX_IMAROT) {
-    SWAP(float, fx, fy);
+    std::swap(fx, fy);
   }
 
   if (tex->extend == TEX_CHECKER) {
@@ -649,7 +650,7 @@ static void boxsample(ImBuf *ibuf,
   }
 
   if (alphaclip != 1.0f) {
-    /* premul it all */
+    /* Pre-multiply it all. */
     texres->trgba[0] *= alphaclip;
     texres->trgba[1] *= alphaclip;
     texres->trgba[2] *= alphaclip;
@@ -711,13 +712,13 @@ static int ibuf_get_color_clip(float col[4], ImBuf *ibuf, int x, int y, int extf
       } /* TXF alpha: clip = 1; } */
       if (x >= ibuf->x) {
         x = ibuf->x - 1;
-      } /* TXF alpha:  clip = 1; } */
+      } /* TXF alpha: clip = 1; } */
       if (y < 0) {
         y = 0;
-      } /* TXF alpha:  clip = 1; } */
+      } /* TXF alpha: clip = 1; } */
       if (y >= ibuf->y) {
         y = ibuf->y - 1;
-      } /* TXF alpha:  clip = 1; } */
+      } /* TXF alpha: clip = 1; } */
     }
   }
 
@@ -768,7 +769,7 @@ static int ibuf_get_color_clip_bilerp(
   return ibuf_get_color_clip(col, ibuf, int(u), int(v), extflag);
 }
 
-static void area_sample(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata_t *AFD)
+static void area_sample(TexResult *texr, ImBuf *ibuf, float fx, float fy, const afdata_t *AFD)
 {
   int xs, ys, clip = 0;
   float tc[4], xsd, ysd, cw = 0.0f;
@@ -777,8 +778,8 @@ static void area_sample(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata
   int xsam = int(0.5f * sqrtf(ux * ux + uy * uy) + 0.5f);
   int ysam = int(0.5f * sqrtf(vx * vx + vy * vy) + 0.5f);
   const int minsam = AFD->intpol ? 2 : 4;
-  xsam = CLAMPIS(xsam, minsam, ibuf->x * 2);
-  ysam = CLAMPIS(ysam, minsam, ibuf->y * 2);
+  xsam = std::clamp(xsam, minsam, ibuf->x * 2);
+  ysam = std::clamp(ysam, minsam, ibuf->y * 2);
   xsd = 1.0f / xsam;
   ysd = 1.0f / ysam;
   texr->trgba[0] = texr->trgba[1] = texr->trgba[2] = texr->trgba[3] = 0.0f;
@@ -808,7 +809,7 @@ static void area_sample(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata
 
 struct ReadEWAData {
   ImBuf *ibuf;
-  afdata_t *AFD;
+  const afdata_t *AFD;
 };
 
 static void ewa_read_pixel_cb(void *userdata, int x, int y, float result[4])
@@ -817,7 +818,7 @@ static void ewa_read_pixel_cb(void *userdata, int x, int y, float result[4])
   ibuf_get_color_clip(result, data->ibuf, x, y, data->AFD->extflag);
 }
 
-static void ewa_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata_t *AFD)
+static void ewa_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, const afdata_t *AFD)
 {
   ReadEWAData data;
   const float uv[2] = {fx, fy};
@@ -835,7 +836,7 @@ static void ewa_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata_t 
                  texr->trgba);
 }
 
-static void feline_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, afdata_t *AFD)
+static void feline_eval(TexResult *texr, ImBuf *ibuf, float fx, float fy, const afdata_t *AFD)
 {
   const int maxn = AFD->iProbes - 1;
   const float ll = ((AFD->majrad == AFD->minrad) ? 2.0f * AFD->majrad :
@@ -907,7 +908,7 @@ static void alpha_clip_aniso(const ImBuf *ibuf,
     alphaclip = max_ff(alphaclip, 0.0f);
 
     if (alphaclip != 1.0f) {
-      /* premul it all */
+      /* Pre-multiply it all. */
       texres->trgba[0] *= alphaclip;
       texres->trgba[1] *= alphaclip;
       texres->trgba[2] *= alphaclip;
@@ -957,7 +958,7 @@ static int imagewraposa_aniso(Tex *tex,
   int curmap, retval, intpol, extflag = 0;
   afdata_t AFD;
 
-  void (*filterfunc)(TexResult *, ImBuf *, float, float, afdata_t *);
+  void (*filterfunc)(TexResult *, ImBuf *, float, float, const afdata_t *);
   switch (tex->texfilter) {
     case TXF_EWA:
       filterfunc = ewa_eval;
@@ -1033,7 +1034,7 @@ static int imagewraposa_aniso(Tex *tex,
   if (tex->imaflag & TEX_FILTER_MIN) {
     /* Make sure the filtersize is minimal in pixels
      * (normal, ref map can have miniature pixel dx/dy). */
-    const float addval = (0.5f * tex->filtersize) / float(MIN2(ibuf->x, ibuf->y));
+    const float addval = (0.5f * tex->filtersize) / float(std::min(ibuf->x, ibuf->y));
     if (addval > minx) {
       minx = addval;
     }
@@ -1052,7 +1053,7 @@ static int imagewraposa_aniso(Tex *tex,
 
   if (tex->imaflag & TEX_IMAROT) {
     float t;
-    SWAP(float, minx, miny);
+    std::swap(minx, miny);
     /* must rotate dxt/dyt 90 deg
      * yet another blender problem is that swapping X/Y axes (or any tex projection switches)
      * should do something similar, but it doesn't, it only swaps coords,
@@ -1217,7 +1218,7 @@ static int imagewraposa_aniso(Tex *tex,
       b = max_ff(b, 1.0f);
       fProbes = 2.0f * (a / b) - 1.0f;
       AFD.iProbes = round_fl_to_int(fProbes);
-      AFD.iProbes = MIN2(AFD.iProbes, tex->afmax);
+      AFD.iProbes = std::min(AFD.iProbes, tex->afmax);
       if (AFD.iProbes < fProbes) {
         b = 2.0f * a / float(AFD.iProbes + 1);
       }
@@ -1324,14 +1325,14 @@ static int imagewraposa_aniso(Tex *tex,
     texres->trgba[3] = 1.0f - texres->trgba[3];
   }
 
-  /* de-premul, this is being pre-multiplied in shade_input_do_shade()
+  /* de-pre-multiply, this is being pre-multiplied in shade_input_do_shade()
    * TXF: this currently does not (yet?) work properly, destroys edge AA in clip/checker mode,
-   * so for now commented out also disabled in imagewraposa()
+   * so for now commented out also disabled in #imagewraposa()
    * to be able to compare results with blender's default texture filtering */
 
   /* brecht: tried to fix this, see "TXF alpha" comments */
 
-  /* do not de-premul for generated alpha, it is already in straight */
+  /* do not de-pre-multiply for generated alpha, it is already in straight */
   if (texres->trgba[3] != 1.0f && texres->trgba[3] > 1e-4f && !(tex->imaflag & TEX_CALCALPHA)) {
     fx = 1.0f / texres->trgba[3];
     texres->trgba[0] *= fx;
@@ -1436,7 +1437,7 @@ int imagewraposa(Tex *tex,
   if (tex->imaflag & TEX_FILTER_MIN) {
     /* Make sure the filtersize is minimal in pixels
      * (normal, ref map can have miniature pixel dx/dy). */
-    float addval = (0.5f * tex->filtersize) / float(MIN2(ibuf->x, ibuf->y));
+    float addval = (0.5f * tex->filtersize) / float(std::min(ibuf->x, ibuf->y));
 
     if (addval > minx) {
       minx = addval;
@@ -1456,7 +1457,7 @@ int imagewraposa(Tex *tex,
   }
 
   if (tex->imaflag & TEX_IMAROT) {
-    SWAP(float, minx, miny);
+    std::swap(minx, miny);
   }
 
   if (minx > 0.25f) {
@@ -1639,7 +1640,7 @@ int imagewraposa(Tex *tex,
       maxd = 0.5f;
     }
 
-    pixsize = 1.0f / float(MIN2(ibuf->x, ibuf->y));
+    pixsize = 1.0f / float(std::min(ibuf->x, ibuf->y));
 
     curmap = 0;
     previbuf = curibuf = ibuf;
@@ -1649,7 +1650,7 @@ int imagewraposa(Tex *tex,
       }
       previbuf = curibuf;
       curibuf = ibuf->mipmap[curmap];
-      pixsize = 1.0f / float(MIN2(curibuf->x, curibuf->y));
+      pixsize = 1.0f / float(std::min(curibuf->x, curibuf->y));
       curmap++;
     }
 
@@ -1717,8 +1718,8 @@ int imagewraposa(Tex *tex,
     texres->trgba[3] = 1.0f - texres->trgba[3];
   }
 
-  /* de-premul, this is being pre-multiplied in shade_input_do_shade() */
-  /* do not de-premul for generated alpha, it is already in straight */
+  /* de-pre-multiply, this is being pre-multiplied in shade_input_do_shade() */
+  /* do not de-pre-multiply for generated alpha, it is already in straight */
   if (texres->trgba[3] != 1.0f && texres->trgba[3] > 1e-4f && !(tex->imaflag & TEX_CALCALPHA)) {
     mul_v3_fl(texres->trgba, 1.0f / texres->trgba[3]);
   }

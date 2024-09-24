@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,7 +37,7 @@ enum eSelectOp {
   SEL_OP_XOR,
 };
 
-/* Select Similar */
+/** Select Similar. */
 enum eSimilarCmp {
   SIM_CMP_EQ = 0,
   SIM_CMP_GT,
@@ -108,5 +108,5 @@ void ED_select_pick_params_from_operator(PointerRNA *ptr, SelectPick_Params *par
  * Get-name callback for #wmOperatorType.get_name, this is mainly useful so the selection
  * action is shown in the status-bar.
  */
-const char *ED_select_pick_get_name(wmOperatorType *ot, PointerRNA *ptr);
-const char *ED_select_circle_get_name(wmOperatorType *ot, PointerRNA *ptr);
+std::string ED_select_pick_get_name(wmOperatorType *ot, PointerRNA *ptr);
+std::string ED_select_circle_get_name(wmOperatorType *ot, PointerRNA *ptr);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,11 +12,11 @@
 #include "ExportSettings.h"
 #include "collada_utils.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_constraint.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 
 #include "BLI_listbase.h"
@@ -101,7 +101,6 @@ static bool is_object_keyframe(Object *ob, int frame_index)
 static void add_keyframes_from(bAction *action, BCFrameSet &frameset)
 {
   if (action) {
-    FCurve *fcu = nullptr;
     LISTBASE_FOREACH (FCurve *, fcu, &action->curves) {
       BezTriple *bezt = fcu->bezt;
       for (int i = 0; i < fcu->totvert; bezt++, i++) {
@@ -154,7 +153,6 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
 #endif
 
   if (ob->type == OB_ARMATURE) {
-    bPoseChannel *pchan;
     LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
       Bone *bone = pchan->bone;
       Matrix bmat;
@@ -178,7 +176,6 @@ void BCAnimationSampler::sample_scene(BCExportSettings &export_settings, bool ke
   Scene *scene = blender_context.get_scene();
   BCFrameSet scene_sample_frames;
   get_sample_frames(scene_sample_frames, sampling_rate, keyframe_at_end, scene);
-  BCFrameSet::iterator it;
 
   int startframe = scene->r.sfra;
   int endframe = scene->r.efra;
@@ -222,7 +219,6 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
                                                    ListBase *conlist,
                                                    std::set<Object *> &animated_objects)
 {
-  bConstraint *con;
   LISTBASE_FOREACH (bConstraint *, con, conlist) {
     ListBase targets = {nullptr, nullptr};
 
@@ -231,7 +227,6 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
     }
 
     if (BKE_constraint_targets_get(con, &targets)) {
-      bConstraintTarget *ct;
       Object *obtar;
       bool found = false;
 
@@ -260,7 +255,7 @@ void BCAnimationSampler::find_depending_animated(std::set<Object *> &animated_ob
     std::set<Object *>::iterator it;
     for (it = candidates.begin(); it != candidates.end(); ++it) {
       Object *cob = *it;
-      ListBase *conlist = ED_object_constraint_active_list(cob);
+      ListBase *conlist = blender::ed::object::constraint_active_list(cob);
       if (is_animated_by_constraint(cob, conlist, animated_objects)) {
         animated_objects.insert(cob);
         candidates.erase(cob);
@@ -281,7 +276,6 @@ void BCAnimationSampler::get_animated_from_export_set(std::set<Object *> &animat
    */
 
   animated_objects.clear();
-  std::set<Object *> static_objects;
   std::set<Object *> candidates;
 
   LinkNode *node;
@@ -479,7 +473,7 @@ void BCAnimationSampler::initialize_curves(BCAnimationCurveMap &curves, Object *
     if (ma) {
       action = bc_getSceneMaterialAction(ma);
       if (action) {
-        /* isMatAnim = true; */
+        // isMatAnim = true;
         FCurve *fcu = (FCurve *)action->curves.first;
         for (; fcu; fcu = fcu->next) {
           BCCurveKey key(object_type, fcu->rna_path, fcu->array_index, a);

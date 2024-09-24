@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -130,29 +130,6 @@ template<typename Ret, typename... Params> class FunctionRef<Ret(Params...)> {
   {
     BLI_assert(callback_ != nullptr);
     return callback_(callable_, std::forward<Params>(params)...);
-  }
-
-  using OptionalReturnValue = std::conditional_t<std::is_void_v<Ret>, void, std::optional<Ret>>;
-
-  /**
-   * Calls the referenced function if it is available.
-   * The return value is of type `std::optional<Ret>` if `Ret` is not `void`.
-   * Otherwise the return type is `void`.
-   */
-  OptionalReturnValue call_safe(Params... params) const
-  {
-    if constexpr (std::is_void_v<Ret>) {
-      if (callback_ == nullptr) {
-        return;
-      }
-      callback_(callable_, std::forward<Params>(params)...);
-    }
-    else {
-      if (callback_ == nullptr) {
-        return {};
-      }
-      return callback_(callable_, std::forward<Params>(params)...);
-    }
   }
 
   /**

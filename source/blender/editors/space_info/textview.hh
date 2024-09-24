@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
  */
 
 #pragma once
+
+#define TVC_TAB_COLUMNS 4
 
 enum eTextViewContext_LineFlag {
   TVC_LINE_FG = (1 << 0),

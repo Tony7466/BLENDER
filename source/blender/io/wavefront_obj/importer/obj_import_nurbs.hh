@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 
 #include "BLI_utility_mixins.hh"
 
@@ -32,7 +32,9 @@ class CurveFromGeometry : NonMovable, NonCopyable {
   {
   }
 
-  Object *create_curve(Main *bmain, const OBJImportParams &import_params);
+  Curve *create_curve();
+
+  Object *create_curve_object(Main *bmain, const OBJImportParams &import_params);
 
  private:
   /**

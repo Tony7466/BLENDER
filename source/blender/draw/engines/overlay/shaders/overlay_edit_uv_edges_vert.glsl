@@ -1,8 +1,12 @@
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 void main()
 {
-  vec3 world_pos = point_object_to_world(vec3(au, 0.0));
+  vec3 world_pos = vec3(au, 0.0);
   gl_Position = point_world_to_ndc(world_pos);
   /* Snap vertices to the pixel grid to reduce artifacts. */
   vec2 half_viewport_res = sizeViewport * 0.5;
@@ -23,5 +27,6 @@ void main()
   gl_Position.z = depth;
 
   /* Avoid precision loss. */
-  geom_in.stippleStart = geom_in.stipplePos = 500.0 + 500.0 * (gl_Position.xy / gl_Position.w);
+  geom_flat_in.stippleStart = geom_noperspective_in.stipplePos = 500.0 + 500.0 * (gl_Position.xy /
+                                                                                  gl_Position.w);
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
 
 #pragma once
 
+#include "GPU_index_buffer.hh"
 #include "MEM_guardedalloc.h"
-#include "gpu_index_buffer_private.hh"
 #include "mtl_context.hh"
 #include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>

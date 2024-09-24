@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,10 +11,10 @@
 #include <cstdio>
 #include <cstring>
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
-#include "GPU_immediate.h"
+#include "GPU_immediate.hh"
 
 #include "UI_resources.hh"
 
@@ -132,7 +132,7 @@ void immRecti_complete(int x1, int y1, int x2, int y2, const float color[4])
 
 void imm_cpack(uint x)
 {
-  immUniformColor3ub(((x)&0xFF), (((x) >> 8) & 0xFF), (((x) >> 16) & 0xFF));
+  immUniformColor3ub(((x) & 0xFF), (((x) >> 8) & 0xFF), (((x) >> 16) & 0xFF));
 }
 
 static void imm_draw_circle(GPUPrimType prim_type,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,11 +8,10 @@
 
 #include "DNA_scene_types.h"
 
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
@@ -21,14 +20,12 @@
 #include "ED_clip.hh"
 #include "ED_screen.hh"
 
-#include "UI_interface.hh"
-
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "UI_view2d.hh"
 
-#include "clip_intern.h" /* own include */
+#include "clip_intern.hh" /* own include */
 
 static bool space_clip_dopesheet_poll(bContext *C)
 {

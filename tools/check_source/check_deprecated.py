@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -24,7 +24,7 @@ from os.path import splitext
 
 SKIP_DIRS = (
     "extern",
-    # Not this directory.
+    "lib",
     "tests",
 )
 

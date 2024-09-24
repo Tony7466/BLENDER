@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "BLI_string.h"
 
@@ -65,7 +65,7 @@ void MTLUniformBuf::update(const void *data)
   }
 
   /* Allocate MTL buffer */
-  MTLContext *ctx = static_cast<MTLContext *>(unwrap(GPU_context_active_get()));
+  MTLContext *ctx = MTLContext::get();
   BLI_assert(ctx);
   BLI_assert(ctx->device);
   UNUSED_VARS_NDEBUG(ctx);

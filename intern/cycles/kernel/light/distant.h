@@ -36,8 +36,8 @@ ccl_device_inline bool distant_light_sample(const ccl_global KernelLight *klight
                                             ccl_private LightSample *ls)
 {
   float unused;
-  sample_uniform_cone_concentric(
-      klight->co, klight->distant.one_minus_cosangle, rand, &unused, &ls->Ng, &ls->pdf);
+  ls->Ng = sample_uniform_cone(
+      klight->co, klight->distant.one_minus_cosangle, rand, &unused, &ls->pdf);
 
   ls->P = ls->Ng;
   ls->D = -ls->Ng;
@@ -129,12 +129,23 @@ ccl_device bool distant_light_sample_from_intersection(KernelGlobals kg,
   return true;
 }
 
+template<bool in_volume_segment>
 ccl_device_forceinline bool distant_light_tree_parameters(const float3 centroid,
                                                           const float theta_e,
+                                                          const float t,
                                                           ccl_private float &cos_theta_u,
                                                           ccl_private float2 &distance,
-                                                          ccl_private float3 &point_to_centroid)
+                                                          ccl_private float3 &point_to_centroid,
+                                                          ccl_private float &theta_d)
 {
+  if (in_volume_segment) {
+    if (t == FLT_MAX) {
+      /* In world volume, distant light has no contribution. */
+      return false;
+    }
+    theta_d = t;
+  }
+
   /* Treating it as a disk light 1 unit away */
   cos_theta_u = fast_cosf(theta_e);
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -90,6 +90,7 @@ enum class CPPTypeFlags {
   Hashable = 1 << 0,
   Printable = 1 << 1,
   EqualityComparable = 1 << 2,
+  IdentityDefaultValue = 1 << 3,
 
   BasicType = Hashable | Printable | EqualityComparable,
 };
@@ -637,22 +638,9 @@ class CPPType : NonCopyable, NonMovable {
     print_(value, ss);
   }
 
-  std::string to_string(const void *value) const
-  {
-    std::stringstream ss;
-    this->print(value, ss);
-    return ss.str();
-  }
+  std::string to_string(const void *value) const;
 
-  void print_or_default(const void *value, std::stringstream &ss, StringRef default_value) const
-  {
-    if (this->is_printable()) {
-      this->print(value, ss);
-    }
-    else {
-      ss << default_value;
-    }
-  }
+  void print_or_default(const void *value, std::stringstream &ss, StringRef default_value) const;
 
   bool is_equal(const void *a, const void *b) const
   {

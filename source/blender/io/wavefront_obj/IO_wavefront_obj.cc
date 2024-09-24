@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,12 @@
  * \ingroup obj
  */
 
+#include <iostream>
+
 #include "BLI_path_util.h"
 #include "BLI_timeit.hh"
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 
 #include "obj_exporter.hh"
 #include "obj_importer.hh"
@@ -36,4 +38,10 @@ void OBJ_import(bContext *C, const OBJImportParams *import_params)
   TimePoint start_time = Clock::now();
   blender::io::obj::importer_main(C, *import_params);
   report_duration("import", start_time, import_params->filepath);
+}
+
+void OBJ_import_geometries(const OBJImportParams *import_params,
+                           blender::Vector<blender::bke::GeometrySet> &geometries)
+{
+  blender::io::obj::importer_geometry(*import_params, geometries);
 }

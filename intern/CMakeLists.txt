@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -50,6 +50,10 @@ endif()
 
 if(WITH_MOD_FLUID)
   add_subdirectory(mantaflow)
+endif()
+
+if(WITH_UV_SLIM)
+  add_subdirectory(slim)
 endif()
 
 if(WITH_OPENVDB)

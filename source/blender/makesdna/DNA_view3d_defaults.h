@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,6 @@
 
 #pragma once
 
-/* Struct members on own line. */
 /* clang-format off */
 
 /* -------------------------------------------------------------------- */
@@ -56,8 +55,8 @@
  \
     .edit_flag = V3D_OVERLAY_EDIT_FACES | V3D_OVERLAY_EDIT_SEAMS | \
                              V3D_OVERLAY_EDIT_SHARP | V3D_OVERLAY_EDIT_FREESTYLE_EDGE | \
-                             V3D_OVERLAY_EDIT_FREESTYLE_FACE | V3D_OVERLAY_EDIT_EDGES | \
-                             V3D_OVERLAY_EDIT_CREASES | V3D_OVERLAY_EDIT_BWEIGHTS, \
+                             V3D_OVERLAY_EDIT_FREESTYLE_FACE | V3D_OVERLAY_EDIT_CREASES | \
+                             V3D_OVERLAY_EDIT_BWEIGHTS, \
     .handle_display = CURVE_HANDLE_SELECTED, \
  \
     .gpencil_paper_opacity = 0.5f, \
@@ -86,7 +85,7 @@
     .gridflag = V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID, \
  \
     .flag = V3D_SELECT_OUTLINE, \
-    .flag2 = V3D_SHOW_RECONSTRUCTION | V3D_SHOW_ANNOTATION | V3D_SHOW_VIEWER, \
+    .flag2 = V3D_SHOW_RECONSTRUCTION | V3D_SHOW_ANNOTATION | V3D_SHOW_VIEWER | V3D_SHOW_CAMERA_GUIDES | V3D_SHOW_CAMERA_PASSEPARTOUT, \
  \
     .lens = 50.0f, \
     .clip_start = 0.01f, \

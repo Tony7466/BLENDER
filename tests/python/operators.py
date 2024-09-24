@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -350,6 +350,13 @@ def main():
         SpecMeshTest(
             "CubeMergeNormals", "testCubeMergeNormals", "expectedCubeMergeNormals",
             [OperatorSpecEditMode("merge_normals", {}, "FACE", {3, 5})],
+        ),
+
+        # Quads convert to tris
+        SpecMeshTest(
+            "CubeQuadsConvertToTris", "testCubeQuadsConvertToTris", "expectedCubeQuadsConvertToTris",
+            [OperatorSpecEditMode("quads_convert_to_tris", {"quad_method": "BEAUTY", "ngon_method": "BEAUTY"},
+                                  'FACE', {0, 1, 2, 3, 4, 5})],
         ),
 
         # select all

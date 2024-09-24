@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,7 +21,7 @@ set(SRC
   script_ops.cc
   space_script.cc
 
-  script_intern.h
+  script_intern.hh
 )
 
 set(LIB

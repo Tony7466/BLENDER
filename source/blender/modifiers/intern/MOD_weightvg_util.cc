@@ -8,11 +8,11 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_color_types.h" /* CurveMapping. */
 #include "DNA_mesh_types.h"
@@ -21,21 +21,21 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_colortools.h" /* CurveMapping. */
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_deform.h"
-#include "BKE_modifier.h"
-#include "BKE_scene.h"
+#include "BKE_colortools.hh" /* CurveMapping. */
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_modifier.hh"
+#include "BKE_scene.hh"
 #include "BKE_texture.h" /* Texture masking. */
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 #include "MOD_ui_common.hh"
@@ -138,7 +138,7 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
     float(*tex_co)[3];
     /* See mapping note below... */
     MappingInfoModifierData t_map;
-    const int verts_num = mesh->totvert;
+    const int verts_num = mesh->verts_num;
 
     /* Use new generic get_texture_coords, but do not modify our DNA struct for it...
      * XXX Why use a ModifierData stuff here ? Why not a simple, generic struct for parameters?
@@ -333,8 +333,8 @@ void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, 
                  "texture.new",
                  nullptr,
                  nullptr,
-                 0,
-                 ICON_NONE,
+                 UI_TEMPLATE_ID_FILTER_ALL,
+                 false,
                  IFACE_("Mask Texture"));
 
     if (has_mask_texture) {

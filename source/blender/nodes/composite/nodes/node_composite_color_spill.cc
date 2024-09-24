@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,12 +6,12 @@
  * \ingroup cmpnodes
  */
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
 
@@ -192,15 +192,15 @@ void register_node_type_cmp_color_spill()
 {
   namespace file_ns = blender::nodes::node_composite_color_spill_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_COLOR_SPILL, "Color Spill", NODE_CLASS_MATTE);
   ntype.declare = file_ns::cmp_node_color_spill_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_color_spill;
   ntype.initfunc = file_ns::node_composit_init_color_spill;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeColorspill", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_shader_node = file_ns::get_compositor_shader_node;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

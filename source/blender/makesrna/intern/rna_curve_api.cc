@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,15 +9,15 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "BLI_sys_types.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 #ifdef RNA_RUNTIME
 static void rna_Curve_transform(Curve *cu, const float mat[16], bool shape_keys)

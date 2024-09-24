@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -357,7 +357,7 @@ class Grid {
     } while ((!visitor.stop()) && (nextRayCell(_current_cell, _current_cell)));
   }
 
-  /** returns the  cell next to the cell passed as argument. */
+  /** Returns the cell next to the cell passed as argument. */
   bool nextRayCell(Vec3u &current_cell, Vec3u &next_cell);
 
   uint _timestamp;

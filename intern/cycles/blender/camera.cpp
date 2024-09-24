@@ -64,6 +64,12 @@ struct BlenderCamera {
   float fisheye_polynomial_k3;
   float fisheye_polynomial_k4;
 
+  float central_cylindrical_range_u_min;
+  float central_cylindrical_range_u_max;
+  float central_cylindrical_range_v_min;
+  float central_cylindrical_range_v_max;
+  float central_cylindrical_radius;
+
   enum { AUTO, HORIZONTAL, VERTICAL } sensor_fit;
   float sensor_width;
   float sensor_height;
@@ -128,6 +134,8 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings &b_rende
   bcam->offscreen_dicing_scale = 1.0f;
   bcam->matrix = transform_identity();
 
+  bcam->central_cylindrical_radius = 1.0f;
+
   /* render resolution */
   bcam->render_width = render_resolution_x(b_render);
   bcam->render_height = render_resolution_y(b_render);
@@ -142,8 +150,9 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
 {
   BL::Object b_dof_object = b_camera.dof().focus_object();
 
-  if (!b_dof_object)
+  if (!b_dof_object) {
     return b_camera.dof().focus_distance();
+  }
 
   Transform dofmat = get_transform(b_dof_object.matrix_world());
 
@@ -164,6 +173,28 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
   return fabsf(dot(view_dir, dof_dir));
 }
 
+static PanoramaType blender_panorama_type_to_cycles(const BL::Camera::panorama_type_enum type)
+{
+  switch (type) {
+    case BL::Camera::panorama_type_EQUIRECTANGULAR:
+      return PANORAMA_EQUIRECTANGULAR;
+    case BL::Camera::panorama_type_EQUIANGULAR_CUBEMAP_FACE:
+      return PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
+    case BL::Camera::panorama_type_MIRRORBALL:
+      return PANORAMA_MIRRORBALL;
+    case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
+      return PANORAMA_FISHEYE_EQUIDISTANT;
+    case BL::Camera::panorama_type_FISHEYE_EQUISOLID:
+      return PANORAMA_FISHEYE_EQUISOLID;
+    case BL::Camera::panorama_type_FISHEYE_LENS_POLYNOMIAL:
+      return PANORAMA_FISHEYE_LENS_POLYNOMIAL;
+    case BL::Camera::panorama_type_CENTRAL_CYLINDRICAL:
+      return PANORAMA_CENTRAL_CYLINDRICAL;
+  }
+  /* Could happen if loading a newer file that has an unsupported type. */
+  return PANORAMA_FISHEYE_EQUISOLID;
+}
+
 static void blender_camera_from_object(BlenderCamera *bcam,
                                        BL::RenderEngine &b_engine,
                                        BL::Object &b_ob,
@@ -173,7 +204,6 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
   if (b_ob_data.is_a(&RNA_Camera)) {
     BL::Camera b_camera(b_ob_data);
-    PointerRNA ccamera = RNA_pointer_get(&b_camera.ptr, "cycles");
 
     bcam->nearclip = b_camera.clip_start();
     bcam->farclip = b_camera.clip_end();
@@ -183,10 +213,12 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         bcam->type = CAMERA_ORTHOGRAPHIC;
         break;
       case BL::Camera::type_PANO:
-        if (!skip_panorama)
+        if (!skip_panorama) {
           bcam->type = CAMERA_PANORAMA;
-        else
+        }
+        else {
           bcam->type = CAMERA_PERSPECTIVE;
+        }
         break;
       case BL::Camera::type_PERSP:
       default:
@@ -194,21 +226,25 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         break;
     }
 
-    bcam->panorama_type = (PanoramaType)get_enum(
-        ccamera, "panorama_type", PANORAMA_NUM_TYPES, PANORAMA_EQUIRECTANGULAR);
+    bcam->panorama_type = blender_panorama_type_to_cycles(b_camera.panorama_type());
+    bcam->fisheye_fov = b_camera.fisheye_fov();
+    bcam->fisheye_lens = b_camera.fisheye_lens();
+    bcam->latitude_min = b_camera.latitude_min();
+    bcam->latitude_max = b_camera.latitude_max();
+    bcam->longitude_min = b_camera.longitude_min();
+    bcam->longitude_max = b_camera.longitude_max();
 
-    bcam->fisheye_fov = RNA_float_get(&ccamera, "fisheye_fov");
-    bcam->fisheye_lens = RNA_float_get(&ccamera, "fisheye_lens");
-    bcam->latitude_min = RNA_float_get(&ccamera, "latitude_min");
-    bcam->latitude_max = RNA_float_get(&ccamera, "latitude_max");
-    bcam->longitude_min = RNA_float_get(&ccamera, "longitude_min");
-    bcam->longitude_max = RNA_float_get(&ccamera, "longitude_max");
+    bcam->fisheye_polynomial_k0 = b_camera.fisheye_polynomial_k0();
+    bcam->fisheye_polynomial_k1 = b_camera.fisheye_polynomial_k1();
+    bcam->fisheye_polynomial_k2 = b_camera.fisheye_polynomial_k2();
+    bcam->fisheye_polynomial_k3 = b_camera.fisheye_polynomial_k3();
+    bcam->fisheye_polynomial_k4 = b_camera.fisheye_polynomial_k4();
 
-    bcam->fisheye_polynomial_k0 = RNA_float_get(&ccamera, "fisheye_polynomial_k0");
-    bcam->fisheye_polynomial_k1 = RNA_float_get(&ccamera, "fisheye_polynomial_k1");
-    bcam->fisheye_polynomial_k2 = RNA_float_get(&ccamera, "fisheye_polynomial_k2");
-    bcam->fisheye_polynomial_k3 = RNA_float_get(&ccamera, "fisheye_polynomial_k3");
-    bcam->fisheye_polynomial_k4 = RNA_float_get(&ccamera, "fisheye_polynomial_k4");
+    bcam->central_cylindrical_range_u_min = b_camera.central_cylindrical_range_u_min();
+    bcam->central_cylindrical_range_u_max = b_camera.central_cylindrical_range_u_max();
+    bcam->central_cylindrical_range_v_min = b_camera.central_cylindrical_range_v_min();
+    bcam->central_cylindrical_range_v_max = b_camera.central_cylindrical_range_v_max();
+    bcam->central_cylindrical_radius = b_camera.central_cylindrical_radius();
 
     bcam->interocular_distance = b_camera.stereo().interocular_distance();
     if (b_camera.stereo().convergence_mode() == BL::CameraStereoData::convergence_mode_PARALLEL) {
@@ -235,10 +271,12 @@ static void blender_camera_from_object(BlenderCamera *bcam,
       float fstop = b_camera.dof().aperture_fstop();
       fstop = max(fstop, 1e-5f);
 
-      if (bcam->type == CAMERA_ORTHOGRAPHIC)
+      if (bcam->type == CAMERA_ORTHOGRAPHIC) {
         bcam->aperturesize = 1.0f / (2.0f * fstop);
-      else
+      }
+      else {
         bcam->aperturesize = (bcam->lens * 1e-3f) / (2.0f * fstop);
+      }
 
       bcam->apertureblades = b_camera.dof().aperture_blades();
       bcam->aperturerotation = b_camera.dof().aperture_rotation();
@@ -260,12 +298,15 @@ static void blender_camera_from_object(BlenderCamera *bcam,
     bcam->sensor_width = b_camera.sensor_width();
     bcam->sensor_height = b_camera.sensor_height();
 
-    if (b_camera.sensor_fit() == BL::Camera::sensor_fit_AUTO)
+    if (b_camera.sensor_fit() == BL::Camera::sensor_fit_AUTO) {
       bcam->sensor_fit = BlenderCamera::AUTO;
-    else if (b_camera.sensor_fit() == BL::Camera::sensor_fit_HORIZONTAL)
+    }
+    else if (b_camera.sensor_fit() == BL::Camera::sensor_fit_HORIZONTAL) {
       bcam->sensor_fit = BlenderCamera::HORIZONTAL;
-    else
+    }
+    else {
       bcam->sensor_fit = BlenderCamera::VERTICAL;
+    }
   }
   else if (b_ob_data.is_a(&RNA_Light)) {
     /* Can also look through spot light. */
@@ -486,18 +527,28 @@ static void blender_camera_sync(Camera *cam,
   cam->set_longitude_min(bcam->longitude_min);
   cam->set_longitude_max(bcam->longitude_max);
 
+  cam->set_central_cylindrical_range_u_min(bcam->central_cylindrical_range_u_min);
+  cam->set_central_cylindrical_range_u_max(bcam->central_cylindrical_range_u_max);
+  cam->set_central_cylindrical_range_v_min(bcam->central_cylindrical_range_v_min /
+                                           bcam->central_cylindrical_radius);
+  cam->set_central_cylindrical_range_v_max(bcam->central_cylindrical_range_v_max /
+                                           bcam->central_cylindrical_radius);
+
   /* panorama stereo */
   cam->set_interocular_distance(bcam->interocular_distance);
   cam->set_convergence_distance(bcam->convergence_distance);
   cam->set_use_spherical_stereo(bcam->use_spherical_stereo);
 
   if (cam->get_use_spherical_stereo()) {
-    if (strcmp(viewname, "left") == 0)
+    if (strcmp(viewname, "left") == 0) {
       cam->set_stereo_eye(Camera::STEREO_LEFT);
-    else if (strcmp(viewname, "right") == 0)
+    }
+    else if (strcmp(viewname, "right") == 0) {
       cam->set_stereo_eye(Camera::STEREO_RIGHT);
-    else
+    }
+    else {
       cam->set_stereo_eye(Camera::STEREO_NONE);
+    }
   }
 
   cam->set_use_pole_merge(bcam->use_pole_merge);
@@ -549,6 +600,21 @@ static void blender_camera_sync(Camera *cam,
 
 /* Sync Render Camera */
 
+static MotionPosition blender_motion_blur_position_type_to_cycles(
+    const BL::RenderSettings::motion_blur_position_enum type)
+{
+  switch (type) {
+    case BL::RenderSettings::motion_blur_position_START:
+      return MOTION_POSITION_START;
+    case BL::RenderSettings::motion_blur_position_CENTER:
+      return MOTION_POSITION_CENTER;
+    case BL::RenderSettings::motion_blur_position_END:
+      return MOTION_POSITION_END;
+  }
+  /* Could happen if loading a newer file that has an unsupported type. */
+  return MOTION_POSITION_CENTER;
+}
+
 void BlenderSync::sync_camera(BL::RenderSettings &b_render,
                               BL::Object &b_override,
                               int width,
@@ -562,13 +628,13 @@ void BlenderSync::sync_camera(BL::RenderSettings &b_render,
   bcam.pixelaspect.x = b_render.pixel_aspect_x();
   bcam.pixelaspect.y = b_render.pixel_aspect_y();
   bcam.shuttertime = b_render.motion_blur_shutter();
+  bcam.motion_position = blender_motion_blur_position_type_to_cycles(
+      b_render.motion_blur_position());
 
   BL::CurveMapping b_shutter_curve(b_render.motion_blur_shutter_curve());
   curvemapping_to_array(b_shutter_curve, bcam.shutter_curve, RAMP_TABLE_SIZE);
 
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
-  bcam.motion_position = (MotionPosition)get_enum(
-      cscene, "motion_blur_position", MOTION_NUM_POSITIONS, MOTION_POSITION_CENTER);
   bcam.rolling_shutter_type = (Camera::RollingShutterType)get_enum(
       cscene,
       "rolling_shutter_type",
@@ -587,8 +653,9 @@ void BlenderSync::sync_camera(BL::RenderSettings &b_render,
   /* camera object */
   BL::Object b_ob = b_scene.camera();
 
-  if (b_override)
+  if (b_override) {
     b_ob = b_override;
+  }
 
   if (b_ob) {
     BL::Array<float, 16> b_ob_matrix;
@@ -624,8 +691,9 @@ void BlenderSync::sync_camera(BL::RenderSettings &b_render,
 void BlenderSync::sync_camera_motion(
     BL::RenderSettings &b_render, BL::Object &b_ob, int width, int height, float motion_time)
 {
-  if (!b_ob)
+  if (!b_ob) {
     return;
+  }
 
   Camera *cam = scene->camera;
   BL::Array<float, 16> b_ob_matrix;
@@ -754,10 +822,12 @@ static void blender_camera_from_view(BlenderCamera *bcam,
     bcam->nearclip = -bcam->farclip;
 
     float sensor_size;
-    if (bcam->sensor_fit == BlenderCamera::VERTICAL)
+    if (bcam->sensor_fit == BlenderCamera::VERTICAL) {
       sensor_size = bcam->sensor_height;
-    else
+    }
+    else {
       sensor_size = bcam->sensor_width;
+    }
 
     bcam->type = CAMERA_ORTHOGRAPHIC;
     bcam->ortho_scale = b_rv3d.view_distance() * sensor_size / b_v3d.lens();
@@ -873,8 +943,9 @@ static void blender_camera_border(BlenderCamera *bcam,
 
   BL::Object b_ob = (b_v3d.use_local_camera()) ? b_v3d.camera() : b_scene.camera();
 
-  if (!b_ob)
+  if (!b_ob) {
     return;
+  }
 
   /* Determine camera border inside the viewport. */
   BoundBox2D full_border;
@@ -953,11 +1024,13 @@ BufferParams BlenderSync::get_buffer_params(
   params.full_width = width;
   params.full_height = height;
 
-  if (b_v3d && b_rv3d && b_rv3d.view_perspective() != BL::RegionView3D::view_perspective_CAMERA)
+  if (b_v3d && b_rv3d && b_rv3d.view_perspective() != BL::RegionView3D::view_perspective_CAMERA) {
     use_border = b_v3d.use_render_border();
-  else
+  }
+  else {
     /* the camera can always have a passepartout */
     use_border = true;
+  }
 
   if (use_border) {
     /* border render */

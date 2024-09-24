@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,7 @@ char *pyrna_enum_repr(const struct EnumPropertyItem *item);
  */
 int pyrna_enum_value_from_id(const struct EnumPropertyItem *item,
                              const char *identifier,
-                             int *value,
+                             int *r_value,
                              const char *error_prefix);
 
 /**

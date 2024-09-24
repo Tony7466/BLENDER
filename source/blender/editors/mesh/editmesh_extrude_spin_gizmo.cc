@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,18 +7,21 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_scene.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
 #include "ED_gizmo_utils.hh"
@@ -29,7 +32,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 #include "ED_transform.hh"
 
@@ -43,7 +46,7 @@
 // #define USE_SELECT_CENTER
 
 #ifdef USE_SELECT_CENTER
-#  include "BKE_editmesh.h"
+#  include "BKE_editmesh.hh"
 #endif
 
 static const float dial_angle_partial = M_PI_2;
@@ -364,7 +367,7 @@ static void gizmo_mesh_spin_init_refresh(const bContext *C, wmGizmoGroup *gzgrou
     }
     if (totsel) {
       mul_v3_fl(select_center, 1.0f / totsel);
-      mul_m4_v3(obedit->object_to_world, select_center);
+      mul_m4_v3(obedit->object_to_world().ptr(), select_center);
       copy_v3_v3(ggd->data.select_center, select_center);
       ggd->data.use_select_center = true;
     }
@@ -426,8 +429,7 @@ static void gizmo_mesh_spin_init_message_subscribe(const bContext *C,
   msg_sub_value_gz_tag_refresh.user_data = gzgroup->parent_gzmap;
   msg_sub_value_gz_tag_refresh.notify = WM_gizmo_do_msg_notify_tag_refresh;
 
-  PointerRNA cursor_ptr;
-  RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &cursor_ptr);
+  PointerRNA cursor_ptr = RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor);
   /* All cursor properties. */
   WM_msg_subscribe_rna(mbus, &cursor_ptr, nullptr, &msg_sub_value_gz_tag_refresh, __func__);
 

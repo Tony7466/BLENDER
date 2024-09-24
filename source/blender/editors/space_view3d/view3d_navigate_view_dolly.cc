@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,20 +6,18 @@
  * \ingroup spview3d
  */
 
-#include "BLI_math.h"
+#include "BKE_context.hh"
+#include "BKE_report.hh"
 
-#include "BKE_context.h"
-#include "BKE_report.h"
-
-#include "DEG_depsgraph.h"
+#include "BLI_math_vector.h"
 
 #include "WM_api.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "ED_screen.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 #include "view3d_navigate.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
@@ -91,7 +89,7 @@ static void viewdolly_apply(ViewOpsData *vod, const int xy[2], const bool zoom_i
       len2 = (vod->region->winrct.ymax - vod->init.event_xy[1]) + 5;
     }
     if (zoom_invert) {
-      SWAP(float, len1, len2);
+      std::swap(len1, len2);
     }
 
     zfac = 1.0f + ((len1 - len2) * 0.01f * vod->rv3d->dist);

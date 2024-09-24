@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup draw
  */
 
-#include "draw_manager.h"
-#include "draw_texture_pool.h"
+#include "draw_manager_c.hh"
+#include "draw_texture_pool.hh"
 
 #ifndef NDEBUG
 /* Maybe `gpu_texture.cc` is a better place for this. */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,21 +13,17 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_image.h"
-#include "BKE_main.h"
-#include "BKE_material.h"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_image_types.h"
 #include "DNA_material_types.h"
 #include "DNA_object_types.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "gpencil_trace.h"
 

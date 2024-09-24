@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -94,7 +94,8 @@ class VKDescriptorSet : NonCopyable {
     BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
-    other.mark_freed();
+    other.vk_descriptor_set_ = VK_NULL_HANDLE;
+    other.vk_descriptor_pool_ = VK_NULL_HANDLE;
     return *this;
   }
 
@@ -107,78 +108,37 @@ class VKDescriptorSet : NonCopyable {
   {
     return vk_descriptor_pool_;
   }
-  void mark_freed();
 };
 
 class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   friend class VKDescriptorSet;
 
- public:
-  struct Binding {
-    VKDescriptorSet::Location location;
-    VkDescriptorType type;
-
-    VkBuffer vk_buffer = VK_NULL_HANDLE;
-    VkDeviceSize buffer_size = 0;
-
-    VkBufferView vk_buffer_view = VK_NULL_HANDLE;
-
-    VKTexture *texture = nullptr;
-    VkSampler vk_sampler = VK_NULL_HANDLE;
-
-    Binding()
-    {
-      location.binding = 0;
-    }
-
-    bool is_buffer() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    }
-
-    bool is_texel_buffer() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-    }
-
-    bool is_image() const
-    {
-      return ELEM(type,
-                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
-             texture != nullptr;
-    }
-  };
-
- private:
-  /** A list of bindings that needs to be updated. */
-  Vector<Binding> bindings_;
-  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+  Vector<VkBufferView> vk_buffer_views_;
+  Vector<VkDescriptorBufferInfo> vk_descriptor_buffer_infos_;
+  Vector<VkDescriptorImageInfo> vk_descriptor_image_infos_;
+  Vector<VkWriteDescriptorSet> vk_write_descriptor_sets_;
 
  public:
+  VkDescriptorSetLayout active_vk_descriptor_set_layout = VK_NULL_HANDLE;
+
   VKDescriptorSetTracker() {}
 
-  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
+  void reset();
 
-  void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  /* TODO: bind as image */
-  void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
-  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
-  /* Bind as uniform texel buffer. */
-  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
-  /**
-   * Some shaders don't need any descriptor sets so we don't need to bind them.
-   *
-   * The result of this function determines if the descriptor set has any layout assigned.
-   * TODO: we might want to make descriptor sets optional for pipelines.
-   */
-  bool has_layout() const
+  void bind_texel_buffer(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  void bind_buffer(VkDescriptorType vk_descriptor_type,
+                   VkBuffer vk_buffer,
+                   VkDeviceSize size_in_bytes,
+                   VKDescriptorSet::Location location);
+  void bind_image(VkDescriptorType vk_descriptor_type,
+                  VkSampler vk_sampler,
+                  VkImageView vk_image_view,
+                  VkImageLayout vk_image_layout,
+                  VKDescriptorSet::Location location);
+
+  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
-    return layout_ != VK_NULL_HANDLE;
+    return active_resource();
   }
 
   /**
@@ -186,16 +146,10 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
    */
   void update(VKContext &context);
 
-  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
-  {
-    return active_resource();
-  }
-
  protected:
   std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
-  Binding &ensure_location(VKDescriptorSet::Location location);
 };
 
 }  // namespace blender::gpu

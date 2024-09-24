@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -492,7 +492,7 @@ def run_checks_on_project(
     import multiprocessing
 
     if jobs <= 0:
-        jobs = multiprocessing.cpu_count() * 2
+        jobs = multiprocessing.cpu_count()
 
     if jobs > 1:
         with multiprocessing.Pool(processes=jobs) as pool:

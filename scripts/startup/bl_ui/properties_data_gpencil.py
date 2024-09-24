@@ -1,10 +1,11 @@
-# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilLayerMasksPanel,
@@ -127,8 +128,10 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
         layer_rows = 7
 
         col = row.column()
-        col.template_list("GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
-                          rows=layer_rows, sort_reverse=True, sort_lock=True)
+        col.template_list(
+            "GPENCIL_UL_layer", "", gpd, "layers", gpd.layers, "active_index",
+            rows=layer_rows, sort_reverse=True, sort_lock=True,
+        )
 
         col = row.column()
         sub = col.column(align=True)
@@ -170,36 +173,36 @@ class DATA_PT_gpencil_layers(DataButtonsPanel, Panel):
             col.prop(gpl, "opacity", text="Opacity", slider=True)
 
             col = layout.row(align=True)
-            col.prop(gpl, "use_lights")
+            col.prop(gpl, "use_lights", text="Lights")
 
 
 class DATA_PT_gpencil_layer_masks(LayerDataButtonsPanel, GreasePencilLayerMasksPanel, Panel):
     bl_label = "Masks"
-    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_parent_id = "DATA_PT_gpencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
 
 class DATA_PT_gpencil_layer_transform(LayerDataButtonsPanel, GreasePencilLayerTransformPanel, Panel):
     bl_label = "Transform"
-    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_parent_id = "DATA_PT_gpencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
 
 class DATA_PT_gpencil_layer_adjustments(LayerDataButtonsPanel, GreasePencilLayerAdjustmentsPanel, Panel):
     bl_label = "Adjustments"
-    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_parent_id = "DATA_PT_gpencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
 
 class DATA_PT_gpencil_layer_relations(LayerDataButtonsPanel, GreasePencilLayerRelationsPanel, Panel):
     bl_label = "Relations"
-    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_parent_id = "DATA_PT_gpencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
 
 class DATA_PT_gpencil_layer_display(LayerDataButtonsPanel, GreasePencilLayerDisplayPanel, Panel):
     bl_label = "Display"
-    bl_parent_id = 'DATA_PT_gpencil_layers'
+    bl_parent_id = "DATA_PT_gpencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
 
@@ -390,7 +393,7 @@ class DATA_PT_gpencil_display(DataButtonsPanel, Panel):
 
 class DATA_PT_gpencil_canvas(DataButtonsPanel, Panel):
     bl_label = "Canvas"
-    bl_parent_id = 'DATA_PT_gpencil_display'
+    bl_parent_id = "DATA_PT_gpencil_display"
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
@@ -408,6 +411,10 @@ class DATA_PT_gpencil_canvas(DataButtonsPanel, Panel):
         row = layout.row(align=True)
         col = row.column()
         col.prop(grid, "lines", text="Subdivisions")
+
+
+class DATA_PT_gpencil_animation(DataButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'gpencil'
 
 
 class DATA_PT_custom_props_gpencil(DataButtonsPanel, PropertyPanel, Panel):
@@ -433,6 +440,7 @@ classes = (
     DATA_PT_gpencil_strokes,
     DATA_PT_gpencil_display,
     DATA_PT_gpencil_canvas,
+    DATA_PT_gpencil_animation,
     DATA_PT_custom_props_gpencil,
 
     GPENCIL_UL_vgroups,

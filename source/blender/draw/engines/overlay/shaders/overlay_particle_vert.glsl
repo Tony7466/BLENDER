@@ -1,6 +1,10 @@
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 /* TODO(fclem): Share with C code. */
 #define VCLASS_SCREENALIGNED (1 << 9)
@@ -15,7 +19,9 @@ vec3 rotate(vec3 vec, vec4 quat)
 
 void main()
 {
-  /* Drawsize packed in alpha. */
+  select_id_set(drw_CustomID);
+
+  /* Draw-size packed in alpha. */
   float draw_size = ucolor.a;
 
   vec3 world_pos = part_pos;

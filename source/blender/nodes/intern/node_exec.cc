@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,10 +11,9 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
-#include "BKE_node.hh"
+#include "BKE_global.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -23,8 +22,8 @@
 
 static int node_exec_socket_use_stack(bNodeSocket *sock)
 {
-  /* NOTE: INT supported as FLOAT. Only for EEVEE. */
-  return ELEM(sock->type, SOCK_INT, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER);
+  /* NOTE: INT and BOOL supported as FLOAT. Only for EEVEE. */
+  return ELEM(sock->type, SOCK_INT, SOCK_BOOLEAN, SOCK_FLOAT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER);
 }
 
 bNodeStack *node_get_socket_stack(bNodeStack *stack, bNodeSocket *sock)
@@ -223,8 +222,8 @@ bNodeTreeExec *ntree_exec_begin(bNodeExecContext *context,
       /* ns = */ setup_stack(exec->stack, ntree, node, sock);
     }
 
-    nodekey = BKE_node_instance_key(parent_key, ntree, node);
-    nodeexec->data.preview = context->previews ? (bNodePreview *)BKE_node_instance_hash_lookup(
+    nodekey = bke::node_instance_key(parent_key, ntree, node);
+    nodeexec->data.preview = context->previews ? (bNodePreview *)bke::node_instance_hash_lookup(
                                                      context->previews, nodekey) :
                                                  nullptr;
     if (node->typeinfo->init_exec_fn) {

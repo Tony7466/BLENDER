@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,9 +50,6 @@ void ED_operatortypes_render()
 
   WM_operatortype_append(SCENE_OT_render_view_add);
   WM_operatortype_append(SCENE_OT_render_view_remove);
-
-  WM_operatortype_append(SCENE_OT_light_cache_bake);
-  WM_operatortype_append(SCENE_OT_light_cache_free);
 
 #ifdef WITH_FREESTYLE
   WM_operatortype_append(SCENE_OT_freestyle_module_add);

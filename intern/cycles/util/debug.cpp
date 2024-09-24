@@ -30,8 +30,7 @@ void DebugFlags::CPU::reset()
   } while (0)
 
   CHECK_CPU_FLAGS(avx2, "CYCLES_CPU_NO_AVX2");
-  CHECK_CPU_FLAGS(sse41, "CYCLES_CPU_NO_SSE41");
-  CHECK_CPU_FLAGS(sse2, "CYCLES_CPU_NO_SSE2");
+  CHECK_CPU_FLAGS(sse42, "CYCLES_CPU_NO_SSE42");
 
 #undef STRINGIFY
 #undef CHECK_CPU_FLAGS
@@ -56,29 +55,35 @@ DebugFlags::Metal::Metal()
 
 void DebugFlags::CUDA::reset()
 {
-  if (getenv("CYCLES_CUDA_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_CUDA_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
 }
 
 void DebugFlags::HIP::reset()
 {
-  if (getenv("CYCLES_HIP_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_HIP_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
 }
 
 void DebugFlags::Metal::reset()
 {
-  if (getenv("CYCLES_METAL_ADAPTIVE_COMPILE") != NULL)
+  if (getenv("CYCLES_METAL_ADAPTIVE_COMPILE") != NULL) {
     adaptive_compile = true;
+  }
 
-  if (auto str = getenv("CYCLES_METAL_LOCAL_ATOMIC_SORT"))
+  if (auto str = getenv("CYCLES_METAL_LOCAL_ATOMIC_SORT")) {
     use_local_atomic_sort = (atoi(str) != 0);
+  }
 
-  if (auto str = getenv("CYCLES_METAL_NANOVDB"))
+  if (auto str = getenv("CYCLES_METAL_NANOVDB")) {
     use_nanovdb = (atoi(str) != 0);
+  }
 
-  if (auto str = getenv("CYCLES_METAL_ASYNC_PSO_CREATION"))
+  if (auto str = getenv("CYCLES_METAL_ASYNC_PSO_CREATION")) {
     use_async_pso_creation = (atoi(str) != 0);
+  }
 }
 
 DebugFlags::OptiX::OptiX()

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,6 +6,7 @@ import bpy
 from bpy.types import Menu, Panel, UIList
 from rna_prop_ui import PropertyPanel
 from bl_ui.utils import PresetPanel
+from .space_properties import PropertiesAnimationMixin
 
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilMaterialsPanel,
@@ -17,31 +18,26 @@ class GPENCIL_MT_material_context_menu(Menu):
 
     def draw(self, _context):
         layout = self.layout
-
-        layout.operator("gpencil.material_reveal", icon='RESTRICT_VIEW_OFF', text="Show All")
-        layout.operator("gpencil.material_hide", icon='RESTRICT_VIEW_ON', text="Hide Others").unselected = True
-
-        layout.separator()
-
-        layout.operator("gpencil.material_lock_all", icon='LOCKED', text="Lock All")
-        layout.operator("gpencil.material_unlock_all", icon='UNLOCKED', text="Unlock All")
-
-        layout.operator("gpencil.material_lock_unused", text="Lock Unselected")
-        layout.operator("gpencil.lock_layer", text="Lock Unused")
+        layout.operator("grease_pencil.material_reveal", icon='RESTRICT_VIEW_OFF', text="Show All")
+        layout.operator("grease_pencil.material_hide", icon='RESTRICT_VIEW_ON', text="Hide Others").invert = True
 
         layout.separator()
 
-        layout.operator("gpencil.material_to_vertex_color", text="Convert Materials to Color Attribute")
-        layout.operator("gpencil.extract_palette_vertex", text="Extract Palette from Color Attribute")
+        layout.operator("grease_pencil.material_lock_all", icon='LOCKED', text="Lock All")
+        layout.operator("grease_pencil.material_unlock_all", icon='UNLOCKED', text="Unlock All")
+        layout.operator("grease_pencil.material_lock_unselected", text="Lock Unselected")
+        layout.operator("grease_pencil.material_lock_unused", text="Lock Unused")
 
         layout.separator()
 
-        layout.operator("gpencil.materials_copy_to_object", text="Copy Material to Selected").only_active = True
-        layout.operator("gpencil.materials_copy_to_object", text="Copy All Materials to Selected").only_active = False
+        layout.operator(
+            "grease_pencil.material_copy_to_object",
+            text="Copy Material to Selected").only_active = True
+        layout.operator(
+            "grease_pencil.material_copy_to_object",
+            text="Copy All Materials to Selected",
+        ).only_active = False
 
-        layout.separator()
-
-        layout.operator("gpencil.stroke_merge_material", text="Merge Similar")
         layout.operator("object.material_slot_remove_unused")
 
 
@@ -115,7 +111,7 @@ class MATERIAL_PT_gpencil_surface(GPMaterialButtonsPanel, Panel):
 
 class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
     bl_label = "Stroke"
-    bl_parent_id = 'MATERIAL_PT_gpencil_surface'
+    bl_parent_id = "MATERIAL_PT_gpencil_surface"
 
     def draw_header(self, context):
         ma = context.material
@@ -164,7 +160,7 @@ class MATERIAL_PT_gpencil_strokecolor(GPMaterialButtonsPanel, Panel):
 
 class MATERIAL_PT_gpencil_fillcolor(GPMaterialButtonsPanel, Panel):
     bl_label = "Fill"
-    bl_parent_id = 'MATERIAL_PT_gpencil_surface'
+    bl_parent_id = "MATERIAL_PT_gpencil_surface"
 
     def draw_header(self, context):
         ma = context.material
@@ -230,8 +226,12 @@ class MATERIAL_PT_gpencil_preview(GPMaterialButtonsPanel, Panel):
         self.layout.template_preview(ma)
 
 
+class MATERIAL_PT_gpencil_animation(GPMaterialButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'material'
+
+
 class MATERIAL_PT_gpencil_custom_props(GPMaterialButtonsPanel, PropertyPanel, Panel):
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_WORKBENCH'}
     _context_path = "object.active_material"
     _property_type = bpy.types.Material
 
@@ -267,6 +267,7 @@ classes = (
     MATERIAL_PT_gpencil_strokecolor,
     MATERIAL_PT_gpencil_fillcolor,
     MATERIAL_PT_gpencil_settings,
+    MATERIAL_PT_gpencil_animation,
     MATERIAL_PT_gpencil_custom_props,
 )
 

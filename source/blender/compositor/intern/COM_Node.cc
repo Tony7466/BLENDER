@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_node.hh"
 
-#include "RNA_access.h"
-#include "RNA_prototypes.h"
+#include "RNA_access.hh"
+#include "RNA_prototypes.hh"
 
 #include "COM_Node.h" /* own include */
 
@@ -19,7 +19,7 @@ Node::Node(bNode *editor_node, bool create_sockets)
     : editor_node_tree_(nullptr),
       editor_node_(editor_node),
       in_active_group_(false),
-      instance_key_(NODE_INSTANCE_KEY_NONE)
+      instance_key_(bke::NODE_INSTANCE_KEY_NONE)
 {
   if (create_sockets) {
     bNodeSocket *input = (bNodeSocket *)editor_node->inputs.first;
@@ -135,22 +135,22 @@ void NodeInput::set_link(NodeOutput *link)
 
 float NodeInput::get_editor_value_float() const
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get(&ptr, "default_value");
 }
 
 void NodeInput::get_editor_value_color(float *value) const
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get_array(&ptr, "default_value", value);
 }
 
 void NodeInput::get_editor_value_vector(float *value) const
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get_array(&ptr, "default_value", value);
 }
 
@@ -165,22 +165,22 @@ NodeOutput::NodeOutput(Node *node, bNodeSocket *b_socket, DataType datatype)
 
 float NodeOutput::get_editor_value_float()
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get(&ptr, "default_value");
 }
 
 void NodeOutput::get_editor_value_color(float *value)
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get_array(&ptr, "default_value", value);
 }
 
 void NodeOutput::get_editor_value_vector(float *value)
 {
-  PointerRNA ptr;
-  RNA_pointer_create((ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket(), &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      (ID *)get_node()->get_bnodetree(), &RNA_NodeSocket, get_bnode_socket());
   return RNA_float_get_array(&ptr, "default_value", value);
 }
 

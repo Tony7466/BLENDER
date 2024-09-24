@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,9 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "GPU_shader.h"
+#include "GPU_shader.hh"
 
 #include "basic_private.h"
 

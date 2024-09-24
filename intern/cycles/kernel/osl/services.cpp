@@ -19,10 +19,6 @@
 #include "scene/pointcloud.h"
 #include "scene/scene.h"
 
-#include "kernel/osl/globals.h"
-#include "kernel/osl/services.h"
-#include "kernel/osl/types.h"
-
 #include "util/foreach.h"
 #include "util/log.h"
 #include "util/string.h"
@@ -30,6 +26,10 @@
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/globals.h"
 #include "kernel/device/cpu/image.h"
+
+#include "kernel/osl/globals.h"
+#include "kernel/osl/services.h"
+#include "kernel/osl/types.h"
 
 #include "kernel/integrator/state.h"
 #include "kernel/integrator/state_flow.h"
@@ -75,6 +75,7 @@ ustring OSLRenderServices::u_object_location("object:location");
 ustring OSLRenderServices::u_object_color("object:color");
 ustring OSLRenderServices::u_object_alpha("object:alpha");
 ustring OSLRenderServices::u_object_index("object:index");
+ustring OSLRenderServices::u_object_is_light("object:is_light");
 ustring OSLRenderServices::u_geom_dupli_generated("geom:dupli_generated");
 ustring OSLRenderServices::u_geom_dupli_uv("geom:dupli_uv");
 ustring OSLRenderServices::u_material_index("material:index");
@@ -162,10 +163,12 @@ bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg,
 #ifdef __OBJECT_MOTION__
       Transform tfm;
 
-      if (time == sd->time)
+      if (time == sd->time) {
         tfm = object_get_transform(kg, sd);
-      else
+      }
+      else {
         tfm = object_fetch_transform_motion_test(kg, object, time, NULL);
+      }
 #else
       const Transform tfm = object_get_transform(kg, sd);
 #endif
@@ -200,10 +203,12 @@ bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
 #ifdef __OBJECT_MOTION__
       Transform itfm;
 
-      if (time == sd->time)
+      if (time == sd->time) {
         itfm = object_get_inverse_transform(kg, sd);
-      else
+      }
+      else {
         object_fetch_transform_motion_test(kg, object, time, &itfm);
+      }
 #else
       const Transform itfm = object_get_inverse_transform(kg, sd);
 #endif
@@ -224,7 +229,7 @@ bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
 
 bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg,
                                    OSL::Matrix44 &result,
-                                   ustring from,
+                                   OSLUStringHash from,
                                    float time)
 {
   ShaderData *sd = (ShaderData *)(sg->renderstate);
@@ -256,7 +261,7 @@ bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg,
 
 bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
                                            OSL::Matrix44 &result,
-                                           ustring to,
+                                           OSLUStringHash to,
                                            float time)
 {
   ShaderData *sd = (ShaderData *)(sg->renderstate);
@@ -342,7 +347,9 @@ bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
   return false;
 }
 
-bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result, ustring from)
+bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg,
+                                   OSL::Matrix44 &result,
+                                   OSLUStringHash from)
 {
   ShaderData *sd = (ShaderData *)(sg->renderstate);
   const KernelGlobalsCPU *kg = sd->osl_globals;
@@ -369,7 +376,7 @@ bool OSLRenderServices::get_matrix(OSL::ShaderGlobals *sg, OSL::Matrix44 &result
 
 bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
                                            OSL::Matrix44 &result,
-                                           ustring to)
+                                           OSLUStringHash to)
 {
   ShaderData *sd = (ShaderData *)(sg->renderstate);
   const KernelGlobalsCPU *kg = sd->osl_globals;
@@ -396,9 +403,9 @@ bool OSLRenderServices::get_inverse_matrix(OSL::ShaderGlobals *sg,
 
 bool OSLRenderServices::get_array_attribute(OSL::ShaderGlobals *sg,
                                             bool derivatives,
-                                            ustring object,
+                                            OSLUStringHash object,
                                             TypeDesc type,
-                                            ustring name,
+                                            OSLUStringHash name,
                                             int index,
                                             void *val)
 {
@@ -706,7 +713,8 @@ static bool set_attribute_int(int i, TypeDesc type, bool derivatives, void *val)
 static bool set_attribute_string(ustring str, TypeDesc type, bool derivatives, void *val)
 {
   if (type.basetype == TypeDesc::STRING && type.aggregate == TypeDesc::SCALAR &&
-      type.arraylen == 0) {
+      type.arraylen == 0)
+  {
     ustring *sval = (ustring *)val;
     sval[0] = str;
 
@@ -738,10 +746,12 @@ static bool set_attribute_float3_3(float3 P[3], TypeDesc type, bool derivatives,
     fval[7] = P[2].y;
     fval[8] = P[2].z;
 
-    if (type.arraylen > 3)
+    if (type.arraylen > 3) {
       memset(fval + 3 * 3, 0, sizeof(float) * 3 * (type.arraylen - 3));
-    if (derivatives)
+    }
+    if (derivatives) {
       memset(fval + type.arraylen * 3, 0, sizeof(float) * 2 * 3 * type.arraylen);
+    }
 
     return true;
   }
@@ -837,7 +847,7 @@ static bool get_object_attribute(const KernelGlobalsCPU *kg,
 
 bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg,
                                                       ShaderData *sd,
-                                                      ustring name,
+                                                      OSLUStringHash name,
                                                       TypeDesc type,
                                                       bool derivatives,
                                                       void *val)
@@ -859,6 +869,10 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
   }
   else if (name == u_object_index) {
     float f = object_pass_id(kg, sd->object);
+    return set_attribute_float(f, type, derivatives, val);
+  }
+  else if (name == u_object_is_light) {
+    float f = (sd->type & PRIMITIVE_LAMP) != 0;
     return set_attribute_float(f, type, derivatives, val);
   }
   else if (name == u_geom_dupli_generated) {
@@ -1014,7 +1028,7 @@ bool OSLRenderServices::get_object_standard_attribute(const KernelGlobalsCPU *kg
 
 bool OSLRenderServices::get_background_attribute(const KernelGlobalsCPU *kg,
                                                  ShaderData *sd,
-                                                 ustring name,
+                                                 OSLUStringHash name,
                                                  TypeDesc type,
                                                  bool derivatives,
                                                  void *val)
@@ -1095,26 +1109,32 @@ bool OSLRenderServices::get_background_attribute(const KernelGlobalsCPU *kg,
 
     return set_attribute_float3(ndc, type, derivatives, val);
   }
-  else
+  else {
     return false;
+  }
 }
 
 bool OSLRenderServices::get_attribute(OSL::ShaderGlobals *sg,
                                       bool derivatives,
-                                      ustring object_name,
+                                      OSLUStringHash object_name,
                                       TypeDesc type,
-                                      ustring name,
+                                      OSLUStringHash name,
                                       void *val)
 {
-  if (sg == NULL || sg->renderstate == NULL)
+  if (sg == NULL || sg->renderstate == NULL) {
     return false;
+  }
 
   ShaderData *sd = (ShaderData *)(sg->renderstate);
   return get_attribute(sd, derivatives, object_name, type, name, val);
 }
 
-bool OSLRenderServices::get_attribute(
-    ShaderData *sd, bool derivatives, ustring object_name, TypeDesc type, ustring name, void *val)
+bool OSLRenderServices::get_attribute(ShaderData *sd,
+                                      bool derivatives,
+                                      OSLUStringHash object_name,
+                                      TypeDesc type,
+                                      OSLUStringHash name,
+                                      void *val)
 {
   const KernelGlobalsCPU *kg = sd->osl_globals;
   int object;
@@ -1123,8 +1143,9 @@ bool OSLRenderServices::get_attribute(
   if (object_name != u_empty) {
     OSLGlobals::ObjectNameMap::iterator it = kg->osl->object_name_map.find(object_name);
 
-    if (it == kg->osl->object_name_map.end())
+    if (it == kg->osl->object_name_map.end()) {
       return false;
+    }
 
     object = it->second;
   }
@@ -1145,17 +1166,28 @@ bool OSLRenderServices::get_attribute(
 }
 
 bool OSLRenderServices::get_userdata(
-    bool derivatives, ustring name, TypeDesc type, OSL::ShaderGlobals *sg, void *val)
+    bool derivatives, OSLUStringHash name, TypeDesc type, OSL::ShaderGlobals *sg, void *val)
 {
   return false; /* disabled by lockgeom */
 }
 
-#if OSL_LIBRARY_VERSION_CODE >= 11100
-TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(ustring filename,
+#if OSL_LIBRARY_VERSION_CODE >= 11304
+TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(OSLUStringHash filename,
+                                                                    OSL::ShadingContext *context,
+                                                                    const TextureOpt *opt)
+{
+  return get_texture_handle(to_ustring(filename), context, opt);
+}
+
+TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(OSL::ustring filename,
+                                                                    OSL::ShadingContext *,
+                                                                    const TextureOpt *)
+#elif OSL_LIBRARY_VERSION_CODE >= 11100
+TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(OSLUStringHash filename,
                                                                     OSL::ShadingContext *)
 #else
 
-TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(ustring filename)
+TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(OSLUStringHash filename)
 #endif
 {
   OSLTextureHandleMap::iterator it = textures.find(filename);
@@ -1170,7 +1202,7 @@ TextureSystem::TextureHandle *OSLRenderServices::get_texture_handle(ustring file
 
     /* Get handle from OpenImageIO. */
     OSL::TextureSystem *ts = m_texturesys;
-    TextureSystem::TextureHandle *handle = ts->get_texture_handle(filename);
+    TextureSystem::TextureHandle *handle = ts->get_texture_handle(to_ustring(filename));
     if (handle == NULL) {
       return NULL;
     }
@@ -1246,7 +1278,7 @@ bool OSLRenderServices::good(TextureSystem::TextureHandle *texture_handle)
   }
 }
 
-bool OSLRenderServices::texture(ustring filename,
+bool OSLRenderServices::texture(OSLUStringHash filename,
                                 TextureHandle *texture_handle,
                                 TexturePerthread *texture_thread_info,
                                 TextureOpt &options,
@@ -1261,7 +1293,7 @@ bool OSLRenderServices::texture(ustring filename,
                                 float *result,
                                 float *dresultds,
                                 float *dresultdt,
-                                ustring *errormessage)
+                                OSLUStringHash *errormessage)
 {
   OSLTextureHandle *handle = (OSLTextureHandle *)texture_handle;
   OSLTextureHandle::Type texture_type = (handle) ? handle->type : OSLTextureHandle::OIIO;
@@ -1271,6 +1303,7 @@ bool OSLRenderServices::texture(ustring filename,
 
   switch (texture_type) {
     case OSLTextureHandle::BEVEL: {
+#ifdef __SHADER_RAYTRACE__
       /* Bevel shader hack. */
       if (nchannels >= 3) {
         const IntegratorStateCPU *state = sd->osl_path_state;
@@ -1284,9 +1317,11 @@ bool OSLRenderServices::texture(ustring filename,
           status = true;
         }
       }
+#endif
       break;
     }
     case OSLTextureHandle::AO: {
+#ifdef __SHADER_RAYTRACE__
       /* AO shader hack. */
       const IntegratorStateCPU *state = sd->osl_path_state;
       if (state) {
@@ -1306,6 +1341,7 @@ bool OSLRenderServices::texture(ustring filename,
         result[0] = svm_ao(kernel_globals, state, sd, N, radius, num_samples, flags);
         status = true;
       }
+#endif
       break;
     }
     case OSLTextureHandle::SVM: {
@@ -1343,12 +1379,15 @@ bool OSLRenderServices::texture(ustring filename,
       }
 
       result[0] = rgba[0];
-      if (nchannels > 1)
+      if (nchannels > 1) {
         result[1] = rgba[1];
-      if (nchannels > 2)
+      }
+      if (nchannels > 2) {
         result[2] = rgba[2];
-      if (nchannels > 3)
+      }
+      if (nchannels > 3) {
         result[3] = rgba[3];
+      }
       status = true;
       break;
     }
@@ -1383,7 +1422,7 @@ bool OSLRenderServices::texture(ustring filename,
                              dresultdt);
       }
       else {
-        status = ts->texture(filename,
+        status = ts->texture(to_ustring(filename),
                              options,
                              s,
                              t,
@@ -1415,15 +1454,16 @@ bool OSLRenderServices::texture(ustring filename,
       result[1] = 0.0f;
       result[2] = 1.0f;
 
-      if (nchannels == 4)
+      if (nchannels == 4) {
         result[3] = 1.0f;
+      }
     }
   }
 
   return status;
 }
 
-bool OSLRenderServices::texture3d(ustring filename,
+bool OSLRenderServices::texture3d(OSLUStringHash filename,
                                   TextureHandle *texture_handle,
                                   TexturePerthread *texture_thread_info,
                                   TextureOpt &options,
@@ -1437,7 +1477,7 @@ bool OSLRenderServices::texture3d(ustring filename,
                                   float *dresultds,
                                   float *dresultdt,
                                   float *dresultdr,
-                                  ustring *errormessage)
+                                  OSLUStringHash *errormessage)
 {
   OSLTextureHandle *handle = (OSLTextureHandle *)texture_handle;
   OSLTextureHandle::Type texture_type = (handle) ? handle->type : OSLTextureHandle::OIIO;
@@ -1453,12 +1493,15 @@ bool OSLRenderServices::texture3d(ustring filename,
       float4 rgba = kernel_tex_image_interp_3d(kernel_globals, slot, P_float3, INTERPOLATION_NONE);
 
       result[0] = rgba[0];
-      if (nchannels > 1)
+      if (nchannels > 1) {
         result[1] = rgba[1];
-      if (nchannels > 2)
+      }
+      if (nchannels > 2) {
         result[2] = rgba[2];
-      if (nchannels > 3)
+      }
+      if (nchannels > 3) {
         result[3] = rgba[3];
+      }
       status = true;
       break;
     }
@@ -1488,7 +1531,7 @@ bool OSLRenderServices::texture3d(ustring filename,
                                dresultdr);
       }
       else {
-        status = ts->texture3d(filename,
+        status = ts->texture3d(to_ustring(filename),
                                options,
                                P,
                                dPdx,
@@ -1525,15 +1568,16 @@ bool OSLRenderServices::texture3d(ustring filename,
       result[1] = 0.0f;
       result[2] = 1.0f;
 
-      if (nchannels == 4)
+      if (nchannels == 4) {
         result[3] = 1.0f;
+      }
     }
   }
 
   return status;
 }
 
-bool OSLRenderServices::environment(ustring filename,
+bool OSLRenderServices::environment(OSLUStringHash filename,
                                     TextureHandle *texture_handle,
                                     TexturePerthread *thread_info,
                                     TextureOpt &options,
@@ -1545,7 +1589,7 @@ bool OSLRenderServices::environment(ustring filename,
                                     float *result,
                                     float *dresultds,
                                     float *dresultdt,
-                                    ustring *errormessage)
+                                    OSLUStringHash *errormessage)
 {
   OSLTextureHandle *handle = (OSLTextureHandle *)texture_handle;
   OSL::TextureSystem *ts = m_texturesys;
@@ -1572,7 +1616,7 @@ bool OSLRenderServices::environment(ustring filename,
   }
   else {
     status = ts->environment(
-        filename, options, R, dRdx, dRdy, nchannels, result, dresultds, dresultdt);
+        to_ustring(filename), options, R, dRdx, dRdy, nchannels, result, dresultds, dresultdt);
   }
 
   if (!status) {
@@ -1581,8 +1625,9 @@ bool OSLRenderServices::environment(ustring filename,
       result[1] = 0.0f;
       result[2] = 1.0f;
 
-      if (nchannels == 4)
+      if (nchannels == 4) {
         result[3] = 1.0f;
+      }
     }
   }
   else if (handle && handle->processor) {
@@ -1592,22 +1637,32 @@ bool OSLRenderServices::environment(ustring filename,
   return status;
 }
 
-#if OSL_LIBRARY_VERSION_CODE >= 11100
-bool OSLRenderServices::get_texture_info(ustring filename,
+#if OSL_LIBRARY_VERSION_CODE >= 11304
+bool OSLRenderServices::get_texture_info(OSLUStringHash filename,
                                          TextureHandle *texture_handle,
-                                         TexturePerthread *,
-                                         OSL::ShadingContext *,
+                                         TexturePerthread *texture_thread_info,
+                                         OSL::ShaderGlobals *,
                                          int subimage,
-                                         ustring dataname,
+                                         OSLUStringHash dataname,
                                          TypeDesc datatype,
                                          void *data,
-                                         ustring *)
+                                         OSLUStringHash *)
+#elif OSL_LIBRARY_VERSION_CODE >= 11100
+bool OSLRenderServices::get_texture_info(OSLUStringHash filename,
+                                         TextureHandle *texture_handle,
+                                         TexturePerthread *texture_thread_info,
+                                         OSL::ShadingContext *,
+                                         int subimage,
+                                         OSLUStringHash dataname,
+                                         TypeDesc datatype,
+                                         void *data,
+                                         OSLUStringHash *)
 #else
-bool OSLRenderServices::get_texture_info(OSL::ShaderGlobals *sg,
-                                         ustring filename,
+bool OSLRenderServices::get_texture_info(OSL::ShaderGlobals *,
+                                         OSLUStringHash filename,
                                          TextureHandle *texture_handle,
                                          int subimage,
-                                         ustring dataname,
+                                         OSLUStringHash dataname,
                                          TypeDesc datatype,
                                          void *data)
 #endif
@@ -1621,11 +1676,21 @@ bool OSLRenderServices::get_texture_info(OSL::ShaderGlobals *sg,
 
   /* Get texture info from OpenImageIO. */
   OSL::TextureSystem *ts = m_texturesys;
-  return ts->get_texture_info(filename, subimage, dataname, datatype, data);
+#if OSL_LIBRARY_VERSION_CODE >= 11100
+  if (handle->oiio_handle) {
+    return ts->get_texture_info(
+        handle->oiio_handle, texture_thread_info, subimage, to_ustring(dataname), datatype, data);
+  }
+  else
+#endif
+  {
+    return ts->get_texture_info(
+        to_ustring(filename), subimage, to_ustring(dataname), datatype, data);
+  }
 }
 
 int OSLRenderServices::pointcloud_search(OSL::ShaderGlobals *sg,
-                                         ustring filename,
+                                         OSLUStringHash filename,
                                          const OSL::Vec3 &center,
                                          float radius,
                                          int max_points,
@@ -1638,10 +1703,10 @@ int OSLRenderServices::pointcloud_search(OSL::ShaderGlobals *sg,
 }
 
 int OSLRenderServices::pointcloud_get(OSL::ShaderGlobals *sg,
-                                      ustring filename,
+                                      OSLUStringHash filename,
                                       size_t *indices,
                                       int count,
-                                      ustring attr_name,
+                                      OSLUStringHash attr_name,
                                       TypeDesc attr_type,
                                       void *out_data)
 {
@@ -1649,10 +1714,10 @@ int OSLRenderServices::pointcloud_get(OSL::ShaderGlobals *sg,
 }
 
 bool OSLRenderServices::pointcloud_write(OSL::ShaderGlobals *sg,
-                                         ustring filename,
+                                         OSLUStringHash filename,
                                          const OSL::Vec3 &pos,
                                          int nattribs,
-                                         const ustring *names,
+                                         const OSLUStringRep *names,
                                          const TypeDesc *types,
                                          const void **data)
 {
@@ -1729,8 +1794,8 @@ bool OSLRenderServices::trace(TraceOpt &options,
 }
 
 bool OSLRenderServices::getmessage(OSL::ShaderGlobals *sg,
-                                   ustring source,
-                                   ustring name,
+                                   OSLUStringHash source,
+                                   OSLUStringHash name,
                                    TypeDesc type,
                                    void *val,
                                    bool derivatives)

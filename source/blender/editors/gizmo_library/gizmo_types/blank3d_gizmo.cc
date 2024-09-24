@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,8 +9,6 @@
  *
  * \brief Gizmo to use as a fallback (catch events).
  */
-
-#include "BKE_context.h"
 
 #include "ED_gizmo_library.hh"
 

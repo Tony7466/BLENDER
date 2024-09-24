@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,42 +9,35 @@
 #include "BLI_sys_types.h"
 
 #include "DNA_anim_types.h"
-#include "DNA_gpencil_legacy_types.h"
-#include "DNA_mask_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
-#include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_mask.h"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 
 #include "ED_anim_api.hh"
-#include "ED_keyframes_draw.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 /* *************************************************** */
 /* CURRENT FRAME DRAWING */
@@ -228,27 +221,30 @@ AnimData *ANIM_nla_mapping_get(bAnimContext *ac, bAnimListElem *ale)
 
   /* apart from strictly keyframe-related contexts, this shouldn't even happen */
   /* XXX: nla and channel here may not be necessary... */
-  if (ELEM(ac->datatype,
-           ANIMCONT_ACTION,
-           ANIMCONT_SHAPEKEY,
-           ANIMCONT_DOPESHEET,
-           ANIMCONT_FCURVES,
-           ANIMCONT_NLA,
-           ANIMCONT_CHANNEL,
-           ANIMCONT_TIMELINE))
+  if (!ELEM(ac->datatype,
+            ANIMCONT_ACTION,
+            ANIMCONT_SHAPEKEY,
+            ANIMCONT_DOPESHEET,
+            ANIMCONT_FCURVES,
+            ANIMCONT_NLA,
+            ANIMCONT_CHANNEL,
+            ANIMCONT_TIMELINE))
   {
-    /* handling depends on the type of animation-context we've got */
-    if (ale) {
-      /* NLA Control Curves occur on NLA strips,
-       * and shouldn't be subjected to this kind of mapping. */
-      if (ale->type != ANIMTYPE_NLACURVE) {
-        return ale->adt;
-      }
-    }
+    return nullptr;
   }
 
-  /* cannot handle... */
-  return nullptr;
+  /* handling depends on the type of animation-context we've got */
+  if (!ale) {
+    return nullptr;
+  }
+
+  /* NLA Control Curves occur on NLA strips,
+   * and shouldn't be subjected to this kind of mapping. */
+  if (ale->type == ANIMTYPE_NLACURVE) {
+    return nullptr;
+  }
+
+  return ale->adt;
 }
 
 /* ------------------- */
@@ -321,10 +317,10 @@ void ANIM_nla_mapping_apply_fcurve(AnimData *adt, FCurve *fcu, bool restore, boo
 /* *************************************************** */
 /* UNITS CONVERSION MAPPING (required for drawing and editing keyframes) */
 
-short ANIM_get_normalization_flags(bAnimContext *ac)
+short ANIM_get_normalization_flags(SpaceLink *space_link)
 {
-  if (ac->sl->spacetype == SPACE_GRAPH) {
-    SpaceGraph *sipo = (SpaceGraph *)ac->sl;
+  if (space_link->spacetype == SPACE_GRAPH) {
+    SpaceGraph *sipo = (SpaceGraph *)space_link;
     bool use_normalization = (sipo->flag & SIPO_NORMALIZE) != 0;
     bool freeze_normalization = (sipo->flag & SIPO_NORMALIZE_FREEZE) != 0;
     return use_normalization ? (ANIM_UNITCONV_NORMALIZE |
@@ -336,7 +332,7 @@ short ANIM_get_normalization_flags(bAnimContext *ac)
 }
 
 static void fcurve_scene_coord_range_get(Scene *scene,
-                                         FCurve *fcu,
+                                         const FCurve *fcu,
                                          float *r_min_coord,
                                          float *r_max_coord)
 {
@@ -504,11 +500,10 @@ static float normalization_factor_get(Scene *scene, FCurve *fcu, short flag, flo
   float min_coord = FLT_MAX;
   fcurve_scene_coord_range_get(scene, fcu, &min_coord, &max_coord);
 
-  /* We use an ulps-based floating point comparison here, with the
+  /* We use an ULPS-based floating point comparison here, with the
    * rationale that if there are too few possible values between
    * `min_coord` and `max_coord`, then after display normalization it
-   * will certainly be a weird quantized experience for the user anyway.
-   */
+   * will certainly be a weird quantized experience for the user anyway. */
   if (min_coord < max_coord && ulp_diff_ff(min_coord, max_coord) > 256) {
     /* Normalize. */
     const float range = max_coord - min_coord;
@@ -543,11 +538,11 @@ float ANIM_unit_mapping_get_factor(Scene *scene, ID *id, FCurve *fcu, short flag
 
   /* sanity checks */
   if (id && fcu && fcu->rna_path) {
-    PointerRNA ptr, id_ptr;
+    PointerRNA ptr;
     PropertyRNA *prop;
 
     /* get RNA property that F-Curve affects */
-    RNA_id_pointer_create(id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id);
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &ptr, &prop)) {
       /* rotations: radians <-> degrees? */
       if (RNA_SUBTYPE_UNIT(RNA_property_subtype(prop)) == PROP_UNIT_ROTATION) {
@@ -589,11 +584,11 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
   }
 
   /* populate tree with keyframe nodes */
-  scene_to_keylist(&ads, scene, keylist, 0);
+  scene_to_keylist(&ads, scene, keylist, 0, {-FLT_MAX, FLT_MAX});
   gpencil_to_keylist(&ads, scene->gpd, keylist, false);
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, {-FLT_MAX, FLT_MAX});
     gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, false);
   }
 
@@ -707,3 +702,32 @@ void ANIM_center_frame(bContext *C, int smooth_viewtx)
   UI_view2d_smooth_view(C, region, &newrct, smooth_viewtx);
 }
 /* *************************************************** */
+
+rctf ANIM_frame_range_view2d_add_xmargin(const View2D &view_2d, const rctf view_rect)
+{
+  /* Keyframe diamonds seem to be drawn at 10 pixels wide, multiplied by the UI scale. */
+  const float keyframe_size = 10 * UI_SCALE_FAC;
+  const float margin_in_px = 4 * keyframe_size;
+
+  /* This cannot use UI_view2d_scale_get_x(view_2d) because that would use the
+   * current scale of the view, and not the one we'd get once `view_rect` is
+   * applied. And this function should not assume that view_2d.cur == view_rect.
+   *
+   * As an added bonus, the division is inverted (compared to
+   * UI_view2d_scale_get_x()) so that we can multiply with the result instead of
+   * doing yet another division. */
+  const float target_scale = BLI_rctf_size_x(&view_rect) / BLI_rcti_size_x(&view_2d.mask);
+  const float margin_in_frames = margin_in_px * target_scale;
+
+  /* Limit the margin to a maximum of 12.5% of the available size. This will
+   * make the margins smaller when the view gets smaller, but for large views
+   * still retain the fixed size calculated above */
+  const float margin_max = 0.125f * BLI_rctf_size_x(&view_rect);
+  const float margin = std::min(margin_in_frames, margin_max);
+
+  rctf rect_with_margin = view_rect;
+  rect_with_margin.xmin -= margin;
+  rect_with_margin.xmax += margin;
+
+  return rect_with_margin;
+}

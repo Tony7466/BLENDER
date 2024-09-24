@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,7 +27,10 @@ void nla_buttons_register(ARegionType *art);
 /* `nla_draw.cc` */
 
 void draw_nla_main_data(bAnimContext *ac, SpaceNla *snla, ARegion *region);
-void draw_nla_channel_list(const bContext *C, bAnimContext *ac, ARegion *region);
+void draw_nla_track_list(const bContext *C,
+                         bAnimContext *ac,
+                         ARegion *region,
+                         const ListBase /*bAnimListElem*/ &anim_data);
 
 /* **************************************** */
 /* `nla_select.cc` */
@@ -107,7 +110,7 @@ void NLA_OT_fmodifier_copy(wmOperatorType *ot);
 void NLA_OT_fmodifier_paste(wmOperatorType *ot);
 
 /* **************************************** */
-/* `nla_channels.cc` */
+/* `nla_tracks.cc` */
 
 /**
  * Helper - add NLA Tracks alongside existing ones.

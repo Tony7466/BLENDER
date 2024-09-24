@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
  */
 
 #include "node_shader_util.hh"
+
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -82,14 +84,14 @@ void register_node_type_sh_script()
 {
   namespace file_ns = blender::nodes::node_shader_script_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_SCRIPT, "Script", NODE_CLASS_SCRIPT);
   ntype.draw_buttons = file_ns::node_shader_buts_script;
   ntype.draw_buttons_ex = file_ns::node_shader_buts_script_ex;
   ntype.initfunc = file_ns::init;
-  node_type_storage(
+  blender::bke::node_type_storage(
       &ntype, "NodeShaderScript", file_ns::node_free_script, file_ns::node_copy_script);
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

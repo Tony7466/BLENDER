@@ -165,6 +165,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/convert.h"
 #include "kernel/svm/displace.h"
 #include "kernel/svm/fresnel.h"
+#include "kernel/svm/gabor.h"
 #include "kernel/svm/gamma.h"
 #include "kernel/svm/geometry.h"
 #include "kernel/svm/gradient.h"
@@ -178,7 +179,6 @@ CCL_NAMESPACE_END
 #include "kernel/svm/mapping.h"
 #include "kernel/svm/math.h"
 #include "kernel/svm/mix.h"
-#include "kernel/svm/musgrave.h"
 #include "kernel/svm/noisetex.h"
 #include "kernel/svm/normal.h"
 #include "kernel/svm/ramp.h"
@@ -234,14 +234,18 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       return;
       SVM_CASE(NODE_SHADER_JUMP)
       {
-        if (type == SHADER_TYPE_SURFACE)
+        if (type == SHADER_TYPE_SURFACE) {
           offset = node.y;
-        else if (type == SHADER_TYPE_VOLUME)
+        }
+        else if (type == SHADER_TYPE_VOLUME) {
           offset = node.z;
-        else if (type == SHADER_TYPE_DISPLACEMENT)
+        }
+        else if (type == SHADER_TYPE_DISPLACEMENT) {
           offset = node.w;
-        else
+        }
+        else {
           return;
+        }
         break;
       }
       SVM_CASE(NODE_CLOSURE_BSDF)
@@ -251,7 +255,7 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       SVM_CASE(NODE_CLOSURE_EMISSION)
       IF_KERNEL_NODES_FEATURE(EMISSION)
       {
-        svm_node_closure_emission(sd, stack, closure_weight, node);
+        svm_node_closure_emission(kg, sd, stack, closure_weight, node);
       }
       break;
       SVM_CASE(NODE_CLOSURE_BACKGROUND)
@@ -276,12 +280,14 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       svm_node_mix_closure(sd, stack, node);
       break;
       SVM_CASE(NODE_JUMP_IF_ZERO)
-      if (stack_load_float(stack, node.z) <= 0.0f)
+      if (stack_load_float(stack, node.z) <= 0.0f) {
         offset += node.y;
+      }
       break;
       SVM_CASE(NODE_JUMP_IF_ONE)
-      if (stack_load_float(stack, node.z) >= 1.0f)
+      if (stack_load_float(stack, node.z) >= 1.0f) {
         offset += node.y;
+      }
       break;
       SVM_CASE(NODE_GEOMETRY)
       svm_node_geometry(kg, sd, stack, node.y, node.z);
@@ -475,8 +481,8 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       offset = svm_node_tex_voronoi<node_feature_mask>(
           kg, sd, stack, node.y, node.z, node.w, offset);
       break;
-      SVM_CASE(NODE_TEX_MUSGRAVE)
-      offset = svm_node_tex_musgrave(kg, sd, stack, node.y, node.z, node.w, offset);
+      SVM_CASE(NODE_TEX_GABOR)
+      offset = svm_node_tex_gabor(kg, sd, stack, node.y, node.z, node.w, offset);
       break;
       SVM_CASE(NODE_TEX_WAVE)
       offset = svm_node_tex_wave(kg, sd, stack, node, offset);

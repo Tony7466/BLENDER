@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,10 @@
 
 struct NodesModifierData;
 struct Object;
+struct NodesModifierPackedBake;
 
-namespace blender::bke::sim {
-class ModifierSimulationCache;
+namespace blender::bke::bake {
+struct ModifierCache;
 }
 namespace blender::nodes::geo_eval_log {
 class GeoModifierLog;
@@ -27,14 +28,19 @@ struct NodesModifierRuntime {
   /**
    * Contains logged information from the last evaluation.
    * This can be used to help the user to debug a node tree.
+   * This is a shared pointer because we might want to keep it around in some cases after the
+   * evaluation (e.g. for gizmo backpropagation).
    */
-  std::unique_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;
+  std::shared_ptr<nodes::geo_eval_log::GeoModifierLog> eval_log;
   /**
    * Simulation cache that is shared between original and evaluated modifiers. This allows the
    * original modifier to be removed, without also removing the simulation state which may still be
    * used by the evaluated modifier.
    */
-  std::shared_ptr<bke::sim::ModifierSimulationCache> simulation_cache;
+  std::shared_ptr<bke::bake::ModifierCache> cache;
 };
+
+void nodes_modifier_data_block_destruct(NodesModifierDataBlock *data_block, bool do_id_user);
+void nodes_modifier_packed_bake_free(NodesModifierPackedBake *packed_bake);
 
 }  // namespace blender

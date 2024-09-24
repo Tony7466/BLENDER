@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -82,9 +82,6 @@ CCGAllocatorIFC *ccg_getStandardAllocatorIFC(void);
  * Catmull-Clark Gridding Subdivision Surface.
  */
 
-/* TODO(sergey): Get rid of this, it's more or less a bad level call. */
-struct DerivedMesh;
-
 /* ** Data structures, constants. enums ** */
 
 enum {
@@ -110,8 +107,8 @@ struct CCGVert {
 
   CCGEdge **edges;
   CCGFace **faces;
-  /* byte *levelData; */
-  /* byte *user_data; */
+  // byte *levelData;
+  // byte *user_data;
 };
 
 struct CCGEdge {
@@ -124,8 +121,8 @@ struct CCGEdge {
   CCGVert *v0, *v1;
   CCGFace **faces;
 
-  /* byte *levelData; */
-  /* byte *user_data; */
+  // byte *levelData;
+  // byte *user_data;
 };
 
 struct CCGFace {
@@ -135,11 +132,11 @@ struct CCGFace {
   short numVerts, flags;
   int osd_index;
 
-  /* CCGVert **verts; */
-  /* CCGEdge **edges; */
-  /* byte *centerData; */
-  /* byte **gridData; */
-  /* byte *user_data; */
+  // CCGVert **verts;
+  // CCGEdge **edges;
+  // byte *centerData;
+  // byte **gridData;
+  // byte *user_data;
 };
 
 typedef enum {
@@ -224,7 +221,8 @@ struct CCGSubSurf {
   (void)0
 #define NormCopy(av, bv) \
   { \
-    float *_a = (float *)av, *_b = (float *)bv; \
+    float *_a = (float *)av; \
+    const float *_b = (const float *)bv; \
     _a[0] = _b[0]; \
     _a[1] = _b[1]; \
     _a[2] = _b[2]; \
@@ -232,7 +230,8 @@ struct CCGSubSurf {
   (void)0
 #define NormAdd(av, bv) \
   { \
-    float *_a = (float *)av, *_b = (float *)bv; \
+    float *_a = (float *)av; \
+    const float *_b = (const float *)bv; \
     _a[0] += _b[0]; \
     _a[1] += _b[1]; \
     _a[2] += _b[2]; \
@@ -255,8 +254,6 @@ void ccgSubSurf__effectedFaceNeighbors(CCGSubSurf *ss,
 /* `CCGSubSurf_legacy.cc` */
 
 void ccgSubSurf__sync_legacy(CCGSubSurf *ss);
-
-struct OpenSubdiv_Converter;
 
 /* `CCGSubSurf_util.cc` */
 

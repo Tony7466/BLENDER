@@ -1,9 +1,13 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "node_geometry_util.hh"
 
@@ -30,6 +34,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Int>("Instance Count").make_available([](bNode &node) {
     node.custom1 = int16_t(GeometryComponent::Type::Instance);
   });
+  b.add_output<decl::Int>("Layer Count").make_available([](bNode &node) {
+    node.custom1 = int16_t(GeometryComponent::Type::GreasePencil);
+  });
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -50,23 +57,26 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *face_corner_socket = face_socket->next;
   bNodeSocket *spline_socket = face_corner_socket->next;
   bNodeSocket *instances_socket = spline_socket->next;
+  bNodeSocket *layers_socket = instances_socket->next;
 
-  bke::nodeSetSocketAvailability(ntree,
-                                 point_socket,
-                                 ELEM(node->custom1,
-                                      int16_t(GeometryComponent::Type::Mesh),
-                                      int16_t(GeometryComponent::Type::Curve),
-                                      int16_t(GeometryComponent::Type::PointCloud)));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(ntree,
+                                    point_socket,
+                                    ELEM(node->custom1,
+                                         int16_t(GeometryComponent::Type::Mesh),
+                                         int16_t(GeometryComponent::Type::Curve),
+                                         int16_t(GeometryComponent::Type::PointCloud)));
+  bke::node_set_socket_availability(
       ntree, edge_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, face_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, face_corner_socket, node->custom1 == int16_t(GeometryComponent::Type::Mesh));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, spline_socket, node->custom1 == int16_t(GeometryComponent::Type::Curve));
-  bke::nodeSetSocketAvailability(
+  bke::node_set_socket_availability(
       ntree, instances_socket, node->custom1 == int16_t(GeometryComponent::Type::Instance));
+  bke::node_set_socket_availability(
+      ntree, layers_socket, node->custom1 == int16_t(GeometryComponent::Type::GreasePencil));
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -78,10 +88,10 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GeometryComponent::Type::Mesh: {
       if (const MeshComponent *component = geometry_set.get_component<MeshComponent>()) {
         const AttributeAccessor attributes = *component->attributes();
-        params.set_output("Point Count", attributes.domain_size(ATTR_DOMAIN_POINT));
-        params.set_output("Edge Count", attributes.domain_size(ATTR_DOMAIN_EDGE));
-        params.set_output("Face Count", attributes.domain_size(ATTR_DOMAIN_FACE));
-        params.set_output("Face Corner Count", attributes.domain_size(ATTR_DOMAIN_CORNER));
+        params.set_output("Point Count", attributes.domain_size(AttrDomain::Point));
+        params.set_output("Edge Count", attributes.domain_size(AttrDomain::Edge));
+        params.set_output("Face Count", attributes.domain_size(AttrDomain::Face));
+        params.set_output("Face Corner Count", attributes.domain_size(AttrDomain::Corner));
       }
       else {
         params.set_default_remaining_outputs();
@@ -91,8 +101,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GeometryComponent::Type::Curve: {
       if (const CurveComponent *component = geometry_set.get_component<CurveComponent>()) {
         const AttributeAccessor attributes = *component->attributes();
-        params.set_output("Point Count", attributes.domain_size(ATTR_DOMAIN_POINT));
-        params.set_output("Spline Count", attributes.domain_size(ATTR_DOMAIN_CURVE));
+        params.set_output("Point Count", attributes.domain_size(AttrDomain::Point));
+        params.set_output("Spline Count", attributes.domain_size(AttrDomain::Curve));
       }
       else {
         params.set_default_remaining_outputs();
@@ -103,7 +113,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       if (const PointCloudComponent *component = geometry_set.get_component<PointCloudComponent>())
       {
         const AttributeAccessor attributes = *component->attributes();
-        params.set_output("Point Count", attributes.domain_size(ATTR_DOMAIN_POINT));
+        params.set_output("Point Count", attributes.domain_size(AttrDomain::Point));
       }
       else {
         params.set_default_remaining_outputs();
@@ -113,7 +123,19 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GeometryComponent::Type::Instance: {
       if (const InstancesComponent *component = geometry_set.get_component<InstancesComponent>()) {
         const AttributeAccessor attributes = *component->attributes();
-        params.set_output("Instance Count", attributes.domain_size(ATTR_DOMAIN_INSTANCE));
+        params.set_output("Instance Count", attributes.domain_size(AttrDomain::Instance));
+      }
+      else {
+        params.set_default_remaining_outputs();
+      }
+      break;
+    }
+    case GeometryComponent::Type::GreasePencil: {
+      if (const GreasePencilComponent *component =
+              geometry_set.get_component<GreasePencilComponent>())
+      {
+        const AttributeAccessor attributes = *component->attributes();
+        params.set_output("Layer Count", attributes.domain_size(AttrDomain::Layer));
       }
       else {
         params.set_default_remaining_outputs();
@@ -125,19 +147,31 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-}  // namespace blender::nodes::node_geo_attribute_domain_size_cc
-
-void register_node_type_geo_attribute_domain_size()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_attribute_domain_size_cc;
-
-  static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, "Domain Size", NODE_CLASS_ATTRIBUTE);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-
-  nodeRegisterType(&ntype);
+  RNA_def_node_enum(srna,
+                    "component",
+                    "Component",
+                    "",
+                    rna_enum_geometry_component_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    int(blender::bke::GeometryComponent::Type::Mesh));
 }
+
+static void node_register()
+{
+  static blender::bke::bNodeType ntype;
+  geo_node_type_base(&ntype, GEO_NODE_ATTRIBUTE_DOMAIN_SIZE, "Domain Size", NODE_CLASS_ATTRIBUTE);
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+
+  blender::bke::node_register_type(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
+}
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_attribute_domain_size_cc

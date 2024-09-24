@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,13 +10,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "eigen_capi.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "intern/bmesh_operators_private.h" /* own include */
+#include "intern/bmesh_operators_private.hh" /* own include */
 
 // #define SMOOTH_LAPLACIAN_AREA_FACTOR 4.0f  /* UNUSED */
 // #define SMOOTH_LAPLACIAN_EDGE_FACTOR 2.0f  /* UNUSED */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,11 +10,9 @@
 
 /* Can cast different mathutils types to this, use for generic functions. */
 
+#include "BLI_array.hh"
 #include "BLI_compiler_attrs.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_vector.hh"
 
 struct DynStr;
 
@@ -87,7 +85,7 @@ int BaseMathObject_is_gc(BaseMathObject *self);
 
 PyMODINIT_FUNC PyInit_mathutils(void);
 
-int EXPP_FloatsAreEqual(float A, float B, int maxDiff);
+int EXPP_FloatsAreEqual(float af, float bf, int maxDiff);
 int EXPP_VectorsAreEqual(const float *vecA, const float *vecB, int size, int floatSteps);
 
 typedef struct Mathutils_Callback Mathutils_Callback;
@@ -98,9 +96,9 @@ typedef int (*BaseMathCheckFunc)(BaseMathObject *);
 typedef int (*BaseMathGetFunc)(BaseMathObject *, int);
 /** Sets the users vector values once its modified. */
 typedef int (*BaseMathSetFunc)(BaseMathObject *, int);
-/** Same as above but only for an index. */
+/** Same as #BaseMathGetFunc but only for an index. */
 typedef int (*BaseMathGetIndexFunc)(BaseMathObject *, int, int);
-/** Same as above but only for an index. */
+/** Same as #BaseMathSetFunc but only for an index. */
 typedef int (*BaseMathSetIndexFunc)(BaseMathObject *, int, int);
 
 struct Mathutils_Callback {
@@ -191,14 +189,11 @@ int mathutils_array_parse_alloc_vi(int **array,
                                    PyObject *value,
                                    const char *error_prefix);
 /**
- * Parse sequence of variable-length sequences of int and return allocated
- * triple of arrays to represent the result:
- * The flattened sequences are put into *array.
- * The start index of each sequence goes into start_table.
- * The length of each index goes into len_table.
+ * Parse sequence of variable-length sequences of integers and fill r_data with their values.
  */
-int mathutils_array_parse_alloc_viseq(
-    int **array, int **start_table, int **len_table, PyObject *value, const char *error_prefix);
+bool mathutils_array_parse_alloc_viseq(PyObject *value,
+                                       const char *error_prefix,
+                                       blender::Array<blender::Vector<int>> &r_data);
 int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error_prefix);
 
 /**
@@ -206,7 +201,7 @@ int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error
  *
  * \note consistent with the equivalent tuple of floats (CPython's 'tuplehash')
  */
-Py_hash_t mathutils_array_hash(const float *float_array, size_t array_len);
+Py_hash_t mathutils_array_hash(const float *array, size_t array_len);
 
 /* zero remaining unused elements of the array */
 #define MU_ARRAY_ZERO (1u << 30)
@@ -233,8 +228,4 @@ int column_vector_multiplication(float r_vec[4], VectorObject *vec, MatrixObject
 /* dynstr as python string utility functions */
 /* dynstr as python string utility functions, frees 'ds'! */
 PyObject *mathutils_dynstr_to_py(struct DynStr *ds);
-#endif
-
-#ifdef __cplusplus
-}
 #endif

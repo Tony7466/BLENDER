@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,10 +11,6 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Ipo;
 
 typedef struct FluidVertexVelocity {
@@ -22,7 +18,7 @@ typedef struct FluidVertexVelocity {
 } FluidVertexVelocity;
 
 typedef struct FluidsimSettings {
-  /** For fast RNA access. */
+  /** DEPRECATED. For fast RNA access. */
   struct FluidsimModifierData *fmd;
   /* threadcont the calculation is done with */
   int threads;
@@ -142,7 +138,3 @@ enum {
   OB_FLUIDSIM_ACTIVE = 1 << 1,
   OB_FLUIDSIM_OVERRIDE_TIME = 1 << 2,
 };
-
-#ifdef __cplusplus
-}
-#endif

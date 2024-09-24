@@ -34,9 +34,7 @@ OneapiDeviceQueue::~OneapiDeviceQueue()
 
 int OneapiDeviceQueue::num_concurrent_states(const size_t state_size) const
 {
-  const int max_num_threads = oneapi_device_->get_num_multiprocessors() *
-                              oneapi_device_->get_max_num_threads_per_multiprocessor();
-  int num_states = max(8 * max_num_threads, 65536) * 16;
+  int num_states = 4 * num_concurrent_busy_states(state_size);
 
   VLOG_DEVICE_STATS << "GPU queue concurrent states: " << num_states << ", using up to "
                     << string_human_readable_size(num_states * state_size);
@@ -50,6 +48,11 @@ int OneapiDeviceQueue::num_concurrent_busy_states(const size_t /*state_size*/) c
                               oneapi_device_->get_max_num_threads_per_multiprocessor();
 
   return 4 * max(8 * max_num_threads, 65536);
+}
+
+int OneapiDeviceQueue::num_sort_partition_elements() const
+{
+  return (oneapi_device_->get_max_num_threads_per_multiprocessor() >= 128) ? 65536 : 8192;
 }
 
 void OneapiDeviceQueue::init_execution()
@@ -77,18 +80,18 @@ bool OneapiDeviceQueue::enqueue(DeviceKernel kernel,
 
   debug_enqueue_begin(kernel, signed_kernel_work_size);
   assert(signed_kernel_work_size >= 0);
-  size_t kernel_work_size = (size_t)signed_kernel_work_size;
+  size_t kernel_global_size = (size_t)signed_kernel_work_size;
+  size_t kernel_local_size;
 
   assert(kernel_context_);
   kernel_context_->scene_max_shaders = oneapi_device_->scene_max_shaders();
 
-  size_t kernel_local_size = oneapi_kernel_preferred_local_size(
-      kernel_context_->queue, (::DeviceKernel)kernel, kernel_work_size);
-  size_t uniformed_kernel_work_size = round_up(kernel_work_size, kernel_local_size);
+  oneapi_device_->get_adjusted_global_and_local_sizes(
+      kernel_context_->queue, kernel, kernel_global_size, kernel_local_size);
 
   /* Call the oneAPI kernel DLL to launch the requested kernel. */
   bool is_finished_ok = oneapi_device_->enqueue_kernel(
-      kernel_context_, kernel, uniformed_kernel_work_size, args);
+      kernel_context_, kernel, kernel_global_size, kernel_local_size, args);
 
   if (is_finished_ok == false) {
     oneapi_device_->set_error("oneAPI kernel \"" + std::string(device_kernel_as_string(kernel)) +

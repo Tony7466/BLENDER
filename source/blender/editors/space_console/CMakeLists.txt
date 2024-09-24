@@ -1,10 +1,9 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
-  ../../blenfont
   ../../blenkernel
   ../../blenloader
   ../../gpu
@@ -25,6 +24,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
@@ -37,4 +37,3 @@ endif()
 
 
 blender_add_lib(bf_editor_space_console "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

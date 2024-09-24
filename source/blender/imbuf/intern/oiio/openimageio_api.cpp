@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,6 +23,9 @@ void OIIO_init()
   if (threads_override) {
     OIIO::attribute("threads", threads_override);
   }
+
+  /* As of OpenEXR 3.2.1 there are still issues related to the use of OpenEXR Core. */
+  OIIO::attribute("openexr:core", 0);
 }
 
 int OIIO_getVersionHex()

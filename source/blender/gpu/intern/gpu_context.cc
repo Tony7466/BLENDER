@@ -13,17 +13,21 @@
  * - free can be called from any thread
  */
 
+#include "BKE_global.hh"
+
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
+#include "BLI_vector_set.hh"
 
-#include "GPU_context.h"
-#include "GPU_framebuffer.h"
+#include "GPU_context.hh"
+#include "GPU_framebuffer.hh"
 
+#include "GPU_batch.hh"
 #include "gpu_backend.hh"
-#include "gpu_batch_private.hh"
 #include "gpu_context_private.hh"
-#include "gpu_matrix_private.h"
-#include "gpu_private.h"
+#include "gpu_matrix_private.hh"
+#include "gpu_private.hh"
+#include "gpu_shader_private.hh"
 
 #ifdef WITH_OPENGL_BACKEND
 #  include "gl_backend.hh"
@@ -35,6 +39,7 @@
 #ifdef WITH_METAL_BACKEND
 #  include "mtl_backend.hh"
 #endif
+#include "dummy_backend.hh"
 
 #include <mutex>
 #include <vector>
@@ -113,6 +118,7 @@ GPUContext *GPU_context_create(void *ghost_window, void *ghost_context)
 void GPU_context_discard(GPUContext *ctx_)
 {
   Context *ctx = unwrap(ctx_);
+  printf_end(ctx);
   delete ctx;
   active_ctx = nullptr;
 
@@ -132,6 +138,7 @@ void GPU_context_active_set(GPUContext *ctx_)
   Context *ctx = unwrap(ctx_);
 
   if (active_ctx) {
+    printf_end(active_ctx);
     active_ctx->deactivate();
   }
 
@@ -139,6 +146,7 @@ void GPU_context_active_set(GPUContext *ctx_)
 
   if (ctx) {
     ctx->activate();
+    printf_begin(ctx);
   }
 }
 
@@ -184,7 +192,7 @@ void GPU_context_main_unlock()
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name  GPU Begin/end work blocks
+/** \name GPU Begin/end work blocks
  *
  * Used to explicitly define a per-frame block within which GPU work will happen.
  * Used for global autoreleasepool flushing in Metal
@@ -198,19 +206,29 @@ void GPU_render_begin()
    * but should be fixed for Metal. */
   if (backend) {
     backend->render_begin();
+    printf_end(active_ctx);
+    printf_begin(active_ctx);
   }
 }
 void GPU_render_end()
 {
   GPUBackend *backend = GPUBackend::get();
   BLI_assert(backend);
-  backend->render_end();
+  if (backend) {
+    printf_end(active_ctx);
+    printf_begin(active_ctx);
+    backend->render_end();
+  }
 }
 void GPU_render_step()
 {
   GPUBackend *backend = GPUBackend::get();
   BLI_assert(backend);
-  backend->render_step();
+  if (backend) {
+    printf_end(active_ctx);
+    backend->render_step();
+    printf_begin(active_ctx);
+  }
 }
 
 /** \} */
@@ -247,23 +265,22 @@ bool GPU_backend_type_selection_is_overridden()
 
 bool GPU_backend_type_selection_detect()
 {
-  blender::Vector<eGPUBackendType> backends_to_check;
+  blender::VectorSet<eGPUBackendType> backends_to_check;
   if (GPU_backend_type_selection_is_overridden()) {
-    backends_to_check.append(*g_backend_type_override);
+    backends_to_check.add(*g_backend_type_override);
   }
-  else {
 #if defined(WITH_OPENGL_BACKEND)
-    backends_to_check.append(GPU_BACKEND_OPENGL);
+  backends_to_check.add(GPU_BACKEND_OPENGL);
 #elif defined(WITH_METAL_BACKEND)
-    backends_to_check.append(GPU_BACKEND_METAL);
+  backends_to_check.add(GPU_BACKEND_METAL);
 #endif
-  }
 
   for (const eGPUBackendType backend_type : backends_to_check) {
     GPU_backend_type_selection_set(backend_type);
     if (GPU_backend_supported()) {
       return true;
     }
+    G.f |= G_FLAG_GPU_BACKEND_FALLBACK;
   }
 
   GPU_backend_type_selection_set(GPU_BACKEND_NONE);
@@ -281,7 +298,7 @@ static bool gpu_backend_supported()
 #endif
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
-      return true;
+      return VKBackend::is_supported();
 #else
       return false;
 #endif
@@ -291,6 +308,8 @@ static bool gpu_backend_supported()
 #else
       return false;
 #endif
+    case GPU_BACKEND_NONE:
+      return true;
     default:
       BLI_assert(false && "No backend specified");
       return false;
@@ -326,6 +345,9 @@ static void gpu_backend_create()
       g_backend = new MTLBackend;
       break;
 #endif
+    case GPU_BACKEND_NONE:
+      g_backend = new DummyBackend;
+      break;
     default:
       BLI_assert(0);
       break;

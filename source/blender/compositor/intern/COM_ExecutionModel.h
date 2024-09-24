@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,6 +17,7 @@ namespace blender::compositor {
 class CompositorContext;
 class ExecutionSystem;
 class NodeOperation;
+class ProfilerData;
 
 /**
  * Base class for execution models. Contains shared implementation.

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,32 +21,32 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_world_types.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_icons.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_node.hh"
 #include "BKE_paint.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "NOD_composite.h"
+#include "NOD_composite.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
 #include "ED_node.hh"
+#include "ED_node_preview.hh"
 #include "ED_paint.hh"
 #include "ED_render.hh"
 #include "ED_view3d.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "WM_api.hh"
 
@@ -177,6 +177,11 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
       ED_render_engine_area_exit(bmain, area);
     }
   }
+  /* Stop and invalidate all shader previews. */
+  ED_preview_kill_jobs(static_cast<wmWindowManager *>(bmain->wm.first), bmain);
+  LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
+    BKE_material_make_node_previews_dirty(ma);
+  }
   RE_FreePersistentData(nullptr);
   /* Inform all render engines and draw managers. */
   DEGEditorUpdateContext update_ctx = {nullptr};
@@ -202,7 +207,7 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
      * We do not use #BKE_cachefile_uses_render_procedural here as we need to update regardless of
      * the current engine or its settings. */
     if (cachefile->use_render_procedural) {
-      DEG_id_tag_update(&cachefile->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&cachefile->id, ID_RECALC_SYNC_TO_EVAL);
       /* Rebuild relations so that modifiers are reconnected to or disconnected from the
        * cache-file. */
       DEG_relations_tag_update(bmain);
@@ -280,7 +285,8 @@ static void image_changed(Main *bmain, Image *ima)
 
   /* textures */
   for (tex = static_cast<Tex *>(bmain->textures.first); tex;
-       tex = static_cast<Tex *>(tex->id.next)) {
+       tex = static_cast<Tex *>(tex->id.next))
+  {
     if (tex->type == TEX_IMAGE && tex->ima == ima) {
       texture_changed(bmain, tex);
     }
@@ -293,10 +299,11 @@ static void scene_changed(Main *bmain, Scene *scene)
 
   /* glsl */
   for (ob = static_cast<Object *>(bmain->objects.first); ob;
-       ob = static_cast<Object *>(ob->id.next)) {
+       ob = static_cast<Object *>(ob->id.next))
+  {
     if (ob->mode & OB_MODE_TEXTURE_PAINT) {
       BKE_texpaint_slots_refresh_object(scene, ob);
-      ED_paint_proj_mesh_data_check(scene, ob, nullptr, nullptr, nullptr, nullptr);
+      ED_paint_proj_mesh_data_check(*scene, *ob, nullptr, nullptr, nullptr, nullptr);
     }
   }
 }

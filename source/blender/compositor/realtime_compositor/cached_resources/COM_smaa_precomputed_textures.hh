@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_cached_resource.hh"
 

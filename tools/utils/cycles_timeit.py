@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -136,7 +136,6 @@ def benchmarkFile(blender, blendfile, stats):
     # Configure command for the current file.
     command = (blender,
                "--background",
-               "-noaudio",
                "--factory-startup",
                blendfile,
                "--engine", "CYCLES",

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,7 +35,8 @@ class WingedEdgeBuilder : public SceneVisitor {
   virtual ~WingedEdgeBuilder()
   {
     for (vector<Matrix44r *>::iterator it = _matrices_stack.begin(); it != _matrices_stack.end();
-         ++it) {
+         ++it)
+    {
       delete *it;
     }
     _matrices_stack.clear();

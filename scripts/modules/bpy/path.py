@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -284,7 +284,7 @@ def resolve_ncase(path):
         dirpath = _os.path.dirname(path)
 
         suffix = path[:0]  # "" but ensure byte/str match
-        if not filename:  # dir ends with a slash?
+        if not filename:  # Check if the directory ends with a slash.
             if len(dirpath) < len(path):
                 suffix = path[:len(path) - len(dirpath)]
 
@@ -355,7 +355,7 @@ def ensure_ext(filepath, ext, *, case_sensitive=False):
     return filepath + ext
 
 
-def module_names(path, *, recursive=False):
+def module_names(path, *, recursive=False, package=""):
     """
     Return a list of modules which can be imported from *path*.
 
@@ -363,6 +363,8 @@ def module_names(path, *, recursive=False):
     :type path: string
     :arg recursive: Also return submodule names for packages.
     :type recursive: bool
+    :arg package: Optional string, used as the prefix for module names (without the trailing ".").
+    :type package: string
     :return: a list of string pairs (module_name, module_file).
     :rtype: list of strings
     """
@@ -371,22 +373,24 @@ def module_names(path, *, recursive=False):
 
     modules = []
 
+    package_prefix = (package + ".") if package else ""
+
     for filename in sorted(_os.listdir(path)):
-        if filename == "modules":
+        if (filename == "modules") and (not package_prefix):
             pass  # XXX, hard coded exception.
         elif filename.endswith(".py") and filename != "__init__.py":
             fullpath = join(path, filename)
-            modules.append((filename[0:-3], fullpath))
+            modules.append((package_prefix + filename[0:-3], fullpath))
         elif not filename.startswith("."):
             # Skip hidden files since they are used by for version control.
             directory = join(path, filename)
             fullpath = join(directory, "__init__.py")
             if isfile(fullpath):
-                modules.append((filename, fullpath))
+                modules.append((package_prefix + filename, fullpath))
                 if recursive:
                     for mod_name, mod_path in module_names(directory, recursive=True):
                         modules.append((
-                            "%s.%s" % (filename, mod_name),
+                            "{:s}.{:s}".format(package_prefix + filename, mod_name),
                             mod_path,
                         ))
 

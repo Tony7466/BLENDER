@@ -1,6 +1,10 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
+#pragma BLENDER_REQUIRE(select_lib.glsl)
 
 /* project to screen space */
 vec2 proj(vec4 pos)
@@ -10,6 +14,7 @@ vec2 proj(vec4 pos)
 
 void main()
 {
+  select_id_set(in_select_buf[gl_InstanceID]);
   vec4 bone_color, state_color;
   mat4 model_mat = extract_matrix_packed_data(inst_obmat, state_color, bone_color);
 
@@ -19,7 +24,7 @@ void main()
   bool is_persp = (drw_view.winmat[3][3] == 0.0);
 
   /* This is the local space camera ray (not normalize).
-   * In perspective mode it's also the viewspace position
+   * In perspective mode it's also the view-space position
    * of the sphere center. */
   vec3 cam_ray = (is_persp) ? model_view_matrix[3].xyz : vec3(0.0, 0.0, -1.0);
   cam_ray = mat3(sphereMatrix) * cam_ray;

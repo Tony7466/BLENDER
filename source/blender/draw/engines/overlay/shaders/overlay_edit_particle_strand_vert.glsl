@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2016-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -28,7 +31,8 @@ void main()
     finalColor = vec4(weight_to_rgb(selection), 1.0);
   }
   else {
-    finalColor = mix(colorWire, colorVertexSelect, selection);
+    vec4 use_color = useGreasePencil ? colorGpencilVertexSelect : colorVertexSelect;
+    finalColor = mix(colorWire, use_color, selection);
   }
 
   view_clipping_distances(world_pos);

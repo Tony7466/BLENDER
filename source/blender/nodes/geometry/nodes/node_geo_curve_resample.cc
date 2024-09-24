@@ -1,13 +1,16 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "GEO_resample_curves.hh"
 
 #include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
 
@@ -17,11 +20,15 @@ NODE_STORAGE_FUNCS(NodeGeometryCurveResample)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>("Curve").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Geometry>("Curve").supported_type(
+      {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
   b.add_input<decl::Int>("Count").default_value(10).min(1).max(100000).field_on_all();
-  b.add_input<decl::Float>("Length").default_value(0.1f).min(0.01f).field_on_all().subtype(
-      PROP_DISTANCE);
+  b.add_input<decl::Float>("Length")
+      .default_value(0.1f)
+      .min(0.01f)
+      .subtype(PROP_DISTANCE)
+      .field_on_all();
   b.add_output<decl::Geometry>("Curve").propagate_all();
 }
 
@@ -46,8 +53,8 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *count_socket = static_cast<bNodeSocket *>(node->inputs.first)->next->next;
   bNodeSocket *length_socket = count_socket->next;
 
-  bke::nodeSetSocketAvailability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
-  bke::nodeSetSocketAvailability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
+  bke::node_set_socket_availability(ntree, count_socket, mode == GEO_NODE_CURVE_RESAMPLE_COUNT);
+  bke::node_set_socket_availability(ntree, length_socket, mode == GEO_NODE_CURVE_RESAMPLE_LENGTH);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -59,7 +66,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   const Field<bool> selection = params.extract_input<Field<bool>>("Selection");
 
-  GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
 
   switch (mode) {
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
@@ -67,11 +74,29 @@ static void node_geo_exec(GeoNodeExecParams params)
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
+          const bke::CurvesFieldContext field_context{src_curves, AttrDomain::Curve};
           bke::CurvesGeometry dst_curves = geometry::resample_to_count(
-              src_curves, selection, count);
+              src_curves, field_context, selection, count);
           Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
           bke::curves_copy_parameters(*src_curves_id, *dst_curves_id);
           geometry.replace_curves(dst_curves_id);
+        }
+        if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
+          using namespace blender::bke::greasepencil;
+          for (const int layer_index : grease_pencil->layers().index_range()) {
+            Drawing *drawing = grease_pencil->get_eval_drawing(grease_pencil->layer(layer_index));
+
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            const bke::GreasePencilLayerFieldContext field_context(
+                *grease_pencil, AttrDomain::Curve, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_count(
+                src_curves, field_context, selection, count);
+            drawing->strokes_for_write() = std::move(dst_curves);
+            drawing->tag_topology_changed();
+          }
         }
       });
       break;
@@ -81,11 +106,28 @@ static void node_geo_exec(GeoNodeExecParams params)
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
+          const bke::CurvesFieldContext field_context{src_curves, AttrDomain::Curve};
           bke::CurvesGeometry dst_curves = geometry::resample_to_length(
-              src_curves, selection, length);
+              src_curves, field_context, selection, length);
           Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
           bke::curves_copy_parameters(*src_curves_id, *dst_curves_id);
           geometry.replace_curves(dst_curves_id);
+        }
+        if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
+          using namespace blender::bke::greasepencil;
+          for (const int layer_index : grease_pencil->layers().index_range()) {
+            Drawing *drawing = grease_pencil->get_eval_drawing(grease_pencil->layer(layer_index));
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            const bke::GreasePencilLayerFieldContext field_context(
+                *grease_pencil, AttrDomain::Curve, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_length(
+                src_curves, field_context, selection, length);
+            drawing->strokes_for_write() = std::move(dst_curves);
+            drawing->tag_topology_changed();
+          }
         }
       });
       break;
@@ -94,10 +136,28 @@ static void node_geo_exec(GeoNodeExecParams params)
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
         if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
-          bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(src_curves, selection);
+          const bke::CurvesFieldContext field_context{src_curves, AttrDomain::Curve};
+          bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(
+              src_curves, field_context, selection);
           Curves *dst_curves_id = bke::curves_new_nomain(std::move(dst_curves));
           bke::curves_copy_parameters(*src_curves_id, *dst_curves_id);
           geometry.replace_curves(dst_curves_id);
+        }
+        if (GreasePencil *grease_pencil = geometry_set.get_grease_pencil_for_write()) {
+          using namespace blender::bke::greasepencil;
+          for (const int layer_index : grease_pencil->layers().index_range()) {
+            Drawing *drawing = grease_pencil->get_eval_drawing(grease_pencil->layer(layer_index));
+            if (drawing == nullptr) {
+              continue;
+            }
+            const bke::CurvesGeometry &src_curves = drawing->strokes();
+            const bke::GreasePencilLayerFieldContext field_context(
+                *grease_pencil, AttrDomain::Curve, layer_index);
+            bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(
+                src_curves, field_context, selection);
+            drawing->strokes_for_write() = std::move(dst_curves);
+            drawing->tag_topology_changed();
+          }
         }
       });
       break;
@@ -106,21 +166,53 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_curve_resample_cc
-
-void register_node_type_geo_curve_resample()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_curve_resample_cc;
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_RESAMPLE_EVALUATED,
+       "EVALUATED",
+       0,
+       "Evaluated",
+       "Output the input spline's evaluated points, based on the resolution attribute for NURBS "
+       "and Bézier splines. Poly splines are unchanged"},
+      {GEO_NODE_CURVE_RESAMPLE_COUNT,
+       "COUNT",
+       0,
+       "Count",
+       "Sample the specified number of points along each spline"},
+      {GEO_NODE_CURVE_RESAMPLE_LENGTH,
+       "LENGTH",
+       0,
+       "Length",
+       "Calculate the number of samples by splitting each spline into segments with the specified "
+       "length"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
-  static bNodeType ntype;
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "How to specify the amount of samples",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode));
+}
+
+static void node_register()
+{
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_RESAMPLE_CURVE, "Resample Curve", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.draw_buttons = file_ns::node_layout;
-  node_type_storage(
+  ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
+  blender::bke::node_type_storage(
       &ntype, "NodeGeometryCurveResample", node_free_standard_storage, node_copy_standard_storage);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  nodeRegisterType(&ntype);
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  blender::bke::node_register_type(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_resample_cc

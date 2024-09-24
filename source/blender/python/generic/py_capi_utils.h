@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 #ifndef __PY_CAPI_UTILS_H__
 #define __PY_CAPI_UTILS_H__
 
+#include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 #include "BLI_utildefines_variadic.h"
 
@@ -26,8 +27,25 @@ void PyC_ObSpit(const char *name, PyObject *var);
 void PyC_ObSpitStr(char *result, size_t result_maxncpy, PyObject *var);
 void PyC_LineSpit(void);
 void PyC_StackSpit(void);
-PyObject *PyC_ExceptionBuffer(void);
-PyObject *PyC_ExceptionBuffer_Simple(void);
+
+/**
+ * Return a string containing the full stack trace.
+ *
+ * - Only call when `PyErr_Occurred() != 0` .
+ * - The exception is left in place without being manipulated,
+ *   although they will be normalized in order to display them (`PyErr_Print` also does this).
+ * - `SystemExit` exceptions will exit (so `sys.exit(..)` works, matching `PyErr_Print` behavior).
+ * - The always returns a Python string (unless exiting where the function doesn't return).
+ */
+PyObject *PyC_ExceptionBuffer(void) ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL;
+/**
+ * A version of #PyC_ExceptionBuffer that returns the last exception only.
+ *
+ * Useful for error messages from evaluating numeric expressions for e.g.
+ * where a full multi-line stack-trace isn't needed and doesn't format well in the status-bar.
+ */
+PyObject *PyC_ExceptionBuffer_Simple(void) ATTR_WARN_UNUSED_RESULT ATTR_RETURNS_NONNULL;
+
 PyObject *PyC_Object_GetAttrStringArgs(PyObject *o, Py_ssize_t n, ...);
 PyObject *PyC_FrozenSetFromStrings(const char **strings);
 
@@ -84,6 +102,11 @@ PyObject *PyC_Tuple_PackArray_I32(const int *array, uint len);
 PyObject *PyC_Tuple_PackArray_I32FromBool(const int *array, uint len);
 PyObject *PyC_Tuple_PackArray_Bool(const bool *array, uint len);
 
+/**
+ * \note Any errors converting strings will return null with the error left as-is.
+ */
+PyObject *PyC_Tuple_PackArray_String(const char **array, uint len);
+
 PyObject *PyC_Tuple_PackArray_Multi_F32(const float *array, const int dims[], int dims_len);
 PyObject *PyC_Tuple_PackArray_Multi_F64(const double *array, const int dims[], int dims_len);
 PyObject *PyC_Tuple_PackArray_Multi_I32(const int *array, const int dims[], int dims_len);
@@ -96,7 +119,11 @@ PyObject *PyC_Tuple_PackArray_Multi_Bool(const bool *array, const int dims[], in
 void PyC_Tuple_Fill(PyObject *tuple, PyObject *value);
 void PyC_List_Fill(PyObject *list, PyObject *value);
 
-/* follow http://www.python.org/dev/peps/pep-0383/ */
+/**
+ * Create a `str` from bytes in a way which is compatible with non UTF8 encoded file-system paths,
+ * see: #111033.
+ * Follow http://www.python.org/dev/peps/pep-0383/
+ */
 PyObject *PyC_UnicodeFromBytes(const char *str);
 /**
  * \param size: The length of the string: `strlen(str)`.
@@ -113,6 +140,32 @@ const char *PyC_UnicodeAsBytes(PyObject *py_str, PyObject **r_coerce); /* coerce
 const char *PyC_UnicodeAsBytesAndSize(PyObject *py_str, Py_ssize_t *r_size, PyObject **r_coerce);
 
 /**
+ * Notes on using this structure:
+ * - Always initialize to `{nullptr}`.
+ * - Always `Py_XDECREF(value_coerce)` before returning,
+ *   after this `value` must not be accessed.
+ */
+typedef struct PyC_UnicodeAsBytesAndSize_Data {
+  PyObject *value_coerce;
+  const char *value;
+  Py_ssize_t value_len;
+} PyC_UnicodeAsBytesAndSize_Data;
+
+/**
+ * Use with PyArg_ParseTuple's "O&" formatting.
+ *
+ * Expose #PyC_UnicodeAsBytes in a way which is useful to the argument parser.
+ * \param o: An argument parsed to #PyC_UnicodeAsBytes.
+ * \param p: Pointer to #PyC_UnicodeAsBytes_Data.
+ *
+ * \note The Python API docs reference `PyUnicode_FSConverter` however this does not support
+ * paths which non utf-8 encoding, see: #111033.
+ */
+int PyC_ParseUnicodeAsBytesAndSize(PyObject *o, void *p);
+/** A version of #PyC_ParseUnicodeAsBytesAndSize that accepts None. */
+int PyC_ParseUnicodeAsBytesAndSize_OrNone(PyObject *o, void *p);
+
+/**
  * Description: This function creates a new Python dictionary object.
  * NOTE: dict is owned by sys.modules["__main__"] module, reference is borrowed
  * NOTE: important we use the dict from __main__, this is what python expects
@@ -121,11 +174,11 @@ const char *PyC_UnicodeAsBytesAndSize(PyObject *py_str, Py_ssize_t *r_size, PyOb
  * >> print(__import__("__main__").foo)
  *
  * NOTE: this overwrites __main__ which gives problems with nested calls.
- * be sure to run PyC_MainModule_Backup & PyC_MainModule_Restore if there is
+ * be sure to run #PyC_MainModule_Backup & #PyC_MainModule_Restore if there is
  * any chance that python is in the call stack.
  */
-PyObject *PyC_DefaultNameSpace(const char *filename);
-void PyC_RunQuicky(const char *filepath, int n, ...);
+PyObject *PyC_DefaultNameSpace(const char *filename) ATTR_NONNULL(1) ATTR_WARN_UNUSED_RESULT;
+void PyC_RunQuicky(const char *filepath, int n, ...) ATTR_NONNULL(1);
 /**
  * Import `imports` into `py_dict`.
  *
@@ -139,7 +192,7 @@ bool PyC_NameSpace_ImportArray(PyObject *py_dict, const char *imports[]);
 /**
  * #PyC_MainModule_Restore MUST be called after #PyC_MainModule_Backup.
  */
-void PyC_MainModule_Backup(PyObject **r_main_mod);
+PyObject *PyC_MainModule_Backup() ATTR_WARN_UNUSED_RESULT;
 void PyC_MainModule_Restore(PyObject *main_mod);
 
 bool PyC_IsInterpreterActive(void);
@@ -175,11 +228,11 @@ PyObject *PyC_FlagSet_FromBitfield(PyC_FlagSet *items, int flag);
 bool PyC_RunString_AsNumber(const char **imports,
                             const char *expr,
                             const char *filename,
-                            double *r_value);
+                            double *r_value) ATTR_NONNULL(2, 3, 4) ATTR_WARN_UNUSED_RESULT;
 bool PyC_RunString_AsIntPtr(const char **imports,
                             const char *expr,
                             const char *filename,
-                            intptr_t *r_value);
+                            intptr_t *r_value) ATTR_NONNULL(2, 3, 4) ATTR_WARN_UNUSED_RESULT;
 /**
  * \param r_value_size: The length of the string assigned: `strlen(*r_value)`.
  */
@@ -187,11 +240,26 @@ bool PyC_RunString_AsStringAndSize(const char **imports,
                                    const char *expr,
                                    const char *filename,
                                    char **r_value,
-                                   size_t *r_value_size);
+                                   size_t *r_value_size)
+    ATTR_NONNULL(2, 3, 4, 5) ATTR_WARN_UNUSED_RESULT;
 bool PyC_RunString_AsString(const char **imports,
                             const char *expr,
                             const char *filename,
-                            char **r_value);
+                            char **r_value) ATTR_NONNULL(2, 3, 4) ATTR_WARN_UNUSED_RESULT;
+
+/**
+ * \param r_value_size: The length of the string assigned: `strlen(*r_value)`.
+ */
+bool PyC_RunString_AsStringAndSizeOrNone(const char **imports,
+                                         const char *expr,
+                                         const char *filename,
+                                         char **r_value,
+                                         size_t *r_value_size)
+    ATTR_NONNULL(2, 3, 4) ATTR_WARN_UNUSED_RESULT;
+bool PyC_RunString_AsStringOrNone(const char **imports,
+                                  const char *expr,
+                                  const char *filename,
+                                  char **r_value) ATTR_NONNULL(2, 3, 4) ATTR_WARN_UNUSED_RESULT;
 
 /**
  * Use with PyArg_ParseTuple's "O&" formatting.
@@ -254,12 +322,22 @@ int32_t PyC_Long_AsI32(PyObject *value);
 int64_t PyC_Long_AsI64(PyObject *value);
 #endif
 
+/**
+ * Unlike Python's #PyLong_AsUnsignedLong and #PyLong_AsUnsignedLongLong, these unsigned integer
+ * parsing functions fall back to calling #PyNumber_Index when their argument is not a
+ * `PyLongObject`. This matches Python's signed integer parsing functions which also fall back to
+ * calling #PyNumber_Index.
+ */
 uint8_t PyC_Long_AsU8(PyObject *value);
 uint16_t PyC_Long_AsU16(PyObject *value);
 uint32_t PyC_Long_AsU32(PyObject *value);
-#if 0 /* inline */
+/**
+ * #PyLong_AsUnsignedLongLong, unlike #PyLong_AsLongLong, does not fall back to calling
+ * #PyNumber_Index when its argument is not a `PyLongObject` instance. To match parsing signed
+ * integer types with #PyLong_AsLongLong, this function performs the #PyNumber_Index fallback, if
+ * necessary, before calling #PyLong_AsUnsignedLongLong.
+ */
 uint64_t PyC_Long_AsU64(PyObject *value);
-#endif
 
 /* inline so type signatures match as expected */
 Py_LOCAL_INLINE(int32_t) PyC_Long_AsI32(PyObject *value)
@@ -269,10 +347,6 @@ Py_LOCAL_INLINE(int32_t) PyC_Long_AsI32(PyObject *value)
 Py_LOCAL_INLINE(int64_t) PyC_Long_AsI64(PyObject *value)
 {
   return (int64_t)PyLong_AsLongLong(value);
-}
-Py_LOCAL_INLINE(uint64_t) PyC_Long_AsU64(PyObject *value)
-{
-  return (uint64_t)PyLong_AsUnsignedLongLong(value);
 }
 
 /* utils for format string in `struct` module style syntax */
@@ -288,6 +362,13 @@ bool PyC_StructFmt_type_is_bool(char format);
 
 #ifdef __cplusplus
 #  include "BLI_span.hh"
+
+#  include <string>
+
+/**
+ * Create a `str` from `std::string`, wraps #PyC_UnicodeFromBytesAndSize.
+ */
+PyObject *PyC_UnicodeFromStdStr(const std::string &str);
 
 inline PyObject *PyC_Tuple_Pack_F32(const blender::Span<float> values)
 {

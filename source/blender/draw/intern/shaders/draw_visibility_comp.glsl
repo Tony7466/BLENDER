@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Compute visibility of each resource bounds for a given view.
@@ -29,11 +32,11 @@ void main()
 
   ObjectBounds bounds = bounds_buf[gl_GlobalInvocationID.x];
 
-  if (bounds.bounding_sphere.w != -1.0) {
-    IsectBox box = isect_data_setup(bounds.bounding_corners[0].xyz,
-                                    bounds.bounding_corners[1].xyz,
-                                    bounds.bounding_corners[2].xyz,
-                                    bounds.bounding_corners[3].xyz);
+  if (drw_bounds_culling_enabled(bounds)) {
+    IsectBox box = isect_box_setup(bounds.bounding_corners[0].xyz,
+                                   bounds.bounding_corners[1].xyz,
+                                   bounds.bounding_corners[2].xyz,
+                                   bounds.bounding_corners[3].xyz);
     Sphere bounding_sphere = shape_sphere(bounds.bounding_sphere.xyz, bounds.bounding_sphere.w);
     Sphere inscribed_sphere = shape_sphere(bounds.bounding_sphere.xyz,
                                            bounds._inner_sphere_radius);
@@ -52,6 +55,15 @@ void main()
       }
       else if (intersect_view(box) == false) {
         /* Not visible. */
+        mask_visibility_bit(drw_view_id);
+      }
+    }
+  }
+  else {
+    /* Culling is disabled, but we need to mask the bits for disabled views. */
+    for (drw_view_id = 0u; drw_view_id < uint(view_len); drw_view_id++) {
+      if (drw_view_culling.bound_sphere.w == -1.0) {
+        /* View disabled. */
         mask_visibility_bit(drw_view_id);
       }
     }

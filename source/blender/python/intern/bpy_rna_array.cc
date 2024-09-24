@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,13 +14,13 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "bpy_rna.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BPY_extern_clog.h"
 
@@ -1048,8 +1048,6 @@ int pyrna_array_contains_py(PointerRNA *ptr, PropertyRNA *prop, PyObject *value)
       }
 
       return i < len ? 1 : 0;
-
-      break;
     }
     case PROP_INT: {
       const int value_i = PyC_Long_AsI32(value);
@@ -1081,8 +1079,6 @@ int pyrna_array_contains_py(PointerRNA *ptr, PropertyRNA *prop, PyObject *value)
       }
 
       return i < len ? 1 : 0;
-
-      break;
     }
     case PROP_BOOLEAN: {
       const int value_i = PyC_Long_AsBool(value);
@@ -1114,8 +1110,6 @@ int pyrna_array_contains_py(PointerRNA *ptr, PropertyRNA *prop, PyObject *value)
       }
 
       return i < len ? 1 : 0;
-
-      break;
     }
   }
 

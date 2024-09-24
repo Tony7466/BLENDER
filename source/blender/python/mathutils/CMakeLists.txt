@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,7 +6,6 @@ set(INC
   .
   ../../blenkernel
   ../../bmesh
-  ../../depsgraph
   ../../imbuf
 )
 
@@ -42,6 +41,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_imbuf
   PRIVATE bf::intern::guardedalloc

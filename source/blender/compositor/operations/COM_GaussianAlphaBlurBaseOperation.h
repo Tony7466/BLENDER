@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,6 +46,16 @@ class GaussianAlphaBlurBaseOperation : public BlurBaseOperation {
   {
     return (LIKELY(test == false)) ? f : 1.0f - f;
   }
+};
+
+class GaussianAlphaXBlurOperation : public GaussianAlphaBlurBaseOperation {
+ public:
+  GaussianAlphaXBlurOperation() : GaussianAlphaBlurBaseOperation(eDimension::X) {}
+};
+
+class GaussianAlphaYBlurOperation : public GaussianAlphaBlurBaseOperation {
+ public:
+  GaussianAlphaYBlurOperation() : GaussianAlphaBlurBaseOperation(eDimension::Y) {}
 };
 
 }  // namespace blender::compositor

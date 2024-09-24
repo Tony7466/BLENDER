@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -169,7 +169,7 @@ PyObject *BPy_BMElem_Array_As_Tuple(BMesh *bm, BMHeader **elem, Py_ssize_t elem_
 PyObject *BPy_BMVert_Array_As_Tuple(BMesh *bm, BMVert **elem, Py_ssize_t elem_len);
 PyObject *BPy_BMEdge_Array_As_Tuple(BMesh *bm, BMEdge **elem, Py_ssize_t elem_len);
 PyObject *BPy_BMFace_Array_As_Tuple(BMesh *bm, BMFace **elem, Py_ssize_t elem_len);
-PyObject *BPy_BMLoop_Array_As_Tuple(BMesh *bm, BMLoop **elem, Py_ssize_t elem_len);
+PyObject *BPy_BMLoop_Array_As_Tuple(BMesh *bm, BMLoop *const *elem, Py_ssize_t elem_len);
 
 int BPy_BMElem_CheckHType(PyTypeObject *type, char htype);
 /**

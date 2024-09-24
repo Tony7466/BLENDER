@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -60,7 +60,7 @@ class ControlPointNeighborFieldInput final : public bke::CurvesFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask &mask) const final
   {
     const OffsetIndices points_by_curve = curves.points_by_curve();
@@ -80,7 +80,7 @@ class ControlPointNeighborFieldInput final : public bke::CurvesFieldInput {
       const int i_point = std::clamp(indices[i_selection], 0, curves.points_num() - 1);
       const int i_curve = parent_curves[i_point];
       const IndexRange curve_points = points_by_curve[i_curve];
-      const int offset_point = i_point + offsets[i_point];
+      const int offset_point = i_point + offsets[i_selection];
 
       if (cyclic[i_curve]) {
         output[i_selection] = apply_offset_in_cyclic_range(
@@ -115,7 +115,7 @@ class OffsetValidFieldInput final : public bke::CurvesFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask &mask) const final
   {
     const VArray<bool> cyclic = curves.cyclic();
@@ -171,15 +171,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-}  // namespace blender::nodes::node_geo_offset_point_in_curve_cc
-
-void register_node_type_geo_offset_point_in_curve()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_offset_point_in_curve_cc;
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_OFFSET_POINT_IN_CURVE, "Offset Point in Curve", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  nodeRegisterType(&ntype);
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  blender::bke::node_register_type(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_offset_point_in_curve_cc

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 
 #include "BLI_sys_types.h"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "gpu_drawlist_private.hh"
 
@@ -32,7 +32,7 @@ class GLDrawList : public DrawList {
   GLDrawList(int length);
   ~GLDrawList();
 
-  void append(GPUBatch *batch, int i_first, int i_count) override;
+  void append(Batch *batch, int i_first, int i_count) override;
   void submit() override;
 
  private:

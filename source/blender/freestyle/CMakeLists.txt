@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -531,6 +531,7 @@ set(SRC
 
 set(LIB
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_python_mathutils
@@ -543,7 +544,6 @@ set(INC
   .
   ../blenkernel
   ../blentranslation
-  ../depsgraph
   ../imbuf
   ../makesrna
   ../python
@@ -551,7 +551,7 @@ set(INC
   ../render
   ../render/intern
 
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -582,5 +582,5 @@ if(COMMAND target_precompile_headers)
   target_precompile_headers(bf_freestyle PRIVATE FRS_precomp.h)
 endif()
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_freestyle bf_rna)

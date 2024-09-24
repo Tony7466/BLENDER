@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,13 +11,13 @@
 
 #include "DNA_node_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GPU_shader.h"
-#include "GPU_texture.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -96,7 +96,7 @@ class CropOperation : public NodeOperation {
    * same domain as the input image. */
   void execute_alpha_crop()
   {
-    GPUShader *shader = shader_manager().get("compositor_alpha_crop");
+    GPUShader *shader = context().get_shader("compositor_alpha_crop");
     GPU_shader_bind(shader);
 
     int2 lower_bound, upper_bound;
@@ -133,7 +133,7 @@ class CropOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get("compositor_image_crop");
+    GPUShader *shader = context().get_shader("compositor_image_crop");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_2iv(shader, "lower_bound", lower_bound);
@@ -226,14 +226,15 @@ void register_node_type_cmp_crop()
 {
   namespace file_ns = blender::nodes::node_composite_crop_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_CROP, "Crop", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_crop_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_crop;
   ntype.initfunc = file_ns::node_composit_init_crop;
-  node_type_storage(&ntype, "NodeTwoXYs", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeTwoXYs", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

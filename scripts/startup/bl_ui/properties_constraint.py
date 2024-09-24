@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -233,6 +233,7 @@ class ConstraintButtonsPanel:
 
         layout.prop(con, "euler_order", text="Order")
         layout.prop(con, "use_transform_limit")
+        layout.prop(con, "use_legacy_behavior")
         self.space_template(layout, con, target=False, owner=True)
 
         self.draw_influence(layout, con)
@@ -957,7 +958,7 @@ class ConstraintButtonsPanel:
         self.draw_influence(layout, con)
 
 
-# Parent class for constraint subpanels
+# Parent class for constraint sub-panels.
 class ConstraintButtonsSubPanel:
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -1125,7 +1126,18 @@ class ConstraintButtonsSubPanel:
         layout.use_property_split = True
         layout.use_property_decorate = True
 
-        layout.prop(con, "action")
+        col = layout.column(align=True)
+        col.prop(con, "action")
+        if context.preferences.experimental.use_animation_baklava and con.action and con.action.is_action_layered:
+            col.context_pointer_set("animated_id", con.id_data)
+            col.template_search(
+                con, "action_slot",
+                con, "action_slots",
+                new="",  # No use in making a new slot here.
+                unlink="anim.slot_unassign_from_constraint",
+                text="Slot",
+            )
+
         layout.prop(con, "use_bone_object_action")
 
         col = layout.column(align=True)
@@ -1443,7 +1455,7 @@ class BONE_PT_bTransformConstraint_to(BoneConstraintPanel, ConstraintButtonsSubP
         self.draw_transform_to(context)
 
 
-# Shrinkwrap Constraint
+# Shrink-wrap Constraint.
 
 class OBJECT_PT_bShrinkwrapConstraint(ObjectConstraintPanel, ConstraintButtonsPanel, Panel):
     def draw(self, context):

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,19 +16,16 @@
 #include "BLI_alloca.h"
 #include "BLI_utildefines.h"
 
-#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_rna_gizmo.h"
 
 #include "../generic/py_capi_utils.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/python_compat.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
-#include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_prototypes.hh"
 
 #include "bpy_rna.h"
 
@@ -275,7 +272,8 @@ static void py_rna_gizmo_handler_range_get_cb(const wmGizmo * /*gz*/,
     float range[2];
     for (int i = 0; i < 2; i++) {
       if (((range[i] = PyFloat_AsDouble(PyTuple_GET_ITEM(ret, i))) == -1.0f && PyErr_Occurred()) ==
-          0) {
+          0)
+      {
         /* pass */
       }
       else {
@@ -317,6 +315,7 @@ static void py_rna_gizmo_handler_free_cb(const wmGizmo * /*gz*/, wmGizmoProperty
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_gizmo_target_set_handler_doc,
     ".. method:: target_set_handler(target, get, set, range=None):\n"
     "\n"
@@ -347,6 +346,7 @@ static PyObject *bpy_gizmo_target_set_handler(PyObject * /*self*/, PyObject *arg
    * (see: rna_wm_gizmo_api.cc). conventions should match. */
   static const char *const _keywords[] = {"self", "target", "get", "set", "range", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `self` */
       "O&" /* `target` */
       "|$" /* Optional keyword only arguments. */
@@ -431,15 +431,17 @@ fail:
 /** \name Gizmo Target Property Access API
  * \{ */
 
-PyDoc_STRVAR(bpy_gizmo_target_get_value_doc,
-             ".. method:: target_get_value(target):\n"
-             "\n"
-             "   Get the value of this target property.\n"
-             "\n"
-             "   :arg target: Target property name.\n"
-             "   :type target: string\n"
-             "   :return: The value of the target property.\n"
-             "   :rtype: Single value or array based on the target type\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_gizmo_target_get_value_doc,
+    ".. method:: target_get_value(target):\n"
+    "\n"
+    "   Get the value of this target property.\n"
+    "\n"
+    "   :arg target: Target property name.\n"
+    "   :type target: string\n"
+    "   :return: The value of the target property.\n"
+    "   :rtype: Single value or array based on the target type\n");
 static PyObject *bpy_gizmo_target_get_value(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   struct {
@@ -450,6 +452,7 @@ static PyObject *bpy_gizmo_target_get_value(PyObject * /*self*/, PyObject *args,
 
   static const char *const _keywords[] = {"self", "target", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `self` */
       "O&" /* `target` */
       ":target_get_value",
@@ -488,8 +491,6 @@ static PyObject *bpy_gizmo_target_get_value(PyObject * /*self*/, PyObject *args,
 
       const float value = WM_gizmo_target_property_float_get(gz, gz_prop);
       return PyFloat_FromDouble(value);
-
-      break;
     }
     default: {
       PyErr_SetString(PyExc_RuntimeError, "Not yet supported type");
@@ -501,13 +502,15 @@ fail:
   return nullptr;
 }
 
-PyDoc_STRVAR(bpy_gizmo_target_set_value_doc,
-             ".. method:: target_set_value(target):\n"
-             "\n"
-             "   Set the value of this target property.\n"
-             "\n"
-             "   :arg target: Target property name.\n"
-             "   :type target: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_gizmo_target_set_value_doc,
+    ".. method:: target_set_value(target):\n"
+    "\n"
+    "   Set the value of this target property.\n"
+    "\n"
+    "   :arg target: Target property name.\n"
+    "   :type target: string\n");
 static PyObject *bpy_gizmo_target_set_value(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   struct {
@@ -520,6 +523,7 @@ static PyObject *bpy_gizmo_target_set_value(PyObject * /*self*/, PyObject *args,
 
   static const char *const _keywords[] = {"self", "target", "value", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `self` */
       "O&" /* `target` */
       "O"  /* `value` */
@@ -585,14 +589,16 @@ fail:
   return nullptr;
 }
 
-PyDoc_STRVAR(bpy_gizmo_target_get_range_doc,
-             ".. method:: target_get_range(target):\n"
-             "\n"
-             "   Get the range for this target property.\n"
-             "\n"
-             "   :arg target: Target property name.\n"
-             "   :return: The range of this property (min, max).\n"
-             "   :rtype: tuple pair.\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_gizmo_target_get_range_doc,
+    ".. method:: target_get_range(target):\n"
+    "\n"
+    "   Get the range for this target property.\n"
+    "\n"
+    "   :arg target: Target property name.\n"
+    "   :return: The range of this property (min, max).\n"
+    "   :rtype: tuple pair.\n");
 static PyObject *bpy_gizmo_target_get_range(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   struct {
@@ -603,6 +609,7 @@ static PyObject *bpy_gizmo_target_get_range(PyObject * /*self*/, PyObject *args,
 
   static const char *const _keywords[] = {"self", "target", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `self` */
       "O&" /* `target` */
       ":target_get_range",

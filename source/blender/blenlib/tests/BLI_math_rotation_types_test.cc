@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -58,6 +58,13 @@ TEST(math_rotation_types, AxisSignedConvertToVec)
   EXPECT_EQ(to_vector<float2>(AxisSigned::Y_POS), float2(0, 1));
   EXPECT_EQ(to_vector<float2>(AxisSigned::X_NEG), float2(-1, 0));
   EXPECT_EQ(to_vector<float2>(AxisSigned::Y_NEG), float2(0, -1));
+}
+
+TEST(math_rotation_types, AxisConvertToVec)
+{
+  EXPECT_EQ(to_vector<float3>(Axis::X), float3(1, 0, 0));
+  EXPECT_EQ(to_vector<float3>(Axis::Y), float3(0, 1, 0));
+  EXPECT_EQ(to_vector<float3>(Axis::Z), float3(0, 0, 1));
 }
 
 TEST(math_rotation_types, Euler3Order)

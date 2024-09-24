@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,20 +8,19 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "WM_api.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-
-#include "DEG_depsgraph_query.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "ED_screen.hh"
 
-#include "view3d_intern.h"
+#include "view3d_intern.hh"
 #include "view3d_navigate.hh" /* own include */
 
 /* -------------------------------------------------------------------- */

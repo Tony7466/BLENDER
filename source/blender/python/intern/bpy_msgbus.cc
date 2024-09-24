@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,24 +11,20 @@
 
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
+
 #include "../mathutils/mathutils.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
-#include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
 
 #include "bpy_capi_utils.h"
-#include "bpy_gizmo_wrap.h" /* own include */
-#include "bpy_intern_string.h"
 #include "bpy_rna.h"
 
 #include "bpy_msgbus.h" /* own include */
@@ -194,6 +190,7 @@ static void bpy_msgbus_subscribe_value_free_data(wmMsgSubscribeKey * /*msg_key*/
  * \{ */
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_msgbus_subscribe_rna_doc,
     ".. function:: subscribe_rna(key, owner, args, notify, options=set())\n"
     "\n"
@@ -243,6 +240,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O"  /* `key` */
       "O"  /* `owner` */
       "O!" /* `args` */
@@ -322,6 +320,7 @@ static PyObject *bpy_msgbus_subscribe_rna(PyObject * /*self*/, PyObject *args, P
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_msgbus_publish_rna_doc,
     ".. function:: publish_rna(key)\n"
     "\n" BPY_MSGBUS_RNA_MSGKEY_DOC
@@ -344,6 +343,7 @@ static PyObject *bpy_msgbus_publish_rna(PyObject * /*self*/, PyObject *args, PyO
       nullptr,
   };
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O" /* `key` */
       ":publish_rna",
       _keywords,
@@ -367,10 +367,12 @@ static PyObject *bpy_msgbus_publish_rna(PyObject * /*self*/, PyObject *args, PyO
   Py_RETURN_NONE;
 }
 
-PyDoc_STRVAR(bpy_msgbus_clear_by_owner_doc,
-             ".. function:: clear_by_owner(owner)\n"
-             "\n"
-             "   Clear all subscribers using this owner.\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_msgbus_clear_by_owner_doc,
+    ".. function:: clear_by_owner(owner)\n"
+    "\n"
+    "   Clear all subscribers using this owner.\n");
 static PyObject *bpy_msgbus_clear_by_owner(PyObject * /*self*/, PyObject *py_owner)
 {
   bContext *C = BPY_context_get();

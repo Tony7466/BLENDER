@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #pragma BLENDER_REQUIRE(gpu_shader_common_color_utils.glsl)
 
 void node_composite_color_balance_lgg(
@@ -31,4 +35,12 @@ void node_composite_color_balance_asc_cdl(float factor,
   balanced = pow(max(balanced, vec3(0.0)), power);
   result.rgb = mix(color.rgb, balanced, min(factor, 1.0));
   result.a = color.a;
+}
+
+void node_composite_color_balance_whitepoint(float factor,
+                                             vec4 color,
+                                             mat4 matrix,
+                                             out vec4 result)
+{
+  result = mix(color, matrix * color, min(factor, 1.0));
 }

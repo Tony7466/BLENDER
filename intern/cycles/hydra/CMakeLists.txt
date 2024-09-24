@@ -117,11 +117,12 @@ target_link_libraries(cycles_hydra
 )
 
 if(WITH_CYCLES_HYDRA_RENDER_DELEGATE)
-  set(HdCyclesPluginName hdCycles)
-  add_library(${HdCyclesPluginName} SHARED
+  set(SRC_HD_CYCLES_PLUGIN
     plugin.h
     plugin.cpp
   )
+  set(HdCyclesPluginName hdCycles)
+  add_library(${HdCyclesPluginName} SHARED ${SRC_HD_CYCLES_PLUGIN})
 
   set_target_properties(${HdCyclesPluginName}
     PROPERTIES PREFIX ""
@@ -166,7 +167,7 @@ if(WITH_CYCLES_HYDRA_RENDER_DELEGATE)
     set(CYCLES_HYDRA_INSTALL_PATH ${CMAKE_INSTALL_PREFIX}/hydra)
   endif()
 
-  # Put the root plugInfo.json one level up
+  # Put the root `plugInfo.json` one level up.
   delayed_install("${CMAKE_CURRENT_SOURCE_DIR}" "plugInfo.json" ${CYCLES_HYDRA_INSTALL_PATH})
   delayed_install("" $<TARGET_FILE:${HdCyclesPluginName}> ${CYCLES_HYDRA_INSTALL_PATH})
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,9 +20,7 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_report.h"
 
 #include "ED_anim_api.hh"
 #include "ED_gpencil_legacy.hh"
@@ -31,7 +29,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ***************************************** */
 /* NOTE ABOUT THIS FILE:
@@ -109,7 +107,7 @@ bool ED_gpencil_layer_frame_select_check(const bGPDlayer *gpl)
   return false;
 }
 
-/* helper function - select gp-frame based on SELECT_* mode */
+/* Helper function: select GP-frame based on SELECT_* mode. */
 static void gpencil_frame_select(bGPDframe *gpf, short select_mode)
 {
   if (gpf == nullptr) {
@@ -527,8 +525,8 @@ static bool gpencil_frame_snap_cframe(bGPDframe *gpf, Scene *scene)
 static bool gpencil_frame_snap_nearmarker(bGPDframe *gpf, Scene *scene)
 {
   if (gpf->flag & GP_FRAME_SELECT) {
-    gpf->framenum = (int)ED_markers_find_nearest_marker_time(&scene->markers,
-                                                             float(gpf->framenum));
+    gpf->framenum = int(
+        ED_markers_find_nearest_marker_time(&scene->markers, float(gpf->framenum)));
   }
   return false;
 }

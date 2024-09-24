@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,8 @@
 
 #include "mathutils.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "../generic/py_capi_utils.h"
@@ -21,6 +22,7 @@
 #endif
 
 PyDoc_STRVAR(
+    /* Wrap. */
     M_Mathutils_doc,
     "This module provides access to math operations.\n"
     "\n"
@@ -189,7 +191,7 @@ int mathutils_array_parse(
 }
 
 int mathutils_array_parse_alloc(float **array,
-                                int array_num,
+                                int array_num_min,
                                 PyObject *value,
                                 const char *error_prefix)
 {
@@ -205,12 +207,12 @@ int mathutils_array_parse_alloc(float **array,
       return -1;
     }
 
-    if (num < array_num) {
+    if (num < array_num_min) {
       PyErr_Format(PyExc_ValueError,
-                   "%.200s: sequence size is %d, expected > %d",
+                   "%.200s: sequence size is %d, expected >= %d",
                    error_prefix,
                    num,
-                   array_num);
+                   array_num_min);
       return -1;
     }
 
@@ -233,13 +235,13 @@ int mathutils_array_parse_alloc(float **array,
 
   num = PySequence_Fast_GET_SIZE(value_fast);
 
-  if (num < array_num) {
+  if (num < array_num_min) {
     Py_DECREF(value_fast);
     PyErr_Format(PyExc_ValueError,
-                 "%.200s: sequence size is %d, expected > %d",
+                 "%.200s: sequence size is %d, expected >= %d",
                  error_prefix,
                  num,
-                 array_num);
+                 array_num_min);
     return -1;
   }
 
@@ -368,71 +370,40 @@ int mathutils_array_parse_alloc_vi(int **array,
   return size;
 }
 
-int mathutils_array_parse_alloc_viseq(
-    int **array, int **start_table, int **len_table, PyObject *value, const char *error_prefix)
+bool mathutils_array_parse_alloc_viseq(PyObject *value,
+                                       const char *error_prefix,
+                                       blender::Array<blender::Vector<int>> &r_data)
 {
-  PyObject *value_fast, *subseq;
-  int i, size, start, subseq_len;
-  int *ip;
-
-  *array = nullptr;
-  *start_table = nullptr;
-  *len_table = nullptr;
+  PyObject *value_fast;
   if (!(value_fast = PySequence_Fast(value, error_prefix))) {
     /* PySequence_Fast sets the error */
-    return -1;
+    return false;
   }
 
-  size = PySequence_Fast_GET_SIZE(value_fast);
-
+  const int size = PySequence_Fast_GET_SIZE(value_fast);
   if (size != 0) {
     PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
-
-    *start_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
-    *len_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
-
-    /* First pass to set starts and len, and calculate size of array needed */
-    start = 0;
-    for (i = 0; i < size; i++) {
-      subseq = value_fast_items[i];
-      if ((subseq_len = int(PySequence_Size(subseq))) == -1) {
+    r_data.reinitialize(size);
+    for (const int64_t i : r_data.index_range()) {
+      PyObject *subseq = value_fast_items[i];
+      const int subseq_len = int(PySequence_Size(subseq));
+      if (subseq_len == -1) {
         PyErr_Format(
             PyExc_ValueError, "%.200s: sequence expected to have subsequences", error_prefix);
-        PyMem_Free(*start_table);
-        PyMem_Free(*len_table);
         Py_DECREF(value_fast);
-        *start_table = nullptr;
-        *len_table = nullptr;
-        return -1;
+        return false;
       }
-      (*start_table)[i] = start;
-      (*len_table)[i] = subseq_len;
-      start += subseq_len;
-    }
-
-    ip = *array = static_cast<int *>(PyMem_Malloc(start * sizeof(int)));
-
-    /* Second pass to parse the subsequences into array */
-    for (i = 0; i < size; i++) {
-      subseq = value_fast_items[i];
-      subseq_len = (*len_table)[i];
-
-      if (mathutils_int_array_parse(ip, subseq_len, subseq, error_prefix) == -1) {
-        PyMem_Free(*array);
-        PyMem_Free(*start_table);
-        PyMem_Free(*len_table);
-        *array = nullptr;
-        *len_table = nullptr;
-        *start_table = nullptr;
-        size = -1;
-        break;
+      r_data[i].resize(subseq_len);
+      blender::MutableSpan<int> group = r_data[i];
+      if (mathutils_int_array_parse(group.data(), group.size(), subseq, error_prefix) == -1) {
+        Py_DECREF(value_fast);
+        return false;
       }
-      ip += subseq_len;
     }
   }
 
   Py_DECREF(value_fast);
-  return size;
+  return true;
 }
 
 int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error_prefix)
@@ -714,7 +685,7 @@ static bool BaseMathObject_is_tracked(BaseMathObject *self)
   self->cb_user = cb_user;
   return is_tracked;
 }
-#endif /* NDEBUG */
+#endif /* !NDEBUG */
 
 void BaseMathObject_dealloc(BaseMathObject *self)
 {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,25 +18,26 @@
 #include "BLI_blenlib.h"
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_color_types.h"
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -44,16 +45,16 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_prototypes.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_prototypes.hh"
 
 #include "ED_gpencil_legacy.hh"
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* Temporary interpolate operation data */
 struct tGPDinterpolate_layer {
@@ -596,7 +597,7 @@ static void gpencil_interpolate_status_indicators(bContext *C, tGPDinterpolate *
   char status_str[UI_MAX_DRAW_STR];
   char msg_str[UI_MAX_DRAW_STR];
 
-  STRNCPY(msg_str, TIP_("GPencil Interpolation: "));
+  STRNCPY(msg_str, IFACE_("GPencil Interpolation: "));
 
   if (hasNumInput(&p->num)) {
     char str_ofs[NUM_STR_REP_LEN];
@@ -610,7 +611,7 @@ static void gpencil_interpolate_status_indicators(bContext *C, tGPDinterpolate *
 
   ED_area_status_text(p->area, status_str);
   ED_workspace_status_text(
-      C, TIP_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
+      C, IFACE_("ESC/RMB to cancel, Enter/LMB to confirm, WHEEL/MOVE to adjust factor"));
 }
 
 /* Update screen and stroke */
@@ -1473,9 +1474,8 @@ static void gpencil_interpolate_seq_ui(bContext *C, wmOperator *op)
     /* Get an RNA pointer to ToolSettings to give to the custom curve. */
     Scene *scene = CTX_data_scene(C);
     ToolSettings *ts = scene->toolsettings;
-    PointerRNA gpsettings_ptr;
-    RNA_pointer_create(
-        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate, &gpsettings_ptr);
+    PointerRNA gpsettings_ptr = RNA_pointer_create(
+        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate);
     uiTemplateCurveMapping(
         layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }

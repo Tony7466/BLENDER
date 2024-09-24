@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,10 +37,10 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_global.hh"
+#include "BKE_main.hh"
 
 #include "DNA_ID.h"
 
@@ -48,7 +48,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_enum_types.h" /* For `rna_enum_wm_job_type_items`. */
+#include "RNA_enum_types.hh" /* For `rna_enum_wm_job_type_items`. */
 
 /* for notifiers */
 #include "WM_api.hh"
@@ -56,6 +56,7 @@
 
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
 
 #ifdef BUILD_DATE
@@ -122,14 +123,16 @@ static PyStructSequence_Field app_info_fields[] = {
     {nullptr},
 };
 
-PyDoc_STRVAR(bpy_app_doc,
-             "This module contains application values that remain unchanged during runtime.");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_doc,
+    "This module contains application values that remain unchanged during runtime.");
 
 static PyStructSequence_Desc app_info_desc = {
-    "bpy.app",       /* name */
-    bpy_app_doc,     /* doc */
-    app_info_fields, /* fields */
-    ARRAY_SIZE(app_info_fields) - 1,
+    /*name*/ "bpy.app",
+    /*doc*/ bpy_app_doc,
+    /*fields*/ app_info_fields,
+    /*n_in_sequence*/ ARRAY_SIZE(app_info_fields) - 1,
 };
 
 static PyObject *make_app_info()
@@ -220,8 +223,10 @@ static PyObject *make_app_info()
  * they are not static */
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_app_debug_doc,
-    "Boolean, for debug info (started with --debug / --debug_* matching this attribute name)");
+    "Boolean, for debug info "
+    "(started with ``--debug`` / ``--debug-*`` matching this attribute name)");
 static PyObject *bpy_app_debug_get(PyObject * /*self*/, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
@@ -249,8 +254,19 @@ static int bpy_app_debug_set(PyObject * /*self*/, PyObject *value, void *closure
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_internet_offline_doc,
+    "Boolean, true when internet access is allowed by Blender & 3rd party scripts (read-only)");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_internet_offline_override_doc,
+    "Boolean, true when internet access preference is overridden by the command line (read-only)");
+
+PyDoc_STRVAR(
+    /* Wrap. */
     bpy_app_global_flag_doc,
-    "Boolean, for application behavior (started with --enable-* matching this attribute name)");
+    "Boolean, for application behavior "
+    "(started with ``--enable-*`` matching this attribute name)");
 static PyObject *bpy_app_global_flag_get(PyObject * /*self*/, void *closure)
 {
   const int flag = POINTER_AS_INT(closure);
@@ -289,8 +305,10 @@ static int bpy_app_global_flag_set__only_disable(PyObject * /*self*/,
   return bpy_app_global_flag_set(nullptr, value, closure);
 }
 
-PyDoc_STRVAR(bpy_app_debug_value_doc,
-             "Short, number which can be set to non-zero values for testing purposes");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_debug_value_doc,
+    "Short, number which can be set to non-zero values for testing purposes");
 static PyObject *bpy_app_debug_value_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyLong_FromLong(G.debug_value);
@@ -313,13 +331,17 @@ static int bpy_app_debug_value_set(PyObject * /*self*/, PyObject *value, void * 
   return 0;
 }
 
-PyDoc_STRVAR(bpy_app_tempdir_doc, "String, the temp directory used by blender (read-only)");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_tempdir_doc,
+    "String, the temp directory used by blender (read-only)");
 static PyObject *bpy_app_tempdir_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(BKE_tempdir_session());
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_app_driver_dict_doc,
     "Dictionary for drivers namespace, editable in-place, reset on file load (read-only)");
 static PyObject *bpy_app_driver_dict_get(PyObject * /*self*/, void * /*closure*/)
@@ -334,8 +356,10 @@ static PyObject *bpy_app_driver_dict_get(PyObject * /*self*/, void * /*closure*/
   return Py_INCREF_RET(bpy_pydriver_Dict);
 }
 
-PyDoc_STRVAR(bpy_app_preview_render_size_doc,
-             "Reference size for icon/preview renders (read-only)");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_preview_render_size_doc,
+    "Reference size for icon/preview renders (read-only)");
 static PyObject *bpy_app_preview_render_size_get(PyObject * /*self*/, void *closure)
 {
   return PyLong_FromLong(
@@ -347,10 +371,29 @@ static PyObject *bpy_app_autoexec_fail_message_get(PyObject * /*self*/, void * /
   return PyC_UnicodeFromBytes(G.autoexec_fail);
 }
 
-PyDoc_STRVAR(bpy_app_binary_path_doc,
-             "The location of Blender's executable, useful for utilities that open new instances. "
-             "Read-only unless Blender is built as a Python module - in this case the value is "
-             "an empty string which script authors may point to a Blender binary.");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_python_args_doc,
+    "Leading arguments to use when calling Python directly (via ``sys.executable``). "
+    "These arguments match settings Blender uses to "
+    "ensure Python runs with a compatible environment (read-only).");
+static PyObject *bpy_app_python_args_get(PyObject * /*self*/, void * /*closure*/)
+{
+  const char *args[1];
+  int args_num = 0;
+  if (!BPY_python_use_system_env_get()) {
+    /* Isolated Python environment. */
+    args[args_num++] = "-I";
+  }
+  return PyC_Tuple_PackArray_String(args, args_num);
+}
+
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_binary_path_doc,
+    "The location of Blender's executable, useful for utilities that open new instances. "
+    "Read-only unless Blender is built as a Python module - in this case the value is "
+    "an empty string which script authors may point to a Blender binary.");
 static PyObject *bpy_app_binary_path_get(PyObject * /*self*/, void * /*closure*/)
 {
   return PyC_UnicodeFromBytes(BKE_appdir_program_path());
@@ -470,6 +513,17 @@ static PyGetSetDef bpy_app_getsets[] = {
      bpy_app_preview_render_size_doc,
      (void *)ICON_SIZE_PREVIEW},
 
+    {"online_access",
+     bpy_app_global_flag_get,
+     nullptr,
+     bpy_app_internet_offline_doc,
+     (void *)G_FLAG_INTERNET_ALLOW},
+    {"online_access_override",
+     bpy_app_global_flag_get,
+     nullptr,
+     bpy_app_internet_offline_override_doc,
+     (void *)G_FLAG_INTERNET_OVERRIDE_PREF_ANY},
+
     /* security */
     {"autoexec_fail",
      bpy_app_global_flag_get,
@@ -483,6 +537,8 @@ static PyGetSetDef bpy_app_getsets[] = {
      (void *)G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET},
     {"autoexec_fail_message", bpy_app_autoexec_fail_message_get, nullptr, nullptr, nullptr},
 
+    {"python_args", bpy_app_python_args_get, nullptr, bpy_app_python_args_doc, nullptr},
+
     /* Support script authors setting the Blender binary path to use, otherwise this value
      * is not known when built as a Python module. */
     {"binary_path",
@@ -494,15 +550,17 @@ static PyGetSetDef bpy_app_getsets[] = {
     {nullptr, nullptr, nullptr, nullptr, nullptr},
 };
 
-PyDoc_STRVAR(bpy_app_is_job_running_doc,
-             ".. staticmethod:: is_job_running(job_type)\n"
-             "\n"
-             "   Check whether a job of the given type is running.\n"
-             "\n"
-             "   :arg job_type: job type in :ref:`rna_enum_wm_job_type_items`.\n"
-             "   :type job_type: str\n"
-             "   :return: Whether a job of the given type is currently running.\n"
-             "   :rtype: bool.\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_is_job_running_doc,
+    ".. staticmethod:: is_job_running(job_type)\n"
+    "\n"
+    "   Check whether a job of the given type is running.\n"
+    "\n"
+    "   :arg job_type: job type in :ref:`rna_enum_wm_job_type_items`.\n"
+    "   :type job_type: str\n"
+    "   :return: Whether a job of the given type is currently running.\n"
+    "   :rtype: bool.\n");
 static PyObject *bpy_app_is_job_running(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
   BPy_EnumProperty_Parse job_type_enum{};
@@ -511,6 +569,7 @@ static PyObject *bpy_app_is_job_running(PyObject * /*self*/, PyObject *args, PyO
 
   static const char *_keywords[] = {"job_type", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `job_type` */
       ":is_job_running",
       _keywords,
@@ -527,19 +586,22 @@ static PyObject *bpy_app_is_job_running(PyObject * /*self*/, PyObject *args, PyO
 
 char *(*BPY_python_app_help_text_fn)(bool all) = nullptr;
 
-PyDoc_STRVAR(bpy_app_help_text_doc,
-             ".. staticmethod:: help_text(all=False)\n"
-             "\n"
-             "   Return the help text as a string.\n"
-             "\n"
-             "   :arg all: Return all arguments, "
-             "even those which aren't available for the current platform.\n"
-             "   :type all: bool\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_app_help_text_doc,
+    ".. staticmethod:: help_text(all=False)\n"
+    "\n"
+    "   Return the help text as a string.\n"
+    "\n"
+    "   :arg all: Return all arguments, "
+    "even those which aren't available for the current platform.\n"
+    "   :type all: bool\n");
 static PyObject *bpy_app_help_text(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
   bool all = false;
   static const char *_keywords[] = {"all", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional keyword only arguments. */
       "O&" /* `all` */
       ":help_text",

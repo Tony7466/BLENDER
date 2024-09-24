@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,11 +8,11 @@
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
-#include "GPU_compute.h"
-#include "GPU_debug.h"
+#include "GPU_compute.hh"
+#include "GPU_debug.hh"
 
 #include "draw_debug.hh"
-#include "draw_shader.h"
+#include "draw_shader.hh"
 #include "draw_view.hh"
 
 namespace blender::draw {
@@ -80,10 +80,10 @@ void View::frustum_boundbox_calc(int view_id)
   corners[1][1] = corners[5][1] = bottom;
   corners[2][1] = corners[6][1] = top;
 
+  const float4x4 &view_inv = data_[view_id].viewinv;
   /* Transform into world space. */
   for (float4 &corner : corners) {
-    mul_m4_v3(data_[view_id].viewinv.ptr(), corner);
-    corner.w = 1.0;
+    corner = float4(math::transform_point(view_inv, float3(corner)), 1.0);
   }
 }
 
@@ -97,10 +97,9 @@ void View::frustum_culling_planes_calc(int view_id)
                       culling_[view_id].frustum_planes.planes[3],
                       culling_[view_id].frustum_planes.planes[4],
                       culling_[view_id].frustum_planes.planes[2]);
-
   /* Normalize. */
   for (float4 &plane : culling_[view_id].frustum_planes.planes) {
-    plane.w /= normalize_v3(plane);
+    plane /= math::length(plane.xyz());
   }
 }
 
@@ -219,16 +218,6 @@ void View::frustum_culling_sphere_calc(int view_id)
   }
 }
 
-void View::disable(IndexRange range)
-{
-  /* Set bounding sphere to -1.0f radius will bypass the culling test and treat every instance as
-   * invisible. */
-  range = IndexRange(view_len_).intersect(range);
-  for (auto view_id : range) {
-    reinterpret_cast<BoundSphere *>(&culling_[view_id].bound_sphere)->radius = -1.0f;
-  }
-}
-
 void View::bind()
 {
   if (dirty_ && !procedural_) {
@@ -263,7 +252,7 @@ void View::compute_visibility(ObjectBoundsBuf &bounds, uint resource_len, bool d
     culling_freeze_[0] = static_cast<ViewCullingData>(culling_[0]);
     culling_freeze_.push_update();
   }
-#ifdef DEBUG
+#ifdef _DEBUG
   if (debug_freeze) {
     float4x4 persmat = data_freeze_[0].winmat * data_freeze_[0].viewmat;
     drw_debug_matrix_as_bbox(math::invert(persmat), float4(0, 1, 0, 1));

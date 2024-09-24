@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,22 +14,18 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "PIL_time.h"
-
-#include "BKE_callbacks.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_callbacks.hh"
+#include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 #include "BKE_tracking.h"
 
 #include "DNA_gpencil_legacy_types.h"
@@ -44,20 +40,18 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_prototypes.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-
-#include "gpencil_intern.h"
+#include "gpencil_intern.hh"
 
 /* ******************************************* */
 /* 'Globals' and Defines */
@@ -308,7 +302,7 @@ static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], const
 static void annotation_stroke_convertcoords(tGPsdata *p,
                                             const float mval[2],
                                             float out[3],
-                                            float *depth)
+                                            const float *depth)
 {
   bGPdata *gpd = p->gpd;
   if (depth && (*depth == DEPTH_INVALID)) {
@@ -657,15 +651,19 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       if (annotation_project_check(p)) {
         View3D *v3d = static_cast<View3D *>(p->area->spacedata.first);
 
+        eV3DDepthOverrideMode mode = V3D_DEPTH_GPENCIL_ONLY;
+
+        if (ts->annotate_v3d_align & GP_PROJECT_DEPTH_VIEW) {
+          if (ts->annotate_v3d_align & GP_PROJECT_DEPTH_ONLY_SELECTED) {
+            mode = V3D_DEPTH_SELECTED_ONLY;
+          }
+          else {
+            mode = V3D_DEPTH_NO_OVERLAYS;
+          }
+        }
+
         view3d_region_operator_needs_opengl(p->win, p->region);
-        ED_view3d_depth_override(p->depsgraph,
-                                 p->region,
-                                 v3d,
-                                 nullptr,
-                                 (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ?
-                                     V3D_DEPTH_GPENCIL_ONLY :
-                                     V3D_DEPTH_NO_GPENCIL,
-                                 nullptr);
+        ED_view3d_depth_override(p->depsgraph, p->region, v3d, nullptr, mode, nullptr);
       }
 
       /* convert screen-coordinates to appropriate coordinates (and store them) */
@@ -855,7 +853,7 @@ static void annotation_stroke_newfrombuffer(tGPsdata *p)
   gps->totpoints = totelem;
   gps->thickness = gpl->thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
   gps->uv_scale = 1.0f;
   gps->flag = gpd->runtime.sbuffer_sflag;
@@ -1293,8 +1291,8 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   switch (curarea->spacetype) {
     /* supported views first */
     case SPACE_VIEW3D: {
-      /* View3D *v3d = curarea->spacedata.first; */
-      /* RegionView3D *rv3d = region->regiondata; */
+      // View3D *v3d = curarea->spacedata.first;
+      // RegionView3D *rv3d = region->regiondata;
 
       /* set current area
        * - must verify that region data is 3D-view (and not something else)
@@ -1311,7 +1309,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_NODE: {
-      /* SpaceNode *snode = curarea->spacedata.first; */
+      // SpaceNode *snode = curarea->spacedata.first;
 
       /* set current area */
       p->area = curarea;
@@ -1337,7 +1335,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       break;
     }
     case SPACE_IMAGE: {
-      /* SpaceImage *sima = curarea->spacedata.first; */
+      // SpaceImage *sima = curarea->spacedata.first;
 
       /* set the current area */
       p->area = curarea;
@@ -1685,16 +1683,20 @@ static void annotation_paint_strokeend(tGPsdata *p)
   if (annotation_project_check(p)) {
     View3D *v3d = static_cast<View3D *>(p->area->spacedata.first);
 
+    eV3DDepthOverrideMode mode = V3D_DEPTH_GPENCIL_ONLY;
+
+    if (ts->annotate_v3d_align & GP_PROJECT_DEPTH_VIEW) {
+      if (ts->annotate_v3d_align & GP_PROJECT_DEPTH_ONLY_SELECTED) {
+        mode = V3D_DEPTH_SELECTED_ONLY;
+      }
+      else {
+        mode = V3D_DEPTH_NO_OVERLAYS;
+      }
+    }
     /* need to restore the original projection settings before packing up */
     view3d_region_operator_needs_opengl(p->win, p->region);
-    ED_view3d_depth_override(p->depsgraph,
-                             p->region,
-                             v3d,
-                             nullptr,
-                             (ts->annotate_v3d_align & GP_PROJECT_DEPTH_STROKE) ?
-                                 V3D_DEPTH_GPENCIL_ONLY :
-                                 V3D_DEPTH_NO_GPENCIL,
-                             is_eraser ? nullptr : &p->depths);
+    ED_view3d_depth_override(
+        p->depsgraph, p->region, v3d, nullptr, mode, is_eraser ? nullptr : &p->depths);
   }
 
   /* check if doing eraser or not */
@@ -1960,8 +1962,8 @@ static void annotation_draw_status_indicators(bContext *C, tGPsdata *p)
           /* Provide usage tips, since this is modal, and unintuitive without hints */
           ED_workspace_status_text(
               C,
-              TIP_("Annotation Create Poly: LMB click to place next stroke vertex | "
-                   "ESC/Enter to end  (or click outside this area)"));
+              IFACE_("Annotation Create Poly: LMB click to place next stroke vertex | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
         default:
           /* Do nothing - the others are self explanatory, exit quickly once the mouse is
@@ -1976,29 +1978,29 @@ static void annotation_draw_status_indicators(bContext *C, tGPsdata *p)
       switch (p->paintmode) {
         case GP_PAINTMODE_ERASER:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Eraser: Hold and drag LMB or RMB to erase | "
-                                        "ESC/Enter to end  (or click outside this area)"));
+                                   IFACE_("Annotation Eraser: Hold and drag LMB or RMB to erase | "
+                                          "ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW_STRAIGHT:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Line Draw: Hold and drag LMB to draw | "
-                                        "ESC/Enter to end  (or click outside this area)"));
+                                   IFACE_("Annotation Line Draw: Hold and drag LMB to draw | "
+                                          "ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW:
           ED_workspace_status_text(C,
-                                   TIP_("Annotation Freehand Draw: Hold and drag LMB to draw | "
-                                        "E/ESC/Enter to end  (or click outside this area)"));
+                                   IFACE_("Annotation Freehand Draw: Hold and drag LMB to draw | "
+                                          "E/ESC/Enter to end  (or click outside this area)"));
           break;
         case GP_PAINTMODE_DRAW_POLY:
           ED_workspace_status_text(
               C,
-              TIP_("Annotation Create Poly: LMB click to place next stroke vertex | "
-                   "ESC/Enter to end  (or click outside this area)"));
+              IFACE_("Annotation Create Poly: LMB click to place next stroke vertex | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
 
         default: /* unhandled future cases */
           ED_workspace_status_text(
-              C, TIP_("Annotation Session: ESC/Enter to end   (or click outside this area)"));
+              C, IFACE_("Annotation Session: ESC/Enter to end   (or click outside this area)"));
           break;
       }
       break;
@@ -2152,7 +2154,7 @@ static void annotation_draw_apply_event(
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_time_now_seconds();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;
@@ -2469,9 +2471,9 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
  * Problem is that the stroke is converted to 3D only after it is finished.
  * This approach should work better in tools that immediately apply in 3D space. */
 #if 0
-if (event->type == NDOF_MOTION) {
-return OPERATOR_PASS_THROUGH;
-}
+  if (event->type == NDOF_MOTION) {
+    return OPERATOR_PASS_THROUGH;
+  }
 #endif
 
   if (p->status == GP_STATUS_IDLING) {
@@ -2538,14 +2540,13 @@ return OPERATOR_PASS_THROUGH;
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   *  - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
-   * only)
-   *  - RIGHTMOUSE = polyline (hotkey) / eraser (all)
-   *    (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       int sketch = 0;
@@ -2634,7 +2635,7 @@ return OPERATOR_PASS_THROUGH;
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,9 +22,9 @@
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
-#include "bmesh_triangulate.h" /* own include */
+#include "bmesh_triangulate.hh" /* own include */
 
 /**
  * a version of #BM_face_triangulate that maps to #BMOpSlot

@@ -1,19 +1,17 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
-  ../../blenfont
   ../../blenkernel
   ../../blentranslation
-  ../../depsgraph
+  ../../bmesh
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../windowmanager
-  ../../bmesh
-  # RNA_prototypes.h
+  # RNA_prototypes.hh
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
@@ -52,14 +50,16 @@ set(SRC
   gpencil_vertex_paint.cc
   gpencil_weight_paint.cc
 
-  gpencil_intern.h
+  gpencil_intern.hh
   gpencil_trace.h
 )
 
 set(LIB
   PRIVATE bf::animrig
+  PRIVATE bf::blenfont
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
@@ -81,5 +81,5 @@ endif()
 
 blender_add_lib(bf_editor_gpencil_legacy "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-# RNA_prototypes.h
+# RNA_prototypes.hh
 add_dependencies(bf_editor_gpencil_legacy bf_rna)

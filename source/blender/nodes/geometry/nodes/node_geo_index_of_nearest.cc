@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -88,11 +88,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     }
     const VArraySpan<int> group_ids_span(group_ids);
 
-    VectorSet<int> group_indexing;
-    for (const int index : IndexRange(domain_size)) {
-      const int group_id = group_ids_span[index];
-      group_indexing.add(group_id);
-    }
+    const VectorSet<int> group_indexing(group_ids_span);
     const int groups_num = group_indexing.size();
 
     IndexMaskMemory mask_memory;
@@ -141,7 +137,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const final
   {
-    return get_default_hash_2(positions_field_, group_field_);
+    return get_default_hash(positions_field_, group_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const final
@@ -153,7 +149,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const final
+  std::optional<AttrDomain> preferred_domain(const GeometryComponent &component) const final
   {
     return bke::try_detect_field_domain(component, positions_field_);
   }
@@ -209,7 +205,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
 
   uint64_t hash() const final
   {
-    return get_default_hash_2(39847876, group_field_);
+    return get_default_hash(39847876, group_field_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const final
@@ -220,7 +216,7 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
     return false;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const final
+  std::optional<AttrDomain> preferred_domain(const GeometryComponent &component) const final
   {
     return bke::try_detect_field_domain(component, group_field_);
   }
@@ -244,16 +240,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 }
 
-}  // namespace blender::nodes::node_geo_index_of_nearest_cc
-
-void register_node_type_geo_index_of_nearest()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_index_of_nearest_cc;
-
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_INDEX_OF_NEAREST, "Index of Nearest", NODE_CLASS_CONVERTER);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  nodeRegisterType(&ntype);
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  blender::bke::node_register_type(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_index_of_nearest_cc

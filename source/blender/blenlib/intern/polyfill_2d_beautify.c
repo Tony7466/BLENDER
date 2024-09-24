@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,15 +23,15 @@
  * No globals - keep threadsafe.
  */
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_heap.h"
+#include "BLI_math_geom.h"
 #include "BLI_memarena.h"
 
 #include "BLI_polyfill_2d_beautify.h" /* own include */
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* Used to find matching edges. */
 struct OrderEdge {
@@ -102,9 +102,10 @@ float BLI_polyfill_beautify_quad_rotate_calc_ex(const float v1[2],
                (ELEM(v3, v1, v2, v4) == false) && (ELEM(v4, v1, v2, v3) == false));
 
     if (r_area) {
-      *r_area = fabsf(area_2x_234) + fabsf(area_2x_241) +
-                /* Include both pairs for predictable results. */
-                fabsf(area_2x_123) + fabsf(area_2x_134) / 8.0f;
+      *r_area = (fabsf(area_2x_234) + fabsf(area_2x_241) +
+                 /* Include both pairs for predictable results. */
+                 fabsf(area_2x_123) + fabsf(area_2x_134)) /
+                8.0f;
     }
 
     /*
@@ -245,7 +246,7 @@ static void polyedge_beauty_cost_update(const float (*coords)[2],
   }
 }
 
-static void polyedge_rotate(struct HalfEdge *edges, struct HalfEdge *e)
+static void polyedge_rotate(struct HalfEdge *edges, const struct HalfEdge *e)
 {
   /** CCW winding, rotate internal edge to new vertical state.
    *
@@ -391,7 +392,7 @@ void BLI_polyfill_beautify(const float (*coords)[2],
 
   // MEM_freeN(eheap_table); /* arena */
 
-  /* get tris from half edge. */
+  /* Get triangles from half edge. */
   uint tri_index = 0;
   for (uint i = 0; i < half_edges_len; i++) {
     struct HalfEdge *e = &half_edges[i];
