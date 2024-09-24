@@ -196,6 +196,7 @@ enum ThemeColorID {
 
   TH_NODE_ZONE_SIMULATION,
   TH_NODE_ZONE_REPEAT,
+  TH_NODE_ZONE_FOREACH_GEOMETRY_ELEMENT,
   TH_SIMULATED_FRAMES,
 
   TH_CONSOLE_OUTPUT,
@@ -297,6 +298,7 @@ enum ThemeColorID {
   TH_ICON_MODIFIER,
   TH_ICON_SHADING,
   TH_ICON_FOLDER,
+  TH_ICON_AUTOKEY,
   TH_ICON_FUND,
 
   TH_SCROLL_TEXT,
@@ -461,7 +463,7 @@ bool UI_GetIconThemeColor4ubv(int colorid, unsigned char col[4]);
 /**
  * Shade a 3 byte color (same as UI_GetColorPtrBlendShade3ubv with 0.0 factor).
  */
-void UI_GetColorPtrShade3ubv(const unsigned char cp1[3], unsigned char col[3], int offset);
+void UI_GetColorPtrShade3ubv(const unsigned char cp[3], unsigned char col[3], int offset);
 
 /**
  * Get a 3 byte color, blended and shaded between two other char color pointers.

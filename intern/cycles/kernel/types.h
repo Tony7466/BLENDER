@@ -301,7 +301,7 @@ enum PathTraceDimension {
 
   /* Volume */
   PRNG_VOLUME_PHASE = 3,
-  PRNG_VOLUME_PHASE_CHANNEL = 4,
+  PRNG_VOLUME_COLOR_CHANNEL = 4,
   PRNG_VOLUME_SCATTER_DISTANCE = 5,
   PRNG_VOLUME_OFFSET = 6,
   PRNG_VOLUME_SHADE_OFFSET = 7,
@@ -310,7 +310,7 @@ enum PathTraceDimension {
 
   /* Subsurface random walk bounces */
   PRNG_SUBSURFACE_BSDF = 0,
-  PRNG_SUBSURFACE_PHASE_CHANNEL = 1,
+  PRNG_SUBSURFACE_COLOR_CHANNEL = 1,
   PRNG_SUBSURFACE_SCATTER_DISTANCE = 2,
   PRNG_SUBSURFACE_GUIDE_STRATEGY = 3,
   PRNG_SUBSURFACE_GUIDE_DIRECTION = 4,
@@ -673,7 +673,7 @@ enum PanoramaType {
   PANORAMA_MIRRORBALL = 3,
   PANORAMA_FISHEYE_LENS_POLYNOMIAL = 4,
   PANORAMA_EQUIANGULAR_CUBEMAP_FACE = 5,
-
+  PANORAMA_CENTRAL_CYLINDRICAL = 6,
   PANORAMA_NUM_TYPES,
 };
 
@@ -750,7 +750,8 @@ typedef struct Intersection {
  * specify that certain fields should be packed together. This improves cache hit ratios in cases
  * where fields are often accessed together (e.g. "ray" and "isect").
  */
-#if (defined(__APPLE__) && TARGET_CPU_ARM64) || defined(__KERNEL_METAL_APPLE__)
+#if (defined(__APPLE__) && TARGET_CPU_ARM64) || \
+    (defined(__KERNEL_METAL_APPLE__) && defined(__KERNEL_METAL_TARGET_CPU_ARM64__))
 #  define __INTEGRATOR_GPU_PACKED_STATE__
 
 /* Generate packed layouts for structs declared with KERNEL_STRUCT_BEGIN_PACKED. For example the
@@ -1281,6 +1282,7 @@ typedef struct KernelCamera {
   float fisheye_lens_polynomial_bias;
   float4 equirectangular_range;
   float4 fisheye_lens_polynomial_coefficients;
+  float4 central_cylindrical_range;
 
   /* stereo */
   float interocular_offset;

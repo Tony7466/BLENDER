@@ -52,7 +52,7 @@
 #include "DNA_vfont_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -365,7 +365,7 @@ ID *DepsgraphNodeBuilder::get_cow_id(const ID *id_orig) const
 
 ID *DepsgraphNodeBuilder::ensure_cow_id(ID *id_orig)
 {
-  if (id_orig->tag & LIB_TAG_COPIED_ON_EVAL) {
+  if (id_orig->tag & ID_TAG_COPIED_ON_EVAL) {
     /* ID is already remapped to copy-on-evaluation. */
     return id_orig;
   }
@@ -506,7 +506,7 @@ void DepsgraphNodeBuilder::update_invalid_cow_pointers()
       /* Node/ID already tagged for copy-on-eval flush, no need to check it. */
       continue;
     }
-    if ((id_node->id_cow->flag & LIB_EMBEDDED_DATA) != 0) {
+    if ((id_node->id_cow->flag & ID_FLAG_EMBEDDED_DATA) != 0) {
       /* For now, we assume embedded data are managed by their owner IDs and do not need to be
        * checked here.
        *
@@ -856,6 +856,10 @@ void DepsgraphNodeBuilder::build_object(int base_index,
   OperationNode *instance_node = add_operation_node(
       &object->id, NodeType::INSTANCING, OperationCode::INSTANCE);
   instance_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
+
+  OperationNode *instance_geometry_node = add_operation_node(
+      &object->id, NodeType::INSTANCING, OperationCode::INSTANCE_GEOMETRY);
+  instance_geometry_node->flag |= OperationFlag::DEPSOP_FLAG_PINNED;
 
   build_object_light_linking(object);
 
@@ -1282,7 +1286,7 @@ void DepsgraphNodeBuilder::build_animation_images(ID *id)
    * we have to check if they might be created during evaluation. */
   bool has_image_animation = false;
   if (ELEM(GS(id->name), ID_MA, ID_WO)) {
-    bNodeTree *ntree = *bke::BKE_ntree_ptr_from_id(id);
+    bNodeTree *ntree = *bke::node_tree_ptr_from_id(id);
     if (ntree != nullptr && ntree->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_IMAGE_ANIMATION)
     {
       has_image_animation = true;

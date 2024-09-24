@@ -548,6 +548,32 @@ static ShaderNode *add_node(Scene *scene,
 
     node = subsurface;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeBsdfMetallic)) {
+    BL::ShaderNodeBsdfMetallic b_metallic_node(b_node);
+    MetallicBsdfNode *metal = graph->create_node<MetallicBsdfNode>();
+
+    switch (b_metallic_node.distribution()) {
+      case BL::ShaderNodeBsdfMetallic::distribution_BECKMANN:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_BECKMANN_ID);
+        break;
+      case BL::ShaderNodeBsdfMetallic::distribution_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_GGX_ID);
+        break;
+      case BL::ShaderNodeBsdfMetallic::distribution_MULTI_GGX:
+        metal->set_distribution(CLOSURE_BSDF_MICROFACET_MULTI_GGX_ID);
+        break;
+    }
+
+    switch (b_metallic_node.fresnel_type()) {
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_PHYSICAL_CONDUCTOR:
+        metal->set_fresnel_type(CLOSURE_BSDF_PHYSICAL_CONDUCTOR);
+        break;
+      case BL::ShaderNodeBsdfMetallic::fresnel_type_F82:
+        metal->set_fresnel_type(CLOSURE_BSDF_F82_CONDUCTOR);
+        break;
+    }
+    node = metal;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeBsdfAnisotropic)) {
     BL::ShaderNodeBsdfAnisotropic b_glossy_node(b_node);
     GlossyBsdfNode *glossy = graph->create_node<GlossyBsdfNode>();
@@ -806,9 +832,7 @@ static ShaderNode *add_node(Scene *scene,
       /* builtin images will use callback-based reading because
        * they could only be loaded correct from blender side
        */
-      bool is_builtin = b_image.packed_file() || b_image_source == BL::Image::source_GENERATED ||
-                        b_image_source == BL::Image::source_MOVIE ||
-                        (b_engine.is_preview() && b_image_source != BL::Image::source_SEQUENCE);
+      const bool is_builtin = image_is_builtin(b_image, b_engine);
 
       if (is_builtin) {
         /* for builtin images we're using image datablock name to find an image to
@@ -861,9 +885,7 @@ static ShaderNode *add_node(Scene *scene,
       env->set_animated(is_image_animated(b_image_source, b_image_user));
       env->set_alpha_type(get_image_alpha_type(b_image));
 
-      bool is_builtin = b_image.packed_file() || b_image_source == BL::Image::source_GENERATED ||
-                        b_image_source == BL::Image::source_MOVIE ||
-                        (b_engine.is_preview() && b_image_source != BL::Image::source_SEQUENCE);
+      const bool is_builtin = image_is_builtin(b_image, b_engine);
 
       if (is_builtin) {
         int scene_frame = b_scene.frame_current();

@@ -436,6 +436,7 @@ PyObject *pyrna_struct_keyframe_insert(BPy_StructRNA *self, PyObject *args, PyOb
     BKE_reports_free(&reports);
     return nullptr;
   }
+  BKE_report_print_level_set(&reports, G.quiet ? RPT_WARNING : RPT_DEBUG);
   BPy_reports_write_stdout(&reports, nullptr);
   BKE_reports_free(&reports);
 
@@ -551,8 +552,12 @@ PyObject *pyrna_struct_keyframe_delete(BPy_StructRNA *self, PyObject *args, PyOb
     }
   }
   else {
+    RNAPath rna_path = {path_full, std::nullopt, index};
+    if (index < 0) {
+      rna_path.index = std::nullopt;
+    }
     result = (blender::animrig::delete_keyframe(
-                  G.main, &reports, self->ptr.owner_id, nullptr, path_full, index, cfra) != 0);
+                  G.main, &reports, self->ptr.owner_id, rna_path, cfra) != 0);
   }
 
   MEM_freeN((void *)path_full);

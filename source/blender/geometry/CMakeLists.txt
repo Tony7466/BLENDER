@@ -19,6 +19,7 @@ set(SRC
   intern/add_curves_on_mesh.cc
   intern/curve_constraints.cc
   intern/extend_curves.cc
+  intern/extract_elements.cc
   intern/fillet_curves.cc
   intern/interpolate_curves.cc
   intern/join_geometries.cc
@@ -57,6 +58,7 @@ set(SRC
   GEO_add_curves_on_mesh.hh
   GEO_curve_constraints.hh
   GEO_extend_curves.hh
+  GEO_extract_elements.hh
   GEO_fillet_curves.hh
   GEO_interpolate_curves.hh
   GEO_join_geometries.hh
@@ -90,6 +92,7 @@ set(SRC
   GEO_trim_curves.hh
   GEO_uv_pack.hh
   GEO_uv_parametrizer.hh
+  GEO_volume_grid_resample.hh
 )
 
 set(LIB
@@ -99,6 +102,13 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   PRIVATE bf::extern::fmtlib
 )
+
+if(WITH_UV_SLIM)
+  list(APPEND INC
+    ../../../intern/slim
+  )
+  add_definitions(-DWITH_UV_SLIM)
+endif()
 
 if(WITH_OPENVDB)
   list(APPEND INC
@@ -112,18 +122,6 @@ if(WITH_OPENVDB)
     ${OPENVDB_LIBRARIES}
   )
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
-endif()
-
-if(WITH_TBB)
-  add_definitions(-DWITH_TBB)
-
-  list(APPEND INC_SYS
-    ${TBB_INCLUDE_DIRS}
-  )
-
-  list(APPEND LIB
-    ${TBB_LIBRARIES}
-  )
 endif()
 
 if(WITH_GMP)

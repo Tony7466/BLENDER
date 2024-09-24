@@ -37,7 +37,9 @@
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -45,7 +47,7 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_data.hh"
 #include "BKE_armature.hh"
 #include "BKE_camera.h"
@@ -55,6 +57,7 @@
 #include "BKE_curve.hh"
 #include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.h"
+#include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_displist.h"
 #include "BKE_duplilist.hh"
@@ -82,7 +85,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
-#include "BKE_nla.h"
+#include "BKE_nla.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
@@ -573,9 +576,8 @@ void add_generic_get_opts(bContext *C,
           break;
         case ALIGN_CURSOR: {
           const Scene *scene = CTX_data_scene(C);
-          float tmat[3][3];
-          BKE_scene_cursor_rot_to_mat3(&scene->cursor, tmat);
-          mat3_normalized_to_eul(r_rot, tmat);
+          const float3x3 tmat = scene->cursor.matrix<float3x3>();
+          mat3_normalized_to_eul(r_rot, tmat.ptr());
           RNA_float_set_array(op->ptr, "rotation", r_rot);
           break;
         }
@@ -1370,15 +1372,11 @@ static bool object_gpencil_add_poll(bContext *C)
 
 static int object_gpencil_add_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = CTX_data_active_object(C), *ob_orig = ob;
+  Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (ob && (ob->type == OB_GPENCIL_LEGACY)) ? static_cast<bGPdata *>(ob->data) :
                                                            nullptr;
 
   const int type = RNA_enum_get(op->ptr, "type");
-  const bool use_in_front = RNA_boolean_get(op->ptr, "use_in_front");
-  const bool use_lights = RNA_boolean_get(op->ptr, "use_lights");
-  const int stroke_depth_order = RNA_enum_get(op->ptr, "stroke_depth_order");
-  const float stroke_depth_offset = RNA_float_get(op->ptr, "stroke_depth_offset");
 
   ushort local_view_bits;
   float loc[3], rot[3];
@@ -1470,47 +1468,47 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
       gpd = static_cast<bGPdata *>(ob->data);
 
       /* Add Line Art modifier */
-      LineartGpencilModifierData *md = (LineartGpencilModifierData *)BKE_gpencil_modifier_new(
-          eGpencilModifierType_Lineart);
-      BLI_addtail(&ob->greasepencil_modifiers, md);
-      BKE_gpencil_modifier_unique_name(&ob->greasepencil_modifiers, (GpencilModifierData *)md);
+      // LineartGpencilModifierData *md = (LineartGpencilModifierData *)BKE_gpencil_modifier_new(
+      //     eGpencilModifierType_Lineart);
+      // BLI_addtail(&ob->greasepencil_modifiers, md);
+      // BKE_gpencil_modifier_unique_name(&ob->greasepencil_modifiers, (GpencilModifierData *)md);
 
-      if (type == GREASE_PENCIL_LINEART_COLLECTION) {
-        md->source_type = LINEART_SOURCE_COLLECTION;
-        md->source_collection = CTX_data_collection(C);
-      }
-      else if (type == GREASE_PENCIL_LINEART_OBJECT) {
-        md->source_type = LINEART_SOURCE_OBJECT;
-        md->source_object = ob_orig;
-      }
-      else {
-        /* Whole scene. */
-        md->source_type = LINEART_SOURCE_SCENE;
-      }
-      /* Only created one layer and one material. */
-      STRNCPY(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
-      md->target_material = BKE_gpencil_material(ob, 1);
-      if (md->target_material) {
-        id_us_plus(&md->target_material->id);
-      }
+      // if (type == GREASE_PENCIL_LINEART_COLLECTION) {
+      //   md->source_type = LINEART_SOURCE_COLLECTION;
+      //   md->source_collection = CTX_data_collection(C);
+      // }
+      // else if (type == GREASE_PENCIL_LINEART_OBJECT) {
+      //   md->source_type = LINEART_SOURCE_OBJECT;
+      //   md->source_object = ob_orig;
+      // }
+      // else {
+      //   /* Whole scene. */
+      //   md->source_type = LINEART_SOURCE_SCENE;
+      // }
+      // /* Only created one layer and one material. */
+      // STRNCPY(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
+      // md->target_material = BKE_gpencil_material(ob, 1);
+      // if (md->target_material) {
+      //   id_us_plus(&md->target_material->id);
+      // }
 
-      if (use_lights) {
-        ob->dtx |= OB_USE_GPENCIL_LIGHTS;
-      }
-      else {
-        ob->dtx &= ~OB_USE_GPENCIL_LIGHTS;
-      }
+      // if (use_lights) {
+      //   ob->dtx |= OB_USE_GPENCIL_LIGHTS;
+      // }
+      // else {
+      //   ob->dtx &= ~OB_USE_GPENCIL_LIGHTS;
+      // }
 
-      /* Stroke object is drawn in front of meshes by default. */
-      if (use_in_front) {
-        ob->dtx |= OB_DRAW_IN_FRONT;
-      }
-      else {
-        if (stroke_depth_order == GP_DRAWMODE_3D) {
-          gpd->draw_mode = GP_DRAWMODE_3D;
-        }
-        md->stroke_depth_offset = stroke_depth_offset;
-      }
+      // /* Stroke object is drawn in front of meshes by default. */
+      // if (use_in_front) {
+      //   ob->dtx |= OB_DRAW_IN_FRONT;
+      // }
+      // else {
+      //   if (stroke_depth_order == GP_DRAWMODE_3D) {
+      //     gpd->draw_mode = GP_DRAWMODE_3D;
+      //   }
+      //   md->stroke_depth_offset = stroke_depth_offset;
+      // }
 
       break;
     }
@@ -2070,7 +2068,7 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
     ob->transflag |= OB_DUPLICOLLECTION;
     id_us_plus(&add_info->collection->id);
   }
-  else {
+  else if (ID_IS_EDITABLE(&add_info->collection->id)) {
     ViewLayer *view_layer = CTX_data_view_layer(C);
     float delta_mat[4][4];
     unit_m4(delta_mat);
@@ -2453,10 +2451,10 @@ static int object_delete_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
+  BKE_main_id_tag_all(bmain, ID_TAG_DOIT, false);
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
-    if (ob->id.tag & LIB_TAG_INDIRECT) {
+    if (ob->id.tag & ID_TAG_INDIRECT) {
       /* Can this case ever happen? */
       BKE_reportf(op->reports,
                   RPT_WARNING,
@@ -2493,7 +2491,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
 
     /* Use multi tagged delete if `use_global=True`, or the object is used only in one scene. */
     if (use_global || ID_REAL_USERS(ob) <= 1) {
-      ob->id.tag |= LIB_TAG_DOIT;
+      ob->id.tag |= ID_TAG_DOIT;
       tagged_count += 1;
     }
     else {
@@ -2529,12 +2527,12 @@ static int object_delete_exec(bContext *C, wmOperator *op)
   }
 
   /* delete has to handle all open scenes */
-  BKE_main_id_tag_listbase(&bmain->scenes, LIB_TAG_DOIT, true);
+  BKE_main_id_tag_listbase(&bmain->scenes, ID_TAG_DOIT, true);
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
     scene = WM_window_get_active_scene(win);
 
-    if (scene->id.tag & LIB_TAG_DOIT) {
-      scene->id.tag &= ~LIB_TAG_DOIT;
+    if (scene->id.tag & ID_TAG_DOIT) {
+      scene->id.tag &= ~ID_TAG_DOIT;
 
       DEG_relations_tag_update(bmain);
 
@@ -2608,7 +2606,7 @@ static void copy_object_set_idnew(bContext *C)
        * will not always be cleared. */
       continue;
     }
-    BLI_assert((id_iter->tag & LIB_TAG_NEW) == 0);
+    BLI_assert((id_iter->tag & ID_TAG_NEW) == 0);
   }
   FOREACH_MAIN_ID_END;
 #endif
@@ -3181,7 +3179,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       /* flag data that's not been edited (only needed for !keep_original) */
       if (ob->data) {
-        ((ID *)ob->data)->tag |= LIB_TAG_DOIT;
+        ((ID *)ob->data)->tag |= ID_TAG_DOIT;
       }
 
       /* possible metaball basis is not in this scene */
@@ -3396,10 +3394,112 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         else if (const GreasePencil *grease_pencil = geometry.get_grease_pencil()) {
           const Vector<ed::greasepencil::DrawingInfo> drawings =
               ed::greasepencil::retrieve_visible_drawings(*scene, *grease_pencil, false);
+          if (drawings.size() > 0) {
+            Array<bke::GeometrySet> geometries(drawings.size());
+            for (const int i : drawings.index_range()) {
+              Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
+              curves_id->geometry.wrap() = drawings[i].drawing.strokes();
+              geometries[i] = bke::GeometrySet::from_curves(curves_id);
+            }
+            bke::GeometrySet joined_curves = geometry::join_geometries(geometries, {});
+
+            new_curves->geometry.wrap() = joined_curves.get_curves()->geometry.wrap();
+            new_curves->geometry.wrap().tag_topology_changed();
+            BKE_object_material_from_eval_data(bmain, newob, &joined_curves.get_curves()->id);
+          }
+        }
+
+        BKE_object_free_derived_caches(newob);
+        BKE_object_free_modifiers(newob, 0);
+      }
+      else {
+        BKE_reportf(op->reports,
+                    RPT_WARNING,
+                    "Object '%s' has no evaluated grease pencil data",
+                    ob->id.name + 2);
+      }
+    }
+    else if (ob->type == OB_GREASE_PENCIL && target == OB_MESH) {
+      /* Mostly same as converting to OB_CURVES, the mesh will be converted from Curves afterwards
+       * . */
+
+      ob->flag |= OB_DONE;
+
+      Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
+      bke::GeometrySet geometry;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
+      }
+
+      if (geometry.has_curves()) {
+        if (keep_original) {
+          basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, nullptr);
+          newob = basen->object;
+
+          /* Decrement original curve's usage count. */
+          Curve *legacy_curve = static_cast<Curve *>(newob->data);
+          id_us_min(&legacy_curve->id);
+
+          /* Make a copy of the curve. */
+          newob->data = BKE_id_copy(bmain, &legacy_curve->id);
+        }
+        else {
+          newob = ob;
+        }
+
+        const Curves *curves_eval = geometry.get_curves();
+        Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
+
+        newob->data = new_curves;
+        newob->type = OB_CURVES;
+
+        new_curves->geometry.wrap() = curves_eval->geometry.wrap();
+        BKE_object_material_from_eval_data(bmain, newob, &curves_eval->id);
+
+        BKE_object_free_derived_caches(newob);
+        BKE_object_free_modifiers(newob, 0);
+      }
+      else if (geometry.has_grease_pencil()) {
+        if (keep_original) {
+          basen = duplibase_for_convert(bmain, depsgraph, scene, view_layer, base, nullptr);
+          newob = basen->object;
+
+          /* Decrement original curve's usage count. */
+          Curve *legacy_curve = static_cast<Curve *>(newob->data);
+          id_us_min(&legacy_curve->id);
+
+          /* Make a copy of the curve. */
+          newob->data = BKE_id_copy(bmain, &legacy_curve->id);
+        }
+        else {
+          newob = ob;
+        }
+
+        /* Do not link `new_curves` to `bmain` since it's temporary. */
+        Curves *new_curves = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, newob->id.name + 2));
+
+        newob->data = new_curves;
+        newob->type = OB_CURVES;
+
+        if (const Curves *curves_eval = geometry.get_curves()) {
+          new_curves->geometry.wrap() = curves_eval->geometry.wrap();
+          BKE_object_material_from_eval_data(bmain, newob, &curves_eval->id);
+        }
+        else if (const GreasePencil *grease_pencil = geometry.get_grease_pencil()) {
+          const Vector<ed::greasepencil::DrawingInfo> drawings =
+              ed::greasepencil::retrieve_visible_drawings(*scene, *grease_pencil, false);
           Array<bke::GeometrySet> geometries(drawings.size());
           for (const int i : drawings.index_range()) {
             Curves *curves_id = static_cast<Curves *>(BKE_id_new_nomain(ID_CV, nullptr));
             curves_id->geometry.wrap() = drawings[i].drawing.strokes();
+            const int layer_index = drawings[i].layer_index;
+            const bke::greasepencil::Layer *layer = grease_pencil->layers()[layer_index];
+            blender::float4x4 to_object = layer->to_object_space(*ob);
+            bke::CurvesGeometry &new_curves = curves_id->geometry.wrap();
+            MutableSpan<blender::float3> positions = new_curves.positions_for_write();
+            for (const int point_i : new_curves.points_range()) {
+              positions[point_i] = blender::math::transform_point(to_object, positions[point_i]);
+            }
             geometries[i] = bke::GeometrySet::from_curves(curves_id);
           }
           if (geometries.size() > 0) {
@@ -3410,6 +3510,20 @@ static int object_convert_exec(bContext *C, wmOperator *op)
             BKE_object_material_from_eval_data(bmain, newob, &joined_curves.get_curves()->id);
           }
         }
+
+        Mesh *new_mesh = static_cast<Mesh *>(BKE_id_new(bmain, ID_ME, newob->id.name + 2));
+        newob->data = new_mesh;
+        newob->type = OB_MESH;
+
+        Mesh *mesh = bke::curve_to_wire_mesh(new_curves->geometry.wrap(), {});
+        if (!mesh) {
+          mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
+        }
+        BKE_mesh_nomain_to_mesh(mesh, new_mesh, newob);
+        BKE_object_material_from_eval_data(bmain, newob, &new_curves->id);
+
+        /* Free `new_curves` because it is just an intermediate. */
+        BKE_id_free(nullptr, new_curves);
 
         BKE_object_free_derived_caches(newob);
         BKE_object_free_modifiers(newob, 0);
@@ -3710,9 +3824,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         new_mesh->attributes_for_write().remove_anonymous();
       }
       else if (const Curves *curves_eval = geometry.get_curves()) {
-        bke::AnonymousAttributePropagationInfo propagation_info;
-        propagation_info.propagate_all = false;
-        Mesh *mesh = bke::curve_to_wire_mesh(curves_eval->geometry.wrap(), propagation_info);
+        Mesh *mesh = bke::curve_to_wire_mesh(curves_eval->geometry.wrap(),
+                                             bke::ProcessAllAttributeExceptAnonymous{});
         if (!mesh) {
           mesh = BKE_mesh_new_nomain(0, 0, 0, 0);
         }
@@ -3813,7 +3926,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
        * It is not enough to tag only geometry and rely on the curve parenting relations because
        * this relation is lost when curve is converted to mesh. */
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_TRANSFORM);
-      ((ID *)ob->data)->tag &= ~LIB_TAG_DOIT; /* flag not to convert this datablock again */
+      ((ID *)ob->data)->tag &= ~ID_TAG_DOIT; /* flag not to convert this datablock again */
     }
   }
 

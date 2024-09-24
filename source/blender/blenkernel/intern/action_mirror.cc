@@ -23,9 +23,11 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_armature.hh"
 #include "BKE_fcurve.hh"
+
+#include "ANIM_action_legacy.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -394,7 +396,7 @@ static void action_flip_pchan_rna_paths(bAction *act)
     agrp->flag &= ~AGRP_TEMP;
   }
 
-  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
+  for (FCurve *fcu : blender::animrig::legacy::fcurves_all(act)) {
     if (!STRPREFIX(fcu->rna_path, path_pose_prefix)) {
       continue;
     }

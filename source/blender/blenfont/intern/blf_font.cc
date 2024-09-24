@@ -524,8 +524,16 @@ int blf_font_draw_mono(
   return columns;
 }
 
-void blf_draw_svg_icon(
-    FontBLF *font, uint icon_id, float x, float y, float size, float color[4], float outline_alpha)
+#ifndef WITH_HEADLESS
+void blf_draw_svg_icon(FontBLF *font,
+                       uint icon_id,
+                       float x,
+                       float y,
+                       float size,
+                       float color[4],
+                       float outline_alpha,
+                       bool multicolor,
+                       blender::FunctionRef<void(std::string &)> edit_source_cb)
 {
   blf_font_size(font, size);
   font->pos[0] = int(x);
@@ -550,7 +558,7 @@ void blf_draw_svg_icon(
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
   blf_batch_draw_begin(font);
 
-  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, color == nullptr);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, multicolor, edit_source_cb);
   if (g) {
     blf_glyph_draw(font, gc, g, 0, 0);
   }
@@ -563,12 +571,17 @@ void blf_draw_svg_icon(
   blf_glyph_cache_release(font);
 }
 
-blender::Array<uchar> blf_svg_icon_bitmap(
-    FontBLF *font, uint icon_id, float size, int *r_width, int *r_height)
+blender::Array<uchar> blf_svg_icon_bitmap(FontBLF *font,
+                                          uint icon_id,
+                                          float size,
+                                          int *r_width,
+                                          int *r_height,
+                                          bool multicolor,
+                                          blender::FunctionRef<void(std::string &)> edit_source_cb)
 {
   blf_font_size(font, size);
   GlyphCacheBLF *gc = blf_glyph_cache_acquire(font);
-  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, false);
+  GlyphBLF *g = blf_glyph_ensure_icon(gc, icon_id, multicolor, edit_source_cb);
 
   if (!g) {
     blf_glyph_cache_release(font);
@@ -579,7 +592,7 @@ blender::Array<uchar> blf_svg_icon_bitmap(
 
   *r_width = g->dims[0];
   *r_height = g->dims[1];
-  blender::Array<uchar> bitmap(g->dims[0] * g->dims[1] * 4, 255);
+  blender::Array<uchar> bitmap(g->dims[0] * g->dims[1] * 4);
 
   if (g->num_channels == 4) {
     memcpy(bitmap.data(), g->bitmap, size_t(bitmap.size()));
@@ -588,6 +601,9 @@ blender::Array<uchar> blf_svg_icon_bitmap(
     for (int64_t y = 0; y < int64_t(g->dims[1]); y++) {
       for (int64_t x = 0; x < int64_t(g->dims[0]); x++) {
         int64_t offs_in = (y * int64_t(g->pitch)) + x;
+        bitmap[int64_t(offs_in * 4)] = g->bitmap[offs_in];
+        bitmap[int64_t(offs_in * 4 + 1)] = g->bitmap[offs_in];
+        bitmap[int64_t(offs_in * 4 + 2)] = g->bitmap[offs_in];
         bitmap[int64_t(offs_in * 4 + 3)] = g->bitmap[offs_in];
       }
     }
@@ -595,6 +611,7 @@ blender::Array<uchar> blf_svg_icon_bitmap(
   blf_glyph_cache_release(font);
   return bitmap;
 }
+#endif /* WITH_HEADLESS */
 
 /** \} */
 
@@ -899,8 +916,8 @@ static void blf_font_boundbox_ex(FontBLF *font,
     }
     const ft_pix pen_x_next = pen_x + g->advance_x;
 
-    const ft_pix gbox_xmin = pen_x;
-    const ft_pix gbox_xmax = pen_x_next;
+    const ft_pix gbox_xmin = std::min(pen_x, pen_x + g->box_xmin);
+    const ft_pix gbox_xmax = std::max(pen_x_next, pen_x + g->box_xmax);
     const ft_pix gbox_ymin = g->box_ymin + pen_y;
     const ft_pix gbox_ymax = g->box_ymax + pen_y;
 
@@ -1149,8 +1166,11 @@ void blf_str_offset_to_glyph_bounds(FontBLF *font,
   *glyph_bounds = data.bounds;
 }
 
-int blf_str_offset_to_cursor(
-    FontBLF *font, const char *str, size_t str_len, size_t str_offset, float cursor_width)
+int blf_str_offset_to_cursor(FontBLF *font,
+                             const char *str,
+                             const size_t str_len,
+                             const size_t str_offset,
+                             const int cursor_width)
 {
   if (!str || !str[0]) {
     return 0;
@@ -1170,23 +1190,23 @@ int blf_str_offset_to_cursor(
 
   if ((prev.xmax == prev.xmin) && next.xmax) {
     /* Nothing (or a space) to the left, so align to right character. */
-    return next.xmin - int(cursor_width);
+    return next.xmin - (cursor_width / 2);
   }
   if ((prev.xmax != prev.xmin) && !next.xmax) {
     /* End of string, so align to last character. */
-    return prev.xmax;
+    return prev.xmax - (cursor_width / 2);
   }
   if (prev.xmax && next.xmax) {
     /* Between two characters, so use the center. */
-    if (next.xmin >= prev.xmax) {
-      return int((float(prev.xmax + next.xmin) - cursor_width) / 2.0f);
+    if (next.xmin >= prev.xmax || next.xmin == next.xmax) {
+      return ((prev.xmax + next.xmin) - cursor_width) / 2;
     }
     /* A nicer center if reversed order - RTL. */
-    return int((float(next.xmax + prev.xmin) - cursor_width) / 2.0f);
+    return ((next.xmax + prev.xmin) - cursor_width) / 2;
   }
   if (!str_offset) {
     /* Start of string. */
-    return 0 - int(cursor_width);
+    return 0 - cursor_width;
   }
   return int(blf_font_width(font, str, str_len, nullptr));
 }
@@ -1195,8 +1215,8 @@ blender::Vector<blender::Bounds<int>> blf_str_selection_boxes(
     FontBLF *font, const char *str, size_t str_len, size_t sel_start, size_t sel_length)
 {
   blender::Vector<blender::Bounds<int>> boxes;
-  const int start = blf_str_offset_to_cursor(font, str, str_len, sel_start, 0.0f);
-  const int end = blf_str_offset_to_cursor(font, str, str_len, sel_start + sel_length, 0.0f);
+  const int start = blf_str_offset_to_cursor(font, str, str_len, sel_start, 0);
+  const int end = blf_str_offset_to_cursor(font, str, str_len, sel_start + sel_length, 0);
   boxes.append(blender::Bounds(start, end));
   return boxes;
 }

@@ -39,6 +39,13 @@ class VKBuffer {
   void update(const void *data) const;
   void flush() const;
   void read(VKContext &context, void *data) const;
+
+  /**
+   * Free the buffer.
+   *
+   * Discards the buffer so it can be destroyed safely later. Buffers can still be used when
+   * rendering so we can only destroy them after the rendering is completed.
+   */
   bool free();
 
   int64_t size_in_bytes() const
@@ -72,13 +79,10 @@ class VKBuffer {
 /**
  * Helper struct to enable buffers to be bound with an offset.
  *
- * VKImmediate mode uses a single VKBuffer with multiple vertex layouts. Those layouts are send to
- * the command buffer containing an offset.
- *
- * VKIndexBuffer uses this when it is a subrange of another buffer.
+ * Used for de-interleaved vertex input buffers and immediate mode buffers.
  */
 struct VKBufferWithOffset {
-  const VKBuffer &buffer;
+  const VkBuffer buffer;
   VkDeviceSize offset;
 };
 
