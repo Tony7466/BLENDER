@@ -158,37 +158,6 @@ static void interp_line_v3_v3v3v3(
   }
 }
 
-static blender::float4x4 edge_slide_projmat_get(TransInfo *t, TransDataContainer *tc)
-{
-  RegionView3D *rv3d = nullptr;
-
-  if (t->spacetype == SPACE_VIEW3D) {
-    /* Background mode support. */
-    rv3d = static_cast<RegionView3D *>(t->region ? t->region->regiondata : nullptr);
-  }
-
-  if (!rv3d) {
-    /* Ok, let's try to survive this. */
-    return blender::float4x4::identity();
-  }
-  return ED_view3d_ob_project_mat_get(rv3d, tc->obedit);
-}
-
-static void edge_slide_pair_project(TransDataEdgeSlideVert *sv,
-                                    ARegion *region,
-                                    const float projectMat[4][4],
-                                    float r_sco_a[3],
-                                    float r_sco_b[3])
-{
-  const float *co = sv->v_co_orig();
-
-  add_v3_v3v3(r_sco_b, co, sv->dir_side[1]);
-  ED_view3d_project_float_v3_m4(region, r_sco_b, r_sco_b, projectMat);
-
-  add_v3_v3v3(r_sco_a, co, sv->dir_side[0]);
-  ED_view3d_project_float_v3_m4(region, r_sco_a, r_sco_a, projectMat);
-}
-
 static void edge_slide_data_init_mval(MouseInput *mi, EdgeSlideData *sld, float *mval_dir)
 {
   /* Possible all of the edge loops are pointing directly at the view. */
@@ -234,7 +203,6 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
       use_occlude_geometry = (v3d && tc->obedit->dt > OB_WIRE && !XRAY_ENABLED(v3d));
     }
   }
-  const blender::float4x4 projection = edge_slide_projmat_get(t, tc);
 
   BMBVHTree *bmbvh = nullptr;
   if (use_occlude_geometry) {
@@ -266,10 +234,6 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
     /* Search cross edges for visible edge to the mouse cursor,
      * then use the shared vertex to calculate screen vector. */
     BM_ITER_ELEM (e, &iter_other, v, BM_EDGES_OF_VERT) {
-      /* screen-space coords */
-      float sco_a[3], sco_b[3];
-      float dist_sq;
-      int l_nr;
 
       if (BM_elem_flag_test(e, BM_ELEM_SELECT)) {
         continue;
@@ -283,26 +247,29 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
         continue;
       }
 
-      edge_slide_pair_project(sv, region, projection.ptr(), sco_a, sco_b);
+      /* Screen-space coords. */
+      float2 sco_a, sco_b;
+      sld->project(sv, sco_a, sco_b);
 
-      /* global direction */
-      dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
+      /* Global direction. */
+      float dist_sq = dist_squared_to_line_segment_v2(mval, sco_b, sco_a);
       if (is_visible) {
         if ((dist_best_sq == -1.0f) ||
             /* intentionally use 2d size on 3d vector */
             (dist_sq < dist_best_sq && (len_squared_v2v2(sco_b, sco_a) > 0.1f)))
         {
           dist_best_sq = dist_sq;
-          sub_v3_v3v3(mval_dir, sco_b, sco_a);
+          mval_dir = sco_b - sco_a;
+          sld->curr_sv_index = i;
         }
       }
 
       if (use_calc_direction) {
-        /* per loop direction */
-        l_nr = sv->loop_nr;
-        if (loop_maxdist[l_nr] == -1.0f || dist_sq < loop_maxdist[l_nr]) {
+        /* Per loop direction. */
+        int l_nr = sv->loop_nr;
+        if (dist_sq < loop_maxdist[l_nr]) {
           loop_maxdist[l_nr] = dist_sq;
-          sub_v2_v2v2(loop_dir[l_nr], sco_b, sco_a);
+          loop_dir[l_nr] = sco_b - sco_a;
         }
       }
     }
