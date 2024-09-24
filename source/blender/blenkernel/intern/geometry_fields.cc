@@ -44,7 +44,7 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
           &field_input))
   {
     if (const bke::greasepencil::Drawing *drawing = this->grease_pencil().get_eval_drawing(
-            *this->grease_pencil().layer(this->layer_index())))
+            this->grease_pencil().layer(this->layer_index())))
     {
       if (drawing->strokes().attributes().domain_supported(this->domain())) {
         const CurvesFieldContext context{drawing->strokes(), this->domain()};
@@ -198,7 +198,7 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
       return grease_pencil->attributes();
     }
     if (const greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
-            *grease_pencil->layer(grease_pencil_layer_index_)))
+            grease_pencil->layer(grease_pencil_layer_index_)))
     {
       return drawing->strokes().attributes();
     }
@@ -243,7 +243,7 @@ const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing()
     return nullptr;
   }
   return this->grease_pencil()->get_eval_drawing(
-      *this->grease_pencil()->layer(this->grease_pencil_layer_index_));
+      this->grease_pencil()->layer(this->grease_pencil_layer_index_));
 }
 const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
 {
@@ -967,7 +967,7 @@ bool try_capture_fields_on_geometry(GeometryComponent &component,
     threading::parallel_for(grease_pencil->layers().index_range(), 8, [&](const IndexRange range) {
       for (const int layer_index : range) {
         if (greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
-                *grease_pencil->layer(layer_index)))
+                grease_pencil->layer(layer_index)))
         {
           const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
           const bool success = try_capture_fields_on_geometry(
