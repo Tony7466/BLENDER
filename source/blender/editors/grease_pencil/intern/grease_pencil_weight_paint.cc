@@ -252,6 +252,64 @@ bool add_armature_vertex_groups(Object &object, const Object &ob_armature)
   return added_vertex_groups > 0;
 }
 
+static bool get_skinnable_bones_and_deform_group_names(const bArmature &armature,
+                                                       Object &object,
+                                                       Vector<const Bone *> &r_skinnable_bones,
+                                                       Vector<std::string> r_deform_group_names)
+{
+  const int added_vertex_groups = foreach_bone_in_armature(
+      object, armature, [&](Object &object, const Bone *bone) {
+        if ((bone->flag & BONE_NO_DEFORM) == 0) {
+          /* Check if the name of the bone matches a vertex group name. */
+          bDeformGroup *dg = BKE_object_defgroup_find_name(&object, bone->name);
+          if (dg == nullptr) {
+            /* Add a new vertex group with the name of the bone. */
+            dg = BKE_object_defgroup_add_name(&object, bone->name);
+          }
+          r_deform_group_names.append(dg->name);
+          r_skinnable_bones.append(bone);
+          return true;
+        }
+        return false;
+      });
+
+  if (added_vertex_groups <= 0) {
+    return false;
+  }
+  return true;
+}
+
+static void get_root_and_tips_of_bones(Span<const Bone *> bones,
+                                       const float4x4 &transform,
+                                       MutableSpan<float3> roots,
+                                       MutableSpan<float3> tips)
+{
+  threading::parallel_for(bones.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      const Bone *bone = bones[i];
+      roots[i] = math::transform_point(transform, float3(bone->arm_head));
+      tips[i] = math::transform_point(transform, float3(bone->arm_tail));
+    }
+  });
+}
+
+static int lookup_or_add_deform_group_index(CurvesGeometry &curves, const char *deform_group_name)
+{
+  int def_nr = BLI_findstringindex(
+      &curves.vertex_group_names, deform_group_name, offsetof(bDeformGroup, name));
+
+  /* Lazily add the vertex group. */
+  if (def_nr == -1) {
+    bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
+    STRNCPY(defgroup->name, deform_group_name);
+    BLI_addtail(&curves.vertex_group_names, defgroup);
+    def_nr = BLI_listbase_count(&curves.vertex_group_names) - 1;
+    BLI_assert(def_nr >= 0);
+  }
+
+  return def_nr;
+}
+
 void add_armature_envelope_weights(Scene &scene, Object &object, const Object &ob_armature)
 {
   using namespace bke;
@@ -262,36 +320,17 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
 
   Vector<const Bone *> skinnable_bones;
   Vector<std::string> deform_group_names;
-  const int added_vertex_groups = foreach_bone_in_armature(
-      object, armature, [&](Object &object, const Bone *bone) {
-        if ((bone->flag & BONE_NO_DEFORM) == 0) {
-          /* Check if the name of the bone matches a vertex group name. */
-          bDeformGroup *dg = BKE_object_defgroup_find_name(&object, bone->name);
-          if (dg == nullptr) {
-            /* Add a new vertex group with the name of the bone. */
-            dg = BKE_object_defgroup_add_name(&object, bone->name);
-          }
-          deform_group_names.append(dg->name);
-          skinnable_bones.append(bone);
-          return true;
-        }
-        return false;
-      });
-
-  if (added_vertex_groups <= 0) {
+  if (!get_skinnable_bones_and_deform_group_names(
+          armature, object, skinnable_bones, deform_group_names))
+  {
     return;
   }
 
   /* Get the roots and tips of the bones in world space. */
   Array<float3> roots(skinnable_bones.size());
   Array<float3> tips(skinnable_bones.size());
-  threading::parallel_for(skinnable_bones.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      const Bone *bone = skinnable_bones[i];
-      roots[i] = math::transform_point(armature_to_world, float3(bone->arm_head));
-      tips[i] = math::transform_point(armature_to_world, float3(bone->arm_tail));
-    }
-  });
+  get_root_and_tips_of_bones(
+      skinnable_bones, armature_to_world, roots.as_mutable_span(), tips.as_mutable_span());
 
   Span<const bke::greasepencil::Layer *> layers = grease_pencil.layers();
   Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(scene, grease_pencil);
@@ -315,17 +354,7 @@ void add_armature_envelope_weights(Scene &scene, Object &object, const Object &o
       const float3 bone_root = roots[bone_i];
       const float3 bone_tip = tips[bone_i];
 
-      int def_nr = BLI_findstringindex(
-          &curves.vertex_group_names, deform_group_name, offsetof(bDeformGroup, name));
-
-      /* Lazily add the vertex group. */
-      if (def_nr == -1) {
-        bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
-        STRNCPY(defgroup->name, deform_group_name);
-        BLI_addtail(&curves.vertex_group_names, defgroup);
-        def_nr = BLI_listbase_count(&curves.vertex_group_names) - 1;
-        BLI_assert(def_nr >= 0);
-      }
+      const int def_nr = lookup_or_add_deform_group_index(curves, deform_group_name);
 
       MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
       VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(dverts, def_nr);
@@ -356,36 +385,17 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
 
   Vector<const Bone *> skinnable_bones;
   Vector<std::string> deform_group_names;
-  const int added_vertex_groups = foreach_bone_in_armature(
-      object, armature, [&](Object &object, const Bone *bone) {
-        if ((bone->flag & BONE_NO_DEFORM) == 0) {
-          /* Check if the name of the bone matches a vertex group name. */
-          bDeformGroup *dg = BKE_object_defgroup_find_name(&object, bone->name);
-          if (dg == nullptr) {
-            /* Add a new vertex group with the name of the bone. */
-            dg = BKE_object_defgroup_add_name(&object, bone->name);
-          }
-          deform_group_names.append(dg->name);
-          skinnable_bones.append(bone);
-          return true;
-        }
-        return false;
-      });
-
-  if (added_vertex_groups <= 0) {
+  if (!get_skinnable_bones_and_deform_group_names(
+          armature, object, skinnable_bones, deform_group_names))
+  {
     return;
   }
 
   /* Get the roots and tips of the bones in world space. */
   Array<float3> roots(skinnable_bones.size());
   Array<float3> tips(skinnable_bones.size());
-  threading::parallel_for(skinnable_bones.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      const Bone *bone = skinnable_bones[i];
-      roots[i] = math::transform_point(armature_to_world, float3(bone->arm_head));
-      tips[i] = math::transform_point(armature_to_world, float3(bone->arm_tail));
-    }
-  });
+  get_root_and_tips_of_bones(
+      skinnable_bones, armature_to_world, roots.as_mutable_span(), tips.as_mutable_span());
 
   /* Note: This is taken from the legacy grease pencil code. */
   const auto get_weight = [](const float dist, const float decay_rad, const float diff_rad) {
@@ -418,17 +428,7 @@ void add_armature_automatic_weights(Scene &scene, Object &object, const Object &
       const float decay_rad = radius_squared - (radius_squared * default_decay);
       const float diff_rad = radius_squared - decay_rad;
 
-      int def_nr = BLI_findstringindex(
-          &curves.vertex_group_names, deform_group_name, offsetof(bDeformGroup, name));
-
-      /* Lazily add the vertex group. */
-      if (def_nr == -1) {
-        bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
-        STRNCPY(defgroup->name, deform_group_name);
-        BLI_addtail(&curves.vertex_group_names, defgroup);
-        def_nr = BLI_listbase_count(&curves.vertex_group_names) - 1;
-        BLI_assert(def_nr >= 0);
-      }
+      const int def_nr = lookup_or_add_deform_group_index(curves, deform_group_name);
 
       MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
       VMutableArray<float> weights = bke::varray_for_mutable_deform_verts(dverts, def_nr);
