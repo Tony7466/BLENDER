@@ -456,7 +456,7 @@ ObjectManager::ObjectManager()
 
 ObjectManager::~ObjectManager() {}
 
-static float object_volume_density(const Transform &tfm, Geometry *geom)
+float ObjectManager::object_volume_density(const Transform &tfm, Geometry *geom)
 {
   if (geom->geometry_type == Geometry::VOLUME) {
     /* Volume density automatically adjust to object scale. */
