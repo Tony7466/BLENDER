@@ -15,6 +15,8 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
+#include "DNA_view3d_types.h"
+
 #include "ED_select_utils.hh"
 
 struct bContext;
@@ -86,7 +88,8 @@ using SelectionRangeFn = FunctionRef<void(
  *  curves.handle_positions_left() belong to  ".selection_handle_left",
  *  curves.handle_positions_right() belong to ".selection_handle_right".
  */
-void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
+void foreach_selectable_point_range(const eHandleDisplay handle_display,
+                                    const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectionRangeFn range_consumer);
 
@@ -95,7 +98,8 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
  * positions directly. Further positions can be referenced by using `curves.points_by_curve()`
  * in a callback function.
  */
-void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
+void foreach_selectable_curve_range(const eHandleDisplay handle_display,
+                                    const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectionRangeFn range_consumer);
 

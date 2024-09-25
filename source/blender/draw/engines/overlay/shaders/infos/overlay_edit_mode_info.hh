@@ -562,27 +562,6 @@ GPU_SHADER_CREATE_INFO(overlay_edit_curve_handle_next)
                      "gpu_index_load",
                      "draw_globals");
 
-GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_next)
-    .do_static_compilation(true)
-    .typedef_source("overlay_shader_shared.h")
-    .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
-    .storage_buf(1, Qualifier::READ, "uint", "data[]", Frequency::GEOMETRY)
-    .storage_buf(2, Qualifier::READ, "float", "selection[]", Frequency::GEOMETRY)
-    .push_constant(Type::IVEC2, "gpu_attr_0")
-    .push_constant(Type::IVEC2, "gpu_attr_1")
-    .push_constant(Type::IVEC2, "gpu_attr_2")
-    .vertex_out(overlay_edit_smooth_color_iface)
-    .push_constant(Type::BOOL, "showCurveHandles")
-    .push_constant(Type::INT, "curveHandleDisplay")
-    .fragment_out(0, Type::VEC4, "fragColor")
-    .vertex_source("overlay_edit_curves_handle_next_vert.glsl")
-    .fragment_source("overlay_varying_color.glsl")
-    .additional_info("draw_view",
-                     "draw_modelmat_new",
-                     "draw_resource_handle_new",
-                     "gpu_index_load",
-                     "draw_globals");
-
 GPU_SHADER_CREATE_INFO(overlay_edit_curve_handle_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_edit_curve_handle", "drw_clipped");
@@ -669,6 +648,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle)
     .vertex_out(overlay_edit_curves_handle_iface)
     .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 10)
     .geometry_out(overlay_edit_smooth_color_iface)
+    .push_constant(Type::INT, "curveHandleDisplay")
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_edit_curves_handle_vert.glsl")
     .geometry_source("overlay_edit_curves_handle_geom.glsl")
@@ -679,6 +659,26 @@ GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_clipped)
     .do_static_compilation(true)
     .additional_info("overlay_edit_curves_handle", "drw_clipped");
 
+GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_next)
+    .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
+    .storage_buf(0, Qualifier::READ, "float", "pos[]", Frequency::GEOMETRY)
+    .storage_buf(1, Qualifier::READ, "uint", "data[]", Frequency::GEOMETRY)
+    .storage_buf(2, Qualifier::READ, "float", "selection[]", Frequency::GEOMETRY)
+    .push_constant(Type::IVEC2, "gpu_attr_0")
+    .push_constant(Type::IVEC2, "gpu_attr_1")
+    .push_constant(Type::IVEC2, "gpu_attr_2")
+    .vertex_out(overlay_edit_smooth_color_iface)
+    .push_constant(Type::INT, "curveHandleDisplay")
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .vertex_source("overlay_edit_curves_handle_next_vert.glsl")
+    .fragment_source("overlay_varying_color.glsl")
+    .additional_info("draw_view",
+                     "draw_modelmat_new",
+                     "draw_resource_handle_new",
+                     "gpu_index_load",
+                     "draw_globals");
+
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_no_geom)
     .metal_backend_only(true)
@@ -688,6 +688,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_no_geom)
     .vertex_in(1, Type::UINT, "data")
     .vertex_in(2, Type::FLOAT, "selection")
     .vertex_out(overlay_edit_smooth_color_iface)
+    .push_constant(Type::INT, "curveHandleDisplay")
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_edit_curves_handle_vert_no_geom.glsl")
     .fragment_source("overlay_varying_color.glsl")
@@ -698,6 +699,27 @@ GPU_SHADER_CREATE_INFO(overlay_edit_curves_handle_clipped_no_geom)
     .do_static_compilation(true)
     .additional_info("overlay_edit_curves_handle_no_geom", "drw_clipped");
 #endif
+
+GPU_SHADER_CREATE_INFO(overlay_edit_curves_point)
+    .do_static_compilation(true)
+    .typedef_source("overlay_shader_shared.h")
+    .define("CURVES_POINT")
+    .vertex_in(0, Type::VEC3, "pos")
+    .vertex_in(1, Type::UINT, "data")
+    .vertex_in(2, Type::FLOAT, "selection")
+    .vertex_out(overlay_edit_flat_color_iface)
+    .sampler(0, ImageType::FLOAT_1D, "weightTex")
+    .push_constant(Type::BOOL, "useWeight")
+    .push_constant(Type::BOOL, "useGreasePencil")
+    .push_constant(Type::INT, "curveHandleDisplay")
+    .fragment_out(0, Type::VEC4, "fragColor")
+    .vertex_source("overlay_edit_particle_point_vert.glsl")
+    .fragment_source("overlay_point_varying_color_frag.glsl")
+    .additional_info("draw_mesh", "draw_globals");
+
+GPU_SHADER_CREATE_INFO(overlay_edit_curves_point_clipped)
+    .do_static_compilation(true)
+    .additional_info("overlay_edit_curves_point", "drw_clipped");
 
 /** \} */
 

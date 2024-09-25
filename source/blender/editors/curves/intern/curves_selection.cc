@@ -184,7 +184,8 @@ void foreach_selection_attribute_writer(
   finish_attribute_writers(selection_writers);
 }
 
-static void init_selectable_foreach(const bke::CurvesGeometry &curves,
+static void init_selectable_foreach(const eHandleDisplay handle_display,
+                                    const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     Span<StringRef> &r_bezier_attribute_names,
                                     Span<float3> &r_positions,
@@ -194,14 +195,15 @@ static void init_selectable_foreach(const bke::CurvesGeometry &curves,
 {
   r_bezier_attribute_names = get_curves_bezier_selection_attribute_names(curves);
   r_positions = deformation.positions;
-  if (r_bezier_attribute_names.size() > 0) {
+  if (handle_display != eHandleDisplay::CURVE_HANDLE_NONE && r_bezier_attribute_names.size() > 0) {
     r_bezier_handle_positions[0] = curves.handle_positions_left();
     r_bezier_handle_positions[1] = curves.handle_positions_right();
     r_bezier_curves = curves.indices_for_curve_type(CURVE_TYPE_BEZIER, r_memory);
   }
 }
 
-void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
+void foreach_selectable_point_range(const eHandleDisplay handle_display,
+                                    const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectionRangeFn range_consumer)
 {
@@ -210,7 +212,8 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
   std::array<Span<float3>, 2> bezier_handle_positions;
   IndexMaskMemory memory;
   IndexMask bezier_curves;
-  init_selectable_foreach(curves,
+  init_selectable_foreach(handle_display,
+                          curves,
                           deformation,
                           bezier_attribute_names,
                           positions,
@@ -219,6 +222,10 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                           bezier_curves);
 
   range_consumer(curves.points_range(), positions, ".selection");
+
+  if (handle_display == eHandleDisplay::CURVE_HANDLE_NONE) {
+    return;
+  }
 
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   for (const int attribute_i : bezier_attribute_names.index_range()) {
@@ -230,7 +237,8 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
   }
 }
 
-void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
+void foreach_selectable_curve_range(const eHandleDisplay handle_display,
+                                    const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectionRangeFn range_consumer)
 {
@@ -239,7 +247,8 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
   std::array<Span<float3>, 2> bezier_handle_positions;
   IndexMaskMemory memory;
   IndexMask bezier_curves;
-  init_selectable_foreach(curves,
+  init_selectable_foreach(handle_display,
+                          curves,
                           deformation,
                           bezier_attribute_names,
                           positions,
@@ -248,6 +257,9 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                           bezier_curves);
 
   range_consumer(curves.curves_range(), positions, ".selection");
+  if (handle_display == eHandleDisplay::CURVE_HANDLE_NONE) {
+    return;
+  }
 
   for (const int attribute_i : bezier_attribute_names.index_range()) {
     bezier_curves.foreach_range([&](const IndexRange curves_range) {
@@ -941,6 +953,7 @@ bool select_box(const ViewContext &vc,
 
   if (selection_domain == bke::AttrDomain::Point) {
     foreach_selectable_point_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
@@ -964,6 +977,7 @@ bool select_box(const ViewContext &vc,
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](const IndexRange range,
@@ -1040,6 +1054,7 @@ bool select_lasso(const ViewContext &vc,
 
   if (selection_domain == bke::AttrDomain::Point) {
     foreach_selectable_point_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
@@ -1067,6 +1082,7 @@ bool select_lasso(const ViewContext &vc,
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](const IndexRange range,
@@ -1157,6 +1173,7 @@ bool select_circle(const ViewContext &vc,
 
   if (selection_domain == bke::AttrDomain::Point) {
     foreach_selectable_point_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](IndexRange range, Span<float3> positions, StringRef selection_attribute_name) {
@@ -1180,6 +1197,7 @@ bool select_circle(const ViewContext &vc,
     const OffsetIndices points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     foreach_selectable_curve_range(
+        (eHandleDisplay)vc.v3d->overlay.handle_display,
         curves,
         deformation,
         [&](const IndexRange range,
