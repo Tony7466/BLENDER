@@ -292,7 +292,7 @@ static bool is_empty_domain(const AttributeAccessor attributes,
       return;
     }
     is_empty = false;
-    iter.stop_iteration();
+    iter.stop();
   });
   return is_empty;
 }

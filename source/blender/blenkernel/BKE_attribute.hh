@@ -387,6 +387,10 @@ struct GSpanAttributeWriter {
   }
 };
 
+/**
+ * This is used when iterating over attributes, e.g. with #foreach_attribute. It contains meta-data
+ * for the current attribute and provides easy access to the actual attribute data.
+ */
 class AttributeIter {
  public:
   StringRefNull name;
@@ -408,7 +412,8 @@ class AttributeIter {
   {
   }
 
-  void stop_iteration() const
+  /** Stops the iteration, i.e. the remaining attributes will be skipped. */
+  void stop() const
   {
     stop_iteration_ = true;
   }

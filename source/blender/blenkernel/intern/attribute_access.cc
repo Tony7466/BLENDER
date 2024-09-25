@@ -656,7 +656,7 @@ bool AttributeAccessor::contains(const StringRef attribute_id) const
   this->foreach_attribute([&](const AttributeIter &iter) {
     if (attribute_id == iter.name) {
       found = true;
-      iter.stop_iteration();
+      iter.stop();
     }
   });
   return found;
@@ -669,7 +669,7 @@ std::optional<AttributeMetaData> AttributeAccessor::lookup_meta_data(
   this->foreach_attribute([&](const AttributeIter &iter) {
     if (attribute_id == iter.name) {
       meta_data = AttributeMetaData{iter.domain, iter.data_type};
-      iter.stop_iteration();
+      iter.stop();
     }
   });
   return meta_data;
