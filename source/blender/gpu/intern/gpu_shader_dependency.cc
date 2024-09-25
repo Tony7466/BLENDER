@@ -109,9 +109,6 @@ struct GPUSource {
       small_types_check();
     }
     else {
-      pragma_preprocess();
-      include_preprocess();
-
       if (source.find("'") != StringRef::not_found) {
         char_literals_preprocess();
       }
@@ -143,36 +140,6 @@ struct GPUSource {
       material_functions_parse(g_functions);
     }
   };
-
-  /* Mutate pragma once directive so they don't invalidate the GLSL. */
-  void pragma_preprocess()
-  {
-    processed_source = source;
-    source = processed_source.c_str();
-
-    int64_t pos = source.find("#pragma once");
-    if (pos != StringRef::not_found) {
-      /* Mutate the string in place to avoid allocation overhead for all source files.
-       * Eventually, this can be done inside datatoc instead of here. */
-      processed_source[pos + 0] = '/';
-      processed_source[pos + 1] = '/';
-    }
-  }
-
-  /* Mutate include directive so they don't invalidate the GLSL. */
-  void include_preprocess()
-  {
-    processed_source = source;
-    source = processed_source.c_str();
-
-    int64_t pos;
-    while ((pos = source.find("#include")) != StringRef::not_found) {
-      /* Mutate the string in place to avoid allocation overhead for all source files.
-       * Eventually, this can be done inside datatoc. */
-      processed_source[pos + 0] = '/';
-      processed_source[pos + 1] = '/';
-    }
-  }
 
   static bool is_in_comment(const StringRef &input, int64_t offset)
   {
@@ -1064,7 +1031,7 @@ struct GPUSource {
       GPUSource *dependency_source = nullptr;
 
       {
-        /* Include directive has been mangled on purpose. See `include_preprocess`. */
+        /* Include directive has been mangled on purpose. See `datatoc.cc`. */
         pos = source.find("//nclude \"", pos + 1);
         if (pos == -1) {
           return 0;

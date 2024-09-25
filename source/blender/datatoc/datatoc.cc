@@ -129,6 +129,7 @@ int main(int argc, char **argv)
   int argv_len;
 
   bool strip_leading_c_comments_test = false;
+  bool mutate_glsl_directives_test = false;
   int leading_newlines = 0;
 
   if (argc < 2) {
@@ -158,31 +159,6 @@ int main(int argc, char **argv)
     }
   }
 
-  std::vector<int64_t> mutation_positions;
-  if (mutate_glsl_directives) {
-    /* Open file */
-    /* Find occurence. */
-
-    while ((pos = source.find("#include")) != -1) {
-      mutation_positions.emplace_back(pos);
-      mutation_positions.emplace_back(pos + 1);
-    }
-
-    int64_t pos = source.find("#pragma once");
-    if (pos != -1) {
-      if (!mutation_positions.empty()) {
-        /* Ensure pragmas are always set before includes. */
-        if (pos > mutation_positions[0]) {
-          printf("pragma once directive before includes.\n");
-          exit(1);
-        }
-      }
-
-      mutation_positions.emplace_back(pos);
-      mutation_positions.emplace_back(pos + 1);
-    }
-  }
-
   fpin = fopen(argv[1], "rb");
   if (!fpin) {
     printf("Unable to open input <%s>\n", argv[1]);
@@ -198,6 +174,26 @@ int main(int argc, char **argv)
   if (strip_leading_c_comments_test) {
     const int size_offset = strip_leading_c_comment(fpin, size, &leading_newlines);
     size -= size_offset; /* The comment is skipped, */
+  }
+
+  /* For now, the same files needs both. */
+  mutate_glsl_directives_test = strip_leading_c_comments_test;
+
+  std::vector<long> mutations;
+  if (mutate_glsl_directives_test) {
+    char buffer[1024];
+    long original_pos = ftell(fpin);
+    long pos = original_pos;
+    while (fgets(buffer, 1024, fpin)) {
+      /* Assumes directives are at the beginning of the line. */
+      if (strstr(buffer, "#pragma once") == buffer || strstr(buffer, "#include ") == buffer) {
+        mutations.push_back(pos);
+        mutations.push_back(pos + 1);
+      }
+      pos = ftell(fpin);
+    }
+    /* Reset the reading head where we found it. */
+    fseek(fpin, original_pos, SEEK_SET);
   }
 
   if (argv[1][0] == '.') {
@@ -240,6 +236,7 @@ int main(int argc, char **argv)
     fprintf(fpout, "\n");
   }
 
+  int mutation_count = 0;
   while (size--) {
     /* Even though this file is generated and doesn't need new-lines,
      * these files may be loaded by developers when looking up symbols.
@@ -248,12 +245,15 @@ int main(int argc, char **argv)
       fprintf(fpout, "\n");
     }
 
-    if (mutate_directive[size]) {
+    if ((mutation_count < mutations.size()) && (mutations[mutation_count] == ftell(fpin))) {
+      mutation_count++;
+      getc(fpin); /* Skip this char. */
       fprintf(fpout, "%3d,", '/');
     }
-
-    // fprintf(fpout, "\\x%02x", getc(fpin));
-    fprintf(fpout, "%3d,", getc(fpin));
+    else {
+      // fprintf(fpout, "\\x%02x", getc(fpin));
+      fprintf(fpout, "%3d,", getc(fpin));
+    }
   }
 
   /* Trailing nullptr terminator, this isn't needed in some cases and
