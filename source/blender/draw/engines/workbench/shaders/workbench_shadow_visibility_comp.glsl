@@ -77,7 +77,7 @@ void main()
   }
 
   ObjectBounds bounds = bounds_buf[gl_GlobalInvocationID.x];
-  if (!drw_bounds_are_valid(bounds)) {
+  if (!drw_bounds_culling_enabled(bounds)) {
     /* Invalid bounding box. */
     return;
   }
