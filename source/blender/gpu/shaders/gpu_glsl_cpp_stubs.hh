@@ -599,10 +599,12 @@ uint floatBitsToUint(double) RET;
 double intBitsToFloat(int) RET;
 double uintBitsToFloat(uint) RET;
 
+namespace gl_FragmentShader {
 /* Derivative functions. */
 template<typename T> T dFdx(T) RET;
 template<typename T> T dFdy(T) RET;
 template<typename T> T fwidth(T) RET;
+}  // namespace gl_FragmentShader
 
 /* Geometric functions. */
 template<typename T, int D> float faceforward(VecBase<T, D>, VecBase<T, D>, VecBase<T, D>) RET;
@@ -712,6 +714,15 @@ const uint gl_LocalInvocationIndex;
 
 /* Discards the output of the current fragment shader invocation and halts its execution. */
 #  define discard
+
+namespace gl_ComputeShader {
+void barrier() {}
+void memoryBarrier() {}
+void memoryBarrierShared() {}
+void memoryBarrierImage() {}
+void memoryBarrierBuffer() {}
+void groupMemoryBarrier() {}
+}  // namespace gl_ComputeShader
 
 /** \} */
 
