@@ -463,8 +463,6 @@ struct AttributeAccessorFunctions {
                           const GVArray &varray,
                           AttrDomain from_domain,
                           AttrDomain to_domain);
-  bool (*for_all)(const void *owner,
-                  FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
   void (*foreach_attribute)(const void *owner,
                             FunctionRef<void(const AttributeIter &iter)> fn,
                             const AttributeAccessor &accessor);
@@ -490,8 +488,8 @@ class AttributeAccessor {
    * The data that actually owns the attributes, for example, a pointer to a #Mesh or #PointCloud
    * Most commonly this is a pointer to a #Mesh or #PointCloud.
    * Under some circumstances this can be null. In that case most methods can't be used. Allowed
-   * methods are #domain_size, #for_all and #is_builtin. We could potentially make these methods
-   * accessible without #AttributeAccessor and then #owner_ could always be non-null.
+   * methods are #domain_size, #foreach_attribute and #is_builtin. We could potentially make these
+   * methods accessible without #AttributeAccessor and then #owner_ could always be non-null.
    *
    * \note This class cannot modify the owner's attributes, but the pointer is still non-const, so
    * this class can be a base class for the mutable version.
@@ -654,14 +652,6 @@ class AttributeAccessor {
    * Run the provided function for every attribute.
    * Attributes should not be removed or added during iteration.
    */
-  bool for_all(const AttributeForeachCallback fn) const
-  {
-    if (owner_ != nullptr) {
-      return fn_->for_all(owner_, fn);
-    }
-    return true;
-  }
-
   void foreach_attribute(const FunctionRef<void(const AttributeIter &)> fn) const
   {
     if (owner_ != nullptr) {

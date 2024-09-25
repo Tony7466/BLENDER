@@ -288,36 +288,6 @@ inline GAttributeReader lookup(const void *owner, const StringRef attribute_id)
 }
 
 template<const ComponentAttributeProviders &providers>
-inline bool for_all(const void *owner,
-                    FunctionRef<bool(const StringRefNull, const AttributeMetaData &)> fn)
-{
-  Set<StringRef, 16> handled_attribute_ids;
-  for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
-  {
-    if (provider->exists(owner)) {
-      AttributeMetaData meta_data{provider->domain(), provider->data_type()};
-      if (!fn(provider->name(), meta_data)) {
-        return false;
-      }
-      handled_attribute_ids.add_new(provider->name());
-    }
-  }
-  for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
-    const bool continue_loop = provider->foreach_attribute(owner, [&](const AttributeIter &iter) {
-      if (handled_attribute_ids.add(iter.name)) {
-        if (!fn(iter.name, {iter.domain, iter.data_type})) {
-          iter.stop_iteration();
-        }
-      }
-    });
-    if (!continue_loop) {
-      return false;
-    }
-  }
-  return true;
-}
-
-template<const ComponentAttributeProviders &providers>
 inline void foreach_attribute(const void *owner,
                               const FunctionRef<void(const AttributeIter &)> fn,
                               const AttributeAccessor &accessor)
@@ -441,7 +411,6 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
                                     is_builtin<providers>,
                                     lookup<providers>,
                                     nullptr,
-                                    for_all<providers>,
                                     foreach_attribute<providers>,
                                     lookup_validator<providers>,
                                     lookup_for_write<providers>,
