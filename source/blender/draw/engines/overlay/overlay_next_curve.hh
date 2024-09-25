@@ -34,6 +34,10 @@ class Curves {
   PassSimple::Sub *edit_legacy_curve_points_ = nullptr;
   PassSimple::Sub *edit_legacy_curve_handles_ = nullptr;
 
+  PassSimple edit_legacy_surface_handles_ps = {"Surface Edit"};
+  PassSimple::Sub *edit_legacy_surface_handles_ = nullptr;
+  PassSimple::Sub *edit_legacy_surface_back_handles_ = nullptr;
+
   /* TODO(fclem): This is quite wasteful and expensive, prefer in shader Z modification like the
    * retopology offset. */
   View view_edit_cage = {"view_edit_cage"};
@@ -124,6 +128,7 @@ class Curves {
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
         sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
+        sub.push_constant("alpha", 0.0f);
         edit_legacy_curve_handles_ = &sub;
       }
       /* Points need to be rendered after handles. */
@@ -136,6 +141,32 @@ class Curves {
         sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
         edit_legacy_curve_points_ = &sub;
       }
+    }
+
+    {
+      auto &pass = edit_legacy_surface_handles_ps;
+      pass.init();
+
+      auto create_sub = [&](const char *name, DRWState drw_state, float alpha) {
+        auto &sub = pass.sub(name);
+        sub.state_set(drw_state, state.clipping_plane_count);
+        sub.shader_set(res.shaders.legacy_curve_edit_handles.get());
+        sub.bind_ubo("globalsBlock", &res.globals_buf);
+        sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
+        sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
+        sub.push_constant("alpha", alpha);
+        return &sub;
+      };
+
+      edit_legacy_surface_back_handles_ = create_sub(
+          "SurfaceBackHandles",
+          DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ALPHA,
+          0.2f);
+      edit_legacy_surface_handles_ = create_sub("SurfaceHandles",
+                                                DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                                    DRW_STATE_DEPTH_LESS_EQUAL |
+                                                    DRW_STATE_BLEND_ALPHA,
+                                                0.0f);
     }
   }
 
@@ -188,12 +219,30 @@ class Curves {
     }
     {
       gpu::Batch *geom = DRW_cache_curve_edge_overlay_get(ob);
-      edit_legacy_curve_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
+      if (ob->type == OB_CURVES_LEGACY) {
+        edit_legacy_curve_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
+      }
+      else {
+        edit_legacy_surface_back_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
+        edit_legacy_surface_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
+      }
     }
     {
       gpu::Batch *geom = DRW_cache_curve_vert_overlay_get(ob);
       edit_legacy_curve_points_->draw(geom, res_handle);
     }
+  }
+
+  void draw(Framebuffer &framebuffer, Manager &manager, View &view)
+  {
+    if (!enabled_) {
+      return;
+    }
+
+    view_edit_cage.sync(view.viewmat(), winmat_polygon_offset(view.winmat(), view_dist, 0.5f));
+
+    GPU_framebuffer_bind(framebuffer);
+    manager.submit(edit_legacy_surface_handles_ps, view);
   }
 
   void draw_color_only(Framebuffer &framebuffer, Manager &manager, View &view)

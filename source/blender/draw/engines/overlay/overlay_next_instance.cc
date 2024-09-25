@@ -477,6 +477,7 @@ void Instance::draw(Manager &manager)
     layer.grease_pencil.draw(framebuffer, manager, view);
     layer.meshes.draw(framebuffer, manager, view);
     layer.mesh_uvs.draw(framebuffer, manager, view);
+    layer.curves.draw(framebuffer, manager, view);
   };
 
   auto draw_layer_color_only = [&](OverlayLayer &layer, Framebuffer &framebuffer) {
