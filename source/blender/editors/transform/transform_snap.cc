@@ -1829,6 +1829,8 @@ static void snap_increment_apply_ex(const TransInfo * /*t*/,
 static void snap_increment_apply(const TransInfo *t,
                                  const int max_index,
                                  const float increment_dist,
+                                 const bool use_local_space,
+                                 const bool use_absolute_grid_snap,
                                  float *r_val)
 {
   BLI_assert(t->tsnap.mode & SCE_SNAP_TO_INCREMENT);
@@ -1857,6 +1859,16 @@ static void snap_increment_apply(const TransInfo *t,
   }
 
   snap_increment_apply_ex(t, max_index, increment_dist, asp, r_val, r_val);
+
+  if (use_absolute_grid_snap) {
+    float3 offset, center = t->center_global;
+    if (use_local_space) {
+      mul_m3_v3(t->spacemtx_inv, center);
+    }
+    snap_increment_apply_ex(t, max_index, increment_dist, asp, center, offset);
+    offset -= center;
+    add_vn_vn(r_val, offset, max_index + 1);
+  }
 }
 
 bool transform_snap_increment_ex(const TransInfo *t, bool use_local_space, float *r_val)
@@ -1880,10 +1892,16 @@ bool transform_snap_increment_ex(const TransInfo *t, bool use_local_space, float
   }
 
   float increment_dist = (t->modifiers & MOD_PRECISION) ? t->snap[1] : t->snap[0];
-  snap_increment_apply(t, t->idx_max, increment_dist, r_val);
+  bool use_absolute_grid_snap = t->mode == TFM_TRANSLATION && t->tsnap.flag & SCE_SNAP_ABS_GRID;
+  snap_increment_apply(
+      t, t->idx_max, increment_dist, use_local_space, use_absolute_grid_snap, r_val);
 
   if (use_local_space) {
     mul_m3_v3(t->spacemtx, r_val);
+  }
+
+  if (use_absolute_grid_snap && t->con.mode & CON_APPLY) {
+    t->con.applyVec(t, nullptr, nullptr, r_val, r_val);
   }
 
   return true;
