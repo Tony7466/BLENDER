@@ -129,45 +129,44 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
 
   const bke::AttributeAccessor instances_attributes = instances.attributes();
   bke::MutableAttributeAccessor grease_pencil_attributes = grease_pencil->attributes_for_write();
-  instances_attributes.for_all([&](const StringRef attribute_id,
-                                   const AttributeMetaData &meta_data) {
-    if (instances_attributes.is_builtin(attribute_id) &&
-        !grease_pencil_attributes.is_builtin(attribute_id))
+  instances_attributes.foreach_attribute([&](const AttributeIterInfo &attr_info) {
+    if (instances_attributes.is_builtin(attr_info.name) &&
+        !grease_pencil_attributes.is_builtin(attr_info.name))
     {
-      return true;
+      return;
     }
-    if (ELEM(attribute_id, "opacity")) {
-      return true;
+    if (ELEM(attr_info.name, "opacity")) {
+      return;
     }
-    if (attribute_filter.allow_skip(attribute_id)) {
-      return true;
+    if (attribute_filter.allow_skip(attr_info.name)) {
+      return;
     }
-    const GAttributeReader src_attribute = instances_attributes.lookup(attribute_id);
+    const GAttributeReader src_attribute = instances_attributes.lookup(attr_info.name);
     if (!src_attribute) {
-      return true;
+      return;
     }
     if (instance_selection.size() == instances_num && src_attribute.varray.is_span() &&
         src_attribute.sharing_info)
     {
       /* Try reusing existing attribute array. */
       grease_pencil_attributes.add(
-          attribute_id,
+          attr_info.name,
           AttrDomain::Layer,
-          meta_data.data_type,
+          attr_info.cd_type,
           bke::AttributeInitShared{src_attribute.varray.get_internal_span().data(),
                                    *src_attribute.sharing_info});
-      return true;
+      return;
     }
     if (!grease_pencil_attributes.add(
-            attribute_id, AttrDomain::Layer, meta_data.data_type, bke::AttributeInitConstruct()))
+            attr_info.name, AttrDomain::Layer, attr_info.cd_type, bke::AttributeInitConstruct()))
     {
-      return true;
+      return;
     }
     bke::GSpanAttributeWriter dst_attribute = grease_pencil_attributes.lookup_for_write_span(
-        attribute_id);
+        attr_info.name);
     array_utils::gather(src_attribute.varray, instance_selection, dst_attribute.span);
     dst_attribute.finish();
-    return true;
+    return;
   });
 
   {

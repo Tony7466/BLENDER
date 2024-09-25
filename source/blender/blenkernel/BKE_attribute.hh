@@ -146,6 +146,12 @@ struct AttributeInitShared : public AttributeInit {
 using AttributeForeachCallback =
     FunctionRef<bool(StringRefNull attribute_id, const AttributeMetaData &meta_data)>;
 
+struct AttributeIterInfo {
+  StringRefNull name;
+  AttrDomain domain;
+  eCustomDataType cd_type;
+};
+
 /**
  * Result when looking up an attribute from some geometry with the intention of only reading from
  * it.
@@ -408,6 +414,8 @@ struct AttributeAccessorFunctions {
                           AttrDomain to_domain);
   bool (*for_all)(const void *owner,
                   FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
+  void (*foreach_attribute)(const void *owner,
+                            FunctionRef<void(const AttributeIterInfo &attribute_info)>);
   AttributeValidator (*lookup_validator)(const void *owner, StringRef attribute_id);
   GAttributeWriter (*lookup_for_write)(void *owner, StringRef attribute_id);
   bool (*remove)(void *owner, StringRef attribute_id);
@@ -606,6 +614,13 @@ class AttributeAccessor {
       return fn_->for_all(owner_, fn);
     }
     return true;
+  }
+
+  void foreach_attribute(const FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const
+  {
+    if (owner_ != nullptr) {
+      fn_->foreach_attribute(owner_, fn);
+    }
   }
 
   /**

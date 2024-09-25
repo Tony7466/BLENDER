@@ -314,6 +314,19 @@ inline bool for_all(const void *owner,
 }
 
 template<const ComponentAttributeProviders &providers>
+inline void foreach_attribute(const void *owner,
+                              const FunctionRef<void(const AttributeIterInfo &attribute_info)> fn)
+{
+  for_all<providers>(owner, [&](const StringRefNull name, const AttributeMetaData &meta_data) {
+    AttributeIterInfo attribute_info;
+    attribute_info.name = name;
+    attribute_info.domain = meta_data.domain;
+    attribute_info.cd_type = meta_data.data_type;
+    fn(attribute_info);
+  });
+}
+
+template<const ComponentAttributeProviders &providers>
 inline AttributeValidator lookup_validator(const void * /*owner*/,
                                            const blender::StringRef attribute_id)
 {
@@ -441,6 +454,7 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
                                     lookup<providers>,
                                     nullptr,
                                     for_all<providers>,
+                                    foreach_attribute<providers>,
                                     lookup_validator<providers>,
                                     lookup_for_write<providers>,
                                     remove<providers>,
