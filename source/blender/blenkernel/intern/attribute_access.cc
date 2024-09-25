@@ -588,17 +588,18 @@ std::optional<AttributeAccessor> AttributeAccessor::from_id(const ID &id)
   return {};
 }
 
-GAttributeReader AttributeAccessor::lookup(const StringRef attribute_id,
-                                           const std::optional<AttrDomain> domain,
-                                           const std::optional<eCustomDataType> data_type) const
+static GAttributeReader adapt_domain_and_type_if_necessary(
+    GAttributeReader attribute,
+    const std::optional<AttrDomain> domain,
+    const std::optional<eCustomDataType> data_type,
+    const AttributeAccessor &accessor)
 {
-  GAttributeReader attribute = this->lookup(attribute_id);
   if (!attribute) {
     return {};
   }
   if (domain.has_value()) {
     if (attribute.domain != domain) {
-      attribute.varray = this->adapt_domain(attribute.varray, attribute.domain, *domain);
+      attribute.varray = accessor.adapt_domain(attribute.varray, attribute.domain, *domain);
       attribute.domain = *domain;
       attribute.sharing_info = nullptr;
       if (!attribute.varray) {
@@ -617,6 +618,19 @@ GAttributeReader AttributeAccessor::lookup(const StringRef attribute_id,
     }
   }
   return attribute;
+}
+
+GAttributeReader AttributeAccessor::lookup(const StringRef attribute_id,
+                                           const std::optional<AttrDomain> domain,
+                                           const std::optional<eCustomDataType> data_type) const
+{
+  return adapt_domain_and_type_if_necessary(this->lookup(attribute_id), domain, data_type, *this);
+}
+
+GAttributeReader AttributeIter::get(std::optional<AttrDomain> domain,
+                                    std::optional<eCustomDataType> data_type) const
+{
+  return adapt_domain_and_type_if_necessary(this->get(), domain, data_type, *accessor);
 }
 
 GAttributeReader AttributeAccessor::lookup_or_default(const StringRef attribute_id,

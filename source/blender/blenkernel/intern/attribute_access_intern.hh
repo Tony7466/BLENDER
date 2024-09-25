@@ -306,7 +306,7 @@ inline bool for_all(const void *owner,
     const bool continue_loop = provider->foreach_attribute(
         owner, [&](const AttributeIter &attr_iter) {
           if (handled_attribute_ids.add(attr_iter.name)) {
-            if (!fn(attr_iter.name, {attr_iter.domain, attr_iter.cd_type})) {
+            if (!fn(attr_iter.name, {attr_iter.domain, attr_iter.data_type})) {
               attr_iter.stop_iteration();
             }
           }
@@ -319,16 +319,18 @@ inline bool for_all(const void *owner,
 }
 
 template<const ComponentAttributeProviders &providers>
-inline void foreach_attribute(const void *owner, const FunctionRef<void(const AttributeIter &)> fn)
+inline void foreach_attribute(const void *owner,
+                              const FunctionRef<void(const AttributeIter &)> fn,
+                              const AttributeAccessor &accessor)
 {
   Set<StringRef, 16> handled_attribute_ids;
   for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
   {
     if (provider->exists(owner)) {
       const auto get_fn = [&]() { return provider->try_get_for_read(owner); };
-
       AttributeIter attr_iter{provider->name(), provider->domain(), provider->data_type(), get_fn};
       attr_iter.is_builtin = true;
+      attr_iter.accessor = &accessor;
       fn(attr_iter);
       if (attr_iter.is_stopped()) {
         return;
@@ -340,6 +342,7 @@ inline void foreach_attribute(const void *owner, const FunctionRef<void(const At
     const bool continue_loop = provider->foreach_attribute(
         owner, [&](const AttributeIter &attr_iter) {
           if (handled_attribute_ids.add(attr_iter.name)) {
+            attr_iter.accessor = &accessor;
             fn(attr_iter);
           }
         });

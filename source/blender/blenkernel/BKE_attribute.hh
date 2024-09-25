@@ -391,8 +391,9 @@ class AttributeIter {
  public:
   StringRefNull name;
   AttrDomain domain;
-  eCustomDataType cd_type;
+  eCustomDataType data_type;
   bool is_builtin = false;
+  mutable const AttributeAccessor *accessor = nullptr;
 
  private:
   FunctionRef<GAttributeReader()> get_fn_;
@@ -401,9 +402,9 @@ class AttributeIter {
  public:
   AttributeIter(const StringRefNull name,
                 const AttrDomain domain,
-                const eCustomDataType cd_type,
+                const eCustomDataType data_type,
                 const FunctionRef<GAttributeReader()> get_fn)
-      : name(name), domain(domain), cd_type(cd_type), get_fn_(get_fn)
+      : name(name), domain(domain), data_type(data_type), get_fn_(get_fn)
   {
   }
 
@@ -421,6 +422,27 @@ class AttributeIter {
   GAttributeReader get() const
   {
     return get_fn_();
+  }
+
+  GAttributeReader get(std::optional<AttrDomain> domain,
+                       std::optional<eCustomDataType> data_type) const;
+
+  GAttributeReader get(const AttrDomain domain) const
+  {
+    return this->get(domain, std::nullopt);
+  }
+
+  GAttributeReader get(const eCustomDataType data_type) const
+  {
+    return this->get(std::nullopt, data_type);
+  }
+
+  template<typename T>
+  AttributeReader<T> get(const std::optional<AttrDomain> domain = std::nullopt) const
+  {
+    const CPPType &cpp_type = CPPType::get<T>();
+    const eCustomDataType data_type = cpp_type_to_custom_data_type(cpp_type);
+    return this->get(domain, data_type).typed<T>();
   }
 };
 
@@ -445,7 +467,9 @@ struct AttributeAccessorFunctions {
                           AttrDomain to_domain);
   bool (*for_all)(const void *owner,
                   FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
-  void (*foreach_attribute)(const void *owner, FunctionRef<void(const AttributeIter &attr_iter)>);
+  void (*foreach_attribute)(const void *owner,
+                            FunctionRef<void(const AttributeIter &attr_iter)> fn,
+                            const AttributeAccessor &accessor);
   AttributeValidator (*lookup_validator)(const void *owner, StringRef attribute_id);
   GAttributeWriter (*lookup_for_write)(void *owner, StringRef attribute_id);
   bool (*remove)(void *owner, StringRef attribute_id);
@@ -649,7 +673,7 @@ class AttributeAccessor {
   void foreach_attribute(const FunctionRef<void(const AttributeIter &)> fn) const
   {
     if (owner_ != nullptr) {
-      fn_->foreach_attribute(owner_, fn);
+      fn_->foreach_attribute(owner_, fn, *this);
     }
   }
 

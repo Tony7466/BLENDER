@@ -147,13 +147,13 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
       grease_pencil_attributes.add(
           attr_iter.name,
           AttrDomain::Layer,
-          attr_iter.cd_type,
+          attr_iter.data_type,
           bke::AttributeInitShared{src_attribute.varray.get_internal_span().data(),
                                    *src_attribute.sharing_info});
       return;
     }
     if (!grease_pencil_attributes.add(
-            attr_iter.name, AttrDomain::Layer, attr_iter.cd_type, bke::AttributeInitConstruct()))
+            attr_iter.name, AttrDomain::Layer, attr_iter.data_type, bke::AttributeInitConstruct()))
     {
       return;
     }
