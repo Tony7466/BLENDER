@@ -523,7 +523,7 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
 
   FCurve *fcu = key_insertion_may_create_fcurve(flag) ?
                     action_fcurve_ensure(bmain, act, group, ptr, {rna_path, array_index}) :
-                    action_fcurve_find(act, {rna_path, array_index});
+                    fcurve_find_in_action(act, {rna_path, array_index});
 
   /* We may not have a F-Curve when we're replacing only. */
   if (!fcu) {
@@ -645,7 +645,7 @@ int delete_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna
   else {
     /* Will only loop once unless the array index was -1. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
+      FCurve *fcu = fcurve_find_in_action(act, {rna_path.path, array_index});
 
       if (fcu == nullptr) {
         continue;
@@ -716,7 +716,7 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
   if (action.is_action_layered()) {
     if (adt->slot_handle) {
       Vector<FCurve *> fcurves;
-      action_foreach_fcurve(action, adt->slot_handle, [&](FCurve &fcurve) {
+      foreach_fcurve_in_action_slot(action, adt->slot_handle, [&](FCurve &fcurve) {
         if (rna_path.index.has_value() && rna_path.index.value() != fcurve.array_index) {
           return;
         }
@@ -749,7 +749,7 @@ int clear_keyframe(Main *bmain, ReportList *reports, ID *id, const RNAPath &rna_
     }
     /* Will only loop once unless the array index was -1. */
     for (; array_index < array_index_max; array_index++) {
-      FCurve *fcu = action_fcurve_find(act, {rna_path.path, array_index});
+      FCurve *fcu = fcurve_find_in_action(act, {rna_path.path, array_index});
 
       if (fcu == nullptr) {
         continue;
@@ -837,6 +837,7 @@ struct KeyInsertData {
 
 static SingleKeyingResult insert_key_layer(
     Main *bmain,
+    Action &action,
     Layer &layer,
     const Slot &slot,
     const std::string &rna_path,
@@ -850,7 +851,7 @@ static SingleKeyingResult insert_key_layer(
   BLI_assert(layer.strips().size() == 1);
 
   Strip *strip = layer.strip(0);
-  return strip->as<KeyframeStrip>().keyframe_insert(
+  return strip->data<StripKeyframeData>(action).keyframe_insert(
       bmain,
       slot,
       {rna_path, key_data.array_index, prop_subtype, channel_group},
@@ -924,6 +925,7 @@ static CombinedKeyingResult insert_key_layered_action(Main *bmain,
 
       const KeyInsertData key_data = {{scene_frame, rna_values[property_index]}, property_index};
       const SingleKeyingResult result = insert_key_layer(bmain,
+                                                         action,
                                                          *layer,
                                                          *slot,
                                                          *rna_path_id_to_prop,
@@ -1044,7 +1046,7 @@ CombinedKeyingResult insert_keyframes(Main *bmain,
       /* Determine if at least one element would succeed getting keyed. */
       bool at_least_one_would_succeed = false;
       for (int i = 0; i < rna_values.size(); i++) {
-        const FCurve *fcu = action_fcurve_find(dna_action, {*rna_path_id_to_prop, i});
+        const FCurve *fcu = fcurve_find_in_action(dna_action, {*rna_path_id_to_prop, i});
         if (!fcu) {
           continue;
         }
