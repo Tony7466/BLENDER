@@ -146,27 +146,6 @@ struct AttributeInitShared : public AttributeInit {
 using AttributeForeachCallback =
     FunctionRef<bool(StringRefNull attribute_id, const AttributeMetaData &meta_data)>;
 
-class AttributeIter {
- public:
-  StringRefNull name;
-  AttrDomain domain;
-  eCustomDataType cd_type;
-
- private:
-  mutable bool stop_iteration_ = false;
-
- public:
-  void stop_iteration() const
-  {
-    stop_iteration_ = true;
-  }
-
-  bool is_stopped() const
-  {
-    return stop_iteration_;
-  }
-};
-
 /**
  * Result when looking up an attribute from some geometry with the intention of only reading from
  * it.
@@ -405,6 +384,41 @@ struct GSpanAttributeWriter {
     if (this->tag_modified_fn) {
       this->tag_modified_fn();
     }
+  }
+};
+
+class AttributeIter {
+ public:
+  StringRefNull name;
+  AttrDomain domain;
+  eCustomDataType cd_type;
+  FunctionRef<GAttributeReader()> get_fn;
+
+ private:
+  mutable bool stop_iteration_ = false;
+
+ public:
+  AttributeIter(const StringRefNull name,
+                const AttrDomain domain,
+                const eCustomDataType cd_type,
+                const FunctionRef<GAttributeReader()> get_fn)
+      : name(name), domain(domain), cd_type(cd_type), get_fn(get_fn)
+  {
+  }
+
+  void stop_iteration() const
+  {
+    stop_iteration_ = true;
+  }
+
+  bool is_stopped() const
+  {
+    return stop_iteration_;
+  }
+
+  GAttributeReader get() const
+  {
+    return get_fn();
   }
 };
 

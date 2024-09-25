@@ -544,10 +544,14 @@ bool CustomDataAttributeProvider::foreach_attribute(
   for (const CustomDataLayer &layer : Span(custom_data->layers, custom_data->totlayer)) {
     const eCustomDataType data_type = (eCustomDataType)layer.type;
     if (this->type_is_supported(data_type)) {
-      AttributeIter attr_iter;
-      attr_iter.name = layer.name;
-      attr_iter.domain = domain_;
-      attr_iter.cd_type = data_type;
+      const auto get_fn = [&]() {
+        const CPPType *type = custom_data_type_to_cpp_type(data_type);
+        BLI_assert(type);
+        GSpan data{*type, layer.data, custom_data_access_.get_element_num(owner)};
+        return GAttributeReader{GVArray::ForSpan(data), domain_, layer.sharing_info};
+      };
+
+      AttributeIter attr_iter{layer.name, domain_, data_type, get_fn};
       fn(attr_iter);
       if (attr_iter.is_stopped()) {
         return false;

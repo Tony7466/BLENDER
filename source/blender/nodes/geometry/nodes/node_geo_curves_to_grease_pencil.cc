@@ -141,10 +141,7 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
     if (attribute_filter.allow_skip(attr_iter.name)) {
       return;
     }
-    const GAttributeReader src_attribute = instances_attributes.lookup(attr_iter.name);
-    if (!src_attribute) {
-      return;
-    }
+    const GAttributeReader src_attribute = attr_iter.get();
     if (instance_selection.size() == instances_num && src_attribute.varray.is_span() &&
         src_attribute.sharing_info)
     {

@@ -325,10 +325,9 @@ inline void foreach_attribute(const void *owner, const FunctionRef<void(const At
   for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
   {
     if (provider->exists(owner)) {
-      AttributeIter attr_iter;
-      attr_iter.name = provider->name();
-      attr_iter.domain = provider->domain();
-      attr_iter.cd_type = provider->data_type();
+      const auto get_fn = [&]() { return provider->try_get_for_read(owner); };
+
+      AttributeIter attr_iter{provider->name(), provider->domain(), provider->data_type(), get_fn};
       fn(attr_iter);
       if (attr_iter.is_stopped()) {
         return;

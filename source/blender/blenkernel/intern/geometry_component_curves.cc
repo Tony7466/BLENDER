@@ -372,8 +372,16 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       return {};
     }
     const Span<MDeformVert> dverts = curves->deform_verts();
+    return this->get_for_vertex_group_index(*curves, dverts, vertex_group_index);
+  }
+
+  GAttributeReader get_for_vertex_group_index(const CurvesGeometry &curves,
+                                              const Span<MDeformVert> dverts,
+                                              const int vertex_group_index) const
+  {
+    BLI_assert(vertex_group_index >= 0);
     if (dverts.is_empty()) {
-      return {VArray<float>::ForSingle(0.0f, curves->points_num()), AttrDomain::Point};
+      return {VArray<float>::ForSingle(0.0f, curves.points_num()), AttrDomain::Point};
     }
     return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
@@ -433,11 +441,15 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     if (curves == nullptr) {
       return true;
     }
-    LISTBASE_FOREACH (const bDeformGroup *, group, &curves->vertex_group_names) {
-      AttributeIter attr_iter;
-      attr_iter.name = group->name;
-      attr_iter.domain = AttrDomain::Point;
-      attr_iter.cd_type = CD_PROP_FLOAT;
+    const Span<MDeformVert> dverts = curves->deform_verts();
+
+    int group_index = 0;
+    LISTBASE_FOREACH_INDEX (const bDeformGroup *, group, &curves->vertex_group_names, group_index)
+    {
+      const auto get_fn = [&]() {
+        return this->get_for_vertex_group_index(*curves, dverts, group_index);
+      };
+      AttributeIter attr_iter{group->name, AttrDomain::Point, CD_PROP_FLOAT, get_fn};
       fn(attr_iter);
       if (attr_iter.is_stopped()) {
         return false;
