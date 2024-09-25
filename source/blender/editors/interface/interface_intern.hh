@@ -227,6 +227,11 @@ struct uiBut {
   void *rename_arg1 = nullptr;
   void *rename_orig = nullptr;
 
+  /* When defined, and the button edits a string RNA property, the new name is _not_ set at all,
+   * instead this function is called with the new name. */
+  std::function<void(std::string &new_name)> rename_full_func = nullptr;
+  std::string rename_full_new = "";
+
   /** Run an action when holding the button down. */
   uiButHandleHoldFunc hold_func = nullptr;
   void *hold_argN = nullptr;
@@ -487,6 +492,9 @@ struct ColorPicker {
   bool use_color_lock;
   bool use_luminosity_lock;
   float luminosity_lock_value;
+
+  /* Alpha component. */
+  bool has_alpha;
 };
 
 struct ColorPickerData {
@@ -738,10 +746,9 @@ void ui_but_hsv_set(uiBut *but);
  * For buttons pointing to color for example.
  */
 void ui_but_v3_get(uiBut *but, float vec[3]);
-/**
- * For buttons pointing to color for example.
- */
 void ui_but_v3_set(uiBut *but, const float vec[3]);
+void ui_but_v4_get(uiBut *but, float vec[4]);
+void ui_but_v4_set(uiBut *but, const float vec[4]);
 
 void ui_hsvcircle_vals_from_pos(
     const rcti *rect, float mx, float my, float *r_val_rad, float *r_val_dist);
@@ -957,6 +964,11 @@ void ui_color_picker_hsv_to_rgb(const float r_cp[3], float rgb[3]);
  * or if it's a color picker for such a button.
  */
 bool ui_but_is_color_gamma(uiBut *but);
+
+/**
+ * Returns true if the button represents a color with an Alpha component.
+ */
+bool ui_but_color_has_alpha(uiBut *but);
 
 void ui_scene_linear_to_perceptual_space(uiBut *but, float rgb[3]);
 void ui_perceptual_to_scene_linear_space(uiBut *but, float rgb[3]);

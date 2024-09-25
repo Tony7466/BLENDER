@@ -4775,6 +4775,13 @@ def km_grease_pencil_sculpt_mode(params):
          "ctrl": True}, {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
          "shift": True}, {"properties": [("mode", 'SMOOTH')]}),
+        # Selection mode
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_point')]}),
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_stroke')]}),
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_segment')]}),
         *_template_paint_radial_control("gpencil_sculpt_paint"),
         op_asset_shelf_popup(
             "VIEW3D_AST_brush_gpencil_sculpt",
@@ -4861,6 +4868,13 @@ def km_grease_pencil_vertex_paint(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Selection mode
+        ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_point')]}),
+        ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_stroke')]}),
+        ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
+         {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_segment')]}),
         # Radial controls
         *_template_paint_radial_control("gpencil_vertex_paint"),
         # Context menu
@@ -8895,6 +8909,19 @@ def km_3d_view_tool_sculpt_gpencil_select_lasso(params):
         {"items": _template_items_tool_select_actions("gpencil.select_lasso", **params.tool_tweak_event)},
     )
 
+# ------------------------------------------------------------------------------
+# Grease Pencil: Texture Gradient Tool
+
+
+def km_3d_view_tool_edit_grease_pencil_texture_gradient(params):
+    return (
+        "3D View Tool: Edit Grease Pencil, Gradient",
+        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
+        {"items": [
+            ("grease_pencil.texture_gradient", params.tool_maybe_tweak_event, None),
+        ]},
+    )
+
 
 # ------------------------------------------------------------------------------
 # Tool System (Sequencer, Generic)
@@ -9380,6 +9407,7 @@ def generate_keymaps(params=None):
         *(km_sequencer_editor_tool_generic_select_box_preview(params, fallback=fallback)
           for fallback in (False, True)),
         km_3d_view_tool_paint_grease_pencil_trim(params),
+        km_3d_view_tool_edit_grease_pencil_texture_gradient(params),
         km_sequencer_editor_tool_generic_cursor(params),
         km_sequencer_editor_tool_blade(params),
         km_sequencer_editor_tool_sample(params),
