@@ -15,7 +15,10 @@
 #include "DNA_anim_types.h"
 #include "DNA_object_types.h"
 
+#include "RNA_access.hh"
+
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
 #include <limits>
@@ -156,36 +159,116 @@ TEST_F(ActionLayersTest, remove_strip)
   Strip &strip0 = layer.strip_add(*action, Strip::Type::Keyframe);
   Strip &strip1 = layer.strip_add(*action, Strip::Type::Keyframe);
   Strip &strip2 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip3 = layer.strip_add(*action, Strip::Type::Keyframe);
+  StripKeyframeData &strip_data0 = strip0.data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data1 = strip1.data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data2 = strip2.data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data3 = strip3.data<StripKeyframeData>(*action);
 
   /* Add some keys to check that also the strip data is freed correctly. */
   const KeyframeSettings settings = get_keyframe_settings(false);
   Slot &slot = action->slot_add();
-  strip0.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
-  strip1.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
-  strip2.data<StripKeyframeData>(*action).keyframe_insert(
-      bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip_data0.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip_data1.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 48.0f}, settings);
+  strip_data2.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 49.0f}, settings);
+  strip_data3.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 50.0f}, settings);
 
-  EXPECT_TRUE(layer.strip_remove(strip1));
-  EXPECT_EQ(2, layer.strips().size());
+  EXPECT_EQ(4, action->strip_keyframe_data().size());
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(1, strip1.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+  EXPECT_EQ(3, strip3.data_index);
+
+  EXPECT_TRUE(layer.strip_remove(*action, strip1));
+  EXPECT_EQ(3, action->strip_keyframe_data().size());
+  EXPECT_EQ(3, layer.strips().size());
   EXPECT_EQ(&strip0, layer.strip(0));
   EXPECT_EQ(&strip2, layer.strip(1));
+  EXPECT_EQ(&strip3, layer.strip(2));
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+  EXPECT_EQ(1, strip3.data_index); /* Swapped in when removing strip 1's data. */
+  EXPECT_EQ(&strip_data0, &strip0.data<StripKeyframeData>(*action));
+  EXPECT_EQ(&strip_data2, &strip2.data<StripKeyframeData>(*action));
+  EXPECT_EQ(&strip_data3, &strip3.data<StripKeyframeData>(*action));
 
-  EXPECT_TRUE(layer.strip_remove(strip2));
+  EXPECT_TRUE(layer.strip_remove(*action, strip2));
+  EXPECT_EQ(2, action->strip_keyframe_data().size());
+  EXPECT_EQ(2, layer.strips().size());
+  EXPECT_EQ(&strip0, layer.strip(0));
+  EXPECT_EQ(&strip3, layer.strip(1));
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(1, strip3.data_index);
+  EXPECT_EQ(&strip_data0, &strip0.data<StripKeyframeData>(*action));
+  EXPECT_EQ(&strip_data3, &strip3.data<StripKeyframeData>(*action));
+
+  EXPECT_TRUE(layer.strip_remove(*action, strip3));
+  EXPECT_EQ(1, action->strip_keyframe_data().size());
   EXPECT_EQ(1, layer.strips().size());
   EXPECT_EQ(&strip0, layer.strip(0));
+  EXPECT_EQ(0, strip0.data_index);
+  EXPECT_EQ(&strip_data0, &strip0.data<StripKeyframeData>(*action));
 
-  EXPECT_TRUE(layer.strip_remove(strip0));
+  EXPECT_TRUE(layer.strip_remove(*action, strip0));
+  EXPECT_EQ(0, action->strip_keyframe_data().size());
   EXPECT_EQ(0, layer.strips().size());
 
   { /* Test removing a strip that is not owned. */
     Layer &other_layer = action->layer_add("Another Layer");
     Strip &other_strip = other_layer.strip_add(*action, Strip::Type::Keyframe);
 
-    EXPECT_FALSE(layer.strip_remove(other_strip))
+    EXPECT_FALSE(layer.strip_remove(*action, other_strip))
         << "Removing a strip not owned by the layer should be gracefully rejected";
   }
+}
+
+/* NOTE: this test creates strip instances in a bespoke way for the purpose of
+ * exercising the strip removal code, because at the time of writing we don't
+ * have a proper API for creating strip instances. When such an API is added,
+ * this test should be updated to use it. */
+TEST_F(ActionLayersTest, remove_strip_instances)
+{
+  Layer &layer = action->layer_add("Test Læür");
+  Strip &strip0 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip1 = layer.strip_add(*action, Strip::Type::Keyframe);
+  Strip &strip2 = layer.strip_add(*action, Strip::Type::Keyframe);
+
+  /* Make on of the strips an instance of another. */
+  strip0.data_index = strip1.data_index;
+
+  StripKeyframeData &strip_data_0_1 = strip0.data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data_2 = strip2.data<StripKeyframeData>(*action);
+
+  /* Add some keys to check that also the strip data is freed correctly. */
+  const KeyframeSettings settings = get_keyframe_settings(false);
+  Slot &slot = action->slot_add();
+  strip_data_0_1.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 47.0f}, settings);
+  strip_data_2.keyframe_insert(bmain, slot, {"location", 0}, {1.0f, 48.0f}, settings);
+
+  EXPECT_EQ(3, action->strip_keyframe_data().size());
+  EXPECT_EQ(1, strip0.data_index);
+  EXPECT_EQ(1, strip1.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+
+  /* Removing an instance should not delete the underlying data as long as there
+   * is still another strip using it. */
+  EXPECT_TRUE(layer.strip_remove(*action, strip1));
+  EXPECT_EQ(3, action->strip_keyframe_data().size());
+  EXPECT_EQ(2, layer.strips().size());
+  EXPECT_EQ(&strip0, layer.strip(0));
+  EXPECT_EQ(&strip2, layer.strip(1));
+  EXPECT_EQ(1, strip0.data_index);
+  EXPECT_EQ(2, strip2.data_index);
+  EXPECT_EQ(&strip_data_0_1, &strip0.data<StripKeyframeData>(*action));
+  EXPECT_EQ(&strip_data_2, &strip2.data<StripKeyframeData>(*action));
+
+  /* Removing the last user of strip data should also delete the data. */
+  EXPECT_TRUE(layer.strip_remove(*action, strip0));
+  EXPECT_EQ(2, action->strip_keyframe_data().size());
+  EXPECT_EQ(1, layer.strips().size());
+  EXPECT_EQ(&strip2, layer.strip(0));
+  EXPECT_EQ(1, strip2.data_index);
+  EXPECT_EQ(&strip_data_2, &strip2.data<StripKeyframeData>(*action));
 }
 
 TEST_F(ActionLayersTest, add_slot)
@@ -887,6 +970,63 @@ TEST_F(ActionLayersTest, empty_to_layered)
   ASSERT_TRUE(converted != action);
   ASSERT_TRUE(converted->is_action_layered());
   ASSERT_FALSE(converted->is_action_legacy());
+}
+
+TEST_F(ActionLayersTest, action_move_slot)
+{
+  U.flag |= USER_DEVELOPER_UI;
+  U.experimental.use_animation_baklava = 1;
+
+  Action *action_2 = static_cast<Action *>(BKE_id_new(bmain, ID_AC, "Action 2"));
+  EXPECT_TRUE(action->is_empty());
+
+  Slot &slot_cube = action->slot_add();
+  Slot &slot_suzanne = action_2->slot_add();
+  EXPECT_EQ(assign_action_and_slot(action, &slot_cube, cube->id), ActionSlotAssignmentResult::OK);
+  EXPECT_EQ(assign_action_and_slot(action_2, &slot_suzanne, suzanne->id),
+            ActionSlotAssignmentResult::OK);
+
+  PointerRNA cube_rna_pointer = RNA_id_pointer_create(&cube->id);
+  PointerRNA suzanne_rna_pointer = RNA_id_pointer_create(&suzanne->id);
+
+  action_fcurve_ensure(bmain, action, "Test", &cube_rna_pointer, {"location", 0});
+  action_fcurve_ensure(bmain, action, "Test", &cube_rna_pointer, {"rotation_euler", 1});
+
+  action_fcurve_ensure(bmain, action_2, "Test_2", &suzanne_rna_pointer, {"location", 0});
+  action_fcurve_ensure(bmain, action_2, "Test_2", &suzanne_rna_pointer, {"rotation_euler", 1});
+
+  ASSERT_EQ(action->layer_array_num, 1);
+  ASSERT_EQ(action_2->layer_array_num, 1);
+
+  Layer *layer_1 = action->layer(0);
+  Layer *layer_2 = action_2->layer(0);
+
+  ASSERT_EQ(layer_1->strip_array_num, 1);
+  ASSERT_EQ(layer_2->strip_array_num, 1);
+
+  StripKeyframeData &strip_data_1 = layer_1->strip(0)->data<StripKeyframeData>(*action);
+  StripKeyframeData &strip_data_2 = layer_2->strip(0)->data<StripKeyframeData>(*action_2);
+
+  ASSERT_EQ(strip_data_1.channelbag_array_num, 1);
+  ASSERT_EQ(strip_data_2.channelbag_array_num, 1);
+
+  ChannelBag *bag_1 = strip_data_1.channelbag(0);
+  ChannelBag *bag_2 = strip_data_2.channelbag(0);
+
+  ASSERT_EQ(bag_1->fcurve_array_num, 2);
+  ASSERT_EQ(bag_2->fcurve_array_num, 2);
+
+  move_slot(*bmain, slot_suzanne, *action_2, *action);
+
+  ASSERT_EQ(strip_data_1.channelbag_array_num, 2);
+  ASSERT_EQ(strip_data_2.channelbag_array_num, 0);
+
+  ASSERT_EQ(action->slot_array_num, 2);
+  ASSERT_EQ(action_2->slot_array_num, 0);
+
+  /* Action should have been reassigned. */
+  ASSERT_EQ(action, cube->adt->action);
+  ASSERT_EQ(action, suzanne->adt->action);
 }
 
 /*-----------------------------------------------------------*/
@@ -1669,5 +1809,126 @@ TEST_F(ChannelBagTest, channel_group_fcurve_ungroup)
   EXPECT_EQ(nullptr, fcu1.grp);
   EXPECT_EQ(nullptr, fcu2.grp);
 }
+
+/*-----------------------------------------------------------*/
+
+class ActionFCurveMoveTest : public testing::Test {
+ public:
+  Main *bmain;
+
+  static void SetUpTestSuite()
+  {
+    /* BKE_id_free() hits a code path that uses CLOG, which crashes if not initialized properly. */
+    CLG_init();
+
+    /* To make id_can_have_animdata() and friends work, the `id_types` array needs to be set up. */
+    BKE_idtype_init();
+  }
+
+  static void TearDownTestSuite()
+  {
+    CLG_exit();
+  }
+
+  void SetUp() override
+  {
+    bmain = BKE_main_new();
+  }
+
+  void TearDown() override
+  {
+    BKE_main_free(bmain);
+  }
+
+  static FCurve *fcurve_create(const StringRefNull rna_path, const int array_index)
+  {
+    FCurve *fcurve = BKE_fcurve_create();
+    fcurve->rna_path = BLI_strdupn(rna_path.c_str(), array_index);
+    return fcurve;
+  };
+};
+
+TEST_F(ActionFCurveMoveTest, test_fcurve_move_legacy)
+{
+  Action &action_src = action_add(*this->bmain, "SourceAction");
+  Action &action_dst = action_add(*this->bmain, "DestinationAction");
+
+  /* Add F-Curves to source Action. */
+  BLI_addtail(&action_src.curves, this->fcurve_create("source_prop", 0));
+  FCurve *fcurve_to_move = this->fcurve_create("source_prop", 2);
+  BLI_addtail(&action_src.curves, fcurve_to_move);
+
+  /* Add F-Curves to destination Action. */
+  BLI_addtail(&action_dst.curves, this->fcurve_create("dest_prop", 0));
+
+  ASSERT_TRUE(action_src.is_action_legacy());
+  ASSERT_TRUE(action_dst.is_action_legacy());
+
+  action_fcurve_move(action_dst, Slot::unassigned, action_src, *fcurve_to_move);
+
+  EXPECT_TRUE(action_src.is_action_legacy());
+  EXPECT_TRUE(action_dst.is_action_legacy());
+
+  EXPECT_EQ(-1, BLI_findindex(&action_src.curves, fcurve_to_move))
+      << "F-Curve should no longer exist in source Action";
+  EXPECT_EQ(1, BLI_findindex(&action_dst.curves, fcurve_to_move))
+      << "F-Curve should exist in destination Action";
+
+  EXPECT_EQ(1, BLI_listbase_count(&action_src.curves))
+      << "Source Action should still have the other F-Curve";
+  EXPECT_EQ(2, BLI_listbase_count(&action_dst.curves))
+      << "Destination Action should have its original and the moved F-Curve";
+}
+
+#ifdef WITH_ANIM_BAKLAVA
+TEST_F(ActionFCurveMoveTest, test_fcurve_move_layered)
+{
+  Action &action_src = action_add(*this->bmain, "SourceAction");
+  Action &action_dst = action_add(*this->bmain, "DestinationAction");
+
+  /* Add F-Curves to source Action. */
+  Slot &slot_src = action_src.slot_add();
+  action_src.layer_keystrip_ensure();
+  StripKeyframeData &strip_data_src = action_src.layer(0)->strip(0)->data<StripKeyframeData>(
+      action_src);
+  ChannelBag &cbag_src = strip_data_src.channelbag_for_slot_ensure(slot_src);
+
+  cbag_src.fcurve_ensure(this->bmain, {"source_prop", 0});
+  FCurve &fcurve_to_move = cbag_src.fcurve_ensure(this->bmain, {"source_prop", 2});
+  bActionGroup &group_src = cbag_src.channel_group_create("Gröpje");
+  cbag_src.fcurve_assign_to_channel_group(fcurve_to_move, group_src);
+
+  /* Add F-Curves to destination Action. */
+  Slot &slot_dst = action_dst.slot_add();
+  action_dst.layer_keystrip_ensure();
+  StripKeyframeData &strip_data_dst = action_dst.layer(0)->strip(0)->data<StripKeyframeData>(
+      action_dst);
+  ChannelBag &cbag_dst = strip_data_dst.channelbag_for_slot_ensure(slot_dst);
+
+  cbag_dst.fcurve_ensure(this->bmain, {"dest_prop", 0});
+
+  ASSERT_TRUE(action_src.is_action_layered());
+  ASSERT_TRUE(action_dst.is_action_layered());
+
+  action_fcurve_move(action_dst, slot_dst.handle, action_src, fcurve_to_move);
+
+  EXPECT_TRUE(action_src.is_action_layered());
+  EXPECT_TRUE(action_dst.is_action_layered());
+
+  EXPECT_EQ(nullptr, cbag_src.fcurve_find({fcurve_to_move.rna_path, fcurve_to_move.array_index}))
+      << "F-Curve should no longer exist in source Action";
+  EXPECT_EQ(&fcurve_to_move,
+            cbag_dst.fcurve_find({fcurve_to_move.rna_path, fcurve_to_move.array_index}))
+      << "F-Curve should exist in destination Action";
+
+  EXPECT_EQ(1, cbag_src.fcurves().size()) << "Source Action should still have the other F-Curve";
+  EXPECT_EQ(2, cbag_dst.fcurves().size())
+      << "Destination Action should have its original and the moved F-Curve";
+
+  bActionGroup *group_dst = cbag_dst.channel_group_find("Gröpje");
+  ASSERT_NE(nullptr, group_dst) << "Expected channel group to be created";
+  ASSERT_EQ(group_dst, fcurve_to_move.grp) << "Expected group membership to move as well";
+}
+#endif
 
 }  // namespace blender::animrig::tests
