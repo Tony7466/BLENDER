@@ -17,7 +17,7 @@ struct GreasePencil;
 namespace blender::bke {
 class Instances;
 class PhysicsGeometry;
-}
+}  // namespace blender::bke
 
 namespace blender::geometry {
 

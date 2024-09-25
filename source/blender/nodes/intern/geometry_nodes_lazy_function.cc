@@ -1791,6 +1791,7 @@ struct RepeatEvalStorage {
   std::optional<RepeatZoneSideEffectProvider> side_effect_provider;
   std::optional<RepeatBodyNodeExecuteWrapper> body_execute_wrapper;
   std::optional<lf::GraphExecutor> graph_executor;
+  Array<SocketValueVariant> index_values;
   void *graph_executor_storage = nullptr;
   bool multi_threading_enabled = false;
   Vector<int> input_index_map;
@@ -1906,6 +1907,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
 
     /* Take iterations input into account. */
     const int main_inputs_offset = 1;
+    const int body_inputs_offset = 1;
 
     lf::Graph &lf_graph = eval_storage.graph;
 
@@ -1937,9 +1939,25 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       lf_border_link_usage_or_nodes[i] = &lf_node;
     }
 
+    const bool use_index_values = zone_.input_node->output_socket(0).is_directly_linked();
+
+    if (use_index_values) {
+      eval_storage.index_values.reinitialize(iterations);
+      threading::parallel_for(IndexRange(iterations), 1024, [&](const IndexRange range) {
+        for (const int i : range) {
+          eval_storage.index_values[i].set(i);
+        }
+      });
+    }
+
     /* Handle body nodes one by one. */
+    static const SocketValueVariant static_unused_index{-1};
     for (const int iter_i : lf_body_nodes.index_range()) {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
+      const SocketValueVariant *index_value = use_index_values ?
+                                                  &eval_storage.index_values[iter_i] :
+                                                  &static_unused_index;
+      lf_node.input(body_fn_.indices.inputs.main[0]).set_default_value(index_value);
       for (const int i : IndexRange(num_border_links)) {
         lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.border_links[i]],
                           lf_node.input(body_fn_.indices.inputs.border_links[i]));
@@ -1969,8 +1987,9 @@ class LazyFunctionForRepeatZone : public LazyFunction {
       lf::FunctionNode &lf_node = *lf_body_nodes[iter_i];
       lf::FunctionNode &lf_next_node = *lf_body_nodes[iter_i + 1];
       for (const int i : IndexRange(num_repeat_items)) {
-        lf_graph.add_link(lf_node.output(body_fn_.indices.outputs.main[i]),
-                          lf_next_node.input(body_fn_.indices.inputs.main[i]));
+        lf_graph.add_link(
+            lf_node.output(body_fn_.indices.outputs.main[i]),
+            lf_next_node.input(body_fn_.indices.inputs.main[i + body_inputs_offset]));
         /* TODO: Add back-link after being able to check for cyclic dependencies. */
         // lf_graph.add_link(lf_next_node.output(body_fn_.indices.outputs.input_usages[i]),
         //                   lf_node.input(body_fn_.indices.inputs.output_usages[i]));
@@ -1989,10 +2008,12 @@ class LazyFunctionForRepeatZone : public LazyFunction {
         /* Link first body node to input/output nodes. */
         lf::FunctionNode &lf_first_body_node = *lf_body_nodes[0];
         for (const int i : IndexRange(num_repeat_items)) {
-          lf_graph.add_link(*lf_inputs[zone_info_.indices.inputs.main[i + main_inputs_offset]],
-                            lf_first_body_node.input(body_fn_.indices.inputs.main[i]));
           lf_graph.add_link(
-              lf_first_body_node.output(body_fn_.indices.outputs.input_usages[i]),
+              *lf_inputs[zone_info_.indices.inputs.main[i + main_inputs_offset]],
+              lf_first_body_node.input(body_fn_.indices.inputs.main[i + body_inputs_offset]));
+          lf_graph.add_link(
+              lf_first_body_node.output(
+                  body_fn_.indices.outputs.input_usages[i + body_inputs_offset]),
               *lf_outputs[zone_info_.indices.outputs.input_usages[i + main_inputs_offset]]);
         }
       }
@@ -2302,7 +2323,7 @@ class LazyFunctionForForeachGeometryElementZone : public LazyFunction {
     IndexRange bsocket_inner;
   };
 
-  /** Reduces the hardcoding of index offsets in lots of places below which is quite brittle. */
+  /** Reduces the hard-coding of index offsets in lots of places below which is quite brittle. */
   struct {
     ItemIndices inputs;
     ItemIndices main;

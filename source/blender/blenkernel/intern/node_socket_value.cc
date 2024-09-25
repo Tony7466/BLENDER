@@ -66,8 +66,7 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
 /**
  * Check if a socket type stores the static C++ type.
  */
-template<typename T>
-static bool is_socket_type_value(const eNodeSocketDatatype socket_type)
+template<typename T> static bool is_socket_type_value(const eNodeSocketDatatype socket_type)
 {
   switch (socket_type) {
     case SOCK_INT:
