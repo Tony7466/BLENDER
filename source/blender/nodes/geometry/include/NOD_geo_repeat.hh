@@ -63,8 +63,7 @@ struct RepeatItemsAccessor {
                 SOCK_OBJECT,
                 SOCK_MATERIAL,
                 SOCK_IMAGE,
-                SOCK_COLLECTION,
-                SOCK_MENU);
+                SOCK_COLLECTION);
   }
   static void init_with_socket_type_and_name(bNode &node,
                                              NodeRepeatItem &item,
