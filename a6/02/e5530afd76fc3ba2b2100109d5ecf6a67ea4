@@ -1,1 +1,2 @@
 Referenced by issue #127215, EEVEE: Volume probe create bad shading if resolution is divisible by 3
+Referenced by pull request #125657, Added Metal support for parallel compilation and precompilation specialisation.
