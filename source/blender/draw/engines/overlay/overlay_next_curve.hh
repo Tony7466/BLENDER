@@ -36,7 +36,8 @@ class Curves {
 
   PassSimple edit_legacy_surface_handles_ps = {"Surface Edit"};
   PassSimple::Sub *edit_legacy_surface_handles_ = nullptr;
-  PassSimple::Sub *edit_legacy_surface_back_handles_ = nullptr;
+  /* Handles that are below the geometry and are rendered with lower alpha. */
+  PassSimple::Sub *edit_legacy_surface_xray_handles_ = nullptr;
 
   /* TODO(fclem): This is quite wasteful and expensive, prefer in shader Z modification like the
    * retopology offset. */
@@ -128,7 +129,7 @@ class Curves {
         sub.bind_ubo("globalsBlock", &res.globals_buf);
         sub.push_constant("showCurveHandles", state.overlay.handle_display != CURVE_HANDLE_NONE);
         sub.push_constant("curveHandleDisplay", int(state.overlay.handle_display));
-        sub.push_constant("alpha", 0.0f);
+        sub.push_constant("alpha", 1.0f);
         edit_legacy_curve_handles_ = &sub;
       }
       /* Points need to be rendered after handles. */
@@ -158,15 +159,13 @@ class Curves {
         return &sub;
       };
 
-      edit_legacy_surface_back_handles_ = create_sub(
-          "SurfaceBackHandles",
-          DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER | DRW_STATE_BLEND_ALPHA,
-          0.2f);
-      edit_legacy_surface_handles_ = create_sub("SurfaceHandles",
-                                                DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
-                                                    DRW_STATE_DEPTH_LESS_EQUAL |
-                                                    DRW_STATE_BLEND_ALPHA,
-                                                0.0f);
+      const DRWState state_xray = DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_GREATER |
+                                  DRW_STATE_BLEND_ALPHA;
+      edit_legacy_surface_xray_handles_ = create_sub("SurfaceXrayHandles", state_xray, 0.2f);
+
+      const DRWState state_front = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH |
+                                   DRW_STATE_DEPTH_LESS_EQUAL | DRW_STATE_BLEND_ALPHA;
+      edit_legacy_surface_handles_ = create_sub("SurfaceHandles", state_front, 1.0f);
     }
   }
 
@@ -223,7 +222,7 @@ class Curves {
         edit_legacy_curve_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
       }
       else {
-        edit_legacy_surface_back_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
+        edit_legacy_surface_xray_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
         edit_legacy_surface_handles_->draw_expand(geom, GPU_PRIM_TRIS, 8, 1, res_handle);
       }
     }
