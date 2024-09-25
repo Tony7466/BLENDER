@@ -676,6 +676,15 @@ float gl_ClipDistance[6] = {0};
 int gpu_Layer = 0;
 int gpu_ViewportIndex = 0;
 
+/* Compute Shader Special Variables */
+
+const uint3 gl_NumWorkGroups;
+constexpr uint3 gl_WorkGroupSize;
+const uint3 gl_WorkGroupID;
+const uint3 gl_LocalInvocationID;
+const uint3 gl_GlobalInvocationID;
+const uint gl_LocalInvocationIndex;
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
