@@ -131,8 +131,9 @@ void geometry_main(VertOut geom_in[2],
   }
 
   bool edge_selected = (((geom_in[1].flag | geom_in[0].flag) & VERT_SELECTED) != 0u);
-  bool handle_selected = (showCurveHandles && (((geom_in[0].flag) &
-                                                (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
+  bool handle_selected = (showCurveHandles &&
+                          (((geom_in[0].flag) &
+                            (EDIT_CURVES_ACTIVE_HANDLE | EDIT_CURVES_BEZIER_HANDLE)) != 0u));
 
   /* If handle type is only selected and the edge is not selected, don't show. */
   if ((uint(curveHandleDisplay) != CURVE_HANDLE_ALL) && (!handle_selected)) {
@@ -144,7 +145,10 @@ void geometry_main(VertOut geom_in[2],
   }
   bool is_odd_vertex = (out_vertex_id & 1u) != 0u;
   bool is_odd_primitive = (out_primitive_id & 1u) != 0u;
-  uint line_end_point = (is_odd_primitive && !is_odd_vertex) || (!is_odd_primitive && is_odd_vertex) ? 1 : 0;
+  uint line_end_point = (is_odd_primitive && !is_odd_vertex) ||
+                                (!is_odd_primitive && is_odd_vertex) ?
+                            1 :
+                            0;
   vec4 inner_color;
   if ((geom_in[line_end_point].flag & EDIT_CURVES_BEZIER_HANDLE) != 0u) {
     inner_color = get_bezier_handle_color(color_id, geom_in[line_end_point].sel);
