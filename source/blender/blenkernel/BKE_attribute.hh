@@ -468,7 +468,7 @@ struct AttributeAccessorFunctions {
   bool (*for_all)(const void *owner,
                   FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
   void (*foreach_attribute)(const void *owner,
-                            FunctionRef<void(const AttributeIter &attr_iter)> fn,
+                            FunctionRef<void(const AttributeIter &iter)> fn,
                             const AttributeAccessor &accessor);
   AttributeValidator (*lookup_validator)(const void *owner, StringRef attribute_id);
   GAttributeWriter (*lookup_for_write)(void *owner, StringRef attribute_id);

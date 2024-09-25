@@ -911,28 +911,28 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
   sharp_edges.finish();
 
   const AttributeAccessor main_attributes = main.attributes();
-  main_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
+  main_attributes.foreach_attribute([&](const AttributeIter &iter) {
     if (!should_add_attribute_to_mesh(main_attributes,
                                       mesh_attributes,
-                                      attr_iter.name,
-                                      {attr_iter.domain, attr_iter.data_type},
+                                      iter.name,
+                                      {iter.domain, iter.data_type},
                                       attribute_filter))
     {
       return;
     }
 
-    const AttrDomain src_domain = attr_iter.domain;
-    const eCustomDataType type = attr_iter.data_type;
-    const GAttributeReader src = attr_iter.get();
-    const AttrDomain dst_domain = get_attribute_domain_for_mesh(mesh_attributes, attr_iter.name);
+    const AttrDomain src_domain = iter.domain;
+    const eCustomDataType type = iter.data_type;
+    const GAttributeReader src = iter.get();
+    const AttrDomain dst_domain = get_attribute_domain_for_mesh(mesh_attributes, iter.name);
 
     if (src_domain == AttrDomain::Point) {
       copy_main_point_domain_attribute_to_mesh(
-          curves_info, attr_iter.name, offsets, dst_domain, src, eval_buffer, mesh_attributes);
+          curves_info, iter.name, offsets, dst_domain, src, eval_buffer, mesh_attributes);
     }
     else if (src_domain == AttrDomain::Curve) {
       GSpanAttributeWriter dst = mesh_attributes.lookup_or_add_for_write_only_span(
-          attr_iter.name, dst_domain, type);
+          iter.name, dst_domain, type);
       if (dst) {
         copy_curve_domain_attribute_to_mesh(
             offsets, offsets.main_indices, dst_domain, *src, dst.span);
@@ -945,25 +945,25 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
   profile.ensure_can_interpolate_to_evaluated();
 
   const AttributeAccessor profile_attributes = profile.attributes();
-  profile_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
-    if (main_attributes.contains(attr_iter.name)) {
+  profile_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (main_attributes.contains(iter.name)) {
       return;
     }
     if (!should_add_attribute_to_mesh(profile_attributes,
                                       mesh_attributes,
-                                      attr_iter.name,
-                                      {attr_iter.domain, attr_iter.data_type},
+                                      iter.name,
+                                      {iter.domain, iter.data_type},
                                       attribute_filter))
     {
       return;
     }
-    const AttrDomain src_domain = attr_iter.domain;
-    const eCustomDataType type = attr_iter.data_type;
-    const GVArray src = *attr_iter.get();
+    const AttrDomain src_domain = iter.domain;
+    const eCustomDataType type = iter.data_type;
+    const GVArray src = *iter.get();
 
-    const AttrDomain dst_domain = get_attribute_domain_for_mesh(mesh_attributes, attr_iter.name);
+    const AttrDomain dst_domain = get_attribute_domain_for_mesh(mesh_attributes, iter.name);
     GSpanAttributeWriter dst = mesh_attributes.lookup_or_add_for_write_only_span(
-        attr_iter.name, dst_domain, type);
+        iter.name, dst_domain, type);
     if (!dst) {
       return;
     }

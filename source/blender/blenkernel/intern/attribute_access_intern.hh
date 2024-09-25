@@ -303,14 +303,13 @@ inline bool for_all(const void *owner,
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
-    const bool continue_loop = provider->foreach_attribute(
-        owner, [&](const AttributeIter &attr_iter) {
-          if (handled_attribute_ids.add(attr_iter.name)) {
-            if (!fn(attr_iter.name, {attr_iter.domain, attr_iter.data_type})) {
-              attr_iter.stop_iteration();
-            }
-          }
-        });
+    const bool continue_loop = provider->foreach_attribute(owner, [&](const AttributeIter &iter) {
+      if (handled_attribute_ids.add(iter.name)) {
+        if (!fn(iter.name, {iter.domain, iter.data_type})) {
+          iter.stop_iteration();
+        }
+      }
+    });
     if (!continue_loop) {
       return false;
     }
@@ -328,24 +327,23 @@ inline void foreach_attribute(const void *owner,
   {
     if (provider->exists(owner)) {
       const auto get_fn = [&]() { return provider->try_get_for_read(owner); };
-      AttributeIter attr_iter{provider->name(), provider->domain(), provider->data_type(), get_fn};
-      attr_iter.is_builtin = true;
-      attr_iter.accessor = &accessor;
-      fn(attr_iter);
-      if (attr_iter.is_stopped()) {
+      AttributeIter iter{provider->name(), provider->domain(), provider->data_type(), get_fn};
+      iter.is_builtin = true;
+      iter.accessor = &accessor;
+      fn(iter);
+      if (iter.is_stopped()) {
         return;
       }
-      handled_attribute_ids.add(attr_iter.name);
+      handled_attribute_ids.add(iter.name);
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
-    const bool continue_loop = provider->foreach_attribute(
-        owner, [&](const AttributeIter &attr_iter) {
-          if (handled_attribute_ids.add(attr_iter.name)) {
-            attr_iter.accessor = &accessor;
-            fn(attr_iter);
-          }
-        });
+    const bool continue_loop = provider->foreach_attribute(owner, [&](const AttributeIter &iter) {
+      if (handled_attribute_ids.add(iter.name)) {
+        iter.accessor = &accessor;
+        fn(iter);
+      }
+    });
     if (!continue_loop) {
       return;
     }

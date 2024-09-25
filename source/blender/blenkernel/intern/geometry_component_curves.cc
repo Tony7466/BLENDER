@@ -449,9 +449,9 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
       const auto get_fn = [&]() {
         return this->get_for_vertex_group_index(*curves, dverts, group_index);
       };
-      AttributeIter attr_iter{group->name, AttrDomain::Point, CD_PROP_FLOAT, get_fn};
-      fn(attr_iter);
-      if (attr_iter.is_stopped()) {
+      AttributeIter iter{group->name, AttrDomain::Point, CD_PROP_FLOAT, get_fn};
+      fn(iter);
+      if (iter.is_stopped()) {
         return false;
       }
     }

@@ -66,11 +66,11 @@ static void copy_attributes(PointCloud *pointcloud,
 
   AttributeSet &attributes = pointcloud->attributes;
   static const ustring u_velocity("velocity");
-  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &attr_iter) {
-    const ustring name{std::string_view(attr_iter.name)};
+  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &iter) {
+    const ustring name{std::string_view(iter.name)};
 
     if (need_motion && name == u_velocity) {
-      const blender::VArraySpan b_attr = *attr_iter.get<blender::float3>();
+      const blender::VArraySpan b_attr = *iter.get<blender::float3>();
       attr_create_motion_from_velocity(pointcloud, b_attr, motion_scale);
     }
 
@@ -78,7 +78,7 @@ static void copy_attributes(PointCloud *pointcloud,
       return;
     }
 
-    const blender::bke::GAttributeReader b_attr = attr_iter.get();
+    const blender::bke::GAttributeReader b_attr = iter.get();
     blender::bke::attribute_math::convert_to_static_type(b_attr.varray.type(), [&](auto dummy) {
       using BlenderT = decltype(dummy);
       using Converter = typename ccl::AttributeConverter<BlenderT>;

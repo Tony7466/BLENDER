@@ -725,14 +725,14 @@ static void attr_create_generic(Scene *scene,
   const bool need_uv = hair->need_attribute(scene, ATTR_STD_UV);
   bool have_uv = false;
 
-  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &attr_iter) {
-    const ustring name{std::string_view(attr_iter.name)};
+  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &iter) {
+    const ustring name{std::string_view(iter.name)};
 
-    const blender::bke::AttrDomain b_domain = attr_iter.domain;
-    const eCustomDataType b_data_type = attr_iter.data_type;
+    const blender::bke::AttrDomain b_domain = iter.domain;
+    const eCustomDataType b_data_type = iter.data_type;
 
     if (need_motion && name == u_velocity) {
-      const blender::VArraySpan b_attr = *attr_iter.get<blender::float3>(
+      const blender::VArraySpan b_attr = *iter.get<blender::float3>(
           blender::bke::AttrDomain::Point);
       attr_create_motion_from_velocity(hair, b_attr, motion_scale);
       return;
@@ -744,7 +744,7 @@ static void attr_create_generic(Scene *scene,
     {
       Attribute *attr = attributes.add(ATTR_STD_UV, name);
 
-      const blender::VArraySpan b_attr = *attr_iter.get<blender::float2>();
+      const blender::VArraySpan b_attr = *iter.get<blender::float2>();
 
       static_assert(sizeof(blender::float2) == sizeof(float2));
       const blender::Span src = b_attr.cast<float2>();
@@ -760,7 +760,7 @@ static void attr_create_generic(Scene *scene,
       return;
     }
 
-    const blender::bke::GAttributeReader b_attr = attr_iter.get();
+    const blender::bke::GAttributeReader b_attr = iter.get();
 
     AttributeElement element = ATTR_ELEMENT_NONE;
     switch (b_attr.domain) {

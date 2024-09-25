@@ -1368,18 +1368,18 @@ void CurvesGeometry::reverse_curves(const IndexMask &curves_to_reverse)
 
   MutableAttributeAccessor attributes = this->attributes_for_write();
 
-  attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
-    if (attr_iter.domain != AttrDomain::Point) {
+  attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != AttrDomain::Point) {
       return;
     }
-    if (attr_iter.data_type == CD_PROP_STRING) {
+    if (iter.data_type == CD_PROP_STRING) {
       return;
     }
-    if (bezier_handle_names.contains(attr_iter.name)) {
+    if (bezier_handle_names.contains(iter.name)) {
       return;
     }
 
-    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(attr_iter.name);
+    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(iter.name);
     attribute_math::convert_to_static_type(attribute.span.type(), [&](auto dummy) {
       using T = decltype(dummy);
       reverse_curve_point_data<T>(*this, curves_to_reverse, attribute.span.typed<T>());

@@ -551,9 +551,9 @@ bool CustomDataAttributeProvider::foreach_attribute(
         return GAttributeReader{GVArray::ForSpan(data), domain_, layer.sharing_info};
       };
 
-      AttributeIter attr_iter{layer.name, domain_, data_type, get_fn};
-      fn(attr_iter);
-      if (attr_iter.is_stopped()) {
+      AttributeIter iter{layer.name, domain_, data_type, get_fn};
+      fn(iter);
+      if (iter.is_stopped()) {
         return false;
       }
     }
@@ -997,19 +997,19 @@ void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
   if (selection.is_empty()) {
     return;
   }
-  src_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
-    if (attr_iter.domain != src_domain) {
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != src_domain) {
       return;
     }
-    if (attr_iter.data_type == CD_PROP_STRING) {
+    if (iter.data_type == CD_PROP_STRING) {
       return;
     }
-    if (attribute_filter.allow_skip(attr_iter.name)) {
+    if (attribute_filter.allow_skip(iter.name)) {
       return;
     }
-    const GVArraySpan src = *attr_iter.get(src_domain);
+    const GVArraySpan src = *iter.get(src_domain);
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        attr_iter.name, dst_domain, attr_iter.data_type);
+        iter.name, dst_domain, iter.data_type);
     if (!dst) {
       return;
     }

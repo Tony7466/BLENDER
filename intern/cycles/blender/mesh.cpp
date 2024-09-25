@@ -285,12 +285,12 @@ static void attr_create_generic(Scene *scene,
   static const ustring u_velocity("velocity");
   const ustring default_color_name{BKE_id_attributes_default_color_name(&b_mesh.id)};
 
-  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &attr_iter) {
-    const ustring name{std::string_view(attr_iter.name)};
+  b_attributes.foreach_attribute([&](const blender::bke::AttributeIter &iter) {
+    const ustring name{std::string_view(iter.name)};
     const bool is_render_color = name == default_color_name;
 
     if (need_motion && name == u_velocity) {
-      const blender::VArraySpan b_attribute = *attr_iter.get<blender::float3>(
+      const blender::VArraySpan b_attribute = *iter.get<blender::float3>(
           blender::bke::AttrDomain::Point);
       attr_create_motion_from_velocity(mesh, b_attribute, motion_scale);
     }
@@ -304,19 +304,18 @@ static void attr_create_generic(Scene *scene,
       return;
     }
 
-    blender::bke::AttrDomain b_domain = attr_iter.domain;
+    blender::bke::AttrDomain b_domain = iter.domain;
     if (b_domain == blender::bke::AttrDomain::Edge) {
       /* Blender's attribute API handles edge to vertex attribute domain interpolation. */
       b_domain = blender::bke::AttrDomain::Point;
     }
 
-    const blender::bke::GAttributeReader b_attr = attr_iter.get(b_domain);
+    const blender::bke::GAttributeReader b_attr = iter.get(b_domain);
     if (b_attr.varray.is_empty()) {
       return;
     }
 
-    if (b_attr.domain == blender::bke::AttrDomain::Corner &&
-        attr_iter.data_type == CD_PROP_BYTE_COLOR)
+    if (b_attr.domain == blender::bke::AttrDomain::Corner && iter.data_type == CD_PROP_BYTE_COLOR)
     {
       Attribute *attr = attributes.add(name, TypeRGBA, ATTR_ELEMENT_CORNER_BYTE);
       if (is_render_color) {
@@ -422,12 +421,10 @@ static void attr_create_generic(Scene *scene,
 static set<ustring> get_blender_uv_names(const ::Mesh &b_mesh)
 {
   set<ustring> uv_names;
-  b_mesh.attributes().foreach_attribute([&](const blender::bke::AttributeIter &attr_iter) {
-    if (attr_iter.domain == blender::bke::AttrDomain::Corner &&
-        attr_iter.data_type == CD_PROP_FLOAT2)
-    {
-      if (!blender::bke::attribute_name_is_anonymous(attr_iter.name)) {
-        uv_names.emplace(std::string_view(attr_iter.name));
+  b_mesh.attributes().foreach_attribute([&](const blender::bke::AttributeIter &iter) {
+    if (iter.domain == blender::bke::AttrDomain::Corner && iter.data_type == CD_PROP_FLOAT2) {
+      if (!blender::bke::attribute_name_is_anonymous(iter.name)) {
+        uv_names.emplace(std::string_view(iter.name));
       }
     }
   });

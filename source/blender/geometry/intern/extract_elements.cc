@@ -35,16 +35,15 @@ Array<Mesh *> extract_mesh_vertices(const Mesh &mesh,
   const bke::AttributeAccessor src_attributes = mesh.attributes();
 
   Vector<PropagationAttribute> propagation_attributes;
-  src_attributes.foreach_attribute([&](const bke::AttributeIter &attr_iter) {
-    if (attr_iter.data_type == CD_PROP_STRING) {
+  src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+    if (iter.data_type == CD_PROP_STRING) {
       return;
     }
-    if (attribute_filter.allow_skip(attr_iter.name)) {
+    if (attribute_filter.allow_skip(iter.name)) {
       return;
     }
-    const bke::GAttributeReader src_attribute = attr_iter.get(AttrDomain::Point);
-    propagation_attributes.append(
-        {attr_iter.name, attr_iter.data_type, AttrDomain::Point, *src_attribute});
+    const bke::GAttributeReader src_attribute = iter.get(AttrDomain::Point);
+    propagation_attributes.append({iter.name, iter.data_type, AttrDomain::Point, *src_attribute});
   });
 
   mask.foreach_index(GrainSize(32), [&](const int vert_i, const int element_i) {
@@ -80,27 +79,27 @@ Array<Mesh *> extract_mesh_edges(const Mesh &mesh,
   const bke::AttributeAccessor src_attributes = mesh.attributes();
 
   Vector<PropagationAttribute> propagation_attributes;
-  src_attributes.foreach_attribute([&](const bke::AttributeIter &attr_iter) {
-    if (attr_iter.data_type == CD_PROP_STRING) {
+  src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+    if (iter.data_type == CD_PROP_STRING) {
       return;
     }
-    if (attr_iter.name == ".edge_verts") {
+    if (iter.name == ".edge_verts") {
       return;
     }
-    if (attribute_filter.allow_skip(attr_iter.name)) {
+    if (attribute_filter.allow_skip(iter.name)) {
       return;
     }
-    const bke::GAttributeReader src_attribute = attr_iter.get();
+    const bke::GAttributeReader src_attribute = iter.get();
     if (ELEM(src_attribute.domain, AttrDomain::Point, AttrDomain::Edge)) {
       propagation_attributes.append(
-          {attr_iter.name, attr_iter.data_type, src_attribute.domain, *src_attribute});
+          {iter.name, iter.data_type, src_attribute.domain, *src_attribute});
     }
     else if (src_attribute.domain == AttrDomain::Corner) {
       if (GVArray adapted_attribute = src_attributes.adapt_domain(
               *src_attribute, src_attribute.domain, AttrDomain::Point))
       {
         propagation_attributes.append(
-            {attr_iter.name, attr_iter.data_type, AttrDomain::Point, adapted_attribute});
+            {iter.name, iter.data_type, AttrDomain::Point, adapted_attribute});
       }
     }
     else if (src_attribute.domain == AttrDomain::Face) {
@@ -108,7 +107,7 @@ Array<Mesh *> extract_mesh_edges(const Mesh &mesh,
               *src_attribute, src_attribute.domain, AttrDomain::Edge))
       {
         propagation_attributes.append(
-            {attr_iter.name, attr_iter.data_type, AttrDomain::Edge, adapted_attribute});
+            {iter.name, iter.data_type, AttrDomain::Edge, adapted_attribute});
       }
     }
   });
@@ -157,22 +156,22 @@ Array<Mesh *> extract_mesh_faces(const Mesh &mesh,
   const bke::AttributeAccessor src_attributes = mesh.attributes();
 
   Vector<PropagationAttribute> propagation_attributes;
-  src_attributes.foreach_attribute([&](const bke::AttributeIter &attr_iter) {
-    if (attr_iter.data_type == CD_PROP_STRING) {
+  src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+    if (iter.data_type == CD_PROP_STRING) {
       return;
     }
-    if (ELEM(attr_iter.name, ".edge_verts", ".corner_edge", ".corner_vert")) {
+    if (ELEM(iter.name, ".edge_verts", ".corner_edge", ".corner_vert")) {
       return;
     }
-    if (attribute_filter.allow_skip(attr_iter.name)) {
+    if (attribute_filter.allow_skip(iter.name)) {
       return;
     }
-    const bke::GAttributeReader src_attribute = attr_iter.get();
+    const bke::GAttributeReader src_attribute = iter.get();
     if (!src_attribute) {
       return;
     }
     propagation_attributes.append(
-        {attr_iter.name, attr_iter.data_type, src_attribute.domain, *src_attribute});
+        {iter.name, iter.data_type, src_attribute.domain, *src_attribute});
   });
 
   mask.foreach_index(GrainSize(32), [&](const int face_i, const int element_i) {
