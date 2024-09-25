@@ -653,10 +653,7 @@ GAttributeReader AttributeAccessor::lookup_or_default(const StringRef attribute_
 Set<StringRefNull> AttributeAccessor::all_ids() const
 {
   Set<StringRefNull> ids;
-  this->for_all([&](const StringRefNull attribute_id, const AttributeMetaData & /*meta_data*/) {
-    ids.add(attribute_id);
-    return true;
-  });
+  this->foreach_attribute([&](const AttributeIter &iter) { ids.add(iter.name); });
   return ids;
 }
 
@@ -818,20 +815,17 @@ Vector<AttributeTransferData> retrieve_attributes_for_transfer(
     const bke::AttributeFilter &attribute_filter)
 {
   Vector<AttributeTransferData> attributes;
-  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (!(ATTR_DOMAIN_AS_MASK(meta_data.domain) & domain_mask)) {
-      return true;
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (!(ATTR_DOMAIN_AS_MASK(iter.domain) & domain_mask)) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
     }
-
-    GVArray src = *src_attributes.lookup(id, meta_data.domain);
+    GVArray src = *iter.get();
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, meta_data.domain, meta_data.data_type);
-    attributes.append({std::move(src), meta_data, std::move(dst)});
-
-    return true;
+        iter.name, iter.domain, iter.data_type);
+    attributes.append({std::move(src), {iter.domain, iter.data_type}, std::move(dst)});
   });
   return attributes;
 }
@@ -846,31 +840,30 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        MutableAttributeAccessor dst_attributes)
 {
   const int src_size = src_attributes.domain_size(src_domain);
-  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != src_domain) {
-      return true;
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != src_domain) {
+      return;
     }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
     }
-    const GAttributeReader src = src_attributes.lookup(id, src_domain);
+    const GAttributeReader src = iter.get(src_domain);
     if (selection.size() == src_size && src.sharing_info && src.varray.is_span()) {
       const AttributeInitShared init(src.varray.get_internal_span().data(), *src.sharing_info);
-      if (dst_attributes.add(id, dst_domain, meta_data.data_type, init)) {
-        return true;
+      if (dst_attributes.add(iter.name, dst_domain, iter.data_type, init)) {
+        return;
       }
     }
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, dst_domain, meta_data.data_type);
+        iter.name, dst_domain, iter.data_type);
     if (!dst) {
-      return true;
+      return;
     }
     array_utils::gather(src.varray, selection, dst.span);
     dst.finish();
-    return true;
   });
 }
 
@@ -886,25 +879,24 @@ void gather_attributes(const AttributeAccessor src_attributes,
     copy_attributes(src_attributes, src_domain, dst_domain, attribute_filter, dst_attributes);
   }
   else {
-    src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-      if (meta_data.domain != src_domain) {
-        return true;
+    src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+      if (iter.domain != src_domain) {
+        return;
       }
-      if (meta_data.data_type == CD_PROP_STRING) {
-        return true;
+      if (iter.data_type == CD_PROP_STRING) {
+        return;
       }
-      if (attribute_filter.allow_skip(id)) {
-        return true;
+      if (attribute_filter.allow_skip(iter.name)) {
+        return;
       }
-      const GAttributeReader src = src_attributes.lookup(id, src_domain);
+      const GAttributeReader src = iter.get(src_domain);
       GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-          id, dst_domain, meta_data.data_type);
+          iter.name, dst_domain, iter.data_type);
       if (!dst) {
-        return true;
+        return;
       }
       attribute_math::gather(src.varray, indices, dst.span);
       dst.finish();
-      return true;
     });
   }
 }
@@ -918,25 +910,24 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
                                       const IndexMask &selection,
                                       MutableAttributeAccessor dst_attributes)
 {
-  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != src_domain) {
-      return true;
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != src_domain) {
+      return;
     }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
     }
-    const GVArraySpan src = *src_attributes.lookup(id, src_domain);
+    const GVArraySpan src = *iter.get(src_domain);
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, dst_domain, meta_data.data_type);
+        iter.name, dst_domain, iter.data_type);
     if (!dst) {
-      return true;
+      return;
     }
     attribute_math::gather_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
     dst.finish();
-    return true;
   });
 }
 
@@ -948,25 +939,24 @@ void gather_attributes_to_groups(const AttributeAccessor src_attributes,
                                  const IndexMask &src_selection,
                                  MutableAttributeAccessor dst_attributes)
 {
-  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != src_domain) {
-      return true;
+  src_attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != src_domain) {
+      return;
     }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
     }
-    const GVArraySpan src = *src_attributes.lookup(id, src_domain);
+    const GVArraySpan src = *iter.get(src_domain);
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, dst_domain, meta_data.data_type);
+        iter.name, dst_domain, iter.data_type);
     if (!dst) {
-      return true;
+      return;
     }
     attribute_math::gather_to_groups(dst_offsets, src_selection, src, dst.span);
     dst.finish();
-    return true;
   });
 }
 
@@ -1023,22 +1013,21 @@ void fill_attribute_range_default(MutableAttributeAccessor attributes,
                                   const AttributeFilter &attribute_filter,
                                   const IndexRange range)
 {
-  attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != domain) {
-      return true;
+  attributes.foreach_attribute([&](const AttributeIter &iter) {
+    if (iter.domain != domain) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
     }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
     }
-    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
+    GSpanAttributeWriter attribute = attributes.lookup_for_write_span(iter.name);
     const CPPType &type = attribute.span.type();
     GMutableSpan data = attribute.span.slice(range);
     type.fill_assign_n(type.default_value(), data.data(), data.size());
     attribute.finish();
-    return true;
   });
 }
 
