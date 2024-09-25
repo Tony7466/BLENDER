@@ -151,7 +151,9 @@ FFMPEG_INLINE size_t ffmpeg_get_buffer_alignment()
    * https://trac.ffmpeg.org/ticket/11116 and the fix on their code
    * side is to use 64 byte alignment as soon as AVX512 is compiled
    * in (even if CPU might not support it). So play safe and
-   * use at least 64 byte alignment here too. */
+   * use at least 64 byte alignment here too. Currently larger than
+   * 64 alignment would not happen anywhere, but keep on querying
+   * av_cpu_max_align just in case some future platform might. */
   size_t align = av_cpu_max_align();
   if (align < 64) {
     align = 64;
