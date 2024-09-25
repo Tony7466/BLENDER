@@ -55,6 +55,7 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const bool use_weight = (draw_ctx->object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
+  View3D *v3d = draw_ctx->v3d;
 
   GPUShader *sh;
   DRWShadingGroup *grp;
@@ -86,6 +87,9 @@ void OVERLAY_edit_grease_pencil_cache_init(OVERLAY_Data *vedata)
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", use_weight);
     DRW_shgroup_uniform_bool_copy(grp, "useGreasePencil", true);
     DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
+
+    const bool show_direction = (v3d->gp_flag & V3D_GP_SHOW_STROKE_DIRECTION) != 0;
+    DRW_shgroup_uniform_float_copy(grp, "doStrokeEndpoints", show_direction);
   }
   else {
     pd->edit_grease_pencil_points_grp = nullptr;
