@@ -3113,8 +3113,10 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer(const blender::String
 
   /* Initialize the attributes with default values. */
   bke::MutableAttributeAccessor attributes = this->attributes_for_write();
-  bke::fill_attribute_range_default(
-      attributes, bke::AttrDomain::Layer, {"name"}, IndexRange::from_single(numLayers));
+  bke::fill_attribute_range_default(attributes,
+                                    bke::AttrDomain::Layer,
+                                    bke::attribute_filter_from_skip_ref({"name"}),
+                                    IndexRange::from_single(numLayers));
 
   return layer;
 }
