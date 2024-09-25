@@ -16,6 +16,7 @@ set(INC_SYS
 set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::dependencies::optional::tbb
 )
 
@@ -66,6 +67,8 @@ set(BLENLIB_SRC
 
 set(SRC
   dna_utils.cc
+  dna_lexer.cc
+  dna_parser.cc
   makesdna.cc
   ${BLENLIB_SRC}
   ${dna_header_include_file}
@@ -118,6 +121,8 @@ add_custom_command(
 set(SRC
   dna_defaults.c
   dna_genfile.cc
+  dna_lexer.cc
+  dna_parser.cc
   dna_utils.cc
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
   ${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
@@ -125,6 +130,8 @@ set(SRC
 
   ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
   dna_rename_defs.h
+  dna_lexer.hh
+  dna_parser.hh
   dna_utils.h
 )
 
@@ -160,7 +167,17 @@ set(SRC
 set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::dependencies::optional::tbb
 )
 
 blender_add_lib(bf_dna_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_INC
+  )
+  set(TEST_SRC
+    dna_parser_test.cc
+  )
+  blender_add_test_suite_lib(dna "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+endif()

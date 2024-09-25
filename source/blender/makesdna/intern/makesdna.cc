@@ -31,6 +31,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fmt/format.h>
+#include <fstream>
+#include <iostream>
+#include <optional>
+#include <sstream>
 
 #include "MEM_guardedalloc.h"
 
@@ -43,6 +48,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_sdna_types.h"
+#include "dna_parser.hh"
 #include "dna_utils.h"
 
 #define SDNA_MAX_FILENAME_LENGTH 255
@@ -149,12 +155,6 @@ static int add_member(const char *member_name);
  * NOTE: there is no lookup performed here, a new struct definition is always added.
  */
 static short *add_struct(int type_index);
-
-/**
- * Remove comments from this buffer. Assumes that the buffer refers to
- * ascii-code text.
- */
-static int preprocess_include(char *maindata, const int maindata_len);
 
 /**
  * Scan this file for serializable types.
@@ -563,105 +563,6 @@ static char *match_preproc_strstr(char *__restrict str, const char *__restrict s
   return nullptr;
 }
 
-static int preprocess_include(char *maindata, const int maindata_len)
-{
-  /* NOTE: len + 1, last character is a dummy to prevent
-   * comparisons using uninitialized memory */
-  char *temp = static_cast<char *>(MEM_mallocN(maindata_len + 1, "preprocess_include"));
-  temp[maindata_len] = ' ';
-
-  memcpy(temp, maindata, maindata_len);
-
-  /* remove all c++ comments */
-  /* replace all enters/tabs/etc with spaces */
-  char *cp = temp;
-  int a = maindata_len;
-  int comment = 0;
-  while (a--) {
-    if (cp[0] == '/' && cp[1] == '/') {
-      comment = 1;
-    }
-    else if (*cp == '\n') {
-      comment = 0;
-    }
-    if (comment || *cp < 32 || *cp > 128) {
-      *cp = 32;
-    }
-    cp++;
-  }
-
-  /* No need for leading '#' character. */
-  const char *cpp_block_start = "ifdef __cplusplus";
-  const char *cpp_block_end = "endif";
-
-  /* data from temp copy to maindata, remove comments and double spaces */
-  cp = temp;
-  char *md = maindata;
-  int newlen = 0;
-  comment = 0;
-  a = maindata_len;
-  bool skip_until_closing_brace = false;
-  while (a--) {
-
-    if (cp[0] == '/' && cp[1] == '*') {
-      comment = 1;
-      cp[0] = cp[1] = 32;
-    }
-    if (cp[0] == '*' && cp[1] == '/') {
-      comment = 0;
-      cp[0] = cp[1] = 32;
-    }
-
-    /* do not copy when: */
-    if (comment) {
-      /* pass */
-    }
-    else if (cp[0] == ' ' && cp[1] == ' ') {
-      /* pass */
-    }
-    else if (cp[-1] == '*' && cp[0] == ' ') {
-      /* pointers with a space */
-    } /* skip special keywords */
-    else if (match_identifier(cp, "DNA_DEPRECATED")) {
-      /* single values are skipped already, so decrement 1 less */
-      a -= 13;
-      cp += 13;
-    }
-    else if (match_identifier(cp, "DNA_DEFINE_CXX_METHODS")) {
-      /* single values are skipped already, so decrement 1 less */
-      a -= 21;
-      cp += 21;
-      skip_until_closing_brace = true;
-    }
-    else if (skip_until_closing_brace) {
-      if (cp[0] == ')') {
-        skip_until_closing_brace = false;
-      }
-    }
-    else if (match_preproc_prefix(cp, cpp_block_start)) {
-      char *end_ptr = match_preproc_strstr(cp, cpp_block_end);
-
-      if (end_ptr == nullptr) {
-        fprintf(stderr, "Error: '%s' block must end with '%s'\n", cpp_block_start, cpp_block_end);
-      }
-      else {
-        const int skip_offset = end_ptr - cp + strlen(cpp_block_end);
-        a -= skip_offset;
-        cp += skip_offset;
-      }
-    }
-    else {
-      md[0] = cp[0];
-      md++;
-      newlen++;
-    }
-    cp++;
-  }
-
-  MEM_freeN(temp);
-  return newlen;
-}
-
 static void *read_file_data(const char *filepath, int *r_len)
 {
 #ifdef WIN32
@@ -703,200 +604,137 @@ static void *read_file_data(const char *filepath, int *r_len)
   return data;
 }
 
+using namespace blender::dna::parser::ast;
+
+struct StrucMemberRegister {
+
+  int strct = 0;
+  short *structpoin = nullptr;
+  short *sp = nullptr;
+  const char *filepath = nullptr;
+
+  std::optional<int> add_member_type(std::string_view type)
+  {
+    /* TODO: Check if type is enum, if so replace it to its fixed size. */
+    const std::string type_str = fmt::format("{}", type);
+    if (ELEM(type, "long", "ulong")) {
+      fprintf(stderr,
+              "File '%s' contains use of \"%s\" in DNA struct which is not allowed\n",
+              filepath,
+              type_str.c_str());
+      return -1;
+    }
+    const int type_result = add_type(type_str.c_str(), 0);
+    if (type_result == -1) {
+      fprintf(
+          stderr, "File '%s' contains struct we can't parse \"%s\"\n", filepath, type_str.c_str());
+      return std::nullopt;
+    }
+    return type_result;
+  }
+
+  bool add_member_name(int type, const std::string &name)
+  {
+    const int name_result = add_member(version_member_static_from_alias(strct, name.c_str()));
+    if (name_result == -1) {
+      fprintf(stderr,
+              "File '%s' contains struct with name that can't be added \"%s\"\n",
+              filepath,
+              name.c_str());
+      return false;
+    }
+    sp[0] = type;
+    sp[1] = name_result;
+    structpoin[1]++;
+    sp += 2;
+    return true;
+  }
+
+  bool operator()(const FunctionPtr &fn_ptr)
+  {
+    std::optional<int> type = add_member_type(fn_ptr.type);
+    if (!type.has_value()) {
+      return false;
+    }
+    const std::string name = fmt::format("(*{})()", fn_ptr.name);
+    return add_member_name(type.value(), name);
+  }
+
+  bool operator()(const PointerToArray &array_ptr)
+  {
+    std::optional<int> type = add_member_type(array_ptr.type);
+    if (!type.has_value()) {
+      return false;
+    }
+    const std::string name = fmt::format("(*{})[{}]", array_ptr.name, array_ptr.size);
+    return add_member_name(type.value(), name);
+  }
+
+  bool operator()(const Struct & /*struct*/)
+  {
+    /* Unexpected child struct declaration. */
+    BLI_assert_unreachable();
+    return false;
+  }
+
+  bool operator()(const Variable &var)
+  {
+    std::optional<int> type = add_member_type(var.type);
+    if (!type.has_value()) {
+      return false;
+    }
+    for (auto &var_item : var.items) {
+      std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
+      for (auto &size : var_item.array_size) {
+        if (std::holds_alternative<std::string_view>(size)) {
+          /* TODO: Add support to looking through detected #defines to find const int values. */
+          BLI_assert_unreachable();
+          return false;
+        }
+        else {
+          name_str += fmt::format("[{}]", std::get<int32_t>(size));
+        }
+      }
+      if (!add_member_name(type.value(), name_str)) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
 static int convert_include(const char *filepath)
 {
-  /* read include file, skip structs with a '#' before it.
-   * store all data in temporal arrays.
-   */
+  const std::optional<blender::dna::parser::CppFile> cpp_file = blender::dna::parser::parse_file(
+      filepath);
+  if (!cpp_file.has_value()) {
+    return 0;
+  };
 
-  int maindata_len;
-  char *maindata = static_cast<char *>(read_file_data(filepath, &maindata_len));
-  char *md = maindata;
-  if (maindata_len == -1) {
-    fprintf(stderr, "Can't read file %s\n", filepath);
-    return 1;
-  }
-
-  maindata_len = preprocess_include(maindata, maindata_len);
-  char *mainend = maindata + maindata_len - 1;
-
-  /* we look for '{' and then back to 'struct' */
-  int count = 0;
-  bool skip_struct = false;
-  while (count < maindata_len) {
-
-    /* code for skipping a struct: two hashes on 2 lines. (preprocess added a space) */
-    if (md[0] == '#' && md[1] == ' ' && md[2] == '#') {
-      skip_struct = true;
+  /* Generate DNA. */
+  for (auto &cpp_def : cpp_file.value().cpp_defs) {
+    if (!std::holds_alternative<Struct>(cpp_def)) {
+      continue;
     }
-
-    if (md[0] == '{') {
-      md[0] = 0;
-      if (skip_struct) {
-        skip_struct = false;
-      }
-      else {
-        if (md[-1] == ' ') {
-          md[-1] = 0;
-        }
-        char *md1 = md - 2;
-        while (*md1 != 32) {
-          /* to beginning of word */
-          md1--;
-        }
-        md1++;
-
-        /* we've got a struct name when... */
-        if (match_identifier(md1 - 7, "struct")) {
-
-          const int struct_type_index = add_type(md1, 0);
-          if (struct_type_index == -1) {
-            fprintf(stderr, "File '%s' contains struct we can't parse \"%s\"\n", filepath, md1);
-            return 1;
-          }
-
-          short *structpoin = add_struct(struct_type_index);
-          short *sp = structpoin + 2;
-
-          DEBUG_PRINTF(1, "\t|\t|-- detected struct %s\n", types[struct_type_index]);
-
-          /* first lets make it all nice strings */
-          md1 = md + 1;
-          while (*md1 != '}') {
-            if (md1 > mainend) {
-              break;
-            }
-
-            if (ELEM(*md1, ',', ' ')) {
-              *md1 = 0;
-            }
-            md1++;
-          }
-
-          /* read types and names until first character that is not '}' */
-          md1 = md + 1;
-          while (*md1 != '}') {
-            if (md1 > mainend) {
-              break;
-            }
-
-            /* skip when it says 'struct' or 'unsigned' or 'const' */
-            if (*md1) {
-              const char *md1_prev = md1;
-              while (match_identifier_and_advance(&md1, "struct") ||
-                     match_identifier_and_advance(&md1, "unsigned") ||
-                     match_identifier_and_advance(&md1, "const"))
-              {
-                if (UNLIKELY(!ELEM(*md1, '\0', ' '))) {
-                  /* This will happen with: `unsigned(*value)[3]` which isn't supported. */
-                  fprintf(stderr,
-                          "File '%s' contains non white space character "
-                          "\"%c\" after identifier \"%s\"\n",
-                          filepath,
-                          *md1,
-                          md1_prev);
-                  return 1;
-                }
-                /* Skip ' ' or '\0'. */
-                md1++;
-              }
-
-              /* we've got a type! */
-              if (STR_ELEM(md1, "long", "ulong")) {
-                /* Forbid using long/ulong because those can be either 32 or 64 bit. */
-                fprintf(stderr,
-                        "File '%s' contains use of \"%s\" in DNA struct which is not allowed\n",
-                        filepath,
-                        md1);
-                return -1;
-              }
-              const int member_type_index = add_type(md1, 0);
-              if (member_type_index == -1) {
-                fprintf(
-                    stderr, "File '%s' contains struct we can't parse \"%s\"\n", filepath, md1);
-                return 1;
-              }
-
-              DEBUG_PRINTF(1, "\t|\t|\tfound type %s (", md1);
-
-              md1 += strlen(md1);
-
-              /* read until ';' */
-              while (*md1 != ';') {
-                if (md1 > mainend) {
-                  break;
-                }
-
-                if (*md1) {
-                  /* We've got a name. slen needs
-                   * correction for function
-                   * pointers! */
-                  int slen = int(strlen(md1));
-                  if (md1[slen - 1] == ';') {
-                    md1[slen - 1] = 0;
-
-                    const int name = add_member(
-                        version_member_static_from_alias(struct_type_index, md1));
-                    if (name == -1) {
-                      fprintf(stderr,
-                              "File '%s' contains struct with name that can't be added \"%s\"\n",
-                              filepath,
-                              md1);
-                      return 1;
-                    }
-                    slen += additional_slen_offset;
-                    sp[0] = member_type_index;
-                    sp[1] = name;
-
-                    if (members[name] != nullptr) {
-                      DEBUG_PRINTF(1, "%s |", members[name]);
-                    }
-
-                    structpoin[1]++;
-                    sp += 2;
-
-                    md1 += slen;
-                    break;
-                  }
-
-                  const int name = add_member(
-                      version_member_static_from_alias(struct_type_index, md1));
-                  if (name == -1) {
-                    fprintf(stderr,
-                            "File '%s' contains struct with name that can't be added \"%s\"\n",
-                            filepath,
-                            md1);
-                    return 1;
-                  }
-                  slen += additional_slen_offset;
-
-                  sp[0] = member_type_index;
-                  sp[1] = name;
-                  if (members[name] != nullptr) {
-                    DEBUG_PRINTF(1, "%s ||", members[name]);
-                  }
-
-                  structpoin[1]++;
-                  sp += 2;
-
-                  md1 += slen;
-                }
-                md1++;
-              }
-
-              DEBUG_PRINTF(1, ")\n");
-            }
-            md1++;
-          }
-        }
+    const Struct &struct_def = std::get<Struct>(cpp_def);
+    const std::string struct_name = fmt::format("{}", struct_def.name);
+    const int strct = add_type(struct_name.c_str(), 0);
+    if (strct == -1) {
+      fprintf(stderr,
+              "File '%s' contains struct we can't parse \"%s\"\n",
+              filepath,
+              struct_name.c_str());
+      return 1;
+    }
+    short *structpoin = add_struct(strct);
+    StrucMemberRegister member_register{strct, structpoin, structpoin + 2, filepath};
+    /* Register struct members. */
+    for (auto &item : struct_def.items) {
+      if (!std::visit(member_register, item)) {
+        return 1;
       }
     }
-    count++;
-    md++;
   }
-
-  MEM_freeN(maindata);
-
   return 0;
 }
 
@@ -1359,6 +1197,10 @@ static int make_structDNA(const char *base_directory,
     char str[SDNA_MAX_FILENAME_LENGTH];
     SNPRINTF(str, "%s%s", base_directory, includefiles[i]);
     DEBUG_PRINTF(0, "\t|-- Converting %s\n", str);
+    /* `DNA_genfile.h` only contains functions declarations that can't be parsed at the moment. */
+    if (ELEM(includefiles[i], std::string_view{"DNA_defs.h"}, std::string_view{"DNA_genfile.h"})) {
+      continue;
+    }
     if (convert_include(str)) {
       return 1;
     }

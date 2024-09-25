@@ -1140,7 +1140,7 @@ typedef enum eDirEntry_SelectFlag {
 ENUM_OPERATORS(eDirEntry_SelectFlag, FILE_SEL_EDITING);
 
 /* ***** Related to file browser, but never saved in DNA, only here to help with RNA. ***** */
-
+#define DATETIME_STR_SIZE 16 + 8
 #
 #
 typedef struct FileDirEntry {
@@ -1157,7 +1157,7 @@ typedef struct FileDirEntry {
   struct {
     /* Temp caching of UI-generated strings. */
     char size_str[16];
-    char datetime_str[16 + 8];
+    char datetime_str[DATETIME_STR_SIZE];
   } draw_data;
 
   /** #eFileSel_File_Types. */
