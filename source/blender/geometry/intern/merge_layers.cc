@@ -111,6 +111,9 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
   bke::MutableAttributeAccessor new_attributes = new_grease_pencil->attributes_for_write();
   src_attributes.for_all(
       [&](const StringRef attribute_name, const bke::AttributeMetaData meta_data) {
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
         if (attribute_filter.allow_skip(attribute_name)) {
           return true;
         }
@@ -126,7 +129,7 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
         bke::attribute_math::convert_to_static_type(type, [&](auto type) {
           using T = decltype(type);
           const VArraySpan<T> src_span = src_attribute.varray.typed<T>();
-          MutableSpan new_span = new_attribute.span.typed<T>();
+          MutableSpan<T> new_span = new_attribute.span.typed<T>();
 
           bke::attribute_math::DefaultMixer<T> mixer(new_span);
           for (const int new_layer_i : IndexRange(new_layers_num)) {

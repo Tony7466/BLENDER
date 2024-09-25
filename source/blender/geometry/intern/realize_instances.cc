@@ -2191,10 +2191,11 @@ static void execute_realize_grease_pencil_tasks(
 
   for (const RealizeGreasePencilTask &task : tasks) {
     const GreasePencil &src_grease_pencil = *task.grease_pencil_info->grease_pencil;
+    const int layers_offset = dst_grease_pencil->layers().size();
     dst_grease_pencil->add_layers_for_eval(src_grease_pencil.layers().size());
     for (const int layer_i : src_grease_pencil.layers().index_range()) {
       const bke::greasepencil::Layer &src_layer = src_grease_pencil.layer(layer_i);
-      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->layer(layer_i);
+      bke::greasepencil::Layer &dst_layer = dst_grease_pencil->layer(layers_offset + layer_i);
       dst_layer.set_name(src_layer.name());
       dst_grease_pencil->insert_frame(dst_layer, dst_grease_pencil->runtime->eval_frame);
     }
