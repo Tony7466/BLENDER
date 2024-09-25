@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 // #define VERBOSE
 
@@ -157,6 +158,31 @@ int main(int argc, char **argv)
     }
   }
 
+  std::vector<int64_t> mutation_positions;
+  if (mutate_glsl_directives) {
+    /* Open file */
+    /* Find occurence. */
+
+    while ((pos = source.find("#include")) != -1) {
+      mutation_positions.emplace_back(pos);
+      mutation_positions.emplace_back(pos + 1);
+    }
+
+    int64_t pos = source.find("#pragma once");
+    if (pos != -1) {
+      if (!mutation_positions.empty()) {
+        /* Ensure pragmas are always set before includes. */
+        if (pos > mutation_positions[0]) {
+          printf("pragma once directive before includes.\n");
+          exit(1);
+        }
+      }
+
+      mutation_positions.emplace_back(pos);
+      mutation_positions.emplace_back(pos + 1);
+    }
+  }
+
   fpin = fopen(argv[1], "rb");
   if (!fpin) {
     printf("Unable to open input <%s>\n", argv[1]);
@@ -220,6 +246,10 @@ int main(int argc, char **argv)
      * Avoid a very long single line that may lock-up some editors. */
     if (size % 32 == 31) {
       fprintf(fpout, "\n");
+    }
+
+    if (mutate_directive[size]) {
+      fprintf(fpout, "%3d,", '/');
     }
 
     // fprintf(fpout, "\\x%02x", getc(fpin));
