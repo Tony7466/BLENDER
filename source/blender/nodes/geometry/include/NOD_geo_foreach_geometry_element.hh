@@ -60,8 +60,7 @@ struct ForeachGeometryElementInputItemsAccessor {
                 SOCK_BOOLEAN,
                 SOCK_ROTATION,
                 SOCK_MATRIX,
-                SOCK_INT,
-                SOCK_MENU);
+                SOCK_INT);
   }
 
   static void init_with_socket_type_and_name(bNode &node,
