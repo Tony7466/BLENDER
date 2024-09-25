@@ -399,6 +399,9 @@ static int startffmpeg(ImBufAnim *anim)
   }
 
   if (anim->ib_flags & IB_animdeinterlace) {
+    anim->pFrameDeinterlaced->format = anim->pCodecCtx->pix_fmt;
+    anim->pFrameDeinterlaced->width = anim->pCodecCtx->width;
+    anim->pFrameDeinterlaced->height = anim->pCodecCtx->height;
     av_image_fill_arrays(
         anim->pFrameDeinterlaced->data,
         anim->pFrameDeinterlaced->linesize,
@@ -415,6 +418,8 @@ static int startffmpeg(ImBufAnim *anim)
   anim->img_convert_ctx = BKE_ffmpeg_sws_get_context(anim->x,
                                                      anim->y,
                                                      anim->pCodecCtx->pix_fmt,
+                                                     anim->x,
+                                                     anim->y,
                                                      AV_PIX_FMT_RGBA,
                                                      SWS_BILINEAR | SWS_PRINT_INFO |
                                                          SWS_FULL_CHR_H_INT);
@@ -1175,6 +1180,9 @@ static void free_anim_ffmpeg(ImBufAnim *anim)
     av_frame_free(&anim->pFrame);
     av_frame_free(&anim->pFrame_backup);
     av_frame_free(&anim->pFrameRGB);
+    if (anim->pFrameDeinterlaced->data[0] != nullptr) {
+      MEM_freeN(anim->pFrameDeinterlaced->data[0]);
+    }
     av_frame_free(&anim->pFrameDeinterlaced);
     BKE_ffmpeg_sws_release_context(anim->img_convert_ctx);
   }

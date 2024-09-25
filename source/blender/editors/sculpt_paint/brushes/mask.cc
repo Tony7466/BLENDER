@@ -21,6 +21,7 @@
 #include "editors/sculpt_paint/mesh_brush_common.hh"
 #include "editors/sculpt_paint/paint_intern.hh"
 #include "editors/sculpt_paint/paint_mask.hh"
+#include "editors/sculpt_paint/sculpt_automask.hh"
 #include "editors/sculpt_paint/sculpt_intern.hh"
 
 namespace blender::ed::sculpt_paint {
@@ -33,13 +34,6 @@ struct LocalData {
   Vector<float> current_masks;
   Vector<float> new_masks;
 };
-
-BLI_NOINLINE static void invert_mask(const MutableSpan<float> masks)
-{
-  for (float &mask : masks) {
-    mask = 1.0f - mask;
-  }
-}
 
 BLI_NOINLINE static void apply_factors(const float strength,
                                        const Span<float> current_masks,
@@ -102,7 +96,7 @@ static void calc_faces(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);
@@ -150,7 +144,7 @@ static void calc_grids(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);
@@ -198,7 +192,7 @@ static void calc_bmesh(const Depsgraph &depsgraph,
   tls.current_masks = tls.new_masks;
   const MutableSpan<float> current_masks = tls.current_masks;
   if (strength > 0.0f) {
-    invert_mask(current_masks);
+    mask::invert_mask(current_masks);
   }
   apply_factors(strength, current_masks, factors, new_masks);
   clamp_mask(new_masks);

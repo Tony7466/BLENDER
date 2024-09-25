@@ -67,6 +67,7 @@ void ED_operatortypes_grease_pencil_vertex_paint();
 void ED_operatortypes_grease_pencil_interpolate();
 void ED_operatortypes_grease_pencil_lineart();
 void ED_operatortypes_grease_pencil_trace();
+void ED_operatortypes_grease_pencil_bake_animation();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf);
@@ -80,11 +81,19 @@ void ED_undosys_type_grease_pencil(UndoType *undo_type);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
-blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
+blender::bke::AttrDomain ED_grease_pencil_edit_selection_domain_get(
+    const ToolSettings *tool_settings);
+blender::bke::AttrDomain ED_grease_pencil_sculpt_selection_domain_get(
+    const ToolSettings *tool_settings);
+blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings,
+                                                               const Object *object);
 /**
  * True if segment selection is enabled.
  */
-bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_settings);
+bool ED_grease_pencil_edit_segment_selection_enabled(const ToolSettings *tool_settings);
+bool ED_grease_pencil_sculpt_segment_selection_enabled(const ToolSettings *tool_settings);
+bool ED_grease_pencil_segment_selection_enabled(const ToolSettings *tool_settings,
+                                                const Object *object);
 
 /** \} */
 
@@ -129,7 +138,9 @@ class DrawingPlacement {
                    const View3D &view3d,
                    const Object &eval_object,
                    const bke::greasepencil::Layer *layer,
-                   ReprojectMode reproject_mode);
+                   ReprojectMode reproject_mode,
+                   float surface_offset = 0.0f,
+                   ViewDepths *view_depths = nullptr);
   DrawingPlacement(const DrawingPlacement &other);
   DrawingPlacement(DrawingPlacement &&other);
   DrawingPlacement &operator=(const DrawingPlacement &other);
@@ -255,8 +266,9 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
  * create one when auto-key is on (taking additive drawing setting into account).
  * \return false when no keyframe could be found or created.
  */
-bool ensure_active_keyframe(bContext *C,
+bool ensure_active_keyframe(const Scene &scene,
                             GreasePencil &grease_pencil,
+                            bke::greasepencil::Layer &layer,
                             bool duplicate_previous_key,
                             bool &r_inserted_keyframe);
 
@@ -500,17 +512,26 @@ void normalize_vertex_weights(MDeformVert &dvert,
 
 /** Adds vertex groups for the bones in the armature (with matching names). */
 bool add_armature_vertex_groups(Object &object, const Object &armature);
+/** Create vertex groups for the bones in the armature and use the bone envelopes to assign
+ * weights. */
+void add_armature_envelope_weights(Scene &scene, Object &object, const Object &ob_armature);
+/** Create vertex groups for the bones in the armature and use a simple distance based algorithm to
+ * assign automatic weights. */
+void add_armature_automatic_weights(Scene &scene, Object &object, const Object &ob_armature);
 
 void clipboard_free();
 const bke::CurvesGeometry &clipboard_curves();
 /**
  * Paste curves from the clipboard into the drawing.
  * \param paste_back: Render behind existing curves by inserting curves at the front.
+ * \param keep_world_transform: Keep the world transform of clipboard strokes unchanged.
  * \return Index range of the new curves in the drawing after pasting.
  */
 IndexRange clipboard_paste_strokes(Main &bmain,
                                    Object &object,
                                    bke::greasepencil::Drawing &drawing,
+                                   const float4x4 &transform,
+                                   bool keep_world_transform,
                                    bool paste_back);
 
 /**
