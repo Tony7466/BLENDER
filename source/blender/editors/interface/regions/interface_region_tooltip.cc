@@ -432,17 +432,12 @@ static bool ui_tooltip_period_needed(blender::StringRef tip)
   /* Already ends with puncuation. */
   char last = tip[tip.size() - 1];
   const std::string end_punctuation = ".!?";
-  if (end_punctuation.find(last) != std::string::npos) {
-    return false;
-  }
-
-  /* Contains less than 3 spaces. */
-  if (std::count(tip.begin(), tip.end(), ' ') < 3) {
+  if (end_punctuation.find(last) != blender::StringRef::not_found) {
     return false;
   }
 
   /* Contains a bullet Unicode character. */
-  if (tip.find("\xe2\x80\xa2") != std::string::npos) {
+  if (tip.find("\xe2\x80\xa2") != blender::StringRef::not_found) {
     return false;
   }
 
@@ -903,12 +898,8 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_button_or_extra_icon(
 
   /* Enum field label & tip. */
   if (!enum_tip.empty()) {
-    const bool add_period = ui_tooltip_period_needed(enum_tip);
-    UI_tooltip_text_field_add(*data,
-                              fmt::format("{}{}", enum_tip, add_period ? "." : ""),
-                              {},
-                              UI_TIP_STYLE_NORMAL,
-                              UI_TIP_LC_VALUE);
+    UI_tooltip_text_field_add(
+        *data, std::move(enum_tip), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE);
   }
 
   /* Operator shortcut. */
@@ -1183,9 +1174,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
           const bool add_period = ui_tooltip_period_needed(info);
           UI_tooltip_text_field_add(
               *data,
-              gzop_actions[i].prefix ?
-                  fmt::format("{}: {}{}", gzop_actions[i].prefix, info, add_period ? "." : "") :
-                  fmt::format("{}{}", info, add_period ? "." : ""),
+              gzop_actions[i].prefix ? fmt::format("{}: {}", gzop_actions[i].prefix, info) : info,
               {},
               UI_TIP_STYLE_HEADER,
               UI_TIP_LC_VALUE,
@@ -1219,13 +1208,7 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
       if (gz_prop->prop != nullptr) {
         const char *info = RNA_property_ui_description(gz_prop->prop);
         if (info && info[0]) {
-          const bool add_period = ui_tooltip_period_needed(info);
-          UI_tooltip_text_field_add(*data,
-                                    fmt::format("{}{}", info, add_period ? "." : ""),
-                                    {},
-                                    UI_TIP_STYLE_NORMAL,
-                                    UI_TIP_LC_VALUE,
-                                    true);
+          UI_tooltip_text_field_add(*data, info, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, true);
         }
       }
     }
