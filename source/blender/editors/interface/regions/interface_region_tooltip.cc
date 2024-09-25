@@ -1171,7 +1171,6 @@ static std::unique_ptr<uiTooltipData> ui_tooltip_data_from_gizmo(bContext *C, wm
         std::string info = WM_operatortype_description_or_name(C, gzop->type, &gzop->ptr);
 
         if (!info.empty()) {
-          const bool add_period = ui_tooltip_period_needed(info);
           UI_tooltip_text_field_add(
               *data,
               gzop_actions[i].prefix ? fmt::format("{}: {}", gzop_actions[i].prefix, info) : info,
