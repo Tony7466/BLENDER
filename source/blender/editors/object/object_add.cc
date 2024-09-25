@@ -2443,7 +2443,7 @@ static int object_delete_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   wmWindowManager *wm = CTX_wm_manager(C);
   const bool use_global = RNA_boolean_get(op->ptr, "use_global");
-  const bool confirm = op->flag & OP_IS_INVOKE;
+  const bool confirm = bool(op->flag & OperatorFlag::Invoke);
   uint changed_count = 0;
   uint tagged_count = 0;
 

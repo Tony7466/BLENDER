@@ -417,7 +417,7 @@ static int loopcut_init(bContext *C, wmOperator *op, const wmEvent *event)
 
   /* add a modal handler for this operator - handles loop selection */
   if (is_interactive) {
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
     WM_event_add_modal_handler(C, op);
   }
 

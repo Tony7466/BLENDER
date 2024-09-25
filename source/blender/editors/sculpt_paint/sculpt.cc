@@ -5180,7 +5180,9 @@ static bool stroke_test_start(bContext *C, wmOperator *op, const float mval[2])
    * NOTE: `mval` will only be null when re-executing the saved stroke.
    * We have exception for 'exec' strokes since they may not set `mval`,
    * only 'location', see: #52195. */
-  if (((op->flag & OP_IS_INVOKE) == 0) || (mval == nullptr) || over_mesh(C, op, mval)) {
+  if ((bool(op->flag & OperatorFlag::Invoke) == false) || (mval == nullptr) ||
+      over_mesh(C, op, mval))
+  {
     Object &ob = *CTX_data_active_object(C);
     SculptSession &ss = *ob.sculpt;
     Sculpt &sd = *CTX_data_tool_settings(C)->sculpt;

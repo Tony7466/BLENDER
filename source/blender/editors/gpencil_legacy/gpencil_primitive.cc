@@ -1282,7 +1282,7 @@ static int gpencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *
   /* if in tools region, wait till we get to the main (3d-space)
    * region before allowing drawing to take place.
    */
-  op->flag |= OP_IS_MODAL_CURSOR_REGION;
+  op->flag |= OperatorFlag::ModalCursorRegion;
 
   /* set cursor to indicate modal */
   WM_cursor_modal_set(win, WM_CURSOR_CROSS);

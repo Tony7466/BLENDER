@@ -1997,6 +1997,7 @@ static void rna_KeyMapItem_update(Main * /*bmain*/, Scene * /*scene*/, PointerRN
  * expose `Operator.options` as its own type so we can control each flags use
  * (some are read-only).
  */
+#  define ENUM_FLAG(flag) int64_t(flag), #flag
 static void rna_def_operator_options_runtime(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2007,28 +2008,28 @@ static void rna_def_operator_options_runtime(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "wmOperator");
 
   prop = RNA_def_property(srna, "is_grab_cursor", PROP_BOOLEAN, PROP_BOOLEAN);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_MODAL_GRAB_CURSOR);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ENUM_FLAG(OperatorFlag::ModalGrabCursor));
   RNA_def_property_ui_text(prop, "Grab Cursor", "True when the cursor is grabbed");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_invoke", PROP_BOOLEAN, PROP_BOOLEAN);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_INVOKE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ENUM_FLAG(OperatorFlag::Invoke));
   RNA_def_property_ui_text(
       prop, "Invoke", "True when invoked (even if only the execute callbacks available)");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_repeat", PROP_BOOLEAN, PROP_BOOLEAN);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_REPEAT);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ENUM_FLAG(OperatorFlag::Repeat));
   RNA_def_property_ui_text(prop, "Repeat", "True when run from the 'Adjust Last Operation' panel");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "is_repeat_last", PROP_BOOLEAN, PROP_BOOLEAN);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_REPEAT_LAST);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ENUM_FLAG(OperatorFlag::RepeatLast));
   RNA_def_property_ui_text(prop, "Repeat Call", "True when run from the operator 'Repeat Last'");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   prop = RNA_def_property(srna, "use_cursor_region", PROP_BOOLEAN, PROP_BOOLEAN);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", OP_IS_MODAL_CURSOR_REGION);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", ENUM_FLAG(OperatorFlag::ModalCursorRegion));
   RNA_def_property_ui_text(
       prop, "Focus Region", "Enable to use the region under the cursor for modal execution");
 }

@@ -1685,7 +1685,7 @@ void saveTransform(bContext *C, TransInfo *t, wmOperator *op)
     }
 
     /* If modal, save settings back in scene if not set as operator argument. */
-    if ((t->flag & T_MODAL) || (op->flag & OP_IS_REPEAT)) {
+    if ((t->flag & T_MODAL) || bool(op->flag & OperatorFlag::Repeat)) {
       /* Save settings if not set in operator. */
       if ((prop = RNA_struct_find_property(op->ptr, "use_proportional_edit")) &&
           !RNA_property_is_set(op->ptr, prop))

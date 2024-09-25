@@ -1346,7 +1346,7 @@ int WM_operator_call_notest(bContext *C, wmOperator *op)
 
 int WM_operator_repeat(bContext *C, wmOperator *op)
 {
-  const int op_flag = OP_IS_REPEAT;
+  const OperatorFlag op_flag = OperatorFlag::Repeat;
   op->flag |= op_flag;
   const int ret = wm_operator_exec(C, op, true, true);
   op->flag &= ~op_flag;
@@ -1354,7 +1354,7 @@ int WM_operator_repeat(bContext *C, wmOperator *op)
 }
 int WM_operator_repeat_last(bContext *C, wmOperator *op)
 {
-  const int op_flag = OP_IS_REPEAT_LAST;
+  const OperatorFlag op_flag = OperatorFlag::RepeatLast;
   op->flag |= op_flag;
   const int ret = wm_operator_exec(C, op, true, true);
   op->flag &= ~op_flag;
@@ -1550,7 +1550,7 @@ static int wm_operator_invoke(bContext *C,
     const bool is_nested_call = (wm->op_undo_depth != 0);
 
     if (event != nullptr) {
-      op->flag |= OP_IS_INVOKE;
+      op->flag |= OperatorFlag::Invoke;
     }
 
     /* Initialize setting from previous run. */
@@ -1629,7 +1629,8 @@ static int wm_operator_invoke(bContext *C,
         if (event && (U.uiflag & USER_CONTINUOUS_MOUSE)) {
           const wmOperator *op_test = op->opm ? op->opm : op;
           const wmOperatorType *ot_test = op_test->type;
-          if ((ot_test->flag & OPTYPE_GRAB_CURSOR_XY) || (op_test->flag & OP_IS_MODAL_GRAB_CURSOR))
+          if (bool(ot_test->flag & OPTYPE_GRAB_CURSOR_XY) ||
+              bool(op_test->flag & OperatorFlag::ModalGrabCursor))
           {
             wrap = WM_CURSOR_WRAP_XY;
           }
@@ -2133,7 +2134,7 @@ static void wm_handler_op_context_get_if_valid(bContext *C,
       wmOperator *op = handler->op ? (handler->op->opm ? handler->op->opm : handler->op) : nullptr;
       *r_area = area;
 
-      if (op && (op->flag & OP_IS_MODAL_CURSOR_REGION)) {
+      if (op && bool(op->flag & OperatorFlag::ModalCursorRegion)) {
         region = BKE_area_find_region_xy(area, handler->context.region_type, event->xy);
         if (region) {
           handler->context.region = region;

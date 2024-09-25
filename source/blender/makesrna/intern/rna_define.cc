@@ -2306,7 +2306,8 @@ static PropertyDefRNA *rna_def_property_sdna(PropertyRNA *prop,
 void RNA_def_property_boolean_sdna(PropertyRNA *prop,
                                    const char *structname,
                                    const char *propname,
-                                   int64_t bit)
+                                   int64_t bit,
+                                   const char *enum_value)
 {
   PropertyDefRNA *dp;
   BoolPropertyRNA *bprop = (BoolPropertyRNA *)prop;
@@ -2340,6 +2341,7 @@ void RNA_def_property_boolean_sdna(PropertyRNA *prop,
     }
 
     dp->booleanbit = bit;
+    dp->enum_class_value = enum_value;
 
 #ifndef RNA_RUNTIME
     /* Set the default if possible. */

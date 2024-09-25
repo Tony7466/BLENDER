@@ -313,7 +313,8 @@ static int wm_macro_end(wmOperator *op, int retval)
 static int wm_macro_exec(bContext *C, wmOperator *op)
 {
   int retval = OPERATOR_FINISHED;
-  const int op_inherited_flag = op->flag & (OP_IS_REPEAT | OP_IS_REPEAT_LAST);
+  const OperatorFlag op_inherited_flag = op->flag &
+                                         (OperatorFlag::Repeat | OperatorFlag::RepeatLast);
 
   wm_macro_start(op);
 
@@ -347,7 +348,8 @@ static int wm_macro_invoke_internal(bContext *C,
                                     wmOperator *opm)
 {
   int retval = OPERATOR_FINISHED;
-  const int op_inherited_flag = op->flag & (OP_IS_REPEAT | OP_IS_REPEAT_LAST);
+  const OperatorFlag op_inherited_flag = op->flag &
+                                         (OperatorFlag::Repeat | OperatorFlag::RepeatLast);
 
   /* Start from operator received as argument. */
   for (; opm; opm = opm->next) {
@@ -426,8 +428,8 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
           int wrap = WM_CURSOR_WRAP_NONE;
           const rcti *wrap_region = nullptr;
 
-          if ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
-              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY))
+          if (bool(op->opm->flag & OperatorFlag::ModalGrabCursor) ||
+              bool(op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY))
           {
             wrap = WM_CURSOR_WRAP_XY;
           }

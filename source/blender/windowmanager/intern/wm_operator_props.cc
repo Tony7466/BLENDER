@@ -366,7 +366,7 @@ int WM_operator_properties_select_random_seed_increment_get(wmOperator *op)
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "seed");
   int value = RNA_property_int_get(op->ptr, prop);
 
-  if (op->flag & OP_IS_INVOKE) {
+  if (bool(op->flag & OperatorFlag::Invoke)) {
     if (!RNA_property_is_set(op->ptr, prop)) {
       value += 1;
       RNA_property_int_set(op->ptr, prop, value);

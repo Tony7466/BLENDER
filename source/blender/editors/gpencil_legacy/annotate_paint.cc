@@ -2357,11 +2357,11 @@ static int annotation_draw_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
     /* handle the initial drawing - i.e. for just doing a simple dot */
     annotation_draw_apply_event(op, event, CTX_data_ensure_evaluated_depsgraph(C), 0.0f, 0.0f);
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
   }
   else {
     /* toolbar invoked - don't start drawing yet... */
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
   }
 
   WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
@@ -2399,7 +2399,7 @@ static tGPsdata *annotation_stroke_begin(bContext *C, wmOperator *op)
 
   if (p->status != GP_STATUS_ERROR) {
     p->status = GP_STATUS_PAINTING;
-    op->flag &= ~OP_IS_MODAL_CURSOR_REGION;
+    op->flag &= ~OperatorFlag::ModalCursorRegion;
   }
 
   return static_cast<tGPsdata *>(op->customdata);
@@ -2416,7 +2416,7 @@ static void annotation_stroke_end(wmOperator *op)
   annotation_session_cleanup(p);
 
   p->status = GP_STATUS_IDLING;
-  op->flag |= OP_IS_MODAL_CURSOR_REGION;
+  op->flag |= OperatorFlag::ModalCursorRegion;
 
   p->gpd = nullptr;
   p->gpl = nullptr;
@@ -2660,7 +2660,7 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
     }
     else if (event->val == KM_RELEASE) {
       p->status = GP_STATUS_IDLING;
-      op->flag |= OP_IS_MODAL_CURSOR_REGION;
+      op->flag |= OperatorFlag::ModalCursorRegion;
     }
   }
 

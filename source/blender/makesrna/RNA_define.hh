@@ -359,7 +359,8 @@ PropertyRNA *RNA_def_property(StructOrFunctionRNA *cont,
 void RNA_def_property_boolean_sdna(PropertyRNA *prop,
                                    const char *structname,
                                    const char *propname,
-                                   int64_t bit);
+                                   int64_t bit,
+                                   const char *enum_value = nullptr);
 void RNA_def_property_boolean_negative_sdna(PropertyRNA *prop,
                                             const char *structname,
                                             const char *propname,

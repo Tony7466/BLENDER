@@ -695,6 +695,23 @@ static void rna_int_print(FILE *f, int64_t num)
   }
 }
 
+static void rna_assert_enum_class_value_printf(FILE *f, PropertyDefRNA *dp)
+{
+  if (dp->enum_class_value) {
+    fprintf(f, "    static_assert(%d==int64_t(%s));\n", int(dp->booleanbit), dp->enum_class_value);
+  }
+}
+
+static void rna_enum_class_value_printf(FILE *f, PropertyDefRNA *dp)
+{
+  if (dp->enum_class_value) {
+    fprintf(f, "%s", dp->enum_class_value);
+  }
+  else {
+    rna_int_print(f, dp->booleanbit);
+  }
+}
+
 static char *rna_def_property_get_func(
     FILE *f, StructRNA *srna, PropertyRNA *prop, PropertyDefRNA *dp, const char *manualfunc)
 {
@@ -1005,10 +1022,13 @@ static char *rna_def_property_get_func(
         else {
           rna_print_data_get(f, dp);
           if (prop->type == PROP_BOOLEAN && dp->booleanbit) {
-            fprintf(
-                f, "    return %s(((data->%s) & ", (dp->booleannegative) ? "!" : "", dp->dnaname);
-            rna_int_print(f, dp->booleanbit);
-            fprintf(f, ") != 0);\n");
+            rna_assert_enum_class_value_printf(f, dp);
+            fprintf(f,
+                    "    return %s(bool((data->%s) & ",
+                    (dp->booleannegative) ? "!" : "",
+                    dp->dnaname);
+            rna_enum_class_value_printf(f, dp);
+            fprintf(f, "));\n");
           }
           else if (prop->type == PROP_ENUM && dp->enumbitflags) {
             fprintf(f, "    return ((data->%s) & ", dp->dnaname);
@@ -1362,14 +1382,15 @@ static char *rna_def_property_set_func(
 
           if (dp->dnaarraylength == 1) {
             if (prop->type == PROP_BOOLEAN && dp->booleanbit) {
+              rna_assert_enum_class_value_printf(f, dp);
               fprintf(f,
                       "        if (%svalues[i]) { data->%s |= (",
                       (dp->booleannegative) ? "!" : "",
                       dp->dnaname);
-              rna_int_print(f, dp->booleanbit);
+              rna_enum_class_value_printf(f, dp);
               fprintf(f, " << i); }\n");
               fprintf(f, "        else { data->%s &= ~(", dp->dnaname);
-              rna_int_print(f, dp->booleanbit);
+              rna_enum_class_value_printf(f, dp);
               fprintf(f, " << i); }\n");
             }
             else {
@@ -1384,10 +1405,10 @@ static char *rna_def_property_set_func(
                       "        if (%svalues[i]) { data->%s[i] |= ",
                       (dp->booleannegative) ? "!" : "",
                       dp->dnaname);
-              rna_int_print(f, dp->booleanbit);
+              rna_enum_class_value_printf(f, dp);
               fprintf(f, "; }\n");
               fprintf(f, "        else { data->%s[i] &= ~", dp->dnaname);
-              rna_int_print(f, dp->booleanbit);
+              rna_enum_class_value_printf(f, dp);
               fprintf(f, "; }\n");
             }
             else if (rna_color_quantize(prop, dp)) {
@@ -1457,14 +1478,15 @@ static char *rna_def_property_set_func(
         else {
           rna_print_data_get(f, dp);
           if (prop->type == PROP_BOOLEAN && dp->booleanbit) {
+            rna_assert_enum_class_value_printf(f, dp);
             fprintf(f,
                     "    if (%svalue) { data->%s |= ",
                     (dp->booleannegative) ? "!" : "",
                     dp->dnaname);
-            rna_int_print(f, dp->booleanbit);
+            rna_enum_class_value_printf(f, dp);
             fprintf(f, "; }\n");
             fprintf(f, "    else { data->%s &= ~", dp->dnaname);
-            rna_int_print(f, dp->booleanbit);
+            rna_enum_class_value_printf(f, dp);
             fprintf(f, "; }\n");
           }
           else if (prop->type == PROP_ENUM && dp->enumbitflags) {

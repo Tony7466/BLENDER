@@ -4787,7 +4787,7 @@ static int edbm_fill_grid_exec(bContext *C, wmOperator *op)
 
       /* Only reuse on redo because these settings need to match the current selection.
        * We never want to use them on other geometry, repeat last for eg, see: #60777. */
-      if (((op->flag & OP_IS_INVOKE) || (op->flag & OP_IS_REPEAT_LAST) == 0) &&
+      if (((bool(op->flag & (OperatorFlag::Invoke | OperatorFlag::RepeatLast))) == false) &&
           RNA_property_is_set(op->ptr, prop_span))
       {
         span = RNA_property_int_get(op->ptr, prop_span);
@@ -8355,7 +8355,7 @@ static int edbm_point_normals_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   point_normals_update_header(C, op);
 
-  op->flag |= OP_IS_MODAL_GRAB_CURSOR;
+  op->flag |= OperatorFlag::ModalGrabCursor;
   return OPERATOR_RUNNING_MODAL;
 }
 

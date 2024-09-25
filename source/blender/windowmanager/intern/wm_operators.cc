@@ -1046,7 +1046,7 @@ int WM_generic_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
 void WM_operator_view3d_unit_defaults(bContext *C, wmOperator *op)
 {
-  if (op->flag & OP_IS_INVOKE) {
+  if (bool(op->flag & OperatorFlag::Invoke)) {
     Scene *scene = CTX_data_scene(C);
     View3D *v3d = CTX_wm_view3d(C);
 
@@ -1075,7 +1075,7 @@ void WM_operator_view3d_unit_defaults(bContext *C, wmOperator *op)
 
 int WM_operator_smooth_viewtx_get(const wmOperator *op)
 {
-  return (op->flag & OP_IS_INVOKE) ? U.smooth_viewtx : 0;
+  return bool(op->flag & OperatorFlag::Invoke) ? U.smooth_viewtx : 0;
 }
 
 int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opcontext)

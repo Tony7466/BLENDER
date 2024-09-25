@@ -1713,7 +1713,7 @@ static int pack_islands_exec(bContext *C, wmOperator *op)
   }
 
   UVPackIslandsData *pid = MEM_new<UVPackIslandsData>(__func__);
-  pid->use_job = op->flag & OP_IS_INVOKE;
+  pid->use_job = bool(op->flag & OperatorFlag::Invoke);
   pid->scene = scene;
   pid->objects = std::move(objects);
   pid->sima = sima;

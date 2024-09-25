@@ -3701,8 +3701,8 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
   const bool success = wm_file_write(
       C, filepath, fileflags, remap_mode, use_save_as_copy, op->reports);
 
-  if ((op->flag & OP_IS_INVOKE) == 0) {
-    /* OP_IS_INVOKE is set when the operator is called from the GUI.
+  if (bool(op->flag & OperatorFlag::Invoke) == 0) {
+    /* OperatorFlag::Invoke is set when the operator is called from the GUI.
      * If it is not set, the operator is called from a script and
      * shouldn't influence G.fileflags. */
     G.fileflags = fileflags_orig;

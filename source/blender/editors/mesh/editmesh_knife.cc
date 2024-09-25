@@ -4591,10 +4591,10 @@ static int knifetool_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
 
   if (kcd->mode == MODE_DRAGGING) {
-    op->flag &= ~OP_IS_MODAL_CURSOR_REGION;
+    op->flag &= ~OperatorFlag::ModalCursorRegion;
   }
   else {
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
   }
 
   if (do_refresh) {
@@ -4652,7 +4652,7 @@ static int knifetool_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     }
   }
 
-  op->flag |= OP_IS_MODAL_CURSOR_REGION;
+  op->flag |= OperatorFlag::ModalCursorRegion;
 
   /* Add a modal handler for this operator - handles loop selection. */
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_KNIFE);

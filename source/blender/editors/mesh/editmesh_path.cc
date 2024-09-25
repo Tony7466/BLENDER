@@ -117,7 +117,7 @@ static void path_select_params_from_op(wmOperator *op,
     PropertyRNA *prop = RNA_struct_find_property(op->ptr, "edge_mode");
     if (RNA_property_is_set(op->ptr, prop)) {
       op_params->edge_mode = RNA_property_enum_get(op->ptr, prop);
-      if (op->flag & OP_IS_INVOKE) {
+      if (bool(op->flag & OperatorFlag::Invoke)) {
         ts->edge_mode = op_params->edge_mode;
       }
     }

@@ -176,7 +176,7 @@ static int insert_key_with_keyingset(bContext *C, wmOperator *op, KeyingSet *ks)
   bool ob_edit_mode = false;
 
   const float cfra = BKE_scene_frame_get(scene);
-  const bool confirm = op->flag & OP_IS_INVOKE;
+  const bool confirm = bool(op->flag & OperatorFlag::Invoke);
   /* exit the edit mode to make sure that those object data properties that have been
    * updated since the last switching to the edit mode will be keyframed correctly
    */
@@ -632,7 +632,7 @@ static int delete_key_using_keying_set(bContext *C, wmOperator *op, KeyingSet *k
   Scene *scene = CTX_data_scene(C);
   float cfra = BKE_scene_frame_get(scene);
   int num_channels;
-  const bool confirm = op->flag & OP_IS_INVOKE;
+  const bool confirm = bool(op->flag & OperatorFlag::Invoke);
 
   /* try to delete keyframes for the channels specified by KeyingSet */
   num_channels = ANIM_apply_keyingset(
@@ -901,7 +901,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
   int selected_objects_success_len = 0;
   int success_multi = 0;
 
-  const bool confirm = op->flag & OP_IS_INVOKE;
+  const bool confirm = bool(op->flag & OperatorFlag::Invoke);
 
   CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
     int success = 0;

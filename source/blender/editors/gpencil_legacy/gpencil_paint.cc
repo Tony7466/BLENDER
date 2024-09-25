@@ -3275,11 +3275,11 @@ static int gpencil_draw_invoke(bContext *C, wmOperator *op, const wmEvent *event
 
     /* handle the initial drawing - i.e. for just doing a simple dot */
     gpencil_draw_apply_event(C, op, event, CTX_data_ensure_evaluated_depsgraph(C));
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
   }
   else {
     /* toolbar invoked - don't start drawing yet... */
-    op->flag |= OP_IS_MODAL_CURSOR_REGION;
+    op->flag |= OperatorFlag::ModalCursorRegion;
   }
 
   /* enable paint mode */
@@ -3337,7 +3337,7 @@ static tGPsdata *gpencil_stroke_begin(bContext *C, wmOperator *op)
 
   if (p->status != GP_STATUS_ERROR) {
     p->status = GP_STATUS_PAINTING;
-    op->flag &= ~OP_IS_MODAL_CURSOR_REGION;
+    op->flag &= ~OperatorFlag::ModalCursorRegion;
   }
 
   return static_cast<tGPsdata *>(op->customdata);
@@ -3797,7 +3797,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
     }
     else if (event->val == KM_RELEASE) {
       p->status = GP_STATUS_IDLING;
-      op->flag |= OP_IS_MODAL_CURSOR_REGION;
+      op->flag |= OperatorFlag::ModalCursorRegion;
       ED_region_tag_redraw(p->region);
     }
   }

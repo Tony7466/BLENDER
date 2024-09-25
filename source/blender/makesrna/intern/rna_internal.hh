@@ -78,6 +78,7 @@ struct PropertyDefRNA {
   int dnalengthfixed;
 
   int64_t booleanbit;
+  const char *enum_class_value;
   bool booleannegative;
 
   /* not to be confused with PROP_ENUM_FLAG

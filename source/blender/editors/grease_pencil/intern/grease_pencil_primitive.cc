@@ -678,7 +678,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   /* If in tools region, wait till we get to the main (3D-space)
    * region before allowing drawing to take place. */
-  op->flag |= OP_IS_MODAL_CURSOR_REGION;
+  op->flag |= OperatorFlag::ModalCursorRegion;
 
   wmWindow *win = CTX_wm_window(C);
 
