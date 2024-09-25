@@ -641,7 +641,8 @@ void JoltPhysicsWorldData::resize(const int body_num,
       bodies_[src_i] = {};
     });
     /* Delete unused. */
-    const Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
+    Array<JPH::BodyID> body_ids = get_body_ids(bodies_);
+    body_interface.RemoveBodies(body_ids.data(), body_ids.size());
     body_interface.DestroyBodies(body_ids.data(), body_ids.size());
     /* Create new bodies if growing. */
     create_default_bodies(body_interface,
