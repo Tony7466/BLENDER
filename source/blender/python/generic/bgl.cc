@@ -22,7 +22,7 @@
 #include "GPU_context.hh"
 #include "GPU_state.hh"
 
-#include "py_capi_utils.h"
+#include "py_capi_utils.hh"
 
 #include "BKE_global.hh"
 
@@ -2675,6 +2675,8 @@ PyObject *BPyInit_bgl()
               "'bgl' imported without an OpenGL backend. Please update your add-ons to use the "
               "'gpu' module.");
   }
+#else
+  UNUSED_VARS(LOG);
 #endif
 
   PyModule_AddObject(submodule, "Buffer", (PyObject *)&BGL_bufferType);
