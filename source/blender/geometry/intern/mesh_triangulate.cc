@@ -36,6 +36,25 @@ static void gather(const Span<int> src, const Span<int16_t> indices, MutableSpan
   }
 }
 
+static Span<int> gather_or_reference(const Span<int> src,
+                                     const Span<int16_t> indices,
+                                     Vector<int> &dst)
+{
+  if (unique_sorted_indices::non_empty_is_range(indices)) {
+    return src.slice(indices[0], indices.size());
+  }
+  dst.reinitialize(indices.size());
+  gather(src, indices, dst);
+  return dst.as_span();
+}
+
+static Span<int> gather_or_reference(const Span<int> src,
+                                     const IndexMaskSegment mask,
+                                     Vector<int> &dst)
+{
+  return gather_or_reference(src.drop_front(mask.offset()), mask.base_span(), dst);
+}
+
 /**
  * If a significant number of Ngons are selected (> 25% of the faces), then use the
  * face normals cache, in case the cache is persistent (or already calculated).
@@ -68,20 +87,14 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
 }
 
 static OffsetIndices<int> calc_faces(const OffsetIndices<int> src_faces,
-                                     const OffsetIndices<int> faces_by_src_face,
-                                     const IndexMask &selection,
                                      const IndexMask &unselected,
                                      MutableSpan<int> offsets)
 {
-  selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int src_face) {
-    // TODO: Better slicing for range index mask segments
-    offsets.slice(faces_by_src_face[src_face]).fill(3);
-  });
-  selection.foreach_index_optimized<int>(GrainSize(4096), [&](const int src_face) {
-    const int face = faces_by_src_face[src_face].first();
-    offsets[face] = src_faces[src_face].size();
-  });
-  return offset_indices::accumulate_counts_to_offsets(offsets);
+  MutableSpan<int> new_tri_offsets = offsets.drop_back(unselected.size());
+  offset_indices::fill_constant_group_size(3, new_tri_offsets.first(), new_tri_offsets);
+  offset_indices::gather_selected_offsets(
+      src_faces, unselected, new_tri_offsets.last(), offsets.take_back(unselected.size() + 1));
+  return OffsetIndices<int>(offsets);
 }
 
 namespace quad {
@@ -95,7 +108,7 @@ namespace quad {
  * | /     0 |     | 0     \ |
  * 0 ------- 1     0 ------- 1
  */
-enum class QuadDirection : int8_t {  // TODO: Store in a single bit?
+enum class QuadDirection : int8_t {
   Edge_0_2 = 0,
   Edge_1_3 = 1,
 };
@@ -122,34 +135,33 @@ static QuadDirection calc_quad_direction_beauty(const float3 &v0,
 }
 
 static void calc_quad_directions(const Span<float3> positions,
-                                 const OffsetIndices<int> faces,
+                                 const Span<int> face_offsets,
                                  const Span<int> corner_verts,
-                                 const TriangulateQuadMode mode,
-                                 const IndexMaskSegment quads,
+                                 const TriangulateQuadMode quad_mode,
                                  MutableSpan<QuadDirection> directions)
 {
-  if (mode == TriangulateQuadMode::Fixed) {
+  if (quad_mode == TriangulateQuadMode::Fixed) {
     directions.fill(QuadDirection::Edge_0_2);
   }
-  else if (mode == TriangulateQuadMode::Alternate) {
+  else if (quad_mode == TriangulateQuadMode::Alternate) {
     directions.fill(QuadDirection::Edge_1_3);
   }
-  else if (mode == TriangulateQuadMode::Beauty) {
-    for (const int16_t i : quads.index_range()) {
-      const Span<int> verts = corner_verts.slice(faces[quads[i]]);  // Size is always 4.
+  else if (quad_mode == TriangulateQuadMode::Beauty) {
+    for (const int i : face_offsets.index_range()) {
+      const Span<int> verts = corner_verts.slice(face_offsets[i], 4);
       directions[i] = calc_quad_direction_beauty(
           positions[verts[0]], positions[verts[1]], positions[verts[2]], positions[verts[3]]);
     }
   }
   else {
-    const QuadDirection long_dir = mode == TriangulateQuadMode::ShortEdge ?
+    const QuadDirection long_dir = quad_mode == TriangulateQuadMode::ShortEdge ?
                                        QuadDirection::Edge_0_2 :
                                        QuadDirection::Edge_1_3;
-    const QuadDirection short_dir = mode == TriangulateQuadMode::ShortEdge ?
+    const QuadDirection short_dir = quad_mode == TriangulateQuadMode::ShortEdge ?
                                         QuadDirection::Edge_1_3 :
                                         QuadDirection::Edge_0_2;
-    for (const int16_t i : quads.index_range()) {
-      const Span<int> verts = corner_verts.slice(faces[quads[i]]);  // Size is always 4.
+    for (const int i : face_offsets.index_range()) {
+      const Span<int> verts = corner_verts.slice(face_offsets[i], 4);
       const float dist_0_2 = math::distance_squared(positions[verts[0]], positions[verts[2]]);
       const float dist_1_3 = math::distance_squared(positions[verts[1]], positions[verts[3]]);
       directions[i] = dist_0_2 < dist_1_3 ? long_dir : short_dir;
@@ -157,16 +169,12 @@ static void calc_quad_directions(const Span<float3> positions,
   }
 }
 
-static void calc_corner_maps(const OffsetIndices<int> src_faces,
-                             const OffsetIndices<int> faces_by_src_face,
-                             const OffsetIndices<int> faces,
-                             const IndexMaskSegment quads,
+static void calc_corner_maps(const Span<int> face_offsets,
                              const Span<QuadDirection> directions,
                              MutableSpan<int> corner_map)
 {
-  for (const int16_t i : quads.index_range()) {
-    const int src_face = quads[i];
-    MutableSpan<int> quad_map = corner_map.slice(faces[faces_by_src_face[src_face]]);
+  for (const int i : face_offsets.index_range()) {
+    MutableSpan<int> quad_map = corner_map.slice(6 * i, 6);
     /* These corner orders give new edges based on the first vertex of each triangle. */
     switch (directions[i]) {
       case QuadDirection::Edge_0_2:
@@ -176,9 +184,9 @@ static void calc_corner_maps(const OffsetIndices<int> src_faces,
         quad_map.copy_from({1, 3, 0, 3, 1, 2});
         break;
     }
-    const int src_face_start = src_faces[src_face].start();
+    const int face_start = face_offsets[i];
     for (int &i : quad_map) {
-      i += src_face_start;
+      i += face_start;
     }
   }
 }
@@ -188,15 +196,25 @@ static void calc_corner_maps(const Span<float3> positions,
                              const Span<int> src_corner_verts,
                              const IndexMask &quads,
                              const TriangulateQuadMode quad_mode,
-                             const OffsetIndices<int> faces_by_src_face,
-                             const OffsetIndices<int> faces,
                              MutableSpan<int> corner_map)
 {
+  struct TLS {
+    Vector<int> offsets;
+    Vector<QuadDirection> directions;
+  };
+  threading::EnumerableThreadSpecific<TLS> tls;
+
   quads.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment quads, const int64_t pos) {
-    // TODO: Experiment with gathering face offsets again.
-    Array<QuadDirection, 1500> directions(quads.size());
-    calc_quad_directions(positions, src_faces, src_corner_verts, quad_mode, quads, directions);
-    quad::calc_corner_maps(src_faces, faces_by_src_face, faces, quads, directions, corner_map);
+    TLS &data = tls.local();
+    data.directions.reinitialize(quads.size());
+
+    /* Find the offsets of each face in the local selection. We can gather them together even if
+     * they aren't contiguous because we only need to know the start of each face; the size is
+     * just 4. */
+    const Span<int> offsets = gather_or_reference(src_faces.data(), quads, data.offsets);
+    calc_quad_directions(positions, offsets, src_corner_verts, quad_mode, data.directions);
+    const IndexRange corners(pos * 6, offsets.size() * 6);
+    quad::calc_corner_maps(offsets, data.directions, corner_map.slice(corners));
   });
 }
 
@@ -308,9 +326,8 @@ static void calc_corner_maps(const Span<float3> positions,
                              const Span<int> src_corner_verts,
                              const Span<float3> face_normals,
                              const IndexMask &ngons,
+                             const OffsetIndices<int> tris_by_ngon,
                              const TriangulateNGonMode ngon_mode,
-                             const OffsetIndices<int> faces_by_src_face,
-                             const OffsetIndices<int> faces,
                              MutableSpan<int> corner_map)
 {
   struct TLS {
@@ -364,7 +381,8 @@ static void calc_corner_maps(const Span<float3> positions,
     data.projected_positions.reinitialize(local_corner_offsets.total_size());
     MutableSpan<float2> projected_positions = data.projected_positions;
     for (const int i : ngons.index_range()) {
-      const Span<int> face_verts = src_corner_verts.slice(src_faces[ngons[i]]);
+      const IndexRange src_face = src_faces[ngons[i]];
+      const Span<int> face_verts = src_corner_verts.slice(src_face);
       const float3x3 &matrix = projections[i];
 
       MutableSpan<float2> positions_2d = projected_positions.slice(local_corner_offsets[i]);
@@ -385,7 +403,8 @@ static void calc_corner_maps(const Span<float3> positions,
     /* Calculate the triangulation of corners indices local to each face. */
     for (const int i : ngons.index_range()) {
       const Span<float2> positions_2d = projected_positions.slice(local_corner_offsets[i]);
-      MutableSpan<int> map = corner_map.slice(faces[faces_by_src_face[ngons[i]]]);
+      const IndexRange tris_range = tris_by_ngon[pos + i];
+      MutableSpan<int> map = corner_map.slice(tris_range.start() * 3, tris_range.size() * 3);
       BLI_polyfill_calc(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                         positions_2d.size(),
                         1,
@@ -403,11 +422,11 @@ static void calc_corner_maps(const Span<float3> positions,
     /* "Globalize" the triangulation created above so the map source indices reference _all_ of the
      * source vertices, not just within the source face. */
     for (const int i : ngons.index_range()) {
-      const int src_face = ngons[i];
-      MutableSpan<int> map = corner_map.slice(faces[faces_by_src_face[src_face]]);
-      const int src_face_start = src_faces[src_face].start();
+      const IndexRange src_face = src_faces[ngons[i]];
+      const IndexRange tris_range = tris_by_ngon[pos + i];
+      MutableSpan<int> map = corner_map.slice(tris_range.start() * 3, tris_range.size() * 3);
       for (int &vert : map) {
-        vert += src_face_start;
+        vert += src_face.start();
       }
     }
   });
@@ -541,7 +560,8 @@ static IndexMask calc_unselected_faces(const Mesh &mesh,
     return unselected;
   }
   Array<int3> vert_tris(corner_map.size() / 3);
-  array_utils::gather(src_corner_verts, corner_map, vert_tris.as_mutable_span().cast<int>());
+  bke::attribute_math::gather(
+      src_corner_verts, corner_map, vert_tris.as_mutable_span().cast<int>());
 
   Array<int> vert_to_tri_offsets;
   Array<int> vert_to_tri_indices;
@@ -654,30 +674,34 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
    * for correctness, but considering groups of each face type separately simplifies optimizing
    * for each type. For example, quad triangulation is much simpler than Ngon triangulation. */
   IndexMaskMemory memory;
+  const IndexMask selection = IndexMask::from_predicate(
+      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
+        return src_faces[i].size() > 3;
+      });
   const IndexMask quads = IndexMask::from_predicate(
-      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
-        return src_faces[i].size() == 4;
-      });
+      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() == 4; });
   const IndexMask ngons = IndexMask::from_predicate(
-      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
-        return src_faces[i].size() > 4;
-      });
+      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() > 4; });
   if (quads.is_empty() && ngons.is_empty()) {
     /* All selected faces are already triangles. */
     return std::nullopt;
   }
 
-  const IndexMask selection = IndexMask::from_union(quads, ngons, memory);
-  const IndexMask unselected = selection.complement(src_faces.index_range(), memory);
+  /* Calculate group of triangle indices for each selected Ngon to facilitate calculating them in
+   * parallel later. */
+  Array<int> tri_offsets(ngons.size() + 1);
+  const OffsetIndices tris_by_ngon = ngon::calc_tris_by_ngon(src_faces, ngons, tri_offsets);
+  const int ngon_tris_num = tris_by_ngon.total_size();
+  const int quad_tris_num = quads.size() * 2;
+  const IndexRange tris_range(ngon_tris_num + quad_tris_num);
+  const IndexRange ngon_tris_range = tris_range.take_front(ngon_tris_num);
+  const IndexRange quad_tris_range = tris_range.take_front(quad_tris_num);
 
-  Array<int> faces_by_src_face_data(src_faces.size() + 1);
-  index_mask::masked_fill<int>(faces_by_src_face_data, 1, unselected);
-  index_mask::masked_fill<int>(faces_by_src_face_data, 2, quads);
-  ngons.foreach_index_optimized<int>([&](const int face) {
-    faces_by_src_face_data[face] = bke::mesh::face_triangles_num(src_faces[face].size());
-  });
-  const OffsetIndices faces_by_src_face = offset_indices::accumulate_counts_to_offsets(
-      faces_by_src_face_data);
+  const int ngon_corners_num = tris_by_ngon.total_size() * 3;
+  const int quad_corners_num = quads.size() * 6;
+  const IndexRange tri_corners_range(quad_corners_num + ngon_corners_num);
+  const IndexRange ngon_corners_range = tri_corners_range.take_front(ngon_corners_num);
+  const IndexRange quad_corners_range = tri_corners_range.take_back(quad_corners_num);
 
   /* Calculate groups of new inner edges for each selected Ngon so they can be filled in parallel
    * later. */
@@ -691,31 +715,11 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
   const IndexRange ngon_edges_range = tri_edges_range.take_front(ngon_edges_num);
   const IndexRange quad_edges_range = tri_edges_range.take_front(quad_edges_num);
 
-  Mesh *mesh = bke::mesh_new_no_attributes(src_mesh.verts_num,
-                                           src_edges.size() + tri_edges_range.size(),
-                                           faces_by_src_face.total_size(),
-                                           0);
-
-  const OffsetIndices faces = calc_faces(
-      src_faces, faces_by_src_face, selection, unselected, mesh->face_offsets_for_write());
-  mesh->corners_num = faces.total_size();
-
   /* An index map that maps from newly created corners in `tri_corners_range` to original corner
    * indices. This is used to interpolate `corner_vert` indices and face corner attributes. If
    * there are no face corner attributes, theoretically the map could be skipped and corner
    * vertex indices could be interpolated immediately, but that isn't done for simplicity. */
-  Array<int> corner_map(mesh->corners_num);
-
-  if (!quads.is_empty()) {
-    quad::calc_corner_maps(positions,
-                           src_faces,
-                           src_corner_verts,
-                           quads,
-                           quad_mode,
-                           faces_by_src_face,
-                           faces,
-                           corner_map);
-  }
+  Array<int> corner_map(tri_corners_range.size());
 
   if (!ngons.is_empty()) {
     ngon::calc_corner_maps(positions,
@@ -723,11 +727,22 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
                            src_corner_verts,
                            face_normals_if_worthwhile(src_mesh, ngons.size()),
                            ngons,
+                           tris_by_ngon,
                            ngon_mode,
-                           faces_by_src_face,
-                           faces,
-                           corner_map);
+                           corner_map.as_mutable_span().slice(ngon_corners_range));
   }
+  if (!quads.is_empty()) {
+    quad::calc_corner_maps(positions,
+                           src_faces,
+                           src_corner_verts,
+                           quads,
+                           quad_mode,
+                           corner_map.as_mutable_span().slice(quad_corners_range));
+  }
+
+  const IndexMask unselected = deduplication::calc_unselected_faces(
+      src_mesh, src_faces, src_corner_verts, selection, corner_map, memory);
+  const IndexRange unselected_range(tris_range.one_after_last(), unselected.size());
 
   /* Create a mesh with no face corners.
    *  - We haven't yet counted the number of corners from unselected faces. Creating the final face
