@@ -129,19 +129,19 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
 
   const bke::AttributeAccessor instances_attributes = instances.attributes();
   bke::MutableAttributeAccessor grease_pencil_attributes = grease_pencil->attributes_for_write();
-  instances_attributes.foreach_attribute([&](const AttributeIterInfo &attr_info) {
-    if (instances_attributes.is_builtin(attr_info.name) &&
-        !grease_pencil_attributes.is_builtin(attr_info.name))
+  instances_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
+    if (instances_attributes.is_builtin(attr_iter.name) &&
+        !grease_pencil_attributes.is_builtin(attr_iter.name))
     {
       return;
     }
-    if (ELEM(attr_info.name, "opacity")) {
+    if (ELEM(attr_iter.name, "opacity")) {
       return;
     }
-    if (attribute_filter.allow_skip(attr_info.name)) {
+    if (attribute_filter.allow_skip(attr_iter.name)) {
       return;
     }
-    const GAttributeReader src_attribute = instances_attributes.lookup(attr_info.name);
+    const GAttributeReader src_attribute = instances_attributes.lookup(attr_iter.name);
     if (!src_attribute) {
       return;
     }
@@ -150,20 +150,20 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
     {
       /* Try reusing existing attribute array. */
       grease_pencil_attributes.add(
-          attr_info.name,
+          attr_iter.name,
           AttrDomain::Layer,
-          attr_info.cd_type,
+          attr_iter.cd_type,
           bke::AttributeInitShared{src_attribute.varray.get_internal_span().data(),
                                    *src_attribute.sharing_info});
       return;
     }
     if (!grease_pencil_attributes.add(
-            attr_info.name, AttrDomain::Layer, attr_info.cd_type, bke::AttributeInitConstruct()))
+            attr_iter.name, AttrDomain::Layer, attr_iter.cd_type, bke::AttributeInitConstruct()))
     {
       return;
     }
     bke::GSpanAttributeWriter dst_attribute = grease_pencil_attributes.lookup_for_write_span(
-        attr_info.name);
+        attr_iter.name);
     array_utils::gather(src_attribute.varray, instance_selection, dst_attribute.span);
     dst_attribute.finish();
   });

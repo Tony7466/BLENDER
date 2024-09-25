@@ -426,20 +426,24 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     return true;
   }
 
-  void foreach_attribute(const void *owner,
-                         FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const final
+  bool foreach_attribute(const void *owner,
+                         FunctionRef<void(const AttributeIter &)> fn) const final
   {
     const CurvesGeometry *curves = static_cast<const CurvesGeometry *>(owner);
     if (curves == nullptr) {
-      return;
+      return true;
     }
     LISTBASE_FOREACH (const bDeformGroup *, group, &curves->vertex_group_names) {
-      AttributeIterInfo attribute_info;
-      attribute_info.name = group->name;
-      attribute_info.domain = AttrDomain::Point;
-      attribute_info.cd_type = CD_PROP_FLOAT;
-      fn(attribute_info);
+      AttributeIter attr_iter;
+      attr_iter.name = group->name;
+      attr_iter.domain = AttrDomain::Point;
+      attr_iter.cd_type = CD_PROP_FLOAT;
+      fn(attr_iter);
+      if (attr_iter.is_stopped()) {
+        return false;
+      }
     }
+    return true;
   }
 
   void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const final

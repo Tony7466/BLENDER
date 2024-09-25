@@ -146,10 +146,25 @@ struct AttributeInitShared : public AttributeInit {
 using AttributeForeachCallback =
     FunctionRef<bool(StringRefNull attribute_id, const AttributeMetaData &meta_data)>;
 
-struct AttributeIterInfo {
+class AttributeIter {
+ public:
   StringRefNull name;
   AttrDomain domain;
   eCustomDataType cd_type;
+
+ private:
+  mutable bool stop_iteration_ = false;
+
+ public:
+  void stop_iteration() const
+  {
+    stop_iteration_ = true;
+  }
+
+  bool is_stopped() const
+  {
+    return stop_iteration_;
+  }
 };
 
 /**
@@ -414,8 +429,7 @@ struct AttributeAccessorFunctions {
                           AttrDomain to_domain);
   bool (*for_all)(const void *owner,
                   FunctionRef<bool(StringRefNull, const AttributeMetaData &)> fn);
-  void (*foreach_attribute)(const void *owner,
-                            FunctionRef<void(const AttributeIterInfo &attribute_info)>);
+  void (*foreach_attribute)(const void *owner, FunctionRef<void(const AttributeIter &attr_iter)>);
   AttributeValidator (*lookup_validator)(const void *owner, StringRef attribute_id);
   GAttributeWriter (*lookup_for_write)(void *owner, StringRef attribute_id);
   bool (*remove)(void *owner, StringRef attribute_id);
@@ -616,7 +630,7 @@ class AttributeAccessor {
     return true;
   }
 
-  void foreach_attribute(const FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const
+  void foreach_attribute(const FunctionRef<void(const AttributeIter &)> fn) const
   {
     if (owner_ != nullptr) {
       fn_->foreach_attribute(owner_, fn);
