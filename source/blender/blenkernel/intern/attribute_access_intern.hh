@@ -366,37 +366,6 @@ inline AttributeValidator lookup_validator(const void * /*owner*/,
 }
 
 template<const ComponentAttributeProviders &providers>
-inline bool contains(const void *owner, const blender::StringRef attribute_id)
-{
-  bool found = false;
-  for_all<providers>(
-      owner, [&](const StringRef other_attribute_id, const AttributeMetaData & /*meta_data*/) {
-        if (attribute_id == other_attribute_id) {
-          found = true;
-          return false;
-        }
-        return true;
-      });
-  return found;
-}
-
-template<const ComponentAttributeProviders &providers>
-inline std::optional<AttributeMetaData> lookup_meta_data(const void *owner,
-                                                         const StringRef attribute_id)
-{
-  std::optional<AttributeMetaData> meta_data;
-  for_all<providers>(
-      owner, [&](const StringRef other_attribute_id, const AttributeMetaData &other_meta_data) {
-        if (attribute_id == other_attribute_id) {
-          meta_data = other_meta_data;
-          return false;
-        }
-        return true;
-      });
-  return meta_data;
-}
-
-template<const ComponentAttributeProviders &providers>
 inline GAttributeWriter lookup_for_write(void *owner, const StringRef attribute_id)
 {
   if (!bke::attribute_name_is_anonymous(attribute_id)) {
@@ -442,9 +411,6 @@ inline bool add(void *owner,
                 eCustomDataType data_type,
                 const AttributeInit &initializer)
 {
-  if (contains<providers>(owner, attribute_id)) {
-    return false;
-  }
   if (!bke::attribute_name_is_anonymous(attribute_id)) {
     const StringRef name = attribute_id;
     if (const BuiltinAttributeProvider *provider =
@@ -470,9 +436,7 @@ inline bool add(void *owner,
 template<const ComponentAttributeProviders &providers>
 inline AttributeAccessorFunctions accessor_functions_for_providers()
 {
-  return AttributeAccessorFunctions{contains<providers>,
-                                    lookup_meta_data<providers>,
-                                    nullptr,
+  return AttributeAccessorFunctions{nullptr,
                                     nullptr,
                                     is_builtin<providers>,
                                     lookup<providers>,

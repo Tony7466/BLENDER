@@ -455,8 +455,6 @@ class AttributeIter {
  * makes it easy to return the attribute accessor for a geometry from a function.
  */
 struct AttributeAccessorFunctions {
-  bool (*contains)(const void *owner, StringRef attribute_id);
-  std::optional<AttributeMetaData> (*lookup_meta_data)(const void *owner, StringRef attribute_id);
   bool (*domain_supported)(const void *owner, AttrDomain domain);
   int (*domain_size)(const void *owner, AttrDomain domain);
   bool (*is_builtin)(const void *owner, StringRef attribute_id);
@@ -518,18 +516,12 @@ class AttributeAccessor {
   /**
    * \return True, when the attribute is available.
    */
-  bool contains(const StringRef attribute_id) const
-  {
-    return fn_->contains(owner_, attribute_id);
-  }
+  bool contains(const StringRef attribute_id) const;
 
   /**
    * \return Information about the attribute if it exists.
    */
-  std::optional<AttributeMetaData> lookup_meta_data(const StringRef attribute_id) const
-  {
-    return fn_->lookup_meta_data(owner_, attribute_id);
-  }
+  std::optional<AttributeMetaData> lookup_meta_data(const StringRef attribute_id) const;
 
   /**
    * \return True, when attributes can exist on that domain.
@@ -748,6 +740,9 @@ class MutableAttributeAccessor : public AttributeAccessor {
            const eCustomDataType data_type,
            const AttributeInit &initializer)
   {
+    if (this->contains(attribute_id)) {
+      return false;
+    }
     return fn_->add(owner_, attribute_id, domain, data_type, initializer);
   }
   template<typename T>
