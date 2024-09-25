@@ -105,6 +105,14 @@ static void node_label(const bNodeTree * /*ntree*/, const bNode *node, char *lab
   BLI_strncpy(label, IFACE_(name), maxlen);
 }
 
+/* Derived from `divide_round_i` but fixed to be safe and handle negative inputs. */
+static int safe_divide_round_i(const int a, const int b)
+{
+  const int c = math::abs(b);
+  return (a >= 0) ? math::safe_divide((2 * a + c), (2 * c)) * math::sign(b) :
+                    -math::safe_divide((2 * -a + c), (2 * c)) * math::sign(b);
+}
+
 static const mf::MultiFunction *get_multi_function(const bNode &bnode)
 {
   NodeIntegerMathOperation operation = NodeIntegerMathOperation(bnode.custom1);
@@ -126,14 +134,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
       [](int a, int b) { return (b != 0) ? -divide_floor_i(a, -b) : 0; },
       exec_preset);
   static auto divide_round_fn = mf::build::SI2_SO<int, int, int>(
-      "Divide Round",
-      [](int a, int b) {
-        /* Derived from `divide_round_i` but fixed to be safe and handle negative inputs. */
-        const int c = abs(b);
-        return (a >= 0) ? math::safe_divide((2 * a + c), (2 * c)) * math::sign(b) :
-                          -math::safe_divide((2 * -a + c), (2 * c)) * math::sign(b);
-      },
-      exec_preset);
+      "Divide Round", [](int a, int b) { return safe_divide_round_i(a, b); }, exec_preset);
   static auto pow_fn = mf::build::SI2_SO<int, int, int>(
       "Power", [](int a, int b) { return math::pow(a, b); }, exec_preset);
   static auto madd_fn = mf::build::SI3_SO<int, int, int, int>(
