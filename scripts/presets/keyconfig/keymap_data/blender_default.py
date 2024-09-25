@@ -8960,8 +8960,7 @@ def km_sequencer_editor_tool_generic_select_box_preview(params, *, fallback):
             *([] if (fallback and not params.use_fallback_tool) else _template_items_tool_select_actions_simple(
                 "sequencer.select_box",
                 **(params.select_tweak_event if (fallback and params.use_fallback_tool_select_mouse) else
-                   params.tool_tweak_event),
-                properties=[("tweak", params.select_mouse == 'LEFTMOUSE')])),
+                   params.tool_tweak_event))),
         ]},
     )
 
