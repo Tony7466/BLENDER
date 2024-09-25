@@ -11,6 +11,7 @@
 
 #include "DNA_ID_enums.h"
 #include "DNA_defs.h"
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 
 #ifdef __cplusplus
@@ -506,7 +507,7 @@ typedef struct Library_Runtime {
    * Use #BKE_library_filepath_set() rather than setting `filepath`
    * directly and it will be kept in sync - campbell
    */
-  char filepath_abs[1024];
+  char filepath_abs[FILE_MAX];
 
   /** Set for indirectly linked libraries, used in the outliner and while reading. */
   struct Library *parent;
@@ -528,7 +529,7 @@ typedef struct Library_Runtime {
 typedef struct Library {
   ID id;
   /** Path name used for reading, can be relative and edited in the outliner. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   struct PackedFile *packedfile;
 
@@ -568,7 +569,7 @@ enum eLibrary_Tag {
  */
 typedef struct LibraryWeakReference {
   /**  Expected to match a `Library.filepath`. */
-  char library_filepath[1024];
+  char library_filepath[FILE_MAX];
 
   /** MAX_ID_NAME. May be different from the current local ID name. */
   char library_id_name[66];

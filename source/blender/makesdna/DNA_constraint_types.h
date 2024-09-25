@@ -612,11 +612,11 @@ typedef struct bObjectSolverConstraint {
 typedef struct bTransformCacheConstraint {
   struct CacheFile *cache_file;
   /** FILE_MAX. */
-  char object_path[1024];
+  char object_path[FILE_MAX];
 
   /* Runtime. */
   struct CacheReader *reader;
-  char reader_object_path[1024];
+  char reader_object_path[FILE_MAX];
 } bTransformCacheConstraint;
 
 /* ------------------------------------------ */

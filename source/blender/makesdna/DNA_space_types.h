@@ -1201,7 +1201,7 @@ typedef struct FileDirEntryArr {
   int entries_filtered_num;
 
   /** FILE_MAX. */
-  char root[1024];
+  char root[FILE_MAX];
 } FileDirEntryArr;
 
 /** #FileDirEntry.flags */
@@ -1493,7 +1493,7 @@ typedef struct Script {
    * if "Enable Scripts" is on
    */
   /** 1024 = FILE_MAX. */
-  char scriptname[1024];
+  char scriptname[FILE_MAX];
   /** 1024 = FILE_MAX. */
   char scriptarg[256];
 } Script;

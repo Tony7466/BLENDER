@@ -575,7 +575,7 @@ typedef struct BakeData {
   struct ImageFormatData im_format;
 
   /** FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   short width, height;
   short margin, flag;
@@ -761,7 +761,7 @@ typedef struct RenderData {
   /* Path to render output. */
   /** 1024 = FILE_MAX. */
   /* NOTE: Excluded from `BKE_bpath_foreach_path_` / `scene_foreach_path` code. */
-  char pic[1024];
+  char pic[FILE_MAX];
 
   /** Stamps flags. */
   int stamp;

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_texture_types.h" /* ColorBand */
 #include "DNA_userdef_enums.h"
@@ -54,7 +55,7 @@ typedef enum eUIFont_ID {
 typedef struct uiFont {
   struct uiFont *next, *prev;
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
   /** From BLF library. */
   short blf_id;
   /** Own id (eUIFont_ID). */
@@ -504,7 +505,7 @@ typedef struct bTheme {
    *
    * #FILE_MAX.
    */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   ThemeUI tui;
 
@@ -616,8 +617,8 @@ enum {
 typedef struct bUserAssetLibrary {
   struct bUserAssetLibrary *next, *prev;
 
-  char name[64];      /* MAX_NAME */
-  char dirpath[1024]; /* FILE_MAX */
+  char name[64];          /* MAX_NAME */
+  char dirpath[FILE_MAX]; /* FILE_MAX */
 
   short import_method; /* eAssetImportMethod */
   short flag;          /* eAssetLibrary_Flag */
@@ -649,8 +650,8 @@ typedef struct bUserExtensionRepo {
    * The "local" directory where extensions are stored.
    * When unset, use `{BLENDER_USER_EXTENSIONS}/{bUserExtensionRepo::module}`.
    */
-  char custom_dirpath[1024]; /* FILE_MAX */
-  char remote_url[1024];     /* FILE_MAX */
+  char custom_dirpath[FILE_MAX]; /* FILE_MAX */
+  char remote_url[FILE_MAX];     /* FILE_MAX */
 
   /** Options for the repository (#eUserExtensionRepo_Flag). */
   uint8_t flag;
@@ -821,7 +822,7 @@ typedef struct UserDef {
   char tempdir[768];
   char fontdir[768];
   /** FILE_MAX length. */
-  char renderdir[1024];
+  char renderdir[FILE_MAX];
   /* EXR cache path */
   /** 768 = FILE_MAXDIR. */
   char render_cachedir[768];
@@ -831,12 +832,12 @@ typedef struct UserDef {
   char sounddir[768];
   char i18ndir[768];
   /** 1024 = FILE_MAX. */
-  char image_editor[1024];
+  char image_editor[FILE_MAX];
   /** 1024 = FILE_MAX. */
-  char text_editor[1024];
+  char text_editor[FILE_MAX];
   char text_editor_args[256];
   /** 1024 = FILE_MAX. */
-  char anim_player[1024];
+  char anim_player[FILE_MAX];
   int anim_player_preset;
 
   /** Minimum spacing between grid-lines in View2D grids. */
@@ -1075,8 +1076,8 @@ typedef struct UserDef {
   char drag_threshold;
   char move_threshold;
 
-  char font_path_ui[1024];
-  char font_path_ui_mono[1024];
+  char font_path_ui[FILE_MAX];
+  char font_path_ui_mono[FILE_MAX];
 
   /** Legacy, for backwards compatibility only. */
   int compute_device_type;
@@ -1110,7 +1111,7 @@ typedef struct UserDef {
   char render_display_type;      /* eUserpref_RenderDisplayType */
   char filebrowser_display_type; /* eUserpref_TempSpaceDisplayType */
 
-  char sequencer_disk_cache_dir[1024];
+  char sequencer_disk_cache_dir[FILE_MAX];
   int sequencer_disk_cache_compression; /* eUserpref_DiskCacheCompression */
   int sequencer_disk_cache_size_limit;
   short sequencer_disk_cache_flag;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_defs.h"
 
 struct PackedFile;
 
@@ -44,7 +45,7 @@ typedef struct Volume {
   struct AnimData *adt; /* animation data (must be immediately after id) */
 
   /* File */
-  char filepath[1024]; /* FILE_MAX */
+  char filepath[FILE_MAX]; /* FILE_MAX */
   struct PackedFile *packedfile;
 
   /* Sequence */

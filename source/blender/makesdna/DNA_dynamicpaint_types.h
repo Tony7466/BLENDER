@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 
 struct PaintSurfaceData;
@@ -130,7 +131,7 @@ typedef struct DynamicPaintSurface {
   /** MAX_CUSTOMDATA_LAYER_NAME. */
   char uvlayer_name[68];
   /** 1024 = FILE_MAX. */
-  char image_output_path[1024];
+  char image_output_path[FILE_MAX];
   /** MAX_CUSTOMDATA_LAYER_NAME. */
   char output_name[68];
   /** MAX_CUSTOMDATA_LAYER_NAME */ /* some surfaces have 2 outputs. */

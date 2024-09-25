@@ -20,7 +20,7 @@ typedef struct bSound {
    * The path to the sound file.
    */
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   /**
    * The packed file.

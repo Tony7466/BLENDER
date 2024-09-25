@@ -12,6 +12,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_defs.h"
 
 struct PackedFile;
 struct VFontData;
@@ -20,7 +21,7 @@ typedef struct VFont {
   ID id;
 
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   struct VFontData *data;
   struct PackedFile *packedfile;

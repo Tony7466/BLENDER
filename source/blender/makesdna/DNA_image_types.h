@@ -57,7 +57,7 @@ typedef struct ImageView {
   /** MAX_NAME. */
   char name[64];
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } ImageView;
 
 typedef struct ImagePackedFile {
@@ -69,7 +69,7 @@ typedef struct ImagePackedFile {
   int view;
   int tile_number;
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } ImagePackedFile;
 
 typedef struct RenderSlot {
@@ -149,7 +149,7 @@ typedef struct Image {
   DrawDataList drawdata;
 
   /** File path, 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   /** Not written in file. */
   struct MovieCache *cache;

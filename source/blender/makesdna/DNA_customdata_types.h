@@ -49,7 +49,7 @@ typedef struct CustomDataLayer {
 
 typedef struct CustomDataExternal {
   /** FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } CustomDataExternal;
 
 /**

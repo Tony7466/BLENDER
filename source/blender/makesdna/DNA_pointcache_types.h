@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 
 /**
@@ -103,7 +104,7 @@ typedef struct PointCache {
   char prev_name[64];
   char info[128];
   /** File path, 1024 = FILE_MAX. */
-  char path[1024];
+  char path[FILE_MAX];
 
   /**
    * Array of length `endframe - startframe + 1` with flags to indicate cached frames.

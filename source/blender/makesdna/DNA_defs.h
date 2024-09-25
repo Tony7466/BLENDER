@@ -10,6 +10,10 @@
 
 #pragma once
 
+#ifndef FILE_MAX
+#  define FILE_MAX 1024
+#endif
+
 /* `makesdna` ignores. */
 #ifdef DNA_DEPRECATED_ALLOW
 /* allow use of deprecated items */

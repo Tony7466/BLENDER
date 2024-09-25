@@ -11,6 +11,7 @@
 #include "BLI_utildefines.h"
 
 #include "DNA_defs.h"
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_packedFile_types.h"
 #include "DNA_session_uid_types.h"
@@ -1475,7 +1476,7 @@ typedef struct OceanModifierData {
   int bakeend;
 
   /** FILE_MAX. */
-  char cachepath[1024];
+  char cachepath[FILE_MAX];
   /** MAX_CUSTOMDATA_LAYER_NAME. */
   char foamlayername[68];
   char spraylayername[68];
@@ -2067,7 +2068,7 @@ typedef struct MeshCacheModifierData {
   float eval_factor;
 
   /** FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } MeshCacheModifierData;
 
 /** #MeshCacheModifierData.flag */
@@ -2262,7 +2263,7 @@ typedef struct MeshSeqCacheModifierData {
 
   struct CacheFile *cache_file;
   /** 1024 = FILE_MAX. */
-  char object_path[1024];
+  char object_path[FILE_MAX];
 
   char read_flag;
   char _pad[3];
@@ -2271,7 +2272,7 @@ typedef struct MeshSeqCacheModifierData {
 
   /* Runtime. */
   struct CacheReader *reader;
-  char reader_object_path[1024];
+  char reader_object_path[FILE_MAX];
 } MeshSeqCacheModifierData;
 
 /** #MeshSeqCacheModifierData.read_flag */

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
@@ -925,7 +926,7 @@ typedef struct bNodeSocketValueString {
   int subtype;
   char _pad[4];
   /** 1024 = FILEMAX. */
-  char value[1024];
+  char value[FILE_MAX];
 } bNodeSocketValueString;
 
 typedef struct bNodeSocketValueObject {
@@ -1133,7 +1134,7 @@ typedef struct NodeHueSat {
 
 typedef struct NodeImageFile {
   /** 1024 = FILE_MAX. */
-  char name[1024];
+  char name[FILE_MAX];
   struct ImageFormatData im_format;
   int sfra, efra;
 } NodeImageFile;
@@ -1143,7 +1144,7 @@ typedef struct NodeImageFile {
  */
 typedef struct NodeImageMultiFile {
   /** 1024 = FILE_MAX. */
-  char base_path[1024];
+  char base_path[FILE_MAX];
   ImageFormatData format;
   /** XXX old frame rand values from NodeImageFile for forward compatibility. */
   int sfra DNA_DEPRECATED, efra DNA_DEPRECATED;
@@ -1160,7 +1161,7 @@ typedef struct NodeImageMultiFileSocket {
   char save_as_render;
   char _pad1[3];
   /** 1024 = FILE_MAX. */
-  char path[1024];
+  char path[FILE_MAX];
   ImageFormatData format;
 
   /* Multi-layer output. */
@@ -1471,7 +1472,7 @@ typedef struct NodeShaderScript {
   int flag;
 
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   char bytecode_hash[64];
   char *bytecode;
@@ -1500,7 +1501,7 @@ typedef struct NodeShaderTexIES {
   int mode;
 
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 } NodeShaderTexIES;
 
 typedef struct NodeShaderOutputAOV {

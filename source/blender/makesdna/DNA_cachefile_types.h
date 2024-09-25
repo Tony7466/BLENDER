@@ -9,6 +9,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_defs.h"
 
 struct GSet;
 
@@ -47,7 +48,7 @@ typedef struct CacheFileLayer {
   struct CacheFileLayer *next, *prev;
 
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
   int flag;
   int _pad;
 } CacheFileLayer;
@@ -69,7 +70,7 @@ typedef struct CacheFile {
   ListBase layers;
 
   /** 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   char is_sequence;
   char forward_axis;
@@ -116,6 +117,6 @@ typedef struct CacheFile {
 
   /* Runtime */
   struct CacheArchiveHandle *handle;
-  char handle_filepath[1024];
+  char handle_filepath[FILE_MAX];
   struct GSet *handle_readers;
 } CacheFile;

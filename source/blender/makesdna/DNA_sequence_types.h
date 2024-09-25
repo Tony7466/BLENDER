@@ -336,11 +336,11 @@ typedef struct Editing {
   /* Context vars, used to be static */
   Sequence *act_seq;
   /** 1024 = FILE_MAX. */
-  char act_imagedir[1024];
+  char act_imagedir[FILE_MAX];
   /** 1024 = FILE_MAX. */
-  char act_sounddir[1024];
+  char act_sounddir[FILE_MAX];
   /** 1024 = FILE_MAX. */
-  char proxy_dir[1024];
+  char proxy_dir[FILE_MAX];
 
   int proxy_storage;
 

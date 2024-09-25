@@ -10,6 +10,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_color_types.h"    /* for color management */
+#include "DNA_defs.h"
 #include "DNA_tracking_types.h" /* for #MovieTracking */
 
 struct AnimData;
@@ -63,7 +64,7 @@ typedef struct MovieClip {
   DrawDataList drawdata;
 
   /** File path, 1024 = FILE_MAX. */
-  char filepath[1024];
+  char filepath[FILE_MAX];
 
   /** Sequence or movie. */
   int source;
