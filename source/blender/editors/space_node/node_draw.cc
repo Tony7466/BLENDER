@@ -3337,6 +3337,36 @@ static void node_draw_extra_info_panel(const bContext &C,
   }
 }
 
+static short get_shortcut_icon(const bNode &node)
+{
+  switch (node.shortcut) {
+    case NODE_SHORTCUT_NONE:
+      /* No change by default. */
+      return node.typeinfo->ui_icon;
+    case NODE_SHORCTUT_SLOT_1:
+      return ICON_EVENT_NDOF_BUTTON_1;
+    case NODE_SHORCTUT_SLOT_2:
+      return ICON_EVENT_NDOF_BUTTON_2;
+    case NODE_SHORCTUT_SLOT_3:
+      return ICON_EVENT_NDOF_BUTTON_3;
+    case NODE_SHORCTUT_SLOT_4:
+      return ICON_EVENT_NDOF_BUTTON_4;
+    case NODE_SHORCTUT_SLOT_5:
+      return ICON_EVENT_NDOF_BUTTON_5;
+    case NODE_SHORCTUT_SLOT_6:
+      return ICON_EVENT_NDOF_BUTTON_6;
+    case NODE_SHORCTUT_SLOT_7:
+      return ICON_EVENT_NDOF_BUTTON_7;
+    case NODE_SHORCTUT_SLOT_8:
+      return ICON_EVENT_NDOF_BUTTON_8;
+    case NODE_SHORCTUT_SLOT_9:
+      return ICON_EVENT_NDOF_BUTTON_9;
+  }
+
+  BLI_assert_unreachable();
+  return -1;
+}
+
 static void node_draw_basis(const bContext &C,
                             TreeDrawContext &tree_draw_ctx,
                             const View2D &v2d,
@@ -3519,6 +3549,25 @@ static void node_draw_basis(const bContext &C,
     const char *operator_idname = is_active ? "NODE_OT_deactivate_viewer" : "NODE_OT_select";
     UI_but_func_set(
         but, node_toggle_button_cb, POINTER_FROM_INT(node.identifier), (void *)operator_idname);
+    UI_block_emboss_set(&block, UI_EMBOSS);
+  }
+  /* Viewer node shortcuts. */
+  if (node.type == CMP_NODE_VIEWER) {
+    short shortcut_icon = get_shortcut_icon(node);
+    iconofs -= iconbutw;
+    UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+    uiDefIconBut(&block,
+                 UI_BTYPE_BUT,
+                 0,
+                 shortcut_icon,
+                 iconofs,
+                 rct.ymax - NODE_DY,
+                 iconbutw,
+                 UI_UNIT_Y,
+                 nullptr,
+                 0,
+                 0,
+                 "");
     UI_block_emboss_set(&block, UI_EMBOSS);
   }
 

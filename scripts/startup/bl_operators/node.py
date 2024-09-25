@@ -403,7 +403,7 @@ class NODE_OT_fast_preview(Operator):
 
     update_map: BoolProperty(default=False)
     viewer_index: IntProperty()
-    NO_SHORTCUT_SET = 0
+    NODE_SHORTCUT_NONE = 0
     __nodes: None
     __links: None
 
@@ -449,7 +449,7 @@ class NODE_OT_fast_preview(Operator):
             # reset node with exisiting shortcut
             old_fav_node = self.__get_node_with_shortcut(context, self.viewer_index)
             if old_fav_node:
-                old_fav_node.ui_shortcut = self.NO_SHORTCUT_SET
+                old_fav_node.ui_shortcut = self.NODE_SHORTCUT_NONE
 
             fav_node = selected_nodes[0]
 
@@ -466,6 +466,7 @@ class NODE_OT_fast_preview(Operator):
                 viewer_node.location = fav_node.location
                 viewer_node.location.x += fav_node.width + 50
 
+            self.__nodes.active = viewer_node
             viewer_node.ui_shortcut = self.viewer_index
             self.report({'INFO'}, "Set viewer %s to shortcut %i" % (viewer_node.name, self.viewer_index))
 
