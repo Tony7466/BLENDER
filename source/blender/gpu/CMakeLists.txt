@@ -30,7 +30,6 @@ set(INC
   ../nodes
 
   # For shader includes
-  intern/shaders
   shaders/common
   shaders
 
