@@ -116,7 +116,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto multiply_fn = mf::build::SI2_SO<int, int, int>(
       "Multiply", [](int a, int b) { return a * b; }, exec_preset);
   static auto divide_fn = mf::build::SI2_SO<int, int, int>(
-      "Divide", [](int a, int b) { return (b != 0) ? a / b : 0; }, exec_preset);
+      "Divide", [](int a, int b) { return math::safe_divide(a, b); }, exec_preset);
   static auto divide_floor_fn = mf::build::SI2_SO<int, int, int>(
       "Divide Floor",
       [](int a, int b) { return (b != 0) ? divide_floor_i(a, b) : 0; },
