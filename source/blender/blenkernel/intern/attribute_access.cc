@@ -997,25 +997,24 @@ void copy_attributes_group_to_group(const AttributeAccessor src_attributes,
   if (selection.is_empty()) {
     return;
   }
-  src_attributes.for_all([&](const StringRef id, const AttributeMetaData meta_data) {
-    if (meta_data.domain != src_domain) {
-      return true;
+  src_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
+    if (attr_iter.domain != src_domain) {
+      return;
     }
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
+    if (attr_iter.data_type == CD_PROP_STRING) {
+      return;
     }
-    if (attribute_filter.allow_skip(id)) {
-      return true;
+    if (attribute_filter.allow_skip(attr_iter.name)) {
+      return;
     }
-    const GVArraySpan src = *src_attributes.lookup(id, src_domain);
+    const GVArraySpan src = *attr_iter.get(src_domain);
     GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, dst_domain, meta_data.data_type);
+        attr_iter.name, dst_domain, attr_iter.data_type);
     if (!dst) {
-      return true;
+      return;
     }
     array_utils::copy_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
     dst.finish();
-    return true;
   });
 }
 
