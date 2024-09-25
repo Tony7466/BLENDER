@@ -610,7 +610,6 @@ static std::optional<int> find_edge_duplicate(const GroupedSpan<int> vert_to_edg
  */
 static int calc_new_edges(const Mesh &src_mesh,
                           const Span<int2> src_edges,
-                          const GroupedSpan<int> vert_to_edge,
                           const IndexRange new_edges_range,
                           MutableSpan<int2> edges,
                           MutableSpan<int> corner_edges)
@@ -618,6 +617,12 @@ static int calc_new_edges(const Mesh &src_mesh,
   if (src_mesh.no_overlapping_topology()) {
     return edges.size();
   }
+
+  Array<int> vert_to_edge_offsets;
+  Array<int> vert_to_edge_indices;
+  const GroupedSpan<int> vert_to_edge = bke::mesh::build_vert_to_edge_map(
+      src_edges, src_mesh.verts_num, vert_to_edge_offsets, vert_to_edge_indices);
+
   const Span<int2> new_edges = edges.slice(new_edges_range);
   Array<int> duplicate_remap(new_edges.size());
   threading::parallel_for(new_edges.index_range(), 1024, [&](const IndexRange range) {
@@ -799,21 +804,10 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
                      corner_edges.slice(quad_corners_range));
   }
 
-  {
-    Array<int> vert_to_edge_offsets;
-    Array<int> vert_to_edge_indices;
-    const GroupedSpan<int> src_vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
-        src_edges, src_mesh.verts_num, vert_to_edge_offsets, vert_to_edge_indices);
+  mesh->edges_num = deduplication::calc_new_edges(
+      src_mesh, src_edges, tri_edges_range, edges_with_duplicates, corner_edges);
 
-    mesh->edges_num = deduplication::calc_new_edges(src_mesh,
-                                                    src_edges,
-                                                    src_vert_to_edge_map,
-                                                    tri_edges_range,
-                                                    edges_with_duplicates,
-                                                    corner_edges);
-
-    edges_with_duplicates.take_front(src_edges.size()).copy_from(src_edges);
-  }
+  edges_with_duplicates.take_front(src_edges.size()).copy_from(src_edges);
 
   /* Vertex attributes are totally unnaffected and can be shared with implicit sharing.
    * Use the #CustomData API for simpler support for vertex groups. */
@@ -833,7 +827,6 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
     new_data.type().fill_construct_n(default_value, new_data.data(), new_data.size());
     attribute.dst.finish();
   }
-
   if (CustomData_has_layer(&src_mesh.edge_data, CD_ORIGINDEX)) {
     const Span src(
         static_cast<const int *>(CustomData_get_layer(&src_mesh.edge_data, CD_ORIGINDEX)),
@@ -854,7 +847,6 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
     array_utils::gather(attribute.src, unselected, attribute.dst.span.slice(unselected_range));
     attribute.dst.finish();
   }
-
   if (CustomData_has_layer(&src_mesh.face_data, CD_ORIGINDEX)) {
     const Span src(
         static_cast<const int *>(CustomData_get_layer(&src_mesh.face_data, CD_ORIGINDEX)),
