@@ -604,6 +604,11 @@ static void *read_file_data(const char *filepath, int *r_len)
   return data;
 }
 
+struct CustomTypes {
+  blender::Vector<std::tuple<std::string, std::string>> enums;
+  blender::Vector<std::tuple<std::string, int>> ints;
+};
+
 using namespace blender::dna::parser::ast;
 
 struct StrucMemberRegister {
@@ -612,6 +617,8 @@ struct StrucMemberRegister {
   short *structpoin = nullptr;
   short *sp = nullptr;
   const char *filepath = nullptr;
+
+  CustomTypes &types;
 
   std::optional<int> add_member_type(std::string_view type)
   {
@@ -679,7 +686,13 @@ struct StrucMemberRegister {
 
   bool operator()(const Variable &var)
   {
-    std::optional<int> type = add_member_type(var.type);
+    /* Check fisrt if type is a enum type. */
+    auto enum_type = std::find_if(
+        types.enums.begin(), types.enums.end(), [var](const auto &enum_type) {
+          return std::get<0>(enum_type) == var.type;
+        });
+    std::optional<int> type = add_member_type(
+        enum_type < types.enums.end() ? std::get<1>(*enum_type) : var.type);
     if (!type.has_value()) {
       return false;
     }
@@ -687,9 +700,13 @@ struct StrucMemberRegister {
       std::string name_str = fmt::format("{}{}", var_item.ptr.value_or(""), var_item.name);
       for (auto &size : var_item.array_size) {
         if (std::holds_alternative<std::string_view>(size)) {
-          /* TODO: Add support to looking through detected #defines to find const int values. */
-          BLI_assert_unreachable();
-          return false;
+          std::string_view size_str = std::get<std::string_view>(size);
+          auto int_type = std::find_if(
+              types.ints.begin(), types.ints.end(), [size_str](const auto &int_type) {
+                return std::get<0>(int_type) == size_str;
+              });
+          BLI_assert(int_type < types.ints.end());
+          name_str += fmt::format("[{}]", std::get<1>(*int_type));
         }
         else {
           name_str += fmt::format("[{}]", std::get<int32_t>(size));
@@ -710,10 +727,22 @@ static int convert_include(const char *filepath)
   if (!cpp_file.has_value()) {
     return 0;
   };
-
+  CustomTypes types;
+  types.ints.append({"FILE_MAX", 1024}); /* Shared `#define` in `DNA_defs.h`. */
   /* Generate DNA. */
   for (auto &cpp_def : cpp_file.value().cpp_defs) {
-    if (!std::holds_alternative<Struct>(cpp_def)) {
+    if (std::holds_alternative<DefineInt>(cpp_def)) {
+      const DefineInt &int_def = std::get<DefineInt>(cpp_def);
+      types.ints.append(std::tuple<std::string, int>{int_def.name, int_def.value});
+      continue;
+    }
+    else if (std::holds_alternative<Enum>(cpp_def)) {
+      const Enum &enum_def = std::get<Enum>(cpp_def);
+      types.enums.append(
+          std::tuple<std::string, std::string>{enum_def.name.value(), enum_def.type.value()});
+      continue;
+    }
+    else if (!std::holds_alternative<Struct>(cpp_def)) {
       continue;
     }
     const Struct &struct_def = std::get<Struct>(cpp_def);
@@ -727,7 +756,7 @@ static int convert_include(const char *filepath)
       return 1;
     }
     short *structpoin = add_struct(strct);
-    StrucMemberRegister member_register{strct, structpoin, structpoin + 2, filepath};
+    StrucMemberRegister member_register{strct, structpoin, structpoin + 2, filepath, types};
     /* Register struct members. */
     for (auto &item : struct_def.items) {
       if (!std::visit(member_register, item)) {
