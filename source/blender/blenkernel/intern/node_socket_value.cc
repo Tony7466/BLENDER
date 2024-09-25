@@ -67,7 +67,7 @@ template<typename T> static std::optional<eNodeSocketDatatype> static_type_to_so
  * Check if a socket type stores the static C++ type.
  */
 template<typename T>
-static bool is_socket_type_value(const eNodeSocketDatatype socket_type)
+static bool static_type_is_base_socket_type(const eNodeSocketDatatype socket_type)
 {
   switch (socket_type) {
     case SOCK_INT:
@@ -125,7 +125,7 @@ template<typename T> T SocketValueVariant::extract()
     }
   }
   else if constexpr (fn::is_field_v<T>) {
-    BLI_assert(is_socket_type_value<typename T::base_type>(socket_type_));
+    BLI_assert(static_type_is_base_socket_type<typename T::base_type>(socket_type_));
     return T(this->extract<fn::GField>());
   }
 #ifdef WITH_OPENVDB
@@ -148,12 +148,12 @@ template<typename T> T SocketValueVariant::extract()
     }
   }
   else if constexpr (is_VolumeGrid_v<T>) {
-    BLI_assert(is_socket_type_value<typename T::base_type>(socket_type_));
+    BLI_assert(static_type_is_base_socket_type<typename T::base_type>(socket_type_));
     return this->extract<GVolumeGrid>().typed<typename T::base_type>();
   }
 #endif
   else {
-    BLI_assert(is_socket_type_value<T>(socket_type_));
+    BLI_assert(static_type_is_base_socket_type<T>(socket_type_));
     if (kind_ == Kind::Single) {
       return std::move(value_.get<T>());
     }
