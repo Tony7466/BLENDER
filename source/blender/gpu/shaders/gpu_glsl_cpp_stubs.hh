@@ -657,26 +657,34 @@ bool is_zero(vec4) RET;
 /** \name Special Variables
  * \{ */
 
-/* Vertex Shader Special Variables. */
+namespace gl_VertexShader {
+
 const int gl_VertexID = 0;
 const int gl_InstanceID = 0;
 const int gl_BaseVertex = 0;
 const int gl_BaseInstance = 0;
 float4 gl_Position = float4(0);
 double gl_PointSize = 0;
-/* Fragment Shader Special Variables. */
+float gl_ClipDistance[6] = {0};
+int gpu_Layer = 0;
+int gpu_ViewportIndex = 0;
+
+}  // namespace gl_VertexShader
+
+namespace gl_FragmentShader {
+
 const float4 gl_FragCoord = float4(0);
 const bool gl_FrontFacing = true;
 const float2 gl_PointCoord = float2(0);
 const int gl_PrimitiveID = 0;
 float gl_FragDepth = 0;
-/* Read-only in Fragment Shader and write-only in vertex shader. */
-float gl_ClipDistance[6] = {0};
-/* Note: Use GPU variant as they might be emulated. */
-int gpu_Layer = 0;
-int gpu_ViewportIndex = 0;
+const float gl_ClipDistance[6] = {0};
+const int gpu_Layer = 0;
+const int gpu_ViewportIndex = 0;
 
-/* Compute Shader Special Variables */
+}  // namespace gl_FragmentShader
+
+namespace gl_ComputeShader {
 
 const uint3 gl_NumWorkGroups;
 constexpr uint3 gl_WorkGroupSize;
@@ -684,6 +692,8 @@ const uint3 gl_WorkGroupID;
 const uint3 gl_LocalInvocationID;
 const uint3 gl_GlobalInvocationID;
 const uint gl_LocalInvocationIndex;
+
+}  // namespace gl_ComputeShader
 
 /** \} */
 
