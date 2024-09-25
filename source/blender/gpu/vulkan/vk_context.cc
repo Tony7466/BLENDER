@@ -30,17 +30,18 @@ VKContext::VKContext(void *ghost_window, void *ghost_context, VKThreadData &thre
   state_manager = new VKStateManager();
   imm = new VKImmediate();
 
-  /* For off-screen contexts. Default frame-buffer is empty. */
-  VKFrameBuffer *framebuffer = new VKFrameBuffer("back_left");
-  back_left = framebuffer;
-  active_fb = framebuffer;
+  back_left = new VKFrameBuffer("back_left");
+  front_left = new VKFrameBuffer("front_left");
+  active_fb = back_left;
 
-  compiler = new ShaderCompilerGeneric();
+  compiler = &VKBackend::get().shader_compiler;
 }
 
 VKContext::~VKContext()
 {
   if (surface_texture_) {
+    back_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
+    front_left->attachment_remove(GPU_FB_COLOR_ATTACHMENT0);
     GPU_texture_free(surface_texture_);
     surface_texture_ = nullptr;
   }
@@ -49,26 +50,17 @@ VKContext::~VKContext()
   delete imm;
   imm = nullptr;
 
-  delete compiler;
+  compiler = nullptr;
 }
 
 void VKContext::sync_backbuffer()
 {
   VKDevice &device = VKBackend::get().device;
-  if (ghost_context_) {
-    if (!is_init_) {
-      is_init_ = true;
-      device.init_dummy_buffer(*this);
-    }
-  }
-
   if (ghost_window_) {
     GHOST_VulkanSwapChainData swap_chain_data = {};
     GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
-    if (assign_if_different(thread_data_.current_swap_chain_index,
-                            swap_chain_data.swap_chain_index))
-    {
-      thread_data_.current_swap_chain_index = swap_chain_data.swap_chain_index;
+    if (assign_if_different(thread_data_.resource_pool_index, swap_chain_data.swap_chain_index)) {
+      thread_data_.resource_pool_index = swap_chain_data.swap_chain_index;
       VKResourcePool &resource_pool = thread_data_.resource_pool_get();
       resource_pool.discard_pool.destroy_discarded_resources(device);
       resource_pool.reset();
@@ -96,6 +88,8 @@ void VKContext::sync_backbuffer()
 
       back_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
                                 GPU_ATTACHMENT_TEXTURE(surface_texture_));
+      front_left->attachment_set(GPU_FB_COLOR_ATTACHMENT0,
+                                 GPU_ATTACHMENT_TEXTURE(surface_texture_));
 
       back_left->bind(false);
 
@@ -124,6 +118,7 @@ void VKContext::activate()
 
 void VKContext::deactivate()
 {
+  rendering_end();
   immDeactivate();
   is_active_ = false;
 }
@@ -240,7 +235,6 @@ void VKContext::update_pipeline_data(GPUPrimType primitive,
                                      render_graph::VKPipelineData &r_pipeline_data)
 {
   VKShader &vk_shader = unwrap(*shader);
-  BLI_assert(vk_shader.is_graphics_shader());
   VKFrameBuffer &framebuffer = *active_framebuffer_get();
   update_pipeline_data(
       vk_shader,
@@ -251,7 +245,6 @@ void VKContext::update_pipeline_data(GPUPrimType primitive,
 void VKContext::update_pipeline_data(render_graph::VKPipelineData &r_pipeline_data)
 {
   VKShader &vk_shader = unwrap(*shader);
-  BLI_assert(vk_shader.is_compute_shader());
   update_pipeline_data(vk_shader, vk_shader.ensure_and_get_compute_pipeline(), r_pipeline_data);
 }
 

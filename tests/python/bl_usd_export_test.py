@@ -132,18 +132,68 @@ class USDExportTest(AbstractUSDTest):
             Gf.Vec3d(extent[1]), Gf.Vec3d(0.7515701, 0.5500924, 0.9027928)
         )
 
-    def test_opacity_threshold(self):
-        # Note that the scene file used here is shared with a different test.
-        # Here we assume that it has a Principled BSDF material with
-        # a texture connected to its Base Color input.
-        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+    def test_material_transforms(self):
+        """Validate correct export of image mapping parameters to the UsdTransform2d shader def"""
 
-        export_path = self.tempdir / "opaque_material.usda"
-        res = bpy.ops.wm.usd_export(
-            filepath=str(export_path),
-            export_materials=True,
-            evaluation_mode="RENDER",
-        )
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_transforms.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        # Inspect the UsdTransform2d prim on the "Transforms" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/Transforms/Mapping")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdTransform2d")
+        input_trans = shader.GetInput('translation')
+        input_rot = shader.GetInput('rotation')
+        input_scale = shader.GetInput('scale')
+        self.assertEqual(input_trans.Get(), [0.75, 0.75])
+        self.assertEqual(input_rot.Get(), 180)
+        self.assertEqual(input_scale.Get(), [0.5, 0.5])
+
+    def test_material_normal_maps(self):
+        """Validate correct export of typical normal map setups to the UsdUVTexture shader def.
+        Namely validate that scale, bias, and ColorSpace settings are correct"""
+
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_normalmaps.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
+        self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
+
+        # Inspect the UsdUVTexture prim on the "typical" "NormalMap" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/NormalMap/Image_Texture")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdUVTexture")
+        input_scale = shader.GetInput('scale')
+        input_bias = shader.GetInput('bias')
+        input_colorspace = shader.GetInput('sourceColorSpace')
+        self.assertEqual(input_scale.Get(), [2, 2, 2, 2])
+        self.assertEqual(input_bias.Get(), [-1, -1, -1, -1])
+        self.assertEqual(input_colorspace.Get(), 'raw')
+
+        # Inspect the UsdUVTexture prim on the "inverted" "NormalMap_Scale_Bias" material
+        stage = Usd.Stage.Open(str(export_path))
+        shader_prim = stage.GetPrimAtPath("/root/_materials/NormalMap_Scale_Bias/Image_Texture")
+        shader = UsdShade.Shader(shader_prim)
+        self.assertEqual(shader.GetIdAttr().Get(), "UsdUVTexture")
+        input_scale = shader.GetInput('scale')
+        input_bias = shader.GetInput('bias')
+        input_colorspace = shader.GetInput('sourceColorSpace')
+        self.assertEqual(input_scale.Get(), [2, -2, 2, 1])
+        self.assertEqual(input_bias.Get(), [-1, 1, -1, 0])
+        self.assertEqual(input_colorspace.Get(), 'raw')
+
+    def test_material_opacity_threshold(self):
+        """Validate correct export of opacity and opacity_threshold parameters to the UsdPreviewSurface shader def"""
+
+        # Use the common materials .blend file
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "usd_materials_export.blend"))
+        export_path = self.tempdir / "material_opacities.usda"
+        res = bpy.ops.wm.usd_export(filepath=str(export_path), export_materials=True)
         self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         # Inspect and validate the exported USD for the opaque blend case.
@@ -220,8 +270,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "f_int8", "VtArray<unsigned char>", "uniform", 1)
         self.check_primvar(prim, "f_int32", "VtArray<int>", "uniform", 1)
         self.check_primvar(prim, "f_float", "VtArray<float>", "uniform", 1)
-        self.check_primvar_missing(prim, "f_color")
-        self.check_primvar_missing(prim, "f_byte_color")
+        self.check_primvar(prim, "f_color", "VtArray<GfVec4f>", "uniform", 1)
+        self.check_primvar(prim, "f_byte_color", "VtArray<GfVec4f>", "uniform", 1)
         self.check_primvar(prim, "f_vec2", "VtArray<GfVec2f>", "uniform", 1)
         self.check_primvar(prim, "f_vec3", "VtArray<GfVec3f>", "uniform", 1)
         self.check_primvar(prim, "f_quat", "VtArray<GfQuatf>", "uniform", 1)
@@ -244,8 +294,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "vertex", 24)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "vertex", 24)
         self.check_primvar(prim, "p_float", "VtArray<float>", "vertex", 24)
-        self.check_primvar_missing(prim, "p_color")
-        self.check_primvar_missing(prim, "p_byte_color")
+        self.check_primvar(prim, "p_color", "VtArray<GfVec4f>", "vertex", 24)
+        self.check_primvar(prim, "p_byte_color", "VtArray<GfVec4f>", "vertex", 24)
         self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "vertex", 24)
         self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "vertex", 24)
         self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "vertex", 24)
@@ -255,8 +305,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 2)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 2)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 2)
-        self.check_primvar_missing(prim, "sp_color")
-        self.check_primvar_missing(prim, "sp_byte_color")
+        self.check_primvar(prim, "sp_color", "VtArray<GfVec4f>", "uniform", 2)
+        self.check_primvar(prim, "sp_byte_color", "VtArray<GfVec4f>", "uniform", 2)
         self.check_primvar(prim, "sp_vec2", "VtArray<GfVec2f>", "uniform", 2)
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 2)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 2)
@@ -268,8 +318,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "p_int8", "VtArray<unsigned char>", "varying", 10)
         self.check_primvar(prim, "p_int32", "VtArray<int>", "varying", 10)
         self.check_primvar(prim, "p_float", "VtArray<float>", "varying", 10)
-        self.check_primvar_missing(prim, "p_color")
-        self.check_primvar_missing(prim, "p_byte_color")
+        self.check_primvar(prim, "p_color", "VtArray<GfVec4f>", "varying", 10)
+        self.check_primvar(prim, "p_byte_color", "VtArray<GfVec4f>", "varying", 10)
         self.check_primvar(prim, "p_vec2", "VtArray<GfVec2f>", "varying", 10)
         self.check_primvar(prim, "p_vec3", "VtArray<GfVec3f>", "varying", 10)
         self.check_primvar(prim, "p_quat", "VtArray<GfQuatf>", "varying", 10)
@@ -279,8 +329,8 @@ class USDExportTest(AbstractUSDTest):
         self.check_primvar(prim, "sp_int8", "VtArray<unsigned char>", "uniform", 3)
         self.check_primvar(prim, "sp_int32", "VtArray<int>", "uniform", 3)
         self.check_primvar(prim, "sp_float", "VtArray<float>", "uniform", 3)
-        self.check_primvar_missing(prim, "sp_color")
-        self.check_primvar_missing(prim, "sp_byte_color")
+        self.check_primvar(prim, "sp_color", "VtArray<GfVec4f>", "uniform", 3)
+        self.check_primvar(prim, "sp_byte_color", "VtArray<GfVec4f>", "uniform", 3)
         self.check_primvar(prim, "sp_vec2", "VtArray<GfVec2f>", "uniform", 3)
         self.check_primvar(prim, "sp_vec3", "VtArray<GfVec3f>", "uniform", 3)
         self.check_primvar(prim, "sp_quat", "VtArray<GfQuatf>", "uniform", 3)
@@ -298,6 +348,7 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to export to {export_path}")
 
         stage = Usd.Stage.Open(str(export_path))
+        sparse_frames = [4.0, 5.0, 8.0, 9.0, 12.0, 13.0]
 
         #
         # Validate Mesh data
@@ -305,8 +356,6 @@ class USDExportTest(AbstractUSDTest):
         mesh1 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh1/mesh1"))
         mesh2 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh2/mesh2"))
         mesh3 = UsdGeom.Mesh(stage.GetPrimAtPath("/root/mesh3/mesh3"))
-
-        sparse_frames = [4.0, 5.0, 8.0, 9.0, 12.0, 13.0]
 
         # Positions (should be sparsely written)
         self.assertEqual(mesh1.GetPointsAttr().GetTimeSamples(), sparse_frames)
@@ -320,6 +369,40 @@ class USDExportTest(AbstractUSDTest):
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh1).GetPrimvar("test").GetTimeSamples(), [])
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh2).GetPrimvar("test").GetTimeSamples(), [])
         self.assertEqual(UsdGeom.PrimvarsAPI(mesh3).GetPrimvar("test").GetTimeSamples(), sparse_frames)
+
+        #
+        # Validate PointCloud data
+        #
+        points1 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud1/PointCloud"))
+        points2 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud2/PointCloud"))
+        points3 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud3/PointCloud"))
+        points4 = UsdGeom.Points(stage.GetPrimAtPath("/root/pointcloud4/PointCloud"))
+
+        # Positions (should be sparsely written)
+        self.assertEqual(points1.GetPointsAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points2.GetPointsAttr().GetTimeSamples(), [])
+        self.assertEqual(points3.GetPointsAttr().GetTimeSamples(), [])
+        self.assertEqual(points4.GetPointsAttr().GetTimeSamples(), [])
+        # Velocity (should be sparsely written)
+        self.assertEqual(points1.GetVelocitiesAttr().GetTimeSamples(), [])
+        self.assertEqual(points2.GetVelocitiesAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points3.GetVelocitiesAttr().GetTimeSamples(), [])
+        self.assertEqual(points4.GetVelocitiesAttr().GetTimeSamples(), [])
+        # Radius (should be sparsely written)
+        self.assertEqual(points1.GetWidthsAttr().GetTimeSamples(), [])
+        self.assertEqual(points2.GetWidthsAttr().GetTimeSamples(), [])
+        self.assertEqual(points3.GetWidthsAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(points4.GetWidthsAttr().GetTimeSamples(), [])
+        # Regular primvar (should be sparsely written)
+        self.assertEqual(UsdGeom.PrimvarsAPI(points1).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points2).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points3).GetPrimvar("test").GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.PrimvarsAPI(points4).GetPrimvar("test").GetTimeSamples(), sparse_frames)
+        # Extents of the point cloud (should be sparsely written)
+        self.assertEqual(UsdGeom.Boundable(points1).GetExtentAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(UsdGeom.Boundable(points2).GetExtentAttr().GetTimeSamples(), [])
+        self.assertEqual(UsdGeom.Boundable(points3).GetExtentAttr().GetTimeSamples(), sparse_frames)
+        self.assertEqual(UsdGeom.Boundable(points4).GetExtentAttr().GetTimeSamples(), [])
 
     def test_export_mesh_subd(self):
         """Test exporting Subdivision Surface attributes and values"""
@@ -617,6 +700,149 @@ class USDExportTest(AbstractUSDTest):
 
         shader_id = shader.GetIdAttr().Get()
         self.assertEqual(shader_id, "ND_standard_surface_surfaceshader", "Shader is not a Standard Surface")
+
+    def test_hooks(self):
+        """Validate USD Hook integration for both import and export"""
+
+        # Create a simple scene with 1 object and 1 material
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
+        material = bpy.data.materials.new(name="test_material")
+        material.use_nodes = True
+        bpy.ops.mesh.primitive_plane_add()
+        bpy.data.objects[0].data.materials.append(material)
+
+        # Register both USD hooks
+        bpy.utils.register_class(USDHook1)
+        bpy.utils.register_class(USDHook2)
+
+        # Instruct them to do various actions inside their implementation
+        USDHookBase.instructions = {
+            "on_material_export": ["return False", "return True"],
+            "on_export": ["throw", "return True"],
+            "on_import": ["throw", "return True"],
+        }
+
+        USDHookBase.responses = {
+            "on_material_export": [],
+            "on_export": [],
+            "on_import": [],
+        }
+
+        test_path = self.tempdir / "hook.usda"
+
+        try:
+            bpy.ops.wm.usd_export(filepath=str(test_path))
+        except:
+            pass
+
+        try:
+            bpy.ops.wm.usd_import(filepath=str(test_path))
+        except:
+            pass
+
+        # Unregister the hooks. We do this here in case the following asserts fail.
+        bpy.utils.unregister_class(USDHook1)
+        bpy.utils.unregister_class(USDHook2)
+
+        # Validate that the Hooks executed and responded accordingly...
+        self.assertEqual(USDHookBase.responses["on_material_export"], ["returned False", "returned True"])
+        self.assertEqual(USDHookBase.responses["on_export"], ["threw exception", "returned True"])
+        self.assertEqual(USDHookBase.responses["on_import"], ["threw exception", "returned True"])
+
+        # Now that the hooks are unregistered they should not be executed for import and export.
+        USDHookBase.responses = {
+            "on_material_export": [],
+            "on_export": [],
+            "on_import": [],
+        }
+        bpy.ops.wm.usd_export(filepath=str(test_path))
+        bpy.ops.wm.usd_import(filepath=str(test_path))
+        self.assertEqual(USDHookBase.responses["on_material_export"], [])
+        self.assertEqual(USDHookBase.responses["on_export"], [])
+        self.assertEqual(USDHookBase.responses["on_import"], [])
+
+
+class USDHookBase():
+    instructions = {}
+    responses = {}
+
+    @staticmethod
+    def follow_instructions(name, operation):
+        instruction = USDHookBase.instructions[operation].pop(0)
+        if instruction == "throw":
+            USDHookBase.responses[operation].append("threw exception")
+            raise RuntimeError(f"** {name} failing {operation} **")
+        elif instruction == "return False":
+            USDHookBase.responses[operation].append("returned False")
+            return False
+
+        USDHookBase.responses[operation].append("returned True")
+        return True
+
+    @staticmethod
+    def do_on_export(name, export_context):
+        stage = export_context.get_stage()
+        depsgraph = export_context.get_depsgraph()
+        if not stage.GetDefaultPrim().IsValid():
+            raise RuntimeError("Unexpected failure: bad stage")
+        if len(depsgraph.ids) == 0:
+            raise RuntimeError("Unexpected failure: bad depsgraph")
+
+        return USDHookBase.follow_instructions(name, "on_export")
+
+    @staticmethod
+    def do_on_material_export(name, export_context, bl_material, usd_material):
+        stage = export_context.get_stage()
+        if stage.expired:
+            raise RuntimeError("Unexpected failure: bad stage")
+        if not usd_material.GetPrim().IsValid():
+            raise RuntimeError("Unexpected failure: bad usd_material")
+        if bl_material is None:
+            raise RuntimeError("Unexpected failure: bad bl_material")
+
+        return USDHookBase.follow_instructions(name, "on_material_export")
+
+    @staticmethod
+    def do_on_import(name, import_context):
+        stage = import_context.get_stage()
+        if not stage.GetDefaultPrim().IsValid():
+            raise RuntimeError("Unexpected failure: bad stage")
+
+        return USDHookBase.follow_instructions(name, "on_import")
+
+
+class USDHook1(USDHookBase, bpy.types.USDHook):
+    bl_idname = "usd_hook_1"
+    bl_label = "Hook 1"
+
+    @staticmethod
+    def on_export(export_context):
+        return USDHookBase.do_on_export(USDHook1.bl_label, export_context)
+
+    @staticmethod
+    def on_material_export(export_context, bl_material, usd_material):
+        return USDHookBase.do_on_material_export(USDHook1.bl_label, export_context, bl_material, usd_material)
+
+    @staticmethod
+    def on_import(import_context):
+        return USDHookBase.do_on_import(USDHook1.bl_label, import_context)
+
+
+class USDHook2(USDHookBase, bpy.types.USDHook):
+    bl_idname = "usd_hook_2"
+    bl_label = "Hook 2"
+
+    @staticmethod
+    def on_export(export_context):
+        return USDHookBase.do_on_export(USDHook2.bl_label, export_context)
+
+    @staticmethod
+    def on_material_export(export_context, bl_material, usd_material):
+        return USDHookBase.do_on_material_export(USDHook2.bl_label, export_context, bl_material, usd_material)
+
+    @staticmethod
+    def on_import(import_context):
+        return USDHookBase.do_on_import(USDHook2.bl_label, import_context)
 
 
 def main():

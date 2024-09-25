@@ -30,6 +30,7 @@ static VKPushConstants::Layout::PushConstant init_constant(
   layout.type = push_constant.type;
   layout.array_size = push_constant.array_size;
   layout.offset = *r_offset;
+  layout.inner_row_padding = LayoutT::inner_row_padding(push_constant.type);
 
   reserve<LayoutT>(push_constant.type, push_constant.array_size, r_offset);
   return layout;
@@ -157,7 +158,11 @@ void VKPushConstants::update(VKContext &context)
 
     case VKPushConstants::StorageType::UNIFORM_BUFFER:
       update_uniform_buffer();
-      descriptor_set.bind(*uniform_buffer_get(), layout_get().descriptor_set_location_get());
+      const VKUniformBuffer &buffer = *uniform_buffer_get();
+      descriptor_set.bind_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                 buffer.vk_handle(),
+                                 buffer.size_in_bytes(),
+                                 layout_get().descriptor_set_location_get());
       break;
   }
 }

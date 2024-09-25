@@ -57,7 +57,6 @@ void VKImmediate::end()
   VKStateManager &state_manager = context.state_manager_get();
   state_manager.apply_state();
   vertex_attributes_.update_bindings(*this);
-  vertex_attributes_.ensure_vbos_uploaded();
   context.active_framebuffer_get()->rendering_ensure(context);
 
   render_graph::VKDrawNode::CreateInfo draw(resource_access_info);
@@ -87,7 +86,7 @@ VkDeviceSize VKImmediate::buffer_bytes_free()
 
 static VkDeviceSize new_buffer_size(size_t sub_buffer_size)
 {
-  return max_ii(sub_buffer_size, DEFAULT_INTERNAL_BUFFER_SIZE);
+  return max_ulul(sub_buffer_size, DEFAULT_INTERNAL_BUFFER_SIZE);
 }
 
 std::unique_ptr<VKBuffer> VKImmediate::create_resource(VKContext & /*context*/)

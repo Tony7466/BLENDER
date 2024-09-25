@@ -29,10 +29,6 @@
 class SeqQuadsBatch;
 struct ARegion;
 struct ARegionType;
-struct Depsgraph;
-struct wmGizmoGroupType;
-struct wmGizmoType;
-struct Main;
 struct Scene;
 struct SeqRetimingKey;
 struct Sequence;
@@ -52,11 +48,9 @@ struct ListBase;
 
 namespace blender::ed::seq {
 
+class StripsDrawBatch;
+
 struct SpaceSeq_Runtime : public NonCopyable {
-  /** Required for Thumbnail job start condition. */
-  rctf last_thumbnail_area = {0, 0, 0, 0};
-  /** Stores lists of most recently displayed thumbnails. */
-  GHash *last_displayed_thumbnails = nullptr;
   int rename_channel_index = 0;
   float timeline_clamp_custom_range = 0;
 
@@ -89,6 +83,8 @@ struct SeqChannelDrawContext {
 
 struct StripDrawContext {
   Sequence *seq;
+  const FCurve *curve = nullptr; /* Curve for overlay, if any (blend factor or volume). */
+
   /* Strip boundary in timeline space. Content start/end is clamped by left/right handle. */
   float content_start, content_end, bottom, top;
   float left_handle, right_handle; /* Position in frames. */
@@ -105,6 +101,7 @@ struct StripDrawContext {
   bool missing_data_block;
   bool missing_media;
   bool is_connected;
+  bool is_muted;
 };
 
 struct TimelineDrawContext {
@@ -162,17 +159,9 @@ ImBuf *sequencer_ibuf_get(const bContext *C,
 
 /* `sequencer_thumbnails.cc` */
 
-void last_displayed_thumbnails_list_free(void *val);
-void draw_seq_strip_thumbnail(View2D *v2d,
-                              const bContext *C,
-                              Scene *scene,
-                              Sequence *seq,
-                              float y1,
-                              float y2,
-                              float y_top,
-                              float pixelx,
-                              float pixely,
-                              float round_radius);
+void draw_strip_thumbnails(TimelineDrawContext *ctx,
+                           blender::ed::seq::StripsDrawBatch &strips_batch,
+                           const blender::Vector<StripDrawContext> &strips);
 
 /* sequencer_draw_channels.c */
 
@@ -191,7 +180,6 @@ int seq_effect_find_selected(Scene *scene,
                              int type,
                              Sequence **r_selseq1,
                              Sequence **r_selseq2,
-                             Sequence **r_selseq3,
                              const char **r_error_str);
 
 /* Operator helpers. */
