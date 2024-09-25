@@ -39,7 +39,7 @@ void main()
   resource_id = (resource_id & 0x7FFFFFFFu);
 
   ObjectBounds bounds = bounds_buf[resource_id];
-  if (!drw_bounds_culling_enabled(bounds)) {
+  if (!drw_bounds_are_valid(bounds)) {
     return;
   }
   IsectBox box = isect_box_setup(bounds.bounding_corners[0].xyz,

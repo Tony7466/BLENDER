@@ -31,7 +31,7 @@ void main()
     resource_id = (resource_id & 0x7FFFFFFFu);
 
     ObjectBounds bounds = bounds_buf[resource_id];
-    is_valid = drw_bounds_are_valid(bounds);
+    is_valid = drw_bounds_corners_are_valid(bounds);
     box = shape_box(bounds.bounding_corners[0].xyz,
                     bounds.bounding_corners[0].xyz + bounds.bounding_corners[1].xyz,
                     bounds.bounding_corners[0].xyz + bounds.bounding_corners[2].xyz,
