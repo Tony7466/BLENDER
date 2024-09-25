@@ -1065,6 +1065,28 @@ ccl_device_noinline void svm_node_closure_volume(KernelGlobals kg,
           sd->flag |= volume_draine_setup(volume);
         }
       } break;
+      case CLOSURE_VOLUME_MIE_ID: {
+        const float d = max(2.0f,
+                            stack_valid(param1_offset) ? stack_load_float(stack, param1_offset) :
+                                                         __uint_as_float(node.w));
+        const float g_hg = fast_expf(-0.0990567f / (d - 1.67154f));
+        const float g_d = fast_expf(-2.20679f / (d + 3.91029f) - 0.428934f);
+        const float alpha = fast_expf(3.62489f - 8.29288f / (d + 5.52825f));
+        const float mixture = fast_expf(-0.599085f / (d - 0.641583f) - 0.665888f);
+        ccl_private HenyeyGreensteinVolume *hg = (ccl_private HenyeyGreensteinVolume *)bsdf_alloc(
+            sd, sizeof(HenyeyGreensteinVolume), weight * (1.0f - mixture));
+        if (hg) {
+          hg->g = g_hg;
+          sd->flag |= volume_henyey_greenstein_setup(hg);
+        }
+        ccl_private DraineVolume *draine = (ccl_private DraineVolume *)bsdf_alloc(
+            sd, sizeof(DraineVolume), weight * mixture);
+        if (draine) {
+          draine->g = g_d;
+          draine->alpha = alpha;
+          sd->flag |= volume_draine_setup(draine);
+        }
+      } break;
     }
   }
 

@@ -4494,6 +4494,11 @@ static const EnumPropertyItem node_scatter_phase_items[] = {
      0,
      "Rayleigh",
      "Rayleigh phase function, mostly used for the scattering of light in the sky"},
+    {SHD_PHASE_MIE,
+     "MIE",
+     0,
+     "Mie",
+     "Approximation of Mie scattering in water droplets, used for scattering in clouds and fog"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 

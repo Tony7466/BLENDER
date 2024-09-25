@@ -841,6 +841,7 @@ class ScatterVolumeNode : public VolumeNode {
   NODE_SOCKET_API(float, IOR)
   NODE_SOCKET_API(float, B)
   NODE_SOCKET_API(float, alpha)
+  NODE_SOCKET_API(float, diameter)
   NODE_SOCKET_API(ClosureType, phase)
 };
 

@@ -736,6 +736,9 @@ static ShaderNode *add_node(Scene *scene,
       case BL::ShaderNodeVolumeScatter::phase_RAYLEIGH:
         scatter->set_phase(CLOSURE_VOLUME_RAYLEIGH_ID);
         break;
+      case BL::ShaderNodeVolumeScatter::phase_MIE:
+        scatter->set_phase(CLOSURE_VOLUME_MIE_ID);
+        break;
     }
     node = scatter;
   }

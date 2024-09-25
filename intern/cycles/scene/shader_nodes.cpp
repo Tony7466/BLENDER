@@ -3489,12 +3489,14 @@ NODE_DEFINE(ScatterVolumeNode)
   SOCKET_IN_FLOAT(IOR, "IOR", 1.33f);
   SOCKET_IN_FLOAT(B, "B", 0.1f);
   SOCKET_IN_FLOAT(alpha, "Alpha", 0.5f);
+  SOCKET_IN_FLOAT(diameter, "Diameter", 20.0f);
 
   static NodeEnum phase_enum;
   phase_enum.insert("Henyey-Greenstein", CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID);
   phase_enum.insert("Fournier-Forand", CLOSURE_VOLUME_FOURNIER_FORAND_ID);
   phase_enum.insert("Draine", CLOSURE_VOLUME_DRAINE_ID);
   phase_enum.insert("Rayleigh", CLOSURE_VOLUME_RAYLEIGH_ID);
+  phase_enum.insert("Mie", CLOSURE_VOLUME_MIE_ID);
   SOCKET_ENUM(phase, "Phase", phase_enum, CLOSURE_VOLUME_HENYEY_GREENSTEIN_ID);
 
   SOCKET_IN_FLOAT(volume_mix_weight, "VolumeMixWeight", 0.0f, SocketType::SVM_INTERNAL);
@@ -3525,6 +3527,9 @@ void ScatterVolumeNode::compile(SVMCompiler &compiler)
       break;
     case CLOSURE_VOLUME_DRAINE_ID:
       VolumeNode::compile(compiler, input("Density"), input("Anisotropy"), input("Alpha"));
+      break;
+    case CLOSURE_VOLUME_MIE_ID:
+      VolumeNode::compile(compiler, input("Density"), input("Diameter"));
       break;
     default:
       assert(false);

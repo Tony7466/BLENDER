@@ -2776,6 +2776,7 @@ enum {
   SHD_PHASE_FOURNIER_FORAND = 1,
   SHD_PHASE_DRAINE = 2,
   SHD_PHASE_RAYLEIGH = 3,
+  SHD_PHASE_MIE = 4,
 };
 
 /* Output shader node */

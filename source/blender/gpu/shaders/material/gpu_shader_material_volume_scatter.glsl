@@ -8,6 +8,7 @@ void node_volume_scatter(vec4 color,
                          float IOR,
                          float B,
                          float alpha,
+                         float diameter,
                          float weight,
                          out Closure result)
 {

@@ -27,6 +27,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("IOR").default_value(1.33f).min(1.0f).max(2.0f).subtype(PROP_FACTOR);
   b.add_input<decl::Float>("B").default_value(0.1f).min(0.0f).max(0.5f).subtype(PROP_FACTOR);
   b.add_input<decl::Float>("Alpha").default_value(0.5f).min(0.0f).max(500.0f);
+  b.add_input<decl::Float>("Diameter").default_value(20.0f).min(5.0f).max(50.0f);
   b.add_input<decl::Float>("Weight").available(false);
   b.add_output<decl::Shader>("Volume").translation_context(BLT_I18NCONTEXT_ID_ID);
 }
@@ -55,6 +56,9 @@ static void node_shader_update_scatter(bNodeTree *ntree, bNode *node)
     }
     else if (STR_ELEM(sock->name, "Alpha")) {
       bke::node_set_socket_availability(ntree, sock, phase_function == SHD_PHASE_DRAINE);
+    }
+    else if (STR_ELEM(sock->name, "Diameter")) {
+      bke::node_set_socket_availability(ntree, sock, phase_function == SHD_PHASE_MIE);
     }
   }
 }
