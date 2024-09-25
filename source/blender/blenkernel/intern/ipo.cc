@@ -1782,6 +1782,10 @@ static void action_to_animato(
   bActionChannel *achan, *achann;
   bConstraintChannel *conchan, *conchann;
 
+  BLI_assert_msg(
+      act->wrap().is_action_legacy(),
+      "Conversion from pre-2.5 animation data should happen before conversion to layered Actions");
+
   /* only continue if there are Action Channels (indicating unconverted data) */
   if (BLI_listbase_is_empty(&act->chanbase)) {
     return;
@@ -2133,6 +2137,8 @@ void do_versions_ipos_to_animato(Main *bmain)
       nlastrips_to_animdata(id, &ob->nlastrips);
     }
     else if ((ob->ipo) || (ob->action)) {
+      BKE_animdata_ensure_id(id);
+
       /* Action first - so that Action name get conserved */
       if (ob->action) {
         action_to_animdata(id, ob->action);
