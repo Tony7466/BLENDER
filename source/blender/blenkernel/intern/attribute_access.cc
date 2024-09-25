@@ -534,24 +534,23 @@ bool CustomDataAttributeProvider::try_create(void *owner,
   return true;
 }
 
-bool CustomDataAttributeProvider::foreach_attribute(const void *owner,
-                                                    const AttributeForeachCallback callback) const
+void CustomDataAttributeProvider::foreach_attribute(
+    const void *owner, const FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const
 {
   const CustomData *custom_data = custom_data_access_.get_const_custom_data(owner);
   if (custom_data == nullptr) {
-    return true;
+    return;
   }
   for (const CustomDataLayer &layer : Span(custom_data->layers, custom_data->totlayer)) {
     const eCustomDataType data_type = (eCustomDataType)layer.type;
     if (this->type_is_supported(data_type)) {
-      AttributeMetaData meta_data{domain_, data_type};
-      const StringRefNull attribute_id = layer.name;
-      if (!callback(attribute_id, meta_data)) {
-        return false;
-      }
+      AttributeIterInfo attribute_info;
+      attribute_info.name = layer.name;
+      attribute_info.domain = domain_;
+      attribute_info.cd_type = data_type;
+      fn(attribute_info);
     }
   }
-  return true;
 }
 
 /* -------------------------------------------------------------------- */

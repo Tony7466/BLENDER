@@ -112,8 +112,8 @@ class DynamicAttributesProvider {
     return false;
   };
 
-  virtual bool foreach_attribute(const void *owner,
-                                 const AttributeForeachCallback callback) const = 0;
+  virtual void foreach_attribute(
+      const void *owner, FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const = 0;
   virtual void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const = 0;
 };
 
@@ -145,7 +145,9 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
                   const eCustomDataType data_type,
                   const AttributeInit &initializer) const final;
 
-  bool foreach_attribute(const void *owner, const AttributeForeachCallback callback) const final;
+  void foreach_attribute(
+      const void *owner,
+      FunctionRef<void(const AttributeIterInfo &attribute_info)> fn) const final;
 
   void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const final
   {
@@ -299,16 +301,11 @@ inline bool for_all(const void *owner,
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
-    const bool continue_loop = provider->foreach_attribute(
-        owner, [&](const StringRefNull attribute_id, const AttributeMetaData &meta_data) {
-          if (handled_attribute_ids.add(attribute_id)) {
-            return fn(attribute_id, meta_data);
-          }
-          return true;
-        });
-    if (!continue_loop) {
-      return false;
-    }
+    provider->foreach_attribute(owner, [&](const AttributeIterInfo &attribute_info) {
+      if (handled_attribute_ids.add(attribute_info.name)) {
+        fn(attribute_info.name, {attribute_info.domain, attribute_info.cd_type});
+      }
+    });
   }
   return true;
 }
@@ -317,13 +314,24 @@ template<const ComponentAttributeProviders &providers>
 inline void foreach_attribute(const void *owner,
                               const FunctionRef<void(const AttributeIterInfo &attribute_info)> fn)
 {
-  for_all<providers>(owner, [&](const StringRefNull name, const AttributeMetaData &meta_data) {
-    AttributeIterInfo attribute_info;
-    attribute_info.name = name;
-    attribute_info.domain = meta_data.domain;
-    attribute_info.cd_type = meta_data.data_type;
-    fn(attribute_info);
-  });
+  Set<StringRef, 16> handled_attribute_ids;
+  for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
+  {
+    if (provider->exists(owner)) {
+      AttributeIterInfo attribute_info;
+      attribute_info.name = provider->name();
+      attribute_info.domain = provider->domain();
+      attribute_info.cd_type = provider->data_type();
+      fn(attribute_info);
+    }
+  }
+  for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
+    provider->foreach_attribute(owner, [&](const AttributeIterInfo &attribute_info) {
+      if (handled_attribute_ids.add(attribute_info.name)) {
+        fn(attribute_info);
+      }
+    });
+  }
 }
 
 template<const ComponentAttributeProviders &providers>

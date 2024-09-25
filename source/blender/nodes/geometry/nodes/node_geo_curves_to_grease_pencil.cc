@@ -166,7 +166,6 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
         attr_info.name);
     array_utils::gather(src_attribute.varray, instance_selection, dst_attribute.span);
     dst_attribute.finish();
-    return;
   });
 
   {
