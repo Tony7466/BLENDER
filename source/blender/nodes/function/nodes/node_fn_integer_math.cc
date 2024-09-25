@@ -128,6 +128,7 @@ static const mf::MultiFunction *get_multi_function(const bNode &bnode)
   static auto divide_round_fn = mf::build::SI2_SO<int, int, int>(
       "Divide Round",
       [](int a, int b) {
+        /* Derived from `divide_round_i` but fixed to be safe and handle negative inputs. */
         const int c = abs(b);
         return (a >= 0) ? math::safe_divide((2 * a + c), (2 * c)) * math::sign(b) :
                           -math::safe_divide((2 * -a + c), (2 * c)) * math::sign(b);
