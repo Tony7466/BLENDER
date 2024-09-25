@@ -674,18 +674,20 @@ std::optional<Mesh *> mesh_triangulate(const Mesh &src_mesh,
    * for correctness, but considering groups of each face type separately simplifies optimizing
    * for each type. For example, quad triangulation is much simpler than Ngon triangulation. */
   IndexMaskMemory memory;
-  const IndexMask selection = IndexMask::from_predicate(
-      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
-        return src_faces[i].size() > 3;
-      });
   const IndexMask quads = IndexMask::from_predicate(
-      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() == 4; });
+      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
+        return src_faces[i].size() == 4;
+      });
   const IndexMask ngons = IndexMask::from_predicate(
-      selection, GrainSize(4096), memory, [&](const int i) { return src_faces[i].size() > 4; });
+      selection_with_tris, GrainSize(4096), memory, [&](const int i) {
+        return src_faces[i].size() > 4;
+      });
   if (quads.is_empty() && ngons.is_empty()) {
     /* All selected faces are already triangles. */
     return std::nullopt;
   }
+
+  const IndexMask selection = IndexMask::from_union(quads, ngons, memory);
 
   /* Calculate group of triangle indices for each selected Ngon to facilitate calculating them in
    * parallel later. */
