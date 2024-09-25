@@ -328,10 +328,12 @@ inline void foreach_attribute(const void *owner, const FunctionRef<void(const At
       const auto get_fn = [&]() { return provider->try_get_for_read(owner); };
 
       AttributeIter attr_iter{provider->name(), provider->domain(), provider->data_type(), get_fn};
+      attr_iter.is_builtin = true;
       fn(attr_iter);
       if (attr_iter.is_stopped()) {
         return;
       }
+      handled_attribute_ids.add(attr_iter.name);
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {

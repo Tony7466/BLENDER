@@ -130,9 +130,7 @@ static GreasePencil *curve_instances_to_grease_pencil_layers(
   const bke::AttributeAccessor instances_attributes = instances.attributes();
   bke::MutableAttributeAccessor grease_pencil_attributes = grease_pencil->attributes_for_write();
   instances_attributes.foreach_attribute([&](const AttributeIter &attr_iter) {
-    if (instances_attributes.is_builtin(attr_iter.name) &&
-        !grease_pencil_attributes.is_builtin(attr_iter.name))
-    {
+    if (attr_iter.is_builtin && !grease_pencil_attributes.is_builtin(attr_iter.name)) {
       return;
     }
     if (ELEM(attr_iter.name, "opacity")) {

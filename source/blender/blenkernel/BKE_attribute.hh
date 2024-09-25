@@ -392,9 +392,10 @@ class AttributeIter {
   StringRefNull name;
   AttrDomain domain;
   eCustomDataType cd_type;
-  FunctionRef<GAttributeReader()> get_fn;
+  bool is_builtin = false;
 
  private:
+  FunctionRef<GAttributeReader()> get_fn_;
   mutable bool stop_iteration_ = false;
 
  public:
@@ -402,7 +403,7 @@ class AttributeIter {
                 const AttrDomain domain,
                 const eCustomDataType cd_type,
                 const FunctionRef<GAttributeReader()> get_fn)
-      : name(name), domain(domain), cd_type(cd_type), get_fn(get_fn)
+      : name(name), domain(domain), cd_type(cd_type), get_fn_(get_fn)
   {
   }
 
@@ -416,9 +417,10 @@ class AttributeIter {
     return stop_iteration_;
   }
 
+  /** Get read-only access to the current attribute. This method always succeeds. */
   GAttributeReader get() const
   {
-    return get_fn();
+    return get_fn_();
   }
 };
 
