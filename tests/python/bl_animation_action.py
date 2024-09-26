@@ -467,9 +467,10 @@ class VersioningTest(unittest.TestCase):
         self.assertEqual(object_a.animation_data.action_slot_handle, object_b.animation_data.action_slot_handle)
 
         action = object_a.animation_data.action
-        self.assertEqual(len(action.fcurves), 9)
-        self.assertEqual(len(action.groups), 1)
-        self.assertEqual(len(action.groups[0].channels), 9)
+        strip = action.layers[0].strips[0]
+        self.assertEqual(len(strip.channelbags[0].fcurves), 9)
+        self.assertEqual(len(strip.channelbags[0].groups), 1)
+        self.assertEqual(len(strip.channelbags[0].groups[0].channels), 9)
 
         # Multi user slots do not get named after their users.
         self.assertEqual(action.slots[0].name, "OBSlot")
@@ -490,10 +491,11 @@ class VersioningTest(unittest.TestCase):
         armature_object = bpy.data.objects["armature_object"]
         action = armature_object.animation_data.action
         self.assertTrue(action.is_action_layered)
-        self.assertEqual(len(action.groups), 2)
-        self.assertEqual(len(action.fcurves), 20)
-        self.assertEqual(len(action.groups[0].channels), 10)
-        self.assertEqual(len(action.groups[1].channels), 10)
+        strip = action.layers[0].strips[0]
+        self.assertEqual(len(strip.channelbags[0].groups), 2)
+        self.assertEqual(len(strip.channelbags[0].fcurves), 20)
+        self.assertEqual(len(strip.channelbags[0].groups[0].channels), 10)
+        self.assertEqual(len(strip.channelbags[0].groups[1].channels), 10)
 
         # Slots with a single user are named after their user.
         self.assertEqual(action.slots[0].name, "OBarmature_object")
