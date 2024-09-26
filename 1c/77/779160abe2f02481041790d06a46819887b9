@@ -1,3 +1,4 @@
 Referenced by issue #120239, Can't snap with self vertex
 Referenced by pull request #120270, Fix #120239: Snap in edit mode is ignoring some self elements
 Referenced by issue #128074, Snaping in solid mode (Xray 1.0) doesnt snap other geometry
+Referenced by commit b0d37b42673bbd45727ef332782ef07d80e55afe, Fix #128074: Edit Mesh being occluded for snapping even in Xray
