@@ -63,6 +63,10 @@ static pxr::UsdShadeMaterial compute_bound_material(const pxr::UsdPrim &prim,
 {
   const pxr::UsdShadeMaterialBindingAPI api = pxr::UsdShadeMaterialBindingAPI(prim);
 
+  /* See the following documentation for material resolution behavior:
+   * https://openusd.org/release/api/class_usd_shade_material_binding_a_p_i.html#UsdShadeMaterialBindingAPI_MaterialResolution
+   */
+
   pxr::UsdShadeMaterial mtl;
   switch (mtl_purpose) {
     case USD_MTL_PURPOSE_FULL:
