@@ -2286,7 +2286,8 @@ static bool node_can_be_inserted_on_link(bNodeTree &tree, bNode &node, const bNo
 
 void node_insert_on_link_flags_set(SpaceNode &snode,
                                    const ARegion &region,
-                                   const bool attach_enabled)
+                                   const bool attach_enabled,
+                                   const bool only_attach_unlinked)
 {
   bNodeTree &node_tree = *snode.edittree;
   node_tree.ensure_topology_cache();
@@ -2296,6 +2297,20 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
   bNode *node_to_insert = get_selected_node_for_insertion(node_tree);
   if (!node_to_insert) {
     return;
+  }
+  if (only_attach_unlinked) {
+    if (std::any_of(node_to_insert->input_sockets().begin(),
+                    node_to_insert->input_sockets().end(),
+                    [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
+    {
+      return;
+    }
+    if (std::any_of(node_to_insert->output_sockets().begin(),
+                    node_to_insert->output_sockets().end(),
+                    [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
+    {
+      return;
+    };
   }
 
   /* Find link to select/highlight. */
