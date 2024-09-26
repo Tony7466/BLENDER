@@ -864,6 +864,31 @@ class TOPBAR_PT_name_marker(Panel):
         row.prop(marker, "name", text="")
 
 
+class TOPBAR_PT_grease_pencil_layers(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Layers"
+    bl_ui_units_x = 14
+
+    @classmethod
+    def poll(cls, context):
+        object = context.object
+        if object is None:
+            return False
+        if object.type != "GREASEPENCIL":
+            return False
+
+        return True
+
+    def draw(self, context):
+        from .properties_data_grease_pencil import DATA_PT_grease_pencil_layers
+
+        layout = self.layout
+        grease_pencil = context.object.data
+
+        DATA_PT_grease_pencil_layers.draw_settings(layout, grease_pencil)
+
+
 classes = (
     TOPBAR_HT_upper_bar,
     TOPBAR_MT_file_context_menu,
@@ -891,6 +916,7 @@ classes = (
     TOPBAR_PT_gpencil_primitive,
     TOPBAR_PT_name,
     TOPBAR_PT_name_marker,
+    TOPBAR_PT_grease_pencil_layers,
 )
 
 if __name__ == "__main__":  # only for live edit.

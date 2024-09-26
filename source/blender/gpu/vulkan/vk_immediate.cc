@@ -53,11 +53,10 @@ void VKImmediate::end()
 
   VKContext &context = *VKContext::get();
   BLI_assert(context.shader == unwrap(shader));
-  render_graph::VKResourceAccessInfo &resource_access_info = context.update_and_get_access_info();
+  render_graph::VKResourceAccessInfo &resource_access_info = context.reset_and_get_access_info();
   VKStateManager &state_manager = context.state_manager_get();
   state_manager.apply_state();
   vertex_attributes_.update_bindings(*this);
-  vertex_attributes_.ensure_vbos_uploaded();
   context.active_framebuffer_get()->rendering_ensure(context);
 
   render_graph::VKDrawNode::CreateInfo draw(resource_access_info);
