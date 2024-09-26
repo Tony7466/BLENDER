@@ -447,6 +447,14 @@ class VersioningTest(unittest.TestCase):
         self.assertTrue(nla_anim_data.action.is_action_layered)
         self.assertNotEqual(nla_anim_data.action_slot_handle, 0)
 
+        # The action that is not pushed into an NLA strip.
+        active_action = nla_anim_data.action
+        strip = active_action.layers[0].strips[0]
+        for fcurve_index, fcurve in enumerate(strip.channelbags[0].fcurves):
+            self.assertEqual(fcurve.data_path, "rotation_euler")
+            self.assertEqual(fcurve.group.name, "Object Transforms")
+            self.assertEqual(fcurve.array_index, fcurve_index)
+
         self.assertEqual(len(nla_anim_data.nla_tracks), 2)
         self.assertTrue(nla_anim_data.nla_tracks[0].strips[0].action.is_action_layered)
         self.assertNotEqual(nla_anim_data.nla_tracks[0].strips[0].action_slot_handle, 0)
@@ -486,6 +494,12 @@ class VersioningTest(unittest.TestCase):
         self.assertTrue(action.is_action_layered)
         self.assertEqual(action, action_constraint.action)
         self.assertEqual(action_owner_object.animation_data.action_slot_handle, action_constraint.action_slot_handle)
+        strip = action.layers[0].strips[0]
+        self.assertEqual(len(strip.channelbags[0].fcurves), 1)
+        fcurve = strip.channelbags[0].fcurves[0]
+        self.assertEqual(fcurve.data_path, "location")
+        self.assertEqual(fcurve.array_index, 2)
+        self.assertEqual(fcurve.group.name, "Object Transforms")
 
     def test_armature_action_conversion(self):
         armature_object = bpy.data.objects["armature_object"]
@@ -493,6 +507,8 @@ class VersioningTest(unittest.TestCase):
         self.assertTrue(action.is_action_layered)
         strip = action.layers[0].strips[0]
         self.assertEqual(len(strip.channelbags[0].groups), 2)
+        self.assertEqual(strip.channelbags[0].groups[0].name, "Bone")
+        self.assertEqual(strip.channelbags[0].groups[1].name, "Bone.001")
         self.assertEqual(len(strip.channelbags[0].fcurves), 20)
         self.assertEqual(len(strip.channelbags[0].groups[0].channels), 10)
         self.assertEqual(len(strip.channelbags[0].groups[1].channels), 10)
