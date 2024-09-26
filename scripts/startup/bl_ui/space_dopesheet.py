@@ -698,7 +698,10 @@ class DOPESHEET_PT_action_slot(Panel):
         action = context.active_action
         slot = action.slots.active
 
-        layout.prop(slot, "name_display", text="Name", icon_value=slot.idtype_icon)
+        row = layout.row()
+        row.emboss = 'NONE_OR_STATUS'
+        row.prop(slot, "id_root", text="Type")
+        layout.prop(slot, "name_display", text="Name", icon='ACTION_SLOT')
 
 
 #######################################
