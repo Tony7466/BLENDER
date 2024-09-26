@@ -44,7 +44,7 @@
 #include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_PYTHON
-#  include "BPY_extern.h"
+#  include "BPY_extern.hh"
 #endif
 
 #include "WM_api.hh"
@@ -360,7 +360,7 @@ static void test_constraint(
     else {
       animrig::Action &action = data->act->wrap();
       if (action.is_action_legacy()) {
-        if (data->act->idroot != ID_OB) {
+        if (data->act->idroot != ID_OB && data->act->idroot != 0) {
           /* Only object-rooted actions can be used. */
           data->act = nullptr;
           con->flag |= CONSTRAINT_DISABLE;
