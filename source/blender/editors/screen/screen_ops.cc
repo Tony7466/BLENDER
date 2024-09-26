@@ -1762,7 +1762,7 @@ static void area_move_set_limits(wmWindow *win,
 static void area_move_draw_cb(const wmWindow * /*win*/, void *userdata)
 {
   const wmOperator *op = static_cast<const wmOperator *>(userdata);
-  sAreaMoveData *md = static_cast<sAreaMoveData *>(op->customdata);
+  const sAreaMoveData *md = static_cast<sAreaMoveData *>(op->customdata);
   screen_draw_move_highlight(md->screen, md->dir_axis);
 }
 
