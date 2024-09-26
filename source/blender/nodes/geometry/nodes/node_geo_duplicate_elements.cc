@@ -1000,6 +1000,92 @@ static void duplicate_points(GeometrySet &geometry_set,
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Duplicate Layers
+ * \{ */
+
+static void duplicate_layers(GeometrySet &geometry_set,
+                             const Field<int> &count_field,
+                             const Field<bool> &selection_field,
+                             const IndexAttributes &attribute_outputs,
+                             const AttributeFilter &attribute_filter)
+{
+  using namespace bke::greasepencil;
+  if (!geometry_set.has_grease_pencil()) {
+    geometry_set.clear();
+    return;
+  }
+  geometry_set.keep_only_during_modify({GeometryComponent::Type::GreasePencil});
+  GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
+  const GreasePencil &src_grease_pencil = *geometry_set.get_grease_pencil();
+
+  bke::GreasePencilFieldContext field_context{src_grease_pencil};
+  FieldEvaluator evaluator{field_context, src_grease_pencil.layers().size()};
+  evaluator.add(count_field);
+  evaluator.set_selection(selection_field);
+  evaluator.evaluate();
+  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+  const VArray<int> counts = evaluator.get_evaluated<int>(0);
+
+  Array<int> offset_data;
+  const OffsetIndices<int> duplicates = accumulate_counts_to_offsets(
+      selection, counts, offset_data);
+  const int new_layers_num = duplicates.total_size();
+  if (new_layers_num == 0) {
+    geometry_set.clear();
+    return;
+  }
+
+  GreasePencil *new_grease_pencil = BKE_grease_pencil_new_nomain();
+  new_grease_pencil->material_array_num = src_grease_pencil.material_array_num;
+  new_grease_pencil->material_array = static_cast<Material **>(
+      MEM_dupallocN(src_grease_pencil.material_array));
+
+  new_grease_pencil->add_layers_with_empty_drawings_for_eval(new_layers_num);
+  static bke::CurvesGeometry static_empty_curves;
+  selection.foreach_index([&](const int src_layer_i, const int pos) {
+    const IndexRange range = duplicates[pos];
+    if (range.is_empty()) {
+      return;
+    }
+    const Layer &src_layer = src_grease_pencil.layer(src_layer_i);
+    const Drawing *src_drawing = src_grease_pencil.get_eval_drawing(src_layer);
+    const bke::CurvesGeometry &src_curves = src_drawing ? src_drawing->strokes() :
+                                                          static_empty_curves;
+    const StringRefNull src_layer_name = src_layer.name();
+    for (Layer *new_layer : new_grease_pencil->layers_for_write().slice(range)) {
+      new_layer->opacity = src_layer.opacity;
+      new_layer->blend_mode = src_layer.blend_mode;
+      copy_v3_v3(new_layer->translation, src_layer.translation);
+      copy_v3_v3(new_layer->rotation, src_layer.rotation);
+      copy_v3_v3(new_layer->scale, src_layer.scale);
+      new_layer->set_name(src_layer_name);
+      Drawing *new_drawing = new_grease_pencil->get_eval_drawing(*new_layer);
+      new_drawing->strokes_for_write() = src_curves;
+    }
+  });
+
+  bke::gather_attributes_to_groups(src_grease_pencil.attributes(),
+                                   AttrDomain::Layer,
+                                   AttrDomain::Layer,
+                                   attribute_filter,
+                                   duplicates,
+                                   selection,
+                                   new_grease_pencil->attributes_for_write());
+
+  if (attribute_outputs.duplicate_index) {
+    create_duplicate_index_attribute(new_grease_pencil->attributes_for_write(),
+                                     AttrDomain::Layer,
+                                     selection,
+                                     attribute_outputs,
+                                     duplicates);
+  }
+
+  geometry_set.replace_grease_pencil(new_grease_pencil);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Duplicate Instances
  * \{ */
 
@@ -1116,6 +1202,10 @@ static void node_geo_exec(GeoNodeExecParams params)
           duplicate_points(
               geometry_set, count_field, selection_field, attribute_outputs, attribute_filter);
           break;
+        case AttrDomain::Layer:
+          duplicate_layers(
+              geometry_set, count_field, selection_field, attribute_outputs, attribute_filter);
+          break;
         default:
           BLI_assert_unreachable();
           break;
@@ -1140,6 +1230,7 @@ static void node_rna(StructRNA *srna)
       {int(AttrDomain::Edge), "EDGE", 0, "Edge", ""},
       {int(AttrDomain::Face), "FACE", 0, "Face", ""},
       {int(AttrDomain::Curve), "SPLINE", 0, "Spline", ""},
+      {int(AttrDomain::Layer), "LAYER", 0, "Layer", ""},
       {int(AttrDomain::Instance), "INSTANCE", 0, "Instance", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
