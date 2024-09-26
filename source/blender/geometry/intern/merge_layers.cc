@@ -53,7 +53,7 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
   new_grease_pencil->material_array_num = src_grease_pencil.material_array_num;
 
   const int new_layers_num = layers_to_merge.size();
-  new_grease_pencil->add_layers_for_eval(new_layers_num);
+  new_grease_pencil->add_layers_with_empty_drawings_for_eval(new_layers_num);
   Vector<bke::CurvesGeometry *> curves_by_new_layer(new_layers_num);
 
   for (const int new_layer_i : IndexRange(new_layers_num)) {
@@ -63,7 +63,6 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
     const int first_src_layer_i = src_layer_indices[0];
     const Layer &first_src_layer = src_grease_pencil.layer(first_src_layer_i);
     layer.set_name(first_src_layer.name());
-    new_grease_pencil->insert_frame(layer, new_grease_pencil->runtime->eval_frame);
     Drawing *drawing = new_grease_pencil->get_eval_drawing(layer);
     curves_by_new_layer[new_layer_i] = &drawing->strokes_for_write();
   }
