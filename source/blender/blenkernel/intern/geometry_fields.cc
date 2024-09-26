@@ -66,6 +66,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
     : geometry_(other.geometry_),
       type_(other.type_),
       domain_(domain),
+      curves_id_(other.curves_id_),
       grease_pencil_layer_index_(other.grease_pencil_layer_index_)
 {
 }
