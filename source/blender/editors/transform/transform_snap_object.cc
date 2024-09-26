@@ -1305,11 +1305,19 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
   eSnapMode retval = SCE_SNAP_TO_NONE;
   float ray_depth_max = BVH_RAYCAST_DIST_MAX;
   bool use_occlusion_plane = false;
+  bool use_occlusion_plane_edit = false;
 
   /* It is required `mval` to calculate the occlusion plane. */
   if (mval && (snap_to_flag & SCE_SNAP_TO_GEOM)) {
+    /* Use a separate edit-mode setting since vertices & edges use X-ray even when the alpha is 1.
+     * Both settings are needed as it's not known whether the hit will be edit-mode in advance.
+     *
+     * NOTE(@ideasman42): a more generic method of hit-results
+     * flagging themselves not to to occluded could be supported.
+     * Currently this is only needed for edit-mode, see: #128074. */
     const bool is_allways_occluded = !params->use_occlusion_test;
     use_occlusion_plane = is_allways_occluded || !XRAY_ENABLED(v3d);
+    use_occlusion_plane_edit = is_allways_occluded || !XRAY_FLAG_ENABLED(v3d);
   }
 
   if (use_occlusion_plane || (snap_to_flag & (SCE_SNAP_TO_FACE | SCE_SNAP_TO_GRID))) {
@@ -1339,6 +1347,7 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
       else {
         snap_to_flag &= ~SCE_SNAP_TO_FACE;
         use_occlusion_plane = false;
+        use_occlusion_plane_edit = false;
       }
     }
   }
@@ -1402,7 +1411,8 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
     /* Remove what has already been computed. */
     sctx->runtime.snap_to_flag &= ~(SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_NEAREST);
 
-    if (use_occlusion_plane && has_hit &&
+    if (has_hit &&
+        ((sctx->ret.ob->mode & OB_MODE_EDIT) ? use_occlusion_plane_edit : use_occlusion_plane) &&
         /* By convention we only snap to the original elements of a curve. */
         sctx->ret.ob->type != OB_CURVES_LEGACY)
     {
