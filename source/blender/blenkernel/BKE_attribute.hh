@@ -412,7 +412,7 @@ class AttributeIter {
   {
   }
 
-  /** Stops the iteration, i.e. the remaining attributes will be skipped. */
+  /** Stops the iteration. Remaining attributes will be skipped. */
   void stop() const
   {
     stop_iteration_ = true;
