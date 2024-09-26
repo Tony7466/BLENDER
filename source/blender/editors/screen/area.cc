@@ -2943,10 +2943,8 @@ int ED_area_header_switchbutton(const bContext *C, uiBlock *block, int yco)
 
 /************************ standard UI regions ************************/
 
-static ThemeColorID region_background_color_id(const bContext *C, const ARegion *region)
+static ThemeColorID region_background_color_id(const bContext * /*C*/, const ARegion *region)
 {
-  ScrArea *area = CTX_wm_area(C);
-
   switch (region->regiontype) {
     case RGN_TYPE_HEADER:
     case RGN_TYPE_TOOL_HEADER:
