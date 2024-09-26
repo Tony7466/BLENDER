@@ -403,7 +403,8 @@ class DOPESHEET_MT_editor_menus(Menu):
             layout.menu("DOPESHEET_MT_gpencil_key")
 
         if st.mode in {'ACTION', 'SHAPEKEY'} and st.action is not None:
-            layout.menu("DOPESHEET_MT_action")
+            if context.preferences.experimental.use_animation_baklava:
+                layout.menu("DOPESHEET_MT_action")
 
 
 class DOPESHEET_MT_view(Menu):
@@ -587,10 +588,11 @@ class DOPESHEET_MT_channel(Menu):
 class DOPESHEET_MT_action(Menu):
     bl_label = "Action"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         layout.operator("anim.slot_channels_move_to_new_action")
         layout.operator("anim.merge_animation")
+
 
 class DOPESHEET_MT_key(Menu):
     bl_label = "Key"
