@@ -34,23 +34,6 @@
 
 namespace blender::ed::greasepencil {
 
-enum class SelectSimilarMode {
-  LAYER,
-  MATERIAL,
-  VERTEX_COLOR,
-  RADIUS,
-  OPACITY,
-};
-
-static const EnumPropertyItem select_similar_mode_items[] = {
-    {int(SelectSimilarMode::LAYER), "LAYER", 0, "Layer", ""},
-    {int(SelectSimilarMode::MATERIAL), "MATERIAL", 0, "Material", ""},
-    {int(SelectSimilarMode::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
-    {int(SelectSimilarMode::RADIUS), "RADIUS", 0, "Radius", ""},
-    {int(SelectSimilarMode::OPACITY), "OPACITY", 0, "Opacity", ""},
-    {0, NULL, 0, NULL, NULL},
-};
-
 /* -------------------------------------------------------------------- */
 /** \name Selection Utility Functions
  * \{ */
@@ -578,6 +561,23 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
                   "(De)select the first and last point of each stroke");
 }
 
+enum class SelectSimilarMode {
+  LAYER,
+  MATERIAL,
+  VERTEX_COLOR,
+  RADIUS,
+  OPACITY,
+};
+
+static const EnumPropertyItem select_similar_mode_items[] = {
+    {int(SelectSimilarMode::LAYER), "LAYER", 0, "Layer", ""},
+    {int(SelectSimilarMode::MATERIAL), "MATERIAL", 0, "Material", ""},
+    {int(SelectSimilarMode::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
+    {int(SelectSimilarMode::RADIUS), "RADIUS", 0, "Radius", ""},
+    {int(SelectSimilarMode::OPACITY), "OPACITY", 0, "Opacity", ""},
+    {0, NULL, 0, NULL, NULL},
+};
+
 template<typename T>
 void insert_selected_values(const bke::CurvesGeometry &curves,
                             const bke::AttrDomain domain,
@@ -609,53 +609,14 @@ void insert_selected_values(const bke::CurvesGeometry &curves,
   }
 }
 
-template<typename T> static float distance(T first, T second)
-{
-  if constexpr (std::is_same<T, ColorGeometry4f>::value) {
-    // might be better to normalize and then dot product
-    return std::abs(int(rgb_to_grayscale(first)) - int(rgb_to_grayscale(second)));
-  }
-  else if constexpr (std::is_convertible<T, float>()) {
-    return math::distance(first, second);
-  }
-  return INFINITY;
-}
-
-template<typename T>
-static void select_with_similar_attribute(bke::CurvesGeometry &curves,
-                                          blender::Set<T> &set_active_if_similar_to,
-                                          float threshold,
-                                          const IndexMask &editable_points)
-{
-  const VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      ".selection", bke::AttrDomain::Point, blender::ed::curves::default_for_lookup<T>());
-  // const OffsetIndices points_by_curve = curves.points_by_curve();
-  bke::GSpanAttributeWriter selection = blender::ed::curves::ensure_selection_attribute(
-      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
-
-  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-
-  IndexMaskMemory memory;
-  IndexMask mask = IndexMask::from_predicate(
-      editable_points, GrainSize(1), memory, [&](int64_t point_i) {
-        for (auto &s : set_active_if_similar_to) {
-          if (distance<T>(attributes[point_i], s) <= threshold) {
-            return true;
-          }
-        }
-        return false;
-      });
-  index_mask::masked_fill(selection_typed, true, mask);
-  selection.finish();
-}
-
-template<typename T>
-static void select_similar(Scene *scene,
-                           Object *object,
-                           GreasePencil &grease_pencil,
-                           const bke::AttrDomain domain,
-                           const StringRef attribute_id,
-                           float threshold)
+template<typename T, typename DistanceFn>
+static void select_similar_by_value(Scene *scene,
+                                    Object *object,
+                                    GreasePencil &grease_pencil,
+                                    const bke::AttrDomain domain,
+                                    const StringRef attribute_id,
+                                    float threshold,
+                                    DistanceFn distance_fn)
 {
   using namespace blender::ed::greasepencil;
 
@@ -668,31 +629,66 @@ static void select_similar(Scene *scene,
   }
 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    bke::MutableAttributeAccessor attributes =
+        info.drawing.strokes_for_write().attributes_for_write();
+    const int domain_size = attributes.domain_size(domain);
+    bke::SpanAttributeWriter<bool> selection_writer =
+        attributes.lookup_or_add_for_write_span<bool>(
+            ".selection",
+            domain,
+            bke::AttributeInitVArray(VArray<bool>::ForSingle(true, domain_size)));
+    const VArraySpan<T> values = *attributes.lookup_or_default<T>(
+        attribute_id, domain, blender::ed::curves::default_for_lookup<T>());
+
     IndexMaskMemory memory;
-    const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
+    const IndexMask mask = ed::greasepencil::retrieve_editable_points(
         *object, info.drawing, info.layer_index, memory);
 
-    select_with_similar_attribute<T>(
-        info.drawing.strokes_for_write(), selected_values, threshold, editable_points);
+    mask.foreach_index(GrainSize(1024), [&](const int index) {
+      for (const T &test_value : selected_values) {
+        if (distance_fn(values[index], test_value) <= threshold) {
+          selection_writer.span[index] = true;
+        }
+      }
+    });
+
+    selection_writer.finish();
   });
 }
 
-static void select_similar_layer(Scene *scene,
-                                 Object *object,
-                                 GreasePencil &grease_pencil,
-                                 bke::AttrDomain selection_domain)
+static void select_similar_by_layer(Scene *scene,
+                                    Object *object,
+                                    GreasePencil &grease_pencil,
+                                    bke::AttrDomain domain)
 {
   const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                                   grease_pencil);
+
+  blender::Set<int> selected_layers;
+  /* Layer is selected if any point is selected. */
+  for (const MutableDrawingInfo &info : drawings) {
+    const VArraySpan<bool> selection =
+        *info.drawing.strokes().attributes().lookup_or_default<bool>(".selection", domain, true);
+    for (const int i : selection.index_range()) {
+      if (selection[i]) {
+        selected_layers.add(info.layer_index);
+        break;
+      }
+    }
+  }
+
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
+    if (!selected_layers.contains(info.layer_index)) {
+      return;
+    }
+
     IndexMaskMemory memory;
-    const IndexMask editable_elements = retrieve_editable_elements(
-        *object, info, selection_domain, memory);
+    const IndexMask editable_elements = retrieve_editable_elements(*object, info, domain, memory);
     if (editable_elements.is_empty()) {
       return;
     }
     ed::curves::select_all(
-        info.drawing.strokes_for_write(), editable_elements, selection_domain, SEL_SELECT);
+        info.drawing.strokes_for_write(), editable_elements, domain, SEL_SELECT);
   });
 }
 
@@ -710,28 +706,52 @@ static int select_similar_exec(bContext *C, wmOperator *op)
 
   switch (mode) {
     case SelectSimilarMode::LAYER:
-      select_similar_layer(scene, object, grease_pencil, selection_domain);
+      select_similar_by_layer(scene, object, grease_pencil, selection_domain);
       break;
     case SelectSimilarMode::MATERIAL:
-      select_similar<int>(
-          scene, object, grease_pencil, selection_domain, "material_index", threshold);
+      select_similar_by_value<int>(
+          scene,
+          object,
+          grease_pencil,
+          selection_domain,
+          "material_index",
+          threshold,
+          [](const int a, const int b) -> float { return float(math::distance(a, b)); });
       break;
     case SelectSimilarMode::VERTEX_COLOR:
-      select_similar<ColorGeometry4f>(
-          scene, object, grease_pencil, selection_domain, "vertex_color", threshold);
+      select_similar_by_value<ColorGeometry4f>(
+          scene,
+          object,
+          grease_pencil,
+          selection_domain,
+          "vertex_color",
+          threshold,
+          [](const ColorGeometry4f &a, const ColorGeometry4f &b) -> float {
+            return math::distance(float4(a), float4(b));
+          });
       break;
     case SelectSimilarMode::RADIUS:
-      select_similar<float>(
-          scene, object, grease_pencil, selection_domain, "radius", threshold);
+      select_similar_by_value<float>(
+          scene,
+          object,
+          grease_pencil,
+          selection_domain,
+          "radius",
+          threshold,
+          [](const float a, const float b) -> float { return math::distance(a, b); });
       break;
     case SelectSimilarMode::OPACITY:
-      select_similar<float>(
-          scene, object, grease_pencil, selection_domain, "opacity", threshold);
+      select_similar_by_value<float>(
+          scene,
+          object,
+          grease_pencil,
+          selection_domain,
+          "opacity",
+          threshold,
+          [](const float a, const float b) -> float { return math::distance(a, b); });
       break;
   }
 
-  /* Use #ID_RECALC_GEOMETRY instead of #ID_RECALC_SELECT because it is handled as a generic
-   * attribute for now. */
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
 
@@ -752,7 +772,7 @@ static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
   RNA_def_enum(
       ot->srna, "mode", select_similar_mode_items, int(SelectSimilarMode::LAYER), "Mode", "");
 
-  RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, FLT_MAX, "Threshold", "", 0.0f, 10.0f);
 }
 
 static int select_ends_exec(bContext *C, wmOperator *op)
