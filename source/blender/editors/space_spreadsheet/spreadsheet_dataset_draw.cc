@@ -560,7 +560,6 @@ class GeometryDataSetTreeView : public ui::AbstractTreeView {
     }
     const Span<const bke::greasepencil::Layer *> layers = grease_pencil->layers();
     for (const int layer_i : layers.index_range()) {
-      const bke::greasepencil::Layer &layer = *layers[layer_i];
       auto &layer_item = layers_item.add_tree_item<GreasePencilLayerViewItem>(*grease_pencil,
                                                                               layer_i);
       layer_item.add_tree_item<GreasePencilLayerCurvesDomainViewItem>(
