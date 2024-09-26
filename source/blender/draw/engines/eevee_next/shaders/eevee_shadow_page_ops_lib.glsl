@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Operations to move virtual shadow map pages between heaps and tiles.
  * We reuse the blender::vector class denomination.

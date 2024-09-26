@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "eevee_bxdf_lib.glsl"
 #include "eevee_closure_lib.glsl"
 #include "eevee_lightprobe_lib.glsl"

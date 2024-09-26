@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "draw_view_lib.glsl"
 
 #ifndef DRAW_MODELMAT_CREATE_INFO

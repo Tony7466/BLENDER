@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "draw_math_geom_lib.glsl"
 #include "draw_view_lib.glsl"
 #include "eevee_ray_types_lib.glsl"

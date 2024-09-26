@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "eevee_bxdf_lib.glsl"
 #include "eevee_thickness_lib.glsl"
 #include "gpu_shader_codegen_lib.glsl"

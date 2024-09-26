@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Forward lighting evaluation: Lighting is evaluated during the geometry rasterization.
  *

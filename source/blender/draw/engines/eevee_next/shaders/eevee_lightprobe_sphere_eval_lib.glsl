@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "eevee_bxdf_sampling_lib.glsl"
 #include "eevee_lightprobe_sphere_lib.glsl"
 #include "eevee_sampling_lib.glsl"

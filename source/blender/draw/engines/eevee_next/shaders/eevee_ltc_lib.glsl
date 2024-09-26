@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Adapted from :
  * Real-Time Polygonal-Light Shading with Linearly Transformed Cosines.

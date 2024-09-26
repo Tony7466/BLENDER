@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "draw_model_lib.glsl"
 #include "eevee_nodetree_lib.glsl"
 #include "eevee_sampling_lib.glsl"

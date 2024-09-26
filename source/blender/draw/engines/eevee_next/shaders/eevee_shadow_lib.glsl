@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "eevee_shadow_tilemap_lib.glsl"
 #include "gpu_shader_math_matrix_lib.glsl"
 #include "gpu_shader_utildefines_lib.glsl"

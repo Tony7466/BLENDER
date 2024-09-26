@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /* Computes the sum of the rectangular region defined by the given lower and upper bounds from the
  * given summed area table. It is assumed that the given upper bound is larger than the given lower
  * bound, otherwise, undefined behavior is invoked. Looking at the diagram below, in order to

@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "common_math_lib.glsl"
 #include "common_view_lib.glsl"
 

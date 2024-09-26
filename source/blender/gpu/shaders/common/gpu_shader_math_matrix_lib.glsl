@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "gpu_shader_math_rotation_lib.glsl"
 #include "gpu_shader_math_vector_lib.glsl"
 

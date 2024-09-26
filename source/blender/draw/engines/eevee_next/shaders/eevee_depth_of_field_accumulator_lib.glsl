@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 /**
  * Depth of Field Gather accumulator.
  * We currently have only 2 which are very similar.

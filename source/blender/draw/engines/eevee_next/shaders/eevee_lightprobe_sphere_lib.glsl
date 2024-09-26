@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma once
+
 #include "eevee_lightprobe_sphere_mapping_lib.glsl"
 #include "eevee_octahedron_lib.glsl"
 #include "eevee_spherical_harmonics_lib.glsl"
