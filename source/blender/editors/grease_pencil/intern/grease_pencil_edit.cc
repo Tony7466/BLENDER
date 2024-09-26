@@ -2175,6 +2175,29 @@ static void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
       ot->srna, "mode", prop_separate_modes, int(SeparateMode::SELECTED), "Mode", "");
 }
 
+static void grease_pencil_split_exec(bContext *C, wmOperator *op)
+{
+  using namespace bke::greasepencil;
+  BKE_report(op->reports, RPT_ERROR, "LOL it doesn't work yet");
+  WM_cursor_wait(false);
+  return OPERATOR_CANCELLED;
+}
+
+static void GREASE_PENCIL_OT_split(wmOperatorType *ot)
+{
+  ot->name = "Split";
+  ot->idname = "GREASE_PENCIL_OT_split";
+  ot->description = "REWRITE ME split strokes at selected points";
+
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_split_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  ot->prop = RNA_def_enum(
+      ot->srna, "mode", prop_split_modes, int(SeparateMode::SELECTED), "Mode", "");
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3705,6 +3728,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_set_material);
   WM_operatortype_append(GREASE_PENCIL_OT_clean_loose);
   WM_operatortype_append(GREASE_PENCIL_OT_separate);
+  WM_operatortype_append(GREASE_PENCIL_OT_split);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_subdivide);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_reorder);
   WM_operatortype_append(GREASE_PENCIL_OT_move_to_layer);

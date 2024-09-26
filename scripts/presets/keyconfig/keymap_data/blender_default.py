@@ -4686,6 +4686,8 @@ def km_grease_pencil_edit_mode(params):
         op_menu_pie("GREASE_PENCIL_MT_snap_pie", {"type": 'S', "value": 'PRESS', "shift": True}),
         # Separate
         ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
+        # Split
+        ("grease_pencil.split", {"type": 'V', "value": 'PRESS'})
         # Delete all active frames
         ("grease_pencil.delete_frame", {"type": 'DEL', "value": 'PRESS', "shift": True},
          {"properties": [("type", "ALL_FRAMES")]}),
