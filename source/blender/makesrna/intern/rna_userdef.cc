@@ -1464,7 +1464,7 @@ static int rna_preference_gpu_preferred_device_get(PointerRNA *ptr)
         gpu_device.vendor_id == preferences->gpu_preferred_vendor_id &&
         gpu_device.device_id == preferences->gpu_preferred_device_id)
     {
-      /* Offset by one as first item in the list is always autodetection. */
+      /* Offset by one as first item in the list is always auto-detection. */
       return index;
     }
     index += 1;
@@ -3476,6 +3476,12 @@ static void rna_def_userdef_theme_space_node(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "node_zone_repeat");
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Repeat Zone", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "foreach_geometry_element_zone", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "node_zone_foreach_geometry_element");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "For Each Geometry Element Zone", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
@@ -7570,12 +7576,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       prop,
       "Multi-Slot Actions",
       "The new 'layered' Action can contain the animation for multiple data-blocks at once");
-  RNA_def_property_update(prop, 0, "rna_userdef_update");
-
-  prop = RNA_def_property(srna, "use_docking", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(prop,
-                           "Interactive Editor Docking",
-                           "Move editor areas to new locations, including between windows");
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
