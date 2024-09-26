@@ -20,6 +20,7 @@
 #include "BLI_virtual_array_fwd.hh"
 
 #include <functional>
+#include <optional>
 
 struct Mesh;
 
@@ -55,8 +56,14 @@ class CollisionShape : public ImplicitSharingMixin {
     SoftBody,
   };
 
+  struct CollisionShapeResult {
+    CollisionShapeImpl *impl;
+    std::optional<std::string> error;
+  };
+
  protected:
   CollisionShapeImpl *impl_;
+  std::optional<std::string> error_;
 
  public:
   CollisionShape() = delete;
@@ -102,7 +109,7 @@ class CollisionShape : public ImplicitSharingMixin {
   float3 calculate_local_inertia(float mass) const;
 
  protected:
-  CollisionShape(CollisionShapeImpl *impl);
+  CollisionShape(const CollisionShapeResult &result);
 
   friend class PhysicsGeometry;
 };
