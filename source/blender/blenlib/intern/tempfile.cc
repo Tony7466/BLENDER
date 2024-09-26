@@ -5,7 +5,7 @@
 #include "BLI_tempfile.h"
 
 #include "BLI_fileops.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 
 bool BLI_temp_directory_path_copy_if_valid(char *tempdir,
@@ -67,7 +67,7 @@ void BLI_temp_directory_path_get(char *tempdir, const size_t tempdir_maxncpy)
 
   for (int i = 0; i < ARRAY_SIZE(env_vars); i++) {
     const char *tempdir_test = BLI_getenv(env_vars[i]);
-    if (tempdir_test == NULL) {
+    if (tempdir_test == nullptr) {
       continue;
     }
     if (BLI_temp_directory_path_copy_if_valid(tempdir, tempdir_maxncpy, tempdir_test)) {
