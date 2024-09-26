@@ -363,10 +363,13 @@ template<> void socket_data_read_data_impl(BlendDataReader *reader, bNodeSocketV
 
 static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSocket &socket)
 {
-  socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
+  const bool success = socket_data_to_static_type_tag(socket.socket_type, [&](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
     socket_data_read_data_impl(reader, reinterpret_cast<SocketDataType **>(&socket.socket_data));
   });
+  if (!success && socket.socket_data) {
+    socket.socket_data = nullptr;
+  }
 }
 
 /** \} */
