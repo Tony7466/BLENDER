@@ -179,22 +179,36 @@ int main(int argc, char **argv)
   /* For now, the same files needs both. */
   mutate_glsl_directives_test = strip_leading_c_comments_test;
 
-  std::vector<long> mutations;
+  struct Mutation {
+    /* Position in byte inside the input file. */
+    long position;
+    /* Replacement character. */
+    char new_char;
+  };
+  /* Mutations of specific characters inside the input file.
+   * When encountering a mutated position, `new_char` will be used instead of the input data. */
+  std::vector<Mutation> mutations;
   if (mutate_glsl_directives_test) {
     char buffer[1024];
     long original_pos = ftell(fpin);
     long pos = original_pos;
-    while (fgets(buffer, 1024, fpin)) {
+    while (fgets(buffer, sizeof(buffer), fpin)) {
       /* Assumes directives are at the beginning of the line. */
       if (strstr(buffer, "#pragma once") == buffer || strstr(buffer, "#include ") == buffer) {
-        mutations.push_back(pos);
-        mutations.push_back(pos + 1);
+        /* Mutate the pragma and include directive into a comments to avoid invalid GLSL source. */
+        /* The pattern "//nclude" is looked up by the include system. */
+        mutations.push_back({pos + 0, '/'});
+        mutations.push_back({pos + 1, '/'});
       }
       pos = ftell(fpin);
     }
     /* Reset the reading head where we found it. */
     fseek(fpin, original_pos, SEEK_SET);
   }
+  /* Terminate the vector by an invalid mutation that can be polled until the end of the file. */
+  mutations.push_back({-1, ' '});
+  /* Reverse the vector so we can use pop_last. */
+  std::reverse(mutations.begin(), mutations.end());
 
   if (argv[1][0] == '.') {
     argv[1]++;
@@ -236,7 +250,6 @@ int main(int argc, char **argv)
     fprintf(fpout, "\n");
   }
 
-  int mutation_count = 0;
   while (size--) {
     /* Even though this file is generated and doesn't need new-lines,
      * these files may be loaded by developers when looking up symbols.
@@ -245,14 +258,16 @@ int main(int argc, char **argv)
       fprintf(fpout, "\n");
     }
 
-    if ((mutation_count < mutations.size()) && (mutations[mutation_count] == ftell(fpin))) {
-      mutation_count++;
-      getc(fpin); /* Skip this char. */
-      fprintf(fpout, "%3d,", '/');
-    }
-    else {
-      // fprintf(fpout, "\\x%02x", getc(fpin));
-      fprintf(fpout, "%3d,", getc(fpin));
+    const bool mutate = mutations.back().position == ftell(fpin);
+
+    // fprintf(fpout, "\\x%02x", getc(fpin));
+    fprintf(fpout, "%3d,", (mutate) ? mutations.back().new_char : getc(fpin));
+
+    if (mutate) {
+      /* Skip the input char. */
+      getc(fpin);
+      /* Consider next mutation. */
+      mutations.pop_back();
     }
   }
 
