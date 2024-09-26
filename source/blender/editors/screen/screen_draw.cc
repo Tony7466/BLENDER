@@ -6,7 +6,6 @@
  * \ingroup edscr
  */
 
-#include "BKE_global.hh"
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 
@@ -14,6 +13,9 @@
 #include "GPU_immediate.hh"
 #include "GPU_platform.hh"
 #include "GPU_state.hh"
+
+#include "BKE_global.hh"
+#include "BKE_screen.hh"
 
 #include "BLF_api.hh"
 
@@ -179,7 +181,7 @@ void ED_screen_draw_edges(wmWindow *win)
   if (!active_area) {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
       AZone *zone = ED_area_actionzone_find_xy(area, win->eventstate->xy);
-      /* On a non-scrollbar action zone, get area from it. */
+      /* Get area from action zone, if not scrollbar. */
       if (zone && zone->type != AZONE_REGION_SCROLL) {
         active_area = area;
         break;
@@ -189,7 +191,7 @@ void ED_screen_draw_edges(wmWindow *win)
 
   if (!active_area && G.moving & G_TRANSFORM_WM) {
     active_area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, win->eventstate->xy);
-    /* Are we at the very edge? */
+    /* We don't want an active area if at a border edge. */
     if (active_area) {
       rcti rect = active_area->totrct;
       BLI_rcti_pad(&rect, -BORDERPADDING, -BORDERPADDING);
@@ -240,21 +242,20 @@ void ED_screen_draw_edges(wmWindow *win)
   GPU_batch_uniform_1f(batch, "scale", corner_scale);
   GPU_batch_uniform_4fv(batch, "color", col);
 
-  float half_line = U.pixelsize / 2.0f;
-  float half_edge = edge_thickness / 2.0f;
   float outline1[4];
   float outline2[4];
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE, outline1);
   UI_GetThemeColor4fv(TH_EDITOR_OUTLINE_ACTIVE, outline2);
   UI_draw_roundbox_corner_set(UI_CNR_ALL);
+  const float offset = UI_SCALE_FAC * 1.34f;
 
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     drawscredge_area(area, win_size[0], win_size[1], edge_thickness);
 
-    rctf rectf2 = {float(area->totrct.xmin) + half_edge + half_line - 0.5f,
-                   float(area->totrct.xmax) - half_edge - half_line + 1.0f,
-                   float(area->totrct.ymin) + half_edge + half_line - 0.5f,
-                   float(area->totrct.ymax) - half_edge - half_line + 1.0f};
+    rctf rectf2 = {float(area->totrct.xmin) + offset - 0.5f,
+                   float(area->totrct.xmax) - offset + 1.0f,
+                   float(area->totrct.ymin) + offset - 0.5f,
+                   float(area->totrct.ymax) - offset + 1.0f};
 
     UI_draw_roundbox_4fv_ex(&rectf2,
                             nullptr,
