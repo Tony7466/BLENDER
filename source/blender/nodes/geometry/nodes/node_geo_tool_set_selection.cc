@@ -125,17 +125,25 @@ static void node_geo_exec(GeoNodeExecParams params)
                                                  field);
               bke::mesh_select_face_flush(*mesh);
               break;
-            default:
+            default: {
               break;
+            }
           }
+          break;
         }
         case OB_MODE_SCULPT: {
-          const Field<bool> field = conversions.try_convert(
-              invert_selection(clamp_selection(selection)), CPPType::get<float>());
+          GField on_domain = GField(
+              std::make_shared<bke::EvaluateOnDomainInput>(selection, domain));
+          GField clamped_and_inverted = invert_selection(clamp_selection(std::move(on_domain)));
+          const Field<float> field = conversions.try_convert(std::move(clamped_and_inverted),
+                                                             CPPType::get<float>());
           bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
                                              ".sculpt_mask",
                                              AttrDomain::Point,
                                              field);
+          break;
+        }
+        default: {
           break;
         }
       }
