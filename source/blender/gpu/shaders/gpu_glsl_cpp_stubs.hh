@@ -28,9 +28,7 @@
 
 #pragma once
 
-#ifndef GPU_SHADER
-
-#  include <type_traits>
+#include <type_traits>
 
 /* -------------------------------------------------------------------- */
 /** \name Vector Types
@@ -71,8 +69,8 @@ template<typename T, int Sz> struct VecOp {
   friend VecT operator/(T, VecT) {}
   friend VecT operator*(T, VecT) {}
 
-#  define INT_OP \
-    template<typename U = T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
+#define INT_OP \
+  template<typename U = T, typename std::enable_if_t<std::is_integral_v<U>> * = nullptr>
 
   INT_OP VecT operator%(VecT) const {}
   INT_OP VecT operator&(VecT) const {}
@@ -99,7 +97,7 @@ template<typename T, int Sz> struct VecOp {
   INT_OP friend VecT operator|(T, VecT) {}
   INT_OP friend VecT operator^(T, VecT) {}
 
-#  undef INT_OP
+#undef INT_OP
 };
 
 template<typename T> struct VecSwizzle2 {
@@ -355,13 +353,13 @@ template<typename T, int Dimensions, bool Cube = false, bool Array = false> stru
   using size_vec_type = VecBase<int, extent_dim>;
 };
 
-#  define TEX_TEMPLATE \
-    template<typename T, \
-             typename IntCoord = typename T::int_coord_type, \
-             typename FltCoord = typename T::flt_coord_type, \
-             typename DerivVec = typename T::derivative_type, \
-             typename DataVec = typename T::data_vec_type, \
-             typename SizeVec = typename T::size_vec_type>
+#define TEX_TEMPLATE \
+  template<typename T, \
+           typename IntCoord = typename T::int_coord_type, \
+           typename FltCoord = typename T::flt_coord_type, \
+           typename DerivVec = typename T::derivative_type, \
+           typename DataVec = typename T::data_vec_type, \
+           typename SizeVec = typename T::size_vec_type>
 
 TEX_TEMPLATE SizeVec textureSize(T, int) {}
 TEX_TEMPLATE DataVec texelFetch(T, IntCoord, int) {}
@@ -371,7 +369,7 @@ TEX_TEMPLATE DataVec textureGather(T, FltCoord) {}
 TEX_TEMPLATE DataVec textureGrad(T, FltCoord, DerivVec, DerivVec) {}
 TEX_TEMPLATE DataVec textureLod(T, FltCoord, double) {}
 
-#  undef TEX_TEMPLATE
+#undef TEX_TEMPLATE
 
 using sampler1D = SamplerBase<double, 1>;
 using sampler2D = SamplerBase<double, 2>;
@@ -412,18 +410,18 @@ template<typename T, int Dimensions, bool Array = false> struct ImageBase {
   using size_vec_type = VecBase<int, coord_dim>;
 };
 
-#  define IMG_TEMPLATE \
-    template<typename T, \
-             typename IntCoord = typename T::int_coord_type, \
-             typename DataVec = typename T::data_vec_type, \
-             typename SizeVec = typename T::size_vec_type>
+#define IMG_TEMPLATE \
+  template<typename T, \
+           typename IntCoord = typename T::int_coord_type, \
+           typename DataVec = typename T::data_vec_type, \
+           typename SizeVec = typename T::size_vec_type>
 
 IMG_TEMPLATE SizeVec imageSize(T) {}
 IMG_TEMPLATE DataVec imageLoad(T, IntCoord) {}
 IMG_TEMPLATE void imageStore(T, IntCoord, DataVec) {}
 IMG_TEMPLATE void imageFence(T) {}
-#  define imageLoadFast imageLoad
-#  define imageStoreFast imageStore
+#define imageLoadFast imageLoad
+#define imageStoreFast imageStore
 
 IMG_TEMPLATE uint imageAtomicAdd(T, IntCoord, uint);
 IMG_TEMPLATE uint imageAtomicMin(T, IntCoord, uint);
@@ -433,7 +431,7 @@ IMG_TEMPLATE uint imageAtomicXor(T, IntCoord, uint);
 IMG_TEMPLATE uint imageAtomicExchange(T, IntCoord, uint);
 IMG_TEMPLATE uint imageAtomicCompSwap(T, IntCoord, uint, uint);
 
-#  undef IMG_TEMPLATE
+#undef IMG_TEMPLATE
 
 using image1D = ImageBase<double, 1>;
 using image2D = ImageBase<double, 2>;
@@ -461,10 +459,10 @@ using uimage2DArray = ImageBase<uint, 2, true>;
  * \{ */
 
 /* Some compilers complain about lack of return values. Keep it short. */
-#  define RET \
-    { \
-      return {}; \
-    }
+#define RET \
+  { \
+    return {}; \
+  }
 
 template<typename T, int D> VecBase<bool, D> greaterThan(VecBase<T, D>, VecBase<T, D>) RET;
 template<typename T, int D> VecBase<bool, D> lessThan(VecBase<T, D>, VecBase<T, D>) RET;
@@ -556,7 +554,7 @@ double mix(double, double, double) RET;
 template<int D> VecBase<double, D> mix(VecBase<double, D>, VecBase<double, D>, double) RET;
 template<typename T, int D> VecBase<T, D> mix(VecBase<T, D>, VecBase<T, D>, VecBase<bool, D>) RET;
 
-#  define select(A, B, C) mix(A, B, C)
+#define select(A, B, C) mix(A, B, C)
 
 VecBase<double, 3> cross(VecBase<double, 3>, VecBase<double, 3>) RET;
 template<int D> float dot(VecBase<double, D>, VecBase<double, D>) RET;
@@ -625,7 +623,7 @@ bool is_zero(vec2) RET;
 bool is_zero(vec3) RET;
 bool is_zero(vec4) RET;
 
-#  undef RET
+#undef RET
 
 /** \} */
 
@@ -680,17 +678,17 @@ const uint gl_LocalInvocationIndex;
 /* Note: Cannot easily mutate them. Pass every by copy for now. */
 
 /* Pass argument by reference. */
-#  define inout
+#define inout
 /* Pass argument by reference but only write to it. Its initial value is undefined. */
-#  define out
+#define out
 /* Pass argument by copy (default). */
-#  define in
+#define in
 
 /* Discards the output of the current fragment shader invocation and halts its execution. */
-#  define discard
+#define discard
 
 /* Decorate a variable in global scope that is common to all threads in a threadgroup. */
-#  define shared
+#define shared
 
 namespace gl_ComputeShader {
 void barrier() {}
@@ -728,5 +726,3 @@ void groupMemoryBarrier() {}
 /* clang-format on */
 
 /** \} */
-
-#endif
