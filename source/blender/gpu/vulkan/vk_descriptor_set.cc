@@ -250,7 +250,7 @@ void VKDescriptorSetTracker::update_descriptor_set(VKContext &context,
   VKShader &shader = *unwrap(context.shader);
   VKStateManager &state_manager = context.state_manager_get();
 
-  /* Can we reuse precious descriptor set. */
+  /* Can we reuse previous descriptor set. */
   if (!state_manager.is_dirty &&
       !assign_if_different(vk_descriptor_set_layout_, shader.vk_descriptor_set_layout_get()) &&
       shader.push_constants.layout_get().storage_type_get() !=
