@@ -109,43 +109,38 @@ GreasePencil *merge_layers(const GreasePencil &src_grease_pencil,
 
   const bke::AttributeAccessor src_attributes = src_grease_pencil.attributes();
   bke::MutableAttributeAccessor new_attributes = new_grease_pencil->attributes_for_write();
-  src_attributes.for_all(
-      [&](const StringRef attribute_name, const bke::AttributeMetaData meta_data) {
-        if (meta_data.data_type == CD_PROP_STRING) {
-          return true;
+  src_attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
+    if (iter.data_type == CD_PROP_STRING) {
+      return;
+    }
+    if (attribute_filter.allow_skip(iter.name)) {
+      return;
+    }
+    bke::GAttributeReader src_attribute = iter.get();
+    bke::GSpanAttributeWriter new_attribute = new_attributes.lookup_or_add_for_write_only_span(
+        iter.name, bke::AttrDomain::Layer, iter.data_type);
+
+    const CPPType &type = new_attribute.span.type();
+
+    bke::attribute_math::convert_to_static_type(type, [&](auto type) {
+      using T = decltype(type);
+      const VArraySpan<T> src_span = src_attribute.varray.typed<T>();
+      MutableSpan<T> new_span = new_attribute.span.typed<T>();
+
+      bke::attribute_math::DefaultMixer<T> mixer(new_span);
+      for (const int new_layer_i : IndexRange(new_layers_num)) {
+        const Span<int> src_layer_indices = layers_to_merge[new_layer_i];
+        for (const int src_layer_i : src_layer_indices) {
+          const T &src_value = src_span[src_layer_i];
+          mixer.mix_in(new_layer_i, src_value);
         }
-        if (attribute_filter.allow_skip(attribute_name)) {
-          return true;
-        }
-        bke::GAttributeReader src_attribute = src_attributes.lookup(attribute_name);
-        if (!src_attribute) {
-          return true;
-        }
-        bke::GSpanAttributeWriter new_attribute = new_attributes.lookup_or_add_for_write_only_span(
-            attribute_name, bke::AttrDomain::Layer, meta_data.data_type);
+      }
 
-        const CPPType &type = new_attribute.span.type();
+      mixer.finalize();
+    });
 
-        bke::attribute_math::convert_to_static_type(type, [&](auto type) {
-          using T = decltype(type);
-          const VArraySpan<T> src_span = src_attribute.varray.typed<T>();
-          MutableSpan<T> new_span = new_attribute.span.typed<T>();
-
-          bke::attribute_math::DefaultMixer<T> mixer(new_span);
-          for (const int new_layer_i : IndexRange(new_layers_num)) {
-            const Span<int> src_layer_indices = layers_to_merge[new_layer_i];
-            for (const int src_layer_i : src_layer_indices) {
-              const T &src_value = src_span[src_layer_i];
-              mixer.mix_in(new_layer_i, src_value);
-            }
-          }
-
-          mixer.finalize();
-        });
-
-        new_attribute.finish();
-        return true;
-      });
+    new_attribute.finish();
+  });
 
   return new_grease_pencil;
 }
