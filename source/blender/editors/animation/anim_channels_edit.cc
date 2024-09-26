@@ -5254,7 +5254,7 @@ static bool slot_channels_move_to_new_action_poll(bContext *C)
 static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
 {
   ot->name = "Move Slots to new Action";
-  ot->idname = "ANIM_OT_slot_channel_move_to_new_action";
+  ot->idname = "ANIM_OT_slot_channels_move_to_new_action";
   ot->description = "Move the selected slots into a newly created action";
 
   ot->exec = slot_channels_move_to_new_action_exec;
