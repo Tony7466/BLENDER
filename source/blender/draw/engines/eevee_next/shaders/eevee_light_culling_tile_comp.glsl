@@ -11,6 +11,7 @@
 #include "common_intersect_lib.glsl"
 #include "draw_view_lib.glsl"
 #include "eevee_light_iter_lib.glsl"
+#include "gpu_shader_math_matrix_lib.glsl"
 
 /* ---------------------------------------------------------------------- */
 /** \name Culling shapes extraction

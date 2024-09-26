@@ -14,6 +14,11 @@
 #include "eevee_subsurface_lib.glsl"
 #include "gpu_shader_codegen_lib.glsl"
 
+/* Allow static compilation of forward materials. */
+#ifndef CLOSURE_BIN_COUNT
+#  define CLOSURE_BIN_COUNT LIGHT_CLOSURE_EVAL_COUNT
+#endif
+
 #if CLOSURE_BIN_COUNT != LIGHT_CLOSURE_EVAL_COUNT
 #  error Closure data count and eval count must match
 #endif

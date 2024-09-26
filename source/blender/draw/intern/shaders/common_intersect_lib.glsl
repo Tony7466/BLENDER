@@ -7,8 +7,8 @@
  * Results are meant to be conservative.
  */
 
-#include "common_math_geom_lib.glsl"
 #include "common_shape_lib.glsl"
+#include "draw_math_geom_lib.glsl"
 
 /* ---------------------------------------------------------------------- */
 /** \name Plane extraction functions.
@@ -513,7 +513,7 @@ bool intersect(Cone cone, Sphere sphere)
 bool intersect(Circle circle_a, Circle circle_b)
 {
   return distance_squared(circle_a.center, circle_b.center) <
-         sqr(circle_a.radius + circle_b.radius);
+         square(circle_a.radius + circle_b.radius);
 }
 
 /** \} */
