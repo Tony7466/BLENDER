@@ -25,7 +25,7 @@ struct VKResourceBinding {
       shader::ShaderCreateInfo::Resource::BindType::UNIFORM_BUFFER;
   int binding = -1;
 
-  VKDescriptorSet::Location location = -1;
+  VKDescriptorSet::Location location;
   VKImageViewArrayed arrayed = VKImageViewArrayed::DONT_CARE;
   VkAccessFlags access_mask = VK_ACCESS_NONE;
 };

@@ -20,7 +20,7 @@
 #include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
-class VKResourceBinding;
+struct VKResourceBinding;
 class VKStateManager;
 class VKDevice;
 class VKPushConstants;
@@ -51,7 +51,7 @@ class VKDescriptorSet : NonCopyable {
   struct Location {
     friend class VKDescriptorSetTracker;
     friend class VKShaderInterface;
-    friend class VKResourceBinding;
+    friend struct VKResourceBinding;
 
    private:
     /**

@@ -112,17 +112,29 @@ void VKDescriptorSetTracker::bind_texture_resource(const VKDevice &device,
     }
     case BindSpaceTextures::Type::Texture: {
       VKTexture *texture = static_cast<VKTexture *>(elem.resource);
-      const VKSampler &sampler = device.samplers().get(elem.sampler);
-      bind_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                 sampler.vk_handle(),
-                 texture->image_view_get(resource_binding.arrayed).vk_handle(),
-                 VK_IMAGE_LAYOUT_GENERAL,
-                 resource_binding.location);
-      access_info.images.append({texture->vk_image_handle(),
-                                 resource_binding.access_mask,
-                                 to_vk_image_aspect_flag_bits(texture->device_format_get()),
-                                 0,
-                                 VK_REMAINING_ARRAY_LAYERS});
+      if (texture->type_ != GPU_TEXTURE_BUFFER) {
+        const VKSampler &sampler = device.samplers().get(elem.sampler);
+        bind_image(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                   sampler.vk_handle(),
+                   texture->image_view_get(resource_binding.arrayed).vk_handle(),
+                   VK_IMAGE_LAYOUT_GENERAL,
+                   resource_binding.location);
+        access_info.images.append({texture->vk_image_handle(),
+                                   resource_binding.access_mask,
+                                   to_vk_image_aspect_flag_bits(texture->device_format_get()),
+                                   0,
+                                   VK_REMAINING_ARRAY_LAYERS});
+      }
+      else {
+        /* Texture buffers are no textures, but wrap around vertex buffers and need to be
+         * bound as texel buffers. */
+        /* TODO: Investigate if this can be improved in the API. */
+        VKVertexBuffer *vertex_buffer = texture->source_buffer_;
+        vertex_buffer->ensure_updated();
+        vertex_buffer->ensure_buffer_view();
+        bind_texel_buffer(vertex_buffer->vk_buffer_view_get(), resource_binding.location);
+        access_info.buffers.append({vertex_buffer->vk_handle(), resource_binding.access_mask});
+      }
       break;
     }
     case BindSpaceTextures::Type::Unused: {
@@ -217,7 +229,7 @@ void VKDescriptorSetTracker::bind_shader_resources(const VKDevice &device,
 {
   const VKShaderInterface &shader_interface = shader.interface_get();
   for (const VKResourceBinding &resource_binding : shader_interface.resource_bindings_get()) {
-    if (resource_binding.location.binding == -1) {
+    if (resource_binding.binding == -1) {
       continue;
     }
 
