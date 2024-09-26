@@ -726,3 +726,13 @@ void groupMemoryBarrier() {}
 /* clang-format on */
 
 /** \} */
+
+/* Include all shader shared files to that custom type definitions are available when create infos
+ * macros are included. */
+#include "GPU_shader_shared.hh"
+#include "draw_common_shader_shared.hh"
+#include "draw_shader_shared.hh"
+#include "eevee_shader_shared.hh"
+#include "overlay_shader_shared.h"
+#include "select_shader_shared.hh"
+#include "workbench_shader_shared.h"
