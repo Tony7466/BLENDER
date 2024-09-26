@@ -251,12 +251,14 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        nullptr);
     }
     else if (data.type().is<MStringProperty>()) {
-      char len = data.get<MStringProperty>(real_index).s_len;
+      auto buf = MEM_mallocN(sizeof(MStringProperty), __func__);
+      data.get(real_index, buf);
+      auto prop = static_cast<MStringProperty *>(buf);
       uiBut *but = uiDefIconTextBut(params.block,
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    std::string(data.get<MStringProperty>(real_index).s, len),
+                                    blender::StringRef(prop->s, prop->s_len),
                                     params.xmin,
                                     params.ymin,
                                     params.width,
@@ -265,13 +267,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     0,
                                     0,
                                     nullptr);
-      auto buf = (char *)MEM_mallocN(len + 1, __func__);
-      memcpy(buf, data.get<MStringProperty>(real_index).s, len);
-      buf[len] = 0;
+
       UI_but_func_tooltip_set(
           but,
           [](bContext * /*C*/, void *argN, const char * /*tip*/) {
-            return fmt::format(TIP_("{}"), (char *)argN);
+            return fmt::format(TIP_("{}"), static_cast<MStringProperty *>(argN)->s);
           },
           buf,
           MEM_freeN);
