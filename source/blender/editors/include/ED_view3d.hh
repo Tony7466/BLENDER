@@ -779,7 +779,7 @@ void ED_view3d_calc_camera_border_size(const Scene *scene,
                                        const RegionView3D *rv3d,
                                        float r_size[2]);
 bool ED_view3d_calc_render_border(
-    const Scene *scene, Depsgraph *depsgraph, View3D *v3d, ARegion *region, rcti *rect);
+    const Scene *scene, Depsgraph *depsgraph, View3D *v3d, ARegion *region, rcti *r_rect);
 
 void ED_view3d_clipping_calc_from_boundbox(float clip[4][4], const BoundBox *bb, bool is_flip);
 void ED_view3d_clipping_calc(

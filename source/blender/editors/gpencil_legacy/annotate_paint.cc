@@ -107,7 +107,7 @@ struct tGPsdata {
   /** For operations that require occlusion testing. */
   ViewDepths *depths;
   /** for using the camera rect within the 3d view. */
-  rctf *subrect;
+  const rctf *subrect;
   rctf subrect_data;
 
   /** settings to pass to gp_points_to_xy(). */
