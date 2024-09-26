@@ -160,6 +160,8 @@ static void convert_action_in_place(blender::animrig::Action &action)
     bag.fcurve_array[fcurve_index++] = fcu;
   }
 
+  BLI_assert(fcurve_index == fcu_count);
+
   action.curves = {nullptr, nullptr};
   action.groups = {nullptr, nullptr};
 }
