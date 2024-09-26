@@ -42,7 +42,9 @@ static GreasePencil *curves_to_grease_pencil_with_one_layer(
   curves.remove_curves(curves_to_delete, attribute_filter);
 
   GreasePencil *grease_pencil = BKE_grease_pencil_new_nomain();
-  bke::greasepencil::Layer &layer = grease_pencil->add_layer(layer_name);
+  grease_pencil->add_layers_for_eval(1);
+  bke::greasepencil::Layer &layer = grease_pencil->layer(0);
+  layer.set_name(layer_name);
   bke::greasepencil::Drawing *drawing = grease_pencil->insert_frame(
       layer, grease_pencil->runtime->eval_frame);
   BLI_assert(drawing);
