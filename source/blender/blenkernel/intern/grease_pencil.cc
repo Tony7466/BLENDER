@@ -2607,51 +2607,6 @@ void GreasePencil::add_layers_with_empty_drawings_for_eval(const int num)
   }
 }
 
-enum ForeachDrawingMode {
-  VISIBLE,
-  EDITABLE,
-};
-
-static void foreach_drawing_ex(
-    GreasePencil &grease_pencil,
-    int frame,
-    ForeachDrawingMode mode,
-    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
-{
-  using namespace blender::bke::greasepencil;
-
-  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
-  for (const Layer *layer : grease_pencil.layers()) {
-    switch (mode) {
-      case VISIBLE: {
-        if (!layer->is_visible()) {
-          continue;
-        }
-        break;
-      }
-      case EDITABLE: {
-        if (!layer->is_editable()) {
-          continue;
-        }
-        break;
-      }
-    }
-
-    int index = layer->drawing_index_at(frame);
-    if (index == -1) {
-      continue;
-    }
-    GreasePencilDrawingBase *drawing_base = drawings[index];
-    if (drawing_base->type == GP_DRAWING) {
-      GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-      function(index, drawing->wrap());
-    }
-    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO */
-    }
-  }
-}
-
 void GreasePencil::remove_drawings_with_no_users()
 {
   using namespace blender;
