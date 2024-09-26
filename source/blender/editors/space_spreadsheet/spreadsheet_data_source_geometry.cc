@@ -198,6 +198,7 @@ void GeometryDataSource::foreach_default_column_ids(
   if (component_->type() == bke::GeometryComponent::Type::Physics) {
     if (domain_ == bke::AttrDomain::Instance) {
       fn({(char *)"Type"}, false);
+      fn({(char *)"Status"}, false);
     }
   }
 
@@ -319,16 +320,29 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
     if (const bke::PhysicsGeometry *physics =
             static_cast<const bke::PhysicsComponent &>(*component_).get())
     {
-      if (domain_ == bke::AttrDomain::Instance && STREQ(column_id.name, "Type")) {
-        const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
-        return std::make_unique<ColumnValues>(
-            column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
-              const bke::CollisionShapePtr &shape = shapes[index];
-              if (shape) {
-                return std::string(bke::CollisionShape::type_name(shapes[index]->type()));
-              }
-              return std::string("---");
-            }));
+      if (domain_ == bke::AttrDomain::Instance) {
+        if (STREQ(column_id.name, "Type")) {
+          const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
+          return std::make_unique<ColumnValues>(
+              column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
+                const bke::CollisionShapePtr &shape = shapes[index];
+                if (shape) {
+                  return std::string(bke::CollisionShape::type_name(shapes[index]->type()));
+                }
+                return std::string("---");
+              }));
+        }
+        if (STREQ(column_id.name, "Status")) {
+          const Span<bke::CollisionShapePtr> shapes = physics->state().shapes();
+          return std::make_unique<ColumnValues>(
+              column_id.name, VArray<std::string>::ForFunc(domain_num, [shapes](int64_t index) {
+                const bke::CollisionShapePtr &shape = shapes[index];
+                if (shape && shape->error()) {
+                  return std::string(shape->error().value());
+                }
+                return std::string("");
+              }));
+        }
       }
     }
   }

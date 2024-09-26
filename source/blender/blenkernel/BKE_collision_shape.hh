@@ -74,6 +74,8 @@ class CollisionShape : public ImplicitSharingMixin {
   CollisionShapeImpl &impl();
   const CollisionShapeImpl &impl() const;
 
+  std::optional<StringRef> error() const;
+
   ShapeType type() const;
 
   static StringRef type_name(const ShapeType type);

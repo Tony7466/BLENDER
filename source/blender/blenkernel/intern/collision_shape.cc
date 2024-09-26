@@ -65,6 +65,11 @@ const CollisionShapeImpl &CollisionShape::impl() const
   return *impl_;
 }
 
+std::optional<StringRef> CollisionShape::error() const
+{
+  return error_.has_value() ? std::make_optional(error_.value()) : std::nullopt;
+}
+
 StringRef CollisionShape::type_name(const CollisionShape::ShapeType type)
 {
   switch (type) {
