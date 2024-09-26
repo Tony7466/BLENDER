@@ -132,6 +132,13 @@ GeometryFieldContext::GeometryFieldContext(const CurvesGeometry &curves, AttrDom
     : geometry_(&curves), type_(GeometryComponent::Type::Curve), domain_(domain)
 {
 }
+GeometryFieldContext::GeometryFieldContext(const Curves &curves_id, AttrDomain domain)
+    : geometry_(&curves_id.geometry.wrap()),
+      type_(GeometryComponent::Type::Curve),
+      domain_(domain),
+      curves_id_(&curves_id)
+{
+}
 GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
     : geometry_(&points), type_(GeometryComponent::Type::PointCloud), domain_(AttrDomain::Point)
 {
@@ -227,6 +234,10 @@ const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
     return &drawing->strokes();
   }
   return nullptr;
+}
+const Curves *GeometryFieldContext::curves_id() const
+{
+  return curves_id_;
 }
 const Instances *GeometryFieldContext::instances() const
 {
