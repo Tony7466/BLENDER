@@ -651,6 +651,9 @@ static void select_similar_by_value(Scene *scene,
         *object, info.drawing, info.layer_index, memory);
 
     mask.foreach_index(GrainSize(1024), [&](const int index) {
+      if (selection_writer.span[index]) {
+        return;
+      }
       for (const T &test_value : selected_values) {
         if (distance_fn(values[index], test_value) <= threshold) {
           selection_writer.span[index] = true;
