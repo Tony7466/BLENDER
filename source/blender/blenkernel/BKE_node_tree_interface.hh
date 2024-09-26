@@ -256,10 +256,10 @@ template<typename Fn> struct TypeTagExecutor {
 }  // namespace detail
 
 template<typename Fn>
-bool socket_data_to_static_type_tag(const StringRef socket_type, const Fn &fn)
+void socket_data_to_static_type_tag(const StringRef socket_type, const Fn &fn)
 {
   detail::TypeTagExecutor executor{fn};
-  return socket_data_to_static_type(socket_type, executor);
+  socket_data_to_static_type(socket_type, executor);
 }
 
 }  // namespace socket_types
