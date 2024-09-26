@@ -715,6 +715,9 @@ const uint gl_LocalInvocationIndex;
 /* Discards the output of the current fragment shader invocation and halts its execution. */
 #  define discard
 
+/* Decorate a variable in global scope that is common to all threads in a threadgroup. */
+#  define shared
+
 namespace gl_ComputeShader {
 void barrier() {}
 void memoryBarrier() {}
