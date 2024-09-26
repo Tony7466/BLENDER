@@ -22,8 +22,8 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "ED_select_utils.hh"
 #include "ED_grease_pencil.hh"
+#include "ED_select_utils.hh"
 
 #include "math.h"
 
@@ -296,7 +296,8 @@ void select_alternate(bke::CurvesGeometry &curves,
                       const IndexMask &curves_mask,
                       const bool deselect_ends);
 
-template<typename T> static T default_for_lookup() {
+template<typename T> static T default_for_lookup()
+{
   if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
     return 0;
   }

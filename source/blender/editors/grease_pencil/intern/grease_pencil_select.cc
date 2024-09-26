@@ -6,13 +6,14 @@
  * \ingroup edgreasepencil
  */
 
-#include "BKE_curves.hh"
-
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
+#include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_offset_indices.hh"
+#include "BLI_task.hh"
 
 #include "DNA_object_types.h"
 
@@ -32,22 +33,21 @@
 #include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
-/* WARNING: don't change existing ones without modifying rearrange func accordingly */
-typedef enum class eSelectSimilar {
-  LAYER = 0,
-  MATERIAL = 1,
-  VERTEX_COLOR = 2,
-  RADIUS = 3,
-  OPACITY = 4,
 
-} eSelectSimilar_Mode;
+enum class SelectSimilarMode {
+  LAYER,
+  MATERIAL,
+  VERTEX_COLOR,
+  RADIUS,
+  OPACITY,
+};
 
-static const EnumPropertyItem prop_select_similar_types[] = {
-    {static_cast<int>(eSelectSimilar::LAYER), "LAYER", 0, "Layer", ""},
-    {static_cast<int>(eSelectSimilar::MATERIAL), "MATERIAL", 0, "Material", ""},
-    {static_cast<int>(eSelectSimilar::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
-    {static_cast<int>(eSelectSimilar::RADIUS), "RADIUS", 0, "Radius", ""},
-    {static_cast<int>(eSelectSimilar::OPACITY), "OPACITY", 0, "Opacity", ""},
+static const EnumPropertyItem select_similar_mode_items[] = {
+    {int(SelectSimilarMode::LAYER), "LAYER", 0, "Layer", ""},
+    {int(SelectSimilarMode::MATERIAL), "MATERIAL", 0, "Material", ""},
+    {int(SelectSimilarMode::VERTEX_COLOR), "VERTEX_COLOR", 0, "Vertex Color", ""},
+    {int(SelectSimilarMode::RADIUS), "RADIUS", 0, "Radius", ""},
+    {int(SelectSimilarMode::OPACITY), "OPACITY", 0, "Opacity", ""},
     {0, NULL, 0, NULL, NULL},
 };
 
@@ -579,51 +579,34 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
 }
 
 template<typename T>
-blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curves,
-                                                       int /*type*/,
-                                                       std::string attribute_id)
+void insert_selected_values(const bke::CurvesGeometry &curves,
+                            const bke::AttrDomain domain,
+                            const StringRef attribute_id,
+                            blender::Set<T> &r_value_set)
 {
-  blender::Set<T> selectedValuesForAttribute;
-  VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
-      attribute_id, bke::AttrDomain::Point, blender::ed::curves::default_for_lookup<T>());
-  const OffsetIndices points_by_curve = curves.points_by_curve();
-  bke::GSpanAttributeWriter selection = blender::ed::curves::ensure_selection_attribute(
-      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+  const bke::AttributeAccessor attributes = curves.attributes();
+  const VArraySpan<bool> selection = *attributes.lookup_or_default<bool>(
+      ".selection", domain, true);
+  const VArraySpan<T> values = *attributes.lookup_or_default<T>(
+      attribute_id, domain, blender::ed::curves::default_for_lookup<T>());
 
-  MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-
-  // for now sequential implementation, grain_size == 1
-  threading::parallel_for(curves.curves_range(), 1, [&](const IndexRange range) {
-    for (const int curve_i : range) {
-      const IndexRange points = points_by_curve[curve_i];
-
-      if (!blender::ed::curves::has_anything_selected(selection.span.slice(points))) {
-        continue;
-      }
-
-      for (const int index : points.index_range()) {
-        if (selection_typed[points[index]]) {
-          // careful: problems with concurrency?
-          selectedValuesForAttribute.add(attributes[points[index]]);
+  threading::EnumerableThreadSpecific<Set<T>> value_set_by_thread;
+  threading::parallel_for(
+      IndexRange(attributes.domain_size(domain)), 1024, [&](const IndexRange range) {
+        Set<T> &local_value_set = value_set_by_thread.local();
+        for (const int i : range) {
+          if (selection[i]) {
+            local_value_set.add(values[i]);
+          }
         }
-      }
-    }
-  });
+      });
 
-  selection.finish();
-  return selectedValuesForAttribute;
-}
-
-template<typename T>
-static blender::Set<T> join_sets(blender::Array<blender::Set<T>> &setsToBeJoined)
-{
-  Set<T> currentlySelectedValues{};
-  for (auto &singleSet : setsToBeJoined) {
-    for (auto &value : singleSet) {
-      currentlySelectedValues.add(value);
+  for (const Set<T> &local_value_set : value_set_by_thread) {
+    /* TODO is there a union function that can do this more efficiently? */
+    for (const T &key : local_value_set) {
+      r_value_set.add(key);
     }
   }
-  return currentlySelectedValues;
 }
 
 template<typename T> static float distance(T first, T second)
@@ -667,27 +650,22 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
 }
 
 template<typename T>
-static void select_similar(GreasePencil &grease_pencil,
-                           Scene *scene,
-                           eSelectSimilar type,
-                           float threshold,
-                           std::string attribute_id,
-                           Object *object)
+static void select_similar(Scene *scene,
+                           Object *object,
+                           GreasePencil &grease_pencil,
+                           const bke::AttrDomain domain,
+                           const StringRef attribute_id,
+                           float threshold)
 {
   using namespace blender::ed::greasepencil;
 
   const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                                   grease_pencil);
-  blender::Array<blender::Set<T>> currentlySelectedValuesPerDrawing(drawings.size());
 
-  int counter = 0;
+  blender::Set<T> selected_values;
   for (const MutableDrawingInfo &info : drawings) {
-    currentlySelectedValuesPerDrawing[counter++] = selected_values_for_attribute_in_curve<T>(
-            info.drawing.strokes_for_write(), static_cast<int>(type), attribute_id);
+    insert_selected_values(info.drawing.strokes(), domain, attribute_id, selected_values);
   }
-
-  Set<T> currentlySelectedValues = join_sets<T>(
-      currentlySelectedValuesPerDrawing);
 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
@@ -695,26 +673,24 @@ static void select_similar(GreasePencil &grease_pencil,
         *object, info.drawing, info.layer_index, memory);
 
     select_with_similar_attribute<T>(
-        info.drawing.strokes_for_write(), currentlySelectedValues, threshold,
-        editable_points);
+        info.drawing.strokes_for_write(), selected_values, threshold, editable_points);
   });
 }
 
-static void select_similar_layer(GreasePencil &grease_pencil,
-                                 Scene *scene,
-                                 bke::AttrDomain selection_domain,
-                                 Object *object)
+static void select_similar_layer(Scene *scene,
+                                 Object *object,
+                                 GreasePencil &grease_pencil,
+                                 bke::AttrDomain selection_domain)
 {
-  const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
+                                                                                  grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    // bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     const IndexMask editable_elements = retrieve_editable_elements(
         *object, info, selection_domain, memory);
     if (editable_elements.is_empty()) {
       return;
     }
-    // const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
     ed::curves::select_all(
         info.drawing.strokes_for_write(), editable_elements, selection_domain, SEL_SELECT);
   });
@@ -722,35 +698,35 @@ static void select_similar_layer(GreasePencil &grease_pencil,
 
 static int select_similar_exec(bContext *C, wmOperator *op)
 {
-  const eSelectSimilar type = eSelectSimilar(RNA_enum_get(op->ptr, "type"));
+  const SelectSimilarMode mode = SelectSimilarMode(RNA_enum_get(op->ptr, "mode"));
   const float threshold = RNA_float_get(op->ptr, "threshold");
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings, object);
+  bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings,
+                                                                           object);
 
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
-  switch (type) {
-    case eSelectSimilar::LAYER:
-      select_similar_layer(
-          grease_pencil, scene, selection_domain, object);
+  switch (mode) {
+    case SelectSimilarMode::LAYER:
+      select_similar_layer(scene, object, grease_pencil, selection_domain);
       break;
-    case eSelectSimilar::MATERIAL:
+    case SelectSimilarMode::MATERIAL:
       select_similar<int>(
-          grease_pencil, scene, type, threshold, "material_index", object);
+          scene, object, grease_pencil, selection_domain, "material_index", threshold);
       break;
-    case eSelectSimilar::VERTEX_COLOR:
+    case SelectSimilarMode::VERTEX_COLOR:
       select_similar<ColorGeometry4f>(
-          grease_pencil, scene, type, threshold, "vertex_color", object);
+          scene, object, grease_pencil, selection_domain, "vertex_color", threshold);
       break;
-    case eSelectSimilar::RADIUS:
+    case SelectSimilarMode::RADIUS:
       select_similar<float>(
-          grease_pencil, scene, type, threshold, "radius", object);
+          scene, object, grease_pencil, selection_domain, "radius", threshold);
       break;
-    case eSelectSimilar::OPACITY:
+    case SelectSimilarMode::OPACITY:
       select_similar<float>(
-          grease_pencil, scene, type, threshold, "opacity", object);
+          scene, object, grease_pencil, selection_domain, "opacity", threshold);
       break;
   }
 
@@ -773,7 +749,8 @@ static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_enum(ot->srna, "type", prop_select_similar_types, static_cast<int>(eSelectSimilar::LAYER), "Type", "");
+  RNA_def_enum(
+      ot->srna, "mode", select_similar_mode_items, int(SelectSimilarMode::LAYER), "Mode", "");
 
   RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
 }
