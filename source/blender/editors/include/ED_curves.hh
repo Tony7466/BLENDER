@@ -8,24 +8,14 @@
 
 #pragma once
 
-#include "DNA_grease_pencil_types.h"
-#include "DNA_scene_types.h"
-
-#include "BKE_attribute.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
-#include "BKE_grease_pencil.hh"
-
-#include "BLI_math_color.h"
 
 #include "BLI_index_mask_fwd.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "ED_grease_pencil.hh"
 #include "ED_select_utils.hh"
-
-#include "math.h"
 
 struct bContext;
 struct Curves;
@@ -295,20 +285,6 @@ void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends);
 void select_alternate(bke::CurvesGeometry &curves,
                       const IndexMask &curves_mask,
                       const bool deselect_ends);
-
-template<typename T> static T default_for_lookup()
-{
-  if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
-    return 0;
-  }
-  else if constexpr (std::is_same<T, ColorGeometry4f>::value) {
-    return ColorGeometry4f{0.0f, 0.0f, 0.0f, 0.0f};
-  }
-  else if constexpr (std::is_same<T, std::string>::value) {
-    return "default";
-  }
-  return T(0);
-}
 
 /**
  * (De)select all the adjacent points of the current selected points.

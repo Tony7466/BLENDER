@@ -584,11 +584,14 @@ void insert_selected_values(const bke::CurvesGeometry &curves,
                             const StringRef attribute_id,
                             blender::Set<T> &r_value_set)
 {
+  T default_value;
+  CPPType::get<T>().default_construct(&default_value);
+
   const bke::AttributeAccessor attributes = curves.attributes();
   const VArraySpan<bool> selection = *attributes.lookup_or_default<bool>(
       ".selection", domain, true);
   const VArraySpan<T> values = *attributes.lookup_or_default<T>(
-      attribute_id, domain, blender::ed::curves::default_for_lookup<T>());
+      attribute_id, domain, default_value);
 
   threading::EnumerableThreadSpecific<Set<T>> value_set_by_thread;
   threading::parallel_for(
@@ -620,6 +623,9 @@ static void select_similar_by_value(Scene *scene,
 {
   using namespace blender::ed::greasepencil;
 
+  T default_value;
+  CPPType::get<T>().default_construct(&default_value);
+
   const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene,
                                                                                   grease_pencil);
 
@@ -638,7 +644,7 @@ static void select_similar_by_value(Scene *scene,
             domain,
             bke::AttributeInitVArray(VArray<bool>::ForSingle(true, domain_size)));
     const VArraySpan<T> values = *attributes.lookup_or_default<T>(
-        attribute_id, domain, blender::ed::curves::default_for_lookup<T>());
+        attribute_id, domain, default_value);
 
     IndexMaskMemory memory;
     const IndexMask mask = ed::greasepencil::retrieve_editable_points(
