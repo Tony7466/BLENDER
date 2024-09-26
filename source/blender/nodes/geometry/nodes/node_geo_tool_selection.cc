@@ -125,7 +125,7 @@ class SculptSelectionFieldInput final : public bke::GeometryFieldInput {
           case CD_PROP_BOOL: {
             Array<bool> selection(mask.min_array_size());
             mask.foreach_index_optimized<int>(
-                GrainSize(4096), [&](const int i) { selection[i] = attribute[i] == 0.0f; });
+                GrainSize(4096), [&](const int i) { selection[i] = attribute[i] < 1.0f; });
             return VArray<bool>::ForContainer(std::move(selection));
           }
           case CD_PROP_FLOAT: {
