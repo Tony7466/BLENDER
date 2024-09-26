@@ -222,7 +222,7 @@ static const EnumPropertyItem rna_enum_preferences_extension_repo_source_type_it
 
 #  include "BLF_api.hh"
 
-#  include "BLI_path_util.h"
+#  include "BLI_path_utils.hh"
 
 #  include "MEM_CacheLimiterC-Api.h"
 #  include "MEM_guardedalloc.h"
@@ -1464,7 +1464,7 @@ static int rna_preference_gpu_preferred_device_get(PointerRNA *ptr)
         gpu_device.vendor_id == preferences->gpu_preferred_vendor_id &&
         gpu_device.device_id == preferences->gpu_preferred_device_id)
     {
-      /* Offset by one as first item in the list is always autodetection. */
+      /* Offset by one as first item in the list is always auto-detection. */
       return index;
     }
     index += 1;
