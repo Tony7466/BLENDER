@@ -267,6 +267,10 @@ bool BKE_paint_select_face_test(const Object *ob);
  */
 bool BKE_paint_select_vert_test(const Object *ob);
 /**
+ * Return true when in grease pencil sculpt mode.
+ */
+bool BKE_paint_select_grease_pencil_test(const Object *ob);
+/**
  * used to check if selection is possible
  * (when we don't care if its face or vert)
  */
@@ -333,8 +337,6 @@ struct SculptBoundaryPreview {
 };
 
 struct SculptFakeNeighbors {
-  bool use_fake_neighbors;
-
   /* Max distance used to calculate neighborhood information. */
   float current_max_distance;
 
@@ -405,8 +407,8 @@ struct SculptSession : blender::NonCopyable, blender::NonMovable {
   blender::ed::sculpt_paint::expand::Cache *expand_cache = nullptr;
 
   /* Cursor data and active vertex for tools */
-  int active_face_index = -1;
-  int active_grid_index = -1;
+  std::optional<int> active_face_index;
+  std::optional<int> active_grid_index;
 
   /* When active, the cursor draws with faded colors, indicating that there is an action
    * enabled.

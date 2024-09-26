@@ -35,6 +35,12 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const AttrD
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
+CurvesFieldContext::CurvesFieldContext(const Curves &curves_id, const AttrDomain domain)
+    : CurvesFieldContext(curves_id.geometry.wrap(), domain)
+{
+  curves_id_ = &curves_id;
+}
+
 GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
                                                             const IndexMask &mask,
                                                             ResourceScope &scope) const
@@ -43,7 +49,7 @@ GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput
           &field_input))
   {
     if (const bke::greasepencil::Drawing *drawing = this->grease_pencil().get_eval_drawing(
-            *this->grease_pencil().layer(this->layer_index())))
+            this->grease_pencil().layer(this->layer_index())))
     {
       if (drawing->strokes().attributes().domain_supported(this->domain())) {
         const CurvesFieldContext context{drawing->strokes(), this->domain()};
@@ -60,6 +66,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryFieldContext &other,
     : geometry_(other.geometry_),
       type_(other.type_),
       domain_(domain),
+      curves_id_(other.curves_id_),
       grease_pencil_layer_index_(other.grease_pencil_layer_index_)
 {
 }
@@ -95,6 +102,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       const CurveComponent &curve_component = static_cast<const CurveComponent &>(component);
       const Curves *curves = curve_component.get();
       geometry_ = curves ? &curves->geometry.wrap() : nullptr;
+      curves_id_ = curve_component.get();
       break;
     }
     case GeometryComponent::Type::PointCloud: {
@@ -130,6 +138,13 @@ GeometryFieldContext::GeometryFieldContext(const Mesh &mesh, AttrDomain domain)
 }
 GeometryFieldContext::GeometryFieldContext(const CurvesGeometry &curves, AttrDomain domain)
     : geometry_(&curves), type_(GeometryComponent::Type::Curve), domain_(domain)
+{
+}
+GeometryFieldContext::GeometryFieldContext(const Curves &curves_id, AttrDomain domain)
+    : geometry_(&curves_id.geometry.wrap()),
+      type_(GeometryComponent::Type::Curve),
+      domain_(domain),
+      curves_id_(&curves_id)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
@@ -174,7 +189,7 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
       return grease_pencil->attributes();
     }
     if (const greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
-            *grease_pencil->layer(grease_pencil_layer_index_)))
+            grease_pencil->layer(grease_pencil_layer_index_)))
     {
       return drawing->strokes().attributes();
     }
@@ -216,7 +231,7 @@ const greasepencil::Drawing *GeometryFieldContext::grease_pencil_layer_drawing()
     return nullptr;
   }
   return this->grease_pencil()->get_eval_drawing(
-      *this->grease_pencil()->layer(this->grease_pencil_layer_index_));
+      this->grease_pencil()->layer(this->grease_pencil_layer_index_));
 }
 const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
 {
@@ -227,6 +242,10 @@ const CurvesGeometry *GeometryFieldContext::curves_or_strokes() const
     return &drawing->strokes();
   }
   return nullptr;
+}
+const Curves *GeometryFieldContext::curves_id() const
+{
+  return curves_id_;
 }
 const Instances *GeometryFieldContext::instances() const
 {
@@ -249,6 +268,9 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   }
   if (const CurvesFieldContext *curve_context = dynamic_cast<const CurvesFieldContext *>(&context))
   {
+    if (const Curves *curves_id = curve_context->curves_id()) {
+      return this->get_varray_for_context({*curves_id, curve_context->domain()}, mask);
+    }
     return this->get_varray_for_context({curve_context->curves(), curve_context->domain()}, mask);
   }
   if (const PointCloudFieldContext *point_context = dynamic_cast<const PointCloudFieldContext *>(
@@ -902,7 +924,7 @@ bool try_capture_fields_on_geometry(GeometryComponent &component,
     threading::parallel_for(grease_pencil->layers().index_range(), 8, [&](const IndexRange range) {
       for (const int layer_index : range) {
         if (greasepencil::Drawing *drawing = grease_pencil->get_eval_drawing(
-                *grease_pencil->layer(layer_index)))
+                grease_pencil->layer(layer_index)))
         {
           const GeometryFieldContext field_context{*grease_pencil, domain, layer_index};
           const bool success = try_capture_fields_on_geometry(

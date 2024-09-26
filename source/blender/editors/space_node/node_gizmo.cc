@@ -210,7 +210,7 @@ static void gizmo_node_crop_update(NodeCropWidgetGroup *crop_group)
 }
 
 static void two_xy_to_rect(
-    const NodeTwoXYs *nxy, rctf *rect, const float2 &dims, const float2 offset, bool is_relative)
+    const NodeTwoXYs *nxy, const float2 &dims, const float2 offset, bool is_relative, rctf *r_rect)
 {
   if (is_relative) {
     rect->xmin = nxy->fac_x1 + (offset.x / dims.x);
@@ -257,7 +257,7 @@ static void gizmo_node_crop_prop_matrix_get(const wmGizmo *gz,
   const NodeTwoXYs *nxy = (const NodeTwoXYs *)node->storage;
   bool is_relative = bool(node->custom2);
   rctf rct;
-  two_xy_to_rect(nxy, &rct, dims, offset, is_relative);
+  two_xy_to_rect(nxy, dims, offset, is_relative, &rct);
   matrix[0][0] = fabsf(BLI_rctf_size_x(&rct));
   matrix[1][1] = fabsf(BLI_rctf_size_y(&rct));
   matrix[3][0] = (BLI_rctf_cent_x(&rct) - 0.5f) * dims[0];

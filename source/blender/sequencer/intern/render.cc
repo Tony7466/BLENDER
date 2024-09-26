@@ -22,7 +22,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_rect.h"
 #include "BLI_task.hh"
 
@@ -276,7 +276,7 @@ Vector<Sequence *> seq_get_shown_sequences(const Scene *scene,
       scene, channels, seqbase, timeline_frame, chanshown);
   const int strip_count = strips.size();
 
-  if (UNLIKELY(strip_count > MAXSEQ)) {
+  if (UNLIKELY(strip_count > SEQ_MAX_CHANNELS)) {
     BLI_assert_msg(0, "Too many strips, this shouldn't happen");
     return result;
   }
