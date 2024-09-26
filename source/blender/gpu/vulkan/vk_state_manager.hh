@@ -45,7 +45,7 @@ class BindSpaceUniformBuffers {
     bound_resources[binding] = resource;
   }
 
-  VKUniformBuffer *get(int binding)
+  VKUniformBuffer *get(int binding) const
   {
     return bound_resources[binding];
   }
@@ -83,7 +83,7 @@ template<int Offset> class BindSpaceImages {
     bound_resources[binding] = resource;
   }
 
-  VKTexture *get(int binding)
+  VKTexture *get(int binding) const
   {
     if (binding >= Offset) {
       binding -= Offset;

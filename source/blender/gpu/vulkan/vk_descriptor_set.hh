@@ -20,14 +20,11 @@
 #include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
-class VKIndexBuffer;
-class VKShaderInterface;
-class VKStorageBuffer;
-class VKTexture;
-class VKUniformBuffer;
-class VKVertexBuffer;
-class VKDescriptorSetTracker;
-class VKSampler;
+class VKResourceBinding;
+class VKStateManager;
+class VKDevice;
+class VKPushConstants;
+class VKShader;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -95,7 +92,38 @@ class VKDescriptorSetTracker {
 
   VKDescriptorSetTracker() {}
 
-  void bind_texel_buffer(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  /**
+   * Update the descriptor set. Reuses previous descriptor set when no changes are detected. This
+   * improves performance when working with large grease pencil scenes.
+   */
+  void update_descriptor_set(VKContext &context,
+                             render_graph::VKResourceAccessInfo &resource_access_info);
+  void upload_descriptor_sets();
+
+ private:
+  void bind_shader_resources(const VKDevice &device,
+                             const VKStateManager &state_manager,
+                             VKShader &shader,
+                             render_graph::VKResourceAccessInfo &access_info);
+
+  void bind_image_resource(const VKStateManager &state_manager,
+                           const VKResourceBinding &resource_binding,
+                           render_graph::VKResourceAccessInfo &access_info);
+  void bind_texture_resource(const VKDevice &device,
+                             const VKStateManager &state_manager,
+                             const VKResourceBinding &resource_binding,
+                             render_graph::VKResourceAccessInfo &access_info);
+  void bind_storage_buffer_resource(const VKStateManager &state_manager,
+                                    const VKResourceBinding &resource_binding,
+                                    render_graph::VKResourceAccessInfo &access_info);
+  void bind_uniform_buffer_resource(const VKStateManager &state_manager,
+                                    const VKResourceBinding &resource_binding,
+                                    render_graph::VKResourceAccessInfo &access_info);
+  void bind_push_constants(VKPushConstants &push_constants,
+
+                           render_graph::VKResourceAccessInfo &access_info);
+
+  void bind_texel_buffer(VkBufferView vk_buffer_view, VKDescriptorSet::Location location);
   void bind_buffer(VkDescriptorType vk_descriptor_type,
                    VkBuffer vk_buffer,
                    VkDeviceSize size_in_bytes,
@@ -105,14 +133,6 @@ class VKDescriptorSetTracker {
                   VkImageView vk_image_view,
                   VkImageLayout vk_image_layout,
                   VKDescriptorSet::Location location);
-
-  /**
-   * Update the descriptor set.
-   */
-  void update(VKContext &context, render_graph::VKResourceAccessInfo &resource_access_info);
-
- private:
-  void reset();
 };
 
 }  // namespace blender::gpu

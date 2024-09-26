@@ -17,6 +17,7 @@ namespace blender::gpu {
 
 class VKSampler;
 class VKDescriptorSetTracker;
+class VKVertexBuffer;
 
 class VKTexture : public Texture {
   friend class VKDescriptorSetTracker;

@@ -269,7 +269,7 @@ void VKContext::update_pipeline_data(VKShader &vk_shader,
   r_pipeline_data.vk_descriptor_set = VK_NULL_HANDLE;
   if (vk_shader.has_descriptor_set()) {
     VKDescriptorSetTracker &descriptor_set = descriptor_set_get();
-    descriptor_set.update(*this, access_info_);
+    descriptor_set.update_descriptor_set(*this, access_info_);
     r_pipeline_data.vk_descriptor_set = descriptor_set.vk_descriptor_set;
   }
 }
