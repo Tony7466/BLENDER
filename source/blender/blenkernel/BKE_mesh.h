@@ -7,6 +7,7 @@
  * \ingroup bke
  */
 
+#include "BLI_array.hh"
 #include "BLI_compiler_attrs.h"
 #include "BLI_compiler_compat.h"
 #include "BLI_utildefines.h"
@@ -123,13 +124,10 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
                                            int corners_num,
                                            CustomData_MeshMasks mask);
 
-void BKE_mesh_eval_delete(Mesh *mesh_eval);
-
 /**
- * Performs copy for use during evaluation,
- * optional referencing original arrays to reduce memory.
+ * Performs copy for use during evaluation.
  */
-Mesh *BKE_mesh_copy_for_eval(const Mesh *source);
+Mesh *BKE_mesh_copy_for_eval(const Mesh &source);
 
 /**
  * These functions construct a new Mesh,
@@ -140,7 +138,10 @@ Mesh *BKE_mesh_new_nomain_from_curve_displist(const Object *ob, const ListBase *
 
 bool BKE_mesh_attribute_required(const char *name);
 
-float (*BKE_mesh_orco_verts_get(const Object *ob))[3];
+blender::Array<blender::float3> BKE_mesh_orco_verts_get(const Object *ob);
+void BKE_mesh_orco_verts_transform(Mesh *mesh,
+                                   blender::MutableSpan<blender::float3> orco,
+                                   bool invert);
 void BKE_mesh_orco_verts_transform(Mesh *mesh, float (*orco)[3], int totvert, bool invert);
 
 /**
@@ -212,11 +213,11 @@ void BKE_mesh_mselect_validate(Mesh *mesh);
 /**
  * \return the index within `me->mselect`, or -1
  */
-int BKE_mesh_mselect_find(Mesh *mesh, int index, int type);
+int BKE_mesh_mselect_find(const Mesh *mesh, int index, int type);
 /**
  * \return The index of the active element.
  */
-int BKE_mesh_mselect_active_get(Mesh *mesh, int type);
+int BKE_mesh_mselect_active_get(const Mesh *mesh, int type);
 void BKE_mesh_mselect_active_set(Mesh *mesh, int index, int type);
 
 void BKE_mesh_count_selected_items(const Mesh *mesh, int r_count[3]);
@@ -356,6 +357,7 @@ bool BKE_mesh_has_custom_loop_normals(Mesh *mesh);
  * with automatically computed vectors.
  */
 void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_loop_normals)[3]);
+void BKE_mesh_set_custom_normals_normalized(Mesh *mesh, float (*r_custom_loop_normals)[3]);
 /**
  * Higher level functions hiding most of the code needed around call to
  * #normals_corner_custom_set_from_verts().
@@ -364,6 +366,8 @@ void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_loop_normals)[3]);
  * with automatically computed vectors.
  */
 void BKE_mesh_set_custom_normals_from_verts(Mesh *mesh, float (*r_custom_vert_normals)[3]);
+void BKE_mesh_set_custom_normals_from_verts_normalized(Mesh *mesh,
+                                                       float (*r_custom_vert_normals)[3]);
 
 /* *** mesh_evaluate.cc *** */
 
@@ -466,7 +470,7 @@ bool BKE_mesh_validate_arrays(Mesh *mesh,
                               unsigned int edges_num,
                               MFace *legacy_faces,
                               unsigned int legacy_faces_num,
-                              int *corner_verts,
+                              const int *corner_verts,
                               int *corner_edges,
                               unsigned int corners_num,
                               const int *face_offsets,

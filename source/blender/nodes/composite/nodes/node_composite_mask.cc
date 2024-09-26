@@ -51,16 +51,7 @@ static void node_composit_buts_mask(uiLayout *layout, bContext *C, PointerRNA *p
 {
   bNode *node = (bNode *)ptr->data;
 
-  uiTemplateID(layout,
-               C,
-               ptr,
-               "mask",
-               nullptr,
-               nullptr,
-               nullptr,
-               UI_TEMPLATE_ID_FILTER_ALL,
-               false,
-               nullptr);
+  uiTemplateID(layout, C, ptr, "mask", nullptr, nullptr, nullptr);
   uiItemR(layout, ptr, "use_feather", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 
   uiItemR(layout, ptr, "size_source", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
@@ -183,7 +174,7 @@ void register_node_type_cmp_mask()
 {
   namespace file_ns = blender::nodes::node_composite_mask_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_MASK, "Mask", NODE_CLASS_INPUT);
   ntype.declare = file_ns::cmp_node_mask_declare;
@@ -192,7 +183,8 @@ void register_node_type_cmp_mask()
   ntype.labelfunc = file_ns::node_mask_label;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  node_type_storage(&ntype, "NodeMask", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeMask", node_free_standard_storage, node_copy_standard_storage);
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

@@ -43,7 +43,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -169,7 +169,8 @@ static int new_particle_settings_exec(bContext *C, wmOperator * /*op*/)
 
   /* add or copy particle setting */
   if (psys->part) {
-    part = (ParticleSettings *)BKE_id_copy(bmain, &psys->part->id);
+    part = reinterpret_cast<ParticleSettings *>(BKE_id_copy_ex(
+        bmain, &psys->part->id, nullptr, LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS));
   }
   else {
     part = BKE_particlesettings_add(bmain, "ParticleSettings");
@@ -1050,7 +1051,7 @@ static void remove_particle_systems_from_object(Object *ob_to)
   if (ob_to->type != OB_MESH) {
     return;
   }
-  if (!ob_to->data || ID_IS_LINKED(ob_to->data) || ID_IS_OVERRIDE_LIBRARY(ob_to->data)) {
+  if (!ob_to->data || !ID_IS_EDITABLE(ob_to->data) || ID_IS_OVERRIDE_LIBRARY(ob_to->data)) {
     return;
   }
 

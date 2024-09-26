@@ -37,7 +37,7 @@ void main()
         break;
       case CLOSURE_BSDF_TRANSLUCENT_ID:
       case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-        albedo_back += (gbuf.thickness > 0.0) ? square(cl.color) : cl.color;
+        albedo_back += (gbuf.thickness != 0.0) ? square(cl.color) : cl.color;
         break;
       case CLOSURE_NONE_ID:
         /* TODO(fclem): Assert. */
@@ -46,7 +46,6 @@ void main()
   }
 
   vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
-  vec3 P_transmit = vec3(0.0);
   vec3 Ng = gbuf.surface_N;
   vec3 V = drw_world_incident_vector(P);
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
@@ -66,14 +65,14 @@ void main()
 
   vec3 radiance_front = stack.cl[0].light_shadowed;
 
-  stack.cl[0] = closure_light_new(cl_transmit, V, P, gbuf.thickness, P_transmit);
-  light_eval_transmission(stack, P_transmit, Ng, V, vPz);
+  stack.cl[0] = closure_light_new(cl_transmit, V, gbuf.thickness);
+  light_eval_transmission(stack, P, Ng, V, vPz, gbuf.thickness);
 
   vec3 radiance_back = stack.cl[0].light_shadowed;
 
   /* Indirect light. */
   /* Can only load irradiance to avoid dependency loop with the reflection probe. */
-  SphericalHarmonicL1 sh = lightprobe_irradiance_sample(P, V, Ng);
+  SphericalHarmonicL1 sh = lightprobe_volume_sample(P, V, Ng);
 
   radiance_front += spherical_harmonics_evaluate_lambert(Ng, sh);
   /* TODO(fclem): Correct transmission eval. */

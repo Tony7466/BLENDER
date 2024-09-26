@@ -7,13 +7,21 @@
  */
 
 #include <array>
+#include <complex>
+#include <memory>
+
+#if defined(WITH_FFTW3)
+#  include <fftw3.h>
+#endif
 
 #include "BLI_array.hh"
 #include "BLI_assert.h"
+#include "BLI_fftw.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_base.h"
 #include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_task.hh"
 
 #include "DNA_scene_types.h"
 
@@ -21,8 +29,6 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
-
-#include "IMB_colormanagement.hh"
 
 #include "GPU_shader.hh"
 #include "GPU_state.hh"
@@ -68,10 +74,16 @@ static void node_composit_init_glare(bNodeTree * /*ntree*/, bNode *node)
 
 static void node_composit_buts_glare(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
+  const int glare_type = RNA_enum_get(ptr, "glare_type");
+#ifndef WITH_FFTW3
+  if (glare_type == CMP_NODE_GLARE_FOG_GLOW) {
+    uiItemL(layout, RPT_("Disabled, built without FFTW"), ICON_ERROR);
+  }
+#endif
+
   uiItemR(layout, ptr, "glare_type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "quality", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 
-  const int glare_type = RNA_enum_get(ptr, "glare_type");
   if (ELEM(glare_type, CMP_NODE_GLARE_SIMPLE_STAR, CMP_NODE_GLARE_GHOST, CMP_NODE_GLARE_STREAKS)) {
     uiItemR(layout, ptr, "iterations", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
   }
@@ -155,7 +167,7 @@ class GlareOperation : public NodeOperation {
         return execute_bloom(highlights_result);
       default:
         BLI_assert_unreachable();
-        return context().create_temporary_result(ResultType::Color);
+        return context().create_result(ResultType::Color);
     }
   }
 
@@ -168,17 +180,14 @@ class GlareOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_glare_highlights");
     GPU_shader_bind(shader);
 
-    float luminance_coefficients[3];
-    IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
-    GPU_shader_uniform_3fv(shader, "luminance_coefficients", luminance_coefficients);
     GPU_shader_uniform_1f(shader, "threshold", node_storage(bnode()).threshold);
 
     const Result &input_image = get_input("Image");
-    GPU_texture_filter_mode(input_image.texture(), true);
+    GPU_texture_filter_mode(input_image, true);
     input_image.bind_as_texture(shader, "input_tx");
 
     const int2 glare_size = get_glare_size();
-    Result highlights_result = context().create_temporary_result(ResultType::Color);
+    Result highlights_result = context().create_result(ResultType::Color);
     highlights_result.allocate_texture(glare_size);
     highlights_result.bind_as_image(shader, "output_img");
 
@@ -241,10 +250,10 @@ class GlareOperation : public NodeOperation {
     /* The horizontal pass is applied in-plane, so copy the highlights to a new image since the
      * highlights result is still needed by the vertical pass. */
     const int2 glare_size = get_glare_size();
-    Result horizontal_pass_result = context().create_temporary_result(ResultType::Color);
+    Result horizontal_pass_result = context().create_result(ResultType::Color);
     horizontal_pass_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-    GPU_texture_copy(horizontal_pass_result.texture(), highlights_result.texture());
+    GPU_texture_copy(horizontal_pass_result, highlights_result);
 
     GPUShader *shader = context().get_shader("compositor_glare_simple_star_horizontal_pass");
     GPU_shader_bind(shader);
@@ -298,10 +307,10 @@ class GlareOperation : public NodeOperation {
     /* The diagonal pass is applied in-plane, so copy the highlights to a new image since the
      * highlights result is still needed by the anti-diagonal pass. */
     const int2 glare_size = get_glare_size();
-    Result diagonal_pass_result = context().create_temporary_result(ResultType::Color);
+    Result diagonal_pass_result = context().create_result(ResultType::Color);
     diagonal_pass_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-    GPU_texture_copy(diagonal_pass_result.texture(), highlights_result.texture());
+    GPU_texture_copy(diagonal_pass_result, highlights_result);
 
     GPUShader *shader = context().get_shader("compositor_glare_simple_star_diagonal_pass");
     GPU_shader_bind(shader);
@@ -339,9 +348,9 @@ class GlareOperation : public NodeOperation {
     /* Create an initially zero image where streaks will be accumulated. */
     const float4 zero_color = float4(0.0f);
     const int2 glare_size = get_glare_size();
-    Result accumulated_streaks_result = context().create_temporary_result(ResultType::Color);
+    Result accumulated_streaks_result = context().create_result(ResultType::Color);
     accumulated_streaks_result.allocate_texture(glare_size);
-    GPU_texture_clear(accumulated_streaks_result.texture(), GPU_DATA_FLOAT, zero_color);
+    GPU_texture_clear(accumulated_streaks_result, GPU_DATA_FLOAT, zero_color);
 
     /* For each streak, compute its direction and apply a streak filter in that direction, then
      * accumulate the result into the accumulated streaks result. */
@@ -378,12 +387,12 @@ class GlareOperation : public NodeOperation {
     /* Copy the highlights result into a new image because the output will be copied to the input
      * after each iteration and the highlights result is still needed to compute other streaks. */
     const int2 glare_size = get_glare_size();
-    Result input_streak_result = context().create_temporary_result(ResultType::Color);
+    Result input_streak_result = context().create_result(ResultType::Color);
     input_streak_result.allocate_texture(glare_size);
     GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-    GPU_texture_copy(input_streak_result.texture(), highlights_result.texture());
+    GPU_texture_copy(input_streak_result, highlights_result);
 
-    Result output_streak_result = context().create_temporary_result(ResultType::Color);
+    Result output_streak_result = context().create_result(ResultType::Color);
     output_streak_result.allocate_texture(glare_size);
 
     /* For the given number of iterations, apply the streak filter in the given direction. The
@@ -399,9 +408,8 @@ class GlareOperation : public NodeOperation {
       GPU_shader_uniform_3fv(shader, "fade_factors", fade_factors);
       GPU_shader_uniform_2fv(shader, "streak_vector", streak_vector);
 
-      GPU_texture_filter_mode(input_streak_result.texture(), true);
-      GPU_texture_extend_mode(input_streak_result.texture(),
-                              GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+      GPU_texture_filter_mode(input_streak_result, true);
+      GPU_texture_extend_mode(input_streak_result, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
       input_streak_result.bind_as_texture(shader, "input_streak_tx");
 
       output_streak_result.bind_as_image(shader, "output_streak_img");
@@ -416,7 +424,7 @@ class GlareOperation : public NodeOperation {
        * copying for the last iteration since it is not needed. */
       if (iteration != iterations_range.last()) {
         GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-        GPU_texture_copy(input_streak_result.texture(), output_streak_result.texture());
+        GPU_texture_copy(input_streak_result, output_streak_result);
       }
     }
 
@@ -522,9 +530,9 @@ class GlareOperation : public NodeOperation {
     /* Create an initially zero image where ghosts will be accumulated. */
     const float4 zero_color = float4(0.0f);
     const int2 glare_size = get_glare_size();
-    Result accumulated_ghosts_result = context().create_temporary_result(ResultType::Color);
+    Result accumulated_ghosts_result = context().create_result(ResultType::Color);
     accumulated_ghosts_result.allocate_texture(glare_size);
-    GPU_texture_clear(accumulated_ghosts_result.texture(), GPU_DATA_FLOAT, zero_color);
+    GPU_texture_clear(accumulated_ghosts_result, GPU_DATA_FLOAT, zero_color);
 
     /* For the given number of iterations, accumulate four ghosts with different scales and color
      * modulators. The result of the previous iteration is used as the input of the current
@@ -549,7 +557,7 @@ class GlareOperation : public NodeOperation {
        * copying for the last iteration since it is not needed. */
       if (i != iterations_range.last()) {
         GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
-        GPU_texture_copy(input_ghost_result.texture(), accumulated_ghosts_result.texture());
+        GPU_texture_copy(input_ghost_result, accumulated_ghosts_result);
       }
     }
 
@@ -564,7 +572,7 @@ class GlareOperation : public NodeOperation {
    * the center of the image. */
   Result compute_base_ghost(Result &highlights_result)
   {
-    Result small_ghost_result = context().create_temporary_result(ResultType::Color);
+    Result small_ghost_result = context().create_result(ResultType::Color);
     symmetric_separable_blur(context(),
                              highlights_result,
                              small_ghost_result,
@@ -573,7 +581,7 @@ class GlareOperation : public NodeOperation {
                              false,
                              false);
 
-    Result big_ghost_result = context().create_temporary_result(ResultType::Color);
+    Result big_ghost_result = context().create_result(ResultType::Color);
     symmetric_separable_blur(context(),
                              highlights_result,
                              big_ghost_result,
@@ -587,16 +595,16 @@ class GlareOperation : public NodeOperation {
     GPUShader *shader = context().get_shader("compositor_glare_ghost_base");
     GPU_shader_bind(shader);
 
-    GPU_texture_filter_mode(small_ghost_result.texture(), true);
-    GPU_texture_extend_mode(small_ghost_result.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    GPU_texture_filter_mode(small_ghost_result, true);
+    GPU_texture_extend_mode(small_ghost_result, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
     small_ghost_result.bind_as_texture(shader, "small_ghost_tx");
 
-    GPU_texture_filter_mode(big_ghost_result.texture(), true);
-    GPU_texture_extend_mode(big_ghost_result.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    GPU_texture_filter_mode(big_ghost_result, true);
+    GPU_texture_extend_mode(big_ghost_result, GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
     big_ghost_result.bind_as_texture(shader, "big_ghost_tx");
 
     const int2 glare_size = get_glare_size();
-    Result base_ghost_result = context().create_temporary_result(ResultType::Color);
+    Result base_ghost_result = context().create_result(ResultType::Color);
     base_ghost_result.allocate_texture(glare_size);
     base_ghost_result.bind_as_image(shader, "combined_ghost_img");
 
@@ -732,6 +740,16 @@ class GlareOperation : public NodeOperation {
     const int chain_length = int(std::log2(smaller_glare_dimension)) -
                              compute_bloom_size_halving_count();
 
+    /* If the chain length is less than 2, that means no down-sampling will happen, so we just
+     * return a copy of the highlights. This is a sanitization of a corner case, so no need to
+     * worry about optimizing the copy away. */
+    if (chain_length < 2) {
+      Result bloom_result = context().create_result(ResultType::Color);
+      bloom_result.allocate_texture(highlights_result.domain());
+      GPU_texture_copy(bloom_result, highlights_result);
+      return bloom_result;
+    }
+
     Array<Result> downsample_chain = compute_bloom_downsample_chain(highlights_result,
                                                                     chain_length);
 
@@ -742,7 +760,7 @@ class GlareOperation : public NodeOperation {
 
     for (const int i : upsample_passes_range) {
       Result &input = downsample_chain[upsample_passes_range.last() - i + 1];
-      GPU_texture_filter_mode(input.texture(), true);
+      GPU_texture_filter_mode(input, true);
       input.bind_as_texture(shader, "input_tx");
 
       const Result &output = downsample_chain[upsample_passes_range.last() - i];
@@ -768,7 +786,7 @@ class GlareOperation : public NodeOperation {
    * one pixel. */
   Array<Result> compute_bloom_downsample_chain(Result &highlights_result, int chain_length)
   {
-    const Result downsampled_result = context().create_temporary_result(ResultType::Color);
+    const Result downsampled_result = context().create_result(ResultType::Color);
     Array<Result> downsample_chain(chain_length, downsampled_result);
 
     /* We assign the original highlights result to the first result of the chain to make the code
@@ -793,7 +811,7 @@ class GlareOperation : public NodeOperation {
       }
 
       const Result &input = downsample_chain[i];
-      GPU_texture_filter_mode(input.texture(), true);
+      GPU_texture_filter_mode(input, true);
       input.bind_as_texture(shader, "input_tx");
 
       Result &output = downsample_chain[i + 1];
@@ -831,11 +849,160 @@ class GlareOperation : public NodeOperation {
 
   Result execute_fog_glow(Result &highlights_result)
   {
-    context().set_info_message("Fog Glow Glare not supported in GPU compositor.");
-    Result fog_glow_result = context().create_temporary_result(ResultType::Color);
+    Result fog_glow_result = context().create_result(ResultType::Color);
     fog_glow_result.allocate_texture(highlights_result.domain());
-    GPU_texture_copy(fog_glow_result.texture(), highlights_result.texture());
+
+#if defined(WITH_FFTW3)
+    fftw::initialize_float();
+
+    const int kernel_size = compute_fog_glow_kernel_size();
+
+    /* Since we will be doing a circular convolution, we need to zero pad our input image by half
+     * the kernel size to avoid the kernel affecting the pixels at the other side of image.
+     * Therefore, zero boundary is assumed. */
+    const int needed_padding_amount = kernel_size / 2;
+    const int2 image_size = highlights_result.domain().size;
+    const int2 needed_spatial_size = image_size + needed_padding_amount;
+    const int2 spatial_size = fftw::optimal_size_for_real_transform(needed_spatial_size);
+
+    /* The FFTW real to complex transforms utilizes the hermitian symmetry of real transforms and
+     * stores only half the output since the other half is redundant, so we only allocate half of
+     * the first dimension. See Section 4.3.4 Real-data DFT Array Format in the FFTW manual for
+     * more information. */
+    const int2 frequency_size = int2(spatial_size.x / 2 + 1, spatial_size.y);
+
+    /* We only process the color channels, the alpha channel is written to the output as is. */
+    const int channels_count = 3;
+    const float image_channels_count = 4;
+    const int64_t spatial_pixels_per_channel = int64_t(spatial_size.x) * spatial_size.y;
+    const int64_t frequency_pixels_per_channel = int64_t(frequency_size.x) * frequency_size.y;
+    const int64_t spatial_pixels_count = spatial_pixels_per_channel * channels_count;
+    const int64_t frequency_pixels_count = frequency_pixels_per_channel * channels_count;
+
+    float *image_spatial_domain = fftwf_alloc_real(spatial_pixels_count);
+    std::complex<float> *image_frequency_domain = reinterpret_cast<std::complex<float> *>(
+        fftwf_alloc_complex(frequency_pixels_count));
+
+    /* Create a real to complex plan to transform the image to the frequency domain. */
+    fftwf_plan forward_plan = fftwf_plan_dft_r2c_2d(
+        spatial_size.y,
+        spatial_size.x,
+        image_spatial_domain,
+        reinterpret_cast<fftwf_complex *>(image_frequency_domain),
+        FFTW_ESTIMATE);
+
+    GPU_memory_barrier(GPU_BARRIER_TEXTURE_UPDATE);
+    float *highlights_buffer = static_cast<float *>(
+        GPU_texture_read(highlights_result, GPU_DATA_FLOAT, 0));
+
+    /* Zero pad the image to the required spatial domain size, storing each channel in planar
+     * format for better cache locality, that is, RRRR...GGGG...BBBB. */
+    threading::parallel_for(IndexRange(spatial_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(spatial_size.x)) {
+          const bool is_inside_image = x < image_size.x && y < image_size.y;
+          for (const int64_t channel : IndexRange(channels_count)) {
+            const int64_t base_index = y * spatial_size.x + x;
+            const int64_t output_index = base_index + spatial_pixels_per_channel * channel;
+            if (is_inside_image) {
+              const int64_t image_index = (y * image_size.x + x) * image_channels_count + channel;
+              image_spatial_domain[output_index] = highlights_buffer[image_index];
+            }
+            else {
+              image_spatial_domain[output_index] = 0.0f;
+            }
+          }
+        }
+      }
+    });
+
+    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+      for (const int64_t channel : sub_range) {
+        fftwf_execute_dft_r2c(forward_plan,
+                              image_spatial_domain + spatial_pixels_per_channel * channel,
+                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                  frequency_pixels_per_channel * channel);
+      }
+    });
+
+    const FogGlowKernel &fog_glow_kernel = context().cache_manager().fog_glow_kernels.get(
+        kernel_size, spatial_size);
+
+    /* Multiply the kernel and the image in the frequency domain to perform the convolution. The
+     * FFT is not normalized, meaning the result of the FFT followed by an inverse FFT will result
+     * in an image that is scaled by a factor of the product of the width and height, so we take
+     * that into account by dividing by that scale. See Section 4.8.6 Multi-dimensional Transforms
+     * of the FFTW manual for more information. */
+    const float normalization_scale = float(spatial_size.x) * spatial_size.y *
+                                      fog_glow_kernel.normalization_factor();
+    threading::parallel_for(IndexRange(frequency_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t channel : IndexRange(channels_count)) {
+        for (const int64_t y : sub_y_range) {
+          for (const int64_t x : IndexRange(frequency_size.x)) {
+            const int64_t base_index = x + y * frequency_size.x;
+            const int64_t output_index = base_index + frequency_pixels_per_channel * channel;
+            const std::complex<float> kernel_value = fog_glow_kernel.frequencies()[base_index];
+            image_frequency_domain[output_index] *= kernel_value / normalization_scale;
+          }
+        }
+      }
+    });
+
+    /* Create a complex to real plan to transform the image to the real domain. */
+    fftwf_plan backward_plan = fftwf_plan_dft_c2r_2d(
+        spatial_size.y,
+        spatial_size.x,
+        reinterpret_cast<fftwf_complex *>(image_frequency_domain),
+        image_spatial_domain,
+        FFTW_ESTIMATE);
+
+    threading::parallel_for(IndexRange(channels_count), 1, [&](const IndexRange sub_range) {
+      for (const int64_t channel : sub_range) {
+        fftwf_execute_dft_c2r(backward_plan,
+                              reinterpret_cast<fftwf_complex *>(image_frequency_domain) +
+                                  frequency_pixels_per_channel * channel,
+                              image_spatial_domain + spatial_pixels_per_channel * channel);
+      }
+    });
+
+    Array<float> output(int64_t(image_size.x) * int64_t(image_size.y) * image_channels_count);
+
+    /* Copy the result to the output. */
+    threading::parallel_for(IndexRange(image_size.y), 1, [&](const IndexRange sub_y_range) {
+      for (const int64_t y : sub_y_range) {
+        for (const int64_t x : IndexRange(image_size.x)) {
+          for (const int64_t channel : IndexRange(channels_count)) {
+            const int64_t output_index = (x + y * image_size.x) * image_channels_count;
+            const int64_t base_index = x + y * spatial_size.x;
+            const int64_t input_index = base_index + spatial_pixels_per_channel * channel;
+            output[output_index + channel] = image_spatial_domain[input_index];
+            output[output_index + 3] = highlights_buffer[output_index + 3];
+          }
+        }
+      }
+    });
+
+    MEM_freeN(highlights_buffer);
+    fftwf_destroy_plan(forward_plan);
+    fftwf_destroy_plan(backward_plan);
+    fftwf_free(image_spatial_domain);
+    fftwf_free(image_frequency_domain);
+
+    GPU_texture_update(fog_glow_result, GPU_DATA_FLOAT, output.data());
+#else
+    GPU_texture_copy(fog_glow_result, highlights_result);
+#endif
+
     return fog_glow_result;
+  }
+
+  /* Computes the size of the fog glow kernel that will be convolved with the image, which is
+   * essentially the extent of the glare in pixels. */
+  int compute_fog_glow_kernel_size()
+  {
+    /* We use an odd sized kernel since an even one will typically introduce a tiny offset as it
+     * has no exact center value. */
+    return (1 << node_storage(bnode()).size) + 1;
   }
 
   /* ----------
@@ -852,7 +1019,7 @@ class GlareOperation : public NodeOperation {
     const Result &input_image = get_input("Image");
     input_image.bind_as_texture(shader, "input_tx");
 
-    GPU_texture_filter_mode(glare_result.texture(), true);
+    GPU_texture_filter_mode(glare_result, true);
     glare_result.bind_as_texture(shader, "glare_tx");
 
     const Domain domain = compute_domain();
@@ -919,14 +1086,15 @@ void register_node_type_cmp_glare()
 {
   namespace file_ns = blender::nodes::node_composite_glare_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_GLARE, "Glare", NODE_CLASS_OP_FILTER);
   ntype.declare = file_ns::cmp_node_glare_declare;
   ntype.draw_buttons = file_ns::node_composit_buts_glare;
   ntype.initfunc = file_ns::node_composit_init_glare;
-  node_type_storage(&ntype, "NodeGlare", node_free_standard_storage, node_copy_standard_storage);
+  blender::bke::node_type_storage(
+      &ntype, "NodeGlare", node_free_standard_storage, node_copy_standard_storage);
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

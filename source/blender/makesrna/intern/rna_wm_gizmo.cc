@@ -602,7 +602,7 @@ static wmGizmo *rna_GizmoGroup_gizmo_new(wmGizmoGroup *gzgroup,
       BKE_reportf(reports,
                   RPT_ERROR,
                   "GizmoType '%s' is for a 3D gizmo-group. "
-                  "The 'draw_select' callback is set where only 'test_select' will be used",
+                  "The 'draw_select' callback is set where only 'test_select' will be used.",
                   idname);
       return nullptr;
     }
@@ -659,12 +659,6 @@ static void rna_GizmoGroup_bl_label_set(PointerRNA *ptr, const char *value)
   else {
     BLI_assert_msg(0, "setting the bl_label on a non-builtin operator");
   }
-}
-
-static bool rna_GizmoGroup_has_reports_get(PointerRNA *ptr)
-{
-  wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
-  return (gzgroup->reports && gzgroup->reports->list.first);
 }
 
 #  ifdef WITH_PYTHON
@@ -1447,7 +1441,7 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   func = RNA_def_function(srna, "poll", nullptr);
   RNA_def_function_ui_description(func, "Test if the gizmo group can be called or not");
   RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
-  RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
+  RNA_def_function_return(func, RNA_def_boolean(func, "visible", false, "", ""));
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
 
@@ -1500,14 +1494,6 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
   RNA_def_property_string_funcs(
       prop, "rna_GizmoGroup_name_get", "rna_GizmoGroup_name_length", nullptr);
   RNA_def_property_ui_text(prop, "Name", "");
-
-  prop = RNA_def_property(srna, "has_reports", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE); /* this is 'virtual' property */
-  RNA_def_property_boolean_funcs(prop, "rna_GizmoGroup_has_reports_get", nullptr);
-  RNA_def_property_ui_text(
-      prop,
-      "Has Reports",
-      "GizmoGroup has a set of reports (warnings and errors) from last execution");
 
   RNA_define_verify_sdna(false); /* not in sdna */
 

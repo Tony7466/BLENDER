@@ -309,7 +309,7 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
                                       KeyframeEditFunc key_cb,
                                       FcuEditFunc fcu_cb);
 /**
- * Same as above, except bAnimListElem wrapper is not needed.
+ * Same as #ANIM_animchannel_keyframes_loop, except #bAnimListElem wrapper is not needed.
  * \param keytype: is #eAnim_KeyType.
  */
 short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
@@ -348,7 +348,7 @@ KeyframeEditFunc ANIM_editkeyframes_snap(short mode);
  * \note for markers and 'value', the values to use must be supplied as the first float value.
  */
 KeyframeEditFunc ANIM_editkeyframes_mirror(short mode);
-KeyframeEditFunc ANIM_editkeyframes_select(short mode);
+KeyframeEditFunc ANIM_editkeyframes_select(eEditKeyframes_Select selectmode);
 /**
  * Set all selected Bezier Handles to a single type.
  */
@@ -417,7 +417,7 @@ bool keyframe_region_circle_test(const KeyframeEdit_CircleData *data_circle, con
 /* Destructive Editing API `keyframes_general.cc`. */
 
 bool duplicate_fcurve_keys(FCurve *fcu);
-float get_default_rna_value(FCurve *fcu, PropertyRNA *prop, PointerRNA *ptr);
+float get_default_rna_value(const FCurve *fcu, PropertyRNA *prop, PointerRNA *ptr);
 
 struct FCurveSegment {
   FCurveSegment *next, *prev;
@@ -455,7 +455,7 @@ void ED_ANIM_get_1d_gauss_kernel(const float sigma, int kernel_size, double *r_k
 
 ButterworthCoefficients *ED_anim_allocate_butterworth_coefficients(const int filter_order);
 void ED_anim_free_butterworth_coefficients(ButterworthCoefficients *bw_coeff);
-void ED_anim_calculate_butterworth_coefficients(float cutoff,
+void ED_anim_calculate_butterworth_coefficients(float cutoff_frequency,
                                                 float sampling_frequency,
                                                 ButterworthCoefficients *bw_coeff);
 /**
@@ -511,24 +511,6 @@ void blend_to_default_fcurve(PointerRNA *id_ptr, FCurve *fcu, float factor);
  * Use a weighted moving-means method to reduce intensity of fluctuations.
  */
 void smooth_fcurve(FCurve *fcu);
-void bake_fcurve_segments(FCurve *fcu);
-/**
- * \param sample_rate: indicates how many samples per frame should be generated.
- */
-void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
-
-enum class BakeCurveRemove {
-  REMOVE_NONE = 0,
-  REMOVE_IN_RANGE = 1,
-  REMOVE_OUT_RANGE = 2,
-  REMOVE_ALL = 3,
-};
-/** Creates keyframes in the given range at the given step interval.
- * \param range: start and end frame to bake. Is inclusive on both ends.
- * \param remove_existing: choice which keys to remove in relation to the given range.
- */
-void bake_fcurve(FCurve *fcu, blender::int2 range, float step, BakeCurveRemove remove_existing);
 
 /* ----------- */
 

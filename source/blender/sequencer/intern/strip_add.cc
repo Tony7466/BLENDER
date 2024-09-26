@@ -74,7 +74,7 @@ static void seq_add_generic_update(Scene *scene, Sequence *seq)
 {
   SEQ_sequence_base_unique_name_recursive(scene, &scene->ed->seqbase, seq);
   SEQ_relations_invalidate_cache_composite(scene, seq);
-  SEQ_sequence_lookup_tag(scene, SEQ_LOOKUP_TAG_INVALID);
+  SEQ_sequence_lookup_invalidate(scene);
   seq_time_effect_range_set(scene, seq);
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
 }
@@ -167,10 +167,10 @@ Sequence *SEQ_add_effect_strip(Scene *scene, ListBase *seqbase, SeqLoadData *loa
   sh.init(seq);
   seq->seq1 = load_data->effect.seq1;
   seq->seq2 = load_data->effect.seq2;
-  seq->seq3 = load_data->effect.seq3;
 
   if (SEQ_effect_get_num_inputs(seq->type) == 1) {
     seq->blend_mode = seq->seq1->blend_mode;
+    seq->blend_opacity = seq->seq1->blend_opacity;
   }
 
   if (!load_data->effect.seq1) {
@@ -339,6 +339,9 @@ Sequence *SEQ_add_sound_strip(Main *bmain, Scene *scene, ListBase *seqbase, SeqL
         seq->sound->flags |= SOUND_FLAGS_CACHING;
       }
     }
+
+    /* Turn on Display Waveform by default. */
+    seq->flag |= SEQ_AUDIO_DRAW_WAVEFORM;
   }
 
   seq_add_sound_av_sync(bmain, scene, seq, load_data);

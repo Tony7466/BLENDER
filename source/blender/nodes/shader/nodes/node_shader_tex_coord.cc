@@ -13,7 +13,7 @@ namespace blender::nodes::node_shader_tex_coord_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Vector>("Generated");
+  b.add_output<decl::Vector>("Generated").translation_context(BLT_I18NCONTEXT_ID_TEXTURE);
   b.add_output<decl::Vector>("Normal");
   b.add_output<decl::Vector>("UV");
   b.add_output<decl::Vector>("Object");
@@ -103,7 +103,7 @@ void register_node_type_sh_tex_coord()
 {
   namespace file_ns = blender::nodes::node_shader_tex_coord_cc;
 
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   sh_node_type_base(&ntype, SH_NODE_TEX_COORD, "Texture Coordinate", NODE_CLASS_INPUT);
   ntype.declare = file_ns::node_declare;
@@ -111,5 +111,5 @@ void register_node_type_sh_tex_coord()
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_coord;
   ntype.materialx_fn = file_ns::node_shader_materialx;
 
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 }

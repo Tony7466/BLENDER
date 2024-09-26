@@ -29,7 +29,10 @@
 #include "../../source/blender/blenlib/BLI_strict_flags.h"
 
 #include "atomic_ops.h"
-#include "mallocn_intern.h"
+#include "mallocn_intern.hh"
+#include "mallocn_intern_function_pointers.hh"
+
+using namespace mem_guarded::internal;
 
 /* Only for debugging:
  * store original buffer's name when doing MEM_dupallocN
@@ -97,7 +100,7 @@ static void memcount_raise(const char *name)
 /* --------------------------------------------------------------------- */
 /* all memory chunks are put in linked lists */
 typedef struct localLink {
-  struct localLink *next, *prev;
+  localLink *next, *prev;
 } localLink;
 
 typedef struct localListBase {
@@ -108,11 +111,11 @@ typedef struct localListBase {
 typedef struct MemHead {
   int tag1;
   size_t len;
-  struct MemHead *next, *prev;
+  MemHead *next, *prev;
   const char *name;
   const char *nextname;
   int tag2;
-  short pad1;
+  uint16_t flag;
   /* if non-zero aligned allocation was used and alignment is stored here. */
   short alignment;
 #ifdef DEBUG_MEMCOUNTER
@@ -134,6 +137,17 @@ static_assert(MEM_MIN_CPP_ALIGNMENT <= sizeof(MemHead), "Bad size of MemHead");
 
 typedef MemHead MemHeadAligned;
 
+/* #MemHead::flag. */
+enum MemHeadFlag {
+  /**
+   * This block of memory has been allocated from CPP `new` (e.g. #MEM_new, or some
+   * guardedalloc-overloaded `new` operator). It mainly checks that #MEM_freeN is not directly
+   * called on it (#MEM_delete or some guardedalloc-overloaded `delete` operator should always be
+   * used instead).
+   */
+  MEMHEAD_FLAG_FROM_CPP_NEW = 1 << 1,
+};
+
 typedef struct MemTail {
   int tag3, pad;
 } MemTail;
@@ -150,16 +164,16 @@ static void addtail(volatile localListBase *listbase, void *vlink);
 static void remlink(volatile localListBase *listbase, void *vlink);
 static void rem_memblock(MemHead *memh);
 static void MemorY_ErroR(const char *block, const char *error);
-static const char *check_memlist(MemHead *memh);
+static const char *check_memlist(const MemHead *memh);
 
 /* --------------------------------------------------------------------- */
 /* locally used defines                                                  */
 /* --------------------------------------------------------------------- */
 
 #ifdef __BIG_ENDIAN__
-#  define MAKE_ID(a, b, c, d) ((int)(a) << 24 | (int)(b) << 16 | (c) << 8 | (d))
+#  define MAKE_ID(a, b, c, d) (int(a) << 24 | int(b) << 16 | (c) << 8 | (d))
 #else
-#  define MAKE_ID(a, b, c, d) ((int)(d) << 24 | (int)(c) << 16 | (b) << 8 | (a))
+#  define MAKE_ID(a, b, c, d) (int(d) << 24 | int(c) << 16 | (b) << 8 | (a))
 #endif
 
 #define MEMTAG1 MAKE_ID('M', 'E', 'M', 'O')
@@ -199,17 +213,13 @@ static bool malloc_debug_memset = false;
 /* --------------------------------------------------------------------- */
 
 #ifdef __GNUC__
-__attribute__((format(printf, 1, 2)))
+__attribute__((format(printf, 1, 0)))
 #endif
 static void
-print_error(const char *str, ...)
+print_error(const char *message, va_list str_format_args)
 {
-  char buf[1024];
-  va_list ap;
-
-  va_start(ap, str);
-  vsnprintf(buf, sizeof(buf), str, ap);
-  va_end(ap);
+  char buf[512];
+  vsnprintf(buf, sizeof(buf), message, str_format_args);
   buf[sizeof(buf) - 1] = '\0';
 
   if (error_callback) {
@@ -218,6 +228,50 @@ print_error(const char *str, ...)
   else {
     fputs(buf, stderr);
   }
+}
+
+#ifdef __GNUC__
+__attribute__((format(printf, 1, 2)))
+#endif
+static void
+print_error(const char *message, ...)
+{
+  va_list str_format_args;
+  va_start(str_format_args, message);
+  print_error(message, str_format_args);
+  va_end(str_format_args);
+}
+
+#ifdef __GNUC__
+__attribute__((format(printf, 2, 3)))
+#endif
+static void
+report_error_on_address(const void *vmemh, const char *message, ...)
+{
+  va_list str_format_args;
+
+  va_start(str_format_args, message);
+  print_error(message, str_format_args);
+  va_end(str_format_args);
+
+  if (vmemh == nullptr) {
+    MEM_trigger_error_on_memory_block(nullptr, 0);
+    return;
+  }
+
+  const MemHead *memh = static_cast<const MemHead *>(vmemh);
+  memh--;
+  size_t len = memh->len;
+
+  const void *address = memh;
+  size_t size = len + sizeof(*memh) + sizeof(MemTail);
+  if (UNLIKELY(memh->alignment > 0)) {
+    const MemHeadAligned *memh_aligned = memh;
+    address = MEMHEAD_REAL_PTR(memh_aligned);
+    size = len + sizeof(*memh_aligned) + MEMHEAD_ALIGN_PADDING(memh_aligned->alignment) +
+           sizeof(MemTail);
+  }
+  MEM_trigger_error_on_memory_block(address, size);
 }
 
 static pthread_mutex_t thread_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -235,7 +289,7 @@ static void mem_unlock_thread()
 bool MEM_guarded_consistency_check()
 {
   const char *err_val = nullptr;
-  MemHead *listend;
+  const MemHead *listend;
   /* check_memlist starts from the front, and runs until it finds
    * the requested chunk. For this test, that's the last one. */
   listend = static_cast<MemHead *>(membase->last);
@@ -275,12 +329,19 @@ void *MEM_guarded_dupallocN(const void *vmemh)
     const MemHead *memh = static_cast<const MemHead *>(vmemh);
     memh--;
 
+    if ((memh->flag & MEMHEAD_FLAG_FROM_CPP_NEW) != 0) {
+      report_error_on_address(vmemh,
+                              "Attempt to use C-style MEM_dupallocN on a pointer created with "
+                              "CPP-style MEM_new or new\n");
+    }
+
 #ifndef DEBUG_MEMDUPLINAME
     if (LIKELY(memh->alignment == 0)) {
       newp = MEM_guarded_mallocN(memh->len, "dupli_alloc");
     }
     else {
-      newp = MEM_guarded_mallocN_aligned(memh->len, (size_t)memh->alignment, "dupli_alloc");
+      newp = MEM_guarded_mallocN_aligned(
+          memh->len, size_t(memh->alignment), "dupli_alloc", AllocationType::ALLOC_FREE);
     }
 
     if (newp == nullptr) {
@@ -300,7 +361,8 @@ void *MEM_guarded_dupallocN(const void *vmemh)
         newp = MEM_guarded_mallocN(memh->len, name);
       }
       else {
-        newp = MEM_guarded_mallocN_aligned(memh->len, (size_t)memh->alignment, name);
+        newp = MEM_guarded_mallocN_aligned(
+            memh->len, (size_t)memh->alignment, name, AllocationType::ALLOC_FREE);
       }
 
       if (newp == nullptr)
@@ -327,11 +389,18 @@ void *MEM_guarded_reallocN_id(void *vmemh, size_t len, const char *str)
     MemHead *memh = static_cast<MemHead *>(vmemh);
     memh--;
 
+    if ((memh->flag & MEMHEAD_FLAG_FROM_CPP_NEW) != 0) {
+      report_error_on_address(vmemh,
+                              "Attempt to use C-style MEM_reallocN on a pointer created with "
+                              "CPP-style MEM_new or new\n");
+    }
+
     if (LIKELY(memh->alignment == 0)) {
       newp = MEM_guarded_mallocN(len, memh->name);
     }
     else {
-      newp = MEM_guarded_mallocN_aligned(len, (size_t)memh->alignment, memh->name);
+      newp = MEM_guarded_mallocN_aligned(
+          len, size_t(memh->alignment), memh->name, AllocationType::ALLOC_FREE);
     }
 
     if (newp) {
@@ -345,7 +414,7 @@ void *MEM_guarded_reallocN_id(void *vmemh, size_t len, const char *str)
       }
     }
 
-    MEM_guarded_freeN(vmemh);
+    MEM_guarded_freeN(vmemh, AllocationType::ALLOC_FREE);
   }
   else {
     newp = MEM_guarded_mallocN(len, str);
@@ -362,11 +431,18 @@ void *MEM_guarded_recallocN_id(void *vmemh, size_t len, const char *str)
     MemHead *memh = static_cast<MemHead *>(vmemh);
     memh--;
 
+    if ((memh->flag & MEMHEAD_FLAG_FROM_CPP_NEW) != 0) {
+      report_error_on_address(vmemh,
+                              "Attempt to use C-style MEM_recallocN on a pointer created with "
+                              "CPP-style MEM_new or new\n");
+    }
+
     if (LIKELY(memh->alignment == 0)) {
       newp = MEM_guarded_mallocN(len, memh->name);
     }
     else {
-      newp = MEM_guarded_mallocN_aligned(len, (size_t)memh->alignment, memh->name);
+      newp = MEM_guarded_mallocN_aligned(
+          len, size_t(memh->alignment), memh->name, AllocationType::ALLOC_FREE);
     }
 
     if (newp) {
@@ -385,7 +461,7 @@ void *MEM_guarded_recallocN_id(void *vmemh, size_t len, const char *str)
       }
     }
 
-    MEM_guarded_freeN(vmemh);
+    MEM_guarded_freeN(vmemh, AllocationType::ALLOC_FREE);
   }
   else {
     newp = MEM_guarded_callocN(len, str);
@@ -414,7 +490,10 @@ static void print_memhead_backtrace(MemHead *memh)
 }
 #endif /* DEBUG_BACKTRACE_EXECINFO */
 
-static void make_memhead_header(MemHead *memh, size_t len, const char *str)
+static void make_memhead_header(MemHead *memh,
+                                size_t len,
+                                const char *str,
+                                const AllocationType allocation_type)
 {
   MemTail *memt;
 
@@ -422,7 +501,7 @@ static void make_memhead_header(MemHead *memh, size_t len, const char *str)
   memh->name = str;
   memh->nextname = nullptr;
   memh->len = len;
-  memh->pad1 = 0;
+  memh->flag = (allocation_type == AllocationType::NEW_DELETE ? MEMHEAD_FLAG_FROM_CPP_NEW : 0);
   memh->alignment = 0;
   memh->tag2 = MEMTAG2;
 
@@ -461,7 +540,7 @@ void *MEM_guarded_mallocN(size_t len, const char *str)
   memh = (MemHead *)malloc(len + sizeof(MemHead) + sizeof(MemTail));
 
   if (LIKELY(memh)) {
-    make_memhead_header(memh, len, str);
+    make_memhead_header(memh, len, str, AllocationType::ALLOC_FREE);
 
     if (LIKELY(len)) {
       if (UNLIKELY(malloc_debug_memset)) {
@@ -509,14 +588,23 @@ void *MEM_guarded_malloc_arrayN(size_t len, size_t size, const char *str)
   return MEM_guarded_mallocN(total_size, str);
 }
 
-void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
+void *MEM_guarded_mallocN_aligned(size_t len,
+                                  size_t alignment,
+                                  const char *str,
+                                  const AllocationType allocation_type)
 {
-  /* We only support alignment to a power of two. */
+  /* Huge alignment values doesn't make sense and they wouldn't fit into 'short' used in the
+   * MemHead. */
+  assert(alignment < 1024);
+
+  /* We only support alignments that are a power of two. */
   assert(IS_POW2(alignment));
 
-  /* Use a minimal alignment of 8. Otherwise MEM_guarded_freeN thinks it is an illegal pointer. */
-  if (alignment < 8) {
-    alignment = 8;
+  /* Some OS specific aligned allocators require a certain minimal alignment. */
+  /* And #MEM_guarded_freeN also checks that it is freeing a pointer aligned with `sizeof(void *)`.
+   */
+  if (alignment < ALIGNED_MALLOC_MINIMUM_ALIGNMENT) {
+    alignment = ALIGNED_MALLOC_MINIMUM_ALIGNMENT;
   }
 
   /* It's possible that MemHead's size is not properly aligned,
@@ -526,11 +614,6 @@ void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
    * order to save some bits in MemHead structure.
    */
   size_t extra_padding = MEMHEAD_ALIGN_PADDING(alignment);
-
-  /* Huge alignment values doesn't make sense and they
-   * wouldn't fit into 'short' used in the MemHead.
-   */
-  assert(alignment < 1024);
 
 #ifdef WITH_MEM_VALGRIND
   const size_t len_unaligned = len;
@@ -547,8 +630,8 @@ void *MEM_guarded_mallocN_aligned(size_t len, size_t alignment, const char *str)
      */
     memh = (MemHead *)((char *)memh + extra_padding);
 
-    make_memhead_header(memh, len, str);
-    memh->alignment = (short)alignment;
+    make_memhead_header(memh, len, str, allocation_type);
+    memh->alignment = short(alignment);
     if (LIKELY(len)) {
       if (UNLIKELY(malloc_debug_memset)) {
         memset(memh + 1, 255, len);
@@ -586,7 +669,7 @@ void *MEM_guarded_callocN(size_t len, const char *str)
   memh = (MemHead *)calloc(len + sizeof(MemHead) + sizeof(MemTail), 1);
 
   if (memh) {
-    make_memhead_header(memh, len, str);
+    make_memhead_header(memh, len, str, AllocationType::ALLOC_FREE);
 #ifdef DEBUG_MEMCOUNTER
     if (_mallocn_count == DEBUG_MEMCOUNTER_ERROR_VAL)
       memcount_raise(__func__);
@@ -617,6 +700,36 @@ void *MEM_guarded_calloc_arrayN(size_t len, size_t size, const char *str)
   }
 
   return MEM_guarded_callocN(total_size, str);
+}
+
+void *MEM_guarded_calloc_arrayN_aligned(const size_t len,
+                                        const size_t size,
+                                        const size_t alignment,
+                                        const char *str)
+{
+  size_t bytes_num;
+  if (UNLIKELY(!MEM_size_safe_multiply(len, size, &bytes_num))) {
+    print_error(
+        "Calloc array aborted due to integer overflow: "
+        "len=" SIZET_FORMAT "x" SIZET_FORMAT " in %s, total " SIZET_FORMAT "\n",
+        SIZET_ARG(len),
+        SIZET_ARG(size),
+        str,
+        mem_in_use);
+    abort();
+    return nullptr;
+  }
+  if (alignment <= MEM_MIN_CPP_ALIGNMENT) {
+    return MEM_callocN(bytes_num, str);
+  }
+  /* There is no lower level #calloc with an alignment parameter, so we have to fallback to using
+   * #memset unfortunately. */
+  void *ptr = MEM_mallocN_aligned(bytes_num, alignment, str);
+  if (!ptr) {
+    return nullptr;
+  }
+  memset(ptr, 0, bytes_num);
+  return ptr;
 }
 
 /* Memory statistics print */
@@ -728,15 +841,15 @@ void MEM_guarded_printmemlist_stats()
     qsort(printblock, totpb, sizeof(MemPrintBlock), compare_len);
   }
 
-  printf("\ntotal memory len: %.3f MB\n", (double)mem_in_use / (double)(1024 * 1024));
-  printf("peak memory len: %.3f MB\n", (double)peak_mem / (double)(1024 * 1024));
-  printf("slop memory len: %.3f MB\n", (double)mem_in_use_slop / (double)(1024 * 1024));
+  printf("\ntotal memory len: %.3f MB\n", double(mem_in_use) / double(1024 * 1024));
+  printf("peak memory len: %.3f MB\n", double(peak_mem) / double(1024 * 1024));
+  printf("slop memory len: %.3f MB\n", double(mem_in_use_slop) / double(1024 * 1024));
   printf(" ITEMS TOTAL-MiB AVERAGE-KiB TYPE\n");
   for (a = 0, pb = printblock; a < totpb; a++, pb++) {
     printf("%6d (%8.3f  %8.3f) %s\n",
            pb->items,
-           (double)pb->len / (double)(1024 * 1024),
-           (double)pb->len / 1024.0 / (double)pb->items,
+           double(pb->len) / double(1024 * 1024),
+           double(pb->len) / 1024.0 / double(pb->items),
            pb->name);
   }
 
@@ -900,7 +1013,7 @@ void mem_guarded_clearmemlist()
   membase->first = membase->last = nullptr;
 }
 
-void MEM_guarded_freeN(void *vmemh)
+void MEM_guarded_freeN(void *vmemh, const AllocationType allocation_type)
 {
   MemTail *memt;
   MemHead *memh = static_cast<MemHead *>(vmemh);
@@ -913,19 +1026,28 @@ void MEM_guarded_freeN(void *vmemh)
   }
 
   if (sizeof(intptr_t) == 8) {
-    if (((intptr_t)memh) & 0x7) {
+    if (intptr_t(memh) & 0x7) {
       MemorY_ErroR("free", "attempt to free illegal pointer");
       return;
     }
   }
   else {
-    if (((intptr_t)memh) & 0x3) {
+    if (intptr_t(memh) & 0x3) {
       MemorY_ErroR("free", "attempt to free illegal pointer");
       return;
     }
   }
 
   memh--;
+
+  if (allocation_type != AllocationType::NEW_DELETE &&
+      (memh->flag & MEMHEAD_FLAG_FROM_CPP_NEW) != 0)
+  {
+    report_error_on_address(
+        vmemh,
+        "Attempt to use C-style MEM_freeN on a pointer created with CPP-style MEM_new or new\n");
+  }
+
   if (memh->tag1 == MEMFREE && memh->tag2 == MEMFREE) {
     MemorY_ErroR(memh->name, "double free");
     return;
@@ -1070,7 +1192,7 @@ static void MemorY_ErroR(const char *block, const char *error)
 #endif
 }
 
-static const char *check_memlist(MemHead *memh)
+static const char *check_memlist(const MemHead *memh)
 {
   MemHead *forw, *back, *forwok, *backok;
   const char *name;

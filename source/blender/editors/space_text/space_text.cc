@@ -52,6 +52,7 @@ static SpaceLink *text_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   stext->margin_column = 80;
   stext->showsyntax = true;
   stext->showlinenrs = true;
+  stext->flags |= ST_FIND_WRAP;
 
   stext->runtime = MEM_new<SpaceText_Runtime>(__func__);
 
@@ -400,7 +401,8 @@ static void text_id_remap(ScrArea * /*area*/,
 static void text_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 {
   SpaceText *st = reinterpret_cast<SpaceText *>(space_link);
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, st->text, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(
+      data, st->text, IDWALK_CB_USER_ONE | IDWALK_CB_DIRECT_WEAK_LINK);
 }
 
 static void text_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink *sl)

@@ -21,7 +21,7 @@ enum class PatternMode {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
-  b.add_input<decl::String>("Name").is_attribute_name();
+  b.add_input<decl::String>("Name").is_attribute_name().hide_label();
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
@@ -86,12 +86,12 @@ static void node_geo_exec(GeoNodeExecParams params)
         }
         case PatternMode::Wildcard: {
           read_only_component.attributes()->for_all(
-              [&](const blender::bke::AttributeIDRef &id,
+              [&](const blender::StringRef id,
                   const blender::bke::AttributeMetaData /*meta_data*/) {
-                if (id.is_anonymous()) {
+                if (bke::attribute_name_is_anonymous(id)) {
                   return true;
                 }
-                const StringRef attribute_name = id.name();
+                const StringRef attribute_name = id;
                 if (attribute_name.startswith(wildcard_prefix) &&
                     attribute_name.endswith(wildcard_suffix))
                 {
@@ -156,7 +156,7 @@ static void node_rna(StructRNA *srna)
        0,
        "Wildcard",
        "Remove all attributes that match the pattern which is allowed to contain a single "
-       "wildcard (*)."},
+       "wildcard (*)"},
       {0, nullptr, 0, nullptr, nullptr},
   };
   RNA_def_node_enum(srna,
@@ -169,7 +169,7 @@ static void node_rna(StructRNA *srna)
 
 static void node_register()
 {
-  static bNodeType ntype;
+  static blender::bke::bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_REMOVE_ATTRIBUTE, "Remove Named Attribute", NODE_CLASS_ATTRIBUTE);
@@ -177,7 +177,7 @@ static void node_register()
   ntype.draw_buttons = node_layout;
   bke::node_type_size(&ntype, 170, 100, 700);
   ntype.geometry_node_execute = node_geo_exec;
-  nodeRegisterType(&ntype);
+  blender::bke::node_register_type(&ntype);
 
   node_rna(ntype.rna_ext.srna);
 }

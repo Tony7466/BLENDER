@@ -339,10 +339,10 @@ static bool gpencil_paintmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
+  if ((ob) && (ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL))) {
     return ob->data != nullptr;
   }
-  return ED_gpencil_data_get_active(C) != nullptr;
+  return false;
 }
 
 static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
@@ -351,7 +351,6 @@ static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   bool is_object = false;
@@ -359,28 +358,48 @@ static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
   if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
-    gpd = static_cast<bGPdata *>(ob->data);
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    if (gpd == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
+    /* Just toggle paintmode flag... */
+    gpd->flag ^= GP_DATA_STROKE_PAINTMODE;
+    /* set mode */
+    if (gpd->flag & GP_DATA_STROKE_PAINTMODE) {
+      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
     is_object = true;
   }
-
-  if (gpd == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Just toggle paintmode flag... */
-  gpd->flag ^= GP_DATA_STROKE_PAINTMODE;
-  /* set mode */
-  if (gpd->flag & GP_DATA_STROKE_PAINTMODE) {
-    mode = OB_MODE_PAINT_GPENCIL_LEGACY;
-  }
-  else {
-    mode = OB_MODE_OBJECT;
+  if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
+    const bool is_mode_set = (ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) != 0;
+    if (!is_mode_set) {
+      Scene *scene = CTX_data_scene(C);
+      BKE_paint_init(bmain, scene, PaintMode::GPencil, PAINT_CURSOR_PAINT_GREASE_PENCIL);
+      Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::GPencil);
+      ED_paint_cursor_start(paint, ED_gpencil_brush_cursor_poll);
+      mode = OB_MODE_PAINT_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
+    is_object = true;
   }
 
   if (is_object) {
     /* try to back previous mode */
-    if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
+    if (ob->type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_PAINTMODE) == 0) && (back == 1)) {
+        mode = ob->restore_mode;
+      }
+    }
+    if (ob->type == OB_GREASE_PENCIL) {
+      if ((ob->restore_mode) && ((ob->mode & OB_MODE_PAINT_GPENCIL_LEGACY) == 0) && (back == 1)) {
+        mode = ob->restore_mode;
+      }
     }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
@@ -389,27 +408,31 @@ static int gpencil_paintmode_toggle_exec(bContext *C, wmOperator *op)
   if (mode == OB_MODE_PAINT_GPENCIL_LEGACY) {
     /* Be sure we have brushes and Paint settings.
      * Need Draw and Vertex (used for Tint). */
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_paint);
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_vertexpaint);
-
-    BKE_brush_gpencil_paint_presets(bmain, ts, false);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_vertexpaint);
 
     /* Ensure Palette by default. */
     BKE_gpencil_palette_ensure(bmain, CTX_data_scene(C));
 
     Paint *paint = &ts->gp_paint->paint;
     Brush *brush = BKE_paint_brush(paint);
-    /* if not exist, create a new one */
-    if ((brush == nullptr) || (brush->gpencil_settings == nullptr)) {
-      BKE_brush_gpencil_paint_presets(bmain, ts, true);
+    if (brush && !brush->gpencil_settings) {
+      BKE_brush_init_gpencil_settings(brush);
     }
-    BKE_paint_toolslots_brush_validate(bmain, &ts->gp_paint->paint);
+    BKE_paint_brushes_validate(bmain, &ts->gp_paint->paint);
   }
 
-  /* setup other modes */
-  ED_gpencil_setup_modes(C, gpd, mode);
-  /* set cache as dirty */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  if (ob->type == OB_GPENCIL_LEGACY) {
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    /* setup other modes */
+    ED_gpencil_setup_modes(C, gpd, mode);
+    /* set cache as dirty */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
@@ -534,12 +557,8 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
 
   if (mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {
     /* Be sure we have brushes. */
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_sculptpaint);
-
-    const bool reset_mode = (BKE_paint_brush(&ts->gp_sculptpaint->paint) == nullptr);
-    BKE_brush_gpencil_sculpt_presets(bmain, ts, reset_mode);
-
-    BKE_paint_toolslots_brush_validate(bmain, &ts->gp_sculptpaint->paint);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_sculptpaint);
+    BKE_paint_brushes_validate(bmain, &ts->gp_sculptpaint->paint);
   }
 
   /* setup other modes */
@@ -597,54 +616,71 @@ void GPENCIL_OT_sculptmode_toggle(wmOperatorType *ot)
 
 /* Stroke Weight Paint Mode Management */
 
+static bool grease_pencil_poll_weight_cursor(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  return ob && (ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) && (ob->type == OB_GREASE_PENCIL) &&
+         CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
+}
+
 static bool gpencil_weightmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
+  if ((ob) && (ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL))) {
     return ob->data != nullptr;
   }
-  return ED_gpencil_data_get_active(C) != nullptr;
+  return false;
 }
 
 static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   const bool back = RNA_boolean_get(op->ptr, "back");
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
   bool is_object = false;
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
+  const bool is_mode_set = (ob->mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) != 0;
   if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
-    gpd = static_cast<bGPdata *>(ob->data);
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    if (gpd == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
     is_object = true;
-  }
-  const int mode_flag = OB_MODE_WEIGHT_GPENCIL_LEGACY;
-  const bool is_mode_set = (ob->mode & mode_flag) != 0;
 
-  if (gpd == nullptr) {
-    return OPERATOR_CANCELLED;
+    /* Just toggle weightmode flag... */
+    gpd->flag ^= GP_DATA_STROKE_WEIGHTMODE;
+    /* set mode */
+    if (gpd->flag & GP_DATA_STROKE_WEIGHTMODE) {
+      mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
-
-  /* Just toggle weightmode flag... */
-  gpd->flag ^= GP_DATA_STROKE_WEIGHTMODE;
-  /* set mode */
-  if (gpd->flag & GP_DATA_STROKE_WEIGHTMODE) {
-    mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
-  }
-  else {
-    mode = OB_MODE_OBJECT;
+  else if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
+    is_object = true;
+    if (!is_mode_set) {
+      mode = OB_MODE_WEIGHT_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
 
   if (is_object) {
     /* try to back previous mode */
-    if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
+    if (ob->type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_WEIGHTMODE) == 0) && (back == 1)) {
+        mode = ob->restore_mode;
+      }
     }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
@@ -655,18 +691,28 @@ static int gpencil_weightmode_toggle_exec(bContext *C, wmOperator *op)
 
   if (mode == OB_MODE_WEIGHT_GPENCIL_LEGACY) {
     /* Be sure we have brushes. */
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_weightpaint);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_weightpaint);
+    Paint *weight_paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::WeightGPencil);
 
-    const bool reset_mode = (BKE_paint_brush(&ts->gp_weightpaint->paint) == nullptr);
-    BKE_brush_gpencil_weight_presets(bmain, ts, reset_mode);
+    if (ob->type == OB_GREASE_PENCIL) {
+      ED_paint_cursor_start(weight_paint, grease_pencil_poll_weight_cursor);
+    }
 
-    BKE_paint_toolslots_brush_validate(bmain, &ts->gp_weightpaint->paint);
+    BKE_paint_brushes_validate(bmain, weight_paint);
+    BKE_paint_init(bmain, scene, PaintMode::WeightGPencil, PAINT_CURSOR_PAINT_GREASE_PENCIL);
   }
 
   /* setup other modes */
-  ED_gpencil_setup_modes(C, gpd, mode);
-  /* set cache as dirty */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  if (ob->type == OB_GPENCIL_LEGACY) {
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    ED_gpencil_setup_modes(C, gpd, mode);
+    /* set cache as dirty */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
@@ -709,51 +755,72 @@ void GPENCIL_OT_weightmode_toggle(wmOperatorType *ot)
 /** \name Toggle Vertex Paint Mode Operator
  * \{ */
 
+static bool grease_pencil_poll_vertex_cursor(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  return ob && (ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) && (ob->type == OB_GREASE_PENCIL) &&
+         CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
+}
+
 static bool gpencil_vertexmode_toggle_poll(bContext *C)
 {
   /* if using gpencil object, use this gpd */
   Object *ob = CTX_data_active_object(C);
-  if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
+  if ((ob) && ELEM(ob->type, OB_GPENCIL_LEGACY, OB_GREASE_PENCIL)) {
     return ob->data != nullptr;
   }
-  return ED_gpencil_data_get_active(C) != nullptr;
+  return false;
 }
+
 static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
 {
   const bool back = RNA_boolean_get(op->ptr, "back");
 
   wmMsgBus *mbus = CTX_wm_message_bus(C);
   Main *bmain = CTX_data_main(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
+  Scene *scene = CTX_data_scene(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
 
   bool is_object = false;
   short mode;
   /* if using a gpencil object, use this datablock */
   Object *ob = CTX_data_active_object(C);
+  const bool is_mode_set = (ob->mode & OB_MODE_VERTEX_GPENCIL_LEGACY) != 0;
   if ((ob) && (ob->type == OB_GPENCIL_LEGACY)) {
-    gpd = static_cast<bGPdata *>(ob->data);
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
     is_object = true;
-  }
 
-  if (gpd == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
+    if (gpd == nullptr) {
+      return OPERATOR_CANCELLED;
+    }
 
-  /* Just toggle paintmode flag... */
-  gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
-  /* set mode */
-  if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
-    mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    /* Just toggle paintmode flag... */
+    gpd->flag ^= GP_DATA_STROKE_VERTEXMODE;
+    /* Set mode. */
+    if (gpd->flag & GP_DATA_STROKE_VERTEXMODE) {
+      mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
-  else {
-    mode = OB_MODE_OBJECT;
+  else if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
+    is_object = true;
+    if (!is_mode_set) {
+      mode = OB_MODE_VERTEX_GPENCIL_LEGACY;
+    }
+    else {
+      mode = OB_MODE_OBJECT;
+    }
   }
 
   if (is_object) {
-    /* try to back previous mode */
-    if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
-      mode = ob->restore_mode;
+    if (ob->type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+      /* Try to go to back previous mode. */
+      if ((ob->restore_mode) && ((gpd->flag & GP_DATA_STROKE_VERTEXMODE) == 0) && (back == 1)) {
+        mode = ob->restore_mode;
+      }
     }
     ob->restore_mode = ob->mode;
     ob->mode = mode;
@@ -762,22 +829,31 @@ static int gpencil_vertexmode_toggle_exec(bContext *C, wmOperator *op)
   if (mode == OB_MODE_VERTEX_GPENCIL_LEGACY) {
     /* Be sure we have brushes.
      * Need Draw as well (used for Palettes). */
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_paint);
-    BKE_paint_ensure(ts, (Paint **)&ts->gp_vertexpaint);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_paint);
+    BKE_paint_ensure(bmain, ts, (Paint **)&ts->gp_vertexpaint);
+    Paint *vertex_paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::VertexGPencil);
 
-    const bool reset_mode = (BKE_paint_brush(&ts->gp_vertexpaint->paint) == nullptr);
-    BKE_brush_gpencil_vertex_presets(bmain, ts, reset_mode);
+    BKE_paint_brushes_validate(bmain, vertex_paint);
 
-    BKE_paint_toolslots_brush_validate(bmain, &ts->gp_vertexpaint->paint);
+    if (ob->type == OB_GREASE_PENCIL) {
+      ED_paint_cursor_start(vertex_paint, grease_pencil_poll_vertex_cursor);
+    }
 
     /* Ensure Palette by default. */
-    BKE_gpencil_palette_ensure(bmain, CTX_data_scene(C));
+    BKE_gpencil_palette_ensure(bmain, scene);
   }
 
-  /* setup other modes */
-  ED_gpencil_setup_modes(C, gpd, mode);
-  /* set cache as dirty */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  /* Setup other modes. */
+  if (ob->type == OB_GPENCIL_LEGACY) {
+    bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+    ED_gpencil_setup_modes(C, gpd, mode);
+    /* Set cache as dirty. */
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    DEG_id_tag_update(&grease_pencil->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
+  }
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | ND_GPENCIL_EDITMODE, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
@@ -2856,6 +2932,7 @@ void GPENCIL_OT_dissolve(wmOperatorType *ot)
                           0,
                           "Type",
                           "Method used for dissolving stroke points");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_GPENCIL);
 }
 
 /** \} */

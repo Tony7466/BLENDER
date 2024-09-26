@@ -127,9 +127,9 @@ static const char *give_seqname_by_type(int type)
     case SEQ_TYPE_ADD:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Add");
     case SEQ_TYPE_SUB:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Sub");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Subtract");
     case SEQ_TYPE_MUL:
-      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Mul");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Multiply");
     case SEQ_TYPE_ALPHAOVER:
       return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Alpha Over");
     case SEQ_TYPE_ALPHAUNDER:
@@ -161,7 +161,7 @@ static const char *give_seqname_by_type(int type)
   }
 }
 
-const char *SEQ_sequence_give_name(Sequence *seq)
+const char *SEQ_sequence_give_name(const Sequence *seq)
 {
   const char *name = give_seqname_by_type(seq->type);
 
@@ -376,19 +376,6 @@ ListBase *SEQ_get_seqbase_by_seq(const Scene *scene, Sequence *seq)
   return nullptr;
 }
 
-Sequence *SEQ_get_meta_by_seqbase(ListBase *seqbase_main, ListBase *meta_seqbase)
-{
-  blender::VectorSet strips = SEQ_query_all_meta_strips_recursive(seqbase_main);
-
-  for (Sequence *seq : strips) {
-    if (&seq->seqbase == meta_seqbase) {
-      return seq;
-    }
-  }
-
-  return nullptr;
-}
-
 Sequence *SEQ_sequence_from_strip_elem(ListBase *seqbase, StripElem *se)
 {
   Sequence *iseq;
@@ -445,10 +432,8 @@ void SEQ_alpha_mode_from_file_extension(Sequence *seq)
   }
 }
 
-bool SEQ_sequence_has_source(const Sequence *seq)
+bool SEQ_sequence_has_valid_data(const Sequence *seq)
 {
-  /* Called on draw, needs to be fast,
-   * we could cache and use a flag if we want to make checks for file paths resolving for eg. */
   switch (seq->type) {
     case SEQ_TYPE_MASK:
       return (seq->mask != nullptr);

@@ -26,12 +26,12 @@
 #include "DNA_customdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_lib_query.hh"
 
-#include "RNA_prototypes.h"
+#include "RNA_prototypes.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"

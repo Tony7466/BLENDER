@@ -293,7 +293,9 @@ static void *studiolight_multilayer_addlayer(void *base, const char * /*layer_na
 /* Convert a multilayer pass to ImBuf channel 4 float buffer.
  * NOTE: Parameter rect will become invalid. Do not use rect after calling this
  * function */
-static float *studiolight_multilayer_convert_pass(ImBuf *ibuf, float *rect, const uint channels)
+static float *studiolight_multilayer_convert_pass(const ImBuf *ibuf,
+                                                  float *rect,
+                                                  const uint channels)
 {
   if (channels == 4) {
     return rect;
@@ -345,7 +347,7 @@ static void studiolight_multilayer_addpass(void *base,
 static void studiolight_load_equirect_image(StudioLight *sl)
 {
   if (sl->flag & STUDIOLIGHT_EXTERNAL_FILE) {
-    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer, nullptr);
+    ImBuf *ibuf = IMB_loadiffname(sl->filepath, IB_multilayer | IB_alphamode_ignore, nullptr);
     ImBuf *specular_ibuf = nullptr;
     ImBuf *diffuse_ibuf = nullptr;
     const bool failed = (ibuf == nullptr);
@@ -487,7 +489,7 @@ static void studiolight_create_matcap_specular_gputexture(StudioLight *sl)
   sl->flag |= STUDIOLIGHT_MATCAP_SPECULAR_GPUTEXTURE;
 }
 
-static float4 studiolight_calculate_radiance(ImBuf *ibuf, const float direction[3])
+static float4 studiolight_calculate_radiance(const ImBuf *ibuf, const float direction[3])
 {
   float uv[2];
   direction_to_equirect(uv, direction);
@@ -840,21 +842,17 @@ void BKE_studiolight_init()
   BLI_addtail(&studiolights, sl);
 
   /* Go over the preset folder and add a studio-light for every image with its path. */
-  /* For portable installs (where USER and SYSTEM paths are the same),
-   * only go over LOCAL data-files once. */
   /* Also reserve icon space for it. */
-  if (!BKE_appdir_app_is_portable_install()) {
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_LIGHTS_FOLDER,
-                                          STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
-                                              STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_WORLD_FOLDER,
-                                          STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
-    studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
-                                          STUDIOLIGHT_MATCAP_FOLDER,
-                                          STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
-  }
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_LIGHTS_FOLDER,
+                                        STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_USER_DEFINED |
+                                            STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_WORLD_FOLDER,
+                                        STUDIOLIGHT_TYPE_WORLD | STUDIOLIGHT_USER_DEFINED);
+  studiolight_add_files_from_datafolder(BLENDER_USER_DATAFILES,
+                                        STUDIOLIGHT_MATCAP_FOLDER,
+                                        STUDIOLIGHT_TYPE_MATCAP | STUDIOLIGHT_USER_DEFINED);
   studiolight_add_files_from_datafolder(BLENDER_SYSTEM_DATAFILES,
                                         STUDIOLIGHT_LIGHTS_FOLDER,
                                         STUDIOLIGHT_TYPE_STUDIO |

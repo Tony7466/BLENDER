@@ -113,87 +113,43 @@ class VKDescriptorSet : NonCopyable {
 class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   friend class VKDescriptorSet;
 
+  Vector<VkBufferView> vk_buffer_views_;
+  Vector<VkDescriptorBufferInfo> vk_descriptor_buffer_infos_;
+  Vector<VkDescriptorImageInfo> vk_descriptor_image_infos_;
+  Vector<VkWriteDescriptorSet> vk_write_descriptor_sets_;
+
  public:
-  struct Binding {
-    VKDescriptorSet::Location location;
-    VkDescriptorType type;
-
-    VkBuffer vk_buffer = VK_NULL_HANDLE;
-    VkDeviceSize buffer_size = 0;
-
-    VkBufferView vk_buffer_view = VK_NULL_HANDLE;
-
-    VKTexture *texture = nullptr;
-    VkSampler vk_sampler = VK_NULL_HANDLE;
-
-    Binding()
-    {
-      location.binding = 0;
-    }
-
-    bool is_buffer() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    }
-
-    bool is_texel_buffer() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-    }
-
-    bool is_image() const
-    {
-      return ELEM(type,
-                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
-             texture != nullptr;
-    }
-
-    void debug_print() const;
-  };
-
- private:
-  /** A list of bindings that needs to be updated. */
-  Vector<Binding> bindings_;
-
   VkDescriptorSetLayout active_vk_descriptor_set_layout = VK_NULL_HANDLE;
 
- public:
   VKDescriptorSetTracker() {}
 
-  void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
-  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
-  void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
-  /* TODO: bind as image */
-  void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
-  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
-  /* Bind as uniform texel buffer. */
-  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  void reset();
+
+  void bind_texel_buffer(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  void bind_buffer(VkDescriptorType vk_descriptor_type,
+                   VkBuffer vk_buffer,
+                   VkDeviceSize size_in_bytes,
+                   VKDescriptorSet::Location location);
+  void bind_image(VkDescriptorType vk_descriptor_type,
+                  VkSampler vk_sampler,
+                  VkImageView vk_image_view,
+                  VkImageLayout vk_image_layout,
+                  VKDescriptorSet::Location location);
 
   std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
     return active_resource();
   }
 
-  /* Update and bind active descriptor set to pipeline. */
-  void bind(VKContext &context,
-            VkPipelineLayout vk_pipeline_layout,
-            VkPipelineBindPoint vk_pipeline_bind_point);
-
-  void debug_print() const;
+  /**
+   * Update the descriptor set on the device.
+   */
+  void update(VKContext &context);
 
  protected:
   std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
-  Binding &ensure_location(VKDescriptorSet::Location location);
-
-  /**
-   * Update the descriptor set on the device.
-   */
-  void update(VKContext &context);
 };
 
 }  // namespace blender::gpu

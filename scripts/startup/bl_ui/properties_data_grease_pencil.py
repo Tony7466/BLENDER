@@ -4,6 +4,7 @@
 import bpy
 from bpy.types import Panel, Menu, UIList
 from rna_prop_ui import PropertyPanel
+from .space_properties import PropertiesAnimationMixin
 
 
 class DataButtonsPanel:
@@ -38,6 +39,96 @@ class GREASE_PENCIL_UL_masks(UIList):
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
+
+
+class GreasePencil_LayerMaskPanel:
+    def draw_header(self, context):
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+
+        self.layout.prop(layer, "use_masks", text="", toggle=0)
+
+    def draw(self, context):
+        layout = self.layout
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+
+        layout = self.layout
+        layout.enabled = layer.use_masks
+
+        if not layer:
+            return
+
+        rows = 4
+        row = layout.row()
+        col = row.column()
+        col.template_list(
+            "GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
+            "active_mask_index", rows=rows, sort_lock=True,
+        )
+
+        col = row.column(align=True)
+        col.menu("GREASE_PENCIL_MT_layer_mask_add", icon='ADD', text="")
+        col.operator("grease_pencil.layer_mask_remove", icon='REMOVE', text="")
+
+        col.separator()
+
+        sub = col.column(align=True)
+        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_UP', text="").direction = 'UP'
+        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+
+class GreasePencil_LayerTransformPanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        row = layout.row(align=True)
+        row.prop(layer, "translation")
+
+        row = layout.row(align=True)
+        row.prop(layer, "rotation")
+
+        row = layout.row(align=True)
+        row.prop(layer, "scale")
+
+
+class GreasPencil_LayerRelationsPanel:
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        ob = context.object
+        grease_pencil = ob.data
+        layer = grease_pencil.layers.active
+        layout.active = not layer.lock
+
+        row = layout.row(align=True)
+        row.prop(layer, "parent", text="Parent")
+
+        if layer.parent and layer.parent.type == 'ARMATURE':
+            row = layout.row(align=True)
+            row.prop_search(layer, "parent_bone", layer.parent.data, "bones", text="Bone")
+
+        layout.separator()
+
+        col = layout.row(align=True)
+        col.prop(layer, "pass_index")
+
+        col = layout.row(align=True)
+        col.prop_search(layer, "viewlayer_render", context.scene, "view_layers", text="View Layer")
+
+        col = layout.row(align=True)
+        # Only enable this property when a view layer is selected.
+        col.enabled = bool(layer.viewlayer_render)
+        col.prop(layer, "use_viewlayer_masks")
 
 
 class GREASE_PENCIL_MT_layer_mask_add(Menu):
@@ -84,10 +175,10 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         layout = self.layout
         ob = context.object
         grease_pencil = ob.data
+        layer = grease_pencil.layers.active
         space = context.space_data
 
-        if space.type == 'PROPERTIES':
-            layout.operator("grease_pencil.layer_group_add", text="Add Group")
+        layout.operator("grease_pencil.layer_group_add", text="Add Group")
 
         layout.separator()
         layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE').empty_keyframes = False
@@ -104,14 +195,32 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
         layout.separator()
         layout.prop(grease_pencil, "use_autolock_layers", text="Autolock Inactive Layers")
 
+        if layer:
+            layout.prop(layer, "ignore_locked_materials")
+
+        layout.separator()
+        layout.operator("grease_pencil.layer_duplicate_object", text="Copy Layer to Selected").only_active = True
+        layout.operator("grease_pencil.layer_duplicate_object", text="Copy All Layers to Selected").only_active = False
+
+
+class GREASE_PENCIL_MT_group_context_menu(Menu):
+    bl_label = "Layer Group"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("grease_pencil.layer_group_remove", text="Delete Group").keep_children = False
+        layout.operator("grease_pencil.layer_group_remove", text="Ungroup").keep_children = True
+
+        layout.separator()
+        row = layout.row(align=True)
+        row.operator_enum("grease_pencil.layer_group_color_tag", "color_tag", icon_only=True)
+
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
     bl_label = "Layers"
 
-    def draw(self, context):
-        layout = self.layout
-
-        grease_pencil = context.grease_pencil
+    @classmethod
+    def draw_settings(cls, layout, grease_pencil):
         layer = grease_pencil.layers.active
 
         row = layout.row()
@@ -121,9 +230,17 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         sub = col.column(align=True)
         sub.operator_context = 'EXEC_DEFAULT'
         sub.operator("grease_pencil.layer_add", icon='ADD', text="")
+        sub.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+
+        sub.separator()
+
         sub.menu("GREASE_PENCIL_MT_grease_pencil_add_layer_extra", icon='DOWNARROW_HLT', text="")
 
-        col.operator("grease_pencil.layer_remove", icon='REMOVE', text="")
+        col.separator()
+
+        sub = col.column(align=True)
+        sub.operator("grease_pencil.layer_move", icon='TRIA_UP', text="").direction = 'UP'
+        sub.operator("grease_pencil.layer_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
         if not layer:
             return
@@ -142,101 +259,29 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
         row = layout.row(align=True)
         row.prop(layer, "use_lights", text="Lights")
 
+    def draw(self, context):
+        layout = self.layout
+        grease_pencil = context.grease_pencil
 
-class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, Panel):
+        self.draw_settings(layout, grease_pencil)
+
+
+class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, GreasePencil_LayerMaskPanel, Panel):
     bl_label = "Masks"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
-    def draw_header(self, context):
-        grease_pencil = context.grease_pencil
-        layer = grease_pencil.layers.active
 
-        self.layout.prop(layer, "use_masks", text="")
-
-    def draw(self, context):
-        layout = self.layout
-        grease_pencil = context.grease_pencil
-        layer = grease_pencil.layers.active
-
-        layout = self.layout
-        layout.enabled = layer.use_masks
-
-        if not layer:
-            return
-
-        rows = 4
-        row = layout.row()
-        col = row.column()
-        col.template_list("GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
-                          "active_mask_index", rows=rows, sort_lock=True)
-
-        col = row.column(align=True)
-        col.menu("GREASE_PENCIL_MT_layer_mask_add", icon='ADD', text="")
-        col.operator("grease_pencil.layer_mask_remove", icon='REMOVE', text="")
-
-        col.separator()
-
-        sub = col.column(align=True)
-        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_UP', text="").direction = 'UP'
-        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_DOWN', text="").direction = 'DOWN'
-
-
-class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, Panel):
+class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, GreasePencil_LayerTransformPanel, Panel):
     bl_label = "Transform"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
 
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
 
-        grease_pencil = context.grease_pencil
-        layer = grease_pencil.layers.active
-        layout.active = not layer.lock
-
-        row = layout.row(align=True)
-        row.prop(layer, "translation")
-
-        row = layout.row(align=True)
-        row.prop(layer, "rotation")
-
-        row = layout.row(align=True)
-        row.prop(layer, "scale")
-
-
-class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, Panel):
+class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, GreasPencil_LayerRelationsPanel, Panel):
     bl_label = "Relations"
     bl_parent_id = "DATA_PT_grease_pencil_layers"
     bl_options = {'DEFAULT_CLOSED'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        grease_pencil = context.grease_pencil
-        layer = grease_pencil.layers.active
-        layout.active = not layer.lock
-
-        row = layout.row(align=True)
-        row.prop(layer, "parent", text="Parent")
-
-        if layer.parent and layer.parent.type == 'ARMATURE':
-            row = layout.row(align=True)
-            row.prop_search(layer, "parent_bone", layer.parent.data, "bones", text="Bone")
-
-        layout.separator()
-
-        col = layout.row(align=True)
-        col.prop(layer, "pass_index")
-
-        col = layout.row(align=True)
-        col.prop_search(layer, "viewlayer_render", context.scene, "view_layers", text="View Layer")
-
-        col = layout.row(align=True)
-        # Only enable this property when a view layer is selected.
-        col.enabled = bool(layer.viewlayer_render)
-        col.prop(layer, "use_viewlayer_masks")
 
 
 class DATA_PT_grease_pencil_onion_skinning(DataButtonsPanel, Panel):
@@ -318,6 +363,10 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
         col.prop(grease_pencil, "stroke_depth_order", text="Stroke Depth Order")
 
 
+class DATA_PT_grease_pencil_animation(DataButtonsPanel, PropertiesAnimationMixin, PropertyPanel, Panel):
+    _animated_id_context_property = 'grease_pencil'
+
+
 class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
     _property_type = bpy.types.GreasePencilv3
@@ -337,7 +386,10 @@ classes = (
     DATA_PT_grease_pencil_settings,
     DATA_PT_grease_pencil_custom_props,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
+    GREASE_PENCIL_MT_group_context_menu,
+    DATA_PT_grease_pencil_animation,
 )
+
 
 if __name__ == "__main__":  # only for live edit.
     from bpy.utils import register_class

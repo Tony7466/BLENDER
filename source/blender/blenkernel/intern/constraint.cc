@@ -44,7 +44,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_tracking_types.h"
 
-#include "BKE_action.h"
+#include "BKE_action.hh"
 #include "BKE_anim_path.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -76,6 +76,8 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
+
+#include "ANIM_action.hh"
 
 #include "CLG_log.h"
 
@@ -1015,10 +1017,21 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
   bChildOfConstraint *data = static_cast<bChildOfConstraint *>(con->data);
   bConstraintTarget *ct = static_cast<bConstraintTarget *>(targets->first);
 
-  /* only evaluate if there is a target */
+  /* Only evaluate if there is a target.
+   *
+   * NOTE: we're setting/unsetting the CONSTRAINT_SPACEONCE flag here because:
+   *
+   * 1. It's only used by the Child Of constraint anyway.
+   * 2. It's only used to affect the steps taken immediately after this function
+   *    returns, and this way we ensure it's always set correctly for that.
+   *
+   * It was previously set in other places which resulted in bugs like #116567.
+   * In the future we should ideally move to a different approach entirely. */
   if (!VALID_CONS_TARGET(ct)) {
+    con->flag &= ~CONSTRAINT_SPACEONCE;
     return;
   }
+  con->flag |= CONSTRAINT_SPACEONCE;
 
   float parmat[4][4];
   float inverse_matrix[4][4];
@@ -1747,17 +1760,43 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
 
   mat4_to_eulO(eul, rot_order, cob->matrix);
 
-  /* constraint data uses radians internally */
-
-  /* limiting of euler values... */
-  if (data->flag & LIMIT_XROT) {
-    eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
+  /* Limit the euler values. */
+  if (data->flag & LIMIT_ROT_LEGACY_BEHAVIOR) {
+    /* The legacy behavior, which just does a naive clamping of the angles as
+     * simple numbers. Since the input angles are always in the range [-180,
+     * 180] degrees due to being derived from matrix decomposition, this naive
+     * approach causes problems when rotations cross 180 degrees. Specifically,
+     * it results in unpredictable and unwanted rotation flips of the
+     * constrained objects/bones, especially when the constraint isn't in local
+     * space.
+     *
+     * The correct thing to do is a more sophisticated form of clamping that
+     * treats the angles as existing on a continuous loop, which is what the
+     * non-legacy behavior further below does. However, for backwards
+     * compatibility we are preserving this old behavior behind an option.
+     *
+     * See issues #117927 and #123105 for additional background. */
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_f(eul[0], data->xmin, data->xmax);
+    }
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_f(eul[1], data->ymin, data->ymax);
+    }
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_f(eul[2], data->zmin, data->zmax);
+    }
   }
-  if (data->flag & LIMIT_YROT) {
-    eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
-  }
-  if (data->flag & LIMIT_ZROT) {
-    eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
+  else {
+    /* The correct, non-legacy behavior. */
+    if (data->flag & LIMIT_XROT) {
+      eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
+    }
+    if (data->flag & LIMIT_YROT) {
+      eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
+    }
+    if (data->flag & LIMIT_ZROT) {
+      eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
+    }
   }
 
   loc_eulO_size_to_mat4(cob->matrix, loc, eul, size, rot_order);
@@ -2865,6 +2904,11 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 {
   bActionConstraint *data = static_cast<bActionConstraint *>(con->data);
 
+  if (!data->act) {
+    /* Without an Action, this constraint cannot do anything. */
+    return;
+  }
+
   if (VALID_CONS_TARGET(ct) || data->flag & ACTCON_USE_EVAL_TIME) {
     float tempmat[4][4], vec[3];
     float s, t;
@@ -2913,8 +2957,17 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       BLI_assert(uint(axis) < 3);
 
-      /* Target defines the animation */
-      s = (vec[axis] - data->min) / (data->max - data->min);
+      /* Convert the target's value into a [0, 1] value that's later used to find the Action frame
+       * to apply. This compares to the min/max boundary values first, before doing the
+       * normalization by the (max-min) range, to get predictable, valid values when that range is
+       * zero. */
+      const float range = data->max - data->min;
+      if (range == 0.0f) {
+        s = 0.0f;
+      }
+      else {
+        s = (vec[axis] - data->min) / range;
+      }
     }
 
     CLAMP(s, 0, 1);
@@ -2935,7 +2988,13 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
 
       /* evaluate using workob */
       /* FIXME: we don't have any consistent standards on limiting effects on object... */
-      what_does_obaction(cob->ob, &workob, nullptr, data->act, nullptr, &anim_eval_context);
+      what_does_obaction(cob->ob,
+                         &workob,
+                         nullptr,
+                         data->act,
+                         data->action_slot_handle,
+                         nullptr,
+                         &anim_eval_context);
       BKE_object_to_mat4(&workob, ct->matrix);
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
@@ -2952,7 +3011,13 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
       tchan->rotmode = pchan->rotmode;
 
       /* evaluate action using workob (it will only set the PoseChannel in question) */
-      what_does_obaction(cob->ob, &workob, &pose, data->act, pchan->name, &anim_eval_context);
+      what_does_obaction(cob->ob,
+                         &workob,
+                         &pose,
+                         data->act,
+                         data->action_slot_handle,
+                         pchan->name,
+                         &anim_eval_context);
 
       /* convert animation to matrices for use here */
       BKE_pchan_calc_mat(tchan);
@@ -5691,7 +5756,7 @@ bool BKE_constraint_apply_for_object(Depsgraph *depsgraph,
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
   bConstraint *con_eval = BKE_constraints_find_name(&ob_eval->constraints, con->name);
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, ID_IS_EDITABLE(ob));
   ListBase single_con = {new_con, new_con};
 
   bConstraintOb *cob = BKE_constraints_make_evalob(
@@ -5744,7 +5809,7 @@ bool BKE_constraint_apply_for_pose(
   bPoseChannel *pchan_eval = BKE_pose_channel_find_name(ob_eval->pose, pchan->name);
   bConstraint *con_eval = BKE_constraints_find_name(&pchan_eval->constraints, con->name);
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(con_eval, 0, ID_IS_EDITABLE(ob));
   ListBase single_con;
   single_con.first = new_con;
   single_con.last = new_con;
@@ -5884,7 +5949,6 @@ static bConstraint *add_new_constraint(Object *ob,
        * the constraint gets evaluated in pose-space */
       if (pchan) {
         con->ownspace = CONSTRAINT_SPACE_POSE;
-        con->flag |= CONSTRAINT_SPACEONCE;
       }
       break;
     }
@@ -6021,14 +6085,14 @@ bConstraint *BKE_constraint_copy_for_pose(Object *ob, bPoseChannel *pchan, bCons
     return nullptr;
   }
 
-  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, ID_IS_EDITABLE(ob));
   add_new_constraint_to_list(ob, pchan, new_con);
   return new_con;
 }
 
 bConstraint *BKE_constraint_copy_for_object(Object *ob, bConstraint *src)
 {
-  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, !ID_IS_LINKED(ob));
+  bConstraint *new_con = BKE_constraint_duplicate_ex(src, 0, ID_IS_EDITABLE(ob));
   add_new_constraint_to_list(ob, nullptr, new_con);
   return new_con;
 }
@@ -6548,9 +6612,18 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
 
 void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *lb)
 {
-  BLO_read_list(reader, lb);
+  BLO_read_struct_list(reader, bConstraint, lb);
   LISTBASE_FOREACH (bConstraint *, con, lb) {
-    BLO_read_data_address(reader, &con->data);
+    const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
+    if (cti) {
+      con->data = BLO_read_struct_by_name_array(reader, cti->struct_name, 1, con->data);
+    }
+    else {
+      /* No `BLI_assert_unreachable()` here, this code can be reached in some cases, like the
+       * deprecated RigidBody constraint. */
+      con->data = nullptr;
+    }
+
     /* Patch for error introduced by changing constraints (don't know how). */
     /* NOTE(@ton): If `con->data` type changes, DNA cannot resolve the pointer!. */
     /* FIXME This is likely dead code actually, since it used to be in
@@ -6569,23 +6642,23 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
       case CONSTRAINT_TYPE_PYTHON: {
         bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
-        BLO_read_list(reader, &data->targets);
+        BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
 
-        BLO_read_data_address(reader, &data->prop);
+        BLO_read_struct(reader, IDProperty, &data->prop);
         IDP_BlendDataRead(reader, &data->prop);
         break;
       }
       case CONSTRAINT_TYPE_ARMATURE: {
         bArmatureConstraint *data = static_cast<bArmatureConstraint *>(con->data);
 
-        BLO_read_list(reader, &data->targets);
+        BLO_read_struct_list(reader, bConstraintTarget, &data->targets);
 
         break;
       }
       case CONSTRAINT_TYPE_SPLINEIK: {
         bSplineIKConstraint *data = static_cast<bSplineIKConstraint *>(con->data);
 
-        BLO_read_data_address(reader, &data->points);
+        BLO_read_float_array(reader, data->numpoints, &data->points);
         break;
       }
       case CONSTRAINT_TYPE_KINEMATIC: {
@@ -6598,13 +6671,6 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
         data->flag &= ~CONSTRAINT_IK_AUTO;
         break;
       }
-      case CONSTRAINT_TYPE_CHILDOF: {
-        /* XXX version patch, in older code this flag wasn't always set, and is inherent to type */
-        if (con->ownspace == CONSTRAINT_SPACE_POSE) {
-          con->flag |= CONSTRAINT_SPACEONCE;
-        }
-        break;
-      }
       case CONSTRAINT_TYPE_TRANSFORM_CACHE: {
         bTransformCacheConstraint *data = static_cast<bTransformCacheConstraint *>(con->data);
         data->reader = nullptr;
@@ -6613,3 +6679,11 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
     }
   }
 }
+
+/* Some static asserts to ensure that the bActionConstraint data is using the expected types for
+ * some of the fields. This check is done here instead of in DNA_constraint_types.h to avoid the
+ * inclusion of an DNA_anim_types.h in DNA_constraint_types.h just for this assert. */
+static_assert(
+    std::is_same_v<decltype(ActionSlot::handle), decltype(bActionConstraint::action_slot_handle)>);
+static_assert(
+    std::is_same_v<decltype(ActionSlot::name), decltype(bActionConstraint::action_slot_name)>);
