@@ -2176,10 +2176,24 @@ static void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
+/** \name Split Operator
+ * \{ */
 
 static int grease_pencil_split_exec(bContext *C, wmOperator *op)
 {
   using namespace bke::greasepencil;
+  Object *object_src = CTX_data_active_object(C);
+  GreasePencil &grease_pencil_src = *static_cast<GreasePencil *>(object_src.data);
+
+  sel_pts = retrieve_editable_and_selected_points(object_src, );
+
+  /* if not anything selected, return operator cancelled*/
+
+  /*Iterate through all the drawings at current scene frame?*/
+  /* at each drawing, get selected points*/
+  /* use those points to index into the Curves Geometry and update the tables? Use a new table
+   * and then copy it back to the source? how does old way do it?*/
+
   BKE_report(op->reports, RPT_ERROR, "LOL it doesn't work yet");
   WM_cursor_wait(false);
   return OPERATOR_CANCELLED;
