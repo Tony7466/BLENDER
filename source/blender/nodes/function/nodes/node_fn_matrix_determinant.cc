@@ -25,7 +25,8 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 static void node_register()
 {
   static blender::bke::bNodeType ntype;
-  fn_node_type_base(&ntype, FN_NODE_MATRIX_DETERMINANT, "Matrix Determinant", NODE_CLASS_CONVERTER);
+  fn_node_type_base(
+      &ntype, FN_NODE_MATRIX_DETERMINANT, "Matrix Determinant", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   blender::bke::nodeRegisterType(&ntype);
