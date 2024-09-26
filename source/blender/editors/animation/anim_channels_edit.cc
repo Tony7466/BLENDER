@@ -64,6 +64,8 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "BLT_translation.hh"
+
 /* -------------------------------------------------------------------- */
 /** \name Channel helper functions
  * \{ */
@@ -5224,12 +5226,12 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
    * hard to determine a name, so a constant default is used. */
   bAction *dna_new_action;
   if (slots.size() == 1) {
-    dna_new_action = reinterpret_cast<bAction *>(
-        BKE_id_new(CTX_data_main(C), ID_AC, slots[0].first->name + 2));
+    char actname[MAX_ID_NAME - 2];
+    SNPRINTF(actname, DATA_("%sAction"), slots[0].first->name + 2);
+    dna_new_action = BKE_action_add(CTX_data_main(C), actname);
   }
   else {
-    dna_new_action = reinterpret_cast<bAction *>(
-        BKE_id_new(CTX_data_main(C), ID_AC, "CombinedAction"));
+    dna_new_action = BKE_action_add(CTX_data_main(C), "CombinedAction");
   }
 
   Action &target_action = dna_new_action->wrap();
