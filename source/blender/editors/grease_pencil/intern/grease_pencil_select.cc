@@ -580,7 +580,7 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
 
 template<typename T>
 blender::Set<T> selected_values_for_attribute_in_curve(bke::CurvesGeometry &curves,
-                                                       int type,
+                                                       int /*type*/,
                                                        std::string attribute_id)
 {
   blender::Set<T> selectedValuesForAttribute;
@@ -646,7 +646,7 @@ static void select_with_similar_attribute(bke::CurvesGeometry &curves,
 {
   const VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
       ".selection", bke::AttrDomain::Point, blender::ed::curves::default_for_lookup<T>());
-  const OffsetIndices points_by_curve = curves.points_by_curve();
+  // const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::GSpanAttributeWriter selection = blender::ed::curves::ensure_selection_attribute(
       curves, bke::AttrDomain::Point, CD_PROP_BOOL);
 
@@ -692,7 +692,7 @@ static void select_similar(GreasePencil &grease_pencil,
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask editable_points = ed::greasepencil::retrieve_editable_points(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
 
     select_with_similar_attribute<T>(
         info.drawing.strokes_for_write(), currentlySelectedValues, threshold,
@@ -708,13 +708,13 @@ static void select_similar_layer(GreasePencil &grease_pencil,
   const blender::Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
-    bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
+    // bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     const IndexMask editable_elements = retrieve_editable_elements(
-        *object, info.drawing, selection_domain, memory);
+        *object, info, selection_domain, memory);
     if (editable_elements.is_empty()) {
       return;
     }
-    const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
+    // const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
     ed::curves::select_all(
         info.drawing.strokes_for_write(), editable_elements, selection_domain, SEL_SELECT);
   });
@@ -727,7 +727,7 @@ static int select_similar_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings, object);
 
   const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
