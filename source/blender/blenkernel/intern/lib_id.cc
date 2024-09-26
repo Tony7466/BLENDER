@@ -2457,8 +2457,8 @@ bool BKE_id_is_editable(const Main *bmain, const ID *id)
 
 bool BKE_id_can_use_id(const ID &id_from, const ID &id_to)
 {
-  /* Can't point from linked to local. */
-  if (id_from.lib && !id_to.lib) {
+  /* Can't point from linked to local (unless linked is editable). */
+  if (!ID_IS_EDITABLE(id_from.lib) && !id_to.lib) {
     return false;
   }
   /* Can't point from ID in main database to one outside of it. */
