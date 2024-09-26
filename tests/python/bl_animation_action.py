@@ -516,6 +516,12 @@ class VersioningTest(unittest.TestCase):
         # Slots with a single user are named after their user.
         self.assertEqual(action.slots[0].name, "OBarmature_object")
 
+        for fcurve in strip.channelbags[0].groups[0].channels:
+            self.assertEqual(fcurve.group.name, "Bone")
+
+        for fcurve in strip.channelbags[0].groups[1].channels:
+            self.assertEqual(fcurve.group.name, "Bone.001")
+
 
 def main():
     global args
