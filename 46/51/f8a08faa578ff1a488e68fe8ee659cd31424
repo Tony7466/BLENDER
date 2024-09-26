@@ -1,2 +1,3 @@
 Referenced by issue #126536, optix denoising not working in cuda in blender 4.2
 Referenced by issue #127622, 4.1 splash screen won't render in Blender 4.2.1 with MetalRT
+Referenced by pull request #128173, Fix #127622: 4.1 splash screen won't render with MetalRT
