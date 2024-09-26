@@ -1,2 +1,3 @@
 Referenced by issue #119992, Regression: Wrong orientation on shrinkwrap constrained instanced collection
 Referenced by issue #127964, crash to desktop when baking texture from selected mesh with no faces to active
+Referenced by pull request #128181, Fix #127964: Crash when baking from mesh with no faces
