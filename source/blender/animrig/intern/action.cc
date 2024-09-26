@@ -69,8 +69,6 @@ namespace {
 constexpr const char *slot_default_name = "Slot";
 constexpr const char *slot_unbound_prefix = "XX";
 
-constexpr const char *layer_default_name = "Layer";
-
 }  // namespace
 
 static animrig::Layer &ActionLayer_alloc()

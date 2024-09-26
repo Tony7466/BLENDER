@@ -32,6 +32,9 @@ struct ID;
 struct Main;
 struct PointerRNA;
 struct Main;
+namespace {
+constexpr const char *layer_default_name = "Layer";
+}
 
 namespace blender::animrig {
 
@@ -109,7 +112,7 @@ class Action : public ::bAction {
   const Layer *layer(int64_t index) const;
   Layer *layer(int64_t index);
 
-  Layer &layer_add(StringRefNull name);
+  Layer &layer_add(StringRefNull name = layer_default_name);
 
   /**
    * Remove the layer from this Action.
