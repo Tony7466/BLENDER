@@ -24,7 +24,7 @@
 #include "BLI_fileops.h"
 #include "BLI_function_ref.hh"
 #include "BLI_listbase.h"
-#include "BLI_path_util.h"
+#include "BLI_path_utils.hh"
 #include "BLI_string.h"
 #include "BLI_system.h"
 #include "BLI_time.h"
@@ -69,7 +69,7 @@
 #include "RE_pipeline.h"
 
 #ifdef WITH_PYTHON
-#  include "BPY_extern.h"
+#  include "BPY_extern.hh"
 #endif
 
 using namespace blender::bke;
@@ -954,6 +954,12 @@ static void setup_app_data(bContext *C,
         if (ID_TYPE_SUPPORTS_ASSET_EDITABLE(idtype_info->id_code)) {
           reuse_editable_asset_bmain_data_for_blendfile(&reuse_data, idtype_info->id_code);
         }
+      }
+    }
+
+    if (mode != LOAD_UI) {
+      LISTBASE_FOREACH (bScreen *, screen, &bfd->main->screens) {
+        BKE_screen_runtime_refresh_for_blendfile(screen);
       }
     }
   }

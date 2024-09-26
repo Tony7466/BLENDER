@@ -17,7 +17,6 @@
 
 #include "BLI_array_utils.hh"
 #include "BLI_assert.h"
-#include "BLI_color.hh"
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_attribute.hh"
@@ -154,58 +153,47 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
   const StringRef active_uvmap_name = CustomData_get_render_layer_name(&mesh->corner_data,
                                                                        CD_PROP_FLOAT2);
 
-  attributes.for_all([&](const StringRef attribute_id, const bke::AttributeMetaData &meta_data) {
+  attributes.foreach_attribute([&](const bke::AttributeIter &iter) {
     /* Skip "internal" Blender properties and attributes processed elsewhere.
      * Skip edge domain because USD doesn't have a good conversion for them. */
-    if (attribute_id[0] == '.' || bke::attribute_name_is_anonymous(attribute_id) ||
-        meta_data.domain == bke::AttrDomain::Edge ||
-        ELEM(attribute_id, "position", "material_index", "velocity", "crease_vert"))
+    if (iter.name[0] == '.' || bke::attribute_name_is_anonymous(iter.name) ||
+        iter.domain == bke::AttrDomain::Edge ||
+        ELEM(iter.name, "position", "material_index", "velocity", "crease_vert"))
     {
-      return true;
+      return;
     }
 
     if ((usd_export_context_.export_params.export_armatures ||
          usd_export_context_.export_params.export_shapekeys) &&
-        attribute_id.rfind("skel:") == 0)
+        iter.name.rfind("skel:") == 0)
     {
       /* If we're exporting armatures or shape keys to UsdSkel, we skip any
        * attributes that have names with the "skel:" namespace, to avoid possible
        * conflicts. Such attribute might have been previously imported into Blender
        * from USD, but can no longer be considered valid. */
-      return true;
+      return;
     }
 
     if (usd_export_context_.export_params.export_armatures &&
-        is_armature_modifier_bone_name(*obj, attribute_id.data(), usd_export_context_.depsgraph))
+        is_armature_modifier_bone_name(*obj, iter.name, usd_export_context_.depsgraph))
     {
       /* This attribute is likely a vertex group for the armature modifier,
        * and it may conflict with skinning data that will be written to
        * the USD mesh, so we skip it.  Such vertex groups will instead be
        * handled in #export_deform_verts(). */
-      return true;
+      return;
     }
 
     /* UV Data. */
-    if (meta_data.domain == bke::AttrDomain::Corner && meta_data.data_type == CD_PROP_FLOAT2) {
+    if (iter.domain == bke::AttrDomain::Corner && iter.data_type == CD_PROP_FLOAT2) {
       if (usd_export_context_.export_params.export_uvmaps) {
-        this->write_uv_data(mesh, usd_mesh, attribute_id, active_uvmap_name);
-      }
-    }
-
-    /* Color data. */
-    else if (ELEM(meta_data.domain, bke::AttrDomain::Corner, bke::AttrDomain::Point) &&
-             ELEM(meta_data.data_type, CD_PROP_BYTE_COLOR, CD_PROP_COLOR))
-    {
-      if (usd_export_context_.export_params.export_mesh_colors) {
-        this->write_color_data(mesh, usd_mesh, attribute_id, meta_data);
+        this->write_uv_data(mesh, usd_mesh, iter.name, active_uvmap_name);
       }
     }
 
     else {
-      this->write_generic_data(mesh, usd_mesh, attribute_id, meta_data);
+      this->write_generic_data(mesh, usd_mesh, iter.name, {iter.domain, iter.data_type});
     }
-
-    return true;
   });
 }
 
@@ -231,10 +219,12 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
                                               const StringRef attribute_id,
                                               const bke::AttributeMetaData &meta_data)
 {
-  /* Varying type depends on original domain. */
+  const pxr::TfToken pv_name(
+      make_safe_name(attribute_id, usd_export_context_.export_params.allow_unicode));
+  const bool use_color3f_type = pv_name == usdtokens::displayColor;
   const std::optional<pxr::TfToken> pv_interp = convert_blender_domain_to_usd(meta_data.domain);
   const std::optional<pxr::SdfValueTypeName> pv_type = convert_blender_type_to_usd(
-      meta_data.data_type);
+      meta_data.data_type, use_color3f_type);
 
   if (!pv_interp || !pv_type) {
     BKE_reportf(reports(),
@@ -254,8 +244,6 @@ void USDGenericMeshWriter::write_generic_data(const Mesh *mesh,
   }
 
   const pxr::UsdTimeCode timecode = get_export_time_code();
-  const pxr::TfToken pv_name(
-      make_safe_name(attribute_id, usd_export_context_.export_params.allow_unicode));
   const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_mesh);
 
   pxr::UsdGeomPrimvar pv_attr = pv_api.CreatePrimvar(pv_name, *pv_type, *pv_interp);
@@ -291,41 +279,6 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
       pv_name, pxr::SdfValueTypeNames->TexCoord2fArray, pxr::UsdGeomTokens->faceVarying);
 
   copy_blender_buffer_to_primvar<float2, pxr::GfVec2f>(buffer, timecode, pv_uv, usd_value_writer_);
-}
-
-void USDGenericMeshWriter::write_color_data(const Mesh *mesh,
-                                            const pxr::UsdGeomMesh &usd_mesh,
-                                            const StringRef attribute_id,
-                                            const bke::AttributeMetaData &meta_data)
-{
-  const VArray<ColorGeometry4f> buffer = *mesh->attributes().lookup<ColorGeometry4f>(
-      attribute_id, meta_data.domain);
-  if (buffer.is_empty()) {
-    return;
-  }
-
-  const pxr::UsdTimeCode timecode = get_export_time_code();
-  const pxr::TfToken pv_name(
-      make_safe_name(attribute_id, usd_export_context_.export_params.allow_unicode));
-  const pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(usd_mesh);
-
-  /* Varying type depends on original domain. */
-  const pxr::TfToken pv_interp = meta_data.domain == bke::AttrDomain::Corner ?
-                                     pxr::UsdGeomTokens->faceVarying :
-                                     pxr::UsdGeomTokens->vertex;
-
-  pxr::UsdGeomPrimvar colors_pv = pv_api.CreatePrimvar(
-      pv_name, pxr::SdfValueTypeNames->Color4fArray, pv_interp);
-
-  switch (meta_data.domain) {
-    case bke::AttrDomain::Corner:
-    case bke::AttrDomain::Point:
-      copy_blender_buffer_to_primvar<ColorGeometry4f, pxr::GfVec4f>(
-          buffer, timecode, colors_pv, usd_value_writer_);
-      break;
-    default:
-      BLI_assert_msg(0, "Invalid type for mesh color data.");
-  }
 }
 
 void USDGenericMeshWriter::free_export_mesh(Mesh *mesh)

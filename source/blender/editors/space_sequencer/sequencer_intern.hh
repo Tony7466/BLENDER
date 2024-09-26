@@ -83,6 +83,8 @@ struct SeqChannelDrawContext {
 
 struct StripDrawContext {
   Sequence *seq;
+  const FCurve *curve = nullptr; /* Curve for overlay, if any (blend factor or volume). */
+
   /* Strip boundary in timeline space. Content start/end is clamped by left/right handle. */
   float content_start, content_end, bottom, top;
   float left_handle, right_handle; /* Position in frames. */
@@ -99,6 +101,7 @@ struct StripDrawContext {
   bool missing_data_block;
   bool missing_media;
   bool is_connected;
+  bool is_muted;
 };
 
 struct TimelineDrawContext {
@@ -169,7 +172,7 @@ void channel_draw_context_init(const bContext *C,
 
 /* `sequencer_edit.cc` */
 
-void seq_rectf(const Scene *scene, const Sequence *seq, rctf *rect);
+void seq_rectf(const Scene *scene, const Sequence *seq, rctf *r_rect);
 Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int sel);
 void recurs_sel_seq(Sequence *seq_meta);
 int seq_effect_find_selected(Scene *scene,
