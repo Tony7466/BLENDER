@@ -35,6 +35,12 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const AttrD
   BLI_assert(curves.attributes().domain_supported(domain));
 }
 
+CurvesFieldContext::CurvesFieldContext(const Curves &curves_id, const AttrDomain domain)
+    : CurvesFieldContext(curves_id.geometry.wrap(), domain)
+{
+  curves_id_ = &curves_id;
+}
+
 GVArray GreasePencilLayerFieldContext::get_varray_for_input(const fn::FieldInput &field_input,
                                                             const IndexMask &mask,
                                                             ResourceScope &scope) const
@@ -95,6 +101,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
       const CurveComponent &curve_component = static_cast<const CurveComponent &>(component);
       const Curves *curves = curve_component.get();
       geometry_ = curves ? &curves->geometry.wrap() : nullptr;
+      curves_id_ = curve_component.get();
       break;
     }
     case GeometryComponent::Type::PointCloud: {
@@ -260,6 +267,9 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   }
   if (const CurvesFieldContext *curve_context = dynamic_cast<const CurvesFieldContext *>(&context))
   {
+    if (const Curves *curves_id = curve_context->curves_id()) {
+      return this->get_varray_for_context({*curves_id, curve_context->domain()}, mask);
+    }
     return this->get_varray_for_context({curve_context->curves(), curve_context->domain()}, mask);
   }
   if (const PointCloudFieldContext *point_context = dynamic_cast<const PointCloudFieldContext *>(

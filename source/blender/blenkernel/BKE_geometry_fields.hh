@@ -47,13 +47,20 @@ class CurvesFieldContext : public fn::FieldContext {
  private:
   const CurvesGeometry &curves_;
   AttrDomain domain_;
+  const Curves *curves_id_ = nullptr;
 
  public:
   CurvesFieldContext(const CurvesGeometry &curves, AttrDomain domain);
+  CurvesFieldContext(const Curves &curves_id, AttrDomain domain);
 
   const CurvesGeometry &curves() const
   {
     return curves_;
+  }
+
+  const Curves *curves_id() const
+  {
+    return curves_id_;
   }
 
   AttrDomain domain() const
