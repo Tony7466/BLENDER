@@ -343,8 +343,7 @@ static void do_relax_face_sets_brush_grids(const Depsgraph &depsgraph,
                           object,
                           current_positions.as_mutable_span().slice(node_vert_offsets[pos]),
                           translations.as_mutable_span().slice(node_vert_offsets[pos]));
-    bke::pbvh::update_node_bounds_grids(
-        subdiv_ccg.grid_area, positions, nodes[i]);
+    bke::pbvh::update_node_bounds_grids(subdiv_ccg.grid_area, positions, nodes[i]);
   });
   pbvh.tag_positions_changed(node_mask);
   bke::pbvh::flush_bounds_to_parents(pbvh);
