@@ -213,16 +213,16 @@ static void two_xy_to_rect(
     const NodeTwoXYs *nxy, const float2 &dims, const float2 offset, bool is_relative, rctf *r_rect)
 {
   if (is_relative) {
-    rect->xmin = nxy->fac_x1 + (offset.x / dims.x);
-    rect->xmax = nxy->fac_x2 + (offset.x / dims.x);
-    rect->ymin = nxy->fac_y2 + (offset.y / dims.y);
-    rect->ymax = nxy->fac_y1 + (offset.y / dims.y);
+    r_rect->xmin = nxy->fac_x1 + (offset.x / dims.x);
+    r_rect->xmax = nxy->fac_x2 + (offset.x / dims.x);
+    r_rect->ymin = nxy->fac_y2 + (offset.y / dims.y);
+    r_rect->ymax = nxy->fac_y1 + (offset.y / dims.y);
   }
   else {
-    rect->xmin = (nxy->x1 + offset.x) / dims.x;
-    rect->xmax = (nxy->x2 + offset.x) / dims.x;
-    rect->ymin = (nxy->y2 + offset.y) / dims.y;
-    rect->ymax = (nxy->y1 + offset.y) / dims.y;
+    r_rect->xmin = (nxy->x1 + offset.x) / dims.x;
+    r_rect->xmax = (nxy->x2 + offset.x) / dims.x;
+    r_rect->ymin = (nxy->y2 + offset.y) / dims.y;
+    r_rect->ymax = (nxy->y1 + offset.y) / dims.y;
   }
 }
 
@@ -277,7 +277,7 @@ static void gizmo_node_crop_prop_matrix_set(const wmGizmo *gz,
   NodeTwoXYs *nxy = (NodeTwoXYs *)node->storage;
   bool is_relative = bool(node->custom2);
   rctf rct;
-  two_xy_to_rect(nxy, &rct, dims, offset, is_relative);
+  two_xy_to_rect(nxy, dims, offset, is_relative, &rct);
   BLI_rctf_resize(&rct, fabsf(matrix[0][0]), fabsf(matrix[1][1]));
   BLI_rctf_recenter(&rct, ((matrix[3][0]) / dims[0]) + 0.5f, ((matrix[3][1]) / dims[1]) + 0.5f);
   rctf rct_isect{};
