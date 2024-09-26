@@ -52,6 +52,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Float>("C").default_value(0.9f);
   b.add_input<decl::Float>("Angle").default_value(0.0872665f).subtype(PROP_ANGLE);
   b.add_input<decl::Float>("Epsilon").default_value(0.001).min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Int>("Epsilon", "Epsilon_INT");
 
   b.add_output<decl::Bool>("Result");
 }
@@ -73,6 +74,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sock_comp = (bNodeSocket *)BLI_findlink(&node->inputs, 10);
   bNodeSocket *sock_angle = (bNodeSocket *)BLI_findlink(&node->inputs, 11);
   bNodeSocket *sock_epsilon = (bNodeSocket *)BLI_findlink(&node->inputs, 12);
+  bNodeSocket *sock_epsilon_int = (bNodeSocket *)BLI_findlink(&node->inputs, 13);
 
   LISTBASE_FOREACH (bNodeSocket *, socket, &node->inputs) {
     bke::node_set_socket_availability(
@@ -274,13 +276,17 @@ static const mf::MultiFunction *get_multi_function(const bNode &node)
           return &fn;
         }
         case NODE_COMPARE_EQUAL: {
-          static auto fn = mf::build::SI2_SO<int, int, bool>(
-              "Equal", [](int a, int b) { return a == b; }, exec_preset_all);
+          static auto fn = mf::build::SI3_SO<int, int, int, bool>(
+              "Equal",
+              [](int a, int b, int epsilon) { return std::abs(a - b) <= epsilon; },
+              exec_preset_all);
           return &fn;
         }
         case NODE_COMPARE_NOT_EQUAL: {
-          static auto fn = mf::build::SI2_SO<int, int, bool>(
-              "Not Equal", [](int a, int b) { return a != b; }, exec_preset_all);
+          static auto fn = mf::build::SI3_SO<int, int, int, bool>(
+              "Not Equal",
+              [](int a, int b, int epsilon) { return std::abs(a - b) > epsilon; },
+              exec_preset_all);
           return &fn;
         }
       }
