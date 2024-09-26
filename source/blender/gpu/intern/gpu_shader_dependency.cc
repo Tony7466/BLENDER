@@ -1043,6 +1043,11 @@ struct GPUSource {
           return 1;
         }
         StringRef dependency_name = source.substr(start, end - start);
+        if (dependency_name == "gpu_glsl_cpp_stubs.hh") {
+          /* Skip GLSL-C++ stubs. They are only for IDE linting. */
+          continue;
+        }
+
         dependency_source = dict.lookup_default(dependency_name, nullptr);
         if (dependency_source == nullptr) {
           print_error(source, start, "Dependency not found");
