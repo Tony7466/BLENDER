@@ -368,6 +368,7 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
     socket_data_read_data_impl(reader, reinterpret_cast<SocketDataType **>(&socket.socket_data));
   });
   if (!success && socket.socket_data) {
+    /* Not sure how this can happen exactly, but it did happen in #127855. */
     socket.socket_data = nullptr;
   }
 }
