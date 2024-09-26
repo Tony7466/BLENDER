@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 /** \file
  * \ingroup bke
  */
@@ -73,6 +75,11 @@ struct DupliObject {
   /* Random ID for shading */
   unsigned int random_id;
 };
+
+void object_dupli_foreach(Depsgraph *depsgraph,
+                          Scene *sce,
+                          Object *ob,
+                          blender::FunctionRef<void(DupliObject &dob)> user_fn);
 
 /**
  * Look up the RGBA value of a uniform shader attribute.

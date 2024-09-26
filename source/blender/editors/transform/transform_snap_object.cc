@@ -481,20 +481,19 @@ static eSnapMode iter_snap_objects(SnapObjectContext *sctx, IterSnapObjsCallback
     if (obj_eval->transflag & OB_DUPLI ||
         blender::bke::object_has_geometry_set_instances(*obj_eval))
     {
-      ListBase *lb = object_duplilist(sctx->runtime.depsgraph, sctx->scene, obj_eval);
-      LISTBASE_FOREACH (DupliObject *, dupli_ob, lb) {
-        BLI_assert(DEG_is_evaluated_object(dupli_ob->ob));
-        if ((tmp = sob_callback(sctx,
-                                dupli_ob->ob,
-                                dupli_ob->ob_data,
-                                float4x4(dupli_ob->mat),
-                                is_object_active,
-                                false)) != SCE_SNAP_TO_NONE)
-        {
-          ret = tmp;
-        }
-      }
-      free_object_duplilist(lb);
+      object_dupli_foreach(
+          sctx->runtime.depsgraph, sctx->scene, obj_eval, [&](DupliObject &dupli_ob) {
+            BLI_assert(DEG_is_evaluated_object(dupli_ob.ob));
+            if ((tmp = sob_callback(sctx,
+                                    dupli_ob.ob,
+                                    dupli_ob.ob_data,
+                                    float4x4(dupli_ob.mat),
+                                    is_object_active,
+                                    false)) != SCE_SNAP_TO_NONE)
+            {
+              ret = tmp;
+            }
+          });
     }
 
     bool use_hide = false;
