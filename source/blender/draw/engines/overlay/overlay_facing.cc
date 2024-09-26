@@ -25,7 +25,7 @@ void OVERLAY_facing_cache_init(OVERLAY_Data *vedata)
     DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH;
     /* Use the Depth Equal test in solid mode to ensure transparent textures display correctly.
      * (See #128113). And the Depth-Less test in other modes (E.g. EEVEE) to ensure the overlay
-     * display correctly (See # 114000). */
+     * displays correctly (See # 114000). */
     state |= is_solid_viewport ? DRW_STATE_DEPTH_EQUAL : DRW_STATE_DEPTH_LESS_EQUAL;
 
     if (is_solid_viewport && (draw_ctx->v3d->shading.flag & V3D_SHADING_BACKFACE_CULLING)) {
