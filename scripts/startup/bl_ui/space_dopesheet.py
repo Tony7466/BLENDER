@@ -698,10 +698,21 @@ class DOPESHEET_PT_action_slot(Panel):
         action = context.active_action
         slot = action.slots.active
 
-        row = layout.row()
-        row.emboss = 'NONE_OR_STATUS'
-        row.prop(slot, "id_root", text="Type")
-        layout.prop(slot, "name_display", text="Name", icon='ACTION_SLOT')
+        layout.prop(slot, "name_display", text="Name")
+
+        # Draw the ID type of the slot.
+        try:
+            enum_items = slot.bl_rna.properties['id_root'].enum_items
+            idtype_label = enum_items[slot.id_root].name
+        except (KeyError, IndexError, AttributeError) as ex:
+            idtype_label = str(ex)
+
+        split = layout.split(factor=0.4)
+        split.alignment = 'RIGHT'
+        split.label(text="Type")
+        split.alignment = 'LEFT'
+
+        split.label(text=idtype_label, icon_value=slot.id_root_icon)
 
 
 #######################################

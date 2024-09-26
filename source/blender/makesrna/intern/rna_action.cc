@@ -19,6 +19,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_action.hh"
+#include "BKE_blender.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -1526,11 +1527,20 @@ static const EnumPropertyItem *rna_id_root_itemf(bContext * /* C */,
 }
 
 #  ifdef WITH_ANIM_BAKLAVA
+
 static const EnumPropertyItem *rna_ActionSlot_id_root_itemf(bContext * /* C */,
                                                             PointerRNA * /* ptr */,
                                                             PropertyRNA * /* prop */,
                                                             bool *r_free)
 {
+  /* These items don't change, as the ID types are hard-coded. So better to
+   * cache the list of enum items. */
+  static EnumPropertyItem *_rna_ActionSlot_id_root_items = nullptr;
+
+  if (_rna_ActionSlot_id_root_items) {
+    return _rna_ActionSlot_id_root_items;
+  }
+
   int totitem = 0;
   EnumPropertyItem *items = nullptr;
 
@@ -1549,7 +1559,20 @@ static const EnumPropertyItem *rna_ActionSlot_id_root_itemf(bContext * /* C */,
   RNA_enum_item_add(&items, &totitem, &default_ActionSlot_id_root_items[0]);
 
   RNA_enum_item_end(&items, &totitem);
-  *r_free = true;
+
+  /* Don't free, but keep a reference to the created list. This is necessary
+   * because of the PROP_ENUM_NO_CONTEXT flag. Without it, this will make
+   * Blender use memory after it is freed:
+   *
+   * >>> slot = C.object.animation_data.action_slot
+   * >>> enum_item = s.bl_rna.properties['id_root'].enum_items[slot.id_root]
+   * >>> print(enum_item.name)
+   */
+  *r_free = false;
+  _rna_ActionSlot_id_root_items = items;
+
+  BKE_blender_atexit_register(MEM_freeN, items);
+
   return items;
 }
 #  endif /* WITH_ANIM_BAKLAVA */
@@ -1998,6 +2021,7 @@ static void rna_def_action_slot(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "idtype");
   RNA_def_property_enum_items(prop, default_ActionSlot_id_root_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_ActionSlot_id_root_itemf");
+  RNA_def_property_flag(prop, PROP_ENUM_NO_CONTEXT);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(
       prop, "ID Root Type", "Type of data-block that can be animated by this slot");
