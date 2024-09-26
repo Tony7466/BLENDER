@@ -247,10 +247,6 @@ void VKDescriptorSetTracker::bind_shader_resources(const VKDevice &device,
 void VKDescriptorSetTracker::update_descriptor_set(VKContext &context,
                                                    render_graph::VKResourceAccessInfo &access_info)
 {
-
-  // pre-allocate the vector sizes so we can directly set the correct data and don't need to loop
-  // at the end of this function.
-  const VKDevice &device = VKBackend::get().device;
   VKShader &shader = *unwrap(context.shader);
   VKStateManager &state_manager = context.state_manager_get();
 
@@ -269,6 +265,7 @@ void VKDescriptorSetTracker::update_descriptor_set(VKContext &context,
   vk_descriptor_set = context.descriptor_pools_get().allocate(vk_descriptor_set_layout);
   BLI_assert(vk_descriptor_set != VK_NULL_HANDLE);
   debug::object_label(vk_descriptor_set, shader.name_get());
+  const VKDevice &device = VKBackend::get().device;
   bind_shader_resources(device, state_manager, shader, access_info);
   upload_descriptor_sets();
 }
