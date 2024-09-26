@@ -835,6 +835,7 @@ static const SharedCache<Vector<float3>> &vert_normals_cache_eval(const Object &
   }
 
   if (!ss.deform_cos.is_empty()) {
+    BLI_assert(ss.deform_cos.size() == mesh_orig.verts_num);
     return ss.vert_normals_deform;
   }
 
@@ -865,6 +866,7 @@ static const SharedCache<Vector<float3>> &face_normals_cache_eval(const Object &
   }
 
   if (!ss.deform_cos.is_empty()) {
+    BLI_assert(ss.deform_cos.size() == mesh_orig.verts_num);
     return ss.face_normals_deform;
   }
 
@@ -2435,6 +2437,7 @@ static Span<float3> vert_positions_eval(const Object &object_orig, const Object 
   }
 
   if (!ss.deform_cos.is_empty()) {
+    BLI_assert(ss.deform_cos.size() == mesh_orig.verts_num);
     return ss.deform_cos;
   }
 
