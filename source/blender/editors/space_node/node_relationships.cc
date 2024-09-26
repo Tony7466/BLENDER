@@ -2255,18 +2255,6 @@ static bNode *get_selected_node_for_insertion(bNodeTree &node_tree)
   if (selected_node->input_sockets().is_empty() || selected_node->output_sockets().is_empty()) {
     return nullptr;
   }
-  if (std::any_of(selected_node->input_sockets().begin(),
-                  selected_node->input_sockets().end(),
-                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
-  {
-    return nullptr;
-  }
-  if (std::any_of(selected_node->output_sockets().begin(),
-                  selected_node->output_sockets().end(),
-                  [&](const bNodeSocket *socket) { return socket->is_directly_linked(); }))
-  {
-    return nullptr;
-  };
   return selected_node;
 }
 
@@ -2315,6 +2303,10 @@ void node_insert_on_link_flags_set(SpaceNode &snode,
   float dist_best = FLT_MAX;
   LISTBASE_FOREACH (bNodeLink *, link, &node_tree.links) {
     if (node_link_is_hidden_or_dimmed(region.v2d, *link)) {
+      continue;
+    }
+    if (ELEM(node_to_insert, link->fromnode, link->tonode)) {
+      /* Don't insert on a link that is connected to the node already. */
       continue;
     }
 
@@ -2418,8 +2410,18 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
   }
 
   if (best_input != nullptr) {
-    /* Add a new link that connects the node on the left to the newly inserted node. */
-    bke::node_add_link(&ntree, from_node, from_socket, node_to_insert, best_input);
+    /* Don't change an existing link. */
+    bool is_linked = false;
+    LISTBASE_FOREACH (const bNodeLink *, link, &ntree.links) {
+      if (link->tosock == best_input) {
+        is_linked = true;
+        break;
+      }
+    }
+    if (!is_linked) {
+      /* Add a new link that connects the node on the left to the newly inserted node. */
+      bke::node_add_link(&ntree, from_node, from_socket, node_to_insert, best_input);
+    }
   }
 
   /* Set up insert offset data, it needs stuff from here. */
