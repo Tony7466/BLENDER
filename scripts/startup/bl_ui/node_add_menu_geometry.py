@@ -661,6 +661,7 @@ class NODE_MT_category_utilities_matrix(Menu):
         node_add_menu.add_node_type(layout, "FunctionNodeTransformDirection")
         node_add_menu.add_node_type(layout, "FunctionNodeTransformPoint")
         node_add_menu.add_node_type(layout, "FunctionNodeTransposeMatrix")
+        node_add_menu.add_node_type(layout, "FunctionNodeMatrixDeterminant")
         node_add_menu.draw_assets_for_catalog(layout, "Utilities/Matrix")
 
 
