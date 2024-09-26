@@ -430,9 +430,7 @@ static bool ui_tooltip_period_needed(blender::StringRef tip)
   }
 
   /* Already ends with puncuation. */
-  char last = tip[tip.size() - 1];
-  const std::string end_punctuation = ".!?";
-  if (end_punctuation.find(last) != blender::StringRef::not_found) {
+  if (ELEM(tip.back(), '.', '!', '?')) {
     return false;
   }
 
