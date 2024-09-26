@@ -122,7 +122,7 @@ void geometry_main(VertOut geom_in[2],
   vec4 v1 = geom_in[0].gpu_position;
   vec4 v2 = geom_in[1].gpu_position;
 
-  bool is_active_nurb = (geom_in[0].flag & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
+  bool is_active = (geom_in[0].flag & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
   uint color_id = (geom_in[0].flag >> EDIT_CURVES_HANDLE_TYPES_SHIFT) & 7u;
 
   bool is_bezier_handle = (geom_in[0].flag & EDIT_CURVES_BEZIER_HANDLE) != 0;
@@ -131,7 +131,7 @@ void geometry_main(VertOut geom_in[2],
     return;
   }
 
-  bool is_selected_bezier_handle = is_bezier_handle && is_active_nurb;
+  bool is_selected_bezier_handle = is_bezier_handle && is_active;
   bool is_nurbs = (geom_in[0].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u;
 
   /* If handle type is only selected and the edge is not selected, don't show.
@@ -163,7 +163,7 @@ void geometry_main(VertOut geom_in[2],
 
   /* Minimize active color bleeding on inner_color. */
   vec4 active_color = mix(colorActiveSpline, inner_color, 0.25);
-  vec4 outer_color = is_active_nurb ? active_color : vec4(inner_color.rgb, 0.0);
+  vec4 outer_color = is_active ? active_color : vec4(inner_color.rgb, 0.0);
 
   vec2 v1_2 = (v2.xy / v2.w - v1.xy / v1.w);
   vec2 offset = sizeEdge * 4.0 * sizeViewportInv; /* 4.0 is eyeballed */
@@ -180,7 +180,7 @@ void geometry_main(VertOut geom_in[2],
 
   vec4 border_color = vec4(colorActiveSpline.rgb, 0.0);
   /* Draw the transparent border (AA). */
-  if (is_active_nurb) {
+  if (is_active) {
     offset *= 0.75; /* Don't make the active "halo" appear very thick. */
     output_vertex_pair(0, out_vertex_id, out_primitive_id, geom_in, offset * 2.0, border_color);
   }
@@ -191,7 +191,7 @@ void geometry_main(VertOut geom_in[2],
   /* Draw the outline. */
   output_vertex_pair(3, out_vertex_id, out_primitive_id, geom_in, -offset, outer_color);
   /* Draw the transparent border (AA). */
-  if (is_active_nurb) {
+  if (is_active) {
     output_vertex_pair(4, out_vertex_id, out_primitive_id, geom_in, -offset * 2.0, border_color);
   }
 }

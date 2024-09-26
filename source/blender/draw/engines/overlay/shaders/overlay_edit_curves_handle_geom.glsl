@@ -48,7 +48,7 @@ void main()
   vec4 v1 = gl_in[0].gl_Position;
   vec4 v2 = gl_in[1].gl_Position;
 
-  bool is_active_nurb = (vert[0].flag & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
+  bool is_active = (vert[0].flag & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
   uint color_id = uint(vert[0].flag >> EDIT_CURVES_HANDLE_TYPES_SHIFT) & 7;
 
   bool is_bezier_handle = (vert[0].flag & EDIT_CURVES_BEZIER_HANDLE) != 0;
@@ -57,7 +57,7 @@ void main()
     return;
   }
 
-  bool is_selected_bezier_handle = is_bezier_handle && is_active_nurb;
+  bool is_selected_bezier_handle = is_bezier_handle && is_active;
   bool is_nurbs = (vert[0].flag & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u;
 
   /* If handle type is only selected and the edge is not selected, don't show.
@@ -85,7 +85,7 @@ void main()
   }
 
   vec4 outer_color[2];
-  if (is_active_nurb) {
+  if (is_active) {
     outer_color[0] = mix(colorActiveSpline,
                          inner_color[0],
                          0.25); /* Minimize active color bleeding on inner_color. */
@@ -112,7 +112,7 @@ void main()
   }
 
   /* draw the transparent border (AA). */
-  if (is_active_nurb) {
+  if (is_active) {
     offset *= 0.75; /* Don't make the active "halo" appear very thick. */
     output_line(offset * 2.0, vec4(colorActiveSpline.rgb, 0.0), vec4(colorActiveSpline.rgb, 0.0));
   }
@@ -127,7 +127,7 @@ void main()
   output_line(-offset, outer_color[0], outer_color[1]);
 
   /* draw the transparent border (AA). */
-  if (is_active_nurb) {
+  if (is_active) {
     output_line(offset * -2.0, vec4(colorActiveSpline.rgb, 0.0), vec4(colorActiveSpline.rgb, 0.0));
   }
 

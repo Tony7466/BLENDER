@@ -71,7 +71,7 @@ void main()
   }
 
   /* Perform Geometry shader equivalent calculation. */
-  bool is_active_nurb = (vert_flag[0] & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
+  bool is_active = (vert_flag[0] & EDIT_CURVES_ACTIVE_HANDLE) != 0u;
   uint color_id = (vert_flag[0] >> EDIT_CURVES_HANDLE_TYPES_SHIFT) & 7;
 
   bool is_bezier_handle = (vert_flag[0] & EDIT_CURVES_BEZIER_HANDLE) != 0;
@@ -81,7 +81,7 @@ void main()
     return;
   }
 
-  bool is_selected_bezier_handle = is_bezier_handle && is_active_nurb;
+  bool is_selected_bezier_handle = is_bezier_handle && is_active;
   bool is_nurbs = (vert_flag[0] & EDIT_CURVES_NURBS_CONTROL_POINT) != 0u;
 
   /* If handle type is only selected and the edge is not selected, don't show.
@@ -104,7 +104,7 @@ void main()
         globalsBlock.color_wire, globalsBlock.color_vertex_select, vert_selection[line_end_point]);
   }
 
-  vec4 outer_color = is_active_nurb ?
+  vec4 outer_color = is_active ?
                          mix(colorActiveSpline,
                              inner_color,
                              0.25) /* Minimize active color bleeding on inner_color. */
@@ -127,7 +127,7 @@ void main()
   /* Each output vertex falls into 10 possible positions to generate 8 output triangles between 5
    * lines. */
   /* Discard transparent border quads up-front. */
-  if (!is_active_nurb) {
+  if (!is_active) {
     if (output_quad_id == 0 || output_quad_id == 3) {
       DISCARD_VERTEX
       return;
