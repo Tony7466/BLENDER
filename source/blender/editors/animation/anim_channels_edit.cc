@@ -5318,11 +5318,13 @@ static bool explode_action_poll(bContext *C)
 {
   Object *active_object = CTX_data_active_object(C);
   if (!active_object) {
+    CTX_wm_operator_poll_msg_set(C, "No active object");
     return false;
   }
 
   blender::animrig::Action *action = blender::animrig::get_action(active_object->id);
   if (!action) {
+    CTX_wm_operator_poll_msg_set(C, "Active object isn't animated");
     return false;
   }
   if (!action->is_action_layered()) {
