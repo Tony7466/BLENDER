@@ -293,6 +293,9 @@ struct AllPhysicsInfo {
   VectorSet<const bke::PhysicsGeometry *> order;
   /** Preprocessed data about every original geometry. This is ordered by #order. */
   Array<RealizePhysicsInfo> realize_info;
+  /* Index of the task whose world data gets moved instead of copied. */
+  int world_data_task = -1;
+
   bool create_id_attribute = false;
 };
 
@@ -2409,6 +2412,17 @@ static AllPhysicsInfo preprocess_physics(const bke::GeometrySet &geometry_set,
     physics->state().ensure_read_cache();
   }
 
+  /* Determine the task that moves its world data instead of copying it. */
+  if (options.move_physics_world_data) {
+    for (const int physics_index : info.realize_info.index_range()) {
+      const bke::PhysicsGeometry *physics = info.order[physics_index];
+      if (physics->state().has_world_data()) {
+        info.world_data_task = physics_index;
+        break;
+      }
+    }
+  }
+
   info.attributes = gather_generic_physics_attributes_to_propagate(
       geometry_set, options, varied_depth_option, info.create_id_attribute);
 
@@ -2600,23 +2614,18 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
       bodies_num, constraints_num, shapes_num);
 
   /* Move physics data ahead of copying attributes. */
-  int world_data_task = -1;
-  if (options.move_physics_world_data) {
-    for (const int task_index : tasks.index_range()) {
-      const RealizePhysicsTask &task = tasks[task_index];
-      const bke::PhysicsWorldState &state = task.physics_info->physics->state();
-      if (state.has_world_data()) {
-        dst_physics->state_for_write().try_move_data(state,
-                                                     dst_physics->bodies_num(),
-                                                     dst_physics->constraints_num(),
-                                                     state.bodies_range(),
-                                                     state.constraints_range(),
-                                                     task.start_indices.body,
-                                                     task.start_indices.constraint);
-        world_data_task = task_index;
-        break;
-      }
-    }
+  if (options.move_physics_world_data && all_physics_info.world_data_task >= 0) {
+    BLI_assert(tasks.index_range().contains(all_physics_info.world_data_task));
+    const RealizePhysicsTask &task = tasks[all_physics_info.world_data_task];
+    const bke::PhysicsWorldState &state = task.physics_info->physics->state();
+    BLI_assert(state.has_world_data());
+    dst_physics->state_for_write().try_move_data(state,
+                                                  dst_physics->bodies_num(),
+                                                  dst_physics->constraints_num(),
+                                                  state.bodies_range(),
+                                                  state.constraints_range(),
+                                                  task.start_indices.body,
+                                                  task.start_indices.constraint);
   }
 
   r_realized_geometry.replace_physics(dst_physics);
@@ -2667,7 +2676,7 @@ static void execute_realize_physics_tasks(const RealizeInstancesOptions &options
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
       const RealizePhysicsTask &task = tasks[task_index];
-      const bool world_was_moved = (task_index == world_data_task);
+      const bool world_was_moved = (task_index == all_physics_info.world_data_task);
       execute_realize_physics_task(options,
                                    all_physics_info,
                                    task,
