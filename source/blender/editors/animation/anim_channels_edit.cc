@@ -5203,8 +5203,7 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
   const eAnimFilter_Flags filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS |
                                     ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_CHANNELS);
 
-  size_t anim_data_length = ANIM_animdata_filter(
-      &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
+  size_t anim_data_length = ANIM_animdata_filter(&ac, &anim_data, filter, ac.data, ac.datatype);
 
   if (anim_data_length == 0) {
     WM_report(RPT_WARNING, "No channels to operate on");
@@ -5240,7 +5239,7 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
     target_action = &action_add(*bmain, DATA_("CombinedAction"));
   }
 
-  Layer &layer = target_action->layer_add();
+  Layer &layer = target_action->layer_add(std::nullopt);
   layer.strip_add(*target_action, Strip::Type::Keyframe);
 
   for (std::pair<Slot *, bAction *> &slot_data : slots) {
@@ -5248,7 +5247,7 @@ static int slot_channels_move_to_new_action_exec(bContext *C, wmOperator * /* op
     move_slot(*bmain, *slot_data.first, source_action, *target_action);
   }
 
-  DEG_id_tag_update(&target_action->id, ID_RECALC_GEOMETRY);
+  DEG_id_tag_update(&target_action->id, ID_RECALC_ANIMATION_NO_FLUSH);
   DEG_relations_tag_update(bmain);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
 
@@ -5284,7 +5283,7 @@ static void ANIM_OT_slot_channels_move_to_new_action(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
-#endif
+#endif /* WITH_ANIM_BAKLAVA */
 
 /**
  *  Find a Graph Editor area and set the context arguments accordingly.

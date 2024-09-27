@@ -69,6 +69,8 @@ namespace {
 constexpr const char *slot_default_name = "Slot";
 constexpr const char *slot_unbound_prefix = "XX";
 
+constexpr const char *layer_default_name = "Layer";
+
 }  // namespace
 
 static animrig::Layer &ActionLayer_alloc()
@@ -243,10 +245,10 @@ Layer *Action::layer(const int64_t index)
   return &this->layer_array[index]->wrap();
 }
 
-Layer &Action::layer_add(const StringRefNull name)
+Layer &Action::layer_add(const std::optional<StringRefNull> name)
 {
   Layer &new_layer = ActionLayer_alloc();
-  STRNCPY_UTF8(new_layer.name, name.c_str());
+  STRNCPY_UTF8(new_layer.name, name.value_or(layer_default_name).c_str());
 
   grow_array_and_append<::ActionLayer *>(&this->layer_array, &this->layer_array_num, &new_layer);
   this->layer_active_index = this->layer_array_num - 1;
