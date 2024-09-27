@@ -124,7 +124,7 @@ ccl_device int volume_voxel_get(KernelGlobals kg,
                                 const float3 P)
 {
   int node_index = 0;
-  float2 t_range = make_float2(ray->tmin, ray->tmax);
+  float2 t_range = make_float2(vstate.tmin, ray->tmax);
   while (true) {
     const ccl_global KernelOctreeNode *knode = &kernel_data_fetch(volume_tree_nodes, node_index);
     if (knode->is_leaf) {
