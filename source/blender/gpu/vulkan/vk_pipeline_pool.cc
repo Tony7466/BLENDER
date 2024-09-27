@@ -688,8 +688,11 @@ static std::string pipeline_cache_filepath_get()
 {
   static char tmp_dir_buffer[1024];
   BKE_appdir_folder_caches(tmp_dir_buffer, sizeof(tmp_dir_buffer));
+  std::string blender_version = std::to_string(BLENDER_VERSION / 100) + "." +
+                                std::to_string(BLENDER_VERSION % 100);
 
-  std::string cache_dir = std::string(tmp_dir_buffer) + "vk-pipeline-cache" + SEP_STR;
+  std::string cache_dir = std::string(tmp_dir_buffer) + blender_version + SEP_STR +
+                          "vk-pipeline-cache" + SEP_STR;
   BLI_dir_create_recursive(cache_dir.c_str());
   std::string cache_file = cache_dir + "static-shaders.bin";
   return cache_file;
